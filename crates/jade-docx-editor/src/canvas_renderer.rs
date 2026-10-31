@@ -2599,6 +2599,11 @@ struct AuxiliaryStoryBaseCache {
     scans: usize,
 }
 
+/// An already counted value without an Rc/Weak that could force a document
+/// allocation during editing. Only surface-preserving edits may carry it over.
+#[derive(Clone, Copy)]
+pub(crate) struct AuxiliaryStoryBaseSnapshot(usize);
+
 impl AuxiliaryStoryBaseCache {
     fn get(&mut self, document: &Rc<Document>, count: impl FnOnce(&Document) -> usize) -> usize {
         let identity = Rc::downgrade(document);
@@ -3314,6 +3319,7 @@ where
     host: RenderHostSlot<HostPainter>,
     horizontal_float_wrap_cache: HorizontalFloatWrapCache,
     auxiliary_story_base_cache: RefCell<AuxiliaryStoryBaseCache>,
+    auxiliary_story_surface_scans: std::cell::Cell<u64>,
     keep_next_measurer: Option<Box<Self>>,
     measuring_keep_next: bool,
     /// Set while a keepNext group measurement lays out a group member after
@@ -8346,6 +8352,7 @@ where
             host: RenderHostSlot::new(host),
             horizontal_float_wrap_cache: HorizontalFloatWrapCache::default(),
             auxiliary_story_base_cache: RefCell::new(AuxiliaryStoryBaseCache::default()),
+            auxiliary_story_surface_scans: std::cell::Cell::new(0),
             keep_next_measurer: None,
             measuring_keep_next: false,
             keep_next_tail_pending: None,
@@ -12544,6 +12551,32 @@ where
     pub fn restore_document_cache(&mut self, document: Rc<Document>) {
         self.last_document_comment_anchors = None;
         self.last_document = Some(document);
+    }
+
+    /// Capture only an existing count for this exact immutable document. This
+    /// does not scan or retain the document; drop_document_cache must still run
+    /// before an edit so Rc::make_mut can keep its allocation.
+    pub(crate) fn cached_auxiliary_story_base(
+        &self,
+        document: &Rc<Document>,
+    ) -> Option<AuxiliaryStoryBaseSnapshot> {
+        let cache = self.auxiliary_story_base_cache.borrow();
+        cache
+            .document
+            .ptr_eq(&Rc::downgrade(document))
+            .then_some(AuxiliaryStoryBaseSnapshot(cache.base))
+    }
+
+    /// The caller must prove that every edit since capture, including undo,
+    /// preserves body, note and nested text-box paragraph surface counts.
+    pub(crate) fn restore_auxiliary_story_base(
+        &self,
+        document: &Rc<Document>,
+        snapshot: AuxiliaryStoryBaseSnapshot,
+    ) {
+        let mut cache = self.auxiliary_story_base_cache.borrow_mut();
+        cache.document = Rc::downgrade(document);
+        cache.base = snapshot.0;
     }
 
     /// Coalesces overlapping dirty regions on the same page.
@@ -34417,6 +34450,11 @@ where
         self.last_render_body_element_count
     }
 
+    /// Cumulative recursive scans, including scans before document-cache drops.
+    pub fn auxiliary_story_surface_scans(&self) -> u64 {
+        self.auxiliary_story_surface_scans.get()
+    }
+
     /// Non-visible prefix paragraphs skipped via the cached-layout fast path in
     /// the most recent render (diagnostic).
     pub fn last_render_prefix_skips(&self) -> u64 {
@@ -35521,6 +35559,8 @@ where
         self.auxiliary_story_base_cache
             .borrow_mut()
             .get(document, |document| {
+                self.auxiliary_story_surface_scans
+                    .set(self.auxiliary_story_surface_scans.get().saturating_add(1));
                 let body = Self::body_paragraph_surface_count(document);
                 let footnotes = document
                     .footnotes
@@ -39012,6 +39052,161 @@ mod tests {
         renderer.drop_document_cache();
         renderer.paragraph_counter = 9;
         assert_eq!(renderer.auxiliary_story_paragraph_base(), 25);
+    }
+
+    #[test]
+    fn auxiliary_story_snapshot_requires_an_existing_exact_document_count() {
+        let (mut renderer, _) = recording_renderer();
+        let document = Rc::new(doc_with_paragraph_texts(&["body"]));
+        assert!(renderer.cached_auxiliary_story_base(&document).is_none());
+        assert_eq!(renderer.auxiliary_story_surface_scans(), 0);
+        renderer.restore_document_cache(Rc::clone(&document));
+        assert_eq!(renderer.auxiliary_story_paragraph_base(), 17);
+        assert!(renderer.cached_auxiliary_story_base(&document).is_some());
+        let replacement = Rc::new(doc_with_paragraph_texts(&["body", "second"]));
+        assert!(renderer.cached_auxiliary_story_base(&replacement).is_none());
+        renderer.drop_document_cache();
+        assert_eq!(Rc::weak_count(&document), 0);
+        assert!(renderer.cached_auxiliary_story_base(&document).is_none());
+        renderer.restore_document_cache(replacement);
+        assert_eq!(renderer.auxiliary_story_paragraph_base(), 18);
+        assert_eq!(renderer.auxiliary_story_surface_scans(), 2);
+    }
+
+    #[test]
+    fn auxiliary_story_reuse_rejects_replacements_breaks_missing_and_text_box_paragraphs() {
+        use crate::canvas_view::composition_preserves_auxiliary_story_surfaces;
+        use crate::word_document::WordDocument;
+        let document = WordDocument::from_document(doc_with_paragraph_texts(&["body"]));
+        let caret = SelectionRange::collapsed(TextPosition::new(0, 1));
+        assert!(composition_preserves_auxiliary_story_surfaces(
+            &document,
+            caret,
+            "日本語 😀"
+        ));
+        for text in ["line\nbreak", "line\rbreak"] {
+            assert!(!composition_preserves_auxiliary_story_surfaces(
+                &document, caret, text
+            ));
+        }
+        let replacement = SelectionRange::new(TextPosition::new(0, 0), TextPosition::new(0, 1));
+        assert!(!composition_preserves_auxiliary_story_surfaces(
+            &document,
+            replacement,
+            "a"
+        ));
+        let missing = SelectionRange::collapsed(TextPosition::new(999, 0));
+        assert!(!composition_preserves_auxiliary_story_surfaces(
+            &document, missing, "a"
+        ));
+        let mut boxed = doc_with_paragraph_texts(&["body"]);
+        boxed.body.as_mut().unwrap().elements[0] = auxiliary_count_test_block(1);
+        let boxed = WordDocument::from_document(boxed);
+        assert!(!composition_preserves_auxiliary_story_surfaces(
+            &boxed, caret, "a"
+        ));
+    }
+
+    proptest::proptest! {
+        #![proptest_config(proptest::test_runner::Config::with_cases(96))]
+        #[test]
+        fn composition_commands_preserve_auxiliary_story_surfaces(
+            shapes in proptest::collection::vec(0u8..3, 0..8),
+            footnote_shape in 0u8..3,
+            endnote_shape in 0u8..3,
+            operations in proptest::collection::vec((0u8..4, 0usize..6), 1..49),
+        ) {
+            use crate::commands::{apply_underline::ApplyUnderlineCommand, insert_text::InsertTextCommand,
+                insert_paragraph_break::InsertParagraphBreakCommand, Command, CommandContext};
+            use crate::word_document::WordDocument;
+            let mut document = doc_with_paragraph_texts(&["base"]);
+            document.body.as_mut().unwrap().elements.extend(
+                shapes.iter().map(|shape| auxiliary_count_test_block(*shape)));
+            document.footnotes.insert("1".into(), crate::document::Note {
+                id: "1".into(), note_type: None, body: vec![auxiliary_count_test_block(footnote_shape)],
+            });
+            document.endnotes.insert("2".into(), crate::document::Note {
+                id: "2".into(), note_type: None, body: vec![auxiliary_count_test_block(endnote_shape)],
+            });
+            // Independent model: each generated shape has a known count. The
+            // model stores strings and counts, never production snapshots.
+            let surfaces = [1usize, 3, 4];
+            let expected_base = 17 + shapes.iter().map(|shape| surfaces[*shape as usize]).sum::<usize>()
+                + surfaces[footnote_shape as usize] + surfaces[endnote_shape as usize];
+            let mut word_doc = WordDocument::from_document(document);
+            let mut selection = Some(SelectionRange::collapsed(TextPosition::new(0, 1)));
+            let mut pending: Vec<Box<dyn Command>> = Vec::new();
+            let texts = ["", "a", "にほん", "日本語 😀", "か", "line\nbreak"];
+            let mut committed = "base".to_string();
+            let mut shown = committed.clone();
+            let (mut renderer, _) = recording_renderer();
+            renderer.restore_document_cache(Rc::clone(word_doc.document.as_ref().unwrap()));
+            proptest::prop_assert_eq!(renderer.auxiliary_story_paragraph_base(), expected_base);
+            let mut pending_preserves_surfaces = true;
+            for (step, (operation, text_index)) in operations.into_iter().enumerate() {
+                let scans_before = renderer.auxiliary_story_surface_scans();
+                let mut snapshot = if pending_preserves_surfaces && operation != 3 {
+                    renderer.cached_auxiliary_story_base(word_doc.document.as_ref().unwrap())
+                } else { None };
+                let mut extra_scans = 0;
+                if operation == 2 {
+                    // Commit a preview; its insertion becomes the next base.
+                    pending.clear();
+                    committed = shown.clone();
+                    pending_preserves_surfaces = true;
+                } else {
+                    renderer.drop_document_cache();
+                    proptest::prop_assert_eq!(Rc::weak_count(word_doc.document.as_ref().unwrap()), 0);
+                    let mut ctx = CommandContext::new(&mut word_doc, &mut selection);
+                    for command in pending.iter_mut().rev() { command.undo(&mut ctx).unwrap(); }
+                    pending.clear();
+                    pending_preserves_surfaces = true;
+                    selection = Some(SelectionRange::collapsed(TextPosition::new(0, 1)));
+                    shown = committed.clone();
+                    if operation == 3 {
+                        // A real Enter and its undo must each count the changed
+                        // structure, even when Rc::make_mut retains its address.
+                        let mut enter = InsertParagraphBreakCommand::new(selection.unwrap());
+                        enter.apply(&mut CommandContext::new(&mut word_doc, &mut selection)).unwrap();
+                        renderer.restore_document_cache(Rc::clone(word_doc.document.as_ref().unwrap()));
+                        proptest::prop_assert_eq!(renderer.auxiliary_story_paragraph_base(), expected_base + 1,
+                            "step {} Enter", step);
+                        renderer.drop_document_cache();
+                        enter.undo(&mut CommandContext::new(&mut word_doc, &mut selection)).unwrap();
+                        extra_scans = 1;
+                    }
+                    if operation == 0 && !texts[text_index].is_empty() {
+                        let text = texts[text_index];
+                        let mut insert = InsertTextCommand::new(selection.unwrap(), text.into(), None);
+                        pending_preserves_surfaces = crate::canvas_view::composition_preserves_auxiliary_story_surfaces(
+                            &word_doc, selection.unwrap(), text);
+                        proptest::prop_assert_eq!(pending_preserves_surfaces,
+                            !text.contains('\n'), "step {}", step);
+                        if !pending_preserves_surfaces { snapshot = None; }
+                        insert.apply(&mut CommandContext::new(&mut word_doc, &mut selection)).unwrap();
+                        let mut underline = ApplyUnderlineCommand::new(SelectionRange::new(
+                            TextPosition::new(0, 1), TextPosition::new(0, 1 + text.len())));
+                        underline.apply(&mut CommandContext::new(&mut word_doc, &mut selection)).unwrap();
+                        pending.push(Box::new(insert));
+                        pending.push(Box::new(underline));
+                        shown.insert_str(1, text);
+                    }
+                }
+                let actual_text = word_doc.paragraph(0).unwrap().runs.iter()
+                    .map(|run| run.text.as_str()).collect::<String>();
+                proptest::prop_assert_eq!(actual_text, shown.clone(), "step {} operation {}", step, operation);
+                let document = word_doc.document.as_ref().unwrap();
+                if let Some(snapshot) = snapshot {
+                    renderer.restore_auxiliary_story_base(document, snapshot);
+                }
+                renderer.restore_document_cache(Rc::clone(document));
+                proptest::prop_assert_eq!(renderer.auxiliary_story_paragraph_base(), expected_base,
+                    "step {} operation {}", step, operation);
+                let expected_scans = if operation == 2 || snapshot.is_some() { 0 } else { 1 } + extra_scans;
+                proptest::prop_assert_eq!(renderer.auxiliary_story_surface_scans() - scans_before, expected_scans,
+                    "step {} operation {}", step, operation);
+            }
+        }
     }
 
     // Each shape has an independently known number of editable surfaces:
