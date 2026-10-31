@@ -1942,6 +1942,11 @@ pub fn apply_headless_commands_with_executor_to_document(
                 validate_text_offset(word_doc, index, *paragraph, *offset)?;
                 let range = SelectionRange::collapsed(TextPosition::new(*paragraph, *offset));
                 selection = Some(range);
+                // An empty insertion still validates and moves the caret,
+                // but must not record an edit or discard the redo branch.
+                if text.is_empty() {
+                    continue;
+                }
 
                 let mut ctx = CommandContext::new(word_doc, &mut selection);
                 command_executor
