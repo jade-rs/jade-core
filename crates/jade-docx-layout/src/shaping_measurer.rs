@@ -29,7 +29,9 @@ use crate::line_wrap::LineWrapContext;
 use crate::units::points_to_px;
 use jade_docx_reader::RunProperties;
 use rustybuzz::ttf_parser::Tag;
-use rustybuzz::{Face, Feature, UnicodeBuffer};
+use rustybuzz::{
+    Direction, Face, Feature, GlyphBuffer, Language, Script, ShapePlan, UnicodeBuffer,
+};
 use std::cell::RefCell;
 use std::collections::{BTreeSet, HashMap};
 use std::error::Error;
@@ -107,6 +109,83 @@ struct RegisteredFace {
     // observable outside this struct.
     face: Face<'static>,
     _bytes: Box<[u8]>,
+    shape_plans: RefCell<ShapePlanCache>,
+}
+
+// Bound retained OpenType plans independently for every immutable face. Plans
+// contain no text and no references into the font. Font size is applied after
+// shaping and therefore is deliberately not part of the key.
+const MAX_SHAPE_PLANS_PER_FACE: usize = 32;
+
+#[derive(Default)]
+struct ShapePlanCache {
+    entries: Vec<CachedShapePlan>,
+}
+
+struct CachedShapePlan {
+    direction: Direction,
+    script: Script,
+    language: Option<Language>,
+    kern_enabled: bool,
+    extra_features: Vec<Feature>,
+    plan: ShapePlan,
+}
+
+impl ShapePlanCache {
+    fn shape(
+        &mut self,
+        face: &Face<'_>,
+        mut buffer: UnicodeBuffer,
+        kern_enabled: bool,
+        extra: &[Feature],
+    ) -> GlyphBuffer {
+        buffer.guess_segment_properties();
+        let direction = buffer.direction();
+        let script = buffer.script();
+        let language = buffer.language();
+        let index = self.entries.iter().position(|entry| {
+            entry.direction == direction
+                && entry.script == script
+                && entry.language == language
+                && entry.kern_enabled == kern_enabled
+                && entry.extra_features == extra
+        });
+        let index = match index {
+            Some(index) => index,
+            None => {
+                // Preserve both feature order and ranges: later user features
+                // can override the CJK kern policy, exactly as before caching.
+                let mut features = if kern_enabled {
+                    Vec::new()
+                } else {
+                    vec![Feature::new(Tag::from_bytes(KERN), 0, ..)]
+                };
+                features.extend_from_slice(extra);
+                #[cfg(test)]
+                SHAPE_PLAN_BUILDS.with(|count| count.set(count.get() + 1));
+                let plan = ShapePlan::new(
+                    face,
+                    direction,
+                    (script != rustybuzz::script::UNKNOWN).then_some(script),
+                    language.as_ref(),
+                    &features,
+                );
+                if self.entries.len() == MAX_SHAPE_PLANS_PER_FACE {
+                    self.entries.remove(0);
+                }
+                self.entries.push(CachedShapePlan {
+                    direction,
+                    script,
+                    language,
+                    kern_enabled,
+                    extra_features: extra.to_vec(),
+                    plan,
+                });
+                self.entries.len() - 1
+            }
+        };
+        rustybuzz::shape_with_plan(face, &self.entries[index].plan, buffer)
+    }
 }
 
 /// A font stack resolved once per descriptor: the faces named by the descriptor
@@ -215,6 +294,7 @@ impl ShapingMeasurer {
             style,
             face,
             _bytes: owned,
+            shape_plans: RefCell::new(ShapePlanCache::default()),
         });
         self.descriptor_cache.borrow_mut().clear();
         Ok(())
@@ -453,18 +533,24 @@ fn fullwidth_trim_count(text: &str) -> usize {
     count
 }
 
+#[cfg(test)]
+thread_local! {
+    static SHAPE_PLAN_BUILDS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+}
+
 /// Shapes one run and returns its advance in font design units.
-fn shape_run_units(face: &Face<'_>, text: &str, kern_enabled: bool, extra: &[Feature]) -> i32 {
+fn shape_run_units(
+    entry: &RegisteredFace,
+    text: &str,
+    kern_enabled: bool,
+    extra: &[Feature],
+) -> i32 {
     let mut buffer = UnicodeBuffer::new();
     buffer.push_str(text);
-    buffer.guess_segment_properties();
-    let mut features = if kern_enabled {
-        Vec::new()
-    } else {
-        vec![Feature::new(Tag::from_bytes(KERN), 0, ..)]
-    };
-    features.extend_from_slice(extra);
-    let shaped = rustybuzz::shape(face, &features, buffer);
+    let shaped = entry
+        .shape_plans
+        .borrow_mut()
+        .shape(&entry.face, buffer, kern_enabled, extra);
     shaped
         .glyph_positions()
         .iter()
@@ -499,7 +585,7 @@ impl ShapingMeasurer {
             return 0.0;
         };
         let kern_enabled = !(cjk && self.options.disable_kern_for_cjk);
-        let units = shape_run_units(&entry.face, text, kern_enabled, features);
+        let units = shape_run_units(entry, text, kern_enabled, features);
         f64::from(units) / f64::from(entry.face.units_per_em()) * size_px
     }
 }
@@ -639,6 +725,22 @@ mod tests {
             )
             .expect("register bundled Noto Sans JP");
         measurer
+    }
+
+    #[test]
+    fn native_shape_plan_reuses_face_script_and_features_across_text_and_sizes() {
+        let measurer = measurer(ShapingOptions::CHROMIUM_PARITY);
+        SHAPE_PLAN_BUILDS.with(|count| count.set(0));
+        for descriptor in ["10.50pt 'Noto Sans JP'", "16.00pt 'Noto Sans JP'"] {
+            for text in ["あ", "あい", "あいう", "かきくけこ", "さしすせそ"] {
+                assert!(measurer.measure_text(text, descriptor).unwrap() > 0.0);
+            }
+        }
+        assert_eq!(
+            SHAPE_PLAN_BUILDS.with(|count| count.get()),
+            1,
+            "only one plan is needed for the same face/script/direction/features"
+        );
     }
 
     const DESC: &str = "10.50pt 'Noto Sans JP'";
@@ -858,3 +960,6 @@ mod tests {
         assert_eq!(measurer.measure_text("あ", DESC).expect("measure"), 0.0);
     }
 }
+
+#[cfg(test)]
+mod shape_plan_tests;
