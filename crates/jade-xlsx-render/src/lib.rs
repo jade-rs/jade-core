@@ -1294,15 +1294,15 @@ fn render_text_body<P: Painter>(
     // Vertically justified or distributed lines share out the height the
     // block leaves: justified from the top edge to the bottom one,
     // distributed with half a share above the first and below the last.
-    let slack = (cell.rect.height - 2.0 * padding - block_height).max(0.0);
+    let slack = || (cell.rect.height - 2.0 * padding - block_height).max(0.0);
     let lines = cell.lines.len() as f64;
     let (block_top, line_height) = match cell.alignment.vertical {
         VerticalAlignment::Justify if cell.lines.len() > 1 => {
-            (block_top, line_height + slack / (lines - 1.0))
+            (block_top, line_height + slack() / (lines - 1.0))
         }
         VerticalAlignment::Distributed if cell.lines.len() > 1 => (
-            cell.rect.y + padding + slack / lines / 2.0,
-            line_height + slack / lines,
+            cell.rect.y + padding + slack() / lines / 2.0,
+            line_height + slack() / lines,
         ),
         _ => (block_top, line_height),
     };
@@ -1317,7 +1317,8 @@ fn render_text_body<P: Painter>(
     let inner_left = cell.rect.x + padding + cell.text_inset_px;
     let content_right = cell.rect.right().min(cell.text_rect().right());
     let inner_right = content_right - padding - cell.text_inset_px;
-    if !cell.runs.is_empty() && text_rotation_radians(cell.alignment.text_rotation).is_none() {
+    let rotation = text_rotation_radians(cell.alignment.text_rotation);
+    if !cell.runs.is_empty() && rotation.is_none() {
         let mut cursor = 0;
         let mut ranges = Vec::new();
         for line in &cell.lines {
@@ -1363,14 +1364,13 @@ fn render_text_body<P: Painter>(
             _ => inner_left,
         };
         let y = block_top + line_height * index as f64 + ascent;
-        let rotated = text_rotation_radians(cell.alignment.text_rotation).is_some();
         let spread = match cell.alignment.horizontal {
             // Justify leaves the paragraph's last line as it is.
             HorizontalAlignment::Justify => index + 1 < cell.lines.len(),
             HorizontalAlignment::Distributed => true,
             _ => false,
         };
-        if spread && !rotated && width < inner_right - inner_left {
+        if spread && rotation.is_none() && width < inner_right - inner_left {
             paint_spread_line(
                 painter,
                 cell,
@@ -1382,7 +1382,7 @@ fn render_text_body<P: Painter>(
             )?;
             continue;
         }
-        if let Some(angle) = text_rotation_radians(cell.alignment.text_rotation) {
+        if let Some(angle) = rotation {
             painter.save();
             let result = (|| {
                 painter.translate(x, y)?;
