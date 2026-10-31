@@ -385,7 +385,76 @@ pub(crate) fn merge_format_runs(
     runs
 }
 
-fn next_bookmark_id(root: &XmlElement) -> u32 {
+fn prepare_bookmark_id(root: &mut XmlElement, name: &str) -> u32 {
+    fn replace(
+        element: &mut XmlElement,
+        name: &str,
+        replaced: &mut std::collections::HashSet<String>,
+        reusable: &mut Option<u32>,
+        next: &mut u32,
+    ) {
+        element.children.retain_mut(|child| {
+            let XmlNode::Element(child) = child else {
+                return true;
+            };
+            let id = matches!(child.name.as_str(), "w:bookmarkStart" | "w:bookmarkEnd")
+                .then(|| {
+                    child
+                        .attributes
+                        .iter()
+                        .find(|attribute| attribute.name == "w:id")
+                })
+                .flatten();
+            if child.name == "w:bookmarkStart" {
+                if child.attributes.iter().any(|attribute| {
+                    attribute.name == "w:name"
+                        && attribute
+                            .value
+                            .chars()
+                            .flat_map(char::to_lowercase)
+                            .eq(name.chars().flat_map(char::to_lowercase))
+                }) {
+                    if let Some(id) = id {
+                        if let Ok(value) = id.value.parse::<u32>() {
+                            if value <= i32::MAX as u32 {
+                                *reusable = Some(reusable.map_or(value, |old| old.min(value)));
+                            }
+                        }
+                        replaced.insert(id.value.clone());
+                    }
+                    return false;
+                }
+                if let Some(id) = id.and_then(|id| id.value.parse::<u32>().ok()) {
+                    *next = (*next).max(id.saturating_add(1));
+                }
+            } else if child.name == "w:bookmarkEnd"
+                && id.is_some_and(|id| replaced.contains(&id.value))
+            {
+                return false;
+            }
+            replace(child, name, replaced, reusable, next);
+            true
+        });
+    }
+
+    // Bookmark ends follow their starts in document order. Replace the named
+    // range while doing the ID scan so repeated ASK/SET updates stay unique.
+    let mut next = 0;
+    let mut reusable = None;
+    replace(
+        root,
+        name,
+        &mut std::collections::HashSet::new(),
+        &mut reusable,
+        &mut next,
+    );
+    if let Some(id) = reusable {
+        return id;
+    }
+    if next <= i32::MAX as u32 {
+        return next;
+    }
+
     fn walk(element: &XmlElement, visit: &mut impl FnMut(u32)) {
         if element.name == "w:bookmarkStart" {
             if let Some(id) = element
@@ -402,11 +471,6 @@ fn next_bookmark_id(root: &XmlElement) -> u32 {
                 walk(child, visit);
             }
         }
-    }
-    let mut next = 0;
-    walk(root, &mut |id| next = next.max(id.saturating_add(1)));
-    if next <= i32::MAX as u32 {
-        return next;
     }
     // ASK/SET bookmarks obey the same signed 32-bit ID limit as TOC anchors.
     // Search holes only when incrementing the maximum would exceed that limit.
@@ -450,7 +514,7 @@ pub(crate) fn write_result(
             rpr,
         ),
         NewResult::Bookmarked { name, text } => {
-            let id = next_bookmark_id(root).to_string();
+            let id = prepare_bookmark_id(root, name).to_string();
             let mut nodes = vec![new_element(
                 "w:bookmarkStart",
                 &[("w:id", &id), ("w:name", name)],
@@ -901,6 +965,46 @@ mod tests {
                 "{xml}"
             );
             assert_eq!(scan_document(doc.root()).fields[0].result_text, "42");
+        }
+    }
+
+    #[test]
+    fn bookmarked_results_replace_the_named_range_and_preserve_other_anchors() {
+        for field_xml in [
+            COMPLEX,
+            "<w:p><w:fldSimple w:instr=\"SET Answer 42\"><w:r><w:t>old</w:t></w:r></w:fldSimple></w:p>",
+        ] {
+            let mut doc = doc(&format!(
+                "<w:p><w:bookmarkStart w:id=\"3\" w:name=\"Answer\"/><w:bookmarkStart w:id=\"4\" w:name=\"keep\"/><w:r><w:t>original</w:t></w:r><w:bookmarkEnd w:id=\"4\"/><w:bookmarkEnd w:id=\"3\"/></w:p>{field_xml}"
+            ));
+            for (name, value) in [("Answer", "42"), ("answer", "84"), ("ANSWER", "42")] {
+                let field = scan_document(doc.root()).fields[0].clone();
+                write_result(
+                    root_mut(&mut doc),
+                    &field,
+                    NewResult::Bookmarked {
+                        name: name.into(),
+                        text: value.into(),
+                    },
+                    None,
+                    None,
+                )
+                .unwrap();
+                let xml = body_xml(&doc);
+                assert_eq!(xml.matches(&format!("w:name=\"{name}\"")).count(), 1, "{xml}");
+                assert_eq!(xml.matches("<w:bookmarkStart").count(), 2, "{xml}");
+                for id in [3, 4] {
+                    assert_eq!(
+                        xml.matches(&format!("<w:bookmarkEnd w:id=\"{id}\"/>")).count(),
+                        1,
+                        "{xml}"
+                    );
+                }
+                assert!(xml.contains("<w:bookmarkStart w:id=\"4\" w:name=\"keep\"/>"));
+                assert!(xml.contains("<w:t>original</w:t>"));
+                assert_eq!(scan_document(doc.root()).fields[0].result_text, value);
+                assert_eq!(scan_document(doc.root()).bookmarks["answer"].text, value);
+            }
         }
     }
 
