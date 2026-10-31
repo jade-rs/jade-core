@@ -68,6 +68,7 @@ fn sheet_with(value: CellValue) -> Sheet {
         rich_text: Default::default(),
         tab_color: None,
         sparkline_groups: Vec::new(),
+        outline: Default::default(),
         protection: None,
     }
 }

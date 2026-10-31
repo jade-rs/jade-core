@@ -10,6 +10,7 @@ use crate::error::Result;
 use crate::model::{
     ArrayFormula, Cell, CellRange, CellRef, CellValue, ColumnSpan, FreezePane, HeaderFooter,
     PageBreak, PageMargins, PageOrientation, PageSetup, Row, Sheet, SheetVisibility,
+    MAX_COLUMN_COUNT,
 };
 use jade_opc::{local_name, Relationships};
 
@@ -102,6 +103,7 @@ pub fn parse_sheet_with_relationships(
         tab_color: None,
         sparkline_groups: crate::sparkline::parse_sparklines(xml)?,
         protection: None,
+        outline: Default::default(),
     };
 
     let mut row: Option<Row> = None;
@@ -206,13 +208,38 @@ pub fn parse_sheet_with_relationships(
                         sheet.default_rows_hidden = attribute_value(element, b"zeroHeight")?
                             .is_some_and(|value| value != "0" && value != "false");
                     }
+                    b"outlinePr" => {
+                        let flag = |value: Option<String>| {
+                            value.is_none_or(|value| value != "0" && value != "false")
+                        };
+                        sheet.outline.summary_below =
+                            flag(attribute_value(element, b"summaryBelow")?);
+                        sheet.outline.summary_right =
+                            flag(attribute_value(element, b"summaryRight")?);
+                    }
                     b"col" => {
                         if let Some(span) = parse_column(element)? {
+                            let (level, collapsed) = outline_attributes(element)?;
+                            for column in span.first..=span.last.min(MAX_COLUMN_COUNT - 1) {
+                                if level > 0 {
+                                    sheet.outline.column_levels.insert(column, level);
+                                }
+                                if collapsed {
+                                    sheet.outline.collapsed_columns.insert(column);
+                                }
+                            }
                             sheet.columns.push(span);
                         }
                     }
                     b"row" => {
                         let parsed = parse_row(element, next_row_index, &sheet)?;
+                        let (level, collapsed) = outline_attributes(element)?;
+                        if level > 0 {
+                            sheet.outline.row_levels.insert(parsed.index, level);
+                        }
+                        if collapsed {
+                            sheet.outline.collapsed_rows.insert(parsed.index);
+                        }
                         next_row_index = parsed.index.saturating_add(1);
                         if empty {
                             sheet.rows.push(parsed);
@@ -844,6 +871,18 @@ fn parse_column(element: &BytesStart<'_>) -> Result<Option<ColumnSpan>> {
         hidden,
         style_index,
     }))
+}
+
+/// A row's or column's `outlineLevel` (clamped to Excel's 7) and whether it
+/// is `collapsed`.
+fn outline_attributes(element: &BytesStart<'_>) -> Result<(u8, bool)> {
+    let level = attribute_value(element, b"outlineLevel")?
+        .and_then(|value| value.parse::<u8>().ok())
+        .unwrap_or(0)
+        .min(7);
+    let collapsed = attribute_value(element, b"collapsed")?
+        .is_some_and(|value| value != "0" && value != "false");
+    Ok((level, collapsed))
 }
 
 fn parse_row(element: &BytesStart<'_>, fallback_index: u32, sheet: &Sheet) -> Result<Row> {
