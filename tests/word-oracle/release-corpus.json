@@ -654,6 +654,14 @@
       "docx_sha256": "81861a061b5460c034373cd1fc459fd044a6b34c4209eca1bce70c0598ca5236"
     },
     {
+      "fixture": "word-mac-probe-vert-align-sweep",
+      "docx_sha256": "9567f9c9e1d5b8359e38f38a785b65259fa0c9eab2d859f0eb12a6aa1d53b852"
+    },
+    {
+      "fixture": "word-mac-probe-vert-align-sweep-2",
+      "docx_sha256": "513f3ea7aaf3b49169c06f11e178ef446b4c9ec2e36ef2216b683ca574735ed2"
+    },
+    {
       "fixture": "wrong-num",
       "docx_sha256": "d553ecaf5868bc2cf80c0c293073d9ec8842890a6e3e3ef9a1aa048f7cc5191e"
     },

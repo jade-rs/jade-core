@@ -27,6 +27,19 @@ What it shows:
 - Calibri (both ways) and MS Mincho's subscript are clamped below their
   OS/2 offsets, and not by any rule of the run and script sizes: no linear
   or two-stage rounded form in half points, twips or device units fits all
-  49 sizes, and 13pt Calibri moves up 4pt while 12.5pt moves 4.5pt. Jade's
-  shares (Calibri 0.333 and 0.094, MS Mincho 0.11) land on Word's half point
-  at 93 of these 147 sizes and within one half point at the rest.
+  49 sizes, and 13pt Calibri moves up 4pt while 12.5pt moves 4.5pt. Jade
+  keeps these 147 moves as a table and falls back to its shares (Calibri
+  0.333 and 0.094, MS Mincho 0.11) outside 6–30pt.
+
+## Second sweep
+
+`word-mac-probe-vert-align-sweep-2.json` was captured the same way, the
+same day, from `public/fixtures/word-mac-probe-vert-align-sweep-2.docx`
+(`generators/make-vert-align-sweep-2-probe.py`); its PDF is kept beside the
+first. It repeats the clamped paragraphs with Calibri's East Asian font set
+to Calibri, Yu Mincho and MS Mincho, with `xx` raised in place of `12`, and
+MS Mincho with `xx`. Every move and size is the first sweep's, so the clamp
+depends on neither the East Asian font nor the glyphs.
+
+`generators/extract-vert-align-sweep.py` reads both: it takes each shifted
+run's alignment, faces, size and text from the DOCX.
