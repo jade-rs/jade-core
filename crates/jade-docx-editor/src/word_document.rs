@@ -4513,19 +4513,19 @@ impl WordDocument {
     }
 
     /// Re-applies Word's indent precedence after a paragraph gains or loses
-    /// numbering at edit time. `direct_indent` says whether the paragraph's
-    /// own `w:pPr` carries a `w:ind`; without one a numbered paragraph takes
-    /// the level's left/hanging indent (the style-filled values are dropped),
-    /// and a paragraph that lost its numbering takes the style's again.
+    /// numbering at edit time, as a load resolves it. `direct_indent` is the
+    /// paragraph's own `w:ind`. A numbered paragraph takes the level's
+    /// left/hanging indent wherever its own leaves a group unset (the
+    /// style-filled values are dropped), and a paragraph that lost its
+    /// numbering takes the style's again. Word inherits per group: a direct
+    /// `w:firstLine` alone kept the style's left indent in place of the
+    /// level's, so the list drew at the style's indent until reopened.
     pub(crate) fn apply_numbering_indent_precedence(
         &mut self,
         paragraph_index: usize,
         numbered: bool,
-        direct_indent: bool,
+        direct_indent: Option<Indent>,
     ) {
-        if direct_indent {
-            return;
-        }
         let style_indent = {
             let Some(styles) = self.styles_part.as_ref() else {
                 return;
@@ -4553,11 +4553,18 @@ impl WordDocument {
             return;
         };
         let props = paragraph.properties.get_or_insert_with(Default::default);
-        if numbered {
-            props.indent = style_indent.as_ref().map(Self::right_indent_only);
+        let fallback = if numbered {
+            style_indent.as_ref().map(Self::right_indent_only)
         } else {
-            props.indent = style_indent;
-        }
+            style_indent
+        };
+        props.indent = match (direct_indent, fallback) {
+            (Some(mut direct), Some(fallback)) => {
+                Self::fill_missing_indent_groups(&mut direct, &fallback);
+                Some(direct)
+            }
+            (direct, fallback) => direct.or(fallback),
+        };
     }
 
     fn fill_missing_indent_groups(target: &mut Indent, fallback: &Indent) {
