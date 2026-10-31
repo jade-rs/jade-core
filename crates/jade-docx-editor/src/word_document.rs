@@ -2665,6 +2665,13 @@ impl WordDocument {
                 document.comments = comments_part.comments;
             }
 
+            // Install the fallback before loading any story, so opening and
+            // editing a header/footer use the same defaults as the body.
+            // The package is not given a styles part until an edit writes one.
+            if !styles_read {
+                document.styles_part = Some(StylesPart::word_default());
+            }
+
             // Header/footer stories use the same style-numbering inheritance
             // as the body, so merge numbering definitions before materializing
             // their parsed block models.
@@ -2770,12 +2777,6 @@ impl WordDocument {
                 Self::watermark_text_from_loaded_headers(&document, &parsed_doc, &doc_part);
             document.even_and_odd_headers = doc_settings.even_and_odd_headers;
 
-            // A package without `styles.xml` is laid out with Word's built-in
-            // styles, not the spec's Times New Roman 10 pt fallback. The
-            // package is not given a styles part until an edit writes one.
-            if !styles_read {
-                document.styles_part = Some(StylesPart::word_default());
-            }
             // Before the styles fill paragraphs in: the paragraph a textless
             // shape is given takes the defaults a `w:p` in its text box would
             // be read with, which it is saved as once edited.
@@ -33089,12 +33090,24 @@ impl WordDocument {
             std::mem::take(&mut paragraph_element.children)
         };
         let mut runs = paragraph.runs.clone();
-        let new_children = Self::build_paragraph_children(
+        let mut new_children = Self::build_paragraph_children(
             &mut notes_doc,
             old_children,
             &mut runs,
             preserve_drawings,
         );
+        // The generic writer prunes contentless runs. An empty text run in
+        // a styled note still carries the paragraph's inherited font metrics;
+        // retain it so saving/reopening agrees with the in-memory paragraph.
+        if runs.iter().all(|run| run.text.is_empty())
+            && runs
+                .iter()
+                .any(|run| run.node_id.is_none() && run.field.is_none() && run.math.is_none())
+        {
+            let (text, _) = Self::create_text_element(&mut notes_doc, "", "w:t");
+            let run = notes_doc.create_element("w:r", Vec::new(), vec![XmlNode::Element(text)]);
+            new_children.push(XmlNode::Element(run));
+        }
         if let Some(paragraph_element) = notes_doc.element_mut(paragraph_id) {
             paragraph_element.children = new_children;
         }

@@ -293,20 +293,36 @@ fn formatting_of(p_pr: Option<&XmlElement>) -> String {
 
 impl WordDocument {
     fn paragraph_element(&self, index: usize) -> Option<&XmlElement> {
-        let id = self.paragraph(index)?.node_id?;
-        self.raw_document
-            .as_ref()?
-            .element(id)
+        self.paragraph_elements(index).into_iter().next()
+    }
+
+    /// Every `w:p` paragraph `index` is written as. A body paragraph is one;
+    /// a text box paragraph is unbound and written twice, in the DrawingML
+    /// box and in its VML fallback. Reading only the bound one, tracked
+    /// formatting in a text box recorded no change and a rejection had
+    /// nothing to put back: the formatting stayed in the saved file.
+    fn paragraph_elements(&self, index: usize) -> Vec<&XmlElement> {
+        let Some(raw) = self.raw_document.as_ref() else {
+            return Vec::new();
+        };
+        let ids = match self.paragraph(index).map(|paragraph| paragraph.node_id) {
+            Some(Some(id)) => vec![id],
+            Some(None) if self.is_text_box_paragraph_surface(index) => {
+                self.text_box_paragraph_element_ids(index)
+            }
+            _ => Vec::new(),
+        };
+        ids.into_iter()
+            .filter_map(|id| raw.element(id))
             .filter(|element| local(&element.name) == "p")
+            .collect()
     }
 
     /// Every body paragraph's `w:pPr`, before a formatting command runs.
     pub(crate) fn paragraph_formats(&self) -> ParagraphFormats {
         (0..self.paragraph_count())
-            .filter_map(|index| {
-                let element = self.paragraph_element(index)?;
-                Some((element.id, child(element, "pPr").cloned()))
-            })
+            .flat_map(|index| self.paragraph_elements(index))
+            .map(|element| (element.id, child(element, "pPr").cloned()))
             .collect()
     }
 
@@ -320,6 +336,18 @@ impl WordDocument {
         date: Option<&str>,
     ) -> Vec<XmlNodeId> {
         let mut inserted = Vec::new();
+        // A text box paragraph written by the command itself (a shape that
+        // had no paragraph in its XML) had no formatting before it.
+        let mut before = before;
+        let known: std::collections::HashSet<XmlNodeId> =
+            before.iter().map(|(id, _)| *id).collect();
+        let created: Vec<XmlNodeId> = (0..self.paragraph_count())
+            .filter(|&index| self.is_text_box_paragraph_surface(index))
+            .flat_map(|index| self.paragraph_elements(index))
+            .map(|element| element.id)
+            .filter(|id| !known.contains(id))
+            .collect();
+        before.extend(created.into_iter().map(|id| (id, None)));
         for (paragraph_id, old) in before {
             let Some(raw) = self.raw_document.as_ref() else {
                 break;
@@ -439,31 +467,65 @@ impl WordDocument {
         index: usize,
         accept: bool,
     ) -> Result<(), String> {
-        let paragraph_id = self
-            .paragraph_element(index)
+        let paragraph_ids: Vec<XmlNodeId> = self
+            .paragraph_elements(index)
+            .iter()
             .map(|element| element.id)
-            .ok_or("the paragraph has no XML")?;
+            .collect();
+        if paragraph_ids.is_empty() {
+            return Err("the paragraph has no XML".to_string());
+        }
         let raw = self
             .raw_document
             .as_mut()
             .ok_or("the document has no XML")?;
-        let paragraph = raw
-            .element_mut(paragraph_id)
-            .ok_or("the paragraph went missing")?;
-        let Some(XmlNode::Element(p_pr)) = paragraph
-            .children
-            .iter_mut()
-            .find(|node| matches!(node, XmlNode::Element(child) if local(&child.name) == "pPr"))
-        else {
+        // Each copy of the paragraph gets the decision; the first one's
+        // restored `w:pPr` is what the layout reads.
+        let mut restored = None;
+        for paragraph_id in paragraph_ids {
+            let paragraph = raw
+                .element_mut(paragraph_id)
+                .ok_or("the paragraph went missing")?;
+            let Some(XmlNode::Element(p_pr)) = paragraph.children.iter_mut().find(
+                |node| matches!(node, XmlNode::Element(child) if local(&child.name) == "pPr"),
+            ) else {
+                continue;
+            };
+            let Some(at) = p_pr.children.iter().position(
+                |node| matches!(node, XmlNode::Element(child) if local(&child.name) == "pPrChange"),
+            ) else {
+                continue;
+            };
+            let XmlNode::Element(record) = p_pr.children.remove(at) else {
+                unreachable!("matched an element");
+            };
+            if accept {
+                restored.get_or_insert_with(String::new);
+                continue;
+            }
+            // The formatting in the record, with the paragraph mark's run
+            // properties and any section break the paragraph carries.
+            let previous: Vec<XmlNode> = record
+                .children
+                .into_iter()
+                .find_map(|node| match node {
+                    XmlNode::Element(inner) if local(&inner.name) == "pPr" => Some(inner.children),
+                    _ => None,
+                })
+                .unwrap_or_default();
+            let kept: Vec<XmlNode> = p_pr
+                .children
+                .drain(..)
+                .filter(|node| {
+                    matches!(node, XmlNode::Element(child) if matches!(local(&child.name), "rPr" | "sectPr"))
+                })
+                .collect();
+            p_pr.children = previous;
+            p_pr.children.extend(kept);
+            restored.get_or_insert_with(|| element_xml(p_pr));
+        }
+        let Some(restored) = restored else {
             return Ok(());
-        };
-        let Some(at) = p_pr.children.iter().position(
-            |node| matches!(node, XmlNode::Element(child) if local(&child.name) == "pPrChange"),
-        ) else {
-            return Ok(());
-        };
-        let XmlNode::Element(record) = p_pr.children.remove(at) else {
-            unreachable!("matched an element");
         };
         if accept {
             if let Some(properties) = self
@@ -475,26 +537,6 @@ impl WordDocument {
             }
             return Ok(());
         }
-        // The formatting in the record, with the paragraph mark's run
-        // properties and any section break the paragraph carries.
-        let previous: Vec<XmlNode> = record
-            .children
-            .into_iter()
-            .find_map(|node| match node {
-                XmlNode::Element(inner) if local(&inner.name) == "pPr" => Some(inner.children),
-                _ => None,
-            })
-            .unwrap_or_default();
-        let kept: Vec<XmlNode> = p_pr
-            .children
-            .drain(..)
-            .filter(|node| {
-                matches!(node, XmlNode::Element(child) if matches!(local(&child.name), "rPr" | "sectPr"))
-            })
-            .collect();
-        p_pr.children = previous;
-        p_pr.children.extend(kept);
-        let restored = element_xml(p_pr);
         // The paragraph the layout reads, from the restored `w:pPr` and what
         // its style gives, as a load would make it.
         let wrapper = format!(
