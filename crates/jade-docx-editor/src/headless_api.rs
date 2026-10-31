@@ -13674,6 +13674,49 @@ mod tests {
     }
 
     #[test]
+    fn a_paragraph_style_the_document_lacks_resolves_as_the_default() {
+        // table-complex-indented-recursive.docx defines no style "2". Its
+        // `w:pStyle` reads as the default paragraph style, as Word and a
+        // reload read it; the editor resolved it as nothing and kept the old
+        // style's 12 pt left indent beside the paragraph's own hanging one.
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/table-complex-indented-recursive.docx"),
+        )
+        .expect("read fixture");
+        let mut word_doc =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+        apply_headless_commands_to_document(
+            &mut word_doc,
+            &HeadlessEditRequest {
+                commands: vec![HeadlessCommand::SetParagraphStyle {
+                    start_paragraph: 17,
+                    end_paragraph: 19,
+                    style_id: Some("2".to_string()),
+                }],
+            },
+        )
+        .expect("style applied");
+        let indents = |word_doc: &WordDocument| {
+            (17..=19)
+                .map(|index| {
+                    word_doc
+                        .paragraph(index)
+                        .and_then(|paragraph| paragraph.properties.as_ref())
+                        .and_then(|props| props.indent.clone())
+                        .map(|indent| (indent.left, indent.first_line, indent.hanging))
+                })
+                .collect::<Vec<_>>()
+        };
+        let reloaded = executor::block_on(WordDocument::load(
+            &word_doc.export_docx().expect("export"),
+            &Options::default(),
+        ))
+        .expect("reload");
+        assert_eq!(indents(&word_doc), indents(&reloaded));
+    }
+
+    #[test]
     fn formatting_across_an_inline_equation_leaves_the_equation_as_saved() {
         // Strike, bold or a size set across an inline equation changed the
         // equation's run in the editor, but the equation is saved as its

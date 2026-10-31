@@ -132,9 +132,16 @@ impl Command for SetParagraphStyleCommand {
         // rather than leaving the Heading1-inherited fields in place.
         let (style_paragraph_props, style_run_props) = {
             let styles = ctx.document.styles_part.as_ref();
-            let effective_id: Option<String> = style_id.clone().or_else(|| {
-                styles.and_then(|s| s.default_paragraph_style_id().map(|id| id.to_string()))
-            });
+            // A style the document does not define resolves as the default
+            // paragraph style, as Word and a reload of the saved file read
+            // its `w:pStyle`. Resolved as nothing, the paragraph kept the old
+            // style's formatting on screen only.
+            let effective_id: Option<String> = style_id
+                .clone()
+                .filter(|id| styles.is_some_and(|s| s.get_style(id).is_some()))
+                .or_else(|| {
+                    styles.and_then(|s| s.default_paragraph_style_id().map(|id| id.to_string()))
+                });
             match (styles, effective_id.as_deref()) {
                 (Some(styles), Some(id)) => (
                     styles.resolve_paragraph_properties(id),
