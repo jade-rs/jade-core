@@ -497,6 +497,15 @@ pub fn word_shifted_script_size_pt(size_pt: f32, latin_ascii_stack: &str) -> f32
     }
 }
 
+/// Whether a glyph's ink past its advance counts against the line's width
+/// when deciding where to wrap. Word for Mac 16.114 fits on advances alone:
+/// `yokohama_table`'s third column keeps an ＭＳ Ｐゴシック `よ` whose advance
+/// ends 0.63pt inside the cell and whose ink ends 0.05pt past it. The ink
+/// check stays for Word for Windows, whose traces it was fitted to.
+pub fn word_wraps_on_trailing_ink(platform: WordLayoutPlatform) -> bool {
+    platform == WordLayoutPlatform::Windows
+}
+
 /// Whether `w:balanceSingleByteDoubleByteWidth` widens single-byte glyphs.
 /// Word for Mac 16.113 draws every Latin glyph at its own advance with it on;
 /// the widening stays for Word for Windows, whose traces it was fitted to.
