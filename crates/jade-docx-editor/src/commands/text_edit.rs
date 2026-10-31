@@ -366,7 +366,7 @@ fn insert_beside_ruby_base(
     insert: &str,
     zero_width: &ZeroWidthRuns,
 ) -> bool {
-    let target = match insertion_point(runs, position) {
+    let target = match insertion_point(runs, position, zero_width) {
         Some(InsertionPoint::Run { index, .. }) => index,
         // `insert_into_runs` already gives this text a run of its own.
         Some(InsertionPoint::BeforeField { .. }) => return false,
@@ -449,7 +449,11 @@ enum InsertionPoint {
 }
 
 /// `None` means past every run.
-fn insertion_point(runs: &[Run], position: usize) -> Option<InsertionPoint> {
+fn insertion_point(
+    runs: &[Run],
+    position: usize,
+    zero_width: &ZeroWidthRuns,
+) -> Option<InsertionPoint> {
     let mut cumulative = 0usize;
     // First zero-width run at the caret. A field's fldChar/instrText marker
     // runs start here, ahead of the run that carries its result.
@@ -459,6 +463,17 @@ fn insertion_point(runs: &[Run], position: usize) -> Option<InsertionPoint> {
         let run_end = cumulative + len;
 
         if position < run_end || (position == run_end && len > 0) {
+            return Some(InsertionPoint::Run {
+                index,
+                start: cumulative,
+            });
+        }
+
+        // Deleting all text can leave an empty text run at the old text's
+        // position among note references and other structural runs. Reuse it
+        // so the next keystroke stays on the same side of those objects.
+        if position == cumulative && len == 0 && !run_carries_content(run) && !zero_width.keeps(run)
+        {
             return Some(InsertionPoint::Run {
                 index,
                 start: cumulative,
@@ -502,7 +517,7 @@ fn insert_into_runs(
         return;
     }
 
-    if let Some(point) = insertion_point(runs, position) {
+    if let Some(point) = insertion_point(runs, position, zero_width) {
         let (index, run_start) = match point {
             InsertionPoint::Run { index, start } => (index, start),
             InsertionPoint::BeforeField { index } => {
@@ -623,7 +638,7 @@ pub fn apply_text_edit(
     let inserts_into_existing_text = start == end
         && !insert.is_empty()
         && matches!(
-            insertion_point(runs, start),
+            insertion_point(runs, start, zero_width),
             Some(InsertionPoint::Run { index, .. }) if !runs[index].text.is_empty()
         );
     // Caret insertion into existing text retains its run's formatting. Other
@@ -643,7 +658,7 @@ pub fn apply_text_edit(
     // silently changing (for example) italic replacement text to bold.
     let replacement_needs_own_style = start < end
         && !insert.is_empty()
-        && match (template.as_ref(), insertion_point(runs, start)) {
+        && match (template.as_ref(), insertion_point(runs, start, zero_width)) {
             (Some(selected), Some(InsertionPoint::Run { index, .. })) => {
                 ruby_of(selected).is_none()
                     && (selected.properties != runs[index].properties
@@ -670,7 +685,9 @@ pub fn apply_text_edit(
     // With no run left but the zero-width ones kept for their XML, the text
     // goes where the removed text was among them, as a run of its own.
     let only_zero_width = |runs: &[Run]| runs.iter().all(|run| zero_width.keeps(run));
-    if runs.iter().all(|run| zero_width.protects_field_code(run)) {
+    if runs.iter().all(|run| zero_width.protects_field_code(run))
+        || (start < end && only_zero_width(runs))
+    {
         if let Some(template_run) = template.as_ref() {
             runs.insert(
                 removed_at.min(runs.len()),
@@ -1536,6 +1553,32 @@ mod tests {
         runs.iter()
             .map(|run| run.node_id.map(|id| id.raw()))
             .collect()
+    }
+
+    #[test]
+    fn typing_after_deleting_body_text_stays_before_the_note_reference() {
+        for endnote in [false, true] {
+            let id = XmlNodeId::new(42);
+            let mut kept = ZeroWidthRuns::default();
+            kept.insert(id, FieldChars::default());
+            let mut reference = text_run("");
+            reference.node_id = Some(id);
+            if endnote {
+                reference.endnote_reference_ids.push("9".into());
+            } else {
+                reference.footnote_reference_ids.push("7".into());
+            }
+            let mut runs = vec![text_run("body 日本語"), reference];
+            let end = runs[0].text.len();
+            apply_text_edit(&mut runs, 0, end, "", &kept);
+            apply_text_edit(&mut runs, 0, 0, "日", &kept);
+            assert_eq!(runs.len(), 2, "endnote={endnote}");
+            assert_eq!(runs[0].text, "日", "endnote={endnote}");
+            assert!(runs[0].footnote_reference_ids.is_empty());
+            assert!(runs[0].endnote_reference_ids.is_empty());
+            assert_eq!(runs[1].node_id, Some(id));
+            assert!(runs[1].text.is_empty());
+        }
     }
 
     #[test]
