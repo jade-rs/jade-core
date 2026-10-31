@@ -81,7 +81,11 @@ pub fn patch_sheet(xml: &str, edits: &[CellEdit]) -> Result<String> {
     // leave them so — is put in order first: Excel drops such a sheet's
     // cells when it repairs the file, and the splices below assume order.
     let source = jade_xlsx_reader::cell_content::worksheet_source(&expanded)?;
-    let ordered = order_sheet_data(&expanded, &source)?;
+    let ordered = if source.is_ordered() {
+        None
+    } else {
+        order_sheet_data(&expanded, &source)?
+    };
     let xml = ordered.as_deref().unwrap_or(expanded.as_str());
 
     // Rows and columns in order, because cells and rows have to stay sorted:
@@ -112,6 +116,11 @@ pub fn patch_sheet(xml: &str, edits: &[CellEdit]) -> Result<String> {
     let mut buf = Vec::new();
 
     loop {
+        // Every edit placed, and the rows left in order: the rest of the
+        // sheet stays as it is, so there is no need to read it.
+        if in_sheet_data && pending.is_empty() && current_row.is_none() {
+            break;
+        }
         let start = reader.buffer_position() as usize;
         let event = reader.read_event_into(&mut buf)?;
         match event {
@@ -206,6 +215,9 @@ pub fn patch_sheet(xml: &str, edits: &[CellEdit]) -> Result<String> {
                         text.push('>');
                         splices.push(Splice { start, end, text });
                     }
+                } else if cells.is_empty() {
+                    // Nothing to write in this row: pass over its cells.
+                    reader.read_to_end_into(element.name(), &mut Vec::new())?;
                 } else {
                     current_row = Some((index, cells, row_prefix, 0));
                 }

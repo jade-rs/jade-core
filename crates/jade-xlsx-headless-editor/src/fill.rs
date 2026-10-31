@@ -2,8 +2,9 @@
 //!
 //! Excel reads the source run and continues it. A run of numbers goes on as a
 //! linear series — the difference of two, the least-squares trend of more; a
-//! lone date steps a day at a time; text ending in a number counts on; and
-//! anything else — a lone number, formulas, booleans, a run with a gap or a
+//! lone date steps a day at a time; a day, month or quarter name from
+//! Excel's built-in lists goes round its list; text ending in a number counts
+//! on; and anything else — a lone number, formulas, booleans, a run with a gap or a
 //! mix — repeats as a pattern, with formulas moved along the way a paste
 //! moves them. Each column of a downward fill, and each row of a rightward
 //! one, is its own run.
@@ -152,8 +153,141 @@ enum Series {
         intercept: f64,
         slope: f64,
     },
+    /// Names from one of Excel's built-in lists, going round it `step`
+    /// entries at a time from `start`, in the source's capitals.
+    List {
+        list: &'static [&'static str],
+        start: usize,
+        step: i64,
+        case: Case,
+    },
     /// The source repeated with its own period.
     Repeat,
+}
+
+/// How a list name was capitalised: Excel continues `JAN` as `FEB` and
+/// `jan` as `feb`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Case {
+    AsListed,
+    Upper,
+    Lower,
+}
+
+/// Excel's built-in custom lists (File ▸ Options ▸ Advanced ▸ Edit Custom
+/// Lists) in an English and a Japanese Excel. `1月`…`12月` and the quarters
+/// would otherwise count on past their last entry.
+const LISTS: &[&[&str]] = &[
+    &["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
+    &[
+        "Sunday",
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday",
+    ],
+    &[
+        "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+    ],
+    &[
+        "January",
+        "February",
+        "March",
+        "April",
+        "May",
+        "June",
+        "July",
+        "August",
+        "September",
+        "October",
+        "November",
+        "December",
+    ],
+    &["日", "月", "火", "水", "木", "金", "土"],
+    &[
+        "日曜日",
+        "月曜日",
+        "火曜日",
+        "水曜日",
+        "木曜日",
+        "金曜日",
+        "土曜日",
+    ],
+    &[
+        "1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月",
+    ],
+    &["第1四半期", "第2四半期", "第3四半期", "第4四半期"],
+    &[
+        "睦月",
+        "如月",
+        "弥生",
+        "卯月",
+        "皐月",
+        "水無月",
+        "文月",
+        "葉月",
+        "長月",
+        "神無月",
+        "霜月",
+        "師走",
+    ],
+    &[
+        "子", "丑", "寅", "卯", "辰", "巳", "午", "未", "申", "酉", "戌", "亥",
+    ],
+    &["甲", "乙", "丙", "丁", "戊", "己", "庚", "辛", "壬", "癸"],
+    &["Q1", "Q2", "Q3", "Q4"],
+    &["Qtr1", "Qtr2", "Qtr3", "Qtr4"],
+    &["Quarter1", "Quarter2", "Quarter3", "Quarter4"],
+];
+
+/// Where `text` sits in `list`, and in what capitals.
+fn list_entry(list: &[&str], text: &str) -> Option<(usize, Case)> {
+    let index = list
+        .iter()
+        .position(|entry| entry.eq_ignore_ascii_case(text))?;
+    let entry = list[index];
+    let case = if entry == text {
+        Case::AsListed
+    } else if text == entry.to_ascii_uppercase() {
+        Case::Upper
+    } else if text == entry.to_ascii_lowercase() {
+        Case::Lower
+    } else {
+        // `mAY`: not a way Excel recognises.
+        return None;
+    };
+    Some((index, case))
+}
+
+/// The run going round `list`, when every text is an entry of it in the
+/// same capitals and each step is the same counted round the list: `Sat,
+/// Sun` steps one, `Mon, Wed, Fri` two. `May` alone is taken as the short
+/// month it is first listed as; `May, June` as the long months.
+fn list_series(list: &'static [&'static str], texts: &[&str]) -> Option<Series> {
+    let entries = texts
+        .iter()
+        .map(|text| list_entry(list, text))
+        .collect::<Option<Vec<_>>>()?;
+    let (start, case) = *entries.first()?;
+    if entries.iter().any(|&(_, other)| other != case) {
+        return None;
+    }
+    let period = list.len() as i64;
+    let steps = entries
+        .windows(2)
+        .map(|pair| (pair[1].0 as i64 - pair[0].0 as i64).rem_euclid(period))
+        .collect::<Vec<_>>();
+    if steps.windows(2).any(|pair| pair[0] != pair[1]) {
+        return None;
+    }
+    Some(Series::List {
+        list,
+        start,
+        step: steps.first().copied().unwrap_or(1),
+        case,
+    })
 }
 
 impl Series {
@@ -189,6 +323,23 @@ impl Series {
                     Series::Linear { intercept, slope }
                 }
             };
+        }
+
+        if let Some(texts) = run
+            .iter()
+            .map(|cell| match cell {
+                Some(Cell {
+                    value: CellValue::Text(text),
+                    formula: None,
+                    ..
+                }) => Some(text.as_str()),
+                _ => None,
+            })
+            .collect::<Option<Vec<_>>>()
+        {
+            if let Some(series) = LISTS.iter().find_map(|list| list_series(list, &texts)) {
+                return series;
+            }
         }
 
         if let Some(counted) = run
@@ -252,6 +403,20 @@ impl Series {
             } => {
                 let number = (intercept + slope * position as f64).round() as i64;
                 CellInput::Text(format!("{prefix}{number:0width$}{suffix}", width = *width))
+            }
+            Series::List {
+                list,
+                start,
+                step,
+                case,
+            } => {
+                let index = (*start as i64 + step * position).rem_euclid(list.len() as i64);
+                let entry = list[index as usize];
+                CellInput::Text(match case {
+                    Case::AsListed => entry.to_string(),
+                    Case::Upper => entry.to_ascii_uppercase(),
+                    Case::Lower => entry.to_ascii_lowercase(),
+                })
             }
             Series::Repeat => {
                 let index = pattern_index(position, run.len());

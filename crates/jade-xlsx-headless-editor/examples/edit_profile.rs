@@ -1,7 +1,7 @@
 //! Times what a large workbook costs: reading it, opening it for editing,
 //! typing into one cell, undoing and saving. Reports CPU time as well as
 //! wall time, since wall time on a loaded machine says little.
-//! Usage: cargo run --release --example edit_profile -- book.xlsx [edits]
+//! Usage: cargo run --release --example edit_profile -- book.xlsx [edits] [cell]
 use std::time::{Duration, Instant};
 
 use jade_xlsx_headless_api::CellInput;
@@ -36,6 +36,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut args = std::env::args().skip(1);
     let path = args.next().ok_or("usage: edit_profile book.xlsx [edits]")?;
     let edits: usize = args.next().and_then(|n| n.parse().ok()).unwrap_or(5);
+    let cell = args.next().unwrap_or_else(|| "B2".to_string());
     let bytes = std::fs::read(&path)?;
     let book = timed("read_xlsx", || jade_xlsx_reader::read_xlsx(&bytes))?;
     let sheet = book.sheets[0].name.clone();
@@ -44,8 +45,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     })?;
     timed("recalculate", || workbook.recalculate())?;
     for edit in 0..edits {
-        timed("set B2", || {
-            workbook.set(&sheet, "B2", CellInput::Number(edit as f64))
+        timed(&format!("set {cell}"), || {
+            workbook.set(&sheet, &cell, CellInput::Number(edit as f64))
         })?;
     }
     timed("undo", || workbook.undo())?;

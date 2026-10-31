@@ -42,6 +42,116 @@ pub enum OpcError {
 
 pub type Result<T> = std::result::Result<T, OpcError>;
 
+thread_local! {
+    /// While [`with_fast_compression`] runs: the parts written so far, each
+    /// deflated at the fastest level.
+    static FAST_PARTS: std::cell::RefCell<Option<Vec<String>>> =
+        const { std::cell::RefCell::new(None) };
+}
+
+/// Runs `body` with every part it writes deflated at the fastest level, and
+/// returns the names of those parts with its result. For a package kept in
+/// memory between edits, where deflating a large sheet properly on every
+/// keystroke costs more than the bytes it saves; [`recompress`] deflates
+/// those parts properly before the package leaves.
+pub fn with_fast_compression<T>(body: impl FnOnce() -> T) -> (T, Vec<String>) {
+    struct Restore(Option<Vec<String>>);
+    impl Drop for Restore {
+        fn drop(&mut self) {
+            let outer = self.0.take();
+            FAST_PARTS.with(|parts| *parts.borrow_mut() = outer);
+        }
+    }
+    let restore = Restore(FAST_PARTS.with(|parts| parts.borrow_mut().replace(Vec::new())));
+    let result = body();
+    let written = FAST_PARTS
+        .with(|parts| parts.borrow_mut().take())
+        .unwrap_or_default();
+    drop(restore);
+    (result, written)
+}
+
+/// How a part named `name` is deflated: at the default level, or at the
+/// fastest inside [`with_fast_compression`], which notes the name.
+fn deflated(name: &str) -> zip::write::SimpleFileOptions {
+    let options = zip::write::SimpleFileOptions::default()
+        .compression_method(zip::CompressionMethod::Deflated);
+    FAST_PARTS.with(|parts| match parts.borrow_mut().as_mut() {
+        Some(parts) => {
+            parts.push(name.to_string());
+            options.compression_level(Some(1))
+        }
+        None => options,
+    })
+}
+
+/// What tells one written entry of a package from another: its name, CRC-32
+/// and compressed size.
+pub type EntryFingerprint = (String, u32, u64);
+
+/// The fingerprints of the entries of `package` that `names` lists.
+pub fn entry_fingerprints(package: &[u8], names: &[String]) -> Result<Vec<EntryFingerprint>> {
+    let mut archive = zip::ZipArchive::new(std::io::Cursor::new(package))?;
+    let mut found = Vec::with_capacity(names.len());
+    for name in names {
+        if let Some(index) = archive.index_for_name(name) {
+            let entry = archive.by_index_raw(index)?;
+            found.push((name.clone(), entry.crc32(), entry.compressed_size()));
+        }
+    }
+    Ok(found)
+}
+
+/// `package` with the deflated entries `again` picks by fingerprint deflated
+/// at the default level, and every other entry copied as it is.
+pub fn recompress(package: &[u8], again: impl Fn(&str, u32, u64) -> bool) -> Result<Vec<u8>> {
+    let mut archive = zip::ZipArchive::new(std::io::Cursor::new(package))?;
+    let mut any = false;
+    for index in 0..archive.len() {
+        let raw = archive.by_index_raw(index)?;
+        let name = raw.name()?;
+        if raw.compression() == zip::CompressionMethod::Deflated
+            && again(&name, raw.crc32(), raw.compressed_size())
+        {
+            any = true;
+            break;
+        }
+    }
+    // Nothing to deflate again: the package stays byte for byte.
+    if !any {
+        return Ok(package.to_vec());
+    }
+    let mut buffer = Vec::new();
+    {
+        let mut writer = zip::ZipWriter::new(std::io::Cursor::new(&mut buffer));
+        writer
+            .set_raw_comment(archive.comment().into())
+            .into_save_result()?;
+        for index in 0..archive.len() {
+            let raw = archive.by_index_raw(index)?;
+            let name = raw.name()?.into_owned();
+            if raw.compression() != zip::CompressionMethod::Deflated
+                || !again(&name, raw.crc32(), raw.compressed_size())
+            {
+                writer.raw_copy_file(raw)?;
+                continue;
+            }
+            drop(raw);
+            let mut file = archive.by_index(index)?;
+            let mut contents = Vec::with_capacity(file.size() as usize);
+            std::io::Read::read_to_end(&mut file, &mut contents)?;
+            writer.start_file(
+                name,
+                zip::write::SimpleFileOptions::default()
+                    .compression_method(zip::CompressionMethod::Deflated),
+            )?;
+            std::io::Write::write_all(&mut writer, &contents)?;
+        }
+        writer.finish()?;
+    }
+    Ok(buffer)
+}
+
 // zip 8.6 returns a Result here; existing SDK consumers can still lock 8.2.
 trait ArchiveCommentResult {
     fn into_save_result(self) -> Result<()>;
@@ -156,8 +266,6 @@ impl PreservingOpcPackage<'_> {
             writer
                 .set_raw_comment(original.comment().into())
                 .into_save_result()?;
-            let options = zip::write::SimpleFileOptions::default()
-                .compression_method(zip::CompressionMethod::Deflated);
             let content_types = self.package.content_types_covering_new_parts();
             for name in &self.package.order {
                 let Some(contents) = self.package.parts.get(name) else {
@@ -167,7 +275,7 @@ impl PreservingOpcPackage<'_> {
                     if let Some(patched) = &content_types {
                         stats.recompressed_parts += 1;
                         stats.recompressed_source_bytes += patched.len();
-                        writer.start_file(name, options)?;
+                        writer.start_file(name, deflated(name))?;
                         std::io::Write::write_all(&mut writer, patched)?;
                         continue;
                     }
@@ -180,7 +288,7 @@ impl PreservingOpcPackage<'_> {
                 } else {
                     stats.recompressed_parts += 1;
                     stats.recompressed_source_bytes += contents.len();
-                    writer.start_file(name, options)?;
+                    writer.start_file(name, deflated(name))?;
                     std::io::Write::write_all(&mut writer, contents)?;
                 }
             }
@@ -280,8 +388,6 @@ impl OpcPackage {
         let mut buffer = Vec::new();
         {
             let mut writer = zip::ZipWriter::new(std::io::Cursor::new(&mut buffer));
-            let options = zip::write::SimpleFileOptions::default()
-                .compression_method(zip::CompressionMethod::Deflated);
             let content_types = self.content_types_covering_new_parts();
             for name in &self.order {
                 let Some(mut contents) = self.parts.get(name).map(Vec::as_slice) else {
@@ -292,7 +398,7 @@ impl OpcPackage {
                         contents = patched;
                     }
                 }
-                writer.start_file(name, options)?;
+                writer.start_file(name, deflated(name))?;
                 std::io::Write::write_all(&mut writer, contents)?;
             }
             writer.finish()?;
