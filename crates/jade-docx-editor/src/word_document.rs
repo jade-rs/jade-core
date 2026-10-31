@@ -5377,6 +5377,7 @@ impl WordDocument {
         run: &mut Run,
         path: &[PathEntry],
         paragraph: &mut Paragraph,
+        preserve_drawings: bool,
     ) {
         let Some(run_id) = run.node_id else {
             return;
@@ -5405,7 +5406,14 @@ impl WordDocument {
             let override_slice = override_bindings.as_deref();
             // Keep both the DrawingML text box and its legacy VML fallback in sync so that
             // exported DOCX files display the edited content in all Word versions.
-            Self::apply_text_box_update(raw, content_id, path, paragraph, override_slice);
+            Self::apply_text_box_update(
+                raw,
+                content_id,
+                path,
+                paragraph,
+                override_slice,
+                preserve_drawings,
+            );
 
             // Use subtree-only index rebuild for each content element.
             // This avoids O(N) full tree traversal.
@@ -5436,6 +5444,7 @@ impl WordDocument {
         path: &[PathEntry],
         paragraph: &mut Paragraph,
         override_run_ids: Option<&[(Option<XmlNodeId>, Option<XmlNodeId>)]>,
+        preserve_drawings: bool,
     ) {
         if let Some(bindings) = override_run_ids {
             for (run, (node_id, text_id)) in paragraph.runs.iter_mut().zip(bindings.iter().copied())
@@ -5458,8 +5467,12 @@ impl WordDocument {
         };
 
         let old_children = unsafe { std::mem::take(&mut (*paragraph_ptr).children) };
-        let new_children =
-            Self::build_paragraph_children(raw, old_children, &mut paragraph.runs, false);
+        let new_children = Self::build_paragraph_children(
+            raw,
+            old_children,
+            &mut paragraph.runs,
+            preserve_drawings,
+        );
         unsafe {
             (*paragraph_ptr).children = new_children;
         }
@@ -5508,6 +5521,10 @@ impl WordDocument {
     fn collect_text_box_content_ids(element: &XmlElement, out: &mut Vec<XmlNodeId>) {
         if element.name == "w:txbxContent" {
             out.push(element.id);
+            // A host run may contain DrawingML and VML representations of
+            // the same box, but a box inside its content is a separate story.
+            // Rewriting that story with the outer paragraph duplicates it.
+            return;
         }
         for child in element.children.iter() {
             if let XmlNode::Element(child_element) = child {
@@ -32706,6 +32723,7 @@ impl WordDocument {
                             run,
                             &block_path,
                             &mut *paragraph_ptr,
+                            preserve_drawings,
                         );
                     }
 
@@ -53763,6 +53781,136 @@ mod tests {
         assert!(exported_xml.contains("<w:t>Edited</w:t>"), "{exported_xml}");
         assert!(exported_xml.contains("<w:t>Before</w:t>"), "{exported_xml}");
         assert!(exported_xml.contains("<w:t>After</w:t>"), "{exported_xml}");
+    }
+
+    fn imported_nested_text_box_docx(depth: usize, with_fallback: bool) -> Vec<u8> {
+        fn drawing(depth: usize, with_fallback: bool) -> String {
+            let nested = if depth == 0 {
+                String::new()
+            } else {
+                drawing(depth - 1, with_fallback)
+            };
+            let paragraph = format!("<w:p><w:r><w:t>Level {depth}</w:t></w:r>{nested}</w:p>");
+            let id = depth + 1;
+            let drawing = format!(
+                r#"<w:drawing><wp:inline><wp:extent cx="914400" cy="457200"/>
+                <wp:docPr id="{id}" name="Box {id}"/>
+                <a:graphic><a:graphicData uri="http://schemas.microsoft.com/office/word/2010/wordprocessingShape">
+                <wps:wsp><wps:cNvSpPr txBox="1"/><wps:spPr><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></wps:spPr>
+                <wps:txbx><w:txbxContent>{paragraph}</w:txbxContent></wps:txbx>
+                <wps:bodyPr/></wps:wsp></a:graphicData></a:graphic></wp:inline></w:drawing>"#
+            );
+            if with_fallback {
+                format!(
+                    r#"<w:r><mc:AlternateContent><mc:Choice Requires="wps">{drawing}</mc:Choice>
+                    <mc:Fallback><w:pict><v:shape id="Box{id}" style="width:72pt;height:36pt">
+                    <v:textbox><w:txbxContent>{paragraph}</w:txbxContent></v:textbox>
+                    </v:shape></w:pict></mc:Fallback></mc:AlternateContent></w:r>"#
+                )
+            } else {
+                format!("<w:r>{drawing}</w:r>")
+            }
+        }
+        let outer = drawing(depth, with_fallback);
+        let xml = format!(
+            r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+            xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"
+            xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"
+            xmlns:wps="http://schemas.microsoft.com/office/word/2010/wordprocessingShape"
+            xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+            xmlns:v="urn:schemas-microsoft-com:vml">
+            <w:body><w:p><w:r><w:t>Host</w:t></w:r>{outer}</w:p></w:body></w:document>"#
+        );
+        build_document_docx(&xml)
+    }
+
+    #[test]
+    fn editing_an_imported_outer_text_box_preserves_its_nested_box() {
+        // Older editor versions could save a box inside another box. Opening
+        // such a file must not treat the inner content as a VML fallback of
+        // the outer box and replace it with another copy of the outer box.
+        for with_fallback in [false, true] {
+            let bytes = imported_nested_text_box_docx(1, with_fallback);
+            let mut doc = executor::block_on(WordDocument::load(&bytes, &Options::default()))
+                .expect("load imported nested box");
+            assert!(doc.is_text_box_paragraph_surface(1));
+            let count = if with_fallback { 6 } else { 2 };
+            let inner_count = if with_fallback { 4 } else { 1 };
+            for revision in 0..3 {
+                doc.paragraph_mut(1).expect("outer box").runs[0].text =
+                    format!("Edited {revision}");
+                doc.sync_paragraph_text_preserving_drawings(1);
+                let exported = exported_document_xml(&doc);
+                assert_eq!(
+                    exported.matches("<w:txbxContent>").count(),
+                    count,
+                    "fallback={with_fallback}, revision={revision}: {exported}"
+                );
+                assert_eq!(exported.matches("<w:t>Level 0</w:t>").count(), inner_count);
+                assert_eq!(
+                    exported
+                        .matches(&format!("<w:t>Edited {revision}</w:t>"))
+                        .count(),
+                    if with_fallback { 2 } else { 1 }
+                );
+                doc = reload_exported(&doc);
+            }
+        }
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig { cases: 64, ..ProptestConfig::default() })]
+
+        #[test]
+        fn imported_nested_boxes_survive_outer_edit_and_reopen_sequences(
+            depth in 1usize..4,
+            with_fallback in any::<bool>(),
+            operations in proptest::collection::vec((0u8..3, "[a-z]{1,8}"), 1..10),
+        ) {
+            let bytes = imported_nested_text_box_docx(depth, with_fallback);
+            let mut doc = executor::block_on(WordDocument::load(&bytes, &Options::default()))
+                .expect("load nested boxes");
+            // Count physical alternatives independently of the parser/model:
+            // each fallback doubles the representations at the next level.
+            let content_count = if with_fallback {
+                (1usize << (depth + 2)) - 2
+            } else {
+                depth + 1
+            };
+            let nested_counts: Vec<_> = (0..depth).map(|level| {
+                let text = format!("<w:t>Level {level}</w:t>");
+                let count = if with_fallback { 1usize << (depth - level + 1) } else { 1 };
+                (text, count)
+            }).collect();
+            let mut expected = format!("Level {depth}");
+            for (operation, text) in operations {
+                match operation {
+                    0 => {
+                        insert_text_at(&mut doc, 1, 0, &text);
+                        expected.insert_str(0, &text);
+                    }
+                    1 if !expected.is_empty() => {
+                        delete_text_range(&mut doc, (1, 0), (1, 1));
+                        expected.remove(0);
+                    }
+                    _ => doc = reload_exported(&doc),
+                }
+                let exported = exported_document_xml(&doc);
+                prop_assert_eq!(exported.matches("<w:txbxContent>").count(), content_count);
+                for (text, count) in &nested_counts {
+                    prop_assert_eq!(exported.matches(text).count(), *count);
+                }
+                // Compare the outer story with an independent string model;
+                // text carried by nested drawing runs belongs to another story.
+                let outer_text: String = doc.paragraph(1).expect("outer paragraph").runs.iter()
+                    .filter(|run| run.text_box.is_none()).map(|run| run.text.as_str()).collect();
+                prop_assert_eq!(&outer_text, &expected);
+            }
+            let reopened = reload_exported(&doc);
+            let text: String = reopened.paragraph(1).expect("reopened outer paragraph").runs.iter()
+                .filter(|run| run.text_box.is_none()).map(|run| run.text.as_str()).collect();
+            prop_assert_eq!(text, expected);
+        }
     }
 
     #[test]
