@@ -7187,7 +7187,11 @@ impl OffscreenDocumentView {
         Ok(result.into())
     }
 
-    async fn preview_composition_text_async(&self, text: String) -> Result<JsValue, JsValue> {
+    async fn preview_composition_text_async(
+        &self,
+        text: String,
+        decoration_resolver: Option<js_sys::Function>,
+    ) -> Result<JsValue, JsValue> {
         if self.state.borrow().preview_mode || self.state.borrow().editing_mode != EditingMode::Body
         {
             return Ok(JsValue::NULL);
@@ -7344,6 +7348,31 @@ impl OffscreenDocumentView {
                 edited_paragraph_index,
             )
         };
+
+        // The provider can read the actual preview model after all document
+        // borrows have ended. Seed ink before the edit render, rather than
+        // drawing once without it and replaying the same page a second time.
+        // Provider failures are recoverable: finish the normal preview and let
+        // the caller apply decoration results through its existing repaint path.
+        let decorations_applied = decoration_resolver.as_ref().is_some_and(|resolve| {
+            let attempt = (|| -> Result<(), JsValue> {
+                let json = resolve
+                    .call0(&JsValue::UNDEFINED)?
+                    .as_string()
+                    .ok_or_else(|| JsValue::from_str("Decoration provider must return JSON"))?;
+                let changed = self.cache_decoration_results(&json, true)?;
+                if !changed.is_empty() {
+                    let mut renderer = self.renderer.borrow_mut();
+                    let outcome =
+                        renderer.invalidate_and_mark_dirty_rects_for_decoration_texts(&changed);
+                    if outcome.invalidated_paragraphs > 0 && !outcome.all_rects_resolved {
+                        renderer.mark_full_repaint();
+                    }
+                }
+                Ok(())
+            })();
+            attempt.is_ok()
+        });
 
         let lazy_mode = self.state.borrow().lazy_mode;
         {
@@ -7505,6 +7534,13 @@ impl OffscreenDocumentView {
             &JsValue::from_str("debugMutationKind"),
             &JsValue::from_str("composition-preview"),
         )?;
+        if decoration_resolver.is_some() {
+            Reflect::set(
+                &result,
+                &JsValue::from_str("compositionDecorationsApplied"),
+                &JsValue::from_bool(decorations_applied),
+            )?;
+        }
         Ok(result.into())
     }
 
@@ -9876,7 +9912,29 @@ impl OffscreenDocumentView {
     #[wasm_bindgen(js_name = previewCompositionText)]
     pub fn preview_composition_text(&self, text: String) -> js_sys::Promise {
         let view = self.clone();
-        future_to_promise(async move { view.preview_composition_text_async(text).await })
+        future_to_promise(async move { view.preview_composition_text_async(text, None).await })
+    }
+
+    /// Like previewCompositionText, with a synchronous, read-only decoration
+    /// provider called after mutation and before painting. The provider may read
+    /// paragraph_text/selection_range and returns the applyDecorationResults JSON
+    /// format. It must not edit the view or return a Promise.
+    ///
+    /// A thrown error, non-string result or invalid JSON leaves the normal edit
+    /// rendering enabled and reports compositionDecorationsApplied=false. The
+    /// caller must then use its ordinary decoration repaint fallback. Valid
+    /// results are installed atomically before painting and report true.
+    #[wasm_bindgen(js_name = previewCompositionTextWithDecorations)]
+    pub fn preview_composition_text_with_decorations(
+        &self,
+        text: String,
+        resolve: js_sys::Function,
+    ) -> js_sys::Promise {
+        let view = self.clone();
+        future_to_promise(async move {
+            view.preview_composition_text_async(text, Some(resolve))
+                .await
+        })
     }
 
     #[wasm_bindgen]
@@ -17779,39 +17837,28 @@ impl OffscreenDocumentView {
         json: &str,
         defer_snapshots: bool,
     ) -> Result<JsValue, JsValue> {
-        #[derive(serde::Deserialize)]
-        struct ResultEntry {
-            text: String,
-            #[serde(rename = "rangesJson")]
-            ranges_json: String,
+        let changed_texts = self.cache_decoration_results(json, false)?;
+        if changed_texts.is_empty() {
+            return Ok(JsValue::NULL);
         }
-        let parsed: Vec<ResultEntry> = serde_json::from_str(json)
-            .map_err(|err| JsValue::from_str(&format!("invalid results JSON: {err}")))?;
+        self.rerender_decoration_texts_with_policy(&changed_texts, defer_snapshots)
+    }
 
-        let mut any_changed = false;
+    fn cache_decoration_results(&self, json: &str, strict: bool) -> Result<Vec<String>, JsValue> {
+        let entries = crate::decoration_results::parse_results(json, strict)
+            .map_err(|err| JsValue::from_str(&err))?;
         let mut changed_texts: Vec<String> = Vec::new();
         {
             let renderer = self.renderer.borrow();
-            for entry in parsed {
-                let ranges: Vec<crate::plugins::DecoratedRange> =
-                    if entry.ranges_json.is_empty() || entry.ranges_json == "[]" {
-                        Vec::new()
-                    } else {
-                        serde_json::from_str(&entry.ranges_json).unwrap_or_default()
-                    };
-                let text_for_invalidation = entry.text.clone();
-                if renderer.apply_decoration_result(entry.text, ranges) {
-                    any_changed = true;
+            for (text, ranges) in entries {
+                let text_for_invalidation = text.clone();
+                if renderer.apply_decoration_result(text, ranges) {
                     changed_texts.push(text_for_invalidation);
                 }
             }
         }
 
-        if !any_changed {
-            return Ok(JsValue::NULL);
-        }
-
-        self.rerender_decoration_texts_with_policy(&changed_texts, defer_snapshots)
+        Ok(changed_texts)
     }
 
     fn rerender_decoration_texts(&self, changed_texts: &[String]) -> Result<JsValue, JsValue> {
