@@ -90,6 +90,7 @@ pub fn parse_sheet_with_relationships(
         default_row_custom_height: false,
         default_rows_hidden: false,
         show_grid_lines: true,
+        show_formulas: false,
         freeze_pane: None,
         tables: Vec::new(),
         header_footer: None,
@@ -190,6 +191,9 @@ pub fn parse_sheet_with_relationships(
                     b"sheetView" => {
                         if let Some(value) = attribute_value(element, b"showGridLines")? {
                             sheet.show_grid_lines = value != "0" && value != "false";
+                        }
+                        if let Some(value) = attribute_value(element, b"showFormulas")? {
+                            sheet.show_formulas = value == "1" || value == "true";
                         }
                     }
                     b"pane" if sheet.freeze_pane.is_none() => {

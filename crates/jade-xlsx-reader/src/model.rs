@@ -235,6 +235,10 @@ pub struct Sheet {
     pub default_rows_hidden: bool,
     /// `sheetView/@showGridLines`; Excel defaults it to on.
     pub show_grid_lines: bool,
+    /// `sheetView/@showFormulas`: cells show their formulas, not what they
+    /// work out to (Formulas ▸ Show Formulas, ⌃`).
+    #[serde(default)]
+    pub show_formulas: bool,
     /// Fixed rows and columns from the sheet's frozen `<pane>`, if any.
     #[serde(default)]
     pub freeze_pane: Option<FreezePane>,
