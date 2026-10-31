@@ -741,7 +741,10 @@ fn replaced_outline(
     }
     let (old_levels, old_collapsed) = match axis {
         Axis::Rows => (&sheet.outline.row_levels, &sheet.outline.collapsed_rows),
-        Axis::Columns => (&sheet.outline.column_levels, &sheet.outline.collapsed_columns),
+        Axis::Columns => (
+            &sheet.outline.column_levels,
+            &sheet.outline.collapsed_columns,
+        ),
     };
     let mut marks = BTreeMap::new();
     let touched = old_levels
