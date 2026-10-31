@@ -986,6 +986,15 @@ pub fn unlink_fields(doc: &mut WordDocument, scope: FieldScope) -> Result<usize,
     })
 }
 
+/// XML 1.0's Char production. Rust chars already exclude surrogates.
+/// https://www.w3.org/TR/xml/#charsets
+fn is_xml_character(character: char) -> bool {
+    !matches!(
+        character,
+        '\u{0}'..='\u{8}' | '\u{b}' | '\u{c}' | '\u{e}'..='\u{1f}' | '\u{fffe}' | '\u{ffff}'
+    )
+}
+
 /// A single balanced outer pair is optional. A nested field at the end of
 /// an unwrapped instruction must retain its closing brace.
 pub(crate) fn unwrapped_code(code: &str) -> Result<&str, String> {
@@ -995,6 +1004,9 @@ pub(crate) fn unwrapped_code(code: &str) -> Result<&str, String> {
     let mut quoted = false;
     let mut chars = code.char_indices().peekable();
     while let Some((index, character)) = chars.next() {
+        if !is_xml_character(character) {
+            return Err("the field code contains a character XML cannot carry".to_string());
+        }
         match character {
             '\\' if quoted && chars.peek().is_some_and(|(_, c)| *c == '"') => {
                 chars.next();

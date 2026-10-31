@@ -404,6 +404,21 @@ mod stateful {
         Reload,
     }
 
+    const MALFORMED_CODES: &[&str] = &[
+        "{",
+        "}",
+        "= { = 1",
+        "= 1 }",
+        "= } { 1",
+        "QUOTE \"a\u{0}b\"",
+        "QUOTE \"a\u{1}b\"",
+        "QUOTE \"a\u{b}b\"",
+        "QUOTE \"a\u{c}b\"",
+        "QUOTE \"a\u{1f}b\"",
+        "QUOTE \"a\u{fffe}b\"",
+        "QUOTE \"a\u{ffff}b\"",
+    ];
+
     fn operations() -> impl Strategy<Value = Vec<Op>> {
         let code = prop_oneof![
             Just(Code::Name),
@@ -417,7 +432,7 @@ mod stateful {
                 3 => (code.clone(), 0u8..4).prop_map(|(c, v)| Op::Insert(c, v)),
                 3 => (code, 0u8..4).prop_map(|(c, v)| Op::Edit(c, v)),
                 1 => Just(Op::EmptyCode),
-                2 => (0u8..5).prop_map(Op::MalformedCode),
+                2 => (0u8..MALFORMED_CODES.len() as u8).prop_map(Op::MalformedCode),
                 3 => (0u8..4).prop_map(Op::Update),
                 2 => any::<bool>().prop_map(Op::Lock),
                 2 => Just(Op::Unlink),
@@ -531,7 +546,7 @@ mod stateful {
                 }
                 Op::MalformedCode(index) => {
                     expected_success = false;
-                    let code = ["{", "}", "= { = 1", "= 1 }", "= } { 1"][usize::from(index)];
+                    let code = MALFORMED_CODES[usize::from(index)];
                     if state.field.is_some() {
                         session.edit_field_code(code, &environment(0))
                     } else {
@@ -719,6 +734,28 @@ mod stateful {
             prop_assert_eq!(&session.selected_fields()[0].result, &value);
             capture(&session.document.export_docx().unwrap(), &code);
         }
+
+        #[test]
+        fn host_values_omit_characters_xml_cannot_carry(
+            value in prop::collection::vec(prop::sample::select(vec![
+                'a', '山', '🦀', '&', '<', '>', '\t', '\n',
+                '\u{0}', '\u{1}', '\u{b}', '\u{c}', '\u{1f}', '\u{fffe}', '\u{ffff}',
+            ]), 0..20),
+        ) {
+            let value: String = value.into_iter().collect();
+            let expected: String = value.chars().filter(|ch| !matches!(
+                ch, '\u{0}'..='\u{8}' | '\u{b}' | '\u{c}' | '\u{e}'..='\u{1f}' | '\u{fffe}' | '\u{ffff}'
+            )).collect();
+            let mut environment = host();
+            environment.user_name = value.clone();
+            let mut session = Session::blank();
+            session.insert_field_code("USERNAME", &environment).unwrap();
+            let bytes = session.document.export_docx().unwrap();
+            capture(&bytes, &format!("user_name={value:?}"));
+            prop_assert_eq!(&observe(&mut session).field.unwrap().result, &expected);
+            session.document = block_on(WordDocument::load(&bytes, &Options::default())).unwrap();
+            prop_assert_eq!(&observe(&mut session).field.unwrap().result, &expected);
+        }
     }
 
     proptest! {
@@ -752,7 +789,7 @@ mod stateful {
 
     #[test]
     fn malformed_codes_preserve_document_and_history() {
-        for index in 0..5 {
+        for index in 0..MALFORMED_CODES.len() as u8 {
             run(&[
                 Op::MalformedCode(index),
                 Op::Insert(Code::Number, 0),

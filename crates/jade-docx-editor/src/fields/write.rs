@@ -81,7 +81,8 @@ pub(crate) fn text_runs(text: &str, rpr: Option<&XmlElement>) -> Vec<XmlElement>
                 flush(&mut segment, &mut children);
                 children.push(XmlNode::Element(new_element("w:br", &[], Vec::new())));
             }
-            other => segment.push(other),
+            other if super::is_xml_character(other) => segment.push(other),
+            _ => {}
         }
     }
     flush(&mut segment, &mut children);
