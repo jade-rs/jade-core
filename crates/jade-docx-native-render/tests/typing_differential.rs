@@ -8,10 +8,26 @@ mod composition_history;
 mod formatting_model;
 #[path = "typing_differential/history_model.rs"]
 mod history_model;
+#[path = "typing_differential/mixed_model.rs"]
+mod mixed_model;
+#[path = "typing_differential/note_history_model.rs"]
+mod note_history_model;
+#[path = "typing_differential/numbering_style_model.rs"]
+mod numbering_style_model;
+#[path = "typing_differential/paragraph_format_model.rs"]
+mod paragraph_format_model;
 #[path = "typing_differential/paragraph_model.rs"]
 mod paragraph_model;
+#[path = "typing_differential/revision_history_model.rs"]
+mod revision_history_model;
 #[path = "typing_differential/search_model.rs"]
 mod search_model;
+#[path = "typing_differential/story_history_model.rs"]
+mod story_history_model;
+#[path = "typing_differential/table_history_model.rs"]
+mod table_history_model;
+#[path = "typing_differential/viewport_model.rs"]
+mod viewport_model;
 
 use common::{open_bytes, Doc};
 use jade_docx_headless_api::{HeadlessCommand, HeadlessDeleteDirection};

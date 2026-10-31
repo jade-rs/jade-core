@@ -893,22 +893,36 @@ impl NativeDocument {
                 text: text.to_string(),
             }
         };
-        self.selection = self
-            .edit_in_place(|this| {
-                apply_headless_commands_with_executor_to_document(
-                    &mut this.word_document,
-                    &mut this.executor,
-                    this.selection.take(),
-                    &HeadlessEditRequest {
-                        commands: vec![command],
-                    },
-                )
-            })
-            .map_err(|error| format!("header/footer edit failed: {error:?}"))?;
+        let after = self.edit_in_place(|this| {
+            apply_headless_commands_with_executor_to_document(
+                &mut this.word_document,
+                &mut this.executor,
+                this.selection,
+                &HeadlessEditRequest {
+                    commands: vec![command],
+                },
+            )
+        });
+        self.selection = match after {
+            Ok(after) => after,
+            Err(error) => {
+                // Creating a missing story can change the package before an
+                // invalid paragraph is rejected. Failed edits keep both the
+                // original package and the selection, without losing redo.
+                self.edit_in_place(|this| this.word_document.restore_snapshot(previous));
+                self.repaint_all()?;
+                return Err(format!("header/footer edit failed: {error:?}"));
+            }
+        };
         self.repaint_all()?;
         self.header_footer_undo.push(HeaderFooterEdit { previous });
         self.header_footer_redo.clear();
         self.redo_history.clear();
+        // This edit bypasses the executor's command stack, but forks its redo
+        // branch just as an ordinary body command does.
+        while self.executor.can_redo() {
+            self.executor.discard_newest_redo();
+        }
         self.history.push(HistoryStep::HeaderFooter);
         Ok(())
     }
@@ -1970,8 +1984,8 @@ impl NativeDocument {
     /// Sets the line height of the paragraphs the selection touches, as a
     /// multiple of a single line.
     ///
-    /// Word's own vocabulary: `line` is in 240ths of a line under the `auto`
-    /// rule, which is what the ribbon's 1.0 / 1.15 / 1.5 / 2.0 mean.
+    /// The command accepts the multiplier directly; DOCX serialization converts
+    /// it to 240ths of a line under the `auto` rule.
     pub fn set_line_spacing(
         &mut self,
         multiple: f32,
@@ -1983,7 +1997,7 @@ impl NativeDocument {
             HeadlessCommand::SetParagraphLineSpacing {
                 start_paragraph: start,
                 end_paragraph: end,
-                line: Some(Some(multiple * 240.0)),
+                line: Some(Some(multiple)),
                 line_rule: Some("auto".to_string()),
                 before: None,
                 after: None,
@@ -2249,7 +2263,7 @@ impl NativeDocument {
     /// caret or the selection there — for an overlay that marks a place,
     /// such as the box around a master document's subdocument.
     pub fn position_rect(&mut self, paragraph: usize, offset: usize) -> Option<CaretRect> {
-        let selection = self.selection;
+        let selection = self.renderer.selection_range();
         self.renderer
             .set_selection_range(Some(SelectionRange::collapsed(TextPosition::new(
                 paragraph, offset,
@@ -2260,7 +2274,10 @@ impl NativeDocument {
             width: metrics.width.max(1.0),
             height: metrics.height,
         });
-        self.renderer.set_selection_range(selection);
+        // A structural edit can leave a range referring to the previous
+        // paragraph contents. A geometry query must restore it exactly, not
+        // clamp it and make the renderer disagree with the shell's selection.
+        self.renderer.set_selection_range_for_render(selection);
         rect
     }
 
