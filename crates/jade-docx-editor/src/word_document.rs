@@ -33089,12 +33089,24 @@ impl WordDocument {
             std::mem::take(&mut paragraph_element.children)
         };
         let mut runs = paragraph.runs.clone();
-        let new_children = Self::build_paragraph_children(
+        let mut new_children = Self::build_paragraph_children(
             &mut notes_doc,
             old_children,
             &mut runs,
             preserve_drawings,
         );
+        // The generic writer prunes contentless runs. An empty text run in
+        // a styled note still carries the paragraph's inherited font metrics;
+        // retain it so saving/reopening agrees with the in-memory paragraph.
+        if runs.iter().all(|run| run.text.is_empty())
+            && runs
+                .iter()
+                .any(|run| run.node_id.is_none() && run.field.is_none() && run.math.is_none())
+        {
+            let (text, _) = Self::create_text_element(&mut notes_doc, "", "w:t");
+            let run = notes_doc.create_element("w:r", Vec::new(), vec![XmlNode::Element(text)]);
+            new_children.push(XmlNode::Element(run));
+        }
         if let Some(paragraph_element) = notes_doc.element_mut(paragraph_id) {
             paragraph_element.children = new_children;
         }

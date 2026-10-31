@@ -1,0 +1,2 @@
+# Proptest regression seeds for mixed body and header/footer history.
+# New failures are persisted here and replayed before fresh generated cases.
