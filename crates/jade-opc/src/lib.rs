@@ -118,6 +118,25 @@ pub fn entry_fingerprints(package: &[u8], names: &[String]) -> Result<Vec<EntryF
     Ok(found)
 }
 
+/// One part of `package` as text, inflated on its own within the default
+/// budgets — the rest of the archive is left deflated — or `None` when the
+/// package has no such part.
+pub fn read_part_str(package: &[u8], name: &str) -> Result<Option<String>> {
+    let limits = PackageLoadLimits::default();
+    let mut archive = package_limits::open_checked_archive(package, limits)?;
+    let Some(index) = archive.index_for_name(name) else {
+        return Ok(None);
+    };
+    let entry = archive.by_index(index)?;
+    let mut total = 0;
+    let bytes = package_limits::read_part(entry, limits, &mut total)?;
+    String::from_utf8(bytes)
+        .map(Some)
+        .map_err(|_| OpcError::Encoding {
+            part: name.to_string(),
+        })
+}
+
 /// `package` with the deflated entries `again` picks by fingerprint deflated
 /// at the default level, and every other entry copied as it is.
 pub fn recompress(package: &[u8], again: impl Fn(&str, u32, u64) -> bool) -> Result<Vec<u8>> {
