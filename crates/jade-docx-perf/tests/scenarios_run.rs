@@ -15,3 +15,10 @@ fn an_unknown_scenario_is_an_error() {
     let fixture = jade_docx_perf::repo_root().join("public/fixtures/contract.docx");
     assert!(jade_docx_perf::run("nope", &fixture).is_err());
 }
+
+#[test]
+fn formatting_mark_keystrokes_are_measured() {
+    let fixture = jade_docx_perf::repo_root().join("public/fixtures/contract.docx");
+    jade_docx_perf::run("keystroke-marks", &fixture)
+        .expect("typing with visible formatting marks must be a measured scenario");
+}

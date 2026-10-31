@@ -37,7 +37,7 @@ use wasm_bindgen::JsValue;
 const PAGE_WIDTH_PX: f64 = 816.0;
 const PAGE_HEIGHT_PX: f64 = 1056.0;
 
-/// Keystrokes typed by the `keystroke` scenario. `JADE_PERF_KEYSTROKES`
+/// Keystrokes typed by both input scenarios. `JADE_PERF_KEYSTROKES`
 /// overrides it for a sampling profiler that needs a longer run; the workflow
 /// leaves it unset so both sides type the same.
 pub const KEYSTROKES: usize = 20;
@@ -50,7 +50,14 @@ fn keystrokes() -> usize {
 }
 
 /// The scenarios, in report order.
-pub const SCENARIOS: &[&str] = &["load", "layout", "repaint", "keystroke", "export"];
+pub const SCENARIOS: &[&str] = &[
+    "load",
+    "layout",
+    "repaint",
+    "keystroke",
+    "keystroke-marks",
+    "export",
+];
 
 /// Runs `body` as the measured part of a scenario.
 ///
@@ -67,9 +74,9 @@ pub fn repo_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..")
 }
 
-fn options() -> Options {
+fn options(scenario: &str) -> Options {
     let mut options = Options::default();
-    options.show_formatting_marks = false;
+    options.show_formatting_marks = scenario == "keystroke-marks";
     options
 }
 
@@ -261,7 +268,7 @@ pub fn run(scenario: &str, fixture: &Path) -> Result<(), String> {
     let bytes = std::fs::read(fixture).map_err(|err| format!("{}: {err}", fixture.display()))?;
     // Built once: the editor keeps its options, and building them parses the
     // shortcut table, which no keystroke pays for.
-    let options = &options();
+    let options = &options(scenario);
     match scenario {
         "load" => {
             let mut loaded = None;
@@ -288,7 +295,7 @@ pub fn run(scenario: &str, fixture: &Path) -> Result<(), String> {
             });
             result?;
         }
-        "keystroke" => {
+        "keystroke" | "keystroke-marks" => {
             let mut model = load(&bytes, options)?;
             let mut renderer = renderer()?;
             render_cold(&mut renderer, &model, options)?;
@@ -362,4 +369,36 @@ fn type_one(
         .map_err(|err| format!("repaint: {err:?}"));
     renderer.set_layout_page_limit(previous_limit);
     result
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn formatting_mark_workload_draws_marks_during_warm_typing() {
+        let bytes = std::fs::read(repo_root().join("public/fixtures/contract.docx")).unwrap();
+        for scenario in ["keystroke", "keystroke-marks"] {
+            let options = options(scenario);
+            let mut model = load(&bytes, &options).unwrap();
+            let host = PerfHost::new().unwrap();
+            let painter = host.painter.clone();
+            let mut renderer = CanvasRenderer::with_host(Box::new(host), false).unwrap();
+            render_cold(&mut renderer, &model, &options).unwrap();
+            let marks_visible = scenario == "keystroke-marks";
+            assert_eq!(
+                painter.take_paragraph_mark_count() > 0,
+                marks_visible,
+                "{scenario}: initial layout must draw the requested marks"
+            );
+
+            let paragraph = keystroke_paragraph(&renderer).unwrap();
+            type_one(&mut renderer, &mut model, paragraph, &options).unwrap();
+            assert_eq!(
+                painter.take_paragraph_mark_count() > 0,
+                marks_visible,
+                "{scenario}: bounded input repaint must draw the requested marks"
+            );
+        }
+    }
 }

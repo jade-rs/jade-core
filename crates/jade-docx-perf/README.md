@@ -1,5 +1,20 @@
 # DOCX performance workloads
 
+The Callgrind CI workload includes both `keystroke` (formatting marks hidden)
+and `keystroke-marks` (formatting marks visible). Both perform the same 20
+Japanese text insertions and bounded page-one repaints after initial layout.
+The marks workload includes control-mark font descriptor generation on input
+repaints, which the hidden-marks workload does not exercise. A
+regression test checks that paragraph marks reach the painter during both the
+initial layout and the input repaint, with the hidden-marks case as a control.
+That observation is compiled only for tests and adds no counters to the
+Callgrind binary.
+
+The CI grafts the same harness onto the base and head commits. Instruction
+counts measure engine work; they do not measure browser rasterization,
+composition previews, frame latency, or native macOS IME latency. They
+supplement the matched end-to-end composition comparison.
+
 To measure text insertion through visible-page layout and draw-command generation:
 
 ```sh
