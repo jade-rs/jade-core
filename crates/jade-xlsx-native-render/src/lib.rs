@@ -136,6 +136,7 @@ impl NativeWorkbook {
                 frozen_columns: 0,
                 frozen_rows: 0,
                 cell_padding_px: 0.0,
+                outline: Default::default(),
             }),
             surface: None,
         };
