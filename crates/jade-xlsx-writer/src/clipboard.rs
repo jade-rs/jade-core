@@ -250,7 +250,7 @@ pub fn paste_snapshot(
     let mut column_dimensions = BTreeMap::new();
     if rows && !whole_sheet {
         for row in range.start.row..=range.end.row {
-            let source_row = source.rows.iter().find(|candidate| candidate.index == row);
+            let source_row = source.row(row);
             let style = source_row
                 .filter(|row| row.custom_format)
                 .and_then(|row| row.style_index)
@@ -750,7 +750,7 @@ fn checked_merges(sheet: &Sheet, range: CellRange) -> Result<Vec<CellRange>> {
     Ok(merges)
 }
 fn row_dimension(sheet: &Sheet, index: u32) -> Dimension {
-    let row = sheet.rows.iter().find(|row| row.index == index);
+    let row = sheet.row(index);
     Dimension {
         size: row
             .and_then(|row| row.height_points)

@@ -9,6 +9,9 @@ const REL: &[u8] = b"http://schemas.openxmlformats.org/officeDocument/2006/relat
 const STRICT_REL: &[u8] = b"http://purl.oclc.org/ooxml/officeDocument/relationships";
 
 pub(crate) fn parse(xml: &str, rels: &Relationships) -> Result<Vec<Hyperlink>> {
+    if !xml.contains("hyperlink") {
+        return Ok(Vec::new());
+    }
     let mut reader = NsReader::from_str(xml);
     let mut depth = 0usize;
     let mut container = false;

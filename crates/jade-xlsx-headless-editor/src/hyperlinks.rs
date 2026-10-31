@@ -90,11 +90,7 @@ impl HeadlessWorkbook {
         let (styles_part, mut styles_xml) = jade_xlsx_writer::styles_part(&self.source)?;
         let mut styles = std::collections::BTreeMap::new();
         let mut edits = Vec::new();
-        let top = sheet_model
-            .rows
-            .iter()
-            .find(|r| r.index == range.start.row)
-            .and_then(|r| r.cells.iter().find(|c| c.reference == range.start));
+        let top = sheet_model.cell_at(range.start);
         let text = if top.is_some_and(|c| c.formula.is_some()) {
             None
         } else {

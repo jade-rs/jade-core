@@ -685,6 +685,7 @@ impl<'a> Model<'a> {
             read_trace: None,
             workbook,
             shared_strings: HashMap::new(),
+            shared_formula_index: HashMap::new(),
             parsed_formulas,
             parsed_defined_names: HashMap::new(),
             evaluating_names: std::collections::HashSet::new(),

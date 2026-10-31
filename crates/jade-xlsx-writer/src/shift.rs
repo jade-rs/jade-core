@@ -1051,12 +1051,7 @@ pub(crate) fn remove_elements(
 }
 
 fn model_formula(sheet: &Sheet, at: CellRef) -> Option<&str> {
-    sheet
-        .rows
-        .iter()
-        .find(|row| row.index == at.row)
-        .and_then(|row| row.cells.iter().find(|cell| cell.reference == at))
-        .and_then(|cell| cell.formula.as_deref())
+    sheet.cell_at(at).and_then(|cell| cell.formula.as_deref())
 }
 
 /// The opening tag of `element` with `updates` applied: `Some` sets an

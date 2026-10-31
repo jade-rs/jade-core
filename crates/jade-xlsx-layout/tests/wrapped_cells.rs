@@ -354,3 +354,108 @@ fn wrapping_uses_the_measurer_it_is_given() {
     assert_eq!(roomy.cell(CellRef::new(0, 0)).expect("A1").lines.len(), 1);
     assert_eq!(narrow.cell(CellRef::new(0, 0)).expect("A1").lines.len(), 6);
 }
+
+fn aligned(horizontal: HorizontalAlignment, vertical: VerticalAlignment) -> StyleTable {
+    let mut styles = StyleTable::default();
+    styles.cell_formats.push(CellFormat {
+        alignment: Alignment {
+            horizontal,
+            vertical,
+            ..Alignment::default()
+        },
+        ..Default::default()
+    });
+    styles
+}
+
+#[test]
+fn justified_and_distributed_text_wraps_without_wrap_text() {
+    // Excel wraps justified and distributed text whether or not Wrap
+    // Text is ticked, and grows the row to hold it.
+    for (horizontal, vertical) in [
+        (HorizontalAlignment::Justify, VerticalAlignment::Bottom),
+        (HorizontalAlignment::Distributed, VerticalAlignment::Bottom),
+        (HorizontalAlignment::Left, VerticalAlignment::Justify),
+        (HorizontalAlignment::Left, VerticalAlignment::Distributed),
+    ] {
+        let sheet = sheet_with("a very long piece of text", Some(0), 10.0);
+        let layout = laid_out(&sheet, &aligned(horizontal, vertical));
+        let cell = layout.cell(CellRef::new(0, 0)).expect("A1");
+        assert!(
+            cell.lines.len() > 1,
+            "{horizontal:?} {vertical:?}: {:?}",
+            cell.lines
+        );
+        assert!(cell.alignment.wrap_text);
+        assert!(layout.row(0).expect("row").size > 20.0);
+        assert!(cell.text_clip.is_none(), "wrapped text does not spill");
+    }
+}
+
+#[test]
+fn fill_repeats_the_text_across_the_cell_and_never_spills() {
+    // 10 characters wide: 70 px less padding holds "ab" (14 px) four
+    // times over.
+    let sheet = sheet_with("ab", Some(0), 10.0);
+    let layout = laid_out(
+        &sheet,
+        &aligned(HorizontalAlignment::Fill, VerticalAlignment::Bottom),
+    );
+    let cell = layout.cell(CellRef::new(0, 0)).expect("A1");
+    let available = cell.rect.width - layout.cell_padding_px * 2.0;
+    let repeats = (available / 14.0).floor() as usize;
+    assert!(repeats > 1);
+    assert_eq!(cell.lines, ["ab".repeat(repeats)]);
+    assert_eq!(cell.text, "ab");
+    // Text longer than the cell is cut, not spilled.
+    let sheet = sheet_with("a very long piece of text", Some(0), 3.0);
+    let layout = laid_out(
+        &sheet,
+        &aligned(HorizontalAlignment::Fill, VerticalAlignment::Bottom),
+    );
+    let cell = layout.cell(CellRef::new(0, 0)).expect("A1");
+    assert_eq!(cell.lines, ["a very long piece of text"]);
+    assert!(cell.text_clip.is_none());
+}
+
+#[test]
+fn center_across_selection_spans_the_empty_cells_aligned_the_same() {
+    let mut sheet = sheet_with("Title", Some(0), 10.0);
+    sheet.columns[0].last = 4;
+    // B1 and C1 are empty and centred across; D1 is not, so the span ends
+    // at C1. E1 also is, but D1 breaks the run.
+    for column in [1, 2, 4] {
+        sheet.rows[0].cells.push(Cell {
+            reference: CellRef::new(column, 0),
+            value: CellValue::Empty,
+            style_index: Some(0),
+            formula: None,
+        });
+    }
+    sheet.rows[0]
+        .cells
+        .sort_by_key(|cell| cell.reference.column);
+    let layout = laid_out(
+        &sheet,
+        &aligned(
+            HorizontalAlignment::CenterContinuous,
+            VerticalAlignment::Bottom,
+        ),
+    );
+    let cell = layout.cell(CellRef::new(0, 0)).expect("A1");
+    let clip = cell.text_clip.expect("the text spans the selection");
+    let c1 = layout.cell_rect(CellRef::new(2, 0)).expect("C1");
+    assert_eq!(clip.x, cell.rect.x);
+    assert_eq!(clip.x + clip.width, c1.x + c1.width);
+
+    // Text in B1 ends the span at A1.
+    sheet.rows[0].cells[1].value = CellValue::Text("x".into());
+    let layout = laid_out(
+        &sheet,
+        &aligned(
+            HorizontalAlignment::CenterContinuous,
+            VerticalAlignment::Bottom,
+        ),
+    );
+    assert!(layout.cell(CellRef::new(0, 0)).unwrap().text_clip.is_none());
+}

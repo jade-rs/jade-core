@@ -89,6 +89,9 @@ fn criterion(element: &BytesStart<'_>, kind: &[u8]) -> Result<FilterCriterion> {
 
 /// Only direct children of a recognized worksheet/table root belong to this view.
 pub fn parse(xml: &str, root: &[u8]) -> Result<(Option<AutoFilter>, Option<bool>)> {
+    if !xml.contains("autoFilter") && !xml.contains("filterMode") {
+        return Ok((None, None));
+    }
     let mut reader = NsReader::from_str(xml);
     let mut depth = 0usize;
     let mut namespace = None;
