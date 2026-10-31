@@ -146,6 +146,8 @@ pub enum WriteError {
     Clipboard(String),
     #[error("no sheet called `{0}`")]
     NoSuchSheet(String),
+    #[error("copying a sheet: {0}")]
+    CopySheet(String),
     #[error("a structural change needs at least one row or column")]
     EmptyStructureChange,
     #[error("axis formatting exceeds the {limit} metadata/cell limit")]
