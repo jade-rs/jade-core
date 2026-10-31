@@ -6,34 +6,46 @@ const CAPACITY: usize = 4;
 
 struct Entry {
     size_bits: u32,
-    prefix: Box<str>,
-    family: Box<str>,
+    prefix_len: usize,
+    family_start: usize,
     descriptor: Rc<str>,
 }
 
 #[derive(Default)]
 struct ControlMarkFontCache {
     entries: Vec<Entry>,
+    next_eviction: usize,
 }
 
 impl ControlMarkFontCache {
     fn get(&mut self, size_pt: f32, prefix: &str, family: &str) -> Rc<str> {
         let size_bits = size_pt.to_bits();
         if let Some(entry) = self.entries.iter().rev().find(|entry| {
-            entry.size_bits == size_bits && &*entry.prefix == prefix && &*entry.family == family
+            entry.size_bits == size_bits
+                && entry.descriptor.get(..entry.prefix_len) == Some(prefix)
+                && entry.descriptor.get(entry.family_start..) == Some(family)
         }) {
             return Rc::clone(&entry.descriptor);
         }
-        let descriptor: Rc<str> = Rc::from(format!("{prefix}{size_pt:0.2}pt {family}"));
-        if self.entries.len() == CAPACITY {
-            self.entries.remove(0);
-        }
-        self.entries.push(Entry {
+        let descriptor: Rc<str> = if prefix.is_empty() {
+            Rc::from(format!("{size_pt:0.2}pt {family}"))
+        } else {
+            Rc::from(format!("{prefix}{size_pt:0.2}pt {family}"))
+        };
+        // The descriptor already owns both key strings. Keep their UTF-8 byte
+        // boundaries instead of allocating a second copy on cache misses.
+        let entry = Entry {
             size_bits,
-            prefix: prefix.into(),
-            family: family.into(),
+            prefix_len: prefix.len(),
+            family_start: descriptor.len() - family.len(),
             descriptor: Rc::clone(&descriptor),
-        });
+        };
+        if self.entries.len() < CAPACITY {
+            self.entries.push(entry);
+        } else {
+            self.entries[self.next_eviction] = entry;
+            self.next_eviction = (self.next_eviction + 1) % CAPACITY;
+        }
         descriptor
     }
 }
@@ -55,11 +67,10 @@ mod tests {
 
     #[test]
     fn repeated_control_marks_reuse_the_formatted_allocation() {
-        let mut cache = ControlMarkFontCache::default();
-        let first = cache.get(9.0, "bold ", "'Arial', sans-serif");
+        let first = descriptor(9.0, "bold ", "'Arial', sans-serif");
         assert_eq!(&*first, "bold 9.00pt 'Arial', sans-serif");
         for _ in 0..256 {
-            let next = cache.get(9.0, "bold ", "'Arial', sans-serif");
+            let next = descriptor(9.0, "bold ", "'Arial', sans-serif");
             assert!(
                 Rc::ptr_eq(&first, &next),
                 "reformatted an unchanged mark font"
@@ -90,10 +101,10 @@ mod tests {
         #![proptest_config(ProptestConfig::with_cases(128))]
         #[test]
         fn mixed_queries_preserve_the_original_formatter(
-            queries in prop::collection::vec((any::<u32>(), 0u8..4, 0u8..7), 1..128)
+            queries in prop::collection::vec((any::<u32>(), 0u8..8, 0u8..7), 1..128)
         ) {
             let mut cache = ControlMarkFontCache::default();
-            let prefixes = ["", "bold ", "italic ", "bold italic "];
+            let prefixes = ["", "bold ", "italic ", "bold italic ", "日本語 ", "{} ", "9.00pt ", "é "];
             let families = ["Arial", "'MS Mincho', serif", "'日本語'", "", "sans-serif", "12pt odd family", "A\\B' C"];
             for (bits, prefix, family) in queries {
                 let size = f32::from_bits(bits);
