@@ -13231,6 +13231,153 @@ mod tests {
     }
 
     #[test]
+    fn an_edit_past_a_shape_reaches_its_header_or_note_paragraph() {
+        // A story's paragraphs were found in its XML by counting every `w:p`,
+        // the ones inside a shape's text box too. Past a paragraph holding a
+        // shape, an edit went to the wrong element: setting a header's second
+        // paragraph replaced its text box's text, and a paragraph break in a
+        // note's second paragraph was lost on save.
+        let fixture = |name: &str| {
+            std::fs::read(
+                std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                    .join("../../public/fixtures")
+                    .join(name),
+            )
+            .expect("read fixture")
+        };
+        let part = |bytes: &[u8], name: &str| {
+            let mut archive =
+                zip::ZipArchive::new(std::io::Cursor::new(bytes)).expect("package zip");
+            let mut xml = String::new();
+            std::io::Read::read_to_string(&mut archive.by_name(name).expect("part"), &mut xml)
+                .expect("read part");
+            xml
+        };
+
+        // hello.docx with a header of a text box paragraph and a plain one.
+        let hello = fixture("hello.docx");
+        let header = part(&hello, "word/header1.xml").replace(
+            "<w:p><w:r/></w:p>",
+            "<w:p><w:r><w:t>Head</w:t></w:r><w:r><w:pict><v:shape id=\"box\" \
+             style=\"width:100pt;height:30pt\" type=\"#_x0000_t202\"><v:textbox>\
+             <w:txbxContent><w:p><w:r><w:t>Boxed</w:t></w:r></w:p></w:txbxContent>\
+             </v:textbox></v:shape></w:pict></w:r></w:p>\
+             <w:p><w:r><w:t>Second</w:t></w:r></w:p>",
+        );
+        assert!(header.contains("Second"));
+        let mut archive =
+            zip::ZipArchive::new(std::io::Cursor::new(hello.as_slice())).expect("package zip");
+        let mut package = zip::ZipWriter::new(std::io::Cursor::new(Vec::new()));
+        for index in 0..archive.len() {
+            let mut entry = archive.by_index(index).expect("entry");
+            let name = entry.name().expect("entry name").to_string();
+            let mut data = Vec::new();
+            std::io::Read::read_to_end(&mut entry, &mut data).expect("read entry");
+            if name == "word/header1.xml" {
+                data = header.clone().into_bytes();
+            }
+            package
+                .start_file(name, zip::write::SimpleFileOptions::default())
+                .expect("start entry");
+            std::io::Write::write_all(&mut package, &data).expect("write entry");
+        }
+        let bytes = package.finish().expect("finish package").into_inner();
+        let mut word_doc =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+        apply_headless_commands_to_document(
+            &mut word_doc,
+            &HeadlessEditRequest {
+                commands: vec![HeadlessCommand::SetHeaderParagraphText {
+                    paragraph: 1,
+                    text: "Replaced".to_string(),
+                }],
+            },
+        )
+        .expect("header set");
+        let saved = part(&word_doc.export_docx().expect("export"), "word/header1.xml");
+        assert!(saved.contains("Boxed"), "{saved}");
+        assert!(saved.contains("Replaced"), "{saved}");
+        assert!(!saved.contains("Second"), "{saved}");
+
+        // An endnote of two paragraphs, a shape in the first, then a
+        // paragraph break in the second.
+        let mut word_doc = executor::block_on(WordDocument::load(
+            &fixture("note-styles-creation.docx"),
+            &Options::default(),
+        ))
+        .expect("load");
+        let note = |word_doc: &WordDocument, ordinal: usize| {
+            (0..word_doc.paragraph_count())
+                .filter(|&index| word_doc.is_note_paragraph_surface(index))
+                .nth(ordinal)
+                .expect("note paragraph")
+        };
+        let apply = |word_doc: &mut WordDocument, command: HeadlessCommand| {
+            apply_headless_commands_to_document(
+                word_doc,
+                &HeadlessEditRequest {
+                    commands: vec![command],
+                },
+            )
+            .expect("applied");
+        };
+        apply(
+            &mut word_doc,
+            HeadlessCommand::InsertEndnote {
+                paragraph: 0,
+                offset: 5,
+                text: "e".to_string(),
+            },
+        );
+        let first = note(&word_doc, 0);
+        apply(
+            &mut word_doc,
+            HeadlessCommand::InsertParagraphBreak {
+                paragraph: first,
+                offset: 0,
+                count: 1,
+            },
+        );
+        let first = note(&word_doc, 0);
+        apply(
+            &mut word_doc,
+            HeadlessCommand::InsertShape {
+                paragraph: first,
+                offset: 0,
+                shape: jade_docx_headless_api::HeadlessShapeKind::Rectangle,
+                width_px: 40.0,
+                height_px: 20.0,
+                fill_color: None,
+                border_color: None,
+                border_width_px: 1.0,
+                text: String::new(),
+            },
+        );
+        let second = note(&word_doc, 1);
+        apply(
+            &mut word_doc,
+            HeadlessCommand::InsertParagraphBreak {
+                paragraph: second,
+                offset: 1,
+                count: 1,
+            },
+        );
+        let texts = |word_doc: &WordDocument| {
+            (0..word_doc.paragraph_count())
+                .filter(|&index| word_doc.is_note_paragraph_surface(index))
+                .map(|index| paragraph_text(word_doc, index))
+                .collect::<Vec<_>>()
+        };
+        let reloaded = executor::block_on(WordDocument::load(
+            &word_doc.export_docx().expect("export"),
+            &Options::default(),
+        ))
+        .expect("reload");
+        assert_eq!(texts(&word_doc).len(), 3, "{:?}", texts(&word_doc));
+        assert_eq!(texts(&reloaded), texts(&word_doc));
+    }
+
+    #[test]
     fn inserting_a_note_keeps_the_styles_theme_colours() {
         // Inserting a footnote adds its styles to styles.xml, which was read
         // again without the theme: toc.docx's headings, coloured by
