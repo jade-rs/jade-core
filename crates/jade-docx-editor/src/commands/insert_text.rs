@@ -546,11 +546,20 @@ impl InsertTextCommand {
             // A replaced selection is journaled too: it can empty a simple
             // field or a link down to one run, and re-syncing the restored runs
             // into it left the replacement in the field and wrote the old text
-            // again after it. Typing at a caret keeps the cheaper re-sync.
-            // (Note paragraphs keep their XML in their own part.)
-            let replaces_selection = start_offset < end_offset
-                && !ctx.document.is_note_paragraph_surface(start.paragraph);
-            let anchored = if replaces_selection || commented_body_paragraph(ctx, start.paragraph) {
+            // again after it. An empty paragraph needs its original XML too:
+            // re-syncing its restored empty run prunes <w:t> and the run's
+            // inherited font metrics. Other caret typing keeps the cheaper
+            // re-sync.
+            let needs_original_xml = !ctx.document.is_note_paragraph_surface(start.paragraph)
+                && (start_offset < end_offset
+                    || (start_offset == 0
+                        && ctx
+                            .document
+                            .paragraph(start.paragraph)
+                            .is_some_and(|paragraph| {
+                                paragraph.runs.iter().all(|run| run.text.is_empty())
+                            })));
+            let anchored = if needs_original_xml || commented_body_paragraph(ctx, start.paragraph) {
                 Some(ParagraphRangeUndo::begin(
                     ctx,
                     Some((start.paragraph, start.paragraph)),
