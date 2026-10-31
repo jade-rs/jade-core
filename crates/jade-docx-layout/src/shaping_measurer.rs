@@ -285,9 +285,17 @@ impl ShapingMeasurer {
     /// has been truncated to two decimals, so 14pt (18.6667px) actually shapes
     /// at 18.66px — a 3.6e-4 relative narrowing that is absent at sizes whose px
     /// value terminates (9pt, 10.5pt, 12pt).
+    ///
+    /// Word for Mac lays text out at the exact size: in its own Arial, 11pt
+    /// lines of probes float-lookahead and floating-order end 0.39pt further
+    /// right of where the truncated 14.66px puts them, and within 0.19pt at
+    /// the exact 14.6667px.
     fn font_size_px(&self, size_pt: f32) -> f64 {
         let px = points_to_px(size_pt);
-        if self.options.quantize_px_font_size {
+        if self.options.quantize_px_font_size
+            && crate::line_metrics::word_layout_platform()
+                != crate::line_metrics::WordLayoutPlatform::Mac
+        {
             (px * 100.0).floor() / 100.0
         } else {
             px
