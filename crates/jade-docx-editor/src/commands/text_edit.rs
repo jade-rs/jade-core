@@ -1204,6 +1204,11 @@ pub(crate) fn merge_run_properties(target: &mut RunProperties, source: &RunPrope
     }
     if let Some(value) = source.font_size {
         target.font_size = Some(value);
+        // Match the direct formatting written to both w:sz and w:szCs.
+        target.font_size_complex = Some(value);
+    }
+    if let Some(value) = source.font_size_complex {
+        target.font_size_complex = Some(value);
     }
     if let Some(value) = source.font_family.clone() {
         target.font_family = Some(value);
@@ -1712,6 +1717,44 @@ mod tests {
 
     proptest! {
         #![proptest_config(ProptestConfig { cases: 256, max_shrink_iters: 4000, ..ProptestConfig::default() })]
+
+        #[test]
+        fn font_size_merge_keeps_effective_and_direct_sizes_in_sync(
+            initial in prop::option::of(2u16..200),
+            initial_complex in prop::option::of(2u16..200),
+            edited in prop::option::of(2u16..200),
+            edited_complex in prop::option::of(2u16..200),
+            known in any::<bool>(),
+        ) {
+            let size = |value: Option<u16>| value.map(|value| f32::from(value) / 2.0);
+            let mut target = RunProperties {
+                font_size: size(initial),
+                font_size_complex: size(initial_complex),
+                bold: Some(true),
+                ..RunProperties::default()
+            };
+            if known {
+                target.capture_direct_font_properties();
+            }
+            let original_direct = target.direct_font_properties.clone();
+            let source = RunProperties {
+                font_size: size(edited),
+                font_size_complex: size(edited_complex),
+                ..RunProperties::default()
+            };
+            merge_run_properties(&mut target, &source);
+            let expected = size(edited.or(initial));
+            let expected_complex = size(edited_complex.or(edited).or(initial_complex));
+            prop_assert_eq!(target.font_size, expected);
+            prop_assert_eq!(target.font_size_complex, expected_complex);
+            prop_assert_eq!(target.bold, Some(true));
+            if known {
+                prop_assert_eq!(target.direct_font_properties.font_size, expected);
+                prop_assert_eq!(target.direct_font_properties.font_size_complex, expected_complex);
+            } else {
+                prop_assert_eq!(target.direct_font_properties, original_direct);
+            }
+        }
 
         /// Replacing an arbitrary byte range in a paragraph split into arbitrary
         /// runs must (a) yield the same text as a flat-string model replace, and

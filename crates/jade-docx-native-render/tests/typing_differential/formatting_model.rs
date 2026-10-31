@@ -446,3 +446,55 @@ proptest! {
         check_sequence(&operations);
     }
 }
+
+#[test]
+fn font_size_edits_keep_complex_script_size_equal_to_saved_model() {
+    let text = "Latin العربية 日本語 😀";
+    let bytes = package(
+        &format!(
+            r#"<w:p><w:r><w:rPr><w:sz w:val="24"/><w:szCs w:val="36"/></w:rPr><w:t>{text}</w:t></w:r></w:p>"#
+        ),
+        "",
+    );
+    let original = open_bytes(&bytes);
+    let mut actual = open_bytes(&bytes);
+    actual
+        .select((0, 0), (0, text.len()), actual.page_count())
+        .unwrap();
+    actual.set_font_size(10.5, actual.page_count()).unwrap();
+    actual.set_selection_range(None);
+    actual.repaint_all().unwrap();
+    let reopened = open_bytes(&actual.export_docx().unwrap());
+    let sizes = |document: &Doc| {
+        document
+            .word_document()
+            .paragraph(0)
+            .unwrap()
+            .runs
+            .iter()
+            .map(|run| {
+                let props = run.properties.as_ref().unwrap();
+                (props.font_size, props.font_size_complex)
+            })
+            .collect::<Vec<_>>()
+    };
+    assert_eq!(sizes(&actual), vec![(Some(10.5), Some(10.5))]);
+    assert_eq!(sizes(&actual), sizes(&reopened));
+    for page in 0..actual.page_count() {
+        assert_page_pixels(&actual, &reopened, page, "font size export/reopen");
+    }
+    actual.undo().unwrap();
+    actual.set_selection_range(None);
+    actual.repaint_all().unwrap();
+    assert_eq!(sizes(&actual), sizes(&original));
+    for page in 0..original.page_count() {
+        assert_page_pixels(&actual, &original, page, "font size undo");
+    }
+    actual.redo().unwrap();
+    actual.set_selection_range(None);
+    actual.repaint_all().unwrap();
+    assert_eq!(sizes(&actual), sizes(&reopened));
+    for page in 0..reopened.page_count() {
+        assert_page_pixels(&actual, &reopened, page, "font size redo");
+    }
+}
