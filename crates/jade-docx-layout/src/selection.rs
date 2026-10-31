@@ -820,6 +820,22 @@ impl SelectionManager {
         self.record_table_cell_impl(cell, false);
     }
 
+    /// Restore the complete cell registry after a partial render proves that
+    /// all table geometry is unchanged. Keep fragment ids and their paragraph
+    /// mappings in the original registration order.
+    pub fn restore_cell_layouts(&mut self, cells: Vec<CellLayout>) {
+        if self.frozen {
+            return;
+        }
+        self.cells = cells;
+        self.paragraph_to_cell.clear();
+        for (id, cell) in self.cells.iter().enumerate() {
+            for &paragraph in &cell.paragraphs {
+                self.paragraph_to_cell.insert(paragraph, id);
+            }
+        }
+    }
+
     /// Register one physical fragment of a cell that can span pages.
     /// Distinct bounds must survive even when their logical paragraphs match.
     pub fn record_table_cell_fragment(&mut self, cell: CellLayout) {
