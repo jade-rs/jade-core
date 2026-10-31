@@ -305,6 +305,7 @@ struct HfHistoryEntry {
 struct CompositionPreviewState {
     base_selection: Option<SelectionRange>,
     commands: Vec<Box<dyn Command>>,
+    preserves_auxiliary_story_surfaces: bool,
 }
 
 /// Stores revision metadata extracted from the JavaScript payload.
@@ -7185,6 +7186,25 @@ impl OffscreenDocumentView {
             })
         };
         let had_preview = self.state.borrow().composition_preview.is_some();
+        // Undo of the previous preview is part of this edit. A prior structural
+        // preview must therefore force a fresh count even if the new text is
+        // a plain insertion. No document reference survives the cache drop.
+        let mut auxiliary_story_base = {
+            let state = self.state.borrow();
+            if state
+                .composition_preview
+                .as_ref()
+                .is_none_or(|preview| preview.preserves_auxiliary_story_surfaces)
+            {
+                state.word_doc.as_ref().and_then(|word_doc| {
+                    word_doc.document.as_ref().and_then(|document| {
+                        self.renderer.borrow().cached_auxiliary_story_base(document)
+                    })
+                })
+            } else {
+                None
+            }
+        };
         let _document_cache =
             (had_preview || !text.is_empty()).then(|| self.drop_renderer_document_cache());
         let (
@@ -7210,43 +7230,48 @@ impl OffscreenDocumentView {
                     .ok_or_else(|| JsValue::from_str("No document loaded"))?;
                 let mut selection = Some(base_selection);
                 let mut applied_commands: Vec<Box<dyn Command>> = Vec::new();
+                let mut preserves_auxiliary_story_surfaces = false;
                 let revision_session = word_doc.revision_session().cloned();
                 word_doc.set_revision_session(None);
-                let apply_result =
-                    (|| -> Result<Option<SelectionRange>, JsValue> {
-                        let mut insert_command: Box<dyn Command> = Box::new(
-                            InsertTextCommand::new(base_selection, text.clone(), inline_properties),
+                let apply_result = (|| -> Result<Option<SelectionRange>, JsValue> {
+                    let insert_command =
+                        InsertTextCommand::new(base_selection, text.clone(), inline_properties);
+                    preserves_auxiliary_story_surfaces =
+                        insert_command.preserves_auxiliary_story_surfaces(&word_doc);
+                    if !preserves_auxiliary_story_surfaces {
+                        auxiliary_story_base = None;
+                    }
+                    let mut insert_command: Box<dyn Command> = Box::new(insert_command);
+                    {
+                        let mut ctx = CommandContext::new(&mut word_doc, &mut selection);
+                        insert_command
+                            .apply(&mut ctx)
+                            .map_err(|err| JsValue::from_str(&err.to_string()))?;
+                    }
+                    applied_commands.push(insert_command);
+
+                    let selection_after_insert = selection;
+                    let (selection_start, _) = base_selection.normalized();
+                    let insert_end = selection_start.offset.saturating_add(text.len());
+                    if insert_end > selection_start.offset {
+                        let underline_range = SelectionRange::new(
+                            selection_start,
+                            TextPosition::new(selection_start.paragraph, insert_end),
                         );
+                        let mut underline_command: Box<dyn Command> =
+                            Box::new(ApplyUnderlineCommand::new(underline_range));
                         {
                             let mut ctx = CommandContext::new(&mut word_doc, &mut selection);
-                            insert_command
+                            underline_command
                                 .apply(&mut ctx)
                                 .map_err(|err| JsValue::from_str(&err.to_string()))?;
                         }
-                        applied_commands.push(insert_command);
+                        applied_commands.push(underline_command);
+                        selection = selection_after_insert;
+                    }
 
-                        let selection_after_insert = selection;
-                        let (selection_start, _) = base_selection.normalized();
-                        let insert_end = selection_start.offset.saturating_add(text.len());
-                        if insert_end > selection_start.offset {
-                            let underline_range = SelectionRange::new(
-                                selection_start,
-                                TextPosition::new(selection_start.paragraph, insert_end),
-                            );
-                            let mut underline_command: Box<dyn Command> =
-                                Box::new(ApplyUnderlineCommand::new(underline_range));
-                            {
-                                let mut ctx = CommandContext::new(&mut word_doc, &mut selection);
-                                underline_command
-                                    .apply(&mut ctx)
-                                    .map_err(|err| JsValue::from_str(&err.to_string()))?;
-                            }
-                            applied_commands.push(underline_command);
-                            selection = selection_after_insert;
-                        }
-
-                        Ok(selection)
-                    })();
+                    Ok(selection)
+                })();
                 word_doc.set_revision_session(revision_session);
                 selection = match apply_result {
                     Ok(selection) => selection,
@@ -7276,6 +7301,7 @@ impl OffscreenDocumentView {
                 state.composition_preview = Some(CompositionPreviewState {
                     base_selection: Some(base_selection),
                     commands: applied_commands,
+                    preserves_auxiliary_story_surfaces,
                 });
                 state.word_doc = Some(word_doc);
             } else {
@@ -7346,6 +7372,9 @@ impl OffscreenDocumentView {
                 .as_ref()
                 .ok_or_else(|| JsValue::from_str("No document loaded"))?;
             let render_result = if let Some(document) = word_doc.document.as_ref() {
+                if let Some(snapshot) = auxiliary_story_base {
+                    renderer.restore_auxiliary_story_base(document, snapshot);
+                }
                 renderer.render_with_numbering_rc(
                     Rc::clone(document),
                     &options,
@@ -16897,6 +16926,7 @@ impl OffscreenDocumentView {
             glyph_batch: GlyphBatchStatsView,
             last_render_body_element_count: u64,
             last_render_prefix_skips: u64,
+            auxiliary_story_surface_scans: u64,
         }
 
         let renderer = self.renderer.borrow();
@@ -17075,6 +17105,7 @@ impl OffscreenDocumentView {
             },
             last_render_body_element_count: renderer.last_render_body_element_count(),
             last_render_prefix_skips: renderer.last_render_prefix_skips(),
+            auxiliary_story_surface_scans: renderer.auxiliary_story_surface_scans(),
         };
 
         // Use the JSON-compatible serializer so map fields (e.g.
