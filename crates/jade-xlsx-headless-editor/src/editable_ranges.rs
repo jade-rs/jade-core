@@ -1,6 +1,5 @@
 //! Cached worksheet permissions, editable ranges and unsaved authentication grants.
 use crate::{HeadlessError, HeadlessWorkbook, Result};
-use jade_opc::OpcPackage;
 use jade_xlsx_reader::{
     protected_ranges::{ProtectedRange, RangePassword},
     CellRange, CellRef,
@@ -13,6 +12,9 @@ pub(crate) struct SheetState {
     pub(crate) definitions: std::result::Result<Vec<ProtectedRange>, String>,
     pub(crate) stamp: String,
     pub(crate) active: bool,
+    /// The sheet part's zip entry when this was read: the same entry, the
+    /// same state, so a write elsewhere does not read the part again.
+    pub(crate) fingerprint: Option<jade_opc::EntryFingerprint>,
 }
 #[derive(Clone)]
 pub(crate) struct RangeGrant {
@@ -41,13 +43,42 @@ pub(crate) fn matches(
 }
 impl HeadlessWorkbook {
     pub(crate) fn refresh_sheet_states(&mut self) {
-        let package = OpcPackage::open(&self.source);
+        // Only the sheet parts that changed are read again, each on its own:
+        // inflating the whole package on every write was most of a write's
+        // cost on a large sheet.
+        let names: Vec<String> = self
+            .workbook
+            .sheets
+            .iter()
+            .map(|sheet| sheet.part_name.clone())
+            .collect();
+        let fingerprints: BTreeMap<String, jade_opc::EntryFingerprint> =
+            jade_opc::entry_fingerprints(&self.source, &names)
+                .map(|found| {
+                    found
+                        .into_iter()
+                        .map(|entry| (entry.0.clone(), entry))
+                        .collect()
+                })
+                .unwrap_or_default();
         let mut states = BTreeMap::new();
         for sheet in &self.workbook.sheets {
-            let xml = package.as_ref().map_err(ToString::to_string).and_then(|p| {
-                p.required_part_str(&sheet.part_name)
-                    .map_err(|e| e.to_string())
-            });
+            let fingerprint = fingerprints.get(&sheet.part_name).cloned();
+            if let Some(previous) = self
+                .sheet_states
+                .get(&sheet.part_name)
+                .filter(|state| fingerprint.is_some() && state.fingerprint == fingerprint)
+            {
+                let mut state = previous.clone();
+                state.active = sheet.protection.is_some();
+                states.insert(sheet.part_name.clone(), state);
+                continue;
+            }
+            let xml = jade_opc::read_part_str(&self.source, &sheet.part_name)
+                .and_then(|xml| {
+                    xml.ok_or_else(|| jade_opc::OpcError::MissingPart(sheet.part_name.clone()))
+                })
+                .map_err(|e| e.to_string());
             let protection = xml.as_ref().map_err(Clone::clone).and_then(|xml| {
                 if !xml.contains("sheetProtection") {
                     return Ok(None);
@@ -76,6 +107,7 @@ impl HeadlessWorkbook {
                     definitions,
                     stamp,
                     active: sheet.protection.is_some(),
+                    fingerprint,
                 },
             );
         }
