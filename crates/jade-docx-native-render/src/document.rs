@@ -690,6 +690,7 @@ impl NativeDocument {
             .clone();
         let started = Instant::now();
         self.renderer.sync_word_document(&self.word_document);
+        self.renderer.set_selection_range_for_render(self.selection);
         self.refresh_field_display();
         // History can restore different paragraph contents at an address
         // previously used by another snapshot. Recompute address-keyed hashes
@@ -747,7 +748,7 @@ impl NativeDocument {
         renderer.set_use_selection_overlay(false);
         renderer.set_view_geometry(self.view_geometry);
         renderer.set_outline_indents(self.outline_indents.clone());
-        renderer.set_selection_range(self.selection);
+        renderer.set_selection_range_for_render(self.selection);
         renderer.set_current_datetime(self.field_datetime.map(renderer_datetime));
         if self.field_codes != FieldCodeView::default() {
             renderer.set_field_code_display(Some(field_code_display(
@@ -1625,6 +1626,15 @@ impl NativeDocument {
     ///
     /// Byte offsets into the paragraph text, so a hit can be selected directly.
     pub fn find(&self, query: &str, case_insensitive: bool) -> Vec<SearchHit> {
+        self.find_with_limit(query, case_insensitive, 500)
+    }
+
+    fn find_with_limit(
+        &self,
+        query: &str,
+        case_insensitive: bool,
+        max_results: usize,
+    ) -> Vec<SearchHit> {
         if query.is_empty() {
             return Vec::new();
         }
@@ -1634,7 +1644,7 @@ impl NativeDocument {
                 queries: vec![HeadlessQuery::SearchText {
                     query: query.to_string(),
                     start_paragraph: 0,
-                    max_results: 500,
+                    max_results,
                     context_before_chars: 0,
                     context_after_chars: 0,
                     case_insensitive,
@@ -1698,7 +1708,9 @@ impl NativeDocument {
         // Counted before the edit: afterwards the old text is gone, and if the
         // replacement contains the query, counting after would find the new
         // occurrences instead.
-        let hits = self.find(query, false);
+        // Every replacement leaves an executor entry. The interactive search
+        // limit must not truncate either the count or this undo group's size.
+        let hits = self.find_with_limit(query, false, usize::MAX);
         if hits.is_empty() {
             return Ok(0);
         }
@@ -2440,7 +2452,6 @@ impl NativeDocument {
         paragraph: usize,
         offset: usize,
     ) -> Result<Duration, String> {
-        let pages = self.page_count().max(1);
         self.apply_and_repaint(
             paragraph,
             HeadlessCommand::InsertParagraphBreak {
@@ -2448,7 +2459,9 @@ impl NativeDocument {
                 offset,
                 count: 1,
             },
-            pages,
+            // Splitting can create more pages than the previous pagination.
+            // The old count would stop before the newly displaced tail.
+            usize::MAX,
         )
     }
 
@@ -2537,9 +2550,7 @@ impl NativeDocument {
         keep_selection: bool,
     ) -> Result<(), String> {
         let before = self.selection;
-        self.redo_history.clear();
-        self.history
-            .push(HistoryStep::Command { executor_steps: 1 });
+        let recorded = self.executor.history_revision();
         let after = self.edit_in_place(|this| {
             apply_headless_commands_with_executor_to_document(
                 &mut this.word_document,
@@ -2553,19 +2564,11 @@ impl NativeDocument {
         let after = match after {
             Ok(after) => after,
             Err(err) => {
-                // Nothing was recorded, so neither is the step.
-                self.history.pop();
                 self.selection = before;
                 return Err(format!("edit failed: {err:?}"));
             }
         };
-        self.selection = if keep_selection {
-            before
-        } else {
-            after.or(before)
-        };
-        self.renderer.set_selection_range(self.selection);
-        self.repaint_all().map(|_| ())
+        self.finish_recorded_edit(recorded, before, after, keep_selection)
     }
 
     /// Runs `edit` on the document with the renderer's hold on it let go,
@@ -2674,7 +2677,6 @@ impl NativeDocument {
         } else {
             after.or(before)
         };
-        self.renderer.set_selection_range(self.selection);
         self.repaint_all().map(|_| ())
     }
 
@@ -2693,8 +2695,8 @@ impl NativeDocument {
         self.apply_and_repaint_grouped(paragraph, command, visible_end_page_1idx, 1)
     }
 
-    /// As [`Self::apply_and_repaint`], for a command that leaves more than one
-    /// entry on the executor's stack.
+    /// As [`Self::apply_and_repaint`], grouping a command's multiple executor
+    /// edits before they can evict older undo entries.
     fn apply_and_repaint_grouped(
         &mut self,
         paragraph: usize,
@@ -2708,23 +2710,57 @@ impl NativeDocument {
         let text_edit_cache = matches!(&command, HeadlessCommand::InsertText { .. })
             .then(|| self.renderer.local_text_edit_cache());
         let recorded = self.executor.history_revision();
+        let before = self.selection;
+        let group_commands = executor_steps > 1;
         // Through the executor so the edit lands on the undo stack. The plain
         // apply does the same edit without recording anything.
-        // A fresh edit drops the redo branch, the same way the executor does.
-        self.redo_history.clear();
-        self.history.push(HistoryStep::Command { executor_steps });
-        self.selection = self
-            .edit_in_place(|this| {
-                apply_headless_commands_with_executor_to_document(
-                    &mut this.word_document,
-                    &mut this.executor,
-                    this.selection.take(),
-                    &HeadlessEditRequest {
-                        commands: vec![command],
-                    },
-                )
-            })
-            .map_err(|err| format!("edit failed: {err:?}"))?;
+        let after = self.edit_in_place(|this| {
+            if group_commands {
+                this.executor.begin_group();
+            }
+            let result = apply_headless_commands_with_executor_to_document(
+                &mut this.word_document,
+                &mut this.executor,
+                this.selection.take(),
+                &HeadlessEditRequest {
+                    commands: vec![command],
+                },
+            );
+            if group_commands {
+                match result {
+                    Ok(after) => {
+                        this.executor.end_group();
+                        Ok(after)
+                    }
+                    Err(err) => {
+                        let mut selection = before;
+                        let mut ctx = CommandContext::new(&mut this.word_document, &mut selection);
+                        this.executor.abort_group(&mut ctx);
+                        Err(err)
+                    }
+                }
+            } else {
+                result
+            }
+        });
+        self.selection = match after {
+            Ok(after) => after,
+            Err(err) => {
+                self.selection = before;
+                if group_commands {
+                    self.repaint_all()?;
+                }
+                return Err(format!("edit failed: {err:?}"));
+            }
+        };
+        // Rejected and no-op edits preserve the redo branch and group sizes,
+        // just as the executor does. Only an actual edit records a shell step.
+        if self.executor.history_revision() != recorded {
+            self.redo_history.clear();
+            self.history
+                .push(HistoryStep::Command { executor_steps: 1 });
+        }
+        self.renderer.set_selection_range_for_render(self.selection);
 
         let edited = self
             .word_document
