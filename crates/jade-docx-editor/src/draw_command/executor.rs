@@ -1265,13 +1265,15 @@ fn try_execute_bmp_glyph_run_batch<P: Painter>(
     text.clear();
     x_positions.clear();
     font_indexes.clear();
-    text.reserve(glyphs.len());
     x_positions.reserve(glyphs.len());
 
     // Restore storage on every return, including declined runs and backend errors.
     let result = (|| {
         let mut single_font_index: Option<u16> = None;
         let mut single_font_run = true;
+        let text_start = glyphs.first().map_or(0, |glyph| glyph.text_start as usize);
+        let mut text_end = text_start;
+        let mut contiguous = true;
 
         for glyph in glyphs {
             if fonts.get(glyph.font_index as usize).is_none() {
@@ -1296,12 +1298,25 @@ fn try_execute_bmp_glyph_run_batch<P: Painter>(
                 None => single_font_index = Some(glyph.font_index),
                 _ => {}
             }
-            text.push(ch);
+            contiguous &= text_end == glyph.text_start as usize;
+            text_end = glyph.text_end as usize;
             x_positions.push(x + glyph.x_offset);
             if !single_font_run {
                 font_indexes.push(glyph.font_index);
             }
         }
+
+        // Ordinary runs already occupy one validated slice of the source. Only
+        // subsets with gaps, reordered glyphs or repeated glyphs need a copy.
+        let batch_text = if contiguous {
+            &run_text[text_start..text_end]
+        } else {
+            text.reserve(glyphs.len());
+            for glyph in glyphs {
+                text.push_str(glyph.text(run_text).expect("validated glyph text"));
+            }
+            text.as_str()
+        };
 
         if single_font_run {
             let Some(font_descriptor) =
@@ -1310,12 +1325,12 @@ fn try_execute_bmp_glyph_run_batch<P: Painter>(
                 return Ok(false);
             };
             font_state.set_font_rc_if_changed(context, font_descriptor);
-            if !context.try_fill_glyph_run_batch(text, x_positions, y)? {
+            if !context.try_fill_glyph_run_batch(batch_text, x_positions, y)? {
                 return Ok(false);
             }
         } else {
             if !context.try_fill_glyph_run_batch_multi_font(
-                text,
+                batch_text,
                 x_positions,
                 font_indexes,
                 fonts,

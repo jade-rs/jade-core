@@ -308,17 +308,79 @@ fn warm_storage_survives_backend_errors() {
     }
 }
 
+#[test]
+fn growing_contiguous_cjk_run_only_grows_position_storage() {
+    let painter = ProbePainter::new(false);
+    let mut tracker = FontStateTracker::new();
+    let small = run(&[(0, 0, 0)]);
+    execute_command_with_font_state(&painter, &small, &mut tracker).unwrap();
+    let large = run(&vec![(1, 0, 17); 4096]);
+    let allocations = allocations_during(|| {
+        execute_command_with_font_state(&painter, &large, &mut tracker).unwrap();
+    });
+    assert_eq!(allocations, 1, "contiguous text needs only position growth");
+}
+
+#[test]
+fn glyph_subsets_gaps_and_reordering_preserve_exact_text() {
+    let painter = ProbePainter::new(true);
+    let mut tracker = FontStateTracker::new();
+    for indexes in [vec![1, 2], vec![0, 2], vec![2, 1, 0], vec![1, 1], vec![]] {
+        for mode in [BatchMode::Accept, BatchMode::Decline, BatchMode::Error] {
+            let mut command = run(&[(0, 0, 0), (1, 1, 11), (2, 0, 53)]);
+            let DrawCommand::TextRun { glyphs, .. } = &mut command else {
+                unreachable!()
+            };
+            let source = glyphs.clone();
+            *glyphs = indexes.iter().map(|index| source[*index].clone()).collect();
+            painter.mode.set(mode);
+            painter.glyphs.borrow_mut().clear();
+            let DrawCommand::TextRun {
+                text,
+                fonts,
+                glyphs,
+                x,
+                y,
+                ..
+            } = &command
+            else {
+                unreachable!()
+            };
+            let error = matches!(mode, BatchMode::Error) && !glyphs.is_empty();
+            let expected: Vec<_> = if error {
+                Vec::new()
+            } else {
+                glyphs
+                    .iter()
+                    .map(|glyph| PaintedGlyph {
+                        text: text[glyph.text_start as usize..glyph.text_end as usize].to_owned(),
+                        font: fonts[usize::from(glyph.font_index)].to_string(),
+                        x: x + glyph.x_offset,
+                        y: *y,
+                    })
+                    .collect()
+            };
+            assert_eq!(
+                execute_command_with_font_state(&painter, &command, &mut tracker),
+                if error { Err("batch failed") } else { Ok(()) },
+                "{indexes:?} {mode:?}"
+            );
+            assert_eq!(&*painter.glyphs.borrow(), &expected, "{indexes:?} {mode:?}");
+        }
+    }
+}
+
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(128))]
     #[test]
     fn replay_sequences_preserve_glyphs_fonts_positions_and_errors(
-        steps in prop::collection::vec((0u8..5, prop::collection::vec((0u8..6, 0u8..3, -800i16..800), 0..32)), 1..48)
+        steps in prop::collection::vec((0u8..8, prop::collection::vec((0u8..6, 0u8..3, -800i16..800), 0..32)), 1..48)
     ) {
         let painter = ProbePainter::new(true);
         let mut tracker = FontStateTracker::new();
         for (step, (kind, mut parts)) in steps.into_iter().enumerate() {
-            // Four ordinary operations exercise accepted, declined and failed BMP
-            // batches. The fifth retains Unicode clusters and invalid font indexes.
+            // Exercise accepted, declined and failed BMP batches, Unicode clusters,
+            // invalid font indexes, and reversed, sparse and partial glyph runs.
             if kind != 4 {
                 for (symbol, font, _) in &mut parts {
                     *symbol %= 3;
@@ -326,6 +388,14 @@ proptest! {
                 }
             }
             let mut command = run(&parts);
+            if let DrawCommand::TextRun { glyphs, .. } = &mut command {
+                match kind {
+                    5 => { glyphs.reverse(); }
+                    6 => { *glyphs = glyphs.iter().step_by(2).cloned().collect(); }
+                    7 => { if !glyphs.is_empty() { glyphs.remove(0); } }
+                    _ => {}
+                }
+            }
             if kind == 4 {
                 if let DrawCommand::TextRun { glyphs, .. } = &mut command {
                     if let Some(glyph) = glyphs.first_mut() { glyph.text_start += 1; }
