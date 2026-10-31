@@ -8076,7 +8076,13 @@ fn ensure_lines_fit_available_width<C: LineWrapContext>(
                 if width - trailing_space_width <= effective_available + WRAP_FIT_TOLERANCE_PX {
                     break;
                 }
-                if is_justified_alignment(&paragraph_style.alignment) {
+                // The direct transfer needs a following line; an overfull
+                // final line goes through the final-line repair below, which
+                // starts one. Taking this path there indexed past the lines
+                // and aborted the layout.
+                if is_justified_alignment(&paragraph_style.alignment)
+                    && line_index + 1 < lines.len()
+                {
                     if lines[line_index].clusters.len() <= 1 {
                         break;
                     }
@@ -13881,6 +13887,37 @@ mod tests {
             infos.get(1).map(|line| line.text.as_str()),
             Some("Hello World ")
         );
+    }
+
+    #[test]
+    fn justified_overfull_final_line_ending_in_spaces_wraps_without_a_next_line() {
+        // A justified line whose content overflows and which ends in spaces
+        // moves its trailing word straight onto the next line. When that line
+        // was the paragraph's last, there was no next line to take it and the
+        // layout indexed past its lines.
+        let ctx = VariableWidthContext::new(5.0, 2.0);
+        let paragraph = ParagraphStyle {
+            alignment: "both".into(),
+            ..ParagraphStyle::default()
+        };
+        let text = "折り返し long text ".repeat(16);
+        for width in 20..400 {
+            let lines = wrap_text_into_lines(
+                &ctx,
+                &text,
+                &[make_run(&text)],
+                0.0,
+                &paragraph,
+                0,
+                width as f64,
+            )
+            .unwrap();
+            let rejoined: String = collect_line_infos(&lines)
+                .into_iter()
+                .map(|line| line.text)
+                .collect();
+            assert_eq!(rejoined, text, "width {width}");
+        }
     }
 
     #[test]
