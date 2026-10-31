@@ -965,7 +965,7 @@ impl WordDocument {
             None if self.paragraph_count() == 0 => 0,
             _ => return Err("blocks go after top-level body paragraphs".to_string()),
         };
-        self.insert_field_block_at(body_index, instruction, lines, None)
+        self.insert_field_block_at(body_index, instruction, lines, None, None)
     }
 
     /// Replaces a field block's paragraphs with new ones under a new
@@ -977,8 +977,14 @@ impl WordDocument {
         lines: &[FieldBlockLine],
     ) -> Result<SelectionRange, String> {
         let instruction = Self::validate_field_block_instruction(instruction)?;
-        self.replace_field_block_content(block, |document, start, location| {
-            document.insert_field_block_at(start, instruction, lines, Some(location))
+        self.replace_field_block_content(block, |document, start, location, tab_twips| {
+            document.insert_field_block_at(
+                start,
+                instruction,
+                lines,
+                Some(location),
+                Some(tab_twips),
+            )
         })
     }
 
@@ -988,7 +994,7 @@ impl WordDocument {
     pub(super) fn replace_field_block_content<T>(
         &mut self,
         block: &FieldBlock,
-        insert: impl FnOnce(&mut Self, usize, (XmlNodeId, usize)) -> Result<T, String>,
+        insert: impl FnOnce(&mut Self, usize, (XmlNodeId, usize), i64) -> Result<T, String>,
     ) -> Result<T, String> {
         self.validate_field_block(block)?;
         let body_element =
@@ -1010,17 +1016,12 @@ impl WordDocument {
             Self::paragraph_section_properties_id(raw, ending.node_id?)
                 .and_then(|id| raw.element(id).cloned())
         });
-        let page_settings = self
-            .document
-            .as_ref()
-            .and_then(|doc| doc.page_settings.clone());
+        // Resolve the original section before removing its terminating break.
+        let tab_twips = self.field_tab_position_twips_at(start);
         self.remove_body_elements(start, end)?;
-        // Removing a section break temporarily changes the first section's
-        // page settings. Generate the replacement's tabs with the old metrics.
         let document = self.document_mut().ok_or("document is unavailable")?;
-        document.page_settings = page_settings;
         let remaining = document.body.as_ref().unwrap().elements.len();
-        let result = insert(self, start, location)?;
+        let result = insert(self, start, location, tab_twips)?;
         let body = self
             .document_mut()
             .and_then(|doc| doc.body.as_mut())
@@ -1138,6 +1139,7 @@ impl WordDocument {
         instruction: &str,
         lines: &[FieldBlockLine],
         location: Option<(XmlNodeId, usize)>,
+        tab_twips: Option<i64>,
     ) -> Result<SelectionRange, String> {
         let instruction = Self::validate_field_block_instruction(instruction)?;
         // An empty result still needs a paragraph to hold the field.
@@ -1147,7 +1149,7 @@ impl WordDocument {
         } else {
             lines
         };
-        let tab_twips = self.toc_tab_position_twips();
+        let tab_twips = tab_twips.unwrap_or_else(|| self.field_tab_position_twips_at(body_index));
         let tab_points = tab_twips as f32 / 20.0;
         let mut model_paragraphs = Vec::with_capacity(lines.len());
         let mut xml = String::from(
@@ -1582,7 +1584,7 @@ impl WordDocument {
             },
             _ => return Err("the contents go after top-level body paragraphs".to_string()),
         };
-        let tab_twips = self.toc_tab_position_twips();
+        let tab_twips = self.field_tab_position_twips_at(body_index);
         let mut xml = String::from(
             "<w:document xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\"><w:body>",
         );

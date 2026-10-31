@@ -556,8 +556,17 @@ fn regenerated_field_blocks_preserve_their_section_break() {
     let section = concat!(
         "<w:sectPr w:rsidSect=\"00AABBCC\"><w:type w:val=\"nextPage\"/>",
         "<w:pgSz w:w=\"15840\" w:h=\"12240\" w:orient=\"landscape\"/>",
+        "<w:pgMar w:left=\"720\" w:right=\"720\" w:gutter=\"360\"/>",
         "<w:pgNumType w:fmt=\"lowerRoman\" w:start=\"1\"/></w:sectPr>"
     );
+    for (prefix, section_index, first_width) in [
+        ("", 0, 792.0),
+        (
+            "<w:p><w:pPr><w:sectPr><w:pgSz w:w=\"10000\" w:h=\"14000\"/></w:sectPr></w:pPr><w:r><w:t>Before</w:t></w:r></w:p>",
+            1,
+            500.0,
+        ),
+    ] {
     for wrapped in [false, true] {
         for headings in 0..=2 {
             for operation in [
@@ -580,7 +589,7 @@ fn regenerated_field_blocks_preserve_their_section_break() {
                     field(kind, "cached")
                 ));
                 let body = format!(
-                    "{}{}{}",
+                    "{prefix}{}{}{}",
                     if wrapped {
                         content_control(&block)
                     } else {
@@ -590,7 +599,7 @@ fn regenerated_field_blocks_preserve_their_section_break() {
                     paragraph("<w:r><w:t>After</w:t></w:r>")
                 );
                 let mut doc = load(&package(&body, &[]));
-                assert_eq!(doc.document.as_ref().unwrap().sections.len(), 2);
+                assert_eq!(doc.document.as_ref().unwrap().sections.len(), section_index + 2);
                 for _ in 0..2 {
                     match operation {
                         "TOC-update" => {
@@ -638,7 +647,7 @@ fn regenerated_field_blocks_preserve_their_section_break() {
                         .to_string()
                         .unwrap();
                     assert!(xml.contains(section), "{operation} lost section properties");
-                    assert_eq!(doc.document.as_ref().unwrap().sections.len(), 2);
+                    assert_eq!(doc.document.as_ref().unwrap().sections.len(), section_index + 2);
                     assert_eq!(
                         doc.document
                             .as_ref()
@@ -647,7 +656,7 @@ fn regenerated_field_blocks_preserve_their_section_break() {
                             .as_ref()
                             .unwrap()
                             .width,
-                        Some(792.0)
+                        Some(first_width)
                     );
                     let block = doc.field_blocks().pop().unwrap();
                     for index in block.start..=block.end {
@@ -660,18 +669,93 @@ fn regenerated_field_blocks_preserve_their_section_break() {
                         {
                             assert_eq!(
                                 tab.position,
-                                Some(792.0),
+                                Some(702.0),
                                 "{operation}: tab width changed during regeneration"
                             );
                         }
                     }
                     assert_eq!(
-                        doc.document.as_ref().unwrap().sections[0].end,
+                        doc.document.as_ref().unwrap().sections[section_index].end,
                         block.end + 1
                     );
                     doc = load(&doc.export_docx().unwrap());
-                    assert_eq!(doc.document.as_ref().unwrap().sections.len(), 2);
+                    assert_eq!(doc.document.as_ref().unwrap().sections.len(), section_index + 2);
                 }
+            }
+        }
+    }
+    }
+}
+
+#[test]
+fn inserted_field_tabs_follow_their_own_section() {
+    use crate::word_document::FieldBlockLine;
+    let landscape = concat!(
+        "<w:sectPr><w:pgSz w:w=\"15840\" w:h=\"12240\" w:orient=\"landscape\"/>",
+        "<w:pgMar w:left=\"720\" w:right=\"720\" w:gutter=\"360\"/></w:sectPr>"
+    );
+    for (ending, expected, section_count) in [(landscape, 702.0, 3), ("", 451.3, 2)] {
+        let body = format!(concat!(
+            "<w:p><w:pPr><w:sectPr><w:pgSz w:w=\"10000\" w:h=\"14000\"/></w:sectPr></w:pPr><w:r><w:t>Before</w:t></w:r></w:p>",
+            "<w:p><w:r><w:t>Anchor</w:t></w:r></w:p>",
+            "<w:p><w:pPr>{}</w:pPr><w:r><w:t>Tail</w:t></w:r></w:p>",
+            "<w:p><w:pPr><w:pStyle w:val=\"1\"/></w:pPr><w:r><w:t>Heading</w:t></w:r>{}</w:p>"
+        ), ending, field("XE \"Term\"", ""));
+        for operation in ["TOC", "TOC-leader", "INDEX", "generic-INDEX", "manual"] {
+            let mut doc = load(&package(&body, &[]));
+            match operation {
+                "TOC" => {
+                    doc.insert_table_of_contents(1, &crate::document::TocOptions::default())
+                        .unwrap();
+                }
+                "TOC-leader" => {
+                    doc.insert_table_of_contents_with_leader(
+                        1,
+                        &crate::document::TocOptions::default(),
+                        "dot",
+                    )
+                    .unwrap();
+                }
+                "INDEX" => {
+                    doc.insert_index_after_paragraph(1).unwrap();
+                }
+                "generic-INDEX" => {
+                    doc.insert_field_block(
+                        1,
+                        "INDEX",
+                        &[FieldBlockLine {
+                            text: "Term".into(),
+                            page: Some("1".into()),
+                            ..FieldBlockLine::default()
+                        }],
+                    )
+                    .unwrap();
+                }
+                _ => {
+                    doc.insert_manual_table_of_contents(
+                        1,
+                        "Contents",
+                        &[(1, "Heading".into(), "1".into())],
+                        "dot",
+                    )
+                    .unwrap();
+                }
+            }
+            for _ in 0..2 {
+                assert_eq!(doc.document.as_ref().unwrap().sections.len(), section_count);
+                let tabs = (0..doc.paragraph_count())
+                    .filter_map(|index| doc.paragraph(index))
+                    .flat_map(|p| p.properties.iter().flat_map(|p| &p.tabs))
+                    .collect::<Vec<_>>();
+                assert!(!tabs.is_empty(), "{operation}");
+                for tab in tabs {
+                    assert!(
+                        tab.position
+                            .is_some_and(|position| (position - expected).abs() < 0.001),
+                        "{operation}: {tab:?} should end at {expected}"
+                    );
+                }
+                doc = load(&doc.export_docx().unwrap());
             }
         }
     }
