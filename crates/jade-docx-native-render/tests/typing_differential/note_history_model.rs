@@ -432,6 +432,29 @@ fn check_sequence(operations: &[Operation]) {
 }
 
 #[test]
+fn typing_after_deleting_body_text_keeps_note_reference_rendering() {
+    check_sequence(&[
+        Operation::Replace(0, 117, 242, false, String::new()),
+        Operation::Append(0, "日".into()),
+    ]);
+}
+
+#[test]
+fn typing_after_deleting_body_text_keeps_endnote_reference_rendering() {
+    check_sequence(&[
+        Operation::ReplaceAll(1, String::new()),
+        Operation::Append(1, "日".into()),
+    ]);
+}
+
+#[test]
+fn replacing_all_body_text_keeps_note_reference_rendering() {
+    for target in [0, 1] {
+        check_sequence(&[Operation::ReplaceAll(target, "日".into())]);
+    }
+}
+
+#[test]
 fn replacing_note_links_and_undo_restores_saved_text() {
     for target in [2, 4] {
         let initial = State::default();
