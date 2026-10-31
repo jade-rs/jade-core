@@ -2537,6 +2537,7 @@ impl WordDocument {
             // order the copy overrode the real styles (`table-repeating-header`:
             // Title 26pt in the copy, 22pt in `styles.xml`, which Word for Mac
             // prints).
+            let mut styles_read = false;
             for rel in doc_part
                 .relationships
                 .iter()
@@ -2545,6 +2546,7 @@ impl WordDocument {
                 let target_path = Self::resolve_target_path(&doc_part.path, &rel.target);
                 document.load_part(&target_path)?;
                 if let Some(part) = document.parts.get(&target_path) {
+                    styles_read = true;
                     if let Some(styles_part) = document.styles_part.as_mut() {
                         styles_part.parse(&part.content)?;
                     } else {
@@ -2572,6 +2574,7 @@ impl WordDocument {
                     document.load_part(&target_path)?;
 
                     if let Some(part) = document.parts.get(&target_path) {
+                        styles_read = true;
                         if let Some(styles_part) = document.styles_part.as_mut() {
                             styles_part.parse(&part.content)?;
                         } else {
@@ -2767,6 +2770,12 @@ impl WordDocument {
                 Self::watermark_text_from_loaded_headers(&document, &parsed_doc, &doc_part);
             document.even_and_odd_headers = doc_settings.even_and_odd_headers;
 
+            // A package without `styles.xml` is laid out with Word's built-in
+            // styles, not the spec's Times New Roman 10 pt fallback. The
+            // package is not given a styles part until an edit writes one.
+            if !styles_read {
+                document.styles_part = Some(StylesPart::word_default());
+            }
             // Before the styles fill paragraphs in: the paragraph a textless
             // shape is given takes the defaults a `w:p` in its text box would
             // be read with, which it is saved as once edited.
@@ -48471,7 +48480,9 @@ mod tests {
                         let state = doc.hf_paragraph_run_state(role, variant, index).unwrap();
                         assert_eq!(state.all_bold, offset == 0);
                         assert_eq!(state.all_italic, offset == 4);
-                        assert_eq!(state.font_size, (offset == 0).then_some(18.0));
+                        // The fixture has no styles part: a run without its own
+                        // size takes Word's built-in 10.5 pt.
+                        assert_eq!(state.font_size, Some(if offset == 0 { 18.0 } else { 10.5 }));
                         assert_eq!(state.color.as_deref(), (offset == 4).then_some("#DC2626"));
                     }
                     let xml = doc.read_xml_part_content(&path).unwrap();
