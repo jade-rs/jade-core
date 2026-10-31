@@ -651,3 +651,28 @@ fn the_format_painter_stamps_the_source_shape_from_a_single_cell() {
     assert!(workbook.undo().expect("undo"));
     assert_eq!(workbook.cell(SHEET, "F4").expect("cell").display, "4");
 }
+
+#[test]
+fn clear_formats_puts_the_default_style_back_and_keeps_values() {
+    let mut workbook = open();
+    set(
+        &mut workbook,
+        &[
+            ("G1", CellInput::Number(100.0)),
+            ("G2", CellInput::Formula("=G1*2".into())),
+        ],
+    );
+    workbook
+        .copy_format(SHEET, "B4:B4", "G1:G2")
+        .expect("format");
+    assert_eq!(workbook.cell(SHEET, "G2").expect("cell").display, "¥200");
+    assert_eq!(workbook.clear_formats(SHEET, "G1:G3").expect("clear"), 2);
+    assert_eq!(workbook.cell(SHEET, "G1").expect("cell").display, "100");
+    let g2 = workbook.cell(SHEET, "G2").expect("cell");
+    assert_eq!(g2.display, "200");
+    assert!(g2.formula.is_some_and(|formula| formula.contains("G1*2")));
+    // Nothing styled left: nothing written.
+    assert_eq!(workbook.clear_formats(SHEET, "G1:G3").expect("clear"), 0);
+    assert!(workbook.undo().expect("undo"));
+    assert_eq!(workbook.cell(SHEET, "G2").expect("cell").display, "¥200");
+}
