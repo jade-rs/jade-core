@@ -209,6 +209,10 @@ pub struct Model<'a> {
     pub(crate) evaluating_names: std::collections::HashSet<(Option<u32>, String)>,
     /// An optimization to lookup strings faster
     pub(crate) shared_strings: HashMap<String, usize>,
+    /// Per sheet, where each R1C1 formula sits in `shared_formulas` and how
+    /// many entries are indexed, so loading a sheet of distinct formulas is
+    /// not quadratic. Every hit is checked against the list itself.
+    pub(crate) shared_formula_index: HashMap<u32, (usize, HashMap<String, usize>)>,
     /// An instance of the parser
     pub(crate) parser: Parser<'a>,
     /// The list of cells with formulas that are evaluated or being evaluated
@@ -1815,6 +1819,7 @@ impl<'a> Model<'a> {
             workbook,
             parsed_formulas,
             shared_strings,
+            shared_formula_index: HashMap::new(),
             parsed_defined_names: HashMap::new(),
             evaluating_names: std::collections::HashSet::new(),
             parser,
@@ -2693,7 +2698,9 @@ impl<'a> Model<'a> {
 
         let s = to_rc_format(&parsed_formula);
         let mut formula_index: i32 = -1;
-        if let Some(index) = shared_formulas.iter().position(|x| x == &s) {
+        if let Some(index) =
+            find_shared_formula(&mut self.shared_formula_index, sheet, shared_formulas, &s)
+        {
             formula_index = index as i32;
         }
         if formula_index == -1 {
@@ -2742,7 +2749,9 @@ impl<'a> Model<'a> {
 
         let s = to_rc_format(&parsed_formula);
         let mut formula_index: i32 = -1;
-        if let Some(index) = shared_formulas.iter().position(|x| x == &s) {
+        if let Some(index) =
+            find_shared_formula(&mut self.shared_formula_index, sheet, shared_formulas, &s)
+        {
             formula_index = index as i32;
         }
         if formula_index == -1 {
@@ -4127,5 +4136,38 @@ mod tests {
         model.evaluate();
         assert_eq!(update_result, Ok(()));
         assert_eq!(model._get_formula("A1"), *"=-A2*2");
+    }
+}
+
+/// Where `formula` sits in a sheet's `shared` list, through `cache`: the
+/// entries appended since the last lookup are indexed first, and a stale
+/// hit (the list rewritten in place) rebuilds the index.
+fn find_shared_formula(
+    cache: &mut HashMap<u32, (usize, HashMap<String, usize>)>,
+    sheet: u32,
+    shared: &[String],
+    formula: &str,
+) -> Option<usize> {
+    let (covered, index) = cache.entry(sheet).or_default();
+    if *covered > shared.len() {
+        index.clear();
+        *covered = 0;
+    }
+    for (at, entry) in shared.iter().enumerate().skip(*covered) {
+        index.entry(entry.clone()).or_insert(at);
+    }
+    *covered = shared.len();
+    match index.get(formula) {
+        Some(&at) if shared.get(at).is_some_and(|entry| entry == formula) => Some(at),
+        Some(_) => {
+            index.clear();
+            for (at, entry) in shared.iter().enumerate() {
+                index.entry(entry.clone()).or_insert(at);
+            }
+            index.get(formula).copied()
+        }
+        // A list rewritten in place could still hold it; adding it again
+        // costs an entry, never a wrong formula.
+        None => None,
     }
 }

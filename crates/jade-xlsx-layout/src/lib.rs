@@ -31,12 +31,12 @@ mod visual_format;
 
 use jade_text_layout::{wrap_text, WrapOptions};
 use jade_xlsx_reader::{
-    Alignment, Border, CellRange, CellRef, CellValue, Color, Font, HorizontalAlignment, ShapeKind,
-    Sheet, StyleTable, EMU_PER_PX,
+    Alignment, Border, CellRange, CellRef, CellValue, Color, Font, HorizontalAlignment, Row,
+    ShapeKind, Sheet, StyleTable, VerticalAlignment, EMU_PER_PX,
 };
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
-use std::collections::{BTreeMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::rc::Rc;
 use unicode_segmentation::UnicodeSegmentation;
 
@@ -125,9 +125,12 @@ impl Default for ResolvedFont {
 /// pattern and colours.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ResolvedFill {
+    /// The pattern, or `gradient` for a gradient fill.
     pub pattern: String,
     pub foreground: Option<Color>,
     pub background: Option<Color>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub gradient: Option<jade_xlsx_reader::GradientFill>,
 }
 
 /// A cell placed on the grid, with everything a painter needs and nothing it
@@ -1038,6 +1041,7 @@ fn layout_sheet_with_workbook(
 
     let mut prepared = Vec::new();
     let mut auto_heights = vec![0.0f32; row_count as usize];
+    let merges = MergeRows::new(&sheet.merges);
     for row in &sheet.rows {
         let mut blockers: Vec<(u32, u32)> = row
             .cells
@@ -1050,10 +1054,8 @@ fn layout_sheet_with_workbook(
             })
             .map(|cell| (cell.reference.column, cell.reference.column))
             .chain(
-                sheet
-                    .merges
-                    .iter()
-                    .filter(|range| range.start.row <= row.index && row.index <= range.end.row)
+                merges
+                    .in_row(row.index)
                     .map(|range| (range.start.column, range.end.column)),
             )
             .collect();
@@ -1079,7 +1081,7 @@ fn layout_sheet_with_workbook(
         for cell in &row.cells {
             // A cell inside a merged range that does not anchor it is covered
             // by the anchor and must not paint its own box or text.
-            let merge = sheet.merge_at(cell.reference).copied();
+            let merge = merges.at(cell.reference).copied();
             if merge.is_some_and(|range| range.start != cell.reference) {
                 continue;
             }
@@ -1119,8 +1121,21 @@ fn layout_sheet_with_workbook(
                 .or_else(|| format.and_then(|format| styles.number_format_code(format)));
             let mut alignment = format.map(|format| format.alignment).unwrap_or_default();
             alignment.horizontal = resolve_horizontal(alignment.horizontal, &cell.value);
+            // Justified and distributed text wraps in Excel whether or not
+            // Wrap Text is ticked; layout and painting see it as wrapped.
+            if matches!(
+                alignment.horizontal,
+                HorizontalAlignment::Justify | HorizontalAlignment::Distributed
+            ) || matches!(
+                alignment.vertical,
+                VerticalAlignment::Justify | VerticalAlignment::Distributed
+            ) {
+                alignment.wrap_text = true;
+            }
             let text_inset_px = match alignment.horizontal {
-                HorizontalAlignment::Left | HorizontalAlignment::Right => {
+                HorizontalAlignment::Left
+                | HorizontalAlignment::Right
+                | HorizontalAlignment::Distributed => {
                     options.measure.measure("   ", &normal_style_font) * f64::from(alignment.indent)
                 }
                 _ => 0.0,
@@ -1142,6 +1157,20 @@ fn layout_sheet_with_workbook(
             };
             let shown = one_line.as_deref().unwrap_or(&text);
 
+            // Center Across Selection: the text centres over the empty cells
+            // to its right that are aligned the same way. With none, it is
+            // centred text, spilling as that does.
+            let continuous_span = match alignment.horizontal {
+                HorizontalAlignment::CenterContinuous if merge.is_none() && !text.is_empty() => {
+                    center_continuous_span(sheet, styles, row, cell.reference, &columns)
+                }
+                _ => None,
+            };
+            if alignment.horizontal == HorizontalAlignment::CenterContinuous
+                && continuous_span.is_none()
+            {
+                alignment.horizontal = HorizontalAlignment::Center;
+            }
             let filter_reserve =
                 filter_button::text_reserve(&filter_definitions, cell.reference, merge, &columns);
             let text_width = span_width(&columns, cell.reference, merge.as_ref()) - filter_reserve;
@@ -1164,6 +1193,7 @@ fn layout_sheet_with_workbook(
             } else {
                 None
             };
+            let overflow = continuous_span.or(overflow);
 
             if alignment.shrink_to_fit && !alignment.wrap_text && !text.is_empty() {
                 let available =
@@ -1212,6 +1242,23 @@ fn layout_sheet_with_workbook(
                     let mut filled = text.clone();
                     filled.insert_str(at, &character.to_string().repeat(count));
                     filled
+                }
+                _ => drawing_text,
+            };
+            // Fill repeats the text as many whole times as the cell holds.
+            let drawing_text = match alignment.horizontal {
+                HorizontalAlignment::Fill
+                    if !drawing_text.is_empty() && alignment.text_rotation == 0 =>
+                {
+                    let width =
+                        (text_width - options.cell_padding_px * 2.0 - text_inset_px).max(0.0);
+                    let unit = options.measure.measure(&drawing_text, &font);
+                    let count = if unit > 0.0 {
+                        (width / unit).floor().clamp(1.0, 1000.0) as usize
+                    } else {
+                        1
+                    };
+                    drawing_text.repeat(count)
                 }
                 _ => drawing_text,
             };
@@ -1380,7 +1427,7 @@ fn layout_sheet_with_workbook(
     let cells = prepared
         .into_iter()
         .filter_map(|cell| {
-            let rect = cell_rect(cell.reference, sheet, &columns, &rows)?;
+            let rect = merged_rect(cell.reference, cell.merge.as_ref(), &columns, &rows)?;
             Some(PlacedCell {
                 reference: cell.reference,
                 rect,
@@ -1451,13 +1498,11 @@ fn layout_sheet_with_workbook(
                 icon: cell.icon.map(|icon| {
                     let size = icon_size_px(&cell.font, rect.height - 2.0);
                     let y = match cell.alignment.vertical {
-                        jade_xlsx_reader::VerticalAlignment::Top => rect.y + 1.0,
-                        jade_xlsx_reader::VerticalAlignment::Center => {
+                        VerticalAlignment::Top | VerticalAlignment::Justify => rect.y + 1.0,
+                        VerticalAlignment::Center | VerticalAlignment::Distributed => {
                             rect.y + (rect.height - size) / 2.0
                         }
-                        jade_xlsx_reader::VerticalAlignment::Bottom => {
-                            rect.y + rect.height - size - 2.0
-                        }
+                        VerticalAlignment::Bottom => rect.y + rect.height - size - 2.0,
                     };
                     PlacedIcon {
                         icon_set: icon.icon_set,
@@ -1571,6 +1616,18 @@ fn resolve_font(font: Option<&Font>, fallback: &ResolvedFont) -> ResolvedFont {
 }
 
 fn resolve_fill(fill: &jade_xlsx_reader::Fill) -> Option<ResolvedFill> {
+    if let Some(gradient) = fill
+        .gradient
+        .as_ref()
+        .filter(|gradient| !gradient.stops.is_empty())
+    {
+        return Some(ResolvedFill {
+            pattern: "gradient".into(),
+            foreground: gradient.stops.first().map(|(_, color)| *color),
+            background: gradient.stops.last().map(|(_, color)| *color),
+            gradient: Some(gradient.clone()),
+        });
+    }
     let pattern = fill.pattern.as_deref()?;
     if pattern == "none" {
         return None;
@@ -1579,6 +1636,7 @@ fn resolve_fill(fill: &jade_xlsx_reader::Fill) -> Option<ResolvedFill> {
         pattern: pattern.to_string(),
         foreground: fill.foreground,
         background: fill.background,
+        gradient: None,
     })
 }
 
@@ -1834,6 +1892,92 @@ fn text_overflow(
 }
 
 /// The width a cell's text has, across its merged range when it has one.
+/// A sheet's merged ranges by the rows they cover, so layout asks which
+/// merges a row or cell is in without scanning them all for every cell — a
+/// form laid out in merged cells (Excel 方眼紙) has thousands. A merge
+/// taller than [`MergeRows::TALL`] rows is kept aside and checked for every
+/// row instead.
+struct MergeRows<'a> {
+    by_row: HashMap<u32, Vec<&'a CellRange>>,
+    tall: Vec<&'a CellRange>,
+}
+
+impl<'a> MergeRows<'a> {
+    const TALL: u32 = 4096;
+
+    fn new(merges: &'a [CellRange]) -> Self {
+        let mut by_row: HashMap<u32, Vec<&'a CellRange>> = HashMap::new();
+        let mut tall = Vec::new();
+        for range in merges {
+            if range.end.row.saturating_sub(range.start.row) >= Self::TALL {
+                tall.push(range);
+                continue;
+            }
+            for row in range.start.row..=range.end.row {
+                by_row.entry(row).or_default().push(range);
+            }
+        }
+        Self { by_row, tall }
+    }
+
+    /// The merges that cover `row`, in the sheet's order.
+    fn in_row(&self, row: u32) -> impl Iterator<Item = &'a CellRange> + '_ {
+        self.by_row.get(&row).into_iter().flatten().copied().chain(
+            self.tall
+                .iter()
+                .copied()
+                .filter(move |range| range.start.row <= row && row <= range.end.row),
+        )
+    }
+
+    /// The merge `cell` is in, as [`Sheet::merge_at`] finds it.
+    fn at(&self, cell: CellRef) -> Option<&'a CellRange> {
+        self.in_row(cell.row).find(|range| range.contains(cell))
+    }
+}
+
+/// The span Center Across Selection centres a cell's text over: the cell
+/// and the empty, visible cells right of it that are aligned
+/// `centerContinuous` too. `None` when that is the cell alone.
+fn center_continuous_span(
+    sheet: &Sheet,
+    styles: &StyleTable,
+    row: &Row,
+    reference: CellRef,
+    columns: &[AxisEntry],
+) -> Option<(f64, f64)> {
+    let own = columns.get(reference.column as usize)?;
+    let mut right = own.offset + own.size;
+    let mut column = reference.column + 1;
+    while let Some(entry) = columns.get(column as usize) {
+        let at = CellRef::new(column, reference.row);
+        let found = row
+            .cells
+            .binary_search_by_key(&column, |cell| cell.reference.column)
+            .ok()
+            .map(|index| &row.cells[index]);
+        if found.is_some_and(|cell| !cell.value.is_empty() || cell.formula.is_some())
+            || sheet.merge_at(at).is_some()
+        {
+            break;
+        }
+        let style = sheet.effective_style_index_in_row(
+            at,
+            found.and_then(|cell| cell.style_index),
+            Some(row),
+        );
+        let continues = styles.cell_format(style).is_some_and(|format| {
+            format.alignment.horizontal == HorizontalAlignment::CenterContinuous
+        });
+        if !continues {
+            break;
+        }
+        right = entry.offset + entry.size;
+        column += 1;
+    }
+    (right > own.offset + own.size).then_some((own.offset, right))
+}
+
 fn span_width(columns: &[AxisEntry], reference: CellRef, merge: Option<&CellRange>) -> f64 {
     let last = merge
         .map(|range| range.end.column)
@@ -1882,9 +2026,19 @@ fn cell_rect(
     columns: &[AxisEntry],
     rows: &[AxisEntry],
 ) -> Option<Rect> {
+    merged_rect(reference, sheet.merge_at(reference), columns, rows)
+}
+
+/// [`cell_rect`] with the merged range already found.
+fn merged_rect(
+    reference: CellRef,
+    merge: Option<&CellRange>,
+    columns: &[AxisEntry],
+    rows: &[AxisEntry],
+) -> Option<Rect> {
     let first_column = columns.get(reference.column as usize)?;
     let first_row = rows.get(reference.row as usize)?;
-    let (last_column_index, last_row_index) = match sheet.merge_at(reference) {
+    let (last_column_index, last_row_index) = match merge {
         Some(range) => (range.end.column, range.end.row),
         None => (reference.column, reference.row),
     };

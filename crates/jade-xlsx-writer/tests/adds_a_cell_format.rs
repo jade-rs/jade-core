@@ -243,6 +243,99 @@ fn alignment_merges_into_what_the_base_had() {
 }
 
 #[test]
+fn every_excel_alignment_is_written_and_read_back() {
+    let original = fixture_styles();
+    for (horizontal, attribute) in [
+        (HorizontalAlignment::Fill, "fill"),
+        (HorizontalAlignment::Justify, "justify"),
+        (HorizontalAlignment::CenterContinuous, "centerContinuous"),
+        (HorizontalAlignment::Distributed, "distributed"),
+    ] {
+        let change = FormatChange {
+            horizontal: Some(horizontal),
+            ..FormatChange::default()
+        };
+        let (xml, index) = add_cell_format(&original, None, &change).expect("add");
+        let table = parse_styles_xml(&xml).expect("parse");
+        assert_eq!(
+            table.cell_formats[index as usize].alignment.horizontal,
+            horizontal
+        );
+        assert!(
+            xml.contains(&format!(r#"<alignment horizontal="{attribute}"/>"#)),
+            "{xml}"
+        );
+    }
+    for vertical in [VerticalAlignment::Justify, VerticalAlignment::Distributed] {
+        let change = FormatChange {
+            vertical: Some(vertical),
+            ..FormatChange::default()
+        };
+        let (xml, index) = add_cell_format(&original, None, &change).expect("add");
+        let table = parse_styles_xml(&xml).expect("parse");
+        assert_eq!(
+            table.cell_formats[index as usize].alignment.vertical,
+            vertical
+        );
+    }
+}
+
+#[test]
+fn indent_rotation_and_shrink_are_written_as_excel_writes_them() {
+    let original = fixture_styles();
+    let change = FormatChange {
+        indent: Some(2),
+        text_rotation: Some(90),
+        shrink_to_fit: Some(true),
+        ..FormatChange::default()
+    };
+    let (xml, index) = add_cell_format(&original, None, &change).expect("add");
+    let alignment = parse_styles_xml(&xml).expect("parse").cell_formats[index as usize].alignment;
+    // An indent turns General text left-aligned, as Increase Indent does.
+    assert_eq!(alignment.horizontal, HorizontalAlignment::Left);
+    assert_eq!(alignment.indent, 2);
+    assert_eq!(alignment.text_rotation, 90);
+    assert!(alignment.shrink_to_fit);
+
+    // Centring drops the indent, which Excel keeps only on left, right
+    // and distributed text; zeroes remove the attributes.
+    let (xml, index) = add_cell_format(
+        &xml,
+        Some(index),
+        &FormatChange {
+            horizontal: Some(HorizontalAlignment::Center),
+            text_rotation: Some(0),
+            shrink_to_fit: Some(false),
+            ..FormatChange::default()
+        },
+    )
+    .expect("add");
+    let alignment = parse_styles_xml(&xml).expect("parse").cell_formats[index as usize].alignment;
+    assert_eq!(alignment.horizontal, HorizontalAlignment::Center);
+    assert_eq!((alignment.indent, alignment.text_rotation), (0, 0));
+    assert!(!alignment.shrink_to_fit);
+
+    // Vertical text is 255; anything else past 180 is not a rotation.
+    let stacked = FormatChange {
+        text_rotation: Some(255),
+        ..FormatChange::default()
+    };
+    assert!(add_cell_format(&original, None, &stacked).is_ok());
+    for bad in [
+        FormatChange {
+            text_rotation: Some(200),
+            ..FormatChange::default()
+        },
+        FormatChange {
+            indent: Some(251),
+            ..FormatChange::default()
+        },
+    ] {
+        assert!(add_cell_format(&original, None, &bad).is_err());
+    }
+}
+
+#[test]
 fn font_colour_size_and_name_replace_the_base_ones() {
     let original = fixture_styles();
     let change = FormatChange {

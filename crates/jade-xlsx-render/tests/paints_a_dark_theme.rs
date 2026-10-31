@@ -43,11 +43,13 @@ fn laid_out() -> SheetLayout {
             resolved: Some([0xFF, 0xFF, 0xFF]),
         }),
         background: None,
+        gradient: None,
     });
     styles.fills.push(Fill {
         pattern: Some("solid".into()),
         foreground: Some(Color::Argb([0xFF, 0xFF, 0x00, 0x00])),
         background: None,
+        gradient: None,
     });
     styles.cell_formats.push(CellFormat {
         font_index: Some(0),

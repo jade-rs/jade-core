@@ -8,8 +8,8 @@ use quick_xml::{name::ResolveResult, NsReader};
 
 use crate::error::Result;
 use crate::model::{
-    Alignment, Border, BorderEdge, CellFormat, Color, Fill, Font, HorizontalAlignment, StyleTable,
-    VerticalAlignment,
+    Alignment, Border, BorderEdge, CellFormat, Color, Fill, Font, GradientFill,
+    HorizontalAlignment, StyleTable, VerticalAlignment,
 };
 use crate::theme::ThemePalette;
 use jade_opc::local_name;
@@ -38,6 +38,8 @@ pub fn parse_styles(xml: &str) -> Result<StyleTable> {
     let mut font: Option<Font> = None;
     let mut fill: Option<Fill> = None;
     let mut in_pattern_fill = false;
+    // The position of the gradient `<stop>` whose colour comes next.
+    let mut gradient_stop: Option<f64> = None;
     let mut border: Option<Border> = None;
     let mut border_edge: Option<(&'static str, BorderEdge)> = None;
     let mut format: Option<CellFormat> = None;
@@ -216,6 +218,16 @@ pub fn parse_styles(xml: &str) -> Result<StyleTable> {
                                 edge.color = parse_color(element)?;
                             }
                         }
+                        // A gradient `<stop>`'s colour.
+                        Section::Fills => {
+                            if let (Some(position), Some(color), Some(gradient)) = (
+                                gradient_stop.take(),
+                                parse_color(element)?,
+                                fill.as_mut().and_then(|fill| fill.gradient.as_mut()),
+                            ) {
+                                gradient.stops.push((position, color));
+                            }
+                        }
                         _ => {}
                     },
                     // ---- fill children ----
@@ -224,6 +236,42 @@ pub fn parse_styles(xml: &str) -> Result<StyleTable> {
                         if let Some(fill) = fill.as_mut() {
                             fill.pattern = attribute_value(element, b"patternType")?;
                         }
+                    }
+                    b"gradientFill" if section == Section::Fills => {
+                        if let Some(fill) = fill.as_mut() {
+                            let number = |value: Option<String>| {
+                                value
+                                    .and_then(|value| value.parse::<f64>().ok())
+                                    .filter(|value| value.is_finite())
+                            };
+                            let path =
+                                attribute_value(element, b"type")?.as_deref() == Some("path");
+                            let edge = |name: &[u8]| -> Result<f64> {
+                                Ok(number(attribute_value(element, name)?)
+                                    .unwrap_or(0.0)
+                                    .clamp(0.0, 1.0))
+                            };
+                            fill.gradient = Some(GradientFill {
+                                degree: number(attribute_value(element, b"degree")?).unwrap_or(0.0),
+                                path: if path {
+                                    Some([
+                                        edge(b"left")?,
+                                        edge(b"right")?,
+                                        edge(b"top")?,
+                                        edge(b"bottom")?,
+                                    ])
+                                } else {
+                                    None
+                                },
+                                stops: Vec::new(),
+                            });
+                        }
+                    }
+                    b"stop" if section == Section::Fills => {
+                        gradient_stop = attribute_value(element, b"position")?
+                            .and_then(|value| value.parse::<f64>().ok())
+                            .filter(|value| value.is_finite())
+                            .map(|value| value.clamp(0.0, 1.0));
                     }
                     b"fgColor" if in_pattern_fill => {
                         if let Some(fill) = fill.as_mut() {
@@ -346,8 +394,12 @@ fn parse_alignment(element: &BytesStart<'_>) -> Result<Alignment> {
             b"horizontal" => {
                 alignment.horizontal = match value.as_ref() {
                     "left" => HorizontalAlignment::Left,
-                    "center" | "centerContinuous" => HorizontalAlignment::Center,
+                    "center" => HorizontalAlignment::Center,
                     "right" => HorizontalAlignment::Right,
+                    "fill" => HorizontalAlignment::Fill,
+                    "justify" => HorizontalAlignment::Justify,
+                    "centerContinuous" => HorizontalAlignment::CenterContinuous,
+                    "distributed" => HorizontalAlignment::Distributed,
                     _ => HorizontalAlignment::General,
                 }
             }
@@ -355,6 +407,8 @@ fn parse_alignment(element: &BytesStart<'_>) -> Result<Alignment> {
                 alignment.vertical = match value.as_ref() {
                     "top" => VerticalAlignment::Top,
                     "center" => VerticalAlignment::Center,
+                    "justify" => VerticalAlignment::Justify,
+                    "distributed" => VerticalAlignment::Distributed,
                     _ => VerticalAlignment::Bottom,
                 }
             }
@@ -442,6 +496,15 @@ pub(crate) fn apply_theme_colors(table: &mut StyleTable, theme: &ThemePalette) {
     for fill in &mut table.fills {
         resolve(&mut fill.foreground);
         resolve(&mut fill.background);
+        for (_, color) in fill
+            .gradient
+            .iter_mut()
+            .flat_map(|gradient| gradient.stops.iter_mut())
+        {
+            let mut slot = Some(*color);
+            resolve(&mut slot);
+            *color = slot.unwrap_or(*color);
+        }
     }
     for border in &mut table.borders {
         for edge in [

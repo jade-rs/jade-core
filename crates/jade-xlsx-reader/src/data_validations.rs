@@ -55,6 +55,10 @@ pub fn parse_data_validations(xml: &str) -> Result<Vec<DataValidation>> {
 /// Standard rules first, then recognized x14 extension containers in document
 /// order. Foreign/nested lookalikes and records without coverage are excluded.
 pub fn validation_records(xml: &str) -> Result<Vec<ValidationRecord>> {
+    // Most sheets have no rules; the whole part need not be parsed to say so.
+    if !xml.contains("dataValidation") {
+        return Ok(Vec::new());
+    }
     let mut reader = NsReader::from_str(xml);
     let mut stack: Vec<(Vec<u8>, Vec<u8>)> = Vec::new();
     let mut main: Option<Vec<u8>> = None;

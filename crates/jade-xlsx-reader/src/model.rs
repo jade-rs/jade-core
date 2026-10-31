@@ -164,6 +164,17 @@ pub struct Row {
     pub cells: Vec<Cell>,
 }
 
+impl Row {
+    /// The cell in `column`, if the row has one. Cells are kept sorted by
+    /// column (the reader sorts them), so this is a binary search.
+    pub fn cell(&self, column: u32) -> Option<&Cell> {
+        self.cells
+            .binary_search_by_key(&column, |cell| cell.reference.column)
+            .ok()
+            .map(|at| &self.cells[at])
+    }
+}
+
 /// One `<col>` entry: a run of columns sharing a width.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ColumnSpan {
@@ -834,6 +845,34 @@ impl Sheet {
             .find(|span| column >= span.first && column <= span.last)
     }
 
+    /// The row at `index`, if the sheet has one. Rows are kept sorted by
+    /// index (the reader sorts them), so this is a binary search.
+    pub fn row(&self, index: u32) -> Option<&Row> {
+        self.rows
+            .binary_search_by_key(&index, |row| row.index)
+            .ok()
+            .map(|at| &self.rows[at])
+    }
+
+    /// The cell at `reference`, if the sheet has one; a binary search over
+    /// the sorted rows and the row's sorted cells.
+    pub fn cell_at(&self, reference: CellRef) -> Option<&Cell> {
+        self.row(reference.row)?.cell(reference.column)
+    }
+
+    /// [`Sheet::cell_at`], to change.
+    pub fn cell_at_mut(&mut self, reference: CellRef) -> Option<&mut Cell> {
+        let row = self
+            .rows
+            .binary_search_by_key(&reference.row, |row| row.index)
+            .ok()?;
+        let cells = &mut self.rows[row].cells;
+        let at = cells
+            .binary_search_by_key(&reference.column, |cell| cell.reference.column)
+            .ok()?;
+        Some(&mut cells[at])
+    }
+
     /// The style Excel applies at `reference`.
     ///
     /// A cell's explicit style wins. Otherwise an intentional row style wins
@@ -844,8 +883,7 @@ impl Sheet {
         reference: CellRef,
         cell_style_index: Option<u32>,
     ) -> Option<u32> {
-        let row = self.rows.iter().find(|row| row.index == reference.row);
-        self.effective_style_index_in_row(reference, cell_style_index, row)
+        self.effective_style_index_in_row(reference, cell_style_index, self.row(reference.row))
     }
 
     /// The same resolution when the caller already has the containing row.
@@ -974,6 +1012,22 @@ pub struct Fill {
     pub pattern: Option<String>,
     pub foreground: Option<Color>,
     pub background: Option<Color>,
+    /// A `<gradientFill>` in place of the pattern.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub gradient: Option<GradientFill>,
+}
+
+/// A cell's gradient: colour stops along a line at an angle, or out from
+/// a rectangle (`type="path"`) to the cell's edges.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct GradientFill {
+    /// Degrees clockwise from left-to-right, for a linear gradient.
+    pub degree: f64,
+    /// The inner rectangle of a path gradient, as fractions of the cell
+    /// from its left, right, top and bottom edges; `None` for linear.
+    pub path: Option<[f64; 4]>,
+    /// Positions 0–1 with their colours, in order.
+    pub stops: Vec<(f64, Color)>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -1008,6 +1062,16 @@ pub enum HorizontalAlignment {
     Left,
     Center,
     Right,
+    /// The text repeated across the cell, never spilling into neighbours.
+    Fill,
+    /// Wrapped, each line but the last spread to both edges.
+    Justify,
+    /// Centred across the empty cells to its right that are aligned the
+    /// same way (Center Across Selection).
+    CenterContinuous,
+    /// Wrapped, every line spread evenly across the cell (均等割り付け),
+    /// the indent kept at both edges.
+    Distributed,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
@@ -1016,6 +1080,10 @@ pub enum VerticalAlignment {
     Center,
     #[default]
     Bottom,
+    /// Lines spread from the top edge to the bottom; one line sits at the top.
+    Justify,
+    /// Lines spread evenly over the height; one line is centred.
+    Distributed,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, Default)]
