@@ -436,20 +436,6 @@ impl NativeDocument {
             return Err("PDF scale must be finite and between 0.5 and 4".to_string());
         }
         let (width, height) = self.layout_page_size();
-        let host = SkiaRenderHost::recording_with_fonts(
-            width,
-            height,
-            &self.fonts,
-            pdf_options,
-            self.pages.borrow().len(),
-        )
-        .ok_or_else(|| "could not create PDF recording pages".to_string())?;
-        let pages = host.pages();
-        let count = host.rendered_pages();
-        let mut renderer = CanvasRenderer::<SkiaPainter>::with_host(Box::new(host), false)
-            .map_err(|_| "PDF renderer setup failed".to_string())?;
-        register_math_face(&mut renderer, self.math_face.as_slice());
-        renderer.sync_word_document(&self.word_document);
         let mut options = self.options.clone();
         options.show_formatting_marks = false;
         options.set_formatting_mark_kinds(Default::default());
@@ -461,25 +447,56 @@ impl NativeDocument {
                 options.render_original = false;
             }
         }
-        renderer.set_spelling_export_mode(true);
-        renderer.set_structure_tagging(pdf_options.tagged);
-        renderer.mark_full_repaint();
-        renderer
-            .render_with_numbering(
-                self.word_document
-                    .document
-                    .as_ref()
-                    .ok_or_else(|| "no document".to_string())?,
-                &options,
-                self.word_document.numbering_part.as_ref(),
-                self.word_document.header_lines.as_deref(),
-                self.word_document.footer_lines.as_deref(),
-                Some(&self.word_document.comments),
+        // Export can hide revisions or formatting marks and paginate differently
+        // from the live view. Repaint early NUMPAGES fields only when that
+        // changes the total; retained raster surfaces are never a page count.
+        let mut page_count_hint = self.page_count();
+        let mut attempts = 0;
+        let (mut renderer, pages, count) = loop {
+            // A fresh recording prevents text and structure tags from earlier
+            // pagination attempts from remaining in the searchable PDF.
+            let host = SkiaRenderHost::recording_with_fonts(
+                width,
+                height,
+                &self.fonts,
+                pdf_options,
+                page_count_hint,
             )
-            .map_err(|_| "PDF render failed".to_string())?;
-        if let Some(error) = renderer.take_render_error() {
-            return Err(error);
-        }
+            .ok_or_else(|| "could not create PDF recording pages".to_string())?;
+            let pages = host.pages();
+            let count = host.rendered_pages();
+            let mut renderer = CanvasRenderer::<SkiaPainter>::with_host(Box::new(host), false)
+                .map_err(|_| "PDF renderer setup failed".to_string())?;
+            register_math_face(&mut renderer, self.math_face.as_slice());
+            renderer.sync_word_document(&self.word_document);
+            renderer.set_spelling_export_mode(true);
+            renderer.set_structure_tagging(pdf_options.tagged);
+            renderer.mark_full_repaint();
+            renderer
+                .render_with_numbering(
+                    self.word_document
+                        .document
+                        .as_ref()
+                        .ok_or_else(|| "no document".to_string())?,
+                    &options,
+                    self.word_document.numbering_part.as_ref(),
+                    self.word_document.header_lines.as_deref(),
+                    self.word_document.footer_lines.as_deref(),
+                    Some(&self.word_document.comments),
+                )
+                .map_err(|_| "PDF render failed".to_string())?;
+            if let Some(error) = renderer.take_render_error() {
+                return Err(error);
+            }
+            if count.get() == page_count_hint {
+                break (renderer, pages, count);
+            }
+            attempts += 1;
+            if attempts == 4 {
+                return Err("PDF page count did not stabilize".to_string());
+            }
+            page_count_hint = count.get();
+        };
         let bookmarks = renderer.page_bookmarks(&self.word_document);
         let links = (0..count.get())
             .flat_map(|page| renderer.page_hyperlink_regions(page))

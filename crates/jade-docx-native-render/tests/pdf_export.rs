@@ -92,6 +92,59 @@ fn rewrite_document_xml(xml: impl FnOnce(String) -> String) -> Vec<u8> {
 }
 
 #[test]
+fn pdf_total_pages_excludes_retained_revision_view_surfaces() {
+    let bytes = rewrite_document_xml(|_| {
+        r#"<?xml version="1.0" encoding="UTF-8"?>
+        <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+        <w:body>
+        <w:p><w:r><w:t>Total:</w:t></w:r><w:fldSimple w:instr="NUMPAGES"><w:r><w:t>99</w:t></w:r></w:fldSimple></w:p>
+        <w:p><w:r><w:br w:type="page"/><w:t>Second</w:t></w:r></w:p>
+        <w:p><w:del w:id="1" w:author="Reviewer"><w:r><w:br w:type="page"/></w:r></w:del><w:r><w:t>End</w:t></w:r></w:p>
+        <w:sectPr><w:pgSz w:w="12240" w:h="15840"/><w:pgMar w:top="1440" w:bottom="1440" w:left="1440" w:right="1440"/></w:sectPr>
+        </w:body></w:document>"#.to_string()
+    });
+    let mut editor = common::open_bytes(&bytes);
+    editor.set_formatting_marks(false).unwrap();
+    editor
+        .set_revision_display(true, false, Default::default())
+        .unwrap();
+    assert_eq!(editor.page_count(), 3);
+    for live_markup in [false, true] {
+        editor
+            .set_revision_display(live_markup, false, Default::default())
+            .unwrap();
+        let live_pages = 2 + usize::from(live_markup);
+        assert_eq!(editor.page_count(), live_pages);
+        let before = editor.export_docx().unwrap();
+        let history = (editor.can_undo(), editor.can_redo());
+        for markup in [None, Some(false), Some(true)] {
+            for (rendering, tagged) in [
+                (jade_docx_native_render::PdfRenderingMode::Editor, false),
+                (jade_docx_native_render::PdfRenderingMode::Vector, false),
+                (jade_docx_native_render::PdfRenderingMode::Vector, true),
+            ] {
+                let bytes = editor
+                    .export_pdf_with_options(jade_docx_native_render::PdfExportOptions {
+                        rendering,
+                        markup,
+                        tagged,
+                        ..Default::default()
+                    })
+                    .unwrap();
+                let pdf = Document::load_mem(&bytes).unwrap();
+                let expected = 2 + usize::from(markup.unwrap_or(live_markup));
+                assert_eq!(pdf.get_pages().len(), expected);
+                let text = pdf.extract_text(&[1]).unwrap().replace(['\n', ' '], "");
+                assert_eq!(text, format!("Total:{expected}"), "live={live_markup}, export={markup:?}, rendering={rendering:?}, tagged={tagged}");
+                assert_eq!(editor.page_count(), live_pages);
+                assert_eq!(before, editor.export_docx().unwrap());
+                assert_eq!(history, (editor.can_undo(), editor.can_redo()));
+            }
+        }
+    }
+}
+
+#[test]
 fn malformed_embedded_image_returns_an_error_instead_of_panicking() {
     use std::io::{Cursor, Read, Write};
     let bytes = std::fs::read(common::repo_path("public/fixtures/image-inline.docx")).unwrap();
