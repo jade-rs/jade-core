@@ -13798,6 +13798,79 @@ mod tests {
     }
 
     #[test]
+    fn tracked_formatting_of_a_text_box_paragraph_can_be_rejected() {
+        // shape-preset-geometries.docx has shapes whose paragraphs are not in
+        // the XML until an edit writes them. With changes tracked, setting
+        // their line spacing wrote the paragraph with the new spacing and no
+        // `w:pPrChange`, and a text box paragraph's two copies (DrawingML and
+        // VML) were not read at all: rejecting put the spacing back in the
+        // editor while the saved file kept double spacing.
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/shape-preset-geometries.docx"),
+        )
+        .expect("read fixture");
+        let mut word_doc =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+        assert!(word_doc.is_text_box_paragraph_surface(14));
+        apply_headless_commands_to_document(
+            &mut word_doc,
+            &HeadlessEditRequest {
+                commands: vec![
+                    HeadlessCommand::StartChangeTracking {
+                        author: Some("reviewer".to_string()),
+                        initials: None,
+                        date: None,
+                        date_utc: None,
+                    },
+                    HeadlessCommand::SetParagraphLineSpacing {
+                        start_paragraph: 14,
+                        end_paragraph: 16,
+                        line: Some(Some(2.0)),
+                        line_rule: Some("auto".to_string()),
+                        before: None,
+                        after: Some(0.0),
+                    },
+                ],
+            },
+        )
+        .expect("tracked spacing");
+        assert!(word_doc.paragraph_format_change(14).is_some());
+        apply_headless_commands_to_document(
+            &mut word_doc,
+            &HeadlessEditRequest {
+                commands: vec![HeadlessCommand::RejectRevisions {
+                    kind: None,
+                    start_paragraph: None,
+                    end_paragraph: None,
+                    revision_id: None,
+                    revision_ids: None,
+                    revision_targets: None,
+                }],
+            },
+        )
+        .expect("rejected");
+        let spacing = |word_doc: &WordDocument| {
+            (14..=16)
+                .map(|index| {
+                    word_doc
+                        .paragraph(index)
+                        .and_then(|paragraph| paragraph.properties.as_ref())
+                        .and_then(|props| props.spacing.as_ref())
+                        .and_then(|spacing| spacing.line)
+                })
+                .collect::<Vec<_>>()
+        };
+        let reloaded = executor::block_on(WordDocument::load(
+            &word_doc.export_docx().expect("export"),
+            &Options::default(),
+        ))
+        .expect("reload");
+        assert!(spacing(&word_doc).iter().all(|line| *line != Some(2.0)));
+        assert_eq!(spacing(&reloaded), spacing(&word_doc));
+    }
+
+    #[test]
     fn a_paragraph_style_the_document_lacks_resolves_as_the_default() {
         // table-complex-indented-recursive.docx defines no style "2". Its
         // `w:pStyle` reads as the default paragraph style, as Word and a
