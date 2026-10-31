@@ -25,7 +25,6 @@ pub fn follow_table_headers(
     use crate::NewValue;
     use jade_xlsx_reader::CellValue;
     use std::collections::BTreeMap;
-    let package = jade_opc::OpcPackage::open(original)?;
     let mut parts: BTreeMap<String, (String, Vec<String>)> = BTreeMap::new();
     for edits in sheets {
         let sheet = workbook
@@ -48,8 +47,8 @@ pub fn follow_table_headers(
                 continue;
             }
             if !parts.contains_key(&table.part_name) {
-                let xml = package
-                    .part_str(&table.part_name)?
+                // Only the table part, and only when a header is edited.
+                let xml = jade_opc::read_part_str(original, &table.part_name)?
                     .ok_or_else(|| crate::WriteError::MissingPart(table.part_name.clone()))?;
                 parts.insert(table.part_name.clone(), (xml, table.columns.clone()));
             }
