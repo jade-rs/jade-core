@@ -471,6 +471,59 @@ fn floating_tables_match_word_with_office_arial() {
     }
 }
 
+/// Local opt-in parity check for the spaces beside inline pictures, in the
+/// Yu Mincho Word for Mac ships (`Contents/Resources/DFonts/yumin.ttf`).
+#[test]
+#[ignore = "requires JADE_OFFICE_YU_MINCHO pointing to the captured Office font"]
+fn object_spaces_match_word_with_office_yu_mincho() {
+    set_word_layout_platform(WordLayoutPlatform::Mac);
+    let font = std::env::var("JADE_OFFICE_YU_MINCHO")
+        .expect("set JADE_OFFICE_YU_MINCHO to Office Yu Mincho yumin.ttf");
+    assert_eq!(
+        sha256(&std::fs::read(&font).unwrap()),
+        "926c1f98c3c603656222e0122c6bdabe17817d1c284a69abd4c337276dde9233",
+        "font differs from the Word capture; remeasure rather than fitting coordinates"
+    );
+    let path = std::path::Path::new(&font);
+    let faces = ["Yu Mincho", "游明朝"].map(|family| FaceSpec {
+        family,
+        weight: 400,
+        path,
+    });
+    for (directory, name) in [
+        ("mac-probes-20261019", "word-mac-probe-object-spaces"),
+        (
+            "mac-probes-20261030",
+            "word-mac-probe-object-space-runs-balanced",
+        ),
+        (
+            "mac-probes-20261030",
+            "word-mac-probe-object-space-runs-unbalanced",
+        ),
+    ] {
+        let bytes = std::fs::read(repo_path(&format!("public/fixtures/{name}.docx"))).unwrap();
+        let reference: Value = serde_json::from_slice(
+            &std::fs::read(repo_path(&format!(
+                "tests/word-oracle/{directory}/{name}.json"
+            )))
+            .unwrap(),
+        )
+        .unwrap();
+        assert_eq!(
+            reference["docx_sha256"],
+            sha256(&bytes),
+            "changed source {name}"
+        );
+        let doc = NativeDocument::open(&bytes, 816.0, 1056.0, &faces).unwrap();
+        compare(
+            &word_layout(&reference),
+            &spatial_order(&capture_coordinates(&doc)),
+            WORD_TOLERANCE_PT,
+        )
+        .unwrap_or_else(|error| panic!("{name}: {error}"));
+    }
+}
+
 /// Freeze the painted stories that the legacy body-selection capture omits.
 /// These bundled-font coordinates are regression evidence, not Word agreement.
 #[test]
