@@ -164,3 +164,20 @@ fn show_formulas_shows_a_formula_as_typed_on_the_left() {
         jade_xlsx_reader::HorizontalAlignment::Left
     );
 }
+
+#[test]
+fn error_checking_flags_numbers_stored_as_text_and_formula_errors() {
+    let flagged = |value: CellValue, formula: Option<&str>| {
+        let mut sheet = sheet_with(value);
+        sheet.rows[0].cells[0].formula = formula.map(str::to_string);
+        let layout = layout_sheet(&sheet, &styles("General"), &LayoutOptions::default());
+        layout.cell(CellRef::new(0, 0)).expect("A1").error_flag
+    };
+    assert!(flagged(CellValue::Text("00123".into()), None));
+    assert!(flagged(CellValue::Text(" 1,234.5 ".into()), None));
+    assert!(!flagged(CellValue::Text("abc".into()), None));
+    assert!(!flagged(CellValue::Text("A1".into()), None));
+    assert!(!flagged(CellValue::Number(123.0), None));
+    assert!(flagged(CellValue::Error("#DIV/0!".into()), Some("1/0")));
+    assert!(!flagged(CellValue::Error("#N/A".into()), None));
+}

@@ -200,3 +200,28 @@ fn rendering_the_whole_sheet_is_the_full_viewport() {
 
     assert_eq!(whole.ops(), viewport.ops());
 }
+
+#[test]
+fn a_cell_error_checking_flags_gets_the_green_corner() {
+    let mut sheet = tall_sheet(2);
+    sheet.rows[0].cells[0].value = CellValue::Text("00123".into());
+    let layout = layout_sheet(&sheet, &StyleTable::default(), &LayoutOptions::default());
+    assert!(layout.cell(CellRef::new(0, 0)).expect("A1").error_flag);
+    let viewport = Rect {
+        x: 0.0,
+        y: 0.0,
+        width: 400.0,
+        height: 200.0,
+    };
+    let painter = paint(&layout, viewport);
+    assert!(painter.ops().contains(&Op::SetFillStyle("#00a000".into())));
+    // A number is not flagged.
+    let plain = layout_sheet(
+        &tall_sheet(2),
+        &StyleTable::default(),
+        &LayoutOptions::default(),
+    );
+    assert!(!paint(&plain, viewport)
+        .ops()
+        .contains(&Op::SetFillStyle("#00a000".into())));
+}
