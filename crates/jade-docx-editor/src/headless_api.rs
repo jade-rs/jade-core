@@ -13347,6 +13347,59 @@ mod tests {
     }
 
     #[test]
+    fn a_list_takes_its_levels_left_indent_past_a_direct_first_line() {
+        // table-complex-indented-recursive.docx's "I30F" paragraph sets only
+        // `w:firstLine`; its style sets the left indent. Word inherits indent
+        // per group, so once the paragraph is in a list its left indent is
+        // the level's. Any direct `w:ind` kept the style's left indent in the
+        // model, and the list drew at it until the document was reopened.
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/table-complex-indented-recursive.docx"),
+        )
+        .expect("read fixture");
+        let mut word_doc =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+        assert_eq!(paragraph_text(&word_doc, 281), "I30F");
+        apply_headless_commands_to_document(
+            &mut word_doc,
+            &HeadlessEditRequest {
+                commands: vec![HeadlessCommand::ApplyMultilevelList {
+                    start_paragraph: 281,
+                    end_paragraph: 282,
+                    preset: jade_docx_headless_api::HeadlessMultilevelListPreset::BulletHierarchy,
+                    level: 0,
+                }],
+            },
+        )
+        .expect("list applied");
+        let indents = |word_doc: &WordDocument| {
+            [281, 282].map(|index| {
+                word_doc
+                    .paragraph(index)
+                    .and_then(|paragraph| paragraph.properties.as_ref())
+                    .and_then(|props| props.indent.clone())
+            })
+        };
+        let live = indents(&word_doc);
+        assert_eq!(
+            live[0].as_ref().and_then(|indent| indent.left),
+            None,
+            "{live:?}"
+        );
+        assert_eq!(
+            live[0].as_ref().and_then(|indent| indent.first_line),
+            Some(6.0)
+        );
+        let reloaded = executor::block_on(WordDocument::load(
+            &word_doc.export_docx().expect("export"),
+            &Options::default(),
+        ))
+        .expect("reload");
+        assert_eq!(live, indents(&reloaded));
+    }
+
+    #[test]
     fn an_edit_past_a_shape_reaches_its_header_or_note_paragraph() {
         // A story's paragraphs were found in its XML by counting every `w:p`,
         // the ones inside a shape's text box too. Past a paragraph holding a
