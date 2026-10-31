@@ -4909,8 +4909,10 @@ where
             return;
         }
         // Only record at the top of a column (which is also page-start when column_index==0).
+        // A tall header can move the body below the section's top margin.
+        // Use the same body edge as page advancement when identifying that top.
         const EPS: f64 = 0.5;
-        if (self.current_y - self.margin_top).abs() > EPS {
+        if (self.current_y - self.effective_body_top()).abs() > EPS {
             return;
         }
         let snapshot = PageStartSeekSnapshot {
@@ -54450,6 +54452,73 @@ mod tests {
         assert_eq!(seek.page_number, 3);
         assert_eq!(seek.column_index, 0);
         assert_eq!(seek.paragraph_index, 5);
+    }
+
+    #[test]
+    fn page_top_seek_snapshot_uses_measured_header_body_top() {
+        let mut renderer = test_renderer();
+        renderer.pageless_mode = false;
+        renderer.current_page_number = 2;
+        renderer.column_index = 0;
+        renderer.record_header_content_height(renderer.margin_top + 40.0);
+        let top = renderer.effective_body_top();
+        assert!(top > renderer.margin_top + 1.0);
+        renderer.current_y = top;
+        renderer.last_line_baseline = top;
+        renderer.record_page_start_seek_snapshot(13, 13, 0, &NumberingCounter::new());
+        let snapshot = renderer
+            .page_start_seek_cache_by_page
+            .borrow()
+            .get(&2)
+            .cloned()
+            .expect("a tall header must not prevent recording the body page top");
+        assert_eq!(snapshot.current_y, top);
+        assert!(renderer.window_seek_snapshot_is_valid(&snapshot, 2, &options_for_seek_tests()));
+
+        // A later paragraph is not a page-top resume point.
+        renderer.current_y = top + 20.0;
+        renderer.record_page_start_seek_snapshot(14, 14, 0, &NumberingCounter::new());
+        assert!(!renderer.page_start_seek_cache.borrow().contains_key(&14));
+    }
+
+    #[test]
+    fn rich_header_late_page_bitmap_reuses_local_body_seek() {
+        let texts: Vec<String> = (0..800)
+            .map(|index| format!("Body paragraph {index}"))
+            .collect();
+        let refs: Vec<&str> = texts.iter().map(String::as_str).collect();
+        let document = doc_with_paragraph_texts(&refs);
+        let header_document = doc_with_paragraph_texts(&["Tall header"; 8]);
+        let mut renderer = CanvasRenderer::with_host(
+            Box::new(PageCountingHost {
+                inner: NonCanvasHost {
+                    painter: jade_painter::recording::RecordingPainter::new(),
+                },
+                extra_pages: 0,
+                cursor: 0,
+            }),
+            false,
+        )
+        .unwrap();
+        renderer.set_header_footer_bodies(header_document.body, None, None, None, None, None);
+        let options = options_for_seek_tests();
+        renderer.render(&document, &options).unwrap();
+        let pages = renderer.page_count();
+        assert!(pages > 10);
+        let page = pages - 1;
+        renderer.set_visible_page_range(Some(page..=page));
+        renderer.set_layout_page_limit(Some(page));
+        renderer.prepare_rerender_for_page(page - 1);
+        assert!(
+            renderer.forced_seek_snapshot.is_some(),
+            "a rich header must retain a late-page local seek"
+        );
+        renderer.render(&document, &options).unwrap();
+        assert!(
+            renderer.last_render_body_element_count < 100,
+            "late bitmap walked {} body elements",
+            renderer.last_render_body_element_count
+        );
     }
 
     #[test]
