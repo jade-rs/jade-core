@@ -542,6 +542,10 @@ pub fn word_balanced_space_advance_px(
     word_automatic_note_separator_advance_px(platform, font_descriptor)
 }
 
+/// The family stack [`word_numbering_suffix_space_descriptor`] measures a
+/// Word for Mac numbering suffix space in, whatever faces the document names.
+pub const WORD_MAC_NUMBERING_SUFFIX_SPACE_STACK: &str = "Arial, 'Liberation Sans', sans-serif";
+
 /// The face Word for Mac sets a numbering label's `w:suff="space"` in: the
 /// label's descriptor with its family replaced by Arial. Word for Mac 16.114
 /// makes that space 0.278 em of the label size (Arial's and Century's space)
@@ -561,7 +565,7 @@ pub fn word_numbering_suffix_space_descriptor(label_descriptor: &str) -> Option<
             .is_some_and(|size| size.parse::<f32>().is_ok())
         {
             return Some(format!(
-                "{}Arial, 'Liberation Sans', sans-serif",
+                "{}{WORD_MAC_NUMBERING_SUFFIX_SPACE_STACK}",
                 &label_descriptor[..offset]
             ));
         }

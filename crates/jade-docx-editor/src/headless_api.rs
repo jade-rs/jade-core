@@ -1942,6 +1942,11 @@ pub fn apply_headless_commands_with_executor_to_document(
                 validate_text_offset(word_doc, index, *paragraph, *offset)?;
                 let range = SelectionRange::collapsed(TextPosition::new(*paragraph, *offset));
                 selection = Some(range);
+                // An empty insertion still validates and moves the caret,
+                // but must not record an edit or discard the redo branch.
+                if text.is_empty() {
+                    continue;
+                }
 
                 let mut ctx = CommandContext::new(word_doc, &mut selection);
                 command_executor
@@ -5792,11 +5797,33 @@ fn run_properties_at_offset(
         let run_start = cursor;
         let run_end = run_start.saturating_add(run.text.len());
         if offset >= run_start && offset < run_end {
-            return run.properties.clone();
+            return run.properties.clone().map(stated_font_properties);
         }
         cursor = run_end;
     }
     None
+}
+
+/// `properties` with only the font values the run states itself. A load
+/// fills a run's inherited fonts and size into it; handed to a new run as
+/// its formatting, they were saved into its `w:rPr` as direct formatting
+/// (a replaced placeholder gained `w:rFonts` and `w:sz`), and a reload then
+/// read that run differently from the editor. The new run takes its
+/// inherited values again when it is inserted.
+fn stated_font_properties(mut properties: RunProperties) -> RunProperties {
+    if !properties.direct_font_properties.known {
+        return properties;
+    }
+    let stated = properties.direct_font_properties.clone();
+    properties.font_size = stated.font_size;
+    properties.font_size_complex = stated.font_size_complex;
+    properties.kerning = stated.kerning;
+    properties.text_scale = stated.text_scale;
+    if stated.fonts.is_none() {
+        properties.font_family = None;
+    }
+    properties.fonts = stated.fonts;
+    properties
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -8897,6 +8924,67 @@ mod tests {
             Some("Noto Serif JP")
         );
         assert_ne!(replacement_props.italic, Some(true));
+    }
+
+    #[test]
+    fn a_replaced_placeholder_keeps_its_inherited_fonts_out_of_its_rpr() {
+        // Replace All gives the new text the formatting of the run it lands
+        // in. That run's properties carry the fonts and size its styles give
+        // it, filled in at load; handed over as the new run's formatting they
+        // were saved into its `w:rPr` (`w:rFonts`, `w:sz`), and a reload read
+        // the replacement with a complex-script size the editor did not have.
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/hello.docx"),
+        )
+        .expect("read fixture");
+        let mut word_doc =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+        apply_headless_commands_to_document(
+            &mut word_doc,
+            &HeadlessEditRequest {
+                commands: vec![HeadlessCommand::ReplacePlaceholder {
+                    placeholder: "ell".to_string(),
+                    text: "日".to_string(),
+                    max_replacements: None,
+                }],
+            },
+        )
+        .expect("replaced");
+        let exported = word_doc.export_docx().expect("export");
+        let mut archive =
+            zip::ZipArchive::new(std::io::Cursor::new(exported.clone())).expect("exported zip");
+        let mut xml = String::new();
+        std::io::Read::read_to_string(
+            &mut archive.by_name("word/document.xml").expect("document part"),
+            &mut xml,
+        )
+        .expect("read document part");
+        let at = xml.find(">日<").expect("replacement");
+        let run = &xml[xml[..at].rfind("<w:r>").expect("replacement run")..at];
+        for inherited in ["<w:rFonts", "<w:sz ", "<w:szCs "] {
+            assert!(!run.contains(inherited), "{run}");
+        }
+        let reloaded =
+            executor::block_on(WordDocument::load(&exported, &Options::default())).expect("reload");
+        let runs = |word_doc: &WordDocument| {
+            word_doc
+                .paragraph(0)
+                .expect("paragraph")
+                .runs
+                .iter()
+                .map(|run| {
+                    let props = run.properties.clone().unwrap_or_default();
+                    (
+                        run.text.clone(),
+                        props.font_size,
+                        props.font_size_complex,
+                        props.fonts.map(|fonts| (fonts.ascii, fonts.east_asia)),
+                    )
+                })
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(runs(&word_doc), runs(&reloaded));
     }
 
     #[test]
@@ -13707,6 +13795,123 @@ mod tests {
         let reloaded =
             executor::block_on(WordDocument::load(&exported, &Options::default())).expect("reload");
         assert_eq!(colours(&reloaded), loaded);
+    }
+
+    #[test]
+    fn a_paragraph_style_the_document_lacks_resolves_as_the_default() {
+        // table-complex-indented-recursive.docx defines no style "2". Its
+        // `w:pStyle` reads as the default paragraph style, as Word and a
+        // reload read it; the editor resolved it as nothing and kept the old
+        // style's 12 pt left indent beside the paragraph's own hanging one.
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/table-complex-indented-recursive.docx"),
+        )
+        .expect("read fixture");
+        let mut word_doc =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+        apply_headless_commands_to_document(
+            &mut word_doc,
+            &HeadlessEditRequest {
+                commands: vec![HeadlessCommand::SetParagraphStyle {
+                    start_paragraph: 17,
+                    end_paragraph: 19,
+                    style_id: Some("2".to_string()),
+                }],
+            },
+        )
+        .expect("style applied");
+        let indents = |word_doc: &WordDocument| {
+            (17..=19)
+                .map(|index| {
+                    word_doc
+                        .paragraph(index)
+                        .and_then(|paragraph| paragraph.properties.as_ref())
+                        .and_then(|props| props.indent.clone())
+                        .map(|indent| (indent.left, indent.first_line, indent.hanging))
+                })
+                .collect::<Vec<_>>()
+        };
+        let reloaded = executor::block_on(WordDocument::load(
+            &word_doc.export_docx().expect("export"),
+            &Options::default(),
+        ))
+        .expect("reload");
+        assert_eq!(indents(&word_doc), indents(&reloaded));
+    }
+
+    #[test]
+    fn formatting_across_an_inline_equation_leaves_the_equation_as_saved() {
+        // Strike, bold or a size set across an inline equation changed the
+        // equation's run in the editor, but the equation is saved as its
+        // OMML, so the change was gone once the document was reopened.
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/word-mac-probe-indent.docx"),
+        )
+        .expect("read fixture");
+        for format in [
+            HeadlessCommand::ApplyStrike {
+                start_paragraph: 2,
+                start_offset: 15,
+                end_paragraph: 3,
+                end_offset: 0,
+                double: false,
+                enabled: true,
+            },
+            HeadlessCommand::ApplyBold {
+                start_paragraph: 2,
+                start_offset: 15,
+                end_paragraph: 3,
+                end_offset: 0,
+                enabled: true,
+            },
+            HeadlessCommand::SetFontSize {
+                start_paragraph: 2,
+                start_offset: 15,
+                end_paragraph: 3,
+                end_offset: 0,
+                font_size: 20.0,
+            },
+        ] {
+            let mut word_doc =
+                executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+            apply_headless_commands_to_document(
+                &mut word_doc,
+                &HeadlessEditRequest {
+                    commands: vec![
+                        HeadlessCommand::InsertEquation {
+                            paragraph: 2,
+                            offset: 39,
+                            omml: "<m:oMath><m:r><m:t>x</m:t></m:r></m:oMath>".to_string(),
+                            placement: jade_docx_headless_api::HeadlessEquationPlacement::Inline,
+                        },
+                        format.clone(),
+                    ],
+                },
+            )
+            .expect("applied");
+            let equation = |word_doc: &WordDocument| {
+                word_doc
+                    .paragraph(2)
+                    .expect("paragraph")
+                    .runs
+                    .iter()
+                    .filter(|run| run.math.is_some())
+                    .map(|run| {
+                        let props = run.properties.clone().unwrap_or_default();
+                        (props.strike, props.bold, props.font_size)
+                    })
+                    .collect::<Vec<_>>()
+            };
+            let reloaded = executor::block_on(WordDocument::load(
+                &word_doc.export_docx().expect("export"),
+                &Options::default(),
+            ))
+            .expect("reload");
+            assert_eq!(equation(&word_doc).len(), 1, "{format:?}");
+            assert_eq!(equation(&word_doc), equation(&reloaded), "{format:?}");
+        }
     }
 
     #[test]
