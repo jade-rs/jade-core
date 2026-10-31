@@ -177,6 +177,105 @@ fn evaluate_with_dependency_setting(
     trace: bool,
 ) -> Result<Recalculated> {
     let instant = ironcalc_base::get_milliseconds_since_epoch();
+    with_workbook_scopes(workbook, manual, instant, || {
+        evaluate_at_instant(workbook, time_zone, trace, false).map(|(outcome, _)| outcome)
+    })
+}
+
+/// A model kept after a complete evaluation — every formula parsed and
+/// answered, nothing spilled — so that the next evaluation of the same
+/// workbook with a few values typed can set them in it and evaluate again,
+/// rather than build it from every cell once more.
+pub struct Session {
+    model: Model<'static>,
+    projected: Vec<(usize, CellRef)>,
+    time_zone: String,
+}
+
+/// [`evaluate_with_manual_filter_rows`], keeping the model when the
+/// evaluation was complete.
+pub fn evaluate_keeping(
+    workbook: &Workbook,
+    time_zone: &str,
+    manual: &std::collections::BTreeMap<String, HashSet<u32>>,
+) -> Result<(Recalculated, Option<Session>)> {
+    let instant = ironcalc_base::get_milliseconds_since_epoch();
+    with_workbook_scopes(workbook, manual, instant, || {
+        evaluate_at_instant(workbook, time_zone, false, true)
+    })
+}
+
+/// Evaluates `workbook` again in the model `session` kept, with the plain
+/// values in `typed` set in it first. `workbook` must be the one the
+/// session evaluated with those values typed into it, and nothing else
+/// changed. `None` when the answer cannot come from the kept model — another
+/// time zone, or a formula now answered with an engine artifact or spilling
+/// — and a full evaluation has to give it.
+pub fn reevaluate(
+    session: &mut Session,
+    workbook: &Workbook,
+    time_zone: &str,
+    manual: &std::collections::BTreeMap<String, HashSet<u32>>,
+    typed: &[(usize, CellRef, CellValue)],
+) -> Result<Option<Recalculated>> {
+    if session.time_zone != time_zone {
+        return Ok(None);
+    }
+    let instant = ironcalc_base::get_milliseconds_since_epoch();
+    with_workbook_scopes(workbook, manual, instant, || {
+        use ironcalc_base::date_system::{with_date_system, DateSystem as EngineDateSystem};
+        let system = match workbook.date_system {
+            DateSystem::Nineteen00 => EngineDateSystem::Excel1900,
+            DateSystem::Nineteen04 => EngineDateSystem::Excel1904,
+        };
+        with_date_system(system, || {
+            for (sheet, reference, value) in typed {
+                set_literal(
+                    &mut session.model,
+                    *sheet as u32,
+                    reference.row as i32 + 1,
+                    reference.column as i32 + 1,
+                    value,
+                );
+            }
+            session.model.evaluate();
+            let round = read_back(&session.model, workbook, &session.projected)?;
+            if !round.disqualified.is_empty() || !round.spills.is_empty() {
+                return Ok(None);
+            }
+            Ok(Some(Recalculated {
+                cells: round.cells,
+                skipped: Vec::new(),
+                spills: Vec::new(),
+                dependencies: None,
+            }))
+        })
+    })
+}
+
+/// The time zone as the `'static` string a kept model holds: one copy per
+/// zone ever used, so the few a session sees cost a few bytes for good.
+fn static_zone(time_zone: &str) -> &'static str {
+    static ZONES: std::sync::Mutex<Vec<&'static str>> = std::sync::Mutex::new(Vec::new());
+    let mut zones = ZONES
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    if let Some(zone) = zones.iter().find(|zone| **zone == time_zone) {
+        return zone;
+    }
+    let zone: &'static str = Box::leak(time_zone.to_string().into_boxed_str());
+    zones.push(zone);
+    zone
+}
+
+/// Runs `body` with the rows the workbook hides, one clock instant and the
+/// furigana saved with text cells in force, as every evaluation needs.
+fn with_workbook_scopes<T>(
+    workbook: &Workbook,
+    manual: &std::collections::BTreeMap<String, HashSet<u32>>,
+    instant: i64,
+    body: impl FnOnce() -> T,
+) -> T {
     let visibility = workbook
         .sheets
         .iter()
@@ -237,14 +336,21 @@ fn evaluate_with_dependency_setting(
                     })
                 })
                 .collect();
-            ironcalc_base::phonetic::with_readings(readings, || {
-                evaluate_at_instant(workbook, time_zone, trace)
-            })
+            ironcalc_base::phonetic::with_readings(readings, body)
         })
     })
 }
 
-fn evaluate_at_instant(workbook: &Workbook, time_zone: &str, trace: bool) -> Result<Recalculated> {
+/// Evaluates the workbook to a fixed point over the formulas the engine
+/// answers with artifacts; with `keep`, also hands back the model when the
+/// first round was complete.
+fn evaluate_at_instant(
+    workbook: &Workbook,
+    time_zone: &str,
+    trace: bool,
+    keep: bool,
+) -> Result<(Recalculated, Option<Session>)> {
+    let zone = static_zone(time_zone);
     // Each skipped cell and what it holds: its cached value, or the engine's
     // answer when nothing is cached.
     let mut skipped: HashMap<(usize, CellRef), CellValue> = HashMap::new();
@@ -269,7 +375,7 @@ fn evaluate_at_instant(workbook: &Workbook, time_zone: &str, trace: bool) -> Res
     // off with it. `formula_count` bounds the rounds.
     let mut reasons: Vec<SkippedCell> = Vec::new();
     for _ in 0..=formula_count {
-        let (mut model, projected, unparsed) = project(workbook, &skipped, time_zone, trace)?;
+        let (mut model, projected, unparsed) = project(workbook, &skipped, zone, trace)?;
         let round = read_back(&model, workbook, &projected)?;
 
         let Some(first) = round.disqualified.first().cloned() else {
@@ -285,13 +391,20 @@ fn evaluate_at_instant(workbook: &Workbook, time_zone: &str, trace: bool) -> Res
                     });
                 }
             }
+            let complete = reasons.is_empty() && unparsed.is_empty() && round.spills.is_empty();
             reasons.extend(unparsed);
-            return Ok(Recalculated {
+            let outcome = Recalculated {
                 cells,
                 skipped: reasons,
                 spills: round.spills,
                 dependencies: trace.then(|| value_dependencies(&mut model)),
+            };
+            let session = (keep && complete && !trace).then(|| Session {
+                model,
+                projected,
+                time_zone: time_zone.to_string(),
             });
+            return Ok((outcome, session));
         };
         let holds = match cached_value(workbook, first.sheet, first.reference) {
             CellValue::Empty => CellValue::Error(first.reason.clone()),

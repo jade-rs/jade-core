@@ -206,3 +206,90 @@ fn a_file_with_summaries_above_reads_and_collapses_that_way() {
     assert!(row_hidden(&book, 1) && row_hidden(&book, 2));
     assert!(sheet(&book).outline.collapsed_rows.contains(&0));
 }
+
+#[test]
+fn level_buttons_collapse_to_a_level_and_show_everything_again() {
+    let (mut book, name) = open();
+    book.outline(&name, Axis::Rows, 1, 5, OutlineChange::Group)
+        .unwrap();
+    book.outline(&name, Axis::Rows, 2, 3, OutlineChange::Group)
+        .unwrap();
+
+    // Level 2: the outer group's own rows show, the inner one collapses.
+    assert!(book
+        .outline(&name, Axis::Rows, 0, 0, OutlineChange::ShowLevel(2))
+        .unwrap());
+    assert!(!row_hidden(&book, 1) && !row_hidden(&book, 4) && !row_hidden(&book, 5));
+    assert!(row_hidden(&book, 2) && row_hidden(&book, 3));
+    assert!(sheet(&book).outline.collapsed_rows.contains(&4));
+    assert!(!sheet(&book).outline.collapsed_rows.contains(&6));
+
+    // Level 1: everything grouped collapses.
+    assert!(book
+        .outline(&name, Axis::Rows, 0, 0, OutlineChange::ShowLevel(1))
+        .unwrap());
+    assert!((1..=5).all(|row| row_hidden(&book, row)));
+    assert!(sheet(&book).outline.collapsed_rows.contains(&6));
+
+    // One past the deepest: everything shows, nothing is collapsed.
+    assert!(book
+        .outline(&name, Axis::Rows, 0, 0, OutlineChange::ShowLevel(3))
+        .unwrap());
+    assert!((1..=5).all(|row| !row_hidden(&book, row)));
+    assert!(sheet(&book).outline.collapsed_rows.is_empty());
+    // Showing what already shows is no step.
+    assert!(!book
+        .outline(&name, Axis::Rows, 0, 0, OutlineChange::ShowLevel(3))
+        .unwrap());
+}
+
+#[test]
+fn auto_outline_groups_rows_and_columns_under_the_formulas_summing_them() {
+    use jade_xlsx_headless_api::CellInput;
+    let (mut book, name) = open();
+    let number = |value: f64| CellInput::Number(value);
+    let formula = |text: &str| CellInput::Formula(text.to_string());
+    let mut values: Vec<(String, CellInput)> = Vec::new();
+    for row in [21, 22, 23, 24, 26, 27] {
+        values.push((format!("H{row}"), number(f64::from(row))));
+    }
+    values.push(("H25".into(), formula("=SUM(H21:H24)")));
+    values.push(("H28".into(), formula("=SUM($H$26:$H$27)")));
+    values.push(("H29".into(), formula("=SUM(H21:H28)")));
+    for column in ["J", "K", "L"] {
+        values.push((format!("{column}30"), number(1.0)));
+    }
+    values.push(("M30".into(), formula("=SUM(J30:L30)")));
+    // Neither another sheet's range nor text in quotes is a summary.
+    values.push(("H40".into(), formula("=SUM('Other sheet'!H31:H39)")));
+    values.push(("H50".into(), formula("=LEN(\"H41:H49\")")));
+    book.set_cells(&name, &values).unwrap();
+
+    assert!(book.auto_outline(&name).unwrap());
+    let outline = &sheet(&book).outline;
+    // Rows 21–28 under row 29, with 21–24 under 25 and 26–27 under 28.
+    for index in [20, 21, 22, 23, 25, 26] {
+        assert_eq!(outline.row_level(index), 2, "row {}", index + 1);
+    }
+    for index in [24, 27] {
+        assert_eq!(outline.row_level(index), 1, "row {}", index + 1);
+    }
+    assert_eq!(outline.row_level(28), 0);
+    assert!((30..49).all(|index| outline.row_level(index) == 0));
+    // Columns J:L under M.
+    for column in 9..=11 {
+        assert_eq!(outline.column_level(column), 1);
+    }
+    assert_eq!(outline.column_level(12), 0);
+    // The same again changes nothing.
+    assert!(!book.auto_outline(&name).unwrap());
+
+    // Clearing the rows' outline leaves the columns'.
+    assert!(book.clear_outline(&name, Axis::Rows).unwrap());
+    assert!(sheet(&book).outline.row_levels.is_empty());
+    assert_eq!(sheet(&book).outline.column_level(10), 1);
+    assert!(!book.clear_outline(&name, Axis::Rows).unwrap());
+    // One step each.
+    assert!(book.undo().unwrap());
+    assert_eq!(sheet(&book).outline.row_level(20), 2);
+}

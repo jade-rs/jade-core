@@ -89,6 +89,22 @@ fn deflated(name: &str) -> zip::write::SimpleFileOptions {
 /// and compressed size.
 pub type EntryFingerprint = (String, u32, u64);
 
+/// The fingerprints of every entry of `package`, in order: two packages with
+/// the same are the same package.
+pub fn package_fingerprint(package: &[u8]) -> Result<Vec<EntryFingerprint>> {
+    let mut archive = zip::ZipArchive::new(std::io::Cursor::new(package))?;
+    let mut found = Vec::with_capacity(archive.len());
+    for index in 0..archive.len() {
+        let entry = archive.by_index_raw(index)?;
+        found.push((
+            entry.name()?.into_owned(),
+            entry.crc32(),
+            entry.compressed_size(),
+        ));
+    }
+    Ok(found)
+}
+
 /// The fingerprints of the entries of `package` that `names` lists.
 pub fn entry_fingerprints(package: &[u8], names: &[String]) -> Result<Vec<EntryFingerprint>> {
     let mut archive = zip::ZipArchive::new(std::io::Cursor::new(package))?;

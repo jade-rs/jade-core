@@ -606,3 +606,31 @@ fn a_sheet_already_in_order_is_left_as_it_was() {
         "{patched}"
     );
 }
+
+/// A sheet known to be in order is read only as far as the edits reach:
+/// the result is the one a full read gives, edits past the last row too.
+#[test]
+fn a_sheet_known_in_order_patches_as_a_full_read_does() {
+    let mut xml = String::from(r#"<worksheet><dimension ref="A1:B40"/><sheetData>"#);
+    for row in 1..=40 {
+        xml.push_str(&format!(
+            r#"<row r="{row}"><c r="A{row}"><v>{row}</v></c><c r="B{row}"><f>A{row}*2</f><v>{}</v></c></row>"#,
+            row * 2
+        ));
+    }
+    xml.push_str("</sheetData></worksheet>");
+    for edits in [
+        vec![edit("A10", NewValue::Number(5.0))],
+        vec![
+            edit("C10", NewValue::Number(5.0)),
+            edit("A3", NewValue::Blank),
+        ],
+        vec![edit("A45", NewValue::Number(1.0))],
+    ] {
+        let full = jade_xlsx_writer::patch_sheet(&xml, &edits).expect("full");
+        let (known, ordered) =
+            jade_xlsx_writer::patch_sheet_known(&xml, &edits, true).expect("known");
+        assert_eq!(known, full);
+        assert!(ordered);
+    }
+}

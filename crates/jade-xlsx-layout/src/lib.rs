@@ -19,6 +19,7 @@ pub mod filter_button;
 pub mod measure;
 pub mod navigation;
 pub mod number_format;
+pub mod outline_gutter;
 pub mod pivot_fit;
 pub mod pivot_style;
 pub mod resize;
@@ -369,6 +370,9 @@ pub struct SheetLayout {
     /// against it, so the renderer has to place text against the same value —
     /// hence it lives on the result rather than in both option structs.
     pub cell_padding_px: f64,
+    /// Rows and columns grouped, for the outline gutter.
+    #[serde(default)]
+    pub outline: jade_xlsx_reader::Outline,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -725,7 +729,10 @@ impl SheetLayout {
 
     /// The size of the row and column header bands for this sheet.
     pub fn header_metrics(&self) -> HeaderMetrics {
-        HeaderMetrics::for_rows(self.rows.len() as u32)
+        HeaderMetrics::for_rows(self.rows.len() as u32).with_outline(
+            self.outline_levels(jade_xlsx_reader::Axis::Rows),
+            self.outline_levels(jade_xlsx_reader::Axis::Columns),
+        )
     }
 
     /// The cells that overlap `viewport`.
@@ -782,10 +789,17 @@ impl SheetLayout {
 /// stops a sheet used down to row 10000 from clipping its own numbers.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct HeaderMetrics {
-    /// Width of the row-number band, in px.
+    /// Width of the row-number band, in px, the outline gutter included.
     pub row_width: f64,
-    /// Height of the column-letter band, in px.
+    /// Height of the column-letter band, in px, the outline gutter included.
     pub column_height: f64,
+    /// Width of the rows' outline gutter at the band's left, in px; 0 when
+    /// no rows are grouped.
+    #[serde(default)]
+    pub outline_width: f64,
+    /// Height of the columns' outline gutter at the band's top, in px.
+    #[serde(default)]
+    pub outline_height: f64,
 }
 
 impl HeaderMetrics {
@@ -796,7 +810,19 @@ impl HeaderMetrics {
             // Two digits fit in Excel's own band; each further digit widens it.
             row_width: 24.0 + (digits - 2.0) * 8.0,
             column_height: units::points_to_px(units::DEFAULT_ROW_HEIGHT_POINTS),
+            outline_width: 0.0,
+            outline_height: 0.0,
         }
+    }
+
+    /// With the outline gutters rows grouped `row_levels` deep and columns
+    /// `column_levels` deep grow.
+    pub fn with_outline(mut self, row_levels: u8, column_levels: u8) -> Self {
+        self.outline_width = outline_gutter::gutter_size(row_levels);
+        self.outline_height = outline_gutter::gutter_size(column_levels);
+        self.row_width += self.outline_width;
+        self.column_height += self.outline_height;
+        self
     }
 }
 
@@ -970,6 +996,23 @@ fn layout_sheet_with_workbook(
     options: &LayoutOptions,
     workbook: Option<&jade_xlsx_reader::Workbook>,
 ) -> SheetLayout {
+    layout_sheet_on_axes(sheet, styles, options, workbook, None).0
+}
+
+/// What a layout's axes would have been, when it was placed on another
+/// layout's instead.
+type ComputedAxes = (Vec<AxisEntry>, Vec<AxisEntry>);
+
+/// The layout, its cells placed on `kept`'s columns and rows when given —
+/// with the axes this sheet would have had returned beside it, for the
+/// caller to check against them.
+fn layout_sheet_on_axes(
+    sheet: &Sheet,
+    styles: &StyleTable,
+    options: &LayoutOptions,
+    workbook: Option<&jade_xlsx_reader::Workbook>,
+    kept: Option<&SheetLayout>,
+) -> (SheetLayout, Option<ComputedAxes>) {
     let filter_definitions = filter_button::definitions(sheet);
     let column_count = sheet
         .used_column_count()
@@ -1039,7 +1082,8 @@ fn layout_sheet_with_workbook(
     let mut columns = column_axis(sheet, column_count, options);
     let normal_style_font = resolve_normal_font(styles, &options.default_font);
 
-    let mut prepared = Vec::new();
+    let mut prepared =
+        Vec::with_capacity(sheet.rows.iter().map(|row| row.cells.len()).sum::<usize>());
     let mut auto_heights = vec![0.0f32; row_count as usize];
     let merges = MergeRows::new(&sheet.merges);
     for row in &sheet.rows {
@@ -1393,6 +1437,12 @@ fn layout_sheet_with_workbook(
     }
 
     let mut rows = row_axis(sheet, row_count, &auto_heights);
+    let computed = kept.map(|kept| {
+        let computed = (columns.clone(), rows.clone());
+        columns = kept.columns.clone();
+        rows = kept.rows.clone();
+        computed
+    });
 
     // One-cell and absolute anchors can extend beyond the used cells. Include
     // their transformed bounds in both the scroll surface and the grid axes.
@@ -1424,104 +1474,102 @@ fn layout_sheet_with_workbook(
         .iter()
         .map(|button| ((button.reference.row, button.reference.column), button.rect))
         .collect();
-    let cells = prepared
-        .into_iter()
-        .filter_map(|cell| {
-            let rect = merged_rect(cell.reference, cell.merge.as_ref(), &columns, &rows)?;
-            Some(PlacedCell {
-                reference: cell.reference,
-                rect,
-                text_clip: {
-                    let clip = cell.overflow.map(|(left, right)| Rect {
-                        x: left,
-                        width: right - left,
+    // Reserved up front: a cell is several hundred bytes, and a vector grown
+    // by doubling moves every one of them each time.
+    let mut cells = Vec::with_capacity(prepared.len());
+    cells.extend(prepared.into_iter().filter_map(|cell| {
+        let rect = merged_rect(cell.reference, cell.merge.as_ref(), &columns, &rows)?;
+        Some(PlacedCell {
+            reference: cell.reference,
+            rect,
+            text_clip: {
+                let clip = cell.overflow.map(|(left, right)| Rect {
+                    x: left,
+                    width: right - left,
+                    ..rect
+                });
+                let end = cell
+                    .merge
+                    .map(|range| range.end.column)
+                    .unwrap_or(cell.reference.column);
+                let button = filter_button_rects
+                    .range((cell.reference.row, cell.reference.column)..=(cell.reference.row, end))
+                    .next();
+                button
+                    .map(|(_, button)| Rect {
+                        width: (button.x - rect.x).max(0.0),
                         ..rect
-                    });
-                    let end = cell
-                        .merge
-                        .map(|range| range.end.column)
-                        .unwrap_or(cell.reference.column);
-                    let button = filter_button_rects
-                        .range(
-                            (cell.reference.row, cell.reference.column)..=(cell.reference.row, end),
-                        )
-                        .next();
-                    button
-                        .map(|(_, button)| Rect {
-                            width: (button.x - rect.x).max(0.0),
-                            ..rect
-                        })
-                        .or(clip)
-                },
-                merge: cell.merge,
-                text: cell.text,
-                lines: cell.lines,
-                font: cell.font.clone(),
-                text_color: cell.text_color,
-                fill: cell.fill,
-                border: cell.border,
-                data_bar: cell.data_bar.map(|bar| {
-                    let inset = 2.0_f64.min(rect.width / 2.0).min(rect.height / 2.0);
-                    let available = (rect.width - 2.0 * inset).max(0.0);
-                    let left = rect.x + inset;
-                    let right = left + available;
-                    let origin = (left + available * bar.origin).round().clamp(left, right);
-                    let capacity = if bar.reverse {
-                        origin - left
-                    } else {
-                        right - origin
-                    };
-                    let width = (rect.width * bar.fraction).round().min(capacity).max(0.0);
-                    PlacedDataBar {
+                    })
+                    .or(clip)
+            },
+            merge: cell.merge,
+            text: cell.text,
+            lines: cell.lines,
+            font: cell.font.clone(),
+            text_color: cell.text_color,
+            fill: cell.fill,
+            border: cell.border,
+            data_bar: cell.data_bar.map(|bar| {
+                let inset = 2.0_f64.min(rect.width / 2.0).min(rect.height / 2.0);
+                let available = (rect.width - 2.0 * inset).max(0.0);
+                let left = rect.x + inset;
+                let right = left + available;
+                let origin = (left + available * bar.origin).round().clamp(left, right);
+                let capacity = if bar.reverse {
+                    origin - left
+                } else {
+                    right - origin
+                };
+                let width = (rect.width * bar.fraction).round().min(capacity).max(0.0);
+                PlacedDataBar {
+                    rect: Rect {
+                        x: if bar.reverse { origin - width } else { origin },
+                        y: rect.y + inset,
+                        width,
+                        height: rect.height - 2.0 * inset,
+                    },
+                    color: bar.color,
+                    show_value: bar.show_value,
+                    gradient: bar.gradient,
+                    reverse: bar.reverse,
+                    border: bar.border,
+                    axis: bar.axis.map(|(axis, color)| PlacedDataBarAxis {
                         rect: Rect {
-                            x: if bar.reverse { origin - width } else { origin },
+                            x: (left + available * axis).round().clamp(left, right) - 0.5,
                             y: rect.y + inset,
-                            width,
+                            width: 1.0,
                             height: rect.height - 2.0 * inset,
                         },
-                        color: bar.color,
-                        show_value: bar.show_value,
-                        gradient: bar.gradient,
-                        reverse: bar.reverse,
-                        border: bar.border,
-                        axis: bar.axis.map(|(axis, color)| PlacedDataBarAxis {
-                            rect: Rect {
-                                x: (left + available * axis).round().clamp(left, right) - 0.5,
-                                y: rect.y + inset,
-                                width: 1.0,
-                                height: rect.height - 2.0 * inset,
-                            },
-                            color,
-                        }),
+                        color,
+                    }),
+                }
+            }),
+            icon: cell.icon.map(|icon| {
+                let size = icon_size_px(&cell.font, rect.height - 2.0);
+                let y = match cell.alignment.vertical {
+                    VerticalAlignment::Top | VerticalAlignment::Justify => rect.y + 1.0,
+                    VerticalAlignment::Center | VerticalAlignment::Distributed => {
+                        rect.y + (rect.height - size) / 2.0
                     }
-                }),
-                icon: cell.icon.map(|icon| {
-                    let size = icon_size_px(&cell.font, rect.height - 2.0);
-                    let y = match cell.alignment.vertical {
-                        VerticalAlignment::Top | VerticalAlignment::Justify => rect.y + 1.0,
-                        VerticalAlignment::Center | VerticalAlignment::Distributed => {
-                            rect.y + (rect.height - size) / 2.0
-                        }
-                        VerticalAlignment::Bottom => rect.y + rect.height - size - 2.0,
-                    };
-                    PlacedIcon {
-                        icon_set: icon.icon_set,
-                        index: icon.index,
-                        rect: Rect {
-                            x: rect.x + 2.0,
-                            y: y.max(rect.y).round(),
-                            width: size,
-                            height: size,
-                        },
-                        show_value: icon.show_value,
-                    }
-                }),
-                alignment: cell.alignment,
-                text_inset_px: cell.text_inset_px,
-                runs: cell.runs,
-            })
+                    VerticalAlignment::Bottom => rect.y + rect.height - size - 2.0,
+                };
+                PlacedIcon {
+                    icon_set: icon.icon_set,
+                    index: icon.index,
+                    rect: Rect {
+                        x: rect.x + 2.0,
+                        y: y.max(rect.y).round(),
+                        width: size,
+                        height: size,
+                    },
+                    show_value: icon.show_value,
+                }
+            }),
+            alignment: cell.alignment,
+            text_inset_px: cell.text_inset_px,
+            runs: cell.runs,
         })
-        .collect();
+    }));
 
     let frozen_columns = sheet
         .freeze_pane
@@ -1579,7 +1627,7 @@ fn layout_sheet_with_workbook(
         })
         .collect();
     let sparklines = sparkline::place(sheet, workbook, &columns, &rows);
-    SheetLayout {
+    let layout = SheetLayout {
         columns,
         rows,
         cells,
@@ -1599,7 +1647,154 @@ fn layout_sheet_with_workbook(
         frozen_columns,
         frozen_rows,
         cell_padding_px: options.cell_padding_px,
+        outline: sheet.outline.clone(),
+    };
+    (layout, computed)
+}
+
+/// Lays out again only `rows` of `layout`, after values changed in them and
+/// nothing else on the sheet did — what typing into a sheet does, a cell and
+/// the formulas reading it. The rows' cells are placed afresh, from a sheet
+/// holding only those rows, on the layout's own columns and rows, and take
+/// the place of theirs; the rest stays. `false`, leaving `layout` alone,
+/// when that would not give what a full layout gives — a row's height
+/// changing, or a sheet with what reads values across rows (conditional
+/// formats, sparklines, tables, pivots, drawings) or a merge through those
+/// rows — and the caller lays the sheet out in full.
+pub fn relayout_rows(
+    layout: &mut SheetLayout,
+    workbook: &jade_xlsx_reader::Workbook,
+    index: usize,
+    options: &LayoutOptions,
+    rows: &std::collections::BTreeSet<u32>,
+) -> bool {
+    let Some(sheet) = workbook.sheets.get(index) else {
+        return false;
+    };
+    if rows.is_empty() {
+        return true;
     }
+    if !sheet.conditional_formats.is_empty()
+        || !sheet.sparkline_groups.is_empty()
+        || !sheet.tables.is_empty()
+        || !sheet.shapes.is_empty()
+        || !workbook.pivots.is_empty()
+        || rows.iter().any(|row| *row as usize >= layout.rows.len())
+        || sheet
+            .merges
+            .iter()
+            .any(|merge| rows.range(merge.start.row..=merge.end.row).next().is_some())
+    {
+        return false;
+    }
+    let in_rows = |at: &CellRef| rows.contains(&at.row);
+    let reduced = Sheet {
+        rows: sheet
+            .rows
+            .iter()
+            .filter(|row| rows.contains(&row.index))
+            .cloned()
+            .collect(),
+        rich_text: sheet
+            .rich_text
+            .iter()
+            .filter(|(at, _)| in_rows(at))
+            .map(|(at, runs)| (*at, runs.clone()))
+            .collect(),
+        phonetic_readings: sheet
+            .phonetic_readings
+            .iter()
+            .filter(|(at, _)| in_rows(at))
+            .map(|(at, reading)| (*at, reading.clone()))
+            .collect(),
+        auto_filter: sheet.auto_filter.clone(),
+        filter_mode: sheet.filter_mode,
+        filter_row_state: sheet.filter_row_state.clone(),
+        name: sheet.name.clone(),
+        part_name: sheet.part_name.clone(),
+        visibility: sheet.visibility,
+        columns: sheet.columns.clone(),
+        merges: sheet.merges.clone(),
+        hyperlinks: Vec::new(),
+        comments: Vec::new(),
+        data_validations: sheet.data_validations.clone(),
+        conditional_formats: Vec::new(),
+        default_column_width_chars: sheet.default_column_width_chars,
+        default_row_height_points: sheet.default_row_height_points,
+        default_row_custom_height: sheet.default_row_custom_height,
+        default_rows_hidden: sheet.default_rows_hidden,
+        show_grid_lines: sheet.show_grid_lines,
+        freeze_pane: sheet.freeze_pane.clone(),
+        tables: Vec::new(),
+        header_footer: None,
+        row_breaks: Vec::new(),
+        column_breaks: Vec::new(),
+        page_setup: sheet.page_setup.clone(),
+        shapes: Vec::new(),
+        array_formulas: sheet.array_formulas.clone(),
+        tab_color: None,
+        sparkline_groups: Vec::new(),
+        protection: sheet.protection,
+        outline: sheet.outline.clone(),
+    };
+    let options = LayoutOptions {
+        min_row_count: layout.rows.len() as u32,
+        min_column_count: layout.columns.len() as u32,
+        ..options.clone()
+    };
+    let (fresh, computed) = layout_sheet_on_axes(
+        &reduced,
+        &workbook.styles,
+        &options,
+        Some(workbook),
+        Some(layout),
+    );
+    let Some((columns, row_axis)) = computed else {
+        return false;
+    };
+    if columns != layout.columns
+        || rows.iter().any(|&row| {
+            let (now, was) = (&row_axis[row as usize], &layout.rows[row as usize]);
+            now.size != was.size || now.hidden != was.hidden
+        })
+    {
+        return false;
+    }
+    // The rows' new cells go where theirs were: the cells of a layout run in
+    // row order, then (after the first step back) its blank merged ranges.
+    let mut fresh: Vec<PlacedCell> = fresh
+        .cells
+        .into_iter()
+        .filter(|cell| rows.contains(&cell.reference.row))
+        .collect();
+    fresh.sort_by_key(|cell| (cell.reference.row, cell.reference.column));
+    let kept: Vec<PlacedCell> = std::mem::take(&mut layout.cells)
+        .into_iter()
+        .filter(|cell| !(rows.contains(&cell.reference.row) && cell.merge.is_none()))
+        .collect();
+    let mut cells = Vec::with_capacity(kept.len() + fresh.len());
+    let mut fresh = fresh.into_iter().peekable();
+    let mut in_row_order = true;
+    let mut previous_row = 0;
+    for cell in kept {
+        if in_row_order && cell.reference.row < previous_row {
+            in_row_order = false;
+            cells.extend(fresh.by_ref());
+        }
+        if in_row_order {
+            while fresh
+                .peek()
+                .is_some_and(|next| next.reference.row < cell.reference.row)
+            {
+                cells.extend(fresh.next());
+            }
+            previous_row = cell.reference.row;
+        }
+        cells.push(cell);
+    }
+    cells.extend(fresh);
+    layout.cells = cells;
+    true
 }
 
 fn resolve_font(font: Option<&Font>, fallback: &ResolvedFont) -> ResolvedFont {

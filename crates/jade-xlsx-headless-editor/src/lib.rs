@@ -230,6 +230,22 @@ pub struct HeadlessWorkbook {
     /// fingerprint; an export deflates them properly. Kept across undo, so
     /// that an entry brought back is still known.
     fast_entries: HashSet<jade_opc::EntryFingerprint>,
+    /// Sheet entries typing wrote in order, by fingerprint: another write of
+    /// the sheet gives it another, so a sheet still matching one needs no
+    /// reading through to its end to be sure of its order.
+    ordered_sheets: HashSet<jade_opc::EntryFingerprint>,
+    /// The calculation engine's model from the last typing write, and the
+    /// package it was left in step with: typing into that package again
+    /// sets the values in it rather than building it from every cell.
+    calc_session: Option<(Vec<jade_opc::EntryFingerprint>, jade_xlsx_calc::Session)>,
+    /// The cells the last typing write changed — those typed and the
+    /// formulas they recalculated — with the packages it found and left, for
+    /// a view to lay out again only where they are (see
+    /// [`Self::take_typed_changes`]).
+    typed_changes: Option<TypedChanges>,
+    /// The package as it was when a view last asked for the typed changes,
+    /// and so laid itself out.
+    laid_out: Option<Vec<jade_opc::EntryFingerprint>>,
     calculation_time_zone: String,
     source_time_zone: String,
     /// The bytes before each write, newest last. A write is a patch of the
@@ -259,6 +275,13 @@ pub struct EditCheckpoint {
 /// bounds memory at roughly a hundred copies of the file.
 pub const UNDO_LIMIT: usize = 100;
 
+/// What one typing write changed, between the packages it found and left.
+struct TypedChanges {
+    before: Vec<jade_opc::EntryFingerprint>,
+    after: Vec<jade_opc::EntryFingerprint>,
+    cells: Vec<(usize, CellRef)>,
+}
+
 /// The width, in characters, Excel gives a column of a Calibri 11 sheet that
 /// states no default.
 const DEFAULT_COLUMN_WIDTH: f64 = 9.140625;
@@ -275,6 +298,11 @@ impl HeadlessWorkbook {
                 source: self.source.clone(),
                 automatic_height_base: self.automatic_height_base.clone(),
                 fast_entries: self.fast_entries.clone(),
+                ordered_sheets: self.ordered_sheets.clone(),
+                // The engine's model is not copied; the next typing builds it.
+                calc_session: None,
+                typed_changes: None,
+                laid_out: None,
                 calculation_time_zone: self.calculation_time_zone.clone(),
                 source_time_zone: self.source_time_zone.clone(),
                 history: self.history.clone(),
@@ -697,6 +725,10 @@ impl HeadlessWorkbook {
             source: bytes.to_vec(),
             automatic_height_base: None,
             fast_entries: HashSet::new(),
+            ordered_sheets: HashSet::new(),
+            calc_session: None,
+            typed_changes: None,
+            laid_out: None,
             calculation_time_zone: time_zone.to_string(),
             source_time_zone: time_zone.to_string(),
             history: Vec::new(),
@@ -1187,18 +1219,23 @@ impl HeadlessWorkbook {
         // Plain values typed over cells without formulas change nothing the
         // model derives from elsewhere: it takes them in place rather than
         // reading the whole package again.
-        let plain = !sheets.is_empty()
+        // Charts read their caches from cells, so a chart's model is reread
+        // rather than taken in place.
+        let charts = self
+            .workbook
+            .sheets
+            .iter()
+            .any(|sheet| sheet.shapes.iter().any(|shape| shape.chart.is_some()));
+        let typed = !sheets.is_empty()
             && styles.is_none()
             && parts.is_empty()
             && base.is_none()
             && blocked.is_empty()
             && !headers_changed
-            // Tables follow their cells, and chart and pivot caches are
-            // refreshed from them.
+            // Tables follow their cells, and pivot caches are refreshed from
+            // them.
             && self.workbook.pivots.is_empty()
-            && self.workbook.sheets.iter().all(|sheet| {
-                sheet.tables.is_empty() && sheet.shapes.iter().all(|shape| shape.chart.is_none())
-            })
+            && self.workbook.sheets.iter().all(|sheet| sheet.tables.is_empty())
             && sheets.iter().all(|edits| {
                 self.workbook
                     .sheets
@@ -1214,11 +1251,12 @@ impl HeadlessWorkbook {
                             })
                     })
             });
+        let plain = typed && !charts;
         // Typed into a sheet that recalculates as it goes: the values and
         // the caches they change are written together.
-        if plain
+        if typed
             && self.workbook.calculation_mode.calculates_on_edit()
-            && self.write_typed_and_recalculated(&sheets)?
+            && self.write_typed_and_recalculated(&sheets, charts)?
         {
             return Ok(());
         }
@@ -1286,7 +1324,11 @@ impl HeadlessWorkbook {
     /// again after its recalculation. `false` when the recalculation spills
     /// or fails, the model holding the values and nothing written, for the
     /// usual two writes to follow.
-    fn write_typed_and_recalculated(&mut self, sheets: &[SheetEdits]) -> Result<bool> {
+    fn write_typed_and_recalculated(
+        &mut self,
+        sheets: &[SheetEdits],
+        charts: bool,
+    ) -> Result<bool> {
         if self
             .workbook
             .sheets
@@ -1311,18 +1353,81 @@ impl HeadlessWorkbook {
         }
         self.workbook.full_calculation_on_load = true;
         let manual = self.manual_filter_rows();
-        let Ok(outcome) = jade_xlsx_calc::evaluate_with_manual_filter_rows(
-            &self.workbook,
-            &self.calculation_time_zone,
-            &manual,
-        ) else {
-            return Ok(false);
+        // The model kept from the last typing write, when nothing has written
+        // the package since: only the values just typed go into it.
+        let package = jade_opc::package_fingerprint(&self.source)?;
+        let mut kept = None;
+        if let Some((print, mut session)) = self.calc_session.take() {
+            if print == package {
+                let typed: Vec<(usize, CellRef, CellValue)> = sheets
+                    .iter()
+                    .filter_map(|edits| {
+                        let index = self
+                            .workbook
+                            .sheets
+                            .iter()
+                            .position(|sheet| sheet.part_name == edits.part_name)?;
+                        Some(edits.cells.iter().filter_map(move |edit| {
+                            plain_value(&edit.value).map(|value| (index, edit.reference, value))
+                        }))
+                    })
+                    .flatten()
+                    .collect();
+                if let Ok(Some(outcome)) = jade_xlsx_calc::reevaluate(
+                    &mut session,
+                    &self.workbook,
+                    &self.calculation_time_zone,
+                    &manual,
+                    &typed,
+                ) {
+                    kept = Some((outcome, session));
+                }
+            }
+        }
+        let (outcome, session) = match kept {
+            Some((outcome, session)) => {
+                debug_assert_eq!(
+                    Some(&outcome.cells),
+                    jade_xlsx_calc::evaluate_with_manual_filter_rows(
+                        &self.workbook,
+                        &self.calculation_time_zone,
+                        &manual,
+                    )
+                    .ok()
+                    .as_ref()
+                    .map(|fresh| &fresh.cells),
+                    "the kept model answers as a model built afresh"
+                );
+                (outcome, Some(session))
+            }
+            None => match jade_xlsx_calc::evaluate_keeping(
+                &self.workbook,
+                &self.calculation_time_zone,
+                &manual,
+            ) {
+                Ok(evaluated) => evaluated,
+                Err(_) => return Ok(false),
+            },
         };
         if !outcome.spills.is_empty() {
             return Ok(false);
         }
+        let typed_cells: Vec<(usize, CellRef)> = sheets
+            .iter()
+            .filter_map(|edits| {
+                let index = self
+                    .workbook
+                    .sheets
+                    .iter()
+                    .position(|sheet| sheet.part_name == edits.part_name)?;
+                Some(edits.cells.iter().map(move |edit| (index, edit.reference)))
+            })
+            .flatten()
+            .collect();
         let mut grouped: BTreeMap<usize, Vec<CachedValueEdit>> = BTreeMap::new();
         let mut updates = Vec::new();
+        // Every formula the engine answered, for the charts reading them.
+        let mut verified = jade_xlsx_writer::VerifiedChartCells::new();
         for cell in &outcome.cells {
             let value = match &cell.value {
                 CellValue::Number(number) => CachedValue::Number(*number),
@@ -1331,6 +1436,12 @@ impl HeadlessWorkbook {
                 CellValue::Error(error) => CachedValue::Error(error.clone()),
                 CellValue::Empty => continue,
             };
+            if charts {
+                verified
+                    .entry(self.workbook.sheets[cell.sheet].part_name.clone())
+                    .or_default()
+                    .insert(cell.reference);
+            }
             if self.cached_value(cell.sheet, cell.reference) == cell.value {
                 continue;
             }
@@ -1344,11 +1455,16 @@ impl HeadlessWorkbook {
                 });
         }
         let complete = outcome.skipped.is_empty();
-        let in_place = updates.iter().all(|(index, reference, _)| {
-            self.workbook.sheets[*index]
-                .cell_at(*reference)
-                .is_some_and(|found| found.formula.is_some())
-        });
+        let changed_formulas: Vec<(usize, CellRef)> = updates
+            .iter()
+            .map(|(index, reference, _)| (*index, *reference))
+            .collect();
+        let in_place = !charts
+            && updates.iter().all(|(index, reference, _)| {
+                self.workbook.sheets[*index]
+                    .cell_at(*reference)
+                    .is_some_and(|found| found.formula.is_some())
+            });
         let cached: Vec<SheetCachedValues> = grouped
             .into_iter()
             .map(|(index, cells)| SheetCachedValues {
@@ -1358,18 +1474,29 @@ impl HeadlessWorkbook {
             .collect();
         // Packed quickly: typing writes the edited sheets on every entry, and
         // an export packs them properly.
+        let edited: Vec<String> = sheets.iter().map(|edits| edits.part_name.clone()).collect();
+        let known: Vec<String> = jade_opc::entry_fingerprints(&self.source, &edited)?
+            .into_iter()
+            .filter(|entry| self.ordered_sheets.contains(entry))
+            .map(|(name, _, _)| name)
+            .collect();
+        let ordered = |part: &str| known.iter().any(|name| name == part);
         let (written, fast) = jade_opc::with_fast_compression(|| {
             jade_xlsx_writer::write_edits_with_cached_values(
                 &self.source,
                 sheets,
                 &cached,
                 complete,
+                &verified,
+                &ordered,
             )
         });
         let written = match written {
-            Ok(written) => {
+            Ok((written, in_order)) => {
                 self.fast_entries
                     .extend(jade_opc::entry_fingerprints(&written, &fast)?);
+                self.ordered_sheets
+                    .extend(jade_opc::entry_fingerprints(&written, &in_order)?);
                 written
             }
             Err(error) => {
@@ -1395,10 +1522,37 @@ impl HeadlessWorkbook {
         } else {
             self.workbook = jade_xlsx_reader::read_xlsx(&written)?;
         }
+        let after = jade_opc::package_fingerprint(&written)?;
+        let mut cells: Vec<(usize, CellRef)> = typed_cells.clone();
+        cells.extend(changed_formulas);
+        self.typed_changes = Some(TypedChanges {
+            before: package,
+            after: after.clone(),
+            cells,
+        });
+        if let Some(session) = session {
+            self.calc_session = Some((after, session));
+        }
         let before = std::mem::replace(&mut self.source, written);
         self.remember(before);
         self.source_time_zone = self.calculation_time_zone.clone();
         Ok(true)
+    }
+
+    /// The cells the last write changed when it was typing — the values typed
+    /// and the formulas they recalculated, by sheet index — and nothing has
+    /// written the workbook since; `None` otherwise. Taken once: a view lays
+    /// out again only those cells' rows rather than the whole sheet.
+    ///
+    /// Each call also notes the package as the one the view now shows, so
+    /// the changes come back only when that typing write is all that
+    /// happened since the view last asked — not one write among several.
+    pub fn take_typed_changes(&mut self) -> Option<Vec<(usize, CellRef)>> {
+        let now = jade_opc::package_fingerprint(&self.source).ok();
+        let shown = std::mem::replace(&mut self.laid_out, now.clone());
+        let changes = self.typed_changes.take()?;
+        (now.as_ref() == Some(&changes.after) && shown.as_ref() == Some(&changes.before))
+            .then_some(changes.cells)
     }
 
     /// Rows hidden by hand under each sheet's filter, which SUBTOTAL skips.
@@ -1517,26 +1671,69 @@ impl HeadlessWorkbook {
         )?;
         let model = &self.workbook.sheets[index];
         let marks = jade_xlsx_writer::outline::plan_outline(model, axis, first, last, change)?;
-        if marks.is_empty() {
+        self.write_outline_marks(index, vec![(axis, marks)])
+    }
+
+    /// Data ▸ Group ▸ Auto Outline: rows grouped under the formulas that
+    /// sum the rows right above them, and columns under those summing the
+    /// columns left of them, replacing the sheet's outline. One undo step;
+    /// `false` when the outline is already so.
+    pub fn auto_outline(&mut self, sheet: &str) -> Result<bool> {
+        let index = self.sheet_index(sheet)?;
+        self.guard(
+            index,
+            "the outline of a protected sheet cannot change",
+            |_| false,
+        )?;
+        let (rows, columns) =
+            jade_xlsx_writer::outline::plan_auto_outline(&self.workbook.sheets[index])?;
+        self.write_outline_marks(index, vec![(Axis::Rows, rows), (Axis::Columns, columns)])
+    }
+
+    /// Data ▸ Ungroup ▸ Clear Outline on rows or columns: every level taken
+    /// off, hidden ones left hidden. One undo step; `false` when there is
+    /// none.
+    pub fn clear_outline(&mut self, sheet: &str, axis: Axis) -> Result<bool> {
+        let index = self.sheet_index(sheet)?;
+        self.guard(
+            index,
+            "the outline of a protected sheet cannot change",
+            |_| false,
+        )?;
+        let marks =
+            jade_xlsx_writer::outline::plan_clear_outline(&self.workbook.sheets[index], axis)?;
+        self.write_outline_marks(index, vec![(axis, marks)])
+    }
+
+    /// Writes outline marks on the sheet's rows and columns as one write.
+    fn write_outline_marks(
+        &mut self,
+        index: usize,
+        marks: Vec<(Axis, BTreeMap<u32, jade_xlsx_writer::outline::OutlineMark>)>,
+    ) -> Result<bool> {
+        if marks.iter().all(|(_, marks)| marks.is_empty()) {
             return Ok(false);
         }
-        let deepest = jade_xlsx_writer::outline::deepest_level(model, axis, &marks);
+        let model = &self.workbook.sheets[index];
         let part_name = model.part_name.clone();
         let mut package = jade_opc::OpcPackage::open(&self.source)?;
-        let xml = package
+        let mut xml = package
             .part_str(&part_name)?
             .ok_or_else(|| jade_xlsx_writer::WriteError::MissingPart(part_name.clone()))?;
-        let patched = jade_xlsx_writer::outline::write_outline(
-            &xml,
-            axis,
-            &marks,
-            deepest,
-            model.default_rows_hidden,
-            model
-                .default_column_width_chars
-                .map_or(DEFAULT_COLUMN_WIDTH, f64::from),
-        )?;
-        package.replace(&part_name, patched.into_bytes());
+        for (axis, marks) in marks.iter().filter(|(_, marks)| !marks.is_empty()) {
+            let deepest = jade_xlsx_writer::outline::deepest_level(model, *axis, marks);
+            xml = jade_xlsx_writer::outline::write_outline(
+                &xml,
+                *axis,
+                marks,
+                deepest,
+                model.default_rows_hidden,
+                model
+                    .default_column_width_chars
+                    .map_or(DEFAULT_COLUMN_WIDTH, f64::from),
+            )?;
+        }
+        package.replace(&part_name, xml.into_bytes());
         let written = package.write()?;
         // Hidden detail changes what SUBTOTAL and AGGREGATE see.
         self.commit_axis_sizes(written)?;
