@@ -54,3 +54,8 @@ per paragraph in PDF points; it is Word-to-Word evidence, not native parity.
 | split-three-after | 7.568 |
 | floating-three | 7.568 |
 | text-three | 7.572 |
+
+Laid out in Word for Mac's own Yu Mincho, both variants and the original
+`object-spaces` probe match Word within half a CSS pixel: run
+`object_spaces_match_word_with_office_yu_mincho` (ignored by default) with
+`JADE_OFFICE_YU_MINCHO` pointing at `Microsoft Word.app/Contents/Resources/DFonts/yumin.ttf`.
