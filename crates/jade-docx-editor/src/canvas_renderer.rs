@@ -1513,7 +1513,7 @@ impl TextBatchScratch {
     }
 }
 
-#[derive(Clone, Debug, Default, Serialize)]
+#[derive(Debug, Default, Serialize)]
 pub struct TableLayoutInfo {
     pub index: usize,
     pub order: usize,
@@ -1522,6 +1522,26 @@ pub struct TableLayoutInfo {
     pub column_widths: Vec<f64>,
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub row_heights: Vec<f64>,
+}
+
+impl Clone for TableLayoutInfo {
+    fn clone(&self) -> Self {
+        Self {
+            index: self.index,
+            order: self.order,
+            node_id: self.node_id,
+            column_widths: self.column_widths.clone(),
+            row_heights: self.row_heights.clone(),
+        }
+    }
+
+    fn clone_from(&mut self, source: &Self) {
+        self.index = source.index;
+        self.order = source.order;
+        self.node_id = source.node_id;
+        self.column_widths.clone_from(&source.column_widths);
+        self.row_heights.clone_from(&source.row_heights);
+    }
 }
 
 #[derive(Clone, Copy, Debug, Default, Serialize)]
@@ -34122,6 +34142,14 @@ where
         }
     }
 
+    /// Refresh an owned snapshot while reusing storage from previous edits.
+    /// Values are still copied, so later renderer updates cannot change it.
+    pub(crate) fn copy_table_resize_metadata_into(&self, target: &mut TableResizeMetadata) {
+        target.tables.clone_from(&self.table_layouts);
+        target.handles.clone_from(&self.table_handles);
+        target.row_handles.clone_from(&self.table_row_handles);
+    }
+
     pub fn drain_pending_image_promises(&self) -> Option<Promise> {
         let promises: Vec<Promise> = self.pending_image_promises.borrow_mut().drain(..).collect();
         if promises.is_empty() {
@@ -37846,6 +37874,149 @@ fn select_header_footer_variant<'a, T: ?Sized>(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // Vary topology and coordinates independently of the snapshot implementation.
+    fn set_resize_metadata_source(
+        renderer: &mut CanvasRenderer,
+        count: usize,
+        columns: usize,
+        rows: usize,
+        phase: u16,
+    ) {
+        renderer.table_layouts = (0..count)
+            .map(|i| TableLayoutInfo {
+                index: i + usize::from(phase),
+                order: count - i,
+                node_id: phase
+                    .is_multiple_of(2)
+                    .then_some(i as u32 + u32::from(phase)),
+                column_widths: (0..columns)
+                    .map(|c| (i + c) as f64 + f64::from(phase) + 0.25)
+                    .collect(),
+                row_heights: (0..rows)
+                    .map(|r| (i + r) as f64 + f64::from(phase) + 0.5)
+                    .collect(),
+            })
+            .collect();
+        renderer.table_handles = (0..count * columns)
+            .map(|i| TableResizeHandle {
+                table_index: i / columns,
+                column_index: i % columns,
+                x: i as f64 + f64::from(phase),
+                top: i as f64 + 1.25,
+                bottom: i as f64 + 23.5,
+                kind: if i % 2 == 0 {
+                    TableResizeHandleKind::BetweenColumns
+                } else {
+                    TableResizeHandleKind::TableRightEdge
+                },
+                reverse_delta: i % 3 == 0,
+            })
+            .collect();
+        renderer.table_row_handles = (0..count * rows)
+            .map(|i| TableRowResizeHandle {
+                table_index: i / rows,
+                row_index: i % rows,
+                y: i as f64 + f64::from(phase),
+                left: i as f64 + 2.25,
+                right: i as f64 + 73.5,
+                kind: if i % 2 == 0 {
+                    TableRowResizeHandleKind::BetweenRows
+                } else {
+                    TableRowResizeHandleKind::TableBottomEdge
+                },
+            })
+            .collect();
+    }
+
+    fn resize_metadata_source_json(renderer: &CanvasRenderer) -> serde_json::Value {
+        // Serialize the original fields directly, without using either clone path.
+        let mut value = serde_json::json!({
+            "tables": renderer.table_layouts,
+            "handles": renderer.table_handles,
+        });
+        if !renderer.table_row_handles.is_empty() {
+            value["row_handles"] = serde_json::to_value(&renderer.table_row_handles).unwrap();
+        }
+        value
+    }
+
+    #[test]
+    fn table_resize_metadata_reuses_outer_and_nested_storage() {
+        let mut renderer = test_renderer();
+        set_resize_metadata_source(&mut renderer, 3, 4, 5, 2);
+        let mut target = renderer.table_resize_metadata();
+        let tables = target.tables.as_ptr();
+        let handles = target.handles.as_ptr();
+        let row_handles = target.row_handles.as_ptr();
+        let columns = target.tables[0].column_widths.as_ptr();
+        let rows = target.tables[0].row_heights.as_ptr();
+        for (count, column_count, row_count, phase) in [
+            (3, 4, 5, 7),
+            (2, 3, 4, 11),
+            (2, 0, 0, 12),
+            (2, 4, 5, 13),
+            (0, 0, 0, 14),
+        ] {
+            set_resize_metadata_source(&mut renderer, count, column_count, row_count, phase);
+            renderer.copy_table_resize_metadata_into(&mut target);
+            assert_eq!(target.tables.as_ptr(), tables);
+            assert_eq!(target.handles.as_ptr(), handles);
+            assert_eq!(target.row_handles.as_ptr(), row_handles);
+            if count > 0 {
+                assert_eq!(target.tables[0].column_widths.as_ptr(), columns);
+                assert_eq!(target.tables[0].row_heights.as_ptr(), rows);
+            }
+            assert_eq!(
+                serde_json::to_value(&target).unwrap(),
+                resize_metadata_source_json(&renderer)
+            );
+        }
+    }
+
+    proptest::proptest! {
+        #![proptest_config(proptest::test_runner::Config::with_cases(96))]
+        #[test]
+        fn table_resize_metadata_transitions_preserve_values_and_snapshot_isolation(
+            steps in proptest::collection::vec((0usize..9, 0usize..9, 0usize..9, proptest::num::u16::ANY), 1..33),
+        ) {
+            let mut renderer = test_renderer();
+            let mut target = TableResizeMetadata::default();
+            for (count, columns, rows, phase) in steps {
+                set_resize_metadata_source(&mut renderer, count, columns, rows, phase);
+                let expected = resize_metadata_source_json(&renderer);
+                renderer.copy_table_resize_metadata_into(&mut target);
+                proptest::prop_assert_eq!(serde_json::to_value(&target).unwrap(), expected.clone());
+                proptest::prop_assert_eq!(serde_json::to_value(renderer.table_resize_metadata()).unwrap(), expected.clone());
+                // An owned snapshot must outlive changes to every renderer vector.
+                renderer.table_layouts.clear();
+                renderer.table_handles.clear();
+                renderer.table_row_handles.clear();
+                proptest::prop_assert_eq!(serde_json::to_value(&target).unwrap(), expected);
+            }
+        }
+    }
+
+    #[test]
+    fn table_layout_clone_from_reuses_nested_storage() {
+        let source = TableLayoutInfo {
+            index: 3,
+            order: 7,
+            node_id: Some(42),
+            column_widths: vec![72.0, 144.0],
+            row_heights: vec![18.0, 24.0],
+        };
+        let mut target = source.clone();
+        let columns = target.column_widths.as_ptr();
+        let rows = target.row_heights.as_ptr();
+        target.clone_from(&source);
+        assert_eq!(target.column_widths.as_ptr(), columns);
+        assert_eq!(target.row_heights.as_ptr(), rows);
+        assert_eq!(
+            serde_json::to_value(&target).unwrap(),
+            serde_json::to_value(&source).unwrap()
+        );
+    }
 
     /// コメントの `w:date` は Word と同じ形（ローカルの壁時計に `Z` を付け、秒まで）で書く。
     ///
