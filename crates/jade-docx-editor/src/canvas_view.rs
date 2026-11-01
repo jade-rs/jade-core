@@ -6836,6 +6836,20 @@ impl OffscreenDocumentView {
             }
         }
 
+        // Only ordinary insertion can carry absence facts across this edit.
+        // Formatting/autoformat batches, replacements and structural edits keep
+        // fresh scans; the recorded command below must also prove its scope.
+        let text_edit_cache = (!editing_text_box
+            && selection_before.is_collapsed()
+            && commands.len() == 1
+            && !text.contains(['\r', '\n']))
+        .then(|| {
+            (
+                self.renderer.borrow().local_text_edit_cache(),
+                self.state.borrow().command_executor.history_revision(),
+            )
+        });
+
         // Drop the renderer's document cache before mutating.
         // This allows Rc::make_mut to avoid cloning when ref_count becomes 1.
         let _document_cache = self.drop_renderer_document_cache();
@@ -7042,6 +7056,15 @@ impl OffscreenDocumentView {
                     } else {
                         None
                     };
+                    if let Some((cache, revision_before)) = text_edit_cache {
+                        renderer.restore_local_text_edit_cache_after_command(
+                            cache,
+                            word_doc,
+                            edited_paragraph_index,
+                            &state_ref.command_executor,
+                            revision_before,
+                        );
+                    }
                     // Use _rc variant to avoid cloning the document (Rc is already shared).
                     renderer.prepare_wrap_cache_capacity(word_doc);
                     renderer.render_with_numbering_rc(

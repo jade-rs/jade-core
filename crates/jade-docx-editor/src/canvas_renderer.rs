@@ -12555,6 +12555,28 @@ where
         }
     }
 
+    /// Carry negative feature facts across a newly recorded local command.
+    /// The caller must submit only one text command, with no auxiliary-story
+    /// edits between capture and restore. A stale undo entry is not proof that
+    /// the current request changed this paragraph.
+    pub(crate) fn restore_local_text_edit_cache_after_command(
+        &mut self,
+        cache: LocalTextEditCache,
+        model: &WordDocument,
+        paragraph: usize,
+        executor: &crate::commands::CommandExecutor,
+        revision_before: u64,
+    ) {
+        if executor.history_revision() != revision_before
+            && executor.next_undo_render_footprint()
+                == Some(crate::commands::HistoryRenderFootprint::SingleParagraph {
+                    index: paragraph,
+                })
+        {
+            self.restore_local_text_edit_cache(cache, model, paragraph);
+        }
+    }
+
     /// Whether the renderer holds a document to re-render from.
     ///
     /// `rerender_with_cached_state` silently does nothing without one, so a
@@ -39668,6 +39690,119 @@ mod tests {
             .unwrap();
         assert_eq!(renderer.comment_anchor_document_scans.get(), scans);
         assert_eq!(renderer.horizontal_float_wrap_cache.scans, 0);
+    }
+
+    #[test]
+    fn recorded_text_command_reuses_absence_scans_only_for_its_paragraph() {
+        use crate::commands::CommandExecutor;
+        use crate::headless_api::apply_headless_commands_with_executor_to_document;
+        use jade_docx_headless_api::{HeadlessCommand, HeadlessEditRequest};
+
+        // A stale history entry must not authorize reuse after no new command;
+        // paragraph splits and a different paragraph must keep fresh scans too.
+        for kind in 0..4 {
+            let (mut renderer, _) = recording_renderer();
+            let mut model =
+                WordDocument::from_document(doc_with_paragraph_texts(&vec!["plain"; 3000]));
+            let options = Options::default();
+            renderer
+                .render_with_numbering_rc(
+                    Rc::clone(model.document.as_ref().unwrap()),
+                    &options,
+                    None,
+                    None,
+                    None,
+                    None,
+                )
+                .unwrap();
+            let scans = renderer.comment_anchor_document_scans.get();
+            let mut executor = CommandExecutor::new();
+            let range = SelectionRange::collapsed(TextPosition::new(0, 0));
+            let mut selection = Some(range);
+            let cache = renderer.local_text_edit_cache();
+            renderer.drop_document_cache();
+            assert_eq!(Rc::strong_count(model.document.as_ref().unwrap()), 1);
+            assert_eq!(Rc::weak_count(model.document.as_ref().unwrap()), 0);
+            let revision = executor.history_revision();
+            let command = if kind == 2 {
+                HeadlessCommand::InsertParagraphBreak {
+                    paragraph: 0,
+                    offset: 0,
+                    count: 1,
+                }
+            } else {
+                HeadlessCommand::ReplaceRange {
+                    start_paragraph: 0,
+                    start_offset: 0,
+                    end_paragraph: 0,
+                    end_offset: 0,
+                    text: "あ".to_string(),
+                }
+            };
+            selection = apply_headless_commands_with_executor_to_document(
+                &mut model,
+                &mut executor,
+                selection,
+                &HeadlessEditRequest {
+                    commands: vec![command],
+                },
+            )
+            .unwrap();
+            assert!(selection.is_some());
+            let before = if kind == 1 {
+                executor.history_revision()
+            } else {
+                revision
+            };
+            renderer.restore_local_text_edit_cache_after_command(
+                cache,
+                &model,
+                usize::from(kind == 3),
+                &executor,
+                before,
+            );
+            renderer
+                .render_bounded_to_page_with_parts(
+                    Rc::clone(model.document.as_ref().unwrap()),
+                    &options,
+                    None,
+                    None,
+                    None,
+                    1,
+                )
+                .unwrap();
+            let expected_new_scans = usize::from(kind != 0);
+            assert_eq!(
+                renderer.comment_anchor_document_scans.get(),
+                scans + expected_new_scans,
+                "kind={kind}"
+            );
+            assert_eq!(
+                renderer.horizontal_float_wrap_cache.scans, expected_new_scans,
+                "kind={kind}"
+            );
+            assert!(renderer
+                .layout_debug_lines()
+                .iter()
+                .any(|line| !line.text.is_empty()));
+            let actual = serde_json::to_value(renderer.layout_debug_lines()).unwrap();
+            let (mut fresh, _) = recording_renderer();
+            fresh
+                .render_bounded_to_page_with_parts(
+                    Rc::clone(model.document.as_ref().unwrap()),
+                    &options,
+                    None,
+                    None,
+                    None,
+                    1,
+                )
+                .unwrap();
+            assert_eq!(
+                actual,
+                serde_json::to_value(fresh.layout_debug_lines()).unwrap(),
+                "kind={kind}"
+            );
+        }
     }
 
     #[test]
