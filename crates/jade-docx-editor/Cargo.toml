@@ -11,6 +11,8 @@ unexpected_cfgs = { level = "warn", check-cfg = ['cfg(kani)'] }
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
+jade-crdt = { path = "../jade-crdt" }
+jade-docx-crdt = { path = "../jade-docx-crdt" }
 # jade-docx-convert's PDF reflow reads PDFs through lopdf, whose random
 # numbers come from the JavaScript host in the browser build.
 lopdf = { version = "=0.39.0", default-features = false, features = ["wasm_js"] }
@@ -107,8 +109,8 @@ features = [
 ]
 
 [dev-dependencies]
-futures = "0.3"
 proptest = "1.6"
+futures = "0.3"
 
 [[example]]
 name = "math_font_plan"
