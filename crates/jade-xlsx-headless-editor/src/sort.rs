@@ -169,11 +169,12 @@ impl HeadlessWorkbook {
             || request
                 .keys
                 .iter()
-                .map(|key| key.column)
+                .map(|key| (key.column, key.color.clone()))
                 .collect::<HashSet<_>>()
                 .len()
                 != request.keys.len()
         {
+            // A column may come back once per colour, as Excel's levels do.
             return Err(error(
                 "sort requires 1–64 distinct columns within the range",
             ));
@@ -336,6 +337,14 @@ impl HeadlessWorkbook {
                         ));
                     }
                 }
+                if let Some(color) = &key.color {
+                    // Of the colour or not: those that are first (last when
+                    // descending), each lot keeping its order.
+                    let at = CellRef::new(body.start.column + key.column, row);
+                    let of = cell_color(sheet, &self.workbook.styles, at, color.font) == color.rgb;
+                    values.push(SortValue::Number(if of { 0.0 } else { 1.0 }));
+                    continue;
+                }
                 values.push(SortValue::new(
                     cell.map(|cell| &cell.value),
                     reading.and_then(|reading| reading.key.as_deref()),
@@ -371,19 +380,23 @@ impl HeadlessWorkbook {
             .filter(|(offset, row)| body.start.row + *offset as u32 != **row)
             .count() as u32;
         let mut written = jade_xlsx_writer::sort::permute_rows(&self.source, sheet, body, &order)?;
-        let keys: Vec<_> = request
-            .keys
-            .iter()
-            .map(|key| (body.start.column + key.column, key.descending))
-            .collect();
-        written = jade_xlsx_writer::sort::write_sort_state(
-            &written,
-            sheet,
-            table,
-            body,
-            &keys,
-            request.case_sensitive,
-        )?;
+        // The sort state says how to sort again by value; one by colour
+        // would need a differential style for each colour, so it says none.
+        if request.keys.iter().all(|key| key.color.is_none()) {
+            let keys: Vec<_> = request
+                .keys
+                .iter()
+                .map(|key| (body.start.column + key.column, key.descending))
+                .collect();
+            written = jade_xlsx_writer::sort::write_sort_state(
+                &written,
+                sheet,
+                table,
+                body,
+                &keys,
+                request.case_sensitive,
+            )?;
+        }
         let mut state = self
             .filter_row_state
             .get(sheet_name)
@@ -454,5 +467,39 @@ impl HeadlessWorkbook {
         self.filter_row_state.insert(sheet_name.into(), state);
         self.recalculate_after_edit();
         Ok(summary)
+    }
+}
+
+/// The colour of the cell at `at` as Sort On Cell Color (or, `font`, Font
+/// Color) sees it: `RRGGBB` of a solid fill or the font, empty for no fill
+/// or the automatic font colour; a pattern or gradient is neither.
+fn cell_color(
+    sheet: &Sheet,
+    styles: &jade_xlsx_reader::StyleTable,
+    at: CellRef,
+    font: bool,
+) -> String {
+    let format = styles.cell_format(Some(effective_style(sheet, at)));
+    let hex = |color| {
+        jade_xlsx_layout::color::rgba(color)
+            .filter(|rgba| rgba[3] == 255)
+            .map(|rgba| format!("{:02X}{:02X}{:02X}", rgba[0], rgba[1], rgba[2]))
+    };
+    if font {
+        return format
+            .and_then(|format| styles.font(format))
+            .and_then(|font| font.color)
+            .and_then(hex)
+            .unwrap_or_default();
+    }
+    let fill = format.and_then(|format| styles.fill(format));
+    match fill.and_then(|fill| fill.pattern.as_deref()) {
+        _ if fill.is_some_and(|fill| fill.gradient.is_some()) => "gradient".into(),
+        None | Some("none") => String::new(),
+        Some("solid") => fill
+            .and_then(|fill| fill.foreground)
+            .and_then(hex)
+            .unwrap_or_default(),
+        Some(_) => "pattern".into(),
     }
 }

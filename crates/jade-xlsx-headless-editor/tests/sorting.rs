@@ -20,6 +20,7 @@ fn sort(reference: &str, header: bool, keys: &[(u32, bool)]) -> SortRequest {
             .map(|(column, descending)| SortKey {
                 column: *column,
                 descending: *descending,
+                color: None,
             })
             .collect(),
     }
@@ -651,4 +652,98 @@ fn unrelated_empty_filter_owners_do_not_move_hidden_rows_or_block_active_owner_s
         .is_err());
     assert_eq!(book.bytes(), before);
     assert!(!book.can_undo());
+}
+
+/// Sort On Cell Color or Font Color: the cells of the colour first (On Top)
+/// or last (On Bottom), every other row keeping its order; the same column
+/// once per colour, as Excel's levels allow.
+#[test]
+fn sorting_by_colour_puts_that_colour_on_top_or_bottom() {
+    use jade_xlsx_headless_api::SortColor;
+    const NAME: &str = "売上サマリ";
+    let mut book = HeadlessWorkbook::open_for_editing(include_bytes!(
+        "../../../public/fixtures/sample-workbook.xlsx"
+    ))
+    .unwrap();
+    let names = ["a", "b", "c", "d", "e", "f"];
+    let cells: Vec<(String, CellInput)> = names
+        .iter()
+        .enumerate()
+        .map(|(row, name)| (format!("K{}", 31 + row), CellInput::Text(name.to_string())))
+        .collect();
+    book.set_cells(NAME, &cells).unwrap();
+    let fill = |book: &mut HeadlessWorkbook, reference: &str, rgb: &str| {
+        let change = FormatChange {
+            fill_color: Some(rgb.into()),
+            ..FormatChange::default()
+        };
+        book.set_format(NAME, reference, &change).unwrap();
+    };
+    // b and e yellow, d red.
+    fill(&mut book, "K32", "FFFF00");
+    fill(&mut book, "K35", "FFFF00");
+    fill(&mut book, "K34", "FF0000");
+    let column = |book: &HeadlessWorkbook| {
+        (31..=36)
+            .map(|row| book.cell(NAME, &format!("K{row}")).unwrap().display)
+            .collect::<Vec<_>>()
+    };
+    let by = |rgb: &str, bottom: bool| SortKey {
+        column: 0,
+        descending: bottom,
+        color: Some(SortColor {
+            font: false,
+            rgb: rgb.into(),
+        }),
+    };
+    let request = |keys: Vec<SortKey>| SortRequest {
+        reference: "K31:K36".into(),
+        header: false,
+        case_sensitive: false,
+        locale: None,
+        phonetic: None,
+        keys,
+    };
+    book.sort_range(NAME, &request(vec![by("FFFF00", false)]))
+        .unwrap();
+    assert_eq!(column(&book), ["b", "e", "a", "c", "d", "f"]);
+    // Red on top, then yellow: one column, two levels.
+    book.sort_range(
+        NAME,
+        &request(vec![by("FF0000", false), by("FFFF00", false)]),
+    )
+    .unwrap();
+    assert_eq!(column(&book), ["d", "b", "e", "a", "c", "f"]);
+    // No fill on bottom.
+    book.sort_range(NAME, &request(vec![by("", true)])).unwrap();
+    assert_eq!(column(&book), ["d", "b", "e", "a", "c", "f"]);
+    book.sort_range(NAME, &request(vec![by("", false)]))
+        .unwrap();
+    assert_eq!(column(&book), ["a", "c", "f", "d", "b", "e"]);
+    // The font's colour.
+    let red_text = FormatChange {
+        font_color: Some("C00000".into()),
+        ..FormatChange::default()
+    };
+    book.set_format(NAME, "K36", &red_text).unwrap();
+    let font = SortKey {
+        column: 0,
+        descending: false,
+        color: Some(SortColor {
+            font: true,
+            rgb: "C00000".into(),
+        }),
+    };
+    book.sort_range(NAME, &request(vec![font])).unwrap();
+    assert_eq!(column(&book)[0], "e");
+    // The same colour twice is refused, as the same column twice is.
+    assert!(book
+        .sort_range(
+            NAME,
+            &request(vec![by("FFFF00", false), by("FFFF00", true)])
+        )
+        .is_err());
+    // A sort by colour writes no sort state to sort by again.
+    let sheet = book.workbook().sheets[0].part_name.clone();
+    assert!(!part(&book, &sheet).contains("sortState"));
 }
