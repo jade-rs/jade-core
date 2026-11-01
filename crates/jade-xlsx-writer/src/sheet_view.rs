@@ -1,4 +1,5 @@
-//! A sheet's view settings on its first `<sheetView>`: Show Formulas.
+//! A sheet's view settings on its first `<sheetView>`: Show Formulas and
+//! showing zeros.
 
 use quick_xml::events::Event;
 use quick_xml::Reader;
@@ -11,6 +12,17 @@ use crate::Result;
 /// taken away when `on` is false. A sheet with no `<sheetView>` is left as
 /// it is.
 pub fn set_show_formulas(xml: &str, on: bool) -> Result<String> {
+    set_view_attribute(xml, "showFormulas", on.then(|| "1".to_string()))
+}
+
+/// The sheet part with zeros shown (`showZeros` taken away, Excel's
+/// default) or hidden (`showZeros="0"`) on its first `<sheetView>`.
+pub fn set_show_zeros(xml: &str, on: bool) -> Result<String> {
+    set_view_attribute(xml, "showZeros", (!on).then(|| "0".to_string()))
+}
+
+/// `name` set to `value`, or taken away, on the first `<sheetView>`.
+fn set_view_attribute(xml: &str, name: &str, value: Option<String>) -> Result<String> {
     let mut reader = Reader::from_str(xml);
     let mut buf = Vec::new();
     loop {
@@ -20,11 +32,7 @@ pub fn set_show_formulas(xml: &str, on: bool) -> Result<String> {
             Event::Start(ref e) | Event::Empty(ref e)
                 if local(e.name().as_ref()) == b"sheetView" =>
             {
-                let text = rewrite(
-                    e,
-                    &[("showFormulas", on.then(|| "1".to_string()))],
-                    matches!(event, Event::Empty(_)),
-                )?;
+                let text = rewrite(e, &[(name, value)], matches!(event, Event::Empty(_)))?;
                 let splice = Splice {
                     start,
                     end: reader.buffer_position() as usize,
@@ -53,5 +61,13 @@ mod tests {
         assert!(!off.contains("showFormulas"));
         let bare = "<worksheet><sheetData/></worksheet>";
         assert_eq!(set_show_formulas(bare, true).unwrap(), bare);
+    }
+
+    #[test]
+    fn zeros_are_hidden_with_show_zeros_0_and_shown_by_taking_it_away() {
+        let xml = r#"<worksheet><sheetViews><sheetView workbookViewId="0"/></sheetViews><sheetData/></worksheet>"#;
+        let hidden = set_show_zeros(xml, false).unwrap();
+        assert!(hidden.contains(r#"<sheetView workbookViewId="0" showZeros="0"/>"#));
+        assert_eq!(set_show_zeros(&hidden, true).unwrap(), xml);
     }
 }

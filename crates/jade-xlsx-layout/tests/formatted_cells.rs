@@ -57,6 +57,7 @@ fn sheet_with(value: CellValue) -> Sheet {
         default_rows_hidden: false,
         show_grid_lines: true,
         show_formulas: false,
+        show_zeros: true,
         freeze_pane: None,
         tables: Vec::new(),
         header_footer: None,
@@ -215,4 +216,28 @@ fn ignored_errors_turn_off_the_check_they_name() {
         ..numbers
     };
     assert!(flagged(text(), None, elsewhere));
+}
+
+#[test]
+fn a_sheet_that_hides_zeros_shows_cells_worth_zero_as_empty() {
+    let shown = |value: CellValue, formula: Option<&str>, show_zeros: bool, show_formulas: bool| {
+        let mut sheet = sheet_with(value);
+        sheet.rows[0].cells[0].formula = formula.map(str::to_string);
+        sheet.show_zeros = show_zeros;
+        sheet.show_formulas = show_formulas;
+        let layout = layout_sheet(&sheet, &styles("#,##0.00"), &LayoutOptions::default());
+        layout.cell(CellRef::new(0, 0)).expect("A1").text.clone()
+    };
+    assert_eq!(shown(CellValue::Number(0.0), None, true, false), "0.00");
+    assert_eq!(shown(CellValue::Number(0.0), None, false, false), "");
+    assert_eq!(
+        shown(CellValue::Number(0.0), Some("B1-C1"), false, false),
+        ""
+    );
+    assert_eq!(shown(CellValue::Number(1.5), None, false, false), "1.50");
+    assert_eq!(shown(CellValue::Text("0".into()), None, false, false), "0");
+    assert_eq!(
+        shown(CellValue::Number(0.0), Some("B1-C1"), false, true),
+        "=B1-C1"
+    );
 }
