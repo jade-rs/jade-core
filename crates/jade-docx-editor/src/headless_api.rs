@@ -14042,6 +14042,87 @@ mod tests {
     }
 
     #[test]
+    fn a_comment_it_cannot_anchor_in_a_new_shape_leaves_the_text_boxes_as_they_were() {
+        // A new shape's paragraph has no XML of its own until an edit writes
+        // it, so a comment cannot end there. That was found out only after
+        // the start paragraph had been split and synced, and the failed
+        // comment left the other text box's paragraph showing empty.
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/textbox.docx"),
+        )
+        .expect("read fixture");
+        let mut word_doc =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+        apply_headless_commands_to_document(
+            &mut word_doc,
+            &HeadlessEditRequest {
+                commands: vec![
+                    HeadlessCommand::InsertShape {
+                        paragraph: 0,
+                        offset: 4,
+                        shape: jade_docx_headless_api::HeadlessShapeKind::Rectangle,
+                        width_px: 40.0,
+                        height_px: 20.0,
+                        fill_color: None,
+                        border_color: None,
+                        border_width_px: 1.0,
+                        text: String::new(),
+                    },
+                    // The two boxes side by side, then moved to a new section.
+                    HeadlessCommand::DeleteText {
+                        paragraph: 0,
+                        offset: 4,
+                        direction: jade_docx_headless_api::HeadlessDeleteDirection::Forward,
+                        count: 2,
+                    },
+                    HeadlessCommand::InsertSectionBreak {
+                        paragraph: 0,
+                        offset: 2,
+                        break_type: jade_docx_headless_api::HeadlessSectionBreakType::NextPage,
+                    },
+                ],
+            },
+        )
+        .expect("shape");
+        assert!(word_doc.is_text_box_paragraph_surface(2));
+        assert!(word_doc.paragraph(2).is_some_and(|p| p.node_id.is_none()));
+        let texts = |word_doc: &WordDocument| {
+            (0..word_doc.paragraph_count())
+                .map(|index| {
+                    word_doc
+                        .paragraph(index)
+                        .map(|p| {
+                            p.runs
+                                .iter()
+                                .map(|run| run.text.clone())
+                                .collect::<String>()
+                        })
+                        .unwrap_or_default()
+                })
+                .collect::<Vec<_>>()
+        };
+        let before = texts(&word_doc);
+        assert!(apply_headless_commands_to_document(
+            &mut word_doc,
+            &HeadlessEditRequest {
+                commands: vec![HeadlessCommand::AddComment {
+                    start_paragraph: 1,
+                    start_offset: Some(1),
+                    end_paragraph: 2,
+                    end_offset: Some(0),
+                    text: "c".to_string(),
+                    author: Some("reviewer".to_string()),
+                    initials: None,
+                    date: None,
+                }],
+            },
+        )
+        .is_err());
+        assert_eq!(texts(&word_doc), before);
+    }
+
+    #[test]
     fn tracked_formatting_of_a_text_box_paragraph_can_be_rejected() {
         // shape-preset-geometries.docx has shapes whose paragraphs are not in
         // the XML until an edit writes them. With changes tracked, setting
