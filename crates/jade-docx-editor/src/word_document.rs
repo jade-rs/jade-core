@@ -4054,16 +4054,39 @@ impl WordDocument {
         let Some(styles) = self.styles_part.take() else {
             return;
         };
-        let run_fonts = |paragraph: &Paragraph| {
-            paragraph
-                .runs
-                .iter()
-                .map(|run| {
+        // The fonts of every run the defaults reach: the paragraph's own and
+        // those in its text boxes. Compared on the paragraph's runs alone, a
+        // text box run the defaults gave a theme font (`minorEastAsia`) was
+        // never resolved to its face, and its East Asian text had none.
+        fn collect_run_fonts(paragraph: &Paragraph, out: &mut Vec<Option<RunFonts>>) {
+            for run in &paragraph.runs {
+                out.push(
                     run.properties
                         .as_ref()
-                        .and_then(|props| props.fonts.clone())
-                })
-                .collect::<Vec<_>>()
+                        .and_then(|props| props.fonts.clone()),
+                );
+                if let Some(text_box) = run.text_box.as_ref() {
+                    collect_block_run_fonts(&text_box.blocks, out);
+                }
+            }
+        }
+        fn collect_block_run_fonts(blocks: &[BodyElement], out: &mut Vec<Option<RunFonts>>) {
+            for block in blocks {
+                match block {
+                    BodyElement::Paragraph(paragraph) => collect_run_fonts(paragraph, out),
+                    BodyElement::Table(table) => {
+                        for cell in table.rows.iter().flat_map(|row| row.cells.iter()) {
+                            collect_block_run_fonts(&cell.blocks, out);
+                        }
+                    }
+                    BodyElement::Math(_) => {}
+                }
+            }
+        }
+        let run_fonts = |paragraph: &Paragraph| {
+            let mut fonts = Vec::new();
+            collect_run_fonts(paragraph, &mut fonts);
+            fonts
         };
         let filled = self
             .paragraph_mut(paragraph_index)
@@ -37384,13 +37407,29 @@ impl WordDocument {
                                     run_index += 1;
                                     continue;
                                 }
+                                // A run before one still in a simple field's
+                                // result sits inside that result (a shape put in
+                                // a HYPERLINK field's text, or a piece cut from
+                                // the result there): it goes in. A link is split
+                                // around such a run instead (below), but a field
+                                // split in two would be two fields. Ended here,
+                                // the field was written with that later run
+                                // still in it, and the run was written again
+                                // after it, doubling its text.
+                                let inside = container.name == "w:fldSimple"
+                                    && runs[run_index + 1..].iter().any(|later| {
+                                        later.node_id.is_some_and(|id| {
+                                            Self::element_contains_run_id(&container, id)
+                                        })
+                                    });
                                 // Do not absorb a plain run into a hyperlink wrapper.
                                 // `split_runs_at` nulls `node_id` on every trailing
                                 // run (even untouched ones after the edited run), so
                                 // without this guard the run following a hyperlink
                                 // would be pulled inside the `<w:hyperlink>` element,
                                 // turning non-link text into clickable link text.
-                                if container.name == "w:hyperlink"
+                                if !inside
+                                    && container.name == "w:hyperlink"
                                     && runs[run_index].hyperlink.is_none()
                                 {
                                     break;
@@ -37400,7 +37439,8 @@ impl WordDocument {
                                 // wrapper identity. A newly inserted field, even
                                 // with the same instruction, must stay a sibling
                                 // rather than becoming the previous field's result.
-                                if container.name == "w:fldSimple"
+                                if !inside
+                                    && container.name == "w:fldSimple"
                                     && !runs[run_index].field.as_ref().is_some_and(|field| {
                                         field.source_field_id == Some(container.id)
                                     })
