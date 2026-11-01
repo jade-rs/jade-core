@@ -87,3 +87,47 @@ fn a_workbook_without_formulas_types_without_a_model_until_one_is_typed() {
     assert_eq!(reopened.cell(&sheet, "B2").unwrap().number, Some(3.0));
     assert_eq!(reopened.cell(&sheet, "Z2").unwrap().number, Some(30.0));
 }
+
+/// Typing taken back puts back what it overwrote — a value a formula
+/// reads, the formula's result, a cell in a row that was not there — as
+/// the package it restores reads (which every test build checks), and the
+/// write can be redone and taken back again.
+#[test]
+fn typing_is_taken_back_in_place() {
+    let mut book = open();
+    book.set_cells(
+        SHEET,
+        &[
+            ("H20".into(), CellInput::Number(1.0)),
+            ("I20".into(), CellInput::Formula("=H20*2".into())),
+        ],
+    )
+    .unwrap();
+    book.set(SHEET, "H20", CellInput::Number(5.0)).unwrap();
+    book.set(SHEET, "Z900", CellInput::Text("new".into()))
+        .unwrap();
+    assert_eq!(book.cell(SHEET, "Z900").unwrap().display, "new");
+
+    assert!(book.undo().unwrap());
+    assert_eq!(book.cell(SHEET, "Z900").unwrap().display, "");
+    assert!(book.workbook().sheets[0]
+        .rows
+        .iter()
+        .all(|row| row.index != 899));
+    assert!(book.undo().unwrap());
+    assert_eq!(number(&book, "H20"), 1.0);
+    assert_eq!(number(&book, "I20"), 2.0);
+
+    assert!(book.redo().unwrap());
+    assert_eq!(number(&book, "I20"), 10.0);
+    assert!(book.redo().unwrap());
+    assert_eq!(book.cell(SHEET, "Z900").unwrap().display, "new");
+    assert!(book.undo().unwrap());
+    assert!(book.undo().unwrap());
+    assert_eq!(number(&book, "I20"), 2.0);
+    // Typing again after it starts from the model put back.
+    book.set(SHEET, "H20", CellInput::Number(4.0)).unwrap();
+    assert_eq!(number(&book, "I20"), 8.0);
+    let reopened = HeadlessWorkbook::open(book.bytes()).unwrap();
+    assert_eq!(reopened.cell(SHEET, "I20").unwrap().number, Some(8.0));
+}
