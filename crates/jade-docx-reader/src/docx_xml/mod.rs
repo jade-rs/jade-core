@@ -124,6 +124,8 @@ pub struct DocxXmlDocument {
     /// as runs, so the model-to-XML run mapping must skip them.
     self_closing_elements: HashSet<XmlNodeId>,
     journal: JournalSlot,
+    /// Independent of the undo journal; clones retain unacknowledged changes.
+    changes: Option<HashSet<XmlNodeId>>,
     /// Length of the text the tree was parsed from, which
     /// [`Self::to_string`] reserves up front: a written part is about as long
     /// as its source, and growing the buffer by doubling copied a
@@ -137,6 +139,32 @@ pub struct DocxXmlDocument {
 const SELF_CLOSING_TRACKED: [&str; 4] = ["w:r", "w:fldSimple", "m:oMath", "w:object"];
 
 impl DocxXmlDocument {
+    /// Start a fresh change-tracking epoch after acknowledging a projection.
+    /// Mutable borrows conservatively invalidate the entire borrowed subtree.
+    /// Tracking is opt-in and independent of native Undo/Redo journals.
+    pub fn track_changes(&mut self) {
+        self.changes = Some(HashSet::new());
+    }
+
+    /// Subtrees touched since `track_changes`, including structural parents.
+    /// Removed elements are omitted: their surviving parent is also recorded.
+    /// Reading does not acknowledge changes, so failed consumers can retry.
+    pub fn changed_elements(&self) -> Option<Vec<XmlNodeId>> {
+        self.changes.as_ref().map(|changes| {
+            changes
+                .iter()
+                .copied()
+                .filter(|id| self.element(*id).is_some())
+                .collect()
+        })
+    }
+
+    fn mark_changed(&mut self, id: XmlNodeId) {
+        if let Some(changes) = &mut self.changes {
+            changes.insert(id);
+        }
+    }
+
     /// Whether `id` is a `w:r`, `w:fldSimple`, `m:oMath` or `w:object` the
     /// source wrote in empty-element form (see [`Self::self_closing_elements`]).
     /// Elements created after parsing never are.
@@ -307,6 +335,7 @@ impl DocxXmlDocument {
     /// recorded, unless it or an ancestor was kept already: restoring an
     /// ancestor restores everything below it.
     fn record_modification(&mut self, id: XmlNodeId, path: &[usize]) {
+        self.mark_changed(id);
         let Some(journal) = self.journal.0.as_mut() else {
             return;
         };
@@ -334,6 +363,7 @@ impl DocxXmlDocument {
     }
 
     fn restore_element(&mut self, id: XmlNodeId, before: XmlElement) -> Result<(), DocxXmlError> {
+        self.mark_changed(id);
         let path = self.path(id).ok_or(DocxXmlError::UnknownNode(id))?;
         let Self { root, index, .. } = self;
         let element = Self::element_by_path_mut(root, path.as_slice())
@@ -363,6 +393,7 @@ impl DocxXmlDocument {
             )));
         }
         parent.children.insert(index, node);
+        self.mark_changed(parent_id);
         self.reindex_children_from(parent_path.as_slice(), index);
         Ok(())
     }
@@ -555,6 +586,7 @@ impl DocxXmlDocument {
         }
 
         parent.children.insert(index, node);
+        self.mark_changed(parent_id);
         self.reindex_children_from(parent_path.as_slice(), index);
         self.record(|| JournalEntry::Inserted {
             parent: parent_id,
@@ -610,6 +642,7 @@ impl DocxXmlDocument {
             )));
         }
         parent.children.insert(index, node);
+        self.mark_changed(parent_id);
         self.reindex_children_from(parent_path.as_slice(), index);
         self.record(|| JournalEntry::Inserted {
             parent: parent_id,
@@ -644,6 +677,7 @@ impl DocxXmlDocument {
         }
 
         let removed = parent.children.remove(index);
+        self.mark_changed(parent_id);
 
         // インデックスをインクリメンタルに更新する（全ツリー走査の
         // `rebuild_index` を避ける）。削除は 1 ノード（とそのサブツリー）
@@ -727,6 +761,7 @@ impl DocxXmlDocument {
         }
         removed.reverse();
 
+        self.mark_changed(parent_id);
         self.reindex_children_from(parent_path.as_slice(), start_index);
         Ok(removed)
     }
@@ -1059,6 +1094,7 @@ impl DocxXmlTreeBuilder {
             next_drawing_object_id: None,
             self_closing_elements: self.self_closing_elements,
             journal: JournalSlot::default(),
+            changes: None,
             source_len: 0,
         })
     }
@@ -1558,6 +1594,77 @@ fn push_escaped(buffer: &mut String, value: &str, entity: impl Fn(u8) -> Option<
 #[cfg(test)]
 pub(crate) mod tests {
     use super::*;
+
+    #[test]
+    fn change_tracking_is_opt_in_non_destructive_and_cloned_for_checkpoints() {
+        let mut doc = DocxXmlDocument::parse("<root><a/><b/></root>").unwrap();
+        assert!(doc.changed_elements().is_none());
+        doc.track_changes();
+        let a = match &doc.root().children[0] {
+            XmlNode::Element(e) => e.id,
+            _ => unreachable!(),
+        };
+        doc.element_mut(a).unwrap().name = "edited".into();
+        assert_eq!(doc.changed_elements().unwrap(), vec![a]);
+        let checkpoint = doc.clone();
+        doc.track_changes();
+        assert!(doc.changed_elements().unwrap().is_empty());
+        assert_eq!(checkpoint.changed_elements().unwrap(), vec![a]);
+        assert_eq!(checkpoint.changed_elements().unwrap(), vec![a]);
+    }
+
+    proptest! {
+        #[test]
+        fn change_tracking_scopes_reconstruct_full_tree_after_structural_edits_and_rollback(
+            ops in proptest::collection::vec(index_op(), 1..32),
+            rollback in any::<bool>(),
+        ) {
+            let mut doc = DocxXmlDocument::parse(
+                "<root><p><r><t>A</t></r></p><table><row><cell><p/></cell></row></table><p>B</p></root>",
+            ).unwrap();
+            let before = doc.root().clone();
+            doc.track_changes();
+            doc.begin_edit_journal();
+            for op in ops {
+                apply_index_op(&mut doc, op);
+            }
+            let journal = doc.finish_edit_journal().unwrap();
+            // A consumer may acknowledge a successful epoch before a later undo.
+            let source = if rollback {
+                let source = doc.root().clone();
+                doc.track_changes();
+                doc.roll_back(journal).unwrap();
+                source
+            } else {
+                before
+            };
+            let dirty: HashSet<_> = doc.changed_elements().unwrap().into_iter().collect();
+            fn rebuild(
+                old: &XmlElement,
+                doc: &DocxXmlDocument,
+                dirty: &HashSet<XmlNodeId>,
+            ) -> XmlElement {
+                if dirty.contains(&old.id) {
+                    return doc.element(old.id).unwrap().clone();
+                }
+                let mut copy = old.clone();
+                for child in &mut copy.children {
+                    if let XmlNode::Element(element) = child {
+                        *element = rebuild(element, doc, dirty);
+                    }
+                }
+                copy
+            }
+            let mut reconstructed = doc.clone();
+            reconstructed.root = rebuild(&source, &doc, &dirty);
+            prop_assert_eq!(reconstructed.to_string().unwrap(), doc.to_string().unwrap());
+            let mut actual = vec![];
+            let mut expected = vec![];
+            element_ids(reconstructed.root(), &mut actual);
+            element_ids(doc.root(), &mut expected);
+            prop_assert_eq!(actual, expected);
+        }
+    }
 
     #[test]
     fn attribute_whitespace_survives_roundtrip() {
