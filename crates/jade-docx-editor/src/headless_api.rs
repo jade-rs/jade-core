@@ -14042,6 +14042,91 @@ mod tests {
     }
 
     #[test]
+    fn formatting_a_moved_paragraph_keeps_the_move_range_around_its_text() {
+        // review-kinds.docx moves "moved words" out of paragraph 1. Its run
+        // took the next run's XML, so bolding the paragraph wrote the moved
+        // text after the move's range end, and a rejected style change left
+        // the moved text at the style's size on screen.
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/review-kinds.docx"),
+        )
+        .expect("read fixture");
+        let mut word_doc =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+        let length: usize = word_doc
+            .paragraph(1)
+            .expect("moved paragraph")
+            .runs
+            .iter()
+            .map(|run| run.text.len())
+            .sum();
+        apply_headless_commands_to_document(
+            &mut word_doc,
+            &HeadlessEditRequest {
+                commands: vec![HeadlessCommand::ApplyBold {
+                    start_paragraph: 1,
+                    start_offset: 0,
+                    end_paragraph: 1,
+                    end_offset: length,
+                    enabled: true,
+                }],
+            },
+        )
+        .expect("bold");
+        let xml = word_doc
+            .raw_document
+            .as_ref()
+            .expect("document xml")
+            .to_string()
+            .expect("serialize");
+        let range_end = xml.find("<w:moveFromRangeEnd").expect("range end");
+        let moved = xml.find("moved words").expect("moved text");
+        assert!(moved < range_end, "{xml}");
+
+        let sizes = |word_doc: &WordDocument| {
+            word_doc
+                .paragraph(1)
+                .expect("moved paragraph")
+                .runs
+                .iter()
+                .map(|run| run.properties.as_ref().and_then(|props| props.font_size))
+                .collect::<Vec<_>>()
+        };
+        let mut word_doc =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+        let before = sizes(&word_doc);
+        apply_headless_commands_to_document(
+            &mut word_doc,
+            &HeadlessEditRequest {
+                commands: vec![
+                    HeadlessCommand::StartChangeTracking {
+                        author: Some("reviewer".to_string()),
+                        initials: None,
+                        date: None,
+                        date_utc: None,
+                    },
+                    HeadlessCommand::SetParagraphStyle {
+                        start_paragraph: 1,
+                        end_paragraph: 1,
+                        style_id: Some("Heading2".to_string()),
+                    },
+                    HeadlessCommand::RejectRevisions {
+                        kind: None,
+                        start_paragraph: None,
+                        end_paragraph: None,
+                        revision_id: None,
+                        revision_ids: None,
+                        revision_targets: None,
+                    },
+                ],
+            },
+        )
+        .expect("tracked style rejected");
+        assert_eq!(sizes(&word_doc), before);
+    }
+
+    #[test]
     fn a_comment_it_cannot_anchor_in_a_new_shape_leaves_the_text_boxes_as_they_were() {
         // A new shape's paragraph has no XML of its own until an edit writes
         // it, so a comment cannot end there. That was found out only after
@@ -14120,6 +14205,54 @@ mod tests {
         )
         .is_err());
         assert_eq!(texts(&word_doc), before);
+    }
+
+    #[test]
+    fn a_comment_from_the_body_into_a_text_box_is_refused() {
+        // textbox-tall-header-overlap.docx: paragraph 2 is a text box's. A
+        // comment from body paragraph 0 to it put its range end and its
+        // reference run in the box, a range across two stories that Word
+        // does not make; the run there had no formatting at all.
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/textbox-tall-header-overlap.docx"),
+        )
+        .expect("read fixture");
+        let mut word_doc =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+        assert!(word_doc.is_text_box_paragraph_surface(2));
+        let comment = |end_paragraph: usize| HeadlessCommand::AddComment {
+            start_paragraph: 0,
+            start_offset: Some(10),
+            end_paragraph,
+            end_offset: Some(0),
+            text: "c".to_string(),
+            author: Some("reviewer".to_string()),
+            initials: None,
+            date: None,
+        };
+        let error = apply_headless_commands_to_document(
+            &mut word_doc,
+            &HeadlessEditRequest {
+                commands: vec![comment(2)],
+            },
+        )
+        .expect_err("a comment across stories");
+        assert!(
+            format!("{error:?}").contains("more than one story"),
+            "{error:?}"
+        );
+        assert!(word_doc
+            .paragraph(2)
+            .is_some_and(|paragraph| paragraph.runs.is_empty()));
+        // Within the body it is made as before.
+        apply_headless_commands_to_document(
+            &mut word_doc,
+            &HeadlessEditRequest {
+                commands: vec![comment(1)],
+            },
+        )
+        .expect("a comment in the body");
     }
 
     #[test]
