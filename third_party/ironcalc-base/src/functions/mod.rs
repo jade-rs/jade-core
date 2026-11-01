@@ -34,6 +34,7 @@ mod xlookup;
 pub enum Function {
     // Compatibility spellings for saved dynamic-array operators and ceiling.
     Single,
+    Groupby,
     Filterxml,
     Anchorarray,
     EcmaCeiling,
@@ -588,6 +589,7 @@ pub enum Function {
 fn jade_lookup(key: &str) -> Option<Function> {
     match key {
         "SINGLE" => Some(Function::Single),
+        "GROUPBY" => Some(Function::Groupby),
         "FILTERXML" => Some(Function::Filterxml),
         "ANCHORARRAY" => Some(Function::Anchorarray),
         "ECMA.CEILING" => Some(Function::EcmaCeiling),
@@ -1158,6 +1160,7 @@ impl Function {
         let functions = &language.functions;
         match self {
             Function::Single => "SINGLE".into(),
+            Function::Groupby => "GROUPBY".into(),
             Function::Filterxml => "FILTERXML".into(),
             Function::Anchorarray => "ANCHORARRAY".into(),
             Function::EcmaCeiling => "ECMA.CEILING".into(),
@@ -1668,9 +1671,10 @@ impl Function {
         }
     }
 
-    pub fn into_iter() -> IntoIter<Function, 508> {
+    pub fn into_iter() -> IntoIter<Function, 509> {
         [
             Function::Single,
+            Function::Groupby,
             Function::Filterxml,
             Function::Anchorarray,
             Function::EcmaCeiling,
@@ -2213,6 +2217,7 @@ impl Function {
     pub fn to_xlsx_string(&self) -> String {
         match self {
             Function::Single => "_xlfn.SINGLE".into(),
+            Function::Groupby => "_xlfn.GROUPBY".into(),
             Function::Filterxml => "_xlfn.FILTERXML".into(),
             Function::Anchorarray => "_xlfn.ANCHORARRAY".into(),
             Function::Concat => "_xlfn.CONCAT".to_string(),
@@ -2414,6 +2419,7 @@ impl<'a> Model<'a> {
     ) -> CalcResult {
         match kind {
             Function::Single => self.fn_compat_operator(args, cell, false),
+            Function::Groupby => self.fn_groupby(args, cell),
             Function::Filterxml => self.fn_filterxml(args, cell),
             Function::Anchorarray => self.fn_compat_operator(args, cell, true),
             Function::EcmaCeiling => self.fn_ceiling(args, cell),
