@@ -7,6 +7,7 @@ mod fn_clean;
 mod fn_filterxml;
 mod fn_groupby;
 mod fn_left_right_mid_arrays;
+mod fn_pivotby;
 mod fn_regex;
 mod fn_textbefore;
 mod fn_textjoin;

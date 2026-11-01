@@ -35,6 +35,7 @@ pub enum Function {
     // Compatibility spellings for saved dynamic-array operators and ceiling.
     Single,
     Groupby,
+    Pivotby,
     Filterxml,
     Anchorarray,
     EcmaCeiling,
@@ -590,6 +591,7 @@ fn jade_lookup(key: &str) -> Option<Function> {
     match key {
         "SINGLE" => Some(Function::Single),
         "GROUPBY" => Some(Function::Groupby),
+        "PIVOTBY" => Some(Function::Pivotby),
         "FILTERXML" => Some(Function::Filterxml),
         "ANCHORARRAY" => Some(Function::Anchorarray),
         "ECMA.CEILING" => Some(Function::EcmaCeiling),
@@ -1161,6 +1163,7 @@ impl Function {
         match self {
             Function::Single => "SINGLE".into(),
             Function::Groupby => "GROUPBY".into(),
+            Function::Pivotby => "PIVOTBY".into(),
             Function::Filterxml => "FILTERXML".into(),
             Function::Anchorarray => "ANCHORARRAY".into(),
             Function::EcmaCeiling => "ECMA.CEILING".into(),
@@ -1671,10 +1674,11 @@ impl Function {
         }
     }
 
-    pub fn into_iter() -> IntoIter<Function, 509> {
+    pub fn into_iter() -> IntoIter<Function, 510> {
         [
             Function::Single,
             Function::Groupby,
+            Function::Pivotby,
             Function::Filterxml,
             Function::Anchorarray,
             Function::EcmaCeiling,
@@ -2218,6 +2222,7 @@ impl Function {
         match self {
             Function::Single => "_xlfn.SINGLE".into(),
             Function::Groupby => "_xlfn.GROUPBY".into(),
+            Function::Pivotby => "_xlfn.PIVOTBY".into(),
             Function::Filterxml => "_xlfn.FILTERXML".into(),
             Function::Anchorarray => "_xlfn.ANCHORARRAY".into(),
             Function::Concat => "_xlfn.CONCAT".to_string(),
@@ -2420,6 +2425,7 @@ impl<'a> Model<'a> {
         match kind {
             Function::Single => self.fn_compat_operator(args, cell, false),
             Function::Groupby => self.fn_groupby(args, cell),
+            Function::Pivotby => self.fn_pivotby(args, cell),
             Function::Filterxml => self.fn_filterxml(args, cell),
             Function::Anchorarray => self.fn_compat_operator(args, cell, true),
             Function::EcmaCeiling => self.fn_ceiling(args, cell),
