@@ -235,6 +235,7 @@ fn allowed(path: &[Cow<'static, str>], name: &str) -> bool {
                 | "colBreaks"
                 | "pageSetup"
                 | "pageMargins"
+                | "printOptions"
                 | "sheetProtection"
                 | "drawing"
                 | "legacyDrawing"
