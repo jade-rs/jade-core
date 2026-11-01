@@ -249,6 +249,10 @@ pub struct Sheet {
     /// nothing (Excel's "Show a zero in cells that have zero value").
     #[serde(default = "shows_zeros")]
     pub show_zeros: bool,
+    /// `sheetView/@view="pageBreakPreview"`: the sheet opens in Page Break
+    /// Preview.
+    #[serde(default)]
+    pub page_break_preview: bool,
     /// `sheetView/@showRowColHeaders`: the row numbers and column letters
     /// shown; off on dashboards and forms. Excel shows them by default.
     #[serde(default = "shows_zeros")]

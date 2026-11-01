@@ -1,5 +1,6 @@
 use super::paragraph_property_sync::{
     restore_paragraph_properties_xml, snapshot_paragraph_properties_xml, sync_paragraph_indent_xml,
+    IndentXmlChange,
 };
 use super::{Command, CommandContext, CommandError, CommandResult};
 use crate::document::ParagraphProperties;
@@ -200,7 +201,7 @@ impl Command for SetParagraphIndentCommand {
                 .ok_or(CommandError::ParagraphUnavailable)?;
             self.previous_properties.push((paragraph_index, previous));
 
-            let applied_indent = {
+            let (applied_indent, bidi) = {
                 let paragraph = ctx
                     .document
                     .paragraph_mut(paragraph_index)
@@ -303,15 +304,23 @@ impl Command for SetParagraphIndentCommand {
                     indent.hanging_chars = None;
                 }
                 props.indent = Some(indent.clone());
-                indent
+                (indent, bidi)
             };
 
             sync_paragraph_indent_xml(
                 ctx.document,
                 paragraph_index,
                 Some(&applied_indent),
-                self.left.is_some() || self.left_chars.is_some(),
-                self.right.is_some() || self.right_chars.is_some(),
+                IndentXmlChange {
+                    left: self.left.is_some() || self.left_chars.is_some(),
+                    right: self.right.is_some() || self.right_chars.is_some(),
+                    special: self.first_line.is_some()
+                        || self.hanging.is_some()
+                        || self.first_line_chars.is_some()
+                        || self.hanging_chars.is_some()
+                        || self.clear_special,
+                    bidi,
+                },
             );
         }
 

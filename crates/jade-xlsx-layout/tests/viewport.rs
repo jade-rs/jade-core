@@ -59,6 +59,7 @@ fn tall_sheet(rows: u32) -> Sheet {
         show_grid_lines: true,
         show_formulas: false,
         show_zeros: true,
+        page_break_preview: false,
         show_headers: true,
         grid_color: None,
         zoom_percent: None,
