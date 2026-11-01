@@ -141,3 +141,24 @@ fn reads_whether_the_headings_show() {
         r#"<sheetView showRowColHeaders="0" workbookViewId="0"/>"#
     ));
 }
+
+#[test]
+fn reads_a_sheets_own_gridline_colour() {
+    let grid = |view: &str| {
+        let xml = format!(
+            r#"<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews>{view}</sheetViews><sheetData/></worksheet>"#
+        );
+        jade_xlsx_reader::sheet::parse_sheet("S", "s.xml", &xml, &[])
+            .unwrap()
+            .grid_color
+    };
+    assert_eq!(
+        grid(r#"<sheetView defaultGridColor="0" colorId="10" workbookViewId="0"/>"#),
+        Some(10)
+    );
+    // colorId without defaultGridColor="0" is Excel's own grey.
+    assert_eq!(
+        grid(r#"<sheetView colorId="10" workbookViewId="0"/>"#),
+        None
+    );
+}

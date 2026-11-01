@@ -1050,7 +1050,12 @@ fn render_grid_lines<P: Painter>(
         return;
     }
 
-    painter.set_stroke_style_str(&options.grid_line_color);
+    // A sheet's own gridline colour wins over the painter's.
+    let grid = layout
+        .grid_line_color
+        .as_deref()
+        .unwrap_or(&options.grid_line_color);
+    painter.set_stroke_style_str(grid);
     painter.set_line_width(1.0);
     painter.set_line_dash(&[]);
     painter.begin_path();

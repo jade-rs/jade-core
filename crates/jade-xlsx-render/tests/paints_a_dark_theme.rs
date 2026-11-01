@@ -108,6 +108,7 @@ fn laid_out() -> SheetLayout {
         show_formulas: false,
         show_zeros: true,
         show_headers: true,
+        grid_color: None,
         zoom_percent: None,
         freeze_pane: None,
         tables: Vec::new(),
