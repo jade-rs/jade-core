@@ -38190,7 +38190,20 @@ impl WordDocument {
                 let XmlNode::Element(child) = &mut element.children[index] else {
                     continue;
                 };
-                if child.id == after {
+                // The run before is the last in a tracked change's wrapper:
+                // the new run (which brings its own wrapper, if it has a
+                // revision) goes after the wrapper. Put inside it, text
+                // following a deletion in a hyperlink was saved as deleted
+                // and written again after the next edit.
+                let ends_revision_wrapper =
+                    matches!(
+                        child.name.as_str(),
+                        "w:ins" | "w:del" | "w:moveFrom" | "w:moveTo"
+                    ) && child.children.iter().rev().find_map(|node| match node {
+                        XmlNode::Element(last) => Some(last.id),
+                        _ => None,
+                    }) == Some(after);
+                if child.id == after || ends_revision_wrapper {
                     if let Some(node) = node.take() {
                         element.children.insert(index + 1, node);
                     }
