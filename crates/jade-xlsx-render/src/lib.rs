@@ -342,7 +342,13 @@ fn render_body<P: Painter>(
 
     // Only the cells under the viewport: a long sheet's others are not
     // looked at.
-    for cell in layout.cells_in(viewport).filter(|cell| cell.error_flag) {
+    // Few cells are flagged: test the flag before the box, which every
+    // cell on the sheet would otherwise pay for.
+    for cell in layout
+        .cells
+        .iter()
+        .filter(|cell| cell.error_flag && cell.rect.intersects(&viewport))
+    {
         render_error_marker(painter, cell.rect);
     }
 
