@@ -92,6 +92,7 @@ fn wrapped_layout_with_height(
         rich_text: Default::default(),
         tab_color: None,
         sparkline_groups: Vec::new(),
+        ignored_errors: Vec::new(),
         outline: Default::default(),
         protection: None,
     };
@@ -237,6 +238,7 @@ fn a_cell_that_does_not_wrap_still_draws_one_line() {
         rich_text: Default::default(),
         tab_color: None,
         sparkline_groups: Vec::new(),
+        ignored_errors: Vec::new(),
         outline: Default::default(),
         protection: None,
     };

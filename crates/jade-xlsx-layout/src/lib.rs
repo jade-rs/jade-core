@@ -1394,7 +1394,7 @@ fn layout_sheet_on_axes(
                 data_bar,
                 icon,
                 overflow,
-                error_flag: error_check_flags(&cell.value, cell.formula.is_some()),
+                error_flag: error_check_flags(sheet, cell),
             });
         }
     }
@@ -1763,6 +1763,7 @@ pub fn relayout_rows(
         array_formulas: sheet.array_formulas.clone(),
         tab_color: None,
         sparkline_groups: Vec::new(),
+        ignored_errors: Vec::new(),
         protection: sheet.protection,
         outline: sheet.outline.clone(),
     };
@@ -2072,13 +2073,22 @@ struct PreparedCell {
 
 /// Whether Excel's background error checking flags a cell, by its default
 /// rules: a formula that gives an error, or a number stored as text (text
-/// that reads as a number).
-fn error_check_flags(value: &CellValue, formula: bool) -> bool {
-    match value {
-        CellValue::Error(_) => formula,
+/// that reads as a number) — unless the sheet's `ignoredErrors` turn that
+/// check off for the cell.
+fn error_check_flags(sheet: &Sheet, cell: &jade_xlsx_reader::Cell) -> bool {
+    let ignored = |check: fn(&jade_xlsx_reader::ignored_errors::IgnoredError) -> bool| {
+        sheet
+            .ignored_errors
+            .iter()
+            .any(|entry| check(entry) && entry.covers(cell.reference))
+    };
+    match &cell.value {
+        CellValue::Error(_) => cell.formula.is_some() && !ignored(|entry| entry.eval_error),
         CellValue::Text(text) => {
             let text = text.trim();
-            text.chars().any(|c| c.is_ascii_digit()) && text.replace(',', "").parse::<f64>().is_ok()
+            text.chars().any(|c| c.is_ascii_digit())
+                && text.replace(',', "").parse::<f64>().is_ok()
+                && !ignored(|entry| entry.number_stored_as_text)
         }
         _ => false,
     }

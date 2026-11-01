@@ -103,6 +103,7 @@ pub fn parse_sheet_with_relationships(
         rich_text: Default::default(),
         tab_color: None,
         sparkline_groups: crate::sparkline::parse_sparklines(xml)?,
+        ignored_errors: crate::ignored_errors::parse(xml)?,
         protection: None,
         outline: Default::default(),
     };

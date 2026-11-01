@@ -46,6 +46,7 @@ fn sheet_with(rows: Vec<Row>) -> Sheet {
         rich_text: Default::default(),
         tab_color: None,
         sparkline_groups: Vec::new(),
+        ignored_errors: Vec::new(),
         outline: Default::default(),
         protection: None,
     }
