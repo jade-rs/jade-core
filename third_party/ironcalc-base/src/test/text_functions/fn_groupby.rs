@@ -73,3 +73,74 @@ fn test_count_counts_the_numbers_in_an_array() {
     assert_eq!(model._get_text("A1"), "2");
     assert_eq!(model._get_text("A2"), "4");
 }
+
+#[test]
+fn test_groupby_missing_header_option_detects_text_then_number() {
+    let mut model = new_empty_model();
+    fill(&mut model);
+    model._set("D1", "=GROUPBY(A1:A6,B1:B6,SUM)");
+    model.evaluate();
+    let labels = (1..=4)
+        .map(|r| model._get_text(&format!("D{r}")))
+        .collect::<Vec<_>>();
+    assert_eq!(labels, ["East", "North", "West", "Total"]);
+    assert_eq!(model._get_text("E4"), "43");
+}
+
+#[test]
+fn test_groupby_empty_header_option_also_detects_headers() {
+    let mut model = new_empty_model();
+    fill(&mut model);
+    model._set("D1", "=GROUPBY(A1:A6,B1:B6,SUM,,0)");
+    model.evaluate();
+    assert_eq!(model._get_text("D1"), "East");
+    assert_eq!(model._get_text("D3"), "West");
+    assert_eq!(model._get_text("D4"), "");
+    assert_eq!(model._get_text("E3"), "30");
+}
+
+#[test]
+fn test_groupby_explicit_no_headers_preserves_the_first_text_row() {
+    let mut model = new_empty_model();
+    fill(&mut model);
+    model._set("D1", "=GROUPBY(A1:A6,B1:B6,SUM,0)");
+    model.evaluate();
+    assert_eq!(model._get_text("D3"), "Region");
+    assert_eq!(model._get_text("E3"), "0");
+    assert_eq!(model._get_text("D5"), "Total");
+    assert_eq!(model._get_text("E5"), "43");
+}
+
+#[test]
+fn test_groupby_auto_headers_are_shown_for_multiple_value_columns() {
+    let mut model = new_empty_model();
+    fill(&mut model);
+    for (row, value) in ["Units", "1", "2", "3", "4", "5"].iter().enumerate() {
+        model._set(&format!("C{}", row + 1), value);
+    }
+    model._set("E1", "=GROUPBY(A1:A6,B1:C6,SUM)");
+    model.evaluate();
+    assert_eq!(model._get_text("E1"), "Region");
+    assert_eq!(model._get_text("F1"), "Sales");
+    assert_eq!(model._get_text("G1"), "Units");
+    assert_eq!(model._get_text("E2"), "East");
+    assert_eq!(model._get_text("F2"), "6");
+    assert_eq!(model._get_text("G2"), "7");
+    assert_eq!(model._get_text("E5"), "Total");
+    assert_eq!(model._get_text("G5"), "15");
+}
+
+#[test]
+fn test_groupby_auto_headers_require_a_second_numeric_value() {
+    let mut model = new_empty_model();
+    model._set("A1", "West");
+    model._set("B1", "Text");
+    model._set("A2", "East");
+    model._set("B2", "More text");
+    model._set("D1", "=GROUPBY(A1:A2,B1:B2,COUNTA)");
+    model.evaluate();
+    assert_eq!(model._get_text("D1"), "East");
+    assert_eq!(model._get_text("D2"), "West");
+    assert_eq!(model._get_text("D3"), "Total");
+    assert_eq!(model._get_text("E3"), "2");
+}
