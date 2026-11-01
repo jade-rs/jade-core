@@ -37,7 +37,12 @@ pub fn to_css(color: Color, fallback: &str) -> String {
         Color::Theme { .. } => fallback.to_string(),
         Color::Indexed(INDEXED_SYSTEM_FOREGROUND) => "#000000".to_string(),
         Color::Indexed(INDEXED_SYSTEM_BACKGROUND) => "#ffffff".to_string(),
-        Color::Indexed(_) => fallback.to_string(),
+        Color::Indexed(index) => {
+            match jade_xlsx_reader::styles::INDEXED_PALETTE.get(index as usize) {
+                Some([red, green, blue]) => format!("#{red:02x}{green:02x}{blue:02x}"),
+                None => fallback.to_string(),
+            }
+        }
         Color::Auto => fallback.to_string(),
     }
 }
@@ -53,6 +58,7 @@ pub fn rgba(color: Color) -> Option<[u8; 4]> {
         } => apply_tint(rgb, tint),
         Color::Theme { index: 0, .. } | Color::Indexed(65) => [255; 3],
         Color::Theme { index: 1, .. } | Color::Indexed(64) => [0; 3],
+        Color::Indexed(index) => *jade_xlsx_reader::styles::INDEXED_PALETTE.get(index as usize)?,
         _ => return None,
     };
     Some([rgb[0], rgb[1], rgb[2], 255])

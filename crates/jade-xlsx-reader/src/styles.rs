@@ -29,6 +29,77 @@ enum Section {
     CellStyles,
 }
 
+/// The legacy indexed palette Excel uses when a workbook declares none of
+/// its own (ECMA-376 §18.8.27): `indexed="N"` colours, from files saved by
+/// older versions or converted from `.xls`, and number formats' `[ColorN]`.
+/// 64 and 65, the system foreground and background, are not in it.
+pub const INDEXED_PALETTE: [[u8; 3]; 64] = [
+    [0x00, 0x00, 0x00],
+    [0xFF, 0xFF, 0xFF],
+    [0xFF, 0x00, 0x00],
+    [0x00, 0xFF, 0x00],
+    [0x00, 0x00, 0xFF],
+    [0xFF, 0xFF, 0x00],
+    [0xFF, 0x00, 0xFF],
+    [0x00, 0xFF, 0xFF],
+    [0x00, 0x00, 0x00],
+    [0xFF, 0xFF, 0xFF],
+    [0xFF, 0x00, 0x00],
+    [0x00, 0xFF, 0x00],
+    [0x00, 0x00, 0xFF],
+    [0xFF, 0xFF, 0x00],
+    [0xFF, 0x00, 0xFF],
+    [0x00, 0xFF, 0xFF],
+    [0x80, 0x00, 0x00],
+    [0x00, 0x80, 0x00],
+    [0x00, 0x00, 0x80],
+    [0x80, 0x80, 0x00],
+    [0x80, 0x00, 0x80],
+    [0x00, 0x80, 0x80],
+    [0xC0, 0xC0, 0xC0],
+    [0x80, 0x80, 0x80],
+    [0x99, 0x99, 0xFF],
+    [0x99, 0x33, 0x66],
+    [0xFF, 0xFF, 0xCC],
+    [0xCC, 0xFF, 0xFF],
+    [0x66, 0x00, 0x66],
+    [0xFF, 0x80, 0x80],
+    [0x00, 0x66, 0xCC],
+    [0xCC, 0xCC, 0xFF],
+    [0x00, 0x00, 0x80],
+    [0xFF, 0x00, 0xFF],
+    [0xFF, 0xFF, 0x00],
+    [0x00, 0xFF, 0xFF],
+    [0x80, 0x00, 0x80],
+    [0x80, 0x00, 0x00],
+    [0x00, 0x80, 0x80],
+    [0x00, 0x00, 0xFF],
+    [0x00, 0xCC, 0xFF],
+    [0xCC, 0xFF, 0xFF],
+    [0xCC, 0xFF, 0xCC],
+    [0xFF, 0xFF, 0x99],
+    [0x99, 0xCC, 0xFF],
+    [0xFF, 0x99, 0xCC],
+    [0xCC, 0x99, 0xFF],
+    [0xFF, 0xCC, 0x99],
+    [0x33, 0x66, 0xFF],
+    [0x33, 0xCC, 0xCC],
+    [0x99, 0xCC, 0x00],
+    [0xFF, 0xCC, 0x00],
+    [0xFF, 0x99, 0x00],
+    [0xFF, 0x66, 0x00],
+    [0x66, 0x66, 0x99],
+    [0x96, 0x96, 0x96],
+    [0x00, 0x33, 0x66],
+    [0x33, 0x99, 0x66],
+    [0x00, 0x33, 0x00],
+    [0x33, 0x33, 0x00],
+    [0x99, 0x33, 0x00],
+    [0x99, 0x33, 0x66],
+    [0x33, 0x33, 0x99],
+    [0x33, 0x33, 0x33],
+];
+
 pub fn parse_styles(xml: &str) -> Result<StyleTable> {
     let mut reader = NsReader::from_str(xml);
     reader.config_mut().trim_text(true);
@@ -352,7 +423,119 @@ pub fn parse_styles(xml: &str) -> Result<StyleTable> {
     table.differential_styles = collections.differential;
     table.table_styles = collections.tables;
     table.default_pivot_style = collections.default_pivot;
+    apply_indexed_colors(&mut table, &indexed_palette(xml)?);
     Ok(table)
+}
+
+/// The workbook's own indexed palette (`<colors><indexedColors>`), entry by
+/// entry; empty when it keeps Excel's.
+fn indexed_palette(xml: &str) -> Result<Vec<[u8; 3]>> {
+    let mut palette = Vec::new();
+    if !xml.contains("indexedColors") {
+        return Ok(palette);
+    }
+    let mut reader = quick_xml::Reader::from_str(xml);
+    let mut inside = false;
+    loop {
+        match reader.read_event()? {
+            Event::Start(ref element) | Event::Empty(ref element) => {
+                match local_name(element.name().as_ref()) {
+                    b"indexedColors" => inside = true,
+                    b"rgbColor" if inside => {
+                        let rgb = attribute_value(element, b"rgb")?
+                            .and_then(|value| parse_argb(&value))
+                            .map(|[_, red, green, blue]| [red, green, blue])
+                            .unwrap_or_default();
+                        palette.push(rgb);
+                    }
+                    _ => {}
+                }
+            }
+            Event::End(ref element) if local_name(element.name().as_ref()) == b"indexedColors" => {
+                inside = false;
+            }
+            Event::Eof => break,
+            _ => {}
+        }
+    }
+    Ok(palette)
+}
+
+/// Every indexed colour in the table but the system ones made the colour
+/// `palette` (or else Excel's) gives it.
+fn apply_indexed_colors(table: &mut StyleTable, palette: &[[u8; 3]]) {
+    each_color(table, &mut |color: &mut Color| {
+        if let Color::Indexed(index) = *color {
+            let entry = palette
+                .get(index as usize)
+                .or_else(|| INDEXED_PALETTE.get(index as usize));
+            if let Some(&[red, green, blue]) = entry {
+                *color = Color::Argb([0xFF, red, green, blue]);
+            }
+        }
+    });
+}
+
+/// Calls `visit` on each colour the table's fonts, fills, borders and
+/// differential styles hold.
+fn each_color(table: &mut StyleTable, visit: &mut dyn FnMut(&mut Color)) {
+    let mut resolve = |color: &mut Option<Color>| {
+        if let Some(color) = color {
+            visit(color);
+        }
+    };
+    for font in &mut table.fonts {
+        resolve(&mut font.color);
+    }
+    for style in &mut table.differential_styles {
+        resolve(&mut style.text_color);
+        if let Some(fill) = style.fill.as_mut() {
+            resolve(&mut fill.foreground);
+            resolve(&mut fill.background);
+        }
+        for edge in [
+            &mut style.left,
+            &mut style.right,
+            &mut style.top,
+            &mut style.bottom,
+            &mut style.inside_vertical,
+            &mut style.inside_horizontal,
+        ]
+        .into_iter()
+        .flatten()
+        {
+            if let crate::conditional_format::DifferentialBorder::Edge(edge) = edge {
+                resolve(&mut edge.color);
+            }
+        }
+    }
+    for fill in &mut table.fills {
+        resolve(&mut fill.foreground);
+        resolve(&mut fill.background);
+        for (_, color) in fill
+            .gradient
+            .iter_mut()
+            .flat_map(|gradient| gradient.stops.iter_mut())
+        {
+            let mut slot = Some(*color);
+            resolve(&mut slot);
+            *color = slot.unwrap_or(*color);
+        }
+    }
+    for border in &mut table.borders {
+        for edge in [
+            &mut border.left,
+            &mut border.right,
+            &mut border.top,
+            &mut border.bottom,
+            &mut border.diagonal,
+        ]
+        .into_iter()
+        .flatten()
+        {
+            resolve(&mut edge.color);
+        }
+    }
 }
 
 fn set_border_edge(border: &mut Option<Border>, side: &str, edge: BorderEdge) {
@@ -460,66 +643,14 @@ pub(crate) fn parse_color(element: &BytesStart<'_>) -> Result<Option<Color>> {
 
 pub(crate) fn apply_theme_colors(table: &mut StyleTable, theme: &ThemePalette) {
     table.theme_colors = (0..12).map(|index| theme.color(index)).collect();
-    let resolve = |color: &mut Option<Color>| {
-        if let Some(Color::Theme {
+    each_color(table, &mut |color: &mut Color| {
+        if let Color::Theme {
             index, resolved, ..
-        }) = color
+        } = color
         {
             *resolved = theme.color(*index);
         }
-    };
-    for font in &mut table.fonts {
-        resolve(&mut font.color);
-    }
-    for style in &mut table.differential_styles {
-        resolve(&mut style.text_color);
-        if let Some(fill) = style.fill.as_mut() {
-            resolve(&mut fill.foreground);
-            resolve(&mut fill.background);
-        }
-        for edge in [
-            &mut style.left,
-            &mut style.right,
-            &mut style.top,
-            &mut style.bottom,
-            &mut style.inside_vertical,
-            &mut style.inside_horizontal,
-        ]
-        .into_iter()
-        .flatten()
-        {
-            if let crate::conditional_format::DifferentialBorder::Edge(edge) = edge {
-                resolve(&mut edge.color);
-            }
-        }
-    }
-    for fill in &mut table.fills {
-        resolve(&mut fill.foreground);
-        resolve(&mut fill.background);
-        for (_, color) in fill
-            .gradient
-            .iter_mut()
-            .flat_map(|gradient| gradient.stops.iter_mut())
-        {
-            let mut slot = Some(*color);
-            resolve(&mut slot);
-            *color = slot.unwrap_or(*color);
-        }
-    }
-    for border in &mut table.borders {
-        for edge in [
-            &mut border.left,
-            &mut border.right,
-            &mut border.top,
-            &mut border.bottom,
-            &mut border.diagonal,
-        ]
-        .into_iter()
-        .flatten()
-        {
-            resolve(&mut edge.color);
-        }
-    }
+    });
 }
 
 /// `FFRRGGBB`, and the 6-digit form some writers emit (alpha implied opaque).
@@ -567,5 +698,37 @@ mod tests {
         let edge = border.diagonal.as_ref().expect("diagonal edge");
         assert_eq!(edge.style, "mediumDashDot");
         assert_eq!(edge.color, Some(Color::Argb([0xFF, 0x00, 0x80, 0x00])));
+    }
+}
+
+#[cfg(test)]
+mod indexed_tests {
+    use super::*;
+
+    #[test]
+    fn indexed_colours_take_the_workbooks_palette_or_excels() {
+        let xml = r#"<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts><font><color indexed="10"/></font><font><color indexed="64"/></font></fonts><fills><fill><patternFill patternType="solid"><fgColor indexed="22"/><bgColor indexed="64"/></patternFill></fill></fills></styleSheet>"#;
+        let table = parse_styles(xml).unwrap();
+        assert_eq!(table.fonts[0].color, Some(Color::Argb([0xFF, 0xFF, 0, 0])));
+        // The system foreground stays what it is.
+        assert_eq!(table.fonts[1].color, Some(Color::Indexed(64)));
+        assert_eq!(
+            table.fills[0].foreground,
+            Some(Color::Argb([0xFF, 0xC0, 0xC0, 0xC0]))
+        );
+        let custom = xml.replace(
+            "</styleSheet>",
+            r#"<colors><indexedColors><rgbColor rgb="FF000000"/><rgbColor rgb="FF111111"/><rgbColor rgb="FF222222"/><rgbColor rgb="FF333333"/><rgbColor rgb="FF444444"/><rgbColor rgb="FF555555"/><rgbColor rgb="FF666666"/><rgbColor rgb="FF777777"/><rgbColor rgb="FF888888"/><rgbColor rgb="FF999999"/><rgbColor rgb="FF123456"/></indexedColors></colors></styleSheet>"#,
+        );
+        let table = parse_styles(&custom).unwrap();
+        assert_eq!(
+            table.fonts[0].color,
+            Some(Color::Argb([0xFF, 0x12, 0x34, 0x56]))
+        );
+        // Past the workbook's palette, Excel's.
+        assert_eq!(
+            table.fills[0].foreground,
+            Some(Color::Argb([0xFF, 0xC0, 0xC0, 0xC0]))
+        );
     }
 }
