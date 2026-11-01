@@ -92,6 +92,7 @@ pub fn parse_sheet_with_relationships(
         show_grid_lines: true,
         show_formulas: false,
         show_zeros: true,
+        show_headers: true,
         zoom_percent: None,
         freeze_pane: None,
         tables: Vec::new(),
@@ -211,6 +212,9 @@ pub fn parse_sheet_with_relationships(
                         }
                         if let Some(value) = attribute_value(element, b"showZeros")? {
                             sheet.show_zeros = value != "0" && value != "false";
+                        }
+                        if let Some(value) = attribute_value(element, b"showRowColHeaders")? {
+                            sheet.show_headers = value != "0" && value != "false";
                         }
                         // The first view's zoom: the one Excel opens at.
                         if sheet.zoom_percent.is_none() {
