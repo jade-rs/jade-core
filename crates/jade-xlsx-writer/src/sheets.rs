@@ -1278,10 +1278,11 @@ pub fn add_sheet(original: &[u8], name: &str, after: Option<&str>) -> Result<(Ve
 }
 
 /// Move or Copy ▸ Create a copy: the sheet `source` copied, as `name`,
-/// right after it — its cells, formats, merges, view and page setup, and
-/// its external hyperlinks. A sheet with parts of its own (drawings,
-/// charts, tables, comments) is refused rather than copied in part. Returns
-/// the package and the copy's position.
+/// right after it — its cells, formats, merges, view and page setup, its
+/// external hyperlinks, and its pictures, charts (reading the copy's cells)
+/// and notes. A sheet with tables or other parts the workbook numbers is
+/// refused rather than copied in part. Returns the package and the copy's
+/// position.
 pub fn copy_sheet(original: &[u8], source: &str, name: &str) -> Result<(Vec<u8>, usize)> {
     let parts = WorkbookParts::open(original)?;
     let from = parts.position(source)?;
@@ -1292,15 +1293,8 @@ pub fn copy_sheet(original: &[u8], source: &str, name: &str) -> Result<(Vec<u8>,
     let package = &parts.package;
     let source_rels = package.part_str(&jade_opc::rels_part_name(&source_part))?;
     if let Some(rels) = &source_rels {
-        if jade_opc::parse_relationships(rels)?
-            .all()
-            .iter()
-            .any(|relationship| !relationship.external)
-        {
-            return Err(WriteError::CopySheet(
-                "a sheet with drawings, charts, tables or comments cannot be copied yet".into(),
-            ));
-        }
+        // Refused before anything is written, as copying would refuse it.
+        crate::copy_objects::refuse_uncopyable(rels)?;
     }
     let xml = package.required_part_str(&source_part)?;
     let (added, at) = add_sheet(original, name, Some(&source_name))?;
@@ -1313,6 +1307,14 @@ pub fn copy_sheet(original: &[u8], source: &str, name: &str) -> Result<(Vec<u8>,
         .package
         .replace(&copy_part, rewrite_selected_tabs(&xml)?.into_bytes());
     if let Some(rels) = source_rels {
+        let rels = crate::copy_objects::copy_sheet_parts(
+            &mut parts.package,
+            &source_part,
+            &copy_part,
+            &rels,
+            &source_name,
+            name,
+        )?;
         parts
             .package
             .replace(&jade_opc::rels_part_name(&copy_part), rels.into_bytes());

@@ -41,6 +41,7 @@ pub mod chart_cache;
 pub mod charts;
 pub mod clipboard;
 pub mod conditional_formats;
+mod copy_objects;
 pub mod data_validations;
 pub mod defined_names;
 pub mod dimensions;
