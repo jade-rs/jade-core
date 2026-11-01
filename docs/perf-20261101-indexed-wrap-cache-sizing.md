@@ -47,6 +47,9 @@ One predeclared ABBA experiment ran baseline/candidate/candidate/baseline on the
 same 300-page document with annotations and 32 distinct growing Japanese
 composition previews per run. All four runs passed; all samples, including the
 first preview, were retained. Non-WASM assets were byte-identical (77 files).
+All four recordings have `renderDebug: true`: renderer diagnostics were enabled
+to assert local seeks and stable bands. Timings include diagnostic formatting
+and console logging and must not be presented as normal-release benchmarks.
 The baseline is core `1da432c`, with SDK `f6eb842` runtime assets. The candidate
 uses that same core plus this change.
 
