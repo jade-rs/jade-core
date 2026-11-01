@@ -755,13 +755,48 @@ fn a_sheet_copies_next_to_itself_with_its_cells() {
 }
 
 #[test]
-fn a_sheet_with_a_table_is_not_copied_in_part() {
+fn a_sheet_with_a_table_copies_with_a_table_of_its_own() {
     let mut workbook =
         HeadlessWorkbook::open(&fixture("grid-operations-workbook.xlsx")).expect("open");
     let name = workbook.workbook().sheets[0].name.clone();
-    assert!(!workbook.workbook().sheets[0].tables.is_empty());
-    let count = workbook.workbook().sheets.len();
-    let refused = workbook.copy_sheet(&name, "Table copy").unwrap_err();
-    assert!(refused.to_string().contains("cannot be copied"));
-    assert_eq!(workbook.workbook().sheets.len(), count);
+    let original = workbook.workbook().sheets[0].tables[0].name.clone();
+    workbook
+        .set_cells(
+            &name,
+            &[(
+                "H30".into(),
+                CellInput::Formula(format!("=ROWS({original}[#Data])")),
+            )],
+        )
+        .expect("set");
+    let at = workbook.copy_sheet(&name, "Table copy").expect("copy");
+    let copied = workbook.workbook().sheets[at].tables[0].clone();
+    assert_eq!(copied.name, format!("{original}2"));
+    assert_eq!(copied.display_name, copied.name);
+    assert_ne!(
+        copied.part_name,
+        workbook.workbook().sheets[0].tables[0].part_name
+    );
+    // The copy's formula reads its own table; the source's still reads its.
+    let formula = |sheet: &str| {
+        workbook
+            .cell(sheet, "H30")
+            .expect("cell")
+            .formula
+            .unwrap_or_default()
+    };
+    assert!(
+        formula("Table copy").contains(&copied.name),
+        "{}",
+        formula("Table copy")
+    );
+    assert!(!formula(&name).contains(&copied.name));
+    let reopened = HeadlessWorkbook::open(&workbook.export_bytes().unwrap()).expect("reopen");
+    let names: Vec<_> = reopened
+        .workbook()
+        .sheets
+        .iter()
+        .flat_map(|sheet| sheet.tables.iter().map(|table| table.name.clone()))
+        .collect();
+    assert_eq!(names, [original.clone(), copied.name.clone()]);
 }

@@ -1307,6 +1307,8 @@ pub fn copy_sheet(original: &[u8], source: &str, name: &str) -> Result<(Vec<u8>,
         .package
         .replace(&copy_part, rewrite_selected_tabs(&xml)?.into_bytes());
     if let Some(rels) = source_rels {
+        let book = jade_xlsx_reader::read_xlsx(original)?;
+        let mut tables = crate::copy_objects::TableNames::of(&parts.package, &book)?;
         let rels = crate::copy_objects::copy_sheet_parts(
             &mut parts.package,
             &source_part,
@@ -1314,10 +1316,24 @@ pub fn copy_sheet(original: &[u8], source: &str, name: &str) -> Result<(Vec<u8>,
             &rels,
             &source_name,
             name,
+            &mut tables,
         )?;
         parts
             .package
             .replace(&jade_opc::rels_part_name(&copy_part), rels.into_bytes());
+        // The copy's formulas read its own tables, as Excel's copy does.
+        if !tables.renamed.is_empty() {
+            let xml = parts.package.required_part_str(&copy_part)?;
+            let xml = rewrite_formula_elements(&xml, &|formula: &str| {
+                tables
+                    .renamed
+                    .iter()
+                    .fold(formula.to_string(), |formula, (old, new)| {
+                        crate::copy_objects::rename_table_references(&formula, old, new)
+                    })
+            })?;
+            parts.package.replace(&copy_part, xml.into_bytes());
+        }
     }
     let workbook_xml = parts.workbook_xml.clone();
     Ok((parts.finish(workbook_xml)?, at))
