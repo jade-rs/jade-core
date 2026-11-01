@@ -1531,6 +1531,11 @@ impl HeadlessWorkbook {
             after: after.clone(),
             cells,
         });
+        // Typing changed values only: what each sheet protects is as it was.
+        if let Some(changes) = &self.typed_changes {
+            let (before, after) = (changes.before.clone(), changes.after.clone());
+            self.carry_sheet_states(&before, &after);
+        }
         if let Some(session) = session {
             self.calc_session = Some((after, session));
         }

@@ -42,6 +42,30 @@ pub(crate) fn matches(
         && grant.stamp == state.stamp
 }
 impl HeadlessWorkbook {
+    /// After a write that only typed values and their recalculation into
+    /// the sheets — no protection or protected range can have changed — each
+    /// sheet's state, read from the package `before` was taken of, stays as
+    /// it was for the same part in the package `after` was taken of; the
+    /// refresh then reads nothing.
+    pub(crate) fn carry_sheet_states(
+        &mut self,
+        before: &[jade_opc::EntryFingerprint],
+        after: &[jade_opc::EntryFingerprint],
+    ) {
+        for (part, state) in self.sheet_states.iter_mut() {
+            let current = state
+                .fingerprint
+                .as_ref()
+                .is_some_and(|fingerprint| before.contains(fingerprint));
+            if !current {
+                continue;
+            }
+            if let Some(entry) = after.iter().find(|entry| entry.0 == *part) {
+                state.fingerprint = Some(entry.clone());
+            }
+        }
+    }
+
     pub(crate) fn refresh_sheet_states(&mut self) {
         // Only the sheet parts that changed are read again, each on its own:
         // inflating the whole package on every write was most of a write's
