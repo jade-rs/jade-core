@@ -396,6 +396,8 @@ impl HeadlessWorkbook {
                 &keys,
                 request.case_sensitive,
             )?;
+        } else {
+            written = jade_xlsx_writer::sort::clear_sort_state(&written, sheet, table, body)?;
         }
         let mut state = self
             .filter_row_state

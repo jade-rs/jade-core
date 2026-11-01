@@ -704,6 +704,9 @@ fn sorting_by_colour_puts_that_colour_on_top_or_bottom() {
         phonetic: None,
         keys,
     };
+    // Reapplying a colour sort must discard the previous value-sort state.
+    book.sort_range(NAME, &sort("K31:K36", false, &[(0, false)]))
+        .unwrap();
     book.sort_range(NAME, &request(vec![by("FFFF00", false)]))
         .unwrap();
     assert_eq!(column(&book), ["b", "e", "a", "c", "d", "f"]);
@@ -746,4 +749,48 @@ fn sorting_by_colour_puts_that_colour_on_top_or_bottom() {
     // A sort by colour writes no sort state to sort by again.
     let sheet = book.workbook().sheets[0].part_name.clone();
     assert!(!part(&book, &sheet).contains("sortState"));
+}
+
+#[test]
+fn colour_sort_clears_table_value_sort_state_and_preserves_foreign_metadata_and_history() {
+    let mut package = OpcPackage::open(&source()).unwrap();
+    let foreign = r#"<foreign:autoFilter xmlns:foreign="urn:test"><sortState xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" ref="A2:C4"><sortCondition ref="A2:A4"/></sortState></foreign:autoFilter>"#;
+    let table = package.part_str("xl/tables/table1.xml").unwrap().unwrap();
+    package.replace(
+        "xl/tables/table1.xml",
+        table
+            .replace("<autoFilter", &format!("{foreign}<autoFilter"))
+            .into_bytes(),
+    );
+    let mut book = HeadlessWorkbook::open_for_editing(&package.write().unwrap()).unwrap();
+    book.sort_range("Operations", &sort("A1:C4", true, &[(1, true)]))
+        .unwrap();
+    let before = book.bytes().to_vec();
+    assert_eq!(
+        part(&book, "xl/tables/table1.xml")
+            .matches("<sortState")
+            .count(),
+        2
+    );
+    let mut request = sort("A1:C4", true, &[(0, false)]);
+    request.keys[0].color = Some(jade_xlsx_headless_api::SortColor {
+        font: false,
+        rgb: String::new(),
+    });
+    book.sort_range("Operations", &request).unwrap();
+    let table = part(&book, "xl/tables/table1.xml");
+    assert!(table.contains(foreign));
+    assert_eq!(table.matches("<sortState").count(), 1);
+    let after = book.bytes().to_vec();
+    book.undo().unwrap();
+    assert_eq!(book.bytes(), before);
+    book.redo().unwrap();
+    assert_eq!(book.bytes(), after);
+    let reopened = HeadlessWorkbook::open_for_editing(&book.export_bytes().unwrap()).unwrap();
+    assert_eq!(
+        part(&reopened, "xl/tables/table1.xml")
+            .matches("<sortState")
+            .count(),
+        1
+    );
 }
