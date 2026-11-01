@@ -14742,6 +14742,57 @@ mod tests {
     }
 
     #[test]
+    fn formatting_part_of_a_run_keeps_a_field_after_its_text() {
+        // toc-tc-field-edge-cases.docx: paragraph 6 ends with a TC field (no
+        // run of its own in the model). Formatting part of its text cut the
+        // run, and the field was written before the second piece: in the
+        // middle of the text, moving the entry's place in the document.
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/toc-tc-field-edge-cases.docx"),
+        )
+        .expect("read fixture");
+        let mut word_doc =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+        apply_headless_commands_to_document(
+            &mut word_doc,
+            &HeadlessEditRequest {
+                commands: vec![HeadlessCommand::SetFontSize {
+                    start_paragraph: 6,
+                    start_offset: 34,
+                    end_paragraph: 6,
+                    end_offset: 36,
+                    font_size: 14.0,
+                }],
+            },
+        )
+        .expect("size");
+        let raw = word_doc.raw_document.as_ref().expect("document xml");
+        let paragraph = raw
+            .element(
+                word_doc
+                    .paragraph(6)
+                    .and_then(|p| p.node_id)
+                    .expect("bound"),
+            )
+            .expect("paragraph xml");
+        // The children after the last run with text.
+        let names: Vec<&str> = paragraph
+            .children
+            .iter()
+            .filter_map(|node| match node {
+                crate::docx_xml::XmlNode::Element(element) => Some(element.name.as_str()),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(names.last(), Some(&"w:fldSimple"), "{names:?}");
+        assert_eq!(
+            names.iter().filter(|name| **name == "w:fldSimple").count(),
+            1
+        );
+    }
+
+    #[test]
     fn tracked_formatting_of_a_text_box_paragraph_can_be_rejected() {
         // shape-preset-geometries.docx has shapes whose paragraphs are not in
         // the XML until an edit writes them. With changes tracked, setting
