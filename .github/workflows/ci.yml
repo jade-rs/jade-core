@@ -22,6 +22,32 @@ permissions:
   contents: read
 
 jobs:
+  crdt-worker-proof:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24
+      - name: Install pinned Lean toolchain manager
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/elan-crdt"
+          cd "$RUNNER_TEMP/elan-crdt"
+          curl --fail --location --retry 3 --output elan.tar.gz https://github.com/leanprover/elan/releases/download/v4.2.4/elan-x86_64-unknown-linux-gnu.tar.gz
+          echo '42b94d4244e8353142c456ec0e4ca6528fd898a6c604d4059f494e706e431f63  elan.tar.gz' | sha256sum --check
+          tar -xzf elan.tar.gz
+          ./elan-init -y --default-toolchain none --no-modify-path
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+      - name: Check capture proofs (pinned by lean-toolchain)
+        working-directory: crates/jade-docx-crdt/formal
+        run: lean Capture.lean
+      - name: Worker PBT against the executable proved model
+        env:
+          JADE_LEAN_ORACLE: '1'
+        run: node --experimental-strip-types --test crates/jade-docx-crdt/worker/*.test.ts
+
   lint:
     runs-on: ubuntu-latest
     # A stalled dependency install used to burn the full six-hour default.
@@ -95,7 +121,7 @@ jobs:
           node-version: 24
 
       - name: CRDT worker capture barriers
-        run: node --experimental-strip-types --test crates/jade-docx-crdt/worker/capture.test.ts
+        run: node --experimental-strip-types --test crates/jade-docx-crdt/worker/*.test.ts
 
       - name: Verify native macOS workflow contract
         run: ruby tests/ci/native_macos_workflow_test.rb
