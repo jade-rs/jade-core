@@ -709,7 +709,10 @@ impl HeadlessWorkbook {
         {
             return Ok(None);
         }
-        self.recalculate().map(Some)
+        // The model this evaluation builds is the one the first typed value
+        // goes into, rather than building it again then.
+        self.recalculate_with_dependencies(false, true)
+            .map(|(summary, _)| Some(summary))
     }
 
     /// Open without changing stored caches; the configured zone applies to
@@ -717,16 +720,22 @@ impl HeadlessWorkbook {
     pub fn open_in_time_zone(bytes: &[u8], time_zone: &str) -> Result<Self> {
         jade_xlsx_calc::validate_time_zone(time_zone)?;
         static ORIGINS: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(1);
+        // Reading the sheets finds which are in order, so the first edit
+        // need not read its sheet through to the end to find out.
+        let (workbook, in_order) = jade_xlsx_reader::read_xlsx_noting_order(bytes)?;
+        let ordered_sheets = jade_opc::entry_fingerprints(bytes, &in_order)?
+            .into_iter()
+            .collect();
         let mut opened = Self {
             sheet_states: BTreeMap::new(),
             range_grants: Vec::new(),
             clipboard_origin: ORIGINS.fetch_add(1, std::sync::atomic::Ordering::Relaxed),
             range_auth_generation: 0,
-            workbook: jade_xlsx_reader::read_xlsx(bytes)?,
+            workbook,
             source: bytes.to_vec(),
             automatic_height_base: None,
             fast_entries: HashSet::new(),
-            ordered_sheets: HashSet::new(),
+            ordered_sheets,
             calc_session: None,
             typed_changes: None,
             laid_out: None,
@@ -1357,8 +1366,17 @@ impl HeadlessWorkbook {
         // The model kept from the last typing write, when nothing has written
         // the package since: only the values just typed go into it.
         let package = jade_opc::package_fingerprint(&self.source)?;
+        // A workbook without a formula has nothing for typed values to
+        // change but themselves: no model to build and evaluate.
+        let calculates = self
+            .workbook
+            .sheets
+            .iter()
+            .flat_map(|sheet| &sheet.rows)
+            .flat_map(|row| &row.cells)
+            .any(|cell| cell.formula.is_some());
         let mut kept = None;
-        if let Some((print, mut session)) = self.calc_session.take() {
+        if let Some((print, mut session)) = self.calc_session.take().filter(|_| calculates) {
             if print == package {
                 let typed: Vec<(usize, CellRef, CellValue)> = sheets
                     .iter()
@@ -1401,6 +1419,15 @@ impl HeadlessWorkbook {
                 );
                 (outcome, Some(session))
             }
+            None if !calculates => (
+                jade_xlsx_calc::Recalculated {
+                    cells: Vec::new(),
+                    skipped: Vec::new(),
+                    spills: Vec::new(),
+                    dependencies: None,
+                },
+                None,
+            ),
             None => match jade_xlsx_calc::evaluate_keeping(
                 &self.workbook,
                 &self.calculation_time_zone,
@@ -2348,29 +2375,36 @@ impl HeadlessWorkbook {
     /// `fullCalcOnLoad` request is withdrawn — every cache is now current —
     /// and `formula_state` reads `cached` again.
     pub fn recalculate(&mut self) -> Result<RecalculationSummary> {
-        self.recalculate_with_dependencies(false)
+        self.recalculate_with_dependencies(false, false)
             .map(|(summary, _)| summary)
     }
+    /// `keep` keeps the evaluated model for typing to evaluate in next
+    /// (see [`jade_xlsx_calc::evaluate_keeping`]).
     fn recalculate_with_dependencies(
         &mut self,
         trace: bool,
+        keep: bool,
     ) -> Result<(
         RecalculationSummary,
         Option<jade_xlsx_calc::ValueDependencies>,
     )> {
         let manual = self.manual_filter_rows();
-        let outcome = if trace {
-            jade_xlsx_calc::evaluate_with_value_dependencies(
+        let (outcome, session) = if trace {
+            let outcome = jade_xlsx_calc::evaluate_with_value_dependencies(
                 &self.workbook,
                 &self.calculation_time_zone,
                 &manual,
-            )?
+            )?;
+            (outcome, None)
+        } else if keep {
+            jade_xlsx_calc::evaluate_keeping(&self.workbook, &self.calculation_time_zone, &manual)?
         } else {
-            jade_xlsx_calc::evaluate_with_manual_filter_rows(
+            let outcome = jade_xlsx_calc::evaluate_with_manual_filter_rows(
                 &self.workbook,
                 &self.calculation_time_zone,
                 &manual,
-            )?
+            )?;
+            (outcome, None)
         };
 
         let mut grouped: BTreeMap<usize, Vec<CachedValueEdit>> = BTreeMap::new();
@@ -2482,6 +2516,11 @@ impl HeadlessWorkbook {
         self.write_spills(&outcome.spills, complete)?;
 
         self.source_time_zone = self.calculation_time_zone.clone();
+        // Only cached values were written: the inputs the model was built
+        // from are the package's now.
+        if let Some(session) = session {
+            self.calc_session = Some((jade_opc::package_fingerprint(&self.source)?, session));
+        }
         Ok((
             RecalculationSummary {
                 refreshed,

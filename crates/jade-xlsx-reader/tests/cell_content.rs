@@ -203,3 +203,26 @@ fn quoted_and_escaped_attribute_values_survive_the_interpreted_view() {
         Some("A \"B\" & C")
     );
 }
+
+#[test]
+fn reading_names_the_sheets_already_in_order() {
+    let in_order = worksheet(
+        r#"<s:sheetData><s:row r="1"><s:c r="A1"><s:v>1</s:v></s:c><s:c r="B1"><s:v>2</s:v></s:c></s:row><s:row r="3"><s:c r="A3"><s:v>3</s:v></s:c></s:row></s:sheetData>"#,
+    );
+    let (_, ordered) =
+        jade_xlsx_reader::read_xlsx_noting_order(&package(&in_order, &pool(""))).unwrap();
+    assert!(ordered.contains(&"xl/worksheets/sheet1.xml".to_string()));
+
+    for out_of_order in [
+        r#"<s:sheetData><s:row r="3"><s:c r="A3"><s:v>3</s:v></s:c></s:row><s:row r="1"><s:c r="A1"><s:v>1</s:v></s:c></s:row></s:sheetData>"#,
+        r#"<s:sheetData><s:row r="1"><s:c r="B1"><s:v>2</s:v></s:c><s:c r="A1"><s:v>1</s:v></s:c></s:row></s:sheetData>"#,
+    ] {
+        let bytes = package(&worksheet(out_of_order), &pool(""));
+        let (workbook, ordered) = jade_xlsx_reader::read_xlsx_noting_order(&bytes).unwrap();
+        assert!(
+            !ordered.contains(&"xl/worksheets/sheet1.xml".to_string()),
+            "{out_of_order}"
+        );
+        assert_eq!(workbook, read_xlsx(&bytes).unwrap());
+    }
+}
