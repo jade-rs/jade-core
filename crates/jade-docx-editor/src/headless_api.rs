@@ -15243,6 +15243,80 @@ mod tests {
     }
 
     #[test]
+    fn a_shape_put_in_a_fields_result_saves_the_result_text_once() {
+        // hyperlink-field-edge-cases.docx: a HYPERLINK simple field whose
+        // result a footnote had cut into two runs. A shape put in the first
+        // ended the field there: the field was written with its last run
+        // still in it, and that run was written again after it, so the saved
+        // link read "ay" + shape + "lly" for "a" + shape + "lly".
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/hyperlink-field-edge-cases.docx"),
+        )
+        .expect("read fixture");
+        let mut word_doc =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+        apply_headless_commands_to_document(
+            &mut word_doc,
+            &HeadlessEditRequest {
+                commands: vec![
+                    HeadlessCommand::SetFontFamily {
+                        start_paragraph: 2,
+                        start_offset: 12,
+                        end_paragraph: 4,
+                        end_offset: 27,
+                        font_family: "Arial".to_string(),
+                    },
+                    HeadlessCommand::InsertText {
+                        paragraph: 4,
+                        offset: 24,
+                        text: "ab ".to_string(),
+                    },
+                    HeadlessCommand::InsertFootnote {
+                        paragraph: 3,
+                        offset: 13,
+                        text: "n".to_string(),
+                    },
+                    HeadlessCommand::InsertShape {
+                        paragraph: 5,
+                        offset: 28,
+                        shape: jade_docx_headless_api::HeadlessShapeKind::Rectangle,
+                        width_px: 40.0,
+                        height_px: 20.0,
+                        fill_color: None,
+                        border_color: None,
+                        border_width_px: 1.0,
+                        text: String::new(),
+                    },
+                ],
+            },
+        )
+        .expect("edits");
+        let text = |word_doc: &WordDocument| {
+            word_doc
+                .paragraph(5)
+                .expect("field paragraph")
+                .runs
+                .iter()
+                .map(|run| {
+                    if run.text_box.is_some() {
+                        "□".to_string()
+                    } else {
+                        run.text.clone()
+                    }
+                })
+                .collect::<String>()
+        };
+        assert!(text(&word_doc).contains("a□lly"), "{}", text(&word_doc));
+        let reloaded = executor::block_on(WordDocument::load(
+            &word_doc.export_docx().expect("export"),
+            &Options::default(),
+        ))
+        .expect("reload");
+        assert_eq!(text(&reloaded), text(&word_doc));
+    }
+
+    #[test]
     fn tracked_formatting_of_a_text_box_paragraph_can_be_rejected() {
         // shape-preset-geometries.docx has shapes whose paragraphs are not in
         // the XML until an edit writes them. With changes tracked, setting
