@@ -361,6 +361,10 @@ pub struct SheetLayout {
     #[serde(default)]
     pub sparklines: Vec<sparkline::PlacedSparkline>,
     pub show_grid_lines: bool,
+    /// The row numbers and column letters shown round the cells; a sheet
+    /// can hide them (`showRowColHeaders="0"`).
+    #[serde(default = "shows_headers")]
+    pub show_headers: bool,
     pub content_width: f64,
     /// Character-unit conversion used to create these axes.
     #[serde(default = "default_digit_width")]
@@ -387,6 +391,11 @@ pub struct ViewportRegions {
     pub corner: Rect,
     pub frozen_width: f64,
     pub frozen_height: f64,
+}
+
+/// Headings show unless the sheet hides them.
+fn shows_headers() -> bool {
+    true
 }
 
 fn default_digit_width() -> f64 {
@@ -734,10 +743,19 @@ impl SheetLayout {
 
     /// The size of the row and column header bands for this sheet.
     pub fn header_metrics(&self) -> HeaderMetrics {
-        HeaderMetrics::for_rows(self.rows.len() as u32).with_outline(
+        let metrics = HeaderMetrics::for_rows(self.rows.len() as u32).with_outline(
             self.outline_levels(jade_xlsx_reader::Axis::Rows),
             self.outline_levels(jade_xlsx_reader::Axis::Columns),
-        )
+        );
+        if self.show_headers {
+            return metrics;
+        }
+        // Hidden headings leave only the outline gutters, when grouped.
+        HeaderMetrics {
+            row_width: metrics.outline_width,
+            column_height: metrics.outline_height,
+            ..metrics
+        }
     }
 
     /// The cells that overlap `viewport`.
@@ -1677,6 +1695,7 @@ fn layout_sheet_on_axes(
         pivots: styled_pivots,
         sparklines,
         show_grid_lines: sheet.show_grid_lines,
+        show_headers: sheet.show_headers,
         content_width,
         max_digit_width_px: options.max_digit_width_px,
         content_height,
@@ -1762,6 +1781,7 @@ pub fn relayout_rows(
         show_grid_lines: sheet.show_grid_lines,
         show_formulas: sheet.show_formulas,
         show_zeros: sheet.show_zeros,
+        show_headers: sheet.show_headers,
         zoom_percent: sheet.zoom_percent,
         freeze_pane: sheet.freeze_pane.clone(),
         tables: Vec::new(),
