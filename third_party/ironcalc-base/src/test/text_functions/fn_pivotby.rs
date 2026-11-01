@@ -63,3 +63,36 @@ fn test_pivotby_without_totals_descending_with_a_lambda() {
     assert_eq!(model._get_text("H1"), "");
     assert_eq!(model._get_text("E4"), "");
 }
+
+#[test]
+fn test_pivotby_wide_column_fields_and_multiple_value_headers() {
+    let mut model = new_empty_model();
+    for (row, values) in [
+        [
+            "Region", "Year", "Quarter", "Month", "Day", "Amount", "Count",
+        ],
+        ["West", "y1", "q1", "m1", "d1", "10", "1"],
+        ["East", "y2", "q2", "m2", "d2", "20", "2"],
+    ]
+    .iter()
+    .enumerate()
+    {
+        for (column, value) in ["A", "B", "C", "D", "E", "F", "G"].iter().zip(values) {
+            model._set(&format!("{column}{}", row + 1), value);
+        }
+    }
+    model._set("I1", "=PIVOTBY(A1:A3,B1:E3,F1:G3,SUM,3,0,1,0,1)");
+    model.evaluate();
+    assert_eq!(
+        grid(&model, 7, &["I", "J", "K", "L", "M"]),
+        [
+            ["", "y1", "", "y2", ""],
+            ["", "q1", "", "q2", ""],
+            ["", "m1", "", "m2", ""],
+            ["Region", "d1", "", "d2", ""],
+            ["", "Amount", "Count", "Amount", "Count"],
+            ["East", "", "", "20", "2"],
+            ["West", "10", "1", "", ""],
+        ]
+    );
+}
