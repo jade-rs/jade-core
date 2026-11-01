@@ -32512,7 +32512,7 @@ impl WordDocument {
     fn reparse_styles_part(&mut self, serialized: &str) -> bool {
         let theme = self.loaded_theme_part();
         let _theme_colors = jade_docx_reader::theme::ThemeColorScope::enter(theme.as_ref());
-        match self.styles_part.as_mut() {
+        let parsed = match self.styles_part.as_mut() {
             Some(styles) => styles.parse(serialized).is_ok(),
             None => match StylesPart::from_xml(serialized) {
                 Ok(styles) => {
@@ -32521,7 +32521,19 @@ impl WordDocument {
                 }
                 Err(_) => false,
             },
+        };
+        // What numbering.xml links to a style (a level's `w:pStyle`) a load
+        // merges into it. Reparsed without it — adding the note styles
+        // does — a heading whose `w:numPr` names no level lost its level,
+        // and its paragraphs their numbers on screen.
+        if parsed {
+            if let (Some(styles), Some(numbering)) =
+                (self.styles_part.as_mut(), self.numbering_part.as_ref())
+            {
+                styles.merge_numbering_from_part(numbering);
+            }
         }
+        parsed
     }
 
     /// What `paragraph_index` takes from its styles alone: the paragraph style
