@@ -1887,6 +1887,7 @@ dependencies = [
  "jade-selection",
  "png 0.17.16",
  "proptest",
+ "quick-xml 0.41.0",
  "rustc-hash",
  "serde",
  "serde_json",
