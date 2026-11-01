@@ -170,6 +170,10 @@ pub struct PlacedCell {
     /// cell drawn in one font.
     #[serde(default)]
     pub runs: Vec<PlacedRun>,
+    /// Excel's error checking flags the cell — a number stored as text, or
+    /// a formula that gives an error — with a green corner triangle.
+    #[serde(default)]
+    pub error_flag: bool,
 }
 
 /// A run of a rich text cell: a byte range of the cell's text and its font.
@@ -501,6 +505,7 @@ impl SheetLayout {
                     icon: None,
                     text_inset_px: 0.0,
                     runs: Vec::new(),
+                    error_flag: false,
                 });
             }
         }
@@ -1389,6 +1394,7 @@ fn layout_sheet_on_axes(
                 data_bar,
                 icon,
                 overflow,
+                error_flag: error_check_flags(&cell.value, cell.formula.is_some()),
             });
         }
     }
@@ -1453,6 +1459,7 @@ fn layout_sheet_on_axes(
             data_bar: None,
             icon: None,
             overflow: None,
+            error_flag: false,
         });
     }
 
@@ -1588,6 +1595,7 @@ fn layout_sheet_on_axes(
             alignment: cell.alignment,
             text_inset_px: cell.text_inset_px,
             runs: cell.runs,
+            error_flag: cell.error_flag,
         })
     }));
 
@@ -2059,6 +2067,21 @@ struct PreparedCell {
     data_bar: Option<visual_format::ResolvedDataBar>,
     icon: Option<visual_format::ResolvedIcon>,
     overflow: Option<(f64, f64)>,
+    error_flag: bool,
+}
+
+/// Whether Excel's background error checking flags a cell, by its default
+/// rules: a formula that gives an error, or a number stored as text (text
+/// that reads as a number).
+fn error_check_flags(value: &CellValue, formula: bool) -> bool {
+    match value {
+        CellValue::Error(_) => formula,
+        CellValue::Text(text) => {
+            let text = text.trim();
+            text.chars().any(|c| c.is_ascii_digit()) && text.replace(',', "").parse::<f64>().is_ok()
+        }
+        _ => false,
+    }
 }
 
 /// An icon set's icons are 16 px for 11 pt text and grow with the font, but
