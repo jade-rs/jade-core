@@ -642,7 +642,7 @@ impl<'a> Model<'a> {
     /// One row per distinct value of `row_fields`, each with `function`
     /// applied to that group's `values`, column by column; a grand total.
     ///   * function      – a LAMBDA, or a function by name, as `SUM`
-    ///   * field_headers – 0 none (default), 1 headers not shown, 3 shown
+    ///   * field_headers – automatic by default, 0 none, 1 headers not shown, 3 shown
     ///   * total_depth   – 1 a grand total at the bottom (default), 0 none,
     ///     -1 at the top
     ///   * sort_order    – the column sorted by, 1 the first (default);
@@ -667,6 +667,23 @@ impl<'a> Model<'a> {
                 "row_fields and values must have as many rows".to_string(),
             );
         }
+        // Excel detects a header only when the first value is text and the
+        // second value is numeric. Explicit field_headers still takes priority.
+        let automatic_headers = if matches!(
+            values.first().and_then(|row| row.first()),
+            Some(ArrayNode::String(_))
+        ) && matches!(
+            values.get(1).and_then(|row| row.first()),
+            Some(ArrayNode::Number(_))
+        ) {
+            if fields[0].len() > 1 || values[0].len() > 1 {
+                3
+            } else {
+                1
+            }
+        } else {
+            0
+        };
         let mut option = |index: usize, default: i64| -> Result<i64, CalcResult> {
             if index >= args.len() {
                 return Ok(default);
@@ -678,7 +695,7 @@ impl<'a> Model<'a> {
                     .map(|n| n.trunc() as i64),
             }
         };
-        let headers = match option(3, 0) {
+        let headers = match option(3, automatic_headers) {
             Ok(n) => n,
             Err(error) => return error,
         };
