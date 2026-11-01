@@ -123,6 +123,10 @@ pub struct DocxXmlDocument {
     /// empty-element form (`<w:r/>`). The document parser models none of them
     /// as runs, so the model-to-XML run mapping must skip them.
     self_closing_elements: HashSet<XmlNodeId>,
+    /// Elements named in [`SELF_CLOSING_TRACKED`] the source wrote open and
+    /// closed with nothing between (`<w:r></w:r>`), which the document parser
+    /// does model.
+    explicit_empty_elements: HashSet<XmlNodeId>,
     journal: JournalSlot,
     /// Independent of the undo journal; clones retain unacknowledged changes.
     changes: Option<HashSet<XmlNodeId>>,
@@ -165,11 +169,25 @@ impl DocxXmlDocument {
         }
     }
 
-    /// Whether `id` is a `w:r`, `w:fldSimple`, `m:oMath` or `w:object` the
-    /// source wrote in empty-element form (see [`Self::self_closing_elements`]).
-    /// Elements created after parsing never are.
+    /// Whether `id` is a `w:r`, `w:fldSimple`, `m:oMath` or `w:object`
+    /// written in empty-element form: as the source wrote it (see
+    /// [`Self::self_closing_elements`]), or, for one the source did not
+    /// write open and closed, as [`Self::to_string`] writes any element
+    /// without children. A reparse of that text models no run for it, so
+    /// the run mapping must skip it too. Counted as a run, an empty `w:r`
+    /// rebuilt by an edit (a split field's result) gave every later run the
+    /// element before its own, and a rejected or accepted formatting change
+    /// put one run's formatting on the next.
     pub fn is_self_closing(&self, id: XmlNodeId) -> bool {
-        self.self_closing_elements.contains(&id)
+        if self.self_closing_elements.contains(&id) {
+            return true;
+        }
+        if self.explicit_empty_elements.contains(&id) {
+            return false;
+        }
+        self.element(id).is_some_and(|element| {
+            element.children.is_empty() && SELF_CLOSING_TRACKED.contains(&element.name.as_str())
+        })
     }
 
     /// 文字列から XML ツリーを構築する。
@@ -971,6 +989,7 @@ pub struct DocxXmlTreeBuilder {
     next_id: u32,
     declaration: XmlDeclaration,
     self_closing_elements: HashSet<XmlNodeId>,
+    explicit_empty_elements: HashSet<XmlNodeId>,
 }
 
 impl Default for DocxXmlTreeBuilder {
@@ -988,6 +1007,7 @@ impl DocxXmlTreeBuilder {
             next_id: 0,
             declaration: XmlDeclaration::default(),
             self_closing_elements: HashSet::new(),
+            explicit_empty_elements: HashSet::new(),
         }
     }
 
@@ -1017,6 +1037,11 @@ impl DocxXmlTreeBuilder {
                     .stack
                     .pop()
                     .ok_or_else(|| DocxXmlError::Malformed("unexpected closing tag".into()))?;
+                if element.children.is_empty()
+                    && SELF_CLOSING_TRACKED.contains(&element.name.as_str())
+                {
+                    self.explicit_empty_elements.insert(element.id);
+                }
                 self.attach_child(XmlNode::Element(element))?;
             }
             Event::Decl(e) => {
@@ -1093,6 +1118,7 @@ impl DocxXmlTreeBuilder {
             declaration: self.declaration,
             next_drawing_object_id: None,
             self_closing_elements: self.self_closing_elements,
+            explicit_empty_elements: self.explicit_empty_elements,
             journal: JournalSlot::default(),
             changes: None,
             source_len: 0,
@@ -1593,6 +1619,45 @@ fn push_escaped(buffer: &mut String, value: &str, entity: impl Fn(u8) -> Option<
 
 #[cfg(test)]
 pub(crate) mod tests {
+    #[test]
+    fn an_empty_run_counts_as_self_closing_as_it_is_written() {
+        // The source's `<w:r/>` and an empty run made after parsing are both
+        // written `<w:r/>`, which a parse models no run for; a `<w:r></w:r>`
+        // the source wrote open is one the parser does model.
+        let mut doc = DocxXmlDocument::parse(
+            r#"<w:document xmlns:w="w"><w:body><w:p><w:r/><w:r></w:r></w:p></w:body></w:document>"#,
+        )
+        .expect("parse");
+        let paragraph = doc.root().children.iter().find_map(|node| match node {
+            XmlNode::Element(body) => body.children.iter().find_map(|node| match node {
+                XmlNode::Element(paragraph) => Some(paragraph.clone()),
+                _ => None,
+            }),
+            _ => None,
+        });
+        let paragraph = paragraph.expect("paragraph");
+        let runs: Vec<XmlNodeId> = paragraph
+            .children
+            .iter()
+            .filter_map(|node| match node {
+                XmlNode::Element(run) => Some(run.id),
+                _ => None,
+            })
+            .collect();
+        assert!(doc.is_self_closing(runs[0]));
+        assert!(!doc.is_self_closing(runs[1]));
+        let created = doc.create_element("w:r", Vec::new(), Vec::new());
+        let created_id = doc
+            .insert_node(paragraph.id, 2, XmlNode::Element(created))
+            .expect("insert")
+            .expect("an element id");
+        assert!(doc.is_self_closing(created_id));
+        assert!(doc
+            .to_string()
+            .expect("write")
+            .contains("<w:r/><w:r/><w:r/>"));
+    }
+
     use super::*;
 
     #[test]

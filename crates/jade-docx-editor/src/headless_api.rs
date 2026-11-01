@@ -14609,6 +14609,85 @@ mod tests {
     }
 
     #[test]
+    fn accepting_a_change_keeps_formatting_after_a_rebuilt_empty_field_result() {
+        // toc-tc-field-edge-cases.docx ends a paragraph with a TC field whose
+        // result is an empty `<w:r/>`. Splitting the paragraph rebuilt that
+        // run, and accepting any formatting change reparses the document's
+        // formatting: the rebuilt run counted as a run there but not in the
+        // parse, so each later run took the one before's formatting and the
+        // 14pt set on "na" was lost on screen.
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/toc-tc-field-edge-cases.docx"),
+        )
+        .expect("read fixture");
+        let mut word_doc =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+        apply_headless_commands_to_document(
+            &mut word_doc,
+            &HeadlessEditRequest {
+                commands: vec![
+                    HeadlessCommand::InsertParagraphBreak {
+                        paragraph: 6,
+                        offset: 28,
+                        count: 1,
+                    },
+                    HeadlessCommand::SetFontSize {
+                        start_paragraph: 7,
+                        start_offset: 6,
+                        end_paragraph: 7,
+                        end_offset: 8,
+                        font_size: 14.0,
+                    },
+                    HeadlessCommand::StartChangeTracking {
+                        author: Some("reviewer".to_string()),
+                        initials: None,
+                        date: None,
+                        date_utc: None,
+                    },
+                    HeadlessCommand::SetHighlightColor {
+                        start_paragraph: 0,
+                        start_offset: 0,
+                        end_paragraph: 0,
+                        end_offset: 2,
+                        color: "yellow".to_string(),
+                    },
+                    HeadlessCommand::AcceptRevisions {
+                        kind: None,
+                        start_paragraph: None,
+                        end_paragraph: None,
+                        revision_id: None,
+                        revision_ids: None,
+                        revision_targets: None,
+                    },
+                ],
+            },
+        )
+        .expect("edits");
+        let sizes = |word_doc: &WordDocument| {
+            word_doc
+                .paragraph(7)
+                .expect("split paragraph")
+                .runs
+                .iter()
+                .map(|run| {
+                    (
+                        run.text.clone(),
+                        run.properties.as_ref().and_then(|props| props.font_size),
+                    )
+                })
+                .collect::<Vec<_>>()
+        };
+        assert!(sizes(&word_doc).contains(&("na".to_string(), Some(14.0))));
+        let reloaded = executor::block_on(WordDocument::load(
+            &word_doc.export_docx().expect("export"),
+            &Options::default(),
+        ))
+        .expect("reload");
+        assert_eq!(sizes(&word_doc), sizes(&reloaded));
+    }
+
+    #[test]
     fn tracked_formatting_of_a_text_box_paragraph_can_be_rejected() {
         // shape-preset-geometries.docx has shapes whose paragraphs are not in
         // the XML until an edit writes them. With changes tracked, setting
