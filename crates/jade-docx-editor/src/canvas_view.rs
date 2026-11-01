@@ -20799,6 +20799,8 @@ impl OffscreenDocumentView {
     }
 }
 
+include!("crdt_live_view.rs");
+
 #[cfg(test)]
 mod tests {
     /// No Markup and Original drop one side of each revision from layout, so
@@ -21696,5 +21698,3 @@ mod tests {
         assert_eq!(track_index_after_delete(&[0, 1, 2], 3), None);
     }
 }
-
-include!("crdt_live_view.rs");
