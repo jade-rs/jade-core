@@ -279,26 +279,27 @@ impl OffscreenDocumentView {
             let exported = candidate
                 .export_docx()
                 .map_err(|e| JsValue::from_str(&e.to_string()))?;
-            let state = view.state.borrow();
-            let live = state.crdt.as_ref().unwrap();
-            let mut preview = jade_crdt::Document::open(
-                live.document(),
-                live.baseline(),
-                &live.inner.snapshot().map_err(|e| JsValue::from_str(&e))?,
-            )
-            .map_err(|e| JsValue::from_str(&e))?;
-            preview
-                .import_updates(&updates)
+            {
+                let state = view.state.borrow();
+                let live = state.crdt.as_ref().unwrap();
+                let mut preview = jade_crdt::Document::open(
+                    live.document(),
+                    live.baseline(),
+                    &live.inner.snapshot().map_err(|e| JsValue::from_str(&e))?,
+                )
                 .map_err(|e| JsValue::from_str(&e))?;
-            crate::crdt_live::LiveDocument::open(
-                live.document(),
-                live.baseline(),
-                &exported,
-                &preview.snapshot().map_err(|e| JsValue::from_str(&e))?,
-                candidate.raw_document.as_ref(),
-            )
-            .map_err(|e| JsValue::from_str(&e))?;
-            drop(state);
+                preview
+                    .import_updates(&updates)
+                    .map_err(|e| JsValue::from_str(&e))?;
+                crate::crdt_live::LiveDocument::open(
+                    live.document(),
+                    live.baseline(),
+                    &exported,
+                    &preview.snapshot().map_err(|e| JsValue::from_str(&e))?,
+                    candidate.raw_document.as_ref(),
+                )
+                .map_err(|e| JsValue::from_str(&e))?;
+            }
             view.crdt_load_projection(&bytes).await?;
             {
                 let mut state = view.state.borrow_mut();
