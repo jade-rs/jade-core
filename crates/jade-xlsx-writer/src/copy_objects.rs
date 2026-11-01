@@ -1,9 +1,10 @@
 //! A copied sheet's own parts, copied with it: its drawing — the pictures
 //! in it shared with the original, its charts copied and pointed at the
 //! copy's cells, as Excel's Move or Copy does — its notes (comments and
-//! their VML), its printer settings, and its tables, each under a name
-//! and id of its own. Pivot tables and the like are refused rather than
-//! copied in part.
+//! their VML), its printer settings, its tables, each under a name and id
+//! of its own, and its pivot tables, reading the same pivot cache as the
+//! original's do. PivotCharts and the like are refused rather than copied
+//! in part.
 
 use jade_opc::{OpcPackage, Relationship};
 use jade_xlsx_reader::rename_sheet_in_formula;
@@ -26,11 +27,11 @@ pub(crate) fn refuse_uncopyable(rels: &str) -> Result<()> {
         if !relationship.external
             && !matches!(
                 kind,
-                "drawing" | "comments" | "vmlDrawing" | "printerSettings" | "table"
+                "drawing" | "comments" | "vmlDrawing" | "printerSettings" | "table" | "pivotTable"
             )
         {
             return Err(WriteError::CopySheet(
-                "a sheet with pivot tables or other objects of its own cannot be copied yet".into(),
+                "a sheet with objects of this kind cannot be copied yet".into(),
             ));
         }
     }
@@ -98,6 +99,13 @@ fn duplicate(
         .is_some_and(|kind| kind.ends_with("drawingml.chart+xml"))
     {
         let xml = String::from_utf8(bytes).map_err(|_| WriteError::MissingPart(part.into()))?;
+        // A PivotChart names the pivot table it shows by its sheet and
+        // file; pointing it at the copy's is not done yet.
+        if xml.contains("pivotSource") {
+            return Err(WriteError::CopySheet(
+                "a sheet with a PivotChart cannot be copied yet".into(),
+            ));
+        }
         crate::sheets::rewrite_formula_elements(&xml, &|formula: &str| {
             rename_sheet_in_formula(formula, source, copy)
         })?
@@ -117,7 +125,13 @@ fn duplicate(
                 continue;
             }
             let target = jade_opc::resolve_target(part, &relationship.target);
-            let target = if relationship.relationship_type.ends_with("/image") {
+            // Pictures stay shared, and a pivot table's cache: the copy
+            // reads the same one, as Excel's copy does.
+            let target = if relationship.relationship_type.ends_with("/image")
+                || relationship
+                    .relationship_type
+                    .ends_with("/pivotCacheDefinition")
+            {
                 target
             } else {
                 duplicate(package, &target, source, copy, depth + 1)?
