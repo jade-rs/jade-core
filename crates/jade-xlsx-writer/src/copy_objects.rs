@@ -3,8 +3,8 @@
 //! copy's cells, as Excel's Move or Copy does — its notes (comments and
 //! their VML), its printer settings, its tables, each under a name and id
 //! of its own, and its pivot tables, reading the same pivot cache as the
-//! original's do. PivotCharts and the like are refused rather than copied
-//! in part.
+//! original's do, a PivotChart on it showing the copy's. Objects of other
+//! kinds are refused rather than copied in part.
 
 use jade_opc::{OpcPackage, Relationship};
 use jade_xlsx_reader::rename_sheet_in_formula;
@@ -99,13 +99,13 @@ fn duplicate(
         .is_some_and(|kind| kind.ends_with("drawingml.chart+xml"))
     {
         let xml = String::from_utf8(bytes).map_err(|_| WriteError::MissingPart(part.into()))?;
-        // A PivotChart names the pivot table it shows by its sheet and
-        // file; pointing it at the copy's is not done yet.
-        if xml.contains("pivotSource") {
-            return Err(WriteError::CopySheet(
-                "a sheet with a PivotChart cannot be copied yet".into(),
-            ));
-        }
+        // A PivotChart names the pivot table it shows by its sheet and file:
+        // the copy's shows the copy's pivot table.
+        let xml = if xml.contains("pivotSource") {
+            crate::pivot_chart::copied_chart_source(&xml, source, copy)?
+        } else {
+            xml
+        };
         crate::sheets::rewrite_formula_elements(&xml, &|formula: &str| {
             rename_sheet_in_formula(formula, source, copy)
         })?
