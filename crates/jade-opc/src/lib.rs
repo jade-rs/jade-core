@@ -13,6 +13,7 @@ use std::collections::{HashMap, HashSet};
 use thiserror::Error;
 pub mod compound_file;
 pub mod encryption;
+mod inflated;
 pub mod package_limits;
 pub mod protection;
 pub mod signature;
@@ -329,6 +330,28 @@ impl PreservingOpcPackage<'_> {
             }
             writer.finish()?;
         }
+        // What was just deflated is what the next open of these bytes would
+        // inflate: keep the large parts.
+        if let Ok(mut written) = zip::ZipArchive::new(std::io::Cursor::new(&buffer)) {
+            for name in &self.package.modified {
+                let Some(contents) = self.package.parts.get(name) else {
+                    continue;
+                };
+                let Some(index) = written.index_for_name(name) else {
+                    continue;
+                };
+                let Ok(raw) = written.by_index_raw(index) else {
+                    continue;
+                };
+                if raw.compressed_size() < inflated::MIN_COMPRESSED {
+                    continue;
+                }
+                let mut compressed = Vec::new();
+                if std::io::Read::read_to_end(&mut { raw }, &mut compressed).is_ok() {
+                    inflated::keep(name, compressed, contents);
+                }
+            }
+        }
         Ok((buffer, stats))
     }
 }
@@ -351,6 +374,28 @@ impl OpcPackage {
         let mut order = Vec::new();
         let mut total = 0u64;
         for index in 0..archive.len() {
+            // A large entry inflated lately — this package's own last write,
+            // most often — comes back without inflating it again.
+            let mut compressed = None;
+            {
+                let raw = archive.by_index_raw(index)?;
+                if !raw.is_dir() && raw.compressed_size() >= inflated::MIN_COMPRESSED {
+                    let name = raw.name()?.into_owned();
+                    let mut bytes = Vec::new();
+                    std::io::Read::read_to_end(
+                        &mut std::io::Read::take(raw, limits.max_part_bytes),
+                        &mut bytes,
+                    )?;
+                    if let Some(contents) = inflated::recall(&name, &bytes) {
+                        package_limits::account(contents.len() as u64, limits, &mut total)?;
+                        if parts.insert(name.clone(), contents.to_vec()).is_none() {
+                            order.push(name);
+                        }
+                        continue;
+                    }
+                    compressed = Some(bytes);
+                }
+            }
             let entry = archive.by_index(index)?;
             if entry.is_dir() {
                 continue;
@@ -359,6 +404,9 @@ impl OpcPackage {
             // Not `Vec::with_capacity(entry.size())`: that size comes from the
             // archive and would let it pick our allocation.
             let contents = package_limits::read_part(entry, limits, &mut total)?;
+            if let Some(compressed) = compressed {
+                inflated::keep(&name, compressed, &contents);
+            }
             if parts.insert(name.clone(), contents).is_none() {
                 order.push(name);
             }
