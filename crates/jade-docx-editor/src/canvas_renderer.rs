@@ -21587,9 +21587,46 @@ where
         // auto-space boundaries widen first, then the gaps between East Asian
         // characters share the rest. Returns the width placed.
         let distribute_justification_to_east_asian_gaps =
-            |prepared_segments: &mut [PreparedSegment<'_, '_>], extra_total: f64| -> f64 {
+            |prepared_segments: &mut [PreparedSegment<'_, '_>],
+             wrapped_line: &WrappedLine,
+             extra_total: f64|
+             -> f64 {
                 if extra_total <= 0.0 {
                     return 0.0;
+                }
+                // Ragged lines that hang a full mark use the measured line
+                // plan. Justified/tabbed lines retain their squeeze allocation.
+                if paragraph_style.word_platform
+                    == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
+                    && !is_justified_alignment(&paragraph_style.alignment)
+                    && wrapped_line.tab_stops.is_empty()
+                {
+                    let plan = wrapped_line.mac_east_asian_justification_advances_px(extra_total);
+                    let mut distributed = 0.0;
+                    for prepared in prepared_segments.iter_mut() {
+                        let mut accumulated = 0.0;
+                        let glyphs = Rc::make_mut(&mut prepared.fragment.glyphs);
+                        for (index, step) in prepared.glyph_steps.iter_mut().enumerate() {
+                            step.x_offset += accumulated;
+                            let end = prepared.segment.start + step.text_end as usize;
+                            let extra = wrapped_line
+                                .clusters
+                                .binary_search_by_key(&end, |cluster| cluster.end)
+                                .ok()
+                                .and_then(|index| plan.get(index))
+                                .copied()
+                                .unwrap_or(0.0);
+                            if let Some(glyph) = glyphs.get_mut(index) {
+                                glyph.x += accumulated;
+                                glyph.width += extra;
+                            }
+                            accumulated += extra;
+                        }
+                        prepared.fragment.width += accumulated;
+                        prepared.width += accumulated;
+                        distributed += accumulated;
+                    }
+                    return distributed;
                 }
                 let mut gap_owners = Vec::new();
                 let mut gaps = Vec::new();
@@ -22669,48 +22706,11 @@ where
                 });
             } else {
                 let available_for_line = available_for_line.max(1.0);
-                // A line whose final punctuation hangs past the right edge is
-                // justified to that edge in Word even when the paragraph is
-                // left-aligned (`…上限とする。` in `system-dev-contract.docx`).
-                let hanging_punctuation_width = wrapped_line
-                    .clusters
-                    .last()
-                    .filter(|cluster| {
-                        !cluster.is_whitespace
-                            && cluster.can_hang_line_end
-                            && paragraph_style.allows_hanging_punctuation_at(break_kind)
-                            && line_width > available_for_line + 0.5
-                            && !matches!(
-                                paragraph_style.alignment.trim(),
-                                "center" | "right" | "end"
-                            )
-                    })
-                    .map(|cluster| {
-                        // On Mac a line with a tab gave the mark's width to the
-                        // tab first (`shrink_tab_for_final_mark`). Word justifies
-                        // the line as if the mark hung whole with the tab still
-                        // open, then closes the tab: the mark stops the closed
-                        // width short of the edge (trust page 22: 4.05pt, the
-                        // auto-space gaps 0.70pt wider).
-                        let closed: f64 = wrapped_line
-                            .tab_stops
-                            .iter()
-                            .map(|stop| stop.closed_for_final_mark)
-                            .sum();
-                        if paragraph_style.word_platform
-                            == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
-                            && !wrapped_line.tab_stops.is_empty()
-                        {
-                            if closed > f64::EPSILON {
-                                (cluster.width - closed).max(0.0)
-                            } else {
-                                cluster.width.min(line_width - available_for_line)
-                            }
-                        } else {
-                            cluster.width
-                        }
-                    })
-                    .unwrap_or(0.0);
+                let hanging_punctuation_width = wrapped_line.hanging_punctuation_width_px(
+                    paragraph_style,
+                    line_width,
+                    available_for_line,
+                );
                 // A final mark that hung its blank half past the edge
                 // (`compress_mac_punctuation_on_completed_line`) leaves the
                 // line justified to the edge, the paragraph's last line too.
@@ -22757,6 +22757,7 @@ where
                     if justify_line && paragraph_style.enable_line_break_rules {
                         distribute_justification_to_east_asian_gaps(
                             prepared_segments.as_mut_slice(),
+                            wrapped_line,
                             (extra_total - distributed_space_extra).max(0.0),
                         )
                     } else {
