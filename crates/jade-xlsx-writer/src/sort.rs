@@ -727,6 +727,41 @@ fn saved_sorts(xml: &str) -> Result<Vec<SavedSort>> {
     }
     Ok(sorts)
 }
+/// Discard saved value-sort instructions for an unsupported sort kind.
+/// Keep unrelated auto-filter ranges and foreign-namespace metadata intact.
+pub fn clear_sort_state(
+    original: &[u8],
+    sheet: &Sheet,
+    table: Option<&str>,
+    range: CellRange,
+) -> Result<Vec<u8>> {
+    let mut package = OpcPackage::open(original)?;
+    let part = match table {
+        Some(name) => sheet
+            .tables
+            .iter()
+            .find(|table| table.name == name)
+            .ok_or_else(|| error("table is unavailable"))?
+            .part_name
+            .as_str(),
+        None => sheet.part_name.as_str(),
+    };
+    let xml = package
+        .part_str(part)?
+        .ok_or_else(|| WriteError::MissingPart(part.into()))?;
+    let splices = saved_sorts(&xml)?
+        .into_iter()
+        .filter(|sort| sort.direct || sort.range.is_some_and(|r| intersects(r, range)))
+        .map(|sort| Splice {
+            start: sort.start,
+            end: sort.end,
+            text: String::new(),
+        })
+        .collect();
+    package.replace(part, apply(&xml, splices).into_bytes());
+    package.write().map_err(Into::into)
+}
+
 /// Record standard value-sort keys without serializing unrelated metadata.
 pub fn write_sort_state(
     original: &[u8],
