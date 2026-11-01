@@ -10,6 +10,8 @@ fn js_error(error: String) -> JsValue {
 /// Existing snapshots are opened before any updates are accepted. A supplied
 /// replacement is a native package edit, never a new independent genesis.
 #[wasm_bindgen(js_name = jadeLiveCrdt)]
+// Preserve the positional WASM API consumed by existing hosts.
+#[allow(clippy::too_many_arguments)]
 pub async fn jade_live_crdt(
     document: &str,
     baseline: &str,
