@@ -18328,6 +18328,15 @@ impl WordDocument {
         if end_offset > end_len {
             return Err("comment end offset is outside of paragraph bounds".to_string());
         }
+        // Both ends are anchored in their paragraph's XML. Checked before the
+        // start paragraph is split: found out after, the failed comment left
+        // that paragraph synced and the text boxes in it read from stale
+        // surfaces, so a text box paragraph showed empty.
+        for (index, end) in [(start_paragraph, "start"), (end_paragraph, "end")] {
+            if self.paragraph(index).and_then(|p| p.node_id).is_none() {
+                return Err(format!("comment {end} paragraph has no xml node id"));
+            }
+        }
 
         // --- Split runs in the start paragraph; the anchor run is the first run
         //     at/after `start_offset` (if any). ---
