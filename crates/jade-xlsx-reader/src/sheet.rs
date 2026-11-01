@@ -65,7 +65,20 @@ pub fn parse_sheet_with_relationships(
     shared_strings: &[String],
     relationships: &Relationships,
 ) -> Result<Sheet> {
-    let grid = crate::cell_content::worksheet(xml)?;
+    parse_sheet_noting_order(name, part_name, xml, shared_strings, relationships)
+        .map(|(sheet, _)| sheet)
+}
+
+/// [`parse_sheet_with_relationships`], also saying whether the part's rows
+/// and cells were already in order, which a writer patching it can use.
+pub(crate) fn parse_sheet_noting_order(
+    name: &str,
+    part_name: &str,
+    xml: &str,
+    shared_strings: &[String],
+    relationships: &Relationships,
+) -> Result<(Sheet, bool)> {
+    let (grid, in_order) = crate::cell_content::worksheet_noting_order(xml)?;
     let mut protection_seen = false;
     let mut reader = Reader::from_str(&grid);
     reader.config_mut().trim_text(false);
@@ -476,7 +489,7 @@ pub fn parse_sheet_with_relationships(
             cell.formula = Some(translate_formula(formula, *origin, cell.reference));
         }
     }
-    Ok(sheet)
+    Ok((sheet, in_order))
 }
 
 fn parse_header_footer(element: &BytesStart<'_>) -> Result<HeaderFooter> {
