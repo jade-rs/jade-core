@@ -198,6 +198,7 @@ fn map_paragraph(paragraph: &mut Paragraph, xml_paragraph: &XmlElement, doc: &Do
 /// The runs the parser makes of `xml_run`: `true` for a soft line break,
 /// `false` for a stretch of text. One piece when the parser keeps the run
 /// whole — a carriage return, a break with `w:clear`, a drawing or a field.
+/// An empty vector also means the run stays whole.
 fn soft_break_pieces(xml_run: &XmlElement) -> Vec<bool> {
     let mut pieces = Vec::new();
     let mut has_text = false;
@@ -212,7 +213,7 @@ fn soft_break_pieces(xml_run: &XmlElement) -> Vec<bool> {
                         .map(|attribute| attribute.value.to_ascii_lowercase())
                 };
                 if attribute("w:clear").is_some() {
-                    return vec![false];
+                    return Vec::new();
                 }
                 match attribute("w:type").as_deref() {
                     None | Some("textwrapping") => {
@@ -231,7 +232,7 @@ fn soft_break_pieces(xml_run: &XmlElement) -> Vec<bool> {
             | "w:object"
             | "mc:AlternateContent"
             | "w:fldChar"
-            | "w:instrText" => return vec![false],
+            | "w:instrText" => return Vec::new(),
             "w:t" | "w:delText" => {
                 has_text |= child
                     .children
@@ -242,7 +243,8 @@ fn soft_break_pieces(xml_run: &XmlElement) -> Vec<bool> {
             _ => {}
         }
     }
-    if has_text {
+    // Ordinary text needs no split description or allocation.
+    if has_text && !pieces.is_empty() {
         pieces.push(false);
     }
     pieces
