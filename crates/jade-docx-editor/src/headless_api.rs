@@ -14976,6 +14976,55 @@ mod tests {
         }
     }
 
+    proptest! {
+        #![proptest_config(ProptestConfig { cases: 32, max_shrink_iters: 128, .. ProptestConfig::default() })]
+        #[test]
+        fn property_formatting_preserves_inline_marker_positions_through_export_and_reload(
+            chunks in prop::collection::vec(0usize..3, 1..5),
+            tc_markers in any::<bool>(),
+            selection_start in any::<u8>(),
+            selection_end in any::<u8>(),
+        ) {
+            let mut body = String::from("<w:p>");
+            if tc_markers { body.push_str("<w:fldSimple w:instr=\" TC start \"/>"); }
+            let mut text = String::new();
+            for (index, chunk) in chunks.into_iter().enumerate() {
+                let chunk = ["abcd", "あいうえ", "🙂xyz"][chunk];
+                text.push_str(chunk);
+                if !tc_markers { body.push_str(&format!(r#"<w:bookmarkStart w:id="{index}" w:name="entry{index}"/>"#)); }
+                body.push_str(&format!(r#"<w:r><w:t>{chunk}</w:t></w:r>"#));
+                if tc_markers { body.push_str(&format!(r#"<w:fldSimple w:instr=" TC entry{index} "/>"#)); }
+                else { body.push_str(&format!(r#"<w:bookmarkEnd w:id="{index}"/>"#)); }
+            }
+            body.push_str("</w:p>");
+            let boundaries: Vec<_> = text.char_indices().map(|(index, _)| index)
+                .chain(std::iter::once(text.len())).collect();
+            let a = usize::from(selection_start) % boundaries.len();
+            let b = usize::from(selection_end) % boundaries.len();
+            prop_assume!(a != b);
+            let mut doc = tc_test_document(&body);
+            let expected = tc_marker_positions(&toc_document_xml(&doc));
+            apply_headless_commands_to_document(&mut doc, &HeadlessEditRequest {
+                commands: vec![HeadlessCommand::SetFontSize {
+                    start_paragraph: 0,
+                    start_offset: boundaries[a.min(b)],
+                    end_paragraph: 0,
+                    end_offset: boundaries[a.max(b)],
+                    font_size: 37.0,
+                }],
+            }).expect("format");
+            prop_assert!(doc.paragraph(0).expect("paragraph").runs.iter().any(|run|
+                run.properties.as_ref().and_then(|props| props.font_size) == Some(37.0)));
+            let live_xml = doc.raw_document.as_ref().expect("live XML").to_string().expect("serialize");
+            prop_assert_eq!(&tc_marker_positions(&live_xml), &expected);
+            prop_assert_eq!(&tc_marker_positions(&toc_document_xml(&doc)), &expected);
+            doc = executor::block_on(WordDocument::load(
+                &doc.export_docx().expect("export"), &Options::default(),
+            )).expect("reload");
+            prop_assert_eq!(&tc_marker_positions(&toc_document_xml(&doc)), &expected);
+        }
+    }
+
     #[test]
     fn formatting_part_of_a_run_keeps_a_field_after_its_text() {
         // toc-tc-field-edge-cases.docx: paragraph 6 ends with a TC field (no
