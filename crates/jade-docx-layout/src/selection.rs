@@ -868,6 +868,16 @@ impl SelectionManager {
         self.record_table_cell_impl(cell, false);
     }
 
+    /// Move the cell registry aside before an incremental render clears it.
+    /// Frozen bitmap-only passes keep their authoritative registry in place.
+    pub fn take_cell_layouts(&mut self) -> Vec<CellLayout> {
+        if self.frozen {
+            return Vec::new();
+        }
+        self.paragraph_to_cell.clear();
+        std::mem::take(&mut self.cells)
+    }
+
     /// Restore the complete cell registry after a partial render proves that
     /// all table geometry is unchanged. Keep fragment ids and their paragraph
     /// mappings in the original registration order.
@@ -6094,6 +6104,103 @@ mod tests {
         assert_eq!(manager.paragraphs[0].lines.len(), 2);
         assert_eq!(manager.hit_test(4.0, 10.0).unwrap().paragraph, 0);
         assert_eq!(manager.hit_test(4.0, 110.0).unwrap().paragraph, 0);
+    }
+
+    proptest::proptest! {
+        #![proptest_config(proptest::test_runner::Config {
+            cases: 96,
+            rng_seed: proptest::test_runner::RngSeed::Fixed(20261101),
+            ..proptest::test_runner::Config::default()
+        })]
+
+        #[test]
+        fn moving_cell_registry_preserves_fragments_and_navigation(
+            columns in 1usize..7,
+            fragments in 1usize..5,
+            dirty_from in 0usize..9,
+        ) {
+            let mut manager = SelectionManager::new();
+            manager.begin_render();
+            for column in 0..columns {
+                manager.append_paragraph_text(column, "cell");
+            }
+            for fragment in 0..fragments {
+                for column in 0..columns {
+                    manager.record_table_cell_fragment(CellLayout {
+                        paragraphs: vec![column],
+                        text_bounds: Some((column as f64 * 100.0 + 7.0, column as f64 * 100.0 + 93.0)),
+                        left: column as f64 * 100.0,
+                        right: (column + 1) as f64 * 100.0,
+                        top: fragment as f64 * 100.0,
+                        bottom: fragment as f64 * 100.0 + 80.0,
+                        column,
+                        column_span: 1,
+                        order: fragment * columns + column,
+                        ..CellLayout::default()
+                    });
+                }
+            }
+            manager.set_cell_selection(0, columns - 1);
+            let reference = manager.clone();
+            let allocation = manager.cells.as_ptr();
+            let paragraph_allocations: Vec<_> = manager.cells.iter().map(|c| c.paragraphs.as_ptr()).collect();
+
+            let saved = manager.take_cell_layouts();
+            // Guard the allocation cost directly, independently of wall-clock
+            // noise: neither the registry nor its paragraph lists are copied.
+            proptest::prop_assert_eq!(saved.as_ptr(), allocation);
+            proptest::prop_assert_eq!(saved.iter().map(|c| c.paragraphs.as_ptr()).collect::<Vec<_>>(), paragraph_allocations);
+            proptest::prop_assert!(manager.cell_layouts().is_empty());
+            for paragraph in 0..columns {
+                proptest::prop_assert_eq!(manager.cell_id_for_paragraph(paragraph), None);
+            }
+            manager.begin_render_incremental(Some(dirty_from));
+            // The bounded walk can replace a cell before stable convergence.
+            manager.record_table_cell(CellLayout {
+                paragraphs: vec![0],
+                right: 50.0,
+                bottom: 20.0,
+                column_span: 1,
+                ..CellLayout::default()
+            });
+            manager.restore_cell_layouts(saved);
+            proptest::prop_assert_eq!(manager.cells.as_ptr(), allocation);
+            proptest::prop_assert_eq!(serde_json::to_value(manager.cell_layouts()).unwrap(), serde_json::to_value(reference.cell_layouts()).unwrap());
+            proptest::prop_assert_eq!(manager.selected_cell_ids(), reference.selected_cell_ids());
+            for paragraph in 0..columns {
+                proptest::prop_assert_eq!(manager.cell_id_for_paragraph(paragraph), reference.cell_id_for_paragraph(paragraph));
+                proptest::prop_assert_eq!(manager.next_cell_in_same_table(paragraph), reference.next_cell_in_same_table(paragraph));
+                for fragment in 0..fragments {
+                    let x = paragraph as f64 * 100.0 + 30.0;
+                    let y = fragment as f64 * 100.0 + 30.0;
+                    proptest::prop_assert_eq!(manager.cell_at_point(x, y), reference.cell_at_point(x, y));
+                    proptest::prop_assert_eq!(manager.cell_text_bounds_for_paragraph(paragraph, y), reference.cell_text_bounds_for_paragraph(paragraph, y));
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn taking_frozen_cell_registry_keeps_bitmap_hit_targets() {
+        let mut manager = SelectionManager::new();
+        manager.record_table_cell(CellLayout {
+            paragraphs: vec![0],
+            right: 100.0,
+            bottom: 80.0,
+            column_span: 1,
+            ..CellLayout::default()
+        });
+        let allocation = manager.cells.as_ptr();
+        manager.freeze();
+        assert!(manager.take_cell_layouts().is_empty());
+        manager.begin_render_incremental(Some(0));
+        assert_eq!(manager.cells.as_ptr(), allocation);
+        assert_eq!(manager.cell_at_point(30.0, 30.0), Some(0));
+        assert_eq!(manager.cell_id_for_paragraph(0), Some(0));
+        manager.unfreeze();
+        let saved = manager.take_cell_layouts();
+        manager.restore_cell_layouts(saved);
+        assert_eq!(manager.cell_at_point(30.0, 30.0), Some(0));
     }
 
     #[test]
