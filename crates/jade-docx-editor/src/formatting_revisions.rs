@@ -636,6 +636,7 @@ impl WordDocument {
             .collect::<Vec<_>>();
         self.document = original;
         self.rebuild_paragraph_surfaces();
+        let mut unbound_runs = Vec::new();
         for index in 0..self.paragraph_count() {
             let surface = self.paragraph_surfaces.get(index).cloned();
             if let Some(paragraph) = self.paragraph_mut(index) {
@@ -656,12 +657,34 @@ impl WordDocument {
                         let saved = if paragraph.node_id.is_none() {
                             runs.get(run_index)
                         } else {
-                            runs.iter().find(|(id, _)| *id == run.node_id)
+                            run.node_id.and_then(|node_id| {
+                                runs.iter().find(|(id, _)| *id == Some(node_id))
+                            })
                         };
-                        if let Some((_, props)) = saved {
-                            run.properties = props.clone();
+                        match saved {
+                            Some((_, props)) => run.properties = props.clone(),
+                            // A run with no XML of its own (an empty paragraph's)
+                            // is not in the reparse. It kept the fonts its old
+                            // style gave it, which the next text typed there
+                            // took: refilled below from the style it has now.
+                            None => {
+                                if let Some(props) = run.properties.as_mut() {
+                                    props.keep_only_stated_font_properties();
+                                    unbound_runs.push(index);
+                                }
+                            }
                         }
                     }
+                }
+            }
+        }
+        unbound_runs.dedup();
+        if !unbound_runs.is_empty() {
+            let theme = self.loaded_theme_part();
+            for index in unbound_runs {
+                self.apply_run_font_defaults_at(index);
+                if let Some(theme) = theme.as_ref() {
+                    self.apply_theme_fonts_at(index, theme);
                 }
             }
         }

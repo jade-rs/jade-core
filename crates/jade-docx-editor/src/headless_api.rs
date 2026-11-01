@@ -5825,18 +5825,7 @@ fn run_properties_at_offset(
 /// read that run differently from the editor. The new run takes its
 /// inherited values again when it is inserted.
 fn stated_font_properties(mut properties: RunProperties) -> RunProperties {
-    if !properties.direct_font_properties.known {
-        return properties;
-    }
-    let stated = properties.direct_font_properties.clone();
-    properties.font_size = stated.font_size;
-    properties.font_size_complex = stated.font_size_complex;
-    properties.kerning = stated.kerning;
-    properties.text_scale = stated.text_scale;
-    if stated.fonts.is_none() {
-        properties.font_family = None;
-    }
-    properties.fonts = stated.fonts;
+    properties.keep_only_stated_font_properties();
     properties
 }
 
@@ -14039,6 +14028,113 @@ mod tests {
         let reloaded =
             executor::block_on(WordDocument::load(&exported, &Options::default())).expect("reload");
         assert!(has_field(&reloaded));
+    }
+
+    #[test]
+    fn text_typed_after_a_rejected_style_takes_the_paragraphs_style_again() {
+        // The paragraph a section break leaves empty keeps a run with no XML
+        // of its own. A rejected style change reparses the document's
+        // formatting and that run was not in it, so it kept Heading 2's font
+        // and size, and text typed there took them: 12pt Calibri on screen,
+        // 10.5pt Arial in the file. (The steps fuzzing found.)
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/toc-instrtext-edge-cases.docx"),
+        )
+        .expect("read fixture");
+        let mut word_doc =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+        let mut history = CommandExecutor::new();
+        let mut apply = |word_doc: &mut WordDocument, command: HeadlessCommand| {
+            apply_headless_commands_with_executor_to_document(
+                word_doc,
+                &mut history,
+                None,
+                &HeadlessEditRequest {
+                    commands: vec![command],
+                },
+            )
+            .expect("edit");
+        };
+        for command in [
+            HeadlessCommand::InsertShape {
+                paragraph: 4,
+                offset: 16,
+                shape: jade_docx_headless_api::HeadlessShapeKind::Rectangle,
+                width_px: 40.0,
+                height_px: 20.0,
+                fill_color: None,
+                border_color: None,
+                border_width_px: 1.0,
+                text: String::new(),
+            },
+            HeadlessCommand::InsertParagraphBreak {
+                paragraph: 1,
+                offset: 68,
+                count: 1,
+            },
+            HeadlessCommand::InsertParagraphBreak {
+                paragraph: 6,
+                offset: 0,
+                count: 1,
+            },
+            HeadlessCommand::InsertSectionBreak {
+                paragraph: 4,
+                offset: 10,
+                break_type: jade_docx_headless_api::HeadlessSectionBreakType::NextPage,
+            },
+            HeadlessCommand::StartChangeTracking {
+                author: Some("reviewer".to_string()),
+                initials: None,
+                date: None,
+                date_utc: None,
+            },
+            HeadlessCommand::SetParagraphStyle {
+                start_paragraph: 7,
+                end_paragraph: 8,
+                style_id: Some("Heading2".to_string()),
+            },
+            HeadlessCommand::RejectRevisions {
+                kind: None,
+                start_paragraph: None,
+                end_paragraph: None,
+                revision_id: None,
+                revision_ids: None,
+                revision_targets: None,
+            },
+            HeadlessCommand::InsertText {
+                paragraph: 8,
+                offset: 0,
+                text: "漢字".to_string(),
+            },
+        ] {
+            apply(&mut word_doc, command);
+        }
+        let fonts = |word_doc: &WordDocument| {
+            word_doc
+                .paragraph(8)
+                .expect("typed paragraph")
+                .runs
+                .iter()
+                .filter(|run| !run.text.is_empty())
+                .map(|run| {
+                    let props = run.properties.clone().unwrap_or_default();
+                    (
+                        props.font_size,
+                        props
+                            .fonts
+                            .and_then(|fonts| fonts.ascii.map(|font| font.to_string())),
+                    )
+                })
+                .collect::<Vec<_>>()
+        };
+        let reloaded = executor::block_on(WordDocument::load(
+            &word_doc.export_docx().expect("export"),
+            &Options::default(),
+        ))
+        .expect("reload");
+        assert!(!fonts(&word_doc).is_empty());
+        assert_eq!(fonts(&word_doc), fonts(&reloaded));
     }
 
     #[test]

@@ -5724,6 +5724,24 @@ impl RunProperties {
         };
     }
 
+    /// Drops the inherited font values a load filled in, keeping only those
+    /// the run states itself. A run whose provenance is unknown is left as
+    /// it is.
+    pub fn keep_only_stated_font_properties(&mut self) {
+        if !self.direct_font_properties.known {
+            return;
+        }
+        let stated = self.direct_font_properties.clone();
+        self.font_size = stated.font_size;
+        self.font_size_complex = stated.font_size_complex;
+        self.kerning = stated.kerning;
+        self.text_scale = stated.text_scale;
+        if stated.fonts.is_none() {
+            self.font_family = None;
+        }
+        self.fonts = stated.fonts;
+    }
+
     pub fn mark_font_properties_direct_from(&mut self, source: &RunProperties) {
         if !self.direct_font_properties.known {
             return;
