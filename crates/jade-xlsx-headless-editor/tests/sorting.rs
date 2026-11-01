@@ -23,6 +23,7 @@ fn sort(reference: &str, header: bool, keys: &[(u32, bool)]) -> SortRequest {
                 color: None,
             })
             .collect(),
+        by_columns: false,
     }
 }
 fn text(book: &HeadlessWorkbook, reference: &str) -> String {
@@ -703,6 +704,7 @@ fn sorting_by_colour_puts_that_colour_on_top_or_bottom() {
         locale: None,
         phonetic: None,
         keys,
+        by_columns: false,
     };
     // Reapplying a colour sort must discard the previous value-sort state.
     book.sort_range(NAME, &sort("K31:K36", false, &[(0, false)]))
@@ -793,4 +795,79 @@ fn colour_sort_clears_table_value_sort_state_and_preserves_foreign_metadata_and_
             .count(),
         1
     );
+}
+
+/// Sort Options ▸ Sort left to right: the columns put in the order of a
+/// row's values, each column whole with its formats and notes; one undo.
+#[test]
+fn sorting_left_to_right_moves_whole_columns() {
+    const NAME: &str = "売上サマリ";
+    let mut book = HeadlessWorkbook::open_for_editing(include_bytes!(
+        "../../../public/fixtures/sample-workbook.xlsx"
+    ))
+    .unwrap();
+    // A header column K, then three columns of a row of keys and a row below.
+    let cells: Vec<(String, CellInput)> = [
+        ("K40", "Key"),
+        ("K41", "Name"),
+        ("L40", "3"),
+        ("L41", "c"),
+        ("M40", "1"),
+        ("M41", "a"),
+        ("N40", "2"),
+        ("N41", "b"),
+    ]
+    .iter()
+    .map(|(at, text)| {
+        let input = match text.parse::<f64>() {
+            Ok(number) => CellInput::Number(number),
+            Err(_) => CellInput::Text(text.to_string()),
+        };
+        (at.to_string(), input)
+    })
+    .collect();
+    book.set_cells(NAME, &cells).unwrap();
+    let bold = FormatChange {
+        bold: Some(true),
+        ..FormatChange::default()
+    };
+    book.set_format(NAME, "M41", &bold).unwrap();
+    let request = SortRequest {
+        reference: "K40:N41".into(),
+        header: true,
+        case_sensitive: false,
+        locale: None,
+        phonetic: None,
+        keys: vec![SortKey {
+            column: 0,
+            descending: false,
+            color: None,
+        }],
+        by_columns: true,
+    };
+    let summary = book.sort_range(NAME, &request).unwrap();
+    assert_eq!(summary.moved_rows, 3);
+    let row = |book: &HeadlessWorkbook, row: u32| {
+        ["K", "L", "M", "N"]
+            .iter()
+            .map(|column| book.cell(NAME, &format!("{column}{row}")).unwrap().display)
+            .collect::<Vec<_>>()
+    };
+    assert_eq!(row(&book, 40), ["Key", "1", "2", "3"]);
+    assert_eq!(row(&book, 41), ["Name", "a", "b", "c"]);
+    // The format went with its column.
+    assert_eq!(book.format_at(NAME, "L41").unwrap().bold, Some(true));
+    assert_eq!(book.format_at(NAME, "M41").unwrap().bold, Some(false));
+    // Descending, and back with one undo each.
+    let mut down = request.clone();
+    down.keys[0].descending = true;
+    book.sort_range(NAME, &down).unwrap();
+    assert_eq!(row(&book, 41), ["Name", "c", "b", "a"]);
+    assert!(book.undo().unwrap());
+    assert!(book.undo().unwrap());
+    assert_eq!(row(&book, 41), ["Name", "c", "a", "b"]);
+    // A key row outside the range is refused.
+    let mut outside = request.clone();
+    outside.keys[0].column = 5;
+    assert!(book.sort_range(NAME, &outside).is_err());
 }
