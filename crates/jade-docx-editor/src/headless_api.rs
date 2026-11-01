@@ -14920,6 +14920,40 @@ mod tests {
         assert_eq!(sizes(&word_doc), sizes(&reloaded));
     }
 
+    proptest! {
+        #![proptest_config(ProptestConfig { cases: 32, max_shrink_iters: 128, .. ProptestConfig::default() })]
+        #[test]
+        fn property_paragraph_split_preserves_tc_positions_through_export_and_reload(
+            chunks in prop::collection::vec(0usize..3, 1..5),
+            split in any::<u8>(),
+        ) {
+            let mut body = String::from("<w:p><w:fldSimple w:instr=\" TC start \"/>");
+            let mut text = String::new();
+            for (index, chunk) in chunks.into_iter().enumerate() {
+                let chunk = ["abcd", "あいうえ", "🙂xyz"][chunk];
+                text.push_str(chunk);
+                body.push_str(&format!(r#"<w:r><w:t>{chunk}</w:t></w:r><w:fldSimple w:instr=" TC entry{index} "/>"#));
+            }
+            body.push_str("</w:p>");
+            let boundaries: Vec<_> = text.char_indices().map(|(index, _)| index)
+                .chain(std::iter::once(text.len())).collect();
+            let mut doc = tc_test_document(&body);
+            let expected = tc_marker_positions(&toc_document_xml(&doc));
+            apply_headless_commands_to_document(&mut doc, &HeadlessEditRequest {
+                commands: vec![HeadlessCommand::InsertParagraphBreak {
+                    paragraph: 0,
+                    offset: boundaries[usize::from(split) % boundaries.len()],
+                    count: 1,
+                }],
+            }).expect("split");
+            prop_assert_eq!(&tc_marker_positions(&toc_document_xml(&doc)), &expected);
+            doc = executor::block_on(WordDocument::load(
+                &doc.export_docx().expect("export"), &Options::default(),
+            )).expect("reload");
+            prop_assert_eq!(&tc_marker_positions(&toc_document_xml(&doc)), &expected);
+        }
+    }
+
     #[test]
     fn splitting_a_paragraph_keeps_its_tc_entry_once_on_the_side_it_marks() {
         // toc-tc-field-edge-cases.docx: paragraph 6 ends with a TC field (a
@@ -15074,6 +15108,99 @@ mod tests {
             names.iter().filter(|name| **name == "w:fldSimple").count(),
             1
         );
+    }
+
+    #[test]
+    fn accepting_a_font_change_keeps_underline_on_its_text_after_a_line_break() {
+        // break.docx: the run holding a line break and "あ" is cut into two
+        // runs by the parser. Paired one run per `w:r`, every run after it
+        // took the next run's element, and accepting the tracked font change
+        // (which reparses the formatting) moved the underline one run on.
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/break.docx"),
+        )
+        .expect("read fixture");
+        let mut word_doc =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+        use jade_docx_headless_api::HeadlessSectionBreakType;
+        apply_headless_commands_to_document(
+            &mut word_doc,
+            &HeadlessEditRequest {
+                commands: vec![
+                    HeadlessCommand::InsertText {
+                        paragraph: 0,
+                        offset: 6,
+                        text: "あ".to_string(),
+                    },
+                    HeadlessCommand::InsertSectionBreak {
+                        paragraph: 0,
+                        offset: 1,
+                        break_type: HeadlessSectionBreakType::Continuous,
+                    },
+                    HeadlessCommand::ApplyUnderline {
+                        start_paragraph: 1,
+                        start_offset: 8,
+                        end_paragraph: 1,
+                        end_offset: 11,
+                        kind: None,
+                        enabled: true,
+                    },
+                    HeadlessCommand::StartChangeTracking {
+                        author: Some("reviewer".to_string()),
+                        initials: None,
+                        date: None,
+                        date_utc: None,
+                    },
+                    HeadlessCommand::InsertSectionBreak {
+                        paragraph: 0,
+                        offset: 0,
+                        break_type: HeadlessSectionBreakType::NextPage,
+                    },
+                    HeadlessCommand::SetFontFamily {
+                        start_paragraph: 2,
+                        start_offset: 4,
+                        end_paragraph: 2,
+                        end_offset: 10,
+                        font_family: "ＭＳ 明朝".to_string(),
+                    },
+                    HeadlessCommand::AcceptRevisions {
+                        kind: None,
+                        start_paragraph: None,
+                        end_paragraph: None,
+                        revision_id: None,
+                        revision_ids: None,
+                        revision_targets: None,
+                    },
+                ],
+            },
+        )
+        .expect("edits");
+        // Each character with whether it is underlined, across run cuts.
+        let underlined = |word_doc: &WordDocument| {
+            word_doc
+                .paragraph(2)
+                .expect("paragraph")
+                .runs
+                .iter()
+                .flat_map(|run| {
+                    let underline = run
+                        .properties
+                        .as_ref()
+                        .and_then(|props| props.underline)
+                        .unwrap_or(false);
+                    run.text.chars().map(move |ch| (ch, underline))
+                })
+                .collect::<Vec<_>>()
+        };
+        let reloaded = executor::block_on(WordDocument::load(
+            &word_doc.export_docx().expect("export"),
+            &Options::default(),
+        ))
+        .expect("reload");
+        assert_eq!(underlined(&word_doc), underlined(&reloaded));
+        assert!(underlined(&word_doc).contains(&('w', true)));
+        assert!(underlined(&word_doc).contains(&('d', false)));
     }
 
     #[test]
