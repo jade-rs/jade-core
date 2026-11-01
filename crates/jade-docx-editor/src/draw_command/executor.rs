@@ -3,6 +3,7 @@
 //! This module provides functions to execute DrawCommand against any
 //! [`Painter`] backend. The browser renderer supplies the canvas-backed one.
 
+use std::borrow::Cow;
 use std::rc::Rc;
 
 use crate::document::FontHint;
@@ -1273,6 +1274,37 @@ pub(crate) fn try_fill_featured_text<P: Painter>(
     Ok(true)
 }
 
+/// Reuse the original bytes for contiguous single-BMP glyphs. Reordered,
+/// repeated, or gapped glyphs still need their explicit concatenation order.
+/// Clusters and non-BMP characters keep using the existing per-glyph fallback.
+fn bmp_glyph_run_text<'a>(
+    run_text: &'a str,
+    glyphs: &[crate::draw_command::GlyphRunStep],
+) -> Option<Cow<'a, str>> {
+    let start = glyphs.first()?.text_start;
+    let mut end = start;
+    let mut contiguous = true;
+    for glyph in glyphs {
+        let glyph_text = glyph.text(run_text)?;
+        let mut chars = glyph_text.chars();
+        let ch = chars.next()?;
+        if chars.next().is_some() || ch.len_utf16() != 1 {
+            return None;
+        }
+        contiguous &= glyph.text_start == end;
+        end = glyph.text_end;
+    }
+    if contiguous {
+        Some(Cow::Borrowed(run_text.get(start as usize..end as usize)?))
+    } else {
+        let mut text = String::with_capacity(glyphs.len());
+        for glyph in glyphs {
+            text.push_str(glyph.text(run_text)?);
+        }
+        Some(Cow::Owned(text))
+    }
+}
+
 fn try_execute_bmp_glyph_run_batch<P: Painter>(
     context: &P,
     run_text: &str,
@@ -1282,7 +1314,9 @@ fn try_execute_bmp_glyph_run_batch<P: Painter>(
     glyphs: &[crate::draw_command::GlyphRunStep],
     font_state: &mut FontStateTracker,
 ) -> Result<bool, P::Error> {
-    let mut text = String::with_capacity(glyphs.len());
+    let Some(text) = bmp_glyph_run_text(run_text, glyphs) else {
+        return Ok(false);
+    };
     let mut x_positions = Vec::with_capacity(glyphs.len());
     // Most replayed runs use one font and take the single-font JS path. Allocate
     // indexes only after discovering a font change that requires the multi-font path.
@@ -1294,16 +1328,6 @@ fn try_execute_bmp_glyph_run_batch<P: Painter>(
         if fonts.get(glyph.font_index as usize).is_none() {
             return Ok(false);
         }
-        let Some(glyph_text) = glyph.text(run_text) else {
-            return Ok(false);
-        };
-        let mut chars = glyph_text.chars();
-        let Some(ch) = chars.next() else {
-            return Ok(false);
-        };
-        if chars.next().is_some() || ch.len_utf16() != 1 {
-            return Ok(false);
-        }
         match single_font_index {
             Some(index) if index != glyph.font_index && single_font_run => {
                 single_font_run = false;
@@ -1313,7 +1337,6 @@ fn try_execute_bmp_glyph_run_batch<P: Painter>(
             None => single_font_index = Some(glyph.font_index),
             _ => {}
         }
-        text.push(ch);
         x_positions.push(x + glyph.x_offset);
         if !single_font_run {
             font_indexes.push(glyph.font_index);
@@ -2590,6 +2613,110 @@ mod painter_backend_tests {
             assert_eq!(visible_characters, 200);
             assert_eq!(painter.ops(), reference.ops());
             assert_eq!(tracker.feature_checks, 1, "{descriptor}");
+        }
+    }
+}
+
+#[cfg(test)]
+mod replay_batch_text_tests {
+    use super::*;
+    use crate::draw_command::GlyphRunStep;
+    use proptest::prelude::*;
+    use std::borrow::Cow;
+
+    fn glyph(start: usize, end: usize) -> GlyphRunStep {
+        GlyphRunStep {
+            text_start: start as u32,
+            text_end: end as u32,
+            font_index: 0,
+            x_offset: -3.5,
+        }
+    }
+
+    fn reference(text: &str, glyphs: &[GlyphRunStep]) -> Option<String> {
+        if glyphs.is_empty() {
+            return None;
+        }
+        let mut result = String::new();
+        for glyph in glyphs {
+            let piece = text.get(glyph.text_start as usize..glyph.text_end as usize)?;
+            let characters: Vec<char> = piece.chars().collect();
+            if characters.len() != 1 || characters[0] as u32 > 0xffff {
+                return None;
+            }
+            result.push_str(piece);
+        }
+        Some(result)
+    }
+
+    #[test]
+    fn replay_batch_text_borrows_a_contiguous_bmp_subrange() {
+        let source = "prefix A日\u{301} suffix";
+        let glyphs = [glyph(7, 8), glyph(8, 11), glyph(11, 13)];
+        let text = bmp_glyph_run_text(source, &glyphs).unwrap();
+        assert!(matches!(text, Cow::Borrowed(_)));
+        assert_eq!(text, "A日\u{301}");
+        assert_eq!(text.as_ptr(), source[7..].as_ptr());
+    }
+
+    #[test]
+    fn replay_batch_text_keeps_reordered_duplicate_and_gapped_glyphs() {
+        let source = "A日B";
+        for glyphs in [
+            vec![glyph(4, 5), glyph(0, 1), glyph(0, 1)],
+            vec![glyph(0, 1), glyph(4, 5)],
+        ] {
+            let text = bmp_glyph_run_text(source, &glyphs).unwrap();
+            assert!(matches!(text, Cow::Owned(_)));
+            assert_eq!(Some(text.as_ref()), reference(source, &glyphs).as_deref());
+        }
+    }
+
+    #[test]
+    fn replay_batch_text_declines_non_bmp_clusters_and_invalid_ranges() {
+        for (source, glyphs) in [
+            ("😀", vec![glyph(0, 4)]),
+            ("A\u{301}", vec![glyph(0, 3)]),
+            ("日", vec![glyph(1, 3)]),
+            ("A", vec![glyph(1, 0)]),
+            ("A", vec![glyph(0, 2)]),
+            ("A", vec![glyph(0, 0)]),
+            ("A", vec![]),
+        ] {
+            assert!(bmp_glyph_run_text(source, &glyphs).is_none());
+        }
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(128))]
+
+        #[test]
+        fn replay_batch_text_matches_unicode_slice_model(
+            characters in prop::collection::vec(any::<char>(), 0..80),
+            ranges in prop::collection::vec((0usize..400, 0usize..400), 0..50),
+        ) {
+            let source: String = characters.into_iter().collect();
+            let glyphs: Vec<_> = ranges.into_iter().map(|(a, b)| glyph(a, b)).collect();
+            let actual = bmp_glyph_run_text(&source, &glyphs);
+            let expected = reference(&source, &glyphs);
+            prop_assert_eq!(actual.as_deref(), expected.as_deref());
+        }
+
+        #[test]
+        fn replay_batch_text_preserves_bmp_selection_order(
+            characters in prop::collection::vec(prop::sample::select(vec!['A', '日', 'é', '\u{301}', '\0']), 1..80),
+            selections in prop::collection::vec(any::<usize>(), 1..100),
+        ) {
+            let source: String = characters.iter().collect();
+            let bounds: Vec<_> = source.char_indices().map(|(start, ch)| (start, start + ch.len_utf8())).collect();
+            let glyphs: Vec<_> = selections.into_iter().map(|index| {
+                let (start, end) = bounds[index % bounds.len()];
+                glyph(start, end)
+            }).collect();
+            let actual = bmp_glyph_run_text(&source, &glyphs).unwrap();
+            prop_assert_eq!(actual.as_ref(), reference(&source, &glyphs).unwrap());
+            let contiguous = glyphs.windows(2).all(|pair| pair[0].text_end == pair[1].text_start);
+            prop_assert_eq!(matches!(actual, Cow::Borrowed(_)), contiguous);
         }
     }
 }
