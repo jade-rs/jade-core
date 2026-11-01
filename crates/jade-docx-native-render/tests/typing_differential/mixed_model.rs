@@ -405,6 +405,10 @@ fn check_step(
                 selection,
                 "{context}: failed batch selection"
             );
+            // A failed batch repaints every page. Setting a selection does
+            // not, so a highlight an earlier step left on both pages was
+            // gone from this side only: repaint the reference too.
+            reference.repaint_all().unwrap();
         }
         Operation::Merge(mark) => {
             let mark = usize::from(mark);
@@ -517,6 +521,18 @@ fn failed_mixed_batch_preserves_styles_and_grouped_redo() {
         Operation::Insert(0, ""),
         Operation::Format(1, 2, 2),
         Operation::Redo,
+    ]);
+}
+
+#[test]
+fn failed_batch_after_a_rejected_collapsed_format_matches_the_reference() {
+    // Found by CI: the selection highlight the first step painted stayed on
+    // both pages after the collapsed format failed, and only the failed batch
+    // repainted it away.
+    check_sequence(&[
+        Operation::Format(0, 0, 1),
+        Operation::Format(0, 8, 8),
+        Operation::FailedBatch,
     ]);
 }
 
