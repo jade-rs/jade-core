@@ -2115,7 +2115,16 @@ fn join_equal_runs_inside_graphemes<'a>(text: &str, runs: &'a [RunStyle]) -> Cow
     if runs.len() < 2 {
         return Cow::Borrowed(runs);
     }
-    fn boundary(text: &str, offset: usize) -> bool {
+    // Keep the segmenter's regional-indicator parity state across queries.
+    // Starting a fresh GraphemeCursor at every run boundary repeatedly scans
+    // the same RI prefix and becomes quadratic for long sequences of flags.
+    let mut boundaries = text
+        .grapheme_indices(true)
+        .map(|(start, _)| start)
+        .chain(std::iter::once(text.len()))
+        .peekable();
+    let mut previous_boundary = 0;
+    let mut boundary = |offset: usize| -> bool {
         if offset > text.len() || !text.is_char_boundary(offset) {
             return false;
         }
@@ -2127,10 +2136,14 @@ fn join_equal_runs_inside_graphemes<'a>(text: &str, runs: &'a [RunStyle]) -> Cow
         if bytes[offset - 1].is_ascii() && bytes[offset].is_ascii() {
             return bytes[offset - 1] != b'\r' || bytes[offset] != b'\n';
         }
-        unicode_segmentation::GraphemeCursor::new(offset, text.len(), true)
-            .is_boundary(text, 0)
-            .unwrap_or(true)
-    }
+        // Queries advance through the runs, but a rejected partial join can
+        // revisit offsets inside the current cluster. Retain its start so
+        // those queries do not need to rewind the segmenter.
+        while boundaries.peek().is_some_and(|next| *next < offset) {
+            previous_boundary = boundaries.next().unwrap();
+        }
+        previous_boundary == offset || boundaries.peek() == Some(&offset)
+    };
     fn same_metadata(left: &RunStyle, right: &RunStyle) -> bool {
         // These annotations can intentionally restart at each source run,
         // even with equal properties (notably fitText without an id).
@@ -2152,7 +2165,7 @@ fn join_equal_runs_inside_graphemes<'a>(text: &str, runs: &'a [RunStyle]) -> Cow
     while index < runs.len() {
         let first = &runs[index];
         let mut last = index;
-        if first.start < first.end && boundary(text, first.start) {
+        if first.start < first.end && boundary(first.start) {
             while last + 1 < runs.len() {
                 let left = &runs[last];
                 let right = &runs[last + 1];
@@ -2161,7 +2174,7 @@ fn join_equal_runs_inside_graphemes<'a>(text: &str, runs: &'a [RunStyle]) -> Cow
                     || right.end > text.len()
                     || !text.is_char_boundary(left.end)
                     || !text.is_char_boundary(right.end)
-                    || boundary(text, left.end)
+                    || boundary(left.end)
                     || !same_metadata(left, right)
                 {
                     break;
@@ -2169,7 +2182,7 @@ fn join_equal_runs_inside_graphemes<'a>(text: &str, runs: &'a [RunStyle]) -> Cow
                 last += 1;
             }
         }
-        if last > index && boundary(text, runs[last].end) {
+        if last > index && boundary(runs[last].end) {
             let out = joined.get_or_insert_with(|| runs[..index].to_vec());
             let mut run = first.clone();
             run.end = runs[last].end;
@@ -16408,6 +16421,33 @@ mod tests {
     }
 
     #[test]
+    fn regional_indicator_run_boundaries_keep_pairing_across_a_long_prefix() {
+        let text = "🇯".repeat(1025);
+        let runs: Vec<_> = text
+            .char_indices()
+            .map(|(start, ch)| RunStyle {
+                start,
+                end: start + ch.len_utf8(),
+                ..make_run(&text)
+            })
+            .collect();
+        let joined = join_equal_runs_inside_graphemes(&text, &runs);
+        let expected: Vec<_> = text
+            .grapheme_indices(true)
+            .map(|(start, cluster)| (start, start + cluster.len()))
+            .collect();
+        assert_eq!(
+            joined
+                .iter()
+                .map(|run| (run.start, run.end))
+                .collect::<Vec<_>>(),
+            expected
+        );
+        assert_eq!(joined.len(), 513);
+        assert_eq!(runs.len(), 1025);
+    }
+
+    #[test]
     fn grapheme_run_joining_preserves_metadata_and_borrows_ordinary_ranges() {
         let text = "e\u{301}";
         let left = RunStyle {
@@ -16550,8 +16590,38 @@ mod tests {
     proptest! {
         #![proptest_config(ProptestConfig { cases: 128, ..ProptestConfig::default() })]
         #[test]
+        fn mixed_metadata_grapheme_pieces_never_join_partially(
+            tokens in prop::collection::vec(prop::sample::select(vec!["A", "字", "e\u{301}", "🇯", "ｶﾞ", "👨\u{200d}👨\u{200d}👧\u{200d}👦", "👍🏽"]), 1..18),
+            styles in prop::collection::vec(0u8..3, 1..100),
+        ) {
+            let text = tokens.concat();
+            let runs: Vec<_> = text.char_indices().enumerate().map(|(index, (start, ch))| RunStyle {
+                start,
+                end: start + ch.len_utf8(),
+                properties: Some(Rc::new(RunProperties {
+                    color: Some(styles[index % styles.len()].to_string().into()),
+                    ..Default::default()
+                })),
+                ..make_run(&text)
+            }).collect();
+            // Independent oracle: inspect complete graphemes, then retain all
+            // source pieces unless every piece has exactly the same style.
+            let mut expected = Vec::new();
+            for (start, cluster) in text.grapheme_indices(true) {
+                let pieces: Vec<_> = runs.iter().filter(|run| run.start >= start && run.end <= start + cluster.len()).collect();
+                if pieces.iter().all(|piece| piece.properties == pieces[0].properties) {
+                    expected.push((start, start + cluster.len(), pieces[0].properties.clone()));
+                } else {
+                    expected.extend(pieces.iter().map(|piece| (piece.start, piece.end, piece.properties.clone())));
+                }
+            }
+            let actual = join_equal_runs_inside_graphemes(&text, &runs);
+            prop_assert_eq!(actual.iter().map(|run| (run.start, run.end, run.properties.clone())).collect::<Vec<_>>(), expected);
+        }
+
+        #[test]
         fn equal_run_partitions_preserve_graphemes_and_wraps(
-            tokens in prop::collection::vec(prop::sample::select(vec!["A", " ", "字", "e\u{301}", "🇯🇵", "ｶﾞ", "👨\u{200d}👨\u{200d}👧\u{200d}👦", "👍🏽"]), 1..18),
+            tokens in prop::collection::vec(prop::sample::select(vec!["A", " ", "字", "e\u{301}", "🇯🇵", "🇯", "ｶﾞ", "👨\u{200d}👨\u{200d}👧\u{200d}👦", "👍🏽"]), 1..18),
             cuts in prop::collection::vec(any::<bool>(), 1..100),
             available in 22u32..100,
         ) {
