@@ -17,9 +17,11 @@ const EMU_PER_PX: f64 = 9525.0;
 /// The preset geometries Insert ▸ Shapes offers, each with the name Excel
 /// gives a new one, in the order of Excel's gallery: lines, rectangles,
 /// basic shapes, block arrows, stars and callouts.
-pub const SHAPES: [(&str, &str); 26] = [
+pub const SHAPES: [(&str, &str); 28] = [
     ("line", "Straight Connector"),
     ("straightConnector1", "Straight Arrow Connector"),
+    ("bentConnector3", "Connector: Elbow"),
+    ("curvedConnector3", "Connector: Curved"),
     ("rect", "Rectangle"),
     ("roundRect", "Rectangle: Rounded Corners"),
     ("ellipse", "Oval"),
@@ -49,7 +51,10 @@ pub const SHAPES: [(&str, &str); 26] = [
 /// Whether `preset` is one of the lines, put in as a connector (`cxnSp`)
 /// with no fill or text, as Excel puts a line.
 pub fn is_line(preset: &str) -> bool {
-    matches!(preset, "line" | "straightConnector1")
+    matches!(
+        preset,
+        "line" | "straightConnector1" | "bentConnector3" | "curvedConnector3"
+    )
 }
 
 /// Puts a `preset` shape on the sheet with its top-left at `at`'s, `size`

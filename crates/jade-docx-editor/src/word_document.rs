@@ -33145,6 +33145,24 @@ impl WordDocument {
         self.upsert_xml_part_content(&part_path, serialized);
         Ok(())
     }
+    /// Takes the first element named `name` out of `element`'s subtree.
+    fn take_descendant(element: &mut XmlElement, name: &str) -> Option<XmlElement> {
+        let at = element
+            .children
+            .iter()
+            .position(|node| matches!(node, XmlNode::Element(child) if child.name == name));
+        if let Some(at) = at {
+            let XmlNode::Element(found) = element.children.remove(at) else {
+                unreachable!("matched an element");
+            };
+            return Some(found);
+        }
+        element.children.iter_mut().find_map(|node| match node {
+            XmlNode::Element(child) => Self::take_descendant(child, name),
+            _ => None,
+        })
+    }
+
     /// `in_field_instruction` says the run sits in a complex field's
     /// instruction (see `runs_in_field_instructions`).
     fn update_run_element(
@@ -33159,6 +33177,8 @@ impl WordDocument {
         // A text box's previous `w:drawing`, and the `mc:AlternateContent`
         // block it came out of, to be rebuilt in place.
         let mut existing_text_box_drawing: Option<XmlElement> = None;
+        let mut rebuilt_text_box_offset = 0;
+        let mut rebuilt_text_box_child_index = 0;
         let mut text_box_alternate_content: Option<(XmlElement, usize, usize)> = None;
         // The same for a picture, group, chart or SmartArt: patched in place
         // (see `patch_image_drawing_element`) rather than rebuilt.
@@ -33166,6 +33186,10 @@ impl WordDocument {
         let mut image_alternate_content: Option<(XmlElement, usize, usize)> = None;
         let mut preserved_text_box_drawing = false;
         let mut preserved_image_drawing = false;
+        // A box saved only as VML, rebuilt as DrawingML: its `w:txbxContent`,
+        // taken out of the `w:pict` the rebuilt drawing replaces.
+        let mut vml_text_box_content: Option<XmlElement> = None;
+        let mut vml_text_box_replaced = false;
         let mut break_templates = Vec::new();
         let mut page_break_templates = Vec::new();
         let mut tab_templates = Vec::new();
@@ -33182,6 +33206,10 @@ impl WordDocument {
             && run.text_box.is_none()
             && run.math.is_none();
         let old_children = std::mem::take(&mut run_element.children);
+        let has_text_box_drawing = old_children.iter().any(|child| {
+            matches!(child, XmlNode::Element(element)
+                if element.name == "w:drawing" || element.name == "mc:AlternateContent")
+        });
         for child in old_children {
             match child {
                 XmlNode::Element(element)
@@ -33298,6 +33326,8 @@ impl WordDocument {
                     } else if existing_text_box_drawing.is_none() {
                         // A text box's drawing is rebuilt around its existing
                         // graphic (see `create_text_box_drawing_element`).
+                        rebuilt_text_box_offset = logical_offset;
+                        rebuilt_text_box_child_index = preserved_inline_children.len();
                         existing_text_box_drawing = Some(element);
                     }
                 }
@@ -33331,6 +33361,8 @@ impl WordDocument {
                         if let XmlNode::Element(choice) = &mut element.children[choice_index] {
                             if let XmlNode::Element(drawing) = choice.children.remove(drawing_index)
                             {
+                                rebuilt_text_box_offset = logical_offset;
+                                rebuilt_text_box_child_index = preserved_inline_children.len();
                                 existing_text_box_drawing = Some(drawing);
                             }
                             text_box_alternate_content =
@@ -33384,6 +33416,32 @@ impl WordDocument {
                         consumed_text: None,
                     });
                 }
+                XmlNode::Element(mut element)
+                    if !preserve_drawings
+                        && element.name == "w:pict"
+                        && run.text_box.is_some()
+                        && !has_text_box_drawing
+                        && !vml_text_box_replaced =>
+                {
+                    // The box is rebuilt as a `w:drawing` from the model. Kept
+                    // beside it, the `w:pict` saved the box twice; and the
+                    // rebuilt text, written from the model, lost what it does
+                    // not hold (a field's codes). Its content moves over whole.
+                    if let Some(content) = Self::take_descendant(&mut element, "w:txbxContent") {
+                        vml_text_box_replaced = true;
+                        vml_text_box_content = Some(content);
+                        rebuilt_text_box_offset = logical_offset;
+                        rebuilt_text_box_child_index = preserved_inline_children.len();
+                    } else {
+                        // A run may carry an unrelated VML shape before its
+                        // text box. Only consume the pict that owns the box.
+                        preserved_inline_children.push(PreservedRunChild {
+                            offset: logical_offset,
+                            node: XmlNode::Element(element),
+                            consumed_text: None,
+                        });
+                    }
+                }
                 XmlNode::Element(element)
                     if preserve_drawings && element.name == "w:object" && run.image.is_some() =>
                 {
@@ -33417,40 +33475,59 @@ impl WordDocument {
                     .as_deref()
                     .is_some_and(|text| !text.is_empty())
             });
+        // A mixed run rebuilds its text below. Its replacement box must be
+        // carried through that path at the original logical text offset too,
+        // including on later edits after a VML box has become DrawingML.
+        let rebuilt_text_box = if let Some(text_box) = run
+            .text_box
+            .as_ref()
+            .filter(|_| !preserved_text_box_drawing)
+        {
+            let drawing = Self::create_text_box_drawing_element(
+                doc,
+                text_box,
+                existing_text_box_drawing.take(),
+                vml_text_box_content.take(),
+            );
+            Some(match text_box_alternate_content.take() {
+                Some((mut alternate, choice_index, drawing_index)) => {
+                    if let XmlNode::Element(choice) = &mut alternate.children[choice_index] {
+                        let at = drawing_index.min(choice.children.len());
+                        choice.children.insert(at, XmlNode::Element(drawing));
+                    }
+                    // The VML fallback described the box before this edit
+                    // and would be read back in preference to the rebuilt
+                    // choice (the reader takes whichever comes last), so a
+                    // moved or re-wrapped box would reopen at its old
+                    // frame. Word 2010 and later read the choice only.
+                    alternate.children.retain(|child| {
+                            !matches!(child, XmlNode::Element(element) if element.name == "mc:Fallback")
+                        });
+                    XmlNode::Element(alternate)
+                }
+                None => XmlNode::Element(drawing),
+            })
+        } else {
+            None
+        };
+        if let Some(node) = rebuilt_text_box {
+            // Keep the original position among zero-width children as well as
+            // its text offset. Appending after a later-offset sibling makes
+            // the text builder emit the replacement box too late.
+            preserved_inline_children.insert(
+                rebuilt_text_box_child_index,
+                PreservedRunChild {
+                    offset: rebuilt_text_box_offset,
+                    node,
+                    consumed_text: None,
+                },
+            );
+        }
         if !has_serialized_text {
             if let Some(rpr) = run_properties_element {
                 run_element.children.push(XmlNode::Element(rpr));
             }
             run_element.children.extend(reference_nodes);
-            if let Some(text_box) = run
-                .text_box
-                .as_ref()
-                .filter(|_| !preserved_text_box_drawing)
-            {
-                let drawing = Self::create_text_box_drawing_element(
-                    doc,
-                    text_box,
-                    existing_text_box_drawing.take(),
-                );
-                match text_box_alternate_content.take() {
-                    Some((mut alternate, choice_index, drawing_index)) => {
-                        if let XmlNode::Element(choice) = &mut alternate.children[choice_index] {
-                            let at = drawing_index.min(choice.children.len());
-                            choice.children.insert(at, XmlNode::Element(drawing));
-                        }
-                        // The VML fallback described the box before this edit
-                        // and would be read back in preference to the rebuilt
-                        // choice (the reader takes whichever comes last), so a
-                        // moved or re-wrapped box would reopen at its old
-                        // frame. Word 2010 and later read the choice only.
-                        alternate.children.retain(|child| {
-                            !matches!(child, XmlNode::Element(element) if element.name == "mc:Fallback")
-                        });
-                        run_element.children.push(XmlNode::Element(alternate));
-                    }
-                    None => run_element.children.push(XmlNode::Element(drawing)),
-                }
-            }
             if let Some(image) = run.image.as_ref().filter(|_| !preserved_image_drawing) {
                 let drawing =
                     Self::create_image_drawing_element(doc, image, existing_image_drawing.take());
@@ -33513,7 +33590,7 @@ impl WordDocument {
 
         if let Some(text_box) = run.text_box.as_ref() {
             children.push(XmlNode::Element(Self::create_text_box_drawing_element(
-                doc, text_box, None,
+                doc, text_box, None, None,
             )));
         }
         if let Some(image) = run.image.as_ref() {
@@ -34314,10 +34391,13 @@ impl WordDocument {
     /// made on the canvas is what the package says. Rebuilding everything
     /// used to pin every text box to `wp:wrapTopAndBottom` at a page offset
     /// with zero distances, whatever the model held.
+    /// `content` is the box's `w:txbxContent` to keep, when it is not built
+    /// from the model.
     fn create_text_box_drawing_element(
         doc: &mut DocxXmlDocument,
         text_box: &RunTextBox,
         existing: Option<XmlElement>,
+        content: Option<XmlElement>,
     ) -> XmlElement {
         const EMU_PER_PX: f64 = 9525.0;
 
@@ -34378,7 +34458,9 @@ impl WordDocument {
                 );
                 graphic
             }
-            None => Self::create_text_box_graphic_element(doc, text_box, width_emu, height_emu),
+            None => Self::create_text_box_graphic_element_with_content(
+                doc, text_box, width_emu, height_emu, content,
+            ),
         };
         let doc_pr = reused_doc_pr.unwrap_or_else(|| {
             // Document-allocated so multiple shapes never share an id.
@@ -34552,11 +34634,26 @@ impl WordDocument {
     }
 
     /// The `a:graphic` subtree of a text box or shape built from scratch.
+    #[cfg(test)]
     fn create_text_box_graphic_element(
         doc: &mut DocxXmlDocument,
         text_box: &RunTextBox,
         width_emu: i64,
         height_emu: i64,
+    ) -> XmlElement {
+        Self::create_text_box_graphic_element_with_content(
+            doc, text_box, width_emu, height_emu, None,
+        )
+    }
+
+    /// [`Self::create_text_box_graphic_element`] around `content`, the box's
+    /// `w:txbxContent`, when there is one to keep.
+    fn create_text_box_graphic_element_with_content(
+        doc: &mut DocxXmlDocument,
+        text_box: &RunTextBox,
+        width_emu: i64,
+        height_emu: i64,
+        content: Option<XmlElement>,
     ) -> XmlElement {
         fn attr(name: &str, value: impl ToString) -> XmlAttribute {
             XmlAttribute {
@@ -34584,6 +34681,12 @@ impl WordDocument {
 
         let wps_txbx = if text_box.shape.is_line() {
             None
+        } else if let Some(content) = content {
+            Some(doc.create_element_preserving_child_ids(
+                "wps:txbx",
+                Vec::new(),
+                vec![XmlNode::Element(content)],
+            ))
         } else {
             let mut txbx_children = Vec::new();
             Self::append_text_box_content_elements(doc, &text_box.blocks, &mut txbx_children);
