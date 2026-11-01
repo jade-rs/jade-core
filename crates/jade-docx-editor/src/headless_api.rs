@@ -14363,6 +14363,131 @@ mod tests {
     }
 
     #[test]
+    fn a_tracked_deletion_inside_a_hyperlink_leaves_the_rest_of_the_link_undeleted() {
+        // hyperlink.docx: "Visit example.com to learn more." Deleting "amp"
+        // with changes tracked split the link's run, and the piece after the
+        // deletion was written inside the `w:del`: saved as deleted text, and
+        // written again after the link by the next edit of the paragraph.
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/hyperlink.docx"),
+        )
+        .expect("read fixture");
+        let mut word_doc =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+        apply_headless_commands_to_document(
+            &mut word_doc,
+            &HeadlessEditRequest {
+                commands: vec![
+                    HeadlessCommand::StartChangeTracking {
+                        author: Some("reviewer".to_string()),
+                        initials: None,
+                        date: None,
+                        date_utc: None,
+                    },
+                    HeadlessCommand::DeleteText {
+                        paragraph: 0,
+                        offset: 10,
+                        direction: jade_docx_headless_api::HeadlessDeleteDirection::Backward,
+                        count: 3,
+                    },
+                    HeadlessCommand::InsertEndnote {
+                        paragraph: 0,
+                        offset: 10,
+                        text: "e".to_string(),
+                    },
+                ],
+            },
+        )
+        .expect("edits");
+        let xml = word_doc
+            .raw_document
+            .as_ref()
+            .expect("document xml")
+            .to_string()
+            .expect("serialize");
+        assert_eq!(xml.matches("le.com").count(), 1, "{xml}");
+        let reloaded = executor::block_on(WordDocument::load(
+            &word_doc.export_docx().expect("export"),
+            &Options::default(),
+        ))
+        .expect("reload");
+        let runs = |word_doc: &WordDocument| {
+            word_doc
+                .paragraph(0)
+                .expect("paragraph")
+                .runs
+                .iter()
+                .map(|run| {
+                    (
+                        run.text.clone(),
+                        run.hyperlink.is_some(),
+                        run.revision.is_some(),
+                    )
+                })
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(runs(&reloaded), runs(&word_doc));
+    }
+
+    #[test]
+    fn a_heading_styled_after_a_new_footnote_keeps_its_list_level() {
+        // scroll-offset-repro.docx numbers Heading 1 (style "1") with a
+        // `w:numPr` naming only its list; numbering.xml's level links the
+        // style. Adding a footnote adds the note styles and reparses the
+        // styles part, which dropped that link: a paragraph made a heading
+        // afterwards had no list level, and the layout drew no number.
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/scroll-offset-repro.docx"),
+        )
+        .expect("read fixture");
+        let mut word_doc =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+        let level = |word_doc: &WordDocument| {
+            word_doc
+                .styles_part
+                .as_ref()
+                .and_then(|styles| styles.resolve_numbering("1"))
+                .and_then(|numbering| numbering.level)
+        };
+        assert_eq!(level(&word_doc), Some(0));
+        apply_headless_commands_to_document(
+            &mut word_doc,
+            &HeadlessEditRequest {
+                commands: vec![
+                    HeadlessCommand::InsertFootnote {
+                        paragraph: 279,
+                        offset: 0,
+                        text: "n".to_string(),
+                    },
+                    HeadlessCommand::SetParagraphStyle {
+                        start_paragraph: 353,
+                        end_paragraph: 353,
+                        style_id: Some("1".to_string()),
+                    },
+                ],
+            },
+        )
+        .expect("footnote and heading");
+        assert_eq!(level(&word_doc), Some(0));
+        let numbering = |word_doc: &WordDocument| {
+            word_doc
+                .paragraph(353)
+                .and_then(|paragraph| paragraph.properties.as_ref())
+                .and_then(|props| props.numbering.as_ref())
+                .map(|numbering| (numbering.id.clone(), numbering.level))
+        };
+        let reloaded = executor::block_on(WordDocument::load(
+            &word_doc.export_docx().expect("export"),
+            &Options::default(),
+        ))
+        .expect("reload");
+        assert_eq!(numbering(&word_doc), Some((Some("22".into()), Some(0))));
+        assert_eq!(numbering(&word_doc), numbering(&reloaded));
+    }
+
+    #[test]
     fn a_style_with_point_spacing_leaves_a_paragraphs_line_spacing_after_alone() {
         // table-complex-spaced-recursive.docx: paragraph 333 declares
         // `w:beforeLines`/`w:afterLines`; style "2" gives `w:after` in
@@ -14402,6 +14527,85 @@ mod tests {
         .expect("reload");
         assert_eq!(spacing(&word_doc).after, None);
         assert_eq!(spacing(&word_doc), spacing(&reloaded));
+    }
+
+    #[test]
+    fn auto_spacing_flags_follow_reload_after_a_paragraph_style_change() {
+        // An explicit false auto-spacing flag does not declare a point/line
+        // distance. Changing style must agree with export and reopening.
+        for attribute in ["beforeAutospacing", "afterAutospacing"] {
+            for value in ["0", "false", "off", "1", "true", "on"] {
+                let bytes = std::fs::read(
+                    std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                        .join("../../public/fixtures/hello.docx"),
+                )
+                .expect("fixture");
+                let document = format!(
+                    r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:pPr><w:pStyle w:val="Old"/><w:spacing w:{attribute}="{value}"/></w:pPr><w:r><w:t>Body</w:t></w:r></w:p></w:body></w:document>"#,
+                );
+                let styles = r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:style w:type="paragraph" w:styleId="Old"><w:name w:val="Old"/><w:pPr><w:spacing w:before="40" w:after="60"/></w:pPr></w:style><w:style w:type="paragraph" w:styleId="New"><w:name w:val="New"/><w:pPr><w:spacing w:before="160" w:after="200"/></w:pPr></w:style></w:styles>"#;
+                let mut archive = zip::ZipArchive::new(std::io::Cursor::new(bytes)).expect("zip");
+                let mut package = zip::ZipWriter::new(std::io::Cursor::new(Vec::new()));
+                for index in 0..archive.len() {
+                    let mut entry = archive.by_index(index).expect("entry");
+                    let name = entry.name().expect("name").to_string();
+                    let mut data = Vec::new();
+                    std::io::Read::read_to_end(&mut entry, &mut data).expect("read");
+                    if name == "word/document.xml" {
+                        data = document.as_bytes().to_vec();
+                    } else if name == "word/styles.xml" {
+                        data = styles.as_bytes().to_vec();
+                    }
+                    package
+                        .start_file(name, zip::write::SimpleFileOptions::default())
+                        .expect("entry");
+                    std::io::Write::write_all(&mut package, &data).expect("write");
+                }
+                let bytes = package.finish().expect("finish").into_inner();
+                let mut doc = executor::block_on(WordDocument::load(&bytes, &Options::default()))
+                    .expect("load");
+                apply_headless_commands_to_document(
+                    &mut doc,
+                    &HeadlessEditRequest {
+                        commands: vec![HeadlessCommand::SetParagraphStyle {
+                            start_paragraph: 0,
+                            end_paragraph: 0,
+                            style_id: Some("New".into()),
+                        }],
+                    },
+                )
+                .expect("change style");
+                let reopened = executor::block_on(WordDocument::load(
+                    &doc.export_docx().expect("export"),
+                    &Options::default(),
+                ))
+                .expect("reopen");
+                let spacing = |doc: &WordDocument| {
+                    doc.paragraph(0)
+                        .and_then(|p| p.properties.as_ref())
+                        .and_then(|p| p.spacing.clone())
+                        .expect("spacing")
+                };
+                let enabled = matches!(value, "1" | "true" | "on");
+                assert_eq!(
+                    spacing(&reopened).before,
+                    Some(if enabled && attribute == "beforeAutospacing" {
+                        14.0
+                    } else {
+                        8.0
+                    }),
+                );
+                assert_eq!(
+                    spacing(&reopened).after,
+                    Some(if enabled && attribute == "afterAutospacing" {
+                        14.0
+                    } else {
+                        10.0
+                    }),
+                );
+                assert_eq!(spacing(&doc), spacing(&reopened), "{attribute}={value}");
+            }
+        }
     }
 
     #[test]
