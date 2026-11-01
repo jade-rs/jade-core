@@ -111,7 +111,13 @@ enum Frame {
 }
 
 pub(crate) fn worksheet(xml: &str) -> Result<String> {
-    Ok(project(xml, "worksheet", false, false, None, false, None)?.0)
+    Ok(worksheet_noting_order(xml)?.0)
+}
+/// [`worksheet`], also saying whether the sheet's rows and cells are in
+/// order — what [`WorksheetSource::is_ordered`] would say of the whole sheet.
+pub(crate) fn worksheet_noting_order(xml: &str) -> Result<(String, bool)> {
+    let (grid, source) = project(xml, "worksheet", false, false, None, false, None)?;
+    Ok((grid, source.ordered))
 }
 pub(crate) fn comments(xml: &str) -> Result<String> {
     Ok(project(xml, "comments", false, false, None, false, None)?.0)

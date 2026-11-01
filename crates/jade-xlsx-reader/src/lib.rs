@@ -131,8 +131,21 @@ pub fn read_xlsx(bytes: &[u8]) -> Result<Workbook> {
     read_package(&package)
 }
 
+/// [`read_xlsx`], also naming the worksheet parts whose rows and cells are
+/// already in order — found while reading them anyway — for an editor to
+/// patch without reading them through again (see
+/// `jade_xlsx_writer::patch_sheet_known`).
+pub fn read_xlsx_noting_order(bytes: &[u8]) -> Result<(Workbook, Vec<String>)> {
+    let package = OpcPackage::open(bytes)?;
+    read_package_noting_order(&package)
+}
+
 /// Reads an already-open package, including in-memory part replacements.
 pub fn read_package(package: &OpcPackage) -> Result<Workbook> {
+    read_package_noting_order(package).map(|(workbook, _)| workbook)
+}
+
+fn read_package_noting_order(package: &OpcPackage) -> Result<(Workbook, Vec<String>)> {
     let workbook_part = match package.part_str("_rels/.rels")? {
         Some(xml) => jade_opc::parse_relationships(&xml)?
             .target_by_type_suffix(OFFICE_DOCUMENT)
@@ -194,6 +207,7 @@ pub fn read_package(package: &OpcPackage) -> Result<Workbook> {
     let part = workbook_part::parse_workbook(&workbook_xml)?;
 
     let mut sheets = Vec::new();
+    let mut in_order = Vec::new();
     let mut media_cache = std::collections::HashMap::new();
     for (position, entry) in part.sheets.into_iter().enumerate() {
         let target = entry
@@ -211,13 +225,16 @@ pub fn read_package(package: &OpcPackage) -> Result<Workbook> {
             Some(xml) => jade_opc::parse_relationships(&xml)?,
             None => Default::default(),
         };
-        let mut sheet = sheet::parse_sheet_with_relationships(
+        let (mut sheet, ordered) = sheet::parse_sheet_noting_order(
             &entry.name,
             &target,
             &xml,
             &shared_strings,
             &relationships,
         )?;
+        if ordered {
+            in_order.push(target.clone());
+        }
         read_sheet_parts(
             package,
             &target,
@@ -247,13 +264,16 @@ pub fn read_package(package: &OpcPackage) -> Result<Workbook> {
                     Some(xml) => jade_opc::parse_relationships(&xml)?,
                     None => Default::default(),
                 };
-                let mut sheet = sheet::parse_sheet_with_relationships(
+                let (mut sheet, ordered) = sheet::parse_sheet_noting_order(
                     "Sheet1",
                     &part,
                     &xml,
                     &shared_strings,
                     &relationships,
                 )?;
+                if ordered {
+                    in_order.push(part.clone());
+                }
                 read_sheet_parts(
                     package,
                     &part,
@@ -303,7 +323,7 @@ pub fn read_package(package: &OpcPackage) -> Result<Workbook> {
         }
     }
     let pivots = pivot::read_catalog(package, &workbook_part, &workbook_xml, &sheets);
-    Ok(Workbook {
+    let workbook = Workbook {
         pivots,
         sheets,
         styles,
@@ -314,7 +334,8 @@ pub fn read_package(package: &OpcPackage) -> Result<Workbook> {
         full_calculation_on_load: part.full_calculation_on_load,
         calculation_mode: part.calculation_mode,
         calculate_on_save: part.calculate_on_save.unwrap_or(true),
-    })
+    };
+    Ok((workbook, in_order))
 }
 
 /// The rows and columns the sheet at tab `position` repeats on every
