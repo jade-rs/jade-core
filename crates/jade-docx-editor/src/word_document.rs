@@ -387,19 +387,22 @@ pub(crate) fn keep_declared_paragraph_properties(
     if declared("w:ind") {
         let mut indent = props.indent.clone().unwrap_or_default();
         let direct = before.indent.clone().unwrap_or_default();
+        // Loading inherits each indentation group as a whole. A direct
+        // character value must not acquire a point twin from the new style;
+        // zero character values make that stale twin affect layout as well.
         keep_attributes!(indent, direct, "w:ind",
-            left => ["w:left"],
-            right => ["w:right"],
-            start => ["w:start"],
-            end => ["w:end"],
-            first_line => ["w:firstLine"],
-            hanging => ["w:hanging"],
-            left_chars => ["w:leftChars"],
-            right_chars => ["w:rightChars"],
-            start_chars => ["w:startChars"],
-            end_chars => ["w:endChars"],
-            first_line_chars => ["w:firstLineChars"],
-            hanging_chars => ["w:hangingChars"],
+            left => ["w:left", "w:start", "w:leftChars", "w:startChars"],
+            start => ["w:left", "w:start", "w:leftChars", "w:startChars"],
+            left_chars => ["w:left", "w:start", "w:leftChars", "w:startChars"],
+            start_chars => ["w:left", "w:start", "w:leftChars", "w:startChars"],
+            right => ["w:right", "w:end", "w:rightChars", "w:endChars"],
+            end => ["w:right", "w:end", "w:rightChars", "w:endChars"],
+            right_chars => ["w:right", "w:end", "w:rightChars", "w:endChars"],
+            end_chars => ["w:right", "w:end", "w:rightChars", "w:endChars"],
+            first_line => ["w:firstLine", "w:hanging", "w:firstLineChars", "w:hangingChars"],
+            hanging => ["w:firstLine", "w:hanging", "w:firstLineChars", "w:hangingChars"],
+            first_line_chars => ["w:firstLine", "w:hanging", "w:firstLineChars", "w:hangingChars"],
+            hanging_chars => ["w:firstLine", "w:hanging", "w:firstLineChars", "w:hangingChars"],
         );
         props.indent = (indent != Indent::default()).then_some(indent);
     }
