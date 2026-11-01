@@ -1,6 +1,7 @@
 [workspace]
 members = [
   "crates/jade-crdt",
+  "crates/jade-docx-crdt",
   "crates/jade-docx-extract",
   "crates/jade-diff-align",
   "crates/jade-pixel-diff",

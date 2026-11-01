@@ -2,8 +2,9 @@
 
 Experimental, opt-in document synchronization primitives backed by Loro 1.17.1.
 This crate does not change the editor's default storage or enable networking.
-The host owns transport, persistence, XML bindings, payload schemas and legal
-amendment/effective-date policy.
+The host owns transport, persistence, payload schemas and legal amendment /
+effective-date policy. The optional sibling `jade-docx-crdt` owns generic OOXML
+bindings, package projection and the browser capture scheduler.
 
 ## Identity and persistence
 
@@ -44,8 +45,9 @@ checkpoint clone. The host maps native IDs to stable CRDT IDs and chooses scope
 boundaries. This crate deliberately has no editor/OOXML adapter dependency.
 
 Unknown editor commands or package-wide replacements should use full capture.
-Scheduling/coalescing captures and flushing before save, Undo/Redo, import and IME
-preview are host responsibilities. There is no background thread in this crate.
+The sibling `jade-docx-crdt` supplies scheduling/coalescing and barriers before
+save, Undo/Redo, import and IME preview; hosts wire it into their worker dispatch.
+There is no background thread in this crate.
 
 ## Validation
 
