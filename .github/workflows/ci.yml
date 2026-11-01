@@ -42,7 +42,9 @@ jobs:
           echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
       - name: Check capture proofs (pinned by lean-toolchain)
         working-directory: crates/jade-docx-crdt/formal
-        run: lean Capture.lean
+        run: |
+          lean Capture.lean
+          lean Session.lean
       - name: Worker PBT against the executable proved model
         env:
           JADE_LEAN_ORACLE: '1'
