@@ -547,6 +547,18 @@ pub struct PageSetup {
     pub title_rows: Option<(u32, u32)>,
     /// The columns repeated at the left of every page (`Sheet1!$A:$A`).
     pub title_columns: Option<(u32, u32)>,
+    /// `printOptions/@horizontalCentered`: Center on page horizontally.
+    #[serde(default)]
+    pub center_horizontally: bool,
+    /// `printOptions/@verticalCentered`: Center on page vertically.
+    #[serde(default)]
+    pub center_vertically: bool,
+    /// `printOptions/@gridLines`: print the gridlines.
+    #[serde(default)]
+    pub print_grid_lines: bool,
+    /// `printOptions/@headings`: print the row and column headings.
+    #[serde(default)]
+    pub print_headings: bool,
 }
 
 impl PageSetup {

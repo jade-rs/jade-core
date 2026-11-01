@@ -161,6 +161,17 @@ pub fn parse_sheet_with_relationships(
                         sheet.page_setup.fit_to_page = attribute_value(element, b"fitToPage")?
                             .is_some_and(|value| value != "0" && value != "false");
                     }
+                    b"printOptions" if !in_custom_views => {
+                        let on = |key: &[u8]| -> Result<bool> {
+                            Ok(attribute_value(element, key)?
+                                .is_some_and(|value| value == "1" || value == "true"))
+                        };
+                        let setup = &mut sheet.page_setup;
+                        setup.center_horizontally = on(b"horizontalCentered")?;
+                        setup.center_vertically = on(b"verticalCentered")?;
+                        setup.print_grid_lines = on(b"gridLines")?;
+                        setup.print_headings = on(b"headings")?;
+                    }
                     b"pageMargins" if !in_custom_views => {
                         sheet.page_setup.margins = Some(parse_page_margins(element)?);
                     }
