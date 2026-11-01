@@ -1216,7 +1216,15 @@ fn layout_sheet_on_axes(
                 ),
             };
             let fill_at = formatted.fill;
-            let text = formatted.text;
+            // A sheet that hides zeros shows a cell worth zero as empty.
+            let hidden_zero = !sheet.show_zeros
+                && shown_formula.is_none()
+                && matches!(cell.value, CellValue::Number(number) if number == 0.0);
+            let text = if hidden_zero {
+                String::new()
+            } else {
+                formatted.text
+            };
             // Without wrap text Excel keeps the cell on one line and shows
             // its line breaks as nothing.
             let one_line = if alignment.wrap_text || !text.contains(['\n', '\r']) {
@@ -1753,6 +1761,7 @@ pub fn relayout_rows(
         default_rows_hidden: sheet.default_rows_hidden,
         show_grid_lines: sheet.show_grid_lines,
         show_formulas: sheet.show_formulas,
+        show_zeros: sheet.show_zeros,
         freeze_pane: sheet.freeze_pane.clone(),
         tables: Vec::new(),
         header_footer: None,
