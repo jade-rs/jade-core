@@ -90,6 +90,9 @@ fn parse(xml: &str) -> Option<Element> {
     while !rest.is_empty() {
         let Some(open) = rest.find('<') else {
             if !rest.trim().is_empty() {
+                if stack.len() == 1 {
+                    return None;
+                }
                 stack
                     .last_mut()?
                     .children
@@ -294,7 +297,7 @@ fn predicates(mut text: &str) -> Option<Vec<Predicate>> {
         found.push(if inner == "last()" {
             Predicate::Position(None)
         } else if let Ok(n) = inner.parse::<usize>() {
-            Predicate::Position(Some(n.max(1)))
+            Predicate::Position(Some(n))
         } else if let Some(attribute) = inner.strip_prefix('@') {
             match attribute.split_once('=') {
                 Some((name, value)) => {
@@ -413,6 +416,7 @@ fn select(document: &Element, steps: &[Step]) -> Vec<String> {
 fn filter<'a>(mut elements: Vec<&'a Element>, predicates: &[Predicate]) -> Vec<&'a Element> {
     for predicate in predicates {
         elements = match predicate {
+            Predicate::Position(Some(0)) => Vec::new(),
             Predicate::Position(Some(n)) => elements.into_iter().skip(n - 1).take(1).collect(),
             Predicate::Position(None) => elements.into_iter().last().into_iter().collect(),
             Predicate::Attribute(name, value) => elements
