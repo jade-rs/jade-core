@@ -13847,6 +13847,145 @@ mod tests {
         assert_eq!(colours(&reloaded), loaded);
     }
 
+    /// Every paragraph's style, line spacing and alignment, as the layout
+    /// reads them.
+    fn paragraph_formats_for_layout(word_doc: &WordDocument) -> Vec<String> {
+        (0..word_doc.paragraph_count())
+            .map(|index| {
+                let props = word_doc
+                    .paragraph(index)
+                    .and_then(|paragraph| paragraph.properties.clone())
+                    .unwrap_or_default();
+                format!(
+                    "{:?} {:?} {:?}",
+                    props.style,
+                    props.spacing.and_then(|spacing| spacing.line),
+                    props.alignment
+                )
+            })
+            .collect()
+    }
+
+    fn reject_all_revisions() -> HeadlessCommand {
+        HeadlessCommand::RejectRevisions {
+            kind: None,
+            start_paragraph: None,
+            end_paragraph: None,
+            revision_id: None,
+            revision_ids: None,
+            revision_targets: None,
+        }
+    }
+
+    fn track_changes() -> HeadlessCommand {
+        HeadlessCommand::StartChangeTracking {
+            author: Some("reviewer".to_string()),
+            initials: None,
+            date: None,
+            date_utc: None,
+        }
+    }
+
+    #[test]
+    fn rejecting_body_formatting_leaves_a_text_box_paragraphs_spacing() {
+        // shape-preset-geometries.docx has shapes with no paragraph in their
+        // XML; a load gives each one. A rejected formatting change reparses
+        // the document's formatting, and the text box paragraphs were matched
+        // to the reparse by index: the reparse has none of those given
+        // paragraphs, so a double-spaced text box paragraph took the single
+        // spacing of another — on screen only, the saved file kept it.
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/shape-preset-geometries.docx"),
+        )
+        .expect("read fixture");
+        let mut word_doc =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+        assert!(word_doc.is_text_box_paragraph_surface(6));
+        apply_headless_commands_to_document(
+            &mut word_doc,
+            &HeadlessEditRequest {
+                commands: vec![HeadlessCommand::SetParagraphLineSpacing {
+                    start_paragraph: 4,
+                    end_paragraph: 6,
+                    line: Some(Some(2.0)),
+                    line_rule: Some("auto".to_string()),
+                    before: None,
+                    after: None,
+                }],
+            },
+        )
+        .expect("spacing");
+        let before = paragraph_formats_for_layout(&word_doc);
+        apply_headless_commands_to_document(
+            &mut word_doc,
+            &HeadlessEditRequest {
+                commands: vec![
+                    track_changes(),
+                    HeadlessCommand::SetParagraphAlignment {
+                        start_paragraph: 9,
+                        end_paragraph: 9,
+                        alignment: "center".to_string(),
+                    },
+                    reject_all_revisions(),
+                ],
+            },
+        )
+        .expect("tracked alignment rejected");
+        assert_eq!(paragraph_formats_for_layout(&word_doc), before);
+        let reloaded = executor::block_on(WordDocument::load(
+            &word_doc.export_docx().expect("export"),
+            &Options::default(),
+        ))
+        .expect("reload");
+        assert_eq!(paragraph_formats_for_layout(&reloaded), before);
+    }
+
+    #[test]
+    fn rejecting_body_formatting_leaves_a_footnotes_style_on_the_footnote() {
+        // The same index matching, past textless shapes, gave a footnote
+        // paragraph's FootnoteText style to a text box paragraph before it,
+        // and the footnote lost it.
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/word-mac-probe-float-lookahead.docx"),
+        )
+        .expect("read fixture");
+        let mut word_doc =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+        apply_headless_commands_to_document(
+            &mut word_doc,
+            &HeadlessEditRequest {
+                commands: vec![HeadlessCommand::InsertFootnote {
+                    paragraph: 12,
+                    offset: 0,
+                    text: "note".to_string(),
+                }],
+            },
+        )
+        .expect("footnote");
+        assert!(word_doc.is_note_paragraph_surface(13));
+        assert!(word_doc.is_text_box_paragraph_surface(10));
+        let before = paragraph_formats_for_layout(&word_doc);
+        assert!(before[13].starts_with("Some(\"FootnoteText\")"));
+        apply_headless_commands_to_document(
+            &mut word_doc,
+            &HeadlessEditRequest {
+                commands: vec![
+                    track_changes(),
+                    HeadlessCommand::SetParagraphAlignment {
+                        start_paragraph: 8,
+                        end_paragraph: 9,
+                        alignment: "both".to_string(),
+                    },
+                    reject_all_revisions(),
+                ],
+            },
+        )
+        .expect("tracked alignment rejected");
+        assert_eq!(paragraph_formats_for_layout(&word_doc), before);
+    }
+
     #[test]
     fn tracked_formatting_of_a_text_box_paragraph_can_be_rejected() {
         // shape-preset-geometries.docx has shapes whose paragraphs are not in
