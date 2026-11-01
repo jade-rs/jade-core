@@ -634,6 +634,9 @@ impl HeadlessWorkbook {
             jade_xlsx_reader::Axis::Columns,
             &order,
         )?;
+        // A saved row sort no longer describes these columns. Until column
+        // sort state is written, remove the previous state.
+        let written = jade_xlsx_writer::sort::clear_sort_state(&written, sheet, None, body)?;
         let summary = SortSummary {
             reference: format!(
                 "{}:{}",

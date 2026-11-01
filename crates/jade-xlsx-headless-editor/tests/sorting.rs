@@ -845,7 +845,16 @@ fn sorting_left_to_right_moves_whole_columns() {
         }],
         by_columns: true,
     };
+    // A previous top-to-bottom sort records a row-oriented sortState.
+    book.sort_range(NAME, &sort("K40:N41", false, &[(0, false)]))
+        .unwrap();
+    let sheet_part = book.workbook().sheets[0].part_name.clone();
+    assert!(part(&book, &sheet_part).contains("sortState"));
     let summary = book.sort_range(NAME, &request).unwrap();
+    assert!(
+        !part(&book, &sheet_part).contains("sortState"),
+        "left-to-right sorting must discard the previous row-sort state"
+    );
     assert_eq!(summary.moved_rows, 3);
     let row = |book: &HeadlessWorkbook, row: u32| {
         ["K", "L", "M", "N"]
