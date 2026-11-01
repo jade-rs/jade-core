@@ -54,6 +54,7 @@ fn laid_out_with_freeze(rows: u32, freeze_pane: Option<FreezePane>) -> SheetLayo
         show_grid_lines: true,
         show_formulas: false,
         show_zeros: true,
+        show_headers: true,
         zoom_percent: None,
         freeze_pane,
         tables: Vec::new(),
@@ -279,4 +280,22 @@ fn grouped_rows_draw_level_buttons_and_boxes_left_of_their_numbers() {
                 && (*y - (middle - BUTTON / 2.0)).abs() < 0.01
                 && *width == BUTTON
     )));
+}
+
+#[test]
+fn hidden_headings_paint_no_letters_or_numbers() {
+    let headings = |layout: &SheetLayout| {
+        let viewport = Rect {
+            x: 0.0,
+            y: 0.0,
+            width: 300.0,
+            height: 200.0,
+        };
+        paint(layout, viewport, None)
+            .count(|op| matches!(op, Op::FillText(text, _, _) if text == "A" || text == "2"))
+    };
+    let mut layout = laid_out(10);
+    assert!(headings(&layout) > 0);
+    layout.show_headers = false;
+    assert_eq!(headings(&layout), 0);
 }

@@ -287,6 +287,7 @@ fn sheet_with(cells: Vec<(CellRef, CellValue, Option<&str>)>) -> Sheet {
         show_grid_lines: true,
         show_formulas: false,
         show_zeros: true,
+        show_headers: true,
         zoom_percent: None,
         freeze_pane: None,
         tables: Vec::new(),

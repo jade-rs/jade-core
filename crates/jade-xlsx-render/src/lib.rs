@@ -2001,6 +2001,17 @@ fn render_headers<P: Painter>(
     let style = &options.header;
     let surface_width = metrics.row_width + viewport.width;
     let surface_height = metrics.column_height + viewport.height;
+    if !layout.show_headers {
+        // No headings: only the outline gutters, when anything is grouped.
+        if metrics.outline_width > 0.0 || metrics.outline_height > 0.0 {
+            painter.set_fill_style_str(&style.background);
+            painter.fill_rect(0.0, 0.0, surface_width, metrics.column_height);
+            painter.fill_rect(0.0, 0.0, metrics.row_width, surface_height);
+            let regions = layout.viewport_regions(viewport);
+            render_outline_gutter(painter, layout, &regions, metrics, style)?;
+        }
+        return Ok(());
+    }
 
     painter.set_fill_style_str(&style.background);
     painter.fill_rect(0.0, 0.0, surface_width, metrics.column_height);

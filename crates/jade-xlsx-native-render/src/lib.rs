@@ -130,6 +130,7 @@ impl NativeWorkbook {
                 pivots: Vec::new(),
                 sparklines: Vec::new(),
                 show_grid_lines: true,
+                show_headers: true,
                 content_width: 0.0,
                 max_digit_width_px: jade_xlsx_layout::units::DEFAULT_MAX_DIGIT_WIDTH_PX,
                 content_height: 0.0,
