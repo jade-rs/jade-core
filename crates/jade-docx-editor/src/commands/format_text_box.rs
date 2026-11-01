@@ -409,6 +409,56 @@ mod tests {
     }
 
     #[test]
+    fn formatting_a_vml_text_box_saves_it_once_with_its_fields() {
+        // document-variable-fields.docx saves its text box as VML only, and
+        // the box's paragraph holds a DOCVARIABLE field. A fill rebuilt the
+        // box as a `w:drawing` beside the `w:pict`, so the file held the box
+        // twice, and the rebuilt text had the field's stale result as plain
+        // text — the copy a reload reads.
+        let data =
+            std::fs::read(fixture_path("document-variable-fields.docx")).expect("read fixture");
+        let mut word_doc =
+            futures::executor::block_on(WordDocument::load(&data, &crate::Options::default()))
+                .expect("load fixture");
+        let target = text_box_target(&word_doc);
+        let before = document_xml(&word_doc);
+        assert_eq!(before.matches("<w:pict").count(), 1);
+        assert_eq!(before.matches("<w:drawing").count(), 0);
+        let mut selection = None;
+        CommandExecutor::new()
+            .execute(
+                Box::new(FormatTextBoxCommand::new(
+                    target,
+                    TextBoxFormatSpec {
+                        fill_color: Some("#FF0000".to_string()),
+                        ..TextBoxFormatSpec::default()
+                    },
+                )),
+                &mut CommandContext::new(&mut word_doc, &mut selection),
+            )
+            .expect("fill");
+        let after = document_xml(&word_doc);
+        assert_eq!(
+            after.matches("<w:pict").count() + after.matches("<w:drawing").count(),
+            1,
+            "{after}"
+        );
+        assert_eq!(after.matches("<w:txbxContent").count(), 1);
+        assert!(after.contains("FF0000"));
+        let reloaded = futures::executor::block_on(WordDocument::load(
+            &word_doc.export_docx().expect("export"),
+            &crate::Options::default(),
+        ))
+        .expect("reload");
+        let text_box = (0..reloaded.paragraph_count())
+            .find(|&index| reloaded.is_text_box_paragraph_surface(index))
+            .expect("the text box paragraph");
+        assert!(reloaded
+            .paragraph(text_box)
+            .is_some_and(|paragraph| paragraph.runs.iter().any(|run| run.field.is_some())));
+    }
+
+    #[test]
     fn editing_the_host_paragraph_keeps_one_word_text_box_with_its_wrap_and_frame() {
         // Word wraps its text boxes in `mc:AlternateContent`. Rebuilding the
         // host paragraph used to add a second `w:drawing` next to the
