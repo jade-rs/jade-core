@@ -13490,6 +13490,42 @@ mod tests {
     }
 
     #[test]
+    fn a_styles_part_without_run_defaults_inherits_words_run_defaults() {
+        // The frozen Word PDF for this unmodified package uses Yu Mincho
+        // 10.5 pt, although styles.xml declares only an empty Normal style.
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/note-styles-creation.docx"),
+        )
+        .expect("read fixture");
+        let word_doc =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+        let run = word_doc.paragraph(0).unwrap().runs[0]
+            .properties
+            .as_ref()
+            .expect("resolved run properties");
+        assert_eq!(run.font_size, Some(10.5));
+        let fonts = run.fonts.as_ref().expect("resolved fonts");
+        assert_eq!(fonts.ascii.as_deref(), Some("游明朝"));
+        assert_eq!(fonts.east_asia.as_deref(), Some("游明朝"));
+
+        let styles_xml = |bytes: Vec<u8>| {
+            let mut archive = zip::ZipArchive::new(std::io::Cursor::new(bytes)).unwrap();
+            let mut xml = String::new();
+            std::io::Read::read_to_string(
+                &mut archive.by_name("word/styles.xml").unwrap(),
+                &mut xml,
+            )
+            .unwrap();
+            xml
+        };
+        assert_eq!(
+            styles_xml(word_doc.export_docx().expect("export")),
+            styles_xml(bytes)
+        );
+    }
+
+    #[test]
     fn a_document_without_section_properties_lays_out_on_words_default_page() {
         // underline-kinds.docx has no `w:sectPr`. Word for Mac lays it out on
         // Japanese Word's default page: A4, a 35 mm top and 30 mm side margin,
