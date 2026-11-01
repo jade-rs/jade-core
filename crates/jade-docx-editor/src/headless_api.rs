@@ -15243,6 +15243,147 @@ mod tests {
     }
 
     #[test]
+    fn a_shape_put_in_a_fields_result_saves_the_result_text_once() {
+        // hyperlink-field-edge-cases.docx: a HYPERLINK simple field whose
+        // result a footnote had cut into two runs. A shape put in the first
+        // ended the field there: the field was written with its last run
+        // still in it, and that run was written again after it, so the saved
+        // link read "ay" + shape + "lly" for "a" + shape + "lly".
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/hyperlink-field-edge-cases.docx"),
+        )
+        .expect("read fixture");
+        let mut word_doc =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+        apply_headless_commands_to_document(
+            &mut word_doc,
+            &HeadlessEditRequest {
+                commands: vec![
+                    HeadlessCommand::SetFontFamily {
+                        start_paragraph: 2,
+                        start_offset: 12,
+                        end_paragraph: 4,
+                        end_offset: 27,
+                        font_family: "Arial".to_string(),
+                    },
+                    HeadlessCommand::InsertText {
+                        paragraph: 4,
+                        offset: 24,
+                        text: "ab ".to_string(),
+                    },
+                    HeadlessCommand::InsertFootnote {
+                        paragraph: 3,
+                        offset: 13,
+                        text: "n".to_string(),
+                    },
+                    HeadlessCommand::InsertShape {
+                        paragraph: 5,
+                        offset: 28,
+                        shape: jade_docx_headless_api::HeadlessShapeKind::Rectangle,
+                        width_px: 40.0,
+                        height_px: 20.0,
+                        fill_color: None,
+                        border_color: None,
+                        border_width_px: 1.0,
+                        text: String::new(),
+                    },
+                ],
+            },
+        )
+        .expect("edits");
+        let text = |word_doc: &WordDocument| {
+            word_doc
+                .paragraph(5)
+                .expect("field paragraph")
+                .runs
+                .iter()
+                .map(|run| {
+                    if run.text_box.is_some() {
+                        "□".to_string()
+                    } else {
+                        run.text.clone()
+                    }
+                })
+                .collect::<String>()
+        };
+        assert!(text(&word_doc).contains("a□lly"), "{}", text(&word_doc));
+        let reloaded = executor::block_on(WordDocument::load(
+            &word_doc.export_docx().expect("export"),
+            &Options::default(),
+        ))
+        .expect("reload");
+        assert_eq!(text(&reloaded), text(&word_doc));
+    }
+
+    #[test]
+    fn text_typed_in_a_text_box_takes_the_themes_east_asian_face() {
+        // textbox-tall-header-overlap.docx's defaults name the theme's minor
+        // East Asian font, which its theme gives only by script (Jpan: ＭＳ
+        // 明朝). An edit of the paragraph anchoring a text box filled the
+        // box's run with that theme key but did not resolve it, so East
+        // Asian text typed into the box had no face on screen.
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/textbox-tall-header-overlap.docx"),
+        )
+        .expect("read fixture");
+        let mut word_doc =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+        assert!(word_doc.is_text_box_paragraph_surface(2));
+        apply_headless_commands_to_document(
+            &mut word_doc,
+            &HeadlessEditRequest {
+                commands: vec![
+                    HeadlessCommand::RejectRevisions {
+                        kind: None,
+                        start_paragraph: None,
+                        end_paragraph: None,
+                        revision_id: None,
+                        revision_ids: None,
+                        revision_targets: None,
+                    },
+                    HeadlessCommand::ReplaceRange {
+                        start_paragraph: 1,
+                        start_offset: 16,
+                        end_paragraph: 2,
+                        end_offset: 0,
+                        text: "x".to_string(),
+                    },
+                    HeadlessCommand::InsertText {
+                        paragraph: 2,
+                        offset: 0,
+                        text: "漢字".to_string(),
+                    },
+                ],
+            },
+        )
+        .expect("edits");
+        let east_asia = |word_doc: &WordDocument| {
+            word_doc
+                .paragraph(2)
+                .expect("text box paragraph")
+                .runs
+                .iter()
+                .filter(|run| !run.text.is_empty())
+                .map(|run| {
+                    run.properties
+                        .as_ref()
+                        .and_then(|props| props.fonts.as_ref())
+                        .and_then(|fonts| fonts.east_asia.as_deref().map(str::to_string))
+                })
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(east_asia(&word_doc), vec![Some("ＭＳ 明朝".to_string())]);
+        let reloaded = executor::block_on(WordDocument::load(
+            &word_doc.export_docx().expect("export"),
+            &Options::default(),
+        ))
+        .expect("reload");
+        assert_eq!(east_asia(&word_doc), east_asia(&reloaded));
+    }
+
+    #[test]
     fn tracked_formatting_of_a_text_box_paragraph_can_be_rejected() {
         // shape-preset-geometries.docx has shapes whose paragraphs are not in
         // the XML until an edit writes them. With changes tracked, setting
