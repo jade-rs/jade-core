@@ -7043,6 +7043,7 @@ impl OffscreenDocumentView {
                         None
                     };
                     // Use _rc variant to avoid cloning the document (Rc is already shared).
+                    renderer.prepare_wrap_cache_capacity(word_doc);
                     renderer.render_with_numbering_rc(
                         Rc::clone(document),
                         &options,
@@ -7425,6 +7426,7 @@ impl OffscreenDocumentView {
                 if let Some(snapshot) = auxiliary_story_base {
                     renderer.restore_auxiliary_story_base(document, snapshot);
                 }
+                renderer.prepare_wrap_cache_capacity(word_doc);
                 renderer.render_with_numbering_rc(
                     Rc::clone(document),
                     &options,
@@ -15119,6 +15121,7 @@ impl OffscreenDocumentView {
                         None
                     };
                     // Use _rc variant to avoid cloning the document.
+                    renderer.prepare_wrap_cache_capacity(word_doc);
                     renderer.render_with_numbering_rc(
                         Rc::clone(document),
                         &options,
