@@ -114,8 +114,8 @@ fn notes_come_with_the_copy_and_stay_its_own() {
 }
 
 /// A sheet with a pivot table copies with a pivot table of its own, in the
-/// same place on the copy and reading the same cache; one with a
-/// PivotChart is refused rather than copied in part.
+/// same place on the copy and reading the same cache; a PivotChart on it
+/// shows the copy's pivot table.
 #[test]
 fn a_pivot_table_comes_with_the_copy_sharing_its_cache() {
     let mut workbook = open("pivot-cache-compat.xlsx");
@@ -166,25 +166,33 @@ fn a_pivot_table_comes_with_the_copy_sharing_its_cache() {
     assert_eq!(value(from), value(at));
 
     let mut charted = open("pivot-chart-compat.xlsx");
-    let sheets: Vec<String> = charted
-        .workbook()
+    let at = charted.copy_sheet("Report", "Report (2)").expect("copy");
+    let reopened = HeadlessWorkbook::open(&charted.export_bytes().expect("export")).expect("open");
+    let book = reopened.workbook();
+    let source_of = |sheet: usize| {
+        book.sheets[sheet]
+            .shapes
+            .iter()
+            .filter_map(|shape| shape.chart.as_ref())
+            .find_map(|chart| chart.pivot_source.as_ref()?.qualified_name())
+            .expect("a PivotChart")
+    };
+    let original = book
         .sheets
         .iter()
-        .map(|sheet| sheet.name.clone())
-        .collect();
-    let with_chart = sheets
-        .iter()
-        .find(|name| {
-            charted
-                .workbook()
-                .sheets
-                .iter()
-                .find(|sheet| &&sheet.name == name)
-                .is_some_and(|sheet| sheet.shapes.iter().any(|shape| shape.chart.is_some()))
-        })
-        .expect("a sheet with a PivotChart")
-        .clone();
-    let count = charted.workbook().sheets.len();
-    assert!(charted.copy_sheet(&with_chart, "Copied chart").is_err());
-    assert_eq!(charted.workbook().sheets.len(), count);
+        .position(|sheet| sheet.name == "Report")
+        .expect("Report");
+    assert_eq!(source_of(original).sheet, "Report");
+    let copied = source_of(at);
+    assert_eq!(
+        copied.sheet, "Report (2)",
+        "the copy's chart shows the copy's pivot table"
+    );
+    assert_eq!(copied.pivot, source_of(original).pivot);
+    assert!(book.pivots.issues.is_empty(), "{:?}", book.pivots.issues);
+    assert_eq!(book.pivots.tables.len(), 2);
+    // Both reports, and the charts showing them, refresh.
+    charted
+        .refresh_all_pivots()
+        .expect("the copy's report and chart refresh");
 }
