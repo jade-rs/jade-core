@@ -367,11 +367,17 @@ pub(crate) fn keep_declared_paragraph_properties(
     if declared("w:spacing") {
         let mut spacing = props.spacing.clone().unwrap_or_default();
         let direct = before.spacing.clone().unwrap_or_default();
+        // Each side is kept whole, as a load fills it: a declared
+        // `w:afterLines` beside the new style's `w:after` left both, and
+        // parts of the layout that read points first spaced the paragraph
+        // by the style's points instead of the lines it declares.
         keep_attributes!(spacing, direct, "w:spacing",
-            before => ["w:before"],
-            after => ["w:after"],
-            before_lines => ["w:beforeLines"],
-            after_lines => ["w:afterLines"],
+            before => ["w:before", "w:beforeLines", "w:beforeAutospacing"],
+            before_lines => ["w:before", "w:beforeLines", "w:beforeAutospacing"],
+            before_auto => ["w:before", "w:beforeLines", "w:beforeAutospacing"],
+            after => ["w:after", "w:afterLines", "w:afterAutospacing"],
+            after_lines => ["w:after", "w:afterLines", "w:afterAutospacing"],
+            after_auto => ["w:after", "w:afterLines", "w:afterAutospacing"],
             line => ["w:line"],
             // The reader gives a `w:line` without a rule the rule "auto".
             line_rule => ["w:line", "w:lineRule"],
@@ -32678,7 +32684,9 @@ impl WordDocument {
     }
 
     /// The `(tag, attribute)` pairs of `paragraph_index`'s `w:pPr` children:
-    /// which parts of `w:spacing` or `w:ind` the paragraph declares itself.
+    /// which parts of `w:spacing` or `w:ind` override inherited distances.
+    /// A false auto-spacing flag alone leaves its distance inherited, as
+    /// the reader does; treating its presence as a distance kept the old style.
     pub(crate) fn paragraph_declared_property_attributes(
         &self,
         paragraph_index: usize,
@@ -32697,6 +32705,14 @@ impl WordDocument {
                 element
                     .attributes
                     .iter()
+                    .filter(|attribute| {
+                        element.name != "w:spacing"
+                            || !matches!(
+                                attribute.name.as_str(),
+                                "w:beforeAutospacing" | "w:afterAutospacing"
+                            )
+                            || matches!(attribute.value.as_str(), "1" | "true" | "on")
+                    })
                     .map(|attribute| (element.name.clone(), attribute.name.clone()))
             })
             .collect()
