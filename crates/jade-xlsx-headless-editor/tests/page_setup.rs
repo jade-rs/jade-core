@@ -164,3 +164,22 @@ fn bad_page_settings_are_atomic() {
     }
     assert!(!book.can_undo());
 }
+
+/// Page Break Preview saved with the sheet: the file opens in it, and the
+/// normal view takes it away again.
+#[test]
+fn page_break_preview_is_saved_with_the_sheet() {
+    let mut workbook = HeadlessWorkbook::open(include_bytes!(
+        "../../../public/fixtures/sample-workbook.xlsx"
+    ))
+    .unwrap();
+    let sheet = workbook.workbook().sheets[0].name.clone();
+    assert!(!workbook.workbook().sheets[0].page_break_preview);
+    assert!(workbook.set_page_break_preview(&sheet, true).unwrap());
+    assert!(!workbook.set_page_break_preview(&sheet, true).unwrap());
+    let reopened = HeadlessWorkbook::open(workbook.bytes()).unwrap();
+    assert!(reopened.workbook().sheets[0].page_break_preview);
+    assert!(workbook.set_page_break_preview(&sheet, false).unwrap());
+    let reopened = HeadlessWorkbook::open(workbook.bytes()).unwrap();
+    assert!(!reopened.workbook().sheets[0].page_break_preview);
+}
