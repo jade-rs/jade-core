@@ -367,11 +367,17 @@ pub(crate) fn keep_declared_paragraph_properties(
     if declared("w:spacing") {
         let mut spacing = props.spacing.clone().unwrap_or_default();
         let direct = before.spacing.clone().unwrap_or_default();
+        // Each side is kept whole, as a load fills it: a declared
+        // `w:afterLines` beside the new style's `w:after` left both, and
+        // parts of the layout that read points first spaced the paragraph
+        // by the style's points instead of the lines it declares.
         keep_attributes!(spacing, direct, "w:spacing",
-            before => ["w:before"],
-            after => ["w:after"],
-            before_lines => ["w:beforeLines"],
-            after_lines => ["w:afterLines"],
+            before => ["w:before", "w:beforeLines", "w:beforeAutospacing"],
+            before_lines => ["w:before", "w:beforeLines", "w:beforeAutospacing"],
+            before_auto => ["w:before", "w:beforeLines", "w:beforeAutospacing"],
+            after => ["w:after", "w:afterLines", "w:afterAutospacing"],
+            after_lines => ["w:after", "w:afterLines", "w:afterAutospacing"],
+            after_auto => ["w:after", "w:afterLines", "w:afterAutospacing"],
             line => ["w:line"],
             // The reader gives a `w:line` without a rule the rule "auto".
             line_rule => ["w:line", "w:lineRule"],
