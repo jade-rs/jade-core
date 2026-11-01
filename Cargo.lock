@@ -1845,6 +1845,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "jade-docx-crdt"
+version = "0.1.0"
+dependencies = [
+ "base64",
+ "getrandom 0.2.17",
+ "jade-crdt",
+ "jade-docx-reader",
+ "proptest",
+ "serde",
+ "serde_json",
+ "zip 9.0.5",
+]
+
+[[package]]
 name = "jade-docx-diff"
 version = "0.1.0"
 dependencies = [
