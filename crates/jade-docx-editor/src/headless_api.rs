@@ -14742,6 +14742,62 @@ mod tests {
     }
 
     #[test]
+    fn splitting_a_paragraph_keeps_its_tc_entry_once_on_the_side_it_marks() {
+        // toc-tc-field-edge-cases.docx: paragraph 6 ends with a TC field (a
+        // TOC entry with no result, which the model has no run for). A
+        // paragraph break put it in both halves: the TOC listed it twice.
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/toc-tc-field-edge-cases.docx"),
+        )
+        .expect("read fixture");
+        let entry = "Manual default entry";
+        // Whether paragraph `index`'s XML holds a field naming the entry.
+        fn names(element: &crate::docx_xml::XmlElement, entry: &str) -> bool {
+            element
+                .attributes
+                .iter()
+                .any(|attribute| attribute.value.contains(entry))
+                || element.children.iter().any(|node| match node {
+                    crate::docx_xml::XmlNode::Element(child) => names(child, entry),
+                    _ => false,
+                })
+        }
+        let has_entry = |word_doc: &WordDocument, index: usize| {
+            let raw = word_doc.raw_document.as_ref().expect("document xml");
+            let id = word_doc
+                .paragraph(index)
+                .and_then(|paragraph| paragraph.node_id)
+                .expect("paragraph xml");
+            names(raw.element(id).expect("element"), entry)
+        };
+        for (offset, entry_paragraph) in [(28, 7), (43, 6)] {
+            let mut word_doc =
+                executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+            assert!(has_entry(&word_doc, 6));
+            apply_headless_commands_to_document(
+                &mut word_doc,
+                &HeadlessEditRequest {
+                    commands: vec![HeadlessCommand::InsertParagraphBreak {
+                        paragraph: 6,
+                        offset,
+                        count: 1,
+                    }],
+                },
+            )
+            .expect("split");
+            let exported = word_doc
+                .raw_document
+                .as_ref()
+                .expect("document xml")
+                .to_string()
+                .expect("serialize");
+            assert_eq!(exported.matches(entry).count(), 1, "split at {offset}");
+            assert!(has_entry(&word_doc, entry_paragraph), "split at {offset}");
+        }
+    }
+
+    #[test]
     fn tracked_formatting_of_a_text_box_paragraph_can_be_rejected() {
         // shape-preset-geometries.docx has shapes whose paragraphs are not in
         // the XML until an edit writes them. With changes tracked, setting

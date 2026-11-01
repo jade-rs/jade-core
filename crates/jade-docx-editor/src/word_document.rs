@@ -32083,7 +32083,30 @@ impl WordDocument {
                 },
                 _ => None,
             };
-            if let Some((is_comment, is_end_anchor, element)) = anchor {
+            // A result-less simple field the model has no run for (a TC or
+            // XE entry) marks a place in the text: it goes to the side that
+            // place falls on. Put in both, a split paragraph listed its TOC
+            // entry twice.
+            let unmodeled_field = match child {
+                XmlNode::Element(element) => {
+                    Self::is_zero_width_field_container(element)
+                        && !element
+                            .attributes
+                            .iter()
+                            .find(|attribute| attribute.name == "w:instr")
+                            .is_some_and(|instr| {
+                                DocumentParser::simple_field_kind(&instr.value).is_some()
+                            })
+                }
+                _ => false,
+            };
+            if unmodeled_field {
+                if position <= offset {
+                    head.push(child.clone());
+                } else {
+                    tail.push(child.clone());
+                }
+            } else if let Some((is_comment, is_end_anchor, element)) = anchor {
                 let key = (is_comment, anchor_id(element));
                 // An end at the split stays with the text before it, unless
                 // its start went to the tail: a collapsed range (Word's
