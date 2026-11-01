@@ -4054,16 +4054,39 @@ impl WordDocument {
         let Some(styles) = self.styles_part.take() else {
             return;
         };
-        let run_fonts = |paragraph: &Paragraph| {
-            paragraph
-                .runs
-                .iter()
-                .map(|run| {
+        // The fonts of every run the defaults reach: the paragraph's own and
+        // those in its text boxes. Compared on the paragraph's runs alone, a
+        // text box run the defaults gave a theme font (`minorEastAsia`) was
+        // never resolved to its face, and its East Asian text had none.
+        fn collect_run_fonts(paragraph: &Paragraph, out: &mut Vec<Option<RunFonts>>) {
+            for run in &paragraph.runs {
+                out.push(
                     run.properties
                         .as_ref()
-                        .and_then(|props| props.fonts.clone())
-                })
-                .collect::<Vec<_>>()
+                        .and_then(|props| props.fonts.clone()),
+                );
+                if let Some(text_box) = run.text_box.as_ref() {
+                    collect_block_run_fonts(&text_box.blocks, out);
+                }
+            }
+        }
+        fn collect_block_run_fonts(blocks: &[BodyElement], out: &mut Vec<Option<RunFonts>>) {
+            for block in blocks {
+                match block {
+                    BodyElement::Paragraph(paragraph) => collect_run_fonts(paragraph, out),
+                    BodyElement::Table(table) => {
+                        for cell in table.rows.iter().flat_map(|row| row.cells.iter()) {
+                            collect_block_run_fonts(&cell.blocks, out);
+                        }
+                    }
+                    BodyElement::Math(_) => {}
+                }
+            }
+        }
+        let run_fonts = |paragraph: &Paragraph| {
+            let mut fonts = Vec::new();
+            collect_run_fonts(paragraph, &mut fonts);
+            fonts
         };
         let filled = self
             .paragraph_mut(paragraph_index)
