@@ -1035,8 +1035,8 @@ impl<'a> Model<'a> {
         if value_width > 1 {
             let mut row = vec![blank(); key_width];
             for _ in &across {
-                for value in &values[0] {
-                    row.push(if has_headers { value.clone() } else { blank() });
+                for name in &values[0] {
+                    row.push(if has_headers { name.clone() } else { blank() });
                 }
             }
             out.push(row);
