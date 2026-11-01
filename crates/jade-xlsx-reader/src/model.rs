@@ -248,6 +248,10 @@ pub struct Sheet {
     /// nothing (Excel's "Show a zero in cells that have zero value").
     #[serde(default = "shows_zeros")]
     pub show_zeros: bool,
+    /// `sheetView/@zoomScale`: the percentage the sheet was last shown at,
+    /// 10 to 400; `None` for Excel's 100.
+    #[serde(default)]
+    pub zoom_percent: Option<u32>,
     /// Fixed rows and columns from the sheet's frozen `<pane>`, if any.
     #[serde(default)]
     pub freeze_pane: Option<FreezePane>,

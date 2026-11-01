@@ -98,3 +98,30 @@ fn reads_print_options_centring_gridlines_and_headings() {
     let plain = setup("Letter Landscape");
     assert!(!plain.center_horizontally && !plain.print_grid_lines);
 }
+
+#[test]
+fn reads_the_zoom_the_sheet_was_last_shown_at() {
+    let zoom = |view: &str| {
+        let xml = format!(
+            r#"<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews>{view}</sheetViews><sheetData/></worksheet>"#
+        );
+        jade_xlsx_reader::sheet::parse_sheet("S", "s.xml", &xml, &[])
+            .unwrap()
+            .zoom_percent
+    };
+    assert_eq!(
+        zoom(r#"<sheetView workbookViewId="0" zoomScale="85"/>"#),
+        Some(85)
+    );
+    assert_eq!(zoom(r#"<sheetView workbookViewId="0"/>"#), None);
+    assert_eq!(
+        zoom(r#"<sheetView workbookViewId="0" zoomScale="5"/>"#),
+        None
+    );
+    assert_eq!(
+        zoom(
+            r#"<sheetView workbookViewId="0" zoomScale="70"/><sheetView workbookViewId="1" zoomScale="200"/>"#
+        ),
+        Some(70)
+    );
+}

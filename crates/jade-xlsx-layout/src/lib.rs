@@ -1762,6 +1762,7 @@ pub fn relayout_rows(
         show_grid_lines: sheet.show_grid_lines,
         show_formulas: sheet.show_formulas,
         show_zeros: sheet.show_zeros,
+        zoom_percent: sheet.zoom_percent,
         freeze_pane: sheet.freeze_pane.clone(),
         tables: Vec::new(),
         header_footer: None,
