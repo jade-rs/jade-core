@@ -195,18 +195,39 @@ impl TableNames {
         })
     }
 
-    /// `name` followed by the first number that makes it free: Sales2,
-    /// Sales3…
-    fn fresh(&mut self, name: &str) -> String {
-        let fresh = (2u32..)
-            .map(|n| format!("{name}{n}"))
+    /// Append a free suffix without exceeding Excel's UTF-16 name limit.
+    fn fresh(&mut self, name: &str) -> Result<String> {
+        crate::defined_names::validate_name(name)?;
+        let with_suffix = |suffix: &str| {
+            let budget = 255 - suffix.len();
+            let mut units = 0;
+            let stem: String = name
+                .chars()
+                .take_while(|c| {
+                    units += c.len_utf16();
+                    units <= budget
+                })
+                .collect();
+            format!("{stem}{suffix}")
+        };
+        let fresh = (2u32..=u32::MAX)
+            .map(|n| {
+                let suffix = n.to_string();
+                let candidate = with_suffix(&suffix);
+                if crate::defined_names::validate_name(&candidate).is_ok() {
+                    candidate
+                } else {
+                    // AB is a valid name, but AB2 is a cell reference.
+                    with_suffix(&format!("_{suffix}"))
+                }
+            })
             .find(|candidate| {
                 !self.taken.contains(&candidate.to_lowercase())
                     && crate::defined_names::validate_name(candidate).is_ok()
             })
-            .expect("a free table name");
+            .ok_or_else(|| WriteError::CopySheet("no free table name".into()))?;
         self.taken.push(fresh.to_lowercase());
-        fresh
+        Ok(fresh)
     }
 }
 
@@ -261,7 +282,7 @@ fn rename_table(package: &mut OpcPackage, part: &str, tables: &mut TableNames) -
     else {
         return Ok(());
     };
-    let new = tables.fresh(&old);
+    let new = tables.fresh(&old)?;
     let id = tables.next_id;
     tables.next_id += 1;
     let mut reader = quick_xml::Reader::from_str(&xml[start..end]);
@@ -318,4 +339,59 @@ fn relationships_xml(entries: &[Relationship]) -> String {
     }
     xml.push_str("</Relationships>");
     xml
+}
+
+#[cfg(test)]
+mod tests {
+    use super::TableNames;
+
+    #[test]
+    fn copied_table_names_fit_the_utf16_limit_without_collisions() {
+        let originals = std::iter::once("Sales".to_string())
+            .chain((1..=255).map(|length| "T".repeat(length)))
+            .chain((0..=127).map(|length| format!("_{}", "𐐀".repeat(length))));
+        for name in originals {
+            crate::defined_names::validate_name(&name).expect("valid original name");
+            let mut names = TableNames {
+                taken: vec![name.to_lowercase()],
+                next_id: 1,
+                renamed: Vec::new(),
+            };
+            let mut allocated = vec![name.to_lowercase()];
+            for suffix in 2..=12 {
+                let copied = names.fresh(&name).expect("allocate a name");
+                crate::defined_names::validate_name(&copied).expect("valid copied name");
+                assert!(copied.ends_with(&suffix.to_string()));
+                assert!(!allocated.contains(&copied.to_lowercase()));
+                allocated.push(copied.to_lowercase());
+                if name == "Sales" {
+                    assert_eq!(copied, format!("Sales{suffix}"));
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn copied_table_names_do_not_search_through_cell_references() {
+        let mut names = TableNames {
+            taken: vec!["ab".to_string(), "ab_2".to_string()],
+            next_id: 1,
+            renamed: Vec::new(),
+        };
+        assert_eq!(names.fresh("AB").unwrap(), "AB_3");
+        assert_eq!(names.fresh("AB").unwrap(), "AB_4");
+    }
+
+    #[test]
+    fn invalid_original_table_names_fail_without_reserving_names() {
+        let mut names = TableNames {
+            taken: Vec::new(),
+            next_id: 1,
+            renamed: Vec::new(),
+        };
+        for name in ["", "A B", "_xlnm.bad", "1Thing"] {
+            assert!(names.fresh(name).is_err());
+            assert!(names.taken.is_empty());
+        }
+    }
 }
