@@ -644,6 +644,88 @@ fn floating_tables_match_word_with_office_arial() {
     }
 }
 
+/// A present styles part can still omit the document's run defaults.
+#[test]
+#[ignore = "requires JADE_OFFICE_YU_MINCHO pointing to the captured Office font"]
+fn omitted_run_defaults_match_word_with_office_yu_mincho() {
+    set_word_layout_platform(WordLayoutPlatform::Mac);
+    let font = std::env::var("JADE_OFFICE_YU_MINCHO").expect("set JADE_OFFICE_YU_MINCHO");
+    assert_eq!(
+        sha256(&std::fs::read(&font).unwrap()),
+        "926c1f98c3c603656222e0122c6bdabe17817d1c284a69abd4c337276dde9233"
+    );
+    let path = std::path::Path::new(&font);
+    let faces = ["Yu Mincho", "游明朝"].map(|family| FaceSpec {
+        family,
+        weight: 400,
+        path,
+    });
+    // `tabs` already matched Word before the fallback: preserve that control
+    // as well as fixing the document whose styles omit all run defaults.
+    for (name, source_sha, reference_sha) in [
+        (
+            "note-styles-creation",
+            "edcbc843e8b1e22877ed8fba38c84343b1bcc5fa0b613f21268598b90ab1ea6d",
+            "096b4778beba8d6e7f54b1ac0d604ed31984d5653e5e591191bd60479b86b090",
+        ),
+        (
+            "tabs",
+            "4b2ab628789bfb0502aa779951fe4f94358a782b5e8f1fdf9b2e8d90deb358de",
+            "7d5c33c18011b760035067b2e0a679d72ae22f2c25e35aa86b3cf91e6dd86e09",
+        ),
+    ] {
+        let source = std::fs::read(repo_path(&format!("public/fixtures/{name}.docx"))).unwrap();
+        assert_eq!(sha256(&source), source_sha, "{name}");
+        let reference = std::fs::read(repo_path(&format!(
+            "tests/word-oracle/mac-glyph-corpus-20261019/{name}.json"
+        )))
+        .unwrap();
+        assert_eq!(sha256(&reference), reference_sha, "{name}");
+        let reference: Value = serde_json::from_slice(&reference).unwrap();
+        let mut doc = NativeDocument::open(&source, 816.0, 1056.0, &faces).unwrap();
+        doc.set_revision_display(false, false, Default::default())
+            .unwrap();
+        doc.set_formatting_marks(false).unwrap();
+        // Full capture includes painted tab leaders as well as body glyphs.
+        let snapshot = doc.capture_full_layout_debug().unwrap();
+        assert!(snapshot.complete, "{name}: incomplete layout capture");
+        assert!(snapshot.known_uncaptured_stories.is_empty(), "{name}");
+        let mut glyphs = Vec::new();
+        for (page, line) in snapshot
+            .body_lines
+            .into_iter()
+            .map(|line| (line.page, line))
+            .chain(
+                snapshot
+                    .auxiliary_lines
+                    .into_iter()
+                    .map(|entry| (entry.page, entry.line)),
+            )
+        {
+            for fragment in line.fragments {
+                for glyph in fragment.glyphs {
+                    if glyph.text.is_empty() || glyph.text.chars().all(char::is_control) {
+                        continue;
+                    }
+                    glyphs.push(json!([
+                        page + 1,
+                        glyph.text,
+                        (fragment.x + glyph.x - 2.0 * line.report_x_offset) * 0.75,
+                        fragment.baseline * 0.75
+                    ]));
+                }
+            }
+        }
+        let coordinates = json!({"page_count": snapshot.page_count, "glyphs": glyphs});
+        compare(
+            &word_layout(&reference),
+            &spatial_order(&coordinates),
+            WORD_TOLERANCE_PT,
+        )
+        .unwrap_or_else(|error| panic!("{name}: {error}"));
+    }
+}
+
 /// Local opt-in parity check for the spaces beside inline pictures, in the
 /// Yu Mincho Word for Mac ships (`Contents/Resources/DFonts/yumin.ttf`).
 #[test]

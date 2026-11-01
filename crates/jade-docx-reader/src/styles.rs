@@ -109,6 +109,15 @@ impl StylesPart {
         Self::from_xml(WORD_DEFAULT_STYLES_XML).expect("built-in styles parse")
     }
 
+    /// Apply Word's built-in run defaults when a present styles part omits
+    /// `rPrDefault`. This is a load-time fallback, not authored formatting:
+    /// explicit (even empty) defaults and all paragraph styles stay intact.
+    pub fn inherit_missing_word_run_defaults(&mut self) {
+        if self.doc_default_run_properties.is_none() {
+            self.doc_default_run_properties = Self::word_default().doc_default_run_properties;
+        }
+    }
+
     pub fn from_xml(xml: &str) -> ParseResult<Self> {
         let mut part = Self::new();
         part.parse(xml)?;
@@ -923,6 +932,10 @@ impl StylesPart {
                 }
                 state.in_tabs = false;
                 state.in_style_run_properties = false;
+            }
+            b"w:rPrDefault" if state.in_doc_defaults => {
+                self.doc_default_run_properties
+                    .get_or_insert_with(RunProperties::default);
             }
             b"w:rPr" => {
                 if state.in_supported_style
@@ -2839,6 +2852,56 @@ fn parse_tab_definition(element: &BytesStart) -> Option<TabStop> {
 
 #[cfg(test)]
 mod tests {
+
+    #[test]
+    fn missing_word_run_defaults_do_not_replace_style_or_direct_formatting() {
+        let mut styles = StylesPart::from_xml(
+            r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:rPr><w:sz w:val="28"/></w:rPr></w:style></w:styles>"#,
+        )
+        .unwrap();
+        assert!(styles.doc_default_run_properties().is_none());
+        styles.inherit_missing_word_run_defaults();
+        assert_eq!(styles.doc_default_font_size(), Some(10.5));
+        assert!(styles.doc_default_paragraph_properties().is_none());
+        let effective = styles.resolve_effective_run_properties(None, None).unwrap();
+        assert_eq!(effective.font_size, Some(14.0));
+        assert_eq!(effective.fonts.unwrap().ascii.as_deref(), Some("游明朝"));
+        let direct = RunProperties {
+            font_size: Some(18.0),
+            ..Default::default()
+        };
+        assert_eq!(
+            styles
+                .resolve_effective_run_properties(None, Some(&direct))
+                .unwrap()
+                .font_size,
+            Some(18.0)
+        );
+        let before = styles.doc_default_run_properties().cloned();
+        styles.inherit_missing_word_run_defaults();
+        assert_eq!(styles.doc_default_run_properties(), before.as_ref());
+    }
+
+    #[test]
+    fn missing_word_run_defaults_preserve_explicit_partial_and_empty_defaults() {
+        for defaults in [
+            "<w:rPrDefault/>",
+            "<w:rPrDefault></w:rPrDefault>",
+            "<w:rPrDefault><w:rPr/></w:rPrDefault>",
+            "<w:rPrDefault><w:rPr><w:sz w:val=\"24\"/></w:rPr></w:rPrDefault>",
+        ] {
+            let xml = format!("<w:styles xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\"><w:docDefaults>{defaults}</w:docDefaults></w:styles>");
+            let mut styles = StylesPart::from_xml(&xml).unwrap();
+            let before = styles.doc_default_run_properties().cloned();
+            assert!(before.is_some(), "{defaults}");
+            styles.inherit_missing_word_run_defaults();
+            assert_eq!(
+                styles.doc_default_run_properties(),
+                before.as_ref(),
+                "{defaults}"
+            );
+        }
+    }
 
     #[test]
     fn a_paragraph_style_the_document_lacks_resolves_as_the_default() {
