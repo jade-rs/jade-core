@@ -8,6 +8,12 @@ name: Perf
 on:
   pull_request:
   workflow_dispatch:
+    inputs:
+      baseline_sha:
+        description: Optional full commit SHA of a released baseline; applies the same per-case gate
+        required: false
+        default: ''
+        type: string
 
 concurrency:
   group: perf-${{ github.event.pull_request.number || github.ref }}
@@ -31,18 +37,44 @@ jobs:
         with:
           path: head
 
+      - name: Select immutable comparison baseline
+        id: comparison
+        run: python3 head/scripts/perf/select_baseline.py
+        env:
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          DISPATCH_BASE_SHA: ${{ inputs.baseline_sha }}
+
       - name: Checkout base
-        if: github.event_name == 'pull_request'
+        if: steps.comparison.outputs.required == 'true'
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
-          ref: ${{ github.event.pull_request.base.sha }}
+          ref: ${{ steps.comparison.outputs.base_sha }}
           path: base
+
+      - name: Record comparison commits
+        env:
+          BASE_SHA: ${{ steps.comparison.outputs.base_sha }}
+        run: |
+          python3 - <<'PY'
+          import json, os, pathlib, subprocess
+          def commit(folder):
+              return subprocess.check_output(['git', '-C', folder, 'rev-parse', 'HEAD'], text=True).strip()
+          baseline = os.environ['BASE_SHA']
+          actual_base = commit('base') if baseline else None
+          assert not baseline or actual_base == baseline, 'Baseline checkout differs from selected commit'
+          pathlib.Path('perf').mkdir()
+          pathlib.Path('perf/comparison.json').write_text(json.dumps({
+              'event': os.environ['GITHUB_EVENT_NAME'], 'requestedBaselineSha': baseline or None,
+              'baseCheckoutSha': actual_base, 'headCheckoutSha': commit('head'),
+              'runId': os.environ['GITHUB_RUN_ID'], 'runAttempt': os.environ['GITHUB_RUN_ATTEMPT'],
+          }, indent=2) + '\n')
+          PY
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
 
       - name: Test performance regression gate
-        run: python3 -m unittest discover -s head/scripts/perf -p 'test_check_regressions.py'
+        run: python3 -m unittest discover -s head/scripts/perf -p 'test_*.py'
 
       - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
         with:
@@ -62,10 +94,10 @@ jobs:
 
       # The base is measured with the head's harness so both sides run the
       # same scenarios. Preserve the diagnostic head-only report if the base
-      # fails to build, then fail the PR gate for missing comparison evidence.
+      # fails to build, then fail the comparison gate for missing evidence.
       - name: Build base
         id: base
-        if: github.event_name == 'pull_request'
+        if: steps.comparison.outputs.required == 'true'
         continue-on-error: true
         run: |
           python3 head/scripts/perf/graft_harness.py head base
@@ -84,7 +116,7 @@ jobs:
             --base-label "base ${BASE_SHA::8}" --head-label "head ${HEAD_SHA::8}" > perf/summary.md
           cat perf/summary.md >> "$GITHUB_STEP_SUMMARY"
         env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha || github.sha }}
+          BASE_SHA: ${{ steps.comparison.outputs.base_sha || github.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
 
       - name: Upload callgrind outputs
@@ -96,13 +128,13 @@ jobs:
           if-no-files-found: error
 
       - name: Enforce per-case performance limit
-        if: github.event_name == 'pull_request'
+        if: steps.comparison.outputs.required == 'true'
         run: >-
           python3 head/scripts/perf/check_regressions.py perf/base perf/head
           --output perf/regression-gate.json
 
       - name: Upload performance gate result
-        if: always() && github.event_name == 'pull_request'
+        if: always() && steps.comparison.outputs.required == 'true'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: perf-regression-gate
