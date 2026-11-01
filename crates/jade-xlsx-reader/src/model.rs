@@ -281,6 +281,9 @@ pub struct Sheet {
     /// Sparklines (`x14:sparklineGroups`).
     #[serde(default)]
     pub sparkline_groups: Vec<crate::sparkline::SparklineGroup>,
+    /// `<ignoredErrors>`: cells whose error checks were turned off.
+    #[serde(default)]
+    pub ignored_errors: Vec<crate::ignored_errors::IgnoredError>,
     /// The sheet's protection (`<sheetProtection sheet="1">`), when it is
     /// protected: what it still allows.
     #[serde(default)]

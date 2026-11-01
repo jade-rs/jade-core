@@ -65,6 +65,7 @@ fn laid_out_with_freeze(rows: u32, freeze_pane: Option<FreezePane>) -> SheetLayo
         rich_text: Default::default(),
         tab_color: None,
         sparkline_groups: Vec::new(),
+        ignored_errors: Vec::new(),
         outline: Default::default(),
         protection: None,
     };

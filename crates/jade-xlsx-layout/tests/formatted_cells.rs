@@ -69,6 +69,7 @@ fn sheet_with(value: CellValue) -> Sheet {
         rich_text: Default::default(),
         tab_color: None,
         sparkline_groups: Vec::new(),
+        ignored_errors: Vec::new(),
         outline: Default::default(),
         protection: None,
     }
@@ -180,4 +181,38 @@ fn error_checking_flags_numbers_stored_as_text_and_formula_errors() {
     assert!(!flagged(CellValue::Number(123.0), None));
     assert!(flagged(CellValue::Error("#DIV/0!".into()), Some("1/0")));
     assert!(!flagged(CellValue::Error("#N/A".into()), None));
+}
+
+#[test]
+fn ignored_errors_turn_off_the_check_they_name() {
+    use jade_xlsx_reader::ignored_errors::IgnoredError;
+    let flagged = |value: CellValue, formula: Option<&str>, ignored: IgnoredError| {
+        let mut sheet = sheet_with(value);
+        sheet.rows[0].cells[0].formula = formula.map(str::to_string);
+        sheet.ignored_errors = vec![ignored];
+        let layout = layout_sheet(&sheet, &styles("General"), &LayoutOptions::default());
+        layout.cell(CellRef::new(0, 0)).expect("A1").error_flag
+    };
+    let a1 = vec![jade_xlsx_reader::CellRange::parse("A1").unwrap()];
+    let text = || CellValue::Text("00123".into());
+    let error = || CellValue::Error("#DIV/0!".into());
+    let numbers = IgnoredError {
+        ranges: a1.clone(),
+        number_stored_as_text: true,
+        ..Default::default()
+    };
+    let errors = IgnoredError {
+        ranges: a1,
+        eval_error: true,
+        ..Default::default()
+    };
+    assert!(!flagged(text(), None, numbers.clone()));
+    assert!(flagged(text(), None, errors.clone()));
+    assert!(!flagged(error(), Some("1/0"), errors));
+    assert!(flagged(error(), Some("1/0"), numbers.clone()));
+    let elsewhere = IgnoredError {
+        ranges: vec![jade_xlsx_reader::CellRange::parse("B2:C3").unwrap()],
+        ..numbers
+    };
+    assert!(flagged(text(), None, elsewhere));
 }
