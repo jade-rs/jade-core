@@ -362,6 +362,16 @@ impl<'a> Model<'a> {
                         }
                     }
                 }
+                // In an array only numbers count, as in a range.
+                CalcResult::Array(array) => {
+                    result += array
+                        .iter()
+                        .flatten()
+                        .filter(|node| {
+                            matches!(node, crate::expressions::parser::ArrayNode::Number(_))
+                        })
+                        .count() as f64;
+                }
                 _ => {
                     // Ignore everything else
                 }
