@@ -24,7 +24,8 @@ pub struct CellRef {
     pub row: u32,
 }
 
-/// Excel shows zeros unless a sheet's view says not to.
+/// Excel shows zeros, and the row and column headings, unless a sheet's
+/// view says not to.
 fn shows_zeros() -> bool {
     true
 }
@@ -248,6 +249,10 @@ pub struct Sheet {
     /// nothing (Excel's "Show a zero in cells that have zero value").
     #[serde(default = "shows_zeros")]
     pub show_zeros: bool,
+    /// `sheetView/@showRowColHeaders`: the row numbers and column letters
+    /// shown; off on dashboards and forms. Excel shows them by default.
+    #[serde(default = "shows_zeros")]
+    pub show_headers: bool,
     /// `sheetView/@zoomScale`: the percentage the sheet was last shown at,
     /// 10 to 400; `None` for Excel's 100.
     #[serde(default)]

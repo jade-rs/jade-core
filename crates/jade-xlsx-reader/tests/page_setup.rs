@@ -125,3 +125,19 @@ fn reads_the_zoom_the_sheet_was_last_shown_at() {
         Some(70)
     );
 }
+
+#[test]
+fn reads_whether_the_headings_show() {
+    let headers = |view: &str| {
+        let xml = format!(
+            r#"<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews>{view}</sheetViews><sheetData/></worksheet>"#
+        );
+        jade_xlsx_reader::sheet::parse_sheet("S", "s.xml", &xml, &[])
+            .unwrap()
+            .show_headers
+    };
+    assert!(headers(r#"<sheetView workbookViewId="0"/>"#));
+    assert!(!headers(
+        r#"<sheetView showRowColHeaders="0" workbookViewId="0"/>"#
+    ));
+}
