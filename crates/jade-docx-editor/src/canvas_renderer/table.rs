@@ -2028,7 +2028,7 @@ where
         let order_index = self.table_counter;
         self.table_counter += 1;
         let table_index = self.table_layouts.len();
-        self.table_layouts.push(TableLayoutInfo {
+        Rc::make_mut(&mut self.table_layouts).push(TableLayoutInfo {
             index: table_index,
             order: order_index,
             node_id: table.node_id.map(|id| id.raw()),
@@ -2281,7 +2281,7 @@ where
                 }
             }
             let original_row_height = row_heights[row_index];
-            if let Some(info) = self.table_layouts.get_mut(table_index) {
+            if let Some(info) = Rc::make_mut(&mut self.table_layouts).get_mut(table_index) {
                 info.row_heights.push(original_row_height);
             }
             if hidden_rows[row_index] {
@@ -2691,7 +2691,7 @@ where
             }
         }
 
-        if let Some(info) = self.table_layouts.get_mut(table_index) {
+        if let Some(info) = Rc::make_mut(&mut self.table_layouts).get_mut(table_index) {
             if info.row_heights.len() < table.rows.len() {
                 info.row_heights.resize(table.rows.len(), MIN_ROW_HEIGHT_PX);
             }
@@ -2699,7 +2699,7 @@ where
 
         if let (Some(bottom), Some(row_index)) = (last_row_bottom, last_visible_row_index) {
             if !table.rows.is_empty() {
-                self.table_row_handles.push(TableRowResizeHandle {
+                Rc::make_mut(&mut self.table_row_handles).push(TableRowResizeHandle {
                     table_index,
                     row_index,
                     y: bottom,
@@ -2813,7 +2813,7 @@ where
                 .get(row_index - 1)
                 .is_some_and(|height| *height > ROW_SPLIT_EPSILON)
         {
-            self.table_row_handles.push(TableRowResizeHandle {
+            Rc::make_mut(&mut self.table_row_handles).push(TableRowResizeHandle {
                 table_index,
                 row_index: row_index - 1,
                 y: absolute_top,
@@ -2828,7 +2828,7 @@ where
                 if col_positions.get(boundary).is_some()
                     && !column_boundary_crosses_merged_cell(row_layout, boundary)
                 {
-                    self.table_handles.push(TableResizeHandle {
+                    Rc::make_mut(&mut self.table_handles).push(TableResizeHandle {
                         table_index,
                         column_index: boundary - 1,
                         x: visual_column_boundary_x(table_x, col_positions, boundary, bidi_visual),
@@ -2842,7 +2842,7 @@ where
         }
         if column_count > 0 {
             if let Some(last_offset) = col_positions.last() {
-                self.table_handles.push(TableResizeHandle {
+                Rc::make_mut(&mut self.table_handles).push(TableResizeHandle {
                     table_index,
                     column_index: visual_right_edge_column_index(column_count, bidi_visual),
                     x: table_x + *last_offset,
@@ -5729,7 +5729,7 @@ where
             .position(|info| info.order == order)
             .unwrap_or_else(|| {
                 let index = self.table_layouts.len();
-                self.table_layouts.push(TableLayoutInfo {
+                Rc::make_mut(&mut self.table_layouts).push(TableLayoutInfo {
                     index,
                     order,
                     node_id: layout.table.node_id.map(|id| id.raw()),
@@ -5801,7 +5801,7 @@ where
             let row_height = row.height;
 
             if row.hidden {
-                if let Some(info) = self.table_layouts.get_mut(table_index) {
+                if let Some(info) = Rc::make_mut(&mut self.table_layouts).get_mut(table_index) {
                     info.row_heights[row.source_index] = 0.0;
                 }
                 continue;
@@ -5811,7 +5811,7 @@ where
             let y_top = current_y;
             let absolute_top = self.page_offset_y + y_top;
             let absolute_bottom = absolute_top + row_height;
-            if let Some(info) = self.table_layouts.get_mut(table_index) {
+            if let Some(info) = Rc::make_mut(&mut self.table_layouts).get_mut(table_index) {
                 info.row_heights[row.source_index] += row_height;
             }
             if row_index > 0
@@ -5819,7 +5819,7 @@ where
                     .get(row_index - 1)
                     .is_some_and(|height| *height > ROW_SPLIT_EPSILON)
             {
-                self.table_row_handles.push(TableRowResizeHandle {
+                Rc::make_mut(&mut self.table_row_handles).push(TableRowResizeHandle {
                     table_index,
                     row_index: row.source_index.saturating_sub(1),
                     y: absolute_top,
@@ -5833,7 +5833,7 @@ where
                     if layout.column_positions.get(boundary).is_some()
                         && !column_boundary_crosses_merged_cell(&row.cells, boundary)
                     {
-                        self.table_handles.push(TableResizeHandle {
+                        Rc::make_mut(&mut self.table_handles).push(TableResizeHandle {
                             table_index,
                             column_index: boundary - 1,
                             x: visual_column_boundary_x(
@@ -5852,7 +5852,7 @@ where
             }
             if nested_column_count > 0 {
                 if let Some(last_offset) = layout.column_positions.last() {
-                    self.table_handles.push(TableResizeHandle {
+                    Rc::make_mut(&mut self.table_handles).push(TableResizeHandle {
                         table_index,
                         column_index: visual_right_edge_column_index(
                             nested_column_count,
@@ -6026,7 +6026,7 @@ where
             last_row_bottom = Some(absolute_bottom);
         }
 
-        if let Some(info) = self.table_layouts.get_mut(table_index) {
+        if let Some(info) = Rc::make_mut(&mut self.table_layouts).get_mut(table_index) {
             if info.row_heights.len() < layout.rows.len() {
                 info.row_heights
                     .resize(layout.rows.len(), MIN_ROW_HEIGHT_PX);
@@ -6035,7 +6035,7 @@ where
 
         if let (Some(bottom), Some(row_index)) = (last_row_bottom, last_visible_row_index) {
             if !layout.rows.is_empty() {
-                self.table_row_handles.push(TableRowResizeHandle {
+                Rc::make_mut(&mut self.table_row_handles).push(TableRowResizeHandle {
                     table_index,
                     row_index,
                     y: bottom,
