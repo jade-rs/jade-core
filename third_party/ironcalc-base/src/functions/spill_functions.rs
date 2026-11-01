@@ -632,3 +632,203 @@ impl<'a> Model<'a> {
         }
     }
 }
+
+// ── GROUPBY ───────────────────────────────────────────────────────────────────
+
+impl<'a> Model<'a> {
+    /// `=GROUPBY(row_fields, values, function, [field_headers], [total_depth],
+    /// [sort_order], [filter_array])`
+    ///
+    /// One row per distinct value of `row_fields`, each with `function`
+    /// applied to that group's `values`, column by column; a grand total.
+    ///   * function      – a LAMBDA, or a function by name, as `SUM`
+    ///   * field_headers – 0 none (default), 1 headers not shown, 3 shown
+    ///   * total_depth   – 1 a grand total at the bottom (default), 0 none,
+    ///     -1 at the top
+    ///   * sort_order    – the column sorted by, 1 the first (default);
+    ///     negative descending
+    ///   * filter_array  – TRUE for the rows to group
+    pub(crate) fn fn_groupby(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.len() < 3 || args.len() > 8 {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let fields = match self.eval_to_array(&args[0], cell) {
+            Ok(array) => array,
+            Err(error) => return error,
+        };
+        let values = match self.eval_to_array(&args[1], cell) {
+            Ok(array) => array,
+            Err(error) => return error,
+        };
+        if fields.is_empty() || fields.len() != values.len() {
+            return CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "row_fields and values must have as many rows".to_string(),
+            );
+        }
+        let mut option = |index: usize, default: i64| -> Result<i64, CalcResult> {
+            if index >= args.len() {
+                return Ok(default);
+            }
+            match self.evaluate_node_in_context(&args[index], cell) {
+                CalcResult::EmptyArg | CalcResult::EmptyCell => Ok(default),
+                _ => self
+                    .get_number(&args[index], cell)
+                    .map(|n| n.trunc() as i64),
+            }
+        };
+        let headers = match option(3, 0) {
+            Ok(n) => n,
+            Err(error) => return error,
+        };
+        let total = match option(4, 1) {
+            Ok(n) => n,
+            Err(error) => return error,
+        };
+        let sort = match option(5, 1) {
+            Ok(n) => n,
+            Err(error) => return error,
+        };
+        let filter = if args.len() > 6 {
+            match self.evaluate_node_in_context(&args[6], cell) {
+                CalcResult::EmptyArg => None,
+                _ => match self.eval_to_array(&args[6], cell) {
+                    Ok(array) => {
+                        let flat: Vec<bool> =
+                            array.iter().flatten().map(array_node_is_truthy).collect();
+                        if flat.len() != fields.len() {
+                            return CalcResult::new_error(
+                                Error::VALUE,
+                                cell,
+                                "filter_array must have a value for each row".to_string(),
+                            );
+                        }
+                        Some(flat)
+                    }
+                    Err(error) => return error,
+                },
+            }
+        } else {
+            None
+        };
+        let has_headers = headers == 1 || headers == 3;
+        let first = usize::from(has_headers);
+        let key_width = fields[0].len();
+        let value_width = values[0].len();
+
+        // The groups, in the order they first come.
+        let mut index: HashMap<Vec<CellKey>, usize> = HashMap::new();
+        let mut groups: Vec<(Vec<ArrayNode>, Vec<usize>)> = Vec::new();
+        let mut all = Vec::new();
+        for row in first..fields.len() {
+            if filter.as_ref().is_some_and(|keep| !keep[row]) {
+                continue;
+            }
+            all.push(row);
+            let key = row_key(&fields[row]);
+            match index.get(&key) {
+                Some(&at) => groups[at].1.push(row),
+                None => {
+                    index.insert(key, groups.len());
+                    groups.push((fields[row].clone(), vec![row]));
+                }
+            }
+        }
+        if groups.is_empty() {
+            return CalcResult::new_error(Error::CALC, cell, "nothing to group".to_string());
+        }
+        let aggregate = |model: &mut Self, rows: &[usize]| -> Vec<ArrayNode> {
+            (0..value_width)
+                .map(|column| {
+                    let picked = rows
+                        .iter()
+                        .map(|row| {
+                            values[*row]
+                                .get(column)
+                                .cloned()
+                                .unwrap_or(ArrayNode::Empty)
+                        })
+                        .collect();
+                    model.groupby_apply(&args[2], picked, cell)
+                })
+                .collect()
+        };
+        let mut lines: Vec<(Vec<ArrayNode>, Vec<ArrayNode>)> = Vec::with_capacity(groups.len());
+        for (key, rows) in &groups {
+            let summary = aggregate(self, rows);
+            lines.push((key.clone(), summary));
+        }
+        let by = sort.unsigned_abs() as usize;
+        if by >= 1 && by <= key_width + value_width {
+            let ascending = sort > 0;
+            lines.sort_by(|a, b| {
+                let (x, y) = if by <= key_width {
+                    (&a.0[by - 1], &b.0[by - 1])
+                } else {
+                    (&a.1[by - 1 - key_width], &b.1[by - 1 - key_width])
+                };
+                sort_key_cmp(x, y, ascending, cell)
+            });
+        }
+
+        let mut out: Vec<Vec<ArrayNode>> = Vec::new();
+        if headers == 3 {
+            let mut heading = fields[0].clone();
+            heading.extend(values[0].iter().cloned());
+            out.push(heading);
+        }
+        let total_row = if total != 0 {
+            let mut row = vec![ArrayNode::String("Total".to_string())];
+            row.extend(std::iter::repeat_n(
+                ArrayNode::Empty,
+                key_width.saturating_sub(1),
+            ));
+            row.extend(aggregate(self, &all));
+            Some(row)
+        } else {
+            None
+        };
+        if total < 0 {
+            out.extend(total_row.clone());
+        }
+        for (mut key, summary) in lines {
+            key.extend(summary);
+            out.push(key);
+        }
+        if total > 0 {
+            out.extend(total_row);
+        }
+        CalcResult::Array(out)
+    }
+
+    /// `function` applied to one group's values: a LAMBDA called with them,
+    /// or a function named bare (`SUM`, as Excel's eta-reduced form) given
+    /// them as its one argument.
+    fn groupby_apply(
+        &mut self,
+        function: &Node,
+        column: Vec<ArrayNode>,
+        cell: CellReferenceIndex,
+    ) -> ArrayNode {
+        let argument = Node::ArrayKind(column.into_iter().map(|value| vec![value]).collect());
+        // Not a LAMBDA's or LET's own name (those have an id), nor a defined
+        // name: a function's.
+        let bare = match function {
+            Node::NamedVariableKind { name, id: None } => Some(name),
+            Node::DefinedNameKind((name, _, _)) => Some(name),
+            _ => None,
+        };
+        if let Some(name) = bare {
+            if let Some(kind) = self.language.functions.lookup(name) {
+                let call = Node::FunctionKind {
+                    kind,
+                    args: vec![argument],
+                };
+                return calc_result_to_array_node(self.evaluate_node_in_context(&call, cell));
+            }
+        }
+        let lambda = self.evaluate_node_in_context(function, cell);
+        calc_result_to_array_node(self.call_lambda(lambda, &[argument], cell))
+    }
+}
