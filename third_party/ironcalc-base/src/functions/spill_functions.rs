@@ -1016,7 +1016,7 @@ impl<'a> Model<'a> {
         let mut out: Vec<Vec<ArrayNode>> = Vec::new();
         // Header rows: one per column field, then the value names when there
         // are several value columns.
-        for level in 0..depth {
+        for (level, _) in columns[0].iter().enumerate() {
             let mut row = vec![blank(); key_width];
             if headers == 3 && level + 1 == depth {
                 row = fields[0].clone();
@@ -1035,12 +1035,8 @@ impl<'a> Model<'a> {
         if value_width > 1 {
             let mut row = vec![blank(); key_width];
             for _ in &across {
-                for column in 0..value_width {
-                    row.push(if has_headers {
-                        values[0][column].clone()
-                    } else {
-                        blank()
-                    });
+                for value in &values[0] {
+                    row.push(if has_headers { value.clone() } else { blank() });
                 }
             }
             out.push(row);
