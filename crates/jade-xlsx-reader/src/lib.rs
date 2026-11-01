@@ -40,6 +40,7 @@ pub mod error;
 pub mod filter_state;
 pub mod formula;
 mod hyperlinks;
+pub mod ignored_errors;
 pub mod model;
 pub mod object_protection;
 pub mod phonetic;

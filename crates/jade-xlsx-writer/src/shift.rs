@@ -558,7 +558,27 @@ pub fn shift_sheet(
                             }
                         }
                     }
-                    b"mergeCells" | b"hyperlinks" if changed && !empty => {
+                    b"ignoredError" if changed => {
+                        if let Some(sqref) = attribute(element, b"sqref")? {
+                            let kept = sqref
+                                .split_whitespace()
+                                .filter_map(|text| CellRange::parse(text).ok())
+                                .filter_map(|range| change.map_range(range))
+                                .map(range_text)
+                                .collect::<Vec<_>>();
+                            let end = whole_end(&mut reader)?;
+                            let text = if kept.is_empty() {
+                                String::new()
+                            } else {
+                                if let Some(list) = list.as_mut() {
+                                    list.2 += 1;
+                                }
+                                rewrite(element, &[("sqref", Some(kept.join(" ")))], true)?
+                            };
+                            splices.push(Splice { start, end, text });
+                        }
+                    }
+                    b"mergeCells" | b"hyperlinks" | b"ignoredErrors" if changed && !empty => {
                         list = Some((start, head_end, 0, name.clone()));
                     }
                     b"formula" | b"formula1" | b"formula2" => {
@@ -710,7 +730,7 @@ pub fn shift_sheet(
                         }
                     }
                 }
-                b"mergeCells" | b"hyperlinks" => {
+                b"mergeCells" | b"hyperlinks" | b"ignoredErrors" => {
                     if let Some((list_start, head_end, kept, name)) = list.take() {
                         let end = reader.buffer_position() as usize;
                         if kept == 0 {

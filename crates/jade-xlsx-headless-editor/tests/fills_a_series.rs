@@ -298,6 +298,7 @@ fn sheet_with(cells: Vec<(CellRef, CellValue, Option<&str>)>) -> Sheet {
         rich_text: Default::default(),
         tab_color: None,
         sparkline_groups: Vec::new(),
+        ignored_errors: Vec::new(),
         outline: Default::default(),
         protection: None,
     }
