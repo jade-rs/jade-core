@@ -27,13 +27,35 @@ and source range preservation, and requires ordinary and excluded boundaries
 to borrow the original slice. A 128-case property test generates arbitrary
 run partitions and wrap widths, requiring identical horizontal and vertical
 cluster geometry and line/column boundaries, exact reconstructed text and
-source-offset correspondence. The original implementation fails the width
-regression. Word source fixtures, fonts, reference observations, tolerance,
-seeds and CI retry policy are unchanged. No performance or native input
+source-offset correspondence. A second 128-case property test compares mixed
+metadata against an independent whole-grapheme oracle, including partial
+joins that must be rejected. A 1,025-scalar regional-indicator regression
+retains exact flag pairing across a long prefix. The original implementation
+fails the width regression. Word source fixtures, fonts, reference observations, tolerance,
+seeds and CI retry policy are unchanged. No application or native input
 latency improvement is claimed.
+
+Pre-merge scaling review found that creating a fresh GraphemeCursor for every
+run boundary rescanned regional-indicator prefixes quadratically. The joiner
+now retains a forward grapheme iterator, including enough context for a
+rejected partial join to revisit the current cluster. ASCII boundaries still
+avoid segmentation, and ordinary ranges still borrow without an allocation.
+In an isolated local benchmark of the actual extracted join helper (same Rust
+1.93.1, dependency and build settings on both sides; median of five runs),
+1,000/2,000/4,000/8,000 scalar runs took 3.14/12.21/48.29/231.24 ms before
+and 0.031/0.060/0.119/0.235 ms after. Each result retained the same flag-pair
+run ranges. These are helper measurements, not application or input-latency
+measurements; full CI and Callgrind on the updated head remain required.
 
 Validation on core `06e1d5239ce254c2e190a82fe9188f69d8010cbe`: combined
 locked library tests passed (2,401 editor and 721 layout tests; 21 and 12
 existing ignored tests respectively). Clippy for the layout library and tests
 with warnings denied and the workspace Rustfmt check passed with Rust 1.93.1.
 The locked wasm32 editor library check also passed.
+
+Integrated validation on core `0894c50b105d79d09ead7a1e7989945d7d788fbb`
+(including the merged replay font-feature cache and XLSX marker changes):
+locked library tests passed (2,404 editor and 723 layout tests; 21 and 12
+existing ignored tests). Layout library/tests Clippy with warnings denied,
+workspace Rustfmt and the locked wasm32 editor library check all passed with
+Rust 1.93.1. Both 128-case grapheme property tests passed in this run.
