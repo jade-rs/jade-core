@@ -1453,6 +1453,7 @@ struct PlannedSegmentLayout<'arena> {
 struct TextBatchScratch {
     fonts: Vec<Rc<str>>,
     text: String,
+    borrowed_text_range: Option<std::ops::Range<usize>>,
     x_positions: Vec<f64>,
     font_indexes: Vec<u16>,
     font_index_by_slot: [u16; 4],
@@ -1466,10 +1467,62 @@ impl TextBatchScratch {
         self.text.clear();
         self.x_positions.clear();
         self.font_indexes.clear();
-        self.text.reserve(len);
+        self.borrowed_text_range = None;
         self.x_positions.reserve(len);
         self.first_font_slot = None;
         self.single_font_run = true;
+    }
+
+    fn prepare_for_plan(
+        &mut self,
+        segment_text: &str,
+        style: &ResolvedRunStyle,
+        glyph_steps: &[PlannedGlyphLayoutStep],
+        x: f64,
+    ) -> bool {
+        self.clear_for_len(glyph_steps.len());
+        let Some(first) = glyph_steps.first() else {
+            return false;
+        };
+        let mut next_start = first.text_start;
+        let mut contiguous = true;
+        for step in glyph_steps {
+            let mut chars = step.text(segment_text).chars();
+            let Some(ch) = chars.next() else {
+                return false;
+            };
+            if chars.next().is_some() || ch.len_utf16() != 1 {
+                return false;
+            }
+            contiguous &= step.text_start == next_start;
+            next_start = step.text_end;
+            self.observe_font_slot(style, step.font_slot);
+            self.x_positions.push(x + step.x_offset);
+        }
+        if contiguous {
+            // Each range was validated above. Only adjacent ranges in glyph
+            // order can borrow the source; visual reordering and omissions
+            // must still assemble their exact glyph sequence.
+            self.borrowed_text_range = Some(first.text_start as usize..next_start as usize);
+        } else {
+            self.text.reserve(
+                glyph_steps
+                    .iter()
+                    .map(PlannedGlyphLayoutStep::text_len)
+                    .sum(),
+            );
+            for step in glyph_steps {
+                self.text.push_str(step.text(segment_text));
+            }
+        }
+        true
+    }
+
+    fn batch_text<'a>(&'a self, segment_text: &'a str) -> &'a str {
+        match self.borrowed_text_range.as_ref() {
+            Some(range) => &segment_text[range.clone()],
+            None => &self.text,
+        }
     }
 
     fn clear_font_indexes_for_len(&mut self, len: usize) {
@@ -31260,19 +31313,8 @@ where
         glyph_steps: &[PlannedGlyphLayoutStep],
     ) -> Result<bool, P::Error> {
         let mut scratch = self.text_batch_scratch.borrow_mut();
-        scratch.clear_for_len(glyph_steps.len());
-
-        for step in glyph_steps {
-            let mut chars = step.text(segment_text).chars();
-            let Some(ch) = chars.next() else {
-                return Ok(false);
-            };
-            if chars.next().is_some() || ch.len_utf16() != 1 {
-                return Ok(false);
-            }
-            scratch.observe_font_slot(resolved_style, step.font_slot);
-            scratch.text.push(ch);
-            scratch.x_positions.push(x + step.x_offset);
+        if !scratch.prepare_for_plan(segment_text, resolved_style, glyph_steps, x) {
+            return Ok(false);
         }
 
         if scratch.single_font_run {
@@ -31281,7 +31323,11 @@ where
             };
             let font_descriptor = resolved_style.descriptor_for_slot(font_slot);
             self.set_font_if_changed_rc(context, font_descriptor);
-            if !context.try_fill_glyph_run_batch(&scratch.text, &scratch.x_positions, y)? {
+            if !context.try_fill_glyph_run_batch(
+                scratch.batch_text(segment_text),
+                &scratch.x_positions,
+                y,
+            )? {
                 return Ok(false);
             }
         } else {
@@ -31291,7 +31337,7 @@ where
                 scratch.font_indexes.push(font_index);
             }
             if !context.try_fill_glyph_run_batch_multi_font(
-                &scratch.text,
+                scratch.batch_text(segment_text),
                 &scratch.x_positions,
                 &scratch.font_indexes,
                 &scratch.fonts,
@@ -51247,6 +51293,186 @@ mod tests {
 
         renderer.set_plugins_enabled(false);
         assert!(!renderer.has_active_decoration_plugins());
+    }
+
+    #[test]
+    fn planned_text_batch_borrows_contiguous_bmp_text() {
+        let renderer = test_renderer();
+        let painter = jade_painter::recording::RecordingPainter::new();
+        let style = test_applied_style(1.0);
+        let text = "契約条項".repeat(1024);
+        let steps: Vec<_> = text
+            .char_indices()
+            .enumerate()
+            .map(|(index, (start, ch))| PlannedGlyphLayoutStep {
+                text_start: start as u32,
+                text_end: (start + ch.len_utf8()) as u32,
+                font_slot: ResolvedFontSlot::EastAsia,
+                x_offset: index as f64 * 9.5,
+            })
+            .collect();
+        assert!(!renderer
+            .try_draw_planned_text_batch(&painter, 11.0, 23.0, &text, &style.resolved, &steps)
+            .unwrap());
+        let scratch = renderer.text_batch_scratch.borrow();
+        assert_eq!(scratch.x_positions.len(), steps.len());
+        assert!(
+            scratch.text.is_empty(),
+            "contiguous text must not be copied"
+        );
+        assert_eq!(scratch.text.capacity(), 0, "no text buffer allocation");
+    }
+
+    fn planned_batch_steps(text: &str, order: &[usize]) -> Vec<PlannedGlyphLayoutStep> {
+        let chars: Vec<_> = text.char_indices().collect();
+        order
+            .iter()
+            .enumerate()
+            .map(|(position, &index)| {
+                let (start, ch) = chars[index % chars.len()];
+                PlannedGlyphLayoutStep {
+                    text_start: start as u32,
+                    text_end: (start + ch.len_utf8()) as u32,
+                    font_slot: match index % 4 {
+                        0 => ResolvedFontSlot::LatinAscii,
+                        1 => ResolvedFontSlot::LatinHansi,
+                        2 => ResolvedFontSlot::EastAsia,
+                        _ => ResolvedFontSlot::Complex,
+                    },
+                    x_offset: position as f64 * -3.25,
+                }
+            })
+            .collect()
+    }
+
+    #[test]
+    fn planned_text_batch_borrows_only_the_requested_substring() {
+        let text = "前置:Aé日　後置";
+        let steps = planned_batch_steps(text, &[3, 4, 5, 6]);
+        let style = test_applied_style(1.0);
+        let mut scratch = TextBatchScratch::default();
+        assert!(scratch.prepare_for_plan(text, &style.resolved, &steps, 7.5));
+        assert_eq!(scratch.batch_text(text), "Aé日　");
+        assert!(std::ptr::eq(
+            scratch.batch_text(text).as_ptr(),
+            text["前置:".len()..].as_ptr()
+        ));
+        assert_eq!(scratch.x_positions, [7.5, 4.25, 1.0, -2.25]);
+        assert_eq!(scratch.text.capacity(), 0);
+    }
+
+    #[test]
+    fn planned_text_batch_preserves_sparse_reversed_and_repeated_glyphs() {
+        let text = "Aé日Z";
+        let style = test_applied_style(1.0);
+        let mut scratch = TextBatchScratch::default();
+        for (order, expected) in [
+            (vec![0, 2], "A日"),
+            (vec![3, 2, 1, 0], "Z日éA"),
+            (vec![2, 0, 2], "日A日"),
+        ] {
+            let steps = planned_batch_steps(text, &order);
+            assert!(scratch.prepare_for_plan(text, &style.resolved, &steps, 0.0));
+            assert_eq!(scratch.batch_text(text), expected);
+            assert!(scratch.borrowed_text_range.is_none());
+            assert_eq!(scratch.x_positions.len(), order.len());
+        }
+    }
+
+    #[test]
+    fn planned_text_batch_refuses_invalid_clusters_and_recovers() {
+        let style = test_applied_style(1.0);
+        let mut scratch = TextBatchScratch::default();
+        for text in ["", "😀", "e\u{301}", "ab"] {
+            let steps = [PlannedGlyphLayoutStep {
+                text_start: 0,
+                text_end: text.len() as u32,
+                font_slot: ResolvedFontSlot::LatinAscii,
+                x_offset: 0.0,
+            }];
+            assert!(!scratch.prepare_for_plan(text, &style.resolved, &steps, 0.0));
+            let valid = planned_batch_steps("日", &[0]);
+            assert!(scratch.prepare_for_plan("日", &style.resolved, &valid, 3.0));
+            assert_eq!(scratch.batch_text("日"), "日");
+            assert_eq!(scratch.x_positions, [3.0]);
+        }
+        assert!(!scratch.prepare_for_plan("", &style.resolved, &[], 0.0));
+        assert!(scratch.borrowed_text_range.is_none());
+        assert!(scratch.x_positions.is_empty());
+    }
+
+    #[test]
+    fn planned_text_batch_reuses_buffers_without_leaking_prior_text() {
+        let style = test_applied_style(1.0);
+        let mut scratch = TextBatchScratch::default();
+        let text = "日".repeat(4096);
+        let steps = planned_batch_steps(&text, &(0..4096).collect::<Vec<_>>());
+        assert!(scratch.prepare_for_plan(&text, &style.resolved, &steps, 0.0));
+        let positions = scratch.x_positions.as_ptr();
+        for _ in 0..8 {
+            let reversed = planned_batch_steps("AB日", &[2, 1, 0]);
+            assert!(scratch.prepare_for_plan("AB日", &style.resolved, &reversed, 0.0));
+            assert_eq!(scratch.batch_text("AB日"), "日BA");
+            assert!(scratch.prepare_for_plan(&text, &style.resolved, &steps, 0.0));
+            assert_eq!(scratch.batch_text(&text), text);
+            assert!(std::ptr::eq(
+                scratch.batch_text(&text).as_ptr(),
+                text.as_ptr()
+            ));
+            assert_eq!(scratch.x_positions.as_ptr(), positions);
+            assert!(scratch.text.is_empty());
+        }
+    }
+
+    proptest::proptest! {
+        #![proptest_config(proptest::test_runner::Config::with_cases(128))]
+        #[test]
+        fn planned_text_batch_matches_legacy_preparation(
+            chars in proptest::collection::vec(
+                proptest::sample::select(vec!['a', 'é', '日', '\u{3000}', '\u{301}', '😀']),
+                1..48,
+            ),
+            order in proptest::collection::vec(0usize..160, 0..80),
+        ) {
+            use proptest::prelude::*;
+            let text: String = chars.iter().collect();
+            let steps = planned_batch_steps(&text, &order);
+            let mut expected = String::new();
+            let mut valid = !order.is_empty();
+            for &index in &order {
+                let ch = chars[index % chars.len()];
+                valid &= ch.len_utf16() == 1;
+                expected.push(ch);
+            }
+            let style = ResolvedRunStyle::new(
+                Rc::from("12pt Latin"), Rc::from("12pt Latin"),
+                Rc::from("12pt East"), Rc::from("12pt Complex"),
+                0.0, 1.0, false, None,
+            );
+            let mut scratch = TextBatchScratch::default();
+            prop_assert_eq!(scratch.prepare_for_plan(&text, &style, &steps, 5.5), valid);
+            if valid {
+                prop_assert_eq!(scratch.batch_text(&text), expected);
+                let positions: Vec<_> = (0..order.len()).map(|i| 5.5 - i as f64 * 3.25).collect();
+                prop_assert_eq!(&scratch.x_positions, &positions);
+                // Independent slot-to-font model, including equal ASCII/HAnsi descriptors.
+                let descriptor = |index: usize| match index % 4 {
+                    0 | 1 => "12pt Latin", 2 => "12pt East", _ => "12pt Complex",
+                };
+                let fonts: Vec<_> = order.iter().map(|&i| descriptor(i)).collect();
+                prop_assert_eq!(scratch.single_font_run, fonts.iter().all(|f| *f == fonts[0]));
+                scratch.clear_font_indexes_for_len(steps.len());
+                let mut expected_fonts = Vec::new();
+                for (step, font) in steps.iter().zip(fonts) {
+                    let index = match expected_fonts.iter().position(|f| *f == font) {
+                        Some(index) => index,
+                        None => { expected_fonts.push(font); expected_fonts.len() - 1 }
+                    };
+                    prop_assert_eq!(scratch.font_index(&style, step.font_slot), index as u16);
+                }
+                prop_assert_eq!(scratch.fonts.iter().map(|f| f.as_ref()).collect::<Vec<_>>(), expected_fonts);
+            }
+        }
     }
 
     #[test]

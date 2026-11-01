@@ -5,3 +5,4 @@
 # It is recommended to check this file in to source control so that
 # everyone who runs the test benefits from these saved cases.
 cc 0c3052d7414acd2a1c34d8e4729c8ef4be5795194512c901f42779bf89bb0e30 # shrinks to operations = [(0, 0, 0, false, false)]
+cc 84953f0e9735f56e57abae1f9481a7c915dd1c0df353236059c89ce8bfb6c743 # shrinks to chars = ['a', 'a', 'a', 'a', 'a'], order = [10]
