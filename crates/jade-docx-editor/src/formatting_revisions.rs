@@ -620,10 +620,11 @@ impl WordDocument {
         let original = self.document.replace(Rc::new(parsed));
         self.rebuild_paragraph_surfaces();
         let properties = (0..self.paragraph_count())
-            .filter_map(|index| self.paragraph(index))
-            .map(|paragraph| {
+            .filter_map(|index| Some((self.paragraph_surfaces.get(index)?, self.paragraph(index)?)))
+            .map(|(surface, paragraph)| {
                 (
                     paragraph.node_id,
+                    surface.clone(),
                     paragraph.properties.clone(),
                     paragraph
                         .runs
@@ -636,15 +637,20 @@ impl WordDocument {
         self.document = original;
         self.rebuild_paragraph_surfaces();
         for index in 0..self.paragraph_count() {
+            let surface = self.paragraph_surfaces.get(index).cloned();
             if let Some(paragraph) = self.paragraph_mut(index) {
-                let saved = if paragraph.node_id.is_none() {
-                    properties.get(index)
-                } else {
-                    properties
-                        .iter()
-                        .find(|(id, _, _)| *id == paragraph.node_id)
-                };
-                if let Some((_, props, runs)) = saved {
+                // A text box or note paragraph has no XML id: it is found by
+                // where it sits. Not by its index — the parse leaves out the
+                // paragraph a load gives a textless shape, so every unbound
+                // paragraph after one took the formatting of the next.
+                let saved = properties.iter().find(|(id, saved_surface, _, _)| {
+                    if paragraph.node_id.is_none() {
+                        id.is_none() && Some(saved_surface) == surface.as_ref()
+                    } else {
+                        *id == paragraph.node_id
+                    }
+                });
+                if let Some((_, _, props, runs)) = saved {
                     paragraph.properties = props.clone();
                     for (run_index, run) in paragraph.runs.iter_mut().enumerate() {
                         let saved = if paragraph.node_id.is_none() {
