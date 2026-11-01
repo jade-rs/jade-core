@@ -340,11 +340,9 @@ fn render_body<P: Painter>(
         render_note_marker(painter, note.rect);
     }
 
-    for cell in layout
-        .cells
-        .iter()
-        .filter(|cell| cell.error_flag && cell.rect.intersects(&viewport))
-    {
+    // Only the cells under the viewport: a long sheet's others are not
+    // looked at.
+    for cell in layout.cells_in(viewport).filter(|cell| cell.error_flag) {
         render_error_marker(painter, cell.rect);
     }
 
