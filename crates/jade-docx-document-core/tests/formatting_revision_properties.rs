@@ -377,7 +377,9 @@ impl Edit {
                 json!({"type": "set_paragraph_indent", "left": f32::from(self.value) * 6.0, "right": 12.0, "clear_special": false})
             }
             2 => {
-                json!({"type": "set_paragraph_indent", "hanging_chars": i32::from(self.value) * 100, "clear_special": true})
+                // Setting a hanging indent is distinct from the special-indent
+                // "none" control, which deliberately discards supplied values.
+                json!({"type": "set_paragraph_indent", "hanging_chars": i32::from(self.value) * 100, "clear_special": false})
             }
             3 => {
                 json!({"type": "set_paragraph_metrics", "before": f32::from(self.value) * 3.0, "after": 6.0, "clear_special": false})
@@ -1015,6 +1017,55 @@ fn every_run_format_rejects_to_original_direct_properties() {
                 "reject kind {kind}, paragraph {paragraph}"
             );
         }
+    }
+}
+
+#[test]
+fn clearing_absent_special_indent_does_not_create_a_format_revision() {
+    let mut word = fixture();
+    let original = snapshot(&word);
+    track(&mut word);
+    // "None" wins even when a caller also supplies a stale dialog value.
+    apply(
+        &mut word,
+        vec![json!({"type": "set_paragraph_indent",
+        "start_paragraph": 1, "end_paragraph": 1,
+        "hanging_chars": 400, "clear_special": true})],
+    );
+    let word = reload(&word);
+    assert_eq!(snapshot(&word), original);
+    assert!(revisions(&word).is_empty());
+}
+
+#[test]
+fn clearing_existing_special_indent_is_tracked_and_reversible() {
+    for accept in [false, true] {
+        let source = fixture();
+        let xml = source
+            .raw_document
+            .as_ref()
+            .unwrap()
+            .to_string()
+            .unwrap()
+            .replace("w:left=\"240\"", "w:left=\"240\" w:firstLineChars=\"200\"");
+        assert!(xml.contains("w:firstLineChars"));
+        let mut word = with_document_xml(&source, &xml);
+        let original = snapshot(&word);
+        track(&mut word);
+        apply(
+            &mut word,
+            vec![json!({"type": "set_paragraph_indent",
+            "start_paragraph": 1, "end_paragraph": 1, "clear_special": true})],
+        );
+        word = reload(&word);
+        assert!(!revisions(&word).is_empty());
+        assert_revision_structure(&word);
+        let cleared = snapshot(&word);
+        assert_ne!(cleared, original);
+        decide(&mut word, accept, None);
+        let word = reload(&word);
+        assert!(revisions(&word).is_empty());
+        assert_eq!(snapshot(&word), if accept { cleared } else { original });
     }
 }
 
