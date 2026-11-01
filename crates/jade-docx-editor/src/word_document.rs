@@ -53239,6 +53239,72 @@ mod tests {
         assert_eq!(second.runs[0].text, "World");
     }
 
+    fn body_count_index_document() -> WordDocument {
+        let mut host = text_box_host_document();
+        let mut document = Rc::unwrap_or_clone(host.document.take().unwrap());
+        let mut blocks = std::mem::take(&mut document.body.as_mut().unwrap().elements);
+        for _ in 0..2 {
+            blocks = vec![BodyElement::from_table(Table {
+                rows: vec![TableRow {
+                    cells: vec![TableCell {
+                        blocks,
+                        ..Default::default()
+                    }],
+                    ..Default::default()
+                }],
+                ..Default::default()
+            })];
+        }
+        blocks.push(BodyElement::from_math_paragraph(MathParagraph::default()));
+        document.body.as_mut().unwrap().elements = blocks;
+        WordDocument::from_document(document)
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig {
+            cases: 96,
+            .. ProptestConfig::default()
+        })]
+
+        #[test]
+        fn body_count_index_tracks_edit_sequences_without_auxiliary_surfaces(
+            operations in proptest::collection::vec((0u8..5, 0usize..64), 1..65),
+        ) {
+            // The count model is just an integer. Text boxes contribute no body
+            // paragraphs, even when their own paragraphs are split or edited.
+            let mut word_doc = body_count_index_document();
+            let mut expected = 1usize;
+            for (step, (operation, position)) in operations.into_iter().enumerate() {
+                match operation {
+                    0 => {
+                        let body_index = position % expected;
+                        let surface = word_doc.surface_index_for_body(body_index).unwrap();
+                        prop_assert!(word_doc.split_paragraph_at(surface, 0), "step {}", step);
+                        expected += 1;
+                    }
+                    1 => {
+                        let body_index = position % expected;
+                        let surface = word_doc.surface_index_for_body(body_index).unwrap();
+                        insert_text_at(&mut word_doc, surface, 0, "日a");
+                    }
+                    2 => {
+                        // Replacement must not retain the preceding snapshot's
+                        // larger count or confuse box paragraphs with body ones.
+                        word_doc = body_count_index_document();
+                        expected = 1;
+                    }
+                    3 => {
+                        let surface = (0..word_doc.paragraph_count())
+                            .find(|&index| word_doc.is_text_box_paragraph_surface(index)).unwrap();
+                        prop_assert!(word_doc.split_paragraph_at(surface, 0), "box step {}", step);
+                    }
+                    _ => word_doc.rebuild_paragraph_surfaces(),
+                }
+                prop_assert_eq!(word_doc.body_paragraph_count(), expected, "step {}", step);
+            }
+        }
+    }
+
     #[test]
     fn package_theme_resolves_shape_and_group_child_colors() {
         let mut document = text_box_host_document()

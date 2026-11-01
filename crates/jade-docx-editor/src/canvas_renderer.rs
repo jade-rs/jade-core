@@ -13506,6 +13506,28 @@ where
         self.render_with_numbering(document, options, None, None, None, None)
     }
 
+    /// Size the cache from the model's maintained body index before an edit
+    /// render. Copy-on-write snapshots change Rc identity on ordinary keystrokes;
+    /// recounting their entire body would defeat a bounded visible-page seek.
+    pub(crate) fn prepare_wrap_cache_capacity(&mut self, model: &WordDocument) {
+        let Some(document) = model.document.as_ref() else {
+            return;
+        };
+        // A uniquely owned Rc may also be edited in place, so update capacity
+        // even when its address is unchanged (for example after a split).
+        self.grow_paragraph_wrap_cache(model.body_paragraph_count());
+        self.wrap_cache_sized_doc = Some(Rc::as_ptr(document) as usize);
+    }
+
+    fn grow_paragraph_wrap_cache(&mut self, paragraph_count: usize) {
+        let desired = paragraph_count
+            .saturating_add(paragraph_count / 8 + 64) // headroom for headers/footers/notes
+            .clamp(WRAP_CACHE_FLOOR_CAPACITY, WRAP_CACHE_MAX_CAPACITY);
+        self.paragraph_wrap_cache
+            .borrow_mut()
+            .ensure_capacity(desired);
+    }
+
     /// Renders a document while taking the optional numbering part into
     /// account. Each call resets the internal numbering counters.
     ///
@@ -13735,7 +13757,8 @@ where
 
         // Size the paragraph wrap cache to the document so a large document can
         // keep its whole working set cached while scrolling (no eviction-driven
-        // re-wraps). Only recount when the document changes; capacity only grows.
+        // re-wraps). Edit callers prepare capacity from WordDocument's O(1)
+        // index. Callers without that model keep the recursive fallback.
         let doc_identity = Rc::as_ptr(&document_rc) as usize;
         if self.wrap_cache_sized_doc != Some(doc_identity) {
             let paragraph_count = document
@@ -13743,12 +13766,7 @@ where
                 .as_ref()
                 .map(|body| self::table::count_body_paragraphs(&body.elements))
                 .unwrap_or(0);
-            let desired = paragraph_count
-                .saturating_add(paragraph_count / 8 + 64) // headroom for headers/footers/notes
-                .clamp(WRAP_CACHE_FLOOR_CAPACITY, WRAP_CACHE_MAX_CAPACITY);
-            self.paragraph_wrap_cache
-                .borrow_mut()
-                .ensure_capacity(desired);
+            self.grow_paragraph_wrap_cache(paragraph_count);
             self.wrap_cache_sized_doc = Some(doc_identity);
         }
 
@@ -52731,6 +52749,108 @@ mod tests {
             comment_markers: Vec::new(),
         };
         assert!(paragraph_skip_unsafe(&numbered));
+    }
+
+    #[test]
+    fn indexed_wrap_cache_capacity_preserves_bounds_and_never_shrinks() {
+        let mut renderer = test_renderer();
+        for (paragraphs, expected_capacity) in [
+            (0, 8192),
+            (8192, 9280),
+            (9000, 10189),
+            (1, 10189),
+            (40000, 32768),
+            (0, 32768),
+        ] {
+            let word_doc =
+                WordDocument::from_document(doc_with_paragraph_texts(&vec!["a"; paragraphs]));
+            renderer.prepare_wrap_cache_capacity(&word_doc);
+            assert_eq!(
+                renderer.paragraph_wrap_cache.borrow().stats().capacity,
+                expected_capacity,
+                "paragraphs: {paragraphs}"
+            );
+            assert_eq!(
+                renderer.wrap_cache_sized_doc,
+                Some(Rc::as_ptr(word_doc.document.as_ref().unwrap()) as usize)
+            );
+        }
+    }
+
+    #[test]
+    fn indexed_wrap_cache_capacity_tracks_in_place_structural_edits() {
+        let mut renderer = test_renderer();
+        let mut word_doc = WordDocument::from_document(doc_with_paragraph_texts(&vec!["a"; 8192]));
+        renderer.prepare_wrap_cache_capacity(&word_doc);
+        assert_eq!(
+            renderer.paragraph_wrap_cache.borrow().stats().capacity,
+            9280
+        );
+        let identity = renderer.wrap_cache_sized_doc;
+        assert!(word_doc.split_paragraph_at(0, 0));
+        assert_eq!(
+            Some(Rc::as_ptr(word_doc.document.as_ref().unwrap()) as usize),
+            identity,
+            "a uniquely owned snapshot can change without a new Rc address"
+        );
+        renderer.prepare_wrap_cache_capacity(&word_doc);
+        assert_eq!(
+            renderer.paragraph_wrap_cache.borrow().stats().capacity,
+            9281
+        );
+    }
+
+    #[test]
+    fn indexed_wrap_cache_capacity_matches_fallback_across_snapshot_edits() {
+        let mut document = note_test_document();
+        document.body.as_mut().unwrap().elements.extend(
+            doc_with_paragraph_texts(&vec!["a"; 8192])
+                .body
+                .unwrap()
+                .elements,
+        );
+        let mut word_doc = WordDocument::from_document(document);
+        let (prepared_host, prepared_pages) = PerPageRecordingHost::new(4);
+        let (fallback_host, fallback_pages) = PerPageRecordingHost::new(4);
+        let mut prepared = CanvasRenderer::with_host(Box::new(prepared_host), false).unwrap();
+        let mut fallback = CanvasRenderer::with_host(Box::new(fallback_host), false).unwrap();
+        for renderer in [&mut prepared, &mut fallback] {
+            renderer.set_layout_page_limit(Some(1));
+        }
+        let options = options_for_seek_tests();
+        for expected_capacity in [9283, 9284] {
+            prepared.prepare_wrap_cache_capacity(&word_doc);
+            for renderer in [&mut prepared, &mut fallback] {
+                renderer
+                    .render_with_numbering_rc(
+                        Rc::clone(word_doc.document.as_ref().unwrap()),
+                        &options,
+                        None,
+                        None,
+                        None,
+                        None,
+                    )
+                    .unwrap();
+                assert_eq!(
+                    renderer.paragraph_wrap_cache.borrow().stats().capacity,
+                    expected_capacity
+                );
+            }
+            assert_eq!(prepared.page_count(), fallback.page_count());
+            assert_eq!(
+                prepared.last_layout_complete(),
+                fallback.last_layout_complete()
+            );
+            assert_eq!(
+                prepared.last_render_body_element_count,
+                fallback.last_render_body_element_count
+            );
+            assert!(!prepared_pages[0].ops().is_empty());
+            assert_eq!(prepared_pages[0].ops(), fallback_pages[0].ops());
+            let old = Rc::clone(word_doc.document.as_ref().unwrap());
+            assert!(word_doc.split_paragraph_at(0, 0));
+            assert!(!Rc::ptr_eq(&old, word_doc.document.as_ref().unwrap()));
+        }
     }
 
     #[test]
