@@ -1,5 +1,5 @@
-//! A sheet's view settings on its first `<sheetView>`: Show Formulas and
-//! showing zeros.
+//! A sheet's view settings on its first `<sheetView>`: Show Formulas,
+//! showing zeros and Page Break Preview.
 
 use quick_xml::events::Event;
 use quick_xml::Reader;
@@ -19,6 +19,12 @@ pub fn set_show_formulas(xml: &str, on: bool) -> Result<String> {
 /// default) or hidden (`showZeros="0"`) on its first `<sheetView>`.
 pub fn set_show_zeros(xml: &str, on: bool) -> Result<String> {
     set_view_attribute(xml, "showZeros", (!on).then(|| "0".to_string()))
+}
+
+/// The sheet part opening in Page Break Preview (`view="pageBreakPreview"`
+/// on its first `<sheetView>`) or in the normal view (`view` taken away).
+pub fn set_page_break_preview(xml: &str, on: bool) -> Result<String> {
+    set_view_attribute(xml, "view", on.then(|| "pageBreakPreview".to_string()))
 }
 
 /// `name` set to `value`, or taken away, on the first `<sheetView>`.

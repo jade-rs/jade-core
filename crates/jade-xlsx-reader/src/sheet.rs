@@ -105,6 +105,7 @@ pub(crate) fn parse_sheet_noting_order(
         show_grid_lines: true,
         show_formulas: false,
         show_zeros: true,
+        page_break_preview: false,
         show_headers: true,
         grid_color: None,
         zoom_percent: None,
@@ -226,6 +227,9 @@ pub(crate) fn parse_sheet_noting_order(
                         }
                         if let Some(value) = attribute_value(element, b"showZeros")? {
                             sheet.show_zeros = value != "0" && value != "false";
+                        }
+                        if let Some(value) = attribute_value(element, b"view")? {
+                            sheet.page_break_preview = value == "pageBreakPreview";
                         }
                         if let Some(value) = attribute_value(element, b"showRowColHeaders")? {
                             sheet.show_headers = value != "0" && value != "false";
