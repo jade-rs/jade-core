@@ -2670,6 +2670,8 @@ impl WordDocument {
             // The package is not given a styles part until an edit writes one.
             if !styles_read {
                 document.styles_part = Some(StylesPart::word_default());
+            } else if let Some(styles) = document.styles_part.as_mut() {
+                styles.inherit_missing_word_run_defaults();
             }
 
             // Header/footer stories use the same style-numbering inheritance
