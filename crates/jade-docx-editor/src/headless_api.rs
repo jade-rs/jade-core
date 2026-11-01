@@ -20530,3 +20530,7 @@ mod tests {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "paragraph_style_stateful_tests.rs"]
+mod paragraph_style_stateful_tests;
