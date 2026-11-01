@@ -101,11 +101,7 @@ pub fn open_checked_archive(
     Ok(archive)
 }
 
-/// Inflate one entry, reading at most one byte past what the budgets allow.
-///
-/// `total` is the running inflated size of the parts read so far; it is only
-/// advanced when the part fits, so a failed read leaves it untouched.
-/// `size` more expanded bytes counted against the budgets, as
+/// Count `size` more expanded bytes against the budgets, as
 /// [`read_part`] counts what it inflates.
 pub(crate) fn account(size: u64, limits: PackageLoadLimits, total: &mut u64) -> crate::Result<()> {
     check_limit("part bytes", size, limits.max_part_bytes)?;
@@ -122,6 +118,10 @@ pub(crate) fn account(size: u64, limits: PackageLoadLimits, total: &mut u64) -> 
     Ok(())
 }
 
+/// Inflate one entry, reading at most one byte past what the budgets allow.
+///
+/// `total` is the running inflated size of the parts read so far; it is only
+/// advanced when the part fits, so a failed read leaves it untouched.
 pub fn read_part(
     reader: impl Read,
     limits: PackageLoadLimits,
