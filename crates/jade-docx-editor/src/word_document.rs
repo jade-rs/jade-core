@@ -18337,6 +18337,21 @@ impl WordDocument {
                 return Err(format!("comment {end} paragraph has no xml node id"));
             }
         }
+        // Word anchors a comment in one story. Ended in a text box (or a note)
+        // while begun in the body, its range end went into the box's XML and
+        // its reference run into the box's paragraph.
+        let story = |index: usize| match self.paragraph_story(index) {
+            Some(ParagraphStory::Body { .. }) => Some((0, None, None)),
+            Some(ParagraphStory::TextBox { host, text_box, .. }) => {
+                Some((1, Some((host, text_box)), None))
+            }
+            Some(ParagraphStory::Footnote { note_id, .. }) => Some((2, None, Some(note_id))),
+            Some(ParagraphStory::Endnote { note_id, .. }) => Some((3, None, Some(note_id))),
+            None => None,
+        };
+        if story(start_paragraph) != story(end_paragraph) {
+            return Err("a comment cannot span more than one story".to_string());
+        }
 
         // --- Split runs in the start paragraph; the anchor run is the first run
         //     at/after `start_offset` (if any). ---

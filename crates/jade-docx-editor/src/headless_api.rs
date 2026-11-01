@@ -14123,6 +14123,54 @@ mod tests {
     }
 
     #[test]
+    fn a_comment_from_the_body_into_a_text_box_is_refused() {
+        // textbox-tall-header-overlap.docx: paragraph 2 is a text box's. A
+        // comment from body paragraph 0 to it put its range end and its
+        // reference run in the box, a range across two stories that Word
+        // does not make; the run there had no formatting at all.
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/textbox-tall-header-overlap.docx"),
+        )
+        .expect("read fixture");
+        let mut word_doc =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+        assert!(word_doc.is_text_box_paragraph_surface(2));
+        let comment = |end_paragraph: usize| HeadlessCommand::AddComment {
+            start_paragraph: 0,
+            start_offset: Some(10),
+            end_paragraph,
+            end_offset: Some(0),
+            text: "c".to_string(),
+            author: Some("reviewer".to_string()),
+            initials: None,
+            date: None,
+        };
+        let error = apply_headless_commands_to_document(
+            &mut word_doc,
+            &HeadlessEditRequest {
+                commands: vec![comment(2)],
+            },
+        )
+        .expect_err("a comment across stories");
+        assert!(
+            format!("{error:?}").contains("more than one story"),
+            "{error:?}"
+        );
+        assert!(word_doc
+            .paragraph(2)
+            .is_some_and(|paragraph| paragraph.runs.is_empty()));
+        // Within the body it is made as before.
+        apply_headless_commands_to_document(
+            &mut word_doc,
+            &HeadlessEditRequest {
+                commands: vec![comment(1)],
+            },
+        )
+        .expect("a comment in the body");
+    }
+
+    #[test]
     fn tracked_formatting_of_a_text_box_paragraph_can_be_rejected() {
         // shape-preset-geometries.docx has shapes whose paragraphs are not in
         // the XML until an edit writes them. With changes tracked, setting
