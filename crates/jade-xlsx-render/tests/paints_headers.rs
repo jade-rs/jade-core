@@ -54,6 +54,7 @@ fn laid_out_with_freeze(rows: u32, freeze_pane: Option<FreezePane>) -> SheetLayo
         show_grid_lines: true,
         show_formulas: false,
         show_zeros: true,
+        zoom_percent: None,
         freeze_pane,
         tables: Vec::new(),
         header_footer: None,
