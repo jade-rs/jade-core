@@ -717,16 +717,22 @@ impl HeadlessWorkbook {
     pub fn open_in_time_zone(bytes: &[u8], time_zone: &str) -> Result<Self> {
         jade_xlsx_calc::validate_time_zone(time_zone)?;
         static ORIGINS: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(1);
+        // Reading the sheets finds which are in order, so the first edit
+        // need not read its sheet through to the end to find out.
+        let (workbook, in_order) = jade_xlsx_reader::read_xlsx_noting_order(bytes)?;
+        let ordered_sheets = jade_opc::entry_fingerprints(bytes, &in_order)?
+            .into_iter()
+            .collect();
         let mut opened = Self {
             sheet_states: BTreeMap::new(),
             range_grants: Vec::new(),
             clipboard_origin: ORIGINS.fetch_add(1, std::sync::atomic::Ordering::Relaxed),
             range_auth_generation: 0,
-            workbook: jade_xlsx_reader::read_xlsx(bytes)?,
+            workbook,
             source: bytes.to_vec(),
             automatic_height_base: None,
             fast_entries: HashSet::new(),
-            ordered_sheets: HashSet::new(),
+            ordered_sheets,
             calc_session: None,
             typed_changes: None,
             laid_out: None,
