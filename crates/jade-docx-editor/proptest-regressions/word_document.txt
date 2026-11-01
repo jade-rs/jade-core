@@ -5,3 +5,4 @@
 # It is recommended to check this file in to source control so that
 # everyone who runs the test benefits from these saved cases.
 cc 6c90304635205d2828c44d369896d207e9589347179c21e60247166c7f5a59af # shrinks to generated = [(0, ['\n', 'a'])]
+cc bc783c3f4b5a04fa40921c97e532962d0821b458f1855fe525397dc249b25fae
