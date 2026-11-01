@@ -86,3 +86,15 @@ fn a_sheet_without_page_setup_reads_excels_defaults() {
     assert_eq!(setup.fit_to(), None);
     assert_eq!(setup.title_rows, None);
 }
+
+#[test]
+fn reads_print_options_centring_gridlines_and_headings() {
+    let xml = r#"<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData/><printOptions horizontalCentered="1" verticalCentered="true" gridLines="0" headings="1"/><pageMargins left="0.7" right="0.7" top="0.75" bottom="0.75" header="0.3" footer="0.3"/></worksheet>"#;
+    let sheet = jade_xlsx_reader::sheet::parse_sheet("S", "s.xml", xml, &[]).unwrap();
+    let options = sheet.page_setup;
+    assert!(options.center_horizontally && options.center_vertically);
+    assert!(!options.print_grid_lines && options.print_headings);
+    // A sheet without them prints neither centred nor with gridlines.
+    let plain = setup("Letter Landscape");
+    assert!(!plain.center_horizontally && !plain.print_grid_lines);
+}
