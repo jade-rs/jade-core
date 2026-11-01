@@ -1572,6 +1572,16 @@ pub struct TableResizeMetadata {
     pub row_handles: Vec<TableRowResizeHandle>,
 }
 
+/// An immutable snapshot shared with the view's last completed update.
+/// Copy-on-write keeps cached geometry stable while a new layout is prepared.
+#[derive(Clone, Debug, Default, Serialize)]
+pub(crate) struct SharedTableResizeMetadata {
+    pub(crate) tables: Rc<Vec<TableLayoutInfo>>,
+    pub(crate) handles: Rc<Vec<TableResizeHandle>>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub(crate) row_handles: Rc<Vec<TableRowResizeHandle>>,
+}
+
 #[derive(Default)]
 struct ImageCacheEntry {
     bitmap: Option<Rc<ImageBitmap>>,
@@ -3792,9 +3802,9 @@ where
     /// Caches decoded `ImageBitmap`s keyed by relationship id or data URI to
     /// avoid repeatedly requesting the same image during rapid re-renders.
     image_cache: Rc<RefCell<HashMap<String, ImageCacheEntry>>>,
-    table_layouts: Vec<TableLayoutInfo>,
-    table_handles: Vec<TableResizeHandle>,
-    table_row_handles: Vec<TableRowResizeHandle>,
+    table_layouts: Rc<Vec<TableLayoutInfo>>,
+    table_handles: Rc<Vec<TableResizeHandle>>,
+    table_row_handles: Rc<Vec<TableRowResizeHandle>>,
     table_counter: usize,
     /// Top-level floating table rectangles seen during the current layout pass.
     /// Used only for Word's pairwise `w:tblOverlap` collision policy.
@@ -8542,9 +8552,9 @@ where
             line_overflow_debug_regions: RefCell::new(Vec::new()),
             pending_image_promises: RefCell::new(Vec::new()),
             image_cache: Rc::new(RefCell::new(HashMap::new())),
-            table_layouts: Vec::new(),
-            table_handles: Vec::new(),
-            table_row_handles: Vec::new(),
+            table_layouts: Rc::default(),
+            table_handles: Rc::default(),
+            table_row_handles: Rc::default(),
             table_counter: 0,
             floating_table_frames: Vec::new(),
             active_float_exclusions: Vec::new(),
@@ -14129,23 +14139,26 @@ where
                         .iter()
                         .filter(|table| table.index < keep)
                         .cloned()
-                        .collect(),
+                        .collect::<Vec<_>>()
+                        .into(),
                     handles
                         .iter()
                         .filter(|handle| handle.table_index < keep)
                         .cloned()
-                        .collect(),
+                        .collect::<Vec<_>>()
+                        .into(),
                     row_handles
                         .iter()
                         .filter(|handle| handle.table_index < keep)
                         .cloned()
-                        .collect(),
+                        .collect::<Vec<_>>()
+                        .into(),
                 )
             } else {
                 let (mut tables, mut handles, mut row_handles) = previous_tables.take().unwrap();
-                tables.retain(|table| table.index < keep);
-                handles.retain(|handle| handle.table_index < keep);
-                row_handles.retain(|handle| handle.table_index < keep);
+                Rc::make_mut(&mut tables).retain(|table| table.index < keep);
+                Rc::make_mut(&mut handles).retain(|handle| handle.table_index < keep);
+                Rc::make_mut(&mut row_handles).retain(|handle| handle.table_index < keep);
                 (tables, handles, row_handles)
             };
             self.table_layouts = tables;
@@ -34102,9 +34115,17 @@ where
 
     pub fn table_resize_metadata(&self) -> TableResizeMetadata {
         TableResizeMetadata {
-            tables: self.table_layouts.clone(),
-            handles: self.table_handles.clone(),
-            row_handles: self.table_row_handles.clone(),
+            tables: self.table_layouts.as_ref().clone(),
+            handles: self.table_handles.as_ref().clone(),
+            row_handles: self.table_row_handles.as_ref().clone(),
+        }
+    }
+
+    pub(crate) fn shared_table_resize_metadata(&self) -> SharedTableResizeMetadata {
+        SharedTableResizeMetadata {
+            tables: Rc::clone(&self.table_layouts),
+            handles: Rc::clone(&self.table_handles),
+            row_handles: Rc::clone(&self.table_row_handles),
         }
     }
 
@@ -35779,9 +35800,15 @@ where
         self.paragraph_border_box_continues = saved_border_box_continues;
         self.spacing_scan_from_story = saved_spacing_scan_from_story;
         self.table_counter = saved_table_counter;
-        self.table_layouts.truncate(saved_table_layouts);
-        self.table_handles.truncate(saved_table_handles);
-        self.table_row_handles.truncate(saved_table_row_handles);
+        if self.table_layouts.len() > saved_table_layouts {
+            Rc::make_mut(&mut self.table_layouts).truncate(saved_table_layouts);
+        }
+        if self.table_handles.len() > saved_table_handles {
+            Rc::make_mut(&mut self.table_handles).truncate(saved_table_handles);
+        }
+        if self.table_row_handles.len() > saved_table_row_handles {
+            Rc::make_mut(&mut self.table_row_handles).truncate(saved_table_row_handles);
+        }
         self.floating_table_frames.truncate(saved_floating_tables);
         self.active_float_exclusions = saved_float_exclusions;
         self.line_number_counter = saved_line_number_counter;
@@ -37832,6 +37859,69 @@ fn select_header_footer_variant<'a, T: ?Sized>(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn shared_table_resize_metadata_preserves_wire_format_and_snapshot_isolation() {
+        let mut renderer = test_renderer();
+        assert_eq!(
+            serde_json::to_value(renderer.shared_table_resize_metadata()).unwrap(),
+            serde_json::json!({"tables": [], "handles": []})
+        );
+        Rc::make_mut(&mut renderer.table_layouts).push(TableLayoutInfo {
+            index: 4,
+            order: 2,
+            node_id: Some(37),
+            column_widths: vec![80.0, 120.0],
+            row_heights: vec![24.0],
+        });
+        Rc::make_mut(&mut renderer.table_handles).push(TableResizeHandle {
+            table_index: 4,
+            column_index: 0,
+            x: 92.0,
+            top: 12.0,
+            bottom: 36.0,
+            kind: TableResizeHandleKind::TableRightEdge,
+            reverse_delta: true,
+        });
+        Rc::make_mut(&mut renderer.table_row_handles).push(TableRowResizeHandle {
+            table_index: 4,
+            row_index: 0,
+            y: 36.0,
+            left: 12.0,
+            right: 212.0,
+            kind: TableRowResizeHandleKind::TableBottomEdge,
+        });
+        let expected = serde_json::json!({
+            "tables": [{"index": 4, "order": 2, "node_id": 37,
+                "column_widths": [80.0, 120.0], "row_heights": [24.0]}],
+            "handles": [{"table_index": 4, "column_index": 0, "x": 92.0,
+                "top": 12.0, "bottom": 36.0, "kind": "TableRightEdge", "reverse_delta": true}],
+            "row_handles": [{"table_index": 4, "row_index": 0, "y": 36.0,
+                "left": 12.0, "right": 212.0, "kind": "TableBottomEdge"}],
+        });
+        assert_eq!(
+            serde_json::to_value(renderer.shared_table_resize_metadata()).unwrap(),
+            expected
+        );
+        assert_eq!(
+            serde_json::to_value(renderer.table_resize_metadata()).unwrap(),
+            expected
+        );
+        let snapshot = renderer.shared_table_resize_metadata();
+        let second = renderer.shared_table_resize_metadata();
+        assert!(Rc::ptr_eq(&snapshot.tables, &second.tables));
+        assert!(Rc::ptr_eq(&snapshot.handles, &second.handles));
+        assert!(Rc::ptr_eq(&snapshot.row_handles, &second.row_handles));
+        // The view keeps the previous completed geometry during a new layout.
+        Rc::make_mut(&mut renderer.table_layouts).clear();
+        Rc::make_mut(&mut renderer.table_handles).clear();
+        Rc::make_mut(&mut renderer.table_row_handles).clear();
+        assert_eq!(serde_json::to_value(snapshot).unwrap(), expected);
+        assert_eq!(
+            serde_json::to_value(renderer.shared_table_resize_metadata()).unwrap(),
+            serde_json::json!({"tables": [], "handles": []})
+        );
+    }
 
     /// コメントの `w:date` は Word と同じ形（ローカルの壁時計に `Z` を付け、秒まで）で書く。
     ///
@@ -53821,14 +53911,15 @@ mod tests {
         renderer.render(&document, &options).expect("full layout");
         assert_eq!(renderer.table_layouts.len(), 3);
         let metadata = |renderer: &CanvasRenderer<jade_painter::recording::RecordingPainter>| {
-            serde_json::to_value((
-                &renderer.table_layouts,
-                &renderer.table_handles,
-                &renderer.table_row_handles,
-            ))
-            .unwrap()
+            let metadata = serde_json::to_value(renderer.shared_table_resize_metadata()).unwrap();
+            assert_eq!(
+                metadata,
+                serde_json::to_value(renderer.table_resize_metadata()).unwrap()
+            );
+            metadata
         };
         let before = metadata(&renderer);
+        let completed = renderer.shared_table_resize_metadata();
         for page_index in [1, 0, 2] {
             renderer.set_layout_page_limit(Some(page_index + 1));
             renderer.set_visible_page_range(Some(page_index + 1..=page_index + 1));
@@ -53842,6 +53933,10 @@ mod tests {
             }
             renderer.render(&document, &options).expect("page bitmap");
             assert_eq!(metadata(&renderer), before, "page {page_index}");
+            let current = renderer.shared_table_resize_metadata();
+            assert!(Rc::ptr_eq(&completed.tables, &current.tables));
+            assert!(Rc::ptr_eq(&completed.handles, &current.handles));
+            assert!(Rc::ptr_eq(&completed.row_handles, &current.row_handles));
             for table_id in 0..3 {
                 assert_eq!(renderer.table_order_for(table_id), Some(table_id));
                 let cell = renderer
@@ -53857,6 +53952,7 @@ mod tests {
             .render(&document, &options)
             .expect("layout extension");
         assert_eq!(metadata(&renderer), before);
+        assert_eq!(serde_json::to_value(completed).unwrap(), before);
         for table_id in 0..3 {
             let cell = renderer
                 .cell_id_for_paragraph(table_id * 2)

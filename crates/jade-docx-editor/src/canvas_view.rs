@@ -16,7 +16,7 @@ use wasm_bindgen_futures::{future_to_promise, JsFuture};
 use web_sys::{self, ImageBitmap, OffscreenCanvas, WorkerGlobalScope};
 
 use crate::canvas_renderer::{
-    CanvasRenderer, FieldDateTime, TableResizeHandleKind, TableResizeMetadata,
+    CanvasRenderer, FieldDateTime, SharedTableResizeMetadata, TableResizeHandleKind,
     TableRowResizeHandleKind,
 };
 use crate::commands::apply_underline::ApplyUnderlineCommand;
@@ -211,7 +211,7 @@ struct CanvasDocumentState {
     object_selection: Option<FloatingObjectTarget>,
     inline_formatting: InlineFormattingState,
     caret_goal_x: Option<f64>,
-    table_resize: TableResizeMetadata,
+    table_resize: SharedTableResizeMetadata,
     editing_mode: EditingMode,
     /// Header/footer variant the active edit session is attached to. Only
     /// meaningful when `editing_mode != Body`. Chosen at click time based on
@@ -1918,7 +1918,7 @@ impl OffscreenDocumentView {
         self.wait_for_pending_images().await?;
         let mut renderer_mut = self.renderer.borrow_mut();
         let (snapshots, _dirty_regions) = self.capture_paged_images(&mut renderer_mut)?;
-        let metadata = renderer_mut.table_resize_metadata();
+        let metadata = renderer_mut.shared_table_resize_metadata();
         drop(renderer_mut);
         {
             let mut state_mut = self.state.borrow_mut();
@@ -1936,7 +1936,7 @@ impl OffscreenDocumentView {
         self.wait_for_pending_images().await?;
         let mut renderer_mut = self.renderer.borrow_mut();
         let (snapshots, dirty_regions) = self.capture_paged_images(&mut renderer_mut)?;
-        let metadata = renderer_mut.table_resize_metadata();
+        let metadata = renderer_mut.shared_table_resize_metadata();
         drop(renderer_mut);
         {
             let mut state_mut = self.state.borrow_mut();
@@ -5530,7 +5530,7 @@ impl OffscreenDocumentView {
 
         let metadata = {
             let renderer_ref = self.renderer.borrow();
-            renderer_ref.table_resize_metadata()
+            renderer_ref.shared_table_resize_metadata()
         };
 
         let mut best_column: Option<(usize, f64)> = None;
@@ -7090,7 +7090,7 @@ impl OffscreenDocumentView {
                 renderer_mut.coalesce_dirty_regions();
                 let dirty_regions = renderer_mut.dirty_regions();
                 let dirty_regions_js = Self::dirty_regions_to_js(&dirty_regions);
-                let meta = renderer_mut.table_resize_metadata();
+                let meta = renderer_mut.shared_table_resize_metadata();
                 renderer_mut.clear_dirty_regions();
                 (meta, dirty_regions_js)
             };
@@ -7462,7 +7462,7 @@ impl OffscreenDocumentView {
                 renderer_mut.coalesce_dirty_regions();
                 let dirty_regions = renderer_mut.dirty_regions();
                 let dirty_regions_js = Self::dirty_regions_to_js(&dirty_regions);
-                let metadata = renderer_mut.table_resize_metadata();
+                let metadata = renderer_mut.shared_table_resize_metadata();
                 renderer_mut.clear_dirty_regions();
                 (metadata, dirty_regions_js)
             };
@@ -7915,7 +7915,7 @@ impl OffscreenDocumentView {
                 renderer_mut.coalesce_dirty_regions();
                 let dirty_regions = renderer_mut.dirty_regions();
                 let dirty_regions_js = Self::dirty_regions_to_js(&dirty_regions);
-                let meta = renderer_mut.table_resize_metadata();
+                let meta = renderer_mut.shared_table_resize_metadata();
                 renderer_mut.clear_dirty_regions();
                 (meta, dirty_regions_js)
             };
@@ -8790,7 +8790,7 @@ impl OffscreenDocumentView {
         // Keep table resize metadata in sync for all render paths, including
         // non-lazy snapshot capture. Frontend hit-testing fetches this state
         // asynchronously, so stale values can cause handler-coordinate drift.
-        let metadata = renderer.table_resize_metadata();
+        let metadata = renderer.shared_table_resize_metadata();
         self.state.borrow_mut().table_resize = metadata;
 
         if self.state.borrow().options.pageless() {
@@ -8975,7 +8975,7 @@ impl OffscreenDocumentView {
             object_selection: None,
             inline_formatting: InlineFormattingState::default(),
             caret_goal_x: None,
-            table_resize: TableResizeMetadata::default(),
+            table_resize: SharedTableResizeMetadata::default(),
             editing_mode: EditingMode::default(),
             hf_variant: HfVariant::default(),
             hf_edit_cursor: None,
@@ -9299,7 +9299,7 @@ impl OffscreenDocumentView {
                             .map_err(|e| JsValue::from_str(&format!("{e:?}")))?;
                     }
 
-                    let metadata = renderer_mut.table_resize_metadata();
+                    let metadata = renderer_mut.shared_table_resize_metadata();
                     let pending = renderer_mut.drain_pending_image_promises();
                     (pending, metadata)
                 };
@@ -9430,7 +9430,7 @@ impl OffscreenDocumentView {
                             .map_err(|e| JsValue::from_str(&format!("{e:?}")))?;
                     }
 
-                    let metadata = renderer_mut.table_resize_metadata();
+                    let metadata = renderer_mut.shared_table_resize_metadata();
                     let pending = renderer_mut.drain_pending_image_promises();
                     let page_count = renderer_mut.page_count();
                     (pending, metadata, page_count)
@@ -9648,7 +9648,7 @@ impl OffscreenDocumentView {
                             .map_err(|e| JsValue::from_str(&format!("{e:?}")))?;
                     }
 
-                    let metadata = renderer_mut.table_resize_metadata();
+                    let metadata = renderer_mut.shared_table_resize_metadata();
                     let pending = renderer_mut.drain_pending_image_promises();
                     let page_count = renderer_mut.page_count();
                     let complete = renderer_mut.last_layout_complete();
@@ -9823,7 +9823,7 @@ impl OffscreenDocumentView {
             let pending = renderer_mut.drain_pending_image_promises();
             let page_count = renderer_mut.page_count();
             let complete = renderer_mut.last_layout_complete();
-            let table_resize_metadata = renderer_mut.table_resize_metadata();
+            let table_resize_metadata = renderer_mut.shared_table_resize_metadata();
             (pending, page_count, complete, table_resize_metadata)
         };
 
@@ -10385,7 +10385,7 @@ impl OffscreenDocumentView {
                 renderer_mut.coalesce_dirty_regions();
                 let dirty_regions = renderer_mut.dirty_regions();
                 let dirty_regions_js = Self::dirty_regions_to_js(&dirty_regions);
-                let meta = renderer_mut.table_resize_metadata();
+                let meta = renderer_mut.shared_table_resize_metadata();
                 renderer_mut.clear_dirty_regions();
                 (meta, dirty_regions_js)
             };
@@ -16736,7 +16736,7 @@ impl OffscreenDocumentView {
             let mut renderer = self.renderer.borrow_mut();
             renderer.skip_change_detection_once();
             renderer.rerender_with_cached_state()?;
-            let metadata = renderer.table_resize_metadata();
+            let metadata = renderer.shared_table_resize_metadata();
             let (snapshots, _dirty_regions) = self.capture_paged_images(&mut renderer)?;
             (metadata, snapshots)
         };
@@ -18096,7 +18096,7 @@ impl OffscreenDocumentView {
         }
         let (snapshots, dirty_regions, metadata, caret_metrics) = {
             let mut renderer = self.renderer.borrow_mut();
-            let metadata = renderer.table_resize_metadata();
+            let metadata = renderer.shared_table_resize_metadata();
             let caret_metrics = renderer.caret_metrics();
             let (snapshots, dirty_regions) = self.capture_paged_images(&mut renderer)?;
             (snapshots, dirty_regions, metadata, caret_metrics)
@@ -18149,7 +18149,7 @@ impl OffscreenDocumentView {
                 page_dimensions,
                 page_count,
                 renderer.last_layout_complete(),
-                renderer.table_resize_metadata(),
+                renderer.shared_table_resize_metadata(),
                 renderer.caret_metrics(),
             )
         };
@@ -18278,7 +18278,7 @@ impl OffscreenDocumentView {
             renderer.mark_full_repaint();
             renderer.skip_change_detection_once();
             renderer.rerender_with_cached_state()?;
-            let metadata = renderer.table_resize_metadata();
+            let metadata = renderer.shared_table_resize_metadata();
             let caret_metrics = renderer.caret_metrics();
             let (snapshots, dirty_regions) = self.capture_paged_images(&mut renderer)?;
             (metadata, (snapshots, dirty_regions), caret_metrics)
@@ -18350,7 +18350,7 @@ impl OffscreenDocumentView {
             );
             renderer.skip_change_detection_once();
             renderer.rerender_with_cached_state()?;
-            let metadata = renderer.table_resize_metadata();
+            let metadata = renderer.shared_table_resize_metadata();
             let caret_metrics = renderer.caret_metrics();
             let (snapshots, dirty_regions) = self.capture_paged_images(&mut renderer)?;
             (metadata, (snapshots, dirty_regions), caret_metrics)
