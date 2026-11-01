@@ -59,6 +59,7 @@ pub mod outline;
 pub mod page_breaks;
 pub mod page_setup;
 mod patch;
+pub mod pictures;
 pub(crate) mod pivot_chart;
 pub mod pivot_refresh;
 mod pivots;
@@ -147,6 +148,8 @@ pub enum WriteError {
     Clipboard(String),
     #[error("no sheet called `{0}`")]
     NoSuchSheet(String),
+    #[error("picture: {0}")]
+    Picture(&'static str),
     #[error("copying a sheet: {0}")]
     CopySheet(String),
     #[error("a structural change needs at least one row or column")]
