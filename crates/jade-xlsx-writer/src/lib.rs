@@ -51,6 +51,7 @@ pub mod format_axes;
 pub mod freeze_panes;
 pub mod header_footer;
 pub mod hyperlinks;
+pub mod ignored_errors;
 pub mod merges;
 pub mod notes;
 pub mod objects;

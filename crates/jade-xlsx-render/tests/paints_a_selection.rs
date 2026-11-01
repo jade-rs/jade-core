@@ -64,6 +64,7 @@ fn laid_out(rows: u32) -> SheetLayout {
         rich_text: Default::default(),
         tab_color: None,
         sparkline_groups: Vec::new(),
+        ignored_errors: Vec::new(),
         outline: Default::default(),
         protection: None,
     };
@@ -231,6 +232,7 @@ fn selecting_a_merged_cell_borders_the_whole_merge_and_its_bands() {
         rich_text: Default::default(),
         tab_color: None,
         sparkline_groups: Vec::new(),
+        ignored_errors: Vec::new(),
         outline: Default::default(),
         protection: None,
     };

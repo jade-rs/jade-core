@@ -80,6 +80,7 @@ use jade_xlsx_reader::{
     StructureChange, Workbook,
 };
 pub use jade_xlsx_writer::freeze_panes::Frozen;
+pub use jade_xlsx_writer::ignored_errors::ErrorCheck;
 pub use jade_xlsx_writer::outline::OutlineChange;
 pub use jade_xlsx_writer::pivot_refresh::{
     pivot_configuration, PivotCreate, PivotDestination, PivotFieldOptions, PivotFilterSelection,
@@ -1666,6 +1667,40 @@ impl HeadlessWorkbook {
         if patched == xml {
             return Ok(false);
         }
+        self.replace_parts(vec![(part_name, patched)])?;
+        Ok(true)
+    }
+
+    /// Ignore Error on the error button: `check` turned off for `range`,
+    /// so its cells lose their green triangle. One undo step; `false` when
+    /// the check is already off there.
+    pub fn ignore_error(
+        &mut self,
+        sheet: &str,
+        range: CellRange,
+        check: ErrorCheck,
+    ) -> Result<bool> {
+        let index = self.sheet_index(sheet)?;
+        let already = self.workbook.sheets[index]
+            .ignored_errors
+            .iter()
+            .any(|entry| {
+                let on = match check {
+                    ErrorCheck::NumberStoredAsText => entry.number_stored_as_text,
+                    ErrorCheck::EvalError => entry.eval_error,
+                };
+                on && entry
+                    .ranges
+                    .iter()
+                    .any(|covered| covered.contains(range.start) && covered.contains(range.end))
+            });
+        if already {
+            return Ok(false);
+        }
+        let part_name = self.workbook.sheets[index].part_name.clone();
+        let xml = jade_opc::read_part_str(&self.source, &part_name)?
+            .ok_or_else(|| jade_xlsx_writer::WriteError::MissingPart(part_name.clone()))?;
+        let patched = jade_xlsx_writer::ignored_errors::ignore_error(&xml, range, check)?;
         self.replace_parts(vec![(part_name, patched)])?;
         Ok(true)
     }
