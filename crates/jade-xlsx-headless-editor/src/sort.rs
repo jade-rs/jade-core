@@ -162,6 +162,9 @@ impl HeadlessWorkbook {
         if full.start.row > full.end.row || full.start.column > full.end.column {
             return Err(error("invalid sort range"));
         }
+        if request.by_columns {
+            return self.sort_left_to_right(index, request, full);
+        }
         let width = full.end.column - full.start.column + 1;
         if request.keys.is_empty()
             || request.keys.len() > 64
@@ -263,27 +266,7 @@ impl HeadlessWorkbook {
                 return Err(error("sort the complete filtered records"));
             }
         }
-        let locale: Locale = request
-            .locale
-            .as_deref()
-            .unwrap_or("en-US")
-            .parse()
-            .map_err(|_| error("invalid sort language tag"))?;
-        let phonetic = request
-            .phonetic
-            .unwrap_or(locale.id.language.as_str() == "ja");
-        let mut preferences: CollatorPreferences = locale.clone().into();
-        preferences.case_first = Some(CollationCaseFirst::Lower);
-        preferences.numeric_ordering = Some(CollationNumericOrdering::False);
-        let mut options = CollatorOptions::default();
-        options.strength = Some(Strength::Secondary);
-        options.case_level = Some(if request.case_sensitive {
-            CaseLevel::On
-        } else {
-            CaseLevel::Off
-        });
-        let collator = CollatorBorrowed::try_new(preferences, options)
-            .map_err(|cause| error(format!("sort language data is unavailable: {cause}")))?;
+        let (locale, phonetic, collator) = collation(request)?;
         let columns = request
             .keys
             .iter()
@@ -503,5 +486,176 @@ fn cell_color(
             .and_then(hex)
             .unwrap_or_default(),
         Some(_) => "pattern".into(),
+    }
+}
+
+/// The language, whether saved phonetic guides count, and the collator a
+/// sort request asks for.
+fn collation(request: &SortRequest) -> Result<(Locale, bool, CollatorBorrowed<'static>)> {
+    let locale: Locale = request
+        .locale
+        .as_deref()
+        .unwrap_or("en-US")
+        .parse()
+        .map_err(|_| error("invalid sort language tag"))?;
+    let phonetic = request
+        .phonetic
+        .unwrap_or(locale.id.language.as_str() == "ja");
+    let mut preferences: CollatorPreferences = locale.clone().into();
+    preferences.case_first = Some(CollationCaseFirst::Lower);
+    preferences.numeric_ordering = Some(CollationNumericOrdering::False);
+    let mut options = CollatorOptions::default();
+    options.strength = Some(Strength::Secondary);
+    options.case_level = Some(if request.case_sensitive {
+        CaseLevel::On
+    } else {
+        CaseLevel::Off
+    });
+    let collator = CollatorBorrowed::try_new(preferences, options)
+        .map_err(|cause| error(format!("sort language data is unavailable: {cause}")))?;
+    Ok((locale, phonetic, collator))
+}
+
+impl HeadlessWorkbook {
+    /// Sort Options ▸ Sort left to right: the range's columns put in the
+    /// order of the key rows' values (or colours), each column whole, in one
+    /// history step. Tables and filtered lists sort top to bottom only, as
+    /// in Excel; saved phonetic guides do not count here.
+    fn sort_left_to_right(
+        &mut self,
+        index: usize,
+        request: &SortRequest,
+        full: CellRange,
+    ) -> Result<SortSummary> {
+        let sheet = &self.workbook.sheets[index];
+        let height = full.end.row - full.start.row + 1;
+        if request.keys.is_empty()
+            || request.keys.len() > 64
+            || request.keys.iter().any(|key| key.column >= height)
+            || request
+                .keys
+                .iter()
+                .map(|key| (key.column, key.color.clone()))
+                .collect::<HashSet<_>>()
+                .len()
+                != request.keys.len()
+        {
+            return Err(error("sort requires 1–64 distinct rows within the range"));
+        }
+        let mut body = full;
+        body.start.column += u32::from(request.header);
+        if body.start.column > body.end.column {
+            return Err(error("sort range contains no data columns"));
+        }
+        let width = body.end.column - body.start.column + 1;
+        if width > SORT_ROW_LIMIT || u64::from(width) * u64::from(height) > SORT_CELL_LIMIT {
+            return Err(error("sort row/cell limit exceeded"));
+        }
+        let filtered = sheet
+            .auto_filter
+            .as_ref()
+            .and_then(|filter| filter.reference)
+            .is_some_and(|range| intersects(range, full));
+        if filtered
+            || sheet
+                .tables
+                .iter()
+                .any(|table| intersects(table.reference, full))
+        {
+            return Err(error("tables and filtered lists sort top to bottom only"));
+        }
+        let (locale, _, collator) = collation(request)?;
+        let cells: BTreeMap<_, _> = sheet
+            .rows
+            .iter()
+            .flat_map(|row| &row.cells)
+            .map(|cell| (cell.reference, cell))
+            .collect();
+        let mut keyed = Vec::with_capacity(width as usize);
+        for column in body.start.column..=body.end.column {
+            let mut values = vec![];
+            for key in &request.keys {
+                let at = CellRef::new(column, full.start.row + key.column);
+                if let Some(color) = &key.color {
+                    let of = cell_color(sheet, &self.workbook.styles, at, color.font) == color.rgb;
+                    values.push(SortValue::Number(if of { 0.0 } else { 1.0 }));
+                    continue;
+                }
+                let cell = cells.get(&at);
+                if cell.is_some_and(|cell| {
+                    cell.formula.is_some() && matches!(cell.value, CellValue::Empty)
+                }) {
+                    return Err(error(
+                        "calculate missing sort-key formula results before sorting",
+                    ));
+                }
+                if cell.is_some_and(
+                    |cell| matches!(cell.value, CellValue::Number(number) if !number.is_finite()),
+                ) {
+                    return Err(error("nonfinite sort key"));
+                }
+                values.push(SortValue::new(
+                    cell.map(|cell| &cell.value),
+                    None,
+                    request.case_sensitive,
+                ));
+            }
+            keyed.push((column, values));
+        }
+        let ascii_keys: Vec<_> = (0..request.keys.len())
+            .map(|index| {
+                locale.id.language.as_str() == "en"
+                    && keyed.iter().all(|(_, values)| {
+                        !matches!(&values[index], SortValue::Text { ascii: None, .. })
+                    })
+            })
+            .collect();
+        keyed.sort_by(|(_, a), (_, b)| {
+            a.iter()
+                .zip(b)
+                .zip(&request.keys)
+                .enumerate()
+                .map(|(index, ((a, b), key))| {
+                    a.compare(b, key.descending, ascii_keys[index], &collator)
+                })
+                .find(|order| *order != Ordering::Equal)
+                .unwrap_or(Ordering::Equal)
+        });
+        let order: Vec<_> = keyed.into_iter().map(|(column, _)| column).collect();
+        let moved = order
+            .iter()
+            .enumerate()
+            .filter(|(offset, column)| body.start.column + *offset as u32 != **column)
+            .count() as u32;
+        let written = jade_xlsx_writer::sort::permute(
+            &self.source,
+            sheet,
+            body,
+            jade_xlsx_reader::Axis::Columns,
+            &order,
+        )?;
+        // A saved row sort no longer describes these columns. Until column
+        // sort state is written, remove the previous state.
+        let written = jade_xlsx_writer::sort::clear_sort_state(&written, sheet, None, body)?;
+        let summary = SortSummary {
+            reference: format!(
+                "{}:{}",
+                format_reference(body.start),
+                format_reference(body.end)
+            ),
+            rows: width,
+            moved_rows: moved,
+            locale: locale.to_string(),
+            phonetic: false,
+        };
+        if written == self.source {
+            return Ok(summary);
+        }
+        let workbook = jade_xlsx_reader::read_xlsx(&written)?;
+        let before = std::mem::replace(&mut self.source, written);
+        self.workbook = workbook;
+        self.remember(before);
+        self.recalculate_after_edit();
+        Ok(summary)
     }
 }
