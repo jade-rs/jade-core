@@ -14663,6 +14663,99 @@ mod tests {
     }
 
     #[test]
+    fn accepting_a_font_change_keeps_underline_on_its_text_after_a_line_break() {
+        // break.docx: the run holding a line break and "あ" is cut into two
+        // runs by the parser. Paired one run per `w:r`, every run after it
+        // took the next run's element, and accepting the tracked font change
+        // (which reparses the formatting) moved the underline one run on.
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/break.docx"),
+        )
+        .expect("read fixture");
+        let mut word_doc =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+        use jade_docx_headless_api::HeadlessSectionBreakType;
+        apply_headless_commands_to_document(
+            &mut word_doc,
+            &HeadlessEditRequest {
+                commands: vec![
+                    HeadlessCommand::InsertText {
+                        paragraph: 0,
+                        offset: 6,
+                        text: "あ".to_string(),
+                    },
+                    HeadlessCommand::InsertSectionBreak {
+                        paragraph: 0,
+                        offset: 1,
+                        break_type: HeadlessSectionBreakType::Continuous,
+                    },
+                    HeadlessCommand::ApplyUnderline {
+                        start_paragraph: 1,
+                        start_offset: 8,
+                        end_paragraph: 1,
+                        end_offset: 11,
+                        kind: None,
+                        enabled: true,
+                    },
+                    HeadlessCommand::StartChangeTracking {
+                        author: Some("reviewer".to_string()),
+                        initials: None,
+                        date: None,
+                        date_utc: None,
+                    },
+                    HeadlessCommand::InsertSectionBreak {
+                        paragraph: 0,
+                        offset: 0,
+                        break_type: HeadlessSectionBreakType::NextPage,
+                    },
+                    HeadlessCommand::SetFontFamily {
+                        start_paragraph: 2,
+                        start_offset: 4,
+                        end_paragraph: 2,
+                        end_offset: 10,
+                        font_family: "ＭＳ 明朝".to_string(),
+                    },
+                    HeadlessCommand::AcceptRevisions {
+                        kind: None,
+                        start_paragraph: None,
+                        end_paragraph: None,
+                        revision_id: None,
+                        revision_ids: None,
+                        revision_targets: None,
+                    },
+                ],
+            },
+        )
+        .expect("edits");
+        // Each character with whether it is underlined, across run cuts.
+        let underlined = |word_doc: &WordDocument| {
+            word_doc
+                .paragraph(2)
+                .expect("paragraph")
+                .runs
+                .iter()
+                .flat_map(|run| {
+                    let underline = run
+                        .properties
+                        .as_ref()
+                        .and_then(|props| props.underline)
+                        .unwrap_or(false);
+                    run.text.chars().map(move |ch| (ch, underline))
+                })
+                .collect::<Vec<_>>()
+        };
+        let reloaded = executor::block_on(WordDocument::load(
+            &word_doc.export_docx().expect("export"),
+            &Options::default(),
+        ))
+        .expect("reload");
+        assert_eq!(underlined(&word_doc), underlined(&reloaded));
+        assert!(underlined(&word_doc).contains(&('w', true)));
+        assert!(underlined(&word_doc).contains(&('d', false)));
+    }
+
+    #[test]
     fn tracked_formatting_of_a_text_box_paragraph_can_be_rejected() {
         // shape-preset-geometries.docx has shapes whose paragraphs are not in
         // the XML until an edit writes them. With changes tracked, setting

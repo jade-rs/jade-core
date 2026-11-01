@@ -111,16 +111,42 @@ fn map_paragraph(paragraph: &mut Paragraph, xml_paragraph: &XmlElement, doc: &Do
     collect_run_slots(&xml_paragraph.children, None, doc, &mut slots);
     let mut slots = slots.into_iter();
 
-    for run in &mut paragraph.runs {
+    let mut next_run = 0;
+    while next_run < paragraph.runs.len() {
+        let index = next_run;
+        next_run += 1;
         // A bare slot whose content the parser did not turn into a run (a
         // `w:fldSimple` nested in another field's instruction) owns no model
         // run. Skip it rather than leave this run without its `w:r`.
-        let Some(slot) = slots.find(|slot| match slot {
-            RunSlot::Element(..) => true,
-            RunSlot::Bare(bare) => bare.is_modeled_by(run),
-        }) else {
+        let slot = {
+            let run = &paragraph.runs[index];
+            slots.find(|slot| match slot {
+                RunSlot::Element(..) => true,
+                RunSlot::Bare(bare) => bare.is_modeled_by(run),
+            })
+        };
+        let Some(slot) = slot else {
             break;
         };
+        // The parser cuts a `w:r` holding soft line breaks into a run per
+        // break and per stretch of text between them (see
+        // `split_run_by_soft_breaks`). The first piece takes the `w:r`; the
+        // rest have none of their own, as after a split in the editor.
+        // Paired a `w:r` each, every later run in the paragraph took the
+        // next run's element.
+        if let RunSlot::Element(xml_run, _) = &slot {
+            let pieces = soft_break_pieces(xml_run);
+            if pieces.len() > 1
+                && paragraph.runs.len() >= index + pieces.len()
+                && paragraph.runs[index..index + pieces.len()]
+                    .iter()
+                    .zip(&pieces)
+                    .all(|(run, &is_break)| (run.text == "\n") == is_break)
+            {
+                next_run = index + pieces.len();
+            }
+        }
+        let run = &mut paragraph.runs[index];
         let RunSlot::Element(xml_run, wrapper_id) = slot else {
             // Bare content has no `w:r`. Empty fields still name their
             // source container so the writer can reuse it exactly once.
@@ -160,6 +186,59 @@ fn map_paragraph(paragraph: &mut Paragraph, xml_paragraph: &XmlElement, doc: &Do
             }
         }
     }
+}
+
+/// The runs the parser makes of `xml_run`: `true` for a soft line break,
+/// `false` for a stretch of text. One piece when the parser keeps the run
+/// whole — a carriage return, a break with `w:clear`, a drawing or a field.
+fn soft_break_pieces(xml_run: &XmlElement) -> Vec<bool> {
+    let mut pieces = Vec::new();
+    let mut has_text = false;
+    for child in element_children(xml_run) {
+        match child.name.as_str() {
+            "w:br" => {
+                let attribute = |name: &str| {
+                    child
+                        .attributes
+                        .iter()
+                        .find(|attribute| attribute.name == name)
+                        .map(|attribute| attribute.value.to_ascii_lowercase())
+                };
+                if attribute("w:clear").is_some() {
+                    return vec![false];
+                }
+                match attribute("w:type").as_deref() {
+                    None | Some("textwrapping") => {
+                        if std::mem::take(&mut has_text) {
+                            pieces.push(false);
+                        }
+                        pieces.push(true);
+                    }
+                    // A page or column break is a character of the text.
+                    _ => has_text = true,
+                }
+            }
+            "w:cr"
+            | "w:drawing"
+            | "w:pict"
+            | "w:object"
+            | "mc:AlternateContent"
+            | "w:fldChar"
+            | "w:instrText" => return vec![false],
+            "w:t" | "w:delText" => {
+                has_text |= child
+                    .children
+                    .iter()
+                    .any(|node| matches!(node, XmlNode::Text(text) if !text.is_empty()));
+            }
+            "w:tab" | "w:ptab" | "w:noBreakHyphen" | "w:softHyphen" | "w:sym" => has_text = true,
+            _ => {}
+        }
+    }
+    if has_text {
+        pieces.push(false);
+    }
+    pieces
 }
 
 fn map_run(run: &mut Run, xml_run: &XmlElement) {
@@ -866,6 +945,75 @@ mod tests {
                 })
                 .collect();
             assert_eq!(texts, expected);
+        }
+    }
+
+    #[test]
+    fn a_run_cut_at_soft_breaks_keeps_later_runs_on_their_own_elements() {
+        // The parser makes "A", "\n", "B" of the first `w:r`. Paired a `w:r`
+        // each, the break took "C"'s element and "B" and "C" had none.
+        for (body, bound) in [
+            (
+                r#"<w:p><w:r><w:t>A</w:t><w:br/><w:t>B</w:t></w:r><w:r><w:t>C</w:t></w:r></w:p>"#,
+                vec![
+                    ("A", Some("A\u{0}B")),
+                    ("\n", None),
+                    ("B", None),
+                    ("C", Some("C")),
+                ],
+            ),
+            (
+                r#"<w:p><w:r><w:br w:type="textWrapping"/><w:t>B</w:t></w:r><w:r><w:t>C</w:t></w:r></w:p>"#,
+                vec![("\n", Some("\u{0}B")), ("B", None), ("C", Some("C"))],
+            ),
+            (
+                r#"<w:p><w:r><w:t>A</w:t><w:br/></w:r><w:r><w:t>C</w:t></w:r></w:p>"#,
+                vec![("A", Some("A\u{0}")), ("\n", None), ("C", Some("C"))],
+            ),
+            // A break that clears floats keeps its run whole.
+            (
+                r#"<w:p><w:r><w:t>A</w:t><w:br w:clear="all"/><w:t>B</w:t></w:r><w:r><w:t>C</w:t></w:r></w:p>"#,
+                vec![("A\nB", Some("A\u{0}B")), ("C", Some("C"))],
+            ),
+        ] {
+            let xml = format!(
+                r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>{body}</w:body></w:document>"#
+            );
+            let mut document = DocumentParser::new()
+                .parse_document_xml(&xml)
+                .expect("parse");
+            let raw = DocxXmlDocument::parse(&xml).expect("parse raw");
+            attach_document_xml_ids(&mut document, &raw).expect("map ids");
+            let paragraph = document.body.as_ref().expect("body").elements[0]
+                .as_paragraph()
+                .expect("paragraph");
+            // Each run's text, and its element's: `w:t` text, a break as NUL.
+            let element_text = |id| {
+                let element = raw.element(id).expect("run element");
+                element_children(element)
+                    .map(|child| match child.name.as_str() {
+                        "w:br" => "\u{0}".to_string(),
+                        _ => child
+                            .children
+                            .iter()
+                            .filter_map(|node| match node {
+                                XmlNode::Text(text) => Some(text.as_str()),
+                                _ => None,
+                            })
+                            .collect(),
+                    })
+                    .collect::<String>()
+            };
+            let actual: Vec<_> = paragraph
+                .runs
+                .iter()
+                .map(|run| (run.text.clone(), run.node_id.map(element_text)))
+                .collect();
+            let expected: Vec<_> = bound
+                .into_iter()
+                .map(|(text, element)| (text.to_string(), element.map(str::to_string)))
+                .collect();
+            assert_eq!(actual, expected, "{body}");
         }
     }
 
