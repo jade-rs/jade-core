@@ -15,6 +15,27 @@ const AFTER_PROPERTIES: &[&[u8]] = &[
     b"sheetData",
     b"extLst",
 ];
+/// What follows `printOptions`: `pageMargins` and all that follows it.
+const AFTER_PRINT_OPTIONS: &[&[u8]] = &[
+    b"pageMargins",
+    b"pageSetup",
+    b"headerFooter",
+    b"rowBreaks",
+    b"colBreaks",
+    b"customProperties",
+    b"cellWatches",
+    b"ignoredErrors",
+    b"smartTags",
+    b"drawing",
+    b"legacyDrawing",
+    b"legacyDrawingHF",
+    b"picture",
+    b"oleObjects",
+    b"controls",
+    b"webPublishItems",
+    b"tableParts",
+    b"extLst",
+];
 const AFTER_MARGINS: &[&[u8]] = &[
     b"pageSetup",
     b"headerFooter",
@@ -86,6 +107,21 @@ pub fn set_page_setup(original: &[u8], sheet: &str, setup: &PageSetup) -> Result
         ],
         &AFTER_MARGINS[1..],
     )?;
+    let flags = [
+        ("horizontalCentered", setup.center_horizontally),
+        ("verticalCentered", setup.center_vertically),
+        ("gridLines", setup.print_grid_lines),
+        ("headings", setup.print_headings),
+    ];
+    let xml = if flags.iter().any(|(_, on)| *on) || xml.contains("printOptions") {
+        let updates: Vec<_> = flags
+            .iter()
+            .map(|(name, on)| (*name, on.then(|| "1".to_string())))
+            .collect();
+        child_attributes(&xml, b"printOptions", &updates, AFTER_PRINT_OPTIONS)?
+    } else {
+        xml
+    };
     let xml = if let Some(m) = setup.margins {
         child_attributes(
             &xml,
