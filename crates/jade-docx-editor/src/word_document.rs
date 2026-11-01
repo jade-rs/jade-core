@@ -37103,6 +37103,23 @@ impl WordDocument {
                 && run.math.is_none()
         }
 
+        fn source_run_piece_len(element: &XmlElement) -> usize {
+            element
+                .children
+                .iter()
+                .filter_map(|node| match node {
+                    XmlNode::Element(child) => Some(child),
+                    _ => None,
+                })
+                .map(|child| match child.name.as_str() {
+                    // The parser represents each break as a character in the
+                    // run pieces, even though it has no text child in OOXML.
+                    "w:br" | "w:cr" => 1,
+                    _ => WordDocument::display_len_for_element(child),
+                })
+                .sum()
+        }
+
         // What is left of the text of the last run written to its own `w:r`,
         // in characters. Unbound plain runs that fit in it are pieces of
         // that run cut by an edit (formatting part of it), not new text.
@@ -37684,7 +37701,7 @@ impl WordDocument {
             let in_instruction = in_field_instruction(run);
             piece_budget = match existing_run_element.as_ref() {
                 Some(element) if following_piece => {
-                    Self::display_len_for_element(element).saturating_sub(run.text.chars().count())
+                    source_run_piece_len(element).saturating_sub(run.text.chars().count())
                 }
                 None if is_piece => piece_budget - run.text.chars().count(),
                 _ => 0,

@@ -15014,7 +15014,7 @@ mod tests {
         #![proptest_config(ProptestConfig { cases: 32, max_shrink_iters: 128, .. ProptestConfig::default() })]
         #[test]
         fn property_formatting_preserves_inline_marker_positions_through_export_and_reload(
-            chunks in prop::collection::vec(0usize..3, 1..5),
+            chunks in prop::collection::vec(0usize..6, 1..5),
             tc_markers in any::<bool>(),
             selection_start in any::<u8>(),
             selection_end in any::<u8>(),
@@ -15023,10 +15023,11 @@ mod tests {
             if tc_markers { body.push_str("<w:fldSimple w:instr=\" TC start \"/>"); }
             let mut text = String::new();
             for (index, chunk) in chunks.into_iter().enumerate() {
-                let chunk = ["abcd", "あいうえ", "🙂xyz"][chunk];
+                let chunk = ["abcd", "あいうえ", "🙂xyz", "ab\ncd", "あ\nいう", "🙂\nxyz"][chunk];
                 text.push_str(chunk);
                 if !tc_markers { body.push_str(&format!(r#"<w:bookmarkStart w:id="{index}" w:name="entry{index}"/>"#)); }
-                body.push_str(&format!(r#"<w:r><w:t>{chunk}</w:t></w:r>"#));
+                let xml_chunk = chunk.replace('\n', "</w:t><w:br/><w:t>");
+                body.push_str(&format!(r#"<w:r><w:t>{xml_chunk}</w:t></w:r>"#));
                 if tc_markers { body.push_str(&format!(r#"<w:fldSimple w:instr=" TC entry{index} "/>"#)); }
                 else { body.push_str(&format!(r#"<w:bookmarkEnd w:id="{index}"/>"#)); }
             }
@@ -15037,7 +15038,7 @@ mod tests {
             let b = usize::from(selection_end) % boundaries.len();
             prop_assume!(a != b);
             let mut doc = tc_test_document(&body);
-            let expected = tc_marker_positions(&toc_document_xml(&doc));
+            let expected = tc_marker_positions(&body);
             apply_headless_commands_to_document(&mut doc, &HeadlessEditRequest {
                 commands: vec![HeadlessCommand::SetFontSize {
                     start_paragraph: 0,
@@ -15049,6 +15050,7 @@ mod tests {
             }).expect("format");
             prop_assert!(doc.paragraph(0).expect("paragraph").runs.iter().any(|run|
                 run.properties.as_ref().and_then(|props| props.font_size) == Some(37.0)));
+            prop_assert_eq!(doc.paragraph(0).expect("paragraph").runs.iter().map(|run| run.text.as_str()).collect::<String>(), text);
             let live_xml = doc.raw_document.as_ref().expect("live XML").to_string().expect("serialize");
             prop_assert_eq!(&tc_marker_positions(&live_xml), &expected);
             prop_assert_eq!(&tc_marker_positions(&toc_document_xml(&doc)), &expected);
@@ -15057,6 +15059,43 @@ mod tests {
             )).expect("reload");
             prop_assert_eq!(&tc_marker_positions(&toc_document_xml(&doc)), &expected);
         }
+    }
+
+    #[test]
+    fn formatting_a_soft_break_run_keeps_its_bookmark_after_all_fragments() {
+        let body = r#"<w:p><w:bookmarkStart w:id="0" w:name="entry"/><w:r><w:t>ab</w:t><w:br/><w:t>cd</w:t></w:r><w:bookmarkEnd w:id="0"/></w:p>"#;
+        let mut doc = tc_test_document(body);
+        let expected = tc_marker_positions(body);
+        apply_headless_commands_to_document(
+            &mut doc,
+            &HeadlessEditRequest {
+                commands: vec![HeadlessCommand::SetFontSize {
+                    start_paragraph: 0,
+                    start_offset: 0,
+                    end_paragraph: 0,
+                    end_offset: 1,
+                    font_size: 37.0,
+                }],
+            },
+        )
+        .expect("format");
+        assert_eq!(
+            doc.paragraph(0)
+                .expect("paragraph")
+                .runs
+                .iter()
+                .map(|run| run.text.as_str())
+                .collect::<String>(),
+            "ab\ncd"
+        );
+        let live_xml = doc
+            .raw_document
+            .as_ref()
+            .expect("live XML")
+            .to_string()
+            .expect("serialize");
+        assert_eq!(tc_marker_positions(&live_xml), expected);
+        assert_eq!(tc_marker_positions(&toc_document_xml(&doc)), expected);
     }
 
     #[test]
