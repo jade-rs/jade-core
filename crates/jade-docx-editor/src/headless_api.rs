@@ -15010,6 +15010,145 @@ mod tests {
         }
     }
 
+    proptest! {
+        #![proptest_config(ProptestConfig { cases: 32, max_shrink_iters: 128, .. ProptestConfig::default() })]
+        #[test]
+        fn property_formatting_preserves_inline_marker_positions_through_export_and_reload(
+            chunks in prop::collection::vec(0usize..6, 1..5),
+            tc_markers in any::<bool>(),
+            selection_start in any::<u8>(),
+            selection_end in any::<u8>(),
+        ) {
+            let mut body = String::from("<w:p>");
+            if tc_markers { body.push_str("<w:fldSimple w:instr=\" TC start \"/>"); }
+            let mut text = String::new();
+            for (index, chunk) in chunks.into_iter().enumerate() {
+                let chunk = ["abcd", "あいうえ", "🙂xyz", "ab\ncd", "あ\nいう", "🙂\nxyz"][chunk];
+                text.push_str(chunk);
+                if !tc_markers { body.push_str(&format!(r#"<w:bookmarkStart w:id="{index}" w:name="entry{index}"/>"#)); }
+                let xml_chunk = chunk.replace('\n', "</w:t><w:br/><w:t>");
+                body.push_str(&format!(r#"<w:r><w:t>{xml_chunk}</w:t></w:r>"#));
+                if tc_markers { body.push_str(&format!(r#"<w:fldSimple w:instr=" TC entry{index} "/>"#)); }
+                else { body.push_str(&format!(r#"<w:bookmarkEnd w:id="{index}"/>"#)); }
+            }
+            body.push_str("</w:p>");
+            let boundaries: Vec<_> = text.char_indices().map(|(index, _)| index)
+                .chain(std::iter::once(text.len())).collect();
+            let a = usize::from(selection_start) % boundaries.len();
+            let b = usize::from(selection_end) % boundaries.len();
+            prop_assume!(a != b);
+            let mut doc = tc_test_document(&body);
+            let expected = tc_marker_positions(&body);
+            apply_headless_commands_to_document(&mut doc, &HeadlessEditRequest {
+                commands: vec![HeadlessCommand::SetFontSize {
+                    start_paragraph: 0,
+                    start_offset: boundaries[a.min(b)],
+                    end_paragraph: 0,
+                    end_offset: boundaries[a.max(b)],
+                    font_size: 37.0,
+                }],
+            }).expect("format");
+            prop_assert!(doc.paragraph(0).expect("paragraph").runs.iter().any(|run|
+                run.properties.as_ref().and_then(|props| props.font_size) == Some(37.0)));
+            prop_assert_eq!(doc.paragraph(0).expect("paragraph").runs.iter().map(|run| run.text.as_str()).collect::<String>(), text);
+            let live_xml = doc.raw_document.as_ref().expect("live XML").to_string().expect("serialize");
+            prop_assert_eq!(&tc_marker_positions(&live_xml), &expected);
+            prop_assert_eq!(&tc_marker_positions(&toc_document_xml(&doc)), &expected);
+            doc = executor::block_on(WordDocument::load(
+                &doc.export_docx().expect("export"), &Options::default(),
+            )).expect("reload");
+            prop_assert_eq!(&tc_marker_positions(&toc_document_xml(&doc)), &expected);
+        }
+    }
+
+    #[test]
+    fn formatting_a_soft_break_run_keeps_its_bookmark_after_all_fragments() {
+        let body = r#"<w:p><w:bookmarkStart w:id="0" w:name="entry"/><w:r><w:t>ab</w:t><w:br/><w:t>cd</w:t></w:r><w:bookmarkEnd w:id="0"/></w:p>"#;
+        let mut doc = tc_test_document(body);
+        let expected = tc_marker_positions(body);
+        apply_headless_commands_to_document(
+            &mut doc,
+            &HeadlessEditRequest {
+                commands: vec![HeadlessCommand::SetFontSize {
+                    start_paragraph: 0,
+                    start_offset: 0,
+                    end_paragraph: 0,
+                    end_offset: 1,
+                    font_size: 37.0,
+                }],
+            },
+        )
+        .expect("format");
+        assert_eq!(
+            doc.paragraph(0)
+                .expect("paragraph")
+                .runs
+                .iter()
+                .map(|run| run.text.as_str())
+                .collect::<String>(),
+            "ab\ncd"
+        );
+        let live_xml = doc
+            .raw_document
+            .as_ref()
+            .expect("live XML")
+            .to_string()
+            .expect("serialize");
+        assert_eq!(tc_marker_positions(&live_xml), expected);
+        assert_eq!(tc_marker_positions(&toc_document_xml(&doc)), expected);
+    }
+
+    #[test]
+    fn formatting_part_of_a_run_keeps_a_field_after_its_text() {
+        // toc-tc-field-edge-cases.docx: paragraph 6 ends with a TC field (no
+        // run of its own in the model). Formatting part of its text cut the
+        // run, and the field was written before the second piece: in the
+        // middle of the text, moving the entry's place in the document.
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/toc-tc-field-edge-cases.docx"),
+        )
+        .expect("read fixture");
+        let mut word_doc =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+        apply_headless_commands_to_document(
+            &mut word_doc,
+            &HeadlessEditRequest {
+                commands: vec![HeadlessCommand::SetFontSize {
+                    start_paragraph: 6,
+                    start_offset: 34,
+                    end_paragraph: 6,
+                    end_offset: 36,
+                    font_size: 14.0,
+                }],
+            },
+        )
+        .expect("size");
+        let raw = word_doc.raw_document.as_ref().expect("document xml");
+        let paragraph = raw
+            .element(
+                word_doc
+                    .paragraph(6)
+                    .and_then(|p| p.node_id)
+                    .expect("bound"),
+            )
+            .expect("paragraph xml");
+        // The children after the last run with text.
+        let names: Vec<&str> = paragraph
+            .children
+            .iter()
+            .filter_map(|node| match node {
+                crate::docx_xml::XmlNode::Element(element) => Some(element.name.as_str()),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(names.last(), Some(&"w:fldSimple"), "{names:?}");
+        assert_eq!(
+            names.iter().filter(|name| **name == "w:fldSimple").count(),
+            1
+        );
+    }
+
     #[test]
     fn accepting_a_font_change_keeps_underline_on_its_text_after_a_line_break() {
         // break.docx: the run holding a line break and "あ" is cut into two

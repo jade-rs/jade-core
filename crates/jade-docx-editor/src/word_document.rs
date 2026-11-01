@@ -37093,8 +37093,45 @@ impl WordDocument {
 
         let mut new_children = Vec::new();
 
+        fn is_unbound_plain_run(run: &Run) -> bool {
+            run.node_id.is_none()
+                && !run.text.is_empty()
+                && run.field.is_none()
+                && run.hyperlink.is_none()
+                && run.text_box.is_none()
+                && run.image.is_none()
+                && run.math.is_none()
+        }
+
+        fn source_run_piece_len(element: &XmlElement) -> usize {
+            element
+                .children
+                .iter()
+                .filter_map(|node| match node {
+                    XmlNode::Element(child) => Some(child),
+                    _ => None,
+                })
+                .map(|child| match child.name.as_str() {
+                    // The parser represents each break as a character in the
+                    // run pieces, even though it has no text child in OOXML.
+                    "w:br" | "w:cr" => 1,
+                    _ => WordDocument::display_len_for_element(child),
+                })
+                .sum()
+        }
+
+        // What is left of the text of the last run written to its own `w:r`,
+        // in characters. Unbound plain runs that fit in it are pieces of
+        // that run cut by an edit (formatting part of it), not new text.
+        let mut piece_budget = 0usize;
         let mut run_index = 0usize;
         while run_index < runs.len() {
+            let is_piece = piece_budget > 0
+                && is_unbound_plain_run(&runs[run_index])
+                && runs[run_index].text.chars().count() <= piece_budget;
+            if !is_piece {
+                piece_budget = 0;
+            }
             loop {
                 // Text edits can delete every logical run before an anchor.
                 // Discard source run elements that no remaining model run owns
@@ -37118,6 +37155,12 @@ impl WordDocument {
                     break;
                 }
                 if !matches!(tokens.front(), Some(ChildToken::NonRun(_))) {
+                    break;
+                }
+                // What came after the run's `w:r` (a field or marker at the
+                // end of its text) stays after all its pieces. Written before
+                // the next piece, a split moved it to the cut.
+                if is_piece {
                     break;
                 }
                 // Inline equations and result-less simple fields are model
@@ -37641,6 +37684,9 @@ impl WordDocument {
                 }
             }
 
+            // Ordinary bound runs need no source-text traversal. A budget is
+            // only consumed by an immediately following unbound plain run.
+            let following_piece = runs.get(run_index + 1).is_some_and(is_unbound_plain_run);
             let run = &mut runs[run_index];
             let existing_run_element = match tokens.front() {
                 Some(ChildToken::RunElement(element)) if run.node_id == Some(element.id) => {
@@ -37653,6 +37699,13 @@ impl WordDocument {
             };
 
             let in_instruction = in_field_instruction(run);
+            piece_budget = match existing_run_element.as_ref() {
+                Some(element) if following_piece => {
+                    source_run_piece_len(element).saturating_sub(run.text.chars().count())
+                }
+                None if is_piece => piece_budget - run.text.chars().count(),
+                _ => 0,
+            };
             let element_result = existing_run_element
                 .and_then(|element| {
                     Self::update_run_element(doc, element, run, preserve_drawings, in_instruction)
