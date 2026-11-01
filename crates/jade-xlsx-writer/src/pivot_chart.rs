@@ -129,6 +129,33 @@ fn series_bindings(
 /// A report tab rename keeps its explicit local chart binding. Work from the
 /// original model because the staged package's series formulas already name
 /// the new sheet. Unresolved/external bindings remain opaque.
+/// A PivotChart copied with sheet `source` as sheet `copy`: one showing a
+/// pivot table on `source` shows the copy's (which has its name), as
+/// Excel's Move or Copy does; one showing a pivot table elsewhere keeps
+/// showing it. A chart without a pivot source comes back as it was.
+pub(crate) fn copied_chart_source(xml: &str, source: &str, copy: &str) -> Result<String> {
+    let Some(pivot) = jade_xlsx_reader::chart::parse_chart(xml)?.pivot_source else {
+        return Ok(xml.to_string());
+    };
+    let Some(name) = pivot.qualified_name() else {
+        return Err(WriteError::CopySheet(
+            "a PivotChart's pivot table cannot be told".into(),
+        ));
+    };
+    if !jade_xlsx_reader::formula::same_sheet_name(&name.sheet, source) {
+        return Ok(xml.to_string());
+    }
+    let owner = format!(
+        "{}{copy}",
+        name.workbook
+            .as_ref()
+            .map(|book| format!("[{book}]"))
+            .unwrap_or_default()
+    );
+    let renamed = format!("'{}'!{}", owner.replace('\'', "''"), name.pivot);
+    xml::rename_source(xml, &renamed)
+}
+
 pub(crate) fn rename_sheet_sources(
     package: &mut OpcPackage,
     before: &Workbook,
