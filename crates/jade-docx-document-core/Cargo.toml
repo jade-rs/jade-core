@@ -36,6 +36,7 @@ version = "0.1"
 optional = true
 
 [dev-dependencies]
+quick-xml = "0.41.0"
 serde_json = "1.0"
 jade-docx-layout-engine = { package = "jade-docx-layout", path = "../jade-docx-layout" }
 futures = "0.3"
