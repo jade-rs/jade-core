@@ -255,9 +255,10 @@ impl HeadlessWorkbook {
         Ok(id)
     }
 
-    /// Insert ▸ Shapes: a `preset` shape (`rect`, `ellipse`, `roundRect`,
-    /// `rightArrow`) on the sheet with its top-left at `at`'s, `size` px wide
-    /// and tall, named as Excel names a new one; returns the object's id.
+    /// Insert ▸ Shapes: a `preset` shape (one of
+    /// [`jade_xlsx_writer::shapes::SHAPES`], `rect` or `line` say) on the
+    /// sheet with its top-left at `at`'s, `size` px wide and tall, named as
+    /// Excel names a new one; returns the object's id.
     pub fn insert_shape(
         &mut self,
         sheet: &str,

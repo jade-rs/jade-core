@@ -103,3 +103,35 @@ fn shapes_go_in_filled_by_the_theme_and_named_as_excel_names_them() {
     assert!(workbook.undo().expect("undo"));
     assert_eq!(workbook.workbook().sheets[0].shapes.len(), shapes.len() - 1);
 }
+
+#[test]
+fn lines_go_in_as_connectors_and_the_gallery_reads_back_as_inserted() {
+    use jade_xlsx_reader::ShapeKind;
+    let mut workbook = open("sample-workbook.xlsx");
+    let sheet = workbook.workbook().sheets[0].name.clone();
+    let ids: Vec<(u32, &str, &str)> = jade_xlsx_writer::shapes::SHAPES
+        .iter()
+        .enumerate()
+        .map(|(index, (preset, name))| {
+            let at = CellRef::new(1 + (index as u32 % 4) * 3, 1 + (index as u32 / 4) * 6);
+            let id = workbook
+                .insert_shape(&sheet, at, preset, (144.0, 96.0))
+                .expect(preset);
+            (id, *preset, *name)
+        })
+        .collect();
+    let reopened = HeadlessWorkbook::open(workbook.bytes()).expect("reopen");
+    let shapes = &reopened.workbook().sheets[0].shapes;
+    for (id, preset, name) in ids {
+        let shape = shapes.iter().find(|shape| shape.id == id).expect(preset);
+        assert_eq!(shape.name, format!("{name} {id}"));
+        let style = shape.style.as_ref().expect(preset);
+        assert_eq!(style.geometry.as_deref(), Some(preset));
+        let line = jade_xlsx_writer::shapes::is_line(preset);
+        assert_eq!(shape.kind == ShapeKind::Connector, line, "{preset}");
+        if line {
+            let arrow = (preset == "straightConnector1").then(|| "triangle".to_string());
+            assert_eq!(style.tail_end, arrow, "{preset}");
+        }
+    }
+}
