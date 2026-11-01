@@ -5428,14 +5428,49 @@ impl WordDocument {
             return;
         }
 
+        // Where each run's `w:r` sits among the first box's runs, before
+        // this sync. A copy was written from the same runs, so its run at
+        // that place is the run's own. Paired by order instead, a run with
+        // no `w:r` (text typed into a box whose text was all deleted) took
+        // the next run's: in the VML fallback the text went into a nested
+        // box's run, and the nested box was written a second time.
+        let primary_positions: Vec<Option<usize>> = {
+            let primary_runs: HashMap<XmlNodeId, usize> = raw
+                .element(content_ids[0])
+                .and_then(|content| Self::locate_text_box_paragraph_element(content, path))
+                .map(Self::collect_text_box_run_bindings)
+                .unwrap_or_default()
+                .into_iter()
+                .filter_map(|(run_id, _)| run_id)
+                .enumerate()
+                .map(|(position, id)| (id, position))
+                .collect();
+            paragraph
+                .runs
+                .iter()
+                .map(|run| {
+                    let id = run.node_id?;
+                    primary_runs.get(&id).copied()
+                })
+                .collect()
+        };
         let mut primary_bindings: Option<Vec<(Option<XmlNodeId>, Option<XmlNodeId>)>> = None;
         for (index, content_id) in content_ids.iter().copied().enumerate() {
             let override_bindings = if index == 0 {
                 None
             } else {
                 raw.element(content_id).and_then(|content| {
-                    Self::locate_text_box_paragraph_element(content, path)
-                        .map(Self::collect_text_box_run_bindings)
+                    Self::locate_text_box_paragraph_element(content, path).map(|element| {
+                        let elements = Self::collect_text_box_run_bindings(element);
+                        primary_positions
+                            .iter()
+                            .map(|position| {
+                                position
+                                    .and_then(|position| elements.get(position).copied())
+                                    .unwrap_or((None, None))
+                            })
+                            .collect::<Vec<_>>()
+                    })
                 })
             };
 
@@ -54298,6 +54333,39 @@ mod tests {
                 doc = reload_exported(&doc);
             }
         }
+    }
+
+    #[test]
+    fn typing_into_a_box_emptied_in_front_of_a_nested_box_writes_the_nested_box_once() {
+        // Found by the proptest below: the outer box's paragraph is "Level 1"
+        // then a nested box, saved as DrawingML with a VML fallback. With its
+        // text all deleted, the empty run had no `w:r`; typed into, the VML
+        // copy paired it with the nested box's run, so the text went into
+        // that run and the nested box was written again beside it.
+        let bytes = imported_nested_text_box_docx(1, true);
+        let mut doc =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+        for _ in 0.."Level 1".len() {
+            delete_text_range(&mut doc, (1, 0), (1, 1));
+        }
+        insert_text_at(&mut doc, 1, 0, "a");
+        let exported = exported_document_xml(&doc);
+        assert_eq!(exported.matches("<w:txbxContent>").count(), 6, "{exported}");
+        assert_eq!(
+            exported.matches("<w:t>Level 0</w:t>").count(),
+            4,
+            "{exported}"
+        );
+        let reopened = reload_exported(&doc);
+        let text: String = reopened
+            .paragraph(1)
+            .expect("outer box paragraph")
+            .runs
+            .iter()
+            .filter(|run| run.text_box.is_none())
+            .map(|run| run.text.as_str())
+            .collect();
+        assert_eq!(text, "a");
     }
 
     proptest! {
