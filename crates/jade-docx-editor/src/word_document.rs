@@ -33154,6 +33154,7 @@ impl WordDocument {
         // block it came out of, to be rebuilt in place.
         let mut existing_text_box_drawing: Option<XmlElement> = None;
         let mut rebuilt_text_box_offset = 0;
+        let mut rebuilt_text_box_child_index = 0;
         let mut text_box_alternate_content: Option<(XmlElement, usize, usize)> = None;
         // The same for a picture, group, chart or SmartArt: patched in place
         // (see `patch_image_drawing_element`) rather than rebuilt.
@@ -33302,6 +33303,7 @@ impl WordDocument {
                         // A text box's drawing is rebuilt around its existing
                         // graphic (see `create_text_box_drawing_element`).
                         rebuilt_text_box_offset = logical_offset;
+                        rebuilt_text_box_child_index = preserved_inline_children.len();
                         existing_text_box_drawing = Some(element);
                     }
                 }
@@ -33336,6 +33338,7 @@ impl WordDocument {
                             if let XmlNode::Element(drawing) = choice.children.remove(drawing_index)
                             {
                                 rebuilt_text_box_offset = logical_offset;
+                                rebuilt_text_box_child_index = preserved_inline_children.len();
                                 existing_text_box_drawing = Some(drawing);
                             }
                             text_box_alternate_content =
@@ -33400,9 +33403,20 @@ impl WordDocument {
                     // beside it, the `w:pict` saved the box twice; and the
                     // rebuilt text, written from the model, lost what it does
                     // not hold (a field's codes). Its content moves over whole.
-                    vml_text_box_replaced = true;
-                    vml_text_box_content = Self::take_descendant(&mut element, "w:txbxContent");
-                    rebuilt_text_box_offset = logical_offset;
+                    if let Some(content) = Self::take_descendant(&mut element, "w:txbxContent") {
+                        vml_text_box_replaced = true;
+                        vml_text_box_content = Some(content);
+                        rebuilt_text_box_offset = logical_offset;
+                        rebuilt_text_box_child_index = preserved_inline_children.len();
+                    } else {
+                        // A run may carry an unrelated VML shape before its
+                        // text box. Only consume the pict that owns the box.
+                        preserved_inline_children.push(PreservedRunChild {
+                            offset: logical_offset,
+                            node: XmlNode::Element(element),
+                            consumed_text: None,
+                        });
+                    }
                 }
                 XmlNode::Element(element)
                     if preserve_drawings && element.name == "w:object" && run.image.is_some() =>
@@ -33472,22 +33486,24 @@ impl WordDocument {
         } else {
             None
         };
-        if has_serialized_text {
-            if let Some(node) = rebuilt_text_box {
-                preserved_inline_children.push(PreservedRunChild {
+        if let Some(node) = rebuilt_text_box {
+            // Keep the original position among zero-width children as well as
+            // its text offset. Appending after a later-offset sibling makes
+            // the text builder emit the replacement box too late.
+            preserved_inline_children.insert(
+                rebuilt_text_box_child_index,
+                PreservedRunChild {
                     offset: rebuilt_text_box_offset,
                     node,
                     consumed_text: None,
-                });
-            }
-        } else {
+                },
+            );
+        }
+        if !has_serialized_text {
             if let Some(rpr) = run_properties_element {
                 run_element.children.push(XmlNode::Element(rpr));
             }
             run_element.children.extend(reference_nodes);
-            if let Some(node) = rebuilt_text_box {
-                run_element.children.push(node);
-            }
             if let Some(image) = run.image.as_ref().filter(|_| !preserved_image_drawing) {
                 let drawing =
                     Self::create_image_drawing_element(doc, image, existing_image_drawing.take());

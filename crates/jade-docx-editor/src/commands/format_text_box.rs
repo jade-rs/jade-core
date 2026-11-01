@@ -410,10 +410,24 @@ mod tests {
 
     #[test]
     fn formatting_a_vml_text_box_in_a_mixed_text_run_keeps_both_contents() {
+        check_mixed_vml_run_formatting(false);
+    }
+
+    #[test]
+    fn formatting_a_vml_text_box_keeps_unrelated_vml_siblings() {
+        check_mixed_vml_run_formatting(true);
+    }
+
+    fn check_mixed_vml_run_formatting(with_vml_sibling: bool) {
         use std::io::{Read, Write};
 
         let fixture = std::fs::read(fixture_path("document-variable-fields.docx")).unwrap();
-        for text_before_box in [true, false] {
+        for (text_before_box, host_text) in [
+            (true, "host-text"),
+            (false, "host-text"),
+            (true, ""),
+            (false, ""),
+        ] {
             let mut source = zip::ZipArchive::new(std::io::Cursor::new(&fixture)).unwrap();
             let mut writer = zip::ZipWriter::new(std::io::Cursor::new(Vec::new()));
             for index in 0..source.len() {
@@ -421,11 +435,19 @@ mod tests {
                 let mut bytes = Vec::new();
                 entry.read_to_end(&mut bytes).unwrap();
                 if entry.name().unwrap() == "word/document.xml" {
-                    let xml = String::from_utf8(bytes).unwrap();
+                    let mut xml = String::from_utf8(bytes).unwrap();
+                    if with_vml_sibling {
+                        let sibling = r#"<w:pict><v:rect id="preserve-vml-sibling"/></w:pict>"#;
+                        xml = if text_before_box {
+                            xml.replacen("<w:pict", &format!("{sibling}<w:pict"), 1)
+                        } else {
+                            xml.replacen("</w:pict>", &format!("</w:pict>{sibling}"), 1)
+                        };
+                    }
                     bytes = if text_before_box {
-                        xml.replacen("<w:pict", "<w:t>host-text</w:t><w:pict", 1)
+                        xml.replacen("<w:pict", &format!("<w:t>{host_text}</w:t><w:pict"), 1)
                     } else {
-                        xml.replacen("</w:pict>", "</w:pict><w:t>host-text</w:t>", 1)
+                        xml.replacen("</w:pict>", &format!("</w:pict><w:t>{host_text}</w:t>"), 1)
                     }
                     .into_bytes();
                 }
@@ -445,7 +467,7 @@ mod tests {
             assert!(
                 word_doc.paragraph(target.paragraph_index).unwrap().runs[target.run_index]
                     .text
-                    .contains("host-text")
+                    .contains(host_text)
             );
             let mut selection = None;
             CommandExecutor::new()
@@ -461,8 +483,18 @@ mod tests {
                 )
                 .unwrap();
             let after = document_xml(&word_doc);
-            assert_eq!(after.matches("host-text").count(), 1);
-            assert_eq!(after.matches("<w:pict").count(), 0);
+            assert_eq!(
+                after.matches("host-text").count(),
+                usize::from(!host_text.is_empty())
+            );
+            assert_eq!(
+                after.matches("<w:pict").count(),
+                usize::from(with_vml_sibling)
+            );
+            assert_eq!(
+                after.matches("preserve-vml-sibling").count(),
+                usize::from(with_vml_sibling)
+            );
             assert_eq!(
                 after.matches("<w:drawing").count(),
                 1,
@@ -470,11 +502,19 @@ mod tests {
             );
             assert_eq!(after.matches("<w:txbxContent").count(), 1);
             assert!(after.contains("FF0000"));
-            assert_eq!(
-                after.find("host-text") < after.find("<w:drawing"),
-                text_before_box,
-                "the box must stay on the same side of the host text"
-            );
+            if !host_text.is_empty() {
+                assert_eq!(
+                    after.find(host_text) < after.find("<w:drawing"),
+                    text_before_box,
+                    "the box must stay on the same side of the host text"
+                );
+            }
+            if with_vml_sibling {
+                assert_eq!(
+                    after.find("preserve-vml-sibling") < after.find("<w:drawing"),
+                    text_before_box
+                );
+            }
             // A subsequent edit must also keep the box after it has become
             // DrawingML; the in-memory run still contains its host text.
             CommandExecutor::new()
@@ -491,15 +531,28 @@ mod tests {
                 .unwrap();
             let second = document_xml(&word_doc);
             assert_eq!(
+                second.matches("preserve-vml-sibling").count(),
+                usize::from(with_vml_sibling)
+            );
+            assert_eq!(second.matches("<w:txbxContent").count(), 1);
+            assert_eq!(
                 second.matches("<w:drawing").count(),
                 1,
                 "repeated formatting must keep the box"
             );
             assert!(second.contains("00FF00"));
-            assert_eq!(
-                second.find("host-text") < second.find("<w:drawing"),
-                text_before_box
-            );
+            if !host_text.is_empty() {
+                assert_eq!(
+                    second.find(host_text) < second.find("<w:drawing"),
+                    text_before_box
+                );
+            }
+            if with_vml_sibling {
+                assert_eq!(
+                    second.find("preserve-vml-sibling") < second.find("<w:drawing"),
+                    text_before_box
+                );
+            }
             let reloaded = futures::executor::block_on(WordDocument::load(
                 &word_doc.export_docx().unwrap(),
                 &crate::Options::default(),
@@ -510,7 +563,7 @@ mod tests {
                 .unwrap()
                 .runs
                 .iter()
-                .any(|run| run.text.contains("host-text")));
+                .any(|run| run.text.contains(host_text)));
             let text_box = (0..reloaded.paragraph_count())
                 .find(|&index| reloaded.is_text_box_paragraph_surface(index))
                 .unwrap();
