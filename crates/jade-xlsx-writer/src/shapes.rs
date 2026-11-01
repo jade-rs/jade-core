@@ -1,6 +1,7 @@
-//! Insert ▸ Shapes: a rectangle, oval, rounded rectangle or arrow put on a
-//! sheet as a new object in its drawing, filled and outlined by the
-//! theme's first accent as Excel draws a new shape, ready for text.
+//! Insert ▸ Shapes: a line, a rectangle, an oval, an arrow or another of
+//! Excel's gallery put on a sheet as a new object in its drawing, styled by
+//! the theme's first accent as Excel draws a new one — a shape filled and
+//! ready for text, a line as a connector.
 
 use jade_opc::OpcPackage;
 use jade_xlsx_reader::CellRef;
@@ -14,13 +15,42 @@ const DRAWINGML_NS: &str = "http://schemas.openxmlformats.org/drawingml/2006/mai
 const EMU_PER_PX: f64 = 9525.0;
 
 /// The preset geometries Insert ▸ Shapes offers, each with the name Excel
-/// gives a new one.
-pub const SHAPES: [(&str, &str); 4] = [
+/// gives a new one, in the order of Excel's gallery: lines, rectangles,
+/// basic shapes, block arrows, stars and callouts.
+pub const SHAPES: [(&str, &str); 26] = [
+    ("line", "Straight Connector"),
+    ("straightConnector1", "Straight Arrow Connector"),
     ("rect", "Rectangle"),
-    ("ellipse", "Oval"),
     ("roundRect", "Rectangle: Rounded Corners"),
+    ("ellipse", "Oval"),
+    ("triangle", "Isosceles Triangle"),
+    ("rtTriangle", "Right Triangle"),
+    ("parallelogram", "Parallelogram"),
+    ("trapezoid", "Trapezoid"),
+    ("diamond", "Diamond"),
+    ("pentagon", "Regular Pentagon"),
+    ("hexagon", "Hexagon"),
+    ("octagon", "Octagon"),
+    ("plus", "Cross"),
+    ("can", "Cylinder"),
+    ("heart", "Heart"),
+    ("smileyFace", "Smiley Face"),
     ("rightArrow", "Arrow: Right"),
+    ("leftArrow", "Arrow: Left"),
+    ("upArrow", "Arrow: Up"),
+    ("downArrow", "Arrow: Down"),
+    ("leftRightArrow", "Arrow: Left-Right"),
+    ("homePlate", "Arrow: Pentagon"),
+    ("chevron", "Arrow: Chevron"),
+    ("star5", "Star: 5 Points"),
+    ("wedgeRectCallout", "Speech Bubble: Rectangle"),
 ];
+
+/// Whether `preset` is one of the lines, put in as a connector (`cxnSp`)
+/// with no fill or text, as Excel puts a line.
+pub fn is_line(preset: &str) -> bool {
+    matches!(preset, "line" | "straightConnector1")
+}
 
 /// Puts a `preset` shape on the sheet with its top-left at `at`'s, `size`
 /// px wide and tall, named `name`; returns the object's id.
@@ -39,6 +69,24 @@ pub fn insert_shape(
     let emu = |px: f64| (px.max(1.0) * EMU_PER_PX).round() as i64;
     let (cx, cy) = (emu(size.0), emu(size.1));
     let name = escape(name);
+    if is_line(preset) {
+        // The arrow is the line's end, as Excel's Line Arrow has it.
+        let arrow = if preset == "straightConnector1" {
+            "<a:ln><a:tailEnd type=\"triangle\"/></a:ln>"
+        } else {
+            ""
+        };
+        return append_to_drawing(package, &drawing, |p, id| {
+            format!(
+                "<{p}oneCellAnchor><{p}from><{p}col>{}</{p}col><{p}colOff>0</{p}colOff><{p}row>{}</{p}row><{p}rowOff>0</{p}rowOff></{p}from><{p}ext cx=\"{cx}\" cy=\"{cy}\"/>\
+<{p}cxnSp macro=\"\" xmlns:a=\"{DRAWINGML_NS}\"><{p}nvCxnSpPr><{p}cNvPr id=\"{id}\" name=\"{name} {id}\"/><{p}cNvCxnSpPr/></{p}nvCxnSpPr>\
+<{p}spPr><a:xfrm><a:off x=\"0\" y=\"0\"/><a:ext cx=\"{cx}\" cy=\"{cy}\"/></a:xfrm><a:prstGeom prst=\"{preset}\"><a:avLst/></a:prstGeom>{arrow}</{p}spPr>\
+<{p}style><a:lnRef idx=\"1\"><a:schemeClr val=\"accent1\"/></a:lnRef><a:fillRef idx=\"0\"><a:schemeClr val=\"accent1\"/></a:fillRef><a:effectRef idx=\"0\"><a:schemeClr val=\"accent1\"/></a:effectRef><a:fontRef idx=\"minor\"><a:schemeClr val=\"tx1\"/></a:fontRef></{p}style>\
+</{p}cxnSp><{p}clientData/></{p}oneCellAnchor>",
+                at.column, at.row
+            )
+        });
+    }
     append_to_drawing(package, &drawing, |p, id| {
         format!(
             "<{p}oneCellAnchor><{p}from><{p}col>{}</{p}col><{p}colOff>0</{p}colOff><{p}row>{}</{p}row><{p}rowOff>0</{p}rowOff></{p}from><{p}ext cx=\"{cx}\" cy=\"{cy}\"/>\
