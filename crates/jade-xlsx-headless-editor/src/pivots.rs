@@ -63,7 +63,7 @@ impl HeadlessWorkbook {
             let mut fitted = std::collections::BTreeSet::new();
             let mut fitting_work = 0usize;
             loop {
-                let (outcome, reads) = self.recalculate_with_dependencies(true)?;
+                let (outcome, reads) = self.recalculate_with_dependencies(true, false)?;
                 let reads =
                     reads.ok_or_else(|| order::refusal("missing pivot dependency trace"))?;
                 let graph = order::graph(&self.workbook, &reads, &mut dependency_work)?;
