@@ -6,7 +6,7 @@ use crate::{
     CellEdit, NewValue, Result, WriteError,
 };
 use jade_opc::OpcPackage;
-use jade_xlsx_reader::{CellRange, CellRef, Sheet};
+use jade_xlsx_reader::{Axis, CellRange, CellRef, Sheet};
 use quick_xml::{
     events::Event,
     name::{QName, ResolveResult},
@@ -248,6 +248,33 @@ pub fn permute_rows(
     range: CellRange,
     order: &[u32],
 ) -> Result<Vec<u8>> {
+    permute(original, sheet, range, Axis::Rows, order)
+}
+
+/// [`permute_rows`] along either axis: with [`Axis::Columns`],
+/// `order[destination - range.start.column]` is the source column, as a
+/// left-to-right sort moves them.
+pub fn permute(
+    original: &[u8],
+    sheet: &Sheet,
+    range: CellRange,
+    axis: Axis,
+    order: &[u32],
+) -> Result<Vec<u8>> {
+    let lines = match axis {
+        Axis::Rows => range.start.row..=range.end.row,
+        Axis::Columns => range.start.column..=range.end.column,
+    };
+    let first = *lines.start();
+    // The cell `along` the axis and `across` it.
+    let at = |along: u32, across: u32| match axis {
+        Axis::Rows => CellRef::new(across, along),
+        Axis::Columns => CellRef::new(along, across),
+    };
+    let across = match axis {
+        Axis::Rows => range.start.column..=range.end.column,
+        Axis::Columns => range.start.row..=range.end.row,
+    };
     let height = range
         .end
         .row
@@ -263,9 +290,8 @@ pub fn permute_rows(
     if height > SORT_ROW_LIMIT || u64::from(height) * u64::from(width) > SORT_CELL_LIMIT {
         return Err(error("sort row/cell limit exceeded"));
     }
-    if order.len() != height as usize
-        || order.iter().copied().collect::<BTreeSet<_>>()
-            != (range.start.row..=range.end.row).collect()
+    if order.len() != lines.clone().count()
+        || order.iter().copied().collect::<BTreeSet<_>>() != lines.clone().collect()
     {
         return Err(error("invalid row permutation"));
     }
@@ -336,11 +362,11 @@ pub fn permute_rows(
         .collect();
     let mut edits = vec![];
     let mut moved = BTreeMap::new();
-    for (offset, source_row) in order.iter().enumerate() {
-        let destination_row = range.start.row + offset as u32;
-        for column in range.start.column..=range.end.column {
-            let from = CellRef::new(column, *source_row);
-            let to = CellRef::new(column, destination_row);
+    for (offset, source) in order.iter().enumerate() {
+        let destination = first + offset as u32;
+        for cross in across.clone() {
+            let from = at(*source, cross);
+            let to = at(destination, cross);
             let cell = model.get(&from);
             let style = sheet
                 .effective_style_index(from, cell.and_then(|cell| cell.style_index))
@@ -384,9 +410,10 @@ pub fn permute_rows(
     let inverse: BTreeMap<_, _> = order
         .iter()
         .enumerate()
-        .map(|(offset, row)| (*row, range.start.row + offset as u32))
+        .map(|(offset, line)| (*line, first + offset as u32))
         .collect();
-    let written = relocate_hyperlinks(&written, range, &inverse)?;
+    let moved_to = Moved { axis, to: &inverse };
+    let written = relocate_hyperlinks(&written, range, &moved_to)?;
     package.replace(&sheet.part_name, written.into_bytes());
     let rels = package
         .part_str(&jade_opc::rels_part_name(&sheet.part_name))?
@@ -405,7 +432,7 @@ pub fn permute_rows(
             .ok_or_else(|| WriteError::MissingPart(part.clone()))?;
         package.replace(
             &part,
-            relocate_comments(&xml, range, &inverse)?.into_bytes(),
+            relocate_comments(&xml, range, &moved_to)?.into_bytes(),
         );
     }
     if let Some(target) = rels.target_by_type_suffix("/vmlDrawing") {
@@ -413,11 +440,26 @@ pub fn permute_rows(
         let xml = package
             .part_str(&part)?
             .ok_or_else(|| WriteError::MissingPart(part.clone()))?;
-        package.replace(&part, relocate_vml(&xml, range, &inverse)?.into_bytes());
+        package.replace(&part, relocate_vml(&xml, range, &moved_to)?.into_bytes());
     }
     crate::mark_for_recalculation(&package.write()?)
 }
-fn relocate_comments(xml: &str, range: CellRange, order: &BTreeMap<u32, u32>) -> Result<String> {
+/// Where a permutation moves the rows (or columns) it moves.
+struct Moved<'a> {
+    axis: Axis,
+    to: &'a BTreeMap<u32, u32>,
+}
+
+impl Moved<'_> {
+    fn cell(&self, at: CellRef) -> CellRef {
+        match self.axis {
+            Axis::Rows => CellRef::new(at.column, self.to[&at.row]),
+            Axis::Columns => CellRef::new(self.to[&at.column], at.row),
+        }
+    }
+}
+
+fn relocate_comments(xml: &str, range: CellRange, order: &Moved<'_>) -> Result<String> {
     let mut reader = NsReader::from_str(xml);
     let mut root_ns = None;
     let mut depth = 0;
@@ -442,7 +484,7 @@ fn relocate_comments(xml: &str, range: CellRange, order: &BTreeMap<u32, u32>) ->
                         .and_then(|v| CellRef::parse(&v).ok())
                         .filter(|at| range.contains(*at))
                     {
-                        let to = CellRef::new(at.column, order[&at.row]);
+                        let to = order.cell(at);
                         splices.push(Splice {
                             start,
                             end: reader.buffer_position() as usize,
@@ -468,7 +510,7 @@ fn relocate_comments(xml: &str, range: CellRange, order: &BTreeMap<u32, u32>) ->
     }
     Ok(apply(xml, splices))
 }
-fn relocate_hyperlinks(xml: &str, range: CellRange, order: &BTreeMap<u32, u32>) -> Result<String> {
+fn relocate_hyperlinks(xml: &str, range: CellRange, order: &Moved<'_>) -> Result<String> {
     let mut reader = NsReader::from_str(xml);
     let mut root_ns = None;
     let mut depth = 0;
@@ -496,7 +538,7 @@ fn relocate_hyperlinks(xml: &str, range: CellRange, order: &BTreeMap<u32, u32>) 
                         if at.start != at.end {
                             return Err(error("range hyperlinks cannot yet be sorted"));
                         }
-                        let to = CellRef::new(at.start.column, order[&at.start.row]);
+                        let to = order.cell(at.start);
                         splices.push(Splice {
                             start,
                             end: reader.buffer_position() as usize,
@@ -522,7 +564,7 @@ fn relocate_hyperlinks(xml: &str, range: CellRange, order: &BTreeMap<u32, u32>) 
     }
     Ok(apply(xml, splices))
 }
-fn relocate_vml(xml: &str, range: CellRange, order: &BTreeMap<u32, u32>) -> Result<String> {
+fn relocate_vml(xml: &str, range: CellRange, order: &Moved<'_>) -> Result<String> {
     const EXCEL_NS: &[u8] = b"urn:schemas-microsoft-com:office:excel";
     let mut reader = NsReader::from_str(xml);
     let mut declarations = Vec::<BTreeMap<String, String>>::new();
@@ -599,11 +641,17 @@ fn relocate_vml(xml: &str, range: CellRange, order: &BTreeMap<u32, u32>) -> Resu
                     };
                     if let (Some(row), Some(column)) = (value("Row"), value("Column")) {
                         if range.contains(CellRef::new(column, row)) {
-                            let to = order[&row];
-                            let delta = i64::from(to) - i64::from(row);
+                            // The note's row (or column) moves with its cell,
+                            // and its box the same distance.
+                            let (field, from, anchors, last) = match order.axis {
+                                Axis::Rows => ("Row", row, [2, 6], 1_048_575),
+                                Axis::Columns => ("Column", column, [0, 4], 16_383),
+                            };
+                            let to = order.to[&from];
+                            let delta = i64::from(to) - i64::from(from);
                             let mut changes = vec![];
                             for (key, a, b) in fields {
-                                if key == "Row" {
+                                if key == field {
                                     changes.push(Splice {
                                         start: a,
                                         end: b,
@@ -615,10 +663,10 @@ fn relocate_vml(xml: &str, range: CellRange, order: &BTreeMap<u32, u32>) -> Resu
                                         .map(|v| v.trim().to_string())
                                         .collect();
                                     if parts.len() == 8 {
-                                        for index in [2, 6] {
+                                        for index in anchors {
                                             if let Ok(value) = parts[index].parse::<i64>() {
                                                 parts[index] =
-                                                    (value + delta).clamp(0, 1_048_575).to_string();
+                                                    (value + delta).clamp(0, last).to_string();
                                             }
                                         }
                                         changes.push(Splice {

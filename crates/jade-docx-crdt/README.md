@@ -3,6 +3,11 @@
 Opt-in OOXML adapter for the sibling `jade-crdt` engine. It owns stable native XML
 bindings, package projection, incremental dirty-scope capture and snapshot rebind.
 The editor storage and network transport remain opt-in host responsibilities.
+The native `jade-docx-editor` owns the WASM API, checkpoint/abort boundary,
+selective history, import validation and selection restoration. The CRDT is
+attached only by `beginCrdt`; ordinary editor sessions keep their existing history.
+`crdt_live` is the narrow host policy boundary for opaque fact projections and
+display state; its default implementation has no domain behavior.
 
 `LiveDocument::create` bootstraps a package; persist `inner.snapshot()` and use
 `LiveDocument::open` for subsequent sessions. `capture_changed` consumes the reader’s
@@ -67,3 +72,14 @@ semantics, browser rendering, scheduler fairness or eventual capture. PBT links
 observable worker behavior to the proved model on generated traces; it is not a
 proof of implementation equivalence. The executable oracle and proofs use the
 same transition function and have no extra package dependencies.
+
+`worker/session.ts` provides a host-independent `CrdtSession` with injected
+transport, opaque cursor/note types, serialized save/import, coalesced pulls and
+base64 conversion. It never starts polling. Rejected imports retain both the
+cursor and frontier so retries cannot skip an update. Native version checks keep
+local typing dirty during save or import. Session PBT covers 128 × 128 pulls,
+failures and duplicate frontiers, and compares clean markers and cursor acceptance
+with the executable `formal/Session.lean` oracle. Lean proves that marker advancement
+requires a lone import and failures retain the cursor; it does not prove JavaScript
+queue execution or transport atomicity. Native editor PBT additionally covers
+Unicode identity, selective history, projection/reload and snapshot binding.

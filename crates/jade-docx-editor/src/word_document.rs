@@ -367,11 +367,17 @@ pub(crate) fn keep_declared_paragraph_properties(
     if declared("w:spacing") {
         let mut spacing = props.spacing.clone().unwrap_or_default();
         let direct = before.spacing.clone().unwrap_or_default();
+        // Each side is kept whole, as a load fills it: a declared
+        // `w:afterLines` beside the new style's `w:after` left both, and
+        // parts of the layout that read points first spaced the paragraph
+        // by the style's points instead of the lines it declares.
         keep_attributes!(spacing, direct, "w:spacing",
-            before => ["w:before"],
-            after => ["w:after"],
-            before_lines => ["w:beforeLines"],
-            after_lines => ["w:afterLines"],
+            before => ["w:before", "w:beforeLines", "w:beforeAutospacing"],
+            before_lines => ["w:before", "w:beforeLines", "w:beforeAutospacing"],
+            before_auto => ["w:before", "w:beforeLines", "w:beforeAutospacing"],
+            after => ["w:after", "w:afterLines", "w:afterAutospacing"],
+            after_lines => ["w:after", "w:afterLines", "w:afterAutospacing"],
+            after_auto => ["w:after", "w:afterLines", "w:afterAutospacing"],
             line => ["w:line"],
             // The reader gives a `w:line` without a rule the rule "auto".
             line_rule => ["w:line", "w:lineRule"],
@@ -32545,7 +32551,7 @@ impl WordDocument {
     fn reparse_styles_part(&mut self, serialized: &str) -> bool {
         let theme = self.loaded_theme_part();
         let _theme_colors = jade_docx_reader::theme::ThemeColorScope::enter(theme.as_ref());
-        match self.styles_part.as_mut() {
+        let parsed = match self.styles_part.as_mut() {
             Some(styles) => styles.parse(serialized).is_ok(),
             None => match StylesPart::from_xml(serialized) {
                 Ok(styles) => {
@@ -32554,7 +32560,19 @@ impl WordDocument {
                 }
                 Err(_) => false,
             },
+        };
+        // What numbering.xml links to a style (a level's `w:pStyle`) a load
+        // merges into it. Reparsed without it — adding the note styles
+        // does — a heading whose `w:numPr` names no level lost its level,
+        // and its paragraphs their numbers on screen.
+        if parsed {
+            if let (Some(styles), Some(numbering)) =
+                (self.styles_part.as_mut(), self.numbering_part.as_ref())
+            {
+                styles.merge_numbering_from_part(numbering);
+            }
         }
+        parsed
     }
 
     /// What `paragraph_index` takes from its styles alone: the paragraph style
@@ -32699,7 +32717,9 @@ impl WordDocument {
     }
 
     /// The `(tag, attribute)` pairs of `paragraph_index`'s `w:pPr` children:
-    /// which parts of `w:spacing` or `w:ind` the paragraph declares itself.
+    /// which parts of `w:spacing` or `w:ind` override inherited distances.
+    /// A false auto-spacing flag alone leaves its distance inherited, as
+    /// the reader does; treating its presence as a distance kept the old style.
     pub(crate) fn paragraph_declared_property_attributes(
         &self,
         paragraph_index: usize,
@@ -32718,6 +32738,14 @@ impl WordDocument {
                 element
                     .attributes
                     .iter()
+                    .filter(|attribute| {
+                        element.name != "w:spacing"
+                            || !matches!(
+                                attribute.name.as_str(),
+                                "w:beforeAutospacing" | "w:afterAutospacing"
+                            )
+                            || matches!(attribute.value.as_str(), "1" | "true" | "on")
+                    })
                     .map(|attribute| (element.name.clone(), attribute.name.clone()))
             })
             .collect()
