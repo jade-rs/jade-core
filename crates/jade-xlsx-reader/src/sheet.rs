@@ -92,6 +92,7 @@ pub fn parse_sheet_with_relationships(
         show_grid_lines: true,
         show_formulas: false,
         show_zeros: true,
+        zoom_percent: None,
         freeze_pane: None,
         tables: Vec::new(),
         header_footer: None,
@@ -210,6 +211,12 @@ pub fn parse_sheet_with_relationships(
                         }
                         if let Some(value) = attribute_value(element, b"showZeros")? {
                             sheet.show_zeros = value != "0" && value != "false";
+                        }
+                        // The first view's zoom: the one Excel opens at.
+                        if sheet.zoom_percent.is_none() {
+                            sheet.zoom_percent = attribute_value(element, b"zoomScale")?
+                                .and_then(|value| value.parse::<u32>().ok())
+                                .filter(|percent| (10..=400).contains(percent));
                         }
                     }
                     b"pane" if sheet.freeze_pane.is_none() => {

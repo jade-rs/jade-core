@@ -59,6 +59,7 @@ fn tall_sheet(rows: u32) -> Sheet {
         show_grid_lines: true,
         show_formulas: false,
         show_zeros: true,
+        zoom_percent: None,
         freeze_pane: None,
         tables: Vec::new(),
         header_footer: None,
