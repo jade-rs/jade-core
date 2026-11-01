@@ -243,3 +243,17 @@ fn a_sheet_that_hides_zeros_shows_cells_worth_zero_as_empty() {
         "=B1-C1"
     );
 }
+
+#[test]
+fn a_formats_numbered_colour_is_the_palettes() {
+    let layout = layout_sheet(
+        &sheet_with(CellValue::Number(5.0)),
+        &styles("[Color10]0"),
+        &LayoutOptions::default(),
+    );
+    let color = layout.cell(CellRef::new(0, 0)).expect("A1").text_color;
+    assert_eq!(
+        color.map(|color| jade_xlsx_layout::color::to_css(color, "?")),
+        Some("#008000".to_string())
+    );
+}

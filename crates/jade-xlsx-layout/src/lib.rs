@@ -2333,7 +2333,9 @@ fn format_color_to_color(color: number_format::FormatColor) -> Color {
         FormatColor::Red => [0xFF, 0xFF, 0x00, 0x00],
         FormatColor::White => [0xFF, 0xFF, 0xFF, 0xFF],
         FormatColor::Yellow => [0xFF, 0xFF, 0xFF, 0x00],
-        FormatColor::Indexed(index) => return Color::Indexed(index),
+        // `[Color1]` is the palette's eighth entry: the first eight repeat
+        // the basic colours a format names.
+        FormatColor::Indexed(index) => return Color::Indexed(index.saturating_add(7)),
     };
     Color::Argb(rgb)
 }
