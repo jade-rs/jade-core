@@ -13831,12 +13831,14 @@ where
         };
         // Incremental selection registration clears cell mappings. A confirmed
         // seek must restore the skipped prefix's cells as well as its tables.
-        let previous_cells = if preserve_pixel_pagination {
+        // Move the registry rather than cloning every cell (including each
+        // paragraph list) on every IME update. A stable edit reuses this same
+        // allocation when restoring the authoritative offscreen cell geometry.
+        let mut previous_cells = if preserve_pixel_pagination {
             Vec::new()
         } else {
-            self.selection.cell_layouts().to_vec()
+            self.selection.take_cell_layouts()
         };
-        let stable_edit_cells = preserve_stable_edit_pagination.then(|| previous_cells.clone());
         // A stable text edit exits after its changed paragraph. Preserve the
         // untouched selection tail across begin_render_incremental's clear;
         // otherwise navigation and paragraph introspection lose those entries.
@@ -14152,14 +14154,26 @@ where
             self.table_handles = handles;
             self.table_row_handles = row_handles;
             self.table_counter = keep;
-            for cell in previous_cells.into_iter().filter(|cell| {
+            let is_skipped_prefix_cell = |cell: &CellLayout| {
                 cell.table_id < keep
                     && cell
                         .paragraphs
                         .iter()
                         .all(|index| *index < seek.paragraph_index)
-            }) {
-                self.selection.record_table_cell_fragment(cell);
+            };
+            if preserve_stable_edit_pagination {
+                // Keep the complete snapshot for stable convergence. Only
+                // cells in the actually skipped prefix need a replay copy.
+                for cell in previous_cells
+                    .iter()
+                    .filter(|cell| is_skipped_prefix_cell(cell))
+                {
+                    self.selection.record_table_cell_fragment(cell.clone());
+                }
+            } else {
+                for cell in previous_cells.drain(..).filter(is_skipped_prefix_cell) {
+                    self.selection.record_table_cell_fragment(cell);
+                }
             }
         }
         if options.debug {
@@ -14720,8 +14734,8 @@ where
                 self.hyperlink_regions.extend(suffix);
                 self.invalidate_hyperlink_regions_js_cache();
             }
-            if let Some(cells) = stable_edit_cells {
-                self.selection.restore_cell_layouts(cells);
+            if preserve_stable_edit_pagination {
+                self.selection.restore_cell_layouts(previous_cells);
             }
         }
         if preserve_pixel_pagination
@@ -40736,6 +40750,68 @@ mod tests {
         assert!(renderer.last_layout_complete());
         assert_eq!(renderer.selection.paragraphs().len(), layouts);
         assert_eq!(later_caret(&renderer), before);
+    }
+
+    #[test]
+    fn stable_edit_reuses_offscreen_cell_registry_allocation_and_hit_targets() {
+        let texts = vec!["body paragraph"; 160];
+        let mut document = doc_with_paragraph_texts(&texts);
+        let table = table_measure_document().body.unwrap().elements.remove(0);
+        document.body.as_mut().unwrap().elements.insert(120, table);
+        let mut renderer = CanvasRenderer::with_host(
+            Box::new(PageCountingHost {
+                inner: NonCanvasHost {
+                    painter: jade_painter::recording::RecordingPainter::new(),
+                },
+                extra_pages: 0,
+                cursor: 0,
+            }),
+            false,
+        )
+        .unwrap();
+        renderer.set_layout_page_limit(None);
+        renderer
+            .render_with_numbering_rc(
+                Rc::new(document.clone()),
+                &Options::default(),
+                None,
+                None,
+                None,
+                None,
+            )
+            .unwrap();
+        assert!(renderer.last_layout_complete());
+        let pages = renderer.host.page_count();
+        assert!(pages >= 3);
+        let cells = renderer.selection.cell_layouts();
+        assert_eq!(cells.len(), 4);
+        assert!(cells[0].top > renderer.page_height);
+        let allocation = cells.as_ptr();
+        let before = serde_json::to_value(cells).unwrap();
+        let hits: Vec<_> = cells
+            .iter()
+            .map(|cell| {
+                let x = (cell.left + cell.right) * 0.5;
+                let y = (cell.top + cell.bottom) * 0.5;
+                (x, y, renderer.selection.cell_at_point(x, y))
+            })
+            .collect();
+        assert!(hits.iter().all(|(_, _, hit)| hit.is_some()));
+
+        rerender_with_centred_first_paragraph(&mut renderer, &document, |renderer, height| {
+            renderer.arm_fast_replay_for_complete_layout_edit(0, height);
+        });
+        assert!(renderer.last_fast_replay_stable());
+        assert!(renderer.last_layout_complete());
+        assert_eq!(renderer.host.page_count(), pages);
+        assert_eq!(renderer.selection.cell_layouts().as_ptr(), allocation);
+        assert_eq!(
+            serde_json::to_value(renderer.selection.cell_layouts()).unwrap(),
+            before
+        );
+        for (x, y, hit) in hits {
+            assert_eq!(renderer.selection.cell_at_point(x, y), hit);
+        }
     }
 
     #[test]
