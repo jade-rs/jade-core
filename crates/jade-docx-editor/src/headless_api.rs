@@ -14609,6 +14609,60 @@ mod tests {
     }
 
     #[test]
+    fn a_paragraph_set_back_to_normal_drops_the_headings_space_before() {
+        // image-crop-edge-cases.docx's Normal gives no paragraph formatting.
+        // A paragraph declaring its own space after and line spacing, made a
+        // Heading 2 and then Normal again, kept Heading 2's space before on
+        // screen; the saved file and a reload had none.
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/image-crop-edge-cases.docx"),
+        )
+        .expect("read fixture");
+        let mut word_doc =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+        apply_headless_commands_to_document(
+            &mut word_doc,
+            &HeadlessEditRequest {
+                commands: vec![
+                    HeadlessCommand::SetParagraphLineSpacing {
+                        start_paragraph: 0,
+                        end_paragraph: 0,
+                        line: Some(Some(2.0)),
+                        line_rule: Some("auto".to_string()),
+                        before: None,
+                        after: Some(6.0),
+                    },
+                    HeadlessCommand::SetParagraphStyle {
+                        start_paragraph: 0,
+                        end_paragraph: 0,
+                        style_id: Some("Heading2".to_string()),
+                    },
+                    HeadlessCommand::SetParagraphStyle {
+                        start_paragraph: 0,
+                        end_paragraph: 0,
+                        style_id: None,
+                    },
+                ],
+            },
+        )
+        .expect("restyle");
+        let spacing = |word_doc: &WordDocument| {
+            word_doc
+                .paragraph(0)
+                .and_then(|paragraph| paragraph.properties.as_ref())
+                .and_then(|props| props.spacing.clone())
+        };
+        let reloaded = executor::block_on(WordDocument::load(
+            &word_doc.export_docx().expect("export"),
+            &Options::default(),
+        ))
+        .expect("reload");
+        assert_eq!(spacing(&word_doc).and_then(|spacing| spacing.before), None);
+        assert_eq!(spacing(&word_doc), spacing(&reloaded));
+    }
+
+    #[test]
     fn accepting_a_change_keeps_formatting_after_a_rebuilt_empty_field_result() {
         // toc-tc-field-edge-cases.docx ends a paragraph with a TC field whose
         // result is an empty `<w:r/>`. Splitting the paragraph rebuilt that
@@ -20609,3 +20663,7 @@ mod tests {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "paragraph_style_stateful_tests.rs"]
+mod paragraph_style_stateful_tests;
