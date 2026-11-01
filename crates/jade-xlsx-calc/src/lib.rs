@@ -941,3 +941,17 @@ pub(crate) fn table_formula(
         ))
     })
 }
+
+/// Today's date in `time_zone` (an IANA name; UTC when the engine does not
+/// know it) as a 1900-system serial, as `TODAY()` there gives it.
+pub fn today(time_zone: &str) -> Option<f64> {
+    let mut model = ironcalc_base::Model::new_empty("today", "en", time_zone, "en")
+        .or_else(|_| ironcalc_base::Model::new_empty("today", "en", "UTC", "en"))
+        .ok()?;
+    model.set_user_input(0, 1, 1, "=TODAY()".to_string()).ok()?;
+    model.evaluate();
+    match model.get_cell_value_by_index(0, 1, 1).ok()? {
+        ironcalc_base::cell::CellValue::Number(serial) => Some(serial),
+        _ => None,
+    }
+}

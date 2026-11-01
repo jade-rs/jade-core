@@ -1,4 +1,5 @@
 use super::*;
+mod dynamic;
 mod rank;
 use jade_xlsx_headless_api::{
     AutoFilterChange, AutoFilterOption, AutoFilterOptions, AutoFilterSummary, AutoFilterTarget,
@@ -185,6 +186,7 @@ fn validate(node: &FilterCriterion) -> Result<()> {
         "top10" => {
             rank::parameters(node)?;
         }
+        "dynamicFilter" => dynamic::validate(node)?,
         "customFilters" => {
             bool_attribute(node, "and")?;
             if node.children.is_empty() || node.children.len() > 2 {
@@ -314,12 +316,16 @@ enum PreparedCriterion<'a> {
         top: bool,
         threshold: f64,
     },
+    Dynamic(&'a FilterCriterion),
 }
 fn prepare(node: &FilterCriterion) -> Result<PreparedCriterion<'_>> {
     validate(node)?;
     if node.kind == "top10" {
         let (top, _, _, threshold) = rank::parameters(node)?;
         return Ok(PreparedCriterion::Rank { top, threshold });
+    }
+    if node.kind == "dynamicFilter" {
+        return Ok(PreparedCriterion::Dynamic(node));
     }
     if node.kind == "filters" {
         let strings = node
@@ -372,6 +378,7 @@ impl PreparedCriterion<'_> {
     ) -> Result<bool> {
         match self {
             Self::Custom(node) => matches_custom(node, value, comparison_budget),
+            Self::Dynamic(node) => Ok(dynamic::matches(node, value, epoch)),
             Self::Rank { top, threshold } => match value {
                 CellValue::Number(value) if value.is_finite() => Ok(if *top {
                     value >= threshold
@@ -837,6 +844,7 @@ impl HeadlessWorkbook {
         }
         let disable = matches!(change, AutoFilterChange::Disable { .. });
         let rank_change = matches!(change, AutoFilterChange::Rank { .. });
+        let dynamic_change = matches!(change, AutoFilterChange::Dynamic { .. });
         let (target_kind, reference, column, mut criterion, reapply, enable) = match change {
             AutoFilterChange::Enable { target, reference } => {
                 (target, reference.as_deref(), None, None, false, true)
@@ -917,6 +925,27 @@ impl HeadlessWorkbook {
                         ("calendarType".into(), "gregorian".into()),
                     ]),
                     children,
+                };
+                validate(&node)?;
+                (
+                    target,
+                    reference.as_deref(),
+                    Some(*column),
+                    Some(node),
+                    false,
+                    false,
+                )
+            }
+            AutoFilterChange::Dynamic {
+                target,
+                reference,
+                column,
+                kind,
+            } => {
+                let node = FilterCriterion {
+                    kind: "dynamicFilter".into(),
+                    attributes: BTreeMap::from([("type".into(), kind.clone())]),
+                    children: vec![],
                 };
                 validate(&node)?;
                 (
@@ -1168,6 +1197,37 @@ impl HeadlessWorkbook {
                 }
             }
             if rank_change {
+                criterion = selected
+                    .filter
+                    .columns
+                    .iter()
+                    .find(|entry| Some(entry.column_id) == column)
+                    .and_then(|entry| entry.criterion.clone());
+            }
+        }
+        // Dynamic filters: their range from today, or the column's average,
+        // worked out as they are applied or reapplied.
+        if reapply || dynamic_change {
+            let today = jade_xlsx_calc::today(&self.calculation_time_zone);
+            let epoch = self.workbook.date_system;
+            for entry in &mut selected.filter.columns {
+                if let Some(node) = entry
+                    .criterion
+                    .as_mut()
+                    .filter(|node| node.kind == "dynamicFilter")
+                {
+                    if reapply || column == Some(entry.column_id) {
+                        let average = dynamic::average(
+                            sheet,
+                            selected.range.start.column + entry.column_id,
+                            selected.first,
+                            selected.end,
+                        );
+                        dynamic::refresh(node, today, average, epoch);
+                    }
+                }
+            }
+            if dynamic_change {
                 criterion = selected
                     .filter
                     .columns
