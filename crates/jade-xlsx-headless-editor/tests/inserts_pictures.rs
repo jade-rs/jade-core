@@ -79,3 +79,27 @@ fn only_pictures_go_in() {
         .insert_picture(&sheet, CellRef::new(0, 0), b"<svg/>", (10.0, 10.0))
         .is_err());
 }
+
+#[test]
+fn shapes_go_in_filled_by_the_theme_and_named_as_excel_names_them() {
+    let mut workbook = open("sample-workbook.xlsx");
+    let sheet = workbook.workbook().sheets[0].name.clone();
+    let rect = workbook
+        .insert_shape(&sheet, CellRef::new(1, 1), "rect", (144.0, 96.0))
+        .expect("rectangle");
+    let oval = workbook
+        .insert_shape(&sheet, CellRef::new(4, 1), "ellipse", (96.0, 96.0))
+        .expect("oval");
+    let reopened = HeadlessWorkbook::open(workbook.bytes()).expect("reopen");
+    let shapes = &reopened.workbook().sheets[0].shapes;
+    let named = |id: u32| shapes.iter().find(|shape| shape.id == id).expect("placed");
+    assert_eq!(named(rect).name, format!("Rectangle {rect}"));
+    assert_eq!(named(oval).name, format!("Oval {oval}"));
+    let style = named(oval).style.as_ref().expect("its geometry");
+    assert_eq!(style.geometry.as_deref(), Some("ellipse"));
+    assert!(workbook
+        .insert_shape(&sheet, CellRef::new(0, 0), "star", (10.0, 10.0))
+        .is_err());
+    assert!(workbook.undo().expect("undo"));
+    assert_eq!(workbook.workbook().sheets[0].shapes.len(), shapes.len() - 1);
+}

@@ -255,6 +255,37 @@ impl HeadlessWorkbook {
         Ok(id)
     }
 
+    /// Insert ▸ Shapes: a `preset` shape (`rect`, `ellipse`, `roundRect`,
+    /// `rightArrow`) on the sheet with its top-left at `at`'s, `size` px wide
+    /// and tall, named as Excel names a new one; returns the object's id.
+    pub fn insert_shape(
+        &mut self,
+        sheet: &str,
+        at: CellRef,
+        preset: &str,
+        size: (f64, f64),
+    ) -> Result<u32> {
+        let index = self.sheet_index(sheet)?;
+        self.guard_objects(index, WHAT)?;
+        let name = jade_xlsx_writer::shapes::SHAPES
+            .iter()
+            .find(|(known, _)| *known == preset)
+            .map(|(_, name)| *name)
+            .ok_or_else(|| HeadlessError::BadReference(format!("no shape called {preset}")))?;
+        let sheet_part = self.workbook.sheets[index].part_name.clone();
+        let mut package = jade_opc::OpcPackage::open(&self.source)?;
+        let id = jade_xlsx_writer::shapes::insert_shape(
+            &mut package,
+            &sheet_part,
+            preset,
+            at,
+            size,
+            name,
+        )?;
+        self.replace_package(package)?;
+        Ok(id)
+    }
+
     /// Changes the chart whose id is `id`: its type, title, legend or data,
     /// as Chart Design's buttons do. A new type keeps the series; new data
     /// keeps the type, title and legend.
