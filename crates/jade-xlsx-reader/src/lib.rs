@@ -409,6 +409,33 @@ fn read_sheet_parts(
             sheet.comments = comments::parse_comments(&xml)?;
         }
     }
+    // Current Excel's threaded comments, read in place of the notes it
+    // writes beside them for older versions.
+    let threads = relationships
+        .all()
+        .into_iter()
+        .find(|r| {
+            !r.external
+                && r.relationship_type
+                    .ends_with("/relationships/threadedComment")
+        })
+        .map(|r| r.target.clone());
+    if let Some(target) = threads {
+        let part = jade_opc::resolve_target(sheet_part, &target);
+        if let Some(xml) = package.part_str(&part)? {
+            let mut people = std::collections::HashMap::new();
+            for name in package
+                .part_names()
+                .iter()
+                .filter(|name| name.starts_with("xl/persons/") && name.ends_with(".xml"))
+            {
+                if let Some(persons) = package.part_str(name)? {
+                    people.extend(comments::parse_persons(&persons)?);
+                }
+            }
+            comments::apply_threads(&mut sheet.comments, &xml, &people)?;
+        }
+    }
     for table_part in table::referenced_table_parts(sheet_xml, relationships, sheet_part)? {
         if let Some(xml) = package.part_str(&table_part)? {
             if let Some(table) = table::parse_table(&table_part, &xml)? {
