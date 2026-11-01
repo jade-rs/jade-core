@@ -154,3 +154,112 @@ export function createCrdtReply(
     },
   };
 }
+
+/** Version-checked adapters for the JADE editor SDK and offscreen worker.
+ * Keep these boundaries upstream so all hosts share dispatch and capture semantics.
+ * Ambiguous or changed SDK sources are rejected before producing any output.
+ */
+function replace(source: string, boundary: string, replacement: string) {
+  if (source.split(boundary).length !== 2)
+    throw new Error(`Jade CRDT bridge needs updating: ${boundary.slice(0, 80)}`);
+  return source.replace(boundary, replacement);
+}
+export function crdtWorkerBridge(source: string): string {
+  source = replace(
+    source,
+    "        run: async () => {\n            await wasmReady;",
+    `        run: async () => {
+            jadeDeferredCrdt ??= jadeCreateDeferredCrdt(
+                () => documentView,
+                (run, onYield) => scheduler.enqueue({
+                    command: 'internal-crdt-capture', priority: 'low',
+                    seq: ++scheduler._seq, yieldsToInteraction: true, run, onYield,
+                }),
+                self.postMessage.bind(self),
+            );
+            const crdtReply = jadeCreateCrdtReply(documentView, event.data, self.postMessage.bind(self), jadeDeferredCrdt);
+            const postMessage = crdtReply.post;
+            await wasmReady;`,
+  );
+  source = replace(
+    source,
+    "                const readRunProperties = () => {",
+    `                crdtReply.begin(!!event.data?.projection);
+                const readRunProperties = () => {`,
+  );
+  const boundary = "            case 'apply-package-edit': {";
+  source = replace(
+    source,
+    boundary,
+    `            case 'crdt-begin': {
+                documentView.beginCrdt(event.data.document, event.data.baseline, event.data.actor, event.data.snapshot);
+                postMessage({ type: 'response', command, id, payload: null }); break;
+            }
+            case 'crdt-export': {
+                postMessage({ type: 'response', command, id, payload: documentView.exportCrdt() }); break;
+            }
+            case 'crdt-updates': {
+                postMessage({ type: 'response', command, id, payload: documentView.crdtUpdatesSince(event.data.version) }); break;
+            }
+            case 'crdt-facts': {
+                postMessage({ type: 'response', command, id, payload: documentView.appendCrdtFacts(event.data.values) }); break;
+            }
+            case 'crdt-import': {
+                const payload = attachPageCount(await documentView.importCrdtUpdates(event.data.updates));
+                const transfer = collectBitmapTransfers(payload?.pages ?? []);
+                postMessage({ type: 'response', command, id, payload }, transfer);
+                if (transfer.length) documentView.clear_cached_pages();
+                break;
+            }
+${boundary}`,
+  );
+  return `const jadeCreateDeferredCrdt = ${createDeferredCrdt.toString()};\nlet jadeDeferredCrdt;\nconst jadeCreateCrdtReply = ${createCrdtReply.toString()};\n${source}`;
+}
+export function crdtSdkBridge(source: string): string {
+  source = replace(
+    source,
+    "    const documentEdit = DOCUMENT_EDIT_COMMANDS.has(command);",
+    '    const documentEdit = DOCUMENT_EDIT_COMMANDS.has(command) || command === "crdt-import" || command === "crdt-facts";',
+  );
+  source = replace(
+    source,
+    "      if (!id) {\n        return;\n      }\n      const entry = this.pending.get(id);",
+    `      if (type === "crdt-error") {
+        this.notifyDocumentChange("crdt-error");
+        return;
+      }
+      if (!id) {
+        return;
+      }
+      const entry = this.pending.get(id);`,
+  );
+  const boundary = "  async applyPackageEdit(bytes: Uint8Array, expected: Uint8Array) {";
+  return replace(
+    source,
+    boundary,
+    `  async beginCrdt(document: string, baseline: string, actor: string, snapshot?: Uint8Array) {
+    await this.ready();
+    return this.workerState.controller.invoke("crdt-begin", { document, baseline, actor, snapshot });
+  }
+  async exportCrdt() {
+    await this.ready();
+    await this.flushPendingEdits();
+    return this.workerState.controller.invoke("crdt-export");
+  }
+  async crdtUpdatesSince(version: Uint8Array) {
+    await this.ready();
+    return this.workerState.controller.invoke("crdt-updates", { version });
+  }
+  async appendCrdtFacts(values: unknown[]) {
+    await this.ready();
+    return this.workerState.controller.invoke("crdt-facts", { values });
+  }
+  async importCrdtUpdates(updates: Uint8Array) {
+    await this.ready();
+    const payload = await this.workerState.controller.invoke("crdt-import", { updates });
+    this.workerState.interaction?.applyUpdatePayload(payload);
+    return payload;
+  }
+${boundary}`,
+  );
+}
