@@ -55,6 +55,7 @@ fn laid_out_with_freeze(rows: u32, freeze_pane: Option<FreezePane>) -> SheetLayo
         show_formulas: false,
         show_zeros: true,
         show_headers: true,
+        grid_color: None,
         zoom_percent: None,
         freeze_pane,
         tables: Vec::new(),
@@ -298,4 +299,22 @@ fn hidden_headings_paint_no_letters_or_numbers() {
     assert!(headings(&layout) > 0);
     layout.show_headers = false;
     assert_eq!(headings(&layout), 0);
+}
+
+#[test]
+fn a_sheets_own_gridline_colour_paints_the_gridlines() {
+    let viewport = Rect {
+        x: 0.0,
+        y: 0.0,
+        width: 300.0,
+        height: 200.0,
+    };
+    let strokes = |layout: &SheetLayout, color: &str| {
+        paint(layout, viewport, None)
+            .count(|op| matches!(op, Op::SetStrokeStyle(style) if style == color))
+    };
+    let mut layout = laid_out(10);
+    assert_eq!(strokes(&layout, "#ff0000"), 0);
+    layout.grid_line_color = Some("#ff0000".into());
+    assert!(strokes(&layout, "#ff0000") > 0);
 }

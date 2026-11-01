@@ -93,6 +93,7 @@ pub fn parse_sheet_with_relationships(
         show_formulas: false,
         show_zeros: true,
         show_headers: true,
+        grid_color: None,
         zoom_percent: None,
         freeze_pane: None,
         tables: Vec::new(),
@@ -215,6 +216,12 @@ pub fn parse_sheet_with_relationships(
                         }
                         if let Some(value) = attribute_value(element, b"showRowColHeaders")? {
                             sheet.show_headers = value != "0" && value != "false";
+                        }
+                        let own_grid_color = attribute_value(element, b"defaultGridColor")?
+                            .is_some_and(|value| value == "0" || value == "false");
+                        if own_grid_color && sheet.grid_color.is_none() {
+                            sheet.grid_color = attribute_value(element, b"colorId")?
+                                .and_then(|value| value.parse().ok());
                         }
                         // The first view's zoom: the one Excel opens at.
                         if sheet.zoom_percent.is_none() {

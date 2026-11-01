@@ -253,6 +253,10 @@ pub struct Sheet {
     /// shown; off on dashboards and forms. Excel shows them by default.
     #[serde(default = "shows_zeros")]
     pub show_headers: bool,
+    /// `sheetView/@colorId` when `defaultGridColor="0"`: the gridlines'
+    /// colour, by its place in the indexed palette; `None` for Excel's own.
+    #[serde(default)]
+    pub grid_color: Option<u32>,
     /// `sheetView/@zoomScale`: the percentage the sheet was last shown at,
     /// 10 to 400; `None` for Excel's 100.
     #[serde(default)]

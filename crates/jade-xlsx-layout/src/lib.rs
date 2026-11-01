@@ -365,6 +365,9 @@ pub struct SheetLayout {
     /// can hide them (`showRowColHeaders="0"`).
     #[serde(default = "shows_headers")]
     pub show_headers: bool,
+    /// The sheet's own gridline colour, as CSS; `None` for the painter's.
+    #[serde(default)]
+    pub grid_line_color: Option<String>,
     pub content_width: f64,
     /// Character-unit conversion used to create these axes.
     #[serde(default = "default_digit_width")]
@@ -1696,6 +1699,10 @@ fn layout_sheet_on_axes(
         sparklines,
         show_grid_lines: sheet.show_grid_lines,
         show_headers: sheet.show_headers,
+        grid_line_color: sheet
+            .grid_color
+            .filter(|index| *index < 64)
+            .map(|index| color::to_css(Color::Indexed(index), "#d4d4d4")),
         content_width,
         max_digit_width_px: options.max_digit_width_px,
         content_height,
@@ -1782,6 +1789,7 @@ pub fn relayout_rows(
         show_formulas: sheet.show_formulas,
         show_zeros: sheet.show_zeros,
         show_headers: sheet.show_headers,
+        grid_color: sheet.grid_color,
         zoom_percent: sheet.zoom_percent,
         freeze_pane: sheet.freeze_pane.clone(),
         tables: Vec::new(),
