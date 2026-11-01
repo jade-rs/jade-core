@@ -89,6 +89,14 @@ jobs:
             --skip text_extract::tests::extracts_expected_first_wrapped_line_from_yokohama_mini \
             --skip text_extract::tests::line_layout_exposes_index_text_page_and_geometry
 
+      - name: Install Node.js for CRDT worker tests
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24
+
+      - name: CRDT worker capture barriers
+        run: node --experimental-strip-types --test crates/jade-docx-crdt/worker/capture.test.ts
+
       - name: Verify native macOS workflow contract
         run: ruby tests/ci/native_macos_workflow_test.rb
 
