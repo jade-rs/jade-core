@@ -2107,6 +2107,84 @@ pub struct RunStyle {
     pub inline_object: Option<InlineObject>,
 }
 
+/// Repair producer-created run splits inside a grapheme only when every
+/// piece has exactly the same source metadata. Different font/provenance,
+/// revisions, links and inline objects must retain their original ranges.
+/// Ordinary run boundaries borrow the original slice without allocating.
+fn join_equal_runs_inside_graphemes<'a>(text: &str, runs: &'a [RunStyle]) -> Cow<'a, [RunStyle]> {
+    if runs.len() < 2 {
+        return Cow::Borrowed(runs);
+    }
+    fn boundary(text: &str, offset: usize) -> bool {
+        if offset > text.len() || !text.is_char_boundary(offset) {
+            return false;
+        }
+        if offset == 0 || offset == text.len() {
+            return true;
+        }
+        let bytes = text.as_bytes();
+        // Among ASCII characters only CR/LF can form a single cluster.
+        if bytes[offset - 1].is_ascii() && bytes[offset].is_ascii() {
+            return bytes[offset - 1] != b'\r' || bytes[offset] != b'\n';
+        }
+        unicode_segmentation::GraphemeCursor::new(offset, text.len(), true)
+            .is_boundary(text, 0)
+            .unwrap_or(true)
+    }
+    fn same_metadata(left: &RunStyle, right: &RunStyle) -> bool {
+        // These annotations can intentionally restart at each source run,
+        // even with equal properties (notably fitText without an id).
+        let ordinary = |run: &RunStyle| {
+            run.properties.as_deref().is_none_or(|p| {
+                p.fit_text.is_none() && p.ruby.is_none() && p.east_asian_layout.is_none()
+            })
+        };
+        ordinary(left)
+            && ordinary(right)
+            && left.inline_object.is_none()
+            && right.inline_object.is_none()
+            && left.properties == right.properties
+            && left.revision == right.revision
+            && left.hyperlink == right.hyperlink
+    }
+    let mut joined: Option<Vec<RunStyle>> = None;
+    let mut index = 0;
+    while index < runs.len() {
+        let first = &runs[index];
+        let mut last = index;
+        if first.start < first.end && boundary(text, first.start) {
+            while last + 1 < runs.len() {
+                let left = &runs[last];
+                let right = &runs[last + 1];
+                if left.end != right.start
+                    || right.start >= right.end
+                    || right.end > text.len()
+                    || !text.is_char_boundary(left.end)
+                    || !text.is_char_boundary(right.end)
+                    || boundary(text, left.end)
+                    || !same_metadata(left, right)
+                {
+                    break;
+                }
+                last += 1;
+            }
+        }
+        if last > index && boundary(text, runs[last].end) {
+            let out = joined.get_or_insert_with(|| runs[..index].to_vec());
+            let mut run = first.clone();
+            run.end = runs[last].end;
+            out.push(run);
+            index = last + 1;
+        } else {
+            if let Some(out) = &mut joined {
+                out.push(first.clone());
+            }
+            index += 1;
+        }
+    }
+    joined.map_or(Cow::Borrowed(runs), Cow::Owned)
+}
+
 /// Non-text inline content that participates in Word line layout.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct InlineObject {
@@ -4227,6 +4305,8 @@ pub fn layout_text_vertically<C: LineWrapContext>(
     available_height: Option<f64>,
     line_height: f64,
 ) -> Result<VerticalWrappedLayout, C::Error> {
+    let joined_runs = join_equal_runs_inside_graphemes(text, run_styles);
+    let run_styles = joined_runs.as_ref();
     fn push_vertical_line(
         lines: &mut Vec<WrappedLine>,
         text: String,
@@ -4552,6 +4632,8 @@ pub fn layout_section_text_vertically<C: LineWrapContext>(
     available_height: Option<f64>,
     line_height: f64,
 ) -> Result<VerticalWrappedLayout, C::Error> {
+    let joined_runs = join_equal_runs_inside_graphemes(text, run_styles);
+    let run_styles = joined_runs.as_ref();
     let mut layout = layout_text_vertically(
         ctx,
         text,
@@ -6127,6 +6209,13 @@ pub fn wrap_text_into_lines<C: LineWrapContext>(
     base_offset: usize,
     column_right_edge: f64,
 ) -> Result<Vec<WrappedLine>, C::Error> {
+    let joined_runs = if paragraph_style.advances.is_empty() {
+        join_equal_runs_inside_graphemes(text, run_styles)
+    } else {
+        // ADVANCE fields have source-offset semantics independent of rPr.
+        Cow::Borrowed(run_styles)
+    };
+    let run_styles = joined_runs.as_ref();
     let lines = wrap_text_into_lines_with_terminal_candidate(
         ctx,
         text,
@@ -16282,6 +16371,223 @@ mod tests {
                 20.0
             };
             assert!((width - expected).abs() < 1e-9, "{val}: {width}");
+        }
+    }
+
+    #[test]
+    fn run_boundaries_do_not_split_extended_grapheme_widths() {
+        for text in ["👨\u{200d}👨\u{200d}👧\u{200d}👦", "e\u{301}", "🇯🇵", "ｶﾞ"] {
+            let ctx = TestContext::new(10.0);
+            let paragraph = ParagraphStyle::default();
+            let whole =
+                wrap_text_into_lines(&ctx, text, &[make_run(text)], 0.0, &paragraph, 0, 500.0)
+                    .unwrap();
+            let runs: Vec<_> = text
+                .char_indices()
+                .map(|(start, ch)| RunStyle {
+                    start,
+                    end: start + ch.len_utf8(),
+                    ..make_run(text)
+                })
+                .collect();
+            let split = wrap_text_into_lines(&ctx, text, &runs, 0.0, &paragraph, 0, 500.0).unwrap();
+            let width = |lines: &[WrappedLine]| {
+                lines
+                    .iter()
+                    .flat_map(|line| &line.clusters)
+                    .map(|cluster| cluster.width)
+                    .sum::<f64>()
+            };
+            assert!(
+                (width(&whole) - width(&split)).abs() < 1e-9,
+                "{text:?}: one run={}, scalar runs={}",
+                width(&whole),
+                width(&split)
+            );
+        }
+    }
+
+    #[test]
+    fn grapheme_run_joining_preserves_metadata_and_borrows_ordinary_ranges() {
+        let text = "e\u{301}";
+        let left = RunStyle {
+            end: 1,
+            ..make_run(text)
+        };
+        let right = RunStyle {
+            start: 1,
+            ..make_run(text)
+        };
+        for kind in 0..5 {
+            let mut different = right.clone();
+            match kind {
+                0 => {
+                    different.properties = Some(Rc::new(RunProperties {
+                        bold: Some(true),
+                        ..Default::default()
+                    }))
+                }
+                1 => different.properties = Some(Rc::new(RunProperties::default())),
+                2 => {
+                    different.hyperlink = Some(RunHyperlink {
+                        anchor: Some("mark".into()),
+                        ..Default::default()
+                    })
+                }
+                3 => {
+                    different.revision = Some(RevisionMark {
+                        kind: jade_docx_reader::document::RevisionKind::Inserted,
+                        id: Some("r1".into()),
+                        author: None,
+                        date: None,
+                        date_utc: None,
+                        insertion: None,
+                    })
+                }
+                _ => {
+                    different.inline_object = Some(InlineObject {
+                        width: 7.0,
+                        height: 8.0,
+                        descent: 0.0,
+                    })
+                }
+            }
+            let runs = [left.clone(), different];
+            assert!(matches!(
+                join_equal_runs_inside_graphemes(text, &runs),
+                Cow::Borrowed(_)
+            ));
+        }
+        let runs = [
+            RunStyle {
+                end: 1,
+                ..make_run("ab")
+            },
+            RunStyle {
+                start: 1,
+                ..make_run("ab")
+            },
+        ];
+        assert!(matches!(
+            join_equal_runs_inside_graphemes("ab", &runs),
+            Cow::Borrowed(_)
+        ));
+        for properties in [
+            RunProperties {
+                fit_text: Some(jade_docx_reader::document::RunFitText { val: 300, id: None }),
+                ..Default::default()
+            },
+            RunProperties {
+                ruby: Some(Box::default()),
+                ..Default::default()
+            },
+            RunProperties {
+                east_asian_layout: Some(Box::default()),
+                ..Default::default()
+            },
+        ] {
+            let properties = Some(Rc::new(properties));
+            let runs = [
+                RunStyle {
+                    properties: properties.clone(),
+                    ..left.clone()
+                },
+                RunStyle {
+                    properties,
+                    ..right.clone()
+                },
+            ];
+            assert!(matches!(
+                join_equal_runs_inside_graphemes(text, &runs),
+                Cow::Borrowed(_)
+            ));
+        }
+        let properties = Some(Rc::new(RunProperties {
+            bold: Some(true),
+            color: Some("0070c0".into()),
+            ..Default::default()
+        }));
+        let link = Some(RunHyperlink {
+            anchor: Some("bookmark".into()),
+            ..Default::default()
+        });
+        let formatted = [
+            RunStyle {
+                properties: properties.clone(),
+                hyperlink: link.clone(),
+                ..left.clone()
+            },
+            RunStyle {
+                properties: properties.clone(),
+                hyperlink: link.clone(),
+                ..right.clone()
+            },
+        ];
+        let wrapped = wrap_text_into_lines(
+            &TestContext::new(10.0),
+            text,
+            &formatted,
+            0.0,
+            &ParagraphStyle::default(),
+            17,
+            100.0,
+        )
+        .unwrap();
+        assert_eq!(wrapped[0].clusters.len(), 1);
+        assert_eq!(
+            (wrapped[0].clusters[0].start, wrapped[0].clusters[0].end),
+            (17, 17 + text.len())
+        );
+        assert_eq!(wrapped[0].segments[0].properties, properties);
+        assert_eq!(wrapped[0].segments[0].hyperlink, link);
+        let runs = [left, right];
+        let joined = join_equal_runs_inside_graphemes(text, &runs);
+        assert_eq!(joined.len(), 1);
+        assert_eq!((joined[0].start, joined[0].end), (0, text.len()));
+        assert_eq!((runs[0].end, runs[1].start), (1, 1));
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig { cases: 128, ..ProptestConfig::default() })]
+        #[test]
+        fn equal_run_partitions_preserve_graphemes_and_wraps(
+            tokens in prop::collection::vec(prop::sample::select(vec!["A", " ", "字", "e\u{301}", "🇯🇵", "ｶﾞ", "👨\u{200d}👨\u{200d}👧\u{200d}👦", "👍🏽"]), 1..18),
+            cuts in prop::collection::vec(any::<bool>(), 1..100),
+            available in 22u32..100,
+        ) {
+            let text = tokens.concat();
+            let mut runs = Vec::new();
+            let mut start = 0;
+            for (index, (offset, _)) in text.char_indices().enumerate().skip(1) {
+                if cuts[index % cuts.len()] {
+                    runs.push(RunStyle { start, end: offset, ..make_run(&text) });
+                    start = offset;
+                }
+            }
+            runs.push(RunStyle { start, ..make_run(&text) });
+            let ctx = TestContext::new(10.0);
+            let paragraph = ParagraphStyle::default();
+            let whole = wrap_text_into_lines(&ctx, &text, &[make_run(&text)], 0.0, &paragraph, 17, available as f64).unwrap();
+            let split = wrap_text_into_lines(&ctx, &text, &runs, 0.0, &paragraph, 17, available as f64).unwrap();
+            let geometry = |lines: &[WrappedLine]| lines.iter().map(|line| (
+                line.break_kind,
+                line.clusters.iter().map(|c| (c.start, c.end, c.text.to_string(), c.width)).collect::<Vec<_>>()
+            )).collect::<Vec<_>>();
+            prop_assert_eq!(geometry(&whole), geometry(&split));
+            let reconstructed: String = split.iter().flat_map(|line| &line.segments).map(|segment| segment.text.as_str()).collect();
+            prop_assert_eq!(&reconstructed, &text);
+            for segment in split.iter().flat_map(|line| &line.segments) {
+                prop_assert_eq!(text.get(segment.start - 17..segment.end - 17), Some(segment.text.as_str()));
+                prop_assert_eq!(&segment.properties, &None);
+                prop_assert_eq!(&segment.revision, &None);
+                prop_assert_eq!(&segment.hyperlink, &None);
+            }
+            for horizontal_latin in [false, true] {
+                let whole = layout_text_vertically(&ctx, &text, &[make_run(&text)], horizontal_latin, 17, Some(available as f64), 12.0).unwrap();
+                let split = layout_text_vertically(&ctx, &text, &runs, horizontal_latin, 17, Some(available as f64), 12.0).unwrap();
+                prop_assert_eq!(geometry(&whole.lines), geometry(&split.lines));
+                prop_assert_eq!(whole.column_ranges, split.column_ranges);
+            }
         }
     }
 
