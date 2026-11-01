@@ -45,7 +45,26 @@ In an isolated local benchmark of the actual extracted join helper (same Rust
 1,000/2,000/4,000/8,000 scalar runs took 3.14/12.21/48.29/231.24 ms before
 and 0.031/0.060/0.119/0.235 ms after. Each result retained the same flag-pair
 run ranges. These are helper measurements, not application or input-latency
-measurements; full CI and Callgrind on the updated head remain required.
+measurements.
+
+The first forward-iterator CI profile (`8c77533`) detected a 1.3105% increase
+in Yokohama's complete layout instruction count. It segmented ordinary CJK
+prefixes even when only two distant run boundaries were queried. That head
+was held back despite all six CI checks passing. The joiner now reuses nearby
+iterator boundaries and asks a GraphemeCursor about at most 16 bytes of left
+context for distant boundaries. Missing Unicode context falls back to the
+same retained iterator; it is never guessed. Long regional-indicator, Indic
+linker and emoji/Extend/ZWJ sequences remain exact, including sparse run
+ranges beyond the local window. Mixed-metadata PBT also covers Indic text,
+CR/LF and repeated combining marks. Ordinary ranges still borrow the input.
+
+A helper-only diagnostic (same Rust 1.93.1, dependency, optimized harness and
+five-sample median) compared the held head with this bounded-context change.
+For 1,000 calls over 8,000 CJK characters in two runs, cumulative time was
+96.0 ms versus 0.339 ms. The 8,000-scalar RI case was 0.246 ms versus 0.269 ms
+and retained exact flag-pair ranges. Concurrent local builds limit timing
+precision; this diagnostic is not a complete-layout or application latency
+claim. Updated-head CI and all 18 Callgrind comparisons remain required.
 
 Validation on core `06e1d5239ce254c2e190a82fe9188f69d8010cbe`: combined
 locked library tests passed (2,401 editor and 721 layout tests; 21 and 12
@@ -59,3 +78,9 @@ locked library tests passed (2,404 editor and 723 layout tests; 21 and 12
 existing ignored tests). Layout library/tests Clippy with warnings denied,
 workspace Rustfmt and the locked wasm32 editor library check all passed with
 Rust 1.93.1. Both 128-case grapheme property tests passed in this run.
+
+Bounded-context follow-up validation on the same `0894c50` base: all 724 layout
+library tests passed (12 existing ignored), including both 128-case PBTs and
+the sparse long-context regression. Layout Clippy with warnings denied and
+the workspace Rustfmt check passed. Updated-head CI and performance artifacts
+are still required before merge; the earlier all-green head was not merged.
