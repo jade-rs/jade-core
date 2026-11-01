@@ -224,6 +224,37 @@ impl HeadlessWorkbook {
         Ok(id)
     }
 
+    /// Insert ▸ Pictures: `image` (PNG, JPEG or GIF) on the sheet with its
+    /// top-left at `at`'s, `size` px wide and tall, as Excel puts a picture
+    /// from a file; returns the new object's id.
+    pub fn insert_picture(
+        &mut self,
+        sheet: &str,
+        at: CellRef,
+        image: &[u8],
+        size: (f64, f64),
+    ) -> Result<u32> {
+        let index = self.sheet_index(sheet)?;
+        self.guard_objects(index, WHAT)?;
+        let count = self.workbook.sheets[index]
+            .shapes
+            .iter()
+            .filter(|shape| shape.kind == jade_xlsx_reader::ShapeKind::Picture)
+            .count();
+        let sheet_part = self.workbook.sheets[index].part_name.clone();
+        let mut package = jade_opc::OpcPackage::open(&self.source)?;
+        let id = jade_xlsx_writer::pictures::insert_picture(
+            &mut package,
+            &sheet_part,
+            image,
+            at,
+            size,
+            &format!("Picture {}", count + 1),
+        )?;
+        self.replace_package(package)?;
+        Ok(id)
+    }
+
     /// Changes the chart whose id is `id`: its type, title, legend or data,
     /// as Chart Design's buttons do. A new type keeps the series; new data
     /// keeps the type, title and legend.
