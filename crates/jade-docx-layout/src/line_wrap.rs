@@ -3329,6 +3329,117 @@ impl WrappedLine {
         }
     }
 
+    /// Width of a terminal punctuation mark outside the line's content edge.
+    /// Tab closure and punctuation eligibility belong to the shared line plan.
+    pub fn hanging_punctuation_width_px(
+        &self,
+        paragraph: &ParagraphStyle,
+        natural_advance: f64,
+        available_width: f64,
+    ) -> f64 {
+        self.clusters
+            .last()
+            .filter(|cluster| {
+                !cluster.is_whitespace
+                    && cluster.can_hang_line_end
+                    && paragraph.allows_hanging_punctuation_at(self.break_kind)
+                    && natural_advance
+                        > available_width
+                            + if paragraph.word_platform
+                                == crate::line_metrics::WordLayoutPlatform::Mac
+                                && !is_justified_alignment(&paragraph.alignment)
+                                && self.tab_stops.is_empty()
+                            {
+                                0.0
+                            } else {
+                                0.5
+                            }
+                    && !matches!(paragraph.alignment.trim(), "center" | "right" | "end")
+            })
+            .map(|cluster| {
+                // Mac tab fitting already assigned part of this mark to the tab.
+                if paragraph.word_platform == crate::line_metrics::WordLayoutPlatform::Mac
+                    && !self.tab_stops.is_empty()
+                {
+                    let closed: f64 = self
+                        .tab_stops
+                        .iter()
+                        .map(|stop| stop.closed_for_final_mark)
+                        .sum();
+                    if closed > f64::EPSILON {
+                        (cluster.width - closed).max(0.0)
+                    } else {
+                        cluster.width.min(natural_advance - available_width)
+                    }
+                } else {
+                    cluster.width
+                }
+            })
+            .unwrap_or(0.0)
+    }
+
+    /// Extra advance after each boundary on a ragged Word for Mac line
+    /// whose uncompressed terminal punctuation hangs beyond the content edge.
+    /// Reuse the measured auto spaces, including the digit face's trailing
+    /// space. Any remaining slack widens every eligible boundary equally,
+    /// including auto-space boundaries and internal ideographic spaces.
+    /// Leading/trailing indentation and Latin word interiors do not stretch.
+    pub fn mac_east_asian_justification_advances_px(&self, extra: f64) -> Vec<f64> {
+        let mut shares = vec![0.0; self.clusters.len().saturating_sub(1)];
+        if extra <= 0.0 {
+            return shares;
+        }
+        let Some(start) = self.clusters.iter().position(|c| !c.is_whitespace) else {
+            return shares;
+        };
+        let end = self
+            .clusters
+            .iter()
+            .rposition(|c| !c.is_whitespace)
+            .unwrap();
+        let eligible = |index: usize| {
+            let left = &self.clusters[index];
+            let right = &self.clusters[index + 1];
+            if left.kind != InlineClusterKind::Grapheme || right.kind != InlineClusterKind::Grapheme
+            {
+                return false;
+            }
+            let ideographic_space_pair = (left.text == "\u{3000}"
+                && (right.text == "\u{3000}"
+                    || is_non_whitespace_east_asian_grapheme(&right.text)))
+                || (right.text == "\u{3000}" && is_non_whitespace_east_asian_grapheme(&left.text));
+            ideographic_space_pair
+                || east_asian_justification_gap(&left.text, &right.text).is_some()
+        };
+        let mut count = 0;
+        let mut capacity = 0.0;
+        for (index, share) in shares.iter_mut().enumerate().take(end).skip(start) {
+            if eligible(index) {
+                count += 1;
+                let auto_space = (self.clusters[index].auto_space_trailing
+                    + self.clusters[index + 1].auto_space_leading)
+                    .max(0.0);
+                *share = auto_space;
+                capacity += auto_space;
+            }
+        }
+        if count == 0 {
+            return shares;
+        }
+        let scale = if capacity > 0.0 {
+            (extra / capacity).min(1.0)
+        } else {
+            0.0
+        };
+        let common = (extra - capacity).max(0.0) / count as f64;
+        for (index, share) in shares.iter_mut().enumerate().take(end).skip(start) {
+            if eligible(index) {
+                *share = *share * scale + common;
+            }
+        }
+        shares
+    }
+
     /// Extra advance for a distributed line. A soft line's trailing separator
     /// and hanging punctuation sit outside its content edge. Natural advance
     /// comes from this line's shared plan.
@@ -14105,6 +14216,137 @@ mod tests {
         )
         .unwrap()
         .remove(0)
+    }
+
+    #[test]
+    fn mac_hanging_punctuation_uses_the_measured_edge_without_half_pixel_slack() {
+        // Frozen Word for Mac coordinates: Yokohama article 6 has a 14px
+        // terminal comma and only 0.003133px of overflow, yet stretches all
+        // the preceding text to the content edge.
+        let mut line = finished_punctuation_test_line("甲、");
+        line.break_kind = LineBreakKind::Soft;
+        line.clusters.last_mut().unwrap().can_hang_line_end = true;
+        let style = ParagraphStyle {
+            alignment: "left".into(),
+            enable_line_break_rules: true,
+            word_platform: crate::line_metrics::WordLayoutPlatform::Mac,
+            east_asian_rules: EastAsianLineBreakingRules {
+                compatibility_mode: Some(12),
+                ..EastAsianLineBreakingRules::default()
+            },
+            ..ParagraphStyle::default()
+        };
+        assert_eq!(
+            line.hanging_punctuation_width_px(&style, 589.203125, 589.199991862),
+            14.0
+        );
+        assert_eq!(
+            line.hanging_punctuation_width_px(&style, 589.199991862, 589.199991862),
+            0.0
+        );
+    }
+
+    #[test]
+    fn mac_tiny_hanging_overflow_keeps_other_line_modes_unchanged() {
+        let mut line = finished_punctuation_test_line("甲、");
+        line.break_kind = LineBreakKind::Soft;
+        line.clusters.last_mut().unwrap().can_hang_line_end = true;
+        let base = ParagraphStyle {
+            alignment: "left".into(),
+            enable_line_break_rules: true,
+            word_platform: crate::line_metrics::WordLayoutPlatform::Mac,
+            east_asian_rules: EastAsianLineBreakingRules {
+                compatibility_mode: Some(12),
+                ..EastAsianLineBreakingRules::default()
+            },
+            ..ParagraphStyle::default()
+        };
+        for alignment in ["both", "center", "right", "end"] {
+            let style = ParagraphStyle {
+                alignment: alignment.into(),
+                ..base.clone()
+            };
+            assert_eq!(line.hanging_punctuation_width_px(&style, 28.003, 28.0), 0.0);
+        }
+        let mut disabled = base.clone();
+        disabled.east_asian_rules.overflow_punctuation = Some(false);
+        assert_eq!(
+            line.hanging_punctuation_width_px(&disabled, 28.003, 28.0),
+            0.0
+        );
+        let mut modern = base.clone();
+        modern.east_asian_rules.compatibility_mode = Some(15);
+        assert_eq!(
+            line.hanging_punctuation_width_px(&modern, 28.003, 28.0),
+            0.0
+        );
+    }
+
+    #[test]
+    fn mac_hanging_line_uses_measured_auto_spaces_and_internal_ideographic_spaces() {
+        // Original Word row: both script boundaries grow by their measured
+        // auto space plus the same 0.118988pt as every other character boundary.
+        let mut line = finished_punctuation_test_line(
+            "第6条　賦課もれによる徴収金又は詐偽その他不正の行為により免かれた徴収金については、",
+        );
+        assert_eq!(line.clusters.len(), 42);
+        line.clusters[1].auto_space_leading = 3.5;
+        line.clusters[2].auto_space_leading = 3.9921875;
+        let extra = 589.199991862 - (589.203125 - 14.0);
+        let shares = line.mac_east_asian_justification_advances_px(extra);
+        let common = (extra - 3.5 - 3.9921875) / 41.0;
+        assert_eq!(shares.len(), 41);
+        assert!((shares[0] - (3.5 + common)).abs() < 1e-9);
+        assert!((shares[1] - (3.9921875 + common)).abs() < 1e-9);
+        for share in &shares[2..] {
+            assert!((share - common).abs() < 1e-9);
+        }
+        assert!((shares.iter().sum::<f64>() - extra).abs() < 1e-9);
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig {
+            cases: 256,
+            rng_seed: proptest::test_runner::RngSeed::Fixed(20261101),
+            ..ProptestConfig::default()
+        })]
+
+        #[test]
+        fn mac_boundary_advances_preserve_slack_and_indent(
+            extra_milli in 0_u32..100_000,
+            leading_milli in 0_u32..10_000,
+            trailing_milli in 0_u32..10_000,
+        ) {
+            let mut line = finished_punctuation_test_line("　　甲12乙　丙、　");
+            assert_eq!(line.clusters.len(), 10);
+            for cluster in &mut line.clusters {
+                cluster.auto_space_leading = 0.0;
+                cluster.auto_space_trailing = 0.0;
+            }
+            let leading = f64::from(leading_milli) / 1000.0;
+            let trailing = f64::from(trailing_milli) / 1000.0;
+            let extra = f64::from(extra_milli) / 1000.0;
+            line.clusters[3].auto_space_leading = leading;
+            line.clusters[4].auto_space_trailing = trailing;
+            let shares = line.mac_east_asian_justification_advances_px(extra);
+            // Independent fixed boundary oracle: indentation and the interior
+            // of "12" never widen; both sides of the internal U+3000 do.
+            let eligible = [2, 4, 5, 6, 7];
+            let capacity = leading + trailing;
+            let scale = if capacity > 0.0 { (extra / capacity).min(1.0) } else { 0.0 };
+            let common = (extra - capacity).max(0.0) / 5.0;
+            prop_assert_eq!(shares.len(), 9);
+            for (index, share) in shares.iter().enumerate() {
+                prop_assert!(*share >= 0.0);
+                if !eligible.contains(&index) {
+                    prop_assert_eq!(*share, 0.0);
+                } else {
+                    let auto = match index { 2 => leading, 4 => trailing, _ => 0.0 };
+                    prop_assert!((*share - (auto * scale + common)).abs() < 1e-9);
+                }
+            }
+            prop_assert!((shares.iter().sum::<f64>() - extra).abs() < 1e-9);
+        }
     }
 
     fn mac_punctuation_test_style() -> ParagraphStyle {
