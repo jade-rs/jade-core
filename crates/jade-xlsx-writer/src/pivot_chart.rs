@@ -126,15 +126,23 @@ fn series_bindings(
     Ok(out)
 }
 
-/// A report tab rename keeps its explicit local chart binding. Work from the
-/// original model because the staged package's series formulas already name
-/// the new sheet. Unresolved/external bindings remain opaque.
 /// A PivotChart copied with sheet `source` as sheet `copy`: one showing a
 /// pivot table on `source` shows the copy's (which has its name), as
 /// Excel's Move or Copy does; one showing a pivot table elsewhere keeps
 /// showing it. A chart without a pivot source comes back as it was.
 pub(crate) fn copied_chart_source(xml: &str, source: &str, copy: &str) -> Result<String> {
-    let Some(pivot) = jade_xlsx_reader::chart::parse_chart(xml)?.pivot_source else {
+    let chart = jade_xlsx_reader::chart::parse_chart(xml)?;
+    if chart.unsupported_properties.iter().any(|property| {
+        matches!(
+            property.as_str(),
+            "external chart data" | "invalid pivot chart source"
+        )
+    }) {
+        return Err(WriteError::CopySheet(
+            "a PivotChart with an external or invalid source cannot be copied yet".into(),
+        ));
+    }
+    let Some(pivot) = chart.pivot_source else {
         return Ok(xml.to_string());
     };
     let Some(name) = pivot.qualified_name() else {
@@ -142,6 +150,15 @@ pub(crate) fn copied_chart_source(xml: &str, source: &str, copy: &str) -> Result
             "a PivotChart's pivot table cannot be told".into(),
         ));
     };
+    if name
+        .workbook
+        .as_ref()
+        .is_some_and(|book| book.contains(['/', '\\', ':']))
+    {
+        return Err(WriteError::CopySheet(
+            "a PivotChart with an external source cannot be copied yet".into(),
+        ));
+    }
     if !jade_xlsx_reader::formula::same_sheet_name(&name.sheet, source) {
         return Ok(xml.to_string());
     }
@@ -156,6 +173,9 @@ pub(crate) fn copied_chart_source(xml: &str, source: &str, copy: &str) -> Result
     xml::rename_source(xml, &renamed)
 }
 
+/// A report tab rename keeps its explicit local chart binding. Work from the
+/// original model because the staged package's series formulas already name
+/// the new sheet. Unresolved/external bindings remain opaque.
 pub(crate) fn rename_sheet_sources(
     package: &mut OpcPackage,
     before: &Workbook,

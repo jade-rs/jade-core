@@ -196,3 +196,36 @@ fn a_pivot_table_comes_with_the_copy_sharing_its_cache() {
         .refresh_all_pivots()
         .expect("the copy's report and chart refresh");
 }
+
+/// A source that cannot be proved local must not be rebound to the copy.
+#[test]
+fn ambiguous_pivot_chart_sources_refuse_copy_without_changing_the_workbook() {
+    let fixture = include_bytes!("../../../public/fixtures/pivot-chart-compat.xlsx");
+    for case in ["external-data", "external-path", "malformed-source"] {
+        let mut package = jade_opc::OpcPackage::open(fixture).unwrap();
+        let original = package.required_part_str("xl/charts/pivot.xml").unwrap();
+        let changed = match case {
+            "external-data" => original.replace(
+                "</c:chart>",
+                "</c:chart><c:externalData xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\" r:id=\"external\"/>",
+            ),
+            "external-path" => original.replace(
+                "[pivot-chart-compat.xlsx]Report!RegionalSales",
+                "[https://example.test/other.xlsx]Report!RegionalSales",
+            ),
+            "malformed-source" => original.replace("<c:fmtId val=\"0\"/>", "<c:fmtId val=\"invalid\"/>"),
+            _ => unreachable!(),
+        };
+        assert_ne!(changed, original, "fixture mutation must apply: {case}");
+        package.replace("xl/charts/pivot.xml", changed.into_bytes());
+        let bytes = package.write().unwrap();
+        let mut workbook = HeadlessWorkbook::open_for_editing(&bytes).unwrap();
+        assert!(
+            workbook.copy_sheet("Report", "Report (2)").is_err(),
+            "{case}"
+        );
+        assert_eq!(workbook.bytes(), bytes, "{case}");
+        assert_eq!(workbook.workbook().sheets.len(), 2, "{case}");
+        assert!(!workbook.can_undo(), "{case}");
+    }
+}
