@@ -204,8 +204,23 @@ pub struct SortRequest {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SortKey {
     pub column: u32,
+    /// Z to A; for a colour key, On Bottom.
     #[serde(default)]
     pub descending: bool,
+    /// Sort On a colour rather than the values: the cells of it first (or,
+    /// `descending`, last), the rest after them in the order they were.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub color: Option<SortColor>,
+}
+
+/// The colour a sort key puts first: the cells' fill, or their text's.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct SortColor {
+    /// The font's colour rather than the fill's.
+    #[serde(default)]
+    pub font: bool,
+    /// `RRGGBB`; empty for No Fill, or the automatic font colour.
+    pub rgb: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
