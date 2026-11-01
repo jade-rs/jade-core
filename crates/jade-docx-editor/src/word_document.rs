@@ -35095,7 +35095,11 @@ impl WordDocument {
             wsp_children.push(XmlNode::Element(wps_txbx));
         }
         wsp_children.push(XmlNode::Element(body_pr));
-        let wsp = doc.create_element(
+        // Every child was made by this document, and a kept `w:txbxContent`
+        // is bound to the model: new ids for it left the box's paragraphs
+        // pointing at nothing, and the next edit there rebuilt the box from
+        // the model, losing the field codes the move had kept.
+        let wsp = doc.create_element_preserving_child_ids(
             "wps:wsp",
             vec![attr(
                 "xmlns:wps",
@@ -35103,7 +35107,7 @@ impl WordDocument {
             )],
             wsp_children,
         );
-        let graphic_data = doc.create_element(
+        let graphic_data = doc.create_element_preserving_child_ids(
             "a:graphicData",
             vec![attr(
                 "uri",
@@ -35111,7 +35115,7 @@ impl WordDocument {
             )],
             vec![XmlNode::Element(wsp)],
         );
-        doc.create_element(
+        doc.create_element_preserving_child_ids(
             "a:graphic",
             vec![attr(
                 "xmlns:a",
