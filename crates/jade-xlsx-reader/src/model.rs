@@ -24,6 +24,11 @@ pub struct CellRef {
     pub row: u32,
 }
 
+/// Excel shows zeros unless a sheet's view says not to.
+fn shows_zeros() -> bool {
+    true
+}
+
 impl CellRef {
     pub fn new(column: u32, row: u32) -> Self {
         Self { column, row }
@@ -239,6 +244,10 @@ pub struct Sheet {
     /// work out to (Formulas ▸ Show Formulas, ⌃`).
     #[serde(default)]
     pub show_formulas: bool,
+    /// `sheetView/@showZeros`: cells worth zero show `0`; off, they show
+    /// nothing (Excel's "Show a zero in cells that have zero value").
+    #[serde(default = "shows_zeros")]
+    pub show_zeros: bool,
     /// Fixed rows and columns from the sheet's frozen `<pane>`, if any.
     #[serde(default)]
     pub freeze_pane: Option<FreezePane>,
