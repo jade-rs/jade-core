@@ -979,6 +979,18 @@ impl HeadlessWorkbook {
         // Typing changed values only: what each sheet protects is as it was.
         self.carry_sheet_states(&after_print, &before_print);
         reversal.apply(&mut self.workbook);
+        // The view lays out again only the rows of the cells put back.
+        let mut cells: Vec<(usize, CellRef)> = reversal
+            .cells
+            .iter()
+            .map(|typed| (typed.sheet, typed.at))
+            .collect();
+        cells.extend(reversal.formulas.iter().map(|(sheet, at, _)| (*sheet, *at)));
+        self.typed_changes = Some(TypedChanges {
+            before: after_print,
+            after: before_print,
+            cells,
+        });
         debug_assert_eq!(
             Some(&self.workbook),
             jade_xlsx_reader::read_xlsx(&self.source).ok().as_ref(),
