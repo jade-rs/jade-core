@@ -1,7 +1,7 @@
 //! Replay must preserve positioned glyphs across reusable batches and fallback paths.
 use jade_docx_editor::draw_command::{
+    executor::{execute_command_with_font_state, FontStateTracker},
     DrawCommand, GlyphRunStep, TextStyle,
-    executor::{FontStateTracker, execute_command_with_font_state},
 };
 use jade_painter::{Painter, TextMetrics};
 use proptest::prelude::*;
