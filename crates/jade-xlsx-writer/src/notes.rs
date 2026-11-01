@@ -627,7 +627,11 @@ pub(crate) fn ensure_override(
     Ok(())
 }
 
-fn ensure_default(package: &mut OpcPackage, extension: &str, content_type: &str) -> Result<()> {
+pub(crate) fn ensure_default(
+    package: &mut OpcPackage,
+    extension: &str,
+    content_type: &str,
+) -> Result<()> {
     let Some(types) = package.part_str("[Content_Types].xml")? else {
         return Ok(());
     };

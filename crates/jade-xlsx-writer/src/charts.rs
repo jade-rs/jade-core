@@ -490,7 +490,7 @@ fn drawing_ids(xml: &str) -> Result<Vec<u32>> {
 
 /// The sheet's drawing part, made — with its relationship, content type
 /// and `<drawing>` element — when it has none.
-fn drawing_for(package: &mut OpcPackage, sheet_part: &str) -> Result<String> {
+pub(crate) fn drawing_for(package: &mut OpcPackage, sheet_part: &str) -> Result<String> {
     let rels_name = jade_opc::rels_part_name(sheet_part);
     let rels_xml = package.part_str(&rels_name)?;
     if let Some(target) = rels_xml
@@ -558,10 +558,31 @@ pub fn insert_chart(
         &relative_target(&drawing, &chart_part),
     )?;
     package.replace(&drawing_rels, rels.into_bytes());
+    append_to_drawing(package, &drawing, |p, id| {
+        let marker = |name: &str, cell: jade_xlsx_reader::CellRef, offset: (i64, i64)| {
+            format!(
+                "<{p}{name}><{p}col>{}</{p}col><{p}colOff>{}</{p}colOff><{p}row>{}</{p}row><{p}rowOff>{}</{p}rowOff></{p}{name}>",
+                cell.column, offset.0, cell.row, offset.1
+            )
+        };
+        format!(
+            "<{p}twoCellAnchor>{}{}<{p}graphicFrame macro=\"\" xmlns:a=\"{DRAWINGML_NS}\"><{p}nvGraphicFramePr><{p}cNvPr id=\"{id}\" name=\"Chart {id}\"/><{p}cNvGraphicFramePr/></{p}nvGraphicFramePr><{p}xfrm><a:off x=\"0\" y=\"0\"/><a:ext cx=\"0\" cy=\"0\"/></{p}xfrm><a:graphic><a:graphicData uri=\"{CHART_NS}\"><c:chart xmlns:c=\"{CHART_NS}\" xmlns:r=\"{RELATIONSHIPS_NS}\" r:id=\"{relationship}\"/></a:graphicData></a:graphic></{p}graphicFrame><{p}clientData/></{p}twoCellAnchor>",
+            marker("from", anchor.from, anchor.from_offset),
+            marker("to", anchor.to, anchor.to_offset),
+        )
+    })
+}
 
+/// A new object at the end of `drawing`, written by `frame` from the
+/// drawing's namespace prefix and the object's new id; returns the id.
+pub(crate) fn append_to_drawing(
+    package: &mut OpcPackage,
+    drawing: &str,
+    frame: impl FnOnce(&str, u32) -> String,
+) -> Result<u32> {
     let xml = package
-        .part_str(&drawing)?
-        .ok_or_else(|| WriteError::MissingPart(drawing.clone()))?;
+        .part_str(drawing)?
+        .ok_or_else(|| WriteError::MissingPart(drawing.to_string()))?;
     let id = drawing_ids(&xml)?.into_iter().max().unwrap_or(0) + 1;
     // The root's prefix, and where it closes.
     let mut reader = Reader::from_str(&xml);
@@ -597,18 +618,7 @@ pub fn insert_chart(
         }
         buf.clear();
     }
-    let p = prefix.unwrap_or_default();
-    let marker = |name: &str, cell: jade_xlsx_reader::CellRef, offset: (i64, i64)| {
-        format!(
-            "<{p}{name}><{p}col>{}</{p}col><{p}colOff>{}</{p}colOff><{p}row>{}</{p}row><{p}rowOff>{}</{p}rowOff></{p}{name}>",
-            cell.column, offset.0, cell.row, offset.1
-        )
-    };
-    let frame = format!(
-        "<{p}twoCellAnchor>{}{}<{p}graphicFrame macro=\"\" xmlns:a=\"{DRAWINGML_NS}\"><{p}nvGraphicFramePr><{p}cNvPr id=\"{id}\" name=\"Chart {id}\"/><{p}cNvGraphicFramePr/></{p}nvGraphicFramePr><{p}xfrm><a:off x=\"0\" y=\"0\"/><a:ext cx=\"0\" cy=\"0\"/></{p}xfrm><a:graphic><a:graphicData uri=\"{CHART_NS}\"><c:chart xmlns:c=\"{CHART_NS}\" xmlns:r=\"{RELATIONSHIPS_NS}\" r:id=\"{relationship}\"/></a:graphicData></a:graphic></{p}graphicFrame><{p}clientData/></{p}twoCellAnchor>",
-        marker("from", anchor.from, anchor.from_offset),
-        marker("to", anchor.to, anchor.to_offset),
-    );
+    let frame = frame(&prefix.unwrap_or_default(), id);
     let splice = match (close, empty_root) {
         (Some(at), _) => Splice {
             start: at,
@@ -624,8 +634,8 @@ pub fn insert_chart(
                 text: format!("{opened}{frame}</{}>", String::from_utf8_lossy(&name)),
             }
         }
-        (None, None) => return Err(WriteError::MissingPart(drawing)),
+        (None, None) => return Err(WriteError::MissingPart(drawing.to_string())),
     };
-    package.replace(&drawing, apply(&xml, vec![splice]).into_bytes());
+    package.replace(drawing, apply(&xml, vec![splice]).into_bytes());
     Ok(id)
 }
