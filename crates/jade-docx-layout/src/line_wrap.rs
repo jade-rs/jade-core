@@ -105,17 +105,18 @@ pub fn resolve_physical_paragraph_alignment(
     alignment: &str,
     bidi: bool,
 ) -> PhysicalParagraphAlignment {
-    let alignment = alignment.trim().to_ascii_lowercase();
-    if is_justified_alignment(&alignment) {
+    let alignment = alignment.trim();
+    if is_justified_alignment(alignment) {
         PhysicalParagraphAlignment::Justify
+    } else if alignment.eq_ignore_ascii_case("center") {
+        PhysicalParagraphAlignment::Center
+    } else if alignment.eq_ignore_ascii_case("right")
+        || (bidi && alignment.eq_ignore_ascii_case("start"))
+        || (!bidi && alignment.eq_ignore_ascii_case("end"))
+    {
+        PhysicalParagraphAlignment::Right
     } else {
-        match alignment.as_str() {
-            "center" => PhysicalParagraphAlignment::Center,
-            "right" => PhysicalParagraphAlignment::Right,
-            "start" if bidi => PhysicalParagraphAlignment::Right,
-            "end" if !bidi => PhysicalParagraphAlignment::Right,
-            _ => PhysicalParagraphAlignment::Left,
-        }
+        PhysicalParagraphAlignment::Left
     }
 }
 
@@ -10090,6 +10091,49 @@ mod tests {
                 "end" if bidi => PhysicalParagraphAlignment::Left,
                 "end" => PhysicalParagraphAlignment::Right,
                 "right" => PhysicalParagraphAlignment::Right,
+                _ => PhysicalParagraphAlignment::Left,
+            };
+            prop_assert_eq!(resolve_physical_paragraph_alignment(&value, bidi), expected);
+        }
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig {
+            cases: 256,
+            rng_seed: proptest::test_runner::RngSeed::Fixed(20261101),
+            ..ProptestConfig::default()
+        })]
+
+        #[test]
+        fn borrowed_alignment_matches_normalized_token_semantics(
+            token in prop_oneof![
+                prop::sample::select(vec![
+                    "left", "right", "center", "start", "end", "both", "justify",
+                    "distribute", "thaiDistribute", "lowKashida", "mediumKashida",
+                    "highKashida", "unknown", "", "左右", "ſtart", "cénter",
+                ]).prop_map(str::to_owned),
+                prop::collection::vec(any::<char>(), 0..64)
+                    .prop_map(|chars| chars.into_iter().collect::<String>()),
+            ],
+            uppercase in prop::collection::vec(any::<bool>(), 64),
+            padding in prop::sample::select(vec!["", " ", "\t\r\n", "\u{2003}\u{3000}"]),
+            bidi in any::<bool>(),
+        ) {
+            let mixed: String = token.chars().zip(uppercase).map(|(c, upper)| {
+                if upper { c.to_ascii_uppercase() } else { c }
+            }).collect();
+            let value = format!("{padding}{mixed}{padding}");
+            // Independent reference preserves the old normalization and all
+            // accepted tokens, rather than calling the production predicate.
+            let normalized = value.trim().to_ascii_lowercase();
+            let expected = match normalized.as_str() {
+                "both" | "justify" | "distribute" | "thaidistribute" |
+                "lowkashida" | "mediumkashida" | "highkashida" =>
+                    PhysicalParagraphAlignment::Justify,
+                "center" => PhysicalParagraphAlignment::Center,
+                "right" => PhysicalParagraphAlignment::Right,
+                "start" if bidi => PhysicalParagraphAlignment::Right,
+                "end" if !bidi => PhysicalParagraphAlignment::Right,
                 _ => PhysicalParagraphAlignment::Left,
             };
             prop_assert_eq!(resolve_physical_paragraph_alignment(&value, bidi), expected);
