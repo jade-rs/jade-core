@@ -994,6 +994,7 @@ fn args_signature_wrapcols(arg_count: usize) -> Vec<Signature> {
 fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signature> {
     match kind {
         Function::Single | Function::Anchorarray => args_signature_one_vector(arg_count),
+        Function::Filterxml => args_signature_scalars(arg_count, 2, 0),
         Function::EcmaCeiling => args_signature_scalars(arg_count, 2, 0),
         Function::Getpivotdata => {
             if (2..=254).contains(&arg_count) {
@@ -1663,6 +1664,7 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
     match kind {
         Function::Single => StaticResult::Scalar,
         Function::Anchorarray => StaticResult::Unknown,
+        Function::Filterxml => StaticResult::Unknown,
         Function::EcmaCeiling => scalar_arguments(args),
         Function::Getpivotdata => StaticResult::Unknown,
         Function::And => StaticResult::Scalar,
