@@ -50,6 +50,15 @@ pub enum AutoFilterChange {
         #[serde(default)]
         include_blank: bool,
     },
+    /// Date Filters ▸ Today, This Month… and Above/Below Average: Excel's
+    /// `dynamicFilter` of `kind` (its `type`: `today`, `thisMonth`, `Q1`,
+    /// `M12`, `aboveAverage`…).
+    Dynamic {
+        target: AutoFilterTarget,
+        reference: Option<String>,
+        column: u32,
+        kind: String,
+    },
     Rank {
         target: AutoFilterTarget,
         reference: Option<String>,
