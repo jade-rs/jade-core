@@ -1,3 +1,6 @@
+pub mod crdt;
+pub mod crdt_live;
+pub mod crdt_nodes;
 use js_sys::Reflect;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;

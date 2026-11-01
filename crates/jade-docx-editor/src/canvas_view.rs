@@ -196,6 +196,10 @@ struct CanvasDocumentState {
     /// The equation being edited in place, its caret inside the structure.
     equation_editor: Option<crate::word::equation::EquationEditor>,
     word_doc: Option<WordDocument>,
+    crdt: Option<crate::crdt_live::LiveDocument>,
+    crdt_actor: String,
+    crdt_checkpoint: Option<WordDocument>,
+    crdt_projection_error: Option<String>,
     paged_images: Vec<JsValue>,
     /// True when this view was initialized via lazy rendering (render-lazy / page-boundary lazy layout).
     /// In this mode, edit operations should avoid transferring ImageBitmaps eagerly; the host can
@@ -632,6 +636,9 @@ impl CanvasDocumentState {
     }
 
     fn history_flags(&self) -> (bool, bool) {
+        if let Some(live) = &self.crdt {
+            return (live.inner.can_undo(), live.inner.can_redo());
+        }
         (
             self.command_executor.can_undo() || !self.hf_undo_stack.is_empty(),
             self.command_executor.can_redo() || !self.hf_redo_stack.is_empty(),
@@ -8988,6 +8995,10 @@ impl OffscreenDocumentView {
             word_autocorrect: None,
             equation_editor: None,
             word_doc: None,
+            crdt: None,
+            crdt_actor: String::new(),
+            crdt_checkpoint: None,
+            crdt_projection_error: None,
             paged_images: Vec::new(),
             lazy_mode: false,
             preview_mode: opts.preview_mode(),
@@ -9077,6 +9088,9 @@ impl OffscreenDocumentView {
     pub fn undo(&self) -> js_sys::Promise {
         let view = self.clone();
         future_to_promise(async move {
+            if view.state.borrow().crdt.is_some() {
+                return view.crdt_history(false).await;
+            }
             let ended = JsFuture::from(view.end_style_preview()).await?;
             if !view.history_flags().0 && ended.is_object() {
                 return Ok(ended);
@@ -9199,6 +9213,9 @@ impl OffscreenDocumentView {
     pub fn redo(&self) -> js_sys::Promise {
         let view = self.clone();
         future_to_promise(async move {
+            if view.state.borrow().crdt.is_some() {
+                return view.crdt_history(true).await;
+            }
             let ended = JsFuture::from(view.end_style_preview()).await?;
             if !view.history_flags().1 && ended.is_object() {
                 return Ok(ended);
@@ -14189,7 +14206,14 @@ impl OffscreenDocumentView {
                 .or(state.selection)
                 .unwrap_or_else(|| SelectionRange::collapsed(TextPosition::default()))
         };
-        self.state.borrow_mut().command_executor.begin_group();
+        let mut state = self.state.borrow_mut();
+        if let Some(live) = state.crdt.as_mut() {
+            live.inner
+                .begin_group()
+                .map_err(|e| JsValue::from_str(&e))?;
+        }
+        state.command_executor.begin_group();
+        drop(state);
         let result = (|| {
             let caret = if selection.is_collapsed() {
                 selection.focus
@@ -14216,7 +14240,12 @@ impl OffscreenDocumentView {
         })();
         // A failed batch has already been rolled back by the inner group;
         // closing the outer one records the paste as a single history entry.
-        self.state.borrow_mut().command_executor.end_group();
+        let mut state = self.state.borrow_mut();
+        if let Some(live) = state.crdt.as_mut() {
+            live.inner.end_group();
+        }
+        state.command_executor.end_group();
+        drop(state);
         if result.is_err() {
             self.rerender_document()?;
         }
@@ -21667,3 +21696,5 @@ mod tests {
         assert_eq!(track_index_after_delete(&[0, 1, 2], 3), None);
     }
 }
+
+include!("crdt_live_view.rs");

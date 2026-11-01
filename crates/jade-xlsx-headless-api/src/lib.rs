@@ -199,6 +199,10 @@ pub struct SortRequest {
     #[serde(default)]
     pub phonetic: Option<bool>,
     pub keys: Vec<SortKey>,
+    /// Sort left to right: the columns move, each key a row of the range
+    /// counted from its first, and `header` keeps its first column in place.
+    #[serde(default)]
+    pub by_columns: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
