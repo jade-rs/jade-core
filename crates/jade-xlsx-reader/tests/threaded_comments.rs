@@ -38,7 +38,7 @@ fn threads_are_read_in_place_of_their_placeholder_notes() {
         comments
             .iter()
             .find(|comment| comment.reference == reference)
-            .expect(reference.column.to_string().as_str())
+            .unwrap_or_else(|| panic!("no comment at {reference:?}"))
     };
     assert_eq!(at("A1").author.as_deref(), Some("Ann Lee"));
     assert_eq!(
