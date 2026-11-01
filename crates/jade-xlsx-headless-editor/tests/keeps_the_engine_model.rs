@@ -59,3 +59,31 @@ fn values_typed_one_after_another_recalculate_their_formulas() {
     book.set(SHEET, "H20", CellInput::Number(7.0)).unwrap();
     assert_eq!(number(&book, "I20"), 24.0);
 }
+
+/// A workbook without a formula has nothing to recalculate: typed values
+/// land without a model, and the first formula typed is answered and then
+/// recalculated by the values typed after it.
+#[test]
+fn a_workbook_without_formulas_types_without_a_model_until_one_is_typed() {
+    let mut book = HeadlessWorkbook::open_for_editing(
+        &std::fs::read(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../public/fixtures/large-workbook.xlsx"
+        ))
+        .unwrap(),
+    )
+    .unwrap();
+    let sheet = book.workbook().sheets[0].name.clone();
+    for value in [1.0, 2.0] {
+        book.set(&sheet, "B2", CellInput::Number(value)).unwrap();
+        assert_eq!(book.cell(&sheet, "B2").unwrap().number, Some(value));
+    }
+    book.set(&sheet, "Z2", CellInput::Formula("=B2*10".into()))
+        .unwrap();
+    assert_eq!(book.cell(&sheet, "Z2").unwrap().number, Some(20.0));
+    book.set(&sheet, "B2", CellInput::Number(3.0)).unwrap();
+    assert_eq!(book.cell(&sheet, "Z2").unwrap().number, Some(30.0));
+    let reopened = HeadlessWorkbook::open(book.bytes()).unwrap();
+    assert_eq!(reopened.cell(&sheet, "B2").unwrap().number, Some(3.0));
+    assert_eq!(reopened.cell(&sheet, "Z2").unwrap().number, Some(30.0));
+}
