@@ -67,6 +67,7 @@ mod pivots;
 pub mod protected_ranges;
 pub mod protection;
 mod refresh;
+pub mod shapes;
 pub mod sheet_protection;
 pub mod sheet_view;
 pub mod sheets;
