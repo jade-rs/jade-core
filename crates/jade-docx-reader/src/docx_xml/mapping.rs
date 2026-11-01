@@ -135,7 +135,14 @@ fn map_paragraph(paragraph: &mut Paragraph, xml_paragraph: &XmlElement, doc: &Do
         // Paired a `w:r` each, every later run in the paragraph took the
         // next run's element.
         if let RunSlot::Element(xml_run, _) = &slot {
-            let pieces = soft_break_pieces(xml_run);
+            let run = &paragraph.runs[index];
+            // The parser keeps fields, images and text boxes whole, even
+            // when their source run contains a soft break.
+            let pieces = if run.field.is_none() && run.image.is_none() && run.text_box.is_none() {
+                soft_break_pieces(xml_run)
+            } else {
+                Vec::new()
+            };
             if pieces.len() > 1
                 && paragraph.runs.len() >= index + pieces.len()
                 && paragraph.runs[index..index + pieces.len()]
@@ -969,6 +976,17 @@ mod tests {
             (
                 r#"<w:p><w:r><w:t>A</w:t><w:br/></w:r><w:r><w:t>C</w:t></w:r></w:p>"#,
                 vec![("A", Some("A\u{0}")), ("\n", None), ("C", Some("C"))],
+            ),
+            // A field result stays one model run even when its source has a
+            // soft break; the standalone break and text after it own their runs.
+            (
+                r#"<w:p><w:fldSimple w:instr=" AUTHOR "><w:r><w:t>A</w:t><w:br/><w:t>B</w:t></w:r></w:fldSimple><w:r><w:br/></w:r><w:r><w:t>D</w:t></w:r><w:r><w:t>C</w:t></w:r></w:p>"#,
+                vec![
+                    ("", Some("A\u{0}B")),
+                    ("\n", Some("\u{0}")),
+                    ("D", Some("D")),
+                    ("C", Some("C")),
+                ],
             ),
             // A break that clears floats keeps its run whole.
             (
