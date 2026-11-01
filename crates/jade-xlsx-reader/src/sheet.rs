@@ -91,6 +91,7 @@ pub fn parse_sheet_with_relationships(
         default_rows_hidden: false,
         show_grid_lines: true,
         show_formulas: false,
+        show_zeros: true,
         freeze_pane: None,
         tables: Vec::new(),
         header_footer: None,
@@ -206,6 +207,9 @@ pub fn parse_sheet_with_relationships(
                         }
                         if let Some(value) = attribute_value(element, b"showFormulas")? {
                             sheet.show_formulas = value == "1" || value == "true";
+                        }
+                        if let Some(value) = attribute_value(element, b"showZeros")? {
+                            sheet.show_zeros = value != "0" && value != "false";
                         }
                     }
                     b"pane" if sheet.freeze_pane.is_none() => {
