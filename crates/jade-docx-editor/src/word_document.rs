@@ -33150,6 +33150,7 @@ impl WordDocument {
         // A text box's previous `w:drawing`, and the `mc:AlternateContent`
         // block it came out of, to be rebuilt in place.
         let mut existing_text_box_drawing: Option<XmlElement> = None;
+        let mut rebuilt_text_box_offset = 0;
         let mut text_box_alternate_content: Option<(XmlElement, usize, usize)> = None;
         // The same for a picture, group, chart or SmartArt: patched in place
         // (see `patch_image_drawing_element`) rather than rebuilt.
@@ -33297,6 +33298,7 @@ impl WordDocument {
                     } else if existing_text_box_drawing.is_none() {
                         // A text box's drawing is rebuilt around its existing
                         // graphic (see `create_text_box_drawing_element`).
+                        rebuilt_text_box_offset = logical_offset;
                         existing_text_box_drawing = Some(element);
                     }
                 }
@@ -33330,6 +33332,7 @@ impl WordDocument {
                         if let XmlNode::Element(choice) = &mut element.children[choice_index] {
                             if let XmlNode::Element(drawing) = choice.children.remove(drawing_index)
                             {
+                                rebuilt_text_box_offset = logical_offset;
                                 existing_text_box_drawing = Some(drawing);
                             }
                             text_box_alternate_content =
@@ -33396,6 +33399,7 @@ impl WordDocument {
                     // not hold (a field's codes). Its content moves over whole.
                     vml_text_box_replaced = true;
                     vml_text_box_content = Self::take_descendant(&mut element, "w:txbxContent");
+                    rebuilt_text_box_offset = logical_offset;
                 }
                 XmlNode::Element(element)
                     if preserve_drawings && element.name == "w:object" && run.image.is_some() =>
@@ -33430,40 +33434,56 @@ impl WordDocument {
                     .as_deref()
                     .is_some_and(|text| !text.is_empty())
             });
-        if !has_serialized_text {
+        // A mixed run rebuilds its text below. Its replacement box must be
+        // carried through that path at the original logical text offset too,
+        // including on later edits after a VML box has become DrawingML.
+        let rebuilt_text_box = if let Some(text_box) = run
+            .text_box
+            .as_ref()
+            .filter(|_| !preserved_text_box_drawing)
+        {
+            let drawing = Self::create_text_box_drawing_element(
+                doc,
+                text_box,
+                existing_text_box_drawing.take(),
+                vml_text_box_content.take(),
+            );
+            Some(match text_box_alternate_content.take() {
+                Some((mut alternate, choice_index, drawing_index)) => {
+                    if let XmlNode::Element(choice) = &mut alternate.children[choice_index] {
+                        let at = drawing_index.min(choice.children.len());
+                        choice.children.insert(at, XmlNode::Element(drawing));
+                    }
+                    // The VML fallback described the box before this edit
+                    // and would be read back in preference to the rebuilt
+                    // choice (the reader takes whichever comes last), so a
+                    // moved or re-wrapped box would reopen at its old
+                    // frame. Word 2010 and later read the choice only.
+                    alternate.children.retain(|child| {
+                            !matches!(child, XmlNode::Element(element) if element.name == "mc:Fallback")
+                        });
+                    XmlNode::Element(alternate)
+                }
+                None => XmlNode::Element(drawing),
+            })
+        } else {
+            None
+        };
+        if has_serialized_text {
+            if let Some(node) = rebuilt_text_box {
+                preserved_inline_children.push(PreservedRunChild {
+                    offset: rebuilt_text_box_offset,
+                    node,
+                    consumed_text: None,
+                });
+            }
+        } else {
             if let Some(rpr) = run_properties_element {
                 run_element.children.push(XmlNode::Element(rpr));
             }
             run_element.children.extend(reference_nodes);
-            if let Some(text_box) = run
-                .text_box
-                .as_ref()
-                .filter(|_| !preserved_text_box_drawing)
-            {
-                let drawing = Self::create_text_box_drawing_element(
-                    doc,
-                    text_box,
-                    existing_text_box_drawing.take(),
-                    vml_text_box_content.take(),
-                );
-                match text_box_alternate_content.take() {
-                    Some((mut alternate, choice_index, drawing_index)) => {
-                        if let XmlNode::Element(choice) = &mut alternate.children[choice_index] {
-                            let at = drawing_index.min(choice.children.len());
-                            choice.children.insert(at, XmlNode::Element(drawing));
-                        }
-                        // The VML fallback described the box before this edit
-                        // and would be read back in preference to the rebuilt
-                        // choice (the reader takes whichever comes last), so a
-                        // moved or re-wrapped box would reopen at its old
-                        // frame. Word 2010 and later read the choice only.
-                        alternate.children.retain(|child| {
-                            !matches!(child, XmlNode::Element(element) if element.name == "mc:Fallback")
-                        });
-                        run_element.children.push(XmlNode::Element(alternate));
-                    }
-                    None => run_element.children.push(XmlNode::Element(drawing)),
-                }
+            if let Some(node) = rebuilt_text_box {
+                run_element.children.push(node);
             }
             if let Some(image) = run.image.as_ref().filter(|_| !preserved_image_drawing) {
                 let drawing =
