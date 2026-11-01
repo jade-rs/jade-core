@@ -32138,6 +32138,19 @@ impl WordDocument {
         paragraph_index: usize,
         restyled_runs: &[XmlNodeId],
     ) {
+        // TC fields have no inline model run. Formatting splits text runs but
+        // does not move text, so retain their source offsets and neighboring
+        // range markers across the sync.
+        let tc_paragraph_id = matches!(
+            self.paragraph_surfaces.get(paragraph_index),
+            Some(ParagraphSurface::Body { .. })
+        )
+        .then(|| self.paragraph(paragraph_index).and_then(|p| p.node_id))
+        .flatten();
+        let tc_fields = tc_paragraph_id
+            .and_then(|id| self.raw_document.as_ref()?.element(id))
+            .map(|paragraph| Self::tc_field_offsets(&paragraph.children))
+            .unwrap_or_default();
         if !restyled_runs.is_empty() {
             let paragraph_id = self
                 .paragraph(paragraph_index)
@@ -32170,6 +32183,100 @@ impl WordDocument {
             }
         }
         self.sync_paragraph_text_with_options(paragraph_index, true);
+        if !tc_fields.is_empty() {
+            if let Some(paragraph_id) = tc_paragraph_id {
+                if let Some(raw) = self.raw_document.as_mut() {
+                    if let Some(paragraph) = raw.element_mut(paragraph_id) {
+                        Self::restore_tc_field_offsets(&mut paragraph.children, &tc_fields);
+                    }
+                    raw.rebuild_index_for_subtree(paragraph_id);
+                }
+            }
+        }
+    }
+
+    /// Direct, result-less TC fields are structural markers rather than runs.
+    /// Keep range-marker neighbors with them; otherwise a bookmark end can
+    /// move before a newly split fragment while its TC moves back after it.
+    /// Only formatting calls this: a text edit must instead move its anchors.
+    fn tc_field_offsets(children: &[XmlNode]) -> Vec<(XmlNodeId, usize, Option<XmlNodeId>)> {
+        let is_tc = |node: &XmlNode| {
+            matches!(node, XmlNode::Element(element)
+                if Self::is_zero_width_field_container(element)
+                    && element.attributes.iter().any(|attr|
+                        attr.name == "w:instr"
+                            && attr.value.split_whitespace().next()
+                                .is_some_and(|name| name.eq_ignore_ascii_case("TC"))))
+        };
+        if !children.iter().any(is_tc) {
+            return Vec::new();
+        }
+        let mut offset = 0;
+        let mut fields = Vec::new();
+        for (index, child) in children.iter().enumerate() {
+            if is_tc(child)
+                || matches!(child, XmlNode::Element(element)
+                    if matches!(element.name.as_str(),
+                        "w:bookmarkStart" | "w:bookmarkEnd" |
+                        "w:commentRangeStart" | "w:commentRangeEnd" |
+                        "w:permStart" | "w:permEnd" | "w:proofErr"))
+            {
+                if let XmlNode::Element(element) = child {
+                    let following_marker = children[index + 1..]
+                        .iter()
+                        .take_while(|node| Self::display_len_for_node(node) == 0)
+                        .find_map(|node| match node {
+                            XmlNode::Element(element) => Some(element.id),
+                            _ => None,
+                        });
+                    fields.push((element.id, offset, following_marker));
+                }
+            }
+            offset += Self::display_len_for_node(child);
+        }
+        fields
+    }
+
+    fn restore_tc_field_offsets(
+        children: &mut Vec<XmlNode>,
+        fields: &[(XmlNodeId, usize, Option<XmlNodeId>)],
+    ) {
+        // Restore following TC fields first, so a marker at the same offset
+        // remains a stable anchor for the TC immediately before it.
+        for &(id, wanted, following_marker) in fields.iter().rev() {
+            let Some(index) = children
+                .iter()
+                .position(|node| matches!(node, XmlNode::Element(element) if element.id == id))
+            else {
+                continue;
+            };
+            let actual: usize = children[..index]
+                .iter()
+                .map(Self::display_len_for_node)
+                .sum();
+            if actual == wanted {
+                continue;
+            }
+            let field = children.remove(index);
+            let mut offset = 0;
+            let mut target = None;
+            for (index, child) in children.iter().enumerate() {
+                let length = Self::display_len_for_node(child);
+                let is_following_marker = matches!(child, XmlNode::Element(element)
+                    if Some(element.id) == following_marker);
+                if offset == wanted && (is_following_marker || length > 0) {
+                    target = Some(index);
+                    break;
+                }
+                offset += length;
+            }
+            if offset == wanted && target.is_none() {
+                target = Some(children.len());
+            }
+            // Formatting keeps every text boundary that held a TC field. If
+            // another kind of edit removed one, do not guess a new position.
+            children.insert(target.unwrap_or(index), field);
+        }
     }
 
     fn remove_run_properties_element(
