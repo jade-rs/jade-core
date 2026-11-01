@@ -14363,6 +14363,63 @@ mod tests {
     }
 
     #[test]
+    fn a_heading_styled_after_a_new_footnote_keeps_its_list_level() {
+        // scroll-offset-repro.docx numbers Heading 1 (style "1") with a
+        // `w:numPr` naming only its list; numbering.xml's level links the
+        // style. Adding a footnote adds the note styles and reparses the
+        // styles part, which dropped that link: a paragraph made a heading
+        // afterwards had no list level, and the layout drew no number.
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/scroll-offset-repro.docx"),
+        )
+        .expect("read fixture");
+        let mut word_doc =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+        let level = |word_doc: &WordDocument| {
+            word_doc
+                .styles_part
+                .as_ref()
+                .and_then(|styles| styles.resolve_numbering("1"))
+                .and_then(|numbering| numbering.level)
+        };
+        assert_eq!(level(&word_doc), Some(0));
+        apply_headless_commands_to_document(
+            &mut word_doc,
+            &HeadlessEditRequest {
+                commands: vec![
+                    HeadlessCommand::InsertFootnote {
+                        paragraph: 279,
+                        offset: 0,
+                        text: "n".to_string(),
+                    },
+                    HeadlessCommand::SetParagraphStyle {
+                        start_paragraph: 353,
+                        end_paragraph: 353,
+                        style_id: Some("1".to_string()),
+                    },
+                ],
+            },
+        )
+        .expect("footnote and heading");
+        assert_eq!(level(&word_doc), Some(0));
+        let numbering = |word_doc: &WordDocument| {
+            word_doc
+                .paragraph(353)
+                .and_then(|paragraph| paragraph.properties.as_ref())
+                .and_then(|props| props.numbering.as_ref())
+                .map(|numbering| (numbering.id.clone(), numbering.level))
+        };
+        let reloaded = executor::block_on(WordDocument::load(
+            &word_doc.export_docx().expect("export"),
+            &Options::default(),
+        ))
+        .expect("reload");
+        assert_eq!(numbering(&word_doc), Some((Some("22".into()), Some(0))));
+        assert_eq!(numbering(&word_doc), numbering(&reloaded));
+    }
+
+    #[test]
     fn tracked_formatting_of_a_text_box_paragraph_can_be_rejected() {
         // shape-preset-geometries.docx has shapes whose paragraphs are not in
         // the XML until an edit writes them. With changes tracked, setting
