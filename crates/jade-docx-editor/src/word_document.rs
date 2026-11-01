@@ -5432,20 +5432,22 @@ impl WordDocument {
         // the next run's: in the VML fallback the text went into a nested
         // box's run, and the nested box was written a second time.
         let primary_positions: Vec<Option<usize>> = {
-            let primary_runs: Vec<XmlNodeId> = raw
+            let primary_runs: HashMap<XmlNodeId, usize> = raw
                 .element(content_ids[0])
                 .and_then(|content| Self::locate_text_box_paragraph_element(content, path))
                 .map(Self::collect_text_box_run_bindings)
                 .unwrap_or_default()
                 .into_iter()
                 .filter_map(|(run_id, _)| run_id)
+                .enumerate()
+                .map(|(position, id)| (id, position))
                 .collect();
             paragraph
                 .runs
                 .iter()
                 .map(|run| {
                     let id = run.node_id?;
-                    primary_runs.iter().position(|&candidate| candidate == id)
+                    primary_runs.get(&id).copied()
                 })
                 .collect()
         };
