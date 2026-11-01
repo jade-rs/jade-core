@@ -262,6 +262,96 @@ struct HistorySnapshot {
     bytes: Vec<u8>,
     time_zone: String,
     filter_row_state: BTreeMap<String, auto_filter::FilterRowState>,
+    /// For typing taken into the model in place: what it overwrote there,
+    /// so taking it back needs no reading of the package.
+    typed: Option<TypedReversal>,
+}
+
+/// What a typing write changed in the model, as it was before: each typed
+/// cell (and whether its row was there), its text runs and reading, the
+/// cached values of the formulas it recalculated, and the workbook's
+/// calculation flags.
+#[derive(Debug, Clone)]
+struct TypedReversal {
+    cells: Vec<TypedCell>,
+    formulas: Vec<(usize, CellRef, CellValue)>,
+    full_calculation_on_load: bool,
+    calculation: (jade_xlsx_reader::CalculationMode, bool),
+}
+
+#[derive(Debug, Clone)]
+struct TypedCell {
+    sheet: usize,
+    at: CellRef,
+    row_existed: bool,
+    cell: Option<Cell>,
+    rich_text: Option<Vec<jade_xlsx_reader::rich_text::TextRun>>,
+    reading: Option<String>,
+}
+
+impl TypedCell {
+    fn of(sheet: &Sheet, index: usize, at: CellRef) -> Self {
+        let row = sheet
+            .rows
+            .binary_search_by_key(&at.row, |row| row.index)
+            .ok()
+            .map(|found| &sheet.rows[found]);
+        Self {
+            sheet: index,
+            at,
+            row_existed: row.is_some(),
+            cell: row.and_then(|row| {
+                row.cells
+                    .binary_search_by_key(&at.column, |cell| cell.reference.column)
+                    .ok()
+                    .map(|found| row.cells[found].clone())
+            }),
+            rich_text: sheet.rich_text.get(&at).cloned(),
+            reading: sheet.phonetic_readings.get(&at).cloned(),
+        }
+    }
+}
+
+impl TypedReversal {
+    /// The model put back as it was before the write.
+    fn apply(&self, workbook: &mut Workbook) {
+        for (index, at, value) in &self.formulas {
+            if let Some(cell) = workbook.sheets[*index].cell_at_mut(*at) {
+                cell.value = value.clone();
+            }
+        }
+        for typed in self.cells.iter().rev() {
+            let sheet = &mut workbook.sheets[typed.sheet];
+            if let Ok(row) = sheet
+                .rows
+                .binary_search_by_key(&typed.at.row, |row| row.index)
+            {
+                let cells = &mut sheet.rows[row].cells;
+                let found =
+                    cells.binary_search_by_key(&typed.at.column, |cell| cell.reference.column);
+                match (&typed.cell, found) {
+                    (Some(cell), Ok(found)) => cells[found] = cell.clone(),
+                    (Some(cell), Err(position)) => cells.insert(position, cell.clone()),
+                    (None, Ok(found)) => {
+                        cells.remove(found);
+                    }
+                    (None, Err(_)) => {}
+                }
+                if !typed.row_existed && cells.is_empty() {
+                    sheet.rows.remove(row);
+                }
+            }
+            match &typed.rich_text {
+                Some(runs) => sheet.rich_text.insert(typed.at, runs.clone()),
+                None => sheet.rich_text.remove(&typed.at),
+            };
+            match &typed.reading {
+                Some(reading) => sheet.phonetic_readings.insert(typed.at, reading.clone()),
+                None => sheet.phonetic_readings.remove(&typed.at),
+            };
+        }
+        workbook.full_calculation_on_load = self.full_calculation_on_load;
+    }
 }
 
 /// A complete in-memory editing state for rolling back a compound command.
@@ -836,6 +926,9 @@ impl HeadlessWorkbook {
     /// applying the snapshot; otherwise the original bytes are restored exactly.
     /// Returns `false`, changing nothing, when there is nothing to undo.
     pub fn undo(&mut self) -> Result<bool> {
+        if self.undo_typing()? {
+            return Ok(true);
+        }
         let Some(previous) = self.history.last() else {
             return Ok(false);
         };
@@ -848,12 +941,61 @@ impl HeadlessWorkbook {
                 &mut self.filter_row_state,
                 restored.filter_row_state,
             ),
+            typed: None,
         };
         self.future.push(std::sync::Arc::new(current));
         self.workbook = restored.workbook;
         self.sheet_states = restored.sheet_states;
         self.prune_range_grants();
         self.automatic_height_base = restored.automatic_height_base;
+        self.range_auth_generation = self.range_auth_generation.wrapping_add(1);
+        Ok(true)
+    }
+
+    /// Takes back the last write in place when it was typing the model took
+    /// in place, in the time zone and calculation settings still in force:
+    /// the bytes swapped back and the cells it overwrote put back, rather
+    /// than the package read again. `false`, changing nothing, otherwise.
+    fn undo_typing(&mut self) -> Result<bool> {
+        let Some(previous) = self.history.last().cloned() else {
+            return Ok(false);
+        };
+        let Some(reversal) = previous.typed.as_ref().filter(|reversal| {
+            previous.time_zone == self.calculation_time_zone
+                && reversal.calculation
+                    == (
+                        self.workbook.calculation_mode,
+                        self.workbook.calculate_on_save,
+                    )
+        }) else {
+            return Ok(false);
+        };
+        self.history.pop();
+        let after = std::mem::replace(&mut self.source, previous.bytes.clone());
+        let (after_print, before_print) = (
+            jade_opc::package_fingerprint(&after)?,
+            jade_opc::package_fingerprint(&self.source)?,
+        );
+        // Typing changed values only: what each sheet protects is as it was.
+        self.carry_sheet_states(&after_print, &before_print);
+        reversal.apply(&mut self.workbook);
+        debug_assert_eq!(
+            Some(&self.workbook),
+            jade_xlsx_reader::read_xlsx(&self.source).ok().as_ref(),
+            "typing taken back in place reads as the package it restores"
+        );
+        let current = HistorySnapshot {
+            bytes: after,
+            time_zone: std::mem::replace(&mut self.source_time_zone, previous.time_zone.clone()),
+            filter_row_state: std::mem::replace(
+                &mut self.filter_row_state,
+                previous.filter_row_state.clone(),
+            ),
+            typed: None,
+        };
+        self.future.push(std::sync::Arc::new(current));
+        self.prune_range_grants();
+        self.automatic_height_base = None;
         self.range_auth_generation = self.range_auth_generation.wrapping_add(1);
         Ok(true)
     }
@@ -872,6 +1014,7 @@ impl HeadlessWorkbook {
                 &mut self.filter_row_state,
                 restored.filter_row_state,
             ),
+            typed: None,
         };
         self.history.push(std::sync::Arc::new(current));
         self.workbook = restored.workbook;
@@ -894,6 +1037,7 @@ impl HeadlessWorkbook {
             bytes: before,
             time_zone: self.source_time_zone.clone(),
             filter_row_state: self.filter_row_state.clone(),
+            typed: None,
         }));
         self.future.clear();
         if self.history.len() > UNDO_LIMIT {
@@ -1347,6 +1491,33 @@ impl HeadlessWorkbook {
         {
             return Ok(false);
         }
+        // What the values overwrite, for taking them back in place.
+        let mut reversal = TypedReversal {
+            cells: Vec::new(),
+            formulas: Vec::new(),
+            full_calculation_on_load: self.workbook.full_calculation_on_load,
+            calculation: (
+                self.workbook.calculation_mode,
+                self.workbook.calculate_on_save,
+            ),
+        };
+        for edits in sheets {
+            if let Some(index) = self
+                .workbook
+                .sheets
+                .iter()
+                .position(|sheet| sheet.part_name == edits.part_name)
+            {
+                let sheet = &self.workbook.sheets[index];
+                reversal.cells.extend(
+                    edits
+                        .cells
+                        .iter()
+                        .filter(|edit| plain_value(&edit.value).is_some())
+                        .map(|edit| TypedCell::of(sheet, index, edit.reference)),
+                );
+            }
+        }
         for edits in sheets {
             if let Some(sheet) = self
                 .workbook
@@ -1536,7 +1707,11 @@ impl HeadlessWorkbook {
         if in_place {
             for (index, reference, value) in updates {
                 if let Some(cell) = self.workbook.sheets[index].cell_at_mut(reference) {
-                    cell.value = value;
+                    reversal.formulas.push((
+                        index,
+                        reference,
+                        std::mem::replace(&mut cell.value, value),
+                    ));
                 }
             }
             if complete {
@@ -1568,6 +1743,11 @@ impl HeadlessWorkbook {
         }
         let before = std::mem::replace(&mut self.source, written);
         self.remember(before);
+        if in_place {
+            if let Some(snapshot) = self.history.last_mut().and_then(std::sync::Arc::get_mut) {
+                snapshot.typed = Some(reversal);
+            }
+        }
         self.source_time_zone = self.calculation_time_zone.clone();
         Ok(true)
     }
