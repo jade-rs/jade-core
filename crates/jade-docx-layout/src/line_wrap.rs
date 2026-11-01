@@ -2136,6 +2136,32 @@ fn join_equal_runs_inside_graphemes<'a>(text: &str, runs: &'a [RunStyle]) -> Cow
         if bytes[offset - 1].is_ascii() && bytes[offset].is_ascii() {
             return bytes[offset - 1] != b'\r' || bytes[offset] != b'\n';
         }
+        // Reuse nearby boundaries already discovered by the forward iterator.
+        // This keeps consecutive RI and other dense run splits on its fast path.
+        while boundaries
+            .peek()
+            .is_some_and(|next| *next < offset && offset - *next <= 16)
+        {
+            previous_boundary = boundaries.next().unwrap();
+        }
+        if previous_boundary == offset || boundaries.peek() == Some(&offset) {
+            return true;
+        }
+        if previous_boundary < offset && boundaries.peek().is_some_and(|next| *next > offset) {
+            return false;
+        }
+        // Most boundaries need only their adjacent characters. Inspect a
+        // bounded prefix first so ordinary CJK runs do not segment the whole
+        // paragraph. Incomplete RI/Indic/emoji context falls back to the
+        // retained forward iterator instead of rescanning an unbounded prefix.
+        let mut local_start = offset.saturating_sub(16);
+        while !text.is_char_boundary(local_start) {
+            local_start += 1;
+        }
+        let mut cursor = unicode_segmentation::GraphemeCursor::new(offset, text.len(), true);
+        if let Ok(result) = cursor.is_boundary(&text[local_start..], local_start) {
+            return result;
+        }
         // Queries advance through the runs, but a rejected partial join can
         // revisit offsets inside the current cluster. Retain its start so
         // those queries do not need to rewind the segmenter.
@@ -16448,6 +16474,77 @@ mod tests {
     }
 
     #[test]
+    fn grapheme_run_joins_resolve_context_beyond_the_local_window() {
+        for text in [
+            format!("क{}क", "्क".repeat(128)),
+            format!("👨{}\u{200d}👩", "\u{301}".repeat(128)),
+        ] {
+            let runs: Vec<_> = text
+                .char_indices()
+                .map(|(start, ch)| RunStyle {
+                    start,
+                    end: start + ch.len_utf8(),
+                    ..make_run(&text)
+                })
+                .collect();
+            let expected: Vec<_> = text
+                .grapheme_indices(true)
+                .map(|(start, cluster)| (start, start + cluster.len()))
+                .collect();
+            assert_eq!(
+                join_equal_runs_inside_graphemes(&text, &runs)
+                    .iter()
+                    .map(|run| (run.start, run.end))
+                    .collect::<Vec<_>>(),
+                expected
+            );
+        }
+        // Sparse ranges force the local cursor to request context outside
+        // its bounded window rather than using only nearby iterator state.
+        for cluster in [
+            format!("क{}क", "्".repeat(128)),
+            format!("👨{}\u{200d}👩", "\u{301}".repeat(128)),
+            "🇯".repeat(1026),
+        ] {
+            let prefix = "漢字".repeat(1024);
+            let text = format!("{prefix}{cluster}");
+            let split = text.char_indices().next_back().unwrap().0;
+            let runs = [
+                RunStyle {
+                    end: split,
+                    ..make_run(&text)
+                },
+                RunStyle {
+                    start: split,
+                    ..make_run(&text)
+                },
+            ];
+            let joined = join_equal_runs_inside_graphemes(&text, &runs);
+            assert_eq!(
+                joined.len(),
+                1,
+                "sparse context must retain the last cluster"
+            );
+            assert_eq!((joined[0].start, joined[0].end), (0, text.len()));
+        }
+        let text = "漢字".repeat(4096);
+        let runs = [
+            RunStyle {
+                end: text.len() / 2,
+                ..make_run(&text)
+            },
+            RunStyle {
+                start: text.len() / 2,
+                ..make_run(&text)
+            },
+        ];
+        assert!(matches!(
+            join_equal_runs_inside_graphemes(&text, &runs),
+            Cow::Borrowed(_)
+        ));
+    }
+
+    #[test]
     fn grapheme_run_joining_preserves_metadata_and_borrows_ordinary_ranges() {
         let text = "e\u{301}";
         let left = RunStyle {
@@ -16591,7 +16688,7 @@ mod tests {
         #![proptest_config(ProptestConfig { cases: 128, ..ProptestConfig::default() })]
         #[test]
         fn mixed_metadata_grapheme_pieces_never_join_partially(
-            tokens in prop::collection::vec(prop::sample::select(vec!["A", "字", "e\u{301}", "🇯", "ｶﾞ", "👨\u{200d}👨\u{200d}👧\u{200d}👦", "👍🏽"]), 1..18),
+            tokens in prop::collection::vec(prop::sample::select(vec!["A", "字", "e\u{301}", "🇯", "ｶﾞ", "👨\u{200d}👨\u{200d}👧\u{200d}👦", "👍🏽", "क्", "क", "\r\n", "\u{301}\u{301}\u{301}\u{301}"]), 1..18),
             styles in prop::collection::vec(0u8..3, 1..100),
         ) {
             let text = tokens.concat();
