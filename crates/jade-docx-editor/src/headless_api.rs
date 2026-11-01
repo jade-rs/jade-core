@@ -14363,6 +14363,48 @@ mod tests {
     }
 
     #[test]
+    fn a_style_with_point_spacing_leaves_a_paragraphs_line_spacing_after_alone() {
+        // table-complex-spaced-recursive.docx: paragraph 333 declares
+        // `w:beforeLines`/`w:afterLines`; style "2" gives `w:after` in
+        // points. Restyled, the paragraph held both the style's points and
+        // its own lines after it, which a reload does not, and the layout
+        // paths that read points first spaced it by the style's points.
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/table-complex-spaced-recursive.docx"),
+        )
+        .expect("read fixture");
+        let mut word_doc =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+        let spacing = |word_doc: &WordDocument| {
+            word_doc
+                .paragraph(333)
+                .and_then(|paragraph| paragraph.properties.as_ref())
+                .and_then(|props| props.spacing.clone())
+                .expect("spacing")
+        };
+        assert_eq!(spacing(&word_doc).after_lines, Some(1.0));
+        apply_headless_commands_to_document(
+            &mut word_doc,
+            &HeadlessEditRequest {
+                commands: vec![HeadlessCommand::SetParagraphStyle {
+                    start_paragraph: 331,
+                    end_paragraph: 333,
+                    style_id: Some("2".to_string()),
+                }],
+            },
+        )
+        .expect("restyle");
+        let reloaded = executor::block_on(WordDocument::load(
+            &word_doc.export_docx().expect("export"),
+            &Options::default(),
+        ))
+        .expect("reload");
+        assert_eq!(spacing(&word_doc).after, None);
+        assert_eq!(spacing(&word_doc), spacing(&reloaded));
+    }
+
+    #[test]
     fn tracked_formatting_of_a_text_box_paragraph_can_be_rejected() {
         // shape-preset-geometries.docx has shapes whose paragraphs are not in
         // the XML until an edit writes them. With changes tracked, setting
