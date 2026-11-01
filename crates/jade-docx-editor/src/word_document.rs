@@ -12440,7 +12440,10 @@ impl WordDocument {
             if paragraph_changed {
                 touched_paragraphs.push(paragraph_index);
                 if restyled_runs.is_empty() {
-                    self.sync_paragraph_text(paragraph_index);
+                    // A decision takes runs out or keeps them: a text box
+                    // beside them keeps its XML. Rewritten from the model, a
+                    // VML-only box gained a DrawingML copy without its fields.
+                    self.sync_paragraph_text_preserving_drawings(paragraph_index);
                 } else {
                     // The decided runs' `w:rPr` is written again from the model.
                     self.sync_paragraph_run_properties(paragraph_index, &restyled_runs);
