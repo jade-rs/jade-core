@@ -20614,7 +20614,7 @@ where
         );
         if let Some(blank_run) = Self::paragraph_blank_line_run_properties(paragraph) {
             let effective = self.effective_run_properties_rc(paragraph, blank_run);
-            let style = self.resolve_applied_run_style_cached(effective.as_deref());
+            let style = self.resolve_applied_run_style_cached_rc(effective.as_ref());
             return Ok((
                 None,
                 self.word_run_faces(&style.resolved, east_asian_faces_size_lines)
@@ -20642,7 +20642,7 @@ where
                 _ => {
                     let effective =
                         self.effective_run_properties_rc(paragraph, run.properties.as_ref());
-                    let style = self.resolve_applied_run_style_cached(effective.as_deref());
+                    let style = self.resolve_applied_run_style_cached_rc(effective.as_ref());
                     let border_extent = word_run_border_extent_pt(effective.as_deref());
                     let underline_depth = if space_for_underline {
                         jade_docx_layout::line_metrics::word_space_for_underline_depth_pt(
@@ -49237,6 +49237,85 @@ mod tests {
                 .and_then(|props| props.color.as_deref()),
             Some("#ff0000")
         );
+    }
+
+    #[test]
+    #[ignore]
+    fn benchmark_paragraph_word_font_lines_shared_styles() {
+        use jade_docx_layout::line_metrics::{set_word_layout_platform, WordLayoutPlatform};
+        const ITERS: usize = 40;
+        set_word_layout_platform(WordLayoutPlatform::Mac);
+        for (name, bytes) in [
+            (
+                "contract",
+                include_bytes!("../../../public/fixtures/contract.docx").as_slice(),
+            ),
+            (
+                "nda",
+                include_bytes!("../../../public/fixtures/nda.docx").as_slice(),
+            ),
+            (
+                "yokohama",
+                include_bytes!("../../../public/fixtures/yokohama.docx").as_slice(),
+            ),
+        ] {
+            let model = futures::executor::block_on(WordDocument::load(bytes, &Options::default()))
+                .unwrap();
+            let mut renderer = test_renderer();
+            renderer.set_style_context(
+                model.styles_part.clone().map(Rc::new),
+                model.loaded_theme_part().map(Rc::new),
+            );
+            let paragraphs: Vec<_> = model
+                .document
+                .as_ref()
+                .unwrap()
+                .body
+                .as_ref()
+                .unwrap()
+                .elements
+                .iter()
+                .filter_map(|element| {
+                    if let BodyElement::Paragraph(paragraph) = element {
+                        Some(paragraph.as_ref())
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+            assert!(!paragraphs.is_empty());
+            let measure = || {
+                paragraphs
+                    .iter()
+                    .map(|paragraph| renderer.paragraph_word_font_lines_pt(paragraph).unwrap())
+                    .collect::<Vec<_>>()
+            };
+            let expected = measure();
+            let mut hasher = FxHasher::default();
+            expected
+                .iter()
+                .map(|(east_asian, single)| {
+                    (east_asian.map(f32::to_bits), single.map(f32::to_bits))
+                })
+                .collect::<Vec<_>>()
+                .hash(&mut hasher);
+            let mut samples = Vec::new();
+            for _ in 0..5 {
+                let start = Instant::now();
+                for _ in 0..ITERS {
+                    black_box(measure());
+                }
+                samples.push(start.elapsed().as_micros());
+                assert_eq!(
+                    measure(),
+                    expected,
+                    "cached font-line geometry must remain stable"
+                );
+            }
+            samples.sort_unstable();
+            println!("paragraph-font-lines fixture={name} paragraphs={} iterations={ITERS} median_us={} geometry_hash={:016x}", paragraphs.len(), samples[2], hasher.finish());
+        }
+        set_word_layout_platform(WordLayoutPlatform::Windows);
     }
 
     #[test]
