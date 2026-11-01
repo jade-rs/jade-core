@@ -273,20 +273,23 @@ pub fn place(
                 .and_then(|color| resolve_color(color, styles, None))
         })
         .unwrap_or([0, 0, 0, 255]);
+    let path = preset_path(geometry, width, height, &style.adjustments);
     let mut arrows = Vec::new();
-    if open && stroke.is_some() {
+    if let Some(((start, after_start), (before_end, end))) =
+        line_ends(&path).filter(|_| open && stroke.is_some())
+    {
+        // Each head points along the stretch of line it ends: the first or
+        // last leg of an elbow, the curve's tangent there.
         let size = (stroke_width * 3.0).max(6.0);
-        let start = (0.0, 0.0);
-        let end = (width, height);
         if let Some(kind) = style.head_end.as_deref() {
-            arrows.push(arrowhead(end, start, size, kind));
+            arrows.push(arrowhead(after_start, start, size, kind));
         }
         if let Some(kind) = style.tail_end.as_deref() {
-            arrows.push(arrowhead(start, end, size, kind));
+            arrows.push(arrowhead(before_end, end, size, kind));
         }
     }
     PlacedShapeStyle {
-        path: preset_path(geometry, width, height, &style.adjustments),
+        path,
         fill,
         stroke,
         stroke_width,
@@ -337,6 +340,25 @@ fn adjust(adjustments: &[(String, i64)], name: &str, default: f64) -> f64 {
         .find(|(key, _)| key == name)
         .map_or(default, |(_, value)| *value as f64)
         / 100_000.0
+}
+
+/// A line's two ends, each with the nearest other point that gives its
+/// direction there: the next corner, or a curve's control point.
+type LineEnd = ((f64, f64), (f64, f64));
+
+fn line_ends(path: &[PathOp]) -> Option<(LineEnd, LineEnd)> {
+    let points: Vec<(f64, f64)> = path
+        .iter()
+        .flat_map(|op| match *op {
+            PathOp::Move(x, y) | PathOp::Line(x, y) => vec![(x, y)],
+            PathOp::Cubic(x1, y1, x2, y2, x, y) => vec![(x1, y1), (x2, y2), (x, y)],
+            PathOp::Close => Vec::new(),
+        })
+        .collect();
+    let (&start, &end) = (points.first()?, points.last()?);
+    let after_start = *points.iter().find(|point| **point != start)?;
+    let before_end = *points.iter().rev().find(|point| **point != end)?;
+    Some(((start, after_start), (before_end, end)))
 }
 
 fn polygon(points: &[(f64, f64)]) -> Vec<PathOp> {
@@ -406,6 +428,59 @@ pub fn preset_path(name: &str, w: f64, h: f64, adjustments: &[(String, i64)]) ->
     let adj = |key: &str, default: f64| adjust(adjustments, key, default);
     match name {
         "line" => vec![PathOp::Move(0.0, 0.0), PathOp::Line(w, h)],
+        // Elbow and curved connectors, as Office's preset definitions run
+        // them from the top-left corner to the bottom-right.
+        "bentConnector2" => vec![
+            PathOp::Move(0.0, 0.0),
+            PathOp::Line(w, 0.0),
+            PathOp::Line(w, h),
+        ],
+        "bentConnector3" => {
+            let x = w * adj("adj1", 50_000.0);
+            vec![
+                PathOp::Move(0.0, 0.0),
+                PathOp::Line(x, 0.0),
+                PathOp::Line(x, h),
+                PathOp::Line(w, h),
+            ]
+        }
+        "bentConnector4" => {
+            let (x, y) = (w * adj("adj1", 50_000.0), h * adj("adj2", 50_000.0));
+            vec![
+                PathOp::Move(0.0, 0.0),
+                PathOp::Line(x, 0.0),
+                PathOp::Line(x, y),
+                PathOp::Line(w, y),
+                PathOp::Line(w, h),
+            ]
+        }
+        "bentConnector5" => {
+            let (x1, y, x3) = (
+                w * adj("adj1", 50_000.0),
+                h * adj("adj2", 50_000.0),
+                w * adj("adj3", 50_000.0),
+            );
+            vec![
+                PathOp::Move(0.0, 0.0),
+                PathOp::Line(x1, 0.0),
+                PathOp::Line(x1, y),
+                PathOp::Line(x3, y),
+                PathOp::Line(x3, h),
+                PathOp::Line(w, h),
+            ]
+        }
+        "curvedConnector2" => vec![
+            PathOp::Move(0.0, 0.0),
+            PathOp::Cubic(w / 2.0, 0.0, w, h / 2.0, w, h),
+        ],
+        "curvedConnector3" => {
+            let x2 = w * adj("adj1", 50_000.0);
+            vec![
+                PathOp::Move(0.0, 0.0),
+                PathOp::Cubic(x2 / 2.0, 0.0, x2, h / 4.0, x2, h / 2.0),
+                PathOp::Cubic(x2, h * 0.75, (w + x2) / 2.0, h, w, h),
+            ]
+        }
         name if is_line(name) => vec![PathOp::Move(0.0, 0.0), PathOp::Line(w, h)],
         "roundRect" | "flowChartAlternateProcess" => round_rect(w, h, ss * adj("adj", 16_667.0)),
         "flowChartTerminator" => round_rect(w, h, h / 2.0),
@@ -694,6 +769,12 @@ mod tests {
             "plus",
             "can",
             "wedgeRectCallout",
+            "bentConnector2",
+            "bentConnector3",
+            "bentConnector4",
+            "bentConnector5",
+            "curvedConnector2",
+            "curvedConnector3",
         ] {
             for op in preset_path(name, 100.0, 50.0, &[]) {
                 let points = match op {
@@ -710,5 +791,36 @@ mod tests {
                 }
             }
         }
+    }
+
+    /// An elbow turns halfway across, or where its adjustment says; arrow
+    /// heads point along the leg they end, not corner to corner.
+    #[test]
+    fn connectors_bend_and_their_heads_follow_the_end_legs() {
+        assert_eq!(
+            preset_path("bentConnector3", 100.0, 50.0, &[]),
+            [
+                PathOp::Move(0.0, 0.0),
+                PathOp::Line(50.0, 0.0),
+                PathOp::Line(50.0, 50.0),
+                PathOp::Line(100.0, 50.0),
+            ]
+        );
+        let adjusted = preset_path("bentConnector3", 100.0, 50.0, &[("adj1".into(), 25_000)]);
+        assert_eq!(adjusted[1], PathOp::Line(25.0, 0.0));
+        assert_eq!(
+            line_ends(&preset_path("bentConnector3", 100.0, 50.0, &[])),
+            Some((((0.0, 0.0), (50.0, 0.0)), ((50.0, 50.0), (100.0, 50.0))))
+        );
+        // A curve leaves and arrives level, as its control points say.
+        assert_eq!(
+            line_ends(&preset_path("curvedConnector3", 100.0, 50.0, &[])),
+            Some((((0.0, 0.0), (25.0, 0.0)), ((75.0, 50.0), (100.0, 50.0))))
+        );
+        // A straight line's heads are as they were: corner to corner.
+        assert_eq!(
+            line_ends(&preset_path("straightConnector1", 100.0, 50.0, &[])),
+            Some((((0.0, 0.0), (100.0, 50.0)), ((0.0, 0.0), (100.0, 50.0))))
+        );
     }
 }

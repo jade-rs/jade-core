@@ -241,7 +241,13 @@ fn collect_run_slots<'a>(
                 }
             }
             "w:r" => out.push(RunSlot::Element(element, wrapper)),
-            "w:ins" | "w:del" => collect_run_slots(&element.children, Some(element.id), doc, out),
+            // A move is a revision wrapper like an insertion or deletion:
+            // its runs are model runs. Passed over, each one took the next
+            // run's `w:r`, so an edit wrote the moved text's formatting there
+            // and moved the move's range markers off its text.
+            "w:ins" | "w:del" | "w:moveFrom" | "w:moveTo" => {
+                collect_run_slots(&element.children, Some(element.id), doc, out)
+            }
             "m:oMath" => out.push(RunSlot::Bare(BareRun::Math)),
             "w:object" => out.push(RunSlot::Bare(BareRun::Object)),
             name if is_transparent_run_container(name) => {
@@ -822,6 +828,45 @@ mod tests {
             .expect("nested controlled cell paragraph");
         assert!(cell_paragraph.node_id.is_some());
         assert!(cell_paragraph.runs[0].node_id.is_some());
+    }
+
+    #[test]
+    fn maps_moved_runs_to_their_own_elements() {
+        const XML: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:body>
+    <w:p><w:moveFromRangeStart w:id="1" w:name="move1"/><w:moveFrom w:id="2"><w:r><w:t>moved</w:t></w:r></w:moveFrom><w:moveFromRangeEnd w:id="1"/><w:r><w:t> stays</w:t></w:r></w:p>
+    <w:p><w:r><w:t>Target </w:t></w:r><w:moveToRangeStart w:id="3" w:name="move1"/><w:moveTo w:id="4"><w:r><w:t>moved</w:t></w:r></w:moveTo><w:moveToRangeEnd w:id="3"/></w:p>
+  </w:body>
+</w:document>
+"#;
+        let mut document = DocumentParser::new()
+            .parse_document_xml(XML)
+            .expect("parse moves");
+        let xml = DocxXmlDocument::parse(XML).expect("parse raw moves");
+        attach_document_xml_ids(&mut document, &xml).expect("map move ids");
+        let body = document.body.expect("body");
+        for (index, expected) in [(0, ["moved", " stays"]), (1, ["Target ", "moved"])] {
+            let paragraph = body.elements[index].as_paragraph().expect("paragraph");
+            let texts: Vec<_> = paragraph
+                .runs
+                .iter()
+                .map(|run| {
+                    let element = xml
+                        .element(run.node_id.expect("bound run"))
+                        .expect("run xml");
+                    element_children(element)
+                        .filter(|child| child.name == "w:t")
+                        .flat_map(|child| child.children.iter())
+                        .filter_map(|node| match node {
+                            XmlNode::Text(text) => Some(text.as_str()),
+                            _ => None,
+                        })
+                        .collect::<String>()
+                })
+                .collect();
+            assert_eq!(texts, expected);
+        }
     }
 
     #[test]
