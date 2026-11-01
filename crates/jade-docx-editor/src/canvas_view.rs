@@ -7086,16 +7086,16 @@ impl OffscreenDocumentView {
             self.wait_for_pending_images().await?;
 
             // Keep state (e.g. table resize metadata) updated and clear dirty markers.
-            let (metadata, dirty_regions_js) = {
+            let dirty_regions_js = {
                 let renderer_mut = self.renderer.borrow_mut();
                 renderer_mut.coalesce_dirty_regions();
                 let dirty_regions = renderer_mut.dirty_regions();
                 let dirty_regions_js = Self::dirty_regions_to_js(&dirty_regions);
-                let meta = renderer_mut.table_resize_metadata();
+                renderer_mut
+                    .copy_table_resize_metadata_into(&mut self.state.borrow_mut().table_resize);
                 renderer_mut.clear_dirty_regions();
-                (meta, dirty_regions_js)
+                dirty_regions_js
             };
-            self.state.borrow_mut().table_resize = metadata;
             dirty_regions_js
         };
         let (preview_mode, history_flags) = {
@@ -7459,16 +7459,16 @@ impl OffscreenDocumentView {
         // priority, so the composing glyph still appears without edit debounce.
         let (snapshots, dirty_regions_js) = if lazy_mode {
             self.wait_for_pending_images().await?;
-            let (metadata, dirty_regions_js) = {
+            let dirty_regions_js = {
                 let renderer_mut = self.renderer.borrow_mut();
                 renderer_mut.coalesce_dirty_regions();
                 let dirty_regions = renderer_mut.dirty_regions();
                 let dirty_regions_js = Self::dirty_regions_to_js(&dirty_regions);
-                let metadata = renderer_mut.table_resize_metadata();
+                renderer_mut
+                    .copy_table_resize_metadata_into(&mut self.state.borrow_mut().table_resize);
                 renderer_mut.clear_dirty_regions();
-                (metadata, dirty_regions_js)
+                dirty_regions_js
             };
-            self.state.borrow_mut().table_resize = metadata;
             (None, dirty_regions_js)
         } else {
             self.capture_pages_after_render_with_dirty().await?
@@ -7912,16 +7912,16 @@ impl OffscreenDocumentView {
         // otherwise, they can accumulate and slow down later edits/undos.
         let (snapshots, dirty_regions) = if lazy_mode {
             self.wait_for_pending_images().await?;
-            let (metadata, dirty_regions_js) = {
+            let dirty_regions_js = {
                 let renderer_mut = self.renderer.borrow_mut();
                 renderer_mut.coalesce_dirty_regions();
                 let dirty_regions = renderer_mut.dirty_regions();
                 let dirty_regions_js = Self::dirty_regions_to_js(&dirty_regions);
-                let meta = renderer_mut.table_resize_metadata();
+                renderer_mut
+                    .copy_table_resize_metadata_into(&mut self.state.borrow_mut().table_resize);
                 renderer_mut.clear_dirty_regions();
-                (meta, dirty_regions_js)
+                dirty_regions_js
             };
-            self.state.borrow_mut().table_resize = metadata;
             (None, dirty_regions_js)
         } else {
             let mut renderer = self.renderer.borrow_mut();
@@ -10382,16 +10382,16 @@ impl OffscreenDocumentView {
         } else {
             // See insert_text_async: avoid accumulating in-flight async image draws.
             self.wait_for_pending_images().await?;
-            let (metadata, dirty_regions_js) = {
+            let dirty_regions_js = {
                 let renderer_mut = self.renderer.borrow_mut();
                 renderer_mut.coalesce_dirty_regions();
                 let dirty_regions = renderer_mut.dirty_regions();
                 let dirty_regions_js = Self::dirty_regions_to_js(&dirty_regions);
-                let meta = renderer_mut.table_resize_metadata();
+                renderer_mut
+                    .copy_table_resize_metadata_into(&mut self.state.borrow_mut().table_resize);
                 renderer_mut.clear_dirty_regions();
-                (meta, dirty_regions_js)
+                dirty_regions_js
             };
-            self.state.borrow_mut().table_resize = metadata;
             dirty_regions_js
         };
         let (preview_mode, history_flags) = {
