@@ -14663,6 +14663,185 @@ mod tests {
     }
 
     #[test]
+    fn formatting_a_split_paragraph_keeps_its_trailing_tc_field_after_the_text() {
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/toc-tc-field-edge-cases.docx"),
+        )
+        .expect("read fixture");
+        let mut word_doc =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+        for command in [
+            HeadlessCommand::InsertParagraphBreak {
+                paragraph: 6,
+                offset: 28,
+                count: 1,
+            },
+            HeadlessCommand::SetFontSize {
+                start_paragraph: 7,
+                start_offset: 6,
+                end_paragraph: 7,
+                end_offset: 8,
+                font_size: 14.0,
+            },
+        ] {
+            apply_headless_commands_to_document(
+                &mut word_doc,
+                &HeadlessEditRequest {
+                    commands: vec![command],
+                },
+            )
+            .expect("edit");
+            let xml = toc_document_xml(&word_doc);
+            let paragraph = saved_paragraph_xml(&xml, 7);
+            let field = paragraph.find("<w:fldSimple").expect("trailing TC field");
+            assert!(paragraph[field..].contains("Manual default entry"));
+            assert_eq!(paragraph.matches("<w:fldSimple").count(), 1);
+            assert!(
+                paragraph[..field].rfind("</w:t>").is_some()
+                    && !paragraph[field..].contains("</w:t>"),
+                "the TC field must stay after all paragraph text: {paragraph}"
+            );
+        }
+    }
+
+    fn tc_test_document(body: &str) -> WordDocument {
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/hello.docx"),
+        )
+        .expect("fixture");
+        let mut archive = zip::ZipArchive::new(std::io::Cursor::new(bytes)).expect("zip");
+        let mut package = zip::ZipWriter::new(std::io::Cursor::new(Vec::new()));
+        let xml = format!(
+            r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>{body}</w:body></w:document>"#
+        );
+        for index in 0..archive.len() {
+            let mut entry = archive.by_index(index).expect("entry");
+            let name = entry.name().expect("name").to_string();
+            let mut data = Vec::new();
+            std::io::Read::read_to_end(&mut entry, &mut data).expect("read");
+            if name == "word/document.xml" {
+                data = xml.as_bytes().to_vec();
+            }
+            package
+                .start_file(name, zip::write::SimpleFileOptions::default())
+                .expect("entry");
+            std::io::Write::write_all(&mut package, &data).expect("write");
+        }
+        let bytes = package.finish().expect("finish").into_inner();
+        executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load")
+    }
+
+    // Inspect the saved OOXML independently of the editor's run/source mapping.
+    fn tc_marker_positions(xml: &str) -> Vec<(String, usize)> {
+        use quick_xml::{events::Event, Reader};
+        let mut reader = Reader::from_str(xml);
+        let mut offset = 0;
+        let mut in_text = false;
+        let mut positions = Vec::new();
+        loop {
+            match reader.read_event().expect("XML") {
+                Event::Start(element) | Event::Empty(element) => match element.name().as_ref() {
+                    b"w:t" => in_text = true,
+                    b"w:fldSimple" | b"w:bookmarkStart" | b"w:bookmarkEnd" => {
+                        let attr = element
+                            .attributes()
+                            .map(|attr| attr.expect("attribute"))
+                            .find(|attr| {
+                                attr.key.as_ref()
+                                    == if element.name().as_ref() == b"w:fldSimple" {
+                                        b"w:instr".as_slice()
+                                    } else {
+                                        b"w:id".as_slice()
+                                    }
+                            })
+                            .expect("marker attribute");
+                        let value = attr
+                            .decoded_and_normalized_value(
+                                quick_xml::XmlVersion::Implicit1_0,
+                                reader.decoder(),
+                            )
+                            .expect("value");
+                        positions.push((
+                            format!(
+                                "{}:{value}",
+                                String::from_utf8_lossy(element.name().as_ref())
+                            ),
+                            offset,
+                        ));
+                    }
+                    _ => {}
+                },
+                Event::End(element) if element.name().as_ref() == b"w:t" => in_text = false,
+                Event::Text(text) if in_text => {
+                    offset += text.xml10_content().expect("text").chars().count()
+                }
+                Event::Eof => break,
+                _ => {}
+            }
+        }
+        positions
+    }
+
+    #[test]
+    fn formatting_keeps_a_bookmark_end_after_adjacent_tc_fields() {
+        let mut doc = tc_test_document(
+            r#"<w:p><w:bookmarkStart w:id="0" w:name="entry"/><w:r><w:t>abcd</w:t></w:r><w:fldSimple w:instr=" TC first "/><w:fldSimple w:instr=" TC second "/><w:bookmarkEnd w:id="0"/></w:p>"#,
+        );
+        let expected = tc_marker_positions(&toc_document_xml(&doc));
+        apply_headless_commands_to_document(
+            &mut doc,
+            &HeadlessEditRequest {
+                commands: vec![HeadlessCommand::SetFontSize {
+                    start_paragraph: 0,
+                    start_offset: 0,
+                    end_paragraph: 0,
+                    end_offset: 1,
+                    font_size: 14.0,
+                }],
+            },
+        )
+        .expect("format");
+        assert_eq!(tc_marker_positions(&toc_document_xml(&doc)), expected);
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig { cases: 32, max_shrink_iters: 512, .. ProptestConfig::default() })]
+        #[test]
+        fn property_character_formatting_preserves_tc_offsets_and_marker_order(
+            chunks in prop::collection::vec(0usize..3, 1..5),
+            selections in prop::collection::vec((any::<u8>(), any::<u8>()), 1..9),
+        ) {
+            let mut body = String::from("<w:p><w:fldSimple w:instr=\" TC start \"/>");
+            let mut text = String::new();
+            for (index, chunk) in chunks.into_iter().enumerate() {
+                let chunk = ["abcd", "あいうえ", "🙂xyz"][chunk];
+                text.push_str(chunk);
+                body.push_str(&format!(r#"<w:bookmarkStart w:id="{index}" w:name="mark{index}"/><w:r><w:t>{chunk}</w:t></w:r><w:fldSimple w:instr=" TC first{index} "/><w:fldSimple w:instr=" TC second{index} "/><w:bookmarkEnd w:id="{index}"/>"#));
+            }
+            body.push_str("</w:p>");
+            let mut doc = tc_test_document(&body);
+            let expected = tc_marker_positions(&toc_document_xml(&doc));
+            prop_assert_eq!(expected.len(), 1 + 4 * (text.chars().count() / 4));
+            let boundaries: Vec<_> = text.char_indices().map(|(index, _)| index).chain(std::iter::once(text.len())).collect();
+            for (step, (left, right)) in selections.into_iter().enumerate() {
+                let left = usize::from(left) % (boundaries.len() - 1);
+                let right = left + 1 + usize::from(right) % (boundaries.len() - 1 - left);
+                apply_headless_commands_to_document(&mut doc, &HeadlessEditRequest {
+                    commands: vec![HeadlessCommand::SetFontSize {
+                        start_paragraph: 0, start_offset: boundaries[left],
+                        end_paragraph: 0, end_offset: boundaries[right], font_size: 10.0 + step as f32,
+                    }],
+                }).expect("format");
+                prop_assert_eq!(&tc_marker_positions(&toc_document_xml(&doc)), &expected);
+                doc = executor::block_on(WordDocument::load(&doc.export_docx().expect("export"), &Options::default())).expect("reload");
+                prop_assert_eq!(&tc_marker_positions(&toc_document_xml(&doc)), &expected);
+            }
+        }
+    }
+
+    #[test]
     fn accepting_a_change_keeps_formatting_after_a_rebuilt_empty_field_result() {
         // toc-tc-field-edge-cases.docx ends a paragraph with a TC field whose
         // result is an empty `<w:r/>`. Splitting the paragraph rebuilt that
@@ -14741,6 +14920,40 @@ mod tests {
         assert_eq!(sizes(&word_doc), sizes(&reloaded));
     }
 
+    proptest! {
+        #![proptest_config(ProptestConfig { cases: 32, max_shrink_iters: 128, .. ProptestConfig::default() })]
+        #[test]
+        fn property_paragraph_split_preserves_tc_positions_through_export_and_reload(
+            chunks in prop::collection::vec(0usize..3, 1..5),
+            split in any::<u8>(),
+        ) {
+            let mut body = String::from("<w:p><w:fldSimple w:instr=\" TC start \"/>");
+            let mut text = String::new();
+            for (index, chunk) in chunks.into_iter().enumerate() {
+                let chunk = ["abcd", "あいうえ", "🙂xyz"][chunk];
+                text.push_str(chunk);
+                body.push_str(&format!(r#"<w:r><w:t>{chunk}</w:t></w:r><w:fldSimple w:instr=" TC entry{index} "/>"#));
+            }
+            body.push_str("</w:p>");
+            let boundaries: Vec<_> = text.char_indices().map(|(index, _)| index)
+                .chain(std::iter::once(text.len())).collect();
+            let mut doc = tc_test_document(&body);
+            let expected = tc_marker_positions(&toc_document_xml(&doc));
+            apply_headless_commands_to_document(&mut doc, &HeadlessEditRequest {
+                commands: vec![HeadlessCommand::InsertParagraphBreak {
+                    paragraph: 0,
+                    offset: boundaries[usize::from(split) % boundaries.len()],
+                    count: 1,
+                }],
+            }).expect("split");
+            prop_assert_eq!(&tc_marker_positions(&toc_document_xml(&doc)), &expected);
+            doc = executor::block_on(WordDocument::load(
+                &doc.export_docx().expect("export"), &Options::default(),
+            )).expect("reload");
+            prop_assert_eq!(&tc_marker_positions(&toc_document_xml(&doc)), &expected);
+        }
+    }
+
     #[test]
     fn splitting_a_paragraph_keeps_its_tc_entry_once_on_the_side_it_marks() {
         // toc-tc-field-edge-cases.docx: paragraph 6 ends with a TC field (a
@@ -14795,6 +15008,99 @@ mod tests {
             assert_eq!(exported.matches(entry).count(), 1, "split at {offset}");
             assert!(has_entry(&word_doc, entry_paragraph), "split at {offset}");
         }
+    }
+
+    #[test]
+    fn accepting_a_font_change_keeps_underline_on_its_text_after_a_line_break() {
+        // break.docx: the run holding a line break and "あ" is cut into two
+        // runs by the parser. Paired one run per `w:r`, every run after it
+        // took the next run's element, and accepting the tracked font change
+        // (which reparses the formatting) moved the underline one run on.
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/break.docx"),
+        )
+        .expect("read fixture");
+        let mut word_doc =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+        use jade_docx_headless_api::HeadlessSectionBreakType;
+        apply_headless_commands_to_document(
+            &mut word_doc,
+            &HeadlessEditRequest {
+                commands: vec![
+                    HeadlessCommand::InsertText {
+                        paragraph: 0,
+                        offset: 6,
+                        text: "あ".to_string(),
+                    },
+                    HeadlessCommand::InsertSectionBreak {
+                        paragraph: 0,
+                        offset: 1,
+                        break_type: HeadlessSectionBreakType::Continuous,
+                    },
+                    HeadlessCommand::ApplyUnderline {
+                        start_paragraph: 1,
+                        start_offset: 8,
+                        end_paragraph: 1,
+                        end_offset: 11,
+                        kind: None,
+                        enabled: true,
+                    },
+                    HeadlessCommand::StartChangeTracking {
+                        author: Some("reviewer".to_string()),
+                        initials: None,
+                        date: None,
+                        date_utc: None,
+                    },
+                    HeadlessCommand::InsertSectionBreak {
+                        paragraph: 0,
+                        offset: 0,
+                        break_type: HeadlessSectionBreakType::NextPage,
+                    },
+                    HeadlessCommand::SetFontFamily {
+                        start_paragraph: 2,
+                        start_offset: 4,
+                        end_paragraph: 2,
+                        end_offset: 10,
+                        font_family: "ＭＳ 明朝".to_string(),
+                    },
+                    HeadlessCommand::AcceptRevisions {
+                        kind: None,
+                        start_paragraph: None,
+                        end_paragraph: None,
+                        revision_id: None,
+                        revision_ids: None,
+                        revision_targets: None,
+                    },
+                ],
+            },
+        )
+        .expect("edits");
+        // Each character with whether it is underlined, across run cuts.
+        let underlined = |word_doc: &WordDocument| {
+            word_doc
+                .paragraph(2)
+                .expect("paragraph")
+                .runs
+                .iter()
+                .flat_map(|run| {
+                    let underline = run
+                        .properties
+                        .as_ref()
+                        .and_then(|props| props.underline)
+                        .unwrap_or(false);
+                    run.text.chars().map(move |ch| (ch, underline))
+                })
+                .collect::<Vec<_>>()
+        };
+        let reloaded = executor::block_on(WordDocument::load(
+            &word_doc.export_docx().expect("export"),
+            &Options::default(),
+        ))
+        .expect("reload");
+        assert_eq!(underlined(&word_doc), underlined(&reloaded));
+        assert!(underlined(&word_doc).contains(&('w', true)));
+        assert!(underlined(&word_doc).contains(&('d', false)));
     }
 
     #[test]
