@@ -16,7 +16,7 @@
 
 use super::paragraph_property_sync::{
     restore_paragraph_properties_xml, snapshot_paragraph_properties_xml, sync_paragraph_indent_xml,
-    sync_paragraph_numbering_xml,
+    sync_paragraph_numbering_xml, IndentXmlChange,
 };
 use super::{Command, CommandContext, CommandError, CommandResult};
 use crate::document::{Indent, ParagraphProperties};
@@ -404,8 +404,12 @@ impl Command for AdjustParagraphIndentCommand {
                 ctx.document,
                 paragraph_index,
                 Some(&applied_indent),
-                !bidi,
-                bidi,
+                IndentXmlChange {
+                    left: !bidi,
+                    right: bidi,
+                    special: self.target == IndentTarget::Hanging,
+                    bidi,
+                },
             );
         }
 
