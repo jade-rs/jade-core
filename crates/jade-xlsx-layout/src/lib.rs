@@ -1772,7 +1772,9 @@ pub fn relayout_rows(
         array_formulas: sheet.array_formulas.clone(),
         tab_color: None,
         sparkline_groups: Vec::new(),
-        ignored_errors: Vec::new(),
+        // The rows' error flags honour the sheet's Ignore Error, as a full
+        // layout does.
+        ignored_errors: sheet.ignored_errors.clone(),
         protection: sheet.protection,
         outline: sheet.outline.clone(),
     };
