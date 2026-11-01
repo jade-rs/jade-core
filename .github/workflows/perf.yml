@@ -41,6 +41,9 @@ jobs:
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
 
+      - name: Test performance regression gate
+        run: python3 -m unittest discover -s head/scripts/perf -p 'test_check_regressions.py'
+
       - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
         with:
           key: perf-ci
@@ -58,8 +61,8 @@ jobs:
         run: cargo build -p jade-docx-perf --profile perf-ci --locked
 
       # The base is measured with the head's harness so both sides run the
-      # same scenarios. A harness that does not compile against the base
-      # leaves the report head-only rather than failing the job.
+      # same scenarios. Preserve the diagnostic head-only report if the base
+      # fails to build, then fail the PR gate for missing comparison evidence.
       - name: Build base
         id: base
         if: github.event_name == 'pull_request'
@@ -85,15 +88,31 @@ jobs:
           HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
 
       - name: Upload callgrind outputs
+        if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: perf-callgrind
           path: perf/
-          if-no-files-found: warn
+          if-no-files-found: error
+
+      - name: Enforce per-case performance limit
+        if: github.event_name == 'pull_request'
+        run: >-
+          python3 head/scripts/perf/check_regressions.py perf/base perf/head
+          --output perf/regression-gate.json
+
+      - name: Upload performance gate result
+        if: always() && github.event_name == 'pull_request'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: perf-regression-gate
+          path: perf/regression-gate.json
+          if-no-files-found: error
 
       # Forks get a read-only token; their report stays in the job summary.
       - name: Comment on the pull request
         if: >-
+          always() && hashFiles('perf/summary.md') != '' &&
           github.event_name == 'pull_request' &&
           github.event.pull_request.head.repo.full_name == github.repository
         uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7.1.0
