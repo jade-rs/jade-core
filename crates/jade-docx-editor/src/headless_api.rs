@@ -14920,6 +14920,96 @@ mod tests {
         assert_eq!(sizes(&word_doc), sizes(&reloaded));
     }
 
+    proptest! {
+        #![proptest_config(ProptestConfig { cases: 32, max_shrink_iters: 128, .. ProptestConfig::default() })]
+        #[test]
+        fn property_paragraph_split_preserves_tc_positions_through_export_and_reload(
+            chunks in prop::collection::vec(0usize..3, 1..5),
+            split in any::<u8>(),
+        ) {
+            let mut body = String::from("<w:p><w:fldSimple w:instr=\" TC start \"/>");
+            let mut text = String::new();
+            for (index, chunk) in chunks.into_iter().enumerate() {
+                let chunk = ["abcd", "あいうえ", "🙂xyz"][chunk];
+                text.push_str(chunk);
+                body.push_str(&format!(r#"<w:r><w:t>{chunk}</w:t></w:r><w:fldSimple w:instr=" TC entry{index} "/>"#));
+            }
+            body.push_str("</w:p>");
+            let boundaries: Vec<_> = text.char_indices().map(|(index, _)| index)
+                .chain(std::iter::once(text.len())).collect();
+            let mut doc = tc_test_document(&body);
+            let expected = tc_marker_positions(&toc_document_xml(&doc));
+            apply_headless_commands_to_document(&mut doc, &HeadlessEditRequest {
+                commands: vec![HeadlessCommand::InsertParagraphBreak {
+                    paragraph: 0,
+                    offset: boundaries[usize::from(split) % boundaries.len()],
+                    count: 1,
+                }],
+            }).expect("split");
+            prop_assert_eq!(&tc_marker_positions(&toc_document_xml(&doc)), &expected);
+            doc = executor::block_on(WordDocument::load(
+                &doc.export_docx().expect("export"), &Options::default(),
+            )).expect("reload");
+            prop_assert_eq!(&tc_marker_positions(&toc_document_xml(&doc)), &expected);
+        }
+    }
+
+    #[test]
+    fn splitting_a_paragraph_keeps_its_tc_entry_once_on_the_side_it_marks() {
+        // toc-tc-field-edge-cases.docx: paragraph 6 ends with a TC field (a
+        // TOC entry with no result, which the model has no run for). A
+        // paragraph break put it in both halves: the TOC listed it twice.
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/toc-tc-field-edge-cases.docx"),
+        )
+        .expect("read fixture");
+        let entry = "Manual default entry";
+        // Whether paragraph `index`'s XML holds a field naming the entry.
+        fn names(element: &crate::docx_xml::XmlElement, entry: &str) -> bool {
+            element
+                .attributes
+                .iter()
+                .any(|attribute| attribute.value.contains(entry))
+                || element.children.iter().any(|node| match node {
+                    crate::docx_xml::XmlNode::Element(child) => names(child, entry),
+                    _ => false,
+                })
+        }
+        let has_entry = |word_doc: &WordDocument, index: usize| {
+            let raw = word_doc.raw_document.as_ref().expect("document xml");
+            let id = word_doc
+                .paragraph(index)
+                .and_then(|paragraph| paragraph.node_id)
+                .expect("paragraph xml");
+            names(raw.element(id).expect("element"), entry)
+        };
+        for (offset, entry_paragraph) in [(28, 7), (43, 6)] {
+            let mut word_doc =
+                executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+            assert!(has_entry(&word_doc, 6));
+            apply_headless_commands_to_document(
+                &mut word_doc,
+                &HeadlessEditRequest {
+                    commands: vec![HeadlessCommand::InsertParagraphBreak {
+                        paragraph: 6,
+                        offset,
+                        count: 1,
+                    }],
+                },
+            )
+            .expect("split");
+            let exported = word_doc
+                .raw_document
+                .as_ref()
+                .expect("document xml")
+                .to_string()
+                .expect("serialize");
+            assert_eq!(exported.matches(entry).count(), 1, "split at {offset}");
+            assert!(has_entry(&word_doc, entry_paragraph), "split at {offset}");
+        }
+    }
+
     #[test]
     fn accepting_a_font_change_keeps_underline_on_its_text_after_a_line_break() {
         // break.docx: the run holding a line break and "あ" is cut into two
