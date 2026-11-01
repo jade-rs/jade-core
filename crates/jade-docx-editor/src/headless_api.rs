@@ -13987,6 +13987,61 @@ mod tests {
     }
 
     #[test]
+    fn rejecting_text_beside_a_text_box_keeps_the_boxs_field() {
+        // document-variable-fields.docx has a VML text box whose paragraph
+        // holds a DOCVARIABLE field. Rejecting text typed beside the box
+        // rewrote the box from the model: it gained a DrawingML copy with
+        // the field's stale result as plain text, which a reload reads first.
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/document-variable-fields.docx"),
+        )
+        .expect("read fixture");
+        let mut word_doc =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+        let text_box = (0..word_doc.paragraph_count())
+            .find(|&index| word_doc.is_text_box_paragraph_surface(index))
+            .expect("the text box paragraph");
+        let has_field = |word_doc: &WordDocument| {
+            word_doc
+                .paragraph(text_box)
+                .is_some_and(|paragraph| paragraph.runs.iter().any(|run| run.field.is_some()))
+        };
+        assert!(has_field(&word_doc));
+        apply_headless_commands_to_document(
+            &mut word_doc,
+            &HeadlessEditRequest {
+                commands: vec![
+                    HeadlessCommand::StartChangeTracking {
+                        author: Some("reviewer".to_string()),
+                        initials: None,
+                        date: None,
+                        date_utc: None,
+                    },
+                    HeadlessCommand::InsertText {
+                        paragraph: text_box - 1,
+                        offset: 0,
+                        text: "漢字".to_string(),
+                    },
+                    HeadlessCommand::RejectRevisions {
+                        kind: None,
+                        start_paragraph: None,
+                        end_paragraph: None,
+                        revision_id: None,
+                        revision_ids: None,
+                        revision_targets: None,
+                    },
+                ],
+            },
+        )
+        .expect("tracked text rejected");
+        let exported = word_doc.export_docx().expect("export");
+        let reloaded =
+            executor::block_on(WordDocument::load(&exported, &Options::default())).expect("reload");
+        assert!(has_field(&reloaded));
+    }
+
+    #[test]
     fn tracked_formatting_of_a_text_box_paragraph_can_be_rejected() {
         // shape-preset-geometries.docx has shapes whose paragraphs are not in
         // the XML until an edit writes them. With changes tracked, setting
