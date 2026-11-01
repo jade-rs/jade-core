@@ -131,3 +131,27 @@ fn typing_is_taken_back_in_place() {
     let reopened = HeadlessWorkbook::open(book.bytes()).unwrap();
     assert_eq!(reopened.cell(SHEET, "I20").unwrap().number, Some(8.0));
 }
+
+/// A recalculation changes caches without creating a history entry. Returning
+/// to the original time zone must not make its old typing reversal applicable
+/// to that newer model.
+#[test]
+fn typing_undo_after_a_time_zone_round_trip_restores_the_package_model() {
+    let mut book = open();
+    book.set_calculation_time_zone("Etc/GMT+12").unwrap();
+    book.set(SHEET, "H20", CellInput::Formula("=TODAY()".into()))
+        .unwrap();
+    let original_today = number(&book, "H20");
+    let before = book.bytes().to_vec();
+    book.set(SHEET, "Z900", CellInput::Text("new".into()))
+        .unwrap();
+    book.set_calculation_time_zone("Pacific/Kiritimati")
+        .unwrap();
+    book.recalculate().unwrap();
+    assert_ne!(number(&book, "H20"), original_today);
+    book.set_calculation_time_zone("Etc/GMT+12").unwrap();
+    assert!(book.undo().unwrap());
+    assert_eq!(book.bytes(), before);
+    let reopened = HeadlessWorkbook::open(book.bytes()).unwrap();
+    assert_eq!(number(&book, "H20"), number(&reopened, "H20"));
+}

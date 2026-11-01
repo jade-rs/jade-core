@@ -273,6 +273,8 @@ struct HistorySnapshot {
 /// calculation flags.
 #[derive(Debug, Clone)]
 struct TypedReversal {
+    /// The package left by this write; later cache-only writes invalidate it.
+    after: Vec<jade_opc::EntryFingerprint>,
     cells: Vec<TypedCell>,
     formulas: Vec<(usize, CellRef, CellValue)>,
     full_calculation_on_load: bool,
@@ -970,12 +972,14 @@ impl HeadlessWorkbook {
         }) else {
             return Ok(false);
         };
+        let after_print = jade_opc::package_fingerprint(&self.source)?;
+        if after_print != reversal.after {
+            return Ok(false);
+        }
+        // Validate both packages before changing the source or history.
+        let before_print = jade_opc::package_fingerprint(&previous.bytes)?;
         self.history.pop();
         let after = std::mem::replace(&mut self.source, previous.bytes.clone());
-        let (after_print, before_print) = (
-            jade_opc::package_fingerprint(&after)?,
-            jade_opc::package_fingerprint(&self.source)?,
-        );
         // Typing changed values only: what each sheet protects is as it was.
         self.carry_sheet_states(&after_print, &before_print);
         reversal.apply(&mut self.workbook);
@@ -1505,6 +1509,7 @@ impl HeadlessWorkbook {
         }
         // What the values overwrite, for taking them back in place.
         let mut reversal = TypedReversal {
+            after: Vec::new(),
             cells: Vec::new(),
             formulas: Vec::new(),
             full_calculation_on_load: self.workbook.full_calculation_on_load,
@@ -1750,6 +1755,7 @@ impl HeadlessWorkbook {
             let (before, after) = (changes.before.clone(), changes.after.clone());
             self.carry_sheet_states(&before, &after);
         }
+        reversal.after = after.clone();
         if let Some(session) = session {
             self.calc_session = Some((after, session));
         }
