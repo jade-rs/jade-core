@@ -227,9 +227,17 @@ impl Command for SetParagraphStyleCommand {
                 if let (Some(old), Some(new)) =
                     (previous_style_props.as_ref(), inherited_props.as_ref())
                 {
-                    rebase_paragraph_style_properties(props, old, new, |tag| {
-                        declared.iter().any(|declared| declared == tag)
-                    });
+                    rebase_paragraph_style_properties(
+                        props,
+                        old,
+                        new,
+                        |tag| declared.iter().any(|declared| declared == tag),
+                        |tag, attribute| {
+                            declared_attributes
+                                .iter()
+                                .any(|(element, name)| element == tag && name == attribute)
+                        },
+                    );
                 }
                 if let Some((old, new)) = numbering_change {
                     let key = |numbering: Option<&Numbering>| {
