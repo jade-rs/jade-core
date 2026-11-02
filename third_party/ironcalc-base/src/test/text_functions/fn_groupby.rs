@@ -144,3 +144,81 @@ fn test_groupby_auto_headers_require_a_second_numeric_value() {
     assert_eq!(model._get_text("D3"), "Total");
     assert_eq!(model._get_text("E3"), "2");
 }
+
+#[test]
+fn test_groupby_subtotals_each_first_key() {
+    let mut model = new_empty_model();
+    for (row, (region, product, amount)) in [
+        ("West", "Tea", "10"),
+        ("East", "Tea", "5"),
+        ("West", "Rice", "20"),
+        ("East", "Rice", "1"),
+        ("West", "Tea", "3"),
+    ]
+    .iter()
+    .enumerate()
+    {
+        model._set(&format!("A{}", row + 1), region);
+        model._set(&format!("B{}", row + 1), product);
+        model._set(&format!("C{}", row + 1), amount);
+    }
+    model._set("E1", "=GROUPBY(A1:B5,C1:C5,SUM,0,2)");
+    model._set("I1", "=GROUPBY(A1:B5,C1:C5,SUM,0,-2)");
+    model.evaluate();
+    let grid = |columns: [&str; 3], rows: u32| {
+        (1..=rows)
+            .map(|row| {
+                columns
+                    .iter()
+                    .map(|column| model._get_text(&format!("{column}{row}")))
+                    .collect::<Vec<_>>()
+            })
+            .collect::<Vec<_>>()
+    };
+    assert_eq!(
+        grid(["E", "F", "G"], 7),
+        [
+            ["East", "Rice", "1"],
+            ["East", "Tea", "5"],
+            ["East", "", "6"],
+            ["West", "Rice", "20"],
+            ["West", "Tea", "13"],
+            ["West", "", "33"],
+            ["Total", "", "39"],
+        ]
+    );
+    // Subtotals and the total before their rows.
+    assert_eq!(
+        grid(["I", "J", "K"], 7),
+        [
+            ["Total", "", "39"],
+            ["East", "", "6"],
+            ["East", "Rice", "1"],
+            ["East", "Tea", "5"],
+            ["West", "", "33"],
+            ["West", "Rice", "20"],
+            ["West", "Tea", "13"],
+        ]
+    );
+}
+
+#[test]
+fn test_groupby_percentof_against_the_grand_total() {
+    let mut model = new_empty_model();
+    fill(&mut model);
+    model._set("D1", "=GROUPBY(A2:A6,B2:B6,PERCENTOF,0,0)");
+    model._set(
+        "G1",
+        "=GROUPBY(A2:A6,B2:B6,LAMBDA(x,all,SUM(x)/SUM(all)),0,0)",
+    );
+    model.evaluate();
+    // East 6, North 7, West 30 of 43.
+    let share = |cell: &str| model._get_text(cell).parse::<f64>().unwrap();
+    assert!(
+        (share("E1") - 6.0 / 43.0).abs() < 1e-9,
+        "{}",
+        model._get_text("E1")
+    );
+    assert!((share("E3") - 30.0 / 43.0).abs() < 1e-9);
+    assert!((share("H2") - 7.0 / 43.0).abs() < 1e-9);
+}
