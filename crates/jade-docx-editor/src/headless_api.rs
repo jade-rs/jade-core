@@ -8664,6 +8664,72 @@ mod tests {
     }
 
     #[test]
+    fn undoing_a_deleted_run_before_a_hyperlink_writes_the_link_once() {
+        // yokohama_page3_only.docx: "(2)", "　" and a hyperlink "第1項第2号"
+        // are runs of their own. Deleting "2)　" removed the "　" run; undoing
+        // put it back with the id of the removed `w:r`. Taken as still bound,
+        // it wrote the hyperlink ahead of itself, and the link's runs were
+        // written once more after it as plain text.
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/yokohama_page3_only.docx"),
+        )
+        .expect("read fixture");
+        let mut word_doc =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+        let text = |word_doc: &WordDocument, index: usize| -> String {
+            word_doc
+                .paragraph(index)
+                .map(|paragraph| paragraph.runs.iter().map(|run| run.text.as_str()).collect())
+                .unwrap_or_default()
+        };
+        let original = "(2)\u{3000}第1項第2号から第6号までに掲げる事項";
+        let paragraph = (0..word_doc.paragraph_count())
+            .find(|&index| text(&word_doc, index) == original)
+            .expect("the paragraph");
+        let mut executor = CommandExecutor::new();
+        apply_headless_commands_with_executor_to_document(
+            &mut word_doc,
+            &mut executor,
+            None,
+            &HeadlessEditRequest {
+                commands: vec![HeadlessCommand::DeleteText {
+                    paragraph,
+                    offset: 1,
+                    direction: HeadlessDeleteDirection::Forward,
+                    count: 3,
+                }],
+            },
+        )
+        .expect("deleted");
+        let mut selection = None;
+        let mut context = CommandContext::new(&mut word_doc, &mut selection);
+        assert!(executor.undo(&mut context).expect("undo succeeds"));
+        assert_eq!(text(&word_doc, paragraph), original);
+
+        let reloaded = executor::block_on(WordDocument::load(
+            &word_doc.export_docx().expect("export"),
+            &Options::default(),
+        ))
+        .expect("reload");
+        assert_eq!(text(&reloaded, paragraph), original);
+        let linked = |word_doc: &WordDocument| -> String {
+            word_doc
+                .paragraph(paragraph)
+                .map(|paragraph| {
+                    paragraph
+                        .runs
+                        .iter()
+                        .filter(|run| run.hyperlink.is_some())
+                        .map(|run| run.text.as_str())
+                        .collect()
+                })
+                .unwrap_or_default()
+        };
+        assert_eq!(linked(&reloaded), linked(&word_doc));
+    }
+
+    #[test]
     fn plain_text_paste_while_tracking_records_an_insertion() {
         let bytes = std::fs::read(
             std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
