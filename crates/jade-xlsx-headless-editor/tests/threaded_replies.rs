@@ -45,6 +45,8 @@ fn replies_join_the_thread() {
             .map(|comment| comment.text.clone())
     };
     assert_eq!(comment(&book).as_deref(), Some("Ann Lee: Check this"));
+    assert!(book.has_comment_thread(&sheet, "B2").unwrap());
+    assert!(!book.has_comment_thread(&sheet, "C3").unwrap());
     assert!(book
         .reply_to_comment(&sheet, "B2", "Ann Lee", "Done", "2026-11-02T09:00:00")
         .unwrap());
