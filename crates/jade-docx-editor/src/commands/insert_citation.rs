@@ -202,6 +202,10 @@ mod tests {
         let document = format!(
             "<?xml version=\"1.0\" encoding=\"UTF-8\"?><w:document xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\"><w:body><w:p>{runs}</w:p></w:body></w:document>"
         );
+        build_docx_xml(&document, extra_parts)
+    }
+
+    fn build_docx_xml(document: &str, extra_parts: &[(&str, &str)]) -> Vec<u8> {
         let mut cursor = std::io::Cursor::new(Vec::new());
         {
             let mut zip = zip::ZipWriter::new(&mut cursor);
@@ -216,7 +220,7 @@ mod tests {
                     "_rels/.rels",
                     "<?xml version=\"1.0\" encoding=\"UTF-8\"?><Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\"><Relationship Id=\"rId1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument\" Target=\"word/document.xml\"/></Relationships>",
                 ),
-                ("word/document.xml", document.as_str()),
+                ("word/document.xml", document),
             ] {
                 zip.start_file(path, options).expect("start base entry");
                 zip.write_all(value.as_bytes()).expect("write base entry");
@@ -905,6 +909,50 @@ mod tests {
     }
 
     #[test]
+    fn toc_page_refresh_updates_split_and_repeated_field_results_in_model_and_xml() {
+        let xml = r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>
+        <w:p><w:r><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:instrText>TOC</w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r>
+        <w:r><w:t>chapter</w:t><w:tab/></w:r>
+        <w:r><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:instrText>PAG</w:instrText></w:r><w:r><w:instrText>EREF "Target" \h</w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r>
+        <w:r w:rsidR="00112233"><w:rPr><w:b/></w:rPr><w:t>1</w:t></w:r><w:r><w:rPr><w:i/></w:rPr><w:t>2</w:t></w:r><w:r><w:fldChar w:fldCharType="end"/></w:r>
+        <w:r><w:t>|</w:t></w:r><w:fldSimple w:instr="PAGEREF Target"><w:r><w:t>3</w:t></w:r></w:fldSimple>
+        <w:r><w:t>|</w:t></w:r><w:fldSimple w:instr="PAGEREF Target"><w:r><w:t>4</w:t></w:r></w:fldSimple>
+        <w:r><w:fldChar w:fldCharType="end"/></w:r></w:p>
+        <w:p><w:bookmarkStart w:id="0" w:name="Target"/><w:r><w:t>heading</w:t></w:r><w:bookmarkEnd w:id="0"/></w:p>
+        </w:body></w:document>"#;
+        let mut document = executor::block_on(WordDocument::load(
+            &build_docx_xml(xml, &[]),
+            &Options::default(),
+        ))
+        .unwrap();
+        let text = |document: &WordDocument| {
+            document
+                .paragraph(0)
+                .unwrap()
+                .runs
+                .iter()
+                .map(|run| run.text.as_str())
+                .collect::<String>()
+        };
+        assert_eq!(text(&document), "chapter\t12|3|4");
+        let pages = [("Target".into(), "7 & 8".into())].into_iter().collect();
+        assert_eq!(document.refresh_toc_page_numbers(0, &pages).unwrap(), 3);
+        assert_eq!(text(&document), "chapter\t7 & 8|7 & 8|7 & 8");
+        assert_eq!(document.refresh_toc_page_numbers(0, &pages).unwrap(), 0);
+        let bytes = document.export_docx().unwrap();
+        let xml = zip_part(&bytes, "word/document.xml");
+        assert!(xml.contains(r#"w:rsidR="00112233""#));
+        assert!(xml.contains("<w:b"));
+        let reloaded = executor::block_on(WordDocument::load(&bytes, &Options::default())).unwrap();
+        assert_eq!(text(&reloaded), text(&document));
+        if let Some(directory) = std::env::var_os("JADE_FIELD_PBT_EXPORT_DIR") {
+            let path = std::path::PathBuf::from(directory);
+            std::fs::create_dir_all(&path).unwrap();
+            std::fs::write(path.join("toc-split-page-results.docx"), bytes).unwrap();
+        }
+    }
+
+    #[test]
     fn all_ooxml_tab_leaders_round_trip_in_authored_tocs_and_fields() {
         use crate::document::TocOptions;
         use crate::word_document::FieldBlockLine;
@@ -931,12 +979,26 @@ mod tests {
                     _ => None,
                 })
                 .collect();
+            let toc_count = document.tables_of_contents().len();
             assert!(
                 document
                     .refresh_toc_page_numbers(0, &names)
                     .expect("page numbers")
                     > 0
             );
+            assert_eq!(document.tables_of_contents().len(), toc_count);
+            assert_eq!(document.refresh_toc_page_numbers(0, &names).unwrap(), 0);
+            for paragraph in block.start..=block.end {
+                for run in &document.paragraph(paragraph).unwrap().runs {
+                    if matches!(
+                        run.field.as_ref().map(|field| &field.kind),
+                        Some(crate::document::RunFieldKind::PageRef { .. })
+                    ) {
+                        assert_eq!(run.text, "7 & 8");
+                        assert_eq!(run.field.as_ref().unwrap().cached_text, None);
+                    }
+                }
+            }
             let text = "chapter & <title> \u{d7ff}\u{e000}\u{fffd}\u{10000}\u{10ffff}";
             document
                 .insert_manual_table_of_contents(
@@ -969,7 +1031,21 @@ mod tests {
                             .unwrap()
                             .runs
                             .iter()
-                            .map(|run| run.text.as_str())
+                            .map(|run| {
+                                if run.text.is_empty() {
+                                    run.field
+                                        .as_ref()
+                                        .and_then(|field| {
+                                            field
+                                                .resolved_value
+                                                .as_deref()
+                                                .or(field.cached_text.as_deref())
+                                        })
+                                        .unwrap_or("")
+                                } else {
+                                    run.text.as_str()
+                                }
+                            })
                             .collect::<String>()
                     })
                     .collect::<Vec<_>>()

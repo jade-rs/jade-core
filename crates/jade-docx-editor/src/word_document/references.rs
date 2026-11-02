@@ -1695,36 +1695,46 @@ impl WordDocument {
         }
         let mut changed = 0;
         for paragraph in block.start..=block.end {
-            let mut names = Vec::new();
+            let mut paragraph_changed = false;
+            let mut previous = None;
+            let mut counted = false;
             if let Some(model) = self.paragraph_mut(paragraph) {
                 for run in &mut model.runs {
                     let Some(field) = run.field.as_mut() else {
+                        previous = None;
                         continue;
                     };
                     let RunFieldKind::PageRef { name, .. } = &field.kind else {
+                        previous = None;
                         continue;
                     };
+                    let key = (name.clone(), field.source_field_id);
+                    let continuation = previous.as_ref() == Some(&key);
+                    previous = Some(key);
+                    if !continuation {
+                        counted = false;
+                    }
                     let Some(page) = pages.get(name) else {
                         continue;
                     };
-                    if field.cached_text.as_deref() != Some(page.as_str()) {
-                        field.cached_text = Some(page.clone());
-                        names.push((name.clone(), page.clone()));
+                    // PAGEREF results are editable run text, including when
+                    // loaded from a generated TOC. Formatted fragments of one
+                    // result receive the number once, as the saved XML does.
+                    let text = if continuation { "" } else { page.as_str() };
+                    if run.text != text || field.cached_text.is_some() {
+                        run.text = text.to_string();
+                        field.cached_text = None;
+                        paragraph_changed = true;
+                        if !counted {
+                            changed += 1;
+                            counted = true;
+                        }
                     }
                 }
             }
-            if names.is_empty() {
-                continue;
+            if paragraph_changed {
+                self.sync_paragraph_text_preserving_drawings(paragraph);
             }
-            let paragraph_id = self.paragraph(paragraph).and_then(|model| model.node_id);
-            if let (Some(raw), Some(paragraph_id)) = (self.raw_document.as_mut(), paragraph_id) {
-                if let Some(element) = raw.element_mut(paragraph_id) {
-                    for (name, page) in &names {
-                        set_page_reference_result(element, name, page);
-                    }
-                }
-            }
-            changed += names.len();
         }
         Ok(changed)
     }
@@ -1964,75 +1974,4 @@ impl WordDocument {
             self.model_to_rendered_text_position(TextPosition::new(caption, end)),
         ))
     }
-}
-
-/// Sets the result of the `PAGEREF name` field in a paragraph's XML to
-/// `page`: the first text after its separator, the rest emptied.
-fn set_page_reference_result(paragraph: &mut XmlElement, name: &str, page: &str) {
-    #[derive(PartialEq)]
-    enum State {
-        Looking,
-        Instruction,
-        Result,
-        Done,
-    }
-    fn visit(
-        element: &mut XmlElement,
-        name: &str,
-        page: &str,
-        state: &mut State,
-        written: &mut bool,
-    ) {
-        for child in &mut element.children {
-            let XmlNode::Element(child) = child else {
-                continue;
-            };
-            if *state == State::Done {
-                return;
-            }
-            match child.name.as_str() {
-                "w:fldChar" => {
-                    let kind = child
-                        .attributes
-                        .iter()
-                        .find(|attribute| attribute.name == "w:fldCharType")
-                        .map(|attribute| attribute.value.as_str());
-                    match (kind, &*state) {
-                        (Some("separate"), State::Instruction) => *state = State::Result,
-                        (Some("end"), State::Result) => *state = State::Done,
-                        (Some("end"), State::Instruction) => *state = State::Looking,
-                        _ => {}
-                    }
-                }
-                "w:instrText" => {
-                    let text: String = child
-                        .children
-                        .iter()
-                        .filter_map(|node| match node {
-                            XmlNode::Text(text) => Some(text.as_str()),
-                            _ => None,
-                        })
-                        .collect();
-                    let mut words = text.split_whitespace();
-                    if *state == State::Looking
-                        && words
-                            .next()
-                            .is_some_and(|word| word.eq_ignore_ascii_case("PAGEREF"))
-                        && words.next() == Some(name)
-                    {
-                        *state = State::Instruction;
-                    }
-                }
-                "w:t" if *state == State::Result => {
-                    let value = if *written { "" } else { page };
-                    *written = true;
-                    child.children = vec![XmlNode::Text(value.to_string())];
-                }
-                _ => visit(child, name, page, state, written),
-            }
-        }
-    }
-    let mut state = State::Looking;
-    let mut written = false;
-    visit(paragraph, name, page, &mut state, &mut written);
 }

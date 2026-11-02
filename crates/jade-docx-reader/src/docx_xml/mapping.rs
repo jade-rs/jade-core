@@ -61,7 +61,7 @@ fn map_body_elements(elements: &mut [BodyElement], xml_parent: &XmlElement, doc:
                     .take()
                     .or_else(|| find_next_with_name(&mut iter, "w:p"));
                 if let Some(xml_paragraph) = xml_paragraph {
-                    map_paragraph(paragraph.as_mut(), xml_paragraph, doc);
+                    attach_paragraph_xml_ids(paragraph.as_mut(), xml_paragraph, doc);
                 } else {
                     paragraph.as_mut().node_id = None;
                 }
@@ -95,7 +95,14 @@ fn map_body_elements(elements: &mut [BodyElement], xml_parent: &XmlElement, doc:
     }
 }
 
-fn map_paragraph(paragraph: &mut Paragraph, xml_paragraph: &XmlElement, doc: &DocxXmlDocument) {
+/// Links one already-parsed paragraph to its final XML subtree, including
+/// field containers and runs nested in hyperlinks. Use after inserting a
+/// generated paragraph, whose temporary XML IDs are reassigned on insertion.
+pub fn attach_paragraph_xml_ids(
+    paragraph: &mut Paragraph,
+    xml_paragraph: &XmlElement,
+    doc: &DocxXmlDocument,
+) {
     paragraph.node_id = Some(xml_paragraph.id);
 
     for run in &mut paragraph.runs {

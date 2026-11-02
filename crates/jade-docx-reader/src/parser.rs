@@ -2425,6 +2425,8 @@ impl DocumentParser {
                             ) {
                                 run.text.push('\t');
                                 paragraph_text_len += 1;
+                            } else {
+                                current_run_field_text.push('\t');
                             }
                         }
                     }
@@ -2441,6 +2443,8 @@ impl DocumentParser {
                                 run.text.push('\t');
                                 paragraph_text_len += 1;
                             }
+                        } else if current_run.is_some() {
+                            current_run_field_text.push('\t');
                         }
                     }
                     b"w:noBreakHyphen" => {
@@ -18307,6 +18311,29 @@ mod tests {
         );
         assert_eq!(field.cached_text.as_deref(), Some("Replacement Title"));
         assert!(run.text.is_empty());
+    }
+
+    #[test]
+    fn computed_field_caches_preserve_regular_and_position_tabs() {
+        let result = r#"<w:r><w:t>alpha</w:t><w:tab/><w:t>beta</w:t><w:ptab w:alignment="right" w:relativeTo="margin" w:leader="none"/><w:t>gamma</w:t></w:r>"#;
+        for body in [
+            format!(r#"<w:p><w:fldSimple w:instr="INDEX">{result}</w:fldSimple></w:p>"#),
+            format!(
+                r#"<w:p><w:r><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:instrText>INDEX</w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r>{result}<w:r><w:fldChar w:fldCharType="end"/></w:r></w:p>"#
+            ),
+        ] {
+            let document = parse_document_from_body(&body);
+            let paragraph = document.body.as_ref().unwrap().elements[0]
+                .as_paragraph()
+                .unwrap();
+            assert!(paragraph.runs.iter().all(|run| run.text.is_empty()));
+            let cached: String = paragraph
+                .runs
+                .iter()
+                .filter_map(|run| run.field.as_ref()?.cached_text.as_deref())
+                .collect();
+            assert_eq!(cached, "alpha\tbeta\tgamma");
+        }
     }
 
     #[test]
