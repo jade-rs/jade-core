@@ -14812,6 +14812,97 @@ mod tests {
     }
 
     #[test]
+    fn splitting_a_paragraph_keeps_a_result_less_field_on_one_side() {
+        // A result-less simple field (an XE entry the editor marked, the
+        // AUTONUM fields of `toc.docx`) has no width. The model's split sends
+        // it with the text after the split; the XML split kept one at the
+        // split before it, and one the editor wrote (with an empty `w:r`) on
+        // both sides. Either way the file had a field the model did not.
+        fn field_runs(word_doc: &WordDocument) -> Vec<Vec<String>> {
+            (0..word_doc.paragraph_count())
+                .map(|index| {
+                    word_doc
+                        .paragraph(index)
+                        .map_or_else(Vec::new, |paragraph| {
+                            paragraph
+                                .runs
+                                .iter()
+                                .filter_map(|run| run.field.as_ref())
+                                .map(|field| format!("{:?}", field.kind))
+                                .collect()
+                        })
+                })
+                .collect()
+        }
+        for (fixture, commands) in [
+            (
+                "note-styles-creation.docx",
+                vec![
+                    HeadlessCommand::MarkIndexEntry {
+                        paragraph: 0,
+                        offset: 1,
+                        term: "t".into(),
+                    },
+                    HeadlessCommand::InsertParagraphBreak {
+                        paragraph: 0,
+                        offset: 8,
+                        count: 1,
+                    },
+                ],
+            ),
+            (
+                "note-styles-creation.docx",
+                vec![
+                    HeadlessCommand::MarkIndexEntry {
+                        paragraph: 0,
+                        offset: 8,
+                        term: "t".into(),
+                    },
+                    HeadlessCommand::InsertParagraphBreak {
+                        paragraph: 0,
+                        offset: 8,
+                        count: 1,
+                    },
+                ],
+            ),
+            (
+                "toc.docx",
+                vec![HeadlessCommand::InsertParagraphBreak {
+                    paragraph: 28,
+                    offset: 0,
+                    count: 1,
+                }],
+            ),
+        ] {
+            let bytes = std::fs::read(
+                std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                    .join("../../public/fixtures")
+                    .join(fixture),
+            )
+            .expect("read fixture");
+            let mut word_doc =
+                executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+            apply_headless_commands_to_document(
+                &mut word_doc,
+                &HeadlessEditRequest {
+                    commands: commands.clone(),
+                },
+            )
+            .expect("edited");
+            let reloaded = executor::block_on(WordDocument::load(
+                &word_doc.export_docx().expect("export"),
+                &Options::default(),
+            ))
+            .expect("reload");
+            assert_eq!(
+                field_runs(&reloaded),
+                field_runs(&word_doc),
+                "{fixture}: {commands:?}"
+            );
+        }
+    }
+
+    #[test]
     fn a_table_edit_leaves_a_new_table_of_contents_fields_whole() {
         // A table of contents the editor generated had no runs for its page
         // fields' markers, which a load gives runs of their own. A table edit
