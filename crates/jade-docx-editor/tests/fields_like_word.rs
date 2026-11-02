@@ -2825,13 +2825,49 @@ mod stateful {
     }
 
     #[test]
+    fn addin_nested_operands_use_the_owners_result_on_f9() {
+        use jade_docx_editor::fields::FieldScope;
+        for simple in [false, true] {
+            for locked in [false, true] {
+                let nested = if simple {
+                    format!(
+                        r#"<w:fldSimple w:instr="ADDIN vendor-payload" w:fldLock="{locked}"><w:r><w:t>900</w:t></w:r></w:fldSimple>"#
+                    )
+                } else {
+                    format!(
+                        r#"<w:r><w:fldChar w:fldCharType="begin" w:fldLock="{locked}"/></w:r><w:r><w:instrText>ADDIN vendor-payload</w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r><w:r><w:t>900</w:t></w:r><w:r><w:fldChar w:fldCharType="end"/></w:r>"#
+                    )
+                };
+                let source = body_source(&format!(
+                    r#"<w:p><w:r><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:instrText xml:space="preserve">IF </w:instrText></w:r>{nested}<w:r><w:instrText xml:space="preserve"> = 900 &quot;Owner result&quot; &quot;Missing result&quot;</w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r><w:r><w:t>Old</w:t></w:r><w:r><w:fldChar w:fldCharType="end"/></w:r></w:p>"#
+                ));
+                let mut session = Session {
+                    document: block_on(WordDocument::load(&source, &Options::default())).unwrap(),
+                    selection: None,
+                    executor: CommandExecutor::new(),
+                };
+                for _ in 0..2 {
+                    session
+                        .update_fields(FieldScope::Document, &host(), HashMap::new())
+                        .unwrap();
+                    session.whole_paragraph();
+                    assert_eq!(session.selected_fields()[0].result, "Owner result");
+                    let bytes = session.document.export_docx().unwrap();
+                    capture(&bytes, "visible ADDIN operand");
+                    session.document =
+                        block_on(WordDocument::load(&bytes, &Options::default())).unwrap();
+                }
+            }
+        }
+    }
+
+    #[test]
     fn hidden_nested_operands_do_not_expose_saved_caches_on_f9() {
         use jade_docx_editor::fields::FieldScope;
         for simple in [false, true] {
             for locked in [false, true] {
                 for instruction in [
                     "PRIVATE",
-                    "ADDIN",
                     "XE Index",
                     "TA Authority",
                     "TC Entry",

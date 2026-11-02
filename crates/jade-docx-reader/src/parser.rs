@@ -10053,7 +10053,7 @@ impl DocumentParser {
                     parse_eq_distributed_field(normalized)
                         .map(|(text, guide)| RunFieldKind::EqDistributed { text, guide })
                 }),
-            "PRIVATE" | "ADDIN" | "XE" | "TA" | "RD" => Some(RunFieldKind::NonDisplay {
+            "PRIVATE" | "XE" | "TA" | "RD" => Some(RunFieldKind::NonDisplay {
                 instruction: normalized.to_string(),
             }),
             _ => None,
@@ -21169,11 +21169,10 @@ mod tests {
     }
 
     #[test]
-    fn models_private_and_addin_as_non_display_fields() {
-        // Word classifies PRIVATE as a cold field with no result and ADDIN as
-        // hidden add-in storage. A producer may nevertheless leave stale text
-        // between the separator/end markers. Preserve that cache for lossless
-        // inspection, but mark the field so renderers never expose it.
+    fn distinguishes_private_storage_from_visible_addin_results() {
+        // PRIVATE has no visible result. ADDIN is owned by another application,
+        // which may supply visible formatted citations or other cached text.
+        // Keep its code and result without attempting to evaluate that payload.
         let body = r#"
             <w:p>
               <w:fldSimple w:instr=" PRIVATE vendor-payload ">
@@ -21185,7 +21184,7 @@ mod tests {
               <w:r><w:instrText xml:space="preserve"> ADD</w:instrText></w:r>
               <w:r><w:instrText xml:space="preserve">IN vendor-payload </w:instrText></w:r>
               <w:r><w:fldChar w:fldCharType="separate"/></w:r>
-              <w:r><w:t>Leaked add-in cache</w:t></w:r>
+              <w:r><w:t>(Smith, 2020)</w:t></w:r>
               <w:r><w:fldChar w:fldCharType="end"/></w:r>
             </w:p>
         "#;
@@ -21213,14 +21212,11 @@ mod tests {
         );
         assert_eq!(
             fields[1].kind,
-            RunFieldKind::NonDisplay {
+            RunFieldKind::Unsupported {
                 instruction: "ADDIN vendor-payload".to_string(),
             }
         );
-        assert_eq!(
-            fields[1].cached_text.as_deref(),
-            Some("Leaked add-in cache")
-        );
+        assert_eq!(fields[1].cached_text.as_deref(), Some("(Smith, 2020)"));
     }
 
     #[test]
@@ -21233,7 +21229,9 @@ mod tests {
         // PRIVATE and ADDIN carry application-owned data. XE and TA are the
         // hidden source entries used to build an index and a table of
         // authorities. RD identifies documents used by TOC/TOA/INDEX without
-        // displaying a result. Fragment ADDIN across instrText nodes as Word is free to
+        // displaying a result. ADDIN may have a visible result, but must also
+        // survive when its owner has not supplied one. Fragment its instruction
+        // across instrText nodes as Word is free to
         // split any field instruction at arbitrary run boundaries.
         let body = r#"
             <w:p>
@@ -21310,8 +21308,14 @@ mod tests {
         for (field, instruction) in fields.into_iter().zip(expected) {
             assert_eq!(
                 field.kind,
-                RunFieldKind::NonDisplay {
-                    instruction: instruction.to_string(),
+                if instruction.starts_with("ADDIN ") {
+                    RunFieldKind::Unsupported {
+                        instruction: instruction.to_string(),
+                    }
+                } else {
+                    RunFieldKind::NonDisplay {
+                        instruction: instruction.to_string(),
+                    }
                 }
             );
         }
