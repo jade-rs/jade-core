@@ -65,7 +65,7 @@ fn values(document: &WordDocument) -> Vec<i32> {
                 .unwrap()
                 .runs
                 .iter()
-                .map(|run| run.text.as_str())
+                .map(|run| run.cached_display_text())
                 .collect::<String>()
                 .parse()
                 .unwrap()
@@ -121,6 +121,78 @@ fn numeric_sort_ignores_hidden_assignment_caches_and_preserves_them_on_save() {
 }
 
 #[test]
+fn addin_citations_keep_visible_text_formatting_and_external_code_on_f9() {
+    for complex in [false, true] {
+        for locked in [false, true] {
+            let code = "ADDIN ZOTERO_ITEM CSL_CITATION {&quot;id&quot;:&quot;sample&quot;}";
+            let result = "<w:r><w:rPr><w:i/><w:color w:val=\"123456\"/></w:rPr><w:t>(山田, 2020)</w:t></w:r>";
+            let field = if complex {
+                format!(
+                    r#"<w:r><w:fldChar w:fldCharType="begin" w:fldLock="{locked}"/></w:r><w:r><w:instrText>{code}</w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r>{result}<w:r><w:fldChar w:fldCharType="end"/></w:r>"#
+                )
+            } else {
+                format!(
+                    r#"<w:fldSimple w:instr="{code}" w:fldLock="{locked}">{result}</w:fldSimple>"#
+                )
+            };
+            let mut session = Session::open(&format!("<w:p>{field}</w:p>"), &[]);
+            let before = session.document.export_docx().unwrap();
+            assert_eq!(formula_result(&session.document, 0), "(山田, 2020)");
+            for selection_only in [false, true] {
+                update_formula(&mut session, 0, selection_only);
+                assert_eq!(formula_result(&session.document, 0), "(山田, 2020)");
+                // The owner, rather than Jade's F9 evaluator, controls both code and result.
+                assert_eq!(session.document.export_docx().unwrap(), before);
+                let reopened = session.reopened();
+                assert_eq!(formula_result(&reopened, 0), "(山田, 2020)");
+                capture(&reopened);
+            }
+            let xml = common::part(&before, "word/document.xml");
+            let reopened = session.reopened();
+            assert!(reopened.paragraph(0).unwrap().runs.iter().any(|run| {
+                run.field.as_ref().is_some_and(|field| {
+                    matches!(field.kind.base_kind(),
+                        jade_docx_reader::document::RunFieldKind::Unsupported { instruction }
+                            if instruction == r#"ADDIN ZOTERO_ITEM CSL_CITATION {"id":"sample"}"#)
+                })
+            }));
+            assert!(xml.contains("<w:i/>"));
+            assert!(xml.contains("123456"));
+        }
+    }
+}
+
+#[test]
+fn addin_results_contribute_to_table_sorting_and_f9_through_reload() {
+    for complex in [false, true] {
+        let mut session = Session::open(
+            &formula_body(&[(3, 900), (5, 1)], "ADDIN vendor-payload", complex),
+            &[],
+        );
+        assert_eq!(formula_result(&session.document, 0), "9003");
+        assert_eq!(formula_result(&session.document, 1), "15");
+        for selection_only in [false, true] {
+            update_formula(&mut session, 2, selection_only);
+            assert_eq!(formula_result(&session.document, 2), "9018");
+            let bytes = session.document.export_docx().unwrap();
+            assert!(common::part(&bytes, "word/document.xml").contains("ADDIN vendor-payload"));
+            session = Session::new(session.reopened());
+            assert_eq!(formula_result(&session.document, 0), "9003");
+            assert_eq!(formula_result(&session.document, 1), "15");
+            assert_eq!(formula_result(&session.document, 2), "9018");
+            capture(&session.document);
+        }
+        let mut sortable = Session::open(
+            &body(&[(3, 900), (5, 1)], "ADDIN vendor-payload", complex),
+            &[],
+        );
+        sort(&mut sortable, false);
+        assert_eq!(values(&sortable.document), [15, 9003]);
+        assert_eq!(values(&sortable.reopened()), [15, 9003]);
+    }
+}
+
+#[test]
 fn formulas_ignore_hidden_assignment_caches_before_and_after_reload() {
     for complex in [false, true] {
         for instruction in ["SET Counter 10", "ASK Counter Prompt"] {
@@ -143,10 +215,14 @@ proptest! {
         operations in prop::collection::vec(0u8..5, 1..20),
         complex in any::<bool>(),
         ask in any::<bool>(),
+        addin in any::<bool>(),
     ) {
-        let instruction = if ask { "ASK Counter Prompt" } else { "SET Counter 10" };
+        let instruction = if addin { "ADDIN vendor-payload" } else if ask { "ASK Counter Prompt" } else { "SET Counter 10" };
         let mut session = Session::open(&body(&input, instruction, complex), &[]);
-        let mut model: Vec<i32> = input.iter().map(|(value, _)| *value).collect();
+        // ADDIN's owner supplies the visible result; assignment caches are hidden.
+        let mut model: Vec<i32> = input.iter().map(|(value, cache)| {
+            if addin { cache * 10i32.pow(value.ilog10() + 1) + value } else { *value }
+        }).collect();
         let mut undo = Vec::new();
         let mut redo = Vec::new();
         for operation in operations {
@@ -197,7 +273,16 @@ fn bibliography_refresh_does_not_turn_hidden_heading_fields_into_visible_text() 
     use jade_docx_editor::word_document::CitationSourceInfo;
 
     for complex in [false, true] {
-        for instruction in ["SET Counter 10", "ASK Counter Prompt"] {
+        for instruction in [
+            "SET Counter 10",
+            "ASK Counter Prompt",
+            "ADDIN vendor-payload",
+        ] {
+            let heading = if instruction.starts_with("ADDIN ") {
+                "900References"
+            } else {
+                "References"
+            };
             for f9 in [false, true] {
                 let body = format!(
                     r#"<w:p/><w:p><w:pPr><w:pStyle w:val="Heading1"/></w:pPr><w:r><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:instrText>BIBLIOGRAPHY</w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r>{}<w:r><w:t>References</w:t></w:r></w:p><w:p><w:r><w:t>Old bibliography</w:t></w:r><w:r><w:fldChar w:fldCharType="end"/></w:r></w:p>"#,
@@ -221,7 +306,7 @@ fn bibliography_refresh_does_not_turn_hidden_heading_fields_into_visible_text() 
                     .unwrap();
                 assert_eq!(
                     session.document.body_paragraph_text(1).as_deref(),
-                    Some("References")
+                    Some(heading)
                 );
                 let before = session.document.export_docx().unwrap();
                 if f9 {
@@ -237,7 +322,7 @@ fn bibliography_refresh_does_not_turn_hidden_heading_fields_into_visible_text() 
                 }
                 assert_eq!(
                     session.document.body_paragraph_text(1).as_deref(),
-                    Some("References"),
+                    Some(heading),
                     "{instruction}, complex={complex}, f9={f9}"
                 );
                 assert_eq!(
@@ -246,10 +331,7 @@ fn bibliography_refresh_does_not_turn_hidden_heading_fields_into_visible_text() 
                 );
                 let after = session.document.export_docx().unwrap();
                 let reopened = session.reopened();
-                assert_eq!(
-                    reopened.body_paragraph_text(1).as_deref(),
-                    Some("References")
-                );
+                assert_eq!(reopened.body_paragraph_text(1).as_deref(), Some(heading));
                 capture(&reopened);
                 session.undo();
                 assert_eq!(session.document.export_docx().unwrap(), before);
@@ -426,7 +508,6 @@ fn f9_table_formulas_ignore_hidden_caches_through_history_and_reload() {
             "SET Counter 10",
             "ASK Counter Prompt",
             "PRIVATE",
-            "ADDIN",
             "XE Index",
             "TA Authority",
             "TC Entry",
@@ -463,10 +544,16 @@ proptest! {
         input in prop::collection::vec((1i32..100, 100i32..1000), 2..9),
         operations in prop::collection::vec(0u8..5, 1..15),
         complex in any::<bool>(),
-        instruction in prop::sample::select(vec!["SET Counter 10", "ASK Counter Prompt", "PRIVATE", "ADDIN", "XE Index", "TA Authority", "TC Entry", "RD chapter.docx"]),
+        instruction in prop::sample::select(vec!["SET Counter 10", "ASK Counter Prompt", "PRIVATE", "ADDIN vendor-payload", "XE Index", "TA Authority", "TC Entry", "RD chapter.docx"]),
     ) {
         let mut session = Session::open(&formula_body(&input, instruction, complex), &[]);
-        let sum = input.iter().map(|(visible, _)| visible).sum::<i32>().to_string();
+        let sum = input.iter().map(|(visible, cache)| {
+            if instruction.starts_with("ADDIN ") {
+                cache * 10i32.pow(visible.ilog10() + 1) + visible
+            } else {
+                *visible
+            }
+        }).sum::<i32>().to_string();
         let mut model = "0".to_string();
         let mut undo = Vec::new();
         let mut redo = Vec::new();
