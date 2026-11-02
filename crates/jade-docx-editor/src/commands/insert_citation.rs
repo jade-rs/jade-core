@@ -789,6 +789,201 @@ mod tests {
         }
     }
 
+    fn toc_fixture() -> WordDocument {
+        let bytes = include_bytes!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../public/fixtures/toc.docx"
+        ));
+        executor::block_on(WordDocument::load(bytes, &Options::default())).expect("load TOC")
+    }
+
+    #[test]
+    fn toc_inputs_reject_invalid_xml_and_leaders_without_mutating_the_document() {
+        use crate::document::{TocOptions, TocSequencePageNumber};
+        use crate::word_document::FieldBlockLine;
+        let mut document = toc_fixture();
+        document
+            .insert_table_of_contents_with_leader(0, &TocOptions::default(), "dot")
+            .expect("insert TOC");
+        let block = document.tables_of_contents().remove(0);
+        let names = (block.start..=block.end)
+            .filter_map(|index| document.paragraph(index))
+            .flat_map(|paragraph| &paragraph.runs)
+            .filter_map(|run| match &run.field.as_ref()?.kind {
+                crate::document::RunFieldKind::PageRef { name, .. } => Some(name.clone()),
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+        assert!(!names.is_empty());
+        let baseline = document.export_docx().expect("baseline");
+        for character in ['\0', '\u{b}', '\u{fffe}', '\u{ffff}'] {
+            let invalid = format!("a{character}b");
+            let mut pages = names
+                .iter()
+                .map(|name| (name.clone(), "77".to_string()))
+                .collect::<std::collections::HashMap<_, _>>();
+            pages.insert(names.last().unwrap().clone(), invalid.clone());
+            assert!(document.refresh_toc_page_numbers(0, &pages).is_err());
+            for field in 0..3 {
+                let mut heading = "contents".to_string();
+                let mut text = "entry".to_string();
+                let mut page = "1".to_string();
+                match field {
+                    0 => heading = invalid.clone(),
+                    1 => text = invalid.clone(),
+                    _ => page = invalid.clone(),
+                }
+                assert!(document
+                    .insert_manual_table_of_contents(0, &heading, &[(1, text, page)], "dot")
+                    .is_err());
+            }
+            for field in 0..7 {
+                let mut options = TocOptions::default();
+                match field {
+                    0 => options.page_number_separator = Some(invalid.clone()),
+                    1 => options.bookmark_name = Some(invalid.clone()),
+                    2 => options.caption_label = Some(invalid.clone()),
+                    3 => options.toc_entry_identifier = Some(invalid.clone()),
+                    4 => options.custom_style_levels = vec![(invalid.clone(), 1)],
+                    _ => {
+                        options.sequence_page_number = Some(TocSequencePageNumber {
+                            identifier: if field == 5 {
+                                invalid.clone()
+                            } else {
+                                "SEQ".into()
+                            },
+                            separator: Some(if field == 6 {
+                                invalid.clone()
+                            } else {
+                                "-".into()
+                            }),
+                        });
+                    }
+                }
+                assert!(document.insert_table_of_contents(0, &options).is_err());
+                assert!(document
+                    .insert_table_of_contents_with_leader(0, &options, "dot")
+                    .is_err());
+                assert!(document
+                    .replace_table_of_contents(0, &options, "dot")
+                    .is_err());
+                assert_eq!(
+                    document.export_docx().expect("rejected TOC options"),
+                    baseline
+                );
+            }
+        }
+        for leader in ["", "dots", "Dot", "dot\" w:pos=\"1", "dot&", "\u{ffff}"] {
+            assert!(document
+                .insert_manual_table_of_contents(
+                    0,
+                    "contents",
+                    &[(1, "entry".into(), "1".into())],
+                    leader
+                )
+                .is_err());
+            assert!(document
+                .insert_table_of_contents_with_leader(0, &TocOptions::default(), leader)
+                .is_err());
+            assert!(document
+                .replace_table_of_contents(0, &TocOptions::default(), leader)
+                .is_err());
+            let line = FieldBlockLine {
+                text: "entry".into(),
+                page: Some("1".into()),
+                leader: Some(leader.into()),
+                ..Default::default()
+            };
+            assert!(document
+                .insert_field_block(0, "TOC", std::slice::from_ref(&line))
+                .is_err());
+            assert!(document
+                .replace_field_block(&block, "TOC", &[line])
+                .is_err());
+            assert_eq!(document.export_docx().expect("rejected leader"), baseline);
+        }
+    }
+
+    #[test]
+    fn all_ooxml_tab_leaders_round_trip_in_authored_tocs_and_fields() {
+        use crate::document::TocOptions;
+        use crate::word_document::FieldBlockLine;
+        for (index, leader) in ["none", "dot", "hyphen", "underscore", "heavy", "middleDot"]
+            .into_iter()
+            .enumerate()
+        {
+            let mut document = toc_fixture();
+            document
+                .insert_table_of_contents_with_leader(0, &TocOptions::default(), leader)
+                .expect("generated TOC");
+            document
+                .replace_table_of_contents(0, &TocOptions::default(), leader)
+                .expect("replace TOC");
+            let block = document.tables_of_contents().remove(0);
+            assert_eq!(document.toc_leader(&block), leader);
+            let names = (block.start..=block.end)
+                .filter_map(|index| document.paragraph(index))
+                .flat_map(|paragraph| &paragraph.runs)
+                .filter_map(|run| match &run.field.as_ref()?.kind {
+                    crate::document::RunFieldKind::PageRef { name, .. } => {
+                        Some((name.clone(), "7 & 8".to_string()))
+                    }
+                    _ => None,
+                })
+                .collect();
+            assert!(
+                document
+                    .refresh_toc_page_numbers(0, &names)
+                    .expect("page numbers")
+                    > 0
+            );
+            let text = "chapter & <title> \u{d7ff}\u{e000}\u{fffd}\u{10000}\u{10ffff}";
+            document
+                .insert_manual_table_of_contents(
+                    0,
+                    "contents",
+                    &[(1, text.into(), "7 & 8".into())],
+                    leader,
+                )
+                .expect("manual TOC");
+            document
+                .insert_field_block(
+                    0,
+                    "INDEX",
+                    &[FieldBlockLine {
+                        text: text.into(),
+                        page: Some("7 & 8".into()),
+                        leader: Some(leader.into()),
+                        ..Default::default()
+                    }],
+                )
+                .expect("field block");
+            let bytes = document.export_docx().expect("export");
+            let reloaded = executor::block_on(WordDocument::load(&bytes, &Options::default()))
+                .expect("reload");
+            let visible_text = |document: &WordDocument| {
+                (0..document.paragraph_count())
+                    .map(|index| {
+                        document
+                            .paragraph(index)
+                            .unwrap()
+                            .runs
+                            .iter()
+                            .map(|run| run.text.as_str())
+                            .collect::<String>()
+                    })
+                    .collect::<Vec<_>>()
+            };
+            assert_eq!(visible_text(&document), visible_text(&reloaded));
+            if let Some(directory) = std::env::var_os("JADE_FIELD_PBT_EXPORT_DIR") {
+                let path = std::path::PathBuf::from(directory);
+                std::fs::create_dir_all(&path).expect("export directory");
+                std::fs::write(path.join(format!("toc-input-boundary-{index}.docx")), bytes)
+                    .expect("capture TOC");
+            }
+        }
+    }
+
     #[test]
     fn citation_commands_reject_xml_noncharacters_without_mutating_history() {
         for character in ['\u{fffe}', '\u{ffff}'] {

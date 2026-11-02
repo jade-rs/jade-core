@@ -21293,6 +21293,7 @@ impl WordDocument {
         }
         let options = crate::document::parse_toc_switches(&block.instruction);
         let leader = self.toc_leader(&block);
+        Self::validate_toc_input(&options, &leader)?;
         self.replace_field_block_content(&block, |document, start, location, tab_twips| {
             document.generate_and_insert_toc_at(
                 start,
@@ -21318,6 +21319,7 @@ impl WordDocument {
             .into_iter()
             .nth(index)
             .ok_or_else(|| "no table of contents found to replace".to_string())?;
+        Self::validate_toc_input(options, leader)?;
         self.replace_field_block_content(&block, |document, start, location, tab_twips| {
             document.generate_and_insert_toc_at(
                 start,
@@ -21417,6 +21419,7 @@ impl WordDocument {
         original_instruction: Option<&str>,
         tab_twips: Option<i64>,
     ) -> Result<usize, String> {
+        Self::validate_toc_input(options, leader)?;
         let mut entries = self
             .document
             .as_ref()
