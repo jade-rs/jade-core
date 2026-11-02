@@ -57,8 +57,13 @@ pub fn set_zoom(xml: &str, percent: u32) -> Result<String> {
 }
 
 /// The sheet's tab selected or not (`tabSelected`), as a grouped sheet's
-/// is; a tab not selected loses the attribute, as Excel writes it.
+/// is; a tab not selected loses the attribute, as Excel writes it. A sheet
+/// with no `<sheetViews>` is left as it is: Excel takes its tab from the
+/// workbook's active tab, and saving is not an edit to the sheet.
 pub fn set_tab_selected(xml: &str, on: bool) -> Result<String> {
+    if missing_views(xml)?.is_some() {
+        return Ok(xml.to_string());
+    }
     set_view_attribute(xml, "tabSelected", on.then(|| "1".to_string()))
 }
 
@@ -149,6 +154,14 @@ mod tests {
             r#"<dimension ref="A1"/><sheetViews><sheetView showGridLines="0" workbookViewId="0"/></sheetViews><sheetFormatPr"#
         ));
         assert_eq!(set_show_grid_lines(bare, true).unwrap(), bare);
+    }
+
+    #[test]
+    fn a_tab_selected_on_a_sheet_with_no_view_leaves_it_as_it_is() {
+        let bare = r#"<worksheet xmlns="m"><dimension ref="A1"/><sheetData/></worksheet>"#;
+        assert_eq!(set_tab_selected(bare, true).unwrap(), bare);
+        let zoomed = set_tab_selected(&set_zoom(bare, 85).unwrap(), true).unwrap();
+        assert!(zoomed.contains(r#"<sheetView zoomScale="85" workbookViewId="0" zoomScaleNormal="85" tabSelected="1"/>"#), "{zoomed}");
     }
 
     #[test]
