@@ -176,6 +176,19 @@ pub fn insert_picture(
     Ok((result, PictureInsertResult { id, part }))
 }
 
+/// Installs `image` as a media part related to `slide_part`, returning
+/// the relationship id: for frames that hold pictures, such as zooms.
+pub(crate) fn install_slide_image(
+    package: &mut OpcPackage,
+    slide_part: &str,
+    slide_xml: &str,
+    image: &[u8],
+) -> Result<String> {
+    let info = picture_info(image)?;
+    let nodes = xml::parse_nodes(slide_xml)?;
+    Ok(install_image(package, slide_part, &nodes, image, &info)?.1)
+}
+
 fn install_image(
     package: &mut OpcPackage,
     slide_part: &str,

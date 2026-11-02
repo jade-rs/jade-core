@@ -172,6 +172,18 @@ pub(crate) fn audio_relationship(
     slide_part: &str,
     part: &str,
 ) -> Result<String> {
+    part_relationship(package, slide_part, AUDIO_REL, part, "rIdJadeSound")
+}
+
+/// The slide's relationship of `rel_type` to `part`, added (with an id
+/// starting `prefix`) when it has none.
+pub(crate) fn part_relationship(
+    package: &mut OpcPackage,
+    slide_part: &str,
+    rel_type: &str,
+    part: &str,
+    prefix: &str,
+) -> Result<String> {
     let rel_part = rels_part_name(slide_part);
     let old = package.part_str(&rel_part)?.unwrap_or_else(|| {
         "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\"/>"
@@ -184,7 +196,8 @@ pub(crate) fn audio_relationship(
             if let Some(id) = node.attr("Id") {
                 ids.insert(id.to_string());
             }
-            if node.attr("Type").is_some_and(|t| t.ends_with("/audio"))
+            if node.attr("Type") == Some(rel_type)
+                && node.attr("TargetMode") != Some("External")
                 && node
                     .attr("Target")
                     .is_some_and(|target| resolve_target(slide_part, target) == part)
@@ -200,15 +213,15 @@ pub(crate) fn audio_relationship(
         .filter(|node| node.is(4, "Relationships"))
         .ok_or_else(|| WriteError::Xml("missing relationships root".into()))?;
     let rid = (1..)
-        .map(|n| format!("rIdJadeSound{n}"))
+        .map(|n| format!("{prefix}{n}"))
         .find(|rid| !ids.contains(rid))
         .expect("an unused id");
     let relation = format!(
-        "<jadePkg:Relationship xmlns:jadePkg=\"http://schemas.openxmlformats.org/package/2006/relationships\" Id=\"{rid}\" Type=\"{AUDIO_REL}\" Target=\"/{part}\"/>"
+        "<jadePkg:Relationship xmlns:jadePkg=\"http://schemas.openxmlformats.org/package/2006/relationships\" Id=\"{rid}\" Type=\"{rel_type}\" Target=\"/{part}\"/>"
     );
     package.replace(
         &rel_part,
-        slides::append_child(&old, root, &relation).into_bytes(),
+        super::slides::append_child(&old, root, &relation).into_bytes(),
     );
     Ok(rid)
 }

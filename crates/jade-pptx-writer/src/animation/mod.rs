@@ -11,6 +11,7 @@
 pub mod presets;
 pub mod serialize;
 pub mod transition;
+pub mod zoom;
 
 use std::collections::HashMap;
 
