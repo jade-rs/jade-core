@@ -4,6 +4,7 @@
 
 use jade_xlsx_reader::chart::Chart;
 use jade_xlsx_reader::{CellRange, CellRef, CellValue};
+use jade_xlsx_writer::chart_format::ChartFormat;
 pub use jade_xlsx_writer::{ChartKind, LegendPosition};
 use jade_xlsx_writer::{SeriesReferences, ShapeAnchor};
 
@@ -27,6 +28,9 @@ pub struct ChartChange {
     /// Switch Row/Column: the chart's range read the other way, a series
     /// for each row where it had one for each column, or the other way.
     pub switch_rows: bool,
+    /// Chart Elements, Chart Styles and the Format panes: made after the
+    /// rest, in their order.
+    pub format: Vec<ChartFormat>,
 }
 
 /// A sheet's name as a reference writes it: quoted when it has to be.
@@ -630,7 +634,10 @@ impl HeadlessWorkbook {
         let xml = jade_opc::OpcPackage::open(&self.source)?
             .part_str(&part)?
             .ok_or_else(|| jade_xlsx_writer::WriteError::MissingPart(part.clone()))?;
-        let patched = jade_xlsx_writer::charts::edit_chart_part(&xml, &edit)?;
+        let mut patched = jade_xlsx_writer::charts::edit_chart_part(&xml, &edit)?;
+        if !change.format.is_empty() {
+            patched = jade_xlsx_writer::chart_format::format_chart_part(&patched, &change.format)?;
+        }
         self.replace_parts(vec![(part, patched)])
     }
 }

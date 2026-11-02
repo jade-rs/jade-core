@@ -82,6 +82,10 @@ use jade_xlsx_reader::{
     Axis, Cell, CellRange, CellRef, CellValue, DateSystem, HeaderFooter, Shape, ShapeKind, Sheet,
     StructureChange, Workbook,
 };
+pub use jade_xlsx_writer::chart_format::{
+    AxisFormat, AxisId, AxisKind, ChartFormat, Crosses, ErrorBarFormat, Fill, LabelFormat,
+    SeriesFormat, TableFormat, TrendlineFormat,
+};
 pub use jade_xlsx_writer::freeze_panes::Frozen;
 pub use jade_xlsx_writer::ignored_errors::ErrorCheck;
 pub use jade_xlsx_writer::outline::OutlineChange;
