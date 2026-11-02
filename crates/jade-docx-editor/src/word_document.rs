@@ -37109,29 +37109,6 @@ impl WordDocument {
         let in_instructions = Self::runs_in_field_instructions(&old_children);
         let in_field_instruction =
             |run: &Run| run.node_id.is_some_and(|id| in_instructions.contains(&id));
-        // A run whose element is not in the paragraph any more is a new run.
-        // Undoing a deletion puts the run back with the id of the `w:r` the
-        // deletion removed. Taken as bound, it pushed a hyperlink after it
-        // out ahead of itself, and the link's runs, no longer found, were
-        // written again after it as plain text.
-        let mut source_ids = HashSet::new();
-        fn collect_ids(node: &XmlNode, out: &mut HashSet<XmlNodeId>) {
-            if let XmlNode::Element(element) = node {
-                out.insert(element.id);
-                for child in &element.children {
-                    collect_ids(child, out);
-                }
-            }
-        }
-        for node in &old_children {
-            collect_ids(node, &mut source_ids);
-        }
-        for run in runs.iter_mut() {
-            if run.node_id.is_some_and(|id| !source_ids.contains(&id)) {
-                run.node_id = None;
-                run.text_node_id = None;
-            }
-        }
         let mut tokens = VecDeque::new();
         for node in old_children {
             flatten_node(node, &mut tokens);
@@ -37292,6 +37269,26 @@ impl WordDocument {
                     }
                     _ => false,
                 };
+                // A run whose element is not in the paragraph any more is a
+                // new run. Undoing a deletion puts the run back with the id
+                // of the `w:r` the deletion removed. Taken as bound, it
+                // wrote a hyperlink after it ahead of itself, and the link's
+                // runs, no longer queued, were written again as plain text.
+                if stale_or_future_run_container {
+                    let stale = runs[run_index].node_id.is_some_and(|id| {
+                        !tokens.iter().any(|token| match token {
+                            ChildToken::RunElement(element) => element.id == id,
+                            ChildToken::NonRun(XmlNode::Element(element)) => {
+                                element.id == id || Self::element_contains_run_id(element, id)
+                            }
+                            ChildToken::NonRun(_) => false,
+                        })
+                    });
+                    if stale {
+                        runs[run_index].node_id = None;
+                        runs[run_index].text_node_id = None;
+                    }
+                }
                 if stale_or_future_run_container && runs[run_index].node_id.is_none() {
                     break;
                 }
