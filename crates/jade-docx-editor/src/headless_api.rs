@@ -15704,6 +15704,88 @@ mod tests {
     }
 
     #[test]
+    fn a_rejected_style_gives_a_text_box_paragraphs_runs_their_size_back() {
+        // shape-preset-geometries.docx: paragraph 14 is a text box's. Heading 2
+        // set on it with changes tracked, then rejected, put the paragraph's
+        // style back but left its runs at the heading's size: the runs hold
+        // the style's formatting resolved into them, and the reload read the
+        // body size the file still had.
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/shape-preset-geometries.docx"),
+        )
+        .expect("read fixture");
+        let mut word_doc =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+        assert!(word_doc.is_text_box_paragraph_surface(14));
+        apply_headless_commands_to_document(
+            &mut word_doc,
+            &HeadlessEditRequest {
+                commands: vec![HeadlessCommand::InsertText {
+                    paragraph: 14,
+                    offset: 0,
+                    text: "x".to_string(),
+                }],
+            },
+        )
+        .expect("typed in the box");
+        let sizes = |word_doc: &WordDocument| -> Vec<Option<f32>> {
+            word_doc
+                .paragraph(14)
+                .map(|paragraph| {
+                    paragraph
+                        .runs
+                        .iter()
+                        .map(|run| run.properties.as_ref().and_then(|props| props.font_size))
+                        .collect()
+                })
+                .unwrap_or_default()
+        };
+        let before = sizes(&word_doc);
+        apply_headless_commands_to_document(
+            &mut word_doc,
+            &HeadlessEditRequest {
+                commands: vec![
+                    HeadlessCommand::StartChangeTracking {
+                        author: Some("reviewer".to_string()),
+                        initials: None,
+                        date: None,
+                        date_utc: None,
+                    },
+                    HeadlessCommand::SetParagraphStyle {
+                        start_paragraph: 14,
+                        end_paragraph: 14,
+                        style_id: Some("Heading2".to_string()),
+                    },
+                ],
+            },
+        )
+        .expect("tracked style");
+        assert_ne!(sizes(&word_doc), before);
+        apply_headless_commands_to_document(
+            &mut word_doc,
+            &HeadlessEditRequest {
+                commands: vec![HeadlessCommand::RejectRevisions {
+                    kind: None,
+                    start_paragraph: None,
+                    end_paragraph: None,
+                    revision_id: None,
+                    revision_ids: None,
+                    revision_targets: None,
+                }],
+            },
+        )
+        .expect("rejected");
+        assert_eq!(sizes(&word_doc), before);
+        let reloaded = executor::block_on(WordDocument::load(
+            &word_doc.export_docx().expect("export"),
+            &Options::default(),
+        ))
+        .expect("reload");
+        assert_eq!(sizes(&reloaded), before);
+    }
+
+    #[test]
     fn a_paragraph_style_the_document_lacks_reloads_as_the_default() {
         // A `w:pStyle` naming a style the document does not define formats
         // the paragraph with the default paragraph style (ECMA-376
