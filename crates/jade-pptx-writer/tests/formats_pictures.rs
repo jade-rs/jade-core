@@ -361,3 +361,39 @@ fn svg_pictures_carry_a_png_stand_in_and_take_a_graphic_fill() {
     // An unfilled outline stays unfilled.
     assert!(filled.contains("fill=\"none\""));
 }
+
+#[test]
+fn an_svg_converts_to_freeforms_in_a_group() {
+    let svg = br##"<svg xmlns="http://www.w3.org/2000/svg" width="24" height="12" viewBox="0 0 24 12"><path d="M0 0h12v12H0z" fill="#FF0000"/><circle cx="18" cy="6" r="4" fill="none" stroke="#0000FF" stroke-width="2"/></svg>"##;
+    let mut session = EditSession::open(DECK).unwrap();
+    let id = session.insert_svg_picture(0, bounds(), svg).unwrap();
+    let svg_part = picture(session.bytes(), id).svg_part.unwrap();
+    let group = session.convert_svg_to_shapes(0, id).unwrap();
+    let deck = read_deck(session.bytes()).unwrap();
+    let found = deck.slides[0]
+        .content
+        .shapes
+        .iter()
+        .find_map(|item| match item {
+            ShapeItem::Group(g) if g.id == Some(group) => Some(g.clone()),
+            _ => None,
+        });
+    let group_read = found.expect("the group");
+    assert_eq!(group_read.children.len(), 2);
+    assert!(!deck.slides[0]
+        .content
+        .shapes
+        .iter()
+        .any(|item| matches!(item, ShapeItem::Picture(p) if p.id == Some(id))));
+    let xml = slide(session.bytes());
+    assert!(xml.contains("<a:custGeom>"));
+    assert!(xml.contains("FF0000"));
+    assert!(xml.contains("0000FF"));
+    // The SVG and its stand-in are gone with the picture.
+    let package = OpcPackage::open(session.bytes()).unwrap();
+    assert!(package.part(&svg_part).is_none());
+    // The group sits where the picture was.
+    assert!(xml.contains("<a:off x=\"952500\" y=\"952500\"/>"));
+    assert!(session.undo());
+    assert!(picture(session.bytes(), id).svg_part.is_some());
+}

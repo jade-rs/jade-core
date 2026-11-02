@@ -9,8 +9,8 @@ pub use xml::layouts::{
 mod picture_format;
 mod shape_insertion;
 pub use picture_format::{
-    compress_pictures, format_picture, insert_svg_picture, picture_format, PictureEdit,
-    PictureEffect, PictureFormatInfo, PictureStyle, Recolor, PICTURE_STYLES,
+    compress_pictures, convert_svg_to_shapes, format_picture, insert_svg_picture, picture_format,
+    PictureEdit, PictureEffect, PictureFormatInfo, PictureStyle, Recolor, PICTURE_STYLES,
 };
 mod smartart;
 mod xml;
@@ -1126,6 +1126,12 @@ impl EditSession {
         let (next, count) = compress_pictures(self.bytes(), only, ppi, delete_cropped)?;
         self.commit(next);
         Ok(count)
+    }
+    /// 図形に変換 on an SVG picture: the group it becomes.
+    pub fn convert_svg_to_shapes(&mut self, slide: usize, id: u32) -> Result<u32> {
+        let (next, group) = convert_svg_to_shapes(self.bytes(), slide, id)?;
+        self.commit(next);
+        Ok(group)
     }
     pub fn insert_svg_picture(
         &mut self,

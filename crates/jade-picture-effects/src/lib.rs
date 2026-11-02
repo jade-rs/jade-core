@@ -160,6 +160,10 @@ pub fn parse_key(key: &str) -> (&str, Vec<Effect>) {
 mod pixels;
 #[cfg(feature = "pixels")]
 pub use pixels::*;
+#[cfg(feature = "pixels")]
+mod vector;
+#[cfg(feature = "pixels")]
+pub use vector::{svg_paths, PathCommand, VectorPath};
 
 #[cfg(test)]
 mod tests {

@@ -5,10 +5,11 @@
 //! リセット, 図の圧縮, plus SVG pictures (挿入 › 図, アイコン), their
 //! グラフィックの塗りつぶし and 図形に変換.
 //!
-//! Effects are written the way PowerPoint writes them — the colour
-//! transforms on `a:blip`, the Office 2010 image effects in its
-//! `a14:imgProps` extension — over the picture's bytes as inserted, so any
-//! edit can be undone or reset; readers apply them when drawing.
+//! Effects are written the way PowerPoint writes them: the colour
+//! transforms on `a:blip`, which readers apply when drawing, and the
+//! Office 2010 image effects in its `a14:imgProps` extension, which are
+//! baked into the picture the blip names while `a14:imgLayer` keeps the
+//! original, so any edit can be redone from it or reset.
 
 use std::collections::{BTreeMap, BTreeSet, HashSet};
 
@@ -1454,4 +1455,184 @@ fn compress_one(
     let result = package.write()?;
     jade_pptx_reader::read_deck(&result)?;
     Ok(Some(result))
+}
+
+/// 図形に変換 on an SVG picture: its paths become freeform shapes in a
+/// group where the picture was, each with its fill and outline. The
+/// group's id.
+pub fn convert_svg_to_shapes(bytes: &[u8], slide: usize, id: u32) -> Result<(Vec<u8>, u32)> {
+    use jade_picture_effects::PathCommand;
+    let (mut package, slide_part, xml) = crate::slide_xml(bytes, slide)?;
+    let ranges = picture_ranges(&xml, id)?;
+    if ranges.len() != 1 {
+        return Err(WriteError::UnsupportedObjectOperation(id));
+    }
+    let range = ranges[0].clone();
+    let (_, svg) = embeds(&xml, id)?;
+    let svg_rid = svg.ok_or(WriteError::UnsupportedObjectOperation(id))?;
+    let svg_part = target(&package, &slide_part, &svg_rid)?
+        .ok_or(WriteError::UnsupportedObjectOperation(id))?;
+    let source = package
+        .part(&svg_part)
+        .ok_or(WriteError::UnsupportedObjectOperation(id))?
+        .to_vec();
+    let ((svg_width, svg_height), paths) = jade_picture_effects::svg_paths(&source)
+        .ok_or_else(|| WriteError::InvalidPicture("the SVG cannot be read".into()))?;
+    let pic = dom::parse(&xml[range.clone()]).map_err(WriteError::Xml)?;
+    let xfrm = pic
+        .child("spPr")
+        .and_then(|pr| pr.child("xfrm"))
+        .ok_or(WriteError::UnsupportedObjectOperation(id))?;
+    let number = |name: &str, attr: &str| {
+        xfrm.child(name)
+            .and_then(|e| e.attr(attr))
+            .and_then(|v| v.parse::<f64>().ok())
+            .unwrap_or(0.0)
+    };
+    let (x, y, cx, cy) = (
+        number("off", "x"),
+        number("off", "y"),
+        number("ext", "cx"),
+        number("ext", "cy"),
+    );
+    let (sx, sy) = (
+        cx / f64::from(svg_width.max(1.0)),
+        cy / f64::from(svg_height.max(1.0)),
+    );
+    let (p_ns, a_ns, _) = crate::xml::smartart_frames::namespaces(&xml)?;
+    let group_id = max_shape_id(&xml) + 1;
+    let mut out = format!(
+        "<jadeSp:grpSp xmlns:jadeSp=\"{p_ns}\" xmlns:a=\"{a_ns}\"><jadeSp:nvGrpSpPr><jadeSp:cNvPr id=\"{group_id}\" name=\"Group {group_id}\"/><jadeSp:cNvGrpSpPr/><jadeSp:nvPr/></jadeSp:nvGrpSpPr><jadeSp:grpSpPr><a:xfrm><a:off x=\"{x}\" y=\"{y}\"/><a:ext cx=\"{cx}\" cy=\"{cy}\"/><a:chOff x=\"{x}\" y=\"{y}\"/><a:chExt cx=\"{cx}\" cy=\"{cy}\"/></a:xfrm></jadeSp:grpSpPr>"
+    );
+    let mut shape_id = group_id;
+    for path in &paths {
+        // The path's points on the slide, in EMU.
+        let mut points = Vec::new();
+        for command in &path.commands {
+            let pairs: &[(f32, f32)] = match command {
+                PathCommand::Move(px, py) | PathCommand::Line(px, py) => &[(*px, *py)],
+                PathCommand::Quad(ax, ay, px, py) => &[(*ax, *ay), (*px, *py)],
+                PathCommand::Cubic(ax, ay, bx, by, px, py) => &[(*ax, *ay), (*bx, *by), (*px, *py)],
+                PathCommand::Close => &[],
+            };
+            points.extend(
+                pairs
+                    .iter()
+                    .map(|(px, py)| (x + f64::from(*px) * sx, y + f64::from(*py) * sy)),
+            );
+        }
+        if points.is_empty() {
+            continue;
+        }
+        let min_x = points.iter().map(|p| p.0).fold(f64::INFINITY, f64::min);
+        let min_y = points.iter().map(|p| p.1).fold(f64::INFINITY, f64::min);
+        let max_x = points.iter().map(|p| p.0).fold(f64::NEG_INFINITY, f64::max);
+        let max_y = points.iter().map(|p| p.1).fold(f64::NEG_INFINITY, f64::max);
+        let (w, h) = ((max_x - min_x).max(1.0), (max_y - min_y).max(1.0));
+        let at = |px: f32, py: f32| {
+            format!(
+                "<a:pt x=\"{}\" y=\"{}\"/>",
+                (x + f64::from(px) * sx - min_x).round() as i64,
+                (y + f64::from(py) * sy - min_y).round() as i64
+            )
+        };
+        let mut commands = String::new();
+        for command in &path.commands {
+            commands.push_str(&match command {
+                PathCommand::Move(px, py) => format!("<a:moveTo>{}</a:moveTo>", at(*px, *py)),
+                PathCommand::Line(px, py) => format!("<a:lnTo>{}</a:lnTo>", at(*px, *py)),
+                PathCommand::Quad(ax, ay, px, py) => {
+                    format!(
+                        "<a:quadBezTo>{}{}</a:quadBezTo>",
+                        at(*ax, *ay),
+                        at(*px, *py)
+                    )
+                }
+                PathCommand::Cubic(ax, ay, bx, by, px, py) => format!(
+                    "<a:cubicBezTo>{}{}{}</a:cubicBezTo>",
+                    at(*ax, *ay),
+                    at(*bx, *by),
+                    at(*px, *py)
+                ),
+                PathCommand::Close => "<a:close/>".to_string(),
+            });
+        }
+        let solid = |rgb: [u8; 3], opacity: f32| {
+            let alpha = if opacity < 1.0 {
+                format!(
+                    "<a:alpha val=\"{}\"/>",
+                    (opacity * 100_000.0).round() as i64
+                )
+            } else {
+                String::new()
+            };
+            format!(
+                "<a:solidFill><a:srgbClr val=\"{:02X}{:02X}{:02X}\">{alpha}</a:srgbClr></a:solidFill>",
+                rgb[0], rgb[1], rgb[2]
+            )
+        };
+        let fill = path
+            .fill
+            .map_or_else(|| "<a:noFill/>".to_string(), |(rgb, o)| solid(rgb, o));
+        let line = match path.stroke {
+            Some((rgb, o, width)) => format!(
+                "<a:ln w=\"{}\">{}</a:ln>",
+                (f64::from(width) * sx).round() as i64,
+                solid(rgb, o)
+            ),
+            None => "<a:ln><a:noFill/></a:ln>".to_string(),
+        };
+        shape_id += 1;
+        out.push_str(&format!(
+            "<jadeSp:sp><jadeSp:nvSpPr><jadeSp:cNvPr id=\"{shape_id}\" name=\"Freeform {shape_id}\"/><jadeSp:cNvSpPr/><jadeSp:nvPr/></jadeSp:nvSpPr><jadeSp:spPr><a:xfrm><a:off x=\"{}\" y=\"{}\"/><a:ext cx=\"{}\" cy=\"{}\"/></a:xfrm><a:custGeom><a:avLst/><a:gdLst/><a:ahLst/><a:cxnLst/><a:rect l=\"l\" t=\"t\" r=\"r\" b=\"b\"/><a:pathLst><a:path w=\"{}\" h=\"{}\">{commands}</a:path></a:pathLst></a:custGeom>{fill}{line}</jadeSp:spPr></jadeSp:sp>",
+            min_x.round() as i64,
+            min_y.round() as i64,
+            w.round() as i64,
+            h.round() as i64,
+            w.round() as i64,
+            h.round() as i64,
+        ));
+    }
+    out.push_str("</jadeSp:grpSp>");
+    if shape_id == group_id {
+        return Err(WriteError::InvalidPicture("the SVG has no shapes".into()));
+    }
+    // The pictures the shapes replace — the SVG, its stand-in and any
+    // original kept for a reset — go when nothing else names them.
+    let named = taken_ids(&xml[range.clone()]);
+    let mut changed = xml.clone();
+    changed.replace_range(range, &out);
+    let mut dropped = Vec::new();
+    for rid in named {
+        if !changed.contains(&format!("\"{rid}\"")) {
+            dropped.extend(remove_relationship(&mut package, &slide_part, &rid)?);
+        }
+    }
+    for part in dropped {
+        drop_if_unreferenced(&mut package, &part)?;
+    }
+    Ok((finish(package, &slide_part, changed)?, group_id))
+}
+
+/// The largest `cNvPr` id on the slide.
+fn max_shape_id(xml: &str) -> u32 {
+    let mut max = 0;
+    let mut rest = xml;
+    while let Some(at) = rest.find("cNvPr ") {
+        rest = &rest[at + 6..];
+        let end = rest.find('>').unwrap_or(rest.len());
+        let tag = &rest[..end];
+        if let Some(start) = tag
+            .find(" id=\"")
+            .map(|i| i + 5)
+            .or_else(|| tag.strip_prefix("id=\"").map(|_| 4))
+        {
+            let digits: String = tag[start..]
+                .chars()
+                .take_while(char::is_ascii_digit)
+                .collect();
+            max = max.max(digits.parse().unwrap_or(0));
+        }
+    }
+    max
 }
