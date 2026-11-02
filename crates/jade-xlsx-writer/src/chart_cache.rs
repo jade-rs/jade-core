@@ -10,6 +10,7 @@ use jade_xlsx_reader::{
 };
 use quick_xml::{events::Event, name::ResolveResult, NsReader};
 use std::collections::{BTreeMap, HashSet};
+use std::rc::Rc;
 
 pub type VerifiedChartCells = BTreeMap<String, HashSet<CellRef>>;
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -40,7 +41,42 @@ impl Element {
 fn main_ns(ns: ResolveResult<'_>) -> bool {
     matches!(ns,ResolveResult::Bound(n) if matches!(n.as_ref(),b"http://schemas.openxmlformats.org/drawingml/2006/chart"|b"http://purl.oclc.org/ooxml/drawingml/chart"))
 }
-pub(crate) fn tree(xml: &str) -> Result<Element> {
+/// How many chart trees [`tree`] keeps.
+const CHART_TREES: usize = 64;
+
+thread_local! {
+    /// The chart XML parsed most recently and its tree, newest last: every
+    /// edit refreshes every chart's caches, and a chart the edit did not
+    /// change is the same XML as at the edit before.
+    static TREES: std::cell::RefCell<std::collections::VecDeque<(String, Rc<Element>)>> =
+        const { std::cell::RefCell::new(std::collections::VecDeque::new()) };
+}
+
+/// The element tree of chart XML, from the trees made recently when the
+/// same XML was.
+pub(crate) fn tree(xml: &str) -> Result<Rc<Element>> {
+    let known = TREES.with(|trees| {
+        trees
+            .borrow()
+            .iter()
+            .find(|(source, _)| source == xml)
+            .map(|(_, tree)| Rc::clone(tree))
+    });
+    if let Some(tree) = known {
+        return Ok(tree);
+    }
+    let tree = Rc::new(parse_tree(xml)?);
+    TREES.with(|trees| {
+        let mut trees = trees.borrow_mut();
+        if trees.len() == CHART_TREES {
+            trees.pop_front();
+        }
+        trees.push_back((xml.to_string(), Rc::clone(&tree)));
+    });
+    Ok(tree)
+}
+
+fn parse_tree(xml: &str) -> Result<Element> {
     let mut reader = NsReader::from_str(xml);
     let mut stack = vec![Element::default()];
     let mut buf = Vec::new();

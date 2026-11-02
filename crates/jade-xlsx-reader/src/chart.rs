@@ -639,7 +639,44 @@ fn parse_plot(kind: &Node, issues: &mut Vec<String>) -> ChartPlot {
     }
 }
 
+/// How many parsed charts [`parse_chart`] keeps.
+const PARSED_CHARTS: usize = 64;
+
+thread_local! {
+    /// The charts parsed most recently, with the XML each came from, newest
+    /// last. A cell edit reads the workbook again, and every chart it did not
+    /// rewrite is the same XML as before; parsing them all again was most of
+    /// what reading a workbook of charts cost.
+    static PARSED: std::cell::RefCell<std::collections::VecDeque<(String, Chart)>> =
+        const { std::cell::RefCell::new(std::collections::VecDeque::new()) };
+}
+
+/// A chart part's chart, as [`parse_chart_xml`] reads it, from the charts
+/// parsed recently when the same XML was.
 pub fn parse_chart(xml: &str) -> Result<Chart> {
+    let known = PARSED.with(|parsed| {
+        parsed
+            .borrow()
+            .iter()
+            .find(|(source, _)| source == xml)
+            .map(|(_, chart)| chart.clone())
+    });
+    if let Some(chart) = known {
+        return Ok(chart);
+    }
+    let chart = parse_chart_xml(xml)?;
+    PARSED.with(|parsed| {
+        let mut parsed = parsed.borrow_mut();
+        if parsed.len() == PARSED_CHARTS {
+            parsed.pop_front();
+        }
+        parsed.push_back((xml.to_string(), chart.clone()));
+    });
+    Ok(chart)
+}
+
+/// A chart part's chart, parsed from its XML.
+pub fn parse_chart_xml(xml: &str) -> Result<Chart> {
     let tree = parse_tree(xml)?;
     let space = tree
         .children
