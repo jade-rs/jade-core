@@ -3836,12 +3836,7 @@ impl WordDocument {
                     );
                 }
                 BodyElement::Table(table) => {
-                    let table_style = table
-                        .style_name
-                        .as_deref()
-                        .and_then(|style_id| styles.resolve_table_style_id(style_id))
-                        .or_else(|| styles.default_table_style_id())
-                        .and_then(|style_id| styles.resolve_table_paragraph_properties(style_id));
+                    let table_style = Self::table_style_paragraph_defaults(table, styles);
                     for row in &mut table.rows {
                         for cell in &mut row.cells {
                             Self::apply_style_paragraph_defaults_to_blocks(
@@ -3854,6 +3849,38 @@ impl WordDocument {
                 }
                 BodyElement::Math(_) => {}
             }
+        }
+    }
+
+    /// The paragraph properties `table`'s style (or the package's default
+    /// table style) gives its cells.
+    fn table_style_paragraph_defaults(
+        table: &Table,
+        styles: &StylesPart,
+    ) -> Option<ParagraphProperties> {
+        table
+            .style_name
+            .as_deref()
+            .and_then(|style_id| styles.resolve_table_style_id(style_id))
+            .or_else(|| styles.default_table_style_id())
+            .and_then(|style_id| styles.resolve_table_paragraph_properties(style_id))
+    }
+
+    /// Fills into `cells`, new cells of `table`, what a load fills into the
+    /// cells it reads: their paragraphs' style defaults under the table's
+    /// style, and their runs' fonts. Nothing else bakes them into cells made
+    /// after the load: a new row's paragraphs lost Normal's justification and
+    /// the table style's spacing until the document was reopened.
+    fn fill_new_cell_defaults(table: &Table, cells: &mut [TableCell], styles: &StylesPart) {
+        let table_style = Self::table_style_paragraph_defaults(table, styles);
+        for cell in cells {
+            Self::apply_style_paragraph_defaults_to_blocks(
+                &mut cell.blocks,
+                styles,
+                table_style.as_ref(),
+            );
+            Self::apply_table_styles_to_elements(&mut cell.blocks, styles);
+            Self::apply_run_font_defaults_to_elements(&mut cell.blocks, styles);
         }
     }
 
@@ -4106,6 +4133,21 @@ impl WordDocument {
         }
         if let Some(theme) = self.loaded_theme_part() {
             self.apply_theme_fonts_at(paragraph_index, &theme);
+        }
+    }
+
+    /// Fills into `paragraph`, made by an edit, what a load fills into the
+    /// paragraphs it reads: its style's paragraph defaults, its runs' fonts
+    /// and the theme's names for them. Without it a generated paragraph (a
+    /// table of contents' entry) showed no style spacing and the renderer's
+    /// fallback font until the document was reopened.
+    fn fill_load_defaults(&self, paragraph: &mut Paragraph) {
+        if let Some(styles) = self.styles_part.as_ref() {
+            Self::apply_style_paragraph_defaults_to_paragraph(paragraph, styles, None);
+            Self::apply_run_font_defaults_to_paragraph(paragraph, styles);
+        }
+        if let Some(theme) = self.loaded_theme_part() {
+            Self::apply_theme_to_paragraph(paragraph, &theme);
         }
     }
 
@@ -20867,21 +20909,25 @@ impl WordDocument {
             normalized_widths[index] = Some(whole_twips(width));
         }
 
-        let mut table = Self::new_empty_table(rows, columns, &normalized_widths);
-        // The document's defaults are baked into runs when a file is read, and
-        // nothing bakes them into runs made afterwards. Without this, text typed
-        // into a cell of a table inserted here is drawn in the renderer's
-        // fallback font — a different size from the same document reopened, and
-        // a different width to wrap at.
-        if let Some(styles) = self.styles_part.clone() {
-            for row in &mut table.rows {
-                for cell in &mut row.cells {
-                    Self::apply_run_font_defaults_to_elements(&mut cell.blocks, &styles);
-                }
-            }
-        }
-
-        table
+        let table = Self::new_empty_table(rows, columns, &normalized_widths);
+        // The document's defaults are baked into paragraphs and runs when a
+        // file is read, and nothing bakes them into ones made afterwards.
+        // Without this, text typed into a cell of a table inserted here is
+        // drawn in the renderer's fallback font — a different size from the
+        // same document reopened, and a different width to wrap at — and the
+        // cells' paragraphs lost what their styles give them (Normal's
+        // justification, the table style's spacing) until it was reopened.
+        let Some(styles) = self.styles_part.clone() else {
+            return table;
+        };
+        let mut elements = [BodyElement::from_table(table)];
+        Self::apply_style_paragraph_defaults_to_elements(&mut elements, &styles);
+        Self::apply_table_styles_to_elements(&mut elements, &styles);
+        Self::apply_run_font_defaults_to_elements(&mut elements, &styles);
+        let [BodyElement::Table(table)] = elements else {
+            unreachable!("the table was put in")
+        };
+        *table
     }
 
     /// Inserts `table` as a top-level body element at `body_insert_index`, in
@@ -21475,6 +21521,10 @@ impl WordDocument {
         }
         xml.push_str("</w:body></w:document>");
 
+        for paragraph in &mut model_paragraphs {
+            self.fill_load_defaults(paragraph);
+        }
+
         // Parse the fragment and lift the generated <w:p> nodes.
         let raw_paragraphs = Self::parse_body_paragraph_nodes(&xml)?;
         if raw_paragraphs.len() != entry_count {
@@ -21542,13 +21592,14 @@ impl WordDocument {
     ) -> Result<usize, String> {
         // Word JP's "No table of contents entries found." placeholder.
         let placeholder = "目次項目が見つかりません。";
-        let model_paragraph = Paragraph {
+        let mut model_paragraph = Paragraph {
             runs: vec![blank_run(placeholder)],
             properties: None,
             node_id: None,
             comment_ranges: Vec::new(),
             comment_markers: Vec::new(),
         };
+        self.fill_load_defaults(&mut model_paragraph);
         let xml = format!(
             "<w:document xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\"><w:body>\
              <w:p>\
@@ -23611,6 +23662,7 @@ impl WordDocument {
         row_index: usize,
         template_row: Option<usize>,
     ) -> Result<(), String> {
+        let styles = self.styles_part.clone();
         let mut templates = Vec::new();
         let template_exceptions = template_row.and_then(|index| {
             let row_id = self
@@ -23727,6 +23779,9 @@ impl WordDocument {
                 row.grid_after = template.grid_after;
                 row.width_before = template.width_before.clone();
                 row.width_after = template.width_after.clone();
+            }
+            if let Some(styles) = styles.as_ref() {
+                Self::fill_new_cell_defaults(table, &mut row.cells, styles);
             }
             table.rows.insert(insert_at, row);
             Self::normalize_vertical_merges(table);
