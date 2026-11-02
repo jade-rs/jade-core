@@ -309,6 +309,11 @@ impl Command for AdjustParagraphIndentCommand {
         self.changed = false;
 
         for paragraph_index in start..=end {
+            // A block equation in the range has no paragraph to format; it
+            // is skipped, as `ParagraphRangeUndo::begin` skips it.
+            if ctx.document.is_math_surface(paragraph_index) {
+                continue;
+            }
             let previous = ctx
                 .document
                 .paragraph(paragraph_index)

@@ -259,6 +259,9 @@ impl DeletedFields {
         let mut open_fields: Vec<(usize, usize)> = Vec::new();
         for (index, &(run, position)) in runs.iter().enumerate() {
             let Some(chars) = zero_width.field_chars(run) else {
+                // The result of a field the model computes is a run with no
+                // text, between that field's code runs.
+                inside[index] = !open_fields.is_empty();
                 continue;
             };
             inside[index] = !open_fields.is_empty() || chars != FieldChars::default();
@@ -882,6 +885,14 @@ pub fn append_rebased_tail_comment_anchors(
 /// lives here rather than being spelled out at each call site.
 pub(crate) fn run_carries_content(run: &Run) -> bool {
     run.field.is_some() || run_carries_content_besides_field(run)
+}
+
+/// Whether `run` is a field's result and nothing else, with no text of its
+/// own: a computed field's (REF, IF) as loaded, whose shown value the renderer
+/// works out. It has no width in the paragraph's offsets, as the field's code
+/// runs have none.
+pub(crate) fn is_empty_field_result(run: &Run) -> bool {
+    run.field.is_some() && !run_carries_content_besides_field(run)
 }
 
 /// [`run_carries_content`], except that a field result emptied of its text

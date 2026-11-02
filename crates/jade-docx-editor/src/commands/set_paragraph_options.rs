@@ -327,6 +327,11 @@ impl Command for SetParagraphOptionsCommand {
         self.previous.clear();
         self.previous_selection = *ctx.selection;
         for index in start..=end {
+            // A block equation in the range has no paragraph to format; it
+            // is skipped, as `ParagraphRangeUndo::begin` skips it.
+            if ctx.document.is_math_surface(index) {
+                continue;
+            }
             let previous_xml = snapshot_paragraph_properties_xml(ctx.document, index);
             let previous = ctx
                 .document

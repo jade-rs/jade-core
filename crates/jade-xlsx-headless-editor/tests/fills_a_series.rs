@@ -187,6 +187,30 @@ fn day_month_and_quarter_names_go_round_excels_lists() {
 }
 
 #[test]
+fn quarter_names_wrap_only_with_recognized_words_and_case() {
+    for (prefix, suffix, wraps) in [
+        ("Q", "", true),
+        ("q", "", true),
+        ("Qtr", "", true),
+        ("qtr", "", true),
+        ("QTR", "", true),
+        ("QtR", "", false),
+        ("xq", "", false),
+        ("q", " ", false),
+    ] {
+        let mut workbook = open();
+        set(
+            &mut workbook,
+            &[("F1", CellInput::Text(format!("{prefix}3{suffix}")))],
+        );
+        workbook.fill(SHEET, "F1", "F1:F3").expect("fill");
+        assert_eq!(text(&workbook, "F2"), format!("{prefix}4{suffix}"));
+        let last = if wraps { 1 } else { 5 };
+        assert_eq!(text(&workbook, "F3"), format!("{prefix}{last}{suffix}"));
+    }
+}
+
+#[test]
 fn text_runs_with_different_words_repeat_instead() {
     let mut workbook = open();
     set(
@@ -523,13 +547,17 @@ proptest! {
         }
     }
 
-    /// Text that ends in a number counts along the same progression, with
-    /// the words around the number untouched.
+    /// Numbered text counts with its words untouched, except recognized
+    /// quarter names, which cycle through the four quarters.
     #[test]
     fn counting_text_keeps_its_words(
-        prefix in "[a-zA-Z ]{0,6}",
+        prefix in prop_oneof![
+            "[a-zA-Z ]{0,6}",
+            prop::sample::select(vec!["Q", "q", "Qtr", "qtr", "QTR", "QtR"])
+                .prop_map(str::to_owned),
+        ],
         suffix in "[a-zA-Z ]{0,4}",
-        first in 0i64..1_000,
+        first in prop_oneof![0i64..1_000, 1i64..5],
         step in 1i64..50,
         count in 1u32..5,
         above in 1u32..6,
@@ -549,11 +577,17 @@ proptest! {
         let target = range(CellRef::new(0, 0), CellRef::new(count - 1 + above, 0));
         let writes = plan_fill(&sheet, &StyleTable::default(), source, target);
 
+        // Built-in quarter lists take precedence over generic numbered text.
+        // Keep this oracle independent of the production list recognizer.
+        let quarters = suffix.is_empty()
+            && ["Q", "q", "Qtr", "qtr", "QTR"].contains(&prefix.as_str())
+            && (0..count).all(|index| (1..=4).contains(&(first + step * i64::from(index))));
         // One cell continues by one; a run continues by its step.
         let step = if count == 1 { 1 } else { step };
         prop_assert_eq!(writes.len() as u32, above);
         for write in &writes {
             let value = first + step * i64::from(write.at.column);
+            let value = if quarters { (value - 1).rem_euclid(4) + 1 } else { value };
             prop_assert_eq!(&write.value, &CellInput::Text(format!("{prefix}{value}{suffix}")));
         }
     }

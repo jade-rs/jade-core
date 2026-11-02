@@ -2134,10 +2134,7 @@ impl Run {
         let Some(field) = &self.field else {
             return &self.text;
         };
-        if matches!(
-            field.kind.base_kind(),
-            RunFieldKind::NonDisplay { .. } | RunFieldKind::Ask { .. } | RunFieldKind::Set { .. }
-        ) {
+        if !field.kind.has_visible_result() {
             return "";
         }
         if field.kind.keeps_result_in_run_text() {
@@ -2760,6 +2757,15 @@ impl RunFieldKind {
             Self::Formatted { kind, .. } => kind,
             other => other,
         }
+    }
+
+    /// Whether the saved result contributes text to the document surface.
+    /// Assignment and storage fields keep a cache without displaying it.
+    pub fn has_visible_result(&self) -> bool {
+        !matches!(
+            self.base_kind(),
+            Self::NonDisplay { .. } | Self::Ask { .. } | Self::Set { .. }
+        )
     }
 
     /// Whether a top-level field of this kind keeps its result as editable
@@ -4110,6 +4116,7 @@ mod tests {
             ("NOTEREF mark", "edited"),
             ("PRIVATE hidden", ""),
             ("ADDIN hidden", ""),
+            ("RD chapter.docx", ""),
             ("ASK mark prompt", ""),
             ("SET mark value", ""),
         ] {

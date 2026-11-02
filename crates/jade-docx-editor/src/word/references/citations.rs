@@ -830,21 +830,7 @@ pub(crate) fn replace_bibliography(
             text: paragraph
                 .runs
                 .iter()
-                .map(|run| {
-                    if run.text.is_empty() {
-                        run.field
-                            .as_ref()
-                            .and_then(|field| {
-                                field
-                                    .resolved_value
-                                    .as_deref()
-                                    .or(field.cached_text.as_deref())
-                            })
-                            .unwrap_or("")
-                    } else {
-                        run.text.as_str()
-                    }
-                })
+                .map(|run| run.cached_display_text())
                 .collect(),
             style: Some("Heading1".into()),
             ..FieldBlockLine::default()
