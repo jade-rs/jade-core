@@ -96,3 +96,33 @@ fn test_pivotby_wide_column_fields_and_multiple_value_headers() {
         ]
     );
 }
+
+#[test]
+fn test_pivotby_percentof_relative_to_columns_rows_and_all() {
+    let mut model = new_empty_model();
+    fill(&mut model);
+    // East: Q1 1, Q2 5; West: Q1 13, Q2 20. Columns 14 and 25, in all 39.
+    model._set("E1", "=PIVOTBY(A1:A5,B1:B5,C1:C5,PERCENTOF,0,0,1,0)");
+    model._set("E5", "=PIVOTBY(A1:A5,B1:B5,C1:C5,PERCENTOF,0,0,1,0,1,,1)");
+    model._set("E9", "=PIVOTBY(A1:A5,B1:B5,C1:C5,PERCENTOF,0,0,1,0,1,,2)");
+    model.evaluate();
+    let value = |cell: &str| model._get_text(cell).parse::<f64>().unwrap();
+    // East Q1 of the Q1 column: 1 of 14.
+    assert!(
+        (value("F2") - 1.0 / 14.0).abs() < 1e-9,
+        "{}",
+        model._get_text("F2")
+    );
+    // East Q1 of the East row: 1 of 6.
+    assert!(
+        (value("F6") - 1.0 / 6.0).abs() < 1e-9,
+        "{}",
+        model._get_text("F6")
+    );
+    // West Q2 of everything: 20 of 39.
+    assert!(
+        (value("G11") - 20.0 / 39.0).abs() < 1e-9,
+        "{}",
+        model._get_text("G11")
+    );
+}

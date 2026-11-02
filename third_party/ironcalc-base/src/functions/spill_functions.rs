@@ -650,7 +650,8 @@ impl<'a> Model<'a> {
     ///   * function      – a LAMBDA, or a function by name, as `SUM`
     ///   * field_headers – automatic by default, 0 none, 1 headers not shown, 3 shown
     ///   * total_depth   – 1 a grand total at the bottom (default), 0 none,
-    ///     -1 at the top
+    ///     -1 at the top; 2 and more (or -2 and less) subtotals too, after (or
+    ///     before) each run of the first keys, one level per step
     ///   * sort_order    – the column sorted by, 1 the first (default);
     ///     negative descending
     ///   * filter_array  – TRUE for the rows to group
@@ -761,29 +762,49 @@ impl<'a> Model<'a> {
         if groups.is_empty() {
             return CalcResult::new_error(Error::CALC, cell, "nothing to group".to_string());
         }
+        // A function of two arguments measures each group against the
+        // grand total.
         let aggregate = |model: &mut Self, rows: &[usize]| -> Vec<ArrayNode> {
+            let pick = |rows: &[usize], column: usize| -> Vec<ArrayNode> {
+                rows.iter()
+                    .map(|row| {
+                        values[*row]
+                            .get(column)
+                            .cloned()
+                            .unwrap_or(ArrayNode::Empty)
+                    })
+                    .collect()
+            };
             (0..value_width)
                 .map(|column| {
-                    let picked = rows
-                        .iter()
-                        .map(|row| {
-                            values[*row]
-                                .get(column)
-                                .cloned()
-                                .unwrap_or(ArrayNode::Empty)
-                        })
-                        .collect();
-                    model.groupby_apply(&args[2], picked, cell)
+                    model.groupby_apply(&args[2], pick(rows, column), pick(&all, column), cell)
                 })
                 .collect()
         };
-        let mut lines: Vec<(Vec<ArrayNode>, Vec<ArrayNode>)> = Vec::with_capacity(groups.len());
+        let mut lines: Vec<(Vec<ArrayNode>, Vec<ArrayNode>, Vec<usize>)> =
+            Vec::with_capacity(groups.len());
         for (key, rows) in &groups {
             let summary = aggregate(self, rows);
-            lines.push((key.clone(), summary));
+            lines.push((key.clone(), summary, rows.clone()));
         }
+        // Subtotals |total_depth| - 1 levels deep, as far as there are key
+        // columns to subtotal by.
+        let levels = (total.unsigned_abs() as usize)
+            .saturating_sub(1)
+            .min(key_width.saturating_sub(1));
         let by = sort.unsigned_abs() as usize;
-        if by >= 1 && by <= key_width + value_width {
+        if levels > 0 {
+            // Subtotals need each group's rows together: sorted by the keys,
+            // level by level, the sort order's direction kept.
+            let ascending = sort >= 0;
+            lines.sort_by(|a, b| {
+                a.0.iter()
+                    .zip(&b.0)
+                    .map(|(x, y)| sort_key_cmp(x, y, ascending, cell))
+                    .find(|ordering| *ordering != Ordering::Equal)
+                    .unwrap_or(Ordering::Equal)
+            });
+        } else if by >= 1 && by <= key_width + value_width {
             let ascending = sort > 0;
             lines.sort_by(|a, b| {
                 let (x, y) = if by <= key_width {
@@ -812,9 +833,40 @@ impl<'a> Model<'a> {
         if total < 0 {
             out.extend(total_row.clone());
         }
-        for (mut key, summary) in lines {
-            key.extend(summary);
-            out.push(key);
+        // Whether lines `i` and `j` share their first `level` keys.
+        let same = |i: usize, j: usize, level: usize| {
+            row_key(&lines[i].0[..level]) == row_key(&lines[j].0[..level])
+        };
+        // The subtotal of the run of lines round `i` sharing its first
+        // `level` keys: those keys, blanks, and the function over the run.
+        let subtotal = |model: &mut Self, i: usize, level: usize| -> Vec<ArrayNode> {
+            let rows: Vec<usize> = (0..lines.len())
+                .filter(|j| same(i, *j, level))
+                .flat_map(|j| lines[j].2.iter().copied())
+                .collect();
+            let mut row = lines[i].0[..level].to_vec();
+            row.extend(std::iter::repeat_n(blank(), key_width - level));
+            row.extend(aggregate(model, &rows));
+            row
+        };
+        for i in 0..lines.len() {
+            if total < 0 {
+                for level in 1..=levels {
+                    if i == 0 || !same(i, i - 1, level) {
+                        out.push(subtotal(self, i, level));
+                    }
+                }
+            }
+            let mut row = lines[i].0.clone();
+            row.extend(lines[i].1.iter().cloned());
+            out.push(row);
+            if total > 0 {
+                for level in (1..=levels).rev() {
+                    if i + 1 == lines.len() || !same(i, i + 1, level) {
+                        out.push(subtotal(self, i, level));
+                    }
+                }
+            }
         }
         if total > 0 {
             out.extend(total_row);
@@ -825,13 +877,21 @@ impl<'a> Model<'a> {
     /// `function` applied to one group's values: a LAMBDA called with them,
     /// or a function named bare (`SUM`, as Excel's eta-reduced form) given
     /// them as its one argument.
+    ///
+    /// A function of two arguments — PERCENTOF, or a LAMBDA of two
+    /// parameters — is given `relative` too: the values the group's are
+    /// measured against.
     fn groupby_apply(
         &mut self,
         function: &Node,
         column: Vec<ArrayNode>,
+        relative: Vec<ArrayNode>,
         cell: CellReferenceIndex,
     ) -> ArrayNode {
-        let argument = Node::ArrayKind(column.into_iter().map(|value| vec![value]).collect());
+        let as_column =
+            |values: Vec<ArrayNode>| Node::ArrayKind(values.into_iter().map(|v| vec![v]).collect());
+        let argument = as_column(column);
+        let relative = as_column(relative);
         // Not a LAMBDA's or LET's own name (those have an id), nor a defined
         // name: a function's.
         let bare = match function {
@@ -841,15 +901,29 @@ impl<'a> Model<'a> {
         };
         if let Some(name) = bare {
             if let Some(kind) = self.language.functions.lookup(name) {
-                let call = Node::FunctionKind {
-                    kind,
-                    args: vec![argument],
+                let args = if kind == super::Function::Percentof {
+                    vec![argument, relative]
+                } else {
+                    vec![argument]
                 };
+                let call = Node::FunctionKind { kind, args };
                 return calc_result_to_array_node(self.evaluate_node_in_context(&call, cell));
             }
         }
         let lambda = self.evaluate_node_in_context(function, cell);
-        calc_result_to_array_node(self.call_lambda(lambda, &[argument], cell))
+        let two = match &lambda {
+            CalcResult::Lambda(id) => self
+                .lambdas
+                .get(id)
+                .is_some_and(|(parameters, _)| parameters.len() == 2),
+            _ => false,
+        };
+        let args = if two {
+            vec![argument, relative]
+        } else {
+            vec![argument]
+        };
+        calc_result_to_array_node(self.call_lambda(lambda, &args, cell))
     }
 }
 
@@ -901,6 +975,10 @@ impl<'a> Model<'a> {
     ///   * row/col_total_depth  – 1 totals after (default), 0 none, -1 before
     ///   * row/col_sort_order   – 1 ascending (default), -1 descending
     ///   * filter_array         – TRUE for the rows to take
+    ///   * relative_to          – what a function of two arguments (as
+    ///     PERCENTOF) measures against: 0 the column total (default), 1 the
+    ///     row total, 2 the grand total; 3 and 4, the parent totals, are the
+    ///     grand total with one level of fields
     pub(crate) fn fn_pivotby(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() < 4 || args.len() > 11 {
             return CalcResult::new_args_number_error(cell);
@@ -965,6 +1043,17 @@ impl<'a> Model<'a> {
         } else {
             None
         };
+        let relative_to = if args.len() > 10 {
+            match self.evaluate_node_in_context(&args[10], cell) {
+                CalcResult::EmptyArg | CalcResult::EmptyCell => 0,
+                _ => match self.get_number(&args[10], cell) {
+                    Ok(n) => n.trunc() as i64,
+                    Err(error) => return error,
+                },
+            }
+        } else {
+            0
+        };
         let has_headers = headers == 1 || headers == 3;
         let first = usize::from(has_headers);
         let taken: Vec<usize> = (first..fields.len())
@@ -981,22 +1070,23 @@ impl<'a> Model<'a> {
         let depth = columns[0].len();
         let value_width = values[0].len();
 
-        let aggregate = |model: &mut Self, rows: &[usize]| -> Vec<ArrayNode> {
+        let aggregate = |model: &mut Self, rows: &[usize], relative: &[usize]| -> Vec<ArrayNode> {
+            let pick = |rows: &[usize], column: usize| -> Vec<ArrayNode> {
+                rows.iter()
+                    .map(|row| {
+                        values[*row]
+                            .get(column)
+                            .cloned()
+                            .unwrap_or(ArrayNode::Empty)
+                    })
+                    .collect()
+            };
             (0..value_width)
                 .map(|column| {
                     if rows.is_empty() {
                         return blank();
                     }
-                    let picked = rows
-                        .iter()
-                        .map(|row| {
-                            values[*row]
-                                .get(column)
-                                .cloned()
-                                .unwrap_or(ArrayNode::Empty)
-                        })
-                        .collect();
-                    model.groupby_apply(&args[3], picked, cell)
+                    model.groupby_apply(&args[3], pick(rows, column), pick(relative, column), cell)
                 })
                 .collect()
         };
@@ -1049,7 +1139,15 @@ impl<'a> Model<'a> {
                     Some(column_rows) => both(rows, column_rows),
                     None => rows.to_vec(),
                 };
-                row.extend(aggregate(model, &cells));
+                // What a function of two arguments measures against:
+                // the column's total (0), the row's (1), or in all (2, and
+                // with one level of fields, the parent totals 3 and 4).
+                let relative = match (relative_to, column) {
+                    (0, Some(column_rows)) => column_rows.to_vec(),
+                    (1, _) => rows.to_vec(),
+                    _ => taken.clone(),
+                };
+                row.extend(aggregate(model, &cells, &relative));
             }
             row
         };
