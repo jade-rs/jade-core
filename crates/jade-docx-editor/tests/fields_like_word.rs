@@ -622,7 +622,6 @@ mod stateful {
         for (step, op) in ops.iter().enumerate() {
             let before = model.clone();
             let mut selection_before = session.selection;
-            let mut citation_start = None;
             let mut expected_ok = true;
             let mut records_history = true;
             let source = |tag: u8, year: u8| {
@@ -645,18 +644,11 @@ mod stateful {
                     let tag = CITATION_TAGS[tag as usize];
                     expected_ok = model.sources.iter().any(|(existing, _)| existing == tag);
                     if expected_ok {
-                        model.citations.push(tag.into());
+                        model.citations.insert(0, tag.into());
                     }
-                    let end = session
-                        .document
-                        .paragraph(0)
-                        .unwrap()
-                        .runs
-                        .iter()
-                        .map(|run| run.text.len())
-                        .sum();
-                    session.caret(end);
-                    citation_start = Some(end);
+                    // Offset zero unambiguously means before every field,
+                    // including loaded computed fields with cache-only text.
+                    session.caret(0);
                     selection_before = session.selection;
                     session.insert_citation(tag).map(|_| ())
                 }
@@ -805,13 +797,7 @@ mod stateful {
             if matches!(op, CitationOp::Cite(_)) && expected_ok {
                 assert_eq!(
                     session.selection.unwrap().focus,
-                    // Loaded computed fields keep their display in the cache
-                    // and occupy zero paragraph offsets. Appending adds only
-                    // the newly authored citation's editable result length.
-                    TextPosition::new(
-                        0,
-                        citation_start.unwrap() + expected_texts.last().unwrap().len(),
-                    ),
+                    TextPosition::new(0, expected_texts.first().unwrap().len()),
                     "caret step {step}: {op:?}; {ops:?}"
                 );
             }
@@ -842,7 +828,15 @@ mod stateful {
     }
 
     #[test]
-    fn citation_reload_keeps_results_and_the_append_caret() {
+    fn citation_reload_keeps_results_and_the_inserted_caret() {
+        citation_sequence(&[
+            CitationOp::Add(0, 0),
+            CitationOp::Add(7, 0),
+            CitationOp::Add(1, 0),
+            CitationOp::Cite(0),
+            CitationOp::Reload,
+            CitationOp::Cite(7),
+        ]);
         citation_sequence(&[
             CitationOp::Add(3, 0),
             CitationOp::Cite(3),
