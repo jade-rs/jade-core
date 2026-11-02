@@ -12559,6 +12559,87 @@ mod tests {
     }
 
     #[test]
+    fn an_equation_typed_into_a_simple_fields_result_is_saved_once() {
+        // hyperlink-field-edge-cases.docx links "Jump locally" through a
+        // HYPERLINK `w:fldSimple`. With the result cut in pieces, an equation
+        // put between two of them sits inside the field, which wrote it as a
+        // run: an equation has none, so nothing was written.
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/hyperlink-field-edge-cases.docx"),
+        )
+        .expect("read fixture");
+        let mut word_doc =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+        let text = |word_doc: &WordDocument, index: usize| -> String {
+            word_doc
+                .paragraph(index)
+                .map(|paragraph| paragraph.runs.iter().map(|run| run.text.as_str()).collect())
+                .unwrap_or_default()
+        };
+        let paragraph = (0..word_doc.paragraph_count())
+            .find(|&index| text(&word_doc, index) == "Internal field: Jump locally")
+            .expect("the field paragraph");
+        let equations = |word_doc: &WordDocument| {
+            word_doc.paragraph(paragraph).map_or(0, |paragraph| {
+                paragraph
+                    .runs
+                    .iter()
+                    .filter(|run| run.math.is_some())
+                    .count()
+            })
+        };
+        apply_headless_commands_to_document(
+            &mut word_doc,
+            &HeadlessEditRequest {
+                commands: vec![
+                    HeadlessCommand::SetCharacterStyle {
+                        start_paragraph: paragraph,
+                        start_offset: 21,
+                        end_paragraph: paragraph,
+                        end_offset: 24,
+                        style_id: Some("Strong".to_string()),
+                    },
+                    HeadlessCommand::InsertEquation {
+                        paragraph,
+                        offset: 18,
+                        omml: "<m:oMath><m:r><m:t>x</m:t></m:r></m:oMath>".to_string(),
+                        placement: jade_docx_headless_api::HeadlessEquationPlacement::Inline,
+                    },
+                ],
+            },
+        )
+        .expect("equation put in the field");
+        assert_eq!(equations(&word_doc), 1);
+        let reloaded = executor::block_on(WordDocument::load(
+            &word_doc.export_docx().expect("export"),
+            &Options::default(),
+        ))
+        .expect("reload");
+        assert_eq!(equations(&reloaded), 1);
+
+        // Later edits in the field keep the one it has.
+        apply_headless_commands_to_document(
+            &mut word_doc,
+            &HeadlessEditRequest {
+                commands: vec![HeadlessCommand::InsertText {
+                    paragraph,
+                    offset: 22,
+                    text: "ab".to_string(),
+                }],
+            },
+        )
+        .expect("typed in the field");
+        let reloaded = executor::block_on(WordDocument::load(
+            &word_doc.export_docx().expect("export"),
+            &Options::default(),
+        ))
+        .expect("reload");
+        assert_eq!(equations(&reloaded), 1);
+        assert_eq!(text(&reloaded, paragraph), text(&word_doc, paragraph));
+    }
+
+    #[test]
     fn a_text_box_moved_by_a_split_keeps_its_xml() {
         // Enter before a text box's anchor moves the text box into the new
         // paragraph. It was rebuilt from the model there: its VML fallback

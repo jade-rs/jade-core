@@ -37451,6 +37451,50 @@ impl WordDocument {
                                 {
                                     break;
                                 }
+                                // An equation has no `w:r`: it is the
+                                // container's `m:oMath` after the previous
+                                // run, or, put there by an edit, a new one.
+                                // Writing it as a run wrote nothing, and an
+                                // equation typed into a field's result was
+                                // lost on save.
+                                if let Some(math) = runs[run_index].math.as_ref() {
+                                    let equation = match Self::equation_after_in_container(
+                                        doc,
+                                        &container,
+                                        previous_run_id,
+                                    ) {
+                                        Some(existing) => Some(existing),
+                                        None => Self::import_authored_omml_element(
+                                            doc,
+                                            &math.raw_omml,
+                                            "m:oMath",
+                                        )
+                                        .ok()
+                                        .map(|equation| {
+                                            let id = equation.id;
+                                            let node = XmlNode::Element(equation);
+                                            match previous_run_id {
+                                                Some(previous) => {
+                                                    Self::insert_after_run_in_container(
+                                                        &mut container,
+                                                        previous,
+                                                        node,
+                                                    )
+                                                }
+                                                None => container.children.insert(0, node),
+                                            }
+                                            id
+                                        }),
+                                    };
+                                    runs[run_index].text_node_id = None;
+                                    runs[run_index].revision_node_id = None;
+                                    if equation.is_some() {
+                                        previous_run_id = equation;
+                                        updated += 1;
+                                    }
+                                    run_index += 1;
+                                    continue;
+                                }
                                 let Some((run_element, text_id)) =
                                     Self::create_paragraph_run_element(
                                         doc,
@@ -38461,6 +38505,40 @@ impl WordDocument {
             Self::remove_deleted_runs_in_container(element, runs);
             Self::element_contains_any_run(element)
         });
+    }
+
+    /// The modeled `m:oMath` that comes right after the node `after` (the
+    /// container's first, with none) among the runs and equations of
+    /// `container`, in document order.
+    fn equation_after_in_container(
+        doc: &DocxXmlDocument,
+        container: &XmlElement,
+        after: Option<XmlNodeId>,
+    ) -> Option<XmlNodeId> {
+        fn items(element: &XmlElement, out: &mut Vec<(XmlNodeId, bool)>, doc: &DocxXmlDocument) {
+            for child in &element.children {
+                let XmlNode::Element(child) = child else {
+                    continue;
+                };
+                if child.name == "w:r" {
+                    out.push((child.id, false));
+                } else if child.name == "m:oMath" {
+                    out.push((child.id, WordDocument::is_modeled_equation(doc, child)));
+                } else {
+                    items(child, out, doc);
+                }
+            }
+        }
+        let mut found = Vec::new();
+        items(container, &mut found, doc);
+        let next = match after {
+            Some(after) => found
+                .iter()
+                .position(|(id, _)| *id == after)
+                .and_then(|at| found.get(at + 1)),
+            None => found.first(),
+        };
+        next.filter(|(_, equation)| *equation).map(|(id, _)| *id)
     }
 
     /// Inserts `node` right after the run `after` wherever it sits in
