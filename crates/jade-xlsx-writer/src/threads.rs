@@ -114,7 +114,7 @@ fn person(package: &mut OpcPackage, author: &str) -> Result<String> {
         .cloned();
     let id = guid(&format!("person:{author}"));
     let entry = format!(
-        "<person displayName=\"{}\" id=\"{id}\" userId=\"{}\" providerId=\"None\"/>",
+        "<person xmlns=\"{THREADS_NS}\" displayName=\"{}\" id=\"{id}\" userId=\"{}\" providerId=\"None\"/>",
         escape(author),
         escape(author)
     );
@@ -205,11 +205,89 @@ pub fn reply_to_thread(
     let person = person(package, author)?;
     let id = guid(&format!("reply:{root}:{when}:{text}:{}", xml.len()));
     let reply = format!(
-        "<threadedComment ref=\"{}\" dT=\"{when}\" personId=\"{person}\" id=\"{id}\" parentId=\"{root}\"><text>{}</text></threadedComment>",
+        "<threadedComment xmlns=\"{THREADS_NS}\" ref=\"{}\" dT=\"{when}\" personId=\"{person}\" id=\"{id}\" parentId=\"{root}\"><text>{}</text></threadedComment>",
         crate::shift::reference_text(at),
         escape(text)
     );
     let patched = format!("{}{reply}{}", &xml[..end], &xml[end..]);
     package.replace(&part, patched.into_bytes());
     Ok(true)
+}
+
+#[cfg(test)]
+mod threaded_prefix_compatibility {
+    use super::*;
+    use quick_xml::name::ResolveResult;
+
+    fn reply_to_prefixed_parts() -> OpcPackage {
+        let source = std::fs::read(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../public/fixtures/sample-workbook.xlsx"
+        ))
+        .unwrap();
+        let mut package = OpcPackage::open(&source).unwrap();
+        let book = jade_xlsx_reader::read_xlsx(&source).unwrap();
+        let sheet = &book.sheets[0].part_name;
+        let rels_name = jade_opc::rels_part_name(sheet);
+        let rels = package.part_str(&rels_name).unwrap();
+        let (rels, _) = add_relationship(
+            rels.as_deref(),
+            THREAD_TYPE,
+            "../threadedComments/threadedComment1.xml",
+        )
+        .unwrap();
+        package.replace(&rels_name, rels.into_bytes());
+        package.replace("xl/threadedComments/threadedComment1.xml", format!(r#"<tc:ThreadedComments xmlns:tc="{THREADS_NS}"><tc:threadedComment ref="B2" dT="2026-11-01T10:00:00.00" personId="{{00000000-0000-0000-0000-000000000001}}" id="{{00000000-0000-0000-0000-000000000002}}"><tc:text>Check this</tc:text></tc:threadedComment></tc:ThreadedComments>"#).into_bytes());
+        package.replace("xl/persons/person.xml", format!(r#"<tc:personList xmlns:tc="{THREADS_NS}"><tc:person displayName="Ann" id="{{00000000-0000-0000-0000-000000000001}}" userId="ann" providerId="None"/></tc:personList>"#).into_bytes());
+        assert!(reply_to_thread(
+            &mut package,
+            sheet,
+            CellRef::parse("B2").unwrap(),
+            "Bob",
+            "Done",
+            "2026-11-02T09:00:00.00"
+        )
+        .unwrap());
+        package
+    }
+
+    fn assert_namespaced_elements(xml: &str, wanted: &[u8], expected_count: usize) {
+        let mut reader = quick_xml::NsReader::from_str(xml);
+        let mut count = 0;
+        loop {
+            let (namespace, event) = reader.read_resolved_event().unwrap();
+            match event {
+                Event::Start(element) | Event::Empty(element)
+                    if element.local_name().as_ref() == wanted =>
+                {
+                    assert!(
+                        matches!(namespace, ResolveResult::Bound(ns) if ns.as_ref() == THREADS_NS.as_bytes()),
+                        "new element must remain in the threaded-comments namespace: {xml}"
+                    );
+                    count += 1;
+                }
+                Event::Eof => break,
+                _ => {}
+            }
+        }
+        assert_eq!(count, expected_count);
+    }
+
+    #[test]
+    fn replies_keep_the_namespace_of_prefixed_threads() {
+        let package = reply_to_prefixed_parts();
+        let xml = package
+            .part_str("xl/threadedComments/threadedComment1.xml")
+            .unwrap()
+            .unwrap();
+        assert_namespaced_elements(&xml, b"threadedComment", 2);
+        assert_namespaced_elements(&xml, b"text", 2);
+    }
+
+    #[test]
+    fn new_people_keep_the_namespace_of_prefixed_person_lists() {
+        let package = reply_to_prefixed_parts();
+        let xml = package.part_str("xl/persons/person.xml").unwrap().unwrap();
+        assert_namespaced_elements(&xml, b"person", 2);
+    }
 }
