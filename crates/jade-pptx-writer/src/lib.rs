@@ -6,8 +6,8 @@ pub use xml::layouts::{
     validate_slide_layout, validate_slide_layouts, validate_slide_reset, validate_slide_resets,
     SlideLayoutInfo,
 };
-mod picture_format;
 pub mod animation;
+mod picture_format;
 mod shape_insertion;
 pub use picture_format::{
     compress_pictures, convert_svg_to_shapes, format_picture, insert_svg_picture, picture_format,
