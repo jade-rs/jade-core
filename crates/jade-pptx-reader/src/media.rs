@@ -11,6 +11,10 @@
 //!   linked one) with the trim, the fades and the bookmarks. The picture is
 //!   the poster frame (or the speaker icon). [`Media`] is that, with the
 //!   relationships resolved.
+//! - Captions (字幕): from PowerPoint 2019, a `p173:tracksInfo` in the
+//!   `p14:media` extension list lists WebVTT caption tracks, each a
+//!   `text/vtt` part (or a linked file) the slide relates to
+//!   ([MS-PPTX] 2.1.3, 2.13). [`CaptionTrack`] is one, with its cues.
 //! - How media plays lives in the slide's `p:timing`: a `p:video` or
 //!   `p:audio` node per media shape (volume, loop, hiding, full screen,
 //!   slides to play across) and the `mediacall` effects that start it.
@@ -36,6 +40,13 @@ pub const VIDEO_RELATIONSHIP_TYPE: &str =
 /// The relationship `a:audioFile` points with.
 pub const AUDIO_RELATIONSHIP_TYPE: &str =
     "http://schemas.openxmlformats.org/officeDocument/2006/relationships/audio";
+/// The `p:ext` URI caption tracks sit under, in `p14:media`'s list.
+pub const TRACKS_EXT_URI: &str = "{3AFAAA56-56D3-431D-BCD4-E75A35582382}";
+/// The namespace of `tracksInfo` ([MS-PPTX] 2.13).
+pub const P173_NAMESPACE: &str = "http://schemas.microsoft.com/office/powerpoint/2017/3/main";
+/// The relationship from a slide to a WebVTT caption part.
+pub const TRACK_RELATIONSHIP_TYPE: &str =
+    "http://schemas.microsoft.com/office/2017/04/relationships/track";
 /// The relationship a `p:contentPart` points at its InkML part with.
 pub const INK_RELATIONSHIP_TYPE: &str = jade_ink::inkml::INK_RELATIONSHIP_TYPE;
 
@@ -74,6 +85,45 @@ pub struct MediaBookmark {
     pub time_ms: f64,
 }
 
+/// Where captions show (`tracksInfo displayLoc`): over the video, or on
+/// the slide (audio).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum CaptionPlacement {
+    Media,
+    Slide,
+}
+
+/// One caption cue: text shown from `start_ms` to `end_ms`.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct CaptionCue {
+    pub start_ms: f64,
+    pub end_ms: f64,
+    pub text: String,
+}
+
+/// A caption track (`p173:track`): a WebVTT file for the media.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct CaptionTrack {
+    /// The track's GUID.
+    pub id: String,
+    pub label: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub lang: Option<String>,
+    /// `r:embed`, or `r:link` for a linked file.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub rel_id: Option<String>,
+    pub linked: bool,
+    /// The part, filled in by `read_deck`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub part: Option<String>,
+    /// A linked file's target as written, filled in by `read_deck`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub linked_target: Option<String>,
+    /// The cues of an embedded track, read by `read_deck`.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub cues: Vec<CaptionCue>,
+}
+
 /// A video or audio shape's media: what it plays and the cuts made to it.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Media {
@@ -106,6 +156,11 @@ pub struct Media {
     pub fade_out_ms: Option<f64>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub bookmarks: Vec<MediaBookmark>,
+    /// `tracksInfo displayLoc`, when the media has captions.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub caption_placement: Option<CaptionPlacement>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub captions: Vec<CaptionTrack>,
 }
 
 impl Media {
@@ -152,8 +207,42 @@ pub(crate) fn parse_media(nv_pr: &XmlElement) -> Option<Media> {
         fade_in_ms: None,
         fade_out_ms: None,
         bookmarks: Vec::new(),
+        caption_placement: None,
+        captions: Vec::new(),
     };
     if let Some(p14) = p14 {
+        let tracks = p14
+            .child("extLst")
+            .into_iter()
+            .flat_map(|list| list.children.iter())
+            .filter(|ext| ext.name == "ext" && ext.attr("uri") == Some(TRACKS_EXT_URI))
+            .find_map(|ext| ext.child("tracksInfo"));
+        if let Some(info) = tracks {
+            media.caption_placement = Some(match info.attr("displayLoc") {
+                Some("slide") => CaptionPlacement::Slide,
+                _ => CaptionPlacement::Media,
+            });
+            media.captions = info
+                .child("trackLst")
+                .into_iter()
+                .flat_map(|list| list.children.iter())
+                .filter(|track| track.name == "track")
+                .map(|track| {
+                    // r:link wins over r:embed ([MS-PPTX] 2.13.3.1).
+                    let link = track.attr("link");
+                    CaptionTrack {
+                        id: track.attr("id").unwrap_or_default().to_string(),
+                        label: track.attr("label").unwrap_or_default().to_string(),
+                        lang: track.attr("lang").map(str::to_string),
+                        rel_id: link.or_else(|| track.attr("embed")).map(str::to_string),
+                        linked: link.is_some(),
+                        part: None,
+                        linked_target: None,
+                        cues: Vec::new(),
+                    }
+                })
+                .collect();
+        }
         if let Some(trim) = p14.child("trim") {
             media.trim_start_ms = time_ms(trim.attr("st")).filter(|ms| *ms > 0.0);
             media.trim_end_ms = time_ms(trim.attr("end")).filter(|ms| *ms > 0.0);
@@ -177,6 +266,72 @@ pub(crate) fn parse_media(nv_pr: &XmlElement) -> Option<Media> {
         }
     }
     Some(media)
+}
+
+fn vtt_time(text: &str) -> Option<f64> {
+    // hh:mm:ss.ttt or mm:ss.ttt
+    let mut parts: Vec<&str> = text.trim().split(':').collect();
+    let seconds: f64 = parts.pop()?.replace(',', ".").parse().ok()?;
+    let minutes: f64 = parts.pop().map_or(Some(0.0), |m| m.parse().ok())?;
+    let hours: f64 = parts.pop().map_or(Some(0.0), |h| h.parse().ok())?;
+    if !parts.is_empty() {
+        return None;
+    }
+    Some(((hours * 60.0 + minutes) * 60.0 + seconds) * 1000.0)
+}
+
+/// The cues of a WebVTT file, in order; cue settings, `NOTE`, `STYLE`
+/// and `REGION` blocks are skipped, and tags are taken out of the text.
+pub fn parse_webvtt(text: &str) -> Vec<CaptionCue> {
+    let text = text
+        .trim_start_matches('\u{feff}')
+        .replace("\r\n", "\n")
+        .replace('\r', "\n");
+    let mut cues = Vec::new();
+    for block in text.split("\n\n") {
+        let mut lines = block.lines().skip_while(|line| line.trim().is_empty());
+        let Some(mut first) = lines.next() else {
+            continue;
+        };
+        if !first.contains("-->") {
+            // An identifier line, or a header/NOTE/STYLE block.
+            match lines.next() {
+                Some(line) if line.contains("-->") => first = line,
+                _ => continue,
+            }
+        }
+        let Some((start, rest)) = first.split_once("-->") else {
+            continue;
+        };
+        let end = rest.split_whitespace().next().unwrap_or_default();
+        let (Some(start_ms), Some(end_ms)) = (vtt_time(start), vtt_time(end)) else {
+            continue;
+        };
+        let mut body = lines.collect::<Vec<_>>().join("\n");
+        while let (Some(open), Some(close)) = (body.find('<'), body.find('>')) {
+            if close < open {
+                break;
+            }
+            body.replace_range(open..=close, "");
+        }
+        let body = body
+            .replace("&lt;", "<")
+            .replace("&gt;", ">")
+            .replace("&nbsp;", "\u{a0}")
+            .replace("&amp;", "&");
+        cues.push(CaptionCue {
+            start_ms,
+            end_ms,
+            text: body,
+        });
+    }
+    cues
+}
+
+/// The cue showing at `time_ms`, if any.
+pub fn cue_at(cues: &[CaptionCue], time_ms: f64) -> Option<&CaptionCue> {
+    cues.iter()
+        .find(|cue| cue.start_ms <= time_ms && time_ms < cue.end_ms)
 }
 
 /// Reads a `p:contentPart`, if it is one PowerPoint draws as ink.
@@ -561,5 +716,37 @@ mod tests {
         assert_eq!(media.bookmarks.len(), 2);
         assert_eq!(media.bookmarks[1].name, "End");
         assert_eq!(media.bookmarks[1].time_ms, 2750.25);
+    }
+
+    #[test]
+    fn caption_tracks_are_read() {
+        let xml = r#"<p:nvPr xmlns:p="p" xmlns:a="a" xmlns:r="r" xmlns:p14="p14" xmlns:p173="p173"><a:videoFile r:link="rId2"/><p:extLst><p:ext uri="{DAA4B4D4-6D71-4841-9C94-3DE7FCFB9230}"><p14:media r:embed="rId1"><p14:extLst><p:ext uri="{3AFAAA56-56D3-431D-BCD4-E75A35582382}"><p173:tracksInfo displayLoc="media"><p173:trackLst><p173:track id="{0B5B0A3C-1111-4C1E-9E4B-2E3A1D2C3B4A}" label="English" lang="en-US" r:embed="rId3"/><p173:track id="{0B5B0A3C-2222-4C1E-9E4B-2E3A1D2C3B4A}" label="日本語" r:embed="rId4" r:link="rId5"/></p173:trackLst></p173:tracksInfo></p:ext></p14:extLst></p14:media></p:ext></p:extLst></p:nvPr>"#;
+        let media = parse_media(&parse_tree(xml).unwrap()).unwrap();
+        assert_eq!(media.caption_placement, Some(CaptionPlacement::Media));
+        assert_eq!(media.captions.len(), 2);
+        assert_eq!(media.captions[0].label, "English");
+        assert_eq!(media.captions[0].lang.as_deref(), Some("en-US"));
+        assert_eq!(media.captions[0].rel_id.as_deref(), Some("rId3"));
+        assert!(!media.captions[0].linked);
+        // r:link wins over r:embed.
+        assert_eq!(media.captions[1].rel_id.as_deref(), Some("rId5"));
+        assert!(media.captions[1].linked);
+    }
+
+    #[test]
+    fn webvtt_cues_are_read() {
+        let text = "\u{feff}WEBVTT - captions\r\n\r\nNOTE a comment\r\n\r\n1\r\n00:00:01.000 --> 00:00:02.500 align:start\r\nHello <b>there</b>\r\n\r\n00:03.000 --> 00:04.000\r\nTwo\r\nlines &amp; more\r\n";
+        let cues = parse_webvtt(text);
+        assert_eq!(cues.len(), 2);
+        assert_eq!(cues[0].start_ms, 1000.0);
+        assert_eq!(cues[0].end_ms, 2500.0);
+        assert_eq!(cues[0].text, "Hello there");
+        assert_eq!(cues[1].start_ms, 3000.0);
+        assert_eq!(cues[1].text, "Two\nlines & more");
+        assert_eq!(
+            cue_at(&cues, 1500.0).map(|c| c.text.as_str()),
+            Some("Hello there")
+        );
+        assert!(cue_at(&cues, 2600.0).is_none());
     }
 }

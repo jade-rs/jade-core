@@ -1,14 +1,17 @@
 //! Ink, video and audio: drawn ink is written as PowerPoint writes it
 //! (`p14` content part with an InkML part and a fallback picture) and read
 //! back; media is inserted embedded or linked with its timing, and the
-//! 再生 tab's options, trims, fades, bookmarks and posters round-trip.
+//! 再生 tab's options, trims, fades, bookmarks and posters round-trip;
+//! WebVTT caption tracks are added and removed as [MS-PPTX] 2.13 lays out.
 
 use jade_opc::OpcPackage;
 use jade_pptx_reader::{
     media_duration_ms, parse_media_playback, read_deck, InkBrush, InkTool, InkTrace, MediaKind,
     MediaPlayback, MediaStart, ShapeItem, Transform,
 };
-use jade_pptx_writer::media::{InkEdit, MediaCuts, MediaInsert, MediaSource};
+use jade_pptx_writer::media::{
+    CaptionInsert, CaptionSource, InkEdit, MediaCuts, MediaInsert, MediaSource,
+};
 use jade_pptx_writer::EditSession;
 
 const DECK: &[u8] = include_bytes!("../../../public/fixtures/sample-deck.pptx");
@@ -513,4 +516,113 @@ fn moving_and_resizing_ink_takes_its_strokes_along() {
     let last = *after.traces[0].points.last().unwrap();
     let first = after.traces[0].points[0];
     assert!((last.0 - first.0) > 150.0, "{:?}", after.traces[0].points);
+}
+
+fn first_media(bytes: &[u8]) -> (usize, jade_pptx_reader::Picture) {
+    let deck = read_deck(bytes).unwrap();
+    deck.slides
+        .iter()
+        .enumerate()
+        .find_map(|(index, slide)| {
+            slide.content.shapes.iter().find_map(|item| match item {
+                ShapeItem::Picture(p) if p.media.is_some() => Some((index, p.clone())),
+                _ => None,
+            })
+        })
+        .unwrap()
+}
+
+#[test]
+fn caption_tracks_are_added_kept_and_removed() {
+    let vtt = b"WEBVTT\n\n00:00:00.500 --> 00:00:01.500\nHello\n";
+    let mut session = EditSession::open(VIDEO).unwrap();
+    let (slide, picture) = first_media(session.bytes());
+    let id = picture.id.unwrap();
+    let english = session
+        .add_caption_track(
+            slide,
+            id,
+            &CaptionInsert {
+                label: "English",
+                lang: Some("en-US"),
+                source: CaptionSource::Embed(vtt),
+            },
+        )
+        .unwrap();
+    let linked = session
+        .add_caption_track(
+            slide,
+            id,
+            &CaptionInsert {
+                label: "日本語",
+                lang: None,
+                source: CaptionSource::Link("file:///Users/me/captions-ja.vtt"),
+            },
+        )
+        .unwrap();
+    assert!(english.starts_with('{') && english.ends_with('}'));
+
+    let bytes = session.bytes().to_vec();
+    let (_, picture) = first_media(&bytes);
+    let media = picture.media.unwrap();
+    assert_eq!(
+        media.caption_placement,
+        Some(jade_pptx_reader::CaptionPlacement::Media)
+    );
+    assert_eq!(media.captions.len(), 2);
+    let track = &media.captions[0];
+    assert_eq!(
+        (track.id.as_str(), track.label.as_str()),
+        (english.as_str(), "English")
+    );
+    assert_eq!(track.lang.as_deref(), Some("en-US"));
+    assert_eq!(track.cues.len(), 1);
+    assert_eq!(track.cues[0].text, "Hello");
+    let part = track.part.clone().unwrap();
+    assert!(part.ends_with(".vtt"));
+    let package = OpcPackage::open(&bytes).unwrap();
+    assert_eq!(package.part(&part).unwrap(), vtt.as_slice());
+    let types = package.required_part_str("[Content_Types].xml").unwrap();
+    assert!(types.contains("text/vtt"));
+    assert!(media.captions[1].linked);
+    assert_eq!(
+        media.captions[1].linked_target.as_deref(),
+        Some("file:///Users/me/captions-ja.vtt")
+    );
+    let xml = slide_xml(&bytes, slide);
+    assert!(xml.contains("{3AFAAA56-56D3-431D-BCD4-E75A35582382}"));
+    assert!(xml.contains("http://schemas.microsoft.com/office/powerpoint/2017/3/main"));
+
+    // A trim keeps the tracks.
+    session
+        .set_media_cuts(
+            slide,
+            id,
+            &MediaCuts {
+                trim_start_ms: Some(100.0),
+                ..MediaCuts::default()
+            },
+        )
+        .unwrap();
+    let (_, picture) = first_media(session.bytes());
+    assert_eq!(picture.media.unwrap().captions.len(), 2);
+
+    // 字幕の削除, one then the other: the part and the extension go.
+    session.remove_caption_track(slide, id, &english).unwrap();
+    let bytes = session.bytes().to_vec();
+    assert!(OpcPackage::open(&bytes).unwrap().part(&part).is_none());
+    let (_, picture) = first_media(&bytes);
+    assert_eq!(picture.media.unwrap().captions.len(), 1);
+    session.remove_caption_track(slide, id, &linked).unwrap();
+    let bytes = session.bytes().to_vec();
+    let (_, picture) = first_media(&bytes);
+    let media = picture.media.unwrap();
+    assert!(media.captions.is_empty() && media.caption_placement.is_none());
+    let xml = slide_xml(&bytes, slide);
+    assert!(!xml.contains("tracksInfo"));
+    assert!(!xml.contains("relationships/track"));
+    assert_eq!(media.trim_start_ms, Some(100.0));
+    session.undo();
+    let (_, picture) = first_media(session.bytes());
+    assert_eq!(picture.media.unwrap().captions.len(), 1);
 }

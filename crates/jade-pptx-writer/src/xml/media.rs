@@ -80,7 +80,7 @@ fn fresh_name(nodes: &[Node], stem: &str) -> String {
         .unwrap()
 }
 
-fn tree<'a>(nodes: &'a [Node]) -> Result<&'a Node> {
+fn tree(nodes: &[Node]) -> Result<&Node> {
     child(nodes, &nodes[0], 1, "cSld")
         .and_then(|cs| child(nodes, cs, 1, "spTree"))
         .ok_or_else(|| WriteError::Xml("slide has no shape tree".into()))
@@ -225,6 +225,31 @@ impl<'p> SlideParts<'p> {
         self.relate(&kind, &part, false)
     }
 
+    /// Drops relationship `rel_id`; an internal part nothing else on the
+    /// slide relates to goes with it.
+    pub(crate) fn unrelate(&mut self, rel_id: &str) -> Result<()> {
+        let nodes = parse_document_nodes(&self.rels)?;
+        let Some(node) = nodes
+            .iter()
+            .find(|n| n.is(4, "Relationship") && n.attr("Id") == Some(rel_id))
+        else {
+            return Ok(());
+        };
+        let target = self.target(rel_id);
+        self.rels = apply_patches(&self.rels, vec![(node.outer.clone(), String::new())]);
+        if let Some((part, false)) = target {
+            let shared = parse_document_nodes(&self.rels)?
+                .iter()
+                .filter(|n| n.is(4, "Relationship") && n.attr("TargetMode") != Some("External"))
+                .filter_map(|n| n.attr("Target"))
+                .any(|t| resolve_target(&self.slide_part, t) == part);
+            if !shared {
+                self.package.remove(&part);
+            }
+        }
+        Ok(())
+    }
+
     pub(crate) fn finish(self) {
         let name = rels_part_name(&self.slide_part);
         self.package.replace(&name, self.rels.into_bytes());
@@ -321,7 +346,7 @@ pub(crate) fn follow_ink_transform(xml: &str, id: u32, transform: Transform) -> 
         return Ok(xml.to_string());
     };
     let Some(box_node) = super::objects::descendants(&nodes, ink.owner)
-        .into_iter()
+        .iter()
         .find(|n| n.is(6, "xfrm"))
     else {
         return Ok(xml.to_string());
@@ -624,6 +649,7 @@ fn p14_media_children(
 
 /// Inserts a video or audio picture, its poster `poster` over `transform`,
 /// and the timing PowerPoint gives new media. Its id comes back.
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn insert_media(
     package: &mut OpcPackage,
     slide_part: &str,
@@ -686,7 +712,7 @@ fn percent_decode(text: &str) -> String {
 }
 
 /// A media picture by id: the `p:pic` and its `p14:media`.
-fn find_media<'a>(nodes: &'a [Node], id: u32) -> Result<(&'a Node, Option<&'a Node>)> {
+fn find_media(nodes: &[Node], id: u32) -> Result<(&Node, Option<&Node>)> {
     for pic in nodes.iter().filter(|n| n.is(1, "pic")) {
         let Some(nv) = child(nodes, pic, 1, "nvPicPr") else {
             continue;
@@ -772,6 +798,215 @@ pub(crate) fn set_media_cuts(xml: &str, id: u32, cuts: &MediaCuts) -> Result<Str
         format!("{open}{inner}</{}>", p14.qualified)
     };
     Ok(apply_patches(xml, vec![(p14.outer.clone(), replacement)]))
+}
+
+// ---- captions ----------------------------------------------------------------
+
+const TRACKS_EXT_URI: &str = jade_pptx_reader::media::TRACKS_EXT_URI;
+const P173: &str = jade_pptx_reader::media::P173_NAMESPACE;
+const TRACK_RELATIONSHIP_TYPE: &str = jade_pptx_reader::media::TRACK_RELATIONSHIP_TYPE;
+
+/// Where a caption track's WebVTT text comes from.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum CaptionSource<'a> {
+    /// A `text/vtt` part in the package.
+    Embed(&'a [u8]),
+    /// A linked file (its URL or path, as written).
+    Link(&'a str),
+}
+
+/// 字幕の挿入: a caption track for a media picture.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct CaptionInsert<'a> {
+    pub label: &'a str,
+    pub lang: Option<&'a str>,
+    pub source: CaptionSource<'a>,
+}
+
+fn prefix_of(qualified: &str) -> Option<&str> {
+    qualified.split_once(':').map(|(prefix, _)| prefix)
+}
+
+/// The element named `local` (in any namespace) under `node`.
+fn descendant<'a>(nodes: &'a [Node], node: &Node, local: &str) -> Option<&'a Node> {
+    super::objects::descendants(nodes, node)
+        .iter()
+        .find(|n| n.name == local)
+}
+
+/// The `p:ext` holding a media's `tracksInfo`.
+fn tracks_ext<'a>(nodes: &'a [Node], p14: &Node) -> Option<&'a Node> {
+    super::objects::descendants(nodes, p14)
+        .iter()
+        .find(|n| n.name == "ext" && n.attr("uri") == Some(TRACKS_EXT_URI))
+}
+
+/// Adds a caption track to media picture `id`, as PowerPoint's 字幕の挿入
+/// does ([MS-PPTX] 2.1.3, 2.13): the WebVTT part or link, the slide's
+/// track relationship to it, and a `p173:track` in the media's
+/// `tracksInfo`. The track's id comes back.
+pub(crate) fn add_caption_track(
+    package: &mut OpcPackage,
+    slide_part: &str,
+    xml: &str,
+    id: u32,
+    track: &CaptionInsert<'_>,
+) -> Result<(String, String)> {
+    let nodes = parse_nodes(xml)?;
+    let (pic, p14) = find_media(&nodes, id)?;
+    let p14 = p14.ok_or(WriteError::UnsupportedObjectOperation(id))?;
+    let strict = nodes[0].strict;
+    let audio = super::objects::descendants(&nodes, pic)
+        .iter()
+        .any(|n| n.ns == 2 && matches!(n.name.as_str(), "audioFile" | "wavAudioFile"));
+
+    let mut parts = SlideParts::new(package, slide_part, &nodes)?;
+    let (rel, attribute) = match track.source {
+        CaptionSource::Embed(bytes) => {
+            let part = parts.add_part("ppt/media", "media", "vtt", "text/vtt", bytes.to_vec())?;
+            (
+                parts.relate(TRACK_RELATIONSHIP_TYPE, &part, false)?,
+                "embed",
+            )
+        }
+        CaptionSource::Link(target) => {
+            (parts.relate(TRACK_RELATIONSHIP_TYPE, target, true)?, "link")
+        }
+    };
+    parts.finish();
+
+    let guid = format!(
+        "{{{}}}",
+        uuid::Uuid::new_v4().to_string().to_ascii_uppercase()
+    );
+    let lang = track
+        .lang
+        .filter(|lang| !lang.is_empty())
+        .map(|lang| format!(r#" lang="{}""#, escape(lang)))
+        .unwrap_or_default();
+    let element = format!(
+        r#"<p173:track xmlns:p173="{P173}" xmlns:r="{}" id="{guid}" label="{}"{lang} r:{attribute}="{rel}"/>"#,
+        r_ns(strict),
+        escape(track.label),
+    );
+
+    let patch = if let Some(list) = descendant(&nodes, p14, "trackLst") {
+        let at = if list.empty {
+            list.outer.clone()
+        } else {
+            list.range.end..list.range.end
+        };
+        if list.empty {
+            let open = xml[list.opening.clone()]
+                .trim_end_matches("/>")
+                .trim_end()
+                .to_string();
+            (at, format!("{open}>{element}</{}>", list.qualified))
+        } else {
+            (at, element)
+        }
+    } else if let Some(info) = descendant(&nodes, p14, "tracksInfo") {
+        let list = format!(r#"<p173:trackLst xmlns:p173="{P173}">{element}</p173:trackLst>"#);
+        if info.empty {
+            let open = xml[info.opening.clone()]
+                .trim_end_matches("/>")
+                .trim_end()
+                .to_string();
+            (
+                info.outer.clone(),
+                format!("{open}>{list}</{}>", info.qualified),
+            )
+        } else {
+            // trackLst is tracksInfo's first child.
+            (info.opening.end..info.opening.end, list)
+        }
+    } else {
+        let placement = if audio { "slide" } else { "media" };
+        let ext = format!(
+            r#"<p:ext xmlns:p="{}" uri="{TRACKS_EXT_URI}"><p173:tracksInfo xmlns:p173="{P173}" displayLoc="{placement}"><p173:trackLst>{element}</p173:trackLst></p173:tracksInfo></p:ext>"#,
+            p_ns(strict)
+        );
+        let list = p14
+            .children
+            .iter()
+            .map(|&i| &nodes[i])
+            .find(|n| n.ns == 6 && n.name == "extLst");
+        match list {
+            Some(list) if !list.empty => (list.range.end..list.range.end, ext),
+            Some(list) => {
+                let open = xml[list.opening.clone()]
+                    .trim_end_matches("/>")
+                    .trim_end()
+                    .to_string();
+                (
+                    list.outer.clone(),
+                    format!("{open}>{ext}</{}>", list.qualified),
+                )
+            }
+            None => {
+                let prefix = prefix_of(&p14.qualified)
+                    .map(|p| format!("{p}:"))
+                    .unwrap_or_default();
+                let list = format!("<{prefix}extLst>{ext}</{prefix}extLst>");
+                if p14.empty {
+                    let opening = &xml[p14.opening.clone()];
+                    let open = opening.trim_end_matches("/>").trim_end();
+                    (
+                        p14.outer.clone(),
+                        format!("{open}>{list}</{}>", p14.qualified),
+                    )
+                } else {
+                    (p14.range.end..p14.range.end, list)
+                }
+            }
+        }
+    };
+    Ok((apply_patches(xml, vec![patch]), guid))
+}
+
+/// 字幕の削除: takes caption track `track_id` off media picture `id`,
+/// with its relationship and (embedded) part; the last track takes its
+/// `tracksInfo` with it.
+pub(crate) fn remove_caption_track(
+    package: &mut OpcPackage,
+    slide_part: &str,
+    xml: &str,
+    id: u32,
+    track_id: &str,
+) -> Result<String> {
+    let nodes = parse_nodes(xml)?;
+    let (_, p14) = find_media(&nodes, id)?;
+    let p14 = p14.ok_or(WriteError::UnsupportedObjectOperation(id))?;
+    let tracks: Vec<&Node> = super::objects::descendants(&nodes, p14)
+        .iter()
+        .filter(|n| n.name == "track")
+        .collect();
+    let Some(track) = tracks.iter().find(|n| n.attr("id") == Some(track_id)) else {
+        return Err(WriteError::UnsupportedObjectOperation(id));
+    };
+    let rels: Vec<String> = track
+        .attrs
+        .iter()
+        .filter(|(key, _)| key.ends_with(":embed") || key.ends_with(":link"))
+        .map(|(_, value)| value.clone())
+        .collect();
+    let mut parts = SlideParts::new(package, slide_part, &nodes)?;
+    for rel in &rels {
+        parts.unrelate(rel)?;
+    }
+    parts.finish();
+    let range = if tracks.len() > 1 {
+        track.outer.clone()
+    } else {
+        let ext = tracks_ext(&nodes, p14).ok_or(WriteError::UnsupportedObjectOperation(id))?;
+        // The extension list goes too when the tracks were all it held.
+        let list = ext.parent.map(|i| &nodes[i]);
+        match list {
+            Some(list) if list.children.len() == 1 => list.outer.clone(),
+            _ => ext.outer.clone(),
+        }
+    };
+    Ok(apply_patches(xml, vec![(range, String::new())]))
 }
 
 fn binds_p14(nodes: &[Node], node: &Node) -> bool {

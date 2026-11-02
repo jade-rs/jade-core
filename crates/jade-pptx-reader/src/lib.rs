@@ -32,8 +32,9 @@ pub use chart::{
 };
 pub use error::{PptxError, Result};
 pub use media::{
-    media_duration_ms, parse_media_playback, Ink, InkBrush, InkTool, InkTrace, Media,
-    MediaBookmark, MediaKind, MediaPlayback, MediaStart,
+    cue_at, media_duration_ms, parse_media_playback, parse_webvtt, CaptionCue, CaptionPlacement,
+    CaptionTrack, Ink, InkBrush, InkTool, InkTrace, Media, MediaBookmark, MediaKind, MediaPlayback,
+    MediaStart,
 };
 pub use shape_guides::ShapeGuides;
 pub use slide::{
@@ -678,6 +679,24 @@ fn resolve_ink_and_media(
                         }
                         None => {}
                     }
+                }
+                for track in &mut media.captions {
+                    let Some(relationship) = track
+                        .rel_id
+                        .as_deref()
+                        .and_then(|id| relationships.relationship(id))
+                    else {
+                        continue;
+                    };
+                    if relationship.external {
+                        track.linked_target = Some(relationship.target.clone());
+                        continue;
+                    }
+                    let part = jade_opc::resolve_target(slide_part, &relationship.target);
+                    if let Some(text) = package.part_str(&part)? {
+                        track.cues = media::parse_webvtt(&text);
+                    }
+                    track.part = Some(part);
                 }
             }
             ShapeItem::Group(group) => {

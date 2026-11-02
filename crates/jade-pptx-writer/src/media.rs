@@ -7,7 +7,9 @@
 //! Each is one rewrite of the package; [`EditSession`]'s methods make each
 //! one step of Undo.
 
-pub use crate::xml::media::{media_content_type, InkEdit, MediaCuts, MediaSource};
+pub use crate::xml::media::{
+    media_content_type, CaptionInsert, CaptionSource, InkEdit, MediaCuts, MediaSource,
+};
 use crate::{slide_xml, xml, EditSession, Result, WriteError};
 use jade_pptx_reader::{MediaKind, MediaPlayback, Transform};
 
@@ -140,6 +142,38 @@ pub fn replace_media(
     Ok(result)
 }
 
+/// 字幕の挿入: adds a WebVTT caption track to media picture `id`; the
+/// track's id comes back.
+pub fn add_caption_track(
+    bytes: &[u8],
+    slide: usize,
+    id: u32,
+    track: &CaptionInsert<'_>,
+) -> Result<(Vec<u8>, String)> {
+    let (mut package, part, slide_xml) = slide_xml(bytes, slide)?;
+    let (changed, track_id) =
+        xml::media::add_caption_track(&mut package, &part, &slide_xml, id, track)?;
+    package.replace(&part, changed.into_bytes());
+    let result = package.write()?;
+    jade_pptx_reader::read_deck(&result)?;
+    Ok((result, track_id))
+}
+
+/// 字幕の削除: removes caption track `track_id` from media picture `id`.
+pub fn remove_caption_track(
+    bytes: &[u8],
+    slide: usize,
+    id: u32,
+    track_id: &str,
+) -> Result<Vec<u8>> {
+    let (mut package, part, slide_xml) = slide_xml(bytes, slide)?;
+    let changed = xml::media::remove_caption_track(&mut package, &part, &slide_xml, id, track_id)?;
+    package.replace(&part, changed.into_bytes());
+    let result = package.write()?;
+    jade_pptx_reader::read_deck(&result)?;
+    Ok(result)
+}
+
 /// Deletes a media picture with its timing.
 pub fn delete_media(bytes: &[u8], slide: usize, id: u32) -> Result<Vec<u8>> {
     let (mut package, part, slide_xml) = slide_xml(bytes, slide)?;
@@ -235,6 +269,24 @@ impl EditSession {
 
     pub fn delete_media(&mut self, slide: usize, id: u32) -> Result<bool> {
         let next = delete_media(self.bytes(), slide, id)?;
+        Ok(self.commit(next))
+    }
+
+    /// 字幕の挿入, one step: the new track's id.
+    pub fn add_caption_track(
+        &mut self,
+        slide: usize,
+        id: u32,
+        track: &CaptionInsert<'_>,
+    ) -> Result<String> {
+        let (next, track_id) = add_caption_track(self.bytes(), slide, id, track)?;
+        self.commit(next);
+        Ok(track_id)
+    }
+
+    /// 字幕の削除, one step.
+    pub fn remove_caption_track(&mut self, slide: usize, id: u32, track_id: &str) -> Result<bool> {
+        let next = remove_caption_track(self.bytes(), slide, id, track_id)?;
         Ok(self.commit(next))
     }
 }
