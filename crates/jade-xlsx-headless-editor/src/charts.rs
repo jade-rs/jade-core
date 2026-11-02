@@ -287,6 +287,35 @@ impl HeadlessWorkbook {
         Ok(id)
     }
 
+    /// Insert ▸ Shapes ▸ Freeform: a shape through `points` (px from its
+    /// top-left), closed and filled when `closed`, an open line otherwise,
+    /// its top-left `offset` px into `at`, named as Excel names one;
+    /// returns the object's id.
+    pub fn insert_freeform(
+        &mut self,
+        sheet: &str,
+        at: CellRef,
+        offset: (f64, f64),
+        points: &[(f64, f64)],
+        closed: bool,
+    ) -> Result<u32> {
+        let index = self.sheet_index(sheet)?;
+        self.guard_objects(index, WHAT)?;
+        let sheet_part = self.workbook.sheets[index].part_name.clone();
+        let mut package = jade_opc::OpcPackage::open(&self.source)?;
+        let id = jade_xlsx_writer::shapes::insert_freeform(
+            &mut package,
+            &sheet_part,
+            at,
+            offset,
+            points,
+            closed,
+            "Freeform: Shape",
+        )?;
+        self.replace_package(package)?;
+        Ok(id)
+    }
+
     /// Changes the chart whose id is `id`: its type, title, legend or data,
     /// as Chart Design's buttons do. A new type keeps the series; new data
     /// keeps the type, title and legend.
