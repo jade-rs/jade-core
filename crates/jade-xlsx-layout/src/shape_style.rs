@@ -3,7 +3,9 @@
 //! their text's colour, size and placement.
 
 use crate::ResolvedFont;
-use jade_xlsx_reader::{DrawingColor, ShapePaint, ShapeStyle, StyleTable, EMU_PER_PX};
+use jade_xlsx_reader::{
+    CustomPath, DrawingColor, PathCommand, ShapePaint, ShapeStyle, StyleTable, EMU_PER_PX,
+};
 use serde::{Deserialize, Serialize};
 
 /// One step of an outline, in the shape's own box (0,0)–(width,height).
@@ -230,7 +232,12 @@ pub fn place(
         .geometry
         .as_deref()
         .unwrap_or(if connector { "line" } else { "rect" });
-    let open = is_line(geometry) || connector;
+    // Custom geometry none of whose paths is filled is an outline: a
+    // scribble, or a freeform left open.
+    let custom = geometry == "custom";
+    let open = is_line(geometry)
+        || connector
+        || (custom && style.custom_paths.iter().all(|path| !path.filled));
     let fill = if open {
         None
     } else {
@@ -273,7 +280,11 @@ pub fn place(
                 .and_then(|color| resolve_color(color, styles, None))
         })
         .unwrap_or([0, 0, 0, 255]);
-    let path = preset_path(geometry, width, height, &style.adjustments);
+    let path = if custom {
+        custom_path(&style.custom_paths, width, height)
+    } else {
+        preset_path(geometry, width, height, &style.adjustments)
+    };
     let mut arrows = Vec::new();
     if let Some(((start, after_start), (before_end, end))) =
         line_ends(&path).filter(|_| open && stroke.is_some())
@@ -325,6 +336,134 @@ fn arrowhead(from: (f64, f64), tip: (f64, f64), size: f64, kind: &str) -> Vec<(f
         points = vec![tip, points[1], far, points[2]];
     }
     points
+}
+
+/// Custom geometry's paths in a `width` × `height` box: each path's
+/// coordinate space stretched over it (the points' own extent when the path
+/// gives none), quadratic curves and elliptical arcs as cubic ones.
+pub fn custom_path(paths: &[CustomPath], width: f64, height: f64) -> Vec<PathOp> {
+    let mut out = Vec::new();
+    for path in paths {
+        let extent = |pick: fn((i64, i64)) -> i64| {
+            path.commands
+                .iter()
+                .flat_map(|command| match command {
+                    PathCommand::Move(x, y) | PathCommand::Line(x, y) => vec![(*x, *y)],
+                    PathCommand::Cubic(points) => points.to_vec(),
+                    PathCommand::Quad(points) => points.to_vec(),
+                    _ => Vec::new(),
+                })
+                .map(pick)
+                .max()
+                .unwrap_or(0)
+        };
+        let space_w = if path.width > 0 {
+            path.width
+        } else {
+            extent(|p| p.0)
+        };
+        let space_h = if path.height > 0 {
+            path.height
+        } else {
+            extent(|p| p.1)
+        };
+        let sx = if space_w > 0 {
+            width / space_w as f64
+        } else {
+            0.0
+        };
+        let sy = if space_h > 0 {
+            height / space_h as f64
+        } else {
+            0.0
+        };
+        let at = |(x, y): (f64, f64)| (x * sx, y * sy);
+        let point = |(x, y): (i64, i64)| (x as f64, y as f64);
+        // The current point, in the path's own space, which an arc starts
+        // from and a quadratic curve's control is weighed against.
+        let mut current = (0.0, 0.0);
+        let mut start = (0.0, 0.0);
+        for command in &path.commands {
+            match command {
+                PathCommand::Move(x, y) => {
+                    current = point((*x, *y));
+                    start = current;
+                    let (x, y) = at(current);
+                    out.push(PathOp::Move(x, y));
+                }
+                PathCommand::Line(x, y) => {
+                    current = point((*x, *y));
+                    let (x, y) = at(current);
+                    out.push(PathOp::Line(x, y));
+                }
+                PathCommand::Cubic([a, b, c]) => {
+                    let (a, b, c) = (at(point(*a)), at(point(*b)), point(*c));
+                    current = c;
+                    let c = at(c);
+                    out.push(PathOp::Cubic(a.0, a.1, b.0, b.1, c.0, c.1));
+                }
+                PathCommand::Quad([control, end]) => {
+                    let (q, end) = (point(*control), point(*end));
+                    let a = (
+                        current.0 + (q.0 - current.0) * 2.0 / 3.0,
+                        current.1 + (q.1 - current.1) * 2.0 / 3.0,
+                    );
+                    let b = (
+                        end.0 + (q.0 - end.0) * 2.0 / 3.0,
+                        end.1 + (q.1 - end.1) * 2.0 / 3.0,
+                    );
+                    current = end;
+                    let (a, b, end) = (at(a), at(b), at(end));
+                    out.push(PathOp::Cubic(a.0, a.1, b.0, b.1, end.0, end.1));
+                }
+                PathCommand::Arc {
+                    width_radius,
+                    height_radius,
+                    start: from,
+                    swing,
+                } => {
+                    let (rx, ry) = (*width_radius as f64, *height_radius as f64);
+                    let degrees = |value: i64| (value as f64 / 60_000.0).to_radians();
+                    // DrawingML's angles are where the arc's ends lie seen
+                    // from the centre; on an ellipse that is the parameter
+                    // whose point lies at that angle.
+                    let parameter = |angle: f64| (rx * angle.sin()).atan2(ry * angle.cos());
+                    let first = parameter(degrees(*from));
+                    let mut turn = parameter(degrees(*from + *swing)) - first;
+                    let tau = std::f64::consts::TAU;
+                    if swing.abs() >= 21_600_000 {
+                        turn = tau * (*swing as f64).signum();
+                    } else if *swing > 0 && turn < 0.0 {
+                        turn += tau;
+                    } else if *swing < 0 && turn > 0.0 {
+                        turn -= tau;
+                    }
+                    let centre = (current.0 - rx * first.cos(), current.1 - ry * first.sin());
+                    let pieces = (turn.abs() / std::f64::consts::FRAC_PI_2).ceil().max(1.0);
+                    let step = turn / pieces;
+                    let k = 4.0 / 3.0 * (step / 4.0).tan();
+                    let on = |t: f64| (centre.0 + rx * t.cos(), centre.1 + ry * t.sin());
+                    for piece in 0..pieces as usize {
+                        let (t0, t1) = (
+                            first + step * piece as f64,
+                            first + step * (piece + 1) as f64,
+                        );
+                        let (p0, p3) = (on(t0), on(t1));
+                        let a = (p0.0 - k * rx * t0.sin(), p0.1 + k * ry * t0.cos());
+                        let b = (p3.0 + k * rx * t1.sin(), p3.1 - k * ry * t1.cos());
+                        current = p3;
+                        let (a, b, p3) = (at(a), at(b), at(p3));
+                        out.push(PathOp::Cubic(a.0, a.1, b.0, b.1, p3.0, p3.1));
+                    }
+                }
+                PathCommand::Close => {
+                    current = start;
+                    out.push(PathOp::Close);
+                }
+            }
+        }
+    }
+    out
 }
 
 fn is_line(geometry: &str) -> bool {
@@ -725,6 +864,87 @@ fn callout(w: f64, h: f64, tip: (f64, f64)) -> Vec<(f64, f64)> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn close(a: f64, b: f64) -> bool {
+        (a - b).abs() < 1e-6
+    }
+
+    /// A freeform's path stretched over its box: lines, a quadratic curve
+    /// as a cubic, a quarter arc ending where a quarter turn does.
+    #[test]
+    fn custom_geometry_fills_its_box() {
+        let path = CustomPath {
+            width: 100,
+            height: 50,
+            filled: true,
+            commands: vec![
+                PathCommand::Move(0, 0),
+                PathCommand::Line(100, 0),
+                PathCommand::Quad([(100, 50), (50, 50)]),
+                PathCommand::Arc {
+                    width_radius: 50,
+                    height_radius: 25,
+                    start: 5_400_000,
+                    swing: 5_400_000,
+                },
+                PathCommand::Close,
+            ],
+        };
+        let ops = custom_path(&[path], 200.0, 100.0);
+        assert_eq!(ops[0], PathOp::Move(0.0, 0.0));
+        assert_eq!(ops[1], PathOp::Line(200.0, 0.0));
+        let PathOp::Cubic(ax, ay, bx, by, ex, ey) = ops[2] else {
+            panic!("{:?}", ops[2]);
+        };
+        assert!(close(ax, 200.0) && close(ay, 200.0 / 3.0));
+        assert!(close(bx, 100.0 + 200.0 / 3.0) && close(by, 100.0));
+        assert!(close(ex, 100.0) && close(ey, 100.0));
+        // From the bottom of an ellipse centred 25 above it, a quarter turn
+        // clockwise ends at its left.
+        let PathOp::Cubic(_, _, _, _, ex, ey) = ops[3] else {
+            panic!("{:?}", ops[3]);
+        };
+        assert!(close(ex, 0.0) && close(ey, 50.0), "{ex} {ey}");
+        assert_eq!(ops[4], PathOp::Close);
+        // With no space of its own, the points' extent stands in.
+        let scribble = CustomPath {
+            width: 0,
+            height: 0,
+            filled: false,
+            commands: vec![PathCommand::Move(0, 10), PathCommand::Line(40, 0)],
+        };
+        assert_eq!(
+            custom_path(&[scribble], 80.0, 20.0),
+            vec![PathOp::Move(0.0, 20.0), PathOp::Line(80.0, 0.0)]
+        );
+    }
+
+    /// Custom geometry with no filled path is an outline only.
+    #[test]
+    fn unfilled_custom_geometry_is_an_outline() {
+        let mut style = ShapeStyle {
+            geometry: Some("custom".into()),
+            fill: ShapePaint::Solid(DrawingColor {
+                rgb: Some([255, 0, 0]),
+                ..Default::default()
+            }),
+            custom_paths: vec![CustomPath {
+                width: 10,
+                height: 10,
+                filled: false,
+                commands: vec![PathCommand::Move(0, 0), PathCommand::Line(10, 10)],
+            }],
+            ..Default::default()
+        };
+        let mut font = ResolvedFont::default();
+        let styles = StyleTable::default();
+        let placed = place(&style, 20.0, 20.0, &styles, &mut font, false);
+        assert_eq!(placed.fill, None);
+        assert_eq!(placed.path.last(), Some(&PathOp::Line(20.0, 20.0)));
+        style.custom_paths[0].filled = true;
+        let placed = place(&style, 20.0, 20.0, &styles, &mut font, false);
+        assert!(placed.fill.is_some());
+    }
 
     #[test]
     fn theme_colours_take_their_transforms() {
