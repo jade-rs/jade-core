@@ -3,7 +3,7 @@ use crate::{number_format, LayoutOptions, Rect, ResolvedFont};
 use jade_xlsx_reader::{
     chart::{
         resolve_chart_reference, Chart, ChartAxis, ChartColor, ChartData, ChartPointState,
-        ChartSeries, DataLabels, ErrorBars, Trendline,
+        ChartSeries, DataLabels, ErrorBars, LineFormat, Trendline,
     },
     CellValue, DateSystem, Sheet, StyleTable, Workbook,
 };
@@ -452,6 +452,46 @@ fn path(
             stroke,
             width,
             dash: Vec::new(),
+        })
+    }
+}
+/// A series' line width in px, and its dash pattern, from its `a:ln`;
+/// `default` px wide when the file does not say.
+fn series_stroke(line: &LineFormat, default: f64) -> (f64, Vec<f64>) {
+    let width = line
+        .width
+        .map(|emu| (f64::from(emu) / 9525.0).max(0.5))
+        .unwrap_or(default);
+    let pattern: &[f64] = match line.dash.as_deref() {
+        Some("dash") => &[4.0, 3.0],
+        Some("sysDash") => &[3.0, 1.0],
+        Some("sysDot") => &[1.0, 1.0],
+        Some("dot") => &[1.0, 3.0],
+        Some("dashDot") => &[4.0, 3.0, 1.0, 3.0],
+        Some("lgDash") => &[8.0, 3.0],
+        Some("lgDashDot") => &[8.0, 3.0, 1.0, 3.0],
+        Some("lgDashDotDot") => &[8.0, 3.0, 1.0, 3.0, 1.0, 3.0],
+        Some("sysDashDot") => &[3.0, 1.0, 1.0, 1.0],
+        Some("sysDashDotDot") => &[3.0, 1.0, 1.0, 1.0, 1.0, 1.0],
+        _ => &[],
+    };
+    (width, pattern.iter().map(|step| step * width).collect())
+}
+fn stroked(
+    ops: &mut Vec<ChartOp>,
+    points: Vec<(f64, f64)>,
+    closed: bool,
+    stroke: String,
+    (width, dash): (f64, Vec<f64>),
+) {
+    if !points.is_empty() {
+        ops.push(ChartOp::Path {
+            points,
+            closed,
+            fill: None,
+            stroke: Some(stroke),
+            width,
+            dash,
         })
     }
 }
@@ -1194,10 +1234,16 @@ fn layout_radar(
                 Some(rgb(color)),
                 1.0,
             );
-        } else {
-            path(ops, points.clone(), true, None, Some(rgb(color)), 2.0);
+        } else if !series.spec.line.none {
+            stroked(
+                ops,
+                points.clone(),
+                true,
+                rgb(color),
+                series_stroke(&series.spec.line, 2.0),
+            );
         }
-        if !filled && view.scatter_style == "marker" {
+        if !filled && view.scatter_style == "marker" && series.spec.marker != "none" {
             for (i, (x, y)) in points.iter().enumerate() {
                 if series.value(i).is_some() {
                     marker(
@@ -1205,11 +1251,7 @@ fn layout_radar(
                         *x,
                         *y,
                         series.spec.marker_size as f64,
-                        if series.spec.marker == "none" {
-                            "circle"
-                        } else {
-                            &series.spec.marker
-                        },
+                        &series.spec.marker,
                         &rgb(color),
                     );
                 }
@@ -2271,9 +2313,15 @@ fn layout_cartesian(
                             )
                         } else {
                             let points = std::mem::take(segment);
-                            if lines {
+                            if lines && !series.spec.line.none {
                                 let points = if smooth_line { smooth(&points) } else { points };
-                                path(ops, points, false, None, Some(color.clone()), 2.0);
+                                stroked(
+                                    ops,
+                                    points,
+                                    false,
+                                    color.clone(),
+                                    series_stroke(&series.spec.line, 2.0),
+                                );
                             }
                             bases.clear();
                         }
