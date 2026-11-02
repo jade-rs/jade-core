@@ -906,6 +906,28 @@ impl HeadlessWorkbook {
         Ok(())
     }
 
+    /// Iterative calculation and precision as displayed, Excel's File ▸
+    /// Options ▸ Formulas settings that change what formulas give: saved in
+    /// the file, recalculated when calculation is automatic, and, like the
+    /// calculation mode, not an Undo step.
+    pub fn set_calculation_options(
+        &mut self,
+        iteration: jade_xlsx_reader::Iteration,
+        full_precision: bool,
+    ) -> Result<()> {
+        if self.workbook.iteration == iteration && self.workbook.full_precision == full_precision {
+            return Ok(());
+        }
+        let written =
+            jade_xlsx_writer::set_calculation_options(&self.source, iteration, full_precision)?;
+        let model = jade_xlsx_reader::read_xlsx(&written)?;
+        self.source = written;
+        self.range_auth_generation = self.range_auth_generation.wrapping_add(1);
+        self.workbook = model;
+        self.recalculate_after_edit();
+        Ok(())
+    }
+
     fn recalculate_after_edit(&mut self) {
         if self.workbook.calculation_mode.calculates_on_edit() {
             let _ = self.recalculate();
@@ -989,6 +1011,7 @@ impl HeadlessWorkbook {
             self.workbook.calculation_mode,
             self.workbook.calculate_on_save,
         )?;
+        restored.set_calculation_options(self.workbook.iteration, self.workbook.full_precision)?;
         if snapshot.time_zone != self.calculation_time_zone
             && self.workbook.calculation_mode.calculates_on_edit()
         {
