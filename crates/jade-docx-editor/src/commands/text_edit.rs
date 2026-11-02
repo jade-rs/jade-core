@@ -369,7 +369,9 @@ fn insert_beside_ruby_base(
     let target = match insertion_point(runs, position, zero_width) {
         Some(InsertionPoint::Run { index, .. }) => index,
         // `insert_into_runs` already gives this text a run of its own.
-        Some(InsertionPoint::BeforeField { .. }) => return false,
+        Some(InsertionPoint::BeforeField { .. } | InsertionPoint::AfterField { .. }) => {
+            return false
+        }
         None => match runs.len().checked_sub(1) {
             Some(last) => last,
             None => return false,
@@ -446,6 +448,9 @@ enum InsertionPoint {
     /// Into a run of its own at `index`, where the marker runs of a field
     /// with a computed or hidden result start.
     BeforeField { index: usize },
+    /// Into a run of its own right after run `index`, the end of a field
+    /// whose computed result it holds as text.
+    AfterField { index: usize },
 }
 
 /// `None` means past every run.
@@ -462,6 +467,27 @@ fn insertion_point(
         let len = run.text.len();
         let run_end = cumulative + len;
 
+        // A computed field inserted here holds its result as the run's text.
+        // Typed at its end, the text joined that result and was lost on save,
+        // where only the field is written: it goes after the field instead,
+        // where Word puts it. Not between two pieces of one field's result.
+        if position == run_end && len > 0 && position > cumulative {
+            if let Some(field) = run
+                .field
+                .as_ref()
+                .filter(|field| !field.kind.keeps_result_in_run_text())
+            {
+                let continues = runs.get(index + 1).is_some_and(|next| {
+                    next.field.as_ref().is_some_and(|next| {
+                        next.source_field_id.is_some()
+                            && next.source_field_id == field.source_field_id
+                    })
+                });
+                if !continues {
+                    return Some(InsertionPoint::AfterField { index });
+                }
+            }
+        }
         if position < run_end || (position == run_end && len > 0) {
             return Some(InsertionPoint::Run {
                 index,
@@ -522,6 +548,11 @@ fn insert_into_runs(
             InsertionPoint::Run { index, start } => (index, start),
             InsertionPoint::BeforeField { index } => {
                 runs.insert(index, create_run_from_template(template, insert));
+                return;
+            }
+            InsertionPoint::AfterField { index } => {
+                let run = create_run_from_template(Some(&runs[index]), insert);
+                runs.insert(index + 1, run);
                 return;
             }
         };
