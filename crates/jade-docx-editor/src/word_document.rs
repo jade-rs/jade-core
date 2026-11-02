@@ -3866,19 +3866,20 @@ impl WordDocument {
             .and_then(|style_id| styles.resolve_table_paragraph_properties(style_id))
     }
 
-    /// Fills into `cells`, new cells of `table`, what a load fills into the
-    /// cells it reads: their paragraphs' style defaults under the table's
-    /// style, and their runs' fonts. Nothing else bakes them into cells made
-    /// after the load: a new row's paragraphs lost Normal's justification and
-    /// the table style's spacing until the document was reopened.
-    fn fill_new_cell_defaults(table: &Table, cells: &mut [TableCell], styles: &StylesPart) {
-        let table_style = Self::table_style_paragraph_defaults(table, styles);
+    /// Fills into `cells`, new cells of a table whose style gives its cells
+    /// `table_style` (see [`Self::table_style_paragraph_defaults`]), what a
+    /// load fills into the cells it reads: their paragraphs' style defaults
+    /// under the table's style, and their runs' fonts. Nothing else bakes
+    /// them into cells made after the load: a new row's paragraphs lost
+    /// Normal's justification and the table style's spacing until the
+    /// document was reopened.
+    fn fill_new_cell_defaults(
+        table_style: Option<&ParagraphProperties>,
+        cells: &mut [TableCell],
+        styles: &StylesPart,
+    ) {
         for cell in cells {
-            Self::apply_style_paragraph_defaults_to_blocks(
-                &mut cell.blocks,
-                styles,
-                table_style.as_ref(),
-            );
+            Self::apply_style_paragraph_defaults_to_blocks(&mut cell.blocks, styles, table_style);
             Self::apply_table_styles_to_elements(&mut cell.blocks, styles);
             Self::apply_run_font_defaults_to_elements(&mut cell.blocks, styles);
         }
@@ -23786,7 +23787,8 @@ impl WordDocument {
                 row.width_after = template.width_after.clone();
             }
             if let Some(styles) = styles.as_ref() {
-                Self::fill_new_cell_defaults(table, &mut row.cells, styles);
+                let table_style = Self::table_style_paragraph_defaults(table, styles);
+                Self::fill_new_cell_defaults(table_style.as_ref(), &mut row.cells, styles);
             }
             table.rows.insert(insert_at, row);
             Self::normalize_vertical_merges(table);
@@ -24430,10 +24432,14 @@ impl WordDocument {
         table_order_index: usize,
         column_index: usize,
     ) -> Result<(), String> {
+        let styles = self.styles_part.clone();
         {
             let table = self
                 .table_mut_by_order(table_order_index)
                 .ok_or_else(|| format!("table {table_order_index} was not found"))?;
+            let table_style = styles
+                .as_ref()
+                .and_then(|styles| Self::table_style_paragraph_defaults(table, styles));
             let column_count = Self::resolved_table_column_count(table);
             if column_count <= 1 {
                 return Err("delete_table_column requires at least 2 columns".to_string());
@@ -24495,7 +24501,15 @@ impl WordDocument {
                         let new_grid_before = grid_before - 1;
                         row.grid_before = (new_grid_before > 0).then_some(new_grid_before as u32);
                     }
-                    row.cells.push(Self::new_empty_table_cell());
+                    let mut cell = Self::new_empty_table_cell();
+                    if let Some(styles) = styles.as_ref() {
+                        Self::fill_new_cell_defaults(
+                            table_style.as_ref(),
+                            std::slice::from_mut(&mut cell),
+                            styles,
+                        );
+                    }
+                    row.cells.push(cell);
                 }
             }
             Self::refresh_omitted_row_widths(table);
