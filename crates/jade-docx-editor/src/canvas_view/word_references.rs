@@ -4,7 +4,7 @@
 //! variables, and showing field codes (⌥F9 / ⇧F9).
 
 use super::*;
-use crate::commands::snapshot_edit::{EditScope, SnapshotEditCommand};
+use crate::commands::snapshot_edit::SnapshotEditCommand;
 use crate::fields::{self, FieldCodeView, FieldCommand};
 use crate::word_document::CitationSourceInfo;
 use jade_docx_reader::document::TocOptions;
@@ -218,29 +218,24 @@ impl OffscreenDocumentView {
         selected_style: String,
     ) -> Result<JsValue, JsValue> {
         self.apply_document_command(move |_| {
-            Box::new(SnapshotEditCommand::with_scope(
-                "set_bibliography_style",
-                EditScope::Paragraphs(None),
-                move |document| {
-                    crate::word::references::citations::set_style(document, &name, &selected_style)
-                },
+            Box::new(crate::word::references::citations::set_style_command(
+                name,
+                selected_style,
             ))
         })
     }
 
-    /// 資料文献の管理 ▸ 削除: takes the source `tag` out of the catalog.
+    /// 資料文献の管理 ▸ 削除: keeps sources that are cited in the document.
     #[wasm_bindgen(js_name = removeCitationSource)]
     pub fn remove_citation_source(&self, tag: String) -> Result<JsValue, JsValue> {
         self.apply_document_command(move |_| {
-            Box::new(SnapshotEditCommand::with_scope(
-                "remove_citation_source",
-                EditScope::Paragraphs(None),
-                move |document| document.remove_citation_source(&tag),
+            Box::new(crate::word::references::citations::delete_source_command(
+                tag,
             ))
         })
     }
 
-    /// 資料文献の管理 ▸ 編集: replaces the source `tag` with `source`.
+    /// 資料文献の管理 ▸ 編集: updates the source and its live references.
     #[wasm_bindgen(js_name = replaceCitationSource)]
     pub fn replace_citation_source(
         &self,
@@ -250,10 +245,8 @@ impl OffscreenDocumentView {
         let source: CitationSourceInfo = serde_wasm_bindgen::from_value(source)
             .map_err(|error| JsValue::from_str(&format!("invalid citation source: {error}")))?;
         self.apply_document_command(move |_| {
-            Box::new(SnapshotEditCommand::with_scope(
-                "replace_citation_source",
-                EditScope::Paragraphs(None),
-                move |document| document.replace_citation_source(&tag, source.clone()),
+            Box::new(crate::word::references::citations::edit_source_command(
+                tag, source,
             ))
         })
     }

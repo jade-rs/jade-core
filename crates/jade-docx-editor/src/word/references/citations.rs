@@ -4,6 +4,9 @@
 //! MLA, Chicago, IEEE, …), and the bibliography itself (`BIBLIOGRAPHY`),
 //! inserted and set again whenever the sources or the style change.
 
+use crate::commands::document_edit::DocumentEditCommand;
+use crate::commands::insert_text::InsertTextCommand;
+use crate::commands::{Command, CommandContext};
 use crate::word::fields::{build_code, parse_code, quote, unparse, unquote};
 use crate::word_document::{FieldBlock, FieldBlockLine, WordDocument};
 use jade_selection::SelectionRange;
@@ -419,52 +422,12 @@ pub trait WordCitations: WordSession {
     /// 編集: a source changed, its citations and the bibliography set
     /// again, one undo step.
     fn edit_source(&mut self, tag: &str, source: Source) -> Result<(), String> {
-        let tag = tag.to_string();
-        let new_tag = source.tag.trim().to_string();
-        let style = self.bibliography_style();
-        edit_document(self, "edit_source", true, move |document, _| {
-            document.replace_citation_source(&tag, source.clone())?;
-            if new_tag != tag {
-                for field in document.inline_fields("CITATION") {
-                    let mut parsed = parse_code(&field.instruction);
-                    let mut changed = false;
-                    for token in parsed.operands.first_mut().into_iter().chain(
-                        parsed.switches.iter_mut().filter_map(|(switch, value)| {
-                            if switch.eq_ignore_ascii_case("\\m") {
-                                value.as_mut()
-                            } else {
-                                None
-                            }
-                        }),
-                    ) {
-                        if unquote(token) == tag {
-                            *token = quote(&new_tag, true);
-                            changed = true;
-                        }
-                    }
-                    if changed {
-                        document.set_inline_field(
-                            field.paragraph,
-                            field.run,
-                            Some(&unparse(&parsed)),
-                            &field.text,
-                        )?;
-                    }
-                }
-            }
-            restyle(document, style)
-        })
+        self.execute_command(Box::new(edit_source_command(tag.into(), source)), true)
     }
 
     /// 削除: Word keeps a cited source.
     fn delete_source(&mut self, tag: &str) -> Result<(), String> {
-        if self.cited_tags().iter().any(|cited| cited == tag) {
-            return Err("引用されている資料文献は削除できません".to_string());
-        }
-        let tag = tag.to_string();
-        edit_document(self, "delete_source", true, move |document, _| {
-            document.remove_citation_source(&tag)
-        })
+        self.execute_command(Box::new(delete_source_command(tag.into())), true)
     }
 
     /// 引用文献の挿入: a `CITATION` field at the caret, set in the style.
@@ -547,6 +510,152 @@ pub trait WordCitations: WordSession {
 }
 
 impl<T: WordSession + ?Sized> WordCitations for T {}
+
+/// Replace the browser selection with a live Word citation field.
+pub fn insert_citation_command(range: SelectionRange, tag: String) -> DocumentEditCommand {
+    DocumentEditCommand::new(
+        "insert_citation",
+        Box::new(move |document, selection| {
+            let tag = tag.trim();
+            if document.citation_source(tag).is_none() {
+                return Err("citation source was not found".into());
+            }
+            let style = match document.bibliography_style() {
+                Some(name) => BibliographyStyle::from_name(&name)
+                    .ok_or("the bibliography style is unsupported")?,
+                None => BibliographyStyle::Apa,
+            };
+            *selection = Some(range);
+            if !range.is_collapsed() {
+                let mut ctx = CommandContext::new(document, selection);
+                InsertTextCommand::new(range, String::new(), None)
+                    .apply(&mut ctx)
+                    .map_err(|error| error.to_string())?;
+            }
+            let at = selection
+                .ok_or("there is no insertion point")?
+                .normalized()
+                .0;
+            *selection = Some(insert_citation_field(document, at, tag, style)?);
+            Ok(())
+        }),
+    )
+}
+
+/// A live bibliography uses the same entries as the reference tools and F9.
+pub fn insert_bibliography_command(after_paragraph: usize, heading: String) -> DocumentEditCommand {
+    DocumentEditCommand::new(
+        "insert_bibliography",
+        Box::new(move |document, selection| {
+            if document.citation_sources().is_empty() {
+                return Err("no citation sources are available".into());
+            }
+            let heading = heading.trim();
+            if heading.is_empty()
+                || heading.chars().count() > 256
+                || heading.chars().any(char::is_control)
+            {
+                return Err(
+                    "bibliography heading must contain 1 to 256 printable characters".into(),
+                );
+            }
+            let style = match document.bibliography_style() {
+                Some(name) => BibliographyStyle::from_name(&name)
+                    .ok_or("the bibliography style is unsupported")?,
+                None => BibliographyStyle::Apa,
+            };
+            let mut lines = vec![FieldBlockLine {
+                text: heading.into(),
+                style: Some("Heading1".into()),
+                ..FieldBlockLine::default()
+            }];
+            lines.extend(bibliography_lines(document, style));
+            *selection =
+                Some(document.insert_field_block(after_paragraph, "BIBLIOGRAPHY", &lines)?);
+            Ok(())
+        }),
+    )
+}
+
+/// Replace a source and its live references in one transaction for every host.
+pub fn edit_source_command(tag: String, source: Source) -> DocumentEditCommand {
+    DocumentEditCommand::new(
+        "edit_source",
+        Box::new(move |document, _| {
+            let new_tag = source.tag.trim();
+            document.replace_citation_source(&tag, source.clone())?;
+            if new_tag != tag {
+                for field in document.inline_fields("CITATION") {
+                    let mut parsed = parse_code(&field.instruction);
+                    let mut changed = false;
+                    for token in parsed.operands.first_mut().into_iter().chain(
+                        parsed.switches.iter_mut().filter_map(|(switch, value)| {
+                            if switch.eq_ignore_ascii_case("\\m") {
+                                value.as_mut()
+                            } else {
+                                None
+                            }
+                        }),
+                    ) {
+                        if unquote(token) == tag {
+                            *token = quote(new_tag, true);
+                            changed = true;
+                        }
+                    }
+                    if changed {
+                        document.set_inline_field(
+                            field.paragraph,
+                            field.run,
+                            Some(&unparse(&parsed)),
+                            &field.text,
+                        )?;
+                    }
+                }
+            }
+            if let Some(style) = document_style(document) {
+                restyle(document, style)?;
+            }
+            Ok(())
+        }),
+    )
+}
+
+/// A source used by a citation cannot be removed; refresh other bibliography entries.
+pub fn delete_source_command(tag: String) -> DocumentEditCommand {
+    DocumentEditCommand::new(
+        "delete_source",
+        Box::new(move |document, _| {
+            if document.inline_fields("CITATION").iter().any(|field| {
+                instruction_tags(&field.instruction)
+                    .iter()
+                    .any(|cited| cited == &tag)
+            }) {
+                return Err("引用されている資料文献は削除できません".into());
+            }
+            document.remove_citation_source(&tag)?;
+            if let Some(style) = document_style(document) {
+                restyle(document, style)?;
+            }
+            Ok(())
+        }),
+    )
+}
+
+/// Restyling may add or remove bibliography paragraphs, so keep the whole package.
+pub fn set_style_command(name: String, stylesheet: String) -> DocumentEditCommand {
+    DocumentEditCommand::new(
+        "set_bibliography_style",
+        Box::new(move |document, _| set_style(document, &name, &stylesheet)),
+    )
+}
+
+fn document_style(document: &WordDocument) -> Option<BibliographyStyle> {
+    document
+        .bibliography_style()
+        .map_or(Some(BibliographyStyle::Apa), |name| {
+            BibliographyStyle::from_name(&name)
+        })
+}
 
 /// Shared authoring path for native sessions and the browser bridge.
 pub(crate) fn insert_citation_field(
@@ -766,7 +875,13 @@ fn restyle(
             document.set_inline_field(field.paragraph, field.run, None, &text)?;
         }
     }
-    let lines = bibliography_lines(document, style);
+    let mut lines = bibliography_lines(document, style);
+    if lines.is_empty() {
+        lines.push(FieldBlockLine {
+            text: "現在の文書には資料文献がありません。".into(),
+            ..FieldBlockLine::default()
+        });
+    }
     for block in document.field_blocks().into_iter().rev() {
         if block.name() != "BIBLIOGRAPHY" || !supported_bibliography(&block.instruction) {
             continue;
