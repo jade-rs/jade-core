@@ -79,6 +79,7 @@ pub mod table;
 mod table_calculation;
 mod table_formulas;
 pub mod tables;
+pub mod threads;
 mod validation_sources;
 mod validation_structure;
 mod worksheet_formulas;
