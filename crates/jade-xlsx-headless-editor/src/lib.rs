@@ -248,6 +248,9 @@ pub struct HeadlessWorkbook {
     /// and so laid itself out.
     laid_out: Option<Vec<jade_opc::EntryFingerprint>>,
     calculation_time_zone: String,
+    /// Where the application has the book saved and what its window shows,
+    /// for CELL("filename") and INFO.
+    document: jade_xlsx_calc::Document,
     source_time_zone: String,
     /// The bytes before each write, newest last. A write is a patch of the
     /// whole package, so the package itself is the cheapest faithful undo
@@ -397,6 +400,7 @@ impl HeadlessWorkbook {
                 typed_changes: None,
                 laid_out: None,
                 calculation_time_zone: self.calculation_time_zone.clone(),
+                document: self.document.clone(),
                 source_time_zone: self.source_time_zone.clone(),
                 history: self.history.clone(),
                 future: self.future.clone(),
@@ -832,6 +836,7 @@ impl HeadlessWorkbook {
             typed_changes: None,
             laid_out: None,
             calculation_time_zone: time_zone.to_string(),
+            document: Default::default(),
             source_time_zone: time_zone.to_string(),
             history: Vec::new(),
             future: Vec::new(),
@@ -844,6 +849,25 @@ impl HeadlessWorkbook {
 
     pub fn calculation_time_zone(&self) -> &str {
         &self.calculation_time_zone
+    }
+
+    /// Host environment, not a document edit: where the book is saved
+    /// (`CELL("filename")`, `INFO("directory")`) and the top-left cell its
+    /// window shows (`INFO("origin")`), from the next recalculation.
+    pub fn set_document(&mut self, document: jade_xlsx_calc::Document) {
+        self.document = document;
+    }
+
+    pub fn document(&self) -> &jade_xlsx_calc::Document {
+        &self.document
+    }
+
+    /// The document as formulas see it during a calculation.
+    fn calculation_document(&self) -> jade_xlsx_calc::Document {
+        jade_xlsx_calc::Document {
+            manual: self.workbook.calculation_mode == jade_xlsx_reader::CalculationMode::Manual,
+            ..self.document.clone()
+        }
     }
 
     /// Host environment configuration, not a document edit or an Undo step.
@@ -929,6 +953,7 @@ impl HeadlessWorkbook {
 
     fn restored_snapshot(&self, snapshot: &HistorySnapshot) -> Result<Self> {
         let mut restored = Self::open_in_time_zone(&snapshot.bytes, &self.calculation_time_zone)?;
+        restored.document = self.document.clone();
         restored.filter_row_state = snapshot.filter_row_state.clone();
         restored.source_time_zone = snapshot.time_zone.clone();
         restored.set_calculation_properties(
@@ -1610,13 +1635,16 @@ impl HeadlessWorkbook {
                     })
                     .flatten()
                     .collect();
-                if let Ok(Some(outcome)) = jade_xlsx_calc::reevaluate(
-                    &mut session,
-                    &self.workbook,
-                    &self.calculation_time_zone,
-                    &manual,
-                    &typed,
-                ) {
+                let document = self.calculation_document();
+                if let Ok(Some(outcome)) = jade_xlsx_calc::with_document(document, || {
+                    jade_xlsx_calc::reevaluate(
+                        &mut session,
+                        &self.workbook,
+                        &self.calculation_time_zone,
+                        &manual,
+                        &typed,
+                    )
+                }) {
                     kept = Some((outcome, session));
                 }
             }
@@ -1646,11 +1674,13 @@ impl HeadlessWorkbook {
                 },
                 None,
             ),
-            None => match jade_xlsx_calc::evaluate_keeping(
-                &self.workbook,
-                &self.calculation_time_zone,
-                &manual,
-            ) {
+            None => match jade_xlsx_calc::with_document(self.calculation_document(), || {
+                jade_xlsx_calc::evaluate_keeping(
+                    &self.workbook,
+                    &self.calculation_time_zone,
+                    &manual,
+                )
+            }) {
                 Ok(evaluated) => evaluated,
                 Err(_) => return Ok(false),
             },
@@ -2686,23 +2716,30 @@ impl HeadlessWorkbook {
         Option<jade_xlsx_calc::ValueDependencies>,
     )> {
         let manual = self.manual_filter_rows();
-        let (outcome, session) = if trace {
-            let outcome = jade_xlsx_calc::evaluate_with_value_dependencies(
-                &self.workbook,
-                &self.calculation_time_zone,
-                &manual,
-            )?;
-            (outcome, None)
-        } else if keep {
-            jade_xlsx_calc::evaluate_keeping(&self.workbook, &self.calculation_time_zone, &manual)?
-        } else {
-            let outcome = jade_xlsx_calc::evaluate_with_manual_filter_rows(
-                &self.workbook,
-                &self.calculation_time_zone,
-                &manual,
-            )?;
-            (outcome, None)
-        };
+        let document = self.calculation_document();
+        let (outcome, session) = jade_xlsx_calc::with_document(document, || {
+            jade_xlsx_calc::Result::Ok(if trace {
+                let outcome = jade_xlsx_calc::evaluate_with_value_dependencies(
+                    &self.workbook,
+                    &self.calculation_time_zone,
+                    &manual,
+                )?;
+                (outcome, None)
+            } else if keep {
+                jade_xlsx_calc::evaluate_keeping(
+                    &self.workbook,
+                    &self.calculation_time_zone,
+                    &manual,
+                )?
+            } else {
+                let outcome = jade_xlsx_calc::evaluate_with_manual_filter_rows(
+                    &self.workbook,
+                    &self.calculation_time_zone,
+                    &manual,
+                )?;
+                (outcome, None)
+            })
+        })?;
 
         let mut grouped: BTreeMap<usize, Vec<CachedValueEdit>> = BTreeMap::new();
         let mut verified = jade_xlsx_writer::VerifiedChartCells::new();
