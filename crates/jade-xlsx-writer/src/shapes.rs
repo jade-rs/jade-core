@@ -16,8 +16,9 @@ const EMU_PER_PX: f64 = 9525.0;
 
 /// The preset geometries Insert ▸ Shapes offers, each with the name Excel
 /// gives a new one, in the order of Excel's gallery: lines, rectangles,
-/// basic shapes, block arrows, stars and callouts.
-pub const SHAPES: [(&str, &str); 28] = [
+/// basic shapes, block arrows, equation shapes, flowchart shapes, stars and
+/// callouts.
+pub const SHAPES: [(&str, &str); 50] = [
     ("line", "Straight Connector"),
     ("straightConnector1", "Straight Arrow Connector"),
     ("bentConnector3", "Connector: Elbow"),
@@ -44,8 +45,33 @@ pub const SHAPES: [(&str, &str); 28] = [
     ("leftRightArrow", "Arrow: Left-Right"),
     ("homePlate", "Arrow: Pentagon"),
     ("chevron", "Arrow: Chevron"),
+    ("mathPlus", "Plus Sign"),
+    ("flowChartAlternateProcess", "Flowchart: Alternate Process"),
+    ("flowChartDecision", "Flowchart: Decision"),
+    ("flowChartInputOutput", "Flowchart: Data"),
+    ("flowChartPreparation", "Flowchart: Preparation"),
+    ("flowChartTerminator", "Flowchart: Terminator"),
+    ("flowChartOffpageConnector", "Flowchart: Off-page Connector"),
+    ("flowChartMagneticDisk", "Flowchart: Magnetic Disk"),
+    ("flowChartExtract", "Flowchart: Extract"),
+    ("flowChartMerge", "Flowchart: Merge"),
+    ("flowChartOr", "Flowchart: Or"),
+    ("star4", "Star: 4 Points"),
     ("star5", "Star: 5 Points"),
+    ("star6", "Star: 6 Points"),
+    ("star7", "Star: 7 Points"),
+    ("star8", "Star: 8 Points"),
+    ("star10", "Star: 10 Points"),
+    ("star12", "Star: 12 Points"),
+    ("star16", "Star: 16 Points"),
+    ("star24", "Star: 24 Points"),
+    ("star32", "Star: 32 Points"),
     ("wedgeRectCallout", "Speech Bubble: Rectangle"),
+    (
+        "wedgeRoundRectCallout",
+        "Speech Bubble: Rectangle with Corners Rounded",
+    ),
+    ("wedgeEllipseCallout", "Speech Bubble: Oval"),
 ];
 
 /// Whether `preset` is one of the lines, put in as a connector (`cxnSp`)
