@@ -10949,6 +10949,109 @@ mod tests {
     }
 
     #[test]
+    fn paragraphs_an_edit_makes_take_the_defaults_a_load_gives() {
+        // A load fills into every paragraph what its styles give it (Normal's
+        // justification, a table style's spacing, the runs' fonts); nothing
+        // filled it into the cells of a new table or row (or the cell a column
+        // deletion leaves a row), a table of contents'
+        // lines or a footnote's new text. They showed left-aligned, without
+        // the spacing and in the fallback font until the document was
+        // reopened.
+        let fixture = |name: &str| {
+            std::fs::read(
+                std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                    .join("../../public/fixtures")
+                    .join(name),
+            )
+            .expect("read fixture")
+        };
+        let shown = |word_doc: &WordDocument, index: usize| {
+            word_doc.paragraph(index).map(|paragraph| {
+                let props = paragraph.properties.clone().unwrap_or_default();
+                (
+                    props.alignment,
+                    props
+                        .spacing
+                        .map(|spacing| (spacing.before, spacing.after, spacing.line)),
+                    // The text's runs: a field's markers are runs of their
+                    // own only once read back.
+                    paragraph
+                        .runs
+                        .iter()
+                        .filter(|run| !run.text.is_empty())
+                        .map(|run| run.properties.as_ref().and_then(|props| props.font_size))
+                        .collect::<Vec<_>>(),
+                )
+            })
+        };
+        let check = |name: &str, commands: Vec<HeadlessCommand>, index: usize| {
+            let mut word_doc =
+                executor::block_on(WordDocument::load(&fixture(name), &Options::default()))
+                    .expect("load");
+            apply_headless_commands_to_document(&mut word_doc, &HeadlessEditRequest { commands })
+                .expect("applied");
+            let reloaded = executor::block_on(WordDocument::load(
+                &word_doc.export_docx().expect("export"),
+                &Options::default(),
+            ))
+            .expect("reload");
+            assert_eq!(shown(&word_doc, index), shown(&reloaded, index), "{name}");
+        };
+        // A new table's cell: Normal is justified here.
+        check(
+            "underline-kinds.docx",
+            vec![HeadlessCommand::InsertTable {
+                after_paragraph: 1,
+                rows: 1,
+                columns: 3,
+                column_widths: Vec::new(),
+                caret_offset: None,
+            }],
+            2,
+        );
+        // A row put in a table whose style spaces its cells.
+        check(
+            "word-mac-probe-floating-horizontal-15.docx",
+            vec![HeadlessCommand::InsertTableRow {
+                table_order_index: 1,
+                row_index: 1,
+                template_row: None,
+            }],
+            4,
+        );
+        // A column deleted from under a row's only cell: the row gets a new
+        // one.
+        check(
+            "table-cell-preferred-widths.docx",
+            vec![HeadlessCommand::DeleteTableColumn {
+                table_order_index: 0,
+                column_index: 1,
+            }],
+            6,
+        );
+        // A footnote whose text is set anew: footnote-long-continuation's
+        // footnote 3 is the first paragraph of the notes after the body.
+        check(
+            "footnote-long-continuation.docx",
+            vec![HeadlessCommand::UpdateFootnote {
+                footnote_id: "3".to_string(),
+                text: "あ".to_string(),
+            }],
+            80,
+        );
+        // A table of contents with no headings: its placeholder line.
+        check(
+            "note-styles-creation.docx",
+            vec![HeadlessCommand::InsertTableOfContents {
+                after_paragraph: 0,
+                outline_min: 1,
+                outline_max: 3,
+            }],
+            1,
+        );
+    }
+
+    #[test]
     fn set_table_width_and_column_widths_commands_update_table_model() {
         let mut word_doc = sample_table_document();
         let request = HeadlessEditRequest {
