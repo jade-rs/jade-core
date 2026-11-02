@@ -149,18 +149,18 @@ impl Baseline {
 /// written. `None` when this fixture has nothing for the placeholder.
 fn placeholder(
     text: &str,
-    anchor: &Anchor,
+    anchor: Option<&Anchor>,
     baseline: &Baseline,
     document: &WordDocument,
 ) -> Option<Value> {
     Some(match text {
-        "$P" => json!(anchor.paragraph),
-        "$LEN" => json!(anchor.length),
-        "$MID" => json!(anchor.middle),
-        "$HEAD" => json!(anchor.head),
-        "$PARA_ID" => json!(anchor.para_id.as_ref()?),
-        "$P1" => json!(anchor.next?.0),
-        "$LEN1" => json!(anchor.next?.1),
+        "$P" => json!(anchor?.paragraph),
+        "$LEN" => json!(anchor?.length),
+        "$MID" => json!(anchor?.middle),
+        "$HEAD" => json!(anchor?.head),
+        "$PARA_ID" => json!(anchor?.para_id.as_ref()?),
+        "$P1" => json!(anchor?.next?.0),
+        "$LEN1" => json!(anchor?.next?.1),
         "$T" => json!(baseline.first_table?),
         "$COMMENT" => json!(baseline.anchored_comment.as_ref()?),
         "$FOOTNOTE" => json!(lowest(baseline.footnotes.iter())?),
@@ -209,7 +209,7 @@ fn placeholder(
 /// `value` with its placeholders resolved; `Err` names the one that is not.
 fn resolve(
     value: &Value,
-    anchor: &Anchor,
+    anchor: Option<&Anchor>,
     baseline: &Baseline,
     document: &WordDocument,
 ) -> Result<Value, String> {
@@ -238,13 +238,11 @@ fn apply(
     document: &mut WordDocument,
     commands: &[Value],
 ) -> Result<Option<String>, Box<dyn Error>> {
-    let Some(anchor) = find_anchor(document) else {
-        return Ok(Some("no body paragraph with text".to_string()));
-    };
+    let anchor = find_anchor(document);
     let baseline = Baseline::of(document);
     let mut selection = None;
     for (index, command) in commands.iter().enumerate() {
-        let command = match resolve(command, &anchor, &baseline, document) {
+        let command = match resolve(command, anchor.as_ref(), &baseline, document) {
             Ok(command) => command,
             Err(reason) => return Ok(Some(format!("command {index}: {reason}"))),
         };
@@ -260,6 +258,46 @@ fn apply(
 
 fn load(bytes: &[u8]) -> Result<WordDocument, Box<dyn Error>> {
     futures::executor::block_on(WordDocument::load(bytes, &Default::default()))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn blank() -> WordDocument {
+        load(include_bytes!("../../../public/fixtures/blank.docx")).expect("load blank fixture")
+    }
+
+    #[test]
+    fn document_operations_do_not_require_a_text_anchor() {
+        let mut document = blank();
+        assert!(find_anchor(&document).is_none());
+        assert_eq!(apply(&mut document, &[]).expect("round trip"), None);
+        let commands = [json!({
+            "type": "add_citation_source",
+            "source": { "tag": "Blank", "type": "Book", "author": "Author",
+                        "title": "Title", "year": "2026" }
+        })];
+        assert_eq!(apply(&mut document, &commands).expect("add source"), None);
+        let exported = document.export_docx().expect("export");
+        assert_eq!(
+            load(&exported).expect("reload").citation_sources()[0].tag,
+            "Blank"
+        );
+    }
+
+    #[test]
+    fn paragraph_operations_report_missing_anchors() {
+        let mut document = blank();
+        let before = document.export_docx().expect("baseline");
+        let commands =
+            [json!({ "type": "insert_text", "paragraph": "$P", "offset": 0, "text": "x" })];
+        assert_eq!(
+            apply(&mut document, &commands).expect("skip"),
+            Some("command 0: $P does not resolve".into())
+        );
+        assert_eq!(document.export_docx().expect("export"), before);
+    }
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
