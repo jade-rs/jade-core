@@ -7,6 +7,8 @@
 //! `docs/pptx-plan.md`; this crate exists so that plan has a place to land and
 //! so the package-level facts are already tested when it does.
 
+mod blip;
+pub use blip::BlipEffect;
 pub mod chart;
 pub mod error;
 mod shape_guides;
@@ -577,6 +579,11 @@ fn resolve_image_parts(
             ShapeItem::Picture(picture) => {
                 picture.image_part = picture
                     .blip_rel_id
+                    .as_deref()
+                    .and_then(|id| relationships.target(id))
+                    .map(|target| jade_opc::resolve_target(slide_part, target));
+                picture.svg_part = picture
+                    .svg_rel_id
                     .as_deref()
                     .and_then(|id| relationships.target(id))
                     .map(|target| jade_opc::resolve_target(slide_part, target));

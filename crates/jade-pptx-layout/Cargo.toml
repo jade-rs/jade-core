@@ -7,6 +7,7 @@ license = "MIT"
 [dependencies]
 jade-pptx-reader = { path = "../jade-pptx-reader" }
 jade-text-layout = { path = "../jade-text-layout" }
+jade-picture-effects = { path = "../jade-picture-effects", default-features = false }
 serde = { version = "1.0", features = ["derive"] }
 unicode-segmentation = "1.10"
 unicode-script = "0.5"

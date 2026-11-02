@@ -361,7 +361,7 @@ impl SourceRect {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 pub struct Picture {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub id: Option<u32>,
@@ -392,6 +392,19 @@ pub struct Picture {
     /// `<a:blip><a:alphaModFix amt>`: the picture's opacity, 0..1.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub alpha: Option<f32>,
+    /// `<a:custGeom>`: the outline a picture is cropped to when it is no
+    /// preset (図形に合わせてトリミング with a freeform).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub custom_geometry: Option<CustomGeometry>,
+    /// The blip's corrections, colour and artistic effects, in order.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub blip_effects: Vec<crate::BlipEffect>,
+    /// The `r:embed` of the blip's `asvg:svgBlip`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub svg_rel_id: Option<String>,
+    /// The SVG part it resolves to, filled in by `read_deck`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub svg_part: Option<String>,
 }
 
 /// `<a:outerShdw>`: a soft copy of the shape's silhouette behind it.
@@ -1124,6 +1137,17 @@ fn parse_pic(pic: &XmlElement) -> Picture {
         shadow: pic.child("spPr").and_then(parse_shadow),
         effects: pic.child("spPr").map(parse_effects).unwrap_or_default(),
         alpha: pic.child("blipFill").and_then(blip_alpha),
+        custom_geometry: pic.child("spPr").and_then(|pr| {
+            let ext = pr.child("xfrm").map(|xfrm| extent_of(xfrm.child("ext")));
+            pr.child("custGeom")
+                .map(|geom| parse_custom_geometry(geom, ext))
+        }),
+        blip_effects: pic
+            .child("blipFill")
+            .map(crate::blip::blip_effects)
+            .unwrap_or_default(),
+        svg_rel_id: pic.child("blipFill").and_then(crate::blip::svg_rel_id),
+        svg_part: None,
     }
 }
 
