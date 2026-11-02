@@ -1,6 +1,8 @@
 use super::{Command, CommandContext, CommandError, CommandResult};
 use crate::document::{BodyElement, Paragraph, Table, TableCell, TableRow};
-use crate::docx_xml::{XmlAttribute, XmlElement, XmlNode, XmlNodeId};
+use crate::docx_xml::{
+    normalized_legacy_horizontal_merge_cell, XmlAttribute, XmlElement, XmlNode, XmlNodeId,
+};
 use crate::word_document::WordDocument;
 use jade_docx_layout::selection::{SelectionRange, TextPosition};
 use std::cmp::max;
@@ -609,38 +611,24 @@ fn remove_cell_by_id(row_element: &mut XmlElement, cell_id: XmlNodeId) {
         return;
     };
     row_element.children.remove(at);
-    remove_legacy_hmerge_continuations(row_element, at);
 }
 
-/// Whether `cell` continues a legacy horizontal merge: a `w:hMerge` that is
-/// not `restart`. The reader folds such a cell into the one it continues, so
-/// the model has no cell of its own for it.
+/// Only absent or explicit `continue` values continue a legacy merge, as in the reader.
 fn continues_legacy_hmerge(cell: &XmlElement) -> bool {
     cell.children.iter().any(|node| match node {
         XmlNode::Element(properties) if properties.name == "w:tcPr" => {
             properties.children.iter().any(|node| {
                 matches!(node, XmlNode::Element(merge) if merge.name == "w:hMerge"
-                    && !merge.attributes.iter().any(|attribute| attribute.name == "w:val" && attribute.value == "restart"))
+                    && merge.attributes.iter().find(|attribute| attribute.name == "w:val")
+                        .is_none_or(|attribute| attribute.value.eq_ignore_ascii_case("continue")))
             })
         }
         _ => false,
     })
 }
 
-/// Removes the cells from `at` on that continue a legacy horizontal merge:
-/// the cell they continued is gone or now spans them by `w:gridSpan`. Left,
-/// a merge across a legacy `w:hMerge` saved the row one cell too wide, and
-/// the continuation's paragraph came back on reload.
-fn remove_legacy_hmerge_continuations(row_element: &mut XmlElement, at: usize) {
-    while row_element.children.get(at).is_some_and(
-        |node| matches!(node, XmlNode::Element(cell) if cell.name == "w:tc" && continues_legacy_hmerge(cell)),
-    ) {
-        row_element.children.remove(at);
-    }
-}
-
 /// A merged cell's legacy horizontal merge goes over to `w:gridSpan`: its
-/// own `w:hMerge` and the cells after it that continued it go.
+/// own `w:hMerge` goes; captured continuation ids have already been removed.
 fn release_legacy_hmerge(row_element: &mut XmlElement, cell_id: XmlNodeId) {
     let Some(at) = row_element.children.iter().position(
         |node| matches!(node, XmlNode::Element(element) if element.name == "w:tc" && element.id == cell_id),
@@ -658,7 +646,6 @@ fn release_legacy_hmerge(row_element: &mut XmlElement, cell_id: XmlNodeId) {
             }
         }
     }
-    remove_legacy_hmerge_continuations(row_element, at + 1);
 }
 
 fn ensure_tc_pr<'a>(
@@ -743,6 +730,14 @@ pub(crate) fn set_vertical_merge(
     }
 }
 
+fn contains_cell(element: &XmlElement) -> bool {
+    element.name == "w:tc"
+        || element
+            .children
+            .iter()
+            .any(|node| matches!(node, XmlNode::Element(child) if contains_cell(child)))
+}
+
 fn apply_plan_to_raw(
     raw: &mut crate::docx_xml::DocxXmlDocument,
     plan: &MergePlan,
@@ -756,16 +751,59 @@ fn apply_plan_to_raw(
         .map(|_| raw.allocate_node_id())
         .collect::<Vec<_>>()
         .into_iter();
+    let root_attributes = raw.root().attributes.clone();
     let table_element = raw
         .element_mut(table_id)
         .ok_or_else(|| CommandError::Custom("テーブルのXMLを取得できませんでした".into()))?;
 
+    // The raw edit below only operates on direct rows/cells. Reject wrapped
+    // cells before taking any content rather than silently editing another cell.
+    for cell in &plan.cells {
+        let cell_id = cell
+            .cell_id
+            .ok_or_else(|| CommandError::Custom("セルのXMLを特定できませんでした".into()))?;
+        let row = find_row_element_mut(table_element, cell.row_index).ok_or_else(|| {
+            CommandError::Custom("ラップされた行の結合には対応していません".into())
+        })?;
+        if find_cell_element_mut(row, cell_id).is_none() {
+            return Err(CommandError::Custom(
+                "ラップされたセルの結合には対応していません".into(),
+            ));
+        }
+    }
+    let mut legacy_continuations = HashSet::new();
     let mut cell_children: HashMap<XmlNodeId, Vec<XmlNode>> = HashMap::new();
     for cell in plan.cells.iter().filter(|cell| cell.cell_id.is_some()) {
         let cell_id = cell.cell_id.unwrap();
         if let Some(row_element) = find_row_element_mut(table_element, cell.row_index) {
+            let normalized =
+                normalized_legacy_horizontal_merge_cell(row_element, cell_id, &root_attributes)
+                    .map_err(CommandError::Custom)?;
+            if normalized.is_some() {
+                // A transparent wrapper can hide a continuation from the direct
+                // sibling remover. Leave such groups untouched until supported.
+                if row_element.children.iter().any(|node| {
+                    matches!(node, XmlNode::Element(element) if element.name != "w:tc" && contains_cell(element))
+                }) {
+                    return Err(CommandError::Custom("ラップされた結合セルには対応していません".into()));
+                }
+                // Capture ownership before removing any selected cells. Deleting
+                // a normal cell must not attach its unrelated orphan to this group.
+                let mut cells = row_element.children.iter().filter_map(|node| match node {
+                    XmlNode::Element(element) if element.name == "w:tc" => Some(element),
+                    _ => None,
+                });
+                if cells.by_ref().any(|cell| cell.id == cell_id) {
+                    legacy_continuations.extend(
+                        cells
+                            .take_while(|cell| continues_legacy_hmerge(cell))
+                            .map(|cell| cell.id),
+                    );
+                }
+            }
             if let Some(cell_element) = find_cell_element_mut(row_element, cell_id) {
-                let children = std::mem::take(&mut cell_element.children);
+                let original = std::mem::take(&mut cell_element.children);
+                let children = normalized.map_or(original, |cell| cell.children);
                 cell_children.insert(cell_id, children);
             }
         }
@@ -773,6 +811,7 @@ fn apply_plan_to_raw(
 
     for row_index in plan.row_start..=plan.row_end {
         if let Some(row_element) = find_row_element_mut(table_element, row_index) {
+            row_element.children.retain(|node| !matches!(node, XmlNode::Element(cell) if legacy_continuations.contains(&cell.id)));
             for remove_id in plan
                 .cells
                 .iter()
