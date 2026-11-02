@@ -568,7 +568,35 @@ mod stateful {
         }
     }
 
-    const CITATION_TAGS: [&str; 8] = [
+    #[test]
+    fn literal_citation_switches_survive_formatting_and_reload() {
+        use jade_docx_editor::word::fields::{code_has_switch, toggle_switch};
+
+        for tag in ["{", "}", "a{b", "a}b", "{x}"] {
+            let mut session = Session::blank();
+            session.add_source(citation_source("One")).unwrap();
+            session.add_source(citation_source(tag)).unwrap();
+            let code = toggle_switch("CITATION One", "\\m", Some(tag));
+            let code = toggle_switch(&code, "\\*", Some("MERGEFORMAT"));
+            assert!(code_has_switch(&code, "\\m", Some(tag)), "{code}");
+            session
+                .document
+                .insert_inline_field(TextPosition::new(0, 0), &code, "Word's combined citation")
+                .unwrap();
+            assert_eq!(session.cited_tags(), ["One", tag]);
+            let bytes = session.document.export_docx().unwrap();
+            capture(&bytes, &code);
+            session.document = block_on(WordDocument::load(&bytes, &Options::default())).unwrap();
+            assert_eq!(session.cited_tags(), ["One", tag]);
+            assert!(session.delete_source(tag).is_err());
+            assert_eq!(
+                session.document.inline_fields("CITATION")[0].text,
+                "Word's combined citation"
+            );
+        }
+    }
+
+    const CITATION_TAGS: [&str; 12] = [
         "Tag",
         "two words",
         "a\"b",
@@ -577,6 +605,10 @@ mod stateful {
         "tail\\",
         "資料",
         "{x}",
+        "{",
+        "}",
+        "a{b",
+        "a}b",
     ];
 
     #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -599,12 +631,13 @@ mod stateful {
     }
 
     fn citation_operations() -> impl Strategy<Value = Vec<CitationOp>> {
+        let tags = CITATION_TAGS.len() as u8;
         prop::collection::vec(
             prop_oneof![
-                4 => (0u8..8, 0u8..5).prop_map(|(tag, year)| CitationOp::Add(tag, year)),
-                5 => (0u8..8).prop_map(CitationOp::Cite),
-                4 => (0u8..8, 0u8..8, 0u8..5).prop_map(|(old, new, year)| CitationOp::Rename(old, new, year)),
-                2 => (0u8..8).prop_map(CitationOp::Delete),
+                4 => (0u8..tags, 0u8..5).prop_map(|(tag, year)| CitationOp::Add(tag, year)),
+                5 => (0u8..tags).prop_map(CitationOp::Cite),
+                4 => (0u8..tags, 0u8..tags, 0u8..5).prop_map(|(old, new, year)| CitationOp::Rename(old, new, year)),
+                2 => (0u8..tags).prop_map(CitationOp::Delete),
                 2 => any::<bool>().prop_map(CitationOp::Style),
                 3 => Just(CitationOp::Undo),
                 2 => Just(CitationOp::Redo),
