@@ -20,6 +20,7 @@ mod charts;
 mod conditional_formats;
 mod current_region;
 mod data_tables;
+mod scenarios;
 mod data_validations;
 mod defined_names;
 mod editable_ranges;

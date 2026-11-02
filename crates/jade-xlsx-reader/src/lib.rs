@@ -48,6 +48,7 @@ pub mod pivot;
 pub mod protected_ranges;
 pub mod rich_text;
 pub mod shared_strings;
+pub mod scenarios;
 pub mod sheet;
 pub mod sheet_protection;
 pub mod sparkline;

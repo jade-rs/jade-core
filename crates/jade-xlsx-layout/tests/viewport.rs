@@ -73,6 +73,7 @@ fn tall_sheet(rows: u32) -> Sheet {
         shapes: Vec::new(),
         array_formulas: Vec::new(),
         data_tables: Vec::new(),
+        scenarios: None,
         phonetic_readings: Default::default(),
         rich_text: Default::default(),
         tab_color: None,
