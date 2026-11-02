@@ -25405,10 +25405,10 @@ impl WordDocument {
             let grid_col = raw.create_element("w:gridCol", attributes, Vec::new());
             grid_children.push(XmlNode::Element(grid_col));
         }
-        if !grid_children.is_empty() {
-            let tbl_grid = raw.create_element("w:tblGrid", Vec::new(), grid_children);
-            table_children.push(XmlNode::Element(tbl_grid));
-        }
+        // CT_Tbl requires tblGrid even when widths come only from the cells
+        // and the authored grid has no gridCol children.
+        let tbl_grid = raw.create_element("w:tblGrid", Vec::new(), grid_children);
+        table_children.push(XmlNode::Element(tbl_grid));
 
         for row in table.rows.iter_mut() {
             // Always materialise trPr, even when the model currently has no
