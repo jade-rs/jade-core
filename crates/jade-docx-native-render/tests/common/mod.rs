@@ -19,6 +19,41 @@ pub fn repo_path(relative: &str) -> PathBuf {
         .join(relative)
 }
 
+/// Accept only exact captured bytes or the explicitly pinned schema repair.
+/// Word's original capture hash is retained; coordinates still have to match.
+pub fn word_source_hash_matches(name: &str, captured: &str, current: &str) -> bool {
+    let valid_hash = |hash: &str| {
+        hash.len() == 64
+            && hash
+                .bytes()
+                .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
+    };
+    if !valid_hash(captured) || !valid_hash(current) {
+        return false;
+    }
+    if captured == current {
+        return true;
+    }
+    let manifest: serde_json::Value = serde_json::from_str(include_str!(
+        "../../../../tests/word-oracle/release-corpus.json"
+    ))
+    .unwrap();
+    manifest["fixtures"].as_array().unwrap().iter().any(|row| {
+        row["fixture"].as_str() == Some(name)
+            && row["docx_sha256"].as_str() == Some(current)
+            && row["schema_repair_source_sha256"].as_str() == Some(captured)
+    })
+}
+
+pub fn assert_word_source_hash(name: &str, captured: &serde_json::Value, current: &str) {
+    assert!(
+        captured
+            .as_str()
+            .is_some_and(|hash| word_source_hash_matches(name, hash, current)),
+        "{name}: input changed; recapture Word or review an explicit schema repair"
+    );
+}
+
 /// Alias so tests can name the type in a closure argument. Each test binary
 /// compiles this module separately, so it is dead code in the ones that do not
 /// use it.
