@@ -181,6 +181,12 @@ fn insertion_writes_display_and_style_as_one_step_but_keeps_formulas() {
     let format = book.format_at(&name, "H2").unwrap();
     assert_eq!(format.underline, Some(true));
     assert_eq!(format.font_color.as_deref(), Some("0563C1"));
+    // The theme's hyperlink colour, kept as a theme reference.
+    let styles = OpcPackage::open(book.bytes())
+        .unwrap()
+        .required_part_str("xl/styles.xml")
+        .unwrap();
+    assert!(styles.contains("<color theme=\"10\"/>"), "{styles}");
     book.undo().unwrap();
     assert_eq!(book.bytes(), before);
     book.redo().unwrap();
@@ -413,4 +419,18 @@ fn authoring_a_legacy_unbound_relationship_prefix_repairs_that_link_only() {
             .as_deref(),
         Some("https://new.example")
     );
+}
+#[test]
+fn without_a_theme_links_take_the_office_blue() {
+    let bytes = std::fs::read(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../public/fixtures/grid-operations-workbook.xlsx"
+    ))
+    .unwrap();
+    let mut book = HeadlessWorkbook::open(&bytes).unwrap();
+    let name = book.workbook().sheets[0].name.clone();
+    book.insert_hyperlink(&name, &link("H2", Some("https://example.com"), None), None)
+        .unwrap();
+    let format = book.format_at(&name, "H2").unwrap();
+    assert_eq!(format.font_color.as_deref(), Some("0563C1"));
 }
