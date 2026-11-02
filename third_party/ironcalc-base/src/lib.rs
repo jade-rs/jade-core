@@ -37,6 +37,7 @@ pub mod date_system;
 pub mod dependencies;
 pub mod expressions;
 pub mod formatter;
+pub mod host;
 pub mod language;
 pub mod locale;
 pub mod new_empty;
