@@ -802,7 +802,6 @@ mod tests {
                 "SET Counter 10",
                 "ASK Counter Prompt",
                 "PRIVATE",
-                "ADDIN",
                 "XE Index",
                 "TA Authority",
                 "TC Entry",
@@ -839,6 +838,23 @@ mod tests {
                 );
                 assert_eq!(story.tables[0].rows[0][0].text, "AB\n");
             }
+        }
+    }
+
+    #[test]
+    fn addin_results_reach_visible_projections_without_exposing_nested_storage() {
+        for locked in [false, true] {
+            let story = scan(&format!(
+                r#"<w:tbl><w:tr><w:tc><w:p><w:bookmarkStart w:id="0" w:name="Shown"/><w:fldSimple w:instr="REF Other"><w:r><w:t>A</w:t></w:r><w:fldSimple w:instr="ADDIN vendor-payload" w:fldLock="{locked}"><w:r><w:t>900</w:t></w:r><w:fldSimple w:instr="PRIVATE"><w:r><w:t>secret</w:t></w:r></w:fldSimple></w:fldSimple><w:r><w:t>B</w:t></w:r></w:fldSimple><w:bookmarkEnd w:id="0"/></w:p></w:tc></w:tr></w:tbl>"#
+            ));
+            assert_eq!(story.fields[0].result_text, "A900B");
+            assert_eq!(story.fields[1].result_text, "900");
+            assert_eq!(story.fields[1].locked, locked);
+            assert!(!story.fields[1].hidden_result);
+            assert_eq!(story.fields[2].result_text, "secret");
+            assert_eq!(story.paragraphs[0].text, "A900B");
+            assert_eq!(story.bookmarks["shown"].text, "A900B");
+            assert_eq!(story.tables[0].rows[0][0].text, "A900B\n");
         }
     }
 

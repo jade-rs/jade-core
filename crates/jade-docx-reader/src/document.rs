@@ -1838,7 +1838,7 @@ fn resolve_fields_in_paragraph(
                 }
                 Some(resolved)
             }
-            // PRIVATE/ADDIN store opaque data but do not display a field
+            // Storage and index-entry fields do not display a field
             // result. Record an explicit empty resolution so structural
             // consumers cannot fall back to stale cached text.
             RunFieldKind::NonDisplay { .. } => Some(String::new()),
@@ -2694,10 +2694,10 @@ pub enum RunFieldKind {
     Unsupported {
         instruction: String,
     },
-    /// A Word field that stores data but has no visible result. PRIVATE is a
-    /// cold field and ADDIN is hidden add-in storage; both retain their
-    /// normalized instruction and cached bytes for inspection/round-trip while
-    /// renderers deliberately suppress any stale result text.
+    /// A Word field that stores data but has no visible result, such as PRIVATE,
+    /// XE, TA, and RD. Retain its normalized instruction and cached bytes for
+    /// inspection/round-trip while renderers suppress stale result text.
+    /// ADDIN is intentionally excluded: its owner may supply visible citations.
     NonDisplay {
         instruction: String,
     },
@@ -4115,7 +4115,7 @@ mod tests {
             ("PAGEREF mark", "edited"),
             ("NOTEREF mark", "edited"),
             ("PRIVATE hidden", ""),
-            ("ADDIN hidden", ""),
+            ("ADDIN vendor-payload", "edited"),
             ("RD chapter.docx", ""),
             ("ASK mark prompt", ""),
             ("SET mark value", ""),
