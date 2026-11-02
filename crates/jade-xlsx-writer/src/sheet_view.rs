@@ -27,6 +27,12 @@ pub fn set_page_break_preview(xml: &str, on: bool) -> Result<String> {
     set_view_attribute(xml, "view", on.then(|| "pageBreakPreview".to_string()))
 }
 
+/// The sheet's tab selected or not (`tabSelected`), as a grouped sheet's
+/// is; a tab not selected loses the attribute, as Excel writes it.
+pub fn set_tab_selected(xml: &str, on: bool) -> Result<String> {
+    set_view_attribute(xml, "tabSelected", on.then(|| "1".to_string()))
+}
+
 /// `name` set to `value`, or taken away, on the first `<sheetView>`.
 fn set_view_attribute(xml: &str, name: &str, value: Option<String>) -> Result<String> {
     let mut reader = Reader::from_str(xml);

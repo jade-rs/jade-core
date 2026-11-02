@@ -253,6 +253,10 @@ pub struct Sheet {
     /// Preview.
     #[serde(default)]
     pub page_break_preview: bool,
+    /// `sheetView/@tabSelected`: the sheet's tab selected — the active
+    /// sheet's, and with it any grouped with it.
+    #[serde(default)]
+    pub tab_selected: bool,
     /// `sheetView/@showRowColHeaders`: the row numbers and column letters
     /// shown; off on dashboards and forms. Excel shows them by default.
     #[serde(default = "shows_zeros")]

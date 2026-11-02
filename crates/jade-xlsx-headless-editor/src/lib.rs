@@ -890,6 +890,36 @@ impl HeadlessWorkbook {
         self.export_bytes()
     }
 
+    /// [`Self::save_bytes`] with the tabs of `selected` (sheet indexes: the
+    /// active sheet and any grouped with it) saved as selected and every
+    /// other tab not, as Excel saves grouped sheets. Leaves the undo
+    /// history alone: a group is not an edit.
+    pub fn save_bytes_selecting(&mut self, selected: &[usize]) -> Result<Vec<u8>> {
+        let bytes = self.save_bytes()?;
+        let changes: Vec<(String, bool)> = self
+            .workbook
+            .sheets
+            .iter()
+            .enumerate()
+            .filter(|(index, sheet)| sheet.tab_selected != selected.contains(index))
+            .map(|(index, sheet)| (sheet.part_name.clone(), selected.contains(&index)))
+            .collect();
+        if changes.is_empty() {
+            return Ok(bytes);
+        }
+        let mut package = jade_opc::OpcPackage::open_preserving(&bytes)?;
+        for (part, on) in changes {
+            let Some(xml) = package.part_str(&part)? else {
+                continue;
+            };
+            let patched = jade_xlsx_writer::sheet_view::set_tab_selected(&xml, on)?;
+            if patched != xml {
+                package.replace(&part, patched.into_bytes());
+            }
+        }
+        Ok(package.write()?)
+    }
+
     pub fn prepare_for_save(&mut self) -> Result<()> {
         if self.workbook.calculate_on_save {
             self.recalculate()?;

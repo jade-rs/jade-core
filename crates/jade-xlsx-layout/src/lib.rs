@@ -1789,6 +1789,7 @@ pub fn relayout_rows(
         show_formulas: sheet.show_formulas,
         show_zeros: sheet.show_zeros,
         page_break_preview: sheet.page_break_preview,
+        tab_selected: sheet.tab_selected,
         show_headers: sheet.show_headers,
         grid_color: sheet.grid_color,
         zoom_percent: sheet.zoom_percent,
