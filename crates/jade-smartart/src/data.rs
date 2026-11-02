@@ -323,6 +323,21 @@ fn write_format(sp_pr: &mut Element, format: &ShapeFormat) {
             0,
             XmlNode::Element(Element::new("a:ln").with_child(solid_fill(line))),
         );
+    } else {
+        // No outline colour of its own: the style's shows again.
+        for node in &mut rest {
+            if let XmlNode::Element(ln) = node {
+                if ln.local() == "ln" {
+                    ln.children.retain(
+                        |child| !matches!(child, XmlNode::Element(e) if e.local() == "solidFill"),
+                    );
+                }
+            }
+        }
+        rest.retain(|node| {
+            !matches!(node, XmlNode::Element(e)
+                if e.local() == "ln" && e.children.is_empty() && e.attrs.is_empty())
+        });
     }
     ordered.extend(rest);
     sp_pr.children = ordered;

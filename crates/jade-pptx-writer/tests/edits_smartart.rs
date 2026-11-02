@@ -170,6 +170,7 @@ fn one_shape_keeps_a_format_of_its_own_until_the_graphic_is_reset() {
         .clone();
     let format = ShapeFormat {
         fill: Some("FF0000".into()),
+        line: Some("0000FF".into()),
         preset: Some("ellipse".into()),
         ..ShapeFormat::default()
     };
@@ -208,6 +209,8 @@ fn one_shape_keeps_a_format_of_its_own_until_the_graphic_is_reset() {
         .edit_smartart(0, id, &SmartArtEdit::ResetGraphic)
         .unwrap();
     assert!(!drawing(session.bytes()).contains("val=\"FF0000\""));
+    let info = smartart(session.bytes(), 0, id).unwrap().unwrap();
+    assert!(info.nodes.iter().all(|node| node.format.is_empty()));
 }
 
 #[test]
