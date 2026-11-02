@@ -191,6 +191,7 @@ fn prefix_bound_variables(node: &mut Node, bound: &mut Vec<String>) {
         | Node::RangeKind { .. }
         | Node::WrongReferenceKind { .. }
         | Node::WrongRangeKind { .. }
+        | Node::Range3DKind { .. }
         | Node::ArrayKind(_)
         | Node::DefinedNameKind(_)
         | Node::TableNameKind(_)
@@ -484,6 +485,21 @@ fn format_function(
 // * =RC+R1C1
 // * =A1+B1
 
+/// The sheets of a 3-D reference as Excel writes them before `!`:
+/// `Sheet1:Sheet3`, or `'First sheet:Last sheet'` when either name needs
+/// quoting.
+pub(crate) fn three_d_qualifier(first_name: &str, last_name: &str) -> String {
+    if quote_name(first_name) == first_name && quote_name(last_name) == last_name {
+        format!("{first_name}:{last_name}")
+    } else {
+        format!(
+            "'{}:{}'",
+            first_name.replace('\'', "''"),
+            last_name.replace('\'', "''")
+        )
+    }
+}
+
 fn stringify(
     node: &Node,
     context: Option<&CellReferenceRC>,
@@ -649,6 +665,27 @@ fn stringify(
                 full_column,
             );
             format!("{s1}:{s2}")
+        }
+        Range3DKind {
+            first_name,
+            last_name,
+            range,
+            ..
+        } => {
+            // Inserting or deleting cells on one of its sheets leaves a 3-D
+            // reference as it is, as in Excel.
+            format!(
+                "{}!{}",
+                three_d_qualifier(first_name, last_name),
+                stringify(
+                    range,
+                    context,
+                    &DisplaceData::None,
+                    export_to_excel,
+                    locale,
+                    language
+                )
+            )
         }
         OpRangeKind { left, right } => format!(
             "{}:{}",
@@ -817,7 +854,8 @@ fn stringify(
                 | DefinedNameKind(_)
                 | TableNameKind(_)
                 | NamedVariableKind { .. }
-                | WrongRangeKind { .. } => stringify(
+                | WrongRangeKind { .. }
+                | Range3DKind { .. } => stringify(
                     left,
                     context,
                     displace_data,
@@ -862,7 +900,8 @@ fn stringify(
                 | DefinedNameKind(_)
                 | TableNameKind(_)
                 | NamedVariableKind { .. }
-                | WrongRangeKind { .. } => stringify(
+                | WrongRangeKind { .. }
+                | Range3DKind { .. } => stringify(
                     right,
                     context,
                     displace_data,
@@ -968,6 +1007,7 @@ fn stringify(
                     | RangeKind { .. }
                     | WrongReferenceKind { .. }
                     | WrongRangeKind { .. }
+                    | Range3DKind { .. }
                     | OpRangeKind { .. }
                     | OpConcatenateKind { .. }
                     | OpProductKind { .. }
@@ -1188,6 +1228,20 @@ pub(crate) fn rename_sheet_in_node(node: &mut Node, sheet_index: u32, new_name: 
                 *sheet_name = Some(new_name.to_owned());
             }
         }
+        Node::Range3DKind {
+            first_name,
+            last_name,
+            first_sheet,
+            last_sheet,
+            ..
+        } => {
+            if *first_sheet == sheet_index {
+                *first_name = new_name.to_owned();
+            }
+            if *last_sheet == sheet_index {
+                *last_name = new_name.to_owned();
+            }
+        }
 
         // Go next level
         Node::OpRangeKind { left, right } => {
@@ -1367,6 +1421,7 @@ pub(crate) fn rename_defined_name_in_node(
         Node::RangeKind { .. } => {}
         Node::WrongReferenceKind { .. } => {}
         Node::WrongRangeKind { .. } => {}
+        Node::Range3DKind { .. } => {}
         Node::TableNameKind(_) => {}
         Node::NamedVariableKind { .. } => {}
         Node::LambdaDefKind {
