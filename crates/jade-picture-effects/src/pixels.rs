@@ -483,7 +483,11 @@ pub fn remove_background(pixels: &mut image::RgbaImage, marquee: [f64; 4]) -> us
                 .or_default() += 1;
         }
     }
-    let Some((&background, _)) = counts.iter().max_by_key(|(_, count)| **count) else {
+    // Break equal counts by colour, independently of HashMap's random seed.
+    let Some((&background, _)) = counts
+        .iter()
+        .max_by_key(|(colour, count)| (**count, std::cmp::Reverse(**colour)))
+    else {
         return 0;
     };
     let background = background.map(|c| f64::from(c) * 8.0 + 4.0);
@@ -666,6 +670,27 @@ mod tests {
         let drawn = image_bytes(&effect_key, |_| Some(source.as_slice()))
             .expect("a valid replacement must be decoded despite a cached failure");
         assert_eq!(decode(&drawn).unwrap().get_pixel(0, 0).0, [255; 4]);
+    }
+
+    #[test]
+    fn background_removal_is_deterministic_when_border_colours_are_tied() {
+        let source = image::RgbaImage::from_fn(4, 4, |x, _| {
+            image::Rgba(if x < 2 {
+                [0, 0, 255, 255]
+            } else {
+                [255, 0, 0, 255]
+            })
+        });
+        let mut expected = source.clone();
+        assert_eq!(remove_background(&mut expected, [0.0, 0.0, 1.0, 1.0]), 8);
+        for _ in 0..128 {
+            let mut actual = source.clone();
+            assert_eq!(remove_background(&mut actual, [0.0, 0.0, 1.0, 1.0]), 8);
+            assert_eq!(
+                actual, expected,
+                "equal border counts must choose the same colour"
+            );
+        }
     }
 
     #[test]
