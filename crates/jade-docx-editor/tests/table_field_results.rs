@@ -148,7 +148,14 @@ fn addin_citations_keep_visible_text_formatting_and_external_code_on_f9() {
                 capture(&reopened);
             }
             let xml = common::part(&before, "word/document.xml");
-            assert!(xml.contains(code));
+            let reopened = session.reopened();
+            assert!(reopened.paragraph(0).unwrap().runs.iter().any(|run| {
+                run.field.as_ref().is_some_and(|field| {
+                    matches!(field.kind.base_kind(),
+                        jade_docx_reader::document::RunFieldKind::Unsupported { instruction }
+                            if instruction == r#"ADDIN ZOTERO_ITEM CSL_CITATION {"id":"sample"}"#)
+                })
+            }));
             assert!(xml.contains("<w:i/>"));
             assert!(xml.contains("123456"));
         }
