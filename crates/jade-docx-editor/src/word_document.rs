@@ -16895,13 +16895,41 @@ impl WordDocument {
             let root_name = parsed.root().name.clone();
             let prefix = root_name.strip_suffix(":Sources").unwrap_or_default();
             let close = format!("</{root_name}>");
-            let insert_at = original
-                .rfind(&close)
-                .ok_or_else(|| "bibliography source root is not closed".to_string())?;
-            let mut updated = String::with_capacity(original.len() + 512);
-            updated.push_str(&original[..insert_at]);
-            updated.push_str(&Self::bibliography_source_entry_xml(&source, prefix));
-            updated.push_str(&original[insert_at..]);
+            let entry = Self::bibliography_source_entry_xml(&source, prefix);
+            let mut reader = quick_xml::Reader::from_str(&original);
+            let mut depth = 0;
+            let mut updated = String::with_capacity(original.len() + entry.len() + close.len());
+            loop {
+                let start = reader.buffer_position() as usize;
+                match reader.read_event().map_err(|error| error.to_string())? {
+                    quick_xml::events::Event::Start(_) => depth += 1,
+                    quick_xml::events::Event::Empty(_) if depth == 0 => {
+                        // Word commonly stores an unused catalog as <b:Sources/>.
+                        // Expand only its closing delimiter, preserving every attribute
+                        // and any declarations, comments or processing instructions.
+                        let end = reader.buffer_position() as usize;
+                        updated.push_str(&original[..end - 2]);
+                        updated.push('>');
+                        updated.push_str(&entry);
+                        updated.push_str(&close);
+                        updated.push_str(&original[end..]);
+                        break;
+                    }
+                    quick_xml::events::Event::End(_) => {
+                        depth -= 1;
+                        if depth == 0 {
+                            updated.push_str(&original[..start]);
+                            updated.push_str(&entry);
+                            updated.push_str(&original[start..]);
+                            break;
+                        }
+                    }
+                    quick_xml::events::Event::Eof => {
+                        return Err("bibliography source root is not closed".to_string());
+                    }
+                    _ => {}
+                }
+            }
             self.upsert_xml_part_content(&path, updated);
             return Ok(());
         }
@@ -25424,10 +25452,10 @@ impl WordDocument {
             let grid_col = raw.create_element("w:gridCol", attributes, Vec::new());
             grid_children.push(XmlNode::Element(grid_col));
         }
-        if !grid_children.is_empty() {
-            let tbl_grid = raw.create_element("w:tblGrid", Vec::new(), grid_children);
-            table_children.push(XmlNode::Element(tbl_grid));
-        }
+        // CT_Tbl requires tblGrid even when widths come only from the cells
+        // and the authored grid has no gridCol children.
+        let tbl_grid = raw.create_element("w:tblGrid", Vec::new(), grid_children);
+        table_children.push(XmlNode::Element(tbl_grid));
 
         for row in table.rows.iter_mut() {
             // Always materialise trPr, even when the model currently has no

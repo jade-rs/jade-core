@@ -21753,12 +21753,8 @@ mod tests {
     }
 
     fn review_duplicate_ids_document() -> WordDocument {
-        let bytes = std::fs::read(
-            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-                .join("../../public/fixtures/review-duplicate-ids.docx"),
-        )
-        .expect("read review-duplicate-ids fixture");
-        executor::block_on(WordDocument::load(&bytes, &Options::default()))
+        let bytes = include_bytes!("../tests/fixtures/review-duplicate-ids.docx");
+        executor::block_on(WordDocument::load(bytes, &Options::default()))
             .expect("load review-duplicate-ids fixture")
     }
 

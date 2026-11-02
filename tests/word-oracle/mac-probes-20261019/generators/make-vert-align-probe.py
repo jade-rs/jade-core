@@ -14,7 +14,7 @@ SIZES = [16, 18, 21, 24, 28, 32, 40]  # half-points: 8 to 20pt
 def run(text, latin, east, size, align=None):
     va = f'<w:vertAlign w:val="{align}"/>' if align else ""
     return (f'<w:r><w:rPr><w:rFonts w:ascii="{latin}" w:hAnsi="{latin}" w:eastAsia="{east}"/>'
-            f'{va}<w:sz w:val="{size}"/><w:szCs w:val="{size}"/></w:rPr>'
+            f'<w:sz w:val="{size}"/><w:szCs w:val="{size}"/>{va}</w:rPr>'
             f'<w:t xml:space="preserve">{text}</w:t></w:r>')
 def doc():
     body = ""
