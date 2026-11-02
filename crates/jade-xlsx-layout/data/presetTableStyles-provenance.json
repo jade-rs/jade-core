@@ -7,7 +7,7 @@
   "file": "presetTableStyles.xml",
   "sha256": "74c6cf73d551bb2bd33a51690d4922095260b6647b2a38fcbc0d6da6c6275d7e",
   "data_modified": false,
-  "code_source": "Independent Jade implementation; no ibis/Apache implementation code incorporated",
+  "code_source": "Independent Jade implementation; no third-party implementation code incorporated",
   "pivot_presets": 84,
   "style_references_in_normative_data": "Pivot definitions use zero-based dxf indices (0..N-1). The ordinary table definitions in the same unmodified file use one-based indices and are not loaded by this pivot renderer.",
   "normative_sample": {

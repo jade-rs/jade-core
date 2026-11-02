@@ -134,7 +134,7 @@ still uses the engine's normalized English spelling; protected/hidden formula
 handling and further Office oracle cases remain open. The upstream tests that
 expected unimplemented range behavior now assert actual top-left formulas;
 explicit @/scalar operands assert VALUE. See `docs/xlsx/compatibility-functions.md`
-in jade-office for runtime evidence and the remaining ibisOffice function gaps.
+in jade-office for runtime evidence and the remaining Excel function gaps.
 
 
 CEILING and ECMA.CEILING share numeric coercion and broadcast scalar/row/column
