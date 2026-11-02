@@ -125,6 +125,12 @@ pub struct Document {
     /// the watermark without understanding VML.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub watermark_text: Option<String>,
+    /// How the text watermark is drawn — font, size, color, transparency and
+    /// layout — read from the same VML shape (`v:shape/@style`,
+    /// `@fillcolor`, `v:fill/@opacity`, `v:textpath/@style`). `None` when
+    /// there is no watermark or its shape could not be read.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub watermark_style: Option<WatermarkStyle>,
     /// Table-of-contents fields found in the body, in document order. Each entry
     /// is the parsed switch set of one `TOC` field instruction
     /// (`{ TOC \o "1-3" \h \z \u }`; ECMA-376 Part 1 §17.16.5.68). The TOC
@@ -5987,6 +5993,48 @@ impl RunProperties {
             && self.theme_color.is_none()
             && self.east_asian_layout.is_none()
             && self.text_effects.is_none()
+    }
+}
+
+/// How Word draws a text watermark (デザイン › 透かし › ユーザー設定の透かし),
+/// as its header VML shape states it.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct WatermarkStyle {
+    /// `v:textpath` `font-family`; `None` lets the renderer pick the
+    /// document's sans-serif.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub font: Option<String>,
+    /// `v:textpath` `font-size` in points; `None` is サイズ 自動 (Word writes
+    /// `1pt` and lets `fitshape` scale the text to the shape).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub size_pt: Option<f32>,
+    /// `v:shape/@fillcolor` as `#RRGGBB`.
+    pub color: String,
+    /// 半透明にする: `v:fill/@opacity` below 1.
+    pub semitransparent: bool,
+    /// レイアウト 水平 (no `rotation`); otherwise 対角線上 (`rotation:315`).
+    pub horizontal: bool,
+    /// The shape box (`width` / `height` in the shape style), in points: the
+    /// text is stretched to fill it as `fitshape` asks.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub width_pt: Option<f32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub height_pt: Option<f32>,
+}
+
+impl Default for WatermarkStyle {
+    /// Word's defaults: silver, semitransparent, diagonal, size automatic.
+    fn default() -> Self {
+        WatermarkStyle {
+            font: None,
+            size_pt: None,
+            color: "#C0C0C0".to_string(),
+            semitransparent: true,
+            horizontal: false,
+            width_pt: None,
+            height_pt: None,
+        }
     }
 }
 

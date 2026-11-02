@@ -3917,6 +3917,27 @@ const COMMANDS: &[Variant] = &[
                 ArgType::NullableText,
                 "Watermark text; required by the command when clear is false.",
             ),
+            opt("font", ArgType::NullableText, "Font family of the text."),
+            opt(
+                "size",
+                ArgType::NullableNumber,
+                "Font size in points; omitted is automatic (fills the page).",
+            ),
+            opt(
+                "color",
+                ArgType::NullableText,
+                "Fill color as #RRGGBB; omitted is silver.",
+            ),
+            opt(
+                "semitransparent",
+                ArgType::Flag,
+                "Draw the text half transparent (default true).",
+            ),
+            opt(
+                "layout",
+                ArgType::Choice(&["diagonal", "horizontal"]),
+                "Diagonal (default) or horizontal.",
+            ),
         ],
     ),
     variant(

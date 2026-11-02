@@ -2824,8 +2824,9 @@ impl WordDocument {
             parsed_doc.hyphenation = doc_settings.hyphenation;
             parsed_doc.book_fold_printing = doc_settings.book_fold_printing;
             parsed_doc.print_two_on_one = doc_settings.print_two_on_one;
-            parsed_doc.watermark_text =
-                Self::watermark_text_from_loaded_headers(&document, &parsed_doc, &doc_part);
+            let watermark = Self::watermark_from_loaded_headers(&document, &parsed_doc, &doc_part);
+            parsed_doc.watermark_style = watermark.as_ref().map(|(_, style)| style.clone());
+            parsed_doc.watermark_text = watermark.map(|(text, _)| text);
             document.even_and_odd_headers = doc_settings.even_and_odd_headers;
 
             // Before the styles fill paragraphs in: the paragraph a textless
@@ -9470,16 +9471,43 @@ impl WordDocument {
     /// Existing header text, tables, fields, drawings, and extension nodes are
     /// preserved. Returns `false` for an exact normalized no-op.
     pub fn set_watermark_text(&mut self, text: Option<&str>) -> Result<bool, String> {
+        self.set_watermark(text.map(|text| WatermarkSpec {
+            text: text.to_string(),
+            style: jade_docx_reader::document::WatermarkStyle::default(),
+        }))
+    }
+
+    /// [`Self::set_watermark_text`] with the look ユーザー設定の透かし sets:
+    /// font, size (`None` = 自動), color, 半透明にする and 対角線上 / 水平.
+    /// The shape box is worked out here, as Word does, so the text fills the
+    /// page body at 自動 and has its size's extent otherwise.
+    pub fn set_watermark(&mut self, spec: Option<WatermarkSpec>) -> Result<bool, String> {
         if self.document.is_none() || self.raw_document.is_none() {
             return Err("document is unavailable".to_string());
         }
-        let normalized = Self::normalize_watermark_text(text)?;
-        let previous = self
-            .document
-            .as_deref()
-            .and_then(|document| document.watermark_text.clone());
-        if previous == normalized && self.referenced_header_watermarks_match(normalized.as_deref())
-        {
+        let normalized = match spec {
+            Some(spec) => {
+                let text = Self::normalize_watermark_text(Some(&spec.text))?
+                    .ok_or_else(|| "watermark text must not be empty".to_string())?;
+                let style = self.resolve_watermark_style(&text, spec.style)?;
+                Some((text, style))
+            }
+            None => None,
+        };
+        let previous = self.document.as_deref().and_then(|document| {
+            document
+                .watermark_text
+                .clone()
+                .map(|text| (text, document.watermark_style.clone().unwrap_or_default()))
+        });
+        let same = match (&previous, &normalized) {
+            (None, None) => true,
+            (Some((a, a_style)), Some((b, b_style))) => {
+                a == b && watermark_looks_alike(a_style, b_style)
+            }
+            _ => false,
+        };
+        if same && self.referenced_header_watermarks_match(normalized.as_ref()) {
             return Ok(false);
         }
 
@@ -9498,14 +9526,73 @@ impl WordDocument {
                 .and_then(|document| pick_hf_reference(document, HeaderFooterRole::Header, variant))
                 .is_some();
             if present {
-                self.sync_watermark_to_header_variant(variant, normalized.as_deref())?;
+                self.sync_watermark_to_header_variant(variant, normalized.as_ref())?;
             }
         }
 
         if let Some(document) = self.document_mut() {
-            document.watermark_text = normalized;
+            match normalized {
+                Some((text, style)) => {
+                    document.watermark_text = Some(text);
+                    document.watermark_style = Some(style);
+                }
+                None => {
+                    document.watermark_text = None;
+                    document.watermark_style = None;
+                }
+            }
         }
         Ok(true)
+    }
+
+    /// Checks the look and gives it the shape box Word would: at 自動 the
+    /// text fills the body (diagonally, its rotated box inside it), at a
+    /// size its own extent.
+    fn resolve_watermark_style(
+        &self,
+        text: &str,
+        mut style: jade_docx_reader::document::WatermarkStyle,
+    ) -> Result<jade_docx_reader::document::WatermarkStyle, String> {
+        if let Some(size) = style.size_pt {
+            if !size.is_finite() || !(1.0..=1638.0).contains(&size) {
+                return Err("watermark size must be between 1 and 1638 points".to_string());
+            }
+        }
+        style.color = normalize_watermark_color(&style.color)
+            .ok_or_else(|| format!("watermark color must be #RRGGBB, not {}", style.color))?;
+        if let Some(font) = style.font.as_deref() {
+            let font = font.trim();
+            if font.is_empty() || font.contains(['"', ';']) {
+                return Err("watermark font must be a font name".to_string());
+            }
+            style.font = Some(font.to_string());
+        }
+        let em_width = watermark_text_em_width(text).max(0.5);
+        let (width, height) = match style.size_pt {
+            Some(size) => (em_width * size, size),
+            None => {
+                let page = self.section_page_settings(None).unwrap_or_default();
+                let body_width = page.width.unwrap_or(595.3)
+                    - page.margin_left.unwrap_or(85.05)
+                    - page.margin_right.unwrap_or(85.05);
+                let body_height = page.height.unwrap_or(841.9)
+                    - page.margin_top.unwrap_or(99.25)
+                    - page.margin_bottom.unwrap_or(85.05);
+                let (body_width, body_height) = (body_width.max(72.0), body_height.max(72.0));
+                if style.horizontal {
+                    let width = body_width.min(body_height * em_width);
+                    (width, width / em_width)
+                } else {
+                    // The 45° box (w + h)/√2 square fits the body's shorter side.
+                    let side = body_width.min(body_height);
+                    let width = side * std::f32::consts::SQRT_2 / (1.0 + 1.0 / em_width);
+                    (width, width / em_width)
+                }
+            }
+        };
+        style.width_pt = Some((width * 100.0).round() / 100.0);
+        style.height_pt = Some((height * 100.0).round() / 100.0);
+        Ok(style)
     }
 
     fn normalize_watermark_text(text: Option<&str>) -> Result<Option<String>, String> {
@@ -9532,7 +9619,10 @@ impl WordDocument {
         Ok(Some(text.to_string()))
     }
 
-    fn referenced_header_watermarks_match(&mut self, expected: Option<&str>) -> bool {
+    fn referenced_header_watermarks_match(
+        &mut self,
+        expected: Option<&(String, jade_docx_reader::document::WatermarkStyle)>,
+    ) -> bool {
         for variant in [
             HeaderFooterVariant::Default,
             HeaderFooterVariant::First,
@@ -9554,18 +9644,26 @@ impl WordDocument {
             let Some(content) = self.read_xml_part_content(&path) else {
                 return false;
             };
-            if Self::watermark_text_from_xml(&content).as_deref() != expected {
+            let found = Self::watermark_from_xml(&content);
+            let alike = match (found.as_ref(), expected) {
+                (None, None) => true,
+                (Some((a, a_style)), Some((b, b_style))) => {
+                    a == b && watermark_looks_alike(a_style, b_style)
+                }
+                _ => false,
+            };
+            if !alike {
                 return false;
             }
         }
         true
     }
 
-    fn watermark_text_from_loaded_headers(
+    fn watermark_from_loaded_headers(
         document: &WordDocument,
         parsed_document: &Document,
         document_part: &DocumentPart,
-    ) -> Option<String> {
+    ) -> Option<(String, jade_docx_reader::document::WatermarkStyle)> {
         for variant in [
             HeaderFooterVariant::Default,
             HeaderFooterVariant::First,
@@ -9598,16 +9696,42 @@ impl WordDocument {
             else {
                 continue;
             };
-            if let Some(text) = Self::watermark_text_from_xml(content) {
-                return Some(text);
+            if let Some(watermark) = Self::watermark_from_xml(content) {
+                return Some(watermark);
             }
         }
         None
     }
 
-    fn watermark_text_from_xml(xml: &str) -> Option<String> {
+    /// The watermark text and the look of the shape that carries it.
+    fn watermark_from_xml(
+        xml: &str,
+    ) -> Option<(String, jade_docx_reader::document::WatermarkStyle)> {
         let document = DocxXmlDocument::parse(xml).ok()?;
-        Self::watermark_text_from_element(document.root())
+        let text = Self::watermark_text_from_element(document.root())?;
+        let style = Self::watermark_shape(document.root())
+            .map(watermark_style_from_shape)
+            .unwrap_or_default();
+        Some((text, style))
+    }
+
+    /// The `v:shape` whose text path is the watermark.
+    fn watermark_shape(element: &XmlElement) -> Option<&XmlElement> {
+        if element.name.rsplit(':').next() == Some("shape")
+            && element.children.iter().any(|child| {
+                matches!(child, XmlNode::Element(child)
+                if child.name.rsplit(':').next() == Some("textpath")
+                    && child.attributes.iter().any(|attribute| {
+                        attribute.name.rsplit(':').next() == Some("string")
+                    }))
+            })
+        {
+            return Some(element);
+        }
+        element.children.iter().find_map(|child| match child {
+            XmlNode::Element(child) => Self::watermark_shape(child),
+            _ => None,
+        })
     }
 
     fn watermark_text_from_element(element: &XmlElement) -> Option<String> {
@@ -9672,8 +9796,9 @@ impl WordDocument {
     fn sync_watermark_to_header_variant(
         &mut self,
         variant: HeaderFooterVariant,
-        text: Option<&str>,
+        watermark: Option<&(String, jade_docx_reader::document::WatermarkStyle)>,
     ) -> Result<(), String> {
+        let text = watermark.map(|(text, _)| text.as_str());
         let part_path =
             self.resolve_header_footer_part_path_for(HeaderFooterRole::Header, variant)?;
         let existing = self
@@ -9731,7 +9856,10 @@ impl WordDocument {
                     .map_err(|error| error.to_string())?;
                 id
             };
-            let watermark_run = Self::build_watermark_run(&mut xml, text);
+            let style = watermark
+                .map(|(_, style)| style.clone())
+                .unwrap_or_default();
+            let watermark_run = Self::build_watermark_run(&mut xml, text, &style);
             let insert_at = xml
                 .element(paragraph_id)
                 .map(|paragraph| {
@@ -9753,7 +9881,11 @@ impl WordDocument {
         self.refresh_header_footer_lines_for(HeaderFooterRole::Header, variant, &part_path)
     }
 
-    fn build_watermark_run(xml: &mut DocxXmlDocument, text: &str) -> XmlElement {
+    fn build_watermark_run(
+        xml: &mut DocxXmlDocument,
+        text: &str,
+        style: &jade_docx_reader::document::WatermarkStyle,
+    ) -> XmlElement {
         fn attr(name: &str, value: &str) -> XmlAttribute {
             XmlAttribute {
                 name: name.to_string(),
@@ -9833,15 +9965,40 @@ impl WordDocument {
                 XmlNode::Element(lock),
             ],
         );
-        let fill = xml.create_element("v:fill", vec![attr("opacity", ".5")], Vec::new());
+        let font = style.font.as_deref().unwrap_or("DengXian");
+        let size = style
+            .size_pt
+            .map(|size| format!("{}pt", trim_watermark_number(size)))
+            .unwrap_or_else(|| "1pt".to_string());
         let text_path = xml.create_element(
             "v:textpath",
             vec![
-                attr("style", "font-family:\"DengXian\";font-size:1pt"),
+                attr("style", &format!("font-family:\"{font}\";font-size:{size}")),
                 attr("string", text),
             ],
             Vec::new(),
         );
+        let mut shape_children = Vec::new();
+        if style.semitransparent {
+            shape_children.push(XmlNode::Element(xml.create_element(
+                "v:fill",
+                vec![attr("opacity", ".5")],
+                Vec::new(),
+            )));
+        }
+        shape_children.push(XmlNode::Element(text_path));
+        let width = trim_watermark_number(style.width_pt.unwrap_or(412.4));
+        let height = trim_watermark_number(style.height_pt.unwrap_or(247.45));
+        let rotation = if style.horizontal {
+            ""
+        } else {
+            "rotation:315;"
+        };
+        let fill_color = if style.color.eq_ignore_ascii_case("#C0C0C0") {
+            "silver".to_string()
+        } else {
+            style.color.clone()
+        };
         let shape = xml.create_element(
             "v:shape",
             vec![
@@ -9850,13 +10007,13 @@ impl WordDocument {
                 attr("type", "#_x0000_t136"),
                 attr(
                     "style",
-                    "position:absolute;left:0;text-align:left;margin-left:0;margin-top:0;width:412.4pt;height:247.45pt;rotation:315;z-index:-251656192;mso-position-horizontal:center;mso-position-horizontal-relative:margin;mso-position-vertical:center;mso-position-vertical-relative:margin",
+                    &format!("position:absolute;left:0;text-align:left;margin-left:0;margin-top:0;width:{width}pt;height:{height}pt;{rotation}z-index:-251656192;mso-position-horizontal:center;mso-position-horizontal-relative:margin;mso-position-vertical:center;mso-position-vertical-relative:margin"),
                 ),
                 attr("o:allowincell", "f"),
-                attr("fillcolor", "silver"),
+                attr("fillcolor", &fill_color),
                 attr("stroked", "f"),
             ],
-            vec![XmlNode::Element(fill), XmlNode::Element(text_path)],
+            shape_children,
         );
         let pict = xml.create_element(
             "w:pict",
@@ -26437,16 +26594,18 @@ impl WordDocument {
         // first/even variant is materialized after the watermark was authored,
         // seed that header immediately so enabling the variant cannot make the
         // watermark disappear on those pages.
-        let watermark_text = self
-            .document
-            .as_deref()
-            .and_then(|document| document.watermark_text.clone());
-        if let Some(text) = watermark_text.as_deref() {
+        let watermark = self.document.as_deref().and_then(|document| {
+            document
+                .watermark_text
+                .clone()
+                .map(|text| (text, document.watermark_style.clone().unwrap_or_default()))
+        });
+        if let Some(watermark) = watermark.as_ref() {
             if different_first_page {
-                self.sync_watermark_to_header_variant(HeaderFooterVariant::First, Some(text))?;
+                self.sync_watermark_to_header_variant(HeaderFooterVariant::First, Some(watermark))?;
             }
             if different_odd_even_pages {
-                self.sync_watermark_to_header_variant(HeaderFooterVariant::Even, Some(text))?;
+                self.sync_watermark_to_header_variant(HeaderFooterVariant::Even, Some(watermark))?;
             }
         }
 
@@ -40113,6 +40272,195 @@ impl HtmlBlock {
         }
     }
 }
+/// A text watermark to author: its text and look (デザイン › 透かし).
+#[derive(Debug, Clone, PartialEq)]
+pub struct WatermarkSpec {
+    pub text: String,
+    pub style: jade_docx_reader::document::WatermarkStyle,
+}
+
+/// Whether two watermark looks are the same choice in Word's dialog — the
+/// shape box, which follows from them, aside.
+fn watermark_looks_alike(
+    a: &jade_docx_reader::document::WatermarkStyle,
+    b: &jade_docx_reader::document::WatermarkStyle,
+) -> bool {
+    let font = |style: &jade_docx_reader::document::WatermarkStyle| {
+        style.font.clone().unwrap_or_else(|| "DengXian".to_string())
+    };
+    font(a) == font(b)
+        && match (a.size_pt, b.size_pt) {
+            (Some(a), Some(b)) => (a - b).abs() < 0.01,
+            (None, None) => true,
+            _ => false,
+        }
+        && a.color.eq_ignore_ascii_case(&b.color)
+        && a.semitransparent == b.semitransparent
+        && a.horizontal == b.horizontal
+}
+
+/// A number as the VML style writes it: up to two decimals, no trailing zeros.
+fn trim_watermark_number(value: f32) -> String {
+    let text = format!("{value:.2}");
+    text.trim_end_matches('0').trim_end_matches('.').to_string()
+}
+
+/// `#RRGGBB` (upper case) from `#rrggbb`, `rrggbb`, `#rgb` or a VML color name.
+fn normalize_watermark_color(value: &str) -> Option<String> {
+    let value = value.trim();
+    let named = match value.to_ascii_lowercase().as_str() {
+        "silver" => Some("C0C0C0"),
+        "gray" | "grey" => Some("808080"),
+        "black" => Some("000000"),
+        "white" => Some("FFFFFF"),
+        "red" => Some("FF0000"),
+        "maroon" => Some("800000"),
+        "yellow" => Some("FFFF00"),
+        "olive" => Some("808000"),
+        "lime" => Some("00FF00"),
+        "green" => Some("008000"),
+        "aqua" => Some("00FFFF"),
+        "teal" => Some("008080"),
+        "blue" => Some("0000FF"),
+        "navy" => Some("000080"),
+        "fuchsia" => Some("FF00FF"),
+        "purple" => Some("800080"),
+        _ => None,
+    };
+    if let Some(hex) = named {
+        return Some(format!("#{hex}"));
+    }
+    // VML may follow the color with ` [index]`.
+    let hex = value
+        .split_whitespace()
+        .next()
+        .unwrap_or("")
+        .trim_start_matches('#');
+    let hex = match hex.len() {
+        3 => hex.chars().flat_map(|c| [c, c]).collect::<String>(),
+        6 => hex.to_string(),
+        _ => return None,
+    };
+    hex.chars()
+        .all(|c| c.is_ascii_hexdigit())
+        .then(|| format!("#{}", hex.to_ascii_uppercase()))
+}
+
+/// How wide `text` is in ems, as a sans-serif sets it: full-width (CJK)
+/// characters one em, capitals and figures about two thirds, the rest less.
+fn watermark_text_em_width(text: &str) -> f32 {
+    text.chars()
+        .map(|c| match c {
+            ' ' => 0.3,
+            'A'..='Z' | '0'..='9' => 0.68,
+            c if c.is_ascii() => 0.52,
+            c if (c as u32) >= 0x2E80 => 1.0,
+            _ => 0.6,
+        })
+        .sum()
+}
+
+/// The look of a watermark's `v:shape`.
+fn watermark_style_from_shape(shape: &XmlElement) -> jade_docx_reader::document::WatermarkStyle {
+    let attribute = |element: &XmlElement, name: &str| {
+        element
+            .attributes
+            .iter()
+            .find(|attribute| attribute.name.rsplit(':').next() == Some(name))
+            .map(|attribute| attribute.value.clone())
+    };
+    let declarations = |style: &str| -> Vec<(String, String)> {
+        style
+            .split(';')
+            .filter_map(|declaration| declaration.split_once(':'))
+            .map(|(key, value)| (key.trim().to_ascii_lowercase(), value.trim().to_string()))
+            .collect()
+    };
+    let points = |value: &str| -> Option<f32> {
+        let value = value.trim();
+        let (number, factor) = if let Some(number) = value.strip_suffix("pt") {
+            (number, 1.0)
+        } else if let Some(number) = value.strip_suffix("in") {
+            (number, 72.0)
+        } else if let Some(number) = value.strip_suffix("cm") {
+            (number, 72.0 / 2.54)
+        } else if let Some(number) = value.strip_suffix("mm") {
+            (number, 72.0 / 25.4)
+        } else if let Some(number) = value.strip_suffix("px") {
+            (number, 0.75)
+        } else {
+            (value, 0.75)
+        };
+        number
+            .trim()
+            .parse::<f32>()
+            .ok()
+            .map(|number| number * factor)
+    };
+    let mut style = jade_docx_reader::document::WatermarkStyle {
+        semitransparent: false,
+        ..Default::default()
+    };
+    let shape_style = declarations(&attribute(shape, "style").unwrap_or_default());
+    let rotation = shape_style
+        .iter()
+        .find(|(key, _)| key == "rotation")
+        .and_then(|(_, value)| value.trim_end_matches("fd").parse::<f32>().ok())
+        .unwrap_or(0.0);
+    style.horizontal = (rotation.rem_euclid(360.0)).abs() < 1.0;
+    style.width_pt = shape_style
+        .iter()
+        .find(|(key, _)| key == "width")
+        .and_then(|(_, value)| points(value));
+    style.height_pt = shape_style
+        .iter()
+        .find(|(key, _)| key == "height")
+        .and_then(|(_, value)| points(value));
+    if let Some(color) =
+        attribute(shape, "fillcolor").and_then(|color| normalize_watermark_color(&color))
+    {
+        style.color = color;
+    }
+    for child in &shape.children {
+        let XmlNode::Element(child) = child else {
+            continue;
+        };
+        match child.name.rsplit(':').next() {
+            Some("fill") => {
+                let opacity = attribute(child, "opacity")
+                    .and_then(|value| {
+                        let value = value.trim();
+                        match value.strip_suffix('f') {
+                            Some(fixed) => fixed.parse::<f32>().ok().map(|v| v / 65536.0),
+                            None => value.parse::<f32>().ok(),
+                        }
+                    })
+                    .unwrap_or(1.0);
+                style.semitransparent = opacity < 0.99;
+            }
+            Some("textpath") => {
+                for (key, value) in declarations(&attribute(child, "style").unwrap_or_default()) {
+                    match key.as_str() {
+                        "font-family" => {
+                            let family = value.trim_matches(['"', '\'', ' ']).to_string();
+                            if !family.is_empty() {
+                                style.font = Some(family);
+                            }
+                        }
+                        "font-size" => {
+                            // Word's 自動 is 1pt, scaled by `fitshape`.
+                            style.size_pt = points(&value).filter(|size| *size > 1.01);
+                        }
+                        _ => {}
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+    style
+}
+
 #[cfg(test)]
 mod tests {
     mod body_index {

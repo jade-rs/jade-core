@@ -3621,6 +3621,9 @@ where
     /// body content on every page. The raw VML remains in the header part for
     /// DOCX round-tripping; this is the canvas projection of that state.
     watermark_text: Option<String>,
+    /// The watermark's look: font, size, color, transparency, layout and the
+    /// shape box its text is stretched to fill.
+    watermark_style: Option<jade_docx_reader::document::WatermarkStyle>,
     /// Numeral format (`w:pgNumType/@w:fmt`, lowercased) applied to `PAGE`
     /// fields. `None` = decimal. ECMA-376 Part 1 §17.6.12. MVP: the default
     /// section's value is applied document-wide.
@@ -8477,6 +8480,7 @@ where
             section_page_borders: Vec::new(),
             page_background_color: None,
             watermark_text: None,
+            watermark_style: None,
             page_number_format: None,
             page_number_start: None,
             section_page_numbering: Vec::new(),
@@ -10550,27 +10554,78 @@ where
             return Ok(());
         }
 
+        let style = self.watermark_style.clone().unwrap_or_default();
         let context = self.host.painter();
         let painter = self.host.painter();
-        let target_width = self.page_width * 0.76;
-        let mut font_size = (self.page_width * 0.12).clamp(48.0, 116.0);
+        // Word centres the shape on the margin box
+        // (`mso-position-*-relative:margin`).
+        let body_right = self.page_width - self.margin_right;
+        let body_bottom = self.page_height - self.margin_bottom;
+        let (center_x, center_y) = if body_right > self.margin_left && body_bottom > self.margin_top
+        {
+            (
+                (self.margin_left + body_right) / 2.0,
+                (self.margin_top + body_bottom) / 2.0,
+            )
+        } else {
+            (self.page_width / 2.0, self.page_height / 2.0)
+        };
+        let family = match style.font.as_deref() {
+            Some(font) => format!("\"{}\", sans-serif", font.replace('"', "")),
+            None => "sans-serif".to_string(),
+        };
         context.save();
         let draw_result = (|| {
-            context.set_font(&format!("700 {font_size:.2}px sans-serif"));
-            let mut measured_width = painter.measure_text_width(text)?;
-            if measured_width > target_width && measured_width > 0.0 {
-                font_size *= target_width / measured_width;
-                context.set_font(&format!("700 {font_size:.2}px sans-serif"));
-                measured_width = painter.measure_text_width(text)?;
-            }
-            context.set_global_alpha(if self.dark_mode_text { 0.23 } else { 0.18 });
-            context.set_fill_style_str(if self.dark_mode_text {
-                "#B8BEC9"
+            let shape_box = style
+                .width_pt
+                .zip(style.height_pt)
+                .filter(|(width, height)| *width > 0.0 && *height > 0.0);
+            let (font_size, measured_width, stretch) = match shape_box {
+                // `fitshape`: the text path is scaled to fill the shape box.
+                Some((width, height)) => {
+                    let font_size = points_to_px(height);
+                    context.set_font(&format!("{font_size:.2}px {family}"));
+                    let measured_width = painter.measure_text_width(text)?;
+                    let stretch = if measured_width > 0.0 {
+                        points_to_px(width) / measured_width
+                    } else {
+                        1.0
+                    };
+                    (font_size, measured_width, stretch)
+                }
+                None => {
+                    let target_width = self.page_width * 0.76;
+                    let mut font_size = match style.size_pt {
+                        Some(size) => points_to_px(size),
+                        None => (self.page_width * 0.12).clamp(48.0, 116.0),
+                    };
+                    context.set_font(&format!("{font_size:.2}px {family}"));
+                    let mut measured_width = painter.measure_text_width(text)?;
+                    if style.size_pt.is_none()
+                        && measured_width > target_width
+                        && measured_width > 0.0
+                    {
+                        font_size *= target_width / measured_width;
+                        context.set_font(&format!("{font_size:.2}px {family}"));
+                        measured_width = painter.measure_text_width(text)?;
+                    }
+                    (font_size, measured_width, 1.0)
+                }
+            };
+            if self.dark_mode_text {
+                context.set_global_alpha(0.23);
+                context.set_fill_style_str("#B8BEC9");
             } else {
-                "#808080"
-            });
-            context.translate(self.page_width / 2.0, self.page_height / 2.0)?;
-            context.rotate(-std::f64::consts::FRAC_PI_4)?;
+                context.set_global_alpha(if style.semitransparent { 0.5 } else { 1.0 });
+                context.set_fill_style_str(&style.color);
+            }
+            context.translate(center_x, center_y)?;
+            if !style.horizontal {
+                context.rotate(-std::f64::consts::FRAC_PI_4)?;
+            }
+            if (stretch - 1.0).abs() > 1e-3 {
+                context.scale(stretch, 1.0)?;
+            }
             context.fill_text(text, -measured_width / 2.0, font_size * 0.34)
         })();
         context.restore();
@@ -15765,6 +15820,7 @@ where
 
         // Word stores text watermarks as a VML text path in the page header.
         self.watermark_text = document.watermark_text.clone();
+        self.watermark_style = document.watermark_style.clone();
 
         // Resolve `w:pgNumType` (numeral format + start offset) for PAGE fields
         // from the default section. MVP: a single document-wide value.
