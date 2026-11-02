@@ -15482,18 +15482,12 @@ where
             Some(((self.page_height - self.margin_top - self.margin_bottom) * 72.0 / 96.0) as f32),
         );
         let spacing = math.properties.as_ref().and_then(|p| p.spacing.as_ref());
-        let before = spacing.map_or(0.0, |s| {
-            s.before.map(points_to_px).unwrap_or_else(|| {
-                s.before_lines
-                    .map_or(0.0, |n| line_box.height * f64::from(n))
-            })
-        });
-        let after = spacing.map_or(0.0, |s| {
-            s.after.map(points_to_px).unwrap_or_else(|| {
-                s.after_lines
-                    .map_or(0.0, |n| line_box.height * f64::from(n))
-            })
-        });
+        let before = spacing
+            .and_then(jade_docx_layout::text_extract::paragraph_spacing_before)
+            .map_or(0.0, |amount| amount.px_with_line_unit(line_box.height));
+        let after = spacing
+            .and_then(jade_docx_layout::text_extract::paragraph_spacing_after)
+            .map_or(0.0, |amount| amount.px_with_line_unit(line_box.height));
         let preceding_after = self
             .trailing_spacing_after
             .take()
@@ -27369,16 +27363,14 @@ where
         if format.style.word_platform != jade_docx_layout::line_metrics::WordLayoutPlatform::Mac {
             return 0.0;
         }
-        format.spacing.map_or(0.0, |spacing| {
-            let (points, lines) = if before {
-                (spacing.before, spacing.before_lines)
+        format
+            .spacing
+            .and_then(if before {
+                jade_docx_layout::text_extract::paragraph_spacing_before
             } else {
-                (spacing.after, spacing.after_lines)
-            };
-            points
-                .map(points_to_px)
-                .unwrap_or_else(|| lines.map_or(0.0, |n| line_pitch * f64::from(n)))
-        })
+                jade_docx_layout::text_extract::paragraph_spacing_after
+            })
+            .map_or(0.0, |amount| amount.px_with_line_unit(line_pitch))
     }
 
     /// Measures the text body before applying center/bottom anchoring. This is
@@ -42867,6 +42859,86 @@ mod tests {
             assert!((lines[0].start_x - drawn_x).abs() < 1e-9);
             assert!((lines[0].fragments[0].x - drawn_x).abs() < 1e-9);
         }
+    }
+
+    #[test]
+    fn math_block_spacing_follows_word_line_unit_precedence() {
+        // Word: nonzero line units override points; zero line units leave
+        // the points in force.
+        for (spacing, before_lines, after_lines, before_pt, after_pt) in [
+            (
+                r#"w:before="40" w:beforeLines="100" w:after="40" w:afterLines="100""#,
+                1.0,
+                1.0,
+                0.0,
+                0.0,
+            ),
+            (
+                r#"w:before="240" w:beforeLines="0" w:after="240" w:afterLines="0""#,
+                0.0,
+                0.0,
+                12.0,
+                12.0,
+            ),
+        ] {
+            let xml = format!(
+                r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><w:body><w:p><w:pPr><w:spacing {spacing}/></w:pPr><m:oMathPara><m:oMath><m:r><m:t>x</m:t></m:r></m:oMath></m:oMathPara></w:p></w:body></w:document>"#
+            );
+            let document = jade_docx_reader::DocumentParser::new()
+                .parse_document_xml(&xml)
+                .unwrap();
+            let BodyElement::Math(math) = &document.body.unwrap().elements[0] else {
+                panic!("math block missing");
+            };
+            let (mut renderer, _) = recording_renderer();
+            let top = renderer.current_y;
+            renderer.render_math_block(math).unwrap();
+            let line = &renderer.layout_debug_lines()[0];
+            let before = line.height * before_lines + points_to_px(before_pt);
+            let after = line.height * after_lines + points_to_px(after_pt);
+            assert!((line.top - top - before).abs() < 1e-9, "{spacing}");
+            assert!(
+                (renderer.current_y - top - before - line.height - after).abs() < 1e-9,
+                "{spacing}"
+            );
+        }
+    }
+
+    #[test]
+    fn mac_text_box_spacing_follows_word_line_unit_precedence() {
+        fn spacing_px(spacing: &Spacing, before: bool) -> f64 {
+            let format = TextBoxParagraphFormat {
+                style: ParagraphStyle {
+                    word_platform: jade_docx_layout::line_metrics::WordLayoutPlatform::Mac,
+                    ..ParagraphStyle::default()
+                },
+                indent_left_px: 0.0,
+                marker: None,
+                spacing: Some(spacing),
+                preceding_spacing_after_px: 0.0,
+            };
+            CanvasRenderer::<jade_painter::recording::RecordingPainter>::text_box_paragraph_spacing_px(
+                &format, 20.0, before,
+            )
+        }
+        let lines_win = Spacing {
+            before: Some(2.0),
+            after: Some(2.0),
+            before_lines: Some(1.0),
+            after_lines: Some(1.0),
+            ..Spacing::default()
+        };
+        assert_eq!(spacing_px(&lines_win, true), 20.0);
+        assert_eq!(spacing_px(&lines_win, false), 20.0);
+        let zero_lines = Spacing {
+            before: Some(12.0),
+            after: Some(12.0),
+            before_lines: Some(0.0),
+            after_lines: Some(0.0),
+            ..Spacing::default()
+        };
+        assert_eq!(spacing_px(&zero_lines, true), 16.0);
+        assert_eq!(spacing_px(&zero_lines, false), 16.0);
     }
 
     /// A pageless renderer painting into a shared [`RecordingPainter`], for

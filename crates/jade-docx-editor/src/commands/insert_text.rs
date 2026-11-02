@@ -963,6 +963,24 @@ impl InsertTextCommand {
         // freshly inserted table cell wrapping at the wrong width.
         ctx.document
             .apply_run_font_defaults_at(self.paragraph_index);
+        // Formatting handed in states a theme font by its key alone (a
+        // replaced placeholder's, cut to what its run said itself); a load
+        // resolves the key into the face it names. Left unresolved, the new
+        // text had no font until the document was reopened.
+        let names_theme_font_only = self
+            .inline_properties
+            .as_ref()
+            .and_then(|properties| properties.fonts.as_ref())
+            .is_some_and(|fonts| {
+                (fonts.ascii_theme.is_some() && fonts.ascii.is_none())
+                    || (fonts.east_asia_theme.is_some() && fonts.east_asia.is_none())
+            });
+        if names_theme_font_only {
+            if let Some(theme) = ctx.document.loaded_theme_part() {
+                ctx.document
+                    .apply_theme_fonts_at(self.paragraph_index, &theme);
+            }
+        }
 
         let caret_offset = insert_offset + self.text.len() + self.retained_suffix_len;
         let new_focus = ctx

@@ -14394,6 +14394,89 @@ mod tests {
     }
 
     #[test]
+    fn captions_split_tables_and_replaced_text_show_as_reopened() {
+        // What a load fills into paragraphs and runs (a style's line spacing
+        // and justification, the fonts, theme fonts resolved to their faces)
+        // was missing from a new caption, from the paragraph a table split
+        // puts between its halves, and from text replacing a placeholder
+        // whose run names its fonts by theme key: each showed differently
+        // until the document was reopened.
+        let fixture = |name: &str| {
+            std::fs::read(
+                std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                    .join("../../public/fixtures")
+                    .join(name),
+            )
+            .expect("read fixture")
+        };
+        let shown = |word_doc: &WordDocument, index: usize| {
+            word_doc.paragraph(index).map(|paragraph| {
+                let props = paragraph.properties.clone().unwrap_or_default();
+                (
+                    props.alignment,
+                    props
+                        .spacing
+                        .map(|spacing| (spacing.before, spacing.after, spacing.line)),
+                    paragraph
+                        .runs
+                        .iter()
+                        .filter(|run| !run.text.is_empty())
+                        .map(|run| {
+                            let props = run.properties.clone().unwrap_or_default();
+                            let fonts = props.fonts.unwrap_or_default();
+                            (props.font_size, fonts.ascii, fonts.east_asia)
+                        })
+                        .collect::<Vec<_>>(),
+                )
+            })
+        };
+        let check = |name: &str, command: HeadlessCommand, index: usize| {
+            let mut word_doc =
+                executor::block_on(WordDocument::load(&fixture(name), &Options::default()))
+                    .expect("load");
+            apply_headless_commands_to_document(
+                &mut word_doc,
+                &HeadlessEditRequest {
+                    commands: vec![command],
+                },
+            )
+            .expect("applied");
+            let reloaded = executor::block_on(WordDocument::load(
+                &word_doc.export_docx().expect("export"),
+                &Options::default(),
+            ))
+            .expect("reload");
+            assert_eq!(shown(&word_doc, index), shown(&reloaded, index), "{name}");
+        };
+        check(
+            "underline-kinds.docx",
+            HeadlessCommand::InsertCaption {
+                after_paragraph: 11,
+                label: "Figure".to_string(),
+                description: "d".to_string(),
+            },
+            12,
+        );
+        check(
+            "word-mac-probe-merged-rows.docx",
+            HeadlessCommand::SplitTable {
+                table_order_index: 0,
+                row_index: 1,
+            },
+            4,
+        );
+        check(
+            "yokohama_table_row_heights.docx",
+            HeadlessCommand::ReplacePlaceholder {
+                placeholder: "第".to_string(),
+                text: "x".to_string(),
+                max_replacements: Some(2),
+            },
+            1,
+        );
+    }
+
+    #[test]
     fn rejecting_body_formatting_leaves_a_text_box_paragraphs_spacing() {
         // shape-preset-geometries.docx has shapes with no paragraph in their
         // XML; a load gives each one. A rejected formatting change reparses
