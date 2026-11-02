@@ -29,9 +29,9 @@ use crate::document::{
     TocEntry, TocOptions, WrapMode, WrapPolygon, WrapPolygonPoint, PAGE_BREAK_CHAR,
 };
 use crate::docx_xml::{
-    attach_block_xml_ids, attach_document_xml_ids, attach_text_box_xml_ids, clear_block_xml_ids,
-    is_ruby_run, is_transparent_run_container, DocxXmlDocument, DocxXmlError, XmlAttribute,
-    XmlElement, XmlNode, XmlNodeId,
+    attach_block_xml_ids, attach_document_xml_ids, attach_paragraph_xml_ids,
+    attach_text_box_xml_ids, clear_block_xml_ids, is_ruby_run, is_transparent_run_container,
+    DocxXmlDocument, DocxXmlError, XmlAttribute, XmlElement, XmlNode, XmlNodeId,
 };
 use crate::field_datetime::{format_word_date, parse_core_property_datetime};
 use crate::number_format::format_note_marker;
@@ -277,6 +277,7 @@ pub(crate) fn rebase_paragraph_style_properties(
     old: &ParagraphProperties,
     new: &ParagraphProperties,
     declared: impl Fn(&str) -> bool,
+    declared_attribute: impl Fn(&str, &str) -> bool,
 ) {
     macro_rules! rebase {
         ($($field:ident => $tag:literal),* $(,)?) => {
@@ -290,8 +291,6 @@ pub(crate) fn rebase_paragraph_style_properties(
     rebase!(
         alignment => "w:jc",
         bidi => "w:bidi",
-        spacing => "w:spacing",
-        indent => "w:ind",
         tabs => "w:tabs",
         adjust_right_indent => "w:adjustRightInd",
         snap_to_grid => "w:snapToGrid",
@@ -307,6 +306,36 @@ pub(crate) fn rebase_paragraph_style_properties(
         shading => "w:shd",
         borders => "w:pBdr",
         contextual_spacing => "w:contextualSpacing",
+    );
+
+    // A direct compound element overrides only the attributes it declares.
+    // Rebase inherited groups together so point/character and point/line
+    // alternatives cannot leave stale twins behind.
+    macro_rules! rebase_groups {
+        ($field:ident, $tag:literal, $($($member:ident),+ => [$($attribute:literal),+]);+ $(;)?) => {{
+            let mut value = props.$field.clone().unwrap_or_default();
+            let prior = old.$field.clone().unwrap_or_default();
+            let next = new.$field.clone().unwrap_or_default();
+            $(
+                if !($(declared_attribute($tag, $attribute))||+)
+                    && $(value.$member == prior.$member)&&+
+                {
+                    $(value.$member = next.$member.clone();)+
+                }
+            )+
+            props.$field = (value != Default::default()).then_some(value);
+        }};
+    }
+    rebase_groups!(spacing, "w:spacing",
+        before, before_lines, before_auto => ["w:before", "w:beforeLines", "w:beforeAutospacing"];
+        after, after_lines, after_auto => ["w:after", "w:afterLines", "w:afterAutospacing"];
+        line => ["w:line"];
+        line_rule => ["w:line", "w:lineRule"];
+    );
+    rebase_groups!(indent, "w:ind",
+        left, start, left_chars, start_chars => ["w:left", "w:start", "w:leftChars", "w:startChars"];
+        right, end, right_chars, end_chars => ["w:right", "w:end", "w:rightChars", "w:endChars"];
+        first_line, hanging, first_line_chars, hanging_chars => ["w:firstLine", "w:hanging", "w:firstLineChars", "w:hangingChars"];
     );
 }
 
@@ -16603,23 +16632,58 @@ impl WordDocument {
         text
     }
 
-    fn xml_descendant<'a>(element: &'a XmlElement, local_name: &str) -> Option<&'a XmlElement> {
+    fn is_bibliography_element(
+        element: &XmlElement,
+        local_name: &str,
+        ancestors: &[&XmlElement],
+    ) -> bool {
+        if Self::xml_local_name(&element.name) != local_name {
+            return false;
+        }
+        let declaration = element.name.split_once(':').map_or_else(
+            || "xmlns".to_string(),
+            |(prefix, _)| format!("xmlns:{prefix}"),
+        );
+        std::iter::once(element)
+            .chain(ancestors.iter().rev().copied())
+            .find_map(|scope| {
+                scope
+                    .attributes
+                    .iter()
+                    .find(|attribute| attribute.name == declaration)
+            })
+            .is_some_and(|attribute| attribute.value == BIBLIOGRAPHY_NAMESPACE)
+    }
+
+    fn xml_descendant<'a>(
+        element: &'a XmlElement,
+        local_name: &str,
+        ancestors: &mut Vec<&'a XmlElement>,
+    ) -> Option<&'a XmlElement> {
+        ancestors.push(element);
         for child in &element.children {
             let XmlNode::Element(child) = child else {
                 continue;
             };
-            if Self::xml_local_name(&child.name) == local_name {
+            if Self::is_bibliography_element(child, local_name, ancestors) {
+                ancestors.pop();
                 return Some(child);
             }
-            if let Some(found) = Self::xml_descendant(child, local_name) {
+            if let Some(found) = Self::xml_descendant(child, local_name, ancestors) {
+                ancestors.pop();
                 return Some(found);
             }
         }
+        ancestors.pop();
         None
     }
 
-    fn xml_descendant_text(element: &XmlElement, local_name: &str) -> Option<String> {
-        Self::xml_descendant(element, local_name)
+    fn xml_descendant_text<'a>(
+        element: &'a XmlElement,
+        local_name: &str,
+        ancestors: &[&'a XmlElement],
+    ) -> Option<String> {
+        Self::xml_descendant(element, local_name, &mut ancestors.to_vec())
             .map(Self::xml_element_text)
             .map(|value| value.trim().to_string())
             .filter(|value| !value.is_empty())
@@ -16672,10 +16736,7 @@ impl WordDocument {
             let Ok(parsed) = DocxXmlDocument::parse(&xml) else {
                 return false;
             };
-            Self::xml_local_name(&parsed.root().name) == "Sources"
-                && parsed.root().attributes.iter().any(|attribute| {
-                    attribute.name == "xmlns" || attribute.name.starts_with("xmlns:")
-                } && attribute.value == BIBLIOGRAPHY_NAMESPACE)
+            Self::is_bibliography_element(parsed.root(), "Sources", &[])
         })
     }
 
@@ -16696,34 +16757,45 @@ impl WordDocument {
             .children
             .iter()
             .filter_map(|child| match child {
-                XmlNode::Element(source) if Self::xml_local_name(&source.name) == "Source" => {
+                XmlNode::Element(source)
+                    if Self::is_bibliography_element(source, "Source", &[parsed.root()]) =>
+                {
                     Some(source)
                 }
                 _ => None,
             })
             .filter_map(|source| {
-                let tag = Self::xml_descendant_text(source, "Tag")?;
-                let source_type = Self::xml_descendant_text(source, "SourceType")
+                let tag = Self::xml_descendant_text(source, "Tag", &[parsed.root()])?;
+                let source_type = Self::xml_descendant_text(source, "SourceType", &[parsed.root()])
                     .unwrap_or_else(|| "Misc".to_string());
-                let author = Self::xml_descendant_text(source, "Corporate").unwrap_or_else(|| {
-                    let last = Self::xml_descendant_text(source, "Last").unwrap_or_default();
-                    let first = Self::xml_descendant_text(source, "First").unwrap_or_default();
-                    [last, first]
-                        .into_iter()
-                        .filter(|part| !part.is_empty())
-                        .collect::<Vec<_>>()
-                        .join(", ")
-                });
+                let author = Self::xml_descendant_text(source, "Corporate", &[parsed.root()])
+                    .unwrap_or_else(|| {
+                        let last = Self::xml_descendant_text(source, "Last", &[parsed.root()])
+                            .unwrap_or_default();
+                        let first = Self::xml_descendant_text(source, "First", &[parsed.root()])
+                            .unwrap_or_default();
+                        [last, first]
+                            .into_iter()
+                            .filter(|part| !part.is_empty())
+                            .collect::<Vec<_>>()
+                            .join(", ")
+                    });
                 Some(CitationSourceInfo {
                     tag,
                     source_type,
                     author,
-                    title: Self::xml_descendant_text(source, "Title").unwrap_or_default(),
-                    year: Self::xml_descendant_text(source, "Year").unwrap_or_default(),
-                    publisher: Self::xml_descendant_text(source, "Publisher")
-                        .or_else(|| Self::xml_descendant_text(source, "JournalName"))
-                        .or_else(|| Self::xml_descendant_text(source, "InternetSiteTitle")),
-                    url: Self::xml_descendant_text(source, "URL"),
+                    title: Self::xml_descendant_text(source, "Title", &[parsed.root()])
+                        .unwrap_or_default(),
+                    year: Self::xml_descendant_text(source, "Year", &[parsed.root()])
+                        .unwrap_or_default(),
+                    publisher: Self::xml_descendant_text(source, "Publisher", &[parsed.root()])
+                        .or_else(|| {
+                            Self::xml_descendant_text(source, "JournalName", &[parsed.root()])
+                        })
+                        .or_else(|| {
+                            Self::xml_descendant_text(source, "InternetSiteTitle", &[parsed.root()])
+                        }),
+                    url: Self::xml_descendant_text(source, "URL", &[parsed.root()]),
                 })
             })
             .collect()
@@ -16784,9 +16856,9 @@ impl WordDocument {
                     "citation source {name} must be at most {maximum} characters"
                 ));
             }
-            if value.chars().any(char::is_control) {
+            if !value.chars().all(Self::is_printable_xml_character) {
                 return Err(format!(
-                    "citation source {name} must not contain control characters"
+                    "citation source {name} must contain only printable XML characters"
                 ));
             }
         }
@@ -17003,7 +17075,7 @@ impl WordDocument {
         let heading = heading.trim();
         if heading.is_empty()
             || heading.chars().count() > 256
-            || heading.chars().any(char::is_control)
+            || !heading.chars().all(Self::is_printable_xml_character)
         {
             return Err(
                 "bibliography heading must contain 1 to 256 printable characters".to_string(),
@@ -21250,6 +21322,7 @@ impl WordDocument {
         }
         let options = crate::document::parse_toc_switches(&block.instruction);
         let leader = self.toc_leader(&block);
+        Self::validate_toc_input(&options, &leader)?;
         self.replace_field_block_content(&block, |document, start, location, tab_twips| {
             document.generate_and_insert_toc_at(
                 start,
@@ -21275,6 +21348,7 @@ impl WordDocument {
             .into_iter()
             .nth(index)
             .ok_or_else(|| "no table of contents found to replace".to_string())?;
+        Self::validate_toc_input(options, leader)?;
         self.replace_field_block_content(&block, |document, start, location, tab_twips| {
             document.generate_and_insert_toc_at(
                 start,
@@ -21374,6 +21448,7 @@ impl WordDocument {
         original_instruction: Option<&str>,
         tab_twips: Option<i64>,
     ) -> Result<usize, String> {
+        Self::validate_toc_input(options, leader)?;
         let mut entries = self
             .document
             .as_ref()
@@ -21599,15 +21674,7 @@ impl WordDocument {
         // Insert into the raw XML body and copy the assigned <w:p> ids back onto
         // the model paragraphs so later edits map correctly.
         let inserted_ids = self.insert_toc_xml_at(body_insert_index, raw_paragraphs, location)?;
-        if let Some(body) = self.document_mut().and_then(|doc| doc.body.as_mut()) {
-            for (offset, node_id) in inserted_ids.into_iter().enumerate() {
-                if let Some(BodyElement::Paragraph(paragraph)) =
-                    body.elements.get_mut(body_insert_index + offset)
-                {
-                    paragraph.node_id = node_id;
-                }
-            }
-        }
+        self.bind_inserted_toc_paragraphs(body_insert_index, inserted_ids);
 
         if let Some(document) = self.document_mut() {
             Self::rebuild_section_ranges(document);
@@ -21676,21 +21743,39 @@ impl WordDocument {
 
         // Insert into the raw XML body and copy the assigned <w:p> id back.
         let inserted_ids = self.insert_toc_xml_at(body_insert_index, raw_paragraphs, location)?;
-        if let Some(node_id) = inserted_ids.into_iter().next() {
-            if let Some(body) = self.document_mut().and_then(|doc| doc.body.as_mut()) {
-                if let Some(BodyElement::Paragraph(paragraph)) =
-                    body.elements.get_mut(body_insert_index)
-                {
-                    paragraph.node_id = node_id;
-                }
-            }
-        }
+        self.bind_inserted_toc_paragraphs(body_insert_index, inserted_ids);
 
         if let Some(document) = self.document_mut() {
             Self::rebuild_section_ranges(document);
         }
         self.rebuild_paragraph_surfaces();
         Ok(0)
+    }
+
+    /// Bind only the inserted subtrees. A paragraph ID alone leaves its
+    /// field marker/result runs unbound; the next edit then rebuilds those
+    /// runs and can drop the enclosing TOC's markers.
+    fn bind_inserted_toc_paragraphs(
+        &mut self,
+        body_insert_index: usize,
+        inserted_ids: Vec<Option<XmlNodeId>>,
+    ) {
+        let (Some(raw), Some(body)) = (
+            self.raw_document.as_ref(),
+            self.document
+                .as_mut()
+                .and_then(|document| Rc::make_mut(document).body.as_mut()),
+        ) else {
+            return;
+        };
+        for (offset, id) in inserted_ids.into_iter().enumerate() {
+            if let (Some(BodyElement::Paragraph(paragraph)), Some(xml)) = (
+                body.elements.get_mut(body_insert_index + offset),
+                id.and_then(|id| raw.element(id)),
+            ) {
+                attach_paragraph_xml_ids(paragraph, xml, raw);
+            }
+        }
     }
 
     /// Visits the `fldChar`/`instrText` markers within a paragraph element in
