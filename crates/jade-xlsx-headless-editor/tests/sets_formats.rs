@@ -174,3 +174,55 @@ fn a_change_that_names_nothing_and_a_bad_colour_are_the_callers_mistake() {
     assert!(error.is_invalid_input(), "{error}");
     assert!(!workbook.can_undo());
 }
+
+/// A theme colour stays a theme reference (with its tint), so it follows
+/// the workbook's theme as Excel's does.
+#[test]
+fn theme_colours_are_kept_as_theme_references() {
+    let mut workbook = open();
+    let change = FormatChange {
+        font_color: Some("theme:4:0.39997558519241921".to_string()),
+        fill_color: Some("theme:5".to_string()),
+        ..FormatChange::default()
+    };
+    workbook
+        .set_format(SHEET, "B4:B4", &change)
+        .expect("format");
+    let reopened = HeadlessWorkbook::open(workbook.bytes()).expect("reopen");
+    let font = font_of(&reopened, "B4");
+    assert!(
+        matches!(
+            font.color,
+            Some(jade_xlsx_reader::Color::Theme { index: 4, tint, .. }) if (tint - 0.4).abs() < 0.001
+        ),
+        "{:?}",
+        font.color
+    );
+    let sheet = &reopened.workbook().sheets[0];
+    let styles = &reopened.workbook().styles;
+    let format = styles
+        .cell_format(Some(effective_style(
+            sheet,
+            CellRef::parse("B4").expect("B4"),
+        )))
+        .expect("format");
+    let fill = styles.fill(format).expect("fill");
+    assert!(
+        matches!(
+            fill.foreground,
+            Some(jade_xlsx_reader::Color::Theme { index: 5, .. })
+        ),
+        "{:?}",
+        fill.foreground
+    );
+    for bad in ["theme:12", "theme:x", "theme:4:2"] {
+        let change = FormatChange {
+            font_color: Some(bad.to_string()),
+            ..FormatChange::default()
+        };
+        assert!(
+            workbook.set_format(SHEET, "B5:B5", &change).is_err(),
+            "{bad}"
+        );
+    }
+}
