@@ -67,7 +67,11 @@ type RunChanges = HashMap<XmlNodeId, (Box<crate::document::RunPropertiesChange>,
 
 /// Note XML is reparsed on each edit. Bind only a temporary paragraph clone:
 /// storing these part-local IDs on the live model would alias body IDs.
-fn bind_note_paragraph(paragraph: &Paragraph, raw: &DocxXmlDocument, id: XmlNodeId) -> Paragraph {
+pub(super) fn bind_note_paragraph(
+    paragraph: &Paragraph,
+    raw: &DocxXmlDocument,
+    id: XmlNodeId,
+) -> Paragraph {
     let mut parent = raw.element(id).expect("note paragraph XML").clone();
     parent.children = vec![XmlNode::Element(parent.clone())];
     let mut blocks = vec![BodyElement::Paragraph(Box::new(paragraph.clone()))];
