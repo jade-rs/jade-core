@@ -19,6 +19,13 @@ pub mod table_style;
 pub mod theme;
 pub use slide_theme::{SlideTheme, ThemeRef};
 mod xml_tree;
+// Slide show, notes pages and views (スライド ショー / ノート / 表示).
+pub mod notes_pages;
+pub mod show;
+pub mod view_props;
+pub use notes_pages::{read_notes_pages, HeaderFooterFlags, NotesPages, NotesSlide, PageMaster};
+pub use show::{read_show, CustomShow, ShowInfo, ShowRange, ShowSettings, ShowType, SlideAdvance};
+pub use view_props::{read_view_props, Guide, LastView, ViewProps};
 
 use jade_opc::{local_name, OpcPackage};
 use quick_xml::events::Event;
