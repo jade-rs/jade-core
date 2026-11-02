@@ -97,20 +97,12 @@ fn paragraph_plain_text(paragraph: &Paragraph) -> String {
     paragraph.runs.iter().map(|run| run.text.as_str()).collect()
 }
 
-/// What a paragraph shows: a field read from a file keeps its result beside
-/// the run rather than in it.
+/// Saved display results, excluding non-displaying fields such as SET and ASK.
 fn paragraph_display_text(paragraph: &Paragraph) -> String {
     paragraph
         .runs
         .iter()
-        .map(|run| match run.field.as_ref() {
-            Some(field) if run.text.is_empty() => field
-                .resolved_value
-                .clone()
-                .or_else(|| field.cached_text.clone())
-                .unwrap_or_default(),
-            _ => run.text.clone(),
-        })
+        .map(Run::cached_display_text)
         .collect()
 }
 
