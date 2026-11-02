@@ -802,6 +802,28 @@ mod tests {
     }
 
     #[test]
+    fn computed_field_control_results_survive_package_round_trip() {
+        let result = r#"<w:r><w:t>entry</w:t><w:br/><w:cr/><w:br w:type="page"/><w:br w:type="column"/><w:noBreakHyphen/><w:softHyphen/><w:sym w:font="Wingdings" w:char="F0FC"/></w:r>"#;
+        for (index, field) in [
+            format!(r#"<w:fldSimple w:instr="INDEX">{result}</w:fldSimple>"#),
+            format!(r#"<w:r><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:instrText>INDEX</w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r>{result}<w:r><w:fldChar w:fldCharType="end"/></w:r>"#),
+        ].into_iter().enumerate() {
+            let xml = format!(r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p>{field}</w:p></w:body></w:document>"#);
+            let document = executor::block_on(WordDocument::load(&build_docx_xml(&xml, &[]), &Options::default())).unwrap();
+            let cached = |document: &WordDocument| document.paragraph(0).unwrap().runs.iter().filter_map(|run| run.field.as_ref()?.cached_text.as_deref()).collect::<String>();
+            assert_eq!(cached(&document), "entry\n\n\u{c}\u{e}\u{2011}\u{ad}\u{f0fc}");
+            let bytes = document.export_docx().unwrap();
+            let reloaded = executor::block_on(WordDocument::load(&bytes, &Options::default())).unwrap();
+            assert_eq!(cached(&reloaded), cached(&document));
+            if let Some(directory) = std::env::var_os("JADE_FIELD_PBT_EXPORT_DIR") {
+                let path = std::path::PathBuf::from(directory);
+                std::fs::create_dir_all(&path).unwrap();
+                std::fs::write(path.join(format!("field-control-results-{index}.docx")), bytes).unwrap();
+            }
+        }
+    }
+
+    #[test]
     fn toc_inputs_reject_invalid_xml_and_leaders_without_mutating_the_document() {
         use crate::document::{TocOptions, TocSequencePageNumber};
         use crate::word_document::FieldBlockLine;
