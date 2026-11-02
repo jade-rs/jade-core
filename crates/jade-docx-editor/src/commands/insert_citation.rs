@@ -284,6 +284,7 @@ mod tests {
             source_type in prop::sample::select(vec!["Book", "JournalArticle", "InternetSite", "Report", "Misc"]),
             offset_pick in any::<usize>(),
             tag_number in any::<u32>(),
+            imported_empty_catalog in any::<bool>(),
         ) {
             let text = text_chars.into_iter().collect::<String>();
             let author = author_chars.into_iter().collect::<String>().trim().to_string();
@@ -307,7 +308,11 @@ mod tests {
             }
             let expected_citation = expected_source.citation_text();
             let expected_line = expected_source.bibliography_line();
-            let bytes = build_docx(&text, &[]);
+            let bytes = if imported_empty_catalog {
+                build_docx(&text, &[("customXml/item1.xml", "<b:Sources xmlns:b=\"http://schemas.openxmlformats.org/officeDocument/2006/bibliography\"/>")])
+            } else {
+                build_docx(&text, &[])
+            };
             let mut document = executor::block_on(WordDocument::load(&bytes, &Options::default()))
                 .expect("load document");
             let baseline = document.export_docx().expect("baseline");
@@ -426,6 +431,71 @@ mod tests {
                 actual,
                 format!("前{}{}{}後", &text[..offset], citation, &text[offset..])
             );
+        }
+    }
+
+    #[test]
+    fn appending_to_empty_catalog_preserves_attributes_trailing_xml_and_undo() {
+        let namespace = "http://schemas.openxmlformats.org/officeDocument/2006/bibliography";
+        for (root, declaration) in [
+            ("b:Sources", format!("xmlns:b=\"{namespace}\"")),
+            ("Sources", format!("xmlns=\"{namespace}\"")),
+        ] {
+            for ending in ["/>", " />", "></PLACEHOLDER>"] {
+                let ending = ending.replace("PLACEHOLDER", root);
+                let opening = format!(
+                    "<?xml version=\"1.0\"?>\n<{root} {declaration} StyleName='Custom > style' "
+                );
+                // A close-tag-like string after the root must not become the insertion point.
+                let trailing = format!("\n<!-- </{root}> -->\n<?keep value?>\n");
+                let original = format!("{opening}{ending}{trailing}");
+                let bytes = build_docx("body", &[("customXml/item1.xml", &original)]);
+                let mut document =
+                    executor::block_on(WordDocument::load(&bytes, &Options::default()))
+                        .expect("load empty catalog");
+                let expected = source(
+                    "First".into(),
+                    "Book".into(),
+                    "Author".into(),
+                    "Title".into(),
+                    "2026".into(),
+                );
+                let mut selection = None;
+                let mut commands = CommandExecutor::new();
+                let mut context = CommandContext::new(&mut document, &mut selection);
+                commands
+                    .execute(
+                        Box::new(AddCitationSourceCommand::new(expected.clone())),
+                        &mut context,
+                    )
+                    .expect("append to empty catalog");
+                assert_eq!(context.document.citation_sources(), vec![expected.clone()]);
+                let exported = context.document.export_docx().expect("export catalog");
+                let xml = zip_part(&exported, "customXml/item1.xml");
+                assert!(xml.starts_with(&opening), "{xml}");
+                assert!(xml.ends_with(&trailing), "{xml}");
+                let reloaded =
+                    executor::block_on(WordDocument::load(&exported, &Options::default()))
+                        .expect("reload exported catalog");
+                assert_eq!(reloaded.citation_sources(), vec![expected.clone()]);
+                assert!(commands.undo(&mut context).expect("undo first source"));
+                assert_eq!(
+                    zip_part(
+                        &context.document.export_docx().expect("undo export"),
+                        "customXml/item1.xml"
+                    ),
+                    original
+                );
+                assert!(commands.redo(&mut context).expect("redo first source"));
+                assert_eq!(context.document.citation_sources(), vec![expected]);
+                assert_eq!(
+                    zip_part(
+                        &context.document.export_docx().expect("redo export"),
+                        "customXml/item1.xml"
+                    ),
+                    xml
+                );
+            }
         }
     }
 
