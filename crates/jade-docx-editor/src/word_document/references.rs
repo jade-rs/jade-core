@@ -126,6 +126,46 @@ impl WordDocument {
         Ok(())
     }
 
+    fn validate_tab_leader(leader: &str) -> Result<(), String> {
+        // ST_TabTlc, shared by generated/manual TOCs and authored field blocks.
+        if !matches!(
+            leader,
+            "none" | "dot" | "hyphen" | "underscore" | "heavy" | "middleDot"
+        ) {
+            return Err("invalid tab leader".to_string());
+        }
+        Ok(())
+    }
+
+    pub(super) fn validate_toc_input(options: &TocOptions, leader: &str) -> Result<(), String> {
+        Self::validate_tab_leader(leader)?;
+        for text in [
+            options.page_number_separator.as_deref(),
+            options.bookmark_name.as_deref(),
+            options.caption_label.as_deref(),
+            options.toc_entry_identifier.as_deref(),
+            options
+                .sequence_page_number
+                .as_ref()
+                .map(|sequence| sequence.identifier.as_str()),
+            options
+                .sequence_page_number
+                .as_ref()
+                .and_then(|sequence| sequence.separator.as_deref()),
+        ]
+        .into_iter()
+        .flatten()
+        .chain(
+            options
+                .custom_style_levels
+                .iter()
+                .map(|(style, _)| style.as_str()),
+        ) {
+            Self::validate_field_text(text)?;
+        }
+        Ok(())
+    }
+
     /// Whether a section's footnotes sit right under its text rather than
     /// at the bottom of the page (`w:footnotePr/w:pos`).
     pub fn footnote_beneath_text(&self, section: Option<usize>) -> bool {
@@ -1357,6 +1397,9 @@ impl WordDocument {
 
     fn validate_field_block_lines(lines: &[FieldBlockLine]) -> Result<(), String> {
         for line in lines {
+            if let Some(leader) = line.leader.as_deref() {
+                Self::validate_tab_leader(leader)?;
+            }
             for text in [
                 Some(line.text.as_str()),
                 line.page.as_deref(),
@@ -1646,6 +1689,10 @@ impl WordDocument {
             .into_iter()
             .nth(index)
             .ok_or_else(|| "no table of contents found to update".to_string())?;
+        // Validate the whole update before changing any cached result or XML.
+        for page in pages.values() {
+            Self::validate_field_text(page)?;
+        }
         let mut changed = 0;
         for paragraph in block.start..=block.end {
             let mut names = Vec::new();
@@ -1692,6 +1739,12 @@ impl WordDocument {
         lines: &[(u8, String, String)],
         leader: &str,
     ) -> Result<SelectionRange, String> {
+        Self::validate_tab_leader(leader)?;
+        Self::validate_field_text(heading)?;
+        for (_, text, page) in lines {
+            Self::validate_field_text(text)?;
+            Self::validate_field_text(page)?;
+        }
         let body_index = match self.paragraph_surfaces.get(after_paragraph) {
             Some(ParagraphSurface::Body { path }) => match path.as_slice() {
                 [PathEntry::Element(index)] => index + 1,
