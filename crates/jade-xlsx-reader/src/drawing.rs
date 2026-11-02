@@ -557,6 +557,89 @@ fn paint(node: &Node) -> ShapePaint {
     ShapePaint::Unset
 }
 
+/// The paths of custom geometry. A point may name a guide (`gdLst` or
+/// `avLst`, given as `val N`) or one of the shape's own (`w`, `h`, `r`,
+/// `b`, `hc`, `vc`, `wd2`, `hd2`, `l`, `t`) as well as give a number.
+fn custom_paths(geometry: &Node) -> Vec<crate::model::CustomPath> {
+    use crate::model::{CustomPath, PathCommand};
+    let mut guides = std::collections::HashMap::new();
+    for list in ["avLst", "gdLst"] {
+        for guide in geometry.child(list).map_or(&[][..], |list| &list.children) {
+            if let (Some(name), Some(value)) = (
+                guide.attr("name"),
+                guide
+                    .attr("fmla")
+                    .and_then(|formula| formula.strip_prefix("val "))
+                    .and_then(|value| value.trim().parse::<i64>().ok()),
+            ) {
+                guides.insert(name.to_string(), value);
+            }
+        }
+    }
+    let Some(list) = geometry.child("pathLst") else {
+        return Vec::new();
+    };
+    list.children
+        .iter()
+        .filter(|path| path.name == "path")
+        .filter_map(|path| {
+            let size = |name: &str| path.attr(name).and_then(|v| v.parse().ok()).unwrap_or(0);
+            let (width, height) = (size("w"), size("h"));
+            let value = |text: &str| -> Option<i64> {
+                text.parse()
+                    .ok()
+                    .or_else(|| guides.get(text).copied())
+                    .or(match text {
+                        "l" | "t" => Some(0),
+                        "w" | "r" => Some(width),
+                        "h" | "b" => Some(height),
+                        "hc" | "wd2" => Some(width / 2),
+                        "vc" | "hd2" => Some(height / 2),
+                        _ => None,
+                    })
+            };
+            let point = |node: &Node| Some((value(node.attr("x")?)?, value(node.attr("y")?)?));
+            let points = |node: &Node| -> Vec<(i64, i64)> {
+                node.children
+                    .iter()
+                    .filter(|child| child.name == "pt")
+                    .filter_map(point)
+                    .collect()
+            };
+            let commands = path
+                .children
+                .iter()
+                .filter_map(|step| match step.name.as_str() {
+                    "moveTo" => points(step).first().map(|&(x, y)| PathCommand::Move(x, y)),
+                    "lnTo" => points(step).first().map(|&(x, y)| PathCommand::Line(x, y)),
+                    "cubicBezTo" => match points(step)[..] {
+                        [a, b, c] => Some(PathCommand::Cubic([a, b, c])),
+                        _ => None,
+                    },
+                    "quadBezTo" => match points(step)[..] {
+                        [a, b] => Some(PathCommand::Quad([a, b])),
+                        _ => None,
+                    },
+                    "arcTo" => Some(PathCommand::Arc {
+                        width_radius: value(step.attr("wR")?)?,
+                        height_radius: value(step.attr("hR")?)?,
+                        start: value(step.attr("stAng")?)?,
+                        swing: value(step.attr("swAng")?)?,
+                    }),
+                    "close" => Some(PathCommand::Close),
+                    _ => None,
+                })
+                .collect::<Vec<_>>();
+            (!commands.is_empty()).then(|| CustomPath {
+                width,
+                height,
+                filled: path.attr("fill") != Some("none"),
+                commands,
+            })
+        })
+        .collect()
+}
+
 fn shape_style(object: &Node) -> ShapeStyle {
     let mut style = ShapeStyle::default();
     if let Some(properties) = object.child("spPr") {
@@ -573,8 +656,13 @@ fn shape_style(object: &Node) -> ShapeStyle {
                     })
                     .collect();
             }
-        } else if properties.child("custGeom").is_some() {
-            style.geometry = Some("rect".into());
+        } else if let Some(custom) = properties.child("custGeom") {
+            style.custom_paths = custom_paths(custom);
+            style.geometry = Some(if style.custom_paths.is_empty() {
+                "rect".into()
+            } else {
+                "custom".into()
+            });
         }
         if let Some(transform) = properties.child("xfrm") {
             style.rotation = transform
