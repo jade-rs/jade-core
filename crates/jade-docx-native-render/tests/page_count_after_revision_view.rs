@@ -1,7 +1,7 @@
 //! A full diagnostic must count rendered pages, not retained bitmap surfaces.
 mod common;
 
-use common::{open_fixture, repo_path};
+use common::{assert_word_source_hash, open_fixture, repo_path};
 use sha2::{Digest, Sha256};
 
 #[test]
@@ -14,9 +14,10 @@ fn revision_view_changes_do_not_leave_stale_pages_in_full_capture() {
         .unwrap(),
     )
     .unwrap();
-    assert_eq!(
-        word["docx_sha256"],
-        format!("{:x}", Sha256::digest(&source))
+    assert_word_source_hash(
+        "review-kinds",
+        &word["docx_sha256"],
+        &format!("{:x}", Sha256::digest(&source)),
     );
     // Word's frozen final-view PDF has one inserted page break. Showing
     // deleted content additionally exposes the deleted page break.
