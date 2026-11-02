@@ -29,9 +29,9 @@ use crate::document::{
     TocEntry, TocOptions, WrapMode, WrapPolygon, WrapPolygonPoint, PAGE_BREAK_CHAR,
 };
 use crate::docx_xml::{
-    attach_block_xml_ids, attach_document_xml_ids, attach_text_box_xml_ids, clear_block_xml_ids,
-    is_ruby_run, is_transparent_run_container, DocxXmlDocument, DocxXmlError, XmlAttribute,
-    XmlElement, XmlNode, XmlNodeId,
+    attach_block_xml_ids, attach_document_xml_ids, attach_paragraph_xml_ids,
+    attach_text_box_xml_ids, clear_block_xml_ids, is_ruby_run, is_transparent_run_container,
+    DocxXmlDocument, DocxXmlError, XmlAttribute, XmlElement, XmlNode, XmlNodeId,
 };
 use crate::field_datetime::{format_word_date, parse_core_property_datetime};
 use crate::number_format::format_note_marker;
@@ -21645,15 +21645,7 @@ impl WordDocument {
         // Insert into the raw XML body and copy the assigned <w:p> ids back onto
         // the model paragraphs so later edits map correctly.
         let inserted_ids = self.insert_toc_xml_at(body_insert_index, raw_paragraphs, location)?;
-        if let Some(body) = self.document_mut().and_then(|doc| doc.body.as_mut()) {
-            for (offset, node_id) in inserted_ids.into_iter().enumerate() {
-                if let Some(BodyElement::Paragraph(paragraph)) =
-                    body.elements.get_mut(body_insert_index + offset)
-                {
-                    paragraph.node_id = node_id;
-                }
-            }
-        }
+        self.bind_inserted_toc_paragraphs(body_insert_index, inserted_ids);
 
         if let Some(document) = self.document_mut() {
             Self::rebuild_section_ranges(document);
@@ -21722,21 +21714,39 @@ impl WordDocument {
 
         // Insert into the raw XML body and copy the assigned <w:p> id back.
         let inserted_ids = self.insert_toc_xml_at(body_insert_index, raw_paragraphs, location)?;
-        if let Some(node_id) = inserted_ids.into_iter().next() {
-            if let Some(body) = self.document_mut().and_then(|doc| doc.body.as_mut()) {
-                if let Some(BodyElement::Paragraph(paragraph)) =
-                    body.elements.get_mut(body_insert_index)
-                {
-                    paragraph.node_id = node_id;
-                }
-            }
-        }
+        self.bind_inserted_toc_paragraphs(body_insert_index, inserted_ids);
 
         if let Some(document) = self.document_mut() {
             Self::rebuild_section_ranges(document);
         }
         self.rebuild_paragraph_surfaces();
         Ok(0)
+    }
+
+    /// Bind only the inserted subtrees. A paragraph ID alone leaves its
+    /// field marker/result runs unbound; the next edit then rebuilds those
+    /// runs and can drop the enclosing TOC's markers.
+    fn bind_inserted_toc_paragraphs(
+        &mut self,
+        body_insert_index: usize,
+        inserted_ids: Vec<Option<XmlNodeId>>,
+    ) {
+        let (Some(raw), Some(body)) = (
+            self.raw_document.as_ref(),
+            self.document
+                .as_mut()
+                .and_then(|document| Rc::make_mut(document).body.as_mut()),
+        ) else {
+            return;
+        };
+        for (offset, id) in inserted_ids.into_iter().enumerate() {
+            if let (Some(BodyElement::Paragraph(paragraph)), Some(xml)) = (
+                body.elements.get_mut(body_insert_index + offset),
+                id.and_then(|id| raw.element(id)),
+            ) {
+                attach_paragraph_xml_ids(paragraph, xml, raw);
+            }
+        }
     }
 
     /// Visits the `fldChar`/`instrText` markers within a paragraph element in
