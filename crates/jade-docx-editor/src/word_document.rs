@@ -1288,7 +1288,7 @@ fn paragraph_text_metrics(paragraph: &Paragraph) -> DocumentTextMetrics {
     let text = paragraph
         .runs
         .iter()
-        .map(|run| run.text.as_str())
+        .map(Run::cached_display_text)
         .collect::<String>();
     let mut metrics = DocumentTextMetrics::default();
     let mut word_state = WordState::Outside;
@@ -6549,6 +6549,19 @@ impl WordDocument {
 
     pub(crate) fn body_paragraph_count(&self) -> usize {
         self.body_surface_indices.len()
+    }
+
+    /// Plain-text snapshot of a body paragraph, including saved field results.
+    /// The index follows body paragraphs, excluding header and footer surfaces.
+    pub fn body_paragraph_text(&self, index: usize) -> Option<String> {
+        let paragraph = self.paragraph(self.surface_index_for_body(index)?)?;
+        Some(
+            paragraph
+                .runs
+                .iter()
+                .map(Run::cached_display_text)
+                .collect(),
+        )
     }
 
     /// Returns Word-compatible text counts without serializing the complete
@@ -40938,6 +40951,42 @@ mod tests {
             exported_body_xml(&word_doc),
             r#"<w:p><w:smartTag w:uri="u" w:element="e"><w:r><w:t>A</w:t></w:r><w:del w:id="1" w:author="Reviewer"><w:r><w:rPr><w:b/></w:rPr><w:delText>B</w:delText></w:r></w:del></w:smartTag><w:r><w:t>C</w:t></w:r></w:p>"#
         );
+    }
+
+    #[test]
+    fn body_text_and_cached_metrics_include_saved_field_results() {
+        let mut paragraph = make_paragraph("");
+        paragraph.runs[0].field = Some(RunField {
+            kind: RunFieldKind::Unsupported {
+                instruction: "CITATION Source1".into(),
+            },
+            source_field_id: None,
+            cached_text: Some("[1]".into()),
+            resolved_value: None,
+            word_mac_body_result: None,
+        });
+        paragraph.runs.extend(make_paragraph("Hello").runs);
+        let mut word_doc = WordDocument::from_document(Document {
+            body: Some(Body {
+                elements: vec![BodyElement::from_paragraph(paragraph)],
+            }),
+            ..Document::default()
+        });
+        assert_eq!(word_doc.body_paragraph_text(0).as_deref(), Some("[1]Hello"));
+        assert_eq!(word_doc.body_paragraph_text(1), None);
+        assert_eq!(word_doc.document_text_metrics().chars_with_space, 8);
+        word_doc.paragraph_mut(0).unwrap().runs[0]
+            .field
+            .as_mut()
+            .unwrap()
+            .cached_text = Some("[12]".into());
+        word_doc.sync_paragraph_text(0);
+        assert_eq!(
+            word_doc.body_paragraph_text(0).as_deref(),
+            Some("[12]Hello")
+        );
+        assert_eq!(word_doc.document_text_metrics().chars_with_space, 9);
+        assert!(word_doc.paragraph(0).unwrap().runs[0].text.is_empty());
     }
 
     #[test]

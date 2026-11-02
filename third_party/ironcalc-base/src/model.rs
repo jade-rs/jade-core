@@ -240,6 +240,11 @@ pub struct Model<'a> {
     /// Evaluated CF results per cell, keyed by (sheet_index, row, column).
     /// Rebuilt from scratch on every call to evaluate_conditional_formatting().
     pub(crate) cf_cache: HashMap<(u32, i32, i32), Vec<CfCellResult>>,
+    /// Iterative calculation and precision as displayed.
+    pub(crate) calculation: crate::calculation::Calculation,
+    /// Whether this pass met a cell still being calculated, which iterative
+    /// calculation takes as a circular reference to go round again.
+    pub(crate) circular: bool,
 }
 
 // FIXME: Maybe this should be the same as CellReference
@@ -1587,6 +1592,22 @@ impl<'a> Model<'a> {
                 if let Some(state) = self.cells.get(&key) {
                     match state {
                         CellState::Evaluating => {
+                            if self.calculation.iteration.is_some() {
+                                // Iterative calculation: the value from the
+                                // pass before, 0 on the first.
+                                self.circular = true;
+                                return match &original_cell {
+                                    Cell::CellFormula {
+                                        v: FormulaValue::Unevaluated,
+                                        ..
+                                    }
+                                    | Cell::ArrayFormula {
+                                        v: FormulaValue::Unevaluated,
+                                        ..
+                                    } => CalcResult::Number(0.0),
+                                    cell => self.get_cell_value(cell, cell_reference),
+                                };
+                            }
                             return CalcResult::new_error(
                                 Error::CIRC,
                                 cell_reference,
@@ -1680,6 +1701,7 @@ impl<'a> Model<'a> {
                 } else {
                     result
                 };
+                let result = self.as_displayed(cell_reference, result);
 
                 if let Err(e) = self.set_cells_with_result(cell_reference, &original_cell, &result)
                 {
@@ -1847,6 +1869,8 @@ impl<'a> Model<'a> {
         }
 
         let mut model = Model {
+            calculation: Default::default(),
+            circular: false,
             read_trace: None,
             pivot_regions: Vec::new(),
             workbook,
@@ -3309,15 +3333,135 @@ impl<'a> Model<'a> {
 
         // Phase 2: evaluate everything else; spill cells are already Evaluated and skipped.
         // Fallback when max restarts is exceeded (circular spill dependency).
+        self.circular = false;
         let all_cells = self.get_all_cells();
-        for cell in all_cells {
+        for cell in &all_cells {
             self.evaluate_cell(CellReferenceIndex {
                 sheet: cell.index,
                 row: cell.row,
                 column: cell.column,
             });
         }
+        self.iterate(&all_cells);
         self.evaluate_conditional_formatting();
+    }
+
+    /// Iterative calculation: while a pass met a circular reference, passes
+    /// again, each cell starting from the value the last pass gave it, up to
+    /// the maximum number of iterations or until no value changed by more
+    /// than the maximum change — the first pass being the first iteration,
+    /// as in Excel.
+    fn iterate(&mut self, all_cells: &[CellIndex]) {
+        let Some((count, delta)) = self.calculation.iteration else {
+            return;
+        };
+        let mut passes = 1;
+        while self.circular && passes < count {
+            let before: Vec<CalcResult> = all_cells
+                .iter()
+                .map(|cell| self.formula_value(cell))
+                .collect();
+            self.cells.clear();
+            self.support.clear();
+            if let Some(trace) = self.read_trace.as_mut() {
+                trace.reset();
+            }
+            self.clear_variable_stack();
+            self.clear_lambdas();
+            self.circular = false;
+            for cell in all_cells {
+                self.evaluate_cell(CellReferenceIndex {
+                    sheet: cell.index,
+                    row: cell.row,
+                    column: cell.column,
+                });
+            }
+            passes += 1;
+            let settled = all_cells.iter().zip(&before).all(|(cell, before)| {
+                match (self.formula_value(cell), before) {
+                    (CalcResult::Number(after), CalcResult::Number(before)) => {
+                        (after - before).abs() <= delta
+                    }
+                    (CalcResult::EmptyCell, CalcResult::EmptyCell) => true,
+                    (CalcResult::String(after), CalcResult::String(before)) => after == *before,
+                    (CalcResult::Boolean(after), CalcResult::Boolean(before)) => after == *before,
+                    (
+                        CalcResult::Error { error: after, .. },
+                        CalcResult::Error { error: before, .. },
+                    ) => after == *before,
+                    _ => false,
+                }
+            });
+            if settled {
+                break;
+            }
+        }
+    }
+
+    /// The value a formula cell holds, `EmptyCell` for any other.
+    fn formula_value(&self, cell: &CellIndex) -> CalcResult {
+        let reference = CellReferenceIndex {
+            sheet: cell.index,
+            row: cell.row,
+            column: cell.column,
+        };
+        match self.fetch_cell(reference) {
+            Some(held) if held.get_formula().is_some() => self.get_cell_value(held, reference),
+            _ => CalcResult::EmptyCell,
+        }
+    }
+
+    /// Precision as displayed: a number kept to what its cell shows.
+    fn as_displayed(&self, cell: CellReferenceIndex, result: CalcResult) -> CalcResult {
+        let (Some(formats), CalcResult::Number(value)) = (&self.calculation.displayed, &result)
+        else {
+            return result;
+        };
+        match formats(cell.sheet, cell.row, cell.column) {
+            Some(format) => {
+                CalcResult::Number(crate::calculation::displayed_value(*value, &format))
+            }
+            None => result,
+        }
+    }
+
+    /// Turns iterative calculation on, at most `count` passes stopping once
+    /// no value changes by more than `delta`, or off with `None`: Excel's
+    /// File ▸ Options ▸ Formulas ▸ Enable iterative calculation.
+    pub fn set_iterative_calculation(&mut self, iteration: Option<(u32, f64)>) {
+        self.calculation.iteration = iteration.map(|(count, delta)| (count.max(1), delta.max(0.0)));
+    }
+
+    /// Turns precision as displayed on, `formats` giving each cell's number
+    /// format, or off with `None`.
+    pub fn set_precision_as_displayed(
+        &mut self,
+        formats: Option<crate::calculation::NumberFormats>,
+    ) {
+        self.calculation.displayed = formats;
+    }
+
+    /// Gives the formula at a cell the value it had when it was last
+    /// calculated, where iterative calculation starts it from. Does nothing
+    /// to a cell without a formula or one already calculated.
+    pub fn set_formula_cached_value(
+        &mut self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+        value: FormulaValue,
+    ) -> Result<(), String> {
+        let worksheet = self.workbook.worksheet_mut(sheet)?;
+        if let Some(Cell::CellFormula { v, .. }) = worksheet
+            .sheet_data
+            .get_mut(&row)
+            .and_then(|cells| cells.get_mut(&column))
+        {
+            if *v == FormulaValue::Unevaluated {
+                *v = value;
+            }
+        }
+        Ok(())
     }
 
     /// Removes the content of every cell in the range but leaves the style.

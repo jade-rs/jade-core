@@ -722,6 +722,8 @@ impl<'a> Model<'a> {
         let cells = HashMap::new();
 
         let mut model = Model {
+            calculation: Default::default(),
+            circular: false,
             pivot_regions: Vec::new(),
             read_trace: None,
             workbook,
