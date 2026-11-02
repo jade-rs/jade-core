@@ -441,10 +441,10 @@ impl WordDocument {
             }
         }
         let first_body = self
-            .body_index_for_surface(first)
+            .top_level_element_index(first)
             .ok_or("the first paragraph has no body position")?;
         let last_body = self
-            .body_index_for_surface(last)
+            .top_level_element_index(last)
             .ok_or("the last paragraph has no body position")?;
         {
             let body = self
@@ -484,7 +484,7 @@ impl WordDocument {
         // last mark. Split one off the end when the text runs to the end.
         if last_body + 1 >= body_len {
             let surface = self
-                .surface_index_for_body(last_body)
+                .surface_of_top_level_element(last_body)
                 .ok_or("the last paragraph has no surface")?;
             let length = self
                 .paragraph(surface)
@@ -499,7 +499,7 @@ impl WordDocument {
         let mut pieces_per_paragraph = Vec::new();
         for body_index in (first_body..=last_body).rev() {
             let surface = self
-                .surface_index_for_body(body_index)
+                .surface_of_top_level_element(body_index)
                 .ok_or("a paragraph has no surface")?;
             let text = self
                 .paragraph(surface)
@@ -808,6 +808,29 @@ impl WordDocument {
         Ok(())
     }
 
+    /// The index in the body's elements of the top-level body paragraph at
+    /// `surface`. [`Self::body_index_for_surface`] counts table cells'
+    /// paragraphs as well: taken for an element index, it pointed past the
+    /// paragraphs once a table came before them, and converting text after a
+    /// table was refused as holding one.
+    fn top_level_element_index(&self, surface: usize) -> Option<usize> {
+        match self.paragraph_surfaces.get(surface)? {
+            ParagraphSurface::Body { path } => match path.as_slice() {
+                [PathEntry::Element(index)] => Some(*index),
+                _ => None,
+            },
+            _ => None,
+        }
+    }
+
+    /// The surface of the paragraph that is body element `element`.
+    fn surface_of_top_level_element(&self, element: usize) -> Option<usize> {
+        self.paragraph_surfaces.iter().position(|surface| {
+            matches!(surface, ParagraphSurface::Body { path }
+                if path.as_slice() == [PathEntry::Element(element)])
+        })
+    }
+
     /// Gives the body paragraph at `body_index`, moved out of a table whose
     /// style gave its cells `table_style`, what its own style gives where the
     /// table's had, short of what its `w:pPr` declares.
@@ -816,7 +839,7 @@ impl WordDocument {
         body_index: usize,
         table_style: &ParagraphProperties,
     ) {
-        let Some(index) = self.surface_index_for_body(body_index) else {
+        let Some(index) = self.surface_of_top_level_element(body_index) else {
             return;
         };
         let style = self
@@ -854,10 +877,10 @@ impl WordDocument {
     /// one onto it.
     fn join_body_paragraphs_with(&mut self, body_index: usize, text: &str) -> Result<(), String> {
         let surface = self
-            .surface_index_for_body(body_index)
+            .surface_of_top_level_element(body_index)
             .ok_or("a paragraph to join has no surface")?;
         let next = self
-            .surface_index_for_body(body_index + 1)
+            .surface_of_top_level_element(body_index + 1)
             .ok_or("the paragraph after it has no surface")?;
         let length = self
             .paragraph(surface)
