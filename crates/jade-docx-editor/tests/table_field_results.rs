@@ -188,3 +188,74 @@ proptest! {
         }
     }
 }
+
+#[test]
+fn bibliography_refresh_does_not_turn_hidden_heading_fields_into_visible_text() {
+    use jade_docx_editor::commands::insert_citation::AddCitationSourceCommand;
+    use jade_docx_editor::fields::{FieldCommand, FieldEnvironment, FieldScope};
+    use jade_docx_editor::word::references::citations::set_style_command;
+    use jade_docx_editor::word_document::CitationSourceInfo;
+
+    for complex in [false, true] {
+        for instruction in ["SET Counter 10", "ASK Counter Prompt"] {
+            for f9 in [false, true] {
+                let body = format!(
+                    r#"<w:p/><w:p><w:pPr><w:pStyle w:val="Heading1"/></w:pPr><w:r><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:instrText>BIBLIOGRAPHY</w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r>{}<w:r><w:t>References</w:t></w:r></w:p><w:p><w:r><w:t>Old bibliography</w:t></w:r><w:r><w:fldChar w:fldCharType="end"/></w:r></w:p>"#,
+                    hidden(instruction, 900, complex),
+                );
+                let mut session = Session::open(&body, &[]);
+                session.run(Box::new(AddCitationSourceCommand::new(
+                    CitationSourceInfo {
+                        tag: "One".into(),
+                        source_type: "Book".into(),
+                        author: "Smith, John".into(),
+                        title: "A source".into(),
+                        year: "2020".into(),
+                        publisher: None,
+                        url: None,
+                    },
+                )));
+                session
+                    .document
+                    .set_bibliography_style("IEEE", "\\IEEE2006OfficeOnline.xsl")
+                    .unwrap();
+                assert_eq!(
+                    session.document.body_paragraph_text(1).as_deref(),
+                    Some("References")
+                );
+                let before = session.document.export_docx().unwrap();
+                if f9 {
+                    session.run(Box::new(FieldCommand::update(
+                        FieldScope::Document,
+                        FieldEnvironment::default(),
+                    )));
+                } else {
+                    session.run(Box::new(set_style_command(
+                        "IEEE".into(),
+                        "\\IEEE2006OfficeOnline.xsl".into(),
+                    )));
+                }
+                assert_eq!(
+                    session.document.body_paragraph_text(1).as_deref(),
+                    Some("References"),
+                    "{instruction}, complex={complex}, f9={f9}"
+                );
+                assert_eq!(
+                    session.document.body_paragraph_text(2).as_deref(),
+                    Some("[1] J. Smith, A source, 2020.")
+                );
+                let after = session.document.export_docx().unwrap();
+                let reopened = session.reopened();
+                assert_eq!(
+                    reopened.body_paragraph_text(1).as_deref(),
+                    Some("References")
+                );
+                capture(&reopened);
+                session.undo();
+                assert_eq!(session.document.export_docx().unwrap(), before);
+                session.redo();
+                assert_eq!(session.document.export_docx().unwrap(), after);
+            }
+        }
+    }
+}
