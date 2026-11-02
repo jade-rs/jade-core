@@ -527,13 +527,18 @@ mod stateful {
         let mut ctx = CommandContext::new(&mut session.document, &mut session.selection);
         assert!(session.executor.redo(&mut ctx).unwrap());
         assert_eq!(text_at(&session, second), "[1] J. Smith, A source, 2020.");
-        session.selection = Some(SelectionRange::collapsed(TextPosition::new(first, 1)));
+        // A locked computed result lives in the cache, at model offset zero.
+        session.selection = Some(SelectionRange::collapsed(TextPosition::new(first, 0)));
         session.lock_fields(true).unwrap();
+        assert_eq!(session.selected_fields().len(), 1);
+        assert!(session.selected_fields()[0].locked);
         session
             .update_fields(FieldScope::Document, &host(), HashMap::new())
             .unwrap();
         assert_eq!(text_at(&session, first), "First cached bibliography");
         session.lock_fields(false).unwrap();
+        assert_eq!(session.selected_fields().len(), 1);
+        assert!(!session.selected_fields()[0].locked);
         session
             .update_fields(FieldScope::Document, &host(), HashMap::new())
             .unwrap();
