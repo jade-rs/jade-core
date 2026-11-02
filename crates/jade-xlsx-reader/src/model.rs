@@ -297,6 +297,13 @@ pub struct Sheet {
     /// output, which the file stores as plain values.
     #[serde(default)]
     pub array_formulas: Vec<ArrayFormula>,
+    /// The What-If data tables: the cells each fills are plain values in
+    /// the file, its `TABLE` on the first.
+    #[serde(default)]
+    pub data_tables: Vec<DataTable>,
+    /// The What-If scenarios the Scenario Manager keeps on the sheet.
+    #[serde(default)]
+    pub scenarios: Option<crate::scenarios::Scenarios>,
     /// The furigana Excel saved with text cells (`<rPh>`), as the reading
     /// PHONETIC returns: 山田太郎 with ヤマダ and タロウ reads ヤマダタロウ.
     #[serde(default)]
@@ -423,6 +430,38 @@ impl Default for SheetProtection {
             pivot_tables: false,
             scenarios: false,
             objects: false,
+        }
+    }
+}
+
+/// A What-If data table (`<f t="dataTable" ref dt2D dtr r1 r2>` on its
+/// first result cell): each cell of `range` is a formula beside it worked
+/// out with an input cell given the value at the head of its row or
+/// column — what Excel shows as `{=TABLE(row,column)}`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DataTable {
+    /// The result cells, the input values and formulas round them.
+    pub range: CellRange,
+    /// `dt2D`: values along the top and down the side, one formula in the
+    /// corner.
+    pub two_way: bool,
+    /// `dtr`: a one-way table's values run along its top row (the row input
+    /// cell takes them) rather than down its left column.
+    pub row: bool,
+    /// `r1`: the row input cell of a two-way table, else the one input cell.
+    pub first: Option<CellRef>,
+    /// `r2`: a two-way table's column input cell.
+    pub second: Option<CellRef>,
+}
+
+impl DataTable {
+    /// The cell taking the values along the top, and the one taking those
+    /// down the side — `TABLE`'s two arguments.
+    pub fn inputs(&self) -> (Option<CellRef>, Option<CellRef>) {
+        match (self.two_way, self.row) {
+            (true, _) => (self.first, self.second),
+            (false, true) => (self.first, None),
+            (false, false) => (None, self.first),
         }
     }
 }

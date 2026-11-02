@@ -109,6 +109,8 @@ fn sheet_with(text: &str, style_index: Option<u32>, width_chars: f32) -> Sheet {
         page_setup: Default::default(),
         shapes: Vec::new(),
         array_formulas: Vec::new(),
+        data_tables: Vec::new(),
+        scenarios: None,
         phonetic_readings: Default::default(),
         rich_text: Default::default(),
         tab_color: None,
