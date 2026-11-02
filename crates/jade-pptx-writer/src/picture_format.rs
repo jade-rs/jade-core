@@ -1346,6 +1346,13 @@ fn compress_one(
     let (mut package, slide_part, xml) = crate::slide_xml(bytes, slide)?;
     let range = picture_ranges(&xml, id)?.remove(0);
     let pic = dom::parse(&xml[range]).map_err(WriteError::Xml)?;
+    let mut svg_blips = Vec::new();
+    pic.descendants("svgBlip", &mut svg_blips);
+    if !svg_blips.is_empty() {
+        // An SVG picture's main blip is only its PNG fallback. Compressing
+        // that alone and removing the shared crop changes the SVG's view.
+        return Ok(None);
+    }
     let ext = pic
         .child("spPr")
         .and_then(|pr| pr.child("xfrm"))
