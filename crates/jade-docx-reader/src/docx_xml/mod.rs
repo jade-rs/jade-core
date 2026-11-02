@@ -14,7 +14,7 @@ use std::hash::{BuildHasherDefault, Hasher};
 pub use mapping::{
     attach_block_xml_ids, attach_document_xml_ids, attach_paragraph_xml_ids,
     attach_text_box_xml_ids, clear_block_xml_ids, is_ruby_run, is_transparent_run_container,
-    DocxMappingError,
+    normalized_legacy_horizontal_merge_cell, DocxMappingError,
 };
 
 mod mapping;

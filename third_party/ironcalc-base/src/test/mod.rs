@@ -26,6 +26,7 @@ mod test_fn_count;
 mod test_fn_depreciation;
 mod test_fn_financial_simple;
 mod test_forecast;
+mod test_forecast_ets;
 mod test_iterative_calculation;
 mod test_statistical_functions;
 // FIXME: These tests are failing

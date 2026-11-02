@@ -32,25 +32,128 @@ const DRAWING_CONTENT_TYPE: &str = "application/vnd.openxmlformats-officedocumen
 const CHART_CONTENT_TYPE: &str =
     "application/vnd.openxmlformats-officedocument.drawingml.chart+xml";
 
-/// The chart types Insert ▸ Chart offers first.
+/// The chart types Insert ▸ Chart offers: each of Excel's 2-D sub-types.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ChartKind {
     Column,
     StackedColumn,
+    PercentStackedColumn,
     Bar,
     StackedBar,
+    PercentStackedBar,
     Line,
+    StackedLine,
+    PercentStackedLine,
     LineWithMarkers,
+    StackedLineWithMarkers,
+    PercentStackedLineWithMarkers,
     Area,
+    StackedArea,
+    PercentStackedArea,
     Pie,
     Doughnut,
+    /// Markers only.
     Scatter,
+    ScatterSmoothMarkers,
+    ScatterSmooth,
+    ScatterLinesMarkers,
+    ScatterLines,
+    Bubble,
+    Radar,
+    RadarWithMarkers,
+    FilledRadar,
+    /// A combination: each series drawn as its own
+    /// [`SeriesReferences::kind`], a clustered column when it has none.
+    Combo,
 }
 
 impl ChartKind {
     /// Pies and doughnuts: one series, a slice per category, no axes.
     pub fn is_round(self) -> bool {
         matches!(self, ChartKind::Pie | ChartKind::Doughnut)
+    }
+
+    /// Scatter and bubble charts: numbers along both axes.
+    pub fn is_xy(self) -> bool {
+        matches!(
+            self,
+            ChartKind::Scatter
+                | ChartKind::ScatterSmoothMarkers
+                | ChartKind::ScatterSmooth
+                | ChartKind::ScatterLinesMarkers
+                | ChartKind::ScatterLines
+                | ChartKind::Bubble
+        )
+    }
+
+    /// Bars that run across, with the categories up the side.
+    pub fn is_horizontal(self) -> bool {
+        matches!(
+            self,
+            ChartKind::Bar | ChartKind::StackedBar | ChartKind::PercentStackedBar
+        )
+    }
+
+    /// The plot's `c:grouping`: `clustered` or `standard`, `stacked`,
+    /// `percentStacked`.
+    pub fn grouping(self) -> &'static str {
+        match self {
+            ChartKind::StackedColumn
+            | ChartKind::StackedBar
+            | ChartKind::StackedLine
+            | ChartKind::StackedLineWithMarkers
+            | ChartKind::StackedArea => "stacked",
+            ChartKind::PercentStackedColumn
+            | ChartKind::PercentStackedBar
+            | ChartKind::PercentStackedLine
+            | ChartKind::PercentStackedLineWithMarkers
+            | ChartKind::PercentStackedArea => "percentStacked",
+            ChartKind::Column | ChartKind::Bar | ChartKind::Combo => "clustered",
+            _ => "standard",
+        }
+    }
+
+    /// The chart element that draws it.
+    pub fn element(self) -> &'static str {
+        match self {
+            ChartKind::Column
+            | ChartKind::StackedColumn
+            | ChartKind::PercentStackedColumn
+            | ChartKind::Bar
+            | ChartKind::StackedBar
+            | ChartKind::PercentStackedBar
+            | ChartKind::Combo => "barChart",
+            ChartKind::Line
+            | ChartKind::StackedLine
+            | ChartKind::PercentStackedLine
+            | ChartKind::LineWithMarkers
+            | ChartKind::StackedLineWithMarkers
+            | ChartKind::PercentStackedLineWithMarkers => "lineChart",
+            ChartKind::Area | ChartKind::StackedArea | ChartKind::PercentStackedArea => "areaChart",
+            ChartKind::Pie => "pieChart",
+            ChartKind::Doughnut => "doughnutChart",
+            ChartKind::Scatter
+            | ChartKind::ScatterSmoothMarkers
+            | ChartKind::ScatterSmooth
+            | ChartKind::ScatterLinesMarkers
+            | ChartKind::ScatterLines => "scatterChart",
+            ChartKind::Bubble => "bubbleChart",
+            ChartKind::Radar | ChartKind::RadarWithMarkers | ChartKind::FilledRadar => "radarChart",
+        }
+    }
+
+    /// Whether its points carry markers.
+    fn markers(self) -> bool {
+        matches!(
+            self,
+            ChartKind::LineWithMarkers
+                | ChartKind::StackedLineWithMarkers
+                | ChartKind::PercentStackedLineWithMarkers
+                | ChartKind::Scatter
+                | ChartKind::ScatterSmoothMarkers
+                | ChartKind::ScatterLinesMarkers
+                | ChartKind::RadarWithMarkers
+        )
     }
 }
 
@@ -78,11 +181,23 @@ impl LegendPosition {
 /// part writes them (`Operations!$B$2:$B$4`).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SeriesReferences {
+    /// A reference to the cell naming it, or its name as text in quotes
+    /// (`"Sales"`).
     pub name: Option<String>,
+    /// The categories, or a scatter's or bubble's X values.
     pub categories: Option<String>,
     /// Whether the categories are text, written as a string reference.
     pub text_categories: bool,
     pub values: String,
+    /// A bubble's sizes.
+    #[serde(default)]
+    pub bubble_sizes: Option<String>,
+    /// In a combination, the type this series is drawn as.
+    #[serde(default)]
+    pub kind: Option<ChartKind>,
+    /// Drawn against the secondary axis.
+    #[serde(default)]
+    pub secondary: bool,
 }
 
 fn reference(prefix: &str, element: &str, numeric: bool, formula: &str) -> String {
@@ -93,11 +208,20 @@ fn reference(prefix: &str, element: &str, numeric: bool, formula: &str) -> Strin
     )
 }
 
+/// A name typed as text, `"Sales"`, as Excel's `="Sales"` is: its text.
+fn literal(name: &str) -> Option<String> {
+    let inner = name.strip_prefix('"')?.strip_suffix('"')?;
+    Some(inner.replace("\"\"", "\""))
+}
+
 fn series_xml(prefix: &str, kind: ChartKind, index: usize, series: &SeriesReferences) -> String {
     let p = prefix;
     let mut xml = format!("<{p}ser><{p}idx val=\"{index}\"/><{p}order val=\"{index}\"/>");
     if let Some(name) = &series.name {
-        xml.push_str(&reference(p, "tx", false, name));
+        match literal(name) {
+            Some(text) => xml.push_str(&format!("<{p}tx><{p}v>{}</{p}v></{p}tx>", escape(&text))),
+            None => xml.push_str(&reference(p, "tx", false, name)),
+        }
     }
     let categories = |element: &str| {
         series
@@ -106,39 +230,61 @@ fn series_xml(prefix: &str, kind: ChartKind, index: usize, series: &SeriesRefere
             .map(|formula| reference(p, element, !series.text_categories, formula))
             .unwrap_or_default()
     };
-    match kind {
-        ChartKind::Column | ChartKind::StackedColumn | ChartKind::Bar | ChartKind::StackedBar => {
+    let marker = || {
+        if kind.markers() {
+            format!("<{p}marker><{p}symbol val=\"circle\"/><{p}size val=\"5\"/></{p}marker>")
+        } else {
+            format!("<{p}marker><{p}symbol val=\"none\"/></{p}marker>")
+        }
+    };
+    match kind.element() {
+        "barChart" => {
             xml.push_str(&format!("<{p}invertIfNegative val=\"0\"/>"));
             xml.push_str(&categories("cat"));
             xml.push_str(&reference(p, "val", true, &series.values));
         }
-        ChartKind::Line | ChartKind::LineWithMarkers => {
-            if kind == ChartKind::Line {
-                xml.push_str(&format!("<{p}marker><{p}symbol val=\"none\"/></{p}marker>"));
-            } else {
-                xml.push_str(&format!(
-                    "<{p}marker><{p}symbol val=\"circle\"/><{p}size val=\"5\"/></{p}marker>"
-                ));
+        "lineChart" => {
+            xml.push_str(&marker());
+            xml.push_str(&categories("cat"));
+            xml.push_str(&reference(p, "val", true, &series.values));
+            xml.push_str(&format!("<{p}smooth val=\"0\"/>"));
+        }
+        "radarChart" => {
+            if kind != ChartKind::FilledRadar {
+                xml.push_str(&marker());
             }
             xml.push_str(&categories("cat"));
             xml.push_str(&reference(p, "val", true, &series.values));
-            xml.push_str(&format!("<{p}smooth val=\"0\"/>"));
         }
-        ChartKind::Area | ChartKind::Pie | ChartKind::Doughnut => {
-            xml.push_str(&categories("cat"));
-            xml.push_str(&reference(p, "val", true, &series.values));
-        }
-        ChartKind::Scatter => {
-            // Markers only, as Excel's first scatter is.
-            xml.push_str(&format!(
-                "<{p}spPr><a:ln w=\"19050\" xmlns:a=\"{DRAWINGML_NS}\"><a:noFill/></a:ln></{p}spPr>"
-            ));
-            xml.push_str(&format!(
-                "<{p}marker><{p}symbol val=\"circle\"/><{p}size val=\"5\"/></{p}marker>"
-            ));
+        "scatterChart" => {
+            if kind == ChartKind::Scatter {
+                // Markers only, as Excel's first scatter is.
+                xml.push_str(&format!(
+                    "<{p}spPr><a:ln w=\"19050\" xmlns:a=\"{DRAWINGML_NS}\"><a:noFill/></a:ln></{p}spPr>"
+                ));
+            }
+            xml.push_str(&marker());
             xml.push_str(&categories("xVal"));
             xml.push_str(&reference(p, "yVal", true, &series.values));
-            xml.push_str(&format!("<{p}smooth val=\"0\"/>"));
+            let smooth = matches!(
+                kind,
+                ChartKind::ScatterSmooth | ChartKind::ScatterSmoothMarkers
+            );
+            xml.push_str(&format!("<{p}smooth val=\"{}\"/>", u8::from(smooth)));
+        }
+        "bubbleChart" => {
+            xml.push_str(&format!("<{p}invertIfNegative val=\"0\"/>"));
+            xml.push_str(&categories("xVal"));
+            xml.push_str(&reference(p, "yVal", true, &series.values));
+            if let Some(sizes) = &series.bubble_sizes {
+                xml.push_str(&reference(p, "bubbleSize", true, sizes));
+            }
+            xml.push_str(&format!("<{p}bubble3D val=\"0\"/>"));
+        }
+        // Areas, pies and doughnuts.
+        _ => {
+            xml.push_str(&categories("cat"));
+            xml.push_str(&reference(p, "val", true, &series.values));
         }
     }
     xml.push_str(&format!("</{p}ser>"));
@@ -147,88 +293,256 @@ fn series_xml(prefix: &str, kind: ChartKind, index: usize, series: &SeriesRefere
 
 const CATEGORY_AXIS: u32 = 500_000_001;
 const VALUE_AXIS: u32 = 500_000_002;
+const SECONDARY_CATEGORY_AXIS: u32 = 500_000_003;
+const SECONDARY_VALUE_AXIS: u32 = 500_000_004;
 
-fn axes(prefix: &str, kind: ChartKind) -> String {
+/// A pair of axes: (category or X axis, value axis) ids.
+type AxisPair = (u32, u32);
+const PRIMARY: AxisPair = (CATEGORY_AXIS, VALUE_AXIS);
+const SECONDARY: AxisPair = (SECONDARY_CATEGORY_AXIS, SECONDARY_VALUE_AXIS);
+
+/// The axes a plot of `kind` is drawn against, `ids`; the secondary pair
+/// hides its category axis and puts its values on the right, crossing at
+/// the maximum, as Excel's secondary axis does.
+fn axes(prefix: &str, kind: ChartKind, ids: AxisPair, secondary: bool) -> String {
     let p = prefix;
-    let horizontal = matches!(kind, ChartKind::Bar | ChartKind::StackedBar);
-    let (category_position, value_position) = if horizontal { ("l", "b") } else { ("b", "l") };
-    let common = |id: u32, position: &str| {
+    let (category_id, value_id) = ids;
+    let horizontal = kind.is_horizontal();
+    let (category_position, value_position) = match (horizontal, secondary) {
+        (false, false) => ("b", "l"),
+        (true, false) => ("l", "b"),
+        (false, true) => ("b", "r"),
+        (true, true) => ("l", "t"),
+    };
+    let common = |id: u32, position: &str, deleted: bool| {
         format!(
-            "<{p}axId val=\"{id}\"/><{p}scaling><{p}orientation val=\"minMax\"/></{p}scaling><{p}delete val=\"0\"/><{p}axPos val=\"{position}\"/>"
+            "<{p}axId val=\"{id}\"/><{p}scaling><{p}orientation val=\"minMax\"/></{p}scaling><{p}delete val=\"{}\"/><{p}axPos val=\"{position}\"/>",
+            u8::from(deleted)
         )
     };
-    let ticks = format!(
-        "<{p}numFmt formatCode=\"General\" sourceLinked=\"1\"/><{p}majorTickMark val=\"none\"/><{p}minorTickMark val=\"none\"/><{p}tickLblPos val=\"nextTo\"/>"
-    );
-    let value_axis = |id: u32, position: &str, cross: u32, gridlines: bool, between: &str| {
+    let format = if kind.grouping() == "percentStacked" {
+        "0%"
+    } else {
+        "General"
+    };
+    let ticks = |format: &str| {
         format!(
-            "<{p}valAx>{}{}{ticks}<{p}crossAx val=\"{cross}\"/><{p}crosses val=\"autoZero\"/><{p}crossBetween val=\"{between}\"/></{p}valAx>",
-            common(id, position),
+            "<{p}numFmt formatCode=\"{format}\" sourceLinked=\"1\"/><{p}majorTickMark val=\"{}\"/><{p}minorTickMark val=\"none\"/><{p}tickLblPos val=\"nextTo\"/>",
+            if kind.element() == "radarChart" { "cross" } else { "none" }
+        )
+    };
+    let crosses = if secondary { "max" } else { "autoZero" };
+    let value_axis = |id: u32,
+                      position: &str,
+                      cross: u32,
+                      gridlines: bool,
+                      between: &str,
+                      crosses: &str,
+                      deleted: bool| {
+        format!(
+            "<{p}valAx>{}{}{}<{p}crossAx val=\"{cross}\"/><{p}crosses val=\"{crosses}\"/><{p}crossBetween val=\"{between}\"/></{p}valAx>",
+            common(id, position, deleted),
             if gridlines {
                 format!("<{p}majorGridlines/>")
             } else {
                 String::new()
             },
+            ticks(format),
         )
     };
-    match kind {
-        ChartKind::Pie | ChartKind::Doughnut => String::new(),
-        ChartKind::Scatter => {
-            value_axis(CATEGORY_AXIS, "b", VALUE_AXIS, false, "midCat")
-                + &value_axis(VALUE_AXIS, "l", CATEGORY_AXIS, true, "midCat")
-        }
-        _ => {
-            format!(
-                "<{p}catAx>{}{ticks}<{p}crossAx val=\"{VALUE_AXIS}\"/><{p}crosses val=\"autoZero\"/><{p}auto val=\"1\"/><{p}lblAlgn val=\"ctr\"/><{p}lblOffset val=\"100\"/><{p}noMultiLvlLbl val=\"0\"/></{p}catAx>",
-                common(CATEGORY_AXIS, category_position)
-            ) + &value_axis(VALUE_AXIS, value_position, CATEGORY_AXIS, true, "between")
-        }
+    if kind.is_round() {
+        return String::new();
     }
+    if kind.is_xy() {
+        return value_axis(
+            category_id,
+            "b",
+            value_id,
+            false,
+            "midCat",
+            "autoZero",
+            secondary,
+        ) + &value_axis(
+            value_id,
+            if secondary { "r" } else { "l" },
+            category_id,
+            !secondary,
+            "midCat",
+            crosses,
+            false,
+        );
+    }
+    let radar = kind.element() == "radarChart";
+    format!(
+        "<{p}catAx>{}{}{}<{p}crossAx val=\"{value_id}\"/><{p}crosses val=\"autoZero\"/><{p}auto val=\"1\"/><{p}lblAlgn val=\"ctr\"/><{p}lblOffset val=\"100\"/><{p}noMultiLvlLbl val=\"0\"/></{p}catAx>",
+        common(category_id, category_position, secondary),
+        if radar {
+            format!("<{p}majorGridlines/>")
+        } else {
+            String::new()
+        },
+        ticks("General"),
+    ) + &value_axis(
+        value_id,
+        value_position,
+        category_id,
+        !secondary,
+        "between",
+        crosses,
+        false,
+    )
 }
 
-/// The chart-type element and its axes, for `series`.
-fn plot_xml(prefix: &str, kind: ChartKind, series: &[SeriesReferences]) -> String {
+/// One chart-type element over `series` (each with its index in the
+/// chart), against the axes `ids`.
+fn group_xml(
+    prefix: &str,
+    kind: ChartKind,
+    series: &[(usize, &SeriesReferences)],
+    ids: AxisPair,
+) -> String {
     let p = prefix;
     let series: String = series
         .iter()
-        .enumerate()
-        .map(|(index, series)| series_xml(p, kind, index, series))
+        .map(|(index, series)| series_xml(p, kind, *index, series))
         .collect();
-    let axis_ids = format!("<{p}axId val=\"{CATEGORY_AXIS}\"/><{p}axId val=\"{VALUE_AXIS}\"/>");
-    let plot = match kind {
-        ChartKind::Column | ChartKind::StackedColumn | ChartKind::Bar | ChartKind::StackedBar => {
-            let direction = if matches!(kind, ChartKind::Bar | ChartKind::StackedBar) {
-                "bar"
+    let axis_ids = format!("<{p}axId val=\"{}\"/><{p}axId val=\"{}\"/>", ids.0, ids.1);
+    let grouping = kind.grouping();
+    match kind.element() {
+        "barChart" => {
+            let direction = if kind.is_horizontal() { "bar" } else { "col" };
+            let (gap, overlap) = if grouping == "clustered" {
+                (219, -27)
             } else {
-                "col"
-            };
-            let stacked = matches!(kind, ChartKind::StackedColumn | ChartKind::StackedBar);
-            let (grouping, gap, overlap) = if stacked {
-                ("stacked", 150, 100)
-            } else {
-                ("clustered", 219, -27)
+                (150, 100)
             };
             format!(
                 "<{p}barChart><{p}barDir val=\"{direction}\"/><{p}grouping val=\"{grouping}\"/><{p}varyColors val=\"0\"/>{series}<{p}gapWidth val=\"{gap}\"/><{p}overlap val=\"{overlap}\"/>{axis_ids}</{p}barChart>"
             )
         }
-        ChartKind::Line | ChartKind::LineWithMarkers => format!(
-            "<{p}lineChart><{p}grouping val=\"standard\"/><{p}varyColors val=\"0\"/>{series}<{p}marker val=\"1\"/>{axis_ids}</{p}lineChart>"
+        "lineChart" => format!(
+            "<{p}lineChart><{p}grouping val=\"{grouping}\"/><{p}varyColors val=\"0\"/>{series}<{p}marker val=\"1\"/>{axis_ids}</{p}lineChart>"
         ),
-        ChartKind::Area => format!(
-            "<{p}areaChart><{p}grouping val=\"standard\"/><{p}varyColors val=\"0\"/>{series}{axis_ids}</{p}areaChart>"
+        "areaChart" => format!(
+            "<{p}areaChart><{p}grouping val=\"{grouping}\"/><{p}varyColors val=\"0\"/>{series}{axis_ids}</{p}areaChart>"
         ),
-        ChartKind::Pie => format!(
+        "pieChart" => format!(
             "<{p}pieChart><{p}varyColors val=\"1\"/>{series}<{p}firstSliceAng val=\"0\"/></{p}pieChart>"
         ),
-        ChartKind::Doughnut => format!(
+        "doughnutChart" => format!(
             "<{p}doughnutChart><{p}varyColors val=\"1\"/>{series}<{p}firstSliceAng val=\"0\"/><{p}holeSize val=\"75\"/></{p}doughnutChart>"
         ),
-        ChartKind::Scatter => format!(
-            "<{p}scatterChart><{p}scatterStyle val=\"lineMarker\"/><{p}varyColors val=\"0\"/>{series}{axis_ids}</{p}scatterChart>"
+        "scatterChart" => {
+            let style = if matches!(
+                kind,
+                ChartKind::ScatterSmooth | ChartKind::ScatterSmoothMarkers
+            ) {
+                "smoothMarker"
+            } else {
+                "lineMarker"
+            };
+            format!(
+                "<{p}scatterChart><{p}scatterStyle val=\"{style}\"/><{p}varyColors val=\"0\"/>{series}{axis_ids}</{p}scatterChart>"
+            )
+        }
+        "bubbleChart" => format!(
+            "<{p}bubbleChart><{p}varyColors val=\"0\"/>{series}<{p}bubbleScale val=\"100\"/><{p}showNegBubbles val=\"0\"/>{axis_ids}</{p}bubbleChart>"
         ),
+        _ => {
+            let style = if kind == ChartKind::FilledRadar {
+                "filled"
+            } else {
+                "marker"
+            };
+            format!(
+                "<{p}radarChart><{p}radarStyle val=\"{style}\"/><{p}varyColors val=\"0\"/>{series}{axis_ids}</{p}radarChart>"
+            )
+        }
+    }
+}
+
+/// What series of different types can share a chart element: the same
+/// element, direction and grouping. Lines with and without markers share
+/// one, each series keeping its own.
+fn same_plot(a: ChartKind, b: ChartKind) -> bool {
+    a.element() == b.element()
+        && a.grouping() == b.grouping()
+        && a.is_horizontal() == b.is_horizontal()
+}
+
+/// The chart-type elements and axes, for `series`: one element for a
+/// chart of one type; for a combination, one for each type the series
+/// are drawn as, on the primary or the secondary axes.
+fn plot_xml(prefix: &str, kind: ChartKind, series: &[SeriesReferences]) -> String {
+    let p = prefix;
+    let own = |series: &SeriesReferences| -> ChartKind {
+        match (kind, series.kind) {
+            (ChartKind::Combo, Some(ChartKind::Combo) | None) => ChartKind::Column,
+            (ChartKind::Combo, Some(kind)) => kind,
+            _ => kind,
+        }
     };
-    plot + &axes(p, kind)
+    // Each type's series, in the order the types first come.
+    type Group<'a> = (ChartKind, bool, Vec<(usize, &'a SeriesReferences)>);
+    let mut groups: Vec<Group> = Vec::new();
+    let combination = kind == ChartKind::Combo;
+    for (index, one) in series.iter().enumerate() {
+        let mut of = own(one);
+        // A pie or doughnut takes no part in a combination.
+        if combination && of.is_round() {
+            of = ChartKind::Column;
+        }
+        let secondary = combination && one.secondary;
+        match groups
+            .iter_mut()
+            .find(|(kind, on, _)| *on == secondary && same_plot(*kind, of))
+        {
+            Some((_, _, members)) => members.push((index, one)),
+            None => groups.push((of, secondary, vec![(index, one)])),
+        }
+    }
+    if groups.is_empty() {
+        groups.push((own_or_column(kind), false, Vec::new()));
+    }
+    // Something has to be on the primary axes.
+    if groups.iter().all(|(_, secondary, _)| *secondary) {
+        for group in &mut groups {
+            group.1 = false;
+        }
+    }
+    let primary = groups
+        .iter()
+        .find(|(_, secondary, _)| !secondary)
+        .map(|(kind, _, _)| *kind)
+        .unwrap_or(ChartKind::Column);
+    let secondary = groups
+        .iter()
+        .find(|(_, secondary, _)| *secondary)
+        .map(|(kind, _, _)| *kind);
+    let mut xml: String = groups
+        .iter()
+        .map(|(kind, on_secondary, members)| {
+            group_xml(
+                p,
+                *kind,
+                members,
+                if *on_secondary { SECONDARY } else { PRIMARY },
+            )
+        })
+        .collect();
+    xml.push_str(&axes(p, primary, PRIMARY, false));
+    if let Some(kind) = secondary {
+        xml.push_str(&axes(p, kind, SECONDARY, true));
+    }
+    xml
+}
+
+fn own_or_column(kind: ChartKind) -> ChartKind {
+    if kind == ChartKind::Combo {
+        ChartKind::Column
+    } else {
+        kind
+    }
 }
 
 fn title_xml(prefix: &str, text: &str) -> String {

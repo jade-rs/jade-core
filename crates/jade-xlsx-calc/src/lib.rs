@@ -31,6 +31,9 @@ pub mod conditional;
 pub mod formula_text;
 mod pivot;
 pub mod validation;
+mod what_if;
+
+pub use what_if::{what_if, WhatIf};
 
 use ironcalc_base::cell::CellValue as EngineValue;
 use ironcalc_base::Model;
@@ -320,6 +323,10 @@ fn with_workbook_scopes<T>(
             }
         })
         .collect();
+    let body = || match looks(workbook) {
+        Some(looks) => ironcalc_base::host::with_looks(looks, body),
+        None => body(),
+    };
     ironcalc_base::row_visibility::with_visibility(visibility, || {
         ironcalc_base::clock::with_milliseconds(instant, || {
             // The furigana saved with text cells, for PHONETIC.
@@ -341,6 +348,139 @@ fn with_workbook_scopes<T>(
     })
 }
 
+/// The book as the application has it open, for CELL and INFO.
+pub use ironcalc_base::host::Document;
+
+/// Runs `operation` — evaluations of the workbook — with `document` known
+/// to CELL("filename") and INFO.
+pub fn with_document<T>(document: Document, operation: impl FnOnce() -> T) -> T {
+    ironcalc_base::host::with_document(document, operation)
+}
+
+/// The cells' formats and the columns' widths for CELL, which the engine's
+/// model does not hold; `None` when no formula asks for them.
+fn looks(workbook: &Workbook) -> Option<ironcalc_base::host::Looks> {
+    use ironcalc_base::host::{characters_of_width, CellLook, Looks};
+    use ironcalc_base::types::HorizontalAlignment as Engine;
+    use jade_xlsx_reader::model::HorizontalAlignment;
+    let asks = workbook.sheets.iter().any(|sheet| {
+        sheet
+            .rows
+            .iter()
+            .flat_map(|row| &row.cells)
+            .filter_map(|cell| cell.formula.as_deref())
+            .any(|formula| formula.to_ascii_uppercase().contains("CELL("))
+    });
+    if !asks {
+        return None;
+    }
+    let styles = &workbook.styles;
+    let formats: Vec<CellLook> = styles
+        .cell_formats
+        .iter()
+        .map(|format| CellLook {
+            number_format: styles
+                .number_format_code(format)
+                .unwrap_or("General")
+                .to_string(),
+            horizontal: match format.alignment.horizontal {
+                HorizontalAlignment::Left => Engine::Left,
+                HorizontalAlignment::Center => Engine::Center,
+                HorizontalAlignment::Right => Engine::Right,
+                HorizontalAlignment::Fill => Engine::Fill,
+                HorizontalAlignment::Justify => Engine::Justify,
+                HorizontalAlignment::CenterContinuous => Engine::CenterContinuous,
+                HorizontalAlignment::General => Engine::General,
+                _ => Engine::Distributed,
+            },
+            locked: !format.unlocked,
+        })
+        .collect();
+    /// First and last column, style, width, and whether the width is custom.
+    type ColumnSpan = (i32, i32, Option<u32>, Option<f32>, bool);
+    struct SheetLooks {
+        cells: HashMap<(i32, i32), u32>,
+        rows: HashMap<i32, u32>,
+        columns: Vec<ColumnSpan>,
+        default_width: f64,
+    }
+    let sheets: Vec<SheetLooks> = workbook
+        .sheets
+        .iter()
+        .map(|sheet| SheetLooks {
+            cells: sheet
+                .rows
+                .iter()
+                .flat_map(|row| &row.cells)
+                .filter_map(|cell| {
+                    Some((
+                        (
+                            cell.reference.row as i32 + 1,
+                            cell.reference.column as i32 + 1,
+                        ),
+                        cell.style_index?,
+                    ))
+                })
+                .collect(),
+            rows: sheet
+                .rows
+                .iter()
+                .filter(|row| row.custom_format)
+                .filter_map(|row| Some((row.index as i32 + 1, row.style_index?)))
+                .collect(),
+            columns: sheet
+                .columns
+                .iter()
+                .map(|span| {
+                    (
+                        span.first as i32 + 1,
+                        span.last as i32 + 1,
+                        span.style_index,
+                        span.width_chars,
+                        span.custom_width,
+                    )
+                })
+                .collect(),
+            // Excel's default: 8.43 characters, 9.140625 in the file.
+            default_width: sheet.default_column_width_chars.unwrap_or(9.140625) as f64,
+        })
+        .collect();
+    let sheets = std::rc::Rc::new(sheets);
+    let widths = sheets.clone();
+    Some(Looks {
+        cell: Box::new(move |sheet, row, column| {
+            let looks = sheets.get(sheet as usize)?;
+            let index = looks
+                .cells
+                .get(&(row, column))
+                .or_else(|| looks.rows.get(&row))
+                .copied()
+                .or_else(|| {
+                    looks
+                        .columns
+                        .iter()
+                        .find(|span| span.0 <= column && column <= span.1)
+                        .and_then(|span| span.2)
+                })
+                .unwrap_or(0);
+            formats.get(index as usize).cloned()
+        }),
+        column: Box::new(move |sheet, column| {
+            let looks = widths.get(sheet as usize)?;
+            let span = looks
+                .columns
+                .iter()
+                .find(|span| span.0 <= column && column <= span.1);
+            let width = span
+                .and_then(|span| span.3)
+                .map(f64::from)
+                .unwrap_or(looks.default_width);
+            let custom = span.is_some_and(|span| span.4 && span.3.is_some());
+            Some((characters_of_width(width), !custom))
+        }),
+    })
+}
+
 /// Evaluates the workbook to a fixed point over the formulas the engine
 /// answers with artifacts; with `keep`, also hands back the model when the
 /// first round was complete.
@@ -350,6 +490,21 @@ fn evaluate_at_instant(
     trace: bool,
     keep: bool,
 ) -> Result<(Recalculated, Option<Session>)> {
+    let (outcome, model, projected, complete) = settle(workbook, time_zone, trace)?;
+    let session = (keep && complete && !trace).then(|| Session {
+        model,
+        projected,
+        time_zone: time_zone.to_string(),
+    });
+    Ok((outcome, session))
+}
+
+/// What [`evaluate_at_instant`] settles on: the outcome, the model it was
+/// read from, the cells projected as formulas there, and whether the
+/// evaluation was complete — nothing skipped, nothing spilled.
+type Settled = (Recalculated, Model<'static>, Vec<(usize, CellRef)>, bool);
+
+fn settle(workbook: &Workbook, time_zone: &str, trace: bool) -> Result<Settled> {
     let zone = static_zone(time_zone);
     // Each skipped cell and what it holds: its cached value, or the engine's
     // answer when nothing is cached.
@@ -399,12 +554,7 @@ fn evaluate_at_instant(
                 spills: round.spills,
                 dependencies: trace.then(|| value_dependencies(&mut model)),
             };
-            let session = (keep && complete && !trace).then(|| Session {
-                model,
-                projected,
-                time_zone: time_zone.to_string(),
-            });
-            return Ok((outcome, session));
+            return Ok((outcome, model, projected, complete));
         };
         let holds = match cached_value(workbook, first.sheet, first.reference) {
             CellValue::Empty => CellValue::Error(first.reason.clone()),
