@@ -32546,6 +32546,25 @@ impl WordDocument {
         restored
     }
 
+    /// The XML element of each run of `paragraph` (paragraph `index`), and,
+    /// for a note's paragraph, the note part that holds them: the body's XML
+    /// does not. Looked up there, a property a footnote's run declares read
+    /// as its old style's, and a style set on the note took the run's italic.
+    fn run_xml_ids(
+        &self,
+        index: usize,
+        paragraph: &Paragraph,
+    ) -> (Option<DocxXmlDocument>, Vec<Option<XmlNodeId>>) {
+        match self.note_paragraph_xml(index) {
+            Some((_, raw, id)) => {
+                let bound = formatting_revisions::bind_note_paragraph(paragraph, &raw, id);
+                let ids = bound.runs.iter().map(|run| run.node_id).collect();
+                (Some(raw), ids)
+            }
+            None => (None, paragraph.runs.iter().map(|run| run.node_id).collect()),
+        }
+    }
+
     /// Gives the runs at `runs` of `paragraph_index`, which were styled by
     /// `previous_style` (the paragraph's style before a style change, or the
     /// style of the paragraph they were joined from), the formatting the
@@ -32582,7 +32601,8 @@ impl WordDocument {
         if style.or(default_style) == previous_style.or(default_style) {
             return;
         }
-        let raw = self.raw_document.as_ref();
+        let (note_raw, run_ids) = self.run_xml_ids(paragraph_index, paragraph);
+        let raw = note_raw.as_ref().or(self.raw_document.as_ref());
         let mut restyled = Vec::new();
         for (index, run) in paragraph.runs.iter().enumerate() {
             if !runs.contains(&index) {
@@ -32605,7 +32625,7 @@ impl WordDocument {
                 Self::apply_theme_fonts_to_run_props(&mut old, theme);
                 Self::apply_theme_fonts_to_run_props(&mut new, theme);
             }
-            let declared = declared_property_tags(raw, run.node_id, "w:r", "w:rPr");
+            let declared = declared_property_tags(raw, run_ids[index], "w:r", "w:rPr");
             let mut props = props.clone();
             rebase_run_style_properties(&mut props, &old, &new, |tag| declared.contains(&tag));
             release_inherited_fonts(&mut props, |tag| declared.contains(&tag));
@@ -32652,7 +32672,8 @@ impl WordDocument {
             .properties
             .as_ref()
             .and_then(|props| props.style.as_deref());
-        let raw = self.raw_document.as_ref();
+        let (note_raw, run_ids) = self.run_xml_ids(paragraph_index, paragraph);
+        let raw = note_raw.as_ref().or(self.raw_document.as_ref());
         let mut restyled = Vec::new();
         for (index, previous) in changes {
             let Some(run) = paragraph.runs.get(*index) else {
@@ -32681,7 +32702,7 @@ impl WordDocument {
                 Self::apply_theme_fonts_to_run_props(&mut old, theme);
                 Self::apply_theme_fonts_to_run_props(&mut new, theme);
             }
-            let declared = declared_property_tags(raw, run.node_id, "w:r", "w:rPr");
+            let declared = declared_property_tags(raw, run_ids[*index], "w:r", "w:rPr");
             let mut props = props.clone();
             rebase_run_style_properties(&mut props, &old, &new, |tag| declared.contains(&tag));
             release_inherited_fonts(&mut props, |tag| declared.contains(&tag));
