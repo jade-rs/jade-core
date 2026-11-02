@@ -330,7 +330,569 @@ fn editing_a_code_reevaluates_the_field() {
 mod stateful {
     use super::*;
     use jade_docx_editor::fields::FieldInfo;
+    use jade_docx_editor::word::references::citations::{BibliographyStyle, Source, WordCitations};
     use proptest::prelude::*;
+
+    fn citation_source(tag: &str) -> Source {
+        Source {
+            tag: tag.into(),
+            source_type: "Book".into(),
+            author: "Smith, John".into(),
+            title: "A source".into(),
+            year: "2020".into(),
+            publisher: None,
+            url: None,
+        }
+    }
+
+    #[test]
+    fn quoted_citation_tags_restyle_and_protect_the_source_after_reload() {
+        for instruction in [r#"CITATION "Tag" \l 1041"#, r#"CITATION \l 1041 "Tag""#] {
+            let mut session = Session::blank();
+            session.add_source(citation_source("Tag")).unwrap();
+            session
+                .document
+                .insert_inline_field(TextPosition::new(0, 0), instruction, "Old")
+                .unwrap();
+            let bytes = session.document.export_docx().unwrap();
+            capture(&bytes, "imported quoted citation");
+            session.document = block_on(WordDocument::load(&bytes, &Options::default())).unwrap();
+            assert_eq!(session.cited_tags(), ["Tag"]);
+            assert!(session.delete_source("Tag").is_err());
+            session
+                .set_bibliography_style(BibliographyStyle::Ieee)
+                .unwrap();
+            assert_eq!(session.document.inline_fields("CITATION")[0].text, "[1]");
+            session.undo();
+            assert_eq!(session.document.inline_fields("CITATION")[0].text, "Old");
+        }
+    }
+
+    #[test]
+    fn authored_citation_tags_survive_renaming_history_and_reload() {
+        for tag in ["Tag", "a b", "a\"b", "\\tag", "a\\b"] {
+            let mut session = Session::blank();
+            let returned = session
+                .add_source(citation_source(&format!(" {tag} ")))
+                .unwrap();
+            assert_eq!(returned, tag);
+            session.insert_citation(&returned).unwrap();
+            assert_eq!(session.cited_tags(), [tag]);
+            assert_eq!(
+                session.document.inline_fields("CITATION")[0].text,
+                "(Smith, 2020)"
+            );
+            let mut replacement = citation_source("Renamed tag");
+            replacement.year = "2025".into();
+            session.edit_source(tag, replacement).unwrap();
+            assert_eq!(session.cited_tags(), ["Renamed tag"]);
+            assert_eq!(
+                session.document.inline_fields("CITATION")[0].text,
+                "(Smith, 2025)"
+            );
+            session.undo();
+            assert_eq!(session.cited_tags(), [tag]);
+            assert_eq!(
+                session.document.inline_fields("CITATION")[0].text,
+                "(Smith, 2020)"
+            );
+            let bytes = session.document.export_docx().unwrap();
+            capture(&bytes, &format!("authored citation tag {tag:?}"));
+            session.document = block_on(WordDocument::load(&bytes, &Options::default())).unwrap();
+            assert_eq!(session.cited_tags(), [tag]);
+            assert!(session.delete_source(tag).is_err());
+        }
+    }
+
+    #[test]
+    fn repeated_citations_leave_the_caret_after_the_new_field() {
+        let mut session = Session::blank();
+        session.add_source(citation_source("Tag")).unwrap();
+        session.insert_citation("Tag").unwrap();
+        session.insert_citation("Tag").unwrap();
+        assert_eq!(
+            session.selection.unwrap().focus,
+            TextPosition::new(0, "(Smith, 2020)(Smith, 2020)".len())
+        );
+        session.type_text("!");
+        let text: String = session
+            .document
+            .paragraph(0)
+            .unwrap()
+            .runs
+            .iter()
+            .map(|run| run.text.as_str())
+            .collect();
+        assert_eq!(text, "(Smith, 2020)(Smith, 2020)!");
+    }
+
+    #[test]
+    fn combined_citations_keep_cached_results_and_every_source_link() {
+        for instruction in [
+            r#"CITATION "One" \l 1041 \m "Two words""#,
+            r#"CITATION "One" \p "12-14""#,
+        ] {
+            let mut session = Session::blank();
+            session.add_source(citation_source("One")).unwrap();
+            session.add_source(citation_source("Two words")).unwrap();
+            session
+                .document
+                .insert_inline_field(
+                    TextPosition::new(0, 0),
+                    instruction,
+                    "Word's combined / page-specific citation",
+                )
+                .unwrap();
+            session
+                .set_bibliography_style(BibliographyStyle::Ieee)
+                .unwrap();
+            assert_eq!(
+                session.document.inline_fields("CITATION")[0].text,
+                "Word's combined / page-specific citation"
+            );
+            assert!(session.delete_source("One").is_err());
+            if instruction.contains(r"\m") {
+                assert_eq!(session.cited_tags(), ["One", "Two words"]);
+                assert!(session.delete_source("Two words").is_err());
+                session
+                    .edit_source("Two words", citation_source("New tag"))
+                    .unwrap();
+                assert_eq!(session.cited_tags(), ["One", "New tag"]);
+            }
+            let bytes = session.document.export_docx().unwrap();
+            capture(&bytes, instruction);
+            session.document = block_on(WordDocument::load(&bytes, &Options::default())).unwrap();
+            assert_eq!(
+                session.document.inline_fields("CITATION")[0].text,
+                "Word's combined / page-specific citation"
+            );
+        }
+    }
+
+    #[test]
+    fn citation_after_a_growing_bibliography_keeps_its_caret_and_heading() {
+        let mut session = Session::blank();
+        let blank = session.document.paragraph(0).unwrap().clone();
+        session.add_source(citation_source("One")).unwrap();
+        session.insert_bibliography(Some("References")).unwrap();
+        let after = session
+            .document
+            .insert_paragraph_after(session.document.paragraph_count() - 1, blank)
+            .unwrap();
+        session.add_source(citation_source("Two")).unwrap();
+        session.selection = Some(SelectionRange::collapsed(TextPosition::new(after, 0)));
+        session.insert_citation("One").unwrap();
+        let field = &session.document.inline_fields("CITATION")[0];
+        assert_eq!(
+            session.selection.unwrap().focus,
+            TextPosition::new(field.paragraph, field.text.len())
+        );
+        assert_eq!(field.paragraph, after + 1);
+        assert_eq!(
+            session
+                .document
+                .paragraph(1)
+                .unwrap()
+                .runs
+                .iter()
+                .map(|r| r.text.as_str())
+                .collect::<String>(),
+            "References"
+        );
+        let bytes = session.document.export_docx().unwrap();
+        capture(&bytes, "citation after regenerated bibliography heading");
+        session.document = block_on(WordDocument::load(&bytes, &Options::default())).unwrap();
+        session.update_bibliography().unwrap();
+        assert_eq!(
+            session
+                .document
+                .paragraph(1)
+                .unwrap()
+                .runs
+                .iter()
+                .map(|r| r.text.as_str())
+                .collect::<String>(),
+            "References"
+        );
+        assert_eq!(
+            session.document.inline_fields("CITATION")[0].paragraph,
+            after + 1
+        );
+    }
+
+    #[test]
+    fn missing_imported_citation_sources_do_not_offset_numbering() {
+        let mut session = Session::blank();
+        session.add_source(citation_source("Tag")).unwrap();
+        session
+            .document
+            .insert_inline_field(
+                TextPosition::new(0, 0),
+                "CITATION Missing",
+                "Imported result",
+            )
+            .unwrap();
+        session.caret("Imported result".len());
+        session.insert_citation("Tag").unwrap();
+        session
+            .set_bibliography_style(BibliographyStyle::Ieee)
+            .unwrap();
+        assert_eq!(
+            session
+                .document
+                .inline_fields("CITATION")
+                .iter()
+                .map(|f| f.text.as_str())
+                .collect::<Vec<_>>(),
+            ["Imported result", "[1]"]
+        );
+        session.insert_bibliography(None).unwrap();
+        let bytes = session.document.export_docx().unwrap();
+        capture(&bytes, "missing imported source before numbered citation");
+        let loaded = block_on(WordDocument::load(&bytes, &Options::default())).unwrap();
+        assert_eq!(loaded.inline_fields("CITATION")[1].text, "[1]");
+    }
+
+    #[test]
+    fn every_offered_citation_source_type_can_be_added_and_reloaded() {
+        use jade_docx_editor::word::references::citations::SOURCE_TYPES;
+        for source_type in SOURCE_TYPES.into_iter().chain(["Misc"]) {
+            let mut session = Session::blank();
+            let mut source = citation_source("Tag");
+            source.source_type = source_type.into();
+            session.add_source(source).unwrap();
+            let bytes = session.document.export_docx().unwrap();
+            capture(&bytes, source_type);
+            session.document = block_on(WordDocument::load(&bytes, &Options::default())).unwrap();
+            assert_eq!(session.sources()[0].source_type, source_type);
+        }
+    }
+
+    #[test]
+    fn literal_citation_switches_survive_formatting_and_reload() {
+        use jade_docx_editor::word::fields::{code_has_switch, toggle_switch};
+
+        for tag in ["{", "}", "a{b", "a}b", "{x}"] {
+            let mut session = Session::blank();
+            session.add_source(citation_source("One")).unwrap();
+            session.add_source(citation_source(tag)).unwrap();
+            let code = toggle_switch("CITATION One", "\\m", Some(tag));
+            let code = toggle_switch(&code, "\\*", Some("MERGEFORMAT"));
+            assert!(code_has_switch(&code, "\\m", Some(tag)), "{code}");
+            session
+                .document
+                .insert_inline_field(TextPosition::new(0, 0), &code, "Word's combined citation")
+                .unwrap();
+            assert_eq!(session.cited_tags(), ["One", tag]);
+            let bytes = session.document.export_docx().unwrap();
+            capture(&bytes, &code);
+            session.document = block_on(WordDocument::load(&bytes, &Options::default())).unwrap();
+            assert_eq!(session.cited_tags(), ["One", tag]);
+            assert!(session.delete_source(tag).is_err());
+            assert_eq!(
+                session.document.inline_fields("CITATION")[0].text,
+                "Word's combined citation"
+            );
+        }
+    }
+
+    const CITATION_TAGS: [&str; 12] = [
+        "Tag",
+        "two words",
+        "a\"b",
+        "\\tag",
+        "a\\b",
+        "tail\\",
+        "資料",
+        "{x}",
+        "{",
+        "}",
+        "a{b",
+        "a}b",
+    ];
+
+    #[derive(Clone, Debug, Default, PartialEq, Eq)]
+    struct CitationModel {
+        sources: Vec<(String, u8)>,
+        citations: Vec<String>,
+        numbered: bool,
+    }
+
+    #[derive(Clone, Debug)]
+    enum CitationOp {
+        Add(u8, u8),
+        Cite(u8),
+        Rename(u8, u8, u8),
+        Delete(u8),
+        Style(bool),
+        Undo,
+        Redo,
+        Reload,
+    }
+
+    fn citation_operations() -> impl Strategy<Value = Vec<CitationOp>> {
+        let tags = CITATION_TAGS.len() as u8;
+        prop::collection::vec(
+            prop_oneof![
+                4 => (0u8..tags, 0u8..5).prop_map(|(tag, year)| CitationOp::Add(tag, year)),
+                5 => (0u8..tags).prop_map(CitationOp::Cite),
+                4 => (0u8..tags, 0u8..tags, 0u8..5).prop_map(|(old, new, year)| CitationOp::Rename(old, new, year)),
+                2 => (0u8..tags).prop_map(CitationOp::Delete),
+                2 => any::<bool>().prop_map(CitationOp::Style),
+                3 => Just(CitationOp::Undo),
+                2 => Just(CitationOp::Redo),
+                2 => Just(CitationOp::Reload),
+            ],
+            1..49,
+        )
+    }
+
+    fn citation_sequence(ops: &[CitationOp]) {
+        let mut session = Session::blank();
+        let mut model = CitationModel::default();
+        let mut undo = Vec::new();
+        let mut redo = Vec::new();
+        for (step, op) in ops.iter().enumerate() {
+            let before = model.clone();
+            let mut selection_before = session.selection;
+            let mut expected_ok = true;
+            let mut records_history = true;
+            let source = |tag: u8, year: u8| {
+                let mut source = citation_source(&format!(" {} ", CITATION_TAGS[tag as usize]));
+                source.year = (2020 + u16::from(year)).to_string();
+                source
+            };
+            let result = match *op {
+                CitationOp::Add(tag, year) => {
+                    let tag_value = CITATION_TAGS[tag as usize];
+                    expected_ok = !model.sources.iter().any(|(tag, _)| tag == tag_value);
+                    if expected_ok {
+                        model.sources.push((tag_value.into(), year));
+                    }
+                    session
+                        .add_source(source(tag, year))
+                        .map(|returned| assert_eq!(returned, tag_value))
+                }
+                CitationOp::Cite(tag) => {
+                    let tag = CITATION_TAGS[tag as usize];
+                    expected_ok = model.sources.iter().any(|(existing, _)| existing == tag);
+                    if expected_ok {
+                        model.citations.insert(0, tag.into());
+                    }
+                    // Offset zero unambiguously means before every field,
+                    // including loaded computed fields with cache-only text.
+                    session.caret(0);
+                    selection_before = session.selection;
+                    session.insert_citation(tag).map(|_| ())
+                }
+                CitationOp::Rename(old, new, year) => {
+                    let old_tag = CITATION_TAGS[old as usize];
+                    let new_tag = CITATION_TAGS[new as usize];
+                    let found = model.sources.iter().position(|(tag, _)| tag == old_tag);
+                    expected_ok = found.is_some()
+                        && (old == new || !model.sources.iter().any(|(tag, _)| tag == new_tag));
+                    if expected_ok {
+                        model.sources[found.unwrap()] = (new_tag.into(), year);
+                        for tag in &mut model.citations {
+                            if tag == old_tag {
+                                *tag = new_tag.into();
+                            }
+                        }
+                    }
+                    session.edit_source(old_tag, source(new, year))
+                }
+                CitationOp::Delete(tag) => {
+                    let tag = CITATION_TAGS[tag as usize];
+                    expected_ok = model.sources.iter().any(|(existing, _)| existing == tag)
+                        && !model.citations.iter().any(|cited| cited == tag);
+                    if expected_ok {
+                        model.sources.retain(|(existing, _)| existing != tag);
+                    }
+                    session.delete_source(tag)
+                }
+                CitationOp::Style(numbered) => {
+                    expected_ok = !model.sources.is_empty();
+                    if expected_ok {
+                        model.numbered = numbered;
+                    }
+                    session.set_bibliography_style(if numbered {
+                        BibliographyStyle::Ieee
+                    } else {
+                        BibliographyStyle::Apa
+                    })
+                }
+                CitationOp::Undo | CitationOp::Redo => {
+                    records_history = false;
+                    let expected_changed = if matches!(op, CitationOp::Undo) {
+                        if let Some(previous) = undo.pop() {
+                            redo.push(model.clone());
+                            model = previous;
+                            true
+                        } else {
+                            false
+                        }
+                    } else if let Some(next) = redo.pop() {
+                        undo.push(model.clone());
+                        model = next;
+                        true
+                    } else {
+                        false
+                    };
+                    let mut ctx =
+                        CommandContext::new(&mut session.document, &mut session.selection);
+                    let changed = if matches!(op, CitationOp::Undo) {
+                        session.executor.undo(&mut ctx)
+                    } else {
+                        session.executor.redo(&mut ctx)
+                    }
+                    .unwrap();
+                    assert_eq!(changed, expected_changed, "step {step}: {op:?}; {ops:?}");
+                    Ok(())
+                }
+                CitationOp::Reload => {
+                    records_history = false;
+                    let bytes = session.document.export_docx().unwrap();
+                    capture(&bytes, &format!("citation step {step}: {ops:?}"));
+                    session.document =
+                        block_on(WordDocument::load(&bytes, &Options::default())).unwrap();
+                    session.executor = CommandExecutor::new();
+                    undo.clear();
+                    redo.clear();
+                    Ok(())
+                }
+            };
+            assert_eq!(
+                result.is_ok(),
+                expected_ok,
+                "step {step}: {op:?}; {result:?}; {ops:?}"
+            );
+            if records_history && expected_ok {
+                undo.push(before);
+                redo.clear();
+            }
+            if !expected_ok {
+                assert_eq!(
+                    session.selection, selection_before,
+                    "rejected step {step}: {op:?}"
+                );
+            }
+            let sources: Vec<_> = session
+                .sources()
+                .into_iter()
+                .map(|s| (s.tag, s.year))
+                .collect();
+            assert_eq!(
+                sources,
+                model
+                    .sources
+                    .iter()
+                    .map(|(tag, year)| (tag.clone(), (2020 + u16::from(*year)).to_string()))
+                    .collect::<Vec<_>>(),
+                "sources step {step}: {op:?}; {ops:?}"
+            );
+            let mut order = Vec::new();
+            let expected_texts: Vec<_> = model
+                .citations
+                .iter()
+                .map(|tag| {
+                    if !order.contains(tag) {
+                        order.push(tag.clone());
+                    }
+                    let number = order.iter().position(|cited| cited == tag).unwrap() + 1;
+                    if model.numbered {
+                        format!("[{number}]")
+                    } else {
+                        let year = model
+                            .sources
+                            .iter()
+                            .find(|(source, _)| source == tag)
+                            .unwrap()
+                            .1;
+                        format!("(Smith, {})", 2020 + u16::from(year))
+                    }
+                })
+                .collect();
+            assert_eq!(
+                session.cited_tags(),
+                order,
+                "tags step {step}: {op:?}; {ops:?}"
+            );
+            assert_eq!(
+                session
+                    .document
+                    .inline_fields("CITATION")
+                    .iter()
+                    .map(|f| f.text.clone())
+                    .collect::<Vec<_>>(),
+                expected_texts,
+                "results step {step}: {op:?}; {ops:?}"
+            );
+            if matches!(op, CitationOp::Cite(_)) && expected_ok {
+                assert_eq!(
+                    session.selection.unwrap().focus,
+                    TextPosition::new(0, expected_texts.first().unwrap().len()),
+                    "caret step {step}: {op:?}; {ops:?}"
+                );
+            }
+            if std::env::var_os("JADE_FIELD_PBT_EXPORT_DIR").is_some() {
+                capture(
+                    &session.document.export_docx().unwrap(),
+                    &format!("citation step {step}: {op:?}; {ops:?}"),
+                );
+            }
+        }
+        let bytes = session.document.export_docx().unwrap();
+        capture(&bytes, &format!("citation final: {ops:?}"));
+        let loaded = block_on(WordDocument::load(&bytes, &Options::default())).unwrap();
+        assert_eq!(loaded.citation_sources(), session.sources());
+        assert_eq!(
+            loaded
+                .inline_fields("CITATION")
+                .iter()
+                .map(|f| (f.instruction.clone(), f.text.clone()))
+                .collect::<Vec<_>>(),
+            session
+                .document
+                .inline_fields("CITATION")
+                .iter()
+                .map(|f| (f.instruction.clone(), f.text.clone()))
+                .collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
+    fn citation_reload_keeps_results_and_the_inserted_caret() {
+        citation_sequence(&[
+            CitationOp::Add(0, 0),
+            CitationOp::Add(7, 0),
+            CitationOp::Add(1, 0),
+            CitationOp::Cite(0),
+            CitationOp::Reload,
+            CitationOp::Cite(7),
+        ]);
+        citation_sequence(&[
+            CitationOp::Add(3, 0),
+            CitationOp::Cite(3),
+            CitationOp::Reload,
+            CitationOp::Cite(3),
+            CitationOp::Rename(3, 2, 1),
+            CitationOp::Undo,
+            CitationOp::Redo,
+        ]);
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig {
+            cases: 64,
+            max_shrink_iters: 2048,
+            failure_persistence: Some(Box::new(proptest::test_runner::FileFailurePersistence::WithSource("proptest-regressions"))),
+            ..ProptestConfig::default()
+        })]
+        #[test]
+        fn citation_operation_sequences_match_model(ops in citation_operations()) {
+            citation_sequence(&ops);
+        }
+    }
 
     #[derive(Clone, Copy, Debug)]
     enum Code {
