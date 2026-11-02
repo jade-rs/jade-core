@@ -57,6 +57,11 @@ use unicode_segmentation::UnicodeSegmentation;
 
 pub use crate::constants::EAST_ASIA_ADVANCE_SCALE;
 
+#[inline]
+fn is_whitespace_text(text: &str) -> bool {
+    text.chars().all(char::is_whitespace)
+}
+
 /// Whether a Word paragraph-justification token distributes the line width.
 pub fn is_justified_alignment(alignment: &str) -> bool {
     // Compared in place: the wrap loop asks this for overflowing graphemes, and
@@ -2037,7 +2042,7 @@ fn marker_spacing_gap_ratio(
     if clusters.is_empty() || clusters.len() > 4 {
         return 0.0;
     }
-    if grapheme.trim().is_empty() {
+    if is_whitespace_text(grapheme) {
         return 0.0;
     }
 
@@ -2583,7 +2588,7 @@ fn compute_text_advance_step_with_descriptor<'a, C: LineWrapContext>(
     // A space has no ink to embolden: Word for Mac sets scroll-offset-repro's
     // bold `第６章　賃金` ideographic space at its plain width. (A bold ASCII
     // space takes its advance from `word_ascii_metrics` before this.)
-    let synthetic_bold_extra = if measured_width_is_oracle || grapheme.trim().is_empty() {
+    let synthetic_bold_extra = if measured_width_is_oracle || is_whitespace_text(grapheme) {
         0.0
     } else {
         crate::line_metrics::word_synthetic_bold_extra_advance_px(font_descriptor)
@@ -4355,7 +4360,7 @@ pub fn layout_text_vertically<C: LineWrapContext>(
     ) {
         // Build the (borrowing) cluster and whitespace flag before moving
         // `text` into the segment, so the grapheme string is never cloned.
-        let is_whitespace = text.trim().is_empty();
+        let is_whitespace = is_whitespace_text(&text);
         let cluster = InlineCluster::grapheme(
             range.start,
             range.end,
@@ -6760,7 +6765,7 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
                 &mut snap_to_chars_cell_width_cache,
             )?;
             let glyph_total_width;
-            let is_whitespace = grapheme.trim().is_empty();
+            let is_whitespace = is_whitespace_text(grapheme);
             let auto_space;
             let cluster_layout = loop {
                 let (font_slot, font_desc, font_desc_hash, font_desc_id) =
@@ -10168,6 +10173,53 @@ mod tests {
     use std::rc::Rc;
     use std::time::Instant;
     use unicode_segmentation::UnicodeSegmentation;
+
+    #[test]
+    fn whitespace_scan_matches_trim_for_every_scalar() {
+        let mut encoded = [0; 4];
+        for scalar in 0..=0x10ffff {
+            let Some(ch) = char::from_u32(scalar) else {
+                continue;
+            };
+            let text = ch.encode_utf8(&mut encoded);
+            assert_eq!(is_whitespace_text(text), text.trim().is_empty(), "{ch:?}");
+        }
+        for text in [
+            "",
+            " \t\r\n\u{b}\u{c}",
+            "\u{85}\u{a0}\u{1680}\u{2000}\u{2028}\u{2029}\u{202f}\u{205f}\u{3000}",
+            " \u{301}",
+            "\u{200b}",
+            "\u{feff}",
+            "\u{3000}日\u{3000}",
+            "\u{a0}a\u{a0}",
+        ] {
+            assert_eq!(is_whitespace_text(text), text.trim().is_empty(), "{text:?}");
+        }
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig {
+            cases: 256,
+            rng_seed: proptest::test_runner::RngSeed::Fixed(20261102),
+            ..ProptestConfig::default()
+        })]
+
+        #[test]
+        fn whitespace_scan_matches_trim_for_mixed_text(
+            characters in proptest::collection::vec(prop_oneof![
+                4 => proptest::sample::select(vec![' ', '\t', '\r', '\n', '\u{b}', '\u{c}', '\u{85}', '\u{a0}', '\u{1680}', '\u{2007}', '\u{2028}', '\u{2029}', '\u{202f}', '\u{205f}', '\u{3000}']),
+                2 => proptest::sample::select(vec!['a', '日', '\u{301}', '\u{200b}', '\u{200d}', '\u{feff}', '😀']),
+                1 => any::<char>(),
+            ], 0..256)
+        ) {
+            let text: String = characters.into_iter().collect();
+            prop_assert_eq!(is_whitespace_text(&text), text.trim().is_empty());
+            for grapheme in text.graphemes(true) {
+                prop_assert_eq!(is_whitespace_text(grapheme), grapheme.trim().is_empty());
+            }
+        }
+    }
 
     #[test]
     fn word_distribution_tokens_are_justified_alignments() {
