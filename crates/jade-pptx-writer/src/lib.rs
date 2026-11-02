@@ -22,6 +22,7 @@ pub use presenting::{
     set_page_header_footer, set_print_what, set_show_settings, set_slide_advances, set_view_props,
     PageHeaderFooter,
 };
+pub use presenting::{insert_ink, insert_slide as insert_slide_at, InkPath};
 pub use shape_insertion::{insert_shape, validate_shape_insert, ShapeInsert, ShapePreset};
 pub use smartart::{
     convert_smartart_to_shapes, convert_text_to_smartart, edit_smartart, insert_smartart,

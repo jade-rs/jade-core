@@ -174,3 +174,34 @@ impl EditSession {
         Ok(self.commit(next))
     }
 }
+
+/// New Slide at `index` (on the layout of the slide before it), as a
+/// package edit, for batches.
+pub fn insert_slide(bytes: &[u8], index: usize) -> Result<Vec<u8>> {
+    xml::edit_slides(bytes, xml::SlideEdit::Insert(index))
+}
+
+impl EditSession {
+    /// Several package edits — free functions of this crate chained by the
+    /// caller — as one step of Undo. The result must still read as a deck.
+    pub fn apply_batch(&mut self, edit: impl FnOnce(&[u8]) -> Result<Vec<u8>>) -> Result<bool> {
+        let next = edit(self.bytes())?;
+        jade_pptx_reader::read_deck(&next)?;
+        Ok(self.commit(next))
+    }
+}
+
+pub use xml::ink::InkPath;
+
+/// Writes a show's kept ink onto slide `slide` as freeform lines.
+pub fn insert_ink(bytes: &[u8], slide: usize, paths: &[InkPath]) -> Result<Vec<u8>> {
+    if paths.is_empty() {
+        return Ok(bytes.to_vec());
+    }
+    let (mut package, part, xml) = crate::slide_xml(bytes, slide)?;
+    let changed = xml::ink::insert_ink(&xml, paths)?;
+    package.replace(&part, changed.into_bytes());
+    let result = package.write()?;
+    jade_pptx_reader::read_deck(&result)?;
+    Ok(result)
+}

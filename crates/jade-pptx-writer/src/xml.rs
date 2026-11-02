@@ -21,6 +21,7 @@ pub(crate) use objects::{
 };
 mod paragraphs;
 pub(crate) use paragraphs::format_paragraphs;
+pub(crate) mod ink;
 pub(crate) mod layouts;
 mod notes;
 pub(crate) mod page_masters;

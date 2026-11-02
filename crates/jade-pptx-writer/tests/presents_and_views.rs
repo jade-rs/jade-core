@@ -308,3 +308,49 @@ fn notes_text_is_formatted_in_place() {
         "Bold this word"
     );
 }
+
+#[test]
+fn kept_ink_lands_on_the_slide_as_freeform_lines() {
+    let paths = vec![
+        jade_pptx_writer::InkPath {
+            points_emu: vec![(100_000, 100_000), (400_000, 250_000), (700_000, 120_000)],
+            color: "FF0000".into(),
+            width_emu: 28_575,
+            highlighter: false,
+        },
+        jade_pptx_writer::InkPath {
+            points_emu: vec![(100_000, 900_000), (900_000, 900_000)],
+            color: "FFFF00".into(),
+            width_emu: 171_450,
+            highlighter: true,
+        },
+    ];
+    let mut session = EditSession::open(DECK).unwrap();
+    let before = jade_pptx_reader::read_deck(DECK).unwrap().slides[0]
+        .content
+        .shapes
+        .len();
+    assert!(session
+        .apply_batch(|bytes| jade_pptx_writer::insert_ink(bytes, 0, &paths))
+        .unwrap());
+    let deck = jade_pptx_reader::read_deck(session.bytes()).unwrap();
+    let shapes = &deck.slides[0].content.shapes;
+    assert_eq!(shapes.len(), before + 2);
+    let ink: Vec<_> = shapes
+        .iter()
+        .filter_map(|item| match item {
+            jade_pptx_reader::ShapeItem::Shape(shape) if shape.name.starts_with("Ink") => {
+                Some(shape)
+            }
+            _ => None,
+        })
+        .collect();
+    assert_eq!(ink.len(), 2);
+    assert!(ink[0].custom_geometry.is_some());
+    let transform = ink[0].transform.unwrap();
+    assert_eq!(transform.offset_emu, (100_000, 100_000));
+    assert_eq!(transform.extent_emu, (600_000, 150_000));
+    // Undo takes the ink away again.
+    session.undo();
+    assert_eq!(session.bytes(), DECK);
+}
