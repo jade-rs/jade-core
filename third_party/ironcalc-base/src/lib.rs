@@ -29,6 +29,7 @@
 
 pub mod builtin_styles;
 pub mod calc_result;
+pub mod calculation;
 pub mod cell;
 pub mod cf_types;
 pub mod clock;

@@ -514,6 +514,7 @@ fn project_with_epoch<'a>(
     trace: bool,
 ) -> Result<Projection<'a>> {
     let mut model = project_structure(workbook, time_zone)?;
+    configure_calculation(&mut model, workbook);
     let context = parse_context(workbook);
     PARSED.with(|parsed| {
         let mut parsed = parsed.borrow_mut();
@@ -563,6 +564,15 @@ fn project_with_epoch<'a>(
                         )
                     });
                     if set.is_ok() {
+                        if workbook.iteration.enabled {
+                            // Iterative calculation goes on from the value
+                            // the formula was saved with.
+                            seed_formula_value(
+                                &mut model,
+                                (engine_sheet, engine_row, engine_column),
+                                &cell.value,
+                            );
+                        }
                         projected.push((index, cell.reference));
                         continue;
                     }
@@ -669,6 +679,68 @@ fn engine_table(
         style_info: Default::default(),
         has_filters: table.auto_filter,
     })
+}
+
+/// The workbook's calculation options in the engine: iterative calculation
+/// and precision as displayed.
+fn configure_calculation(model: &mut Model<'_>, workbook: &Workbook) {
+    let iteration = workbook.iteration;
+    model.set_iterative_calculation(
+        iteration
+            .enabled
+            .then_some((iteration.count, iteration.delta)),
+    );
+    if workbook.full_precision {
+        return;
+    }
+    // Each formula cell's number format; General, which shows the number
+    // in full, is left out.
+    let styles = &workbook.styles;
+    let mut formats: HashMap<(u32, i32, i32), String> = HashMap::new();
+    for (index, sheet) in workbook.sheets.iter().enumerate() {
+        for row in &sheet.rows {
+            for cell in row.cells.iter().filter(|cell| cell.formula.is_some()) {
+                let style = cell
+                    .style_index
+                    .or(row.style_index.filter(|_| row.custom_format))
+                    .and_then(|style| styles.cell_formats.get(style as usize));
+                let Some(code) = style.and_then(|format| styles.number_format_code(format)) else {
+                    continue;
+                };
+                if code.eq_ignore_ascii_case("General") {
+                    continue;
+                }
+                formats.insert(
+                    (
+                        index as u32,
+                        row.index as i32 + 1,
+                        cell.reference.column as i32 + 1,
+                    ),
+                    code.to_string(),
+                );
+            }
+        }
+    }
+    model.set_precision_as_displayed(Some(Box::new(move |sheet, row, column| {
+        formats.get(&(sheet, row, column)).cloned()
+    })));
+}
+
+/// The saved value of the formula at `(sheet, row, column)` as the value
+/// the engine holds for it before it is calculated.
+fn seed_formula_value(
+    model: &mut Model<'_>,
+    (sheet, row, column): (u32, i32, i32),
+    value: &CellValue,
+) {
+    use ironcalc_base::types::FormulaValue;
+    let value = match value {
+        CellValue::Number(number) => FormulaValue::Number(*number),
+        CellValue::Text(text) => FormulaValue::Text(text.clone()),
+        CellValue::Bool(flag) => FormulaValue::Boolean(*flag),
+        CellValue::Error(_) | CellValue::Empty => return,
+    };
+    let _ = model.set_formula_cached_value(sheet, row, column, value);
 }
 
 fn set_literal(model: &mut Model<'_>, sheet: u32, row: i32, column: i32, value: &CellValue) {

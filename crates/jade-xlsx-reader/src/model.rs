@@ -1431,10 +1431,37 @@ pub struct Workbook {
     pub calculation_mode: CalculationMode,
     #[serde(default = "default_calculate_on_save")]
     pub calculate_on_save: bool,
+    /// `calcPr/@iterate`, `@iterateCount` and `@iterateDelta`.
+    #[serde(default)]
+    pub iteration: Iteration,
+    /// `calcPr/@fullPrecision`; `false` is Excel's precision as displayed.
+    #[serde(default = "default_calculate_on_save")]
+    pub full_precision: bool,
 }
 
 fn default_calculate_on_save() -> bool {
     true
+}
+
+/// Excel's iterative calculation: whether a circular reference is
+/// calculated round again instead of being an error, at most `count` times,
+/// stopping once no value changes by more than `delta`.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct Iteration {
+    pub enabled: bool,
+    pub count: u32,
+    pub delta: f64,
+}
+
+impl Default for Iteration {
+    /// Excel's defaults: off, 100 iterations, a maximum change of 0.001.
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            count: 100,
+            delta: 0.001,
+        }
+    }
 }
 
 impl Default for Workbook {
@@ -1450,6 +1477,8 @@ impl Default for Workbook {
             full_calculation_on_load: false,
             calculation_mode: CalculationMode::default(),
             calculate_on_save: true,
+            iteration: Iteration::default(),
+            full_precision: true,
         }
     }
 }

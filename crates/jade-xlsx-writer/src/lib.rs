@@ -258,6 +258,26 @@ pub fn set_calculation_properties(
     Ok(package.write()?)
 }
 
+/// Persist iterative calculation and precision as displayed, the calculation
+/// options that change what formulas give, in `calcPr`.
+pub fn set_calculation_options(
+    original: &[u8],
+    iteration: jade_xlsx_reader::Iteration,
+    full_precision: bool,
+) -> Result<Vec<u8>> {
+    let mut package = OpcPackage::open(original)?;
+    let name = workbook_part_name(&package)?;
+    let xml = package
+        .part_str(&name)?
+        .ok_or_else(|| WriteError::MissingPart(name.clone()))?;
+    let updated = calc::set_options(&xml, iteration, full_precision)?;
+    if updated == xml {
+        return Ok(original.to_vec());
+    }
+    package.replace(&name, updated.into_bytes());
+    Ok(package.write()?)
+}
+
 /// Keep incomplete evaluations visible to the next spreadsheet opening the file.
 pub fn mark_for_recalculation(original: &[u8]) -> Result<Vec<u8>> {
     let mut package = OpcPackage::open(original)?;
