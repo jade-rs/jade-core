@@ -5,7 +5,7 @@
 //! inserted and set again whenever the sources or the style change.
 
 use crate::word::fields::{build_code, parse_code, quote, unparse, unquote};
-use crate::word_document::FieldBlockLine;
+use crate::word_document::{FieldBlockLine, WordDocument};
 use jade_selection::SelectionRange;
 
 use super::edit_document;
@@ -339,47 +339,7 @@ pub fn master_list_xml(sources: &[Source]) -> String {
 
 /// Reads a master list written by [`master_list_xml`] — or by Word.
 pub fn parse_master_list(xml: &str) -> Vec<Source> {
-    fn text_of(source: &str, tag: &str) -> Option<String> {
-        let open = format!("<b:{tag}>");
-        let close = format!("</b:{tag}>");
-        let start = source.find(&open)? + open.len();
-        let end = source[start..].find(&close)? + start;
-        let value = source[start..end]
-            .replace("&lt;", "<")
-            .replace("&gt;", ">")
-            .replace("&quot;", "\"")
-            .replace("&amp;", "&");
-        Some(value)
-    }
-    let mut sources = Vec::new();
-    let mut rest = xml;
-    while let Some(start) = rest.find("<b:Source>") {
-        let Some(end) = rest[start..].find("</b:Source>") else {
-            break;
-        };
-        let body = &rest[start..start + end];
-        rest = &rest[start + end..];
-        let Some(tag) = text_of(body, "Tag") else {
-            continue;
-        };
-        let author = text_of(body, "Corporate").unwrap_or_else(|| {
-            let last = text_of(body, "Last").unwrap_or_default();
-            match text_of(body, "First") {
-                Some(first) => format!("{last}, {first}"),
-                None => last,
-            }
-        });
-        sources.push(Source {
-            tag,
-            source_type: text_of(body, "SourceType").unwrap_or_else(|| "Book".to_string()),
-            author,
-            title: text_of(body, "Title").unwrap_or_default(),
-            year: text_of(body, "Year").unwrap_or_default(),
-            publisher: text_of(body, "Publisher"),
-            url: text_of(body, "URL"),
-        });
-    }
-    sources
+    WordDocument::parse_citation_sources_xml(xml, "Book")
 }
 
 /// Tags cited by the primary operand and Word's additional-source switches.
@@ -796,6 +756,56 @@ mod tests {
             BibliographyStyle::from_name("mla"),
             Some(BibliographyStyle::Mla)
         );
+    }
+
+    #[test]
+    fn master_lists_accept_namespace_aliases_and_source_attributes() {
+        let sources = vec![source()];
+        let xml =
+            master_list_xml(&sources).replace("<b:Source>", "<b:Source data-origin=\"Word\">");
+        for aliased in [
+            xml.clone(),
+            xml.replace("b:", "bib:").replace("xmlns:b=", "xmlns:bib="),
+            xml.replace("b:", "").replace("xmlns:b=", "xmlns:unused="),
+        ] {
+            assert_eq!(parse_master_list(&aliased), sources, "{aliased}");
+        }
+    }
+
+    #[test]
+    fn master_lists_read_entities_cdata_and_personal_names() {
+        let xml = r#"<bib:Sources xmlns:bib="http://schemas.openxmlformats.org/officeDocument/2006/bibliography">
+          <bib:Source><bib:Tag>Smi&#50;0</bib:Tag><bib:SourceType>Book</bib:SourceType>
+            <bib:Author><bib:Author><bib:NameList><bib:Person>
+              <bib:Last>O&apos;Brien</bib:Last><bib:First>Jane&#32;Q</bib:First>
+            </bib:Person></bib:NameList></bib:Author></bib:Author>
+            <bib:Title><![CDATA[On <Things> & "資料"]]></bib:Title><bib:Year>2020</bib:Year>
+            <bib:Publisher>Acme &amp; Co</bib:Publisher>
+          </bib:Source>
+        </bib:Sources>"#;
+        let expected = Source {
+            author: "O'Brien, Jane Q".to_string(),
+            title: "On <Things> & \"資料\"".to_string(),
+            publisher: Some("Acme & Co".to_string()),
+            ..source()
+        };
+        assert_eq!(parse_master_list(xml), [expected]);
+    }
+
+    #[test]
+    fn master_lists_ignore_foreign_namespaces_and_malformed_xml() {
+        let xml = master_list_xml(&[source()]);
+        for invalid in [
+            xml.replace(
+                "http://schemas.openxmlformats.org/officeDocument/2006/bibliography",
+                "urn:foreign",
+            ),
+            xml.replace("<b:Source>", "<b:Source xmlns:b=\"urn:foreign\">"),
+            xml.replace("<b:Tag>", "<b:Tag xmlns:b=\"urn:foreign\">"),
+            xml.replace("</b:Sources>", ""),
+        ] {
+            assert!(parse_master_list(&invalid).is_empty(), "{invalid}");
+        }
     }
 
     #[test]
