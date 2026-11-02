@@ -228,6 +228,10 @@ pub struct HeadlessWorkbook {
     range_grants: Vec<editable_ranges::RangeGrant>,
     clipboard_origin: usize,
     range_auth_generation: u64,
+    /// Set while a recalculation after an edit runs under Automatic except
+    /// for Data Tables: the data tables then wait for Calculate Now (F9),
+    /// as in Excel.
+    data_tables_wait: bool,
     workbook: Workbook,
     source: Vec<u8>,
     automatic_height_base: Option<Vec<u8>>,
@@ -394,6 +398,7 @@ impl HeadlessWorkbook {
                 range_grants: self.range_grants.clone(),
                 clipboard_origin: self.clipboard_origin,
                 range_auth_generation: self.range_auth_generation,
+                data_tables_wait: false,
                 workbook: self.workbook.clone(),
                 source: self.source.clone(),
                 automatic_height_base: self.automatic_height_base.clone(),
@@ -831,6 +836,7 @@ impl HeadlessWorkbook {
             range_grants: Vec::new(),
             clipboard_origin: ORIGINS.fetch_add(1, std::sync::atomic::Ordering::Relaxed),
             range_auth_generation: 0,
+            data_tables_wait: false,
             workbook,
             source: bytes.to_vec(),
             automatic_height_base: None,
@@ -930,7 +936,12 @@ impl HeadlessWorkbook {
 
     fn recalculate_after_edit(&mut self) {
         if self.workbook.calculation_mode.calculates_on_edit() {
+            // Automatic except for Data Tables: everything but the data
+            // tables, which wait for Calculate Now.
+            self.data_tables_wait =
+                self.workbook.calculation_mode == jade_xlsx_reader::CalculationMode::AutoNoTable;
             let _ = self.recalculate();
+            self.data_tables_wait = false;
         }
     }
 
