@@ -14707,6 +14707,79 @@ mod tests {
     }
 
     #[test]
+    fn a_table_edit_leaves_a_new_table_of_contents_fields_whole() {
+        // A table of contents the editor generated had no runs for its page
+        // fields' markers, which a load gives runs of their own. A table edit
+        // remaps the document's XML ids: the page number bound to its field's
+        // begin marker, and striking through the entry then saved a field
+        // with a begin and no end.
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/scroll-offset-repro.docx"),
+        )
+        .expect("read fixture");
+        let mut word_doc =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+        apply_headless_commands_to_document(
+            &mut word_doc,
+            &HeadlessEditRequest {
+                commands: vec![
+                    HeadlessCommand::InsertTableOfContents {
+                        after_paragraph: 107,
+                        outline_min: 1,
+                        outline_max: 3,
+                    },
+                    HeadlessCommand::DeleteTableColumn {
+                        table_order_index: 0,
+                        column_index: 1,
+                    },
+                    HeadlessCommand::ApplyStrike {
+                        start_paragraph: 122,
+                        start_offset: 99,
+                        end_paragraph: 123,
+                        end_offset: 43,
+                        double: false,
+                        enabled: true,
+                    },
+                ],
+            },
+        )
+        .expect("edited");
+        let exported = word_doc.export_docx().expect("export");
+        let mut archive =
+            zip::ZipArchive::new(std::io::Cursor::new(exported.as_slice())).expect("package");
+        let mut xml = String::new();
+        std::io::Read::read_to_string(
+            &mut archive.by_name("word/document.xml").expect("document part"),
+            &mut xml,
+        )
+        .expect("read part");
+        assert_eq!(
+            xml.matches("w:fldCharType=\"begin\"").count(),
+            xml.matches("w:fldCharType=\"end\"").count()
+        );
+        let reloaded =
+            executor::block_on(WordDocument::load(&exported, &Options::default())).expect("reload");
+        let page_fields = |word_doc: &WordDocument, index: usize| {
+            word_doc.paragraph(index).map_or(0, |paragraph| {
+                paragraph
+                    .runs
+                    .iter()
+                    .filter(|run| {
+                        matches!(
+                            run.field.as_ref().map(|field| &field.kind),
+                            Some(crate::document::RunFieldKind::PageRef { .. })
+                        )
+                    })
+                    .count()
+            })
+        };
+        for index in 120..126 {
+            assert_eq!(page_fields(&reloaded, index), 1, "entry {index}");
+        }
+    }
+
+    #[test]
     fn rejecting_body_formatting_leaves_a_text_box_paragraphs_spacing() {
         // shape-preset-geometries.docx has shapes with no paragraph in their
         // XML; a load gives each one. A rejected formatting change reparses
