@@ -63,6 +63,10 @@ fn formula_cache_state(cell: &Cell, needs_recalculation: bool) -> Option<Formula
 use std::collections::{BTreeMap, HashSet};
 
 pub use charts::{chart_kind, chart_series, ChartChange, ChartKind, LegendPosition};
+pub use jade_xlsx_writer::chart_format::{
+    AxisFormat, AxisId, AxisKind, ChartFormat, Crosses, ErrorBarFormat, Fill, LabelFormat,
+    SeriesFormat, TableFormat, TrendlineFormat,
+};
 pub use conditional_formats::{ConditionalFormatView, ConditionalStyle, NewConditionalRule};
 pub use jade_xlsx_calc::formula_text;
 use jade_xlsx_headless_api::{
