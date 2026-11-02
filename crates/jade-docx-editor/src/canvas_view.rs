@@ -29,7 +29,9 @@ use crate::commands::format_image::{FormatImageCommand, ImageFormatSpec, ImageLa
 use crate::commands::format_text_box::{FormatTextBoxCommand, TextBoxFormatSpec};
 use crate::commands::hyperlink::{InsertHyperlinkCommand, RemoveHyperlinkCommand};
 use crate::commands::insert_chart::InsertChartCommand;
-use crate::commands::insert_citation::{AddCitationSourceCommand, InsertCitationCommand};
+use crate::commands::insert_citation::{
+    AddCitationSourceCommand, InsertBibliographyCommand, InsertCitationCommand,
+};
 use crate::commands::insert_endnote::InsertEndnoteCommand;
 use crate::commands::insert_field::InsertFieldCommand;
 use crate::commands::insert_footnote::InsertFootnoteCommand;
@@ -14001,20 +14003,17 @@ impl OffscreenDocumentView {
     /// Replaces the exact current selection with an in-text citation.
     #[wasm_bindgen(js_name = insertCitation)]
     pub fn insert_citation(&self, tag: String) -> Result<JsValue, JsValue> {
-        self.apply_inline_style(
-            |_| {},
-            move |range| Box::new(InsertCitationCommand::new(range, tag.clone())),
-        )
+        self.apply_document_command(move |range| Box::new(InsertCitationCommand::field(range, tag)))
     }
 
     /// Inserts the visible bibliography after the current body paragraph.
     #[wasm_bindgen(js_name = insertBibliography)]
     pub fn insert_bibliography(&self, heading: String) -> Result<JsValue, JsValue> {
-        self.apply_paragraph_style_headless(move |start, _end| {
-            HeadlessCommand::InsertBibliography {
-                after_paragraph: start,
+        self.apply_document_command(move |range| {
+            Box::new(InsertBibliographyCommand::field(
+                range.normalized().1.paragraph,
                 heading,
-            }
+            ))
         })
     }
 

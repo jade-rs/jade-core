@@ -132,7 +132,9 @@ impl BibliographyStyle {
         };
         match self {
             BibliographyStyle::Apa => {
-                let name = if initials.is_empty() {
+                let name = if initials.is_empty() && !given.is_empty() {
+                    author.to_string()
+                } else if initials.is_empty() {
                     last.clone()
                 } else {
                     format!("{last}, {initials}")
@@ -158,7 +160,9 @@ impl BibliographyStyle {
                 ) + if publisher.is_empty() { "" } else { "." }
             }
             BibliographyStyle::Harvard => {
-                let name = if initials.is_empty() {
+                let name = if initials.is_empty() && !given.is_empty() {
+                    author.to_string()
+                } else if initials.is_empty() {
                     last.clone()
                 } else {
                     format!("{last}, {initials}")
@@ -195,11 +199,13 @@ impl BibliographyStyle {
                 }
             ),
             BibliographyStyle::Ieee => format!(
-                "[{number}] {}{last}, {title}, {}{year}.",
-                if initials.is_empty() {
-                    String::new()
+                "[{number}] {}, {title}, {}{year}.",
+                if initials.is_empty() && !given.is_empty() {
+                    author.to_string()
+                } else if initials.is_empty() {
+                    last.clone()
                 } else {
-                    format!("{initials} ")
+                    format!("{initials} {last}")
                 },
                 if publisher.is_empty() {
                     String::new()
@@ -208,11 +214,13 @@ impl BibliographyStyle {
                 }
             ),
             BibliographyStyle::Gb7714 => format!(
-                "[{number}] {last}{}. {title}[M]. {}{year}.",
-                if initials.is_empty() {
-                    String::new()
+                "[{number}] {}. {title}[M]. {}{year}.",
+                if initials.is_empty() && !given.is_empty() {
+                    author.to_string()
+                } else if initials.is_empty() {
+                    last.clone()
                 } else {
-                    format!(" {}", initials.replace('.', ""))
+                    format!("{last} {}", initials.replace('.', ""))
                 },
                 if publisher.is_empty() {
                     String::new()
@@ -475,38 +483,7 @@ pub trait WordCitations: WordSession {
             "insert_citation",
             false,
             move |document, selection| {
-                let instruction = build_code(
-                    "CITATION",
-                    &[(tag.clone(), true)],
-                    &[("\\l".into(), Some("1041".into()))],
-                    false,
-                );
-                let (caret, location) =
-                    document.insert_inline_field_with_location(at, &instruction, "")?;
-                let ordinal = document
-                    .inline_fields("CITATION")
-                    .iter()
-                    .position(|field| (field.paragraph, field.run) == location)
-                    .ok_or("the inserted citation is unavailable")?;
-                *selection = Some(caret);
-                restyle(document, style)?;
-                // The citation's text came after the caret was placed.
-                if let Some(field) = document.inline_fields("CITATION").into_iter().nth(ordinal) {
-                    let end: usize = document
-                        .paragraph(field.paragraph)
-                        .map(|paragraph| {
-                            paragraph.runs[..=field.run]
-                                .iter()
-                                .map(|run| run.text.len())
-                                .sum()
-                        })
-                        .unwrap_or(0);
-                    *selection = Some(SelectionRange::collapsed(
-                        document.model_to_rendered_text_position(
-                            jade_selection::TextPosition::new(field.paragraph, end),
-                        ),
-                    ));
-                }
+                *selection = Some(insert_citation_field(document, at, &tag, style)?);
                 Ok(())
             },
         )?;
@@ -523,8 +500,7 @@ pub trait WordCitations: WordSession {
             return Err("資料文献がありません".to_string());
         }
         edit_document(self, "bibliography_style", true, move |document, _| {
-            document.set_bibliography_style(style.name(), style.stylesheet())?;
-            restyle(document, style)
+            set_style(document, style.name(), style.stylesheet())
         })
     }
 
@@ -572,6 +548,45 @@ pub trait WordCitations: WordSession {
 
 impl<T: WordSession + ?Sized> WordCitations for T {}
 
+/// Shared authoring path for native sessions and the browser bridge.
+pub(crate) fn insert_citation_field(
+    document: &mut WordDocument,
+    at: jade_selection::TextPosition,
+    tag: &str,
+    style: BibliographyStyle,
+) -> Result<SelectionRange, String> {
+    let instruction = build_code(
+        "CITATION",
+        &[(tag.to_string(), true)],
+        &[("\\l".into(), Some("1041".into()))],
+        false,
+    );
+    let (caret, location) = document.insert_inline_field_with_location(at, &instruction, "")?;
+    let ordinal = document
+        .inline_fields("CITATION")
+        .iter()
+        .position(|field| (field.paragraph, field.run) == location)
+        .ok_or("the inserted citation is unavailable")?;
+    let mut caret = caret;
+    restyle(document, style)?;
+    // The citation's text came after the caret was placed.
+    if let Some(field) = document.inline_fields("CITATION").into_iter().nth(ordinal) {
+        let end: usize = document
+            .paragraph(field.paragraph)
+            .map(|paragraph| {
+                paragraph.runs[..=field.run]
+                    .iter()
+                    .map(|run| run.text.len())
+                    .sum()
+            })
+            .unwrap_or(0);
+        caret = SelectionRange::collapsed(document.model_to_rendered_text_position(
+            jade_selection::TextPosition::new(field.paragraph, end),
+        ));
+    }
+    Ok(caret)
+}
+
 /// The bibliography's entries: sorted by author for author-date styles, in
 /// citation order for numbered ones.
 pub(crate) fn bibliography_lines(
@@ -604,7 +619,19 @@ pub(crate) fn bibliography_lines(
         .iter()
         .enumerate()
         .map(|(index, (_, source))| FieldBlockLine {
-            text: style.entry(source, index + 1),
+            text: {
+                let mut text = style.entry(source, index + 1);
+                if let Some(url) = source
+                    .url
+                    .as_deref()
+                    .map(str::trim)
+                    .filter(|url| !url.is_empty())
+                {
+                    text.push(' ');
+                    text.push_str(url);
+                }
+                text
+            },
             indent: if style.numbered() { 0.0 } else { 36.0 },
             hanging: if style.numbered() { 0.0 } else { 36.0 },
             ..FieldBlockLine::default()
@@ -711,6 +738,19 @@ pub(crate) fn replace_bibliography(
     Ok(())
 }
 
+/// Set metadata and supported field caches in the same undo transaction.
+pub(crate) fn set_style(
+    document: &mut WordDocument,
+    name: &str,
+    stylesheet: &str,
+) -> Result<(), String> {
+    document.set_bibliography_style(name, stylesheet)?;
+    if let Some(style) = BibliographyStyle::from_name(name) {
+        restyle(document, style)?;
+    }
+    Ok(())
+}
+
 /// Sets every citation and bibliography in `style`.
 fn restyle(
     document: &mut crate::word_document::WordDocument,
@@ -777,6 +817,22 @@ mod tests {
         assert_eq!(
             BibliographyStyle::Apa.citation(&japanese, 1),
             "(山田, 2020)"
+        );
+        assert_eq!(
+            BibliographyStyle::Apa.entry(&japanese, 1),
+            "山田 太郎 (2020). On Things. Acme."
+        );
+        assert_eq!(
+            BibliographyStyle::Harvard.entry(&japanese, 1),
+            "山田 太郎, 2020. On Things. Acme."
+        );
+        assert_eq!(
+            BibliographyStyle::Ieee.entry(&japanese, 1),
+            "[1] 山田 太郎, On Things, Acme, 2020."
+        );
+        assert_eq!(
+            BibliographyStyle::Gb7714.entry(&japanese, 1),
+            "[1] 山田 太郎. On Things[M]. Acme, 2020."
         );
         assert_eq!(
             BibliographyStyle::from_name("mla"),

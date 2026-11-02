@@ -221,7 +221,9 @@ impl OffscreenDocumentView {
             Box::new(SnapshotEditCommand::with_scope(
                 "set_bibliography_style",
                 EditScope::Paragraphs(None),
-                move |document| document.set_bibliography_style(&name, &selected_style),
+                move |document| {
+                    crate::word::references::citations::set_style(document, &name, &selected_style)
+                },
             ))
         })
     }

@@ -1,7 +1,12 @@
 //! Word-compatible bibliography source, citation, and bibliography commands.
 
+use super::document_edit::DocumentEditCommand;
 use super::insert_text::InsertTextCommand;
 use super::{Command, CommandContext, CommandError, CommandResult};
+use crate::word::references::citations::{
+    bibliography_lines, insert_citation_field, BibliographyStyle,
+};
+use crate::word_document::FieldBlockLine;
 use crate::word_document::{CitationSourceInfo, WordDocumentSnapshot};
 use jade_docx_layout::selection::SelectionRange;
 
@@ -75,6 +80,38 @@ pub struct InsertCitationCommand {
 }
 
 impl InsertCitationCommand {
+    /// Browser authoring inserts a live Word field; the headless GenOffice
+    /// command retains its existing plain-text representation.
+    pub fn field(range: SelectionRange, tag: String) -> DocumentEditCommand {
+        DocumentEditCommand::new(
+            "insert_citation",
+            Box::new(move |document, selection| {
+                let tag = tag.trim();
+                if document.citation_source(tag).is_none() {
+                    return Err("citation source was not found".into());
+                }
+                let style = match document.bibliography_style() {
+                    Some(name) => BibliographyStyle::from_name(&name)
+                        .ok_or("the bibliography style is unsupported")?,
+                    None => BibliographyStyle::Apa,
+                };
+                *selection = Some(range);
+                if !range.is_collapsed() {
+                    let mut ctx = CommandContext::new(document, selection);
+                    InsertTextCommand::new(range, String::new(), None)
+                        .apply(&mut ctx)
+                        .map_err(|error| error.to_string())?;
+                }
+                let at = selection
+                    .ok_or("there is no insertion point")?
+                    .normalized()
+                    .0;
+                *selection = Some(insert_citation_field(document, at, tag, style)?);
+                Ok(())
+            }),
+        )
+    }
+
     pub fn new(range: SelectionRange, tag: String) -> Self {
         Self {
             range,
@@ -125,6 +162,41 @@ pub struct InsertBibliographyCommand {
 }
 
 impl InsertBibliographyCommand {
+    /// A live bibliography uses the same entries as the reference tools and F9.
+    pub fn field(after_paragraph: usize, heading: String) -> DocumentEditCommand {
+        DocumentEditCommand::new(
+            "insert_bibliography",
+            Box::new(move |document, selection| {
+                if document.citation_sources().is_empty() {
+                    return Err("no citation sources are available".into());
+                }
+                let heading = heading.trim();
+                if heading.is_empty()
+                    || heading.chars().count() > 256
+                    || heading.chars().any(char::is_control)
+                {
+                    return Err(
+                        "bibliography heading must contain 1 to 256 printable characters".into(),
+                    );
+                }
+                let style = match document.bibliography_style() {
+                    Some(name) => BibliographyStyle::from_name(&name)
+                        .ok_or("the bibliography style is unsupported")?,
+                    None => BibliographyStyle::Apa,
+                };
+                let mut lines = vec![FieldBlockLine {
+                    text: heading.into(),
+                    style: Some("Heading1".into()),
+                    ..FieldBlockLine::default()
+                }];
+                lines.extend(bibliography_lines(document, style));
+                *selection =
+                    Some(document.insert_field_block(after_paragraph, "BIBLIOGRAPHY", &lines)?);
+                Ok(())
+            }),
+        )
+    }
+
     pub fn new(after_paragraph: usize, heading: String) -> Self {
         Self {
             after_paragraph,
@@ -170,7 +242,6 @@ impl Command for InsertBibliographyCommand {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::commands::document_edit::DocumentEditCommand;
     use crate::commands::{CommandContext, CommandExecutor};
     use crate::headless_api::apply_snapshot_headless_commands_with_executor_to_document;
     use crate::word_document::WordDocument;
@@ -585,6 +656,153 @@ mod tests {
                 actual,
                 format!("前{}{}{}後", &text[..offset], citation, &text[offset..])
             );
+        }
+    }
+
+    #[test]
+    fn browser_citation_fields_replace_selection_restyle_and_survive_f9_and_history() {
+        use crate::fields::{FieldCommand, FieldEnvironment, FieldScope};
+        use crate::word::references::citations::set_style;
+        let bytes = build_docx("before選択after", &[]);
+        let mut document =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).unwrap();
+        document
+            .add_citation_source(source(
+                "Tag \"資料\"\\".into(),
+                "Book".into(),
+                "Smith, John".into(),
+                "A source".into(),
+                "2020".into(),
+            ))
+            .unwrap();
+        let baseline = document.export_docx().unwrap();
+        let range = SelectionRange::new(TextPosition::new(0, 6), TextPosition::new(0, 12));
+        let mut selection = Some(range);
+        let mut commands = CommandExecutor::new();
+        {
+            let mut ctx = CommandContext::new(&mut document, &mut selection);
+            commands
+                .execute(
+                    Box::new(InsertCitationCommand::field(range, "Tag \"資料\"\\".into())),
+                    &mut ctx,
+                )
+                .unwrap();
+            commands
+                .execute(
+                    Box::new(InsertBibliographyCommand::field(0, "References".into())),
+                    &mut ctx,
+                )
+                .unwrap();
+            commands
+                .execute(
+                    Box::new(DocumentEditCommand::new(
+                        "set_bibliography_style",
+                        Box::new(|document, _| {
+                            set_style(document, "IEEE", "\\IEEE2006OfficeOnline.xsl")
+                        }),
+                    )),
+                    &mut ctx,
+                )
+                .unwrap();
+            commands
+                .execute(
+                    Box::new(FieldCommand::update(
+                        FieldScope::Document,
+                        FieldEnvironment::default(),
+                    )),
+                    &mut ctx,
+                )
+                .unwrap();
+        }
+        let applied = document.export_docx().unwrap();
+        let xml = zip_part(&applied, "word/document.xml");
+        assert!(xml.contains("CITATION"));
+        assert!(xml.contains("BIBLIOGRAPHY"));
+        let reopened =
+            executor::block_on(WordDocument::load(&applied, &Options::default())).unwrap();
+        assert_eq!(reopened.inline_fields("CITATION").len(), 1);
+        assert_eq!(reopened.field_blocks().len(), 1);
+        let text = |document: &WordDocument, index| {
+            document
+                .paragraph(index)
+                .unwrap()
+                .runs
+                .iter()
+                .map(|run| {
+                    run.field
+                        .as_ref()
+                        .and_then(|field| {
+                            field
+                                .resolved_value
+                                .as_deref()
+                                .or(field.cached_text.as_deref())
+                        })
+                        .unwrap_or(&run.text)
+                })
+                .collect::<String>()
+        };
+        assert_eq!(text(&reopened, 0), "before[1]after");
+        assert_eq!(text(&reopened, 1), "References");
+        assert_eq!(
+            text(&reopened, 2),
+            "[1] J. Smith, A source, 出版 & <社>, 2020. https://example.test/?a=1&b=2"
+        );
+        {
+            let mut ctx = CommandContext::new(&mut document, &mut selection);
+            for _ in 0..4 {
+                assert!(commands.undo(&mut ctx).unwrap());
+            }
+        }
+        assert_eq!(document.export_docx().unwrap(), baseline);
+        assert_eq!(selection, Some(range));
+        {
+            let mut ctx = CommandContext::new(&mut document, &mut selection);
+            for _ in 0..4 {
+                assert!(commands.redo(&mut ctx).unwrap());
+            }
+        }
+        assert_eq!(document.export_docx().unwrap(), applied);
+    }
+
+    #[test]
+    fn browser_field_rejections_preserve_document_selection_and_history() {
+        let bytes = build_docx("選択 text", &[]);
+        let mut document =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).unwrap();
+        document.add_citation_source(catalog_source(0, 0)).unwrap();
+        let range = SelectionRange::new(TextPosition::new(0, 0), TextPosition::new(0, 6));
+        let mut selection = Some(range);
+        let mut commands = CommandExecutor::new();
+        for command in [
+            Box::new(InsertCitationCommand::field(range, "missing".into())) as Box<dyn Command>,
+            Box::new(InsertBibliographyCommand::field(0, " \n ".into())),
+            Box::new(InsertBibliographyCommand::field(0, "a\nb".into())),
+            Box::new(InsertBibliographyCommand::field(0, "a".repeat(257))),
+            Box::new(InsertBibliographyCommand::field(
+                usize::MAX,
+                "References".into(),
+            )),
+        ] {
+            let before = document.export_docx().unwrap();
+            let mut ctx = CommandContext::new(&mut document, &mut selection);
+            assert!(commands.execute(command, &mut ctx).is_err());
+            assert!(!commands.undo(&mut ctx).unwrap());
+            assert_eq!(document.export_docx().unwrap(), before);
+            assert_eq!(selection, Some(range));
+        }
+        document
+            .set_bibliography_style("Custom", "\\Custom.xsl")
+            .unwrap();
+        for command in [
+            InsertCitationCommand::field(range, "Source0".into()),
+            InsertBibliographyCommand::field(0, "References".into()),
+        ] {
+            let before = document.export_docx().unwrap();
+            let mut ctx = CommandContext::new(&mut document, &mut selection);
+            assert!(commands.execute(Box::new(command), &mut ctx).is_err());
+            assert!(!commands.undo(&mut ctx).unwrap());
+            assert_eq!(document.export_docx().unwrap(), before);
+            assert_eq!(selection, Some(range));
         }
     }
 

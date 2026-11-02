@@ -997,6 +997,7 @@ mod stateful {
     enum CitationOp {
         Add(u8, u8),
         Cite(u8),
+        BrowserCite(u8),
         Rename(u8, u8, u8),
         Delete(u8),
         Style(bool),
@@ -1011,7 +1012,8 @@ mod stateful {
         prop::collection::vec(
             prop_oneof![
                 4 => (0u8..tags, 0u8..5).prop_map(|(tag, year)| CitationOp::Add(tag, year)),
-                5 => (0u8..tags).prop_map(CitationOp::Cite),
+                3 => (0u8..tags).prop_map(CitationOp::Cite),
+                2 => (0u8..tags).prop_map(CitationOp::BrowserCite),
                 4 => (0u8..tags, 0u8..tags, 0u8..5).prop_map(|(old, new, year)| CitationOp::Rename(old, new, year)),
                 2 => (0u8..tags).prop_map(CitationOp::Delete),
                 2 => any::<bool>().prop_map(CitationOp::Style),
@@ -1050,7 +1052,7 @@ mod stateful {
                         .add_source(source(tag, year))
                         .map(|returned| assert_eq!(returned, tag_value))
                 }
-                CitationOp::Cite(tag) => {
+                CitationOp::Cite(tag) | CitationOp::BrowserCite(tag) => {
                     let tag = CITATION_TAGS[tag as usize];
                     expected_ok = model.sources.iter().any(|(existing, _)| existing == tag);
                     if expected_ok {
@@ -1060,7 +1062,15 @@ mod stateful {
                     // including loaded computed fields with cache-only text.
                     session.caret(0);
                     selection_before = session.selection;
-                    session.insert_citation(tag).map(|_| ())
+                    if matches!(op, CitationOp::BrowserCite(_)) {
+                        session.execute_command(Box::new(
+                            jade_docx_editor::commands::insert_citation::InsertCitationCommand::field(
+                                session.selection.unwrap(), tag.into(),
+                            ),
+                        ), false)
+                    } else {
+                        session.insert_citation(tag).map(|_| ())
+                    }
                 }
                 CitationOp::Rename(old, new, year) => {
                     let old_tag = CITATION_TAGS[old as usize];
