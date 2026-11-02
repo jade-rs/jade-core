@@ -346,6 +346,148 @@ mod stateful {
     }
 
     #[test]
+    fn browser_citation_fields_replace_selection_restyle_and_survive_f9_and_history() {
+        use jade_docx_editor::fields::{FieldCommand, FieldEnvironment, FieldScope};
+        use jade_docx_editor::word::references::citations::{
+            insert_bibliography_command, insert_citation_command, set_style_command,
+        };
+        let mut session = Session::blank();
+        session.type_text("before選択after");
+        session
+            .add_source(Source {
+                publisher: Some("出版 & <社>".into()),
+                url: Some("https://example.test/?a=1&b=2".into()),
+                ..citation_source("Tag \"資料\"\\")
+            })
+            .unwrap();
+        let mut document = session.document;
+        let baseline = document.export_docx().unwrap();
+        let range = SelectionRange::new(TextPosition::new(0, 6), TextPosition::new(0, 12));
+        let mut selection = Some(range);
+        let mut commands = CommandExecutor::new();
+        {
+            let mut ctx = CommandContext::new(&mut document, &mut selection);
+            commands
+                .execute(
+                    Box::new(insert_citation_command(range, "Tag \"資料\"\\".into())),
+                    &mut ctx,
+                )
+                .unwrap();
+            commands
+                .execute(
+                    Box::new(insert_bibliography_command(0, "References".into())),
+                    &mut ctx,
+                )
+                .unwrap();
+            commands
+                .execute(
+                    Box::new(set_style_command(
+                        "IEEE".into(),
+                        "\\IEEE2006OfficeOnline.xsl".into(),
+                    )),
+                    &mut ctx,
+                )
+                .unwrap();
+            commands
+                .execute(
+                    Box::new(FieldCommand::update(
+                        FieldScope::Document,
+                        FieldEnvironment::default(),
+                    )),
+                    &mut ctx,
+                )
+                .unwrap();
+        }
+        let applied = document.export_docx().unwrap();
+        capture(&applied, "browser live citation and bibliography");
+        let reopened = block_on(WordDocument::load(&applied, &Options::default())).unwrap();
+        assert_eq!(reopened.inline_fields("CITATION").len(), 1);
+        assert_eq!(reopened.field_blocks().len(), 1);
+        let text = |document: &WordDocument, index| {
+            document
+                .paragraph(index)
+                .unwrap()
+                .runs
+                .iter()
+                .map(|run| {
+                    run.field
+                        .as_ref()
+                        .and_then(|field| {
+                            field
+                                .resolved_value
+                                .as_deref()
+                                .or(field.cached_text.as_deref())
+                        })
+                        .unwrap_or(&run.text)
+                })
+                .collect::<String>()
+        };
+        assert_eq!(text(&reopened, 0), "before[1]after");
+        assert_eq!(text(&reopened, 1), "References");
+        assert_eq!(
+            text(&reopened, 2),
+            "[1] J. Smith, A source, 出版 & <社>, 2020. https://example.test/?a=1&b=2"
+        );
+        {
+            let mut ctx = CommandContext::new(&mut document, &mut selection);
+            for _ in 0..4 {
+                assert!(commands.undo(&mut ctx).unwrap());
+            }
+        }
+        assert_eq!(document.export_docx().unwrap(), baseline);
+        assert_eq!(selection, Some(range));
+        {
+            let mut ctx = CommandContext::new(&mut document, &mut selection);
+            for _ in 0..4 {
+                assert!(commands.redo(&mut ctx).unwrap());
+            }
+        }
+        assert_eq!(document.export_docx().unwrap(), applied);
+    }
+
+    #[test]
+    fn browser_field_rejections_preserve_document_selection_and_history() {
+        use jade_docx_editor::word::references::citations::{
+            insert_bibliography_command, insert_citation_command,
+        };
+        let mut session = Session::blank();
+        session.type_text("選択 text");
+        session.add_source(citation_source("Source0")).unwrap();
+        let mut document = session.document;
+        let range = SelectionRange::new(TextPosition::new(0, 0), TextPosition::new(0, 6));
+        let mut selection = Some(range);
+        let mut commands = CommandExecutor::new();
+        for command in [
+            Box::new(insert_citation_command(range, "missing".into())) as Box<dyn Command>,
+            Box::new(insert_bibliography_command(0, " \n ".into())),
+            Box::new(insert_bibliography_command(0, "a\nb".into())),
+            Box::new(insert_bibliography_command(0, "a".repeat(257))),
+            Box::new(insert_bibliography_command(usize::MAX, "References".into())),
+        ] {
+            let before = document.export_docx().unwrap();
+            let mut ctx = CommandContext::new(&mut document, &mut selection);
+            assert!(commands.execute(command, &mut ctx).is_err());
+            assert!(!commands.undo(&mut ctx).unwrap());
+            assert_eq!(document.export_docx().unwrap(), before);
+            assert_eq!(selection, Some(range));
+        }
+        document
+            .set_bibliography_style("Custom", "\\Custom.xsl")
+            .unwrap();
+        for command in [
+            insert_citation_command(range, "Source0".into()),
+            insert_bibliography_command(0, "References".into()),
+        ] {
+            let before = document.export_docx().unwrap();
+            let mut ctx = CommandContext::new(&mut document, &mut selection);
+            assert!(commands.execute(Box::new(command), &mut ctx).is_err());
+            assert!(!commands.undo(&mut ctx).unwrap());
+            assert_eq!(document.export_docx().unwrap(), before);
+            assert_eq!(selection, Some(range));
+        }
+    }
+
+    #[test]
     fn f9_keeps_citation_styles_and_unsupported_word_results() {
         use jade_docx_editor::fields::FieldScope;
 
@@ -683,6 +825,52 @@ mod stateful {
     }
 
     #[test]
+    fn deleting_the_last_uncited_source_updates_the_bibliography_and_history() {
+        use jade_docx_editor::fields::FieldScope;
+        use jade_docx_editor::word::references::citations::insert_bibliography_command;
+
+        let mut session = Session::blank();
+        session.add_source(citation_source("Only")).unwrap();
+        session
+            .execute_command(
+                Box::new(insert_bibliography_command(0, "References".into())),
+                false,
+            )
+            .unwrap();
+        let before = session.document.export_docx().unwrap();
+        session.delete_source("Only").unwrap();
+        let deleted = session.document.export_docx().unwrap();
+        let text = |document: &WordDocument| -> String {
+            let block = document.field_blocks().pop().unwrap();
+            (block.start..=block.end)
+                .flat_map(|p| &document.paragraph(p).unwrap().runs)
+                .map(|run| run.text.as_str())
+                .collect()
+        };
+        assert_eq!(
+            text(&session.document),
+            "References現在の文書には資料文献がありません。"
+        );
+        session.undo();
+        assert_eq!(session.document.export_docx().unwrap(), before);
+        let mut ctx = CommandContext::new(&mut session.document, &mut session.selection);
+        assert!(session.executor.redo(&mut ctx).unwrap());
+        assert_eq!(session.document.export_docx().unwrap(), deleted);
+        session.document = block_on(WordDocument::load(&deleted, &Options::default())).unwrap();
+        session
+            .update_fields(FieldScope::Document, &host(), HashMap::new())
+            .unwrap();
+        assert_eq!(
+            text(&session.document),
+            "References現在の文書には資料文献がありません。"
+        );
+        capture(
+            &session.document.export_docx().unwrap(),
+            "last uncited source removed",
+        );
+    }
+
+    #[test]
     fn f9_empty_bibliography_keeps_its_heading() {
         use jade_docx_editor::fields::FieldScope;
 
@@ -997,9 +1185,11 @@ mod stateful {
     enum CitationOp {
         Add(u8, u8),
         Cite(u8),
+        BrowserCite(u8),
         Rename(u8, u8, u8),
         Delete(u8),
         Style(bool),
+        BrowserStyle(bool),
         Update,
         Undo,
         Redo,
@@ -1011,10 +1201,12 @@ mod stateful {
         prop::collection::vec(
             prop_oneof![
                 4 => (0u8..tags, 0u8..5).prop_map(|(tag, year)| CitationOp::Add(tag, year)),
-                5 => (0u8..tags).prop_map(CitationOp::Cite),
+                3 => (0u8..tags).prop_map(CitationOp::Cite),
+                2 => (0u8..tags).prop_map(CitationOp::BrowserCite),
                 4 => (0u8..tags, 0u8..tags, 0u8..5).prop_map(|(old, new, year)| CitationOp::Rename(old, new, year)),
                 2 => (0u8..tags).prop_map(CitationOp::Delete),
-                2 => any::<bool>().prop_map(CitationOp::Style),
+                1 => any::<bool>().prop_map(CitationOp::Style),
+                1 => any::<bool>().prop_map(CitationOp::BrowserStyle),
                 3 => Just(CitationOp::Update),
                 3 => Just(CitationOp::Undo),
                 2 => Just(CitationOp::Redo),
@@ -1050,7 +1242,7 @@ mod stateful {
                         .add_source(source(tag, year))
                         .map(|returned| assert_eq!(returned, tag_value))
                 }
-                CitationOp::Cite(tag) => {
+                CitationOp::Cite(tag) | CitationOp::BrowserCite(tag) => {
                     let tag = CITATION_TAGS[tag as usize];
                     expected_ok = model.sources.iter().any(|(existing, _)| existing == tag);
                     if expected_ok {
@@ -1060,7 +1252,15 @@ mod stateful {
                     // including loaded computed fields with cache-only text.
                     session.caret(0);
                     selection_before = session.selection;
-                    session.insert_citation(tag).map(|_| ())
+                    if matches!(op, CitationOp::BrowserCite(_)) {
+                        session.execute_command(Box::new(
+                            jade_docx_editor::word::references::citations::insert_citation_command(
+                                session.selection.unwrap(), tag.into(),
+                            ),
+                        ), false)
+                    } else {
+                        session.insert_citation(tag).map(|_| ())
+                    }
                 }
                 CitationOp::Rename(old, new, year) => {
                     let old_tag = CITATION_TAGS[old as usize];
@@ -1087,16 +1287,30 @@ mod stateful {
                     }
                     session.delete_source(tag)
                 }
-                CitationOp::Style(numbered) => {
-                    expected_ok = !model.sources.is_empty();
+                CitationOp::Style(numbered) | CitationOp::BrowserStyle(numbered) => {
+                    expected_ok =
+                        matches!(op, CitationOp::BrowserStyle(_)) || !model.sources.is_empty();
                     if expected_ok {
                         model.numbered = numbered;
                     }
-                    session.set_bibliography_style(if numbered {
+                    let style = if numbered {
                         BibliographyStyle::Ieee
                     } else {
                         BibliographyStyle::Apa
-                    })
+                    };
+                    if matches!(op, CitationOp::BrowserStyle(_)) {
+                        session.execute_command(
+                            Box::new(
+                                jade_docx_editor::word::references::citations::set_style_command(
+                                    style.name().into(),
+                                    style.stylesheet().into(),
+                                ),
+                            ),
+                            true,
+                        )
+                    } else {
+                        session.set_bibliography_style(style)
+                    }
                 }
                 CitationOp::Update => session.update_fields(
                     jade_docx_editor::fields::FieldScope::Document,
