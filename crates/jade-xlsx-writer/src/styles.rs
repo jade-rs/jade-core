@@ -150,14 +150,17 @@ pub struct FormatChange {
     pub underline: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub strike: Option<bool>,
-    /// `RRGGBB`.
+    /// `RRGGBB`, or a theme colour kept as one: `theme:N` (0–11, the
+    /// theme's `dk1`, `lt1`, `dk2`, `lt2`, `accent1`–`6`, `hlink`,
+    /// `folHlink`) with an optional tint, `theme:4:0.4` for 40% lighter.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub font_color: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub font_size: Option<f32>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub font_name: Option<String>,
-    /// `RRGGBB` for a solid fill; the empty string for no fill.
+    /// A solid fill's colour, as [`FormatChange::font_color`] takes it;
+    /// the empty string for no fill.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub fill_color: Option<String>,
     /// A format code such as `0.00` or `yyyy/mm/dd`; `General` or the
@@ -341,9 +344,9 @@ pub fn add_cell_format(
         let index = if fill.is_empty() {
             0
         } else {
-            let rgb = parse_rgb(fill)?;
+            let color = color_attributes(fill)?;
             let fill_text = format!(
-                "<{p}fill><{p}patternFill patternType=\"solid\"><{p}fgColor rgb=\"FF{rgb}\"/><{p}bgColor indexed=\"64\"/></{p}patternFill></{p}fill>",
+                "<{p}fill><{p}patternFill patternType=\"solid\"><{p}fgColor {color}/><{p}bgColor indexed=\"64\"/></{p}patternFill></{p}fill>",
                 p = layout.prefix
             );
             match find_entry(styles_xml, &layout.fills, &fill_text) {
@@ -1028,7 +1031,7 @@ fn derive_font(base_font: &str, change: &FormatChange, prefix: &str) -> Result<S
         None => size,
     };
     let color = match &change.font_color {
-        Some(rgb) => Some(format!("<{prefix}color rgb=\"FF{}\"/>", parse_rgb(rgb)?)),
+        Some(color) => Some(format!("<{prefix}color {}/>", color_attributes(color)?)),
         None => color,
     };
     let name = match &change.font_name {
@@ -1100,9 +1103,9 @@ fn derive_border(base_border: Option<&str>, change: &FormatChange, prefix: &str)
         } else {
             let style = line.style.as_str();
             match &line.color {
-                Some(rgb) => format!(
-                    "<{prefix}{name} style=\"{style}\"><{prefix}color rgb=\"FF{}\"/></{prefix}{name}>",
-                    parse_rgb(rgb)?
+                Some(color) => format!(
+                    "<{prefix}{name} style=\"{style}\"><{prefix}color {}/></{prefix}{name}>",
+                    color_attributes(color)?
                 ),
                 None => format!("<{prefix}{name} style=\"{style}\"/>"),
             }
@@ -1176,6 +1179,35 @@ fn parse_rgb(text: &str) -> Result<String> {
         });
     }
     Ok(hex.to_ascii_uppercase())
+}
+
+/// A colour's attributes as styles.xml writes them: `rgb="FFRRGGBB"` for
+/// `RRGGBB`, or `theme="N"` and any `tint` for `theme:N[:tint]`, so a theme
+/// colour stays one and follows the workbook's theme.
+fn color_attributes(text: &str) -> Result<String> {
+    let Some(theme) = text.trim().strip_prefix("theme:") else {
+        return Ok(format!("rgb=\"FF{}\"", parse_rgb(text)?));
+    };
+    let bad = || WriteError::BadColor {
+        value: text.to_string(),
+    };
+    let (index, tint) = theme.split_once(':').unwrap_or((theme, ""));
+    let index: u32 = index.parse().map_err(|_| bad())?;
+    if index > 11 {
+        return Err(bad());
+    }
+    if tint.is_empty() {
+        return Ok(format!("theme=\"{index}\""));
+    }
+    let value: f64 = tint.parse().map_err(|_| bad())?;
+    if !(-1.0..=1.0).contains(&value) {
+        return Err(bad());
+    }
+    Ok(if value == 0.0 {
+        format!("theme=\"{index}\"")
+    } else {
+        format!("theme=\"{index}\" tint=\"{}\"", tint.trim())
+    })
 }
 
 fn trim_number(value: f32) -> String {
