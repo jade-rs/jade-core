@@ -155,16 +155,8 @@ fn person(package: &mut OpcPackage, author: &str) -> Result<String> {
     Ok(id)
 }
 
-/// A reply by `author` to the threaded comment on `at`, dated `when`
-/// (`YYYY-MM-DDTHH:MM:SS.00`). `false` when the cell has no thread.
-pub fn reply_to_thread(
-    package: &mut OpcPackage,
-    sheet_part: &str,
-    at: CellRef,
-    author: &str,
-    text: &str,
-    when: &str,
-) -> Result<bool> {
+/// The sheet's threadedComments part, by name, and its XML.
+fn threads_part(package: &OpcPackage, sheet_part: &str) -> Result<Option<(String, String)>> {
     let rels = package
         .part_str(&jade_opc::rels_part_name(sheet_part))?
         .map(|xml| jade_opc::parse_relationships(&xml))
@@ -176,12 +168,37 @@ pub fn reply_to_thread(
         .find(|r| !r.external && r.relationship_type == THREAD_TYPE)
         .map(|r| r.target.clone())
     else {
-        return Ok(false);
+        return Ok(None);
     };
     let part = jade_opc::resolve_target(sheet_part, &target);
     let xml = package
         .part_str(&part)?
         .ok_or_else(|| WriteError::MissingPart(part.clone()))?;
+    Ok(Some((part, xml)))
+}
+
+/// Whether the comment on `at` is a thread (one that takes replies)
+/// rather than a note.
+pub fn has_thread(package: &OpcPackage, sheet_part: &str, at: CellRef) -> Result<bool> {
+    Ok(match threads_part(package, sheet_part)? {
+        Some((_, xml)) => thread_at(&xml, at)?.is_some(),
+        None => false,
+    })
+}
+
+/// A reply by `author` to the threaded comment on `at`, dated `when`
+/// (`YYYY-MM-DDTHH:MM:SS.00`). `false` when the cell has no thread.
+pub fn reply_to_thread(
+    package: &mut OpcPackage,
+    sheet_part: &str,
+    at: CellRef,
+    author: &str,
+    text: &str,
+    when: &str,
+) -> Result<bool> {
+    let Some((part, xml)) = threads_part(package, sheet_part)? else {
+        return Ok(false);
+    };
     let Some((root, end)) = thread_at(&xml, at)? else {
         return Ok(false);
     };

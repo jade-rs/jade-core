@@ -2118,6 +2118,23 @@ impl HeadlessWorkbook {
             .ok_or_else(|| HeadlessError::BadReference(reference.to_string()))
     }
 
+    /// Whether the comment on `reference` is a threaded comment, one that
+    /// takes replies, rather than a note.
+    pub fn has_comment_thread(&self, sheet: &str, reference: &str) -> Result<bool> {
+        let index = self.sheet_index(sheet)?;
+        let at = CellRef::parse(reference)
+            .map_err(|_| HeadlessError::BadReference(reference.to_string()))?;
+        if self.workbook.sheets[index].comment_at(at).is_none() {
+            return Ok(false);
+        }
+        let package = jade_opc::OpcPackage::open(&self.source)?;
+        Ok(jade_xlsx_writer::threads::has_thread(
+            &package,
+            &self.workbook.sheets[index].part_name,
+            at,
+        )?)
+    }
+
     /// A reply by `author` to the threaded comment on a cell, dated `when`
     /// (`YYYY-MM-DDTHH:MM:SS`): it joins the thread, and the cell's comment
     /// reads it last. One undo step; `false`, changing nothing, when the
