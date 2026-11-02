@@ -592,16 +592,10 @@ pub fn spacing_before_px(paragraph: &jade_docx_reader::Paragraph, line_height_po
         .properties
         .as_ref()
         .and_then(|props| props.spacing.as_ref())
-        .and_then(|spacing| {
-            if let Some(lines) = spacing.before_lines {
-                Some(points_to_px(
-                    paragraph_spacing_line_unit_pt(line_height_points) * lines,
-                ))
-            } else {
-                spacing.before.map(points_to_px)
-            }
+        .and_then(paragraph_spacing_before)
+        .map_or(0.0, |amount| {
+            paragraph_spacing_px(amount, line_height_points)
         })
-        .unwrap_or(0.0)
 }
 
 /// Resolve paragraph-after spacing using the platform's shared line-unit rule.
@@ -610,16 +604,65 @@ pub fn spacing_after_px(paragraph: &jade_docx_reader::Paragraph, line_height_poi
         .properties
         .as_ref()
         .and_then(|props| props.spacing.as_ref())
-        .and_then(|spacing| {
-            if let Some(lines) = spacing.after_lines {
-                Some(points_to_px(
-                    paragraph_spacing_line_unit_pt(line_height_points) * lines,
-                ))
-            } else {
-                spacing.after.map(points_to_px)
-            }
+        .and_then(paragraph_spacing_after)
+        .map_or(0.0, |amount| {
+            paragraph_spacing_px(amount, line_height_points)
         })
-        .unwrap_or(0.0)
+}
+
+fn paragraph_spacing_px(amount: ParagraphSpacingAmount, line_height_points: f32) -> f64 {
+    match amount {
+        ParagraphSpacingAmount::Points(points) => points_to_px(points),
+        ParagraphSpacingAmount::Lines(lines) => {
+            points_to_px(paragraph_spacing_line_unit_pt(line_height_points) * lines)
+        }
+    }
+}
+
+/// One side of a paragraph's `w:spacing`, in the unit Word lays it out in.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum ParagraphSpacingAmount {
+    Points(f32),
+    Lines(f32),
+}
+
+impl ParagraphSpacingAmount {
+    /// The amount in px, given the px size of one line unit. Paths whose line
+    /// unit is not the body's nominal one (math blocks, text boxes) use this.
+    pub fn px_with_line_unit(self, line_unit_px: f64) -> f64 {
+        match self {
+            Self::Points(points) => points_to_px(points),
+            Self::Lines(lines) => line_unit_px * f64::from(lines),
+        }
+    }
+}
+
+/// The spacing before a paragraph as Word resolves it: `w:beforeLines`
+/// overrides `w:before` (ECMA-376 §17.3.1.33), except that Word for Mac
+/// leaves the points in force for `w:beforeLines="0"`, which Word writes
+/// beside points to override a style's line units.
+pub fn paragraph_spacing_before(
+    spacing: &jade_docx_reader::Spacing,
+) -> Option<ParagraphSpacingAmount> {
+    resolve_paragraph_spacing(spacing.before, spacing.before_lines)
+}
+
+/// The spacing after a paragraph; see [`paragraph_spacing_before`].
+pub fn paragraph_spacing_after(
+    spacing: &jade_docx_reader::Spacing,
+) -> Option<ParagraphSpacingAmount> {
+    resolve_paragraph_spacing(spacing.after, spacing.after_lines)
+}
+
+fn resolve_paragraph_spacing(
+    points: Option<f32>,
+    lines: Option<f32>,
+) -> Option<ParagraphSpacingAmount> {
+    match (lines, points) {
+        (Some(lines), _) if lines != 0.0 => Some(ParagraphSpacingAmount::Lines(lines)),
+        (_, Some(points)) => Some(ParagraphSpacingAmount::Points(points)),
+        (lines, None) => lines.map(ParagraphSpacingAmount::Lines),
+    }
 }
 
 fn paragraph_doc_grid(document: &Document) -> Option<&jade_docx_reader::DocGrid> {
@@ -3342,6 +3385,70 @@ mod tests {
         };
         assert_eq!(spacing_before_px(&paragraph, 12.0), 8.0);
         assert_eq!(spacing_after_px(&paragraph, 12.0), 24.0);
+    }
+
+    #[test]
+    fn zero_paragraph_line_units_leave_point_margins() {
+        // Word for Mac (spacing-lines probe): `w:after="240" w:afterLines="0"`
+        // and `w:before="240" w:beforeLines="0"` both space by 12pt. Word
+        // writes zero lines beside points to override a style's line units.
+        let spacing = jade_docx_reader::Spacing {
+            before: Some(12.0),
+            after: Some(12.0),
+            before_lines: Some(0.0),
+            after_lines: Some(0.0),
+            ..Default::default()
+        };
+        assert_eq!(
+            paragraph_spacing_before(&spacing),
+            Some(ParagraphSpacingAmount::Points(12.0))
+        );
+        assert_eq!(
+            paragraph_spacing_after(&spacing),
+            Some(ParagraphSpacingAmount::Points(12.0))
+        );
+        let paragraph = jade_docx_reader::Paragraph {
+            properties: Some(jade_docx_reader::ParagraphProperties {
+                spacing: Some(spacing),
+                ..Default::default()
+            }),
+            runs: Vec::new(),
+            node_id: None,
+            comment_ranges: Vec::new(),
+            comment_markers: Vec::new(),
+        };
+        assert_eq!(spacing_before_px(&paragraph, 20.0), 16.0);
+        assert_eq!(spacing_after_px(&paragraph, 20.0), 16.0);
+    }
+
+    #[test]
+    fn parsed_after_lines_override_after_points() {
+        let xml = r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:pPr><w:spacing w:before="40" w:beforeLines="100" w:after="40" w:afterLines="100"/></w:pPr><w:r><w:t>A</w:t></w:r></w:p></w:body></w:document>"#;
+        let document = jade_docx_reader::DocumentParser::new()
+            .parse_document_xml(xml)
+            .unwrap();
+        let Some(jade_docx_reader::BodyElement::Paragraph(paragraph)) = document
+            .body
+            .as_ref()
+            .and_then(|body| body.elements.first())
+        else {
+            panic!("paragraph");
+        };
+        let spacing = paragraph
+            .properties
+            .as_ref()
+            .and_then(|props| props.spacing.as_ref())
+            .unwrap();
+        assert_eq!(
+            paragraph_spacing_before(spacing),
+            Some(ParagraphSpacingAmount::Lines(1.0))
+        );
+        assert_eq!(
+            paragraph_spacing_after(spacing),
+            Some(ParagraphSpacingAmount::Lines(1.0))
+        );
+        assert_eq!(spacing_before_px(paragraph, 15.0), 20.0);
+        assert_eq!(spacing_after_px(paragraph, 15.0), 20.0);
     }
 
     #[test]
