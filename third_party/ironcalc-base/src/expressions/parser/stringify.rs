@@ -1195,6 +1195,92 @@ fn stringify(
     }
 }
 
+/// Move a deleted 3-D endpoint inward while the old sheet order is available.
+/// Ordinary references are deliberately left to the existing deletion handling.
+pub(crate) fn delete_sheet_in_3d_ranges(
+    node: &mut Node,
+    deleted: u32,
+    sheet_names: &[String],
+) -> bool {
+    match node {
+        Node::Range3DKind {
+            first_name,
+            last_name,
+            first_sheet,
+            last_sheet,
+            ..
+        } => {
+            if *first_sheet == deleted && *last_sheet == deleted {
+                *node = Node::ErrorKind(crate::expressions::token::Error::REF);
+                return true;
+            }
+            if *first_sheet == deleted {
+                let next = if *first_sheet < *last_sheet {
+                    deleted + 1
+                } else {
+                    deleted - 1
+                };
+                *first_name = sheet_names[next as usize].clone();
+                return true;
+            }
+            if *last_sheet == deleted {
+                let next = if *last_sheet < *first_sheet {
+                    deleted + 1
+                } else {
+                    deleted - 1
+                };
+                *last_name = sheet_names[next as usize].clone();
+                return true;
+            }
+            false
+        }
+        Node::OpRangeKind { left, right }
+        | Node::OpConcatenateKind { left, right }
+        | Node::OpSumKind { left, right, .. }
+        | Node::OpProductKind { left, right, .. }
+        | Node::OpPowerKind { left, right }
+        | Node::CompareKind { left, right, .. } => {
+            // Both operands must be visited even when the first one changed.
+            let left_changed = delete_sheet_in_3d_ranges(left, deleted, sheet_names);
+            delete_sheet_in_3d_ranges(right, deleted, sheet_names) || left_changed
+        }
+        Node::FunctionKind { args, .. } | Node::NamedFunctionKind { args, .. } => {
+            let mut changed = false;
+            for arg in args {
+                changed |= delete_sheet_in_3d_ranges(arg, deleted, sheet_names);
+            }
+            changed
+        }
+        Node::UnaryKind { right, .. }
+        | Node::ImplicitIntersection { child: right, .. }
+        | Node::SpillRangeOperator { child: right }
+        | Node::LambdaDefKind { body: right, .. } => {
+            delete_sheet_in_3d_ranges(right, deleted, sheet_names)
+        }
+        Node::LambdaCallKind { lambda, args } => {
+            let mut changed = delete_sheet_in_3d_ranges(lambda, deleted, sheet_names);
+            for arg in args {
+                changed |= delete_sheet_in_3d_ranges(arg, deleted, sheet_names);
+            }
+            changed
+        }
+        Node::BooleanKind(_)
+        | Node::NumberKind(_)
+        | Node::StringKind(_)
+        | Node::ReferenceKind { .. }
+        | Node::RangeKind { .. }
+        | Node::WrongReferenceKind { .. }
+        | Node::WrongRangeKind { .. }
+        | Node::ArrayKind(_)
+        | Node::DefinedNameKind(_)
+        | Node::TableNameKind(_)
+        | Node::NamedVariableKind { .. }
+        | Node::ErrorKind(_)
+        | Node::ParseErrorKind { .. }
+        | Node::EmptyArgKind => false,
+    }
+}
+
 pub(crate) fn rename_sheet_in_node(node: &mut Node, sheet_index: u32, new_name: &str) {
     match node {
         // Rename
