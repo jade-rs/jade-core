@@ -283,3 +283,78 @@ fn writes_morph_as_p159_with_a_fade_fallback() {
 }
 
 use jade_pptx_reader::animation::TransitionSpeed;
+
+#[test]
+fn every_preset_plays_from_its_start_to_its_end_state() {
+    use jade_pptx_render::animation::evaluate::TargetBase;
+    use jade_pptx_render::animation::{SlidePlayer, SlideText, TargetKey};
+    let base = |_: &TargetKey| TargetBase {
+        x: 0.5,
+        y: 0.5,
+        w: 0.2,
+        h: 0.1,
+        r: 0.0,
+        fill: Some("#4472C4".to_string()),
+        line: Some("#000000".to_string()),
+        text: Some("#000000".to_string()),
+    };
+    for preset in PRESETS {
+        let target = AnimationTarget::shape(2);
+        let params = EffectParams {
+            path: (preset.id == 0 && preset.class == PresetClass::Path)
+                .then(|| vec![(0.0, 0.0), (0.1, 0.1)]),
+            ..EffectParams::default()
+        };
+        let effect = new_effect(preset, &params, &target, EffectStart::OnClick, None);
+        let timing = SlideTiming {
+            main_sequence: vec![effect],
+            ..SlideTiming::default()
+        };
+        let mut player = SlidePlayer::new(&timing, SlideText::new());
+        player.start(0.0);
+        let key = TargetKey::shape(2);
+        let before = player.frame(0.0, &base).state(&key);
+        assert_eq!(
+            before.visible,
+            preset.class != PresetClass::Entrance,
+            "{} before its click",
+            preset.name
+        );
+        player.next(0.0);
+        let middle = player
+            .frame(f64::from(preset.duration_ms) / 2.0, &base)
+            .state(&key);
+        // Blink hides its shape halfway by design.
+        assert!(
+            middle.visible || preset.class == PresetClass::Emphasis || preset.duration_ms == 0,
+            "{} plays visibly",
+            preset.name
+        );
+        let end = player.frame(60_000.0, &base).state(&key);
+        match preset.class {
+            PresetClass::Entrance => {
+                assert!(
+                    end.visible && end.opacity > 0.99,
+                    "{} ends shown: {end:?}",
+                    preset.name
+                );
+                assert!(end.reveal.is_none(), "{} ends unmasked", preset.name);
+                assert!(
+                    end.offset.0.abs() < 1e-6 && end.offset.1.abs() < 1e-6,
+                    "{} ends in place: {end:?}",
+                    preset.name
+                );
+                assert!(
+                    (end.scale.0 - 1.0).abs() < 1e-3 && (end.scale.1 - 1.0).abs() < 1e-3,
+                    "{} ends full size: {end:?}",
+                    preset.name
+                );
+            }
+            PresetClass::Exit => assert!(!end.visible, "{} ends hidden", preset.name),
+            PresetClass::Emphasis | PresetClass::Path => {
+                assert!(end.visible, "{} stays", preset.name)
+            }
+        }
+        assert!(!player.is_animating(60_000.0), "{} settles", preset.name);
+    }
+}
