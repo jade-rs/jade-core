@@ -1986,52 +1986,44 @@ impl DocumentParser {
                         }
                     }
                     b"w:br" => {
-                        if Self::keeps_field_result_in_run_text(
-                            current_run_field.as_ref(),
-                            current_run_is_instruction_operand,
-                        ) {
-                            let mut break_type: Option<String> = None;
-                            let mut has_clear = false;
-                            for attr in e.attributes().flatten() {
-                                match attr.key.as_ref() {
-                                    b"w:type" => {
-                                        break_type = Some(
-                                            String::from_utf8_lossy(&attr.value)
-                                                .to_ascii_lowercase(),
-                                        );
-                                    }
-                                    b"w:clear" => has_clear = true,
-                                    _ => {}
+                        let mut break_type: Option<String> = None;
+                        let mut has_clear = false;
+                        for attr in e.attributes().flatten() {
+                            match attr.key.as_ref() {
+                                b"w:type" => {
+                                    break_type = Some(
+                                        String::from_utf8_lossy(&attr.value).to_ascii_lowercase(),
+                                    );
                                 }
+                                b"w:clear" => has_clear = true,
+                                _ => {}
                             }
-                            if let Some(ref mut run) = current_run {
-                                // ECMA-376 Part 1 §17.3.3.1 `w:br/@w:type`. The
-                                // text-length counter is bumped only when a
-                                // character is actually appended — otherwise an
-                                // unhandled break type desynced `paragraph_text_len`
-                                // from the run text and shifted later offsets.
-                                match break_type.as_deref() {
-                                    Some("page") => {
-                                        run.text.push(PAGE_BREAK_CHAR);
-                                        paragraph_text_len += 1;
-                                    }
-                                    // The next column, or the next page after
-                                    // the last one.
-                                    Some("column") => {
-                                        run.text.push(crate::document::COLUMN_BREAK_CHAR);
-                                        paragraph_text_len += 1;
-                                    }
-                                    Some("textwrapping") | None => {
-                                        run.text.push('\n');
-                                        paragraph_text_len += 1;
-                                        // A clear value changes Word's float
-                                        // avoidance behavior. Keep this run
-                                        // intact so the editor can map it back
-                                        // to the attributed raw `w:br` element.
-                                        current_run_has_attributed_soft_break |= has_clear;
-                                    }
-                                    _ => {}
+                        }
+                        // ECMA-376 Part 1 §17.3.3.1. Count only characters
+                        // appended to editable text; cached field results do
+                        // not contribute to paragraph offsets.
+                        let character = match break_type.as_deref() {
+                            Some("page") => Some(PAGE_BREAK_CHAR),
+                            Some("column") => Some(crate::document::COLUMN_BREAK_CHAR),
+                            Some("textwrapping") | None => Some('\n'),
+                            _ => None,
+                        };
+                        if let (Some(ref mut run), Some(character)) =
+                            (current_run.as_mut(), character)
+                        {
+                            if Self::keeps_field_result_in_run_text(
+                                current_run_field.as_ref(),
+                                current_run_is_instruction_operand,
+                            ) {
+                                run.text.push(character);
+                                paragraph_text_len += character.len_utf8();
+                                if character == '\n' {
+                                    // Preserve clear attributes on editable
+                                    // soft breaks when synchronizing raw XML.
+                                    current_run_has_attributed_soft_break |= has_clear;
                                 }
+                            } else {
+                                current_run_field_text.push(character);
                             }
                         }
                     }
@@ -2055,6 +2047,8 @@ impl DocumentParser {
                                 paragraph_text_len += 1;
                                 current_run_has_carriage_return = true;
                             }
+                        } else if current_run.is_some() {
+                            current_run_field_text.push('\n');
                         }
                     }
                     b"w:fldSimple" => {
@@ -2460,6 +2454,8 @@ impl DocumentParser {
                                 run.text.push('\u{2011}');
                                 paragraph_text_len += '\u{2011}'.len_utf8();
                             }
+                        } else if current_run.is_some() {
+                            current_run_field_text.push('\u{2011}');
                         }
                     }
                     b"w:softHyphen" => {
@@ -2474,6 +2470,8 @@ impl DocumentParser {
                                 run.text.push('\u{00AD}');
                                 paragraph_text_len += '\u{00AD}'.len_utf8();
                             }
+                        } else if current_run.is_some() {
+                            current_run_field_text.push('\u{00AD}');
                         }
                     }
                     b"w:sym" => {
@@ -2482,39 +2480,40 @@ impl DocumentParser {
                         // into a code point so the glyph renders instead of the
                         // run becoming empty, and stamp the symbol font onto the
                         // run so it is drawn with the correct typeface.
-                        if Self::keeps_field_result_in_run_text(
-                            current_run_field.as_ref(),
-                            current_run_is_instruction_operand,
-                        ) {
-                            let mut sym_char: Option<char> = None;
-                            let mut sym_font: Option<String> = None;
-                            for attr in e.attributes().flatten() {
-                                match attr.key.as_ref() {
-                                    b"w:char" => {
-                                        let raw = String::from_utf8_lossy(&attr.value);
-                                        sym_char = u32::from_str_radix(raw.trim(), 16)
-                                            .ok()
-                                            .and_then(char::from_u32);
-                                    }
-                                    b"w:font" => {
-                                        sym_font =
-                                            Some(String::from_utf8_lossy(&attr.value).to_string());
-                                    }
-                                    _ => {}
+                        let mut sym_char: Option<char> = None;
+                        let mut sym_font: Option<String> = None;
+                        for attr in e.attributes().flatten() {
+                            match attr.key.as_ref() {
+                                b"w:char" => {
+                                    let raw = String::from_utf8_lossy(&attr.value);
+                                    sym_char = u32::from_str_radix(raw.trim(), 16)
+                                        .ok()
+                                        .and_then(char::from_u32);
                                 }
+                                b"w:font" => {
+                                    sym_font =
+                                        Some(String::from_utf8_lossy(&attr.value).to_string());
+                                }
+                                _ => {}
                             }
-                            if let (Some(ref mut run), Some(ch)) = (current_run.as_mut(), sym_char)
-                            {
+                        }
+                        if let (Some(ref mut run), Some(ch)) = (current_run.as_mut(), sym_char) {
+                            if Self::keeps_field_result_in_run_text(
+                                current_run_field.as_ref(),
+                                current_run_is_instruction_operand,
+                            ) {
                                 run.text.push(ch);
                                 paragraph_text_len += ch.len_utf8();
-                                if let Some(font) = sym_font {
-                                    let props = current_run_props
-                                        .get_or_insert_with(RunProperties::default);
-                                    let fonts = props.fonts.get_or_insert_with(RunFonts::default);
-                                    let font: Rc<str> = Rc::from(font.as_str());
-                                    fonts.ascii = Some(font.clone());
-                                    fonts.h_ansi = Some(font);
-                                }
+                            } else {
+                                current_run_field_text.push(ch);
+                            }
+                            if let Some(font) = sym_font {
+                                let props =
+                                    current_run_props.get_or_insert_with(RunProperties::default);
+                                let fonts = props.fonts.get_or_insert_with(RunFonts::default);
+                                let font: Rc<str> = Rc::from(font.as_str());
+                                fonts.ascii = Some(font.clone());
+                                fonts.h_ansi = Some(font);
                             }
                         }
                     }
@@ -18314,8 +18313,8 @@ mod tests {
     }
 
     #[test]
-    fn computed_field_caches_preserve_regular_and_position_tabs() {
-        let result = r#"<w:r><w:t>alpha</w:t><w:tab/><w:t>beta</w:t><w:ptab w:alignment="right" w:relativeTo="margin" w:leader="none"/><w:t>gamma</w:t></w:r>"#;
+    fn computed_field_caches_preserve_inline_control_characters() {
+        let result = r#"<w:r><w:t>alpha</w:t><w:tab/><w:t>beta</w:t><w:ptab w:alignment="right" w:relativeTo="margin" w:leader="none"/><w:t>gamma</w:t><w:br/><w:cr/><w:br w:type="page"/><w:br w:type="column"/><w:noBreakHyphen/><w:softHyphen/><w:sym w:font="Wingdings" w:char="F0FC"/><w:lastRenderedPageBreak/></w:r>"#;
         for body in [
             format!(r#"<w:p><w:fldSimple w:instr="INDEX">{result}</w:fldSimple></w:p>"#),
             format!(
@@ -18332,7 +18331,28 @@ mod tests {
                 .iter()
                 .filter_map(|run| run.field.as_ref()?.cached_text.as_deref())
                 .collect();
-            assert_eq!(cached, "alpha\tbeta\tgamma");
+            assert_eq!(
+                cached,
+                "alpha\tbeta\tgamma\n\n\u{c}\u{e}\u{2011}\u{ad}\u{f0fc}"
+            );
+            let symbol_run = paragraph
+                .runs
+                .iter()
+                .find(|run| {
+                    run.field
+                        .as_ref()
+                        .and_then(|field| field.cached_text.as_deref())
+                        .is_some_and(|text| text.contains('\u{f0fc}'))
+                })
+                .unwrap();
+            assert_eq!(
+                symbol_run
+                    .properties
+                    .as_ref()
+                    .and_then(|properties| properties.fonts.as_ref())
+                    .and_then(|fonts| fonts.ascii.as_deref()),
+                Some("Wingdings")
+            );
         }
     }
 
