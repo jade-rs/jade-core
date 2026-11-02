@@ -277,6 +277,7 @@ pub(crate) fn rebase_paragraph_style_properties(
     old: &ParagraphProperties,
     new: &ParagraphProperties,
     declared: impl Fn(&str) -> bool,
+    declared_attribute: impl Fn(&str, &str) -> bool,
 ) {
     macro_rules! rebase {
         ($($field:ident => $tag:literal),* $(,)?) => {
@@ -290,8 +291,6 @@ pub(crate) fn rebase_paragraph_style_properties(
     rebase!(
         alignment => "w:jc",
         bidi => "w:bidi",
-        spacing => "w:spacing",
-        indent => "w:ind",
         tabs => "w:tabs",
         adjust_right_indent => "w:adjustRightInd",
         snap_to_grid => "w:snapToGrid",
@@ -307,6 +306,36 @@ pub(crate) fn rebase_paragraph_style_properties(
         shading => "w:shd",
         borders => "w:pBdr",
         contextual_spacing => "w:contextualSpacing",
+    );
+
+    // A direct compound element overrides only the attributes it declares.
+    // Rebase inherited groups together so point/character and point/line
+    // alternatives cannot leave stale twins behind.
+    macro_rules! rebase_groups {
+        ($field:ident, $tag:literal, $($($member:ident),+ => [$($attribute:literal),+]);+ $(;)?) => {{
+            let mut value = props.$field.clone().unwrap_or_default();
+            let prior = old.$field.clone().unwrap_or_default();
+            let next = new.$field.clone().unwrap_or_default();
+            $(
+                if !($(declared_attribute($tag, $attribute))||+)
+                    && $(value.$member == prior.$member)&&+
+                {
+                    $(value.$member = next.$member.clone();)+
+                }
+            )+
+            props.$field = (value != Default::default()).then_some(value);
+        }};
+    }
+    rebase_groups!(spacing, "w:spacing",
+        before, before_lines, before_auto => ["w:before", "w:beforeLines", "w:beforeAutospacing"];
+        after, after_lines, after_auto => ["w:after", "w:afterLines", "w:afterAutospacing"];
+        line => ["w:line"];
+        line_rule => ["w:line", "w:lineRule"];
+    );
+    rebase_groups!(indent, "w:ind",
+        left, start, left_chars, start_chars => ["w:left", "w:start", "w:leftChars", "w:startChars"];
+        right, end, right_chars, end_chars => ["w:right", "w:end", "w:rightChars", "w:endChars"];
+        first_line, hanging, first_line_chars, hanging_chars => ["w:firstLine", "w:hanging", "w:firstLineChars", "w:hangingChars"];
     );
 }
 
