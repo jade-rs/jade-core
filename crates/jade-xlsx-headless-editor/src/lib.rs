@@ -960,11 +960,13 @@ impl HeadlessWorkbook {
                 continue;
             };
             let mut patched = xml.clone();
-            if let Some(on) = tab {
-                patched = jade_xlsx_writer::sheet_view::set_tab_selected(&patched, on)?;
-            }
+            // The zoom first: it gives a sheet with no view one, which its
+            // tab is then marked on.
             if let Some(percent) = zoom {
                 patched = jade_xlsx_writer::sheet_view::set_zoom(&patched, percent)?;
+            }
+            if let Some(on) = tab {
+                patched = jade_xlsx_writer::sheet_view::set_tab_selected(&patched, on)?;
             }
             if patched != xml {
                 package.replace(&part, patched.into_bytes());
