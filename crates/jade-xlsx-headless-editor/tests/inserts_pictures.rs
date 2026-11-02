@@ -135,3 +135,55 @@ fn lines_go_in_as_connectors_and_the_gallery_reads_back_as_inserted() {
         }
     }
 }
+
+/// A freeform goes in as custom geometry through the points drawn: closed
+/// and filled, or open as a line.
+#[test]
+fn freeforms_go_in_through_their_points() {
+    use jade_xlsx_reader::{PathCommand, ShapePaint};
+    let mut workbook = open("sample-workbook.xlsx");
+    let sheet = workbook.workbook().sheets[0].name.clone();
+    let closed = workbook
+        .insert_freeform(
+            &sheet,
+            CellRef::new(2, 3),
+            (5.0, 4.0),
+            &[(0.0, 40.0), (30.0, 0.0), (60.0, 40.0)],
+            true,
+        )
+        .expect("closed freeform");
+    let open = workbook
+        .insert_freeform(
+            &sheet,
+            CellRef::new(6, 3),
+            (0.0, 0.0),
+            &[(0.0, 0.0), (20.0, 10.0), (40.0, 0.0)],
+            false,
+        )
+        .expect("open freeform");
+    let reopened = HeadlessWorkbook::open(workbook.bytes()).expect("reopen");
+    let shapes = &reopened.workbook().sheets[0].shapes;
+    let placed = |id: u32| shapes.iter().find(|shape| shape.id == id).expect("placed");
+    assert_eq!(placed(closed).name, format!("Freeform: Shape {closed}"));
+    let style = placed(closed).style.as_deref().expect("its geometry");
+    assert_eq!(style.geometry.as_deref(), Some("custom"));
+    let path = &style.custom_paths[0];
+    assert_eq!((path.width, path.height), (571_500, 381_000));
+    assert_eq!(
+        path.commands,
+        vec![
+            PathCommand::Move(0, 381_000),
+            PathCommand::Line(285_750, 0),
+            PathCommand::Line(571_500, 381_000),
+            PathCommand::Close,
+        ]
+    );
+    let open_style = placed(open).style.as_deref().expect("its geometry");
+    assert_eq!(open_style.fill, ShapePaint::None);
+    assert!(!open_style.custom_paths[0]
+        .commands
+        .contains(&PathCommand::Close));
+    assert!(workbook
+        .insert_freeform(&sheet, CellRef::new(0, 0), (0.0, 0.0), &[(1.0, 1.0)], true)
+        .is_err());
+}
