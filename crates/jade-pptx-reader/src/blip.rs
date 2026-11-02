@@ -1,8 +1,10 @@
-//! What a picture's `<a:blip>` says to do to its pixels: the colour
+//! What a picture's `<a:blip>` says about its pixels: the colour
 //! transforms ECMA-376 defines on the blip itself (`a:lum`, `a:grayscl`,
-//! `a:biLevel`, `a:duotone`, `a:clrChange`) and the image effects Office
-//! 2010 added in the `a14:imgProps` extension (corrections, colour
-//! saturation and tone, artistic effects, background removal), plus the
+//! `a:biLevel`, `a:duotone`, `a:clrChange`), which readers apply, and the
+//! image effects Office 2010 added in the `a14:imgProps` extension
+//! (corrections, colour saturation and tone, artistic effects, background
+//! removal), which Office bakes into the picture the blip shows — keeping
+//! the original in `a14:imgLayer` — so they say what was done; plus the
 //! SVG an `asvg:svgBlip` extension carries beside the bitmap fallback.
 
 use serde::{Deserialize, Serialize};

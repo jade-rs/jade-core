@@ -8,11 +8,13 @@ pub(crate) mod diagrams;
 mod formatting;
 pub(crate) mod grouping;
 mod objects;
+pub(crate) mod picture_ranges;
 pub(crate) mod pictures;
 pub(crate) mod shape_insertion;
 pub(crate) mod shape_style;
 pub(crate) mod smartart_frames;
 pub(crate) mod tables;
+pub(crate) use objects::insert_picture_shape;
 pub(crate) use objects::{
     arrange as arrange_shape, delete as delete_shape, duplicate as duplicate_shape, insert_text_box,
 };

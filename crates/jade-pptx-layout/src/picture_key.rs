@@ -12,11 +12,24 @@ fn rgb(color: &jade_pptx_reader::Color, theme: &ThemeColors) -> ([u8; 3], u8) {
     ([r, g, b], (a.clamp(0.0, 1.0) * 255.0).round() as u8)
 }
 
-/// The effects of `picture`'s blip with its colours resolved.
+/// The effects of `picture`'s blip a reader draws, with their colours
+/// resolved. Office 2010's image effects (`a14:imgProps`) are not among
+/// them: Office bakes those into the picture the blip shows and keeps the
+/// original in `a14:imgLayer`.
 pub fn picture_effects(picture: &Picture, theme: &ThemeColors) -> Vec<Effect> {
     picture
         .blip_effects
         .iter()
+        .filter(|effect| {
+            matches!(
+                effect,
+                BlipEffect::Luminance { .. }
+                    | BlipEffect::Grayscale
+                    | BlipEffect::BiLevel { .. }
+                    | BlipEffect::Duotone { .. }
+                    | BlipEffect::ColorChange { .. }
+            )
+        })
         .map(|effect| match effect {
             BlipEffect::Luminance {
                 brightness,

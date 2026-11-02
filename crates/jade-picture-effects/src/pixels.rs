@@ -87,6 +87,19 @@ pub fn encode_png(pixels: &image::RgbaImage) -> Option<Vec<u8>> {
     Some(out.into_inner())
 }
 
+/// A picture's size in px without decoding it: a bitmap's header, or an
+/// SVG's declared size.
+pub fn image_size(bytes: &[u8]) -> Option<(u32, u32)> {
+    if is_svg(bytes) {
+        return svg_size(bytes).map(|(w, h)| (w.round() as u32, h.round() as u32));
+    }
+    image::ImageReader::new(std::io::Cursor::new(bytes))
+        .with_guessed_format()
+        .ok()?
+        .into_dimensions()
+        .ok()
+}
+
 /// An SVG drawn to RGBA, its longer side `longest` px.
 pub fn rasterize_svg(bytes: &[u8], longest: u32) -> Option<image::RgbaImage> {
     let tree = resvg::usvg::Tree::from_data(bytes, &resvg::usvg::Options::default()).ok()?;

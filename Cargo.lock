@@ -2279,6 +2279,7 @@ dependencies = [
  "image",
  "jade-opc",
  "jade-painter",
+ "jade-picture-effects",
  "jade-pptx-layout",
  "jade-pptx-reader",
  "jade-pptx-render",

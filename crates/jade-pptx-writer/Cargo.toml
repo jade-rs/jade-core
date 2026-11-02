@@ -14,7 +14,8 @@ serde = { version = "1.0", features = ["derive"] }
 thiserror = "2.0"
 unicode-segmentation = "1.10"
 uuid = { version = "1.26", features = ["v4", "js"] }
-image = { version = "0.25", default-features = false, features = ["png", "jpeg"] }
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "gif"] }
+jade-picture-effects = { path = "../jade-picture-effects" }
 sha2 = "0.10"
 png = "0.18"
 

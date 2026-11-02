@@ -77,6 +77,19 @@ fn add_relationship(
     target: &str,
     avoid: &HashSet<String>,
 ) -> Result<String> {
+    add_relationship_named(package, owner, kind, target, avoid, "rIdJadeDiagram")
+}
+
+/// Adds a relationship from `owner` to `target`, its id `stem` and the
+/// first free number.
+pub(crate) fn add_relationship_named(
+    package: &mut OpcPackage,
+    owner: &str,
+    kind: &str,
+    target: &str,
+    avoid: &HashSet<String>,
+    stem: &str,
+) -> Result<String> {
     let rel_part = rels_part_name(owner);
     let xml = package
         .part_str(&rel_part)?
@@ -84,7 +97,7 @@ fn add_relationship(
     let existing = parse_relationships(&xml)?;
     let taken: HashSet<String> = existing.all().iter().map(|r| r.id.clone()).collect();
     let rid = (1..)
-        .map(|n| format!("rIdJadeDiagram{n}"))
+        .map(|n| format!("{stem}{n}"))
         .find(|rid| !taken.contains(rid) && !avoid.contains(rid))
         .expect("unbounded");
     let relation = format!(
@@ -104,7 +117,11 @@ fn add_relationship(
     Ok(rid)
 }
 
-fn remove_relationship(package: &mut OpcPackage, owner: &str, rid: &str) -> Result<Option<String>> {
+pub(crate) fn remove_relationship(
+    package: &mut OpcPackage,
+    owner: &str,
+    rid: &str,
+) -> Result<Option<String>> {
     let rel_part = rels_part_name(owner);
     let Some(xml) = package.part_str(&rel_part)? else {
         return Ok(None);
@@ -123,7 +140,7 @@ fn remove_relationship(package: &mut OpcPackage, owner: &str, rid: &str) -> Resu
 
 /// Removes `part` (and what only it refers to) when no relationship of the
 /// package points at it any more.
-fn drop_if_unreferenced(package: &mut OpcPackage, part: &str) -> Result<()> {
+pub(crate) fn drop_if_unreferenced(package: &mut OpcPackage, part: &str) -> Result<()> {
     let names: Vec<String> = package.part_names().to_vec();
     for name in names.iter().filter(|name| name.ends_with(".rels")) {
         let owner = name

@@ -66,7 +66,9 @@ fn effects_ride_on_the_key_with_theme_colours_resolved() {
                 dark: Color::Srgb("000000".into()),
                 light: Color::Scheme("accent1".into()),
             },
+            // Baked into the picture the blip shows: not drawn again.
             BlipEffect::Artistic("artisticBlur".into()),
+            BlipEffect::Grayscale,
         ],
         ..picture()
     });
@@ -80,7 +82,7 @@ fn effects_ride_on_the_key_with_theme_colours_resolved() {
                 dark: [0, 0, 0],
                 light: [0x44, 0x72, 0xC4]
             },
-            Effect::Artistic("artisticBlur".into()),
+            Effect::Grayscale,
         ]
     );
 }
