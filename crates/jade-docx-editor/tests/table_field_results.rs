@@ -384,3 +384,125 @@ fn table_formula_dialog_includes_computed_field_results_before_and_after_reload(
         }
     }
 }
+
+fn formula_body(input: &[(i32, i32)], instruction: &str, complex: bool) -> String {
+    body(input, instruction, complex).replace(
+        "</w:tbl>",
+        &format!(
+            "<w:tr><w:tc><w:tcPr/><w:p>{}</w:p></w:tc></w:tr></w:tbl>",
+            hidden("=SUM(ABOVE)", 0, !complex)
+        ),
+    )
+}
+
+fn formula_result(document: &WordDocument, paragraph: usize) -> String {
+    document
+        .paragraph(paragraph)
+        .unwrap()
+        .runs
+        .iter()
+        .map(|run| run.cached_display_text())
+        .collect()
+}
+
+fn update_formula(session: &mut Session, paragraph: usize, selection_only: bool) {
+    use jade_docx_editor::fields::{FieldCommand, FieldEnvironment, FieldScope};
+    use jade_selection::{SelectionRange, TextPosition};
+    let scope = if selection_only {
+        FieldScope::Selection(SelectionRange::collapsed(TextPosition::new(paragraph, 0)))
+    } else {
+        FieldScope::Document
+    };
+    session.run(Box::new(FieldCommand::update(
+        scope,
+        FieldEnvironment::default(),
+    )));
+}
+
+#[test]
+fn f9_table_formulas_ignore_hidden_caches_through_history_and_reload() {
+    for complex in [false, true] {
+        for instruction in [
+            "SET Counter 10",
+            "ASK Counter Prompt",
+            "PRIVATE",
+            "ADDIN",
+            "XE Index",
+            "TA Authority",
+            "TC Entry",
+            "RD chapter.docx",
+        ] {
+            for selection_only in [false, true] {
+                let xml = formula_body(&[(3, 900), (5, 1)], instruction, complex);
+                let mut session = Session::open(&xml, &[]);
+                let before = session.document.export_docx().unwrap();
+                update_formula(&mut session, 2, selection_only);
+                assert_eq!(
+                    formula_result(&session.document, 2),
+                    "8",
+                    "complex={complex}, instruction={instruction}, selection={selection_only}"
+                );
+                let after = session.document.export_docx().unwrap();
+                session.undo();
+                assert_eq!(session.document.export_docx().unwrap(), before);
+                session.redo();
+                assert_eq!(session.document.export_docx().unwrap(), after);
+                session = Session::new(session.reopened());
+                update_formula(&mut session, 2, selection_only);
+                assert_eq!(formula_result(&session.document, 2), "8");
+                capture(&session.document);
+            }
+        }
+    }
+}
+
+proptest! {
+    #![proptest_config(ProptestConfig { cases: 64, ..ProptestConfig::default() })]
+    #[test]
+    fn f9_formula_history_matches_visible_sum(
+        input in prop::collection::vec((1i32..100, 100i32..1000), 2..9),
+        operations in prop::collection::vec(0u8..5, 1..15),
+        complex in any::<bool>(),
+        instruction in prop::sample::select(vec!["SET Counter 10", "ASK Counter Prompt", "PRIVATE", "ADDIN", "XE Index", "TA Authority", "TC Entry", "RD chapter.docx"]),
+    ) {
+        let mut session = Session::open(&formula_body(&input, instruction, complex), &[]);
+        let sum = input.iter().map(|(visible, _)| visible).sum::<i32>().to_string();
+        let mut model = "0".to_string();
+        let mut undo = Vec::new();
+        let mut redo = Vec::new();
+        for operation in operations {
+            match operation {
+                0 | 1 => {
+                    undo.push((model.clone(), session.document.export_docx().unwrap()));
+                    redo.clear();
+                    update_formula(&mut session, input.len(), operation == 1);
+                    model = sum.clone();
+                }
+                2 if !undo.is_empty() => {
+                    let (expected, bytes) = undo.pop().unwrap();
+                    redo.push((model.clone(), session.document.export_docx().unwrap()));
+                    session.undo();
+                    model = expected;
+                    prop_assert_eq!(session.document.export_docx().unwrap(), bytes);
+                }
+                3 if !redo.is_empty() => {
+                    let (expected, bytes) = redo.pop().unwrap();
+                    undo.push((model.clone(), session.document.export_docx().unwrap()));
+                    session.redo();
+                    model = expected;
+                    prop_assert_eq!(session.document.export_docx().unwrap(), bytes);
+                }
+                4 => {
+                    session = Session::new(session.reopened());
+                    undo.clear();
+                    redo.clear();
+                }
+                _ => {}
+            }
+            prop_assert_eq!(formula_result(&session.document, input.len()), model.as_str());
+            let reopened = session.reopened();
+            prop_assert_eq!(formula_result(&reopened, input.len()), model.as_str());
+            capture(&reopened);
+        }
+    }
+}

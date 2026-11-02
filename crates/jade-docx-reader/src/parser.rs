@@ -10053,7 +10053,7 @@ impl DocumentParser {
                     parse_eq_distributed_field(normalized)
                         .map(|(text, guide)| RunFieldKind::EqDistributed { text, guide })
                 }),
-            "PRIVATE" | "ADDIN" | "XE" | "TA" => Some(RunFieldKind::NonDisplay {
+            "PRIVATE" | "ADDIN" | "XE" | "TA" | "RD" => Some(RunFieldKind::NonDisplay {
                 instruction: normalized.to_string(),
             }),
             _ => None,
@@ -21232,7 +21232,8 @@ mod tests {
         //
         // PRIVATE and ADDIN carry application-owned data. XE and TA are the
         // hidden source entries used to build an index and a table of
-        // authorities. Fragment ADDIN across instrText nodes as Word is free to
+        // authorities. RD identifies documents used by TOC/TOA/INDEX without
+        // displaying a result. Fragment ADDIN across instrText nodes as Word is free to
         // split any field instruction at arbitrary run boundaries.
         let body = r#"
             <w:p>
@@ -21258,6 +21259,14 @@ mod tests {
             </w:p>
             <w:p>
               <w:fldSimple w:instr=" PRIVATE simple-payload "></w:fldSimple>
+            </w:p>
+            <w:p>
+              <w:r><w:fldChar w:fldCharType="begin"/></w:r>
+              <w:r><w:instrText xml:space="preserve"> RD &quot;chapter.docx&quot; </w:instrText></w:r>
+              <w:r><w:fldChar w:fldCharType="end"/></w:r>
+            </w:p>
+            <w:p>
+              <w:fldSimple w:instr=" RD &quot;appendix.docx&quot; "></w:fldSimple>
             </w:p>
         "#;
         let doc = parse_document_from_body(body);
@@ -21288,13 +21297,15 @@ mod tests {
             })
             .collect::<Vec<_>>();
 
-        assert_eq!(fields.len(), 5);
+        assert_eq!(fields.len(), 7);
         let expected = [
             "PRIVATE vendor-payload",
             "ADDIN vendor-payload",
             "XE \"Alpha entry\" \\f \"main\"",
             "TA \\l \"Case citation\" \\s \"12\"",
             "PRIVATE simple-payload",
+            "RD \"chapter.docx\"",
+            "RD \"appendix.docx\"",
         ];
         for (field, instruction) in fields.into_iter().zip(expected) {
             assert_eq!(
