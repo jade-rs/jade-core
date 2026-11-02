@@ -5,7 +5,7 @@
 //! inserted and set again whenever the sources or the style change.
 
 use crate::word::fields::{build_code, parse_code, quote, unparse, unquote};
-use crate::word_document::{FieldBlockLine, WordDocument};
+use crate::word_document::{FieldBlock, FieldBlockLine, WordDocument};
 use jade_selection::SelectionRange;
 
 use super::edit_document;
@@ -574,7 +574,7 @@ impl<T: WordSession + ?Sized> WordCitations for T {}
 
 /// The bibliography's entries: sorted by author for author-date styles, in
 /// citation order for numbered ones.
-fn bibliography_lines(
+pub(crate) fn bibliography_lines(
     document: &crate::word_document::WordDocument,
     style: BibliographyStyle,
 ) -> Vec<FieldBlockLine> {
@@ -613,7 +613,7 @@ fn bibliography_lines(
 }
 
 /// Every source, cited ones first in the order first cited.
-fn citation_order(
+pub(crate) fn citation_order(
     document: &crate::word_document::WordDocument,
     sources: &[Source],
 ) -> Vec<String> {
@@ -633,6 +633,84 @@ fn citation_order(
     order
 }
 
+/// Only regenerate forms the renderer supports; preserve Word's cached
+/// combined citations and per-source formatting switches.
+pub(crate) fn render_citation(
+    instruction: &str,
+    sources: &[Source],
+    order: &[String],
+    style: BibliographyStyle,
+) -> Option<String> {
+    let parsed = parse_code(instruction);
+    if parsed.operands.len() != 1 || !supported_switches(&parsed) {
+        return None;
+    }
+    let tag = unquote(&parsed.operands[0]);
+    let source = sources.iter().find(|source| source.tag == tag)?;
+    let number = order.iter().position(|cited| *cited == tag)? + 1;
+    Some(style.citation(source, number))
+}
+
+fn supported_switches(parsed: &crate::word::fields::ParsedCode) -> bool {
+    parsed.switches.iter().all(|(switch, value)| {
+        switch.eq_ignore_ascii_case("\\l") && value.is_some()
+            || switch == "\\*"
+                && value
+                    .as_deref()
+                    .is_some_and(|value| unquote(value).eq_ignore_ascii_case("MERGEFORMAT"))
+    })
+}
+
+pub(crate) fn supported_bibliography(instruction: &str) -> bool {
+    let parsed = parse_code(instruction);
+    parsed.name.eq_ignore_ascii_case("BIBLIOGRAPHY")
+        && parsed.operands.is_empty()
+        && supported_switches(&parsed)
+}
+
+/// Replace the entries while keeping the heading inside the field result.
+pub(crate) fn replace_bibliography(
+    document: &mut WordDocument,
+    block: &FieldBlock,
+    lines: &[FieldBlockLine],
+) -> Result<(), String> {
+    let heading = document
+        .paragraph(block.start)
+        .filter(|paragraph| {
+            paragraph
+                .properties
+                .as_ref()
+                .and_then(|p| p.style.as_deref())
+                == Some("Heading1")
+        })
+        .map(|paragraph| FieldBlockLine {
+            text: paragraph
+                .runs
+                .iter()
+                .map(|run| {
+                    if run.text.is_empty() {
+                        run.field
+                            .as_ref()
+                            .and_then(|field| {
+                                field
+                                    .resolved_value
+                                    .as_deref()
+                                    .or(field.cached_text.as_deref())
+                            })
+                            .unwrap_or("")
+                    } else {
+                        run.text.as_str()
+                    }
+                })
+                .collect(),
+            style: Some("Heading1".into()),
+            ..FieldBlockLine::default()
+        });
+    let block_lines: Vec<_> = heading.into_iter().chain(lines.iter().cloned()).collect();
+    document.replace_field_block(block, &block.instruction, &block_lines)?;
+    Ok(())
+}
+
 /// Sets every citation and bibliography in `style`.
 fn restyle(
     document: &mut crate::word_document::WordDocument,
@@ -641,71 +719,19 @@ fn restyle(
     let sources = document.citation_sources();
     let order = citation_order(document, &sources);
     for field in document.inline_fields("CITATION") {
-        let parsed = parse_code(&field.instruction);
-        // Preserve Word's cached result until these per-source formatting
-        // switches can be rendered faithfully, including combined citations.
-        if parsed.operands.len() != 1
-            || parsed.switches.iter().any(|(switch, value)| {
-                !(switch.eq_ignore_ascii_case("\\l") && value.is_some()
-                    || switch == "\\*"
-                        && value.as_deref().is_some_and(|value| {
-                            unquote(value).eq_ignore_ascii_case("MERGEFORMAT")
-                        }))
-            })
-        {
-            continue;
-        }
-        let Some(tag) = parsed.operands.first().map(|tag| unquote(tag)) else {
+        let Some(text) = render_citation(&field.instruction, &sources, &order, style) else {
             continue;
         };
-        let Some(source) = sources.iter().find(|source| source.tag == tag) else {
-            continue;
-        };
-        let number = order.iter().position(|cited| *cited == tag).unwrap_or(0) + 1;
-        let text = style.citation(source, number);
         if text != field.text {
             document.set_inline_field(field.paragraph, field.run, None, &text)?;
         }
     }
     let lines = bibliography_lines(document, style);
     for block in document.field_blocks().into_iter().rev() {
-        if block.name() != "BIBLIOGRAPHY" {
+        if block.name() != "BIBLIOGRAPHY" || !supported_bibliography(&block.instruction) {
             continue;
         }
-        let heading = document
-            .paragraph(block.start)
-            .filter(|paragraph| {
-                paragraph
-                    .properties
-                    .as_ref()
-                    .and_then(|p| p.style.as_deref())
-                    == Some("Heading1")
-            })
-            .map(|paragraph| FieldBlockLine {
-                text: paragraph
-                    .runs
-                    .iter()
-                    .map(|run| {
-                        if run.text.is_empty() {
-                            run.field
-                                .as_ref()
-                                .and_then(|field| {
-                                    field
-                                        .resolved_value
-                                        .as_deref()
-                                        .or(field.cached_text.as_deref())
-                                })
-                                .unwrap_or("")
-                        } else {
-                            run.text.as_str()
-                        }
-                    })
-                    .collect(),
-                style: Some("Heading1".into()),
-                ..FieldBlockLine::default()
-            });
-        let block_lines: Vec<_> = heading.into_iter().chain(lines.iter().cloned()).collect();
-        document.replace_field_block(&block, &block.instruction, &block_lines)?;
+        replace_bibliography(document, &block, &lines)?;
     }
     Ok(())
 }
