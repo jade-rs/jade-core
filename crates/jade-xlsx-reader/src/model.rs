@@ -724,11 +724,48 @@ pub enum ShapePaint {
     Gradient(Vec<DrawingColor>),
 }
 
+/// One path of a shape's custom geometry (`custGeom/pathLst/path`), as a
+/// freeform or a shape Excel cannot name is drawn.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub struct CustomPath {
+    /// The path's own coordinate space (`@w`, `@h`), scaled to the shape's
+    /// box; 0 when the file gives none, the points' extent then standing in.
+    pub width: i64,
+    pub height: i64,
+    /// `@fill` is not `none`: the path is filled as well as outlined.
+    pub filled: bool,
+    pub commands: Vec<PathCommand>,
+}
+
+/// A step of a [`CustomPath`], in its coordinate space.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum PathCommand {
+    Move(i64, i64),
+    Line(i64, i64),
+    /// Two control points and the end.
+    Cubic([(i64, i64); 3]),
+    /// The control point and the end.
+    Quad([(i64, i64); 2]),
+    /// `arcTo`: an elliptical arc from the current point, of radii
+    /// `width_radius` × `height_radius`, starting at `start` and turning
+    /// through `swing` (60000ths of a degree, clockwise).
+    Arc {
+        width_radius: i64,
+        height_radius: i64,
+        start: i64,
+        swing: i64,
+    },
+    Close,
+}
+
 /// A shape's look from its `spPr`, `xdr:style` and text body.
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub struct ShapeStyle {
-    /// `prstGeom/@prst`: `rect`, `roundRect`, `ellipse`, `rightArrow`...
+    /// `prstGeom/@prst`: `rect`, `roundRect`, `ellipse`, `rightArrow`...;
+    /// `custom` for custom geometry, its paths in `custom_paths`.
     pub geometry: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub custom_paths: Vec<CustomPath>,
     /// `avLst` guides as (name, value).
     pub adjustments: Vec<(String, i64)>,
     pub fill: ShapePaint,
