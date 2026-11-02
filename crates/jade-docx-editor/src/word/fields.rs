@@ -334,10 +334,14 @@ pub const FIELDS: &[FieldSpec] = &[
             OperandSource::Free
         )],
         &[
+            switch("\\l", "field.switch.language", SwitchArgument::Number),
+            switch("\\m", "field.operand.source_tag", SwitchArgument::Text),
             switch("\\p", "field.switch.citation_page", SwitchArgument::Text),
+            switch("\\v", "field.switch.citation_volume", SwitchArgument::Text),
             switch("\\f", "field.switch.prefix", SwitchArgument::Text),
             switch("\\s", "field.switch.suffix", SwitchArgument::Text),
             switch("\\n", "field.switch.no_author", SwitchArgument::None),
+            switch("\\t", "field.switch.no_title", SwitchArgument::None),
             switch("\\y", "field.switch.no_year", SwitchArgument::None),
         ]
     ),
@@ -777,10 +781,15 @@ pub fn fields_in(category: Option<FieldCategory>) -> Vec<&'static FieldSpec> {
 }
 
 /// An operand as a field code writes it: quoted when asked, or when it has
-/// spaces; quotes inside escaped.
-fn quote(value: &str, quoted: bool) -> String {
-    if quoted || value.chars().any(char::is_whitespace) || value.is_empty() {
-        format!("\"{}\"", value.replace('"', "\\\""))
+/// spaces, quotes or backslashes; literal quotes and backslashes escaped.
+pub(crate) fn quote(value: &str, quoted: bool) -> String {
+    if quoted
+        || value
+            .chars()
+            .any(|c| c.is_whitespace() || matches!(c, '"' | '\\'))
+        || value.is_empty()
+    {
+        format!("\"{}\"", value.replace('\\', "\\\\").replace('"', "\\\""))
     } else {
         value.to_string()
     }
@@ -841,7 +850,7 @@ fn code_tokens(code: &str) -> Vec<String> {
     let mut chars = code.chars().peekable();
     while let Some(character) = chars.next() {
         match character {
-            '\\' if in_quotes && chars.peek() == Some(&'"') => {
+            '\\' if in_quotes && matches!(chars.peek(), Some('"' | '\\')) => {
                 current.push(character);
                 current.push(chars.next().expect("peeked"));
             }
@@ -886,13 +895,13 @@ fn takes_value(name: &str, switch: &str) -> bool {
 }
 
 /// A code split into its name, operands and switches (each with its value).
-struct ParsedCode {
-    name: String,
-    operands: Vec<String>,
-    switches: Vec<(String, Option<String>)>,
+pub(crate) struct ParsedCode {
+    pub(crate) name: String,
+    pub(crate) operands: Vec<String>,
+    pub(crate) switches: Vec<(String, Option<String>)>,
 }
 
-fn parse_code(code: &str) -> ParsedCode {
+pub(crate) fn parse_code(code: &str) -> ParsedCode {
     let tokens = code_tokens(crate::fields::unwrapped_code(code).unwrap_or_else(|_| code.trim()));
     let mut tokens = tokens.into_iter();
     let name = tokens.next().unwrap_or_default();
@@ -924,7 +933,7 @@ fn parse_code(code: &str) -> ParsedCode {
     parsed
 }
 
-fn unparse(parsed: &ParsedCode) -> String {
+pub(crate) fn unparse(parsed: &ParsedCode) -> String {
     let mut parts = vec![parsed.name.clone()];
     parts.extend(parsed.operands.iter().cloned());
     // MERGEFORMAT stays last, as Word writes it.
@@ -943,12 +952,21 @@ fn unparse(parsed: &ParsedCode) -> String {
     parts.join(" ")
 }
 
-fn unquote(token: &str) -> String {
-    token
+pub(crate) fn unquote(token: &str) -> String {
+    let token = token
         .strip_prefix('"')
         .and_then(|rest| rest.strip_suffix('"'))
-        .unwrap_or(token)
-        .replace("\\\"", "\"")
+        .unwrap_or(token);
+    let mut chars = token.chars().peekable();
+    let mut value = String::new();
+    while let Some(character) = chars.next() {
+        if character == '\\' && matches!(chars.peek(), Some('"' | '\\')) {
+            value.push(chars.next().expect("peeked"));
+        } else {
+            value.push(character);
+        }
+    }
+    value
 }
 
 /// Whether `code` has switch `switch` (with `value`, when given).
@@ -971,13 +989,7 @@ pub fn code_has_switch(code: &str, switch: &str, value: Option<&str>) -> bool {
 /// (`\@`, `\#`) replaces the one there; a `\*` format is one of several.
 pub fn toggle_switch(code: &str, switch: &str, value: Option<&str>) -> String {
     let mut parsed = parse_code(code);
-    let rendered = value.map(|value| {
-        if matches!(switch, "\\@" | "\\#") || value.chars().any(char::is_whitespace) {
-            format!("\"{}\"", value.replace('"', "\\\""))
-        } else {
-            value.to_string()
-        }
-    });
+    let rendered = value.map(|value| quote(value, matches!(switch, "\\@" | "\\#")));
     let position = parsed
         .switches
         .iter()
@@ -1337,6 +1349,34 @@ mod tests {
         assert_eq!(code_field_name(" page \\* roman").as_deref(), Some("PAGE"));
         assert_eq!(initials_of("Jade User"), "JU");
         assert_eq!(initials_of("山田"), "山");
+    }
+
+    #[test]
+    fn literal_quotes_and_backslashes_survive_field_code_edits() {
+        for value in [
+            "a b", "a\"b", "\\tag", "a\\b", "tail\\", "a\\\"b", "資料", "",
+        ] {
+            let code = build_code(
+                "CITATION",
+                &[(value.into(), true)],
+                &[("\\l".into(), Some("1041".into()))],
+                false,
+            );
+            let parsed = parse_code(&code);
+            assert_eq!(parsed.operands.len(), 1, "{code}");
+            assert_eq!(unquote(&parsed.operands[0]), value, "{code}");
+            assert_eq!(parsed.switches, [("\\l".into(), Some("1041".into()))]);
+            let code = toggle_switch("CITATION Tag", "\\m", Some(value));
+            assert!(code_has_switch(&code, "\\m", Some(value)), "{code}");
+            assert_eq!(toggle_switch(&code, "\\m", Some(value)), "CITATION Tag");
+        }
+        let code = r#"INCLUDETEXT "E:\\ReadMe.txt""#;
+        let parsed = parse_code(code);
+        assert_eq!(unquote(&parsed.operands[0]), r"E:\ReadMe.txt");
+        assert_eq!(set_operand(code, 0, r"E:\ReadMe.txt", true), code);
+        let parsed = parse_code(r#"CITATION \l 1041 "One" \m "Two words" \v "2" \t \y"#);
+        assert_eq!(parsed.operands, ["\"One\""]);
+        assert_eq!(parsed.switches.len(), 5);
     }
 
     #[test]
