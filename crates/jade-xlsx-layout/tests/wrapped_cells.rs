@@ -97,6 +97,7 @@ fn sheet_with(text: &str, style_index: Option<u32>, width_chars: f32) -> Sheet {
         show_formulas: false,
         show_zeros: true,
         page_break_preview: false,
+        tab_selected: false,
         show_headers: true,
         grid_color: None,
         zoom_percent: None,

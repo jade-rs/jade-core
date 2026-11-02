@@ -24173,11 +24173,15 @@ impl WordDocument {
         if width.is_some_and(|value| !value.is_finite() || value < 0.0) {
             return Err("column width must be a finite non-negative number".to_string());
         }
+        let styles = self.styles_part.clone();
         let mut templates = Vec::new();
         {
             let table = self
                 .table_mut_by_order(table_order_index)
                 .ok_or_else(|| format!("table {table_order_index} was not found"))?;
+            let table_style = styles
+                .as_ref()
+                .and_then(|styles| Self::table_style_paragraph_defaults(table, styles));
             let column_count = Self::resolved_table_column_count(table);
             if column_index > column_count {
                 return Err(format!(
@@ -24257,6 +24261,13 @@ impl WordDocument {
                 // The grid supplies the width; a copied `w:tcW` would restate
                 // the template's.
                 cell.style.remove("width");
+                if let Some(styles) = styles.as_ref() {
+                    Self::fill_new_cell_defaults(
+                        table_style.as_ref(),
+                        std::slice::from_mut(&mut cell),
+                        styles,
+                    );
+                }
                 row.cells.insert(insert_cell_index, cell);
             }
             Self::refresh_omitted_row_widths(table);
