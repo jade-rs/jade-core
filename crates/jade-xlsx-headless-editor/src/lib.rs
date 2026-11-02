@@ -895,24 +895,49 @@ impl HeadlessWorkbook {
     /// other tab not, as Excel saves grouped sheets. Leaves the undo
     /// history alone: a group is not an edit.
     pub fn save_bytes_selecting(&mut self, selected: &[usize]) -> Result<Vec<u8>> {
+        self.save_bytes_viewing(selected, &[])
+    }
+
+    /// [`Self::save_bytes_selecting`], each sheet in `zooms` (its index and
+    /// percent) also saved at that zoom, as Excel saves the zoom a sheet
+    /// was last shown at. Neither is an undo step.
+    pub fn save_bytes_viewing(
+        &mut self,
+        selected: &[usize],
+        zooms: &[(usize, u32)],
+    ) -> Result<Vec<u8>> {
         let bytes = self.save_bytes()?;
-        let changes: Vec<(String, bool)> = self
+        let changes: Vec<(String, Option<bool>, Option<u32>)> = self
             .workbook
             .sheets
             .iter()
             .enumerate()
-            .filter(|(index, sheet)| sheet.tab_selected != selected.contains(index))
-            .map(|(index, sheet)| (sheet.part_name.clone(), selected.contains(&index)))
+            .filter_map(|(index, sheet)| {
+                let selecting = selected.contains(&index);
+                let tab = (sheet.tab_selected != selecting).then_some(selecting);
+                let zoom = zooms
+                    .iter()
+                    .find(|(at, _)| *at == index)
+                    .map(|&(_, percent)| percent)
+                    .filter(|&percent| sheet.zoom_percent.unwrap_or(100) != percent);
+                (tab.is_some() || zoom.is_some()).then(|| (sheet.part_name.clone(), tab, zoom))
+            })
             .collect();
         if changes.is_empty() {
             return Ok(bytes);
         }
         let mut package = jade_opc::OpcPackage::open_preserving(&bytes)?;
-        for (part, on) in changes {
+        for (part, tab, zoom) in changes {
             let Some(xml) = package.part_str(&part)? else {
                 continue;
             };
-            let patched = jade_xlsx_writer::sheet_view::set_tab_selected(&xml, on)?;
+            let mut patched = xml.clone();
+            if let Some(on) = tab {
+                patched = jade_xlsx_writer::sheet_view::set_tab_selected(&patched, on)?;
+            }
+            if let Some(percent) = zoom {
+                patched = jade_xlsx_writer::sheet_view::set_zoom(&patched, percent)?;
+            }
             if patched != xml {
                 package.replace(&part, patched.into_bytes());
             }
@@ -1943,6 +1968,49 @@ impl HeadlessWorkbook {
         let xml = jade_opc::read_part_str(&self.source, &part_name)?
             .ok_or_else(|| jade_xlsx_writer::WriteError::MissingPart(part_name.clone()))?;
         let patched = jade_xlsx_writer::sheet_view::set_show_zeros(&xml, on)?;
+        if patched == xml {
+            return Ok(false);
+        }
+        self.replace_parts(vec![(part_name, patched)])?;
+        Ok(true)
+    }
+
+    /// View ▸ Gridlines for `sheet`: the lines between cells shown, or
+    /// (`on` false) hidden. One undo step; `false` when it is already so.
+    pub fn set_show_grid_lines(&mut self, sheet: &str, on: bool) -> Result<bool> {
+        let index = self.sheet_index(sheet)?;
+        if self.workbook.sheets[index].show_grid_lines == on {
+            return Ok(false);
+        }
+        self.patch_sheet_part(index, |xml| {
+            jade_xlsx_writer::sheet_view::set_show_grid_lines(xml, on)
+        })
+    }
+
+    /// View ▸ Headings for `sheet`: the row numbers and column letters
+    /// shown, or (`on` false) hidden. One undo step; `false` when it is
+    /// already so.
+    pub fn set_show_headers(&mut self, sheet: &str, on: bool) -> Result<bool> {
+        let index = self.sheet_index(sheet)?;
+        if self.workbook.sheets[index].show_headers == on {
+            return Ok(false);
+        }
+        self.patch_sheet_part(index, |xml| {
+            jade_xlsx_writer::sheet_view::set_show_headers(xml, on)
+        })
+    }
+
+    /// The sheet part at `index` rewritten by `patch` as one undo step;
+    /// `false` when it comes back unchanged.
+    fn patch_sheet_part(
+        &mut self,
+        index: usize,
+        patch: impl FnOnce(&str) -> jade_xlsx_writer::Result<String>,
+    ) -> Result<bool> {
+        let part_name = self.workbook.sheets[index].part_name.clone();
+        let xml = jade_opc::read_part_str(&self.source, &part_name)?
+            .ok_or_else(|| jade_xlsx_writer::WriteError::MissingPart(part_name.clone()))?;
+        let patched = patch(&xml)?;
         if patched == xml {
             return Ok(false);
         }

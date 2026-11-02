@@ -14067,6 +14067,111 @@ mod tests {
     }
 
     #[test]
+    fn table_to_text_preserves_partial_direct_spacing_and_indent_on_reload() {
+        let original = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/word-mac-probe-floating-horizontal-15.docx"),
+        )
+        .expect("read fixture");
+        for direct in [
+            r#"<w:spacing w:before="240"/>"#,
+            r#"<w:spacing w:beforeLines="100"/>"#,
+            r#"<w:spacing w:after="0"/>"#,
+            r#"<w:spacing w:afterLines="100"/>"#,
+            r#"<w:spacing w:beforeAutospacing="0"/>"#,
+            r#"<w:spacing w:afterAutospacing="1"/>"#,
+            r#"<w:spacing w:line="360"/>"#,
+            r#"<w:spacing w:line="240" w:lineRule="exact"/>"#,
+            r#"<w:ind w:left="0"/>"#,
+            r#"<w:ind w:startChars="0"/>"#,
+            r#"<w:ind w:rightChars="0"/>"#,
+            r#"<w:ind w:firstLineChars="0"/>"#,
+        ] {
+            let mut archive = zip::ZipArchive::new(std::io::Cursor::new(&original)).expect("zip");
+            let mut package = zip::ZipWriter::new(std::io::Cursor::new(Vec::new()));
+            for entry in 0..archive.len() {
+                let mut entry = archive.by_index(entry).expect("entry");
+                let name = entry.name().expect("entry name").to_string();
+                let mut data = Vec::new();
+                std::io::Read::read_to_end(&mut entry, &mut data).expect("read");
+                if name == "word/document.xml" {
+                    let xml = String::from_utf8(data).expect("XML");
+                    let before = "<w:pPr><w:jc w:val=\"left\"/></w:pPr><w:r><w:t>MC</w:t>";
+                    assert_eq!(xml.matches(before).count(), 1, "target cell exists once");
+                    data = xml
+                        .replace(
+                            before,
+                            &format!(
+                                "<w:pPr>{direct}<w:jc w:val=\"left\"/></w:pPr><w:r><w:t>MC</w:t>"
+                            ),
+                        )
+                        .into_bytes();
+                } else if name == "word/styles.xml" {
+                    let xml = String::from_utf8(data).expect("styles XML");
+                    let table = r#"<w:spacing w:after="0" w:line="240" w:lineRule="auto"/>"#;
+                    assert_eq!(xml.matches(table).count(), 1);
+                    // Distinct inherited groups expose a stale table distance
+                    // even when the direct group happens to equal the old value.
+                    data = xml
+                        .replace(
+                            table,
+                            &format!(
+                                r#"{table}<w:ind w:left="720" w:right="1440" w:firstLine="360"/>"#
+                            ),
+                        )
+                        .into_bytes();
+                }
+                package
+                    .start_file(name, zip::write::SimpleFileOptions::default())
+                    .expect("start");
+                std::io::Write::write_all(&mut package, &data).expect("write");
+            }
+            let bytes = package.finish().expect("finish").into_inner();
+            let mut document =
+                executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+            apply_headless_commands_to_document(
+                &mut document,
+                &HeadlessEditRequest {
+                    commands: vec![HeadlessCommand::ConvertTableToText {
+                        table_order_index: 1,
+                        separator: "\t".to_string(),
+                    }],
+                },
+            )
+            .expect("convert");
+            let reloaded = executor::block_on(WordDocument::load(
+                &document.export_docx().expect("export"),
+                &Options::default(),
+            ))
+            .expect("reload");
+            let properties = |doc: &WordDocument| {
+                (0..doc.paragraph_count())
+                    .filter_map(|index| doc.paragraph(index))
+                    .find(|paragraph| {
+                        paragraph
+                            .runs
+                            .iter()
+                            .map(|run| run.text.as_str())
+                            .collect::<String>()
+                            == "MC"
+                    })
+                    .expect("converted MC paragraph")
+                    .properties
+                    .as_ref()
+                    .expect("paragraph properties")
+                    .clone()
+            };
+            let actual = properties(&document);
+            let expected = properties(&reloaded);
+            if direct == r#"<w:spacing w:before="240"/>"# {
+                assert_eq!(actual.spacing.as_ref().and_then(|s| s.before), Some(12.0));
+            }
+            assert_eq!(actual.spacing, expected.spacing, "spacing: {direct}");
+            assert_eq!(actual.indent, expected.indent, "indent: {direct}");
+        }
+    }
+
+    #[test]
     fn an_edit_in_a_text_box_keeps_its_complex_field() {
         // document-variable-fields.docx's VML text box holds a DOCVARIABLE
         // field. Formatting, a comment or italics anywhere in that paragraph
@@ -19217,6 +19322,57 @@ mod tests {
         };
         let message = source.to_string();
         assert!(message.contains("requires at least one width"));
+    }
+
+    #[test]
+    fn merging_across_a_legacy_horizontal_merge_saves_one_cell() {
+        // table-legacy-hmerge.docx's second row spans its last two columns
+        // with a legacy `w:hMerge` restart and continuation. The reader folds
+        // the continuation into the cell it continues; merging that row's
+        // cells removed the cells the model knows and left the continuation,
+        // so the row was saved four columns wide and its paragraph came back.
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/table-legacy-hmerge.docx"),
+        )
+        .expect("read fixture");
+        let mut word_doc =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+        apply_headless_commands_to_document(
+            &mut word_doc,
+            &HeadlessEditRequest {
+                commands: vec![HeadlessCommand::MergeTableCells {
+                    table_order_index: 0,
+                    selected_cells: vec![
+                        jade_docx_headless_api::HeadlessTableCellSelection {
+                            row: 1,
+                            column: 0,
+                            column_span: 1,
+                        },
+                        jade_docx_headless_api::HeadlessTableCellSelection {
+                            row: 1,
+                            column: 1,
+                            column_span: 1,
+                        },
+                    ],
+                }],
+            },
+        )
+        .expect("merged");
+        let reloaded = executor::block_on(WordDocument::load(
+            &word_doc.export_docx().expect("export"),
+            &Options::default(),
+        ))
+        .expect("reload");
+        assert_eq!(reloaded.paragraph_count(), word_doc.paragraph_count());
+        let row = |word_doc: &WordDocument| {
+            word_doc
+                .table_by_order(0)
+                .and_then(|table| table.rows.get(1))
+                .map(|row| row.cells.iter().map(|cell| cell.span).collect::<Vec<_>>())
+        };
+        assert_eq!(row(&word_doc), Some(vec![Some(3)]));
+        assert_eq!(row(&reloaded), row(&word_doc));
     }
 
     #[test]
