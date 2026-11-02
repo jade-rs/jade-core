@@ -345,6 +345,22 @@ impl<'a> Lexer<'a> {
                                 // reference
                                 self.position += 1;
                                 return self.consume_range(Some(name));
+                            } else if next_char_is_colon
+                                && utils::parse_reference_a1(&name.to_uppercase()).is_none()
+                            {
+                                // A 3-D reference through sheets: Sheet1:Sheet3!A1
+                                self.position += 1;
+                                if self
+                                    .peek_char()
+                                    .is_some_and(|c| c.is_alphabetic() || c == '_')
+                                {
+                                    let last = self.consume_identifier();
+                                    if self.peek_char() == Some('!') {
+                                        self.position += 1;
+                                        return self.consume_range(Some(format!("{name}:{last}")));
+                                    }
+                                }
+                                self.position = position_indent;
                             } else if peek_char == Some('$') {
                                 self.position = position - 1;
                                 return self.consume_range(None);

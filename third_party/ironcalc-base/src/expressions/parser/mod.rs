@@ -187,6 +187,17 @@ pub enum Node {
         left: Box<Node>,
         right: Box<Node>,
     },
+    /// The same cells on every sheet from `first_sheet` to `last_sheet` in
+    /// tab order, a 3-D reference: `Sheet1:Sheet3!A1:B2`. `range` is the
+    /// reference itself, a `ReferenceKind` or `RangeKind` on the first sheet
+    /// written without its sheet.
+    Range3DKind {
+        first_name: String,
+        last_name: String,
+        first_sheet: u32,
+        last_sheet: u32,
+        range: Box<Node>,
+    },
     OpConcatenateKind {
         left: Box<Node>,
         right: Box<Node>,
@@ -779,6 +790,7 @@ impl<'a> Parser<'a> {
                 absolute_column,
                 absolute_row,
             } => {
+                let (sheet, three_d) = split_three_d(sheet);
                 let context = &self.context;
                 let sheet_index = match &sheet {
                     Some(name) => self.get_sheet_index_by_name(name),
@@ -795,7 +807,7 @@ impl<'a> Parser<'a> {
                 } else {
                     column - context.column
                 };
-                match sheet_index {
+                let node = match sheet_index {
                     Some(index) => Node::ReferenceKind {
                         sheet_name: sheet,
                         sheet_index: index,
@@ -811,9 +823,11 @@ impl<'a> Parser<'a> {
                         absolute_row,
                         absolute_column,
                     },
-                }
+                };
+                self.three_d(node, three_d)
             }
             TokenType::Range { sheet, left, right } => {
+                let (sheet, three_d) = split_three_d(sheet);
                 let context = &self.context;
                 let sheet_index = match &sheet {
                     Some(name) => self.get_sheet_index_by_name(name),
@@ -855,7 +869,7 @@ impl<'a> Parser<'a> {
                     };
                 }
 
-                match sheet_index {
+                let node = match sheet_index {
                     Some(index) => Node::RangeKind {
                         sheet_name: sheet,
                         sheet_index: index,
@@ -879,7 +893,8 @@ impl<'a> Parser<'a> {
                         absolute_row1,
                         absolute_row2,
                     },
-                }
+                };
+                self.three_d(node, three_d)
             }
             TokenType::Ident(name) => {
                 let next_token = self.lexer.peek_token();
@@ -1375,5 +1390,146 @@ impl<'a> Parser<'a> {
             ExpectedTokens::Argument(fn_name.to_string(), index),
             ExpectedTokens::Range,
         ];
+    }
+}
+
+/// The ends of a 3-D reference's sheets (`Sheet1:Sheet3`), and the first
+/// as the sheet the reference itself is on.
+fn split_three_d(sheet: Option<String>) -> (Option<String>, Option<(String, String)>) {
+    match sheet.as_deref().and_then(|name| name.split_once(':')) {
+        Some((first, last)) => {
+            let ends = (first.to_string(), last.to_string());
+            (Some(ends.0.clone()), Some(ends))
+        }
+        None => (sheet, None),
+    }
+}
+
+impl Parser<'_> {
+    /// `node`, parsed on the first sheet of `three_d`, as the 3-D reference
+    /// through to the last; one whose sheets are not both there is `#REF!`.
+    fn three_d(&self, node: Node, three_d: Option<(String, String)>) -> Node {
+        let Some((first_name, last_name)) = three_d else {
+            return node;
+        };
+        let joined = Some(format!("{first_name}:{last_name}"));
+        let last_sheet = self.get_sheet_index_by_name(&last_name);
+        match (node, last_sheet) {
+            (
+                Node::ReferenceKind {
+                    sheet_index,
+                    absolute_row,
+                    absolute_column,
+                    row,
+                    column,
+                    ..
+                },
+                Some(last_sheet),
+            ) => Node::Range3DKind {
+                first_name,
+                last_name,
+                first_sheet: sheet_index,
+                last_sheet,
+                range: Box::new(Node::ReferenceKind {
+                    sheet_name: None,
+                    sheet_index,
+                    absolute_row,
+                    absolute_column,
+                    row,
+                    column,
+                }),
+            },
+            (
+                Node::RangeKind {
+                    sheet_index,
+                    absolute_row1,
+                    absolute_column1,
+                    row1,
+                    column1,
+                    absolute_row2,
+                    absolute_column2,
+                    row2,
+                    column2,
+                    ..
+                },
+                Some(last_sheet),
+            ) => Node::Range3DKind {
+                first_name,
+                last_name,
+                first_sheet: sheet_index,
+                last_sheet,
+                range: Box::new(Node::RangeKind {
+                    sheet_name: None,
+                    sheet_index,
+                    absolute_row1,
+                    absolute_column1,
+                    row1,
+                    column1,
+                    absolute_row2,
+                    absolute_column2,
+                    row2,
+                    column2,
+                }),
+            },
+            (
+                Node::ReferenceKind {
+                    absolute_row,
+                    absolute_column,
+                    row,
+                    column,
+                    ..
+                }
+                | Node::WrongReferenceKind {
+                    absolute_row,
+                    absolute_column,
+                    row,
+                    column,
+                    ..
+                },
+                _,
+            ) => Node::WrongReferenceKind {
+                sheet_name: joined,
+                absolute_row,
+                absolute_column,
+                row,
+                column,
+            },
+            (
+                Node::RangeKind {
+                    absolute_row1,
+                    absolute_column1,
+                    row1,
+                    column1,
+                    absolute_row2,
+                    absolute_column2,
+                    row2,
+                    column2,
+                    ..
+                }
+                | Node::WrongRangeKind {
+                    absolute_row1,
+                    absolute_column1,
+                    row1,
+                    column1,
+                    absolute_row2,
+                    absolute_column2,
+                    row2,
+                    column2,
+                    ..
+                },
+                _,
+            ) => Node::WrongRangeKind {
+                sheet_name: joined,
+                absolute_row1,
+                absolute_column1,
+                row1,
+                column1,
+                absolute_row2,
+                absolute_column2,
+                row2,
+                column2,
+            },
+            (other, _) => other,
+        }
     }
 }

@@ -191,6 +191,7 @@ fn prefix_bound_variables(node: &mut Node, bound: &mut Vec<String>) {
         | Node::RangeKind { .. }
         | Node::WrongReferenceKind { .. }
         | Node::WrongRangeKind { .. }
+        | Node::Range3DKind { .. }
         | Node::ArrayKind(_)
         | Node::DefinedNameKind(_)
         | Node::TableNameKind(_)
@@ -484,6 +485,21 @@ fn format_function(
 // * =RC+R1C1
 // * =A1+B1
 
+/// The sheets of a 3-D reference as Excel writes them before `!`:
+/// `Sheet1:Sheet3`, or `'First sheet:Last sheet'` when either name needs
+/// quoting.
+pub(crate) fn three_d_qualifier(first_name: &str, last_name: &str) -> String {
+    if quote_name(first_name) == first_name && quote_name(last_name) == last_name {
+        format!("{first_name}:{last_name}")
+    } else {
+        format!(
+            "'{}:{}'",
+            first_name.replace('\'', "''"),
+            last_name.replace('\'', "''")
+        )
+    }
+}
+
 fn stringify(
     node: &Node,
     context: Option<&CellReferenceRC>,
@@ -649,6 +665,27 @@ fn stringify(
                 full_column,
             );
             format!("{s1}:{s2}")
+        }
+        Range3DKind {
+            first_name,
+            last_name,
+            range,
+            ..
+        } => {
+            // Inserting or deleting cells on one of its sheets leaves a 3-D
+            // reference as it is, as in Excel.
+            format!(
+                "{}!{}",
+                three_d_qualifier(first_name, last_name),
+                stringify(
+                    range,
+                    context,
+                    &DisplaceData::None,
+                    export_to_excel,
+                    locale,
+                    language
+                )
+            )
         }
         OpRangeKind { left, right } => format!(
             "{}:{}",
@@ -817,7 +854,8 @@ fn stringify(
                 | DefinedNameKind(_)
                 | TableNameKind(_)
                 | NamedVariableKind { .. }
-                | WrongRangeKind { .. } => stringify(
+                | WrongRangeKind { .. }
+                | Range3DKind { .. } => stringify(
                     left,
                     context,
                     displace_data,
@@ -862,7 +900,8 @@ fn stringify(
                 | DefinedNameKind(_)
                 | TableNameKind(_)
                 | NamedVariableKind { .. }
-                | WrongRangeKind { .. } => stringify(
+                | WrongRangeKind { .. }
+                | Range3DKind { .. } => stringify(
                     right,
                     context,
                     displace_data,
@@ -968,6 +1007,7 @@ fn stringify(
                     | RangeKind { .. }
                     | WrongReferenceKind { .. }
                     | WrongRangeKind { .. }
+                    | Range3DKind { .. }
                     | OpRangeKind { .. }
                     | OpConcatenateKind { .. }
                     | OpProductKind { .. }
@@ -1155,6 +1195,92 @@ fn stringify(
     }
 }
 
+/// Move a deleted 3-D endpoint inward while the old sheet order is available.
+/// Ordinary references are deliberately left to the existing deletion handling.
+pub(crate) fn delete_sheet_in_3d_ranges(
+    node: &mut Node,
+    deleted: u32,
+    sheet_names: &[String],
+) -> bool {
+    match node {
+        Node::Range3DKind {
+            first_name,
+            last_name,
+            first_sheet,
+            last_sheet,
+            ..
+        } => {
+            if *first_sheet == deleted && *last_sheet == deleted {
+                *node = Node::ErrorKind(crate::expressions::token::Error::REF);
+                return true;
+            }
+            if *first_sheet == deleted {
+                let next = if *first_sheet < *last_sheet {
+                    deleted + 1
+                } else {
+                    deleted - 1
+                };
+                *first_name = sheet_names[next as usize].clone();
+                return true;
+            }
+            if *last_sheet == deleted {
+                let next = if *last_sheet < *first_sheet {
+                    deleted + 1
+                } else {
+                    deleted - 1
+                };
+                *last_name = sheet_names[next as usize].clone();
+                return true;
+            }
+            false
+        }
+        Node::OpRangeKind { left, right }
+        | Node::OpConcatenateKind { left, right }
+        | Node::OpSumKind { left, right, .. }
+        | Node::OpProductKind { left, right, .. }
+        | Node::OpPowerKind { left, right }
+        | Node::CompareKind { left, right, .. } => {
+            // Both operands must be visited even when the first one changed.
+            let left_changed = delete_sheet_in_3d_ranges(left, deleted, sheet_names);
+            delete_sheet_in_3d_ranges(right, deleted, sheet_names) || left_changed
+        }
+        Node::FunctionKind { args, .. } | Node::NamedFunctionKind { args, .. } => {
+            let mut changed = false;
+            for arg in args {
+                changed |= delete_sheet_in_3d_ranges(arg, deleted, sheet_names);
+            }
+            changed
+        }
+        Node::UnaryKind { right, .. }
+        | Node::ImplicitIntersection { child: right, .. }
+        | Node::SpillRangeOperator { child: right }
+        | Node::LambdaDefKind { body: right, .. } => {
+            delete_sheet_in_3d_ranges(right, deleted, sheet_names)
+        }
+        Node::LambdaCallKind { lambda, args } => {
+            let mut changed = delete_sheet_in_3d_ranges(lambda, deleted, sheet_names);
+            for arg in args {
+                changed |= delete_sheet_in_3d_ranges(arg, deleted, sheet_names);
+            }
+            changed
+        }
+        Node::BooleanKind(_)
+        | Node::NumberKind(_)
+        | Node::StringKind(_)
+        | Node::ReferenceKind { .. }
+        | Node::RangeKind { .. }
+        | Node::WrongReferenceKind { .. }
+        | Node::WrongRangeKind { .. }
+        | Node::ArrayKind(_)
+        | Node::DefinedNameKind(_)
+        | Node::TableNameKind(_)
+        | Node::NamedVariableKind { .. }
+        | Node::ErrorKind(_)
+        | Node::ParseErrorKind { .. }
+        | Node::EmptyArgKind => false,
+    }
+}
+
 pub(crate) fn rename_sheet_in_node(node: &mut Node, sheet_index: u32, new_name: &str) {
     match node {
         // Rename
@@ -1186,6 +1312,20 @@ pub(crate) fn rename_sheet_in_node(node: &mut Node, sheet_index: u32, new_name: 
         Node::WrongRangeKind { sheet_name, .. } => {
             if sheet_name.is_some() {
                 *sheet_name = Some(new_name.to_owned());
+            }
+        }
+        Node::Range3DKind {
+            first_name,
+            last_name,
+            first_sheet,
+            last_sheet,
+            ..
+        } => {
+            if *first_sheet == sheet_index {
+                *first_name = new_name.to_owned();
+            }
+            if *last_sheet == sheet_index {
+                *last_name = new_name.to_owned();
             }
         }
 
@@ -1367,6 +1507,7 @@ pub(crate) fn rename_defined_name_in_node(
         Node::RangeKind { .. } => {}
         Node::WrongReferenceKind { .. } => {}
         Node::WrongRangeKind { .. } => {}
+        Node::Range3DKind { .. } => {}
         Node::TableNameKind(_) => {}
         Node::NamedVariableKind { .. } => {}
         Node::LambdaDefKind {
