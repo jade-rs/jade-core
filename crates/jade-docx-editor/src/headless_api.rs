@@ -12778,6 +12778,100 @@ mod tests {
     }
 
     #[test]
+    fn a_style_set_on_a_note_keeps_the_italic_its_runs_declare() {
+        // A footnote's runs live in the notes part. With Emphasis set on an
+        // italic run as a tracked change (which keeps its `w:i`), setting
+        // Heading 2 on the note looked for what the run declares in the
+        // body's XML, found nothing, and took its own italic for Emphasis's:
+        // the run lost it on screen while the file kept `w:i`.
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/hyperlink-field-edge-cases.docx"),
+        )
+        .expect("read fixture");
+        let mut word_doc =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+        apply_headless_commands_to_document(
+            &mut word_doc,
+            &HeadlessEditRequest {
+                commands: vec![HeadlessCommand::InsertFootnote {
+                    paragraph: 0,
+                    offset: 0,
+                    text: "note".to_string(),
+                }],
+            },
+        )
+        .expect("footnote");
+        let note = (0..word_doc.paragraph_count())
+            .find(|&index| word_doc.is_note_paragraph_surface(index))
+            .expect("the note paragraph");
+        let length = word_doc
+            .model_to_rendered_text_position(TextPosition::new(
+                note,
+                paragraph_text(&word_doc, note).len(),
+            ))
+            .offset;
+        let italic = |word_doc: &WordDocument| -> Vec<(String, Option<bool>)> {
+            word_doc
+                .paragraph(note)
+                .map(|paragraph| {
+                    paragraph
+                        .runs
+                        .iter()
+                        .filter(|run| !run.text.is_empty())
+                        .map(|run| {
+                            (
+                                run.text.clone(),
+                                run.properties.as_ref().and_then(|props| props.italic),
+                            )
+                        })
+                        .collect()
+                })
+                .unwrap_or_default()
+        };
+        apply_headless_commands_to_document(
+            &mut word_doc,
+            &HeadlessEditRequest {
+                commands: vec![
+                    HeadlessCommand::ApplyItalic {
+                        start_paragraph: note,
+                        start_offset: 0,
+                        end_paragraph: note,
+                        end_offset: length,
+                        enabled: true,
+                    },
+                    HeadlessCommand::StartChangeTracking {
+                        author: Some("reviewer".to_string()),
+                        initials: None,
+                        date: None,
+                        date_utc: None,
+                    },
+                    HeadlessCommand::SetCharacterStyle {
+                        start_paragraph: note,
+                        start_offset: 0,
+                        end_paragraph: note,
+                        end_offset: length,
+                        style_id: Some("Emphasis".to_string()),
+                    },
+                    HeadlessCommand::SetParagraphStyle {
+                        start_paragraph: note,
+                        end_paragraph: note,
+                        style_id: Some("Heading2".to_string()),
+                    },
+                ],
+            },
+        )
+        .expect("formatted the note");
+        assert_eq!(italic(&word_doc), vec![("\tnote".to_string(), Some(true))]);
+        let reloaded = executor::block_on(WordDocument::load(
+            &word_doc.export_docx().expect("export"),
+            &Options::default(),
+        ))
+        .expect("reload");
+        assert_eq!(italic(&reloaded), italic(&word_doc));
+    }
+
+    #[test]
     fn a_style_applied_in_a_note_or_text_box_is_saved_as_shown() {
         // Applying a paragraph style keeps the formatting the paragraph
         // declares and takes the style's run formatting out of its runs. Both
