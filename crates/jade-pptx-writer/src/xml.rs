@@ -11,6 +11,7 @@ mod objects;
 pub(crate) mod pictures;
 pub(crate) mod shape_insertion;
 pub(crate) mod shape_style;
+pub(crate) mod smartart_frames;
 pub(crate) mod tables;
 pub(crate) use objects::{
     arrange as arrange_shape, delete as delete_shape, duplicate as duplicate_shape, insert_text_box,
@@ -25,6 +26,16 @@ mod text;
 pub(crate) use formatting::format_text_range;
 pub(crate) use slides::{copy_objects, edit_slides, SlideEdit};
 pub(crate) use text::{replace_text_range, text_snapshot};
+
+/// Content-type overrides for parts removed or one part inserted.
+pub(crate) fn slides_content_types(
+    package: &mut jade_opc::OpcPackage,
+    copies: &std::collections::BTreeMap<String, String>,
+    removed: &std::collections::BTreeSet<String>,
+    inserted: Option<(&str, &str)>,
+) -> Result<()> {
+    slides::content_types(package, copies, removed, inserted)
+}
 
 pub(crate) struct RunAnchor {
     pub value: EditableRun,

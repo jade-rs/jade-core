@@ -99,7 +99,7 @@ pub fn picture_info(bytes: &[u8]) -> Result<PictureInfo> {
     })
 }
 
-fn media_part(package: &OpcPackage, bytes: &[u8], mime: &str) -> Result<String> {
+pub(crate) fn media_part(package: &OpcPackage, bytes: &[u8], mime: &str) -> Result<String> {
     let mut reserved: HashSet<String> = package.part_names().iter().cloned().collect();
     let types = package.required_part_str("[Content_Types].xml")?;
     for node in xml::parse_document_nodes(&types)? {

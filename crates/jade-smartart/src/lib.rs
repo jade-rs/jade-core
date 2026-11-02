@@ -21,6 +21,7 @@ pub mod data;
 pub mod drawing;
 pub mod engine;
 pub mod layout_def;
+pub mod tree;
 pub mod xml;
 
 pub use catalog::{Category, LayoutInfo, COLOR_SCHEMES, LAYOUTS, STYLES};

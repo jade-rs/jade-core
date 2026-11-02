@@ -546,6 +546,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "color_quant"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3d7b894f5411737b7867f4827955924d7c254fc9f4d91a6aad6b097804b1018b"
+
+[[package]]
 name = "colorchoice"
 version = "1.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1318,6 +1324,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "gif"
+version = "0.14.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ee8cfcc411d9adbbaba82fb72661cc1bcca13e8bba98b364e62b2dba8f960159"
+dependencies = [
+ "color_quant",
+ "weezl",
+]
+
+[[package]]
 name = "glam"
 version = "0.33.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1658,6 +1674,8 @@ checksum = "85ab80394333c02fe689eaf900ab500fbd0c2213da414687ebf995a65d5a6104"
 dependencies = [
  "bytemuck",
  "byteorder-lite",
+ "color_quant",
+ "gif",
  "moxcms",
  "num-traits",
  "png 0.18.1",
@@ -2152,6 +2170,14 @@ name = "jade-painter"
 version = "0.1.0"
 
 [[package]]
+name = "jade-picture-effects"
+version = "0.1.0"
+dependencies = [
+ "image",
+ "resvg",
+]
+
+[[package]]
 name = "jade-pixel-diff"
 version = "0.1.0"
 dependencies = [
@@ -2215,6 +2241,7 @@ dependencies = [
 name = "jade-pptx-layout"
 version = "0.1.0"
 dependencies = [
+ "jade-picture-effects",
  "jade-pptx-reader",
  "jade-text-layout",
  "proptest",
@@ -2228,6 +2255,7 @@ name = "jade-pptx-reader"
 version = "0.1.0"
 dependencies = [
  "jade-opc",
+ "jade-smartart",
  "proptest",
  "quick-xml 0.39.2",
  "serde",
@@ -2254,6 +2282,7 @@ dependencies = [
  "jade-pptx-layout",
  "jade-pptx-reader",
  "jade-pptx-render",
+ "jade-smartart",
  "png 0.18.1",
  "proptest",
  "quick-xml 0.39.2",
