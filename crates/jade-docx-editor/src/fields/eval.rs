@@ -265,7 +265,16 @@ impl<'a> Evaluation<'a> {
         } else {
             field.result_text.clone()
         };
-        let Some(code) = FieldCode::parse(&instruction) else {
+        let code = if field
+            .pieces
+            .iter()
+            .any(|piece| matches!(piece, super::scan::Piece::Field(_)))
+        {
+            field.code_with(|child| self.values[child].clone().unwrap_or_default())
+        } else {
+            FieldCode::parse(&instruction)
+        };
+        let Some(code) = code else {
             self.values[index] = Some(current.clone());
             return current;
         };
@@ -1134,9 +1143,8 @@ impl<'a> Evaluation<'a> {
         if field.locked || !self.is_selected(index) {
             return;
         }
-        let instruction =
-            field.instruction_with(|child| self.values[child].clone().unwrap_or_default());
-        let Some(code) = FieldCode::parse(&instruction) else {
+        let Some(code) = field.code_with(|child| self.values[child].clone().unwrap_or_default())
+        else {
             return;
         };
         if code.name != "SEQ" {

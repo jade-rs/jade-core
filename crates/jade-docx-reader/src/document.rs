@@ -1192,15 +1192,73 @@ pub(crate) fn tokenize_field_instruction(instruction: &str) -> Vec<String> {
 pub(crate) fn tokenize_field_instruction_with_quotes(
     instruction: &str,
 ) -> Vec<FieldInstructionToken> {
+    tokenize_field_instruction_impl::<false>(instruction, &[])
+}
+
+/// Literal spans are nested field results, not instruction syntax. The spans
+/// are built internally by `FieldCode::parse_parts`, in order and on UTF-8
+/// boundaries; empty spans represent empty nested results.
+pub(crate) fn tokenize_field_instruction_with_literals(
+    instruction: &str,
+    literals: &[std::ops::Range<usize>],
+) -> Vec<FieldInstructionToken> {
+    tokenize_field_instruction_impl::<true>(instruction, literals)
+}
+
+fn tokenize_field_instruction_impl<const HAS_LITERALS: bool>(
+    instruction: &str,
+    literals: &[std::ops::Range<usize>],
+) -> Vec<FieldInstructionToken> {
+    let mut literals = literals.iter().peekable();
     let mut tokens = Vec::new();
     let mut current = String::new();
     let mut in_quotes = false;
     let mut token_started = false;
     let mut token_quoted = false;
-    let mut chars = instruction.chars().peekable();
-    while let Some(ch) = chars.next() {
+    let mut chars = instruction.char_indices().peekable();
+    loop {
+        if HAS_LITERALS
+            && literals.peek().is_some_and(|span| {
+                span.start
+                    == chars
+                        .peek()
+                        .map_or(instruction.len(), |(offset, _)| *offset)
+            })
+        {
+            let span = literals.next().unwrap();
+            let value = &instruction[span.clone()];
+            if in_quotes {
+                current.push_str(value);
+            } else {
+                if token_started {
+                    tokens.push(FieldInstructionToken {
+                        text: std::mem::take(&mut current),
+                        quoted: token_quoted,
+                    });
+                    token_started = false;
+                    token_quoted = false;
+                }
+                tokens.push(FieldInstructionToken {
+                    text: value.to_string(),
+                    // Numeric nested results retain numeric comparison semantics.
+                    quoted: value.trim().parse::<f64>().is_err(),
+                });
+            }
+            while chars.peek().is_some_and(|(offset, _)| *offset < span.end) {
+                chars.next();
+            }
+            continue;
+        }
+        let Some((_, ch)) = chars.next() else { break };
+
         match ch {
-            '\\' if in_quotes && chars.peek() == Some(&'"') => {
+            '\\' if in_quotes
+                && chars.peek().is_some_and(|(offset, ch)| {
+                    *ch == '"'
+                        && !(HAS_LITERALS
+                            && literals.peek().is_some_and(|span| span.start == *offset))
+                }) =>
+            {
                 // A backslash-escaped quote is content, not the end of the
                 // quoted operand. Consume the quote but omit the escape.
                 chars.next();
