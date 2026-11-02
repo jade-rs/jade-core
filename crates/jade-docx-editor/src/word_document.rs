@@ -13237,7 +13237,12 @@ impl WordDocument {
         let part_path = self.resolve_existing_notes_part_path(kind)?;
         self.replace_note_body_in_part(&part_path, note_id, text, kind)?;
 
-        let body = Self::plain_note_body(text, kind);
+        let mut body = Self::plain_note_body(text, kind);
+        for element in &mut body {
+            if let BodyElement::Paragraph(paragraph) = element {
+                self.fill_load_defaults(paragraph);
+            }
+        }
         let note = self
             .document_mut()
             .and_then(|document| match kind {

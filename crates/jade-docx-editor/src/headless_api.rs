@@ -10952,9 +10952,10 @@ mod tests {
     fn paragraphs_an_edit_makes_take_the_defaults_a_load_gives() {
         // A load fills into every paragraph what its styles give it (Normal's
         // justification, a table style's spacing, the runs' fonts); nothing
-        // filled it into the cells of a new table or row, or into a table of
-        // contents' lines. They showed left-aligned, without the spacing and
-        // in the fallback font until the document was reopened.
+        // filled it into the cells of a new table or row, a table of contents'
+        // lines or a footnote's new text. They showed left-aligned, without
+        // the spacing and in the fallback font until the document was
+        // reopened.
         let fixture = |name: &str| {
             std::fs::read(
                 std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -11016,6 +11017,16 @@ mod tests {
                 template_row: None,
             }],
             4,
+        );
+        // A footnote whose text is set anew: footnote-long-continuation's
+        // footnote 3 is the first paragraph of the notes after the body.
+        check(
+            "footnote-long-continuation.docx",
+            vec![HeadlessCommand::UpdateFootnote {
+                footnote_id: "3".to_string(),
+                text: "あ".to_string(),
+            }],
+            80,
         );
         // A table of contents with no headings: its placeholder line.
         check(
