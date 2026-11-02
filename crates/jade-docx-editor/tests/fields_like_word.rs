@@ -1179,6 +1179,7 @@ mod stateful {
         sources: Vec<(String, u8)>,
         citations: Vec<String>,
         numbered: bool,
+        has_catalog: bool,
     }
 
     #[derive(Clone, Debug)]
@@ -1237,6 +1238,7 @@ mod stateful {
                     expected_ok = !model.sources.iter().any(|(tag, _)| tag == tag_value);
                     if expected_ok {
                         model.sources.push((tag_value.into(), year));
+                        model.has_catalog = true;
                     }
                     session
                         .add_source(source(tag, year))
@@ -1288,8 +1290,11 @@ mod stateful {
                     session.delete_source(tag)
                 }
                 CitationOp::Style(numbered) | CitationOp::BrowserStyle(numbered) => {
-                    expected_ok =
-                        matches!(op, CitationOp::BrowserStyle(_)) || !model.sources.is_empty();
+                    expected_ok = if matches!(op, CitationOp::BrowserStyle(_)) {
+                        model.has_catalog
+                    } else {
+                        !model.sources.is_empty()
+                    };
                     if expected_ok {
                         model.numbered = numbered;
                     }
@@ -1423,7 +1428,14 @@ mod stateful {
                 expected_texts,
                 "results step {step}: {op:?}; {ops:?}"
             );
-            if matches!(op, CitationOp::Cite(_)) && expected_ok {
+            assert_eq!(
+                session.document.bibliography_style().as_deref(),
+                model
+                    .has_catalog
+                    .then_some(if model.numbered { "IEEE" } else { "APA" }),
+                "style step {step}: {op:?}; {ops:?}"
+            );
+            if matches!(op, CitationOp::Cite(_) | CitationOp::BrowserCite(_)) && expected_ok {
                 assert_eq!(
                     session.selection.unwrap().focus,
                     TextPosition::new(0, expected_texts.first().unwrap().len()),
@@ -1454,6 +1466,23 @@ mod stateful {
                 .map(|f| (f.instruction.clone(), f.text.clone()))
                 .collect::<Vec<_>>()
         );
+    }
+
+    #[test]
+    fn browser_style_requires_a_catalog_and_preserves_an_empty_catalog() {
+        citation_sequence(&[
+            CitationOp::BrowserStyle(false),
+            CitationOp::Add(0, 0),
+            CitationOp::Delete(0),
+            CitationOp::Style(true),
+            CitationOp::BrowserStyle(true),
+            CitationOp::Reload,
+            CitationOp::BrowserStyle(false),
+            CitationOp::Undo,
+            CitationOp::Redo,
+            CitationOp::Add(0, 0),
+            CitationOp::BrowserCite(0),
+        ]);
     }
 
     #[test]
