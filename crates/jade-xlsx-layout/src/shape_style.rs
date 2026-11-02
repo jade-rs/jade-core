@@ -865,6 +865,40 @@ fn callout(w: f64, h: f64, tip: (f64, f64)) -> Vec<(f64, f64)> {
 mod tests {
     use super::*;
 
+    /// The gallery's equation, flowchart, star and callout shapes each
+    /// draw their own outline, not the rectangle a name not known draws.
+    #[test]
+    fn the_gallery_presets_have_outlines_of_their_own() {
+        let rect = preset_path("rect", 100.0, 60.0, &[]);
+        for name in [
+            "mathPlus",
+            "flowChartAlternateProcess",
+            "flowChartDecision",
+            "flowChartInputOutput",
+            "flowChartPreparation",
+            "flowChartTerminator",
+            "flowChartOffpageConnector",
+            "flowChartMagneticDisk",
+            "flowChartExtract",
+            "flowChartMerge",
+            "flowChartOr",
+            "star4",
+            "star6",
+            "star7",
+            "star8",
+            "star10",
+            "star12",
+            "star16",
+            "star24",
+            "star32",
+            "wedgeRoundRectCallout",
+            "wedgeEllipseCallout",
+        ] {
+            let path = preset_path(name, 100.0, 60.0, &[]);
+            assert!(!path.is_empty() && path != rect, "{name}");
+        }
+    }
+
     fn close(a: f64, b: f64) -> bool {
         (a - b).abs() < 1e-6
     }
