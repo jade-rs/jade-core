@@ -16,7 +16,7 @@ pub struct SheetEntry {
 }
 
 /// What `workbook.xml` says: sheet order, names, and the date epoch.
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub struct WorkbookPart {
     /// In workbook order, which is the order Excel shows tabs.
     pub sheets: Vec<SheetEntry>,
@@ -28,6 +28,10 @@ pub struct WorkbookPart {
     pub full_calculation_on_load: bool,
     pub calculation_mode: CalculationMode,
     pub calculate_on_save: Option<bool>,
+    /// `calcPr/@iterate` and its count and change, Excel's defaults when not given.
+    pub iteration: crate::model::Iteration,
+    /// `calcPr/@fullPrecision`; `None` when not given, which is full precision.
+    pub full_precision: Option<bool>,
     /// `workbookProtection/@lockStructure`; password metadata alone does not lock it.
     pub structure_protected: bool,
 }
@@ -153,6 +157,20 @@ pub fn parse_workbook(xml: &str) -> Result<WorkbookPart> {
                         }
                         b"calcOnSave" => {
                             part.calculate_on_save = Some(value != "0" && value != "false")
+                        }
+                        b"iterate" => part.iteration.enabled = value != "0" && value != "false",
+                        b"iterateCount" => {
+                            if let Ok(count) = value.trim().parse::<u32>() {
+                                part.iteration.count = count;
+                            }
+                        }
+                        b"iterateDelta" => {
+                            if let Ok(delta) = value.trim().parse::<f64>() {
+                                part.iteration.delta = delta;
+                            }
+                        }
+                        b"fullPrecision" => {
+                            part.full_precision = Some(value != "0" && value != "false")
                         }
                         _ => {}
                     }
