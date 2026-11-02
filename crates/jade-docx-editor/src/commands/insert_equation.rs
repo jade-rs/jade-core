@@ -203,6 +203,157 @@ mod tests {
         }
     }
 
+    mod simple_field_history {
+        use super::*;
+
+        #[derive(Clone, Debug)]
+        enum Operation {
+            InsertEquation(&'static str),
+            Append(&'static str),
+            DeleteSuffix,
+            Undo,
+            Redo,
+            Reopen,
+            RejectMalformedEquation,
+        }
+
+        #[derive(Clone, Debug, Default, PartialEq)]
+        struct Model {
+            equations: Vec<String>,
+            suffix: String,
+        }
+
+        impl Model {
+            fn rendered_end(&self) -> usize {
+                // Public offsets count each inline equation as the UTF-8
+                // object replacement character, even though its run has no text.
+                6 + self.suffix.len() + self.equations.len() * '\u{fffc}'.len_utf8()
+            }
+        }
+
+        fn source() -> Vec<u8> {
+            let bytes = build_docx("");
+            let mut input = zip::ZipArchive::new(std::io::Cursor::new(bytes)).expect("source zip");
+            let mut output = zip::ZipWriter::new(std::io::Cursor::new(Vec::new()));
+            for index in 0..input.len() {
+                let mut entry = input.by_index(index).expect("source part");
+                let mut bytes = Vec::new();
+                entry.read_to_end(&mut bytes).expect("read part");
+                let name = entry.name().expect("valid source part name").into_owned();
+                if name == "word/document.xml" {
+                    let xml = String::from_utf8(bytes).expect("document XML");
+                    let empty = r#"<w:r><w:t xml:space="preserve"></w:t></w:r>"#;
+                    assert_eq!(xml.matches(empty).count(), 1);
+                    bytes = xml.replace(empty, r#"<w:r><w:t>ab</w:t></w:r><w:fldSimple w:instr=" HYPERLINK &quot;https://example.test&quot; "><w:r><w:t>c</w:t></w:r><w:r><w:t>d</w:t></w:r><w:r><w:t>ef</w:t></w:r></w:fldSimple>"#).into_bytes();
+                }
+                output
+                    .start_file(name, SimpleFileOptions::default())
+                    .expect("write part");
+                output.write_all(&bytes).expect("part bytes");
+            }
+            output.finish().expect("finish source").into_inner()
+        }
+
+        fn observed(document: &WordDocument) -> (String, Vec<String>) {
+            let paragraph = document.paragraph(0).expect("one paragraph");
+            (
+                paragraph.runs.iter().map(|run| run.text.as_str()).collect(),
+                paragraph
+                    .runs
+                    .iter()
+                    .filter_map(|run| run.math.as_ref())
+                    .map(|math| math.preview_text(100).expect("equation value"))
+                    .collect(),
+            )
+        }
+
+        proptest! {
+            #![proptest_config(ProptestConfig { cases: 64, max_shrink_iters: 512, ..ProptestConfig::default() })]
+            #[test]
+            fn simple_field_equation_edits_match_a_state_machine_after_every_saved_operation(
+                operations in prop::collection::vec(prop_oneof![
+                    4 => prop::sample::select(vec!["x", "y", "z", "a+b"]).prop_map(Operation::InsertEquation),
+                    2 => prop::sample::select(vec!["A", "日", "&<>"]).prop_map(Operation::Append),
+                    2 => Just(Operation::DeleteSuffix),
+                    2 => Just(Operation::Undo),
+                    2 => Just(Operation::Redo),
+                    1 => Just(Operation::Reopen),
+                    1 => Just(Operation::RejectMalformedEquation),
+                ], 1..33),
+            ) {
+                // The model knows values and ordinary text only. It shares no
+                // source node IDs, run matching, OMML parser or snapshot logic.
+                let mut document = executor::block_on(WordDocument::load(&source(), &Options::default())).expect("load field");
+                let mut command_executor = CommandExecutor::new();
+                let mut selection = None;
+                let mut model = Model::default();
+                let mut undo = Vec::new();
+                let mut redo = Vec::new();
+                for (step, operation) in operations.iter().enumerate() {
+                    let before = model.clone();
+                    let mut command = None;
+                    match operation {
+                        Operation::InsertEquation(value) => {
+                            model.equations.insert(0, (*value).to_string());
+                            command = Some(HeadlessCommand::InsertEquation {
+                                paragraph: 0, offset: 3,
+                                omml: format!("<m:oMath><m:r><m:t>{value}</m:t></m:r></m:oMath>"),
+                                placement: HeadlessEquationPlacement::Inline,
+                            });
+                        }
+                        Operation::Append(text) => {
+                            command = Some(HeadlessCommand::InsertText { paragraph: 0, offset: model.rendered_end(), text: (*text).to_string() });
+                            model.suffix.push_str(text);
+                        }
+                        Operation::DeleteSuffix => {
+                            command = Some(HeadlessCommand::DeleteText {
+                                paragraph: 0, offset: model.rendered_end(), count: 1,
+                                direction: if model.suffix.is_empty() { jade_docx_headless_api::HeadlessDeleteDirection::Forward } else { jade_docx_headless_api::HeadlessDeleteDirection::Backward },
+                            });
+                            model.suffix.pop();
+                        }
+                        Operation::Undo => {
+                            let expected = if let Some(previous) = undo.pop() { redo.push(model.clone()); model = previous; true } else { false };
+                            let actual = command_executor.undo(&mut CommandContext::new(&mut document, &mut selection)).expect("undo");
+                            prop_assert_eq!(actual, expected, "step {} {:?}", step, operation);
+                        }
+                        Operation::Redo => {
+                            let expected = if let Some(next) = redo.pop() { undo.push(model.clone()); model = next; true } else { false };
+                            let actual = command_executor.redo(&mut CommandContext::new(&mut document, &mut selection)).expect("redo");
+                            prop_assert_eq!(actual, expected, "step {} {:?}", step, operation);
+                        }
+                        Operation::Reopen => {
+                            document = executor::block_on(WordDocument::load(&document.export_docx().expect("save"), &Options::default())).expect("reopen");
+                            command_executor = CommandExecutor::new();
+                            selection = None;
+                            undo.clear(); redo.clear();
+                        }
+                        Operation::RejectMalformedEquation => {
+                            let bytes = document.export_docx().expect("before rejection");
+                            let result = apply_headless_commands_with_executor_to_document(&mut document, &mut command_executor, selection, &HeadlessEditRequest {
+                                commands: vec![HeadlessCommand::InsertEquation { paragraph: 0, offset: 3, omml: "<m:oMath>".to_string(), placement: HeadlessEquationPlacement::Inline }],
+                            });
+                            prop_assert!(result.is_err(), "step {} malformed equation accepted", step);
+                            prop_assert_eq!(document.export_docx().expect("after rejection"), bytes, "step {} rejection changed package", step);
+                        }
+                    }
+                    if let Some(command) = command {
+                        selection = apply_headless_commands_with_executor_to_document(&mut document, &mut command_executor, selection, &HeadlessEditRequest { commands: vec![command] }).expect("public edit");
+                        if model != before { undo.push(before); redo.clear(); }
+                    }
+                    let expected = (format!("abcdef{}", model.suffix), model.equations.clone());
+                    prop_assert_eq!(observed(&document), expected.clone(), "step {} {:?} live", step, operation);
+                    prop_assert_eq!(command_executor.undo_depth(), undo.len(), "step {} {:?} history", step, operation);
+                    prop_assert_eq!(command_executor.can_redo(), !redo.is_empty(), "step {} {:?} redo", step, operation);
+                    let bytes = document.export_docx().expect("save each operation");
+                    let reopened = executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("read each operation");
+                    prop_assert_eq!(observed(&reopened), expected, "step {} {:?} saved", step, operation);
+                    prop_assert_eq!(part(&bytes, "word/document.xml").matches("<w:fldSimple ").count(), 1, "step {} {:?} field retained", step, operation);
+                }
+            }
+        }
+    }
+
     #[test]
     fn block_equation_splits_paragraph_and_reopens_without_phantom_coordinate() {
         let source = build_docx("beforeafter");

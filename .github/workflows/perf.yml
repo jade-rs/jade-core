@@ -14,6 +14,14 @@ on:
         required: false
         default: ''
         type: string
+      word_platform:
+        description: Word layout platform for both compared revisions
+        required: false
+        default: windows
+        type: choice
+        options:
+          - windows
+          - mac
 
 concurrency:
   group: perf-${{ github.event.pull_request.number || github.ref }}
@@ -26,6 +34,9 @@ permissions:
 env:
   FIXTURES: contract.docx nda.docx yokohama.docx
   CARGO_INCREMENTAL: '0'
+  # PRs retain the existing Windows baseline; manual runs can additionally
+  # compare Word for Mac with the same scenarios and regression threshold.
+  JADE_PERF_WORD_PLATFORM: ${{ github.event_name == 'workflow_dispatch' && inputs.word_platform || 'windows' }}
 
 jobs:
   callgrind:
@@ -60,6 +71,8 @@ jobs:
           def commit(folder):
               return subprocess.check_output(['git', '-C', folder, 'rev-parse', 'HEAD'], text=True).strip()
           baseline = os.environ['BASE_SHA']
+          platform = os.environ['JADE_PERF_WORD_PLATFORM']
+          assert platform in ('windows', 'mac'), 'Unknown Word layout platform'
           actual_base = commit('base') if baseline else None
           assert not baseline or actual_base == baseline, 'Baseline checkout differs from selected commit'
           pathlib.Path('perf').mkdir()
@@ -67,6 +80,7 @@ jobs:
               'event': os.environ['GITHUB_EVENT_NAME'], 'requestedBaselineSha': baseline or None,
               'baseCheckoutSha': actual_base, 'headCheckoutSha': commit('head'),
               'runId': os.environ['GITHUB_RUN_ID'], 'runAttempt': os.environ['GITHUB_RUN_ATTEMPT'],
+              'wordPlatform': platform,
           }, indent=2) + '\n')
           PY
 
