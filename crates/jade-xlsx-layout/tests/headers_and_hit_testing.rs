@@ -46,6 +46,7 @@ fn sheet(rows: u32, merges: Vec<&str>) -> Sheet {
         show_formulas: false,
         show_zeros: true,
         page_break_preview: false,
+        tab_selected: false,
         show_headers: true,
         grid_color: None,
         zoom_percent: None,
