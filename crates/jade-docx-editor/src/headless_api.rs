@@ -13975,6 +13975,87 @@ mod tests {
     }
 
     #[test]
+    fn text_typed_after_a_new_computed_field_is_saved() {
+        // A date or 囲い文字 field put in by the editor holds its result as
+        // its run's text. Typed at its end, the text joined that result and
+        // was lost on save, where only the field is written.
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/blank.docx"),
+        )
+        .expect("read fixture");
+        let fields = [
+            HeadlessCommand::InsertDateTimeField {
+                start_paragraph: 0,
+                start_offset: 5,
+                end_paragraph: 0,
+                end_offset: 5,
+                time: false,
+                format: "yyyy/MM/dd".to_string(),
+                cached_text: "2026/11/02".to_string(),
+            },
+            HeadlessCommand::InsertEnclosedCharacter {
+                start_paragraph: 0,
+                start_offset: 5,
+                end_paragraph: 0,
+                end_offset: 5,
+                text: "1".to_string(),
+                enclosure: "○".to_string(),
+            },
+        ];
+        let plain = |word_doc: &WordDocument| -> String {
+            word_doc
+                .paragraph(0)
+                .map(|paragraph| {
+                    paragraph
+                        .runs
+                        .iter()
+                        .filter(|run| run.field.is_none())
+                        .map(|run| run.text.as_str())
+                        .collect()
+                })
+                .unwrap_or_default()
+        };
+        for field in fields {
+            let mut word_doc =
+                executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+            apply_headless_commands_to_document(
+                &mut word_doc,
+                &HeadlessEditRequest {
+                    commands: vec![
+                        HeadlessCommand::InsertText {
+                            paragraph: 0,
+                            offset: 0,
+                            text: "Hello".to_string(),
+                        },
+                        field,
+                    ],
+                },
+            )
+            .expect("field");
+            let end = paragraph_text(&word_doc, 0).len();
+            apply_headless_commands_to_document(
+                &mut word_doc,
+                &HeadlessEditRequest {
+                    commands: vec![HeadlessCommand::InsertText {
+                        paragraph: 0,
+                        offset: end,
+                        text: " after".to_string(),
+                    }],
+                },
+            )
+            .expect("typed after the field");
+            assert_eq!(plain(&word_doc), "Hello after");
+            let reloaded = executor::block_on(WordDocument::load(
+                &word_doc.export_docx().expect("export"),
+                &Options::default(),
+            ))
+            .expect("reload");
+            assert_eq!(plain(&reloaded), "Hello after");
+        }
+    }
+
+    #[test]
     fn an_edit_in_a_text_box_keeps_its_complex_field() {
         // document-variable-fields.docx's VML text box holds a DOCVARIABLE
         // field. Formatting, a comment or italics anywhere in that paragraph
