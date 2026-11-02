@@ -103,3 +103,29 @@ fn precision_as_displayed_calculates_with_what_cells_show() {
     assert!(!reopened.workbook().full_precision);
     assert_eq!(value(&reopened, "H2"), "0.9900");
 }
+
+#[test]
+fn precision_as_displayed_keeps_large_finite_formula_values_on_save() {
+    let mut book = HeadlessWorkbook::open(ORIGINAL).unwrap();
+    book.set("Operations", "H1", CellInput::Formula("=1E300".into()))
+        .unwrap();
+    book.set_format(
+        "Operations",
+        "H1",
+        &FormatChange {
+            number_format: Some("0.00".into()),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    book.set_calculation_options(Iteration::default(), false)
+        .unwrap();
+    assert_eq!(book.cell("Operations", "H1").unwrap().number, Some(1e300));
+
+    let saved = book.save_bytes().unwrap();
+    let reopened = HeadlessWorkbook::open(&saved).unwrap();
+    assert_eq!(
+        reopened.cell("Operations", "H1").unwrap().number,
+        Some(1e300)
+    );
+}

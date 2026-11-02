@@ -65,7 +65,12 @@ pub fn displayed_value(value: f64, format: &str) -> f64 {
             return 0.0;
         }
         let exponent = value.abs().log10().floor() as i32;
-        return round_to(value / 10f64.powi(exponent), decimals) * 10f64.powi(exponent);
+        // A subnormal's decimal exponent can be -324, whose power of ten
+        // underflows to zero. Normalize in two representable steps instead.
+        let magnitude = 10f64.powi(exponent.max(-308));
+        let remainder = 10f64.powi(exponent - exponent.max(-308));
+        let rounded = round_to(value / magnitude / remainder, decimals) * remainder * magnitude;
+        return if rounded.is_finite() { rounded } else { value };
     }
     let percents = bare.matches('%').count() as i32;
     // Commas right after the last digit placeholder scale by a thousand each.
@@ -96,19 +101,46 @@ fn displayed_date(value: f64, lower: &str) -> f64 {
         // A date alone: whole days.
         1.0
     };
-    (value * units).round() / units
+    let scaled = value * units;
+    // At this magnitude every represented value is already integral at
+    // the requested precision; scaling must not introduce infinity.
+    if scaled.is_finite() {
+        scaled.round() / units
+    } else {
+        value
+    }
 }
 
 /// `value` to `decimals` places, or to tens, hundreds … when negative.
 fn round_to(value: f64, decimals: i32) -> f64 {
     // Excel rounds half away from zero, after trimming float noise.
-    let trim = |scaled: f64| ((scaled * 1e9).round() / 1e9).round();
+    let trim = |scaled: f64| {
+        let expanded = scaled * 1e9;
+        if expanded.is_finite() {
+            (expanded.round() / 1e9).round()
+        } else {
+            scaled.round()
+        }
+    };
     if decimals >= 0 {
         let factor = 10f64.powi(decimals);
-        trim(value * factor) / factor
+        let scaled = value * factor;
+        if factor.is_finite() && scaled.is_finite() {
+            trim(scaled) / factor
+        } else {
+            value
+        }
     } else {
         let factor = 10f64.powi(-decimals);
-        trim(value / factor) * factor
+        if !factor.is_finite() {
+            return 0.0_f64.copysign(value);
+        }
+        let rounded = trim(value / factor) * factor;
+        if rounded.is_finite() {
+            rounded
+        } else {
+            value
+        }
     }
 }
 
@@ -179,6 +211,40 @@ fn bare_section(section: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::displayed_value;
+
+    #[test]
+    fn finite_large_numbers_are_not_turned_into_infinity() {
+        for value in [1e300, -1e300, 1e308, -1e308] {
+            for format in ["0.00", "h:mm:ss"] {
+                assert_eq!(displayed_value(value, format), value, "{value:e} {format}");
+            }
+        }
+    }
+
+    #[test]
+    fn scientific_subnormals_remain_finite() {
+        for value in [1e-320, -1e-320, f64::from_bits(1), -f64::from_bits(1)] {
+            let after = displayed_value(value, "0.0E+00");
+            assert!(after.is_finite(), "{value:e} became {after}");
+            assert_eq!(after, value);
+        }
+    }
+
+    #[test]
+    fn displayed_precision_preserves_finite_values_across_exponents() {
+        let mut bits = 0x451_f64_u64;
+        for _ in 0..4096 {
+            bits = bits.wrapping_mul(6364136223846793005).wrapping_add(1);
+            let value = f64::from_bits(bits);
+            if !value.is_finite() {
+                continue;
+            }
+            for format in ["0", "0.00", "0.0%", "#,##0,", "0.0E+00", "h:mm:ss"] {
+                let after = displayed_value(value, format);
+                assert!(after.is_finite(), "{value:e} {format} became {after}");
+            }
+        }
+    }
 
     #[test]
     fn numbers_keep_the_digits_shown() {
