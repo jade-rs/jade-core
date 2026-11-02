@@ -734,6 +734,15 @@ impl WordDocument {
     /// Every field named `name` (`CITATION`, `XE`, `TA`, …) in the body,
     /// headers and notes left out, in document order.
     pub fn inline_fields(&self, name: &str) -> Vec<InlineField> {
+        self.inline_fields_with_locks(name, false)
+    }
+
+    /// Catalog references remain in use even when their saved result is locked.
+    pub fn inline_fields_including_locked(&self, name: &str) -> Vec<InlineField> {
+        self.inline_fields_with_locks(name, true)
+    }
+
+    fn inline_fields_with_locks(&self, name: &str, include_locked: bool) -> Vec<InlineField> {
         let name = name.to_ascii_uppercase();
         let mut fields = Vec::new();
         for paragraph in 0..self.paragraph_count() {
@@ -744,7 +753,13 @@ impl WordDocument {
                 continue;
             };
             for (index, run) in model.runs.iter().enumerate() {
-                let instruction = match run.field.as_ref().map(|field| &field.kind) {
+                let instruction = match run.field.as_ref().map(|field| {
+                    if include_locked {
+                        field.kind.base_kind()
+                    } else {
+                        &field.kind
+                    }
+                }) {
                     Some(RunFieldKind::NonDisplay { instruction })
                     | Some(RunFieldKind::Unsupported { instruction }) => instruction,
                     _ => continue,
@@ -802,21 +817,40 @@ impl WordDocument {
             .field
             .as_mut()
             .ok_or_else(|| "the run holds no field".to_string())?;
+        let locked = field.kind.is_locked();
         if let Some(instruction) = instruction {
-            match &mut field.kind {
-                RunFieldKind::NonDisplay {
-                    instruction: current,
+            fn replace_instruction(
+                kind: &mut RunFieldKind,
+                instruction: &str,
+            ) -> Result<(), String> {
+                match kind {
+                    RunFieldKind::Locked { kind } => {
+                        replace_instruction(std::rc::Rc::make_mut(kind), instruction)
+                    }
+                    RunFieldKind::Formatted {
+                        kind,
+                        instruction: current,
+                    } => {
+                        replace_instruction(std::rc::Rc::make_mut(kind), instruction)?;
+                        *current = instruction.trim().into();
+                        Ok(())
+                    }
+                    RunFieldKind::NonDisplay {
+                        instruction: current,
+                    }
+                    | RunFieldKind::Unsupported {
+                        instruction: current,
+                    } => {
+                        *current = instruction.trim().to_string();
+                        Ok(())
+                    }
+                    _ => Err("the field's instruction cannot be changed".to_string()),
                 }
-                | RunFieldKind::Unsupported {
-                    instruction: current,
-                } => {
-                    *current = instruction.trim().to_string();
-                }
-                _ => return Err("the field's instruction cannot be changed".to_string()),
             }
+            replace_instruction(&mut field.kind, instruction)?;
         }
-        let hidden = matches!(field.kind, RunFieldKind::NonDisplay { .. });
-        if !hidden {
+        let hidden = matches!(field.kind.base_kind(), RunFieldKind::NonDisplay { .. });
+        if !hidden && !locked {
             field.cached_text = Some(text.to_string());
             field.resolved_value = Some(text.to_string());
             target.text = text.to_string();
