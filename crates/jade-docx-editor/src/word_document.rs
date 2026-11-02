@@ -1604,6 +1604,17 @@ pub struct CitationSourceInfo {
     pub url: Option<String>,
 }
 
+/// Source types supported by the citation editor and catalog validation.
+pub const CITATION_SOURCE_TYPES: [&str; 7] = [
+    "Book",
+    "JournalArticle",
+    "ArticleInAPeriodical",
+    "ConferenceProceedings",
+    "Report",
+    "InternetSite",
+    "Misc",
+];
+
 /// Word's editing-restriction metadata from `word/settings.xml`.
 ///
 /// This is not document encryption. It mirrors `w:documentProtection`, which
@@ -16802,9 +16813,7 @@ impl WordDocument {
         if source.title.is_empty() {
             return Err("citation source title must not be empty".to_string());
         }
-        const SOURCE_TYPES: [&str; 5] =
-            ["Book", "JournalArticle", "InternetSite", "Report", "Misc"];
-        if !SOURCE_TYPES.contains(&source.source_type.as_str()) {
+        if !CITATION_SOURCE_TYPES.contains(&source.source_type.as_str()) {
             return Err(format!(
                 "unsupported citation source type: {}",
                 source.source_type

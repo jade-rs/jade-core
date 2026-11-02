@@ -4,13 +4,16 @@
 //! MLA, Chicago, IEEE, …), and the bibliography itself (`BIBLIOGRAPHY`),
 //! inserted and set again whenever the sources or the style change.
 
+use crate::word::fields::{build_code, parse_code, quote, unparse, unquote};
 use crate::word_document::FieldBlockLine;
 use jade_selection::SelectionRange;
 
 use super::edit_document;
 use crate::word::{Position, WordSession};
 
-pub use crate::word_document::CitationSourceInfo as Source;
+pub use crate::word_document::{
+    CitationSourceInfo as Source, CITATION_SOURCE_TYPES as SOURCE_TYPES,
+};
 
 /// The bibliography styles Word for Mac offers.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -297,16 +300,6 @@ pub fn make_tag(source: &Source, taken: &[String]) -> String {
     tag
 }
 
-/// 資料文献の種類 Word lists, as `b:SourceType` values.
-pub const SOURCE_TYPES: [&str; 6] = [
-    "Book",
-    "JournalArticle",
-    "ArticleInAPeriodical",
-    "ConferenceProceedings",
-    "Report",
-    "InternetSite",
-];
-
 /// The master list kept beside the app, as Word keeps `Sources.xml`: the
 /// same `b:Sources` markup the document's catalog uses.
 pub fn master_list_xml(sources: &[Source]) -> String {
@@ -389,9 +382,21 @@ pub fn parse_master_list(xml: &str) -> Vec<Source> {
     sources
 }
 
-/// The tag a `CITATION` instruction cites.
-fn cited_tag(instruction: &str) -> Option<String> {
-    instruction.split_whitespace().nth(1).map(str::to_string)
+/// Tags cited by the primary operand and Word's additional-source switches.
+fn instruction_tags(instruction: &str) -> Vec<String> {
+    let parsed = parse_code(instruction);
+    parsed
+        .operands
+        .first()
+        .into_iter()
+        .chain(parsed.switches.iter().filter_map(|(switch, value)| {
+            switch
+                .eq_ignore_ascii_case("\\m")
+                .then_some(value.as_ref())
+                .flatten()
+        }))
+        .map(|token| unquote(token))
+        .collect()
 }
 
 /// Citations and bibliographies over every session.
@@ -413,7 +418,7 @@ pub trait WordCitations: WordSession {
     fn cited_tags(&self) -> Vec<String> {
         let mut tags = Vec::new();
         for field in self.word_document().inline_fields("CITATION") {
-            if let Some(tag) = cited_tag(&field.instruction) {
+            for tag in instruction_tags(&field.instruction) {
                 if !tags.contains(&tag) {
                     tags.push(tag);
                 }
@@ -425,6 +430,7 @@ pub trait WordCitations: WordSession {
     /// 資料文献の追加 (or コピー from the master list), one undo step; a
     /// source with no tag gets one.
     fn add_source(&mut self, mut source: Source) -> Result<String, String> {
+        source.tag = source.tag.trim().to_string();
         let taken: Vec<String> = self
             .sources()
             .into_iter()
@@ -446,9 +452,38 @@ pub trait WordCitations: WordSession {
     /// again, one undo step.
     fn edit_source(&mut self, tag: &str, source: Source) -> Result<(), String> {
         let tag = tag.to_string();
+        let new_tag = source.tag.trim().to_string();
         let style = self.bibliography_style();
         edit_document(self, "edit_source", true, move |document, _| {
             document.replace_citation_source(&tag, source.clone())?;
+            if new_tag != tag {
+                for field in document.inline_fields("CITATION") {
+                    let mut parsed = parse_code(&field.instruction);
+                    let mut changed = false;
+                    for token in parsed.operands.first_mut().into_iter().chain(
+                        parsed.switches.iter_mut().filter_map(|(switch, value)| {
+                            if switch.eq_ignore_ascii_case("\\m") {
+                                value.as_mut()
+                            } else {
+                                None
+                            }
+                        }),
+                    ) {
+                        if unquote(token) == tag {
+                            *token = quote(&new_tag, true);
+                            changed = true;
+                        }
+                    }
+                    if changed {
+                        document.set_inline_field(
+                            field.paragraph,
+                            field.run,
+                            Some(&unparse(&parsed)),
+                            &field.text,
+                        )?;
+                    }
+                }
+            }
             restyle(document, style)
         })
     }
@@ -480,19 +515,23 @@ pub trait WordCitations: WordSession {
             "insert_citation",
             false,
             move |document, selection| {
-                let caret =
-                    document.insert_inline_field(at, &format!("CITATION {tag} \\l 1041"), "")?;
+                let instruction = build_code(
+                    "CITATION",
+                    &[(tag.clone(), true)],
+                    &[("\\l".into(), Some("1041".into()))],
+                    false,
+                );
+                let (caret, location) =
+                    document.insert_inline_field_with_location(at, &instruction, "")?;
+                let ordinal = document
+                    .inline_fields("CITATION")
+                    .iter()
+                    .position(|field| (field.paragraph, field.run) == location)
+                    .ok_or("the inserted citation is unavailable")?;
                 *selection = Some(caret);
                 restyle(document, style)?;
                 // The citation's text came after the caret was placed.
-                if let Some(field) = document
-                    .inline_fields("CITATION")
-                    .into_iter()
-                    .find(|field| {
-                        field.paragraph == at.paragraph
-                            && cited_tag(&field.instruction).as_deref() == Some(tag.as_str())
-                    })
-                {
+                if let Some(field) = document.inline_fields("CITATION").into_iter().nth(ordinal) {
                     let end: usize = document
                         .paragraph(field.paragraph)
                         .map(|paragraph| {
@@ -620,8 +659,8 @@ fn citation_order(
 ) -> Vec<String> {
     let mut order = Vec::new();
     for field in document.inline_fields("CITATION") {
-        if let Some(tag) = cited_tag(&field.instruction) {
-            if !order.contains(&tag) {
+        for tag in instruction_tags(&field.instruction) {
+            if sources.iter().any(|source| source.tag == tag) && !order.contains(&tag) {
                 order.push(tag);
             }
         }
@@ -642,7 +681,21 @@ fn restyle(
     let sources = document.citation_sources();
     let order = citation_order(document, &sources);
     for field in document.inline_fields("CITATION") {
-        let Some(tag) = cited_tag(&field.instruction) else {
+        let parsed = parse_code(&field.instruction);
+        // Preserve Word's cached result until these per-source formatting
+        // switches can be rendered faithfully, including combined citations.
+        if parsed.operands.len() != 1
+            || parsed.switches.iter().any(|(switch, value)| {
+                !(switch.eq_ignore_ascii_case("\\l") && value.is_some()
+                    || switch == "\\*"
+                        && value.as_deref().is_some_and(|value| {
+                            unquote(value).eq_ignore_ascii_case("MERGEFORMAT")
+                        }))
+            })
+        {
+            continue;
+        }
+        let Some(tag) = parsed.operands.first().map(|tag| unquote(tag)) else {
             continue;
         };
         let Some(source) = sources.iter().find(|source| source.tag == tag) else {
@@ -659,7 +712,40 @@ fn restyle(
         if block.name() != "BIBLIOGRAPHY" {
             continue;
         }
-        document.replace_field_block(&block, &block.instruction, &lines)?;
+        let heading = document
+            .paragraph(block.start)
+            .filter(|paragraph| {
+                paragraph
+                    .properties
+                    .as_ref()
+                    .and_then(|p| p.style.as_deref())
+                    == Some("Heading1")
+            })
+            .map(|paragraph| FieldBlockLine {
+                text: paragraph
+                    .runs
+                    .iter()
+                    .map(|run| {
+                        if run.text.is_empty() {
+                            run.field
+                                .as_ref()
+                                .and_then(|field| {
+                                    field
+                                        .resolved_value
+                                        .as_deref()
+                                        .or(field.cached_text.as_deref())
+                                })
+                                .unwrap_or("")
+                        } else {
+                            run.text.as_str()
+                        }
+                    })
+                    .collect(),
+                style: Some("Heading1".into()),
+                ..FieldBlockLine::default()
+            });
+        let block_lines: Vec<_> = heading.into_iter().chain(lines.iter().cloned()).collect();
+        document.replace_field_block(&block, &block.instruction, &block_lines)?;
     }
     Ok(())
 }
