@@ -781,12 +781,12 @@ pub fn fields_in(category: Option<FieldCategory>) -> Vec<&'static FieldSpec> {
 }
 
 /// An operand as a field code writes it: quoted when asked, or when it has
-/// spaces, quotes or backslashes; literal quotes and backslashes escaped.
+/// spaces, quotes, backslashes or field braces; quotes and backslashes escaped.
 pub(crate) fn quote(value: &str, quoted: bool) -> String {
     if quoted
         || value
             .chars()
-            .any(|c| c.is_whitespace() || matches!(c, '"' | '\\'))
+            .any(|c| c.is_whitespace() || matches!(c, '"' | '\\' | '{' | '}'))
         || value.is_empty()
     {
         format!("\"{}\"", value.replace('\\', "\\\\").replace('"', "\\\""))
@@ -1354,7 +1354,8 @@ mod tests {
     #[test]
     fn literal_quotes_and_backslashes_survive_field_code_edits() {
         for value in [
-            "a b", "a\"b", "\\tag", "a\\b", "tail\\", "a\\\"b", "資料", "",
+            "a b", "a\"b", "\\tag", "a\\b", "tail\\", "a\\\"b", "資料", "", "{", "}", "a{b", "a}b",
+            "{x}",
         ] {
             let code = build_code(
                 "CITATION",
@@ -1368,6 +1369,12 @@ mod tests {
             assert_eq!(parsed.switches, [("\\l".into(), Some("1041".into()))]);
             let code = toggle_switch("CITATION Tag", "\\m", Some(value));
             assert!(code_has_switch(&code, "\\m", Some(value)), "{code}");
+            let formatted = toggle_switch(&code, "\\*", Some("MERGEFORMAT"));
+            assert!(
+                code_has_switch(&formatted, "\\m", Some(value)),
+                "{formatted}"
+            );
+            assert_eq!(toggle_switch(&formatted, "\\*", Some("MERGEFORMAT")), code);
             assert_eq!(toggle_switch(&code, "\\m", Some(value)), "CITATION Tag");
         }
         let code = r#"INCLUDETEXT "E:\\ReadMe.txt""#;
