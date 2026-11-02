@@ -37294,6 +37294,26 @@ impl WordDocument {
                     }
                     _ => false,
                 };
+                // A run whose element is not in the paragraph any more is a
+                // new run. Undoing a deletion puts the run back with the id
+                // of the `w:r` the deletion removed. Taken as bound, it
+                // wrote a hyperlink after it ahead of itself, and the link's
+                // runs, no longer queued, were written again as plain text.
+                if stale_or_future_run_container {
+                    let stale = runs[run_index].node_id.is_some_and(|id| {
+                        !tokens.iter().any(|token| match token {
+                            ChildToken::RunElement(element) => element.id == id,
+                            ChildToken::NonRun(XmlNode::Element(element)) => {
+                                element.id == id || Self::element_contains_run_id(element, id)
+                            }
+                            ChildToken::NonRun(_) => false,
+                        })
+                    });
+                    if stale {
+                        runs[run_index].node_id = None;
+                        runs[run_index].text_node_id = None;
+                    }
+                }
                 if stale_or_future_run_container && runs[run_index].node_id.is_none() {
                     break;
                 }
