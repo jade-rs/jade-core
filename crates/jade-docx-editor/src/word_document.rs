@@ -10537,6 +10537,17 @@ impl WordDocument {
             result?;
         }
 
+        // The paragraph between the halves takes its style's defaults, as a
+        // load fills them: left without, it showed unjustified and unspaced
+        // until the document was reopened.
+        let mut paragraph = Paragraph {
+            runs: Vec::new(),
+            properties: None,
+            node_id: paragraph_node_id,
+            comment_ranges: Vec::new(),
+            comment_markers: Vec::new(),
+        };
+        self.fill_load_defaults(&mut paragraph);
         let break_body_index = {
             let document = self
                 .document_mut()
@@ -10545,13 +10556,7 @@ impl WordDocument {
                 .body
                 .as_mut()
                 .ok_or_else(|| "document body is unavailable".to_string())?;
-            let paragraph = BodyElement::from_paragraph(Paragraph {
-                runs: Vec::new(),
-                properties: None,
-                node_id: paragraph_node_id,
-                comment_ranges: Vec::new(),
-                comment_markers: Vec::new(),
-            });
+            let paragraph = BodyElement::from_paragraph(paragraph);
             let break_body_index = if split {
                 let tail = match body.elements.get_mut(body_index) {
                     Some(BodyElement::Table(table)) => {
@@ -17263,6 +17268,9 @@ impl WordDocument {
             comment_ranges: Vec::new(),
             comment_markers: Vec::new(),
         };
+        // What the caption does not set (its line spacing, its runs' fonts)
+        // comes from its style, as a load fills it.
+        self.fill_load_defaults(&mut paragraph);
 
         if let Some(mut raw) = self.raw_document.take() {
             let raw_result: Result<Option<XmlNodeId>, String> = (|| {

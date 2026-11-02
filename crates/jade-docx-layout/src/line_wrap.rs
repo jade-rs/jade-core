@@ -57,6 +57,11 @@ use unicode_segmentation::UnicodeSegmentation;
 
 pub use crate::constants::EAST_ASIA_ADVANCE_SCALE;
 
+#[inline]
+fn is_whitespace_text(text: &str) -> bool {
+    text.chars().all(char::is_whitespace)
+}
+
 /// Whether a Word paragraph-justification token distributes the line width.
 pub fn is_justified_alignment(alignment: &str) -> bool {
     // Compared in place: the wrap loop asks this for overflowing graphemes, and
@@ -1767,16 +1772,18 @@ pub fn punctuation_compression_adjustment(
     script: ScriptCategory,
     glyph_width: f64,
 ) -> f64 {
-    if !paragraph_style.enable_line_break_rules {
+    // Mac never compresses mid-line punctuation, regardless of the stored
+    // Windows setting. Avoid inspecting that setting for every Mac glyph.
+    if !paragraph_style.enable_line_break_rules
+        || !crate::line_metrics::word_compresses_mid_line_punctuation(paragraph_style.word_platform)
+    {
         return 0.0;
     }
     let control = paragraph_style
         .east_asian_rules
         .character_spacing_control
         .as_deref();
-    if !compresses_punctuation(control)
-        || !crate::line_metrics::word_compresses_mid_line_punctuation(paragraph_style.word_platform)
-    {
+    if !compresses_punctuation(control) {
         return 0.0;
     }
     if script != ScriptCategory::EastAsia {
@@ -2037,7 +2044,7 @@ fn marker_spacing_gap_ratio(
     if clusters.is_empty() || clusters.len() > 4 {
         return 0.0;
     }
-    if grapheme.trim().is_empty() {
+    if is_whitespace_text(grapheme) {
         return 0.0;
     }
 
@@ -2583,7 +2590,7 @@ fn compute_text_advance_step_with_descriptor<'a, C: LineWrapContext>(
     // A space has no ink to embolden: Word for Mac sets scroll-offset-repro's
     // bold `第６章　賃金` ideographic space at its plain width. (A bold ASCII
     // space takes its advance from `word_ascii_metrics` before this.)
-    let synthetic_bold_extra = if measured_width_is_oracle || grapheme.trim().is_empty() {
+    let synthetic_bold_extra = if measured_width_is_oracle || is_whitespace_text(grapheme) {
         0.0
     } else {
         crate::line_metrics::word_synthetic_bold_extra_advance_px(font_descriptor)
@@ -4355,7 +4362,7 @@ pub fn layout_text_vertically<C: LineWrapContext>(
     ) {
         // Build the (borrowing) cluster and whitespace flag before moving
         // `text` into the segment, so the grapheme string is never cloned.
-        let is_whitespace = text.trim().is_empty();
+        let is_whitespace = is_whitespace_text(&text);
         let cluster = InlineCluster::grapheme(
             range.start,
             range.end,
@@ -6760,7 +6767,7 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
                 &mut snap_to_chars_cell_width_cache,
             )?;
             let glyph_total_width;
-            let is_whitespace = grapheme.trim().is_empty();
+            let is_whitespace = is_whitespace_text(grapheme);
             let auto_space;
             let cluster_layout = loop {
                 let (font_slot, font_desc, font_desc_hash, font_desc_id) =
@@ -10170,6 +10177,53 @@ mod tests {
     use unicode_segmentation::UnicodeSegmentation;
 
     #[test]
+    fn whitespace_scan_matches_trim_for_every_scalar() {
+        let mut encoded = [0; 4];
+        for scalar in 0..=0x10ffff {
+            let Some(ch) = char::from_u32(scalar) else {
+                continue;
+            };
+            let text = ch.encode_utf8(&mut encoded);
+            assert_eq!(is_whitespace_text(text), text.trim().is_empty(), "{ch:?}");
+        }
+        for text in [
+            "",
+            " \t\r\n\u{b}\u{c}",
+            "\u{85}\u{a0}\u{1680}\u{2000}\u{2028}\u{2029}\u{202f}\u{205f}\u{3000}",
+            " \u{301}",
+            "\u{200b}",
+            "\u{feff}",
+            "\u{3000}日\u{3000}",
+            "\u{a0}a\u{a0}",
+        ] {
+            assert_eq!(is_whitespace_text(text), text.trim().is_empty(), "{text:?}");
+        }
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig {
+            cases: 256,
+            rng_seed: proptest::test_runner::RngSeed::Fixed(20261102),
+            ..ProptestConfig::default()
+        })]
+
+        #[test]
+        fn whitespace_scan_matches_trim_for_mixed_text(
+            characters in proptest::collection::vec(prop_oneof![
+                4 => proptest::sample::select(vec![' ', '\t', '\r', '\n', '\u{b}', '\u{c}', '\u{85}', '\u{a0}', '\u{1680}', '\u{2007}', '\u{2028}', '\u{2029}', '\u{202f}', '\u{205f}', '\u{3000}']),
+                2 => proptest::sample::select(vec!['a', '日', '\u{301}', '\u{200b}', '\u{200d}', '\u{feff}', '😀']),
+                1 => any::<char>(),
+            ], 0..256)
+        ) {
+            let text: String = characters.into_iter().collect();
+            prop_assert_eq!(is_whitespace_text(&text), text.trim().is_empty());
+            for grapheme in text.graphemes(true) {
+                prop_assert_eq!(is_whitespace_text(grapheme), grapheme.trim().is_empty());
+            }
+        }
+    }
+
+    #[test]
     fn word_distribution_tokens_are_justified_alignments() {
         for alignment in [
             "both",
@@ -13474,17 +13528,9 @@ mod tests {
             );
             let line_height_px = points_to_px(line_height_points);
 
-            if let Some(spacing) = spacing_ref {
-                if let Some(before) = spacing.before {
-                    let before_px = points_to_px(before);
-                    ensure_space(before_px, &mut current_page, &mut current_y);
-                    current_y += before_px;
-                } else if let Some(before_lines) = spacing.before_lines {
-                    let before_px = points_to_px(line_height_points * before_lines);
-                    ensure_space(before_px, &mut current_page, &mut current_y);
-                    current_y += before_px;
-                }
-            }
+            let before_px = crate::text_extract::spacing_before_px(paragraph, line_height_points);
+            ensure_space(before_px, &mut current_page, &mut current_y);
+            current_y += before_px;
 
             let lines = wrap_text_into_lines(
                 ctx,
@@ -13540,17 +13586,9 @@ mod tests {
                 page_lines.push((current_page, info.text.trim().to_string()));
             }
 
-            if let Some(spacing) = spacing_ref {
-                if let Some(after) = spacing.after {
-                    let after_px = points_to_px(after);
-                    ensure_space(after_px, &mut current_page, &mut current_y);
-                    current_y += after_px;
-                } else if let Some(after_lines) = spacing.after_lines {
-                    let after_px = points_to_px(line_height_points * after_lines);
-                    ensure_space(after_px, &mut current_page, &mut current_y);
-                    current_y += after_px;
-                }
-            }
+            let after_px = crate::text_extract::spacing_after_px(paragraph, line_height_points);
+            ensure_space(after_px, &mut current_page, &mut current_y);
+            current_y += after_px;
         }
 
         Ok(page_lines)
@@ -13771,17 +13809,9 @@ mod tests {
             );
             let line_height_px = points_to_px(line_height_points);
 
-            if let Some(spacing) = spacing_ref {
-                if let Some(before) = spacing.before {
-                    let before_px = points_to_px(before);
-                    ensure_space(before_px, &mut current_page, &mut current_y);
-                    current_y += before_px;
-                } else if let Some(before_lines) = spacing.before_lines {
-                    let before_px = points_to_px(line_height_points * before_lines);
-                    ensure_space(before_px, &mut current_page, &mut current_y);
-                    current_y += before_px;
-                }
-            }
+            let before_px = crate::text_extract::spacing_before_px(&paragraph, line_height_points);
+            ensure_space(before_px, &mut current_page, &mut current_y);
+            current_y += before_px;
 
             let lines = wrap_text_into_lines(
                 &ctx,
@@ -13837,17 +13867,9 @@ mod tests {
                 page_lines.push((current_page, info.text.trim().to_string()));
             }
 
-            if let Some(spacing) = spacing_ref {
-                if let Some(after) = spacing.after {
-                    let after_px = points_to_px(after);
-                    ensure_space(after_px, &mut current_page, &mut current_y);
-                    current_y += after_px;
-                } else if let Some(after_lines) = spacing.after_lines {
-                    let after_px = points_to_px(line_height_points * after_lines);
-                    ensure_space(after_px, &mut current_page, &mut current_y);
-                    current_y += after_px;
-                }
-            }
+            let after_px = crate::text_extract::spacing_after_px(&paragraph, line_height_points);
+            ensure_space(after_px, &mut current_page, &mut current_y);
+            current_y += after_px;
         }
 
         let lines = page_lines
@@ -17979,6 +18001,53 @@ mod tests {
         crate::line_metrics::set_word_layout_platform(
             crate::line_metrics::WordLayoutPlatform::Windows,
         );
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig {
+            cases: 256,
+            rng_seed: proptest::test_runner::RngSeed::Fixed(20261102),
+            ..ProptestConfig::default()
+        })]
+
+        #[test]
+        fn mac_mid_line_punctuation_is_never_compressed(
+            enabled in any::<bool>(),
+            control in prop::option::of(prop_oneof![
+                Just("compressPunctuation".to_owned()),
+                Just("compressPunctuationAndJapaneseKana".to_owned()),
+                Just("doNotCompress".to_owned()),
+                ".{0,64}",
+            ]),
+            characters in prop_oneof![
+                Just(vec!['、']),
+                Just(vec!['あ']),
+                proptest::collection::vec(prop_oneof![
+                    Just('、'), Just('。'), Just('あ'), Just('カ'), any::<char>(),
+                ], 0..16),
+            ],
+            script in proptest::sample::select(vec![
+                ScriptCategory::Latin, ScriptCategory::EastAsia, ScriptCategory::Complex,
+            ]),
+            width in any::<f64>(),
+        ) {
+            let paragraph = ParagraphStyle {
+                enable_line_break_rules: enabled,
+                word_platform: crate::line_metrics::WordLayoutPlatform::Mac,
+                east_asian_rules: EastAsianLineBreakingRules {
+                    character_spacing_control: control,
+                    ..EastAsianLineBreakingRules::default()
+                },
+                ..ParagraphStyle::default()
+            };
+            let text: String = characters.into_iter().collect();
+            // Word's Mac behavior is independent of the Windows compression
+            // setting, script, glyph width (including non-finite input), and text.
+            prop_assert_eq!(
+                punctuation_compression_adjustment(&paragraph, &text, script, width).to_bits(),
+                0.0_f64.to_bits(),
+            );
+        }
     }
 
     #[test]
