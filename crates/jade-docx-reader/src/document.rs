@@ -4115,12 +4115,14 @@ mod tests {
             ("PAGEREF mark", "edited"),
             ("NOTEREF mark", "edited"),
             ("PRIVATE hidden", ""),
-            ("ADDIN vendor-payload", "edited"),
+            ("ADDIN vendor-payload", "saved"),
             ("RD chapter.docx", ""),
             ("ASK mark prompt", ""),
             ("SET mark value", ""),
         ] {
             let field = run.field.as_mut().unwrap();
+            field.cached_text = Some("saved".into());
+            field.resolved_value = None;
             field.kind =
                 crate::parser::DocumentParser::parse_field_instruction(instruction).unwrap();
             for locked in [false, true] {
