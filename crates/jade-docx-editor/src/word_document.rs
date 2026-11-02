@@ -21534,14 +21534,11 @@ impl WordDocument {
             ));
         }
         xml.push_str("</w:body></w:document>");
-
-        for paragraph in &mut model_paragraphs {
-            self.fill_load_defaults(paragraph);
-        }
+        let model_paragraphs = self.read_generated_paragraphs(&xml)?;
 
         // Parse the fragment and lift the generated <w:p> nodes.
         let raw_paragraphs = Self::parse_body_paragraph_nodes(&xml)?;
-        if raw_paragraphs.len() != entry_count {
+        if raw_paragraphs.len() != entry_count || model_paragraphs.len() != entry_count {
             return Err("failed to build table-of-contents XML".to_string());
         }
 
@@ -21606,14 +21603,6 @@ impl WordDocument {
     ) -> Result<usize, String> {
         // Word JP's "No table of contents entries found." placeholder.
         let placeholder = "目次項目が見つかりません。";
-        let mut model_paragraph = Paragraph {
-            runs: vec![blank_run(placeholder)],
-            properties: None,
-            node_id: None,
-            comment_ranges: Vec::new(),
-            comment_markers: Vec::new(),
-        };
-        self.fill_load_defaults(&mut model_paragraph);
         let xml = format!(
             "<w:document xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\"><w:body>\
              <w:p>\
@@ -21630,9 +21619,10 @@ impl WordDocument {
 
         // Parse the fragment and lift the generated <w:p> node.
         let raw_paragraphs = Self::parse_body_paragraph_nodes(&xml)?;
-        if raw_paragraphs.len() != 1 {
+        let model_paragraph = self.read_generated_paragraphs(&xml)?.pop();
+        let (Some(model_paragraph), 1) = (model_paragraph, raw_paragraphs.len()) else {
             return Err("failed to build table-of-contents placeholder XML".to_string());
-        }
+        };
 
         // Insert into the model body.
         {
@@ -21871,6 +21861,32 @@ impl WordDocument {
     /// Parses a `<w:document><w:body>…</w:body></w:document>` fragment and
     /// returns its `<w:p>` child nodes (with placeholder ids; `insert_node`
     /// reassigns them).
+    /// The paragraphs of `xml`, a `w:document` the editor generated, as a
+    /// load reads them, with what a load fills in. A model built beside the
+    /// XML had no runs for a complex field's markers, which a load gives
+    /// zero-width runs of their own: the next remapping of the document's
+    /// ids (a table edit's) bound a table of contents' page number to its
+    /// field's begin marker, and an edit there saved a field with no end.
+    fn read_generated_paragraphs(&self, xml: &str) -> Result<Vec<Paragraph>, String> {
+        let parsed = DocumentParser::new()
+            .parse_document_xml(xml)
+            .map_err(|error| error.to_string())?;
+        let mut paragraphs: Vec<Paragraph> = parsed
+            .body
+            .map(|body| body.elements)
+            .unwrap_or_default()
+            .into_iter()
+            .filter_map(|element| match element {
+                BodyElement::Paragraph(paragraph) => Some(*paragraph),
+                _ => None,
+            })
+            .collect();
+        for paragraph in &mut paragraphs {
+            self.fill_load_defaults(paragraph);
+        }
+        Ok(paragraphs)
+    }
+
     fn parse_body_paragraph_nodes(xml: &str) -> Result<Vec<XmlNode>, String> {
         let parsed = DocxXmlDocument::parse(xml).map_err(|err| err.to_string())?;
         let body = parsed
