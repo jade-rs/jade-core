@@ -62,7 +62,7 @@ fn formula_cache_state(cell: &Cell, needs_recalculation: bool) -> Option<Formula
 
 use std::collections::{BTreeMap, HashSet};
 
-pub use charts::{chart_kind, ChartChange, ChartKind, LegendPosition};
+pub use charts::{chart_kind, chart_series, ChartChange, ChartKind, LegendPosition};
 pub use conditional_formats::{ConditionalFormatView, ConditionalStyle, NewConditionalRule};
 pub use jade_xlsx_calc::formula_text;
 use jade_xlsx_headless_api::{
@@ -89,6 +89,7 @@ pub use jade_xlsx_writer::pivot_refresh::{
 };
 pub use jade_xlsx_writer::protection::WorkbookProtectionInfo;
 pub use jade_xlsx_writer::sheet_protection::SheetProtectionInfo;
+pub use jade_xlsx_writer::SeriesReferences;
 pub use jade_xlsx_writer::{BorderLine, BorderStyle, FormatChange};
 use jade_xlsx_writer::{
     CachedValue, CachedValueEdit, CellEdit, NewValue, SheetCachedValues, SheetEdits,
