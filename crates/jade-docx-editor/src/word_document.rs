@@ -37458,6 +37458,7 @@ impl WordDocument {
                                         doc,
                                         &container,
                                         previous_run_id,
+                                        &math.raw_omml,
                                     ) {
                                         Some(existing) => Some(existing),
                                         None => Self::import_authored_omml_element(
@@ -38510,31 +38511,38 @@ impl WordDocument {
         doc: &DocxXmlDocument,
         container: &XmlElement,
         after: Option<XmlNodeId>,
+        expected_omml: &str,
     ) -> Option<XmlNodeId> {
-        fn items(element: &XmlElement, out: &mut Vec<(XmlNodeId, bool)>, doc: &DocxXmlDocument) {
+        fn items<'a>(element: &'a XmlElement, out: &mut Vec<&'a XmlElement>) {
             for child in &element.children {
                 let XmlNode::Element(child) = child else {
                     continue;
                 };
-                if child.name == "w:r" {
-                    out.push((child.id, false));
-                } else if child.name == "m:oMath" {
-                    out.push((child.id, WordDocument::is_modeled_equation(doc, child)));
+                if matches!(child.name.as_str(), "w:r" | "m:oMath") {
+                    out.push(child);
                 } else {
-                    items(child, out, doc);
+                    items(child, out);
                 }
             }
         }
         let mut found = Vec::new();
-        items(container, &mut found, doc);
+        items(container, &mut found);
         let next = match after {
             Some(after) => found
                 .iter()
-                .position(|(id, _)| *id == after)
+                .position(|element| element.id == after)
                 .and_then(|at| found.get(at + 1)),
             None => found.first(),
-        };
-        next.filter(|(_, equation)| *equation).map(|(id, _)| *id)
+        }?;
+        if !Self::is_modeled_equation(doc, next) {
+            return None;
+        }
+        // The next equation may belong to a later model run: inserting y
+        // before x must not consume x as y. Compare only that candidate's
+        // normalized XML, without node ids. Existing Word equations need
+        // not meet the size limit for newly authored equations.
+        let expected = DocxXmlDocument::parse(expected_omml).ok()?;
+        (objects::element_xml(next) == objects::element_xml(expected.root())).then_some(next.id)
     }
 
     /// Inserts `node` right after the run `after` wherever it sits in
