@@ -14812,6 +14812,57 @@ mod tests {
     }
 
     #[test]
+    fn a_selection_from_a_computed_field_into_the_next_paragraph_keeps_it_whole() {
+        // The IF field's result is computed, so it has no width: a selection
+        // from just before it to the next paragraph leaves the field at its
+        // edge, which stays. Joining the paragraphs kept the field's code and
+        // dropped its result run; the field was gone from the page and came
+        // back when the document was reopened.
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/if-compare-field-edge-cases.docx"),
+        )
+        .expect("read fixture");
+        let mut word_doc =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+        let paragraph = (0..word_doc.paragraph_count())
+            .find(|&index| paragraph_text(&word_doc, index) == "Nested bookmark operand: ")
+            .expect("field paragraph");
+        let if_fields = |word_doc: &WordDocument| {
+            word_doc.paragraph(paragraph).map_or(0, |paragraph| {
+                paragraph
+                    .runs
+                    .iter()
+                    .filter(|run| {
+                        matches!(
+                            run.field.as_ref().map(|field| &field.kind),
+                            Some(crate::document::RunFieldKind::If { .. })
+                        )
+                    })
+                    .count()
+            })
+        };
+        apply_headless_commands_to_document(
+            &mut word_doc,
+            &HeadlessEditRequest {
+                commands: vec![HeadlessCommand::ReplaceRange {
+                    start_paragraph: paragraph,
+                    start_offset: "Nested bookmark operand: ".len(),
+                    end_paragraph: paragraph + 1,
+                    end_offset: "120 - Same-pa".len(),
+                    text: "x".into(),
+                }],
+            },
+        )
+        .expect("edited");
+        let exported = word_doc.export_docx().expect("export");
+        let reloaded =
+            executor::block_on(WordDocument::load(&exported, &Options::default())).expect("reload");
+        assert_eq!(if_fields(&reloaded), 2);
+        assert_eq!(if_fields(&word_doc), if_fields(&reloaded));
+    }
+
+    #[test]
     fn a_table_edit_leaves_a_new_table_of_contents_fields_whole() {
         // A table of contents the editor generated had no runs for its page
         // fields' markers, which a load gives runs of their own. A table edit
