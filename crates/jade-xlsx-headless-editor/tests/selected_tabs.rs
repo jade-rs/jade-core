@@ -35,3 +35,42 @@ fn grouped_tabs_are_saved_selected() {
     let back = HeadlessWorkbook::open(&again).unwrap();
     assert_eq!(selected(&back), only(&[0]));
 }
+
+const NO_VIEWS: &[u8] = include_bytes!("../../../public/fixtures/pivot-cache-compat.xlsx");
+
+#[test]
+fn saving_selected_tabs_preserves_sheets_without_views() {
+    let original = jade_xlsx_reader::OpcPackage::open(NO_VIEWS).unwrap();
+    let mut book = HeadlessWorkbook::open(NO_VIEWS).unwrap();
+    let history = book.can_undo();
+    for selected in [&[0][..], &[1][..], &[0, 1][..], &[][..]] {
+        let saved = book.save_bytes_selecting(selected).unwrap();
+        let package = jade_xlsx_reader::OpcPackage::open(&saved).unwrap();
+        for part in ["xl/worksheets/sheet1.xml", "xl/worksheets/sheet2.xml"] {
+            assert_eq!(
+                package.part(part).unwrap(),
+                original.part(part).unwrap(),
+                "{part}"
+            );
+        }
+        assert_eq!(book.can_undo(), history);
+    }
+}
+
+#[test]
+fn saving_zoom_and_selection_creates_only_the_requested_view() {
+    let original = jade_xlsx_reader::OpcPackage::open(NO_VIEWS).unwrap();
+    let mut book = HeadlessWorkbook::open(NO_VIEWS).unwrap();
+    let history = book.can_undo();
+    let saved = book.save_bytes_viewing(&[0], &[(0, 85)]).unwrap();
+    let reopened = HeadlessWorkbook::open(&saved).unwrap();
+    assert_eq!(reopened.workbook().sheets[0].zoom_percent, Some(85));
+    assert_eq!(selected(&reopened), vec![true, false]);
+    let package = jade_xlsx_reader::OpcPackage::open(&saved).unwrap();
+    let untouched = "xl/worksheets/sheet2.xml";
+    assert_eq!(
+        package.part(untouched).unwrap(),
+        original.part(untouched).unwrap()
+    );
+    assert_eq!(book.can_undo(), history);
+}
