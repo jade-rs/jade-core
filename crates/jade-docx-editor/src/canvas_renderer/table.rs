@@ -495,8 +495,31 @@ impl CellParagraph {
         }
     }
 
-    pub(super) fn height(&self) -> f64 {
-        self.height
+    /// The number of columns a vertically laid paragraph takes.
+    pub(super) fn vertical_columns(&self) -> usize {
+        self.vertical_layout
+            .as_ref()
+            .map_or(0, |layout| layout.column_ranges.len())
+    }
+
+    /// How far apart a vertically laid paragraph's columns are: as wide as
+    /// its widest character, and never narrower than a line.
+    pub(super) fn vertical_column_pitch(&self, line_height: f64) -> f64 {
+        self.max_line_width.max(line_height).max(1.0)
+    }
+
+    /// The same paragraph with only `columns` of its vertical columns, for
+    /// the part of it that fits on a page. Line indices are kept, so the
+    /// selection still finds every character where it is drawn.
+    pub(super) fn with_vertical_columns(&self, columns: Range<usize>) -> Self {
+        let mut part = self.clone();
+        if let Some(layout) = part.vertical_layout.as_mut() {
+            let end = columns.end.min(layout.column_ranges.len());
+            let start = columns.start.min(end);
+            layout.column_ranges = layout.column_ranges[start..end].to_vec();
+        }
+        part.is_continuation = columns.start > 0;
+        part
     }
 
     #[cfg(all(debug_assertions, target_arch = "wasm32"))]
@@ -3921,7 +3944,17 @@ where
                             .fill_text(&line.text, 0.0, 0.0)
                             .map_err(PainterError::into_js_value)?;
                         context.restore();
-                    } else {
+                    } else if !fill_vertical_form(
+                        context,
+                        &line.text,
+                        font.as_deref().unwrap_or(TABLE_FONT),
+                        draw_text_x,
+                        paint_y,
+                        line_top + line_advance * 0.5,
+                        line_advance,
+                    )
+                    .map_err(PainterError::into_js_value)?
+                    {
                         context
                             .fill_text(&line.text, draw_text_x, paint_y)
                             .map_err(PainterError::into_js_value)?;
@@ -12265,6 +12298,67 @@ fn paragraph_line_tate_chu_yoko(
             table_font_descriptor_for_text(run.properties.as_ref(), &line.text),
         )
     })
+}
+
+/// Paints `text`, one character of an upright column, in its vertical form
+/// when it has one (see [`jade_docx_layout::vertical_forms`]): first as the
+/// font's own `vert` alternate, as Word draws it; else as the presentation
+/// form, turned a quarter about `center_y`, or nudged up and right by
+/// fractions of `em`. `Ok(false)` when the character stands as it is and the
+/// caller paints it.
+fn fill_vertical_form<P: Painter>(
+    context: &P,
+    text: &str,
+    font: &str,
+    x: f64,
+    y: f64,
+    center_y: f64,
+    em: f64,
+) -> Result<bool, P::Error> {
+    use jade_docx_layout::vertical_forms::{vertical_form, VerticalForm, VERT_FEATURE};
+    let form = vertical_form(text);
+    if form == VerticalForm::Upright {
+        return Ok(false);
+    }
+    let shaped_font = match jade_painter::font_features::features_token(font) {
+        Some(token) => font.replacen(
+            &format!("{}{token}", jade_painter::font_features::PREFIX),
+            &format!(
+                "{}{token},{VERT_FEATURE}",
+                jade_painter::font_features::PREFIX
+            ),
+            1,
+        ),
+        None => format!(
+            "{}{VERT_FEATURE} {font}",
+            jade_painter::font_features::PREFIX
+        ),
+    };
+    context.set_font(&shaped_font);
+    let shaped = context.try_fill_shaped_text(text, &[(0, x)], y)?;
+    context.set_font(font);
+    if shaped {
+        return Ok(true);
+    }
+    match form {
+        VerticalForm::Upright => return Ok(false),
+        VerticalForm::Substitute(form) => {
+            let mut buffer = [0u8; 4];
+            context.fill_text(form.encode_utf8(&mut buffer), x, y)?;
+        }
+        VerticalForm::Rotate => {
+            let width = context.measure_text_width(text)?;
+            let _guard = StateGuard::new(context);
+            context.translate(x + width * 0.5, center_y)?;
+            context.rotate(FRAC_PI_2)?;
+            context.set_text_baseline("middle");
+            context.fill_text(text, -width * 0.5, 0.0)?;
+        }
+        VerticalForm::Shift { right, up } => {
+            context.fill_text(text, x + right * em, y - up * em)?;
+        }
+    }
+    Ok(true)
 }
 
 fn paragraph_line_font_descriptor(paragraph: &CellParagraph, line: &LineLayout) -> Option<Rc<str>> {
