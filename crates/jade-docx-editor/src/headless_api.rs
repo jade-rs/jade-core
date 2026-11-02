@@ -19220,6 +19220,57 @@ mod tests {
     }
 
     #[test]
+    fn merging_across_a_legacy_horizontal_merge_saves_one_cell() {
+        // table-legacy-hmerge.docx's second row spans its last two columns
+        // with a legacy `w:hMerge` restart and continuation. The reader folds
+        // the continuation into the cell it continues; merging that row's
+        // cells removed the cells the model knows and left the continuation,
+        // so the row was saved four columns wide and its paragraph came back.
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/table-legacy-hmerge.docx"),
+        )
+        .expect("read fixture");
+        let mut word_doc =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+        apply_headless_commands_to_document(
+            &mut word_doc,
+            &HeadlessEditRequest {
+                commands: vec![HeadlessCommand::MergeTableCells {
+                    table_order_index: 0,
+                    selected_cells: vec![
+                        jade_docx_headless_api::HeadlessTableCellSelection {
+                            row: 1,
+                            column: 0,
+                            column_span: 1,
+                        },
+                        jade_docx_headless_api::HeadlessTableCellSelection {
+                            row: 1,
+                            column: 1,
+                            column_span: 1,
+                        },
+                    ],
+                }],
+            },
+        )
+        .expect("merged");
+        let reloaded = executor::block_on(WordDocument::load(
+            &word_doc.export_docx().expect("export"),
+            &Options::default(),
+        ))
+        .expect("reload");
+        assert_eq!(reloaded.paragraph_count(), word_doc.paragraph_count());
+        let row = |word_doc: &WordDocument| {
+            word_doc
+                .table_by_order(0)
+                .and_then(|table| table.rows.get(1))
+                .map(|row| row.cells.iter().map(|cell| cell.span).collect::<Vec<_>>())
+        };
+        assert_eq!(row(&word_doc), Some(vec![Some(3)]));
+        assert_eq!(row(&reloaded), row(&word_doc));
+    }
+
+    #[test]
     fn merge_table_cells_command_merges_selected_cells() {
         let mut word_doc = sample_table_document();
         let request = HeadlessEditRequest {
