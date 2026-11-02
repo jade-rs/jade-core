@@ -62,6 +62,7 @@ jade-docx-layout = { path = "../jade-docx-layout" }
 jade-pptx-layout = { path = "../jade-pptx-layout" }
 jade-canvas-painter = { path = "../jade-canvas-painter" }
 jade-painter = { path = "../jade-painter" }
+jade-ink = { path = "../jade-ink" }
 jade-docx-headless-api = { path = "../jade-docx-headless-api" }
 jade-preview-plugin-api = { path = "../jade-preview-plugin-api" }
 serde_json = "1.0"
