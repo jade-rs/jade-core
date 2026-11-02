@@ -397,3 +397,45 @@ fn an_svg_converts_to_freeforms_in_a_group() {
     assert!(session.undo());
     assert!(picture(session.bytes(), id).svg_part.is_some());
 }
+
+#[test]
+fn svg_conversion_preserves_rotation_and_both_flips_in_one_history_step() {
+    let svg = br##"<svg xmlns="http://www.w3.org/2000/svg" width="24" height="12"><path d="M0 0h24L0 12z" fill="#FF0000"/></svg>"##;
+    for (rotation, flip_h, flip_v) in [
+        (37 * 60_000, false, false),
+        (0, true, false),
+        (0, false, true),
+        (-23 * 60_000, true, true),
+    ] {
+        let placement = Transform {
+            rotation_60000ths: rotation,
+            flip_h,
+            flip_v,
+            ..bounds()
+        };
+        let mut session = EditSession::open(DECK).unwrap();
+        let id = session.insert_svg_picture(0, placement, svg).unwrap();
+        let before = session.bytes().to_vec();
+        let group_id = session.convert_svg_to_shapes(0, id).unwrap();
+        let converted = session.bytes().to_vec();
+        let deck = read_deck(&converted).unwrap();
+        let group = deck.slides[0]
+            .content
+            .shapes
+            .iter()
+            .find_map(|item| match item {
+                ShapeItem::Group(group) if group.id == Some(group_id) => Some(group),
+                _ => None,
+            })
+            .unwrap();
+        let transform = group.transform.unwrap();
+        assert_eq!(transform.outer, placement);
+        assert_eq!(transform.child_offset_emu, placement.offset_emu);
+        assert_eq!(transform.child_extent_emu, placement.extent_emu);
+        assert_eq!(group.children.len(), 1);
+        assert!(session.undo());
+        assert_eq!(session.bytes(), before);
+        assert!(session.redo());
+        assert_eq!(session.bytes(), converted);
+    }
+}

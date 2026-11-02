@@ -1501,8 +1501,17 @@ pub fn convert_svg_to_shapes(bytes: &[u8], slide: usize, id: u32) -> Result<(Vec
     );
     let (p_ns, a_ns, _) = crate::xml::smartart_frames::namespaces(&xml)?;
     let group_id = max_shape_id(&xml) + 1;
+    // Keep the picture's orientation on the group, so every freeform is
+    // turned and reflected around the same original picture bounds.
+    let orientation: String = ["rot", "flipH", "flipV"]
+        .into_iter()
+        .filter_map(|name| {
+            xfrm.attr(name)
+                .map(|value| format!(" {name}=\"{}\"", dom::escape(value)))
+        })
+        .collect();
     let mut out = format!(
-        "<jadeSp:grpSp xmlns:jadeSp=\"{p_ns}\" xmlns:a=\"{a_ns}\"><jadeSp:nvGrpSpPr><jadeSp:cNvPr id=\"{group_id}\" name=\"Group {group_id}\"/><jadeSp:cNvGrpSpPr/><jadeSp:nvPr/></jadeSp:nvGrpSpPr><jadeSp:grpSpPr><a:xfrm><a:off x=\"{x}\" y=\"{y}\"/><a:ext cx=\"{cx}\" cy=\"{cy}\"/><a:chOff x=\"{x}\" y=\"{y}\"/><a:chExt cx=\"{cx}\" cy=\"{cy}\"/></a:xfrm></jadeSp:grpSpPr>"
+        "<jadeSp:grpSp xmlns:jadeSp=\"{p_ns}\" xmlns:a=\"{a_ns}\"><jadeSp:nvGrpSpPr><jadeSp:cNvPr id=\"{group_id}\" name=\"Group {group_id}\"/><jadeSp:cNvGrpSpPr/><jadeSp:nvPr/></jadeSp:nvGrpSpPr><jadeSp:grpSpPr><a:xfrm{orientation}><a:off x=\"{x}\" y=\"{y}\"/><a:ext cx=\"{cx}\" cy=\"{cy}\"/><a:chOff x=\"{x}\" y=\"{y}\"/><a:chExt cx=\"{cx}\" cy=\"{cy}\"/></a:xfrm></jadeSp:grpSpPr>"
     );
     let mut shape_id = group_id;
     for path in &paths {
