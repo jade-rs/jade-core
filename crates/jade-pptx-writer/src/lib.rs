@@ -7,6 +7,7 @@ pub use xml::layouts::{
     SlideLayoutInfo,
 };
 mod picture_format;
+pub mod animation;
 mod shape_insertion;
 pub use picture_format::{
     compress_pictures, convert_svg_to_shapes, format_picture, insert_svg_picture, picture_format,
