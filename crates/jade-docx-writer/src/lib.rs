@@ -312,7 +312,25 @@ pub fn write_docx_preserving_archive(
     keys.sort();
     keys.dedup();
 
-    let mut writer = ZipWriter::new(Cursor::new(Vec::new()));
+    // Most members keep their compressed bytes. Reserve their existing size
+    // instead of repeatedly growing and copying the ZIP output. Discount
+    // deleted or reduced replacements so removing large media releases space.
+    let mut capacity = source.len();
+    for (key, replacement_size) in removed.iter().map(|key| (key, 0)).chain(
+        overrides
+            .iter()
+            .filter(|(key, _)| !removed.contains(*key))
+            .map(|(key, data)| (key, data.len() as u64)),
+    ) {
+        if let Some(index) = archive.index_for_name(key) {
+            let discarded = archive
+                .by_index_data(index)?
+                .compressed_size()
+                .saturating_sub(replacement_size);
+            capacity = capacity.saturating_sub(discarded.min(source.len() as u64) as usize);
+        }
+    }
+    let mut writer = ZipWriter::new(Cursor::new(Vec::with_capacity(capacity)));
     writer.set_raw_comment(archive.comment().into())?;
     let options = SimpleFileOptions::default().compression_method(CompressionMethod::Deflated);
     for key in keys {
