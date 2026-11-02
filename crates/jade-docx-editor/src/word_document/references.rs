@@ -636,6 +636,17 @@ impl WordDocument {
         instruction: &str,
         display: &str,
     ) -> Result<SelectionRange, String> {
+        self.insert_inline_field_with_location(at, instruction, display)
+            .map(|(caret, _)| caret)
+    }
+
+    /// Also identifies the inserted run before a generated block can move it.
+    pub(crate) fn insert_inline_field_with_location(
+        &mut self,
+        at: TextPosition,
+        instruction: &str,
+        display: &str,
+    ) -> Result<(SelectionRange, (usize, usize)), String> {
         let instruction = instruction.trim();
         let hidden = authored_marker_field(instruction);
         if !hidden && !authored_result_field(instruction) {
@@ -691,6 +702,7 @@ impl WordDocument {
             source_field_id: None,
             resolved_value: (!hidden).then(|| text.clone()),
         });
+        let run_index = paragraph.runs.len();
         paragraph.runs.push(run);
         paragraph.runs.extend(tail);
         // Authored fields are written again from the model, as the XE
@@ -713,8 +725,9 @@ impl WordDocument {
         }
         self.sync_paragraph_text_preserving_drawings(model.paragraph);
         let after = TextPosition::new(model.paragraph, model.offset + text.len());
-        Ok(SelectionRange::collapsed(
-            self.model_to_rendered_text_position(after),
+        Ok((
+            SelectionRange::collapsed(self.model_to_rendered_text_position(after)),
+            (model.paragraph, run_index),
         ))
     }
 
