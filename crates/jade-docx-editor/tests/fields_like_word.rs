@@ -145,6 +145,11 @@ impl Session {
         let mut ctx = CommandContext::new(&mut self.document, &mut self.selection);
         assert!(self.executor.undo(&mut ctx).unwrap());
     }
+
+    fn redo(&mut self) {
+        let mut ctx = CommandContext::new(&mut self.document, &mut self.selection);
+        assert!(self.executor.redo(&mut ctx).unwrap());
+    }
 }
 
 fn host() -> FieldHost {
@@ -1095,9 +1100,20 @@ mod stateful {
         assert!(session.selected_fields()[0].locked);
         let bytes = session.document.export_docx().unwrap();
         capture(&bytes, "locked bibliography after source edit and restyle");
-        session.document = block_on(WordDocument::load(&bytes, &Options::default())).unwrap();
+        session.undo();
+        session.undo();
+        assert_eq!(session.document.export_docx().unwrap(), before);
+        session.redo();
+        session.redo();
+        assert_eq!(session.document.export_docx().unwrap(), bytes);
+        session = Session {
+            document: block_on(WordDocument::load(&bytes, &Options::default())).unwrap(),
+            executor: CommandExecutor::new(),
+            selection: Some(SelectionRange::collapsed(TextPosition::new(start, 0))),
+        };
         assert_eq!(text(&session), saved);
         assert!(session.selected_fields()[0].locked);
+        let reopened = session.document.export_docx().unwrap();
         session.lock_fields(false).unwrap();
         session
             .update_fields(FieldScope::Document, &host(), HashMap::new())
@@ -1106,10 +1122,13 @@ mod stateful {
             text(&session),
             ["References", "[1] J. Jones, A source, 2020."]
         );
-        for _ in 0..4 {
-            session.undo();
-        }
-        assert_eq!(session.document.export_docx().unwrap(), before);
+        let updated = session.document.export_docx().unwrap();
+        session.undo();
+        session.undo();
+        assert_eq!(session.document.export_docx().unwrap(), reopened);
+        session.redo();
+        session.redo();
+        assert_eq!(session.document.export_docx().unwrap(), updated);
     }
 
     #[test]
