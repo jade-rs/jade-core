@@ -62,3 +62,43 @@ fn destination_insets_and_unsupported_effects_are_retained_without_inventing_sup
         ["grayscl", "tile", "geometry: roundRect"]
     );
 }
+
+/// A freeform's custom geometry is read path by path, guides resolved.
+#[test]
+fn custom_geometry_is_read_as_paths() {
+    use jade_xlsx_reader::{CustomPath, PathCommand};
+    let shapes = jade_xlsx_reader::drawing::parse_drawing(r#"<xdr:wsDr xmlns:xdr="http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><xdr:absoluteAnchor><xdr:pos x="0" y="0"/><xdr:ext cx="952500" cy="476250"/><xdr:sp><xdr:nvSpPr><xdr:cNvPr id="2" name="Freeform 1"/><xdr:cNvSpPr/></xdr:nvSpPr><xdr:spPr><a:custGeom><a:avLst/><a:gdLst><a:gd name="mid" fmla="val 300"/></a:gdLst><a:rect l="0" t="0" r="r" b="b"/><a:pathLst><a:path w="600" h="300"><a:moveTo><a:pt x="0" y="0"/></a:moveTo><a:lnTo><a:pt x="mid" y="b"/></a:lnTo><a:cubicBezTo><a:pt x="400" y="0"/><a:pt x="500" y="0"/><a:pt x="r" y="hd2"/></a:cubicBezTo><a:arcTo wR="100" hR="50" stAng="0" swAng="5400000"/><a:close/></a:path><a:path w="600" h="300" fill="none"><a:moveTo><a:pt x="0" y="300"/></a:moveTo><a:quadBezTo><a:pt x="300" y="0"/><a:pt x="600" y="300"/></a:quadBezTo></a:path></a:pathLst></a:custGeom></xdr:spPr></xdr:sp></xdr:absoluteAnchor></xdr:wsDr>"#).unwrap();
+    let style = shapes[0].style.as_deref().expect("a style");
+    assert_eq!(style.geometry.as_deref(), Some("custom"));
+    assert_eq!(
+        style.custom_paths,
+        vec![
+            CustomPath {
+                width: 600,
+                height: 300,
+                filled: true,
+                commands: vec![
+                    PathCommand::Move(0, 0),
+                    PathCommand::Line(300, 300),
+                    PathCommand::Cubic([(400, 0), (500, 0), (600, 150)]),
+                    PathCommand::Arc {
+                        width_radius: 100,
+                        height_radius: 50,
+                        start: 0,
+                        swing: 5_400_000,
+                    },
+                    PathCommand::Close,
+                ],
+            },
+            CustomPath {
+                width: 600,
+                height: 300,
+                filled: false,
+                commands: vec![
+                    PathCommand::Move(0, 300),
+                    PathCommand::Quad([(300, 0), (600, 300)]),
+                ],
+            },
+        ]
+    );
+}
