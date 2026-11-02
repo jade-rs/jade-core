@@ -10952,7 +10952,8 @@ mod tests {
     fn paragraphs_an_edit_makes_take_the_defaults_a_load_gives() {
         // A load fills into every paragraph what its styles give it (Normal's
         // justification, a table style's spacing, the runs' fonts); nothing
-        // filled it into the cells of a new table or row, a table of contents'
+        // filled it into the cells of a new table or row (or the cell a column
+        // deletion leaves a row), a table of contents'
         // lines or a footnote's new text. They showed left-aligned, without
         // the spacing and in the fallback font until the document was
         // reopened.
@@ -11017,6 +11018,16 @@ mod tests {
                 template_row: None,
             }],
             4,
+        );
+        // A column deleted from under a row's only cell: the row gets a new
+        // one.
+        check(
+            "table-cell-preferred-widths.docx",
+            vec![HeadlessCommand::DeleteTableColumn {
+                table_order_index: 0,
+                column_index: 1,
+            }],
+            6,
         );
         // A footnote whose text is set anew: footnote-long-continuation's
         // footnote 3 is the first paragraph of the notes after the body.
