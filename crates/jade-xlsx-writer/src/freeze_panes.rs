@@ -186,6 +186,19 @@ fn view_children(
     children
 }
 
+/// Where a sheet part with no `<sheetViews>` gets one, and the prefix its
+/// elements take; `None` when it already has a view.
+pub(crate) fn missing_views(xml: &str) -> Result<Option<(usize, String)>> {
+    let view = scan(xml)?;
+    if view.sheet_view.is_some() {
+        return Ok(None);
+    }
+    let at = view
+        .insert_views_at
+        .ok_or(WriteError::NoRoot("worksheet"))?;
+    Ok(Some((at, view.prefix)))
+}
+
 fn address(cell: CellRef) -> String {
     let mut column = cell.column + 1;
     let mut letters = Vec::new();
