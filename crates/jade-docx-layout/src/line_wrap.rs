@@ -13526,17 +13526,9 @@ mod tests {
             );
             let line_height_px = points_to_px(line_height_points);
 
-            if let Some(spacing) = spacing_ref {
-                if let Some(before) = spacing.before {
-                    let before_px = points_to_px(before);
-                    ensure_space(before_px, &mut current_page, &mut current_y);
-                    current_y += before_px;
-                } else if let Some(before_lines) = spacing.before_lines {
-                    let before_px = points_to_px(line_height_points * before_lines);
-                    ensure_space(before_px, &mut current_page, &mut current_y);
-                    current_y += before_px;
-                }
-            }
+            let before_px = crate::text_extract::spacing_before_px(paragraph, line_height_points);
+            ensure_space(before_px, &mut current_page, &mut current_y);
+            current_y += before_px;
 
             let lines = wrap_text_into_lines(
                 ctx,
@@ -13592,17 +13584,9 @@ mod tests {
                 page_lines.push((current_page, info.text.trim().to_string()));
             }
 
-            if let Some(spacing) = spacing_ref {
-                if let Some(after) = spacing.after {
-                    let after_px = points_to_px(after);
-                    ensure_space(after_px, &mut current_page, &mut current_y);
-                    current_y += after_px;
-                } else if let Some(after_lines) = spacing.after_lines {
-                    let after_px = points_to_px(line_height_points * after_lines);
-                    ensure_space(after_px, &mut current_page, &mut current_y);
-                    current_y += after_px;
-                }
-            }
+            let after_px = crate::text_extract::spacing_after_px(paragraph, line_height_points);
+            ensure_space(after_px, &mut current_page, &mut current_y);
+            current_y += after_px;
         }
 
         Ok(page_lines)
@@ -13823,17 +13807,9 @@ mod tests {
             );
             let line_height_px = points_to_px(line_height_points);
 
-            if let Some(spacing) = spacing_ref {
-                if let Some(before) = spacing.before {
-                    let before_px = points_to_px(before);
-                    ensure_space(before_px, &mut current_page, &mut current_y);
-                    current_y += before_px;
-                } else if let Some(before_lines) = spacing.before_lines {
-                    let before_px = points_to_px(line_height_points * before_lines);
-                    ensure_space(before_px, &mut current_page, &mut current_y);
-                    current_y += before_px;
-                }
-            }
+            let before_px = crate::text_extract::spacing_before_px(&paragraph, line_height_points);
+            ensure_space(before_px, &mut current_page, &mut current_y);
+            current_y += before_px;
 
             let lines = wrap_text_into_lines(
                 &ctx,
@@ -13889,17 +13865,9 @@ mod tests {
                 page_lines.push((current_page, info.text.trim().to_string()));
             }
 
-            if let Some(spacing) = spacing_ref {
-                if let Some(after) = spacing.after {
-                    let after_px = points_to_px(after);
-                    ensure_space(after_px, &mut current_page, &mut current_y);
-                    current_y += after_px;
-                } else if let Some(after_lines) = spacing.after_lines {
-                    let after_px = points_to_px(line_height_points * after_lines);
-                    ensure_space(after_px, &mut current_page, &mut current_y);
-                    current_y += after_px;
-                }
-            }
+            let after_px = crate::text_extract::spacing_after_px(&paragraph, line_height_points);
+            ensure_space(after_px, &mut current_page, &mut current_y);
+            current_y += after_px;
         }
 
         let lines = page_lines
