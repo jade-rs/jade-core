@@ -603,14 +603,62 @@ pub(crate) fn find_cell_element_mut(
 }
 
 fn remove_cell_by_id(row_element: &mut XmlElement, cell_id: XmlNodeId) {
-    row_element.children.retain(|node| {
-        if let XmlNode::Element(element) = node {
-            if element.name == "w:tc" && element.id == cell_id {
-                return false;
+    let Some(at) = row_element.children.iter().position(
+        |node| matches!(node, XmlNode::Element(element) if element.name == "w:tc" && element.id == cell_id),
+    ) else {
+        return;
+    };
+    row_element.children.remove(at);
+    remove_legacy_hmerge_continuations(row_element, at);
+}
+
+/// Whether `cell` continues a legacy horizontal merge: a `w:hMerge` that is
+/// not `restart`. The reader folds such a cell into the one it continues, so
+/// the model has no cell of its own for it.
+fn continues_legacy_hmerge(cell: &XmlElement) -> bool {
+    cell.children.iter().any(|node| match node {
+        XmlNode::Element(properties) if properties.name == "w:tcPr" => {
+            properties.children.iter().any(|node| {
+                matches!(node, XmlNode::Element(merge) if merge.name == "w:hMerge"
+                    && !merge.attributes.iter().any(|attribute| attribute.name == "w:val" && attribute.value == "restart"))
+            })
+        }
+        _ => false,
+    })
+}
+
+/// Removes the cells from `at` on that continue a legacy horizontal merge:
+/// the cell they continued is gone or now spans them by `w:gridSpan`. Left,
+/// a merge across a legacy `w:hMerge` saved the row one cell too wide, and
+/// the continuation's paragraph came back on reload.
+fn remove_legacy_hmerge_continuations(row_element: &mut XmlElement, at: usize) {
+    while row_element.children.get(at).is_some_and(
+        |node| matches!(node, XmlNode::Element(cell) if cell.name == "w:tc" && continues_legacy_hmerge(cell)),
+    ) {
+        row_element.children.remove(at);
+    }
+}
+
+/// A merged cell's legacy horizontal merge goes over to `w:gridSpan`: its
+/// own `w:hMerge` and the cells after it that continued it go.
+fn release_legacy_hmerge(row_element: &mut XmlElement, cell_id: XmlNodeId) {
+    let Some(at) = row_element.children.iter().position(
+        |node| matches!(node, XmlNode::Element(element) if element.name == "w:tc" && element.id == cell_id),
+    ) else {
+        return;
+    };
+    if let Some(XmlNode::Element(cell)) = row_element.children.get_mut(at) {
+        for node in cell.children.iter_mut() {
+            if let XmlNode::Element(properties) = node {
+                if properties.name == "w:tcPr" {
+                    properties.children.retain(
+                        |node| !matches!(node, XmlNode::Element(merge) if merge.name == "w:hMerge"),
+                    );
+                }
             }
         }
-        true
-    });
+    }
+    remove_legacy_hmerge_continuations(row_element, at + 1);
 }
 
 fn ensure_tc_pr<'a>(
@@ -779,6 +827,7 @@ fn apply_plan_to_raw(
                     &mut reserved_ids,
                 );
             }
+            release_legacy_hmerge(row_element, master_id);
         }
     }
 
@@ -812,6 +861,7 @@ fn apply_plan_to_raw(
                         children: Vec::new(),
                     }));
                 }
+                release_legacy_hmerge(row_element, cell_id);
             }
         }
     }
