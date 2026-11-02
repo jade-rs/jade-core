@@ -259,3 +259,128 @@ fn bibliography_refresh_does_not_turn_hidden_heading_fields_into_visible_text() 
         }
     }
 }
+
+/// The dialog queries consume the last paint's cell registrations, as the shells do.
+struct TableDialogSession {
+    document: WordDocument,
+    cells: Vec<jade_docx_editor::word::CellLayout>,
+}
+
+impl jade_docx_editor::word::WordSession for TableDialogSession {
+    fn word_document(&self) -> &WordDocument {
+        &self.document
+    }
+    fn selection_range(&self) -> Option<jade_selection::SelectionRange> {
+        Some(jade_selection::SelectionRange::collapsed(
+            jade_selection::TextPosition::new(3, 0),
+        ))
+    }
+    fn set_selection_range(&mut self, _: Option<jade_selection::SelectionRange>) {
+        panic!("read only")
+    }
+    fn apply_command(&mut self, _: HeadlessCommand, _: bool) -> Result<(), String> {
+        panic!("read only")
+    }
+    fn apply_commands(&mut self, _: Vec<HeadlessCommand>, _: bool) -> Result<(), String> {
+        panic!("read only")
+    }
+    fn execute_command(
+        &mut self,
+        _: Box<dyn jade_docx_editor::commands::Command>,
+        _: bool,
+    ) -> Result<(), String> {
+        panic!("read only")
+    }
+    fn cell_id_for_paragraph(&self, paragraph: usize) -> Option<usize> {
+        self.cells
+            .iter()
+            .position(|cell| cell.paragraphs.contains(&paragraph))
+    }
+    fn cell_layout(&self, id: usize) -> Option<&jade_docx_editor::word::CellLayout> {
+        self.cells.get(id)
+    }
+    fn cell_layouts(&self) -> &[jade_docx_editor::word::CellLayout] {
+        &self.cells
+    }
+    fn table_order_for(&self, id: usize) -> Option<usize> {
+        (id == 0).then_some(0)
+    }
+    fn hyperlink_regions(&self) -> Vec<jade_docx_editor::canvas_renderer::HyperlinkRegion> {
+        vec![]
+    }
+    fn select_cells(&mut self, _: usize, _: usize) -> Result<(), String> {
+        panic!("read only")
+    }
+}
+
+fn dialog_session(above: &str) -> TableDialogSession {
+    let document = load(&common::package(
+        &format!(
+            r#"<w:tbl><w:tblPr/><w:tblGrid><w:gridCol w:w="2000"/><w:gridCol w:w="2000"/></w:tblGrid><w:tr><w:tc><w:tcPr/><w:p><w:r><w:t>Item</w:t></w:r></w:p></w:tc><w:tc><w:tcPr/><w:p>{above}</w:p></w:tc></w:tr><w:tr><w:tc><w:tcPr/><w:p><w:r><w:t>3</w:t></w:r></w:p></w:tc><w:tc><w:tcPr/><w:p/></w:tc></w:tr></w:tbl><w:p/>"#
+        ),
+        &[],
+    ));
+    TableDialogSession {
+        document,
+        cells: (0..4)
+            .map(|index| jade_docx_editor::word::CellLayout {
+                paragraphs: vec![index],
+                row: index / 2,
+                column: index % 2,
+                column_span: 1,
+                ..Default::default()
+            })
+            .collect(),
+    }
+}
+
+#[test]
+fn table_dialogs_ignore_hidden_field_caches_before_and_after_reload() {
+    use jade_docx_editor::word::table::WordTables;
+    for complex in [false, true] {
+        for instruction in ["SET Counter 10", "ASK Counter Prompt"] {
+            let mut session = dialog_session(&format!(
+                "{}<w:r><w:t>Amount</w:t></w:r>",
+                hidden(instruction, 900, complex)
+            ));
+            let before = session.document.export_docx().unwrap();
+            for _ in 0..2 {
+                assert_eq!(session.sort_columns(true), ["Item", "Amount"]);
+                assert_eq!(session.suggested_formula(), "=SUM(LEFT)");
+                assert_eq!(
+                    session.document.export_docx().unwrap(),
+                    before,
+                    "dialog queries preserve field instructions and caches"
+                );
+                capture(&session.document);
+                session.document = load(&before);
+            }
+        }
+    }
+}
+
+#[test]
+fn table_sort_dialog_includes_computed_field_results_before_and_after_reload() {
+    use jade_docx_editor::word::table::WordTables;
+    for complex in [false, true] {
+        let mut session = dialog_session(&hidden("DOCVARIABLE Total", 12, complex));
+        for _ in 0..2 {
+            assert_eq!(session.sort_columns(true), ["Item", "12"]);
+            capture(&session.document);
+            session.document = load(&session.document.export_docx().unwrap());
+        }
+    }
+}
+
+#[test]
+fn table_formula_dialog_includes_computed_field_results_before_and_after_reload() {
+    use jade_docx_editor::word::table::WordTables;
+    for complex in [false, true] {
+        let mut session = dialog_session(&hidden("DOCVARIABLE Total", 12, complex));
+        for _ in 0..2 {
+            assert_eq!(session.suggested_formula(), "=SUM(ABOVE)");
+            capture(&session.document);
+            session.document = load(&session.document.export_docx().unwrap());
+        }
+    }
+}
