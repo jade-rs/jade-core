@@ -707,6 +707,12 @@ impl WordDocument {
             }
             (table.node_id, rows)
         };
+        // What the table's style gave its cells' paragraphs. A load resolved it
+        // into them; out of the table, what they took from it alone is theirs
+        // no more (below).
+        let table_style = self.styles_part.as_ref().and_then(|styles| {
+            Self::table_style_paragraph_defaults(self.table_by_order(table_order_index)?, styles)
+        });
 
         // XML: the cell paragraphs go where the table was.
         if let (Some(mut raw), Some(table_id)) = (self.raw_document.take(), table_id) {
@@ -769,6 +775,15 @@ impl WordDocument {
             Self::rebuild_section_ranges(document);
         }
         self.rebuild_paragraph_surfaces();
+        // The table style's paragraph formatting goes with the table: a
+        // converted paragraph kept its cell spacing on screen while the
+        // reopened file gave it its own style's.
+        if let Some(table_style) = table_style.as_ref() {
+            let moved: usize = counts.iter().flatten().sum();
+            for body in body_index..body_index + moved {
+                self.release_table_style_paragraph_properties(body, table_style);
+            }
+        }
 
         // Each row's cells become one paragraph, last row first so the body
         // positions before it hold.
@@ -791,6 +806,48 @@ impl WordDocument {
             }
         }
         Ok(())
+    }
+
+    /// Gives the body paragraph at `body_index`, moved out of a table whose
+    /// style gave its cells `table_style`, what its own style gives where the
+    /// table's had, short of what its `w:pPr` declares.
+    fn release_table_style_paragraph_properties(
+        &mut self,
+        body_index: usize,
+        table_style: &ParagraphProperties,
+    ) {
+        let Some(index) = self.surface_index_for_body(body_index) else {
+            return;
+        };
+        let style = self
+            .paragraph(index)
+            .and_then(|paragraph| paragraph.properties.as_ref())
+            .and_then(|props| props.style.as_deref())
+            .map(str::to_string);
+        let Some(new) = self.inherited_paragraph_properties(index, style.as_deref()) else {
+            return;
+        };
+        let Some(styles) = self.styles_part.as_ref() else {
+            return;
+        };
+        let mut old = style
+            .as_deref()
+            .or_else(|| styles.default_paragraph_style_id())
+            .and_then(|style| styles.resolve_paragraph_properties(style))
+            .unwrap_or_default();
+        Self::fill_missing_paragraph_props(&mut old, table_style);
+        if let Some(defaults) = styles.doc_default_paragraph_properties() {
+            Self::fill_missing_paragraph_props(&mut old, defaults);
+        }
+        let declared = self.paragraph_declared_property_tags(index);
+        if let Some(props) = self
+            .paragraph_mut(index)
+            .and_then(|paragraph| paragraph.properties.as_mut())
+        {
+            rebase_paragraph_style_properties(props, &old, &new, |tag| {
+                declared.iter().any(|declared| declared == tag)
+            });
+        }
     }
 
     /// Appends `text` to the body paragraph at `body_index` and joins the next

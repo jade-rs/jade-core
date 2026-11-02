@@ -13837,6 +13837,57 @@ mod tests {
     }
 
     #[test]
+    fn a_table_turned_into_text_leaves_its_style_spacing_behind() {
+        // A load fills a cell paragraph's spacing from the table's style.
+        // Converted to text, the paragraph kept that spacing on screen while
+        // the reopened file gave it Normal's.
+        let fixture = |name: &str| {
+            std::fs::read(
+                std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                    .join("../../public/fixtures")
+                    .join(name),
+            )
+            .expect("read fixture")
+        };
+        let spacing = |word_doc: &WordDocument, index: usize| {
+            word_doc.paragraph(index).map(|paragraph| {
+                let props = paragraph.properties.clone().unwrap_or_default();
+                (
+                    props.alignment,
+                    props
+                        .spacing
+                        .map(|spacing| (spacing.before, spacing.after, spacing.line)),
+                )
+            })
+        };
+        let check = |name: &str, commands: Vec<HeadlessCommand>, index: usize| {
+            let mut word_doc =
+                executor::block_on(WordDocument::load(&fixture(name), &Options::default()))
+                    .expect("load");
+            apply_headless_commands_to_document(&mut word_doc, &HeadlessEditRequest { commands })
+                .expect("applied");
+            let reloaded = executor::block_on(WordDocument::load(
+                &word_doc.export_docx().expect("export"),
+                &Options::default(),
+            ))
+            .expect("reload");
+            assert_eq!(
+                spacing(&word_doc, index),
+                spacing(&reloaded, index),
+                "{name}"
+            );
+        };
+        check(
+            "word-mac-probe-floating-horizontal-15.docx",
+            vec![HeadlessCommand::ConvertTableToText {
+                table_order_index: 1,
+                separator: "\t".to_string(),
+            }],
+            3,
+        );
+    }
+
+    #[test]
     fn an_edit_in_a_text_box_keeps_its_complex_field() {
         // document-variable-fields.docx's VML text box holds a DOCVARIABLE
         // field. Formatting, a comment or italics anywhere in that paragraph
