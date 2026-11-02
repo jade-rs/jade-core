@@ -82,8 +82,16 @@ impl HeadlessWorkbook {
         let part = sheet_model.part_name.clone();
         let mut package = jade_opc::OpcPackage::open(&self.source)?;
         jade_xlsx_writer::hyperlinks::set_hyperlink(&mut package, &part, link)?;
+        // The theme's hyperlink colour, as Excel's Hyperlink style has it,
+        // when the workbook has a theme to say what that is.
+        let themed = self
+            .workbook
+            .styles
+            .theme_colors
+            .get(10)
+            .is_some_and(|color| color.is_some());
         let change = FormatChange {
-            font_color: Some("0563C1".into()),
+            font_color: Some(if themed { "theme:10" } else { "0563C1" }.into()),
             underline: Some(true),
             ..Default::default()
         };
