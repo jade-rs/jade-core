@@ -12426,6 +12426,62 @@ mod tests {
         assert_docx_is_structurally_valid(&bytes, "nested table regression");
     }
 
+    #[test]
+    fn deciding_removed_rows_cleans_comments_and_undo_restores_them() {
+        for (setup, decision) in [(vec![16, 9], 18), (vec![7, 0, 16], 19), (vec![16, 23], 18)] {
+            let mut server = test_server();
+            let session = open_session(&mut server, TABLE_DOCX);
+            assert!(run_arbitrary_edit(&mut server, &session, 0, 4));
+            assert!(run_arbitrary_edit(&mut server, &session, 16, 4));
+            let surviving = ids_of(
+                &part_xml(&export_bytes(&mut server, &session), "word/comments.xml").unwrap(),
+                "w:comment",
+            );
+            try_tool(
+                &mut server,
+                "start_change_tracking",
+                json!({ "session_id": session, "author": "AI" }),
+            )
+            .unwrap();
+            for op in setup {
+                assert!(run_arbitrary_edit(&mut server, &session, op, 0), "op {op}");
+            }
+            let original = export_bytes(&mut server, &session);
+            assert_eq!(
+                ids_of(
+                    &part_xml(&original, "word/comments.xml").unwrap(),
+                    "w:comment"
+                )
+                .len(),
+                surviving.len() + 1
+            );
+            assert!(run_arbitrary_edit(&mut server, &session, decision, 0));
+            let decided = export_bytes(&mut server, &session);
+            assert_docx_is_structurally_valid(&decided, "after removing reviewed rows");
+            assert_eq!(
+                ids_of(
+                    &part_xml(&decided, "word/comments.xml").unwrap(),
+                    "w:comment"
+                ),
+                surviving,
+                "comments outside the removed rows survive"
+            );
+
+            try_tool(&mut server, "undo", json!({ "session_id": session })).unwrap();
+            let restored = export_bytes(&mut server, &session);
+            for part in ["word/document.xml", "word/comments.xml"] {
+                assert_eq!(part_xml(&restored, part), part_xml(&original, part));
+            }
+            assert_docx_is_structurally_valid(&restored, "after undoing reviewed rows");
+            try_tool(&mut server, "redo", json!({ "session_id": session })).unwrap();
+            let redone = export_bytes(&mut server, &session);
+            for part in ["word/document.xml", "word/comments.xml"] {
+                assert_eq!(part_xml(&redone, part), part_xml(&decided, part));
+            }
+            assert_docx_is_structurally_valid(&redone, "after redoing reviewed rows");
+        }
+    }
+
     proptest! {
         #![proptest_config(ProptestConfig { cases: 32, ..ProptestConfig::default() })]
 
