@@ -12625,6 +12625,97 @@ mod tests {
     }
 
     #[test]
+    fn equations_inserted_before_an_existing_simple_field_equation_keep_their_values() {
+        // hyperlink-field-edge-cases.docx links "Jump locally" through a
+        // HYPERLINK `w:fldSimple`. With the result cut in pieces, an equation
+        // put between two of them sits inside the field, which wrote it as a
+        // run: an equation has none, so nothing was written.
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/hyperlink-field-edge-cases.docx"),
+        )
+        .expect("read fixture");
+        let mut word_doc =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+        let text = |word_doc: &WordDocument, index: usize| -> String {
+            word_doc
+                .paragraph(index)
+                .map(|paragraph| paragraph.runs.iter().map(|run| run.text.as_str()).collect())
+                .unwrap_or_default()
+        };
+        let paragraph = (0..word_doc.paragraph_count())
+            .find(|&index| text(&word_doc, index) == "Internal field: Jump locally")
+            .expect("the field paragraph");
+        let equations = |word_doc: &WordDocument| {
+            word_doc.paragraph(paragraph).map_or(0, |paragraph| {
+                paragraph
+                    .runs
+                    .iter()
+                    .filter(|run| run.math.is_some())
+                    .count()
+            })
+        };
+        apply_headless_commands_to_document(
+            &mut word_doc,
+            &HeadlessEditRequest {
+                commands: vec![
+                    HeadlessCommand::SetCharacterStyle {
+                        start_paragraph: paragraph,
+                        start_offset: 21,
+                        end_paragraph: paragraph,
+                        end_offset: 24,
+                        style_id: Some("Strong".to_string()),
+                    },
+                    HeadlessCommand::InsertEquation {
+                        paragraph,
+                        offset: 18,
+                        omml: "<m:oMath><m:r><m:t>x</m:t></m:r></m:oMath>".to_string(),
+                        placement: jade_docx_headless_api::HeadlessEquationPlacement::Inline,
+                    },
+                ],
+            },
+        )
+        .expect("equation put in the field");
+        assert_eq!(equations(&word_doc), 1);
+        let reloaded = executor::block_on(WordDocument::load(
+            &word_doc.export_docx().expect("export"),
+            &Options::default(),
+        ))
+        .expect("reload");
+        assert_eq!(equations(&reloaded), 1);
+
+        apply_headless_commands_to_document(
+            &mut word_doc,
+            &HeadlessEditRequest {
+                commands: vec![HeadlessCommand::InsertEquation {
+                    paragraph,
+                    offset: 18,
+                    omml: "<m:oMath><m:r><m:t>y</m:t></m:r></m:oMath>".to_string(),
+                    placement: jade_docx_headless_api::HeadlessEquationPlacement::Inline,
+                }],
+            },
+        )
+        .expect("put a distinct equation before the existing one");
+        let values = |word_doc: &WordDocument| -> Vec<String> {
+            word_doc
+                .paragraph(paragraph)
+                .unwrap()
+                .runs
+                .iter()
+                .filter_map(|run| run.math.as_ref())
+                .map(|math| math.preview_text(100).expect("math text"))
+                .collect()
+        };
+        assert_eq!(values(&word_doc), vec!["y", "x"]);
+        let reloaded = executor::block_on(WordDocument::load(
+            &word_doc.export_docx().expect("export"),
+            &Options::default(),
+        ))
+        .expect("reload");
+        assert_eq!(values(&reloaded), vec!["y", "x"]);
+    }
+
+    #[test]
     fn an_equation_typed_into_a_simple_fields_result_is_saved_once() {
         // hyperlink-field-edge-cases.docx links "Jump locally" through a
         // HYPERLINK `w:fldSimple`. With the result cut in pieces, an equation
