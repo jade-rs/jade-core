@@ -14214,6 +14214,81 @@ mod tests {
     }
 
     #[test]
+    fn a_text_box_rebuilt_from_vml_keeps_its_paragraphs_bound() {
+        // document-variable-fields.docx has a VML text box whose paragraph
+        // holds a DOCVARIABLE field. An edit beside the box rebuilds it as
+        // DrawingML around its own `w:txbxContent`, but the wrapper gave that
+        // content new ids: the box's paragraph lost its XML, and the next
+        // edit in it wrote the box again from the model, the field's codes
+        // gone and its stale result left as plain text.
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/document-variable-fields.docx"),
+        )
+        .expect("read fixture");
+        let mut word_doc =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+        let text_box = (0..word_doc.paragraph_count())
+            .find(|&index| word_doc.is_text_box_paragraph_surface(index))
+            .expect("the text box paragraph");
+        let has_field = |word_doc: &WordDocument| {
+            word_doc
+                .paragraph(text_box)
+                .is_some_and(|paragraph| paragraph.runs.iter().any(|run| run.field.is_some()))
+        };
+        apply_headless_commands_to_document(
+            &mut word_doc,
+            &HeadlessEditRequest {
+                commands: vec![
+                    HeadlessCommand::InsertEndnote {
+                        paragraph: text_box - 1,
+                        offset: 0,
+                        text: "e".to_string(),
+                    },
+                    HeadlessCommand::DeleteText {
+                        paragraph: text_box - 1,
+                        offset: 0,
+                        direction: HeadlessDeleteDirection::Forward,
+                        count: 1,
+                    },
+                ],
+            },
+        )
+        .expect("note added and removed beside the box");
+        let box_xml_is_bound = word_doc
+            .paragraph(text_box)
+            .and_then(|paragraph| paragraph.node_id)
+            .zip(word_doc.raw_document.as_ref())
+            .is_some_and(|(id, raw)| raw.element(id).is_some());
+        assert!(box_xml_is_bound, "the box's paragraph lost its XML");
+        apply_headless_commands_to_document(
+            &mut word_doc,
+            &HeadlessEditRequest {
+                commands: vec![HeadlessCommand::DeleteText {
+                    paragraph: text_box,
+                    offset: 0,
+                    direction: HeadlessDeleteDirection::Forward,
+                    count: 1,
+                }],
+            },
+        )
+        .expect("deleted in the box");
+        assert!(has_field(&word_doc));
+        let exported = word_doc.export_docx().expect("export");
+        let reloaded =
+            executor::block_on(WordDocument::load(&exported, &Options::default())).expect("reload");
+        assert!(has_field(&reloaded));
+        let text = |word_doc: &WordDocument| -> String {
+            word_doc
+                .paragraph(text_box)
+                .map(|paragraph| paragraph.runs.iter().map(|run| run.text.as_str()).collect())
+                .unwrap_or_default()
+        };
+        assert_eq!(text(&reloaded), "extbox channel: ");
+        assert_eq!(text(&word_doc), text(&reloaded));
+    }
+
+    #[test]
     fn formatting_a_moved_paragraph_keeps_the_move_range_around_its_text() {
         // review-kinds.docx moves "moved words" out of paragraph 1. Its run
         // took the next run's XML, so bolding the paragraph wrote the moved
