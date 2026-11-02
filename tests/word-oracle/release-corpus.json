@@ -605,7 +605,7 @@
     },
     {
       "fixture": "word-mac-probe-floating-order",
-      "docx_sha256": "f5e787b9912a44e1aaea20e6d29b70915afd1da0084022271000ffbf286c1ae8",
+      "docx_sha256": "32e7c583bddf915d4a036bc87222064b835993347fc52b0f9eabc8c912c6db96",
       "schema_repair_source_sha256": "eb417a0f7dc283af99425b43a28a356f90ed2ba5a53112e93508b763996b6ba7"
     },
     {

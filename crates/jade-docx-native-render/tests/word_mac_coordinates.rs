@@ -1009,3 +1009,19 @@ fn schema_repair_hashes_do_not_allow_unrelated_or_reversed_changes() {
     assert!(!word_source_hash_matches(name, old, &"0".repeat(64)));
     assert!(!word_source_hash_matches(name, "", ""));
 }
+
+#[test]
+fn schema_repair_preserves_malformed_table_order_mac_layout() {
+    let original = include_bytes!("fixtures/word-mac-probe-floating-order-malformed.docx");
+    let repaired = std::fs::read(repo_path(
+        "public/fixtures/word-mac-probe-floating-order.docx",
+    ))
+    .unwrap();
+    assert!(common::word_source_hash_matches(
+        "word-mac-probe-floating-order",
+        &sha256(original),
+        &sha256(&repaired),
+    ));
+    compare(&capture(original), &capture(&repaired), 0.01)
+        .unwrap_or_else(|error| panic!("schema repair changed captured Mac layout: {error}"));
+}
