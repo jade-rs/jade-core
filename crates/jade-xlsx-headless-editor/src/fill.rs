@@ -177,7 +177,7 @@ enum Case {
 /// Excel's built-in custom lists (File ▸ Options ▸ Advanced ▸ Edit Custom
 /// Lists) in an English and a Japanese Excel. `1月`…`12月` and the quarters
 /// would otherwise count on past their last entry.
-const LISTS: &[&[&str]] = &[
+pub const BUILT_IN_LISTS: &[&[&str]] = &[
     &["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
     &[
         "Sunday",
@@ -337,7 +337,10 @@ impl Series {
             })
             .collect::<Option<Vec<_>>>()
         {
-            if let Some(series) = LISTS.iter().find_map(|list| list_series(list, &texts)) {
+            if let Some(series) = BUILT_IN_LISTS
+                .iter()
+                .find_map(|list| list_series(list, &texts))
+            {
                 return series;
             }
         }
