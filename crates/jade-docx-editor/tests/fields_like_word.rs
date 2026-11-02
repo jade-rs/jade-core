@@ -403,25 +403,10 @@ mod stateful {
         let reopened = block_on(WordDocument::load(&applied, &Options::default())).unwrap();
         assert_eq!(reopened.inline_fields("CITATION").len(), 1);
         assert_eq!(reopened.field_blocks().len(), 1);
-        let text = |document: &WordDocument, index| {
-            document
-                .paragraph(index)
-                .unwrap()
-                .runs
-                .iter()
-                .map(|run| {
-                    run.field
-                        .as_ref()
-                        .and_then(|field| {
-                            field
-                                .resolved_value
-                                .as_deref()
-                                .or(field.cached_text.as_deref())
-                        })
-                        .unwrap_or(&run.text)
-                })
-                .collect::<String>()
-        };
+        let text = |document: &WordDocument, index| document.body_paragraph_text(index).unwrap();
+        for index in 0..3 {
+            assert_eq!(text(&reopened, index), text(&document, index));
+        }
         assert_eq!(text(&reopened, 0), "before[1]after");
         assert_eq!(text(&reopened, 1), "References");
         assert_eq!(
