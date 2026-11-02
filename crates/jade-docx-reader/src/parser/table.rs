@@ -852,7 +852,7 @@ impl DocumentParser {
         row.cells = normalized;
     }
 
-    fn legacy_merge_blocks_have_content(blocks: &[BodyElement]) -> bool {
+    pub(crate) fn legacy_merge_blocks_have_content(blocks: &[BodyElement]) -> bool {
         // Multiple paragraphs are meaningful even when currently empty: they
         // represent explicit paragraph breaks retained by the old merge.
         blocks.len() > 1
