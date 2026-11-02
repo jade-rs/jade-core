@@ -13837,6 +13837,144 @@ mod tests {
     }
 
     #[test]
+    fn a_table_turned_into_text_leaves_its_style_spacing_behind() {
+        // A load fills a cell paragraph's spacing from the table's style.
+        // Converted to text, the paragraph kept that spacing on screen while
+        // the reopened file gave it Normal's.
+        let fixture = |name: &str| {
+            std::fs::read(
+                std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                    .join("../../public/fixtures")
+                    .join(name),
+            )
+            .expect("read fixture")
+        };
+        let spacing = |word_doc: &WordDocument, index: usize| {
+            word_doc.paragraph(index).map(|paragraph| {
+                let props = paragraph.properties.clone().unwrap_or_default();
+                (
+                    props.alignment,
+                    props
+                        .spacing
+                        .map(|spacing| (spacing.before, spacing.after, spacing.line)),
+                )
+            })
+        };
+        let check = |name: &str, commands: Vec<HeadlessCommand>, index: usize| {
+            let mut word_doc =
+                executor::block_on(WordDocument::load(&fixture(name), &Options::default()))
+                    .expect("load");
+            apply_headless_commands_to_document(&mut word_doc, &HeadlessEditRequest { commands })
+                .expect("applied");
+            let reloaded = executor::block_on(WordDocument::load(
+                &word_doc.export_docx().expect("export"),
+                &Options::default(),
+            ))
+            .expect("reload");
+            assert_eq!(
+                spacing(&word_doc, index),
+                spacing(&reloaded, index),
+                "{name}"
+            );
+        };
+        check(
+            "word-mac-probe-floating-horizontal-15.docx",
+            vec![HeadlessCommand::ConvertTableToText {
+                table_order_index: 1,
+                separator: "\t".to_string(),
+            }],
+            3,
+        );
+    }
+
+    #[test]
+    fn text_after_a_table_converts_to_a_table_and_back() {
+        // The conversions took a paragraph's ordinal among the body's
+        // paragraphs, cells' included, for its index among the body's
+        // elements. Once a table came before the text, converting it was
+        // refused as holding a table, and a later table turned back into
+        // text was joined at the wrong places.
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/blank.docx"),
+        )
+        .expect("read fixture");
+        let mut word_doc =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+        let texts = |word_doc: &WordDocument| -> Vec<String> {
+            (0..word_doc.paragraph_count())
+                .map(|index| {
+                    word_doc
+                        .paragraph(index)
+                        .map(|paragraph| {
+                            paragraph.runs.iter().map(|run| run.text.as_str()).collect()
+                        })
+                        .unwrap_or_default()
+                })
+                .collect()
+        };
+        let apply = |word_doc: &mut WordDocument, command: HeadlessCommand| {
+            apply_headless_commands_to_document(
+                word_doc,
+                &HeadlessEditRequest {
+                    commands: vec![command],
+                },
+            )
+            .map(|_| ())
+        };
+        apply(
+            &mut word_doc,
+            HeadlessCommand::InsertText {
+                paragraph: 0,
+                offset: 0,
+                text: "a\tb".to_string(),
+            },
+        )
+        .expect("typed");
+        for line in ["c", "d\te", "f\tg"] {
+            let last = word_doc.paragraph_count() - 1;
+            let end = texts(&word_doc)[last].len();
+            apply(
+                &mut word_doc,
+                HeadlessCommand::InsertParagraphBreak {
+                    paragraph: last,
+                    offset: end,
+                    count: 1,
+                },
+            )
+            .expect("new line");
+            apply(
+                &mut word_doc,
+                HeadlessCommand::InsertText {
+                    paragraph: last + 1,
+                    offset: 0,
+                    text: line.to_string(),
+                },
+            )
+            .expect("typed");
+        }
+        let convert = |start: usize, end: usize| HeadlessCommand::ConvertTextToTable {
+            start_paragraph: start,
+            end_paragraph: end,
+            separator: "\t".to_string(),
+            columns: None,
+        };
+        apply(&mut word_doc, convert(0, 0)).expect("first table");
+        assert_eq!(texts(&word_doc), ["a", "b", "c", "d\te", "f\tg"]);
+        apply(&mut word_doc, convert(3, 4)).expect("text after a table converts");
+        assert_eq!(texts(&word_doc)[3..7], ["d", "e", "f", "g"]);
+        apply(
+            &mut word_doc,
+            HeadlessCommand::ConvertTableToText {
+                table_order_index: 1,
+                separator: "\t".to_string(),
+            },
+        )
+        .expect("back to text");
+        assert_eq!(texts(&word_doc)[..5], ["a", "b", "c", "d\te", "f\tg"]);
+    }
+
+    #[test]
     fn an_edit_in_a_text_box_keeps_its_complex_field() {
         // document-variable-fields.docx's VML text box holds a DOCVARIABLE
         // field. Formatting, a comment or italics anywhere in that paragraph
