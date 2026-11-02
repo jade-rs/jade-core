@@ -16603,23 +16603,58 @@ impl WordDocument {
         text
     }
 
-    fn xml_descendant<'a>(element: &'a XmlElement, local_name: &str) -> Option<&'a XmlElement> {
+    fn is_bibliography_element(
+        element: &XmlElement,
+        local_name: &str,
+        ancestors: &[&XmlElement],
+    ) -> bool {
+        if Self::xml_local_name(&element.name) != local_name {
+            return false;
+        }
+        let declaration = element.name.split_once(':').map_or_else(
+            || "xmlns".to_string(),
+            |(prefix, _)| format!("xmlns:{prefix}"),
+        );
+        std::iter::once(element)
+            .chain(ancestors.iter().rev().copied())
+            .find_map(|scope| {
+                scope
+                    .attributes
+                    .iter()
+                    .find(|attribute| attribute.name == declaration)
+            })
+            .is_some_and(|attribute| attribute.value == BIBLIOGRAPHY_NAMESPACE)
+    }
+
+    fn xml_descendant<'a>(
+        element: &'a XmlElement,
+        local_name: &str,
+        ancestors: &mut Vec<&'a XmlElement>,
+    ) -> Option<&'a XmlElement> {
+        ancestors.push(element);
         for child in &element.children {
             let XmlNode::Element(child) = child else {
                 continue;
             };
-            if Self::xml_local_name(&child.name) == local_name {
+            if Self::is_bibliography_element(child, local_name, ancestors) {
+                ancestors.pop();
                 return Some(child);
             }
-            if let Some(found) = Self::xml_descendant(child, local_name) {
+            if let Some(found) = Self::xml_descendant(child, local_name, ancestors) {
+                ancestors.pop();
                 return Some(found);
             }
         }
+        ancestors.pop();
         None
     }
 
-    fn xml_descendant_text(element: &XmlElement, local_name: &str) -> Option<String> {
-        Self::xml_descendant(element, local_name)
+    fn xml_descendant_text<'a>(
+        element: &'a XmlElement,
+        local_name: &str,
+        ancestors: &[&'a XmlElement],
+    ) -> Option<String> {
+        Self::xml_descendant(element, local_name, &mut ancestors.to_vec())
             .map(Self::xml_element_text)
             .map(|value| value.trim().to_string())
             .filter(|value| !value.is_empty())
@@ -16672,10 +16707,7 @@ impl WordDocument {
             let Ok(parsed) = DocxXmlDocument::parse(&xml) else {
                 return false;
             };
-            Self::xml_local_name(&parsed.root().name) == "Sources"
-                && parsed.root().attributes.iter().any(|attribute| {
-                    attribute.name == "xmlns" || attribute.name.starts_with("xmlns:")
-                } && attribute.value == BIBLIOGRAPHY_NAMESPACE)
+            Self::is_bibliography_element(parsed.root(), "Sources", &[])
         })
     }
 
@@ -16696,34 +16728,45 @@ impl WordDocument {
             .children
             .iter()
             .filter_map(|child| match child {
-                XmlNode::Element(source) if Self::xml_local_name(&source.name) == "Source" => {
+                XmlNode::Element(source)
+                    if Self::is_bibliography_element(source, "Source", &[parsed.root()]) =>
+                {
                     Some(source)
                 }
                 _ => None,
             })
             .filter_map(|source| {
-                let tag = Self::xml_descendant_text(source, "Tag")?;
-                let source_type = Self::xml_descendant_text(source, "SourceType")
+                let tag = Self::xml_descendant_text(source, "Tag", &[parsed.root()])?;
+                let source_type = Self::xml_descendant_text(source, "SourceType", &[parsed.root()])
                     .unwrap_or_else(|| "Misc".to_string());
-                let author = Self::xml_descendant_text(source, "Corporate").unwrap_or_else(|| {
-                    let last = Self::xml_descendant_text(source, "Last").unwrap_or_default();
-                    let first = Self::xml_descendant_text(source, "First").unwrap_or_default();
-                    [last, first]
-                        .into_iter()
-                        .filter(|part| !part.is_empty())
-                        .collect::<Vec<_>>()
-                        .join(", ")
-                });
+                let author = Self::xml_descendant_text(source, "Corporate", &[parsed.root()])
+                    .unwrap_or_else(|| {
+                        let last = Self::xml_descendant_text(source, "Last", &[parsed.root()])
+                            .unwrap_or_default();
+                        let first = Self::xml_descendant_text(source, "First", &[parsed.root()])
+                            .unwrap_or_default();
+                        [last, first]
+                            .into_iter()
+                            .filter(|part| !part.is_empty())
+                            .collect::<Vec<_>>()
+                            .join(", ")
+                    });
                 Some(CitationSourceInfo {
                     tag,
                     source_type,
                     author,
-                    title: Self::xml_descendant_text(source, "Title").unwrap_or_default(),
-                    year: Self::xml_descendant_text(source, "Year").unwrap_or_default(),
-                    publisher: Self::xml_descendant_text(source, "Publisher")
-                        .or_else(|| Self::xml_descendant_text(source, "JournalName"))
-                        .or_else(|| Self::xml_descendant_text(source, "InternetSiteTitle")),
-                    url: Self::xml_descendant_text(source, "URL"),
+                    title: Self::xml_descendant_text(source, "Title", &[parsed.root()])
+                        .unwrap_or_default(),
+                    year: Self::xml_descendant_text(source, "Year", &[parsed.root()])
+                        .unwrap_or_default(),
+                    publisher: Self::xml_descendant_text(source, "Publisher", &[parsed.root()])
+                        .or_else(|| {
+                            Self::xml_descendant_text(source, "JournalName", &[parsed.root()])
+                        })
+                        .or_else(|| {
+                            Self::xml_descendant_text(source, "InternetSiteTitle", &[parsed.root()])
+                        }),
+                    url: Self::xml_descendant_text(source, "URL", &[parsed.root()]),
                 })
             })
             .collect()
@@ -16784,9 +16827,9 @@ impl WordDocument {
                     "citation source {name} must be at most {maximum} characters"
                 ));
             }
-            if value.chars().any(char::is_control) {
+            if !value.chars().all(Self::is_printable_xml_character) {
                 return Err(format!(
-                    "citation source {name} must not contain control characters"
+                    "citation source {name} must contain only printable XML characters"
                 ));
             }
         }
@@ -17003,7 +17046,7 @@ impl WordDocument {
         let heading = heading.trim();
         if heading.is_empty()
             || heading.chars().count() > 256
-            || heading.chars().any(char::is_control)
+            || !heading.chars().all(Self::is_printable_xml_character)
         {
             return Err(
                 "bibliography heading must contain 1 to 256 printable characters".to_string(),

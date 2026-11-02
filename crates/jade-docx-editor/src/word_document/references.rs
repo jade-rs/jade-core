@@ -65,6 +65,10 @@ impl FieldBlock {
     }
 }
 
+fn is_xml_character(character: char) -> bool {
+    matches!(character, '\u{9}' | '\u{a}' | '\u{d}' | '\u{20}'..='\u{d7ff}' | '\u{e000}'..='\u{fffd}' | '\u{10000}'..='\u{10ffff}')
+}
+
 /// Names of fields whose instruction and result the host authors as
 /// written; the engine evaluates none of them itself.
 pub(crate) fn authored_result_field(instruction: &str) -> bool {
@@ -111,6 +115,17 @@ pub struct CaptionOptions {
 }
 
 impl WordDocument {
+    pub(super) fn is_printable_xml_character(character: char) -> bool {
+        !character.is_control() && is_xml_character(character)
+    }
+
+    fn validate_field_text(text: &str) -> Result<(), String> {
+        if !text.chars().all(is_xml_character) {
+            return Err("field text must contain only valid XML characters".to_string());
+        }
+        Ok(())
+    }
+
     /// Whether a section's footnotes sit right under its text rather than
     /// at the bottom of the page (`w:footnotePr/w:pos`).
     pub fn footnote_beneath_text(&self, section: Option<usize>) -> bool {
@@ -589,9 +604,12 @@ impl WordDocument {
                 field_name(instruction)
             ));
         }
-        if instruction.chars().any(char::is_control) {
-            return Err("field instructions must not contain control characters".to_string());
+        if !instruction.chars().all(Self::is_printable_xml_character) {
+            return Err(
+                "field instructions must contain only printable XML characters".to_string(),
+            );
         }
+        Self::validate_field_text(display)?;
         if !self.is_body_paragraph_surface(at.paragraph) {
             return Err("fields can only be inserted in body paragraphs".to_string());
         }
@@ -714,6 +732,12 @@ impl WordDocument {
         instruction: Option<&str>,
         text: &str,
     ) -> Result<(), String> {
+        if instruction.is_some_and(|value| !value.chars().all(Self::is_printable_xml_character)) {
+            return Err(
+                "field instructions must contain only printable XML characters".to_string(),
+            );
+        }
+        Self::validate_field_text(text)?;
         let model = self
             .paragraph_mut(paragraph)
             .ok_or_else(|| "field paragraph is unavailable".to_string())?;
@@ -977,6 +1001,7 @@ impl WordDocument {
         lines: &[FieldBlockLine],
     ) -> Result<SelectionRange, String> {
         let instruction = Self::validate_field_block_instruction(instruction)?;
+        Self::validate_field_block_lines(lines)?;
         self.replace_field_block_content(block, |document, start, location, tab_twips| {
             document.insert_field_block_at(
                 start,
@@ -1142,6 +1167,7 @@ impl WordDocument {
         tab_twips: Option<i64>,
     ) -> Result<SelectionRange, String> {
         let instruction = Self::validate_field_block_instruction(instruction)?;
+        Self::validate_field_block_lines(lines)?;
         // An empty result still needs a paragraph to hold the field.
         let placeholder = [FieldBlockLine::default()];
         let lines = if lines.is_empty() {
@@ -1323,10 +1349,28 @@ impl WordDocument {
 
     fn validate_field_block_instruction(instruction: &str) -> Result<&str, String> {
         let instruction = instruction.trim();
-        if instruction.is_empty() || instruction.chars().any(char::is_control) {
+        if instruction.is_empty() || !instruction.chars().all(Self::is_printable_xml_character) {
             return Err("the field needs a printable instruction".to_string());
         }
         Ok(instruction)
+    }
+
+    fn validate_field_block_lines(lines: &[FieldBlockLine]) -> Result<(), String> {
+        for line in lines {
+            for text in [
+                Some(line.text.as_str()),
+                line.page.as_deref(),
+                line.separator.as_deref(),
+                line.leader.as_deref(),
+                line.style.as_deref(),
+            ]
+            .into_iter()
+            .flatten()
+            {
+                Self::validate_field_text(text)?;
+            }
+        }
+        Ok(())
     }
 
     // ---- moving top-level blocks ------------------------------------------
@@ -1441,6 +1485,8 @@ impl WordDocument {
         style_name: &str,
         selected_style: &str,
     ) -> Result<(), String> {
+        Self::validate_field_text(style_name)?;
+        Self::validate_field_text(selected_style)?;
         let path = self
             .bibliography_sources_part_path()
             .ok_or_else(|| "the document has no sources".to_string())?;
@@ -1492,8 +1538,9 @@ impl WordDocument {
             .iter()
             .position(|child| match child {
                 XmlNode::Element(source) => {
-                    Self::xml_local_name(&source.name) == "Source"
-                        && Self::xml_descendant_text(source, "Tag").as_deref() == Some(tag)
+                    Self::is_bibliography_element(source, "Source", &[parsed.root()])
+                        && Self::xml_descendant_text(source, "Tag", &[parsed.root()]).as_deref()
+                            == Some(tag)
                 }
                 _ => false,
             })
@@ -1512,8 +1559,76 @@ impl WordDocument {
         tag: &str,
         source: CitationSourceInfo,
     ) -> Result<(), String> {
-        self.remove_citation_source(tag)?;
-        self.add_citation_source(source)
+        let source = Self::normalize_citation_source(source)?;
+        let path = self
+            .bibliography_sources_part_path()
+            .ok_or_else(|| "the document has no sources".to_string())?;
+        let original = self
+            .read_xml_part_content(&path)
+            .ok_or_else(|| "bibliography source part is unavailable".to_string())?;
+        let parsed = DocxXmlDocument::parse(&original).map_err(|error| error.to_string())?;
+        let target = parsed
+            .root()
+            .children
+            .iter()
+            .filter_map(|node| match node {
+                XmlNode::Element(element) => Some(element),
+                _ => None,
+            })
+            .position(|element| {
+                Self::is_bibliography_element(element, "Source", &[parsed.root()])
+                    && Self::xml_descendant_text(element, "Tag", &[parsed.root()]).as_deref()
+                        == Some(tag)
+            })
+            .ok_or_else(|| format!("citation source {tag} was not found"))?;
+        if source.tag != tag
+            && self
+                .citation_sources()
+                .iter()
+                .any(|entry| entry.tag == source.tag)
+        {
+            return Err(format!(
+                "citation source tag already exists: {}",
+                source.tag
+            ));
+        }
+        let prefix = parsed
+            .root()
+            .name
+            .strip_suffix(":Sources")
+            .unwrap_or_default();
+        let entry = Self::bibliography_source_entry_xml(&source, prefix);
+        let mut reader = quick_xml::Reader::from_str(&original);
+        let (mut depth, mut child) = (0, 0);
+        loop {
+            let start = reader.buffer_position() as usize;
+            match reader.read_event().map_err(|error| error.to_string())? {
+                quick_xml::events::Event::Start(element) => {
+                    if depth == 1 {
+                        if child == target {
+                            reader
+                                .read_to_end(element.name())
+                                .map_err(|error| error.to_string())?;
+                            let end = reader.buffer_position() as usize;
+                            let mut updated = String::with_capacity(original.len() + entry.len());
+                            updated.push_str(&original[..start]);
+                            updated.push_str(&entry);
+                            updated.push_str(&original[end..]);
+                            self.upsert_xml_part_content(&path, updated);
+                            return Ok(());
+                        }
+                        child += 1;
+                    }
+                    depth += 1;
+                }
+                quick_xml::events::Event::Empty(_) if depth == 1 => child += 1,
+                quick_xml::events::Event::End(_) => depth -= 1,
+                quick_xml::events::Event::Eof => {
+                    return Err("citation source XML is unavailable".to_string());
+                }
+                _ => {}
+            }
+        }
     }
 
     // ---- tables of contents ------------------------------------------------

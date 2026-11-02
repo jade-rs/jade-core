@@ -170,6 +170,7 @@ impl Command for InsertBibliographyCommand {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::commands::document_edit::DocumentEditCommand;
     use crate::commands::{CommandContext, CommandExecutor};
     use crate::headless_api::apply_snapshot_headless_commands_with_executor_to_document;
     use crate::word_document::WordDocument;
@@ -264,8 +265,157 @@ mod tests {
         }
     }
 
+    #[derive(Clone, Debug)]
+    enum CatalogOperation {
+        Add(u8, u8),
+        Replace(u8, u8, u8),
+        Remove(u8),
+        Invalid(u8, char),
+        Undo,
+        Redo,
+        Reload,
+    }
+
+    fn catalog_operations() -> impl Strategy<Value = CatalogOperation> {
+        prop_oneof![
+            5 => (0u8..5, 0u8..6).prop_map(|(key, value)| CatalogOperation::Add(key, value)),
+            5 => (0u8..5, 0u8..5, 0u8..6).prop_map(|(key, new_key, value)| CatalogOperation::Replace(key, new_key, value)),
+            3 => (0u8..5).prop_map(CatalogOperation::Remove),
+            3 => (0u8..6, prop::sample::select(vec!['\0', '\u{b}', '\u{fffe}', '\u{ffff}'])).prop_map(|(field, character)| CatalogOperation::Invalid(field, character)),
+            2 => Just(CatalogOperation::Undo),
+            2 => Just(CatalogOperation::Redo),
+            1 => Just(CatalogOperation::Reload),
+        ]
+    }
+
+    fn catalog_source(key: u8, value: u8) -> CitationSourceInfo {
+        let character = [
+            '\u{d7ff}',
+            '\u{e000}',
+            '\u{fffd}',
+            '\u{10000}',
+            '\u{10ffff}',
+            '😀',
+        ][usize::from(value)];
+        source(
+            format!("Source{key}"),
+            "Book".into(),
+            "著者 & <名>".into(),
+            format!("題名{value}{character}"),
+            "2026".into(),
+        )
+    }
+
     proptest! {
         #![proptest_config(ProptestConfig { cases: 64, ..ProptestConfig::default() })]
+
+        #[test]
+        fn citation_catalog_matches_history_model_after_every_operation(
+            operations in proptest::collection::vec(catalog_operations(), 1..49),
+            prefix in prop::sample::select(vec!["", "b:", "bib:"]),
+        ) {
+            let namespace = "http://schemas.openxmlformats.org/officeDocument/2006/bibliography";
+            let declaration = if prefix.is_empty() { "xmlns".into() } else { format!("xmlns:{}", prefix.trim_end_matches(':')) };
+            let catalog = format!("<{prefix}Sources {declaration}=\"{namespace}\" StyleName=\"Custom\"/>");
+            let foreign = format!("<x:Sources xmlns:x=\"urn:foreign\" xmlns:b=\"{namespace}\"><x:Source><x:Tag>Foreign</x:Tag></x:Source></x:Sources>");
+            let relationships = concat!(
+                "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\">",
+                "<Relationship Id=\"rId7\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/customXml\" Target=\"../customXml/item1.xml\"/>",
+                "<Relationship Id=\"rId8\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/customXml\" Target=\"../customXml/item2.xml\"/>",
+                "</Relationships>"
+            );
+            let bytes = build_docx("body", &[("customXml/item1.xml", &foreign), ("customXml/item2.xml", &catalog), ("word/_rels/document.xml.rels", relationships)]);
+            let mut document = executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+            let mut selection = Some(SelectionRange::collapsed(TextPosition::new(0, 2)));
+            let expected_selection = selection;
+            let mut commands = CommandExecutor::new();
+            let mut model = Vec::<CitationSourceInfo>::new();
+            let mut undo = Vec::<Vec<CitationSourceInfo>>::new();
+            let mut redo = Vec::<Vec<CitationSourceInfo>>::new();
+            for (step, operation) in operations.iter().enumerate() {
+                let before = document.export_docx().expect("before");
+                let previous = model.clone();
+                let mut context = CommandContext::new(&mut document, &mut selection);
+                let mutation = match operation {
+                    CatalogOperation::Add(key, value) => {
+                        let entry = catalog_source(*key, *value);
+                        let expected = !model.iter().any(|source| source.tag == entry.tag);
+                        if expected { model.push(entry.clone()); }
+                        let result = commands.execute(Box::new(AddCitationSourceCommand::new(entry)), &mut context);
+                        prop_assert_eq!(result.is_ok(), expected, "step {}: {:?}", step, operation);
+                        Some(expected)
+                    }
+                    CatalogOperation::Replace(key, new_key, value) => {
+                        let tag = format!("Source{key}");
+                        let entry = catalog_source(*new_key, *value);
+                        let index = model.iter().position(|source| source.tag == tag);
+                        let expected = index.is_some() && (key == new_key || !model.iter().any(|source| source.tag == entry.tag));
+                        if expected { model[index.expect("model source")] = entry.clone(); }
+                        let result = commands.execute(Box::new(DocumentEditCommand::new("replace_source", Box::new(move |document, _| document.replace_citation_source(&tag, entry.clone())))), &mut context);
+                        prop_assert_eq!(result.is_ok(), expected, "step {}: {:?}", step, operation);
+                        Some(expected)
+                    }
+                    CatalogOperation::Remove(key) => {
+                        let tag = format!("Source{key}");
+                        let index = model.iter().position(|source| source.tag == tag);
+                        let expected = index.is_some();
+                        if let Some(index) = index { model.remove(index); }
+                        let result = commands.execute(Box::new(DocumentEditCommand::new("remove_source", Box::new(move |document, _| document.remove_citation_source(&tag)))), &mut context);
+                        prop_assert_eq!(result.is_ok(), expected, "step {}: {:?}", step, operation);
+                        Some(expected)
+                    }
+                    CatalogOperation::Invalid(field, character) => {
+                        let mut entry = catalog_source(9, 0);
+                        let invalid = format!("a{character}b");
+                        match field {
+                            0 => entry.tag = invalid,
+                            1 => entry.author = invalid,
+                            2 => entry.title = invalid,
+                            3 => entry.year = invalid,
+                            4 => entry.publisher = Some(invalid),
+                            _ => entry.url = Some(invalid),
+                        }
+                        prop_assert!(commands.execute(Box::new(AddCitationSourceCommand::new(entry)), &mut context).is_err());
+                        Some(false)
+                    }
+                    CatalogOperation::Undo => {
+                        let expected = undo.pop();
+                        prop_assert_eq!(commands.undo(&mut context).expect("undo"), expected.is_some());
+                        if let Some(state) = expected { redo.push(model); model = state; }
+                        None
+                    }
+                    CatalogOperation::Redo => {
+                        let expected = redo.pop();
+                        prop_assert_eq!(commands.redo(&mut context).expect("redo"), expected.is_some());
+                        if let Some(state) = expected { undo.push(model); model = state; }
+                        None
+                    }
+                    CatalogOperation::Reload => None,
+                };
+                if let Some(succeeded) = mutation {
+                    if succeeded { undo.push(previous); redo.clear(); }
+                    else { prop_assert_eq!(context.document.export_docx().expect("rejected"), before); }
+                }
+                let exported = context.document.export_docx().expect("export");
+                prop_assert_eq!(context.document.citation_sources(), model.clone(), "step {}: {:?}", step, operation);
+                prop_assert_eq!(*context.selection, expected_selection);
+                prop_assert_eq!(zip_part(&exported, "customXml/item1.xml"), foreign.clone());
+                let reloaded = executor::block_on(WordDocument::load(&exported, &Options::default())).expect("reload");
+                prop_assert_eq!(reloaded.citation_sources(), model.clone(), "reload step {}: {:?}", step, operation);
+                if let Some(directory) = std::env::var_os("JADE_FIELD_PBT_EXPORT_DIR") {
+                    use std::sync::atomic::{AtomicUsize, Ordering};
+                    static NEXT: AtomicUsize = AtomicUsize::new(0);
+                    std::fs::create_dir_all(&directory).expect("create export directory");
+                    std::fs::write(std::path::Path::new(&directory).join(format!("catalog-sequence-{:06}.docx", NEXT.fetch_add(1, Ordering::Relaxed))), &exported).expect("write PBT export");
+                }
+                if matches!(operation, CatalogOperation::Reload) {
+                    document = reloaded;
+                    commands = CommandExecutor::new();
+                    undo.clear();
+                    redo.clear();
+                }
+            }
+        }
 
         #[test]
         fn citation_catalog_text_and_bibliography_round_trip_across_unicode_run_boundaries(
@@ -496,6 +646,315 @@ mod tests {
                     xml
                 );
             }
+        }
+    }
+
+    #[test]
+    fn replacing_sources_is_atomic_and_preserves_catalog_order_and_unrelated_xml() {
+        let namespace = "http://schemas.openxmlformats.org/officeDocument/2006/bibliography";
+        for prefix in ["", "b:", "bib:"] {
+            let declaration = if prefix.is_empty() {
+                "xmlns".into()
+            } else {
+                format!("xmlns:{}", prefix.trim_end_matches(':'))
+            };
+            let first = format!("<{prefix}Source><{prefix}Tag>A</{prefix}Tag><{prefix}SourceType>Book</{prefix}SourceType><{prefix}Title>First</{prefix}Title></{prefix}Source>");
+            let last = format!("<{prefix}Source><{prefix}Tag>B</{prefix}Tag><{prefix}SourceType>Book</{prefix}SourceType><{prefix}Title>Last</{prefix}Title><{prefix}Volume>42</{prefix}Volume></{prefix}Source>");
+            let catalog = format!("<?xml version=\"1.0\"?><{prefix}Sources {declaration}=\"{namespace}\" StyleName=\"Custom\"><!--before-->{first}<!--between--><x:Extra xmlns:x=\"urn:foreign\"/>{last}</{prefix}Sources><!--after-->");
+            let bytes = build_docx("body", &[("customXml/item1.xml", &catalog)]);
+            let mut document =
+                executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+            let baseline = document.export_docx().expect("baseline");
+            for (tag, mut replacement) in [
+                ("A", catalog_source(1, 0)),
+                ("A", catalog_source(2, 0)),
+                ("Missing", catalog_source(3, 0)),
+            ] {
+                if replacement.tag == "Source1" {
+                    replacement.tag = "B".into();
+                }
+                if replacement.tag == "Source2" {
+                    replacement.title = "a\u{ffff}b".into();
+                }
+                assert!(document.replace_citation_source(tag, replacement).is_err());
+                assert_eq!(document.export_docx().expect("rejected export"), baseline);
+            }
+            let mut replacement = catalog_source(4, 0);
+            replacement.tag = "Renamed".into();
+            document
+                .replace_citation_source("A", replacement.clone())
+                .expect("replace first");
+            let exported = document.export_docx().expect("export");
+            let xml = zip_part(&exported, "customXml/item1.xml");
+            let before = catalog.split_once(&first).expect("first entry");
+            assert!(xml.starts_with(before.0));
+            assert!(xml.ends_with(before.1));
+            let reloaded = executor::block_on(WordDocument::load(&exported, &Options::default()))
+                .expect("reload");
+            let sources = reloaded.citation_sources();
+            assert_eq!(sources[0], replacement);
+            assert_eq!(sources[1].tag, "B");
+            assert!(xml.contains(&last));
+            document
+                .replace_citation_source("B", catalog_source(0, 1))
+                .expect("replace last after empty foreign element");
+            assert_eq!(
+                document
+                    .citation_sources()
+                    .iter()
+                    .map(|source| source.tag.as_str())
+                    .collect::<Vec<_>>(),
+                ["Renamed", "Source0"]
+            );
+        }
+    }
+
+    #[test]
+    fn authored_fields_reject_invalid_xml_before_changing_the_document() {
+        use crate::word_document::FieldBlockLine;
+        for character in ['\0', '\u{b}', '\u{fffe}', '\u{ffff}'] {
+            let bytes = build_docx("body", &[]);
+            let mut document =
+                executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+            let at = TextPosition::new(0, 2);
+            document
+                .insert_inline_field(at, "CITATION Source", "citation")
+                .expect("inline field");
+            document
+                .add_citation_source(catalog_source(0, 0))
+                .expect("source");
+            document
+                .insert_field_block(
+                    0,
+                    "BIBLIOGRAPHY",
+                    &[FieldBlockLine {
+                        text: "entry".into(),
+                        ..Default::default()
+                    }],
+                )
+                .expect("field block");
+            let inline = document.inline_fields("CITATION").remove(0);
+            let block = document
+                .field_blocks()
+                .into_iter()
+                .find(|block| block.name() == "BIBLIOGRAPHY")
+                .expect("block");
+            let baseline = document.export_docx().expect("baseline");
+            let invalid = format!("a{character}b");
+            let instruction = format!("CITATION {invalid}");
+            assert!(document
+                .insert_inline_field(at, &instruction, "text")
+                .is_err());
+            assert!(document
+                .insert_inline_field(at, "CITATION Source", &invalid)
+                .is_err());
+            assert!(document
+                .set_inline_field(inline.paragraph, inline.run, Some(&instruction), "text")
+                .is_err());
+            assert!(document
+                .set_inline_field(inline.paragraph, inline.run, None, &invalid)
+                .is_err());
+            assert!(document.insert_field_block(0, &instruction, &[]).is_err());
+            assert!(document
+                .replace_field_block(&block, &instruction, &[])
+                .is_err());
+            for field in 0..5 {
+                let mut line = FieldBlockLine {
+                    text: "entry".into(),
+                    page: Some("1".into()),
+                    ..Default::default()
+                };
+                match field {
+                    0 => line.text = invalid.clone(),
+                    1 => line.page = Some(invalid.clone()),
+                    2 => line.separator = Some(invalid.clone()),
+                    3 => line.leader = Some(invalid.clone()),
+                    _ => line.style = Some(invalid.clone()),
+                }
+                assert!(document
+                    .insert_field_block(0, "BIBLIOGRAPHY", &[line.clone()])
+                    .is_err());
+                assert!(document
+                    .replace_field_block(&block, "BIBLIOGRAPHY", &[line])
+                    .is_err());
+            }
+            assert!(document
+                .set_bibliography_style(&invalid, "APA.xsl")
+                .is_err());
+            assert!(document.set_bibliography_style("APA", &invalid).is_err());
+            assert_eq!(
+                document.export_docx().expect("rejected operations"),
+                baseline
+            );
+        }
+    }
+
+    #[test]
+    fn citation_commands_reject_xml_noncharacters_without_mutating_history() {
+        for character in ['\u{fffe}', '\u{ffff}'] {
+            for field in 0..7 {
+                let bytes = build_docx("body", &[]);
+                let mut document =
+                    executor::block_on(WordDocument::load(&bytes, &Options::default()))
+                        .expect("load document");
+                let mut selection = Some(SelectionRange::collapsed(TextPosition::new(0, 2)));
+                let mut commands = CommandExecutor::new();
+                let mut context = CommandContext::new(&mut document, &mut selection);
+                let valid = source(
+                    "Valid".into(),
+                    "Book".into(),
+                    "著者".into(),
+                    "題名".into(),
+                    "2026".into(),
+                );
+                commands
+                    .execute(
+                        Box::new(AddCitationSourceCommand::new(valid.clone())),
+                        &mut context,
+                    )
+                    .expect("add valid source");
+                let baseline = context.document.export_docx().expect("baseline export");
+                let original_selection = *context.selection;
+                let mut invalid = source(
+                    "Invalid".into(),
+                    "Book".into(),
+                    "著者".into(),
+                    "題名".into(),
+                    "2026".into(),
+                );
+                let text = format!("a{character}b");
+                match field {
+                    0 => invalid.tag = text.clone(),
+                    1 => invalid.author = text.clone(),
+                    2 => invalid.title = text.clone(),
+                    3 => invalid.year = text.clone(),
+                    4 => invalid.publisher = Some(text.clone()),
+                    5 => invalid.url = Some(text.clone()),
+                    _ => {}
+                }
+                let command: Box<dyn Command> = if field == 6 {
+                    Box::new(InsertBibliographyCommand::new(0, text))
+                } else {
+                    Box::new(AddCitationSourceCommand::new(invalid))
+                };
+                let result = commands.execute(command, &mut context);
+                assert!(result.is_err(), "accepted {character:?} in field {field}");
+                assert_eq!(
+                    context.document.export_docx().expect("rejected export"),
+                    baseline
+                );
+                assert_eq!(*context.selection, original_selection);
+                assert!(commands.undo(&mut context).expect("undo valid addition"));
+                assert!(context.document.citation_sources().is_empty());
+                assert!(commands.redo(&mut context).expect("redo valid addition"));
+                assert_eq!(context.document.citation_sources(), vec![valid]);
+            }
+        }
+    }
+
+    #[test]
+    fn bibliography_children_resolve_inherited_and_shadowed_namespaces() {
+        let namespace = "http://schemas.openxmlformats.org/officeDocument/2006/bibliography";
+        for prefix in ["", "b:", "bib:"] {
+            let declaration = if prefix.is_empty() {
+                "xmlns".into()
+            } else {
+                format!("xmlns:{}", prefix.trim_end_matches(':'))
+            };
+            let foreign = "<x:Source xmlns:x=\"urn:foreign\"><x:Tag>A</x:Tag><x:Title>Foreign</x:Title></x:Source>";
+            let shadowed = "<s:Source xmlns:s=\"urn:foreign\"><s:Tag>A</s:Tag></s:Source>";
+            let actual = format!("<c:Source xmlns:c=\"{namespace}\" xmlns:x=\"urn:foreign\"><x:Tag>Wrong</x:Tag><x:Title>Wrong</x:Title><c:Tag>A</c:Tag><c:SourceType>Book</c:SourceType><c:Title>Actual</c:Title><c:Author><c:Author xmlns:c=\"urn:foreign\"><c:Last>Wrong</c:Last></c:Author><c:Author><c:NameList><c:Person><c:Last>Author</c:Last></c:Person></c:NameList></c:Author></c:Author></c:Source>");
+            let catalog = format!("<{prefix}Sources {declaration}=\"{namespace}\">{foreign}{shadowed}{actual}</{prefix}Sources>");
+            let bytes = build_docx("body", &[("customXml/item1.xml", &catalog)]);
+            let mut document =
+                executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+            let sources = document.citation_sources();
+            assert_eq!(sources.len(), 1);
+            assert_eq!(sources[0].tag, "A");
+            assert_eq!(sources[0].title, "Actual");
+            assert_eq!(sources[0].author, "Author");
+            let replacement = catalog_source(0, 0);
+            document
+                .replace_citation_source("A", replacement.clone())
+                .expect("replace namespaced source");
+            let exported = document.export_docx().expect("export");
+            let xml = zip_part(&exported, "customXml/item1.xml");
+            assert!(xml.contains(foreign));
+            assert!(xml.contains(shadowed));
+            let mut reloaded =
+                executor::block_on(WordDocument::load(&exported, &Options::default()))
+                    .expect("reload");
+            assert_eq!(reloaded.citation_sources(), vec![replacement]);
+            reloaded
+                .remove_citation_source("Source0")
+                .expect("remove actual source");
+            assert!(reloaded.citation_sources().is_empty());
+            assert!(reloaded.remove_citation_source("A").is_err());
+            let xml = zip_part(
+                &reloaded.export_docx().expect("removed export"),
+                "customXml/item1.xml",
+            );
+            assert!(xml.contains(foreign));
+            assert!(xml.contains(shadowed));
+        }
+    }
+
+    #[test]
+    fn foreign_sources_roots_are_not_bibliography_catalogs() {
+        let namespace = "http://schemas.openxmlformats.org/officeDocument/2006/bibliography";
+        for root in ["Sources", "x:Sources"] {
+            let foreign = format!(
+                "<{root} xmlns=\"urn:foreign\" xmlns:x=\"urn:foreign\" xmlns:b=\"{namespace}\"><x:Source><x:Tag>Foreign</x:Tag></x:Source></{root}>"
+            );
+            let catalog = format!("<bib:Sources xmlns:bib=\"{namespace}\"/>");
+            let bytes = build_docx(
+                "body",
+                &[
+                    ("customXml/item1.xml", &foreign),
+                    ("customXml/item2.xml", &catalog),
+                ],
+            );
+            let mut document = executor::block_on(WordDocument::load(&bytes, &Options::default()))
+                .expect("load custom XML");
+            assert!(
+                document.citation_sources().is_empty(),
+                "read unrelated custom XML"
+            );
+            let expected = source(
+                "New".into(),
+                "Book".into(),
+                "著者".into(),
+                "題名".into(),
+                "2026".into(),
+            );
+            let mut selection = None;
+            let mut commands = CommandExecutor::new();
+            let mut context = CommandContext::new(&mut document, &mut selection);
+            commands
+                .execute(
+                    Box::new(AddCitationSourceCommand::new(expected.clone())),
+                    &mut context,
+                )
+                .expect("append actual bibliography");
+            let exported = context.document.export_docx().expect("export");
+            assert_eq!(zip_part(&exported, "customXml/item1.xml"), foreign);
+            assert!(zip_part(&exported, "customXml/item2.xml").contains("<bib:Tag>New</bib:Tag>"));
+            let reloaded = executor::block_on(WordDocument::load(&exported, &Options::default()))
+                .expect("reload");
+            assert_eq!(reloaded.citation_sources(), vec![expected]);
+            assert!(commands.undo(&mut context).expect("undo"));
+            assert_eq!(
+                zip_part(
+                    &context.document.export_docx().expect("undo export"),
+                    "customXml/item2.xml"
+                ),
+                catalog
+            );
+            assert!(commands.redo(&mut context).expect("redo"));
+            assert_eq!(
+                context.document.export_docx().expect("redo export"),
+                exported
+            );
         }
     }
 
