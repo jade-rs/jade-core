@@ -1772,16 +1772,18 @@ pub fn punctuation_compression_adjustment(
     script: ScriptCategory,
     glyph_width: f64,
 ) -> f64 {
-    if !paragraph_style.enable_line_break_rules {
+    // Mac never compresses mid-line punctuation, regardless of the stored
+    // Windows setting. Avoid inspecting that setting for every Mac glyph.
+    if !paragraph_style.enable_line_break_rules
+        || !crate::line_metrics::word_compresses_mid_line_punctuation(paragraph_style.word_platform)
+    {
         return 0.0;
     }
     let control = paragraph_style
         .east_asian_rules
         .character_spacing_control
         .as_deref();
-    if !compresses_punctuation(control)
-        || !crate::line_metrics::word_compresses_mid_line_punctuation(paragraph_style.word_platform)
-    {
+    if !compresses_punctuation(control) {
         return 0.0;
     }
     if script != ScriptCategory::EastAsia {
@@ -18031,6 +18033,53 @@ mod tests {
         crate::line_metrics::set_word_layout_platform(
             crate::line_metrics::WordLayoutPlatform::Windows,
         );
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig {
+            cases: 256,
+            rng_seed: proptest::test_runner::RngSeed::Fixed(20261102),
+            ..ProptestConfig::default()
+        })]
+
+        #[test]
+        fn mac_mid_line_punctuation_is_never_compressed(
+            enabled in any::<bool>(),
+            control in prop::option::of(prop_oneof![
+                Just("compressPunctuation".to_owned()),
+                Just("compressPunctuationAndJapaneseKana".to_owned()),
+                Just("doNotCompress".to_owned()),
+                ".{0,64}",
+            ]),
+            characters in prop_oneof![
+                Just(vec!['、']),
+                Just(vec!['あ']),
+                proptest::collection::vec(prop_oneof![
+                    Just('、'), Just('。'), Just('あ'), Just('カ'), any::<char>(),
+                ], 0..16),
+            ],
+            script in proptest::sample::select(vec![
+                ScriptCategory::Latin, ScriptCategory::EastAsia, ScriptCategory::Complex,
+            ]),
+            width in any::<f64>(),
+        ) {
+            let paragraph = ParagraphStyle {
+                enable_line_break_rules: enabled,
+                word_platform: crate::line_metrics::WordLayoutPlatform::Mac,
+                east_asian_rules: EastAsianLineBreakingRules {
+                    character_spacing_control: control,
+                    ..EastAsianLineBreakingRules::default()
+                },
+                ..ParagraphStyle::default()
+            };
+            let text: String = characters.into_iter().collect();
+            // Word's Mac behavior is independent of the Windows compression
+            // setting, script, glyph width (including non-finite input), and text.
+            prop_assert_eq!(
+                punctuation_compression_adjustment(&paragraph, &text, script, width).to_bits(),
+                0.0_f64.to_bits(),
+            );
+        }
     }
 
     #[test]
