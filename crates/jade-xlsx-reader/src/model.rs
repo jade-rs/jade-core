@@ -301,6 +301,9 @@ pub struct Sheet {
     /// the file, its `TABLE` on the first.
     #[serde(default)]
     pub data_tables: Vec<DataTable>,
+    /// The What-If scenarios the Scenario Manager keeps on the sheet.
+    #[serde(default)]
+    pub scenarios: Option<crate::scenarios::Scenarios>,
     /// The furigana Excel saved with text cells (`<rPh>`), as the reading
     /// PHONETIC returns: 山田太郎 with ヤマダ and タロウ reads ヤマダタロウ.
     #[serde(default)]

@@ -31,6 +31,7 @@ mod page_setup;
 mod pivots;
 mod protection;
 mod range_authentication;
+mod scenarios;
 pub use range_authentication::{
     RangeAuthContext, RangeAuthentication, RangeEditRequirement, RangeUnlockCandidate,
     RangeUnlockStatus,

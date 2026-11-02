@@ -119,6 +119,7 @@ pub(crate) fn parse_sheet_noting_order(
         shapes: Vec::new(),
         array_formulas: Vec::new(),
         data_tables: Vec::new(),
+        scenarios: crate::scenarios::parse(xml)?,
         phonetic_readings: Default::default(),
         rich_text: Default::default(),
         tab_color: None,

@@ -1780,6 +1780,7 @@ pub fn relayout_rows(
         hyperlinks: Vec::new(),
         comments: Vec::new(),
         data_tables: Vec::new(),
+        scenarios: None,
         data_validations: sheet.data_validations.clone(),
         conditional_formats: Vec::new(),
         default_column_width_chars: sheet.default_column_width_chars,
