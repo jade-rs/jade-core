@@ -2126,6 +2126,33 @@ pub struct Run {
 }
 
 impl Run {
+    /// Plain-text snapshot of this run's saved or structurally resolved result.
+    /// This does not evaluate fields that require live page geometry, and must
+    /// not be used for editable paragraph offsets: computed fields occupy no
+    /// characters in `Run::text`.
+    pub fn cached_display_text(&self) -> &str {
+        let Some(field) = &self.field else {
+            return &self.text;
+        };
+        if matches!(
+            field.kind.base_kind(),
+            RunFieldKind::NonDisplay { .. } | RunFieldKind::Ask { .. } | RunFieldKind::Set { .. }
+        ) {
+            return "";
+        }
+        if field.kind.keeps_result_in_run_text() {
+            return &self.text;
+        }
+        if field.kind.is_locked() {
+            return field.cached_text.as_deref().unwrap_or_default();
+        }
+        field
+            .resolved_value
+            .as_deref()
+            .or(field.cached_text.as_deref())
+            .unwrap_or(&self.text)
+    }
+
     /// Whether this run's glyph metrics must be excluded from paragraph line
     /// height. Word's `SYMBOL \h` switch is intentionally visual-only: a large
     /// symbol may overlap neighbouring leading instead of expanding the line.
@@ -4040,6 +4067,67 @@ impl TextBoxBorderStyle {
 
 #[cfg(test)]
 mod tests {
+
+    #[test]
+    fn text_snapshots_include_computed_fields_without_changing_editable_text() {
+        use super::{Run, RunField, RunFieldKind};
+        let mut run: Run = serde_json::from_value(serde_json::json!({
+            "text": "edited", "properties": null, "image": null,
+            "text_box": null, "field": null
+        }))
+        .unwrap();
+        assert_eq!(run.cached_display_text(), "edited");
+        run.field = Some(RunField {
+            kind: RunFieldKind::Unsupported {
+                instruction: "CITATION Source1".into(),
+            },
+            source_field_id: None,
+            cached_text: Some("saved".into()),
+            resolved_value: Some("resolved".into()),
+            word_mac_body_result: None,
+        });
+        assert_eq!(run.cached_display_text(), "resolved");
+        run.field.as_mut().unwrap().resolved_value = Some(String::new());
+        assert_eq!(run.cached_display_text(), "");
+        run.field.as_mut().unwrap().resolved_value = None;
+        assert_eq!(run.cached_display_text(), "saved");
+        run.field.as_mut().unwrap().cached_text = None;
+        assert_eq!(run.cached_display_text(), "edited");
+        for kind in [RunFieldKind::PageNumber, RunFieldKind::NumPages] {
+            let field = run.field.as_mut().unwrap();
+            field.kind = kind.with_lock(true);
+            field.cached_text = Some("frozen".into());
+            field.resolved_value = Some("stale".into());
+            assert_eq!(run.cached_display_text(), "frozen");
+        }
+        for (instruction, expected) in [
+            ("FORMTEXT", "edited"),
+            ("HYPERLINK https://example.test", "edited"),
+            ("MERGEFIELD name", "edited"),
+            ("FILLIN prompt", "edited"),
+            ("REF mark", "edited"),
+            ("PAGEREF mark", "edited"),
+            ("NOTEREF mark", "edited"),
+            ("PRIVATE hidden", ""),
+            ("ADDIN hidden", ""),
+            ("ASK mark prompt", ""),
+            ("SET mark value", ""),
+        ] {
+            let field = run.field.as_mut().unwrap();
+            field.kind =
+                crate::parser::DocumentParser::parse_field_instruction(instruction).unwrap();
+            for locked in [false, true] {
+                run.field.as_mut().unwrap().kind =
+                    run.field.as_ref().unwrap().kind.clone().with_lock(locked);
+                assert_eq!(
+                    run.cached_display_text(),
+                    expected,
+                    "{instruction}, locked={locked}"
+                );
+            }
+        }
+        assert_eq!(run.text, "edited");
+    }
 
     #[test]
     #[cfg(target_pointer_width = "64")]

@@ -403,25 +403,10 @@ mod stateful {
         let reopened = block_on(WordDocument::load(&applied, &Options::default())).unwrap();
         assert_eq!(reopened.inline_fields("CITATION").len(), 1);
         assert_eq!(reopened.field_blocks().len(), 1);
-        let text = |document: &WordDocument, index| {
-            document
-                .paragraph(index)
-                .unwrap()
-                .runs
-                .iter()
-                .map(|run| {
-                    run.field
-                        .as_ref()
-                        .and_then(|field| {
-                            field
-                                .resolved_value
-                                .as_deref()
-                                .or(field.cached_text.as_deref())
-                        })
-                        .unwrap_or(&run.text)
-                })
-                .collect::<String>()
-        };
+        let text = |document: &WordDocument, index| document.body_paragraph_text(index).unwrap();
+        for index in 0..3 {
+            assert_eq!(text(&reopened, index), text(&document, index));
+        }
         assert_eq!(text(&reopened, 0), "before[1]after");
         assert_eq!(text(&reopened, 1), "References");
         assert_eq!(
@@ -990,6 +975,144 @@ mod stateful {
     }
 
     #[test]
+    fn locked_citations_keep_source_links_numbering_and_cached_results() {
+        use jade_docx_editor::fields::FieldScope;
+        for combined in [false, true] {
+            let mut session = Session::blank();
+            for tag in ["Other", "One", "Two"] {
+                session.add_source(citation_source(tag)).unwrap();
+            }
+            session.insert_citation("Other").unwrap();
+            let instruction = if combined {
+                r#"CITATION "One" \l 1041 \m "Two""#
+            } else {
+                r#"CITATION "One" \l 1041"#
+            };
+            session.selection = Some(
+                session
+                    .document
+                    .insert_inline_field(
+                        TextPosition::new(0, 0),
+                        instruction,
+                        "Word's saved citation",
+                    )
+                    .unwrap(),
+            );
+            session.caret(0);
+            session.lock_fields(true).unwrap();
+            assert!(session.selected_fields()[0].locked);
+            let bytes = session.document.export_docx().unwrap();
+            session.document = block_on(WordDocument::load(&bytes, &Options::default())).unwrap();
+            let tags = if combined {
+                vec!["One", "Two", "Other"]
+            } else {
+                vec!["One", "Other"]
+            };
+            assert_eq!(session.cited_tags(), tags);
+            let before = session.document.export_docx().unwrap();
+            let selection = session.selection;
+            for tag in tags {
+                assert!(session.delete_source(tag).is_err());
+                assert_eq!(session.document.export_docx().unwrap(), before);
+                assert_eq!(session.selection, selection);
+            }
+            session
+                .set_bibliography_style(BibliographyStyle::Ieee)
+                .unwrap();
+            let number = if combined { 3 } else { 2 };
+            assert_eq!(
+                session.document.body_paragraph_text(0).unwrap(),
+                format!("Word's saved citation[{number}]")
+            );
+            let before_rename = session.document.export_docx().unwrap();
+            let mut replacement = citation_source("Renamed tag");
+            replacement.author = "Jones, Jane".into();
+            replacement.year = "2025".into();
+            session.edit_source("One", replacement).unwrap();
+            assert!(session.selected_fields()[0].locked);
+            assert!(session.selected_fields()[0]
+                .code
+                .contains("\"Renamed tag\""));
+            let renamed = session.document.export_docx().unwrap();
+            capture(
+                &renamed,
+                &format!("locked citation rename combined={combined}"),
+            );
+            session.undo();
+            assert_eq!(session.document.export_docx().unwrap(), before_rename);
+            let mut ctx = CommandContext::new(&mut session.document, &mut session.selection);
+            assert!(session.executor.redo(&mut ctx).unwrap());
+            assert_eq!(session.document.export_docx().unwrap(), renamed);
+            session.document = block_on(WordDocument::load(&renamed, &Options::default())).unwrap();
+            assert_eq!(session.cited_tags()[0], "Renamed tag");
+            assert!(session.delete_source("Renamed tag").is_err());
+            session
+                .update_fields(FieldScope::Document, &host(), HashMap::new())
+                .unwrap();
+            assert_eq!(
+                session.document.body_paragraph_text(0).unwrap(),
+                format!("Word's saved citation[{number}]")
+            );
+            session.lock_fields(false).unwrap();
+            session
+                .update_fields(FieldScope::Document, &host(), HashMap::new())
+                .unwrap();
+            assert_eq!(
+                session.document.body_paragraph_text(0).unwrap(),
+                if combined {
+                    "Word's saved citation[3]"
+                } else {
+                    "[1][2]"
+                }
+            );
+        }
+    }
+
+    #[test]
+    fn source_edits_and_style_changes_keep_locked_bibliography_results() {
+        use jade_docx_editor::fields::FieldScope;
+        let mut session = Session::blank();
+        session.add_source(citation_source("One")).unwrap();
+        session.insert_bibliography(Some("References")).unwrap();
+        let start = session.document.field_blocks()[0].start;
+        session.selection = Some(SelectionRange::collapsed(TextPosition::new(start, 0)));
+        session.lock_fields(true).unwrap();
+        let before = session.document.export_docx().unwrap();
+        let text = |session: &Session| {
+            let block = &session.document.field_blocks()[0];
+            (block.start..=block.end)
+                .map(|index| session.document.body_paragraph_text(index).unwrap())
+                .collect::<Vec<_>>()
+        };
+        let saved = text(&session);
+        session
+            .set_bibliography_style(BibliographyStyle::Ieee)
+            .unwrap();
+        let mut source = citation_source("One");
+        source.author = "Jones, Jane".into();
+        session.edit_source("One", source).unwrap();
+        assert_eq!(text(&session), saved);
+        assert!(session.selected_fields()[0].locked);
+        let bytes = session.document.export_docx().unwrap();
+        capture(&bytes, "locked bibliography after source edit and restyle");
+        session.document = block_on(WordDocument::load(&bytes, &Options::default())).unwrap();
+        assert_eq!(text(&session), saved);
+        assert!(session.selected_fields()[0].locked);
+        session.lock_fields(false).unwrap();
+        session
+            .update_fields(FieldScope::Document, &host(), HashMap::new())
+            .unwrap();
+        assert_eq!(
+            text(&session),
+            ["References", "[1] J. Jones, A source, 2020."]
+        );
+        for _ in 0..4 {
+            session.undo();
+        }
+        assert_eq!(session.document.export_docx().unwrap(), before);
+    }
+
+    #[test]
     fn combined_citations_keep_cached_results_and_every_source_link() {
         for instruction in [
             r#"CITATION "One" \l 1041 \m "Two words""#,
@@ -1427,6 +1550,11 @@ mod stateful {
                     .collect::<Vec<_>>(),
                 expected_texts,
                 "results step {step}: {op:?}; {ops:?}"
+            );
+            assert_eq!(
+                session.document.body_paragraph_text(0).unwrap(),
+                expected_texts.concat(),
+                "display text step {step}: {op:?}; {ops:?}"
             );
             assert_eq!(
                 session.document.bibliography_style().as_deref(),

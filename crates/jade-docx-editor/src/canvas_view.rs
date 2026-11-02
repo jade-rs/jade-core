@@ -16422,7 +16422,7 @@ impl OffscreenDocumentView {
                 let paragraph = paragraph.as_ref();
                 let mut text = String::new();
                 for run in &paragraph.runs {
-                    text.push_str(&run.text);
+                    text.push_str(run.cached_display_text());
                 }
                 return Some(text);
             }
@@ -16445,11 +16445,16 @@ impl OffscreenDocumentView {
         let state = self.state.borrow();
         let doc = state.word_doc.as_ref()?;
         let paragraph = doc.paragraph(doc.surface_index_for_body(index)?)?;
-        let mut text = String::new();
-        for run in &paragraph.runs {
-            text.push_str(&run.text);
-        }
-        Some(text)
+        Some(paragraph.runs.iter().map(|run| run.text.as_str()).collect())
+    }
+
+    /// Body text for extraction, including cached computed fields. Search and
+    /// editing keep using `paragraph_text` and its model character offsets.
+    #[wasm_bindgen]
+    pub fn paragraph_display_text(&self, index: usize) -> Option<String> {
+        let state = self.state.borrow();
+        let doc = state.word_doc.as_ref()?;
+        doc.body_paragraph_text(index)
     }
 
     /// Cached text counts for the status bar. This avoids copying every
