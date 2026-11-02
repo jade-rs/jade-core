@@ -19,6 +19,7 @@ mod cell_shift;
 mod charts;
 mod conditional_formats;
 mod current_region;
+mod data_tables;
 mod data_validations;
 mod defined_names;
 mod editable_ranges;
@@ -30,6 +31,7 @@ mod page_setup;
 mod pivots;
 mod protection;
 mod range_authentication;
+mod scenarios;
 pub use range_authentication::{
     RangeAuthContext, RangeAuthentication, RangeEditRequirement, RangeUnlockCandidate,
     RangeUnlockStatus,
@@ -62,9 +64,10 @@ fn formula_cache_state(cell: &Cell, needs_recalculation: bool) -> Option<Formula
 
 use std::collections::{BTreeMap, HashSet};
 
-pub use charts::{chart_kind, ChartChange, ChartKind, LegendPosition};
+pub use charts::{chart_kind, chart_series, ChartChange, ChartKind, LegendPosition};
 pub use conditional_formats::{ConditionalFormatView, ConditionalStyle, NewConditionalRule};
 pub use jade_xlsx_calc::formula_text;
+pub use jade_xlsx_calc::WhatIf;
 use jade_xlsx_headless_api::{
     CellBorderView, CellInput, CellKind, CellView, CommentView, DataValidationView,
     DefinedNameSummary, FillSummary, FindHit, FormatSummary, FormulaState, FreezePaneSummary,
@@ -89,6 +92,7 @@ pub use jade_xlsx_writer::pivot_refresh::{
 };
 pub use jade_xlsx_writer::protection::WorkbookProtectionInfo;
 pub use jade_xlsx_writer::sheet_protection::SheetProtectionInfo;
+pub use jade_xlsx_writer::SeriesReferences;
 pub use jade_xlsx_writer::{BorderLine, BorderStyle, FormatChange};
 use jade_xlsx_writer::{
     CachedValue, CachedValueEdit, CellEdit, NewValue, SheetCachedValues, SheetEdits,
@@ -248,6 +252,9 @@ pub struct HeadlessWorkbook {
     /// and so laid itself out.
     laid_out: Option<Vec<jade_opc::EntryFingerprint>>,
     calculation_time_zone: String,
+    /// Where the application has the book saved and what its window shows,
+    /// for CELL("filename") and INFO.
+    document: jade_xlsx_calc::Document,
     source_time_zone: String,
     /// The bytes before each write, newest last. A write is a patch of the
     /// whole package, so the package itself is the cheapest faithful undo
@@ -397,6 +404,7 @@ impl HeadlessWorkbook {
                 typed_changes: None,
                 laid_out: None,
                 calculation_time_zone: self.calculation_time_zone.clone(),
+                document: self.document.clone(),
                 source_time_zone: self.source_time_zone.clone(),
                 history: self.history.clone(),
                 future: self.future.clone(),
@@ -832,6 +840,7 @@ impl HeadlessWorkbook {
             typed_changes: None,
             laid_out: None,
             calculation_time_zone: time_zone.to_string(),
+            document: Default::default(),
             source_time_zone: time_zone.to_string(),
             history: Vec::new(),
             future: Vec::new(),
@@ -844,6 +853,25 @@ impl HeadlessWorkbook {
 
     pub fn calculation_time_zone(&self) -> &str {
         &self.calculation_time_zone
+    }
+
+    /// Host environment, not a document edit: where the book is saved
+    /// (`CELL("filename")`, `INFO("directory")`) and the top-left cell its
+    /// window shows (`INFO("origin")`), from the next recalculation.
+    pub fn set_document(&mut self, document: jade_xlsx_calc::Document) {
+        self.document = document;
+    }
+
+    pub fn document(&self) -> &jade_xlsx_calc::Document {
+        &self.document
+    }
+
+    /// The document as formulas see it during a calculation.
+    fn calculation_document(&self) -> jade_xlsx_calc::Document {
+        jade_xlsx_calc::Document {
+            manual: self.workbook.calculation_mode == jade_xlsx_reader::CalculationMode::Manual,
+            ..self.document.clone()
+        }
     }
 
     /// Host environment configuration, not a document edit or an Undo step.
@@ -870,6 +898,28 @@ impl HeadlessWorkbook {
         }
         let written =
             jade_xlsx_writer::set_calculation_properties(&self.source, mode, calculate_on_save)?;
+        let model = jade_xlsx_reader::read_xlsx(&written)?;
+        self.source = written;
+        self.range_auth_generation = self.range_auth_generation.wrapping_add(1);
+        self.workbook = model;
+        self.recalculate_after_edit();
+        Ok(())
+    }
+
+    /// Iterative calculation and precision as displayed, Excel's File ▸
+    /// Options ▸ Formulas settings that change what formulas give: saved in
+    /// the file, recalculated when calculation is automatic, and, like the
+    /// calculation mode, not an Undo step.
+    pub fn set_calculation_options(
+        &mut self,
+        iteration: jade_xlsx_reader::Iteration,
+        full_precision: bool,
+    ) -> Result<()> {
+        if self.workbook.iteration == iteration && self.workbook.full_precision == full_precision {
+            return Ok(());
+        }
+        let written =
+            jade_xlsx_writer::set_calculation_options(&self.source, iteration, full_precision)?;
         let model = jade_xlsx_reader::read_xlsx(&written)?;
         self.source = written;
         self.range_auth_generation = self.range_auth_generation.wrapping_add(1);
@@ -932,11 +982,13 @@ impl HeadlessWorkbook {
                 continue;
             };
             let mut patched = xml.clone();
-            if let Some(on) = tab {
-                patched = jade_xlsx_writer::sheet_view::set_tab_selected(&patched, on)?;
-            }
+            // The zoom first: it gives a sheet with no view one, which its
+            // tab is then marked on.
             if let Some(percent) = zoom {
                 patched = jade_xlsx_writer::sheet_view::set_zoom(&patched, percent)?;
+            }
+            if let Some(on) = tab {
+                patched = jade_xlsx_writer::sheet_view::set_tab_selected(&patched, on)?;
             }
             if patched != xml {
                 package.replace(&part, patched.into_bytes());
@@ -954,12 +1006,14 @@ impl HeadlessWorkbook {
 
     fn restored_snapshot(&self, snapshot: &HistorySnapshot) -> Result<Self> {
         let mut restored = Self::open_in_time_zone(&snapshot.bytes, &self.calculation_time_zone)?;
+        restored.document = self.document.clone();
         restored.filter_row_state = snapshot.filter_row_state.clone();
         restored.source_time_zone = snapshot.time_zone.clone();
         restored.set_calculation_properties(
             self.workbook.calculation_mode,
             self.workbook.calculate_on_save,
         )?;
+        restored.set_calculation_options(self.workbook.iteration, self.workbook.full_precision)?;
         if snapshot.time_zone != self.calculation_time_zone
             && self.workbook.calculation_mode.calculates_on_edit()
         {
@@ -1461,6 +1515,12 @@ impl HeadlessWorkbook {
             // them.
             && self.workbook.pivots.is_empty()
             && self.workbook.sheets.iter().all(|sheet| sheet.tables.is_empty())
+            // Data tables are worked out again by a whole recalculation.
+            && self
+                .workbook
+                .sheets
+                .iter()
+                .all(|sheet| sheet.data_tables.is_empty())
             && sheets.iter().all(|edits| {
                 self.workbook
                     .sheets
@@ -1635,13 +1695,16 @@ impl HeadlessWorkbook {
                     })
                     .flatten()
                     .collect();
-                if let Ok(Some(outcome)) = jade_xlsx_calc::reevaluate(
-                    &mut session,
-                    &self.workbook,
-                    &self.calculation_time_zone,
-                    &manual,
-                    &typed,
-                ) {
+                let document = self.calculation_document();
+                if let Ok(Some(outcome)) = jade_xlsx_calc::with_document(document, || {
+                    jade_xlsx_calc::reevaluate(
+                        &mut session,
+                        &self.workbook,
+                        &self.calculation_time_zone,
+                        &manual,
+                        &typed,
+                    )
+                }) {
                     kept = Some((outcome, session));
                 }
             }
@@ -1671,11 +1734,13 @@ impl HeadlessWorkbook {
                 },
                 None,
             ),
-            None => match jade_xlsx_calc::evaluate_keeping(
-                &self.workbook,
-                &self.calculation_time_zone,
-                &manual,
-            ) {
+            None => match jade_xlsx_calc::with_document(self.calculation_document(), || {
+                jade_xlsx_calc::evaluate_keeping(
+                    &self.workbook,
+                    &self.calculation_time_zone,
+                    &manual,
+                )
+            }) {
                 Ok(evaluated) => evaluated,
                 Err(_) => return Ok(false),
             },
@@ -2743,6 +2808,17 @@ impl HeadlessWorkbook {
         self.recalculate_with_dependencies(false, false)
             .map(|(summary, _)| summary)
     }
+    /// The workbook evaluated and kept for what-if questions — Goal Seek,
+    /// data tables, Solver: trial values in a few cells, the formulas
+    /// reading them evaluated again, nothing written.
+    pub fn what_if(&self) -> Result<jade_xlsx_calc::WhatIf> {
+        Ok(jade_xlsx_calc::what_if(
+            &self.workbook,
+            &self.calculation_time_zone,
+            &self.manual_filter_rows(),
+        )?)
+    }
+
     /// `keep` keeps the evaluated model for typing to evaluate in next
     /// (see [`jade_xlsx_calc::evaluate_keeping`]).
     fn recalculate_with_dependencies(
@@ -2754,23 +2830,30 @@ impl HeadlessWorkbook {
         Option<jade_xlsx_calc::ValueDependencies>,
     )> {
         let manual = self.manual_filter_rows();
-        let (outcome, session) = if trace {
-            let outcome = jade_xlsx_calc::evaluate_with_value_dependencies(
-                &self.workbook,
-                &self.calculation_time_zone,
-                &manual,
-            )?;
-            (outcome, None)
-        } else if keep {
-            jade_xlsx_calc::evaluate_keeping(&self.workbook, &self.calculation_time_zone, &manual)?
-        } else {
-            let outcome = jade_xlsx_calc::evaluate_with_manual_filter_rows(
-                &self.workbook,
-                &self.calculation_time_zone,
-                &manual,
-            )?;
-            (outcome, None)
-        };
+        let document = self.calculation_document();
+        let (outcome, session) = jade_xlsx_calc::with_document(document, || {
+            jade_xlsx_calc::Result::Ok(if trace {
+                let outcome = jade_xlsx_calc::evaluate_with_value_dependencies(
+                    &self.workbook,
+                    &self.calculation_time_zone,
+                    &manual,
+                )?;
+                (outcome, None)
+            } else if keep {
+                jade_xlsx_calc::evaluate_keeping(
+                    &self.workbook,
+                    &self.calculation_time_zone,
+                    &manual,
+                )?
+            } else {
+                let outcome = jade_xlsx_calc::evaluate_with_manual_filter_rows(
+                    &self.workbook,
+                    &self.calculation_time_zone,
+                    &manual,
+                )?;
+                (outcome, None)
+            })
+        })?;
 
         let mut grouped: BTreeMap<usize, Vec<CachedValueEdit>> = BTreeMap::new();
         let mut verified = jade_xlsx_writer::VerifiedChartCells::new();
@@ -2879,6 +2962,7 @@ impl HeadlessWorkbook {
         }
 
         self.write_spills(&outcome.spills, complete)?;
+        self.write_data_tables(complete)?;
 
         self.source_time_zone = self.calculation_time_zone.clone();
         // Only cached values were written: the inputs the model was built

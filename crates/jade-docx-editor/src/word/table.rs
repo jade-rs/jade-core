@@ -2138,7 +2138,7 @@ pub trait WordTables: WordSession {
                             .iter()
                             .filter_map(BodyElement::as_paragraph)
                             .flat_map(|paragraph| {
-                                paragraph.runs.iter().map(|run| run.text.as_str())
+                                paragraph.runs.iter().map(|run| run.cached_display_text())
                             })
                             .collect::<String>()
                     })
@@ -2168,7 +2168,11 @@ pub trait WordTables: WordSession {
                         .iter()
                         .filter_map(BodyElement::as_paragraph)
                         .flat_map(|paragraph| paragraph.runs.iter())
-                        .any(|run| run.text.chars().any(|ch| ch.is_ascii_digit()))
+                        .any(|run| {
+                            run.cached_display_text()
+                                .chars()
+                                .any(|ch| ch.is_ascii_digit())
+                        })
                 });
         if number_above || cell.column == 0 {
             "=SUM(ABOVE)".to_string()

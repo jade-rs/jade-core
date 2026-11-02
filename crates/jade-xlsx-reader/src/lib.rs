@@ -47,6 +47,7 @@ pub mod phonetic;
 pub mod pivot;
 pub mod protected_ranges;
 pub mod rich_text;
+pub mod scenarios;
 pub mod shared_strings;
 pub mod sheet;
 pub mod sheet_protection;
@@ -69,11 +70,11 @@ pub use jade_opc::OpcPackage;
 pub use model::{
     builtin_number_format, Alignment, ArrayFormula, Border, BorderEdge, CalculationMode, Cell,
     CellComment, CellFormat, CellRange, CellRef, CellValue, Color, ColumnSpan, CustomPath,
-    DataValidation, DateSystem, DefinedName, DrawingColor, Fill, Font, FreezePane, GradientFill,
-    HeaderFooter, HorizontalAlignment, Hyperlink, Outline, PageBreak, PageMargins, PageOrientation,
-    PageSetup, PathCommand, Row, Shape, ShapeKind, ShapePaint, ShapeStyle, Sheet, SheetProtection,
-    SheetVisibility, StyleTable, Table, TableColumn, TableStyleDefinition, TableStyleElement,
-    VerticalAlignment, Workbook, EMU_PER_PX,
+    DataTable, DataValidation, DateSystem, DefinedName, DrawingColor, Fill, Font, FreezePane,
+    GradientFill, HeaderFooter, HorizontalAlignment, Hyperlink, Iteration, Outline, PageBreak,
+    PageMargins, PageOrientation, PageSetup, PathCommand, Row, Shape, ShapeKind, ShapePaint,
+    ShapeStyle, Sheet, SheetProtection, SheetVisibility, StyleTable, Table, TableColumn,
+    TableStyleDefinition, TableStyleElement, VerticalAlignment, Workbook, EMU_PER_PX,
 };
 pub use sheet::{translate_formula, transpose_formula};
 pub use workbook_part::{SheetEntry, WorkbookPart};
@@ -334,6 +335,8 @@ fn read_package_noting_order(package: &OpcPackage) -> Result<(Workbook, Vec<Stri
         full_calculation_on_load: part.full_calculation_on_load,
         calculation_mode: part.calculation_mode,
         calculate_on_save: part.calculate_on_save.unwrap_or(true),
+        iteration: part.iteration,
+        full_precision: part.full_precision.unwrap_or(true),
     };
     Ok((workbook, in_order))
 }
