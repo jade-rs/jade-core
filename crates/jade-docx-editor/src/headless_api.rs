@@ -3131,6 +3131,27 @@ pub fn apply_headless_commands_with_executor_to_document(
                 text,
                 enclosure,
             } => {
+                // The field is saved as `EQ \o\ac(enclosure,text)`. One the
+                // reader does not take for 囲い文字 (an enclosure spelled
+                // out, `circle`) came back from the file as an unknown field,
+                // its text plain, and Word does not draw it enclosed either.
+                let readable = matches!(
+                    jade_docx_reader::parser::DocumentParser::parse_field_instruction(
+                        &format!("EQ \\o\\ac({enclosure},{text})")
+                    ),
+                    Some(crate::document::RunFieldKind::EqEnclosed {
+                        text: read_text,
+                        enclosure: read_enclosure,
+                    }) if read_text == *text && read_enclosure == *enclosure
+                );
+                if !readable {
+                    return Err(HeadlessApiApplyError::Command {
+                        index,
+                        source: CommandError::Custom(format!(
+                            "insert_enclosed_character cannot save {text:?} in {enclosure:?}: the enclosure must be ○, □, △ or ◇"
+                        )),
+                    });
+                }
                 let range = SelectionRange::new(
                     TextPosition::new(*start_paragraph, *start_offset),
                     TextPosition::new(*end_paragraph, *end_offset),
@@ -8727,6 +8748,57 @@ mod tests {
                 .unwrap_or_default()
         };
         assert_eq!(linked(&reloaded), linked(&word_doc));
+    }
+
+    #[test]
+    fn an_enclosed_character_takes_only_an_enclosure_it_can_be_read_back_with() {
+        // `EQ \o\ac(circle,1)` is no 囲い文字 to the reader (nor to Word):
+        // the field reopened as an unknown one, its text plain. Only the
+        // enclosures Word offers are taken.
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/hello.docx"),
+        )
+        .expect("read fixture");
+        let mut word_doc =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+        let enclose = |word_doc: &mut WordDocument, enclosure: &str| {
+            apply_headless_commands_to_document(
+                word_doc,
+                &HeadlessEditRequest {
+                    commands: vec![HeadlessCommand::InsertEnclosedCharacter {
+                        start_paragraph: 0,
+                        start_offset: 0,
+                        end_paragraph: 0,
+                        end_offset: 1,
+                        text: "1".to_string(),
+                        enclosure: enclosure.to_string(),
+                    }],
+                },
+            )
+        };
+        assert!(enclose(&mut word_doc, "circle").is_err());
+        enclose(&mut word_doc, "○").expect("a circle encloses");
+        let reloaded = executor::block_on(WordDocument::load(
+            &word_doc.export_docx().expect("export"),
+            &Options::default(),
+        ))
+        .expect("reload");
+        let enclosed = reloaded
+            .paragraph(0)
+            .expect("paragraph")
+            .runs
+            .iter()
+            .filter_map(|run| run.field.as_ref())
+            .map(|field| field.kind.clone())
+            .collect::<Vec<_>>();
+        assert_eq!(
+            enclosed,
+            vec![crate::document::RunFieldKind::EqEnclosed {
+                text: "1".to_string(),
+                enclosure: "○".to_string(),
+            }]
+        );
     }
 
     #[test]
