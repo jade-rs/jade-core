@@ -2118,6 +2118,56 @@ impl HeadlessWorkbook {
             .ok_or_else(|| HeadlessError::BadReference(reference.to_string()))
     }
 
+    /// Whether the comment on `reference` is a threaded comment, one that
+    /// takes replies, rather than a note.
+    pub fn has_comment_thread(&self, sheet: &str, reference: &str) -> Result<bool> {
+        let index = self.sheet_index(sheet)?;
+        let at = CellRef::parse(reference)
+            .map_err(|_| HeadlessError::BadReference(reference.to_string()))?;
+        if self.workbook.sheets[index].comment_at(at).is_none() {
+            return Ok(false);
+        }
+        let package = jade_opc::OpcPackage::open(&self.source)?;
+        Ok(jade_xlsx_writer::threads::has_thread(
+            &package,
+            &self.workbook.sheets[index].part_name,
+            at,
+        )?)
+    }
+
+    /// A reply by `author` to the threaded comment on a cell, dated `when`
+    /// (`YYYY-MM-DDTHH:MM:SS`): it joins the thread, and the cell's comment
+    /// reads it last. One undo step; `false`, changing nothing, when the
+    /// cell has no threaded comment.
+    pub fn reply_to_comment(
+        &mut self,
+        sheet: &str,
+        reference: &str,
+        author: &str,
+        text: &str,
+        when: &str,
+    ) -> Result<bool> {
+        let index = self.sheet_index(sheet)?;
+        let at = CellRef::parse(reference)
+            .map_err(|_| HeadlessError::BadReference(reference.to_string()))?;
+        self.guard_note(index, at, true)?;
+        let part_name = self.workbook.sheets[index].part_name.clone();
+        let mut package = jade_opc::OpcPackage::open(&self.source)?;
+        let when = format!("{}.00", when.trim_end_matches(".00"));
+        if !jade_xlsx_writer::threads::reply_to_thread(
+            &mut package,
+            &part_name,
+            at,
+            author,
+            text,
+            &when,
+        )? {
+            return Ok(false);
+        }
+        self.replace_package(package)?;
+        Ok(true)
+    }
+
     /// Removes the note on a cell. `false`, changing nothing, when the cell
     /// has none.
     pub fn delete_note(&mut self, sheet: &str, reference: &str) -> Result<bool> {
