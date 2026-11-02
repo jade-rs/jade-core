@@ -8,8 +8,8 @@ use quick_xml::Reader;
 
 use crate::error::Result;
 use crate::model::{
-    ArrayFormula, Cell, CellRange, CellRef, CellValue, ColumnSpan, FreezePane, HeaderFooter,
-    PageBreak, PageMargins, PageOrientation, PageSetup, Row, Sheet, SheetVisibility,
+    ArrayFormula, Cell, CellRange, CellRef, CellValue, ColumnSpan, DataTable, FreezePane,
+    HeaderFooter, PageBreak, PageMargins, PageOrientation, PageSetup, Row, Sheet, SheetVisibility,
     MAX_COLUMN_COUNT,
 };
 use jade_opc::{local_name, Relationships};
@@ -118,6 +118,7 @@ pub(crate) fn parse_sheet_noting_order(
         page_setup: Default::default(),
         shapes: Vec::new(),
         array_formulas: Vec::new(),
+        data_tables: Vec::new(),
         phonetic_readings: Default::default(),
         rich_text: Default::default(),
         tab_color: None,
@@ -356,6 +357,35 @@ pub(crate) fn parse_sheet_noting_order(
                                     .and_then(|range| CellRange::parse(&range).ok()),
                             ) {
                                 sheet.array_formulas.push(ArrayFormula { anchor, range });
+                            }
+                        }
+                        if kind.as_deref() == Some("dataTable") {
+                            let flag = |name: &[u8]| -> Result<bool> {
+                                Ok(attribute_value(element, name)?
+                                    .is_some_and(|value| value == "1" || value == "true"))
+                            };
+                            let cell_at = |name: &[u8]| -> Result<Option<CellRef>> {
+                                Ok(attribute_value(element, name)?
+                                    .and_then(|text| CellRef::parse(&text).ok()))
+                            };
+                            if let Some(range) = attribute_value(element, b"ref")?
+                                .and_then(|range| CellRange::parse(&range).ok())
+                            {
+                                sheet.data_tables.push(DataTable {
+                                    range,
+                                    two_way: flag(b"dt2D")?,
+                                    row: flag(b"dtr")?,
+                                    first: if flag(b"del1")? {
+                                        None
+                                    } else {
+                                        cell_at(b"r1")?
+                                    },
+                                    second: if flag(b"del2")? {
+                                        None
+                                    } else {
+                                        cell_at(b"r2")?
+                                    },
+                                });
                             }
                         }
                         if kind.as_deref() == Some("shared") {
