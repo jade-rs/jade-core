@@ -24,6 +24,7 @@ pub mod shaping_measurer;
 pub mod text_box_geometry;
 pub mod text_extract;
 pub mod units;
+pub mod vertical_forms;
 pub mod word_kinsoku;
 
 pub mod paragraph_pagination;
