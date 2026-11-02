@@ -388,7 +388,10 @@ pub trait WordCitations: WordSession {
     /// The tags cited, each once, in the order first cited.
     fn cited_tags(&self) -> Vec<String> {
         let mut tags = Vec::new();
-        for field in self.word_document().inline_fields("CITATION") {
+        for field in self
+            .word_document()
+            .inline_fields_including_locked("CITATION")
+        {
             for tag in instruction_tags(&field.instruction) {
                 if !tags.contains(&tag) {
                     tags.push(tag);
@@ -585,7 +588,7 @@ pub fn edit_source_command(tag: String, source: Source) -> DocumentEditCommand {
             let new_tag = source.tag.trim();
             document.replace_citation_source(&tag, source.clone())?;
             if new_tag != tag {
-                for field in document.inline_fields("CITATION") {
+                for field in document.inline_fields_including_locked("CITATION") {
                     let mut parsed = parse_code(&field.instruction);
                     let mut changed = false;
                     for token in parsed.operands.first_mut().into_iter().chain(
@@ -625,11 +628,15 @@ pub fn delete_source_command(tag: String) -> DocumentEditCommand {
     DocumentEditCommand::new(
         "delete_source",
         Box::new(move |document, _| {
-            if document.inline_fields("CITATION").iter().any(|field| {
-                instruction_tags(&field.instruction)
-                    .iter()
-                    .any(|cited| cited == &tag)
-            }) {
+            if document
+                .inline_fields_including_locked("CITATION")
+                .iter()
+                .any(|field| {
+                    instruction_tags(&field.instruction)
+                        .iter()
+                        .any(|cited| cited == &tag)
+                })
+            {
                 return Err("引用されている資料文献は削除できません".into());
             }
             document.remove_citation_source(&tag)?;
@@ -754,7 +761,7 @@ pub(crate) fn citation_order(
     sources: &[Source],
 ) -> Vec<String> {
     let mut order = Vec::new();
-    for field in document.inline_fields("CITATION") {
+    for field in document.inline_fields_including_locked("CITATION") {
         for tag in instruction_tags(&field.instruction) {
             if sources.iter().any(|source| source.tag == tag) && !order.contains(&tag) {
                 order.push(tag);
@@ -884,6 +891,9 @@ fn restyle(
     }
     for block in document.field_blocks().into_iter().rev() {
         if block.name() != "BIBLIOGRAPHY" || !supported_bibliography(&block.instruction) {
+            continue;
+        }
+        if document.validate_field_block(&block)? {
             continue;
         }
         replace_bibliography(document, &block, &lines)?;
