@@ -8,6 +8,7 @@ pub use xml::layouts::{
 };
 pub mod animation;
 mod picture_format;
+pub mod media;
 mod shape_insertion;
 pub use picture_format::{
     compress_pictures, convert_svg_to_shapes, format_picture, insert_svg_picture, picture_format,
@@ -614,6 +615,7 @@ pub fn set_shape_transform(
     let baseline = inherited_shape_transform(&deck, slide, id);
     let before = xml::shapes(&xml)?.into_iter().find(|shape| shape.id == id);
     let changed = xml::set_transform(&xml, id, transform, baseline)?;
+    let changed = xml::media::follow_ink_transform(&changed, id, transform)?;
     if changed == xml {
         return Ok(bytes.to_vec());
     }

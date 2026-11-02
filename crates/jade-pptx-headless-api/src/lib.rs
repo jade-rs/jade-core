@@ -57,6 +57,8 @@ pub enum ShapeKind {
     Group,
     Table,
     Chart,
+    /// An ink drawing (描画).
+    Ink,
 }
 
 /// What a chart plots, as cached in its part.
