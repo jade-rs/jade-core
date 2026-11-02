@@ -15,6 +15,16 @@ checked against the preceding input. The public duplicate-revision-ID sample
 now has unique IDs; its deliberately invalid counterpart is kept only under
 `crates/jade-docx-editor/tests/fixtures` for robustness tests.
 
+The floating-order probe is a deliberate malformed-order control: Word for Mac
+ignores its first table's positioning because it precedes the table style.
+Sorting those properties would activate the position and move the table.
+The valid derivative instead removes that ignored position, preserving the
+captured Mac layout. The exact original remains under native-render test
+fixtures, and a coordinate regression compares both inputs. The generator
+requires `--malformed` to reproduce the invalid historical control; its default
+is valid. This derivative preserves the Mac observation, not the original
+platform-dependent handling of invalid markup.
+
 Native coordinate and glyph-sweep tests accept a historical reference only
 when its hash equals the current input or matches this exact reviewed pair.
 They continue comparing the repaired input's coordinates to the unchanged Word
