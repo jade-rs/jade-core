@@ -1633,6 +1633,17 @@ pub struct CitationSourceInfo {
     pub url: Option<String>,
 }
 
+/// Source types supported by the citation editor and catalog validation.
+pub const CITATION_SOURCE_TYPES: [&str; 7] = [
+    "Book",
+    "JournalArticle",
+    "ArticleInAPeriodical",
+    "ConferenceProceedings",
+    "Report",
+    "InternetSite",
+    "Misc",
+];
+
 /// Word's editing-restriction metadata from `word/settings.xml`.
 ///
 /// This is not document encryption. It mirrors `w:documentProtection`, which
@@ -16749,9 +16760,20 @@ impl WordDocument {
         let Some(xml) = self.read_xml_part_content(&path) else {
             return Vec::new();
         };
-        let Ok(parsed) = DocxXmlDocument::parse(&xml) else {
+        Self::parse_citation_sources_xml(&xml, "Misc")
+    }
+
+    /// Shared by package catalogs and Word's standalone Sources.xml master list.
+    pub(crate) fn parse_citation_sources_xml(
+        xml: &str,
+        default_source_type: &str,
+    ) -> Vec<CitationSourceInfo> {
+        let Ok(parsed) = DocxXmlDocument::parse(xml) else {
             return Vec::new();
         };
+        if !Self::is_bibliography_element(parsed.root(), "Sources", &[]) {
+            return Vec::new();
+        }
         parsed
             .root()
             .children
@@ -16767,7 +16789,7 @@ impl WordDocument {
             .filter_map(|source| {
                 let tag = Self::xml_descendant_text(source, "Tag", &[parsed.root()])?;
                 let source_type = Self::xml_descendant_text(source, "SourceType", &[parsed.root()])
-                    .unwrap_or_else(|| "Misc".to_string());
+                    .unwrap_or_else(|| default_source_type.to_string());
                 let author = Self::xml_descendant_text(source, "Corporate", &[parsed.root()])
                     .unwrap_or_else(|| {
                         let last = Self::xml_descendant_text(source, "Last", &[parsed.root()])
@@ -16831,9 +16853,7 @@ impl WordDocument {
         if source.title.is_empty() {
             return Err("citation source title must not be empty".to_string());
         }
-        const SOURCE_TYPES: [&str; 5] =
-            ["Book", "JournalArticle", "InternetSite", "Report", "Misc"];
-        if !SOURCE_TYPES.contains(&source.source_type.as_str()) {
+        if !CITATION_SOURCE_TYPES.contains(&source.source_type.as_str()) {
             return Err(format!(
                 "unsupported citation source type: {}",
                 source.source_type
