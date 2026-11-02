@@ -19,6 +19,7 @@ mod cell_shift;
 mod charts;
 mod conditional_formats;
 mod current_region;
+mod data_tables;
 mod data_validations;
 mod defined_names;
 mod editable_ranges;
@@ -65,6 +66,7 @@ use std::collections::{BTreeMap, HashSet};
 pub use charts::{chart_kind, ChartChange, ChartKind, LegendPosition};
 pub use conditional_formats::{ConditionalFormatView, ConditionalStyle, NewConditionalRule};
 pub use jade_xlsx_calc::formula_text;
+pub use jade_xlsx_calc::WhatIf;
 use jade_xlsx_headless_api::{
     CellBorderView, CellInput, CellKind, CellView, CommentView, DataValidationView,
     DefinedNameSummary, FillSummary, FindHit, FormatSummary, FormulaState, FreezePaneSummary,
@@ -1436,6 +1438,12 @@ impl HeadlessWorkbook {
             // them.
             && self.workbook.pivots.is_empty()
             && self.workbook.sheets.iter().all(|sheet| sheet.tables.is_empty())
+            // Data tables are worked out again by a whole recalculation.
+            && self
+                .workbook
+                .sheets
+                .iter()
+                .all(|sheet| sheet.data_tables.is_empty())
             && sheets.iter().all(|edits| {
                 self.workbook
                     .sheets
@@ -2675,6 +2683,17 @@ impl HeadlessWorkbook {
         self.recalculate_with_dependencies(false, false)
             .map(|(summary, _)| summary)
     }
+    /// The workbook evaluated and kept for what-if questions — Goal Seek,
+    /// data tables, Solver: trial values in a few cells, the formulas
+    /// reading them evaluated again, nothing written.
+    pub fn what_if(&self) -> Result<jade_xlsx_calc::WhatIf> {
+        Ok(jade_xlsx_calc::what_if(
+            &self.workbook,
+            &self.calculation_time_zone,
+            &self.manual_filter_rows(),
+        )?)
+    }
+
     /// `keep` keeps the evaluated model for typing to evaluate in next
     /// (see [`jade_xlsx_calc::evaluate_keeping`]).
     fn recalculate_with_dependencies(
@@ -2811,6 +2830,7 @@ impl HeadlessWorkbook {
         }
 
         self.write_spills(&outcome.spills, complete)?;
+        self.write_data_tables(complete)?;
 
         self.source_time_zone = self.calculation_time_zone.clone();
         // Only cached values were written: the inputs the model was built
