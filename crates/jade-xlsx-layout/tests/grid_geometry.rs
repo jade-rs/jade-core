@@ -48,6 +48,8 @@ fn sheet_with(rows: Vec<Row>) -> Sheet {
         page_setup: Default::default(),
         shapes: Vec::new(),
         array_formulas: Vec::new(),
+        data_tables: Vec::new(),
+        scenarios: None,
         phonetic_readings: Default::default(),
         rich_text: Default::default(),
         tab_color: None,

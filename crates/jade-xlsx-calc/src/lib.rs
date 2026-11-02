@@ -31,6 +31,9 @@ pub mod conditional;
 pub mod formula_text;
 mod pivot;
 pub mod validation;
+mod what_if;
+
+pub use what_if::{what_if, WhatIf};
 
 use ironcalc_base::cell::CellValue as EngineValue;
 use ironcalc_base::Model;
@@ -487,6 +490,21 @@ fn evaluate_at_instant(
     trace: bool,
     keep: bool,
 ) -> Result<(Recalculated, Option<Session>)> {
+    let (outcome, model, projected, complete) = settle(workbook, time_zone, trace)?;
+    let session = (keep && complete && !trace).then(|| Session {
+        model,
+        projected,
+        time_zone: time_zone.to_string(),
+    });
+    Ok((outcome, session))
+}
+
+/// What [`evaluate_at_instant`] settles on: the outcome, the model it was
+/// read from, the cells projected as formulas there, and whether the
+/// evaluation was complete — nothing skipped, nothing spilled.
+type Settled = (Recalculated, Model<'static>, Vec<(usize, CellRef)>, bool);
+
+fn settle(workbook: &Workbook, time_zone: &str, trace: bool) -> Result<Settled> {
     let zone = static_zone(time_zone);
     // Each skipped cell and what it holds: its cached value, or the engine's
     // answer when nothing is cached.
@@ -536,12 +554,7 @@ fn evaluate_at_instant(
                 spills: round.spills,
                 dependencies: trace.then(|| value_dependencies(&mut model)),
             };
-            let session = (keep && complete && !trace).then(|| Session {
-                model,
-                projected,
-                time_zone: time_zone.to_string(),
-            });
-            return Ok((outcome, session));
+            return Ok((outcome, model, projected, complete));
         };
         let holds = match cached_value(workbook, first.sheet, first.reference) {
             CellValue::Empty => CellValue::Error(first.reason.clone()),
