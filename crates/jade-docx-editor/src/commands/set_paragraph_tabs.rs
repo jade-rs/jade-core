@@ -75,6 +75,11 @@ impl Command for SetParagraphTabsCommand {
         self.selection = *ctx.selection;
         self.changed = false;
         for index in start..=end {
+            // A block equation in the range has no paragraph to format; it
+            // is skipped, as `ParagraphRangeUndo::begin` skips it.
+            if ctx.document.is_math_surface(index) {
+                continue;
+            }
             let previous = ctx
                 .document
                 .paragraph(index)

@@ -152,6 +152,11 @@ impl Command for SetParagraphStyleCommand {
         };
 
         for paragraph_index in start..=end {
+            // A block equation in the range has no paragraph to format; it
+            // is skipped, as `ParagraphRangeUndo::begin` skips it.
+            if ctx.document.is_math_surface(paragraph_index) {
+                continue;
+            }
             let (previous_props, previous_run_props) = {
                 let paragraph = ctx
                     .document

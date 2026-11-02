@@ -14863,6 +14863,98 @@ mod tests {
     }
 
     #[test]
+    fn paragraph_formatting_across_a_block_equation_formats_the_paragraphs_around_it() {
+        // A block equation has no paragraph. Numbering a range across one
+        // numbered the paragraph before it and then failed on the equation,
+        // so the change was neither finished nor on the undo stack: undoing
+        // the edit before it took that paragraph's numbering out of the model
+        // and left its `w:numPr` in the file.
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/math.docx"),
+        )
+        .expect("read fixture");
+        let mut word_doc =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+        let equation = (1..word_doc.paragraph_count() - 1)
+            .find(|&index| {
+                word_doc.is_math_surface(index)
+                    && word_doc.paragraph(index - 1).is_some()
+                    && word_doc.paragraph(index + 1).is_some()
+            })
+            .expect("a block equation between paragraphs");
+        let (before, after) = (equation - 1, equation + 1);
+        let numbered = |word_doc: &WordDocument, index: usize| {
+            word_doc
+                .paragraph(index)
+                .and_then(|paragraph| paragraph.properties.as_ref())
+                .and_then(|properties| properties.numbering.as_ref())
+                .and_then(|numbering| numbering.id.clone())
+        };
+        let alignment = |word_doc: &WordDocument, index: usize| {
+            word_doc
+                .paragraph(index)
+                .and_then(|paragraph| paragraph.properties.as_ref())
+                .and_then(|properties| properties.alignment.clone())
+        };
+        let mut command_executor = CommandExecutor::new();
+        apply_headless_commands_with_executor_to_document(
+            &mut word_doc,
+            &mut command_executor,
+            None,
+            &HeadlessEditRequest {
+                commands: vec![
+                    HeadlessCommand::SetNumbering {
+                        start_paragraph: before,
+                        end_paragraph: after,
+                        num_id: Some("1".into()),
+                        level: Some(0),
+                    },
+                    HeadlessCommand::SetParagraphAlignment {
+                        start_paragraph: before,
+                        end_paragraph: after,
+                        alignment: "center".into(),
+                    },
+                ],
+            },
+        )
+        .expect("formats across the equation");
+        for index in [before, after] {
+            assert_eq!(numbered(&word_doc, index).as_deref(), Some("1"), "p{index}");
+            assert_eq!(
+                alignment(&word_doc, index).as_deref(),
+                Some("center"),
+                "p{index}"
+            );
+        }
+        let reloaded = executor::block_on(WordDocument::load(
+            &word_doc.export_docx().expect("export"),
+            &Options::default(),
+        ))
+        .expect("reload");
+        for index in [before, after] {
+            assert_eq!(numbered(&reloaded, index), numbered(&word_doc, index));
+            assert_eq!(alignment(&reloaded, index), alignment(&word_doc, index));
+        }
+
+        let mut selection = None;
+        for _ in 0..2 {
+            command_executor
+                .undo(&mut CommandContext::new(&mut word_doc, &mut selection))
+                .expect("undo");
+        }
+        let reloaded = executor::block_on(WordDocument::load(
+            &word_doc.export_docx().expect("export"),
+            &Options::default(),
+        ))
+        .expect("reload");
+        for index in [before, after] {
+            assert_eq!(numbered(&word_doc, index), None, "p{index}");
+            assert_eq!(numbered(&reloaded, index), None, "p{index}");
+        }
+    }
+
+    #[test]
     fn a_table_edit_leaves_a_new_table_of_contents_fields_whole() {
         // A table of contents the editor generated had no runs for its page
         // fields' markers, which a load gives runs of their own. A table edit
