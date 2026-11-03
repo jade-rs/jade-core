@@ -15,6 +15,8 @@ mod measure;
 mod number_format;
 pub use number_format::format_chart_number;
 mod paragraph_format;
+mod picture_key;
+pub use picture_key::{picture_effects, picture_image_key};
 mod placeholder;
 pub mod preset_shapes;
 mod presets;
@@ -1482,17 +1484,23 @@ fn place_picture(
         rotation_rad: rotation_rad(transform),
         flip_h: transform.flip_h,
         flip_v: transform.flip_v,
-        geometry: presets::resolve(
-            picture.preset_geometry.as_deref(),
-            &picture.adjustments,
-            placed_rect(transform, space).width,
-            placed_rect(transform, space).height,
-        )
-        .map_or(PlacedGeometry::Rect, |preset| preset.geometry),
+        geometry: match &picture.custom_geometry {
+            // A picture cropped to a freeform is clipped to its outline.
+            Some(custom) if picture.preset_geometry.is_none() => {
+                geometry::custom_geometry(custom).unwrap_or(PlacedGeometry::Rect)
+            }
+            _ => presets::resolve(
+                picture.preset_geometry.as_deref(),
+                &picture.adjustments,
+                placed_rect(transform, space).width,
+                placed_rect(transform, space).height,
+            )
+            .map_or(PlacedGeometry::Rect, |preset| preset.geometry),
+        },
         fill: None,
         gradient: None,
         outline: resolve_outline(picture.outline.as_ref(), None, context.theme, None),
-        image_part: picture.image_part.clone(),
+        image_part: picture_image_key(picture, context.theme),
         source_rect: picture.source_rect,
         lines: Vec::new(),
         origin,

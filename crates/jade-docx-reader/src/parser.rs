@@ -77,7 +77,7 @@ struct ActiveField {
 
 #[derive(Clone)]
 struct DeferredNestedField {
-    kind: RunFieldKind,
+    kind: Option<RunFieldKind>,
     cached_result: String,
 }
 
@@ -9399,16 +9399,23 @@ impl DocumentParser {
             // self-contained numeric literals. Refresh that safe subset now;
             // fields requiring unresolved bookmarks or package state retain
             // the cache until the model can preserve a structured expression.
+            let conditional = parent_instruction
+                .split_whitespace()
+                .next()
+                .is_some_and(|name| {
+                    name.eq_ignore_ascii_case("IF") || name.eq_ignore_ascii_case("COMPARE")
+                });
             let live_result = field
                 .kind
                 .as_ref()
+                .filter(|_| !conditional)
                 .and_then(|kind| Self::locally_resolved_field_result(kind, bookmark_text));
             if let Some(result) = live_result.as_deref() {
                 Self::append_nested_operand_token(parent_instruction, result);
-            } else if let Some(kind) = field.kind {
+            } else if field.kind.is_some() || conditional {
                 let index = deferred_nested_fields.len();
                 deferred_nested_fields.push(DeferredNestedField {
-                    kind,
+                    kind: field.kind,
                     cached_result: field.operand_result.clone(),
                 });
                 parent_instruction.push_str(DEFERRED_NESTED_FIELD_PREFIX);
@@ -9569,6 +9576,20 @@ impl DocumentParser {
             bookmark_text,
             depth,
         );
+        if let RunFieldKind::If {
+            true_text,
+            false_text,
+            ..
+        } = kind
+        {
+            for text in std::iter::once(true_text).chain(false_text.iter_mut()) {
+                if let Some(resolved) =
+                    Self::resolve_deferred_text(text, deferred_nested_fields, bookmark_text, depth)
+                {
+                    *text = resolved;
+                }
+            }
+        }
     }
 
     fn resolve_deferred_operand(
@@ -9578,41 +9599,73 @@ impl DocumentParser {
         bookmark_text: &HashMap<String, String>,
         depth: usize,
     ) {
-        let Some(index) = Self::deferred_nested_field_index(operand) else {
-            return;
-        };
-        // Every deferred entry points to a field that was already closed, so
-        // the graph is acyclic. Keep a defensive bound in case malformed input
-        // ever manages to manufacture a self-referential internal marker.
-        if depth > deferred_nested_fields.len() {
-            return;
+        if let Some(result) =
+            Self::resolve_deferred_text(operand, deferred_nested_fields, bookmark_text, depth)
+        {
+            // Keep text literal while retaining numeric comparison semantics.
+            *is_quoted |= result.trim().parse::<f64>().is_err();
+            *operand = if result.contains('"') {
+                format!("{}{result}", crate::document::QUOTED_NESTED_RESULT_MARK)
+            } else {
+                result
+            };
         }
-        let Some(deferred) = deferred_nested_fields.get(index) else {
-            return;
-        };
-        let mut nested_kind = deferred.kind.clone();
-        Self::resolve_deferred_operands_in_kind(
-            &mut nested_kind,
-            deferred_nested_fields,
-            bookmark_text,
-            depth + 1,
-        );
-        let result = Self::locally_resolved_field_result(&nested_kind, bookmark_text)
-            .unwrap_or_else(|| deferred.cached_result.clone());
-        // Synthetic quoting groups a textual field result into one operand and
-        // prevents a value that happens to equal a bookmark name from being
-        // dereferenced again. Numeric results remain unquoted so Word numeric
-        // comparison semantics are preserved.
-        *is_quoted = result.trim().parse::<f64>().is_err();
-        *operand = result;
     }
 
-    fn deferred_nested_field_index(operand: &str) -> Option<usize> {
-        operand
-            .strip_prefix(DEFERRED_NESTED_FIELD_PREFIX)?
-            .strip_suffix(DEFERRED_NESTED_FIELD_SUFFIX)?
-            .parse()
-            .ok()
+    /// Resolve markers after tokenization, so quotes and backslashes in a
+    /// nested result cannot become surrounding instruction syntax. Quoted IF
+    /// branches may contain several markers with ordinary text between them.
+    fn resolve_deferred_text(
+        text: &str,
+        deferred_nested_fields: &[DeferredNestedField],
+        bookmark_text: &HashMap<String, String>,
+        depth: usize,
+    ) -> Option<String> {
+        // Closed child fields form an acyclic graph. Bound malformed input.
+        if depth > deferred_nested_fields.len() {
+            return None;
+        }
+        let mut result = String::new();
+        let mut copied = 0;
+        let mut found = false;
+        for (start, _) in text.match_indices(DEFERRED_NESTED_FIELD_PREFIX) {
+            let tail = &text[start + DEFERRED_NESTED_FIELD_PREFIX.len()..];
+            let Some(end) = tail.find(DEFERRED_NESTED_FIELD_SUFFIX) else {
+                continue;
+            };
+            let Some(deferred) = tail[..end]
+                .parse::<usize>()
+                .ok()
+                .and_then(|index| deferred_nested_fields.get(index))
+            else {
+                continue;
+            };
+            let value = deferred
+                .kind
+                .clone()
+                .and_then(|mut kind| {
+                    Self::resolve_deferred_operands_in_kind(
+                        &mut kind,
+                        deferred_nested_fields,
+                        bookmark_text,
+                        depth + 1,
+                    );
+                    Self::locally_resolved_field_result(&kind, bookmark_text)
+                })
+                .unwrap_or_else(|| deferred.cached_result.clone());
+            result.push_str(&text[copied..start]);
+            result.push_str(&value);
+            copied = start
+                + DEFERRED_NESTED_FIELD_PREFIX.len()
+                + end
+                + DEFERRED_NESTED_FIELD_SUFFIX.len_utf8();
+            found = true;
+        }
+        if !found {
+            return None;
+        }
+        result.push_str(&text[copied..]);
+        Some(result)
     }
 
     fn locally_resolved_field_result(
@@ -18790,6 +18843,50 @@ mod tests {
         );
         assert_eq!(fields[0].cached_text.as_deref(), Some("Stale outer result"));
         assert_eq!(fields[0].resolved_value.as_deref(), Some("Nested true"));
+    }
+
+    #[test]
+    fn nested_if_return_values_resolve_without_internal_markers() {
+        for owner in ["ADDIN owner", "FUTURE owner"] {
+            for simple in [false, true] {
+                for value in ["", "a\"b", r"tail \", "日本語 & <値>"] {
+                    let escaped = quick_xml::escape::escape(value);
+                    let nested = if simple {
+                        format!(
+                            r#"<w:fldSimple w:instr="{owner}"><w:r><w:t>{escaped}</w:t></w:r></w:fldSimple>"#
+                        )
+                    } else {
+                        format!(
+                            r#"<w:r><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:instrText>{owner}</w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r><w:r><w:t>{escaped}</w:t></w:r><w:r><w:fldChar w:fldCharType="end"/></w:r>"#
+                        )
+                    };
+                    for (comparison, before, after, expected) in [
+                        ("1", "", String::new(), value.to_string()),
+                        ("1", "&quot;pre", "post&quot;".into(), format!("pre{value}post")),
+                        ("1", "&quot;pre", format!("/</w:instrText></w:r>{nested}<w:r><w:instrText xml:space=\"preserve\">post&quot;"), format!("pre{value}/{value}post")),
+                        ("1", "&quot;", "&quot;".into(), value.to_string()),
+                        ("0", "&quot;Other&quot; ", String::new(), value.to_string()),
+                    ] {
+                        let doc = parse_document_from_body(&format!(
+                            r#"<w:p><w:r><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:instrText xml:space="preserve">IF 1 = {comparison} {before}</w:instrText></w:r>{nested}<w:r><w:instrText xml:space="preserve">{after} &quot;Other&quot;</w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r><w:r><w:t>Old</w:t></w:r><w:r><w:fldChar w:fldCharType="end"/></w:r></w:p>"#
+                        ));
+                        let paragraph = doc.body.as_ref().unwrap().elements[0]
+                            .as_paragraph()
+                            .unwrap();
+                        let field = paragraph
+                            .runs
+                            .iter()
+                            .find_map(|run| run.field.as_ref())
+                            .unwrap();
+                        assert_eq!(
+                            field.resolved_value.as_deref(),
+                            Some(expected.as_str()),
+                            "simple={simple}, value={value:?}"
+                        );
+                    }
+                }
+            }
+        }
     }
 
     #[test]

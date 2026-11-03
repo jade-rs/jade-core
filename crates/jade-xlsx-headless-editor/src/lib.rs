@@ -14,6 +14,7 @@
 //! so a headless `set` preserves parts it does not understand and a following
 //! read sees exactly what will be exported.
 
+pub mod advanced_filter;
 mod auto_filter;
 mod cell_shift;
 mod charts;
@@ -81,6 +82,10 @@ pub use jade_xlsx_reader::SheetProtection;
 use jade_xlsx_reader::{
     Axis, Cell, CellRange, CellRef, CellValue, DateSystem, HeaderFooter, Shape, ShapeKind, Sheet,
     StructureChange, Workbook,
+};
+pub use jade_xlsx_writer::chart_format::{
+    AxisFormat, AxisId, AxisKind, ChartFormat, Crosses, ErrorBarFormat, Fill, LabelFormat,
+    SeriesFormat, TableFormat, TrendlineFormat,
 };
 pub use jade_xlsx_writer::freeze_panes::Frozen;
 pub use jade_xlsx_writer::ignored_errors::ErrorCheck;
@@ -3227,7 +3232,7 @@ impl HeadlessWorkbook {
                 );
             }
         }
-        if sheet.filtered_row_ranges().1 {
+        if self.workbook.filtered_row_ranges(sheet).1 {
             if views.is_empty() {
                 views.push(AutoFilterView {
                     target: jade_xlsx_headless_api::AutoFilterTarget::Worksheet,

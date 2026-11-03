@@ -112,6 +112,43 @@ pub fn set_defined_names(
     Ok(written)
 }
 
+/// Excel's built-in names a command writes for itself, never typed in the
+/// Name Manager: an Advanced Filter's list, criteria and copy-to range.
+pub const BUILT_IN_NAMES: [&str; 3] = ["_xlnm._FilterDatabase", "_xlnm.Criteria", "_xlnm.Extract"];
+
+/// Built-in names set and others removed in one pass, as Data ▸ Advanced
+/// names its list, criteria and copy-to range. Only [`BUILT_IN_NAMES`].
+pub fn set_built_in_names(
+    original: &[u8],
+    definitions: &[DefinedName],
+    deleted: &[(String, Option<usize>)],
+) -> Result<Vec<u8>> {
+    let built_in = |name: &str| {
+        BUILT_IN_NAMES
+            .iter()
+            .any(|known| known.eq_ignore_ascii_case(name))
+    };
+    let mut written = original.to_vec();
+    for definition in definitions {
+        if !built_in(&definition.name) || definition.local_sheet_index.is_none() {
+            return Err(WriteError::DefinedName(format!(
+                "`{}` is not a sheet's built-in name",
+                definition.name
+            )));
+        }
+        written = set_builtin_or_user_name(&written, definition)?;
+    }
+    for (name, scope) in deleted {
+        if !built_in(name) {
+            return Err(WriteError::DefinedName(format!(
+                "`{name}` is not a built-in name"
+            )));
+        }
+        written = edit(&written, name, *scope, None)?;
+    }
+    Ok(written)
+}
+
 /// Removes only this scope's name. Dependent formulas are kept so a
 /// recalculation reports #NAME?, and another scope's definition can take over.
 pub fn delete_defined_name(original: &[u8], name: &str, scope: Option<usize>) -> Result<Vec<u8>> {
