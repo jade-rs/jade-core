@@ -49790,6 +49790,29 @@ mod tests {
             fresh
         };
         let original = compare(&renderer, &paragraph);
+        let base = paragraph.runs[0].properties.clone().unwrap();
+        for size in [9.0, 12.0, 40.0] {
+            for baseline in [None, Some("superscript"), Some("subscript")] {
+                let mut props = base.clone();
+                props.font_size = Some(size);
+                props.baseline = baseline.map(Rc::from);
+                props.bold = Some(true);
+                props.italic = Some(true);
+                props.underline = Some(true);
+                props.underline_kind = Some(Rc::from("double"));
+                props.border = Some(BorderEdge {
+                    val: Some("single".into()),
+                    size_eighths: Some(8),
+                    space: Some(2),
+                    ..Default::default()
+                });
+                paragraph.runs[0].properties = Some(props);
+                compare(&renderer, &paragraph);
+                paragraph.runs[0].properties.as_mut().unwrap().color = Some("FF0000".into());
+                compare(&renderer, &paragraph);
+            }
+        }
+        paragraph.runs[0].properties = Some(base);
         paragraph.runs[0].properties.as_mut().unwrap().font_size = Some(40.0);
         let larger = compare(&renderer, &paragraph);
         assert_ne!(original, larger);
