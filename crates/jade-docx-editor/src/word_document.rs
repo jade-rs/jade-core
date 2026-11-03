@@ -8190,7 +8190,7 @@ impl WordDocument {
                             // a later REF is responsible for displaying it.
                         }
                         crate::document::RunFieldKind::NonDisplay { .. } => {
-                            // PRIVATE/ADDIN contain opaque storage rather than
+                            // Non-displaying fields contain storage rather than
                             // a display value. Mark the field handled without
                             // copying either its cache or incidental run text.
                             emitted_field_text = true;

@@ -1,5 +1,5 @@
 use super::{
-    stringify::{stringify_reference, DisplaceData},
+    stringify::{stringify_reference, three_d_qualifier, DisplaceData},
     ArrayNode, Node, Reference,
 };
 use crate::{
@@ -10,6 +10,7 @@ use crate::{
 };
 use crate::{
     expressions::types::{Area, CellReferenceRC},
+    // `Area` is also how a 3-D reference is kept out of the moved cells.
     number_format::to_excel_precision_str,
 };
 
@@ -369,6 +370,31 @@ fn to_string_moved(
                 full_column,
             );
             format!("{s1}:{s2}")
+        }
+        Range3DKind {
+            first_name,
+            last_name,
+            range,
+            ..
+        } => {
+            // Cutting cells leaves a 3-D reference as it is, as in Excel.
+            let nowhere = Area {
+                sheet: u32::MAX,
+                row: 0,
+                column: 0,
+                width: 0,
+                height: 0,
+            };
+            let unmoved = MoveContext {
+                area: &nowhere,
+                target_sheet_name: move_context.source_sheet_name,
+                ..*move_context
+            };
+            format!(
+                "{}!{}",
+                three_d_qualifier(first_name, last_name),
+                to_string_moved(range, &unmoved, locale, language)
+            )
         }
         OpRangeKind { left, right } => format!(
             "{}:{}",

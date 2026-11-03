@@ -36427,7 +36427,7 @@ where
             // instruction. Word's last saved result remains the safest visual
             // representation until a dedicated evaluator is implemented.
             RunFieldKind::Unsupported { .. } => field.cached_text.clone(),
-            // PRIVATE/ADDIN carry opaque storage, not visible content. Return
+            // Non-displaying fields have no visible result. Return
             // directly so the common cached-result fallback below cannot leak
             // a stale producer-authored result into the document.
             RunFieldKind::NonDisplay { .. } => return None,
@@ -47589,7 +47589,7 @@ mod tests {
             resolved_value: None,
         };
 
-        // PRIVATE/ADDIN data belongs to the field container rather than the
+        // PRIVATE data belongs to the field container rather than the
         // visible document. Bypass the common cache fallback just like SET and
         // ASK, while retaining the cache in the model for round-trip fidelity.
         assert_eq!(renderer.resolve_run_field(&field), None);

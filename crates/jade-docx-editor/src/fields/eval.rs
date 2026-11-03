@@ -258,7 +258,13 @@ impl<'a> Evaluation<'a> {
             }
             field.instruction_with(|child| nested.remove(&child).unwrap_or_default())
         };
-        let current = field.result_text.clone();
+        // Storage and assignment fields retain their XML cache, but contribute
+        // an empty operand even when locked or outside the update selection.
+        let current = if field.hidden_result {
+            String::new()
+        } else {
+            field.result_text.clone()
+        };
         let Some(code) = FieldCode::parse(&instruction) else {
             self.values[index] = Some(current.clone());
             return current;

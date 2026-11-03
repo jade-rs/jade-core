@@ -10,7 +10,8 @@ use crate::{
         parser::{
             static_analysis::run_static_analysis_on_node,
             stringify::{
-                rename_sheet_in_node, to_english_string, to_localized_string, to_rc_format,
+                delete_sheet_in_3d_ranges, rename_sheet_in_node, to_english_string,
+                to_localized_string, to_rc_format,
             },
             Node, Parser,
         },
@@ -540,6 +541,46 @@ impl<'a> Model<'a> {
         if sheet_index >= sheet_count {
             return Err("Sheet index too large".to_string());
         };
+        // Resolve endpoints before removing the worksheet: afterwards the parser
+        // cannot distinguish a deleted endpoint from an originally invalid name.
+        let sheet_names: Vec<_> = worksheets.iter().map(Worksheet::get_name).collect();
+        self.parser.set_lexer_mode(LexerMode::R1C1);
+        for worksheet in &mut self.workbook.worksheets {
+            let context = CellReferenceRC {
+                sheet: worksheet.get_name(),
+                row: 1,
+                column: 1,
+            };
+            for formula in &mut worksheet.shared_formulas {
+                if formula.contains(':') {
+                    let mut node = self.parser.parse(formula, &context);
+                    if delete_sheet_in_3d_ranges(&mut node, sheet_index, &sheet_names) {
+                        *formula = to_rc_format(&node);
+                    }
+                }
+            }
+        }
+        self.parser.set_lexer_mode(LexerMode::A1);
+        for defined_name in &mut self.workbook.defined_names {
+            if !defined_name.formula.contains(':') {
+                continue;
+            }
+            let context = CellReferenceRC {
+                sheet: self
+                    .workbook
+                    .worksheets
+                    .iter()
+                    .find(|ws| Some(ws.sheet_id) == defined_name.sheet_id)
+                    .map(Worksheet::get_name)
+                    .unwrap_or_else(|| sheet_names[0].clone()),
+                row: 1,
+                column: 1,
+            };
+            let mut node = self.parser.parse(&defined_name.formula, &context);
+            if delete_sheet_in_3d_ranges(&mut node, sheet_index, &sheet_names) {
+                defined_name.formula = to_english_string(&node, &context);
+            }
+        }
         self.workbook.worksheets.remove(sheet_index as usize);
         self.reset_parsed_structures();
         Ok(())

@@ -2788,6 +2788,126 @@ mod stateful {
     }
 
     #[test]
+    fn selected_ref_reads_saved_assignment_inside_an_unselected_instruction() {
+        for simple in [false, true] {
+            for instruction in ["SET Counter 10", "ASK Counter Prompt"] {
+                let result = "<w:bookmarkStart w:id=\"0\" w:name=\"Counter\"/><w:r><w:t>900</w:t></w:r><w:bookmarkEnd w:id=\"0\"/>";
+                let nested = if simple {
+                    format!("<w:fldSimple w:instr=\"{instruction}\">{result}</w:fldSimple>")
+                } else {
+                    format!("<w:r><w:fldChar w:fldCharType=\"begin\"/></w:r><w:r><w:instrText>{instruction}</w:instrText></w:r><w:r><w:fldChar w:fldCharType=\"separate\"/></w:r>{result}<w:r><w:fldChar w:fldCharType=\"end\"/></w:r>")
+                };
+                let source = body_source(&format!("<w:p><w:r><w:fldChar w:fldCharType=\"begin\"/></w:r><w:r><w:instrText xml:space=\"preserve\">IF </w:instrText></w:r>{nested}<w:r><w:instrText xml:space=\"preserve\"> = &quot;&quot; &quot;Hidden&quot; &quot;Leaked&quot;</w:instrText></w:r><w:r><w:fldChar w:fldCharType=\"separate\"/></w:r><w:r><w:t>Old</w:t></w:r><w:r><w:fldChar w:fldCharType=\"end\"/></w:r></w:p><w:p><w:fldSimple w:instr=\"REF Counter\"><w:r><w:t>0</w:t></w:r></w:fldSimple></w:p>"));
+                let mut session = Session {
+                    document: block_on(WordDocument::load(&source, &Options::default())).unwrap(),
+                    selection: None,
+                    executor: CommandExecutor::new(),
+                };
+                for _ in 0..2 {
+                    select_assignment(&mut session, 1);
+                    let scope =
+                        jade_docx_editor::fields::FieldScope::Selection(session.selection.unwrap());
+                    session
+                        .update_fields(scope, &host(), HashMap::new())
+                        .unwrap();
+                    assert_eq!(
+                        session.selected_fields()[0].result,
+                        "900",
+                        "{instruction}, simple={simple}"
+                    );
+                    let bytes = session.document.export_docx().unwrap();
+                    capture(&bytes, "saved nested assignment");
+                    session.document =
+                        block_on(WordDocument::load(&bytes, &Options::default())).unwrap();
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn addin_nested_operands_use_the_owners_result_on_f9() {
+        use jade_docx_editor::fields::FieldScope;
+        for simple in [false, true] {
+            for locked in [false, true] {
+                let nested = if simple {
+                    format!(
+                        r#"<w:fldSimple w:instr="ADDIN vendor-payload" w:fldLock="{locked}"><w:r><w:t>900</w:t></w:r></w:fldSimple>"#
+                    )
+                } else {
+                    format!(
+                        r#"<w:r><w:fldChar w:fldCharType="begin" w:fldLock="{locked}"/></w:r><w:r><w:instrText>ADDIN vendor-payload</w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r><w:r><w:t>900</w:t></w:r><w:r><w:fldChar w:fldCharType="end"/></w:r>"#
+                    )
+                };
+                let source = body_source(&format!(
+                    r#"<w:p><w:r><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:instrText xml:space="preserve">IF </w:instrText></w:r>{nested}<w:r><w:instrText xml:space="preserve"> = 900 &quot;Owner result&quot; &quot;Missing result&quot;</w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r><w:r><w:t>Old</w:t></w:r><w:r><w:fldChar w:fldCharType="end"/></w:r></w:p>"#
+                ));
+                let mut session = Session {
+                    document: block_on(WordDocument::load(&source, &Options::default())).unwrap(),
+                    selection: None,
+                    executor: CommandExecutor::new(),
+                };
+                for _ in 0..2 {
+                    session
+                        .update_fields(FieldScope::Document, &host(), HashMap::new())
+                        .unwrap();
+                    session.whole_paragraph();
+                    assert_eq!(session.selected_fields()[0].result, "Owner result");
+                    let bytes = session.document.export_docx().unwrap();
+                    capture(&bytes, "visible ADDIN operand");
+                    session.document =
+                        block_on(WordDocument::load(&bytes, &Options::default())).unwrap();
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn hidden_nested_operands_do_not_expose_saved_caches_on_f9() {
+        use jade_docx_editor::fields::FieldScope;
+        for simple in [false, true] {
+            for locked in [false, true] {
+                for instruction in [
+                    "PRIVATE",
+                    "XE Index",
+                    "TA Authority",
+                    "TC Entry",
+                    "RD chapter.docx",
+                    "SET Counter 10",
+                    "ASK Counter Prompt",
+                ] {
+                    let nested = if simple {
+                        format!("<w:fldSimple w:instr=\"{instruction}\" w:fldLock=\"{locked}\"><w:r><w:t>900</w:t></w:r></w:fldSimple>")
+                    } else {
+                        format!("<w:r><w:fldChar w:fldCharType=\"begin\" w:fldLock=\"{locked}\"/></w:r><w:r><w:instrText>{instruction}</w:instrText></w:r><w:r><w:fldChar w:fldCharType=\"separate\"/></w:r><w:r><w:t>900</w:t></w:r><w:r><w:fldChar w:fldCharType=\"end\"/></w:r>")
+                    };
+                    let source = body_source(&format!("<w:p><w:r><w:fldChar w:fldCharType=\"begin\"/></w:r><w:r><w:instrText xml:space=\"preserve\">IF </w:instrText></w:r>{nested}<w:r><w:instrText xml:space=\"preserve\"> = &quot;&quot; &quot;Hidden&quot; &quot;Leaked&quot;</w:instrText></w:r><w:r><w:fldChar w:fldCharType=\"separate\"/></w:r><w:r><w:t>Old</w:t></w:r><w:r><w:fldChar w:fldCharType=\"end\"/></w:r></w:p>"));
+                    let mut session = Session {
+                        document: block_on(WordDocument::load(&source, &Options::default()))
+                            .unwrap(),
+                        selection: None,
+                        executor: CommandExecutor::new(),
+                    };
+                    for _ in 0..2 {
+                        session
+                            .update_fields(FieldScope::Document, &host(), HashMap::new())
+                            .unwrap();
+                        session.whole_paragraph();
+                        assert_eq!(
+                            session.selected_fields()[0].result,
+                            "Hidden",
+                            "{instruction}, simple={simple}, locked={locked}"
+                        );
+                        let bytes = session.document.export_docx().unwrap();
+                        capture(&bytes, "hidden nested operand");
+                        session.document =
+                            block_on(WordDocument::load(&bytes, &Options::default())).unwrap();
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
     fn insertion_preserves_adjacent_tabs_and_breaks() {
         for text in ["\t", "\n", "山\t\n🦀"] {
             for offset in [0, text.len()] {

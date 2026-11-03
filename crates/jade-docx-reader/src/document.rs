@@ -1838,7 +1838,7 @@ fn resolve_fields_in_paragraph(
                 }
                 Some(resolved)
             }
-            // PRIVATE/ADDIN store opaque data but do not display a field
+            // Storage and index-entry fields do not display a field
             // result. Record an explicit empty resolution so structural
             // consumers cannot fall back to stale cached text.
             RunFieldKind::NonDisplay { .. } => Some(String::new()),
@@ -2134,10 +2134,7 @@ impl Run {
         let Some(field) = &self.field else {
             return &self.text;
         };
-        if matches!(
-            field.kind.base_kind(),
-            RunFieldKind::NonDisplay { .. } | RunFieldKind::Ask { .. } | RunFieldKind::Set { .. }
-        ) {
+        if !field.kind.has_visible_result() {
             return "";
         }
         if field.kind.keeps_result_in_run_text() {
@@ -2697,10 +2694,10 @@ pub enum RunFieldKind {
     Unsupported {
         instruction: String,
     },
-    /// A Word field that stores data but has no visible result. PRIVATE is a
-    /// cold field and ADDIN is hidden add-in storage; both retain their
-    /// normalized instruction and cached bytes for inspection/round-trip while
-    /// renderers deliberately suppress any stale result text.
+    /// A Word field that stores data but has no visible result, such as PRIVATE,
+    /// XE, TA, and RD. Retain its normalized instruction and cached bytes for
+    /// inspection/round-trip while renderers suppress stale result text.
+    /// ADDIN is intentionally excluded: its owner may supply visible citations.
     NonDisplay {
         instruction: String,
     },
@@ -2760,6 +2757,15 @@ impl RunFieldKind {
             Self::Formatted { kind, .. } => kind,
             other => other,
         }
+    }
+
+    /// Whether the saved result contributes text to the document surface.
+    /// Assignment and storage fields keep a cache without displaying it.
+    pub fn has_visible_result(&self) -> bool {
+        !matches!(
+            self.base_kind(),
+            Self::NonDisplay { .. } | Self::Ask { .. } | Self::Set { .. }
+        )
     }
 
     /// Whether a top-level field of this kind keeps its result as editable
@@ -4109,11 +4115,14 @@ mod tests {
             ("PAGEREF mark", "edited"),
             ("NOTEREF mark", "edited"),
             ("PRIVATE hidden", ""),
-            ("ADDIN hidden", ""),
+            ("ADDIN vendor-payload", "saved"),
+            ("RD chapter.docx", ""),
             ("ASK mark prompt", ""),
             ("SET mark value", ""),
         ] {
             let field = run.field.as_mut().unwrap();
+            field.cached_text = Some("saved".into());
+            field.resolved_value = None;
             field.kind =
                 crate::parser::DocumentParser::parse_field_instruction(instruction).unwrap();
             for locked in [false, true] {

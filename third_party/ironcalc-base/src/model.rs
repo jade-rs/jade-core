@@ -292,6 +292,25 @@ impl<'a> Model<'a> {
         cell: CellReferenceIndex,
     ) -> CalcResult {
         match node {
+            // Its cells on the first sheet to those on the last.
+            Node::Range3DKind {
+                first_sheet,
+                last_sheet,
+                range,
+                ..
+            } => match self.evaluate_node_with_reference_inner(range, cell) {
+                CalcResult::Range { left, right } => CalcResult::Range {
+                    left: CellReferenceIndex {
+                        sheet: (*first_sheet).min(*last_sheet),
+                        ..left
+                    },
+                    right: CellReferenceIndex {
+                        sheet: (*first_sheet).max(*last_sheet),
+                        ..right
+                    },
+                },
+                other => other,
+            },
             Node::ReferenceKind {
                 sheet_name: _,
                 sheet_index,
@@ -725,7 +744,21 @@ impl<'a> Model<'a> {
             OpPowerKind { left, right } => {
                 self.handle_arithmetic(left, right, cell, &|f1, f2| Ok(f1.powf(f2)))
             }
-            FunctionKind { kind, args } => self.evaluate_function(kind, args, cell),
+            FunctionKind { kind, args } => {
+                if args
+                    .iter()
+                    .any(|arg| matches!(arg, Node::Range3DKind { .. }))
+                {
+                    return self.evaluate_three_d_function(kind, args, cell);
+                }
+                self.evaluate_function(kind, args, cell)
+            }
+            // A 3-D reference is only an argument of the functions taking one.
+            Range3DKind { .. } => CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "A 3-D reference needs a function such as SUM".to_string(),
+            ),
             NamedFunctionKind { name, args, id } => {
                 let lambda_result = if let Some(var_id) = id {
                     // Bound by LET — look up the variable, which should be a Lambda.
@@ -4266,6 +4299,72 @@ impl<'a> Model<'a> {
             self.locale,
             self.language,
         )
+    }
+}
+
+impl Model<'_> {
+    /// A function given a 3-D reference (`SUM(Sheet1:Sheet3!A1:B2)`): one of
+    /// those Excel lets take one gets the reference as one argument per
+    /// sheet, in tab order; any other function is `#VALUE!`, as in Excel.
+    fn evaluate_three_d_function(
+        &mut self,
+        kind: &crate::functions::Function,
+        args: &[Node],
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        use crate::functions::Function::*;
+        match kind {
+            // SHEETS counts the sheets, SHEET gives the first, ISREF is TRUE.
+            Sheets | Sheet | Isref => return self.evaluate_function(kind, args, cell),
+            Sum | Average | Averagea | Count | Counta | Max | MaxA | Min | MinA | Product
+            | Stdev | Stdeva | StDevP | StDevPCompat | Stdevpa | StDevS | VarCompat | VarA
+            | VarPCompat | VarpA | VarS | VarP => {}
+            _ => {
+                return CalcResult::new_error(
+                    Error::VALUE,
+                    cell,
+                    "This function does not take a 3-D reference".to_string(),
+                )
+            }
+        }
+        let mut expanded = Vec::with_capacity(args.len());
+        for arg in args {
+            let Node::Range3DKind {
+                first_sheet,
+                last_sheet,
+                range,
+                ..
+            } = arg
+            else {
+                expanded.push(arg.clone());
+                continue;
+            };
+            for sheet in (*first_sheet).min(*last_sheet)..=(*first_sheet).max(*last_sheet) {
+                let name = match self.workbook.worksheet(sheet) {
+                    Ok(worksheet) => worksheet.name.clone(),
+                    Err(_) => continue,
+                };
+                let mut on_sheet = (**range).clone();
+                match &mut on_sheet {
+                    Node::ReferenceKind {
+                        sheet_name,
+                        sheet_index,
+                        ..
+                    }
+                    | Node::RangeKind {
+                        sheet_name,
+                        sheet_index,
+                        ..
+                    } => {
+                        *sheet_name = Some(name);
+                        *sheet_index = sheet;
+                    }
+                    _ => {}
+                }
+                expanded.push(on_sheet);
+            }
+        }
+        self.evaluate_function(kind, &expanded, cell)
     }
 }
 
