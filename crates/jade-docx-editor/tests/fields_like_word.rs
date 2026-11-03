@@ -2862,6 +2862,167 @@ mod stateful {
     }
 
     #[test]
+    fn nested_results_are_literal_return_values() {
+        for simple in [false, true] {
+            for quoted in [false, true] {
+                run_nested_literals(
+                    simple,
+                    quoted,
+                    &[
+                        LiteralOp::Update("a\"b".into(), true),
+                        LiteralOp::Update("\\switch".into(), false),
+                        LiteralOp::Update("a b\\".into(), true),
+                        LiteralOp::Update("\" = 0 \"Wrong\" \"Injected".into(), false),
+                        LiteralOp::Undo,
+                        LiteralOp::Redo,
+                        LiteralOp::Reload,
+                    ],
+                );
+            }
+        }
+    }
+
+    #[derive(Clone, Debug)]
+    enum LiteralOp {
+        Update(String, bool),
+        Lock(bool),
+        Undo,
+        Redo,
+        Reload,
+    }
+
+    #[derive(Clone, Debug, PartialEq, Eq)]
+    struct LiteralState {
+        result: String,
+        locked: bool,
+    }
+
+    fn run_nested_literals(simple: bool, quoted: bool, ops: &[LiteralOp]) {
+        use jade_docx_editor::fields::FieldScope;
+        let nested = if simple {
+            r#"<w:fldSimple w:instr="USERNAME"><w:r><w:t>Owner</w:t></w:r></w:fldSimple>"#
+        } else {
+            r#"<w:r><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:instrText>USERNAME</w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r><w:r><w:t>Owner</w:t></w:r><w:r><w:fldChar w:fldCharType="end"/></w:r>"#
+        };
+        let quote = if quoted { "&quot;" } else { "" };
+        let source = body_source(&format!(
+            r#"<w:p><w:r><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:instrText xml:space="preserve">IF 1 = 1 {quote}</w:instrText></w:r>{nested}<w:r><w:instrText xml:space="preserve">{quote} &quot;Wrong&quot;</w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r><w:r><w:t>Old</w:t></w:r><w:r><w:fldChar w:fldCharType="end"/></w:r></w:p>"#
+        ));
+        let mut session = Session {
+            document: block_on(WordDocument::load(&source, &Options::default())).unwrap(),
+            selection: None,
+            executor: CommandExecutor::new(),
+        };
+        let mut model = LiteralState {
+            result: "Old".into(),
+            locked: false,
+        };
+        let mut undo = Vec::new();
+        let mut redo = Vec::new();
+        for (step, op) in ops.iter().enumerate() {
+            session.whole_paragraph();
+            let before = model.clone();
+            match op {
+                LiteralOp::Update(value, document) => {
+                    let mut environment = host();
+                    environment.user_name = value.clone();
+                    let scope = if *document {
+                        FieldScope::Document
+                    } else {
+                        session.field_scope()
+                    };
+                    session
+                        .update_fields(scope, &environment, HashMap::new())
+                        .unwrap();
+                    if !model.locked {
+                        model.result = value.clone();
+                    }
+                    undo.push(before);
+                    redo.clear();
+                }
+                LiteralOp::Lock(locked) => {
+                    session.lock_fields(*locked).unwrap();
+                    model.locked = *locked;
+                    undo.push(before);
+                    redo.clear();
+                }
+                LiteralOp::Undo | LiteralOp::Redo => {
+                    let (from, to) = if matches!(op, LiteralOp::Undo) {
+                        (&mut undo, &mut redo)
+                    } else {
+                        (&mut redo, &mut undo)
+                    };
+                    let changed = if let Some(previous) = from.pop() {
+                        to.push(std::mem::replace(&mut model, previous));
+                        true
+                    } else {
+                        false
+                    };
+                    let mut context =
+                        CommandContext::new(&mut session.document, &mut session.selection);
+                    let actual = if matches!(op, LiteralOp::Undo) {
+                        session.executor.undo(&mut context)
+                    } else {
+                        session.executor.redo(&mut context)
+                    }
+                    .unwrap();
+                    assert_eq!(actual, changed, "step {step}: {op:?}, ops={ops:?}");
+                }
+                LiteralOp::Reload => {
+                    let bytes = session.document.export_docx().unwrap();
+                    session.document =
+                        block_on(WordDocument::load(&bytes, &Options::default())).unwrap();
+                    session.executor = CommandExecutor::new();
+                    undo.clear();
+                    redo.clear();
+                }
+            }
+            let context =
+                format!("simple={simple}, quoted={quoted}, step {step}: {op:?}, ops={ops:?}");
+            session.whole_paragraph();
+            let fields = session.selected_fields();
+            assert_eq!(fields.len(), 1, "{context}");
+            assert_eq!(fields[0].result, model.result, "{context}");
+            assert_eq!(fields[0].locked, model.locked, "{context}");
+            assert_eq!(session.executor.undo_depth(), undo.len(), "{context}");
+            let bytes = session.document.export_docx().unwrap();
+            capture(&bytes, &context);
+            let mut reloaded = Session {
+                document: block_on(WordDocument::load(&bytes, &Options::default())).unwrap(),
+                selection: None,
+                executor: CommandExecutor::new(),
+            };
+            reloaded.whole_paragraph();
+            let fields = reloaded.selected_fields();
+            assert_eq!(fields.len(), 1, "reloaded: {context}");
+            assert_eq!(fields[0].result, model.result, "reloaded: {context}");
+            assert_eq!(fields[0].locked, model.locked, "reloaded: {context}");
+        }
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig {
+            failure_persistence: Some(Box::new(proptest::test_runner::FileFailurePersistence::WithSource("proptest-regressions"))),
+            ..ProptestConfig::with_cases(64)
+        })]
+        #[test]
+        fn nested_literal_operation_sequences_match_model(
+            simple in any::<bool>(),
+            quoted in any::<bool>(),
+            ops in prop::collection::vec(prop_oneof![
+                5 => (prop::collection::vec(prop::sample::select(vec!['a', 'Z', '日', ' ', '\t', '\n', '"', '\\', '=', '*', '?', '{', '}', '&', '<']), 0..20), any::<bool>())
+                    .prop_map(|(chars, document)| LiteralOp::Update(chars.into_iter().collect(), document)),
+                2 => any::<bool>().prop_map(LiteralOp::Lock),
+                2 => Just(LiteralOp::Undo),
+                2 => Just(LiteralOp::Redo),
+                2 => Just(LiteralOp::Reload),
+            ], 1..25),
+        ) {
+            run_nested_literals(simple, quoted, &ops);
+        }
+    }
+
+    #[test]
     fn hidden_nested_operands_do_not_expose_saved_caches_on_f9() {
         use jade_docx_editor::fields::FieldScope;
         for simple in [false, true] {
