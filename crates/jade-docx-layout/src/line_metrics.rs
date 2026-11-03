@@ -2810,11 +2810,11 @@ pub fn word_east_asian_font_metrics_apply_on_grid(
 /// in a square Word draws in the middle of its line pitch, on either Word.
 pub fn word_grid_line_centres_text(snap_to_grid: bool, doc_grid: Option<&DocGrid>) -> bool {
     snap_to_grid
-        && doc_grid_has_active_line_grid(doc_grid)
         && (word_layout_platform() == WordLayoutPlatform::Mac
             || doc_grid
                 .and_then(|grid| grid.grid_type.as_deref())
                 .is_some_and(|kind| kind.eq_ignore_ascii_case("snapToChars")))
+        && doc_grid_has_active_line_grid(doc_grid)
 }
 
 /// Raises an auto single line height to Word's East Asian font line box when
