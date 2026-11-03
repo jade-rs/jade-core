@@ -17591,6 +17591,9 @@ impl WordDocument {
                 run.revision_node_id = None;
             }
         }
+        // In a paragraph with no run to take formatting from, the marker's
+        // run had none: no font or size until the document was reopened.
+        self.apply_run_font_defaults_at(model_end.paragraph);
         self.sync_paragraph_text_preserving_drawings(model_end.paragraph);
         Ok(SelectionRange::collapsed(rendered_end))
     }
