@@ -57781,11 +57781,7 @@ mod tests {
             layout_document_lines(document, &context)
                 .expect("layout document")
                 .get_lines()
-                .find(|line| {
-                    line.text.starts_with(
-                        "3　法第15条の6の2第2項に規定する条例で定める事項は、次に掲げる事項とする",
-                    )
-                })
+                .find(|line| line.text.starts_with("3　法第15条の6の2第2項"))
                 .map(|line| line.page)
                 .expect("heading line page")
         };

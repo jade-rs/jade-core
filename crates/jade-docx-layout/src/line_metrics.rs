@@ -1717,17 +1717,23 @@ pub(crate) fn word_mac_legacy_space_kerning_px(
 }
 
 pub(crate) fn word_ascii_metrics(font_descriptor: &str) -> Option<WordAsciiMetrics> {
+    word_ascii_metrics_for_platform(font_descriptor, word_layout_platform())
+}
+
+pub(crate) fn word_ascii_metrics_for_platform(
+    font_descriptor: &str,
+    platform: WordLayoutPlatform,
+) -> Option<WordAsciiMetrics> {
     #[cfg(test)]
     WORD_FIXED_ASCII_DESCRIPTOR_LOOKUPS.with(|count| count.set(count.get() + 1));
     WORD_FIXED_ASCII_ADVANCE.with(|cell| {
         let mut cached = cell.borrow_mut();
-        let platform = word_layout_platform();
         if let Some((descriptor, cached_platform, advance)) = cached.as_ref() {
             if descriptor == font_descriptor && *cached_platform == platform {
                 return *advance;
             }
         }
-        let advance = parse_word_ascii_metrics(font_descriptor);
+        let advance = parse_word_ascii_metrics(font_descriptor, platform);
         if let Some((descriptor, cached_platform, cached_advance)) = cached.as_mut() {
             descriptor.clear();
             descriptor.push_str(font_descriptor);
@@ -1740,7 +1746,10 @@ pub(crate) fn word_ascii_metrics(font_descriptor: &str) -> Option<WordAsciiMetri
     })
 }
 
-fn parse_word_ascii_metrics(font_descriptor: &str) -> Option<WordAsciiMetrics> {
+fn parse_word_ascii_metrics(
+    font_descriptor: &str,
+    platform: WordLayoutPlatform,
+) -> Option<WordAsciiMetrics> {
     #[cfg(test)]
     WORD_FIXED_ASCII_DESCRIPTOR_PARSES.with(|count| count.set(count.get() + 1));
     let (size_pt, family) = split_font_descriptor(font_descriptor)?;
@@ -1760,12 +1769,17 @@ fn parse_word_ascii_metrics(font_descriptor: &str) -> Option<WordAsciiMetrics> {
         | "MS ゴシック"
         | "MS Gothic"
         | "ＭＳゴシック" => Some(WordAsciiMetrics::Fixed(
-            em_px * if bold { 0.52 } else { 0.5 },
+            em_px
+                * if bold && platform == WordLayoutPlatform::Mac {
+                    0.52
+                } else {
+                    0.5
+                },
         )),
         "游明朝" | "Yu Mincho" | "YuMincho" | "YuMincho-Regular" => Some(if bold {
             WordAsciiMetrics::YuMinchoBold(
                 em_px / 2048.0,
-                !italic && word_layout_platform() == WordLayoutPlatform::Mac,
+                !italic && platform == WordLayoutPlatform::Mac,
             )
         } else {
             WordAsciiMetrics::YuMincho(em_px / 2048.0)
@@ -1776,12 +1790,10 @@ fn parse_word_ascii_metrics(font_descriptor: &str) -> Option<WordAsciiMetrics> {
         "Century" if !bold && !italic => Some(WordAsciiMetrics::Century(em_px / 2048.0)),
         "Bookman Old Style" if !bold && !italic => Some(WordAsciiMetrics::Bookman(em_px / 2048.0)),
         "Calibri" if !italic => Some(WordAsciiMetrics::Calibri(em_px / 2048.0, bold)),
-        "Aptos" if !bold && !italic && word_layout_platform() == WordLayoutPlatform::Mac => {
+        "Aptos" if !bold && !italic && platform == WordLayoutPlatform::Mac => {
             Some(WordAsciiMetrics::Aptos(em_px / 2048.0, false))
         }
-        "Aptos Display"
-            if !bold && !italic && word_layout_platform() == WordLayoutPlatform::Mac =>
-        {
+        "Aptos Display" if !bold && !italic && platform == WordLayoutPlatform::Mac => {
             Some(WordAsciiMetrics::Aptos(em_px / 2048.0, true))
         }
         "Noto Sans" if !bold && !italic => Some(WordAsciiMetrics::NotoSans(em_px / 2048.0)),
@@ -2773,17 +2785,24 @@ pub fn text_font_slots(text: &str) -> (bool, bool) {
     let mut buffer = [0_u8; 4];
     let (mut latin, mut east_asian) = (false, false);
     for ch in text.chars() {
-        if ch.is_whitespace() || ch.is_control() {
-            continue;
-        }
-        let in_east_asian_slot = !ch.is_ascii()
-            && (matches!(ch as u32, 0x3040..=0x30FF | 0x4E00..=0x9FFF)
-                || crate::line_wrap::classify_script(ch.encode_utf8(&mut buffer))
-                    == crate::line_wrap::ScriptCategory::EastAsia);
-        if in_east_asian_slot {
-            east_asian = true;
-        } else {
-            latin = true;
+        match ch {
+            '\u{3040}'..='\u{30ff}' | '\u{4e00}'..='\u{9fff}' => east_asian = true,
+            '\u{3000}' => continue,
+            ch if ch.is_ascii() => {
+                latin |= !ch.is_ascii_whitespace() && !ch.is_ascii_control();
+            }
+            ch => {
+                if ch.is_whitespace() || ch.is_control() {
+                    continue;
+                }
+                if crate::line_wrap::classify_script(ch.encode_utf8(&mut buffer))
+                    == crate::line_wrap::ScriptCategory::EastAsia
+                {
+                    east_asian = true;
+                } else {
+                    latin = true;
+                }
+            }
         }
         if latin && east_asian {
             break;
@@ -3133,6 +3152,28 @@ pub fn resolve_line_height_points_with_default_multiplier(
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn fast_font_slot_classification_matches_unicode_rules() {
+        let mut buffer = [0; 4];
+        for value in 0..=0x10ffff {
+            let Some(ch) = char::from_u32(value) else {
+                continue;
+            };
+            let text = ch.encode_utf8(&mut buffer);
+            let expected = if ch.is_whitespace() || ch.is_control() {
+                (false, false)
+            } else if !ch.is_ascii()
+                && (matches!(value, 0x3040..=0x30ff | 0x4e00..=0x9fff)
+                    || crate::line_wrap::classify_script(text)
+                        == crate::line_wrap::ScriptCategory::EastAsia)
+            {
+                (false, true)
+            } else {
+                (true, false)
+            };
+            assert_eq!(text_font_slots(text), expected, "U+{value:04X}");
+        }
+    }
     #[test]
     fn word_run_faces_latin_line_height_matches_the_face_line_height() {
         for descriptor in [
@@ -4770,10 +4811,10 @@ mod tests {
             ("10.50pt 'MS Mincho', serif", Some(7.0)),
             ("11.00pt 'Times New Roman', serif", None),
             ("12.00pt 'MS Mincho', serif", Some(8.0)),
-            ("bold italic 10.50pt 'ＭＳ 明朝', serif", Some(7.28)),
+            ("bold italic 10.50pt 'ＭＳ 明朝', serif", Some(7.0)),
             ("10.50pt 'MS PMincho', serif", None),
             ("10.50pt 'MS Gothic', serif", Some(7.0)),
-            ("bold 12.00pt 'ＭＳ ゴシック', serif", Some(8.32)),
+            ("bold 12.00pt 'ＭＳ ゴシック', serif", Some(8.0)),
             ("10.50pt 'MS PGothic', serif", None),
             ("10.50pt 'MS Mincho', serif", Some(7.0)),
         ] {

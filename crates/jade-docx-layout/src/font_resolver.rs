@@ -1173,6 +1173,20 @@ impl ResolvedRunStyle {
             .and_then(|metrics| metrics.advance_px(ascii))
     }
 
+    pub(crate) fn windows_fixed_ascii_advance_px(&self, ascii: u8) -> Option<f64> {
+        use crate::line_metrics::WordAsciiMetrics;
+        self.ascii_metrics()
+            .filter(|metrics| {
+                matches!(
+                    metrics,
+                    WordAsciiMetrics::Fixed(..)
+                        | WordAsciiMetrics::YuMincho(..)
+                        | WordAsciiMetrics::YuMinchoBold(..)
+                )
+            })
+            .and_then(|metrics| metrics.advance_px(ascii))
+    }
+
     #[inline]
     pub(crate) fn ascii_pair_kerning_px(&self, left: u8, right: u8) -> Option<f64> {
         self.ascii_metrics()

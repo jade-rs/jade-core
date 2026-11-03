@@ -7480,17 +7480,15 @@ where
                     });
                     let counter = NumberingCounter::default();
                     let saved_line_bottoms = self.measured_note_line_bottoms.take();
-                    self.measured_note_line_bottoms =
-                        (jade_docx_layout::line_metrics::word_layout_platform()
-                            == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac)
-                            .then(|| document.footnotes.get(&key.0))
-                            .flatten()
-                            .filter(|note| {
-                                note.body
-                                    .iter()
-                                    .all(|element| element.as_paragraph().is_some())
-                            })
-                            .map(|note| MeasuredNoteLineBottoms::new(note.body.len()));
+                    self.measured_note_line_bottoms = document
+                        .footnotes
+                        .get(&key.0)
+                        .filter(|note| {
+                            note.body
+                                .iter()
+                                .all(|element| element.as_paragraph().is_some())
+                        })
+                        .map(|note| MeasuredNoteLineBottoms::new(note.body.len()));
                     let height = self.measure_note_ids_height(
                         &document,
                         &options,
@@ -7566,12 +7564,35 @@ where
     /// it, keeping `allowance` (the line or row being placed) above it.
     fn reserve_footnote_area(&mut self, allowance: f64) -> Result<NoteAreaReserve, JsValue> {
         let full = self.measure_footnote_area()?;
+        let mut min_note_line = points_to_px(MIN_NOTE_LINE_PT as f32);
+        if jade_docx_layout::line_metrics::word_layout_platform()
+            == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+        {
+            let start = self
+                .footnote_carry
+                .map(|carry| carry.order_index)
+                .unwrap_or(self.rendered_footnote_count)
+                .min(self.footnote_order.len());
+            for id in &self.footnote_order[start..] {
+                if self.is_unplaced_footnote(id) {
+                    continue;
+                }
+                let number = self.footnote_display_map.get(id).copied().unwrap_or(0);
+                if let Some(first) = self
+                    .footnote_height_cache
+                    .get(&(id.clone(), number, None))
+                    .and_then(|plan| plan.line_bottoms.as_slice().first())
+                {
+                    min_note_line = min_note_line.max(*first);
+                }
+            }
+        }
         let decision = reserve_note_area(
             full,
             self.footnote_reserve_px,
             self.unreserved_body_bottom() - self.current_y,
             allowance,
-            points_to_px(MIN_NOTE_LINE_PT as f32),
+            min_note_line,
             points_to_px(FOOTNOTE_SEPARATOR_HEIGHT_PT),
             self.at_page_body_top(),
         );
