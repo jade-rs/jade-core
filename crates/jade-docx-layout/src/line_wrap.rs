@@ -2735,7 +2735,7 @@ fn compute_text_advance_step_with_descriptor<'a, C: LineWrapContext>(
                 && p.oracle_advance_px_by_text_offset.is_none()
         })
     {
-        crate::line_metrics::word_windows_cjk_synthetic_bold_extra_advance_px(font_descriptor)
+        style.windows_cjk_bold_extra_px(font_descriptor)
     } else {
         crate::line_metrics::word_synthetic_bold_extra_advance_px(font_descriptor)
     };

@@ -999,6 +999,7 @@ struct CachedCjkMetrics {
     descriptors: [Rc<str>; 4],
     observed_em_px: [Option<f64>; 4],
     compatible_em_px: [Option<f64>; 4],
+    windows_bold_extra_px: std::cell::OnceCell<[f64; 4]>,
 }
 
 /// Runtime style metadata exposed to `LineWrapContext`.
@@ -1170,8 +1171,8 @@ impl ResolvedRunStyle {
     }
 
     #[inline]
-    fn cached_cjk_em_px(&self, descriptor: &str, include_aliases: bool) -> Option<f64> {
-        let cached = self.fixed_cjk_metrics.get_or_init(|| {
+    fn cjk_metrics(&self) -> &CachedCjkMetrics {
+        self.fixed_cjk_metrics.get_or_init(|| {
             let descriptors = [
                 Rc::clone(&self.font_descriptor_east_asia),
                 Rc::clone(&self.font_descriptor_latin_ascii),
@@ -1189,8 +1190,31 @@ impl ResolvedRunStyle {
                 descriptors,
                 observed_em_px,
                 compatible_em_px,
+                windows_bold_extra_px: std::cell::OnceCell::new(),
+            })
+        })
+    }
+
+    #[inline]
+    pub(crate) fn windows_cjk_bold_extra_px(&self, descriptor: &str) -> f64 {
+        let cached = self.cjk_metrics();
+        let extras = cached.windows_bold_extra_px.get_or_init(|| {
+            cached.descriptors.each_ref().map(|descriptor| {
+                crate::line_metrics::word_windows_cjk_synthetic_bold_extra_advance_px(descriptor)
             })
         });
+        for (key, extra) in cached.descriptors.iter().zip(extras) {
+            if std::ptr::eq(key.as_ref(), descriptor) {
+                return *extra;
+            }
+        }
+        // Public slot replacement must not reuse facts for the old allocation.
+        crate::line_metrics::word_windows_cjk_synthetic_bold_extra_advance_px(descriptor)
+    }
+
+    #[inline]
+    fn cached_cjk_em_px(&self, descriptor: &str, include_aliases: bool) -> Option<f64> {
+        let cached = self.cjk_metrics();
         let values = if include_aliases {
             &cached.compatible_em_px
         } else {
@@ -1446,6 +1470,47 @@ mod tests {
             2
         );
     }
+    #[test]
+    fn windows_cjk_bold_cache_tracks_clones_and_replaced_slots() {
+        let mut style = ResolvedRunStyle::new(
+            "12pt Arial",
+            "italic bold 10.5pt 'MS Mincho'",
+            "bold 12pt 'MS Mincho'",
+            "bold 20pt 'Yu Mincho'",
+            0.0,
+            1.0,
+            false,
+            None,
+        );
+        assert_eq!(
+            style.windows_cjk_bold_extra_px(&style.font_descriptor_east_asia),
+            0.08
+        );
+        let original = style.clone();
+        for replacement in [
+            "12pt 'MS Mincho'",
+            "bold 40pt 'MS Mincho'",
+            "bold 12pt 'Yu Mincho'",
+        ] {
+            style.font_descriptor_east_asia = Rc::from(replacement);
+            for current in [&style, &original] {
+                for descriptor in [
+                    &current.font_descriptor_latin_ascii,
+                    &current.font_descriptor_latin_hansi,
+                    &current.font_descriptor_east_asia,
+                    &current.font_descriptor_complex,
+                ] {
+                    assert_eq!(
+                        current.windows_cjk_bold_extra_px(descriptor),
+                        crate::line_metrics::word_windows_cjk_synthetic_bold_extra_advance_px(
+                            descriptor
+                        )
+                    );
+                }
+            }
+        }
+    }
+
     #[test]
     fn fixed_cjk_slot_cache_preserves_negative_results_and_slot_replacement() {
         let mut style = ResolvedRunStyle::new(
