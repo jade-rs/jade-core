@@ -110,6 +110,28 @@ impl ScannedField {
         out
     }
 
+    /// Parse evaluated children as values, without reinterpreting their text.
+    pub fn code_with<'a>(
+        &'a self,
+        mut nested: impl FnMut(usize) -> &'a str,
+    ) -> Option<jade_docx_reader::field_format::FieldCode> {
+        use jade_docx_reader::field_format::{FieldCode, FieldInstructionPart};
+        if let Some(instruction) = &self.simple_instruction {
+            return FieldCode::parse(instruction);
+        }
+        if !self
+            .pieces
+            .iter()
+            .any(|piece| matches!(piece, Piece::Field(_)))
+        {
+            return FieldCode::parse(&self.instruction_with(|_| unreachable!()));
+        }
+        FieldCode::parse_parts(self.pieces.iter().map(|piece| match piece {
+            Piece::Text(text) => FieldInstructionPart::Code(text),
+            Piece::Field(index) => FieldInstructionPart::Literal(nested(*index)),
+        }))
+    }
+
     /// The instruction as Word shows it with field codes on: nested fields
     /// in braces.
     pub fn display_code(&self, fields: &[ScannedField]) -> String {

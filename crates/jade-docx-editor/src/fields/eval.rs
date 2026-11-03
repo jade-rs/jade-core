@@ -218,7 +218,7 @@ impl<'a> Evaluation<'a> {
     /// A merge field's value for the recipient the merge previews, through
     /// the mail-merge evaluator (`word_document::mail_merge::fields`); `None`
     /// when no recipient is previewed or the field is not the merge's.
-    fn merge_value(&self, code: &FieldCode, instruction: &str) -> Option<String> {
+    fn merge_value(&self, code: &FieldCode, field: &ScannedField) -> Option<String> {
         const MERGE_FIELDS: [&str; 5] = [
             "MERGEFIELD",
             "ADDRESSBLOCK",
@@ -230,10 +230,12 @@ impl<'a> Evaluation<'a> {
         if !MERGE_FIELDS.contains(&code.name.as_str()) {
             return None;
         }
+        let instruction =
+            field.instruction_with(|child| self.values[child].clone().unwrap_or_default());
         crate::word_document::mail_merge::fields::evaluate_instruction(
             request,
             *record,
-            instruction,
+            &instruction,
         )
     }
 
@@ -242,22 +244,17 @@ impl<'a> Evaluation<'a> {
             return value.clone();
         }
         let field = &self.story.fields[index];
-        let instruction = {
-            let pieces: Vec<usize> = field
-                .pieces
-                .iter()
-                .filter_map(|piece| match piece {
-                    super::scan::Piece::Field(child) => Some(*child),
-                    _ => None,
-                })
-                .collect();
-            let mut nested = HashMap::new();
-            for child in pieces {
-                let value = self.evaluate(child);
-                nested.insert(child, value);
-            }
-            field.instruction_with(|child| nested.remove(&child).unwrap_or_default())
-        };
+        let children: Vec<usize> = field
+            .pieces
+            .iter()
+            .filter_map(|piece| match piece {
+                super::scan::Piece::Field(child) => Some(*child),
+                _ => None,
+            })
+            .collect();
+        for child in children {
+            self.evaluate(child);
+        }
         // Storage and assignment fields retain their XML cache, but contribute
         // an empty operand even when locked or outside the update selection.
         let current = if field.hidden_result {
@@ -265,21 +262,24 @@ impl<'a> Evaluation<'a> {
         } else {
             field.result_text.clone()
         };
-        let Some(code) = FieldCode::parse(&instruction) else {
+        let Some(code) = field.code_with(|child| self.values[child].as_deref().unwrap_or_default())
+        else {
             self.values[index] = Some(current.clone());
             return current;
         };
         let locked = field.locked;
         let evaluated = if locked {
             Evaluated::Keep
-        } else if let Some(text) = self.merge_value(&code, &instruction) {
+        } else if let Some(text) = self.merge_value(&code, field) {
             Evaluated::Final(text)
         } else if code.name == "CITATION" {
             self.data
                 .citation_style
                 .and_then(|style| {
                     render_citation(
-                        &instruction,
+                        &field.instruction_with(|child| {
+                            self.values[child].clone().unwrap_or_default()
+                        }),
                         &self.data.sources,
                         &self.data.citation_order,
                         style,
@@ -1134,9 +1134,8 @@ impl<'a> Evaluation<'a> {
         if field.locked || !self.is_selected(index) {
             return;
         }
-        let instruction =
-            field.instruction_with(|child| self.values[child].clone().unwrap_or_default());
-        let Some(code) = FieldCode::parse(&instruction) else {
+        let Some(code) = field.code_with(|child| self.values[child].as_deref().unwrap_or_default())
+        else {
             return;
         };
         if code.name != "SEQ" {
