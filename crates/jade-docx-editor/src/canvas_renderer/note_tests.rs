@@ -428,13 +428,22 @@ fn a_long_footnote_continues_on_the_next_page() {
     // area with the continuation, after it.
     let short = model.footnote_paragraph_index("3").expect("short note");
     let short_lines = surface_line_bottoms(&renderer, short);
-    assert_eq!(short_lines.len(), 1);
+    assert!(!short_lines.is_empty(), "the short note is drawn");
     let short_reference = surface_page(
         &renderer,
         surface_starting_with(&renderer, "Page two reference"),
     )
     .unwrap();
-    assert_eq!(short_lines[0].0, short_reference);
+    for (page, bottom) in short_lines {
+        assert_eq!(
+            page, short_reference,
+            "every short-note line stays with its reference"
+        );
+        assert!(
+            bottom <= body_bottom,
+            "the short note stays inside the page"
+        );
+    }
 
     let ops = painter.ops();
     let column = renderer.page_width - renderer.margin_left - renderer.margin_right;

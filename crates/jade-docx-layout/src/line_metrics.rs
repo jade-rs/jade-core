@@ -1892,6 +1892,28 @@ thread_local! {
 
 /// Full-em CJK faces whose default wide glyphs retain fixed advance in Word.
 /// Proportional faces and unknown descriptors keep their host shaping path.
+pub(crate) fn cached_word_fixed_east_asian_em_px(descriptor: &str) -> Option<f64> {
+    thread_local! { static LAST: std::cell::RefCell<Option<(String, Option<f64>)>> = const { std::cell::RefCell::new(None) }; }
+    LAST.with(|last| {
+        let mut last = last.borrow_mut();
+        if let Some((key, value)) = last.as_ref() {
+            if key == descriptor {
+                return *value;
+            }
+        }
+        let value = word_fixed_east_asian_em_px(descriptor);
+        match last.as_mut() {
+            Some((key, cached)) => {
+                key.clear();
+                key.push_str(descriptor);
+                *cached = value;
+            }
+            None => *last = Some((descriptor.to_owned(), value)),
+        }
+        value
+    })
+}
+
 pub(crate) fn word_fixed_east_asian_em_px(font_descriptor: &str) -> Option<f64> {
     #[cfg(test)]
     WORD_FIXED_CJK_DESCRIPTOR_PARSES.with(|count| count.set(count.get() + 1));

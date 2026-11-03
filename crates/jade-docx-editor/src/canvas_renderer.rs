@@ -66075,7 +66075,13 @@ mod tests {
     /// paragraphs must resolve their line height exactly like body paragraphs.
     #[test]
     fn table_cell_paragraphs_share_the_body_line_height_resolution() {
-        let renderer = test_renderer();
+        let renderer = CanvasRenderer::with_host(
+            Box::new(NonCanvasHost {
+                painter: jade_painter::recording::RecordingPainter::new(),
+            }),
+            false,
+        )
+        .expect("recording renderer");
         // The test host has no canvas, so size the second paragraph through
         // its paragraph mark instead of a visible run: the mark takes part in
         // line-height resolution without touching the painter.
