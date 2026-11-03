@@ -23,8 +23,13 @@ impl std::ops::Deref for Bytes<'_> {
     }
 }
 
+struct CachedImage {
+    source: Box<[u8]>,
+    made: Option<Rc<Vec<u8>>>,
+}
+
 thread_local! {
-    static MADE: RefCell<HashMap<String, Option<Rc<Vec<u8>>>>> = RefCell::new(HashMap::new());
+    static MADE: RefCell<HashMap<String, CachedImage>> = RefCell::new(HashMap::new());
 }
 
 /// Whether `bytes` are an SVG document.
@@ -35,7 +40,9 @@ pub fn is_svg(bytes: &[u8]) -> bool {
 }
 
 /// The bytes to draw for `key`, the image parts looked up by `lookup`: an
-/// SVG part drawn to a PNG, the effects applied, each made once per thread.
+/// SVG part drawn to a PNG, the effects applied, cached per thread while the
+/// source bytes are unchanged. Part names alone do not identify an image:
+/// different documents commonly reuse the same name.
 pub fn image_bytes<'a>(key: &str, lookup: impl Fn(&str) -> Option<&'a [u8]>) -> Option<Bytes<'a>> {
     let (part, effects) = parse_key(key);
     let source = lookup(part)?;
@@ -43,17 +50,29 @@ pub fn image_bytes<'a>(key: &str, lookup: impl Fn(&str) -> Option<&'a [u8]>) -> 
     if effects.is_empty() && !svg {
         return Some(Bytes::Part(source));
     }
-    if let Some(made) = MADE.with(|made| made.borrow().get(key).cloned()) {
+    if let Some(made) = MADE.with(|cache| {
+        cache
+            .borrow()
+            .get(key)
+            .filter(|cached| cached.source.as_ref() == source)
+            .map(|cached| cached.made.clone())
+    }) {
         return made.map(Bytes::Made);
     }
     let made = make(source, svg, &effects).map(Rc::new);
     MADE.with(|cache| {
         let mut cache = cache.borrow_mut();
         // Keep the cache from growing without bound.
-        if cache.len() > 256 {
+        if cache.len() >= 256 {
             cache.clear();
         }
-        cache.insert(key.to_string(), made.clone());
+        cache.insert(
+            key.to_string(),
+            CachedImage {
+                source: source.into(),
+                made: made.clone(),
+            },
+        );
     });
     made.map(Bytes::Made)
 }
@@ -464,7 +483,11 @@ pub fn remove_background(pixels: &mut image::RgbaImage, marquee: [f64; 4]) -> us
                 .or_default() += 1;
         }
     }
-    let Some((&background, _)) = counts.iter().max_by_key(|(_, count)| **count) else {
+    // Break equal counts by colour, independently of HashMap's random seed.
+    let Some((&background, _)) = counts
+        .iter()
+        .max_by_key(|(colour, count)| (**count, std::cmp::Reverse(**colour)))
+    else {
         return 0;
     };
     let background = background.map(|c| f64::from(c) * 8.0 + 4.0);
@@ -603,6 +626,71 @@ mod tests {
         let pixels = decode(&grey).unwrap();
         let p = pixels.get_pixel(0, 0).0;
         assert!(p[0] == p[1] && p[1] == p[2]);
+    }
+
+    #[test]
+    fn cached_effects_follow_source_bytes_when_documents_share_a_part_name() {
+        let first = png(&image::RgbaImage::from_pixel(
+            1,
+            1,
+            image::Rgba([255, 255, 255, 255]),
+        ));
+        let second = png(&image::RgbaImage::from_pixel(
+            1,
+            1,
+            image::Rgba([0, 0, 0, 255]),
+        ));
+        let effect_key = key("ppt/media/image1.png", &[Effect::Grayscale]);
+        let first_draw = image_bytes(&effect_key, |_| Some(first.as_slice())).unwrap();
+        let second_draw = image_bytes(&effect_key, |_| Some(second.as_slice())).unwrap();
+        assert_eq!(decode(&first_draw).unwrap().get_pixel(0, 0).0, [255; 4]);
+        assert_eq!(
+            decode(&second_draw).unwrap().get_pixel(0, 0).0,
+            [0, 0, 0, 255]
+        );
+
+        // The held image must remain valid when the same key is replaced.
+        assert_eq!(decode(&first_draw).unwrap().get_pixel(0, 0).0, [255; 4]);
+        let repeated = image_bytes(&effect_key, |_| Some(second.as_slice())).unwrap();
+        match (second_draw, repeated) {
+            (Bytes::Made(first), Bytes::Made(second)) => assert!(Rc::ptr_eq(&first, &second)),
+            _ => panic!("unchanged source bytes should reuse the rendered image"),
+        }
+    }
+
+    #[test]
+    fn cached_decode_failure_does_not_hide_a_replacement_image() {
+        let effect_key = key("ppt/media/replaced.png", &[Effect::Grayscale]);
+        assert!(image_bytes(&effect_key, |_| Some(b"invalid image")).is_none());
+        let source = png(&image::RgbaImage::from_pixel(
+            1,
+            1,
+            image::Rgba([255, 255, 255, 255]),
+        ));
+        let drawn = image_bytes(&effect_key, |_| Some(source.as_slice()))
+            .expect("a valid replacement must be decoded despite a cached failure");
+        assert_eq!(decode(&drawn).unwrap().get_pixel(0, 0).0, [255; 4]);
+    }
+
+    #[test]
+    fn background_removal_is_deterministic_when_border_colours_are_tied() {
+        let source = image::RgbaImage::from_fn(4, 4, |x, _| {
+            image::Rgba(if x < 2 {
+                [0, 0, 255, 255]
+            } else {
+                [255, 0, 0, 255]
+            })
+        });
+        let mut expected = source.clone();
+        assert_eq!(remove_background(&mut expected, [0.0, 0.0, 1.0, 1.0]), 8);
+        for _ in 0..128 {
+            let mut actual = source.clone();
+            assert_eq!(remove_background(&mut actual, [0.0, 0.0, 1.0, 1.0]), 8);
+            assert_eq!(
+                actual, expected,
+                "equal border counts must choose the same colour"
+            );
+        }
     }
 
     #[test]

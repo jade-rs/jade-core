@@ -29,9 +29,9 @@ use crate::document::{
     TocEntry, TocOptions, WrapMode, WrapPolygon, WrapPolygonPoint, PAGE_BREAK_CHAR,
 };
 use crate::docx_xml::{
-    attach_block_xml_ids, attach_document_xml_ids, attach_text_box_xml_ids, clear_block_xml_ids,
-    is_ruby_run, is_transparent_run_container, DocxXmlDocument, DocxXmlError, XmlAttribute,
-    XmlElement, XmlNode, XmlNodeId,
+    attach_block_xml_ids, attach_document_xml_ids, attach_paragraph_xml_ids,
+    attach_text_box_xml_ids, clear_block_xml_ids, is_ruby_run, is_transparent_run_container,
+    DocxXmlDocument, DocxXmlError, XmlAttribute, XmlElement, XmlNode, XmlNodeId,
 };
 use crate::field_datetime::{format_word_date, parse_core_property_datetime};
 use crate::number_format::format_note_marker;
@@ -277,6 +277,7 @@ pub(crate) fn rebase_paragraph_style_properties(
     old: &ParagraphProperties,
     new: &ParagraphProperties,
     declared: impl Fn(&str) -> bool,
+    declared_attribute: impl Fn(&str, &str) -> bool,
 ) {
     macro_rules! rebase {
         ($($field:ident => $tag:literal),* $(,)?) => {
@@ -290,8 +291,6 @@ pub(crate) fn rebase_paragraph_style_properties(
     rebase!(
         alignment => "w:jc",
         bidi => "w:bidi",
-        spacing => "w:spacing",
-        indent => "w:ind",
         tabs => "w:tabs",
         adjust_right_indent => "w:adjustRightInd",
         snap_to_grid => "w:snapToGrid",
@@ -307,6 +306,36 @@ pub(crate) fn rebase_paragraph_style_properties(
         shading => "w:shd",
         borders => "w:pBdr",
         contextual_spacing => "w:contextualSpacing",
+    );
+
+    // A direct compound element overrides only the attributes it declares.
+    // Rebase inherited groups together so point/character and point/line
+    // alternatives cannot leave stale twins behind.
+    macro_rules! rebase_groups {
+        ($field:ident, $tag:literal, $($($member:ident),+ => [$($attribute:literal),+]);+ $(;)?) => {{
+            let mut value = props.$field.clone().unwrap_or_default();
+            let prior = old.$field.clone().unwrap_or_default();
+            let next = new.$field.clone().unwrap_or_default();
+            $(
+                if !($(declared_attribute($tag, $attribute))||+)
+                    && $(value.$member == prior.$member)&&+
+                {
+                    $(value.$member = next.$member.clone();)+
+                }
+            )+
+            props.$field = (value != Default::default()).then_some(value);
+        }};
+    }
+    rebase_groups!(spacing, "w:spacing",
+        before, before_lines, before_auto => ["w:before", "w:beforeLines", "w:beforeAutospacing"];
+        after, after_lines, after_auto => ["w:after", "w:afterLines", "w:afterAutospacing"];
+        line => ["w:line"];
+        line_rule => ["w:line", "w:lineRule"];
+    );
+    rebase_groups!(indent, "w:ind",
+        left, start, left_chars, start_chars => ["w:left", "w:start", "w:leftChars", "w:startChars"];
+        right, end, right_chars, end_chars => ["w:right", "w:end", "w:rightChars", "w:endChars"];
+        first_line, hanging, first_line_chars, hanging_chars => ["w:firstLine", "w:hanging", "w:firstLineChars", "w:hangingChars"];
     );
 }
 
@@ -1259,7 +1288,7 @@ fn paragraph_text_metrics(paragraph: &Paragraph) -> DocumentTextMetrics {
     let text = paragraph
         .runs
         .iter()
-        .map(|run| run.text.as_str())
+        .map(Run::cached_display_text)
         .collect::<String>();
     let mut metrics = DocumentTextMetrics::default();
     let mut word_state = WordState::Outside;
@@ -1603,6 +1632,17 @@ pub struct CitationSourceInfo {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub url: Option<String>,
 }
+
+/// Source types supported by the citation editor and catalog validation.
+pub const CITATION_SOURCE_TYPES: [&str; 7] = [
+    "Book",
+    "JournalArticle",
+    "ArticleInAPeriodical",
+    "ConferenceProceedings",
+    "Report",
+    "InternetSite",
+    "Misc",
+];
 
 /// Word's editing-restriction metadata from `word/settings.xml`.
 ///
@@ -6511,6 +6551,19 @@ impl WordDocument {
         self.body_surface_indices.len()
     }
 
+    /// Plain-text snapshot of a body paragraph, including saved field results.
+    /// The index follows body paragraphs, excluding header and footer surfaces.
+    pub fn body_paragraph_text(&self, index: usize) -> Option<String> {
+        let paragraph = self.paragraph(self.surface_index_for_body(index)?)?;
+        Some(
+            paragraph
+                .runs
+                .iter()
+                .map(Run::cached_display_text)
+                .collect(),
+        )
+    }
+
     /// Returns Word-compatible text counts without serializing the complete
     /// document through wasm. After the first call, a normal keystroke only
     /// recounts the edited body paragraph.
@@ -8137,7 +8190,7 @@ impl WordDocument {
                             // a later REF is responsible for displaying it.
                         }
                         crate::document::RunFieldKind::NonDisplay { .. } => {
-                            // PRIVATE/ADDIN contain opaque storage rather than
+                            // Non-displaying fields contain storage rather than
                             // a display value. Mark the field handled without
                             // copying either its cache or incidental run text.
                             emitted_field_text = true;
@@ -16603,23 +16656,58 @@ impl WordDocument {
         text
     }
 
-    fn xml_descendant<'a>(element: &'a XmlElement, local_name: &str) -> Option<&'a XmlElement> {
+    fn is_bibliography_element(
+        element: &XmlElement,
+        local_name: &str,
+        ancestors: &[&XmlElement],
+    ) -> bool {
+        if Self::xml_local_name(&element.name) != local_name {
+            return false;
+        }
+        let declaration = element.name.split_once(':').map_or_else(
+            || "xmlns".to_string(),
+            |(prefix, _)| format!("xmlns:{prefix}"),
+        );
+        std::iter::once(element)
+            .chain(ancestors.iter().rev().copied())
+            .find_map(|scope| {
+                scope
+                    .attributes
+                    .iter()
+                    .find(|attribute| attribute.name == declaration)
+            })
+            .is_some_and(|attribute| attribute.value == BIBLIOGRAPHY_NAMESPACE)
+    }
+
+    fn xml_descendant<'a>(
+        element: &'a XmlElement,
+        local_name: &str,
+        ancestors: &mut Vec<&'a XmlElement>,
+    ) -> Option<&'a XmlElement> {
+        ancestors.push(element);
         for child in &element.children {
             let XmlNode::Element(child) = child else {
                 continue;
             };
-            if Self::xml_local_name(&child.name) == local_name {
+            if Self::is_bibliography_element(child, local_name, ancestors) {
+                ancestors.pop();
                 return Some(child);
             }
-            if let Some(found) = Self::xml_descendant(child, local_name) {
+            if let Some(found) = Self::xml_descendant(child, local_name, ancestors) {
+                ancestors.pop();
                 return Some(found);
             }
         }
+        ancestors.pop();
         None
     }
 
-    fn xml_descendant_text(element: &XmlElement, local_name: &str) -> Option<String> {
-        Self::xml_descendant(element, local_name)
+    fn xml_descendant_text<'a>(
+        element: &'a XmlElement,
+        local_name: &str,
+        ancestors: &[&'a XmlElement],
+    ) -> Option<String> {
+        Self::xml_descendant(element, local_name, &mut ancestors.to_vec())
             .map(Self::xml_element_text)
             .map(|value| value.trim().to_string())
             .filter(|value| !value.is_empty())
@@ -16672,10 +16760,7 @@ impl WordDocument {
             let Ok(parsed) = DocxXmlDocument::parse(&xml) else {
                 return false;
             };
-            Self::xml_local_name(&parsed.root().name) == "Sources"
-                && parsed.root().attributes.iter().any(|attribute| {
-                    attribute.name == "xmlns" || attribute.name.starts_with("xmlns:")
-                } && attribute.value == BIBLIOGRAPHY_NAMESPACE)
+            Self::is_bibliography_element(parsed.root(), "Sources", &[])
         })
     }
 
@@ -16688,42 +16773,64 @@ impl WordDocument {
         let Some(xml) = self.read_xml_part_content(&path) else {
             return Vec::new();
         };
-        let Ok(parsed) = DocxXmlDocument::parse(&xml) else {
+        Self::parse_citation_sources_xml(&xml, "Misc")
+    }
+
+    /// Shared by package catalogs and Word's standalone Sources.xml master list.
+    pub(crate) fn parse_citation_sources_xml(
+        xml: &str,
+        default_source_type: &str,
+    ) -> Vec<CitationSourceInfo> {
+        let Ok(parsed) = DocxXmlDocument::parse(xml) else {
             return Vec::new();
         };
+        if !Self::is_bibliography_element(parsed.root(), "Sources", &[]) {
+            return Vec::new();
+        }
         parsed
             .root()
             .children
             .iter()
             .filter_map(|child| match child {
-                XmlNode::Element(source) if Self::xml_local_name(&source.name) == "Source" => {
+                XmlNode::Element(source)
+                    if Self::is_bibliography_element(source, "Source", &[parsed.root()]) =>
+                {
                     Some(source)
                 }
                 _ => None,
             })
             .filter_map(|source| {
-                let tag = Self::xml_descendant_text(source, "Tag")?;
-                let source_type = Self::xml_descendant_text(source, "SourceType")
-                    .unwrap_or_else(|| "Misc".to_string());
-                let author = Self::xml_descendant_text(source, "Corporate").unwrap_or_else(|| {
-                    let last = Self::xml_descendant_text(source, "Last").unwrap_or_default();
-                    let first = Self::xml_descendant_text(source, "First").unwrap_or_default();
-                    [last, first]
-                        .into_iter()
-                        .filter(|part| !part.is_empty())
-                        .collect::<Vec<_>>()
-                        .join(", ")
-                });
+                let tag = Self::xml_descendant_text(source, "Tag", &[parsed.root()])?;
+                let source_type = Self::xml_descendant_text(source, "SourceType", &[parsed.root()])
+                    .unwrap_or_else(|| default_source_type.to_string());
+                let author = Self::xml_descendant_text(source, "Corporate", &[parsed.root()])
+                    .unwrap_or_else(|| {
+                        let last = Self::xml_descendant_text(source, "Last", &[parsed.root()])
+                            .unwrap_or_default();
+                        let first = Self::xml_descendant_text(source, "First", &[parsed.root()])
+                            .unwrap_or_default();
+                        [last, first]
+                            .into_iter()
+                            .filter(|part| !part.is_empty())
+                            .collect::<Vec<_>>()
+                            .join(", ")
+                    });
                 Some(CitationSourceInfo {
                     tag,
                     source_type,
                     author,
-                    title: Self::xml_descendant_text(source, "Title").unwrap_or_default(),
-                    year: Self::xml_descendant_text(source, "Year").unwrap_or_default(),
-                    publisher: Self::xml_descendant_text(source, "Publisher")
-                        .or_else(|| Self::xml_descendant_text(source, "JournalName"))
-                        .or_else(|| Self::xml_descendant_text(source, "InternetSiteTitle")),
-                    url: Self::xml_descendant_text(source, "URL"),
+                    title: Self::xml_descendant_text(source, "Title", &[parsed.root()])
+                        .unwrap_or_default(),
+                    year: Self::xml_descendant_text(source, "Year", &[parsed.root()])
+                        .unwrap_or_default(),
+                    publisher: Self::xml_descendant_text(source, "Publisher", &[parsed.root()])
+                        .or_else(|| {
+                            Self::xml_descendant_text(source, "JournalName", &[parsed.root()])
+                        })
+                        .or_else(|| {
+                            Self::xml_descendant_text(source, "InternetSiteTitle", &[parsed.root()])
+                        }),
+                    url: Self::xml_descendant_text(source, "URL", &[parsed.root()]),
                 })
             })
             .collect()
@@ -16759,9 +16866,7 @@ impl WordDocument {
         if source.title.is_empty() {
             return Err("citation source title must not be empty".to_string());
         }
-        const SOURCE_TYPES: [&str; 5] =
-            ["Book", "JournalArticle", "InternetSite", "Report", "Misc"];
-        if !SOURCE_TYPES.contains(&source.source_type.as_str()) {
+        if !CITATION_SOURCE_TYPES.contains(&source.source_type.as_str()) {
             return Err(format!(
                 "unsupported citation source type: {}",
                 source.source_type
@@ -16784,9 +16889,9 @@ impl WordDocument {
                     "citation source {name} must be at most {maximum} characters"
                 ));
             }
-            if value.chars().any(char::is_control) {
+            if !value.chars().all(Self::is_printable_xml_character) {
                 return Err(format!(
-                    "citation source {name} must not contain control characters"
+                    "citation source {name} must contain only printable XML characters"
                 ));
             }
         }
@@ -16895,13 +17000,41 @@ impl WordDocument {
             let root_name = parsed.root().name.clone();
             let prefix = root_name.strip_suffix(":Sources").unwrap_or_default();
             let close = format!("</{root_name}>");
-            let insert_at = original
-                .rfind(&close)
-                .ok_or_else(|| "bibliography source root is not closed".to_string())?;
-            let mut updated = String::with_capacity(original.len() + 512);
-            updated.push_str(&original[..insert_at]);
-            updated.push_str(&Self::bibliography_source_entry_xml(&source, prefix));
-            updated.push_str(&original[insert_at..]);
+            let entry = Self::bibliography_source_entry_xml(&source, prefix);
+            let mut reader = quick_xml::Reader::from_str(&original);
+            let mut depth = 0;
+            let mut updated = String::with_capacity(original.len() + entry.len() + close.len());
+            loop {
+                let start = reader.buffer_position() as usize;
+                match reader.read_event().map_err(|error| error.to_string())? {
+                    quick_xml::events::Event::Start(_) => depth += 1,
+                    quick_xml::events::Event::Empty(_) if depth == 0 => {
+                        // Word commonly stores an unused catalog as <b:Sources/>.
+                        // Expand only its closing delimiter, preserving every attribute
+                        // and any declarations, comments or processing instructions.
+                        let end = reader.buffer_position() as usize;
+                        updated.push_str(&original[..end - 2]);
+                        updated.push('>');
+                        updated.push_str(&entry);
+                        updated.push_str(&close);
+                        updated.push_str(&original[end..]);
+                        break;
+                    }
+                    quick_xml::events::Event::End(_) => {
+                        depth -= 1;
+                        if depth == 0 {
+                            updated.push_str(&original[..start]);
+                            updated.push_str(&entry);
+                            updated.push_str(&original[start..]);
+                            break;
+                        }
+                    }
+                    quick_xml::events::Event::Eof => {
+                        return Err("bibliography source root is not closed".to_string());
+                    }
+                    _ => {}
+                }
+            }
             self.upsert_xml_part_content(&path, updated);
             return Ok(());
         }
@@ -16975,7 +17108,7 @@ impl WordDocument {
         let heading = heading.trim();
         if heading.is_empty()
             || heading.chars().count() > 256
-            || heading.chars().any(char::is_control)
+            || !heading.chars().all(Self::is_printable_xml_character)
         {
             return Err(
                 "bibliography heading must contain 1 to 256 printable characters".to_string(),
@@ -21222,6 +21355,7 @@ impl WordDocument {
         }
         let options = crate::document::parse_toc_switches(&block.instruction);
         let leader = self.toc_leader(&block);
+        Self::validate_toc_input(&options, &leader)?;
         self.replace_field_block_content(&block, |document, start, location, tab_twips| {
             document.generate_and_insert_toc_at(
                 start,
@@ -21247,6 +21381,7 @@ impl WordDocument {
             .into_iter()
             .nth(index)
             .ok_or_else(|| "no table of contents found to replace".to_string())?;
+        Self::validate_toc_input(options, leader)?;
         self.replace_field_block_content(&block, |document, start, location, tab_twips| {
             document.generate_and_insert_toc_at(
                 start,
@@ -21346,6 +21481,7 @@ impl WordDocument {
         original_instruction: Option<&str>,
         tab_twips: Option<i64>,
     ) -> Result<usize, String> {
+        Self::validate_toc_input(options, leader)?;
         let mut entries = self
             .document
             .as_ref()
@@ -21534,14 +21670,11 @@ impl WordDocument {
             ));
         }
         xml.push_str("</w:body></w:document>");
-
-        for paragraph in &mut model_paragraphs {
-            self.fill_load_defaults(paragraph);
-        }
+        let model_paragraphs = self.read_generated_paragraphs(&xml)?;
 
         // Parse the fragment and lift the generated <w:p> nodes.
         let raw_paragraphs = Self::parse_body_paragraph_nodes(&xml)?;
-        if raw_paragraphs.len() != entry_count {
+        if raw_paragraphs.len() != entry_count || model_paragraphs.len() != entry_count {
             return Err("failed to build table-of-contents XML".to_string());
         }
 
@@ -21574,15 +21707,7 @@ impl WordDocument {
         // Insert into the raw XML body and copy the assigned <w:p> ids back onto
         // the model paragraphs so later edits map correctly.
         let inserted_ids = self.insert_toc_xml_at(body_insert_index, raw_paragraphs, location)?;
-        if let Some(body) = self.document_mut().and_then(|doc| doc.body.as_mut()) {
-            for (offset, node_id) in inserted_ids.into_iter().enumerate() {
-                if let Some(BodyElement::Paragraph(paragraph)) =
-                    body.elements.get_mut(body_insert_index + offset)
-                {
-                    paragraph.node_id = node_id;
-                }
-            }
-        }
+        self.bind_inserted_toc_paragraphs(body_insert_index, inserted_ids);
 
         if let Some(document) = self.document_mut() {
             Self::rebuild_section_ranges(document);
@@ -21606,14 +21731,6 @@ impl WordDocument {
     ) -> Result<usize, String> {
         // Word JP's "No table of contents entries found." placeholder.
         let placeholder = "目次項目が見つかりません。";
-        let mut model_paragraph = Paragraph {
-            runs: vec![blank_run(placeholder)],
-            properties: None,
-            node_id: None,
-            comment_ranges: Vec::new(),
-            comment_markers: Vec::new(),
-        };
-        self.fill_load_defaults(&mut model_paragraph);
         let xml = format!(
             "<w:document xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\"><w:body>\
              <w:p>\
@@ -21630,9 +21747,10 @@ impl WordDocument {
 
         // Parse the fragment and lift the generated <w:p> node.
         let raw_paragraphs = Self::parse_body_paragraph_nodes(&xml)?;
-        if raw_paragraphs.len() != 1 {
+        let model_paragraph = self.read_generated_paragraphs(&xml)?.pop();
+        let (Some(model_paragraph), 1) = (model_paragraph, raw_paragraphs.len()) else {
             return Err("failed to build table-of-contents placeholder XML".to_string());
-        }
+        };
 
         // Insert into the model body.
         {
@@ -21658,21 +21776,39 @@ impl WordDocument {
 
         // Insert into the raw XML body and copy the assigned <w:p> id back.
         let inserted_ids = self.insert_toc_xml_at(body_insert_index, raw_paragraphs, location)?;
-        if let Some(node_id) = inserted_ids.into_iter().next() {
-            if let Some(body) = self.document_mut().and_then(|doc| doc.body.as_mut()) {
-                if let Some(BodyElement::Paragraph(paragraph)) =
-                    body.elements.get_mut(body_insert_index)
-                {
-                    paragraph.node_id = node_id;
-                }
-            }
-        }
+        self.bind_inserted_toc_paragraphs(body_insert_index, inserted_ids);
 
         if let Some(document) = self.document_mut() {
             Self::rebuild_section_ranges(document);
         }
         self.rebuild_paragraph_surfaces();
         Ok(0)
+    }
+
+    /// Bind only the inserted subtrees. A paragraph ID alone leaves its
+    /// field marker/result runs unbound; the next edit then rebuilds those
+    /// runs and can drop the enclosing TOC's markers.
+    fn bind_inserted_toc_paragraphs(
+        &mut self,
+        body_insert_index: usize,
+        inserted_ids: Vec<Option<XmlNodeId>>,
+    ) {
+        let (Some(raw), Some(body)) = (
+            self.raw_document.as_ref(),
+            self.document
+                .as_mut()
+                .and_then(|document| Rc::make_mut(document).body.as_mut()),
+        ) else {
+            return;
+        };
+        for (offset, id) in inserted_ids.into_iter().enumerate() {
+            if let (Some(BodyElement::Paragraph(paragraph)), Some(xml)) = (
+                body.elements.get_mut(body_insert_index + offset),
+                id.and_then(|id| raw.element(id)),
+            ) {
+                attach_paragraph_xml_ids(paragraph, xml, raw);
+            }
+        }
     }
 
     /// Visits the `fldChar`/`instrText` markers within a paragraph element in
@@ -21871,6 +22007,32 @@ impl WordDocument {
     /// Parses a `<w:document><w:body>…</w:body></w:document>` fragment and
     /// returns its `<w:p>` child nodes (with placeholder ids; `insert_node`
     /// reassigns them).
+    /// The paragraphs of `xml`, a `w:document` the editor generated, as a
+    /// load reads them, with what a load fills in. A model built beside the
+    /// XML had no runs for a complex field's markers, which a load gives
+    /// zero-width runs of their own: the next remapping of the document's
+    /// ids (a table edit's) bound a table of contents' page number to its
+    /// field's begin marker, and an edit there saved a field with no end.
+    fn read_generated_paragraphs(&self, xml: &str) -> Result<Vec<Paragraph>, String> {
+        let parsed = DocumentParser::new()
+            .parse_document_xml(xml)
+            .map_err(|error| error.to_string())?;
+        let mut paragraphs: Vec<Paragraph> = parsed
+            .body
+            .map(|body| body.elements)
+            .unwrap_or_default()
+            .into_iter()
+            .filter_map(|element| match element {
+                BodyElement::Paragraph(paragraph) => Some(*paragraph),
+                _ => None,
+            })
+            .collect();
+        for paragraph in &mut paragraphs {
+            self.fill_load_defaults(paragraph);
+        }
+        Ok(paragraphs)
+    }
+
     fn parse_body_paragraph_nodes(xml: &str) -> Result<Vec<XmlNode>, String> {
         let parsed = DocxXmlDocument::parse(xml).map_err(|err| err.to_string())?;
         let body = parsed
@@ -24173,11 +24335,15 @@ impl WordDocument {
         if width.is_some_and(|value| !value.is_finite() || value < 0.0) {
             return Err("column width must be a finite non-negative number".to_string());
         }
+        let styles = self.styles_part.clone();
         let mut templates = Vec::new();
         {
             let table = self
                 .table_mut_by_order(table_order_index)
                 .ok_or_else(|| format!("table {table_order_index} was not found"))?;
+            let table_style = styles
+                .as_ref()
+                .and_then(|styles| Self::table_style_paragraph_defaults(table, styles));
             let column_count = Self::resolved_table_column_count(table);
             if column_index > column_count {
                 return Err(format!(
@@ -24257,6 +24423,13 @@ impl WordDocument {
                 // The grid supplies the width; a copied `w:tcW` would restate
                 // the template's.
                 cell.style.remove("width");
+                if let Some(styles) = styles.as_ref() {
+                    Self::fill_new_cell_defaults(
+                        table_style.as_ref(),
+                        std::slice::from_mut(&mut cell),
+                        styles,
+                    );
+                }
                 row.cells.insert(insert_cell_index, cell);
             }
             Self::refresh_omitted_row_widths(table);
@@ -25413,10 +25586,10 @@ impl WordDocument {
             let grid_col = raw.create_element("w:gridCol", attributes, Vec::new());
             grid_children.push(XmlNode::Element(grid_col));
         }
-        if !grid_children.is_empty() {
-            let tbl_grid = raw.create_element("w:tblGrid", Vec::new(), grid_children);
-            table_children.push(XmlNode::Element(tbl_grid));
-        }
+        // CT_Tbl requires tblGrid even when widths come only from the cells
+        // and the authored grid has no gridCol children.
+        let tbl_grid = raw.create_element("w:tblGrid", Vec::new(), grid_children);
+        table_children.push(XmlNode::Element(tbl_grid));
 
         for row in table.rows.iter_mut() {
             // Always materialise trPr, even when the model currently has no
@@ -32188,25 +32361,29 @@ impl WordDocument {
                 },
                 _ => None,
             };
-            // A result-less simple field the model has no run for (a TC or
-            // XE entry) marks a place in the text: it goes to the side that
-            // place falls on. Put in both, a split paragraph listed its TOC
-            // entry twice.
-            let unmodeled_field = match child {
-                XmlNode::Element(element) => {
-                    Self::is_zero_width_field_container(element)
-                        && !element
-                            .attributes
-                            .iter()
-                            .find(|attribute| attribute.name == "w:instr")
-                            .is_some_and(|instr| {
-                                DocumentParser::simple_field_kind(&instr.value).is_some()
-                            })
+            // A result-less simple field (a TC or XE entry, an AUTONUM)
+            // marks a place in the text: it goes to the side that place falls
+            // on. Put in both, a split paragraph listed its TOC entry twice.
+            // At the split, a field the model has a run for goes with the
+            // text after it, as that run does in the model's split: kept
+            // before it, the field stayed in the first paragraph's XML while
+            // the model moved it, and the file had it twice. A TC entry has
+            // no run, and stays with the heading it ends.
+            let zero_width_field = match child {
+                XmlNode::Element(element) if Self::is_zero_width_field_container(element) => {
+                    let modeled = element
+                        .attributes
+                        .iter()
+                        .find(|attribute| attribute.name == "w:instr")
+                        .is_some_and(|instr| {
+                            DocumentParser::parse_field_instruction(&instr.value).is_some()
+                        });
+                    Some(modeled)
                 }
-                _ => false,
+                _ => None,
             };
-            if unmodeled_field {
-                if position <= offset {
+            if let Some(modeled) = zero_width_field {
+                if position < offset || (position == offset && !modeled) {
                     head.push(child.clone());
                 } else {
                     tail.push(child.clone());
@@ -40778,6 +40955,42 @@ mod tests {
             exported_body_xml(&word_doc),
             r#"<w:p><w:smartTag w:uri="u" w:element="e"><w:r><w:t>A</w:t></w:r><w:del w:id="1" w:author="Reviewer"><w:r><w:rPr><w:b/></w:rPr><w:delText>B</w:delText></w:r></w:del></w:smartTag><w:r><w:t>C</w:t></w:r></w:p>"#
         );
+    }
+
+    #[test]
+    fn body_text_and_cached_metrics_include_saved_field_results() {
+        let mut paragraph = make_paragraph("");
+        paragraph.runs[0].field = Some(RunField {
+            kind: RunFieldKind::Unsupported {
+                instruction: "CITATION Source1".into(),
+            },
+            source_field_id: None,
+            cached_text: Some("[1]".into()),
+            resolved_value: None,
+            word_mac_body_result: None,
+        });
+        paragraph.runs.extend(make_paragraph("Hello").runs);
+        let mut word_doc = WordDocument::from_document(Document {
+            body: Some(Body {
+                elements: vec![BodyElement::from_paragraph(paragraph)],
+            }),
+            ..Document::default()
+        });
+        assert_eq!(word_doc.body_paragraph_text(0).as_deref(), Some("[1]Hello"));
+        assert_eq!(word_doc.body_paragraph_text(1), None);
+        assert_eq!(word_doc.document_text_metrics().chars_with_space, 8);
+        word_doc.paragraph_mut(0).unwrap().runs[0]
+            .field
+            .as_mut()
+            .unwrap()
+            .cached_text = Some("[12]".into());
+        word_doc.sync_paragraph_text(0);
+        assert_eq!(
+            word_doc.body_paragraph_text(0).as_deref(),
+            Some("[12]Hello")
+        );
+        assert_eq!(word_doc.document_text_metrics().chars_with_space, 9);
+        assert!(word_doc.paragraph(0).unwrap().runs[0].text.is_empty());
     }
 
     #[test]

@@ -483,3 +483,30 @@ fn paragraph_format_revisions_exclude_and_preserve_paragraph_mark_and_section_pr
         format!("{:?}", child(&original, "w:jc").attributes)
     );
 }
+
+#[test]
+fn rewriting_a_table_with_an_empty_grid_keeps_the_required_grid() {
+    let cases = [
+        json!([{ "type": "delete_table_row", "table_order_index": 0, "row_index": 0 }]),
+        json!([
+            { "type": "start_change_tracking", "author": "Reviewer" },
+            { "type": "delete_table_row", "table_order_index": 0, "row_index": 0 },
+            { "type": "accept_revisions" }
+        ]),
+        json!([{ "type": "insert_table_row", "table_order_index": 0, "row_index": 0 }]),
+        json!([{ "type": "delete_table_cell", "table_order_index": 0, "row": 0,
+                 "column": 0, "direction": "shift_left" }]),
+    ];
+    for commands in cases {
+        let mut document = load("table-cell-preferred-widths.docx");
+        assert!(document.table_by_order(0).unwrap().columns.is_empty());
+        apply(&mut document, commands.clone());
+        let xml = part(&document, "word/document.xml");
+        let tables = children_of(&xml, "w:tbl");
+        assert_eq!(tables.len(), 2, "{commands}");
+        for table in tables {
+            assert_eq!(position(&table, "w:tblPr"), Some(0), "{commands}");
+            assert_eq!(position(&table, "w:tblGrid"), Some(1), "{commands}");
+        }
+    }
+}

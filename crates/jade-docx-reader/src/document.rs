@@ -1192,15 +1192,73 @@ pub(crate) fn tokenize_field_instruction(instruction: &str) -> Vec<String> {
 pub(crate) fn tokenize_field_instruction_with_quotes(
     instruction: &str,
 ) -> Vec<FieldInstructionToken> {
+    tokenize_field_instruction_impl::<false>(instruction, &[])
+}
+
+/// Literal spans are nested field results, not instruction syntax. The spans
+/// are built internally by `FieldCode::parse_parts`, in order and on UTF-8
+/// boundaries; empty spans represent empty nested results.
+pub(crate) fn tokenize_field_instruction_with_literals(
+    instruction: &str,
+    literals: &[std::ops::Range<usize>],
+) -> Vec<FieldInstructionToken> {
+    tokenize_field_instruction_impl::<true>(instruction, literals)
+}
+
+fn tokenize_field_instruction_impl<const HAS_LITERALS: bool>(
+    instruction: &str,
+    literals: &[std::ops::Range<usize>],
+) -> Vec<FieldInstructionToken> {
+    let mut literals = literals.iter().peekable();
     let mut tokens = Vec::new();
     let mut current = String::new();
     let mut in_quotes = false;
     let mut token_started = false;
     let mut token_quoted = false;
-    let mut chars = instruction.chars().peekable();
-    while let Some(ch) = chars.next() {
+    let mut chars = instruction.char_indices().peekable();
+    loop {
+        if HAS_LITERALS
+            && literals.peek().is_some_and(|span| {
+                span.start
+                    == chars
+                        .peek()
+                        .map_or(instruction.len(), |(offset, _)| *offset)
+            })
+        {
+            let span = literals.next().unwrap();
+            let value = &instruction[span.clone()];
+            if in_quotes {
+                current.push_str(value);
+            } else {
+                if token_started {
+                    tokens.push(FieldInstructionToken {
+                        text: std::mem::take(&mut current),
+                        quoted: token_quoted,
+                    });
+                    token_started = false;
+                    token_quoted = false;
+                }
+                tokens.push(FieldInstructionToken {
+                    text: value.to_string(),
+                    // Numeric nested results retain numeric comparison semantics.
+                    quoted: value.trim().parse::<f64>().is_err(),
+                });
+            }
+            while chars.peek().is_some_and(|(offset, _)| *offset < span.end) {
+                chars.next();
+            }
+            continue;
+        }
+        let Some((_, ch)) = chars.next() else { break };
+
         match ch {
-            '\\' if in_quotes && chars.peek() == Some(&'"') => {
+            '\\' if in_quotes
+                && chars.peek().is_some_and(|(offset, ch)| {
+                    *ch == '"'
+                        && !(HAS_LITERALS
+                            && literals.peek().is_some_and(|span| span.start == *offset))
+                }) =>
+            {
                 // A backslash-escaped quote is content, not the end of the
                 // quoted operand. Consume the quote but omit the escape.
                 chars.next();
@@ -1838,7 +1896,7 @@ fn resolve_fields_in_paragraph(
                 }
                 Some(resolved)
             }
-            // PRIVATE/ADDIN store opaque data but do not display a field
+            // Storage and index-entry fields do not display a field
             // result. Record an explicit empty resolution so structural
             // consumers cannot fall back to stale cached text.
             RunFieldKind::NonDisplay { .. } => Some(String::new()),
@@ -2126,6 +2184,30 @@ pub struct Run {
 }
 
 impl Run {
+    /// Plain-text snapshot of this run's saved or structurally resolved result.
+    /// This does not evaluate fields that require live page geometry, and must
+    /// not be used for editable paragraph offsets: computed fields occupy no
+    /// characters in `Run::text`.
+    pub fn cached_display_text(&self) -> &str {
+        let Some(field) = &self.field else {
+            return &self.text;
+        };
+        if !field.kind.has_visible_result() {
+            return "";
+        }
+        if field.kind.keeps_result_in_run_text() {
+            return &self.text;
+        }
+        if field.kind.is_locked() {
+            return field.cached_text.as_deref().unwrap_or_default();
+        }
+        field
+            .resolved_value
+            .as_deref()
+            .or(field.cached_text.as_deref())
+            .unwrap_or(&self.text)
+    }
+
     /// Whether this run's glyph metrics must be excluded from paragraph line
     /// height. Word's `SYMBOL \h` switch is intentionally visual-only: a large
     /// symbol may overlap neighbouring leading instead of expanding the line.
@@ -2670,10 +2752,10 @@ pub enum RunFieldKind {
     Unsupported {
         instruction: String,
     },
-    /// A Word field that stores data but has no visible result. PRIVATE is a
-    /// cold field and ADDIN is hidden add-in storage; both retain their
-    /// normalized instruction and cached bytes for inspection/round-trip while
-    /// renderers deliberately suppress any stale result text.
+    /// A Word field that stores data but has no visible result, such as PRIVATE,
+    /// XE, TA, and RD. Retain its normalized instruction and cached bytes for
+    /// inspection/round-trip while renderers suppress stale result text.
+    /// ADDIN is intentionally excluded: its owner may supply visible citations.
     NonDisplay {
         instruction: String,
     },
@@ -2733,6 +2815,15 @@ impl RunFieldKind {
             Self::Formatted { kind, .. } => kind,
             other => other,
         }
+    }
+
+    /// Whether the saved result contributes text to the document surface.
+    /// Assignment and storage fields keep a cache without displaying it.
+    pub fn has_visible_result(&self) -> bool {
+        !matches!(
+            self.base_kind(),
+            Self::NonDisplay { .. } | Self::Ask { .. } | Self::Set { .. }
+        )
     }
 
     /// Whether a top-level field of this kind keeps its result as editable
@@ -4040,6 +4131,70 @@ impl TextBoxBorderStyle {
 
 #[cfg(test)]
 mod tests {
+
+    #[test]
+    fn text_snapshots_include_computed_fields_without_changing_editable_text() {
+        use super::{Run, RunField, RunFieldKind};
+        let mut run: Run = serde_json::from_value(serde_json::json!({
+            "text": "edited", "properties": null, "image": null,
+            "text_box": null, "field": null
+        }))
+        .unwrap();
+        assert_eq!(run.cached_display_text(), "edited");
+        run.field = Some(RunField {
+            kind: RunFieldKind::Unsupported {
+                instruction: "CITATION Source1".into(),
+            },
+            source_field_id: None,
+            cached_text: Some("saved".into()),
+            resolved_value: Some("resolved".into()),
+            word_mac_body_result: None,
+        });
+        assert_eq!(run.cached_display_text(), "resolved");
+        run.field.as_mut().unwrap().resolved_value = Some(String::new());
+        assert_eq!(run.cached_display_text(), "");
+        run.field.as_mut().unwrap().resolved_value = None;
+        assert_eq!(run.cached_display_text(), "saved");
+        run.field.as_mut().unwrap().cached_text = None;
+        assert_eq!(run.cached_display_text(), "edited");
+        for kind in [RunFieldKind::PageNumber, RunFieldKind::NumPages] {
+            let field = run.field.as_mut().unwrap();
+            field.kind = kind.with_lock(true);
+            field.cached_text = Some("frozen".into());
+            field.resolved_value = Some("stale".into());
+            assert_eq!(run.cached_display_text(), "frozen");
+        }
+        for (instruction, expected) in [
+            ("FORMTEXT", "edited"),
+            ("HYPERLINK https://example.test", "edited"),
+            ("MERGEFIELD name", "edited"),
+            ("FILLIN prompt", "edited"),
+            ("REF mark", "edited"),
+            ("PAGEREF mark", "edited"),
+            ("NOTEREF mark", "edited"),
+            ("PRIVATE hidden", ""),
+            ("ADDIN vendor-payload", "saved"),
+            ("RD chapter.docx", ""),
+            ("ASK mark prompt", ""),
+            ("SET mark value", ""),
+        ] {
+            let field = run.field.as_mut().unwrap();
+            field.cached_text = Some("saved".into());
+            field.resolved_value = None;
+            field.kind =
+                crate::parser::DocumentParser::parse_field_instruction(instruction).unwrap();
+            for locked in [false, true] {
+                run.field.as_mut().unwrap().kind =
+                    run.field.as_ref().unwrap().kind.clone().with_lock(locked);
+                assert_eq!(
+                    run.cached_display_text(),
+                    expected,
+                    "{instruction}, locked={locked}"
+                );
+            }
+        }
+        assert_eq!(run.text, "edited");
+    }
 
     #[test]
     #[cfg(target_pointer_width = "64")]

@@ -97,20 +97,12 @@ fn paragraph_plain_text(paragraph: &Paragraph) -> String {
     paragraph.runs.iter().map(|run| run.text.as_str()).collect()
 }
 
-/// What a paragraph shows: a field read from a file keeps its result beside
-/// the run rather than in it.
+/// Saved display results, excluding non-displaying fields such as SET and ASK.
 fn paragraph_display_text(paragraph: &Paragraph) -> String {
     paragraph
         .runs
         .iter()
-        .map(|run| match run.field.as_ref() {
-            Some(field) if run.text.is_empty() => field
-                .resolved_value
-                .clone()
-                .or_else(|| field.cached_text.clone())
-                .unwrap_or_default(),
-            _ => run.text.clone(),
-        })
+        .map(Run::cached_display_text)
         .collect()
 }
 
@@ -863,13 +855,22 @@ impl WordDocument {
             Self::fill_missing_paragraph_props(&mut old, defaults);
         }
         let declared = self.paragraph_declared_property_tags(index);
+        let attributes = self.paragraph_declared_property_attributes(index);
         if let Some(props) = self
             .paragraph_mut(index)
             .and_then(|paragraph| paragraph.properties.as_mut())
         {
-            rebase_paragraph_style_properties(props, &old, &new, |tag| {
-                declared.iter().any(|declared| declared == tag)
-            });
+            rebase_paragraph_style_properties(
+                props,
+                &old,
+                &new,
+                |tag| declared.iter().any(|declared| declared == tag),
+                |tag, attribute| {
+                    attributes
+                        .iter()
+                        .any(|(element, name)| element == tag && name == attribute)
+                },
+            );
         }
     }
 

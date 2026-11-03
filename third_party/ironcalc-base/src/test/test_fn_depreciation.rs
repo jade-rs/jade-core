@@ -126,16 +126,32 @@ fn fn_amorlinc_errors() {
 }
 
 #[test]
-fn fn_forecast_ets_family_not_implemented() {
+fn fn_forecast_ets_family_small_series() {
     let mut model = new_empty_model();
-    model._set("A1", "=FORECAST.ETS(5, {1,2,3}, {1,2,3})");
-    model._set("A2", "=FORECAST.ETS.CONFINT(5, {1,2,3}, {1,2,3})");
-    model._set("A3", "=FORECAST.ETS.SEASONALITY({1,2,3}, {1,2,3})");
-    model._set("A4", "=FORECAST.ETS.STAT({1,2,3}, {1,2,3}, 1)");
+    // What Excel gives for a line of three and of two points.
+    model._set("A1", "=FORECAST.ETS(4, {1,2,3}, {1,2,3})");
+    model._set("A2", "=FORECAST.ETS.SEASONALITY({1,2,3}, {1,2,3})");
+    model._set("A3", "=FORECAST.ETS(3, {1,2}, {1,2})");
+    model._set("A4", "=FORECAST.ETS.STAT({1,2,3}, {1,2,3}, 8)");
+    model._set("A5", "=FORECAST.ETS.CONFINT(5, {1,2,3}, {1,2,3})");
+    // Errors: sizes differ, a target before the timeline, out-of-range options.
+    model._set("B1", "=FORECAST.ETS(5, {1,2,3,4}, {1,2,3})");
+    model._set("B2", "=FORECAST.ETS(0, {1,2,3}, {1,2,3})");
+    model._set("B3", "=FORECAST.ETS(5, {1,2,3}, {1,2,3}, 9000)");
+    model._set("B4", "=FORECAST.ETS.STAT({1,2,3}, {1,2,3}, 9)");
+    model._set("B5", "=FORECAST.ETS(5, {1,2,3}, {1,2,3}, 1, 2)");
+    model._set("B6", "=FORECAST.ETS(5, {1,2,3}, {1,1.5,3.2})");
     model.evaluate();
 
-    assert_eq!(model._get_text("A1"), *"#N/IMPL!");
-    assert_eq!(model._get_text("A2"), *"#N/IMPL!");
-    assert_eq!(model._get_text("A3"), *"#N/IMPL!");
-    assert_eq!(model._get_text("A4"), *"#N/IMPL!");
+    assert_eq!(model._get_text("A1"), *"4");
+    assert_eq!(model._get_text("A2"), *"0");
+    assert_eq!(model._get_text("A3"), *"3");
+    assert_eq!(model._get_text("A4"), *"1");
+    assert_eq!(model._get_text("A5"), *"0");
+    assert_eq!(model._get_text("B1"), *"#N/A");
+    assert_eq!(model._get_text("B2"), *"#NUM!");
+    assert_eq!(model._get_text("B3"), *"#NUM!");
+    assert_eq!(model._get_text("B4"), *"#NUM!");
+    assert_eq!(model._get_text("B5"), *"#NUM!");
+    assert_eq!(model._get_text("B6"), *"#NUM!");
 }

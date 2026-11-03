@@ -152,6 +152,11 @@ impl Command for SetParagraphStyleCommand {
         };
 
         for paragraph_index in start..=end {
+            // A block equation in the range has no paragraph to format; it
+            // is skipped, as `ParagraphRangeUndo::begin` skips it.
+            if ctx.document.is_math_surface(paragraph_index) {
+                continue;
+            }
             let (previous_props, previous_run_props) = {
                 let paragraph = ctx
                     .document
@@ -227,9 +232,17 @@ impl Command for SetParagraphStyleCommand {
                 if let (Some(old), Some(new)) =
                     (previous_style_props.as_ref(), inherited_props.as_ref())
                 {
-                    rebase_paragraph_style_properties(props, old, new, |tag| {
-                        declared.iter().any(|declared| declared == tag)
-                    });
+                    rebase_paragraph_style_properties(
+                        props,
+                        old,
+                        new,
+                        |tag| declared.iter().any(|declared| declared == tag),
+                        |tag, attribute| {
+                            declared_attributes
+                                .iter()
+                                .any(|(element, name)| element == tag && name == attribute)
+                        },
+                    );
                 }
                 if let Some((old, new)) = numbering_change {
                     let key = |numbering: Option<&Numbering>| {

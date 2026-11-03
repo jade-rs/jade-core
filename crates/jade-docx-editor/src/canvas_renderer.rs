@@ -3857,6 +3857,9 @@ where
     current_doc_grid: Option<DocGrid>,
     current_doc_grid_char_spacing_px: Option<f64>,
     current_text_direction: Option<TextDirection>,
+    /// In a vertical section (縦書き), the page and the x the next column is
+    /// put to the left of: paragraphs follow one another right to left.
+    vertical_flow: Option<(usize, f64)>,
     dark_mode_text: bool,
     /// The formatting marks shown by kind in the current render.
     mark_kinds: crate::FormattingMarkKinds,
@@ -8583,6 +8586,7 @@ where
             current_doc_grid: None,
             current_doc_grid_char_spacing_px: None,
             current_text_direction: None,
+            vertical_flow: None,
             dark_mode_text: false,
             mark_kinds: crate::FormattingMarkKinds::default(),
             view_geometry: None,
@@ -14340,6 +14344,7 @@ where
                 self.column_layout = seek.column_layout.clone();
                 self.column_index = seek.column_index;
                 self.current_text_direction = seek.current_text_direction;
+                self.vertical_flow = None;
                 self.current_doc_grid = seek.current_doc_grid.clone();
                 self.current_doc_grid_char_spacing_px = seek.current_doc_grid_char_spacing_px;
 
@@ -14424,6 +14429,7 @@ where
                 self.column_index = 0;
                 self.current_text_direction =
                     Self::resolve_section_text_direction(initial_section, document);
+                self.vertical_flow = None;
             }
 
             self.record_page_section(self.current_page_number);
@@ -19393,6 +19399,22 @@ where
                 self.current_y += skipped_float_height;
             }
             self.ensure_space(required_height)?;
+            // In a vertical section (縦書き) the empty line is a column of its
+            // own, to the left of the paragraph before it.
+            let vertical_column = match self.current_text_direction {
+                Some(
+                    direction @ (TextDirection::TbRl
+                    | TextDirection::TbRlV
+                    | TextDirection::BtLr
+                    | TextDirection::BtLrV
+                    | TextDirection::TbLrV),
+                ) if !self.measuring_keep_next => {
+                    let (x, _) = self.place_vertical_columns(direction, line_height, 1)?;
+                    self.current_y = self.effective_body_top() + self.current_page_valign_offset();
+                    Some(x)
+                }
+                _ => None,
+            };
             let top = self.current_y;
             let (min_top_offset, content_height) = self.empty_paragraph_content_metrics(
                 pending_numbering.as_ref(),
@@ -19403,7 +19425,9 @@ where
                 Some(share) => line_height * share + min_top_offset,
                 None => (line_height - content_height).max(0.0) * top_leading_share,
             };
-            self.current_y += line_height;
+            if vertical_column.is_none() {
+                self.current_y += line_height;
+            }
             let baseline = top + top_leading - min_top_offset;
             let absolute_top = self.page_offset_y + top;
             let content_top = baseline + min_top_offset;
@@ -19419,6 +19443,7 @@ where
                 0.0,
                 false,
             );
+            let line_start_x = vertical_column.unwrap_or(line_start_x);
 
             let mut line_layout = SelectionLineLayout {
                 top,
@@ -19426,7 +19451,7 @@ where
                 height: line_height,
                 baseline,
                 start_x: line_start_x,
-                cursor_end_x: line_start_x,
+                cursor_end_x: vertical_column.map_or(line_start_x, |x| x + line_height),
                 allowed_trailing_overflow_width: 0.0,
                 content_top,
                 absolute_content_top: self.page_offset_y + content_top,
@@ -19436,7 +19461,7 @@ where
                 tab_leaders: Rc::from([]),
                 tab_stops: Rc::from([]),
                 column_index: self.column_index,
-                vertical: false,
+                vertical: vertical_column.is_some(),
                 vertical_reversed: false,
             };
 
@@ -29424,15 +29449,18 @@ where
         pending_numbering: Option<&PendingNumberingRender>,
         commands_out: &mut Option<&mut Vec<DrawCommand>>,
     ) -> Result<(), JsValue> {
+        // A vertical page's columns run from the body's top to its bottom.
+        let column_top = self.effective_body_top() + self.current_page_valign_offset();
+        let column_length = (self.effective_body_bottom() - column_top).max(line_height);
         if text.is_empty() {
+            // An empty paragraph still takes a column, as an empty line does.
+            if !self.measuring_keep_next {
+                self.place_vertical_columns(direction, line_height, 1)?;
+            }
             return Ok(());
         }
 
-        const COLUMN_EPS: f64 = 1e-6;
-        let mut column_origin_x = self.current_column_x();
-        let column_offset = base_x - column_origin_x;
-        let mut column_right = column_origin_x + self.current_column_width();
-
+        let column_right = self.current_column_x() + self.current_column_width();
         let available_width = (column_right - base_x).max(1.0);
         let paragraph_layout = match direction {
             TextDirection::TbRl
@@ -29444,7 +29472,7 @@ where
                 text,
                 run_styles,
                 direction,
-                None,
+                Some(column_length),
                 line_height,
             )?,
             _ => {
@@ -29469,62 +29497,99 @@ where
             text
         )));
 
-        let required_height = paragraph_layout.height().max(line_height);
-        self.ensure_space(required_height)?;
-        if self.column_layout.count() > 1 {
-            let new_origin = self.current_column_x();
-            if (new_origin - column_origin_x).abs() > COLUMN_EPS {
-                column_origin_x = new_origin;
-                column_right = column_origin_x + self.current_column_width();
-            }
-        } else {
-            column_origin_x = self.current_column_x();
-            column_right = column_origin_x + self.current_column_width();
-        }
-
-        let effective_base_x = column_origin_x + column_offset;
-        let cell_width = (column_right - effective_base_x).max(1.0);
-        if cell_width <= 0.0 {
+        if self.measuring_keep_next {
             return Ok(());
         }
-
-        if let Some(numbering) = pending_numbering {
-            let baseline = self.current_y + line_height;
-            self.draw_pending_numbering_marker(
-                numbering,
-                baseline,
-                line_height,
-                Some(paragraph_style),
-                commands_out,
-            )?;
-        }
-
         let align = Self::paragraph_table_align(paragraph_style, direction);
-        let consumed = match direction {
-            TextDirection::TbRl
-            | TextDirection::TbRlV
-            | TextDirection::BtLr
-            | TextDirection::BtLrV
-            | TextDirection::TbLrV => self.render_vertical_paragraph(
-                &paragraph_layout,
+        let pitch = paragraph_layout.vertical_column_pitch(line_height);
+        let total = paragraph_layout.vertical_columns().max(1);
+        let mut drawn = 0;
+        let mut numbering = pending_numbering;
+        while drawn < total {
+            // As many of the paragraph's columns as the page still has room
+            // for; the rest go on the next page.
+            let (x, count) = self.place_vertical_columns(direction, pitch, total - drawn)?;
+            if let Some(numbering) = numbering.take() {
+                let baseline = column_top + line_height;
+                self.draw_pending_numbering_marker(
+                    numbering,
+                    baseline,
+                    line_height,
+                    Some(paragraph_style),
+                    commands_out,
+                )?;
+            }
+            let part = paragraph_layout.with_vertical_columns(drawn..drawn + count);
+            let top = self.effective_body_top() + self.current_page_valign_offset();
+            self.render_vertical_paragraph(
+                &part,
                 paragraph_index,
                 direction,
                 align,
-                effective_base_x,
-                self.current_y,
-                cell_width,
+                x,
+                top,
+                pitch * count as f64,
                 0.0,
                 line_height,
                 base_offset,
                 &[],
                 true,
-            )?,
-            _ => return Ok(()),
-        };
-
-        self.current_y += consumed;
+            )?;
+            drawn += count;
+        }
+        self.current_y = column_top;
         self.last_line_baseline = self.current_y;
         Ok(())
+    }
+
+    /// Takes up to `wanted` columns `pitch` wide from what is left of the
+    /// current vertical page — right to left in 縦書き (`tbRl`), left to
+    /// right when the text runs bottom to top — breaking to a new page when
+    /// not even one fits. Returns the left x of the columns taken and how
+    /// many they are.
+    fn place_vertical_columns(
+        &mut self,
+        direction: TextDirection,
+        pitch: f64,
+        wanted: usize,
+    ) -> Result<(f64, usize), JsValue> {
+        const EPS: f64 = 0.01;
+        let right_to_left = matches!(direction, TextDirection::TbRl | TextDirection::TbRlV);
+        loop {
+            let left = self.current_column_x();
+            let right = left + self.current_column_width();
+            let edge = match self.vertical_flow {
+                Some((page, x)) if page == self.current_page_number => x,
+                _ if right_to_left => right,
+                _ => left,
+            };
+            let room = if right_to_left {
+                edge - left
+            } else {
+                right - edge
+            };
+            let fits = ((room + EPS) / pitch).floor().max(0.0) as usize;
+            // A page with nothing on it takes a column however narrow it is.
+            let fresh = (edge - if right_to_left { right } else { left }).abs() < EPS;
+            let count = if fits == 0 && fresh {
+                1
+            } else {
+                fits.min(wanted)
+            };
+            if count == 0 {
+                self.force_page_break()?;
+                self.vertical_flow = None;
+                continue;
+            }
+            let width = pitch * count as f64;
+            let (x, next) = if right_to_left {
+                (edge - width, edge - width)
+            } else {
+                (edge, edge + width)
+            };
+            self.vertical_flow = Some((self.current_page_number, next));
+            return Ok((x, count));
+        }
     }
 
     fn paragraph_table_align(style: &ParagraphStyle, direction: TextDirection) -> TableTextAlign {
@@ -36362,7 +36427,7 @@ where
             // instruction. Word's last saved result remains the safest visual
             // representation until a dedicated evaluator is implemented.
             RunFieldKind::Unsupported { .. } => field.cached_text.clone(),
-            // PRIVATE/ADDIN carry opaque storage, not visible content. Return
+            // Non-displaying fields have no visible result. Return
             // directly so the common cached-result fallback below cannot leak
             // a stale producer-authored result into the document.
             RunFieldKind::NonDisplay { .. } => return None,
@@ -47524,7 +47589,7 @@ mod tests {
             resolved_value: None,
         };
 
-        // PRIVATE/ADDIN data belongs to the field container rather than the
+        // PRIVATE data belongs to the field container rather than the
         // visible document. Bypass the common cache fallback just like SET and
         // ASK, while retaining the cache in the model for round-trip fidelity.
         assert_eq!(renderer.resolve_run_field(&field), None);
@@ -55104,6 +55169,136 @@ mod tests {
         assert!(painted[0].1.contains("17.00pt"), "{painted:?}");
         assert!(painted[1].1.contains("23.00pt"), "{painted:?}");
         assert!(painted[1].1.contains("bold"), "{painted:?}");
+    }
+
+    fn vertical_document(paragraphs: &[&str]) -> Document {
+        Document {
+            body: Some(Body {
+                elements: paragraphs
+                    .iter()
+                    .map(|text| {
+                        BodyElement::from_paragraph(Paragraph {
+                            runs: vec![text_box_run(text, None)],
+                            properties: None,
+                            node_id: None,
+                            comment_ranges: Vec::new(),
+                            comment_markers: Vec::new(),
+                        })
+                    })
+                    .collect(),
+            }),
+            default_section: Some(SectionProperties {
+                text_direction: Some(TextDirection::TbRl),
+                ..Default::default()
+            }),
+            ..Default::default()
+        }
+    }
+
+    /// Where each of `wanted` is painted, in paint order.
+    fn painted_at(ops: &[jade_painter::recording::Op], wanted: &[&str]) -> Vec<(String, f64, f64)> {
+        use jade_painter::recording::Op;
+        ops.iter()
+            .filter_map(|op| match op {
+                Op::FillText(text, x, y) if wanted.contains(&text.as_str()) => {
+                    Some((text.clone(), *x, *y))
+                }
+                _ => None,
+            })
+            .collect()
+    }
+
+    #[test]
+    fn vertical_section_paragraphs_follow_one_another_right_to_left() {
+        let (mut renderer, painter) = recording_renderer();
+        renderer
+            .render(
+                &vertical_document(&["あい", "か", "さ"]),
+                &options_for_seek_tests(),
+            )
+            .unwrap();
+        let painted = painted_at(&painter.ops(), &["あ", "か", "さ"]);
+        assert_eq!(painted.len(), 3, "{painted:?}");
+        // Each paragraph starts a column of its own, left of the one before,
+        // at the top of the same page.
+        assert!(
+            painted[0].1 > painted[1].1 && painted[1].1 > painted[2].1,
+            "{painted:?}"
+        );
+        assert!((painted[0].2 - painted[1].2).abs() < 0.5, "{painted:?}");
+        assert!((painted[1].2 - painted[2].2).abs() < 0.5, "{painted:?}");
+        assert_eq!(renderer.current_page_number, 1);
+    }
+
+    #[test]
+    fn vertical_section_empty_paragraph_takes_a_column() {
+        let (mut renderer, painter) = recording_renderer();
+        renderer
+            .render(
+                &vertical_document(&["あ", "", "か"]),
+                &options_for_seek_tests(),
+            )
+            .unwrap();
+        let painted = painted_at(&painter.ops(), &["あ", "か"]);
+        let (mut without, plain) = recording_renderer();
+        without
+            .render(&vertical_document(&["あ", "か"]), &options_for_seek_tests())
+            .unwrap();
+        let tight = painted_at(&plain.ops(), &["あ", "か"]);
+        assert!(
+            painted[0].1 - painted[1].1 > (tight[0].1 - tight[1].1) * 1.5,
+            "{painted:?} vs {tight:?}"
+        );
+    }
+
+    #[test]
+    fn vertical_section_breaks_to_a_new_page_when_its_columns_run_out() {
+        let (mut renderer, painter) = recording_renderer();
+        let paragraphs = vec!["あ"; 80];
+        renderer
+            .render(&vertical_document(&paragraphs), &options_for_seek_tests())
+            .unwrap();
+        let painted = painted_at(&painter.ops(), &["あ"]);
+        assert_eq!(painted.len(), 80);
+        // The first column of the second page is back at the right.
+        let first_right = painted[0].1;
+        let wrapped = painted
+            .windows(2)
+            .position(|pair| pair[1].1 > pair[0].1)
+            .expect("a column goes back to the right on a new page");
+        assert!(
+            (painted[wrapped + 1].1 - first_right).abs() < 0.5,
+            "{painted:?}"
+        );
+    }
+
+    #[test]
+    fn vertical_section_draws_punctuation_in_its_vertical_form() {
+        use jade_painter::recording::Op;
+        let (mut renderer, painter) = recording_renderer();
+        renderer
+            .render(&vertical_document(&["「あ。」"]), &options_for_seek_tests())
+            .unwrap();
+        let ops = painter.ops();
+        let mut font = String::new();
+        let mut shaped = Vec::new();
+        for op in &ops {
+            match op {
+                Op::SetFont(value) => font = value.clone(),
+                Op::FillShapedText(text, ..) => shaped.push((text.clone(), font.clone())),
+                _ => {}
+            }
+        }
+        // The font's own vertical alternates, as Word draws them.
+        for mark in ["「", "。", "」"] {
+            assert!(
+                shaped
+                    .iter()
+                    .any(|(text, font)| text == mark && font.starts_with("ot:vert ")),
+                "{mark}: {shaped:?}"
+            );
+        }
+        assert!(!shaped.iter().any(|(text, _)| text == "あ"), "{shaped:?}");
     }
 
     #[test]

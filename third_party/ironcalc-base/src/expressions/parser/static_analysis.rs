@@ -72,6 +72,7 @@ pub fn add_implicit_intersection(node: &mut Node, add: bool) {
         | Node::ParseErrorKind { .. }
         | Node::WrongReferenceKind { .. }
         | Node::WrongRangeKind { .. }
+        | Node::Range3DKind { .. }
         | Node::NamedFunctionKind { .. }
         | Node::ArrayKind(_)
         | Node::ReferenceKind { .. }
@@ -229,6 +230,7 @@ pub fn remove_redundant_implicit_intersection(node: &mut Node, add: bool) {
         | Node::ParseErrorKind { .. }
         | Node::WrongReferenceKind { .. }
         | Node::WrongRangeKind { .. }
+        | Node::Range3DKind { .. }
         | Node::NamedFunctionKind { .. }
         | Node::ArrayKind(_)
         | Node::ReferenceKind { .. }
@@ -366,6 +368,8 @@ pub(crate) fn run_static_analysis_on_node(node: &Node) -> StaticResult {
             // TODO: We could do a bit better here
             StaticResult::Unknown
         }
+        // Only the functions taking one accept it.
+        Node::Range3DKind { .. } => StaticResult::Unknown,
         Node::ReferenceKind { .. } => StaticResult::Scalar,
 
         // binary operations

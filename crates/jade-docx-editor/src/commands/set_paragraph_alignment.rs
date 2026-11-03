@@ -86,6 +86,11 @@ impl Command for SetParagraphAlignmentCommand {
         self.changed = false;
 
         for paragraph_index in start..=end {
+            // A block equation in the range has no paragraph to format; it
+            // is skipped, as `ParagraphRangeUndo::begin` skips it.
+            if ctx.document.is_math_surface(paragraph_index) {
+                continue;
+            }
             self.previous_raw_properties.push((
                 paragraph_index,
                 snapshot_paragraph_properties_xml(ctx.document, paragraph_index),

@@ -5,6 +5,7 @@ mod correl;
 mod count_and_average;
 mod covariance;
 mod devsq;
+mod ets;
 mod exponential;
 mod fisher;
 mod forecast;

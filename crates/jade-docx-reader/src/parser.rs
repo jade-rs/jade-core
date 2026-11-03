@@ -77,7 +77,7 @@ struct ActiveField {
 
 #[derive(Clone)]
 struct DeferredNestedField {
-    kind: RunFieldKind,
+    kind: Option<RunFieldKind>,
     cached_result: String,
 }
 
@@ -1986,52 +1986,44 @@ impl DocumentParser {
                         }
                     }
                     b"w:br" => {
-                        if Self::keeps_field_result_in_run_text(
-                            current_run_field.as_ref(),
-                            current_run_is_instruction_operand,
-                        ) {
-                            let mut break_type: Option<String> = None;
-                            let mut has_clear = false;
-                            for attr in e.attributes().flatten() {
-                                match attr.key.as_ref() {
-                                    b"w:type" => {
-                                        break_type = Some(
-                                            String::from_utf8_lossy(&attr.value)
-                                                .to_ascii_lowercase(),
-                                        );
-                                    }
-                                    b"w:clear" => has_clear = true,
-                                    _ => {}
+                        let mut break_type: Option<String> = None;
+                        let mut has_clear = false;
+                        for attr in e.attributes().flatten() {
+                            match attr.key.as_ref() {
+                                b"w:type" => {
+                                    break_type = Some(
+                                        String::from_utf8_lossy(&attr.value).to_ascii_lowercase(),
+                                    );
                                 }
+                                b"w:clear" => has_clear = true,
+                                _ => {}
                             }
-                            if let Some(ref mut run) = current_run {
-                                // ECMA-376 Part 1 §17.3.3.1 `w:br/@w:type`. The
-                                // text-length counter is bumped only when a
-                                // character is actually appended — otherwise an
-                                // unhandled break type desynced `paragraph_text_len`
-                                // from the run text and shifted later offsets.
-                                match break_type.as_deref() {
-                                    Some("page") => {
-                                        run.text.push(PAGE_BREAK_CHAR);
-                                        paragraph_text_len += 1;
-                                    }
-                                    // The next column, or the next page after
-                                    // the last one.
-                                    Some("column") => {
-                                        run.text.push(crate::document::COLUMN_BREAK_CHAR);
-                                        paragraph_text_len += 1;
-                                    }
-                                    Some("textwrapping") | None => {
-                                        run.text.push('\n');
-                                        paragraph_text_len += 1;
-                                        // A clear value changes Word's float
-                                        // avoidance behavior. Keep this run
-                                        // intact so the editor can map it back
-                                        // to the attributed raw `w:br` element.
-                                        current_run_has_attributed_soft_break |= has_clear;
-                                    }
-                                    _ => {}
+                        }
+                        // ECMA-376 Part 1 §17.3.3.1. Count only characters
+                        // appended to editable text; cached field results do
+                        // not contribute to paragraph offsets.
+                        let character = match break_type.as_deref() {
+                            Some("page") => Some(PAGE_BREAK_CHAR),
+                            Some("column") => Some(crate::document::COLUMN_BREAK_CHAR),
+                            Some("textwrapping") | None => Some('\n'),
+                            _ => None,
+                        };
+                        if let (Some(ref mut run), Some(character)) =
+                            (current_run.as_mut(), character)
+                        {
+                            if Self::keeps_field_result_in_run_text(
+                                current_run_field.as_ref(),
+                                current_run_is_instruction_operand,
+                            ) {
+                                run.text.push(character);
+                                paragraph_text_len += character.len_utf8();
+                                if character == '\n' {
+                                    // Preserve clear attributes on editable
+                                    // soft breaks when synchronizing raw XML.
+                                    current_run_has_attributed_soft_break |= has_clear;
                                 }
+                            } else {
+                                current_run_field_text.push(character);
                             }
                         }
                     }
@@ -2055,6 +2047,8 @@ impl DocumentParser {
                                 paragraph_text_len += 1;
                                 current_run_has_carriage_return = true;
                             }
+                        } else if current_run.is_some() {
+                            current_run_field_text.push('\n');
                         }
                     }
                     b"w:fldSimple" => {
@@ -2425,6 +2419,8 @@ impl DocumentParser {
                             ) {
                                 run.text.push('\t');
                                 paragraph_text_len += 1;
+                            } else {
+                                current_run_field_text.push('\t');
                             }
                         }
                     }
@@ -2441,6 +2437,8 @@ impl DocumentParser {
                                 run.text.push('\t');
                                 paragraph_text_len += 1;
                             }
+                        } else if current_run.is_some() {
+                            current_run_field_text.push('\t');
                         }
                     }
                     b"w:noBreakHyphen" => {
@@ -2456,6 +2454,8 @@ impl DocumentParser {
                                 run.text.push('\u{2011}');
                                 paragraph_text_len += '\u{2011}'.len_utf8();
                             }
+                        } else if current_run.is_some() {
+                            current_run_field_text.push('\u{2011}');
                         }
                     }
                     b"w:softHyphen" => {
@@ -2470,6 +2470,8 @@ impl DocumentParser {
                                 run.text.push('\u{00AD}');
                                 paragraph_text_len += '\u{00AD}'.len_utf8();
                             }
+                        } else if current_run.is_some() {
+                            current_run_field_text.push('\u{00AD}');
                         }
                     }
                     b"w:sym" => {
@@ -2478,39 +2480,40 @@ impl DocumentParser {
                         // into a code point so the glyph renders instead of the
                         // run becoming empty, and stamp the symbol font onto the
                         // run so it is drawn with the correct typeface.
-                        if Self::keeps_field_result_in_run_text(
-                            current_run_field.as_ref(),
-                            current_run_is_instruction_operand,
-                        ) {
-                            let mut sym_char: Option<char> = None;
-                            let mut sym_font: Option<String> = None;
-                            for attr in e.attributes().flatten() {
-                                match attr.key.as_ref() {
-                                    b"w:char" => {
-                                        let raw = String::from_utf8_lossy(&attr.value);
-                                        sym_char = u32::from_str_radix(raw.trim(), 16)
-                                            .ok()
-                                            .and_then(char::from_u32);
-                                    }
-                                    b"w:font" => {
-                                        sym_font =
-                                            Some(String::from_utf8_lossy(&attr.value).to_string());
-                                    }
-                                    _ => {}
+                        let mut sym_char: Option<char> = None;
+                        let mut sym_font: Option<String> = None;
+                        for attr in e.attributes().flatten() {
+                            match attr.key.as_ref() {
+                                b"w:char" => {
+                                    let raw = String::from_utf8_lossy(&attr.value);
+                                    sym_char = u32::from_str_radix(raw.trim(), 16)
+                                        .ok()
+                                        .and_then(char::from_u32);
                                 }
+                                b"w:font" => {
+                                    sym_font =
+                                        Some(String::from_utf8_lossy(&attr.value).to_string());
+                                }
+                                _ => {}
                             }
-                            if let (Some(ref mut run), Some(ch)) = (current_run.as_mut(), sym_char)
-                            {
+                        }
+                        if let (Some(ref mut run), Some(ch)) = (current_run.as_mut(), sym_char) {
+                            if Self::keeps_field_result_in_run_text(
+                                current_run_field.as_ref(),
+                                current_run_is_instruction_operand,
+                            ) {
                                 run.text.push(ch);
                                 paragraph_text_len += ch.len_utf8();
-                                if let Some(font) = sym_font {
-                                    let props = current_run_props
-                                        .get_or_insert_with(RunProperties::default);
-                                    let fonts = props.fonts.get_or_insert_with(RunFonts::default);
-                                    let font: Rc<str> = Rc::from(font.as_str());
-                                    fonts.ascii = Some(font.clone());
-                                    fonts.h_ansi = Some(font);
-                                }
+                            } else {
+                                current_run_field_text.push(ch);
+                            }
+                            if let Some(font) = sym_font {
+                                let props =
+                                    current_run_props.get_or_insert_with(RunProperties::default);
+                                let fonts = props.fonts.get_or_insert_with(RunFonts::default);
+                                let font: Rc<str> = Rc::from(font.as_str());
+                                fonts.ascii = Some(font.clone());
+                                fonts.h_ansi = Some(font);
                             }
                         }
                     }
@@ -9396,16 +9399,23 @@ impl DocumentParser {
             // self-contained numeric literals. Refresh that safe subset now;
             // fields requiring unresolved bookmarks or package state retain
             // the cache until the model can preserve a structured expression.
+            let conditional = parent_instruction
+                .split_whitespace()
+                .next()
+                .is_some_and(|name| {
+                    name.eq_ignore_ascii_case("IF") || name.eq_ignore_ascii_case("COMPARE")
+                });
             let live_result = field
                 .kind
                 .as_ref()
+                .filter(|_| !conditional)
                 .and_then(|kind| Self::locally_resolved_field_result(kind, bookmark_text));
             if let Some(result) = live_result.as_deref() {
                 Self::append_nested_operand_token(parent_instruction, result);
-            } else if let Some(kind) = field.kind {
+            } else if field.kind.is_some() || conditional {
                 let index = deferred_nested_fields.len();
                 deferred_nested_fields.push(DeferredNestedField {
-                    kind,
+                    kind: field.kind,
                     cached_result: field.operand_result.clone(),
                 });
                 parent_instruction.push_str(DEFERRED_NESTED_FIELD_PREFIX);
@@ -9566,6 +9576,20 @@ impl DocumentParser {
             bookmark_text,
             depth,
         );
+        if let RunFieldKind::If {
+            true_text,
+            false_text,
+            ..
+        } = kind
+        {
+            for text in std::iter::once(true_text).chain(false_text.iter_mut()) {
+                if let Some(resolved) =
+                    Self::resolve_deferred_text(text, deferred_nested_fields, bookmark_text, depth)
+                {
+                    *text = resolved;
+                }
+            }
+        }
     }
 
     fn resolve_deferred_operand(
@@ -9575,41 +9599,73 @@ impl DocumentParser {
         bookmark_text: &HashMap<String, String>,
         depth: usize,
     ) {
-        let Some(index) = Self::deferred_nested_field_index(operand) else {
-            return;
-        };
-        // Every deferred entry points to a field that was already closed, so
-        // the graph is acyclic. Keep a defensive bound in case malformed input
-        // ever manages to manufacture a self-referential internal marker.
-        if depth > deferred_nested_fields.len() {
-            return;
+        if let Some(result) =
+            Self::resolve_deferred_text(operand, deferred_nested_fields, bookmark_text, depth)
+        {
+            // Keep text literal while retaining numeric comparison semantics.
+            *is_quoted |= result.trim().parse::<f64>().is_err();
+            *operand = if result.contains('"') {
+                format!("{}{result}", crate::document::QUOTED_NESTED_RESULT_MARK)
+            } else {
+                result
+            };
         }
-        let Some(deferred) = deferred_nested_fields.get(index) else {
-            return;
-        };
-        let mut nested_kind = deferred.kind.clone();
-        Self::resolve_deferred_operands_in_kind(
-            &mut nested_kind,
-            deferred_nested_fields,
-            bookmark_text,
-            depth + 1,
-        );
-        let result = Self::locally_resolved_field_result(&nested_kind, bookmark_text)
-            .unwrap_or_else(|| deferred.cached_result.clone());
-        // Synthetic quoting groups a textual field result into one operand and
-        // prevents a value that happens to equal a bookmark name from being
-        // dereferenced again. Numeric results remain unquoted so Word numeric
-        // comparison semantics are preserved.
-        *is_quoted = result.trim().parse::<f64>().is_err();
-        *operand = result;
     }
 
-    fn deferred_nested_field_index(operand: &str) -> Option<usize> {
-        operand
-            .strip_prefix(DEFERRED_NESTED_FIELD_PREFIX)?
-            .strip_suffix(DEFERRED_NESTED_FIELD_SUFFIX)?
-            .parse()
-            .ok()
+    /// Resolve markers after tokenization, so quotes and backslashes in a
+    /// nested result cannot become surrounding instruction syntax. Quoted IF
+    /// branches may contain several markers with ordinary text between them.
+    fn resolve_deferred_text(
+        text: &str,
+        deferred_nested_fields: &[DeferredNestedField],
+        bookmark_text: &HashMap<String, String>,
+        depth: usize,
+    ) -> Option<String> {
+        // Closed child fields form an acyclic graph. Bound malformed input.
+        if depth > deferred_nested_fields.len() {
+            return None;
+        }
+        let mut result = String::new();
+        let mut copied = 0;
+        let mut found = false;
+        for (start, _) in text.match_indices(DEFERRED_NESTED_FIELD_PREFIX) {
+            let tail = &text[start + DEFERRED_NESTED_FIELD_PREFIX.len()..];
+            let Some(end) = tail.find(DEFERRED_NESTED_FIELD_SUFFIX) else {
+                continue;
+            };
+            let Some(deferred) = tail[..end]
+                .parse::<usize>()
+                .ok()
+                .and_then(|index| deferred_nested_fields.get(index))
+            else {
+                continue;
+            };
+            let value = deferred
+                .kind
+                .clone()
+                .and_then(|mut kind| {
+                    Self::resolve_deferred_operands_in_kind(
+                        &mut kind,
+                        deferred_nested_fields,
+                        bookmark_text,
+                        depth + 1,
+                    );
+                    Self::locally_resolved_field_result(&kind, bookmark_text)
+                })
+                .unwrap_or_else(|| deferred.cached_result.clone());
+            result.push_str(&text[copied..start]);
+            result.push_str(&value);
+            copied = start
+                + DEFERRED_NESTED_FIELD_PREFIX.len()
+                + end
+                + DEFERRED_NESTED_FIELD_SUFFIX.len_utf8();
+            found = true;
+        }
+        if !found {
+            return None;
+        }
+        result.push_str(&text[copied..]);
+        Some(result)
     }
 
     fn locally_resolved_field_result(
@@ -10050,7 +10106,7 @@ impl DocumentParser {
                     parse_eq_distributed_field(normalized)
                         .map(|(text, guide)| RunFieldKind::EqDistributed { text, guide })
                 }),
-            "PRIVATE" | "ADDIN" | "XE" | "TA" => Some(RunFieldKind::NonDisplay {
+            "PRIVATE" | "XE" | "TA" | "RD" => Some(RunFieldKind::NonDisplay {
                 instruction: normalized.to_string(),
             }),
             _ => None,
@@ -18310,6 +18366,50 @@ mod tests {
     }
 
     #[test]
+    fn computed_field_caches_preserve_inline_control_characters() {
+        let result = r#"<w:r><w:t>alpha</w:t><w:tab/><w:t>beta</w:t><w:ptab w:alignment="right" w:relativeTo="margin" w:leader="none"/><w:t>gamma</w:t><w:br/><w:cr/><w:br w:type="page"/><w:br w:type="column"/><w:noBreakHyphen/><w:softHyphen/><w:sym w:font="Wingdings" w:char="F0FC"/><w:lastRenderedPageBreak/></w:r>"#;
+        for body in [
+            format!(r#"<w:p><w:fldSimple w:instr="INDEX">{result}</w:fldSimple></w:p>"#),
+            format!(
+                r#"<w:p><w:r><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:instrText>INDEX</w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r>{result}<w:r><w:fldChar w:fldCharType="end"/></w:r></w:p>"#
+            ),
+        ] {
+            let document = parse_document_from_body(&body);
+            let paragraph = document.body.as_ref().unwrap().elements[0]
+                .as_paragraph()
+                .unwrap();
+            assert!(paragraph.runs.iter().all(|run| run.text.is_empty()));
+            let cached: String = paragraph
+                .runs
+                .iter()
+                .filter_map(|run| run.field.as_ref()?.cached_text.as_deref())
+                .collect();
+            assert_eq!(
+                cached,
+                "alpha\tbeta\tgamma\n\n\u{c}\u{e}\u{2011}\u{ad}\u{f0fc}"
+            );
+            let symbol_run = paragraph
+                .runs
+                .iter()
+                .find(|run| {
+                    run.field
+                        .as_ref()
+                        .and_then(|field| field.cached_text.as_deref())
+                        .is_some_and(|text| text.contains('\u{f0fc}'))
+                })
+                .unwrap();
+            assert_eq!(
+                symbol_run
+                    .properties
+                    .as_ref()
+                    .and_then(|properties| properties.fonts.as_ref())
+                    .and_then(|fonts| fonts.ascii.as_deref()),
+                Some("Wingdings")
+            );
+        }
+    }
+
+    #[test]
     fn parses_sectionpages_instruction_split_across_instr_text_runs() {
         let body = r#"
             <w:p>
@@ -18743,6 +18843,50 @@ mod tests {
         );
         assert_eq!(fields[0].cached_text.as_deref(), Some("Stale outer result"));
         assert_eq!(fields[0].resolved_value.as_deref(), Some("Nested true"));
+    }
+
+    #[test]
+    fn nested_if_return_values_resolve_without_internal_markers() {
+        for owner in ["ADDIN owner", "FUTURE owner"] {
+            for simple in [false, true] {
+                for value in ["", "a\"b", r"tail \", "日本語 & <値>"] {
+                    let escaped = quick_xml::escape::escape(value);
+                    let nested = if simple {
+                        format!(
+                            r#"<w:fldSimple w:instr="{owner}"><w:r><w:t>{escaped}</w:t></w:r></w:fldSimple>"#
+                        )
+                    } else {
+                        format!(
+                            r#"<w:r><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:instrText>{owner}</w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r><w:r><w:t>{escaped}</w:t></w:r><w:r><w:fldChar w:fldCharType="end"/></w:r>"#
+                        )
+                    };
+                    for (comparison, before, after, expected) in [
+                        ("1", "", String::new(), value.to_string()),
+                        ("1", "&quot;pre", "post&quot;".into(), format!("pre{value}post")),
+                        ("1", "&quot;pre", format!("/</w:instrText></w:r>{nested}<w:r><w:instrText xml:space=\"preserve\">post&quot;"), format!("pre{value}/{value}post")),
+                        ("1", "&quot;", "&quot;".into(), value.to_string()),
+                        ("0", "&quot;Other&quot; ", String::new(), value.to_string()),
+                    ] {
+                        let doc = parse_document_from_body(&format!(
+                            r#"<w:p><w:r><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:instrText xml:space="preserve">IF 1 = {comparison} {before}</w:instrText></w:r>{nested}<w:r><w:instrText xml:space="preserve">{after} &quot;Other&quot;</w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r><w:r><w:t>Old</w:t></w:r><w:r><w:fldChar w:fldCharType="end"/></w:r></w:p>"#
+                        ));
+                        let paragraph = doc.body.as_ref().unwrap().elements[0]
+                            .as_paragraph()
+                            .unwrap();
+                        let field = paragraph
+                            .runs
+                            .iter()
+                            .find_map(|run| run.field.as_ref())
+                            .unwrap();
+                        assert_eq!(
+                            field.resolved_value.as_deref(),
+                            Some(expected.as_str()),
+                            "simple={simple}, value={value:?}"
+                        );
+                    }
+                }
+            }
+        }
     }
 
     #[test]
@@ -21122,11 +21266,10 @@ mod tests {
     }
 
     #[test]
-    fn models_private_and_addin_as_non_display_fields() {
-        // Word classifies PRIVATE as a cold field with no result and ADDIN as
-        // hidden add-in storage. A producer may nevertheless leave stale text
-        // between the separator/end markers. Preserve that cache for lossless
-        // inspection, but mark the field so renderers never expose it.
+    fn distinguishes_private_storage_from_visible_addin_results() {
+        // PRIVATE has no visible result. ADDIN is owned by another application,
+        // which may supply visible formatted citations or other cached text.
+        // Keep its code and result without attempting to evaluate that payload.
         let body = r#"
             <w:p>
               <w:fldSimple w:instr=" PRIVATE vendor-payload ">
@@ -21138,7 +21281,7 @@ mod tests {
               <w:r><w:instrText xml:space="preserve"> ADD</w:instrText></w:r>
               <w:r><w:instrText xml:space="preserve">IN vendor-payload </w:instrText></w:r>
               <w:r><w:fldChar w:fldCharType="separate"/></w:r>
-              <w:r><w:t>Leaked add-in cache</w:t></w:r>
+              <w:r><w:t>(Smith, 2020)</w:t></w:r>
               <w:r><w:fldChar w:fldCharType="end"/></w:r>
             </w:p>
         "#;
@@ -21166,14 +21309,11 @@ mod tests {
         );
         assert_eq!(
             fields[1].kind,
-            RunFieldKind::NonDisplay {
+            RunFieldKind::Unsupported {
                 instruction: "ADDIN vendor-payload".to_string(),
             }
         );
-        assert_eq!(
-            fields[1].cached_text.as_deref(),
-            Some("Leaked add-in cache")
-        );
+        assert_eq!(fields[1].cached_text.as_deref(), Some("(Smith, 2020)"));
     }
 
     #[test]
@@ -21185,7 +21325,10 @@ mod tests {
         //
         // PRIVATE and ADDIN carry application-owned data. XE and TA are the
         // hidden source entries used to build an index and a table of
-        // authorities. Fragment ADDIN across instrText nodes as Word is free to
+        // authorities. RD identifies documents used by TOC/TOA/INDEX without
+        // displaying a result. ADDIN may have a visible result, but must also
+        // survive when its owner has not supplied one. Fragment its instruction
+        // across instrText nodes as Word is free to
         // split any field instruction at arbitrary run boundaries.
         let body = r#"
             <w:p>
@@ -21211,6 +21354,14 @@ mod tests {
             </w:p>
             <w:p>
               <w:fldSimple w:instr=" PRIVATE simple-payload "></w:fldSimple>
+            </w:p>
+            <w:p>
+              <w:r><w:fldChar w:fldCharType="begin"/></w:r>
+              <w:r><w:instrText xml:space="preserve"> RD &quot;chapter.docx&quot; </w:instrText></w:r>
+              <w:r><w:fldChar w:fldCharType="end"/></w:r>
+            </w:p>
+            <w:p>
+              <w:fldSimple w:instr=" RD &quot;appendix.docx&quot; "></w:fldSimple>
             </w:p>
         "#;
         let doc = parse_document_from_body(body);
@@ -21241,19 +21392,27 @@ mod tests {
             })
             .collect::<Vec<_>>();
 
-        assert_eq!(fields.len(), 5);
+        assert_eq!(fields.len(), 7);
         let expected = [
             "PRIVATE vendor-payload",
             "ADDIN vendor-payload",
             "XE \"Alpha entry\" \\f \"main\"",
             "TA \\l \"Case citation\" \\s \"12\"",
             "PRIVATE simple-payload",
+            "RD \"chapter.docx\"",
+            "RD \"appendix.docx\"",
         ];
         for (field, instruction) in fields.into_iter().zip(expected) {
             assert_eq!(
                 field.kind,
-                RunFieldKind::NonDisplay {
-                    instruction: instruction.to_string(),
+                if instruction.starts_with("ADDIN ") {
+                    RunFieldKind::Unsupported {
+                        instruction: instruction.to_string(),
+                    }
+                } else {
+                    RunFieldKind::NonDisplay {
+                        instruction: instruction.to_string(),
+                    }
                 }
             );
         }

@@ -215,6 +215,11 @@ pub struct SortKey {
     /// `descending`, last), the rest after them in the order they were.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub color: Option<SortColor>,
+    /// Order ▸ Custom List: the values in this list's order first (or,
+    /// `descending`, in its order turned round), each matched without
+    /// case; the rest after them, sorted as values are.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub custom_list: Option<Vec<String>>,
 }
 
 /// The colour a sort key puts first: the cells' fill, or their text's.

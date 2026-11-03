@@ -65,6 +65,10 @@ impl FieldBlock {
     }
 }
 
+fn is_xml_character(character: char) -> bool {
+    matches!(character, '\u{9}' | '\u{a}' | '\u{d}' | '\u{20}'..='\u{d7ff}' | '\u{e000}'..='\u{fffd}' | '\u{10000}'..='\u{10ffff}')
+}
+
 /// Names of fields whose instruction and result the host authors as
 /// written; the engine evaluates none of them itself.
 pub(crate) fn authored_result_field(instruction: &str) -> bool {
@@ -111,6 +115,57 @@ pub struct CaptionOptions {
 }
 
 impl WordDocument {
+    pub(super) fn is_printable_xml_character(character: char) -> bool {
+        !character.is_control() && is_xml_character(character)
+    }
+
+    fn validate_field_text(text: &str) -> Result<(), String> {
+        if !text.chars().all(is_xml_character) {
+            return Err("field text must contain only valid XML characters".to_string());
+        }
+        Ok(())
+    }
+
+    fn validate_tab_leader(leader: &str) -> Result<(), String> {
+        // ST_TabTlc, shared by generated/manual TOCs and authored field blocks.
+        if !matches!(
+            leader,
+            "none" | "dot" | "hyphen" | "underscore" | "heavy" | "middleDot"
+        ) {
+            return Err("invalid tab leader".to_string());
+        }
+        Ok(())
+    }
+
+    pub(super) fn validate_toc_input(options: &TocOptions, leader: &str) -> Result<(), String> {
+        Self::validate_tab_leader(leader)?;
+        for text in [
+            options.page_number_separator.as_deref(),
+            options.bookmark_name.as_deref(),
+            options.caption_label.as_deref(),
+            options.toc_entry_identifier.as_deref(),
+            options
+                .sequence_page_number
+                .as_ref()
+                .map(|sequence| sequence.identifier.as_str()),
+            options
+                .sequence_page_number
+                .as_ref()
+                .and_then(|sequence| sequence.separator.as_deref()),
+        ]
+        .into_iter()
+        .flatten()
+        .chain(
+            options
+                .custom_style_levels
+                .iter()
+                .map(|(style, _)| style.as_str()),
+        ) {
+            Self::validate_field_text(text)?;
+        }
+        Ok(())
+    }
+
     /// Whether a section's footnotes sit right under its text rather than
     /// at the bottom of the page (`w:footnotePr/w:pos`).
     pub fn footnote_beneath_text(&self, section: Option<usize>) -> bool {
@@ -581,6 +636,17 @@ impl WordDocument {
         instruction: &str,
         display: &str,
     ) -> Result<SelectionRange, String> {
+        self.insert_inline_field_with_location(at, instruction, display)
+            .map(|(caret, _)| caret)
+    }
+
+    /// Also identifies the inserted run before a generated block can move it.
+    pub(crate) fn insert_inline_field_with_location(
+        &mut self,
+        at: TextPosition,
+        instruction: &str,
+        display: &str,
+    ) -> Result<(SelectionRange, (usize, usize)), String> {
         let instruction = instruction.trim();
         let hidden = authored_marker_field(instruction);
         if !hidden && !authored_result_field(instruction) {
@@ -589,9 +655,12 @@ impl WordDocument {
                 field_name(instruction)
             ));
         }
-        if instruction.chars().any(char::is_control) {
-            return Err("field instructions must not contain control characters".to_string());
+        if !instruction.chars().all(Self::is_printable_xml_character) {
+            return Err(
+                "field instructions must contain only printable XML characters".to_string(),
+            );
         }
+        Self::validate_field_text(display)?;
         if !self.is_body_paragraph_surface(at.paragraph) {
             return Err("fields can only be inserted in body paragraphs".to_string());
         }
@@ -633,6 +702,7 @@ impl WordDocument {
             source_field_id: None,
             resolved_value: (!hidden).then(|| text.clone()),
         });
+        let run_index = paragraph.runs.len();
         paragraph.runs.push(run);
         paragraph.runs.extend(tail);
         // Authored fields are written again from the model, as the XE
@@ -655,14 +725,24 @@ impl WordDocument {
         }
         self.sync_paragraph_text_preserving_drawings(model.paragraph);
         let after = TextPosition::new(model.paragraph, model.offset + text.len());
-        Ok(SelectionRange::collapsed(
-            self.model_to_rendered_text_position(after),
+        Ok((
+            SelectionRange::collapsed(self.model_to_rendered_text_position(after)),
+            (model.paragraph, run_index),
         ))
     }
 
     /// Every field named `name` (`CITATION`, `XE`, `TA`, …) in the body,
     /// headers and notes left out, in document order.
     pub fn inline_fields(&self, name: &str) -> Vec<InlineField> {
+        self.inline_fields_with_locks(name, false)
+    }
+
+    /// Catalog references remain in use even when their saved result is locked.
+    pub fn inline_fields_including_locked(&self, name: &str) -> Vec<InlineField> {
+        self.inline_fields_with_locks(name, true)
+    }
+
+    fn inline_fields_with_locks(&self, name: &str, include_locked: bool) -> Vec<InlineField> {
         let name = name.to_ascii_uppercase();
         let mut fields = Vec::new();
         for paragraph in 0..self.paragraph_count() {
@@ -673,7 +753,13 @@ impl WordDocument {
                 continue;
             };
             for (index, run) in model.runs.iter().enumerate() {
-                let instruction = match run.field.as_ref().map(|field| &field.kind) {
+                let instruction = match run.field.as_ref().map(|field| {
+                    if include_locked {
+                        field.kind.base_kind()
+                    } else {
+                        &field.kind
+                    }
+                }) {
                     Some(RunFieldKind::NonDisplay { instruction })
                     | Some(RunFieldKind::Unsupported { instruction }) => instruction,
                     _ => continue,
@@ -714,6 +800,12 @@ impl WordDocument {
         instruction: Option<&str>,
         text: &str,
     ) -> Result<(), String> {
+        if instruction.is_some_and(|value| !value.chars().all(Self::is_printable_xml_character)) {
+            return Err(
+                "field instructions must contain only printable XML characters".to_string(),
+            );
+        }
+        Self::validate_field_text(text)?;
         let model = self
             .paragraph_mut(paragraph)
             .ok_or_else(|| "field paragraph is unavailable".to_string())?;
@@ -725,21 +817,40 @@ impl WordDocument {
             .field
             .as_mut()
             .ok_or_else(|| "the run holds no field".to_string())?;
+        let locked = field.kind.is_locked();
         if let Some(instruction) = instruction {
-            match &mut field.kind {
-                RunFieldKind::NonDisplay {
-                    instruction: current,
+            fn replace_instruction(
+                kind: &mut RunFieldKind,
+                instruction: &str,
+            ) -> Result<(), String> {
+                match kind {
+                    RunFieldKind::Locked { kind } => {
+                        replace_instruction(std::rc::Rc::make_mut(kind), instruction)
+                    }
+                    RunFieldKind::Formatted {
+                        kind,
+                        instruction: current,
+                    } => {
+                        replace_instruction(std::rc::Rc::make_mut(kind), instruction)?;
+                        *current = instruction.trim().into();
+                        Ok(())
+                    }
+                    RunFieldKind::NonDisplay {
+                        instruction: current,
+                    }
+                    | RunFieldKind::Unsupported {
+                        instruction: current,
+                    } => {
+                        *current = instruction.trim().to_string();
+                        Ok(())
+                    }
+                    _ => Err("the field's instruction cannot be changed".to_string()),
                 }
-                | RunFieldKind::Unsupported {
-                    instruction: current,
-                } => {
-                    *current = instruction.trim().to_string();
-                }
-                _ => return Err("the field's instruction cannot be changed".to_string()),
             }
+            replace_instruction(&mut field.kind, instruction)?;
         }
-        let hidden = matches!(field.kind, RunFieldKind::NonDisplay { .. });
-        if !hidden {
+        let hidden = matches!(field.kind.base_kind(), RunFieldKind::NonDisplay { .. });
+        if !hidden && !locked {
             field.cached_text = Some(text.to_string());
             field.resolved_value = Some(text.to_string());
             target.text = text.to_string();
@@ -977,6 +1088,7 @@ impl WordDocument {
         lines: &[FieldBlockLine],
     ) -> Result<SelectionRange, String> {
         let instruction = Self::validate_field_block_instruction(instruction)?;
+        Self::validate_field_block_lines(lines)?;
         self.replace_field_block_content(block, |document, start, location, tab_twips| {
             document.insert_field_block_at(
                 start,
@@ -1142,6 +1254,7 @@ impl WordDocument {
         tab_twips: Option<i64>,
     ) -> Result<SelectionRange, String> {
         let instruction = Self::validate_field_block_instruction(instruction)?;
+        Self::validate_field_block_lines(lines)?;
         // An empty result still needs a paragraph to hold the field.
         let placeholder = [FieldBlockLine::default()];
         let lines = if lines.is_empty() {
@@ -1323,10 +1436,31 @@ impl WordDocument {
 
     fn validate_field_block_instruction(instruction: &str) -> Result<&str, String> {
         let instruction = instruction.trim();
-        if instruction.is_empty() || instruction.chars().any(char::is_control) {
+        if instruction.is_empty() || !instruction.chars().all(Self::is_printable_xml_character) {
             return Err("the field needs a printable instruction".to_string());
         }
         Ok(instruction)
+    }
+
+    fn validate_field_block_lines(lines: &[FieldBlockLine]) -> Result<(), String> {
+        for line in lines {
+            if let Some(leader) = line.leader.as_deref() {
+                Self::validate_tab_leader(leader)?;
+            }
+            for text in [
+                Some(line.text.as_str()),
+                line.page.as_deref(),
+                line.separator.as_deref(),
+                line.leader.as_deref(),
+                line.style.as_deref(),
+            ]
+            .into_iter()
+            .flatten()
+            {
+                Self::validate_field_text(text)?;
+            }
+        }
+        Ok(())
     }
 
     // ---- moving top-level blocks ------------------------------------------
@@ -1441,6 +1575,8 @@ impl WordDocument {
         style_name: &str,
         selected_style: &str,
     ) -> Result<(), String> {
+        Self::validate_field_text(style_name)?;
+        Self::validate_field_text(selected_style)?;
         let path = self
             .bibliography_sources_part_path()
             .ok_or_else(|| "the document has no sources".to_string())?;
@@ -1492,8 +1628,9 @@ impl WordDocument {
             .iter()
             .position(|child| match child {
                 XmlNode::Element(source) => {
-                    Self::xml_local_name(&source.name) == "Source"
-                        && Self::xml_descendant_text(source, "Tag").as_deref() == Some(tag)
+                    Self::is_bibliography_element(source, "Source", &[parsed.root()])
+                        && Self::xml_descendant_text(source, "Tag", &[parsed.root()]).as_deref()
+                            == Some(tag)
                 }
                 _ => false,
             })
@@ -1512,8 +1649,76 @@ impl WordDocument {
         tag: &str,
         source: CitationSourceInfo,
     ) -> Result<(), String> {
-        self.remove_citation_source(tag)?;
-        self.add_citation_source(source)
+        let source = Self::normalize_citation_source(source)?;
+        let path = self
+            .bibliography_sources_part_path()
+            .ok_or_else(|| "the document has no sources".to_string())?;
+        let original = self
+            .read_xml_part_content(&path)
+            .ok_or_else(|| "bibliography source part is unavailable".to_string())?;
+        let parsed = DocxXmlDocument::parse(&original).map_err(|error| error.to_string())?;
+        let target = parsed
+            .root()
+            .children
+            .iter()
+            .filter_map(|node| match node {
+                XmlNode::Element(element) => Some(element),
+                _ => None,
+            })
+            .position(|element| {
+                Self::is_bibliography_element(element, "Source", &[parsed.root()])
+                    && Self::xml_descendant_text(element, "Tag", &[parsed.root()]).as_deref()
+                        == Some(tag)
+            })
+            .ok_or_else(|| format!("citation source {tag} was not found"))?;
+        if source.tag != tag
+            && self
+                .citation_sources()
+                .iter()
+                .any(|entry| entry.tag == source.tag)
+        {
+            return Err(format!(
+                "citation source tag already exists: {}",
+                source.tag
+            ));
+        }
+        let prefix = parsed
+            .root()
+            .name
+            .strip_suffix(":Sources")
+            .unwrap_or_default();
+        let entry = Self::bibliography_source_entry_xml(&source, prefix);
+        let mut reader = quick_xml::Reader::from_str(&original);
+        let (mut depth, mut child) = (0, 0);
+        loop {
+            let start = reader.buffer_position() as usize;
+            match reader.read_event().map_err(|error| error.to_string())? {
+                quick_xml::events::Event::Start(element) => {
+                    if depth == 1 {
+                        if child == target {
+                            reader
+                                .read_to_end(element.name())
+                                .map_err(|error| error.to_string())?;
+                            let end = reader.buffer_position() as usize;
+                            let mut updated = String::with_capacity(original.len() + entry.len());
+                            updated.push_str(&original[..start]);
+                            updated.push_str(&entry);
+                            updated.push_str(&original[end..]);
+                            self.upsert_xml_part_content(&path, updated);
+                            return Ok(());
+                        }
+                        child += 1;
+                    }
+                    depth += 1;
+                }
+                quick_xml::events::Event::Empty(_) if depth == 1 => child += 1,
+                quick_xml::events::Event::End(_) => depth -= 1,
+                quick_xml::events::Event::Eof => {
+                    return Err("citation source XML is unavailable".to_string());
+                }
+                _ => {}
+            }
+        }
     }
 
     // ---- tables of contents ------------------------------------------------
@@ -1531,38 +1736,52 @@ impl WordDocument {
             .into_iter()
             .nth(index)
             .ok_or_else(|| "no table of contents found to update".to_string())?;
+        // Validate the whole update before changing any cached result or XML.
+        for page in pages.values() {
+            Self::validate_field_text(page)?;
+        }
         let mut changed = 0;
         for paragraph in block.start..=block.end {
-            let mut names = Vec::new();
+            let mut paragraph_changed = false;
+            let mut previous = None;
+            let mut counted = false;
             if let Some(model) = self.paragraph_mut(paragraph) {
                 for run in &mut model.runs {
                     let Some(field) = run.field.as_mut() else {
+                        previous = None;
                         continue;
                     };
                     let RunFieldKind::PageRef { name, .. } = &field.kind else {
+                        previous = None;
                         continue;
                     };
+                    let key = (name.clone(), field.source_field_id);
+                    let continuation = previous.as_ref() == Some(&key);
+                    previous = Some(key);
+                    if !continuation {
+                        counted = false;
+                    }
                     let Some(page) = pages.get(name) else {
                         continue;
                     };
-                    if field.cached_text.as_deref() != Some(page.as_str()) {
-                        field.cached_text = Some(page.clone());
-                        names.push((name.clone(), page.clone()));
+                    // PAGEREF results are editable run text, including when
+                    // loaded from a generated TOC. Formatted fragments of one
+                    // result receive the number once, as the saved XML does.
+                    let text = if continuation { "" } else { page.as_str() };
+                    if run.text != text || field.cached_text.is_some() {
+                        run.text = text.to_string();
+                        field.cached_text = None;
+                        paragraph_changed = true;
+                        if !counted {
+                            changed += 1;
+                            counted = true;
+                        }
                     }
                 }
             }
-            if names.is_empty() {
-                continue;
+            if paragraph_changed {
+                self.sync_paragraph_text_preserving_drawings(paragraph);
             }
-            let paragraph_id = self.paragraph(paragraph).and_then(|model| model.node_id);
-            if let (Some(raw), Some(paragraph_id)) = (self.raw_document.as_mut(), paragraph_id) {
-                if let Some(element) = raw.element_mut(paragraph_id) {
-                    for (name, page) in &names {
-                        set_page_reference_result(element, name, page);
-                    }
-                }
-            }
-            changed += names.len();
         }
         Ok(changed)
     }
@@ -1577,6 +1796,12 @@ impl WordDocument {
         lines: &[(u8, String, String)],
         leader: &str,
     ) -> Result<SelectionRange, String> {
+        Self::validate_tab_leader(leader)?;
+        Self::validate_field_text(heading)?;
+        for (_, text, page) in lines {
+            Self::validate_field_text(text)?;
+            Self::validate_field_text(page)?;
+        }
         let body_index = match self.paragraph_surfaces.get(after_paragraph) {
             Some(ParagraphSurface::Body { path }) => match path.as_slice() {
                 [PathEntry::Element(index)] => index + 1,
@@ -1796,75 +2021,4 @@ impl WordDocument {
             self.model_to_rendered_text_position(TextPosition::new(caption, end)),
         ))
     }
-}
-
-/// Sets the result of the `PAGEREF name` field in a paragraph's XML to
-/// `page`: the first text after its separator, the rest emptied.
-fn set_page_reference_result(paragraph: &mut XmlElement, name: &str, page: &str) {
-    #[derive(PartialEq)]
-    enum State {
-        Looking,
-        Instruction,
-        Result,
-        Done,
-    }
-    fn visit(
-        element: &mut XmlElement,
-        name: &str,
-        page: &str,
-        state: &mut State,
-        written: &mut bool,
-    ) {
-        for child in &mut element.children {
-            let XmlNode::Element(child) = child else {
-                continue;
-            };
-            if *state == State::Done {
-                return;
-            }
-            match child.name.as_str() {
-                "w:fldChar" => {
-                    let kind = child
-                        .attributes
-                        .iter()
-                        .find(|attribute| attribute.name == "w:fldCharType")
-                        .map(|attribute| attribute.value.as_str());
-                    match (kind, &*state) {
-                        (Some("separate"), State::Instruction) => *state = State::Result,
-                        (Some("end"), State::Result) => *state = State::Done,
-                        (Some("end"), State::Instruction) => *state = State::Looking,
-                        _ => {}
-                    }
-                }
-                "w:instrText" => {
-                    let text: String = child
-                        .children
-                        .iter()
-                        .filter_map(|node| match node {
-                            XmlNode::Text(text) => Some(text.as_str()),
-                            _ => None,
-                        })
-                        .collect();
-                    let mut words = text.split_whitespace();
-                    if *state == State::Looking
-                        && words
-                            .next()
-                            .is_some_and(|word| word.eq_ignore_ascii_case("PAGEREF"))
-                        && words.next() == Some(name)
-                    {
-                        *state = State::Instruction;
-                    }
-                }
-                "w:t" if *state == State::Result => {
-                    let value = if *written { "" } else { page };
-                    *written = true;
-                    child.children = vec![XmlNode::Text(value.to_string())];
-                }
-                _ => visit(child, name, page, state, written),
-            }
-        }
-    }
-    let mut state = State::Looking;
-    let mut written = false;
-    visit(paragraph, name, page, &mut state, &mut written);
 }

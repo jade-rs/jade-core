@@ -73,6 +73,9 @@ pub(crate) struct ScannedField {
     pub cell: Option<CellRef>,
     /// Whether the field still reads its instruction.
     pub(crate) in_instruction: bool,
+    /// An assignment/storage cache is retained for evaluation, not displayed.
+    pub(crate) hidden_result: bool,
+    assignment_result: bool,
 }
 
 impl ScannedField {
@@ -105,6 +108,28 @@ impl ScannedField {
             }
         }
         out
+    }
+
+    /// Parse evaluated children as values, without reinterpreting their text.
+    pub fn code_with<'a>(
+        &'a self,
+        mut nested: impl FnMut(usize) -> &'a str,
+    ) -> Option<jade_docx_reader::field_format::FieldCode> {
+        use jade_docx_reader::field_format::{FieldCode, FieldInstructionPart};
+        if let Some(instruction) = &self.simple_instruction {
+            return FieldCode::parse(instruction);
+        }
+        if !self
+            .pieces
+            .iter()
+            .any(|piece| matches!(piece, Piece::Field(_)))
+        {
+            return FieldCode::parse(&self.instruction_with(|_| unreachable!()));
+        }
+        FieldCode::parse_parts(self.pieces.iter().map(|piece| match piece {
+            Piece::Text(text) => FieldInstructionPart::Code(text),
+            Piece::Field(index) => FieldInstructionPart::Literal(nested(*index)),
+        }))
     }
 
     /// The instruction as Word shows it with field codes on: nested fields
@@ -147,6 +172,8 @@ pub(crate) struct ScannedBookmark {
     /// The first footnote (`true`) or endnote reference inside it.
     pub note: Option<(bool, String)>,
     pub(crate) open: bool,
+    /// A bookmark inside ASK/SET stores its value despite the hidden result.
+    assignment: Option<usize>,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -331,6 +358,10 @@ impl Scanner {
                         paragraph: self.paragraph.unwrap_or(0),
                         note: None,
                         open: true,
+                        assignment: self.open_fields.iter().rev().copied().find(|&field| {
+                            self.story.fields[field].assignment_result
+                                && !self.story.fields[field].in_instruction
+                        }),
                     },
                 );
             }
@@ -475,6 +506,25 @@ impl Scanner {
         }
     }
 
+    fn hide_result_if_needed(&mut self, index: usize) {
+        let instruction = self.story.fields[index].instruction_with(|_| String::new());
+        let field = &mut self.story.fields[index];
+        field.hidden_result =
+            match jade_docx_reader::DocumentParser::parse_field_instruction(&instruction) {
+                Some(kind) => {
+                    field.assignment_result = matches!(
+                        kind.base_kind(),
+                        jade_docx_reader::RunFieldKind::Ask { .. }
+                            | jade_docx_reader::RunFieldKind::Set { .. }
+                    );
+                    !kind.has_visible_result()
+                }
+                // TC is a hidden outline entry, collected outside RunFieldKind.
+                None => jade_docx_reader::field_format::FieldCode::parse(&instruction)
+                    .is_some_and(|code| code.name == "TC"),
+            };
+    }
+
     /// Visible text: into the paragraph, the open bookmarks, the table cell
     /// and the result of every open field.
     fn visible(&mut self, text: &str) {
@@ -484,20 +534,33 @@ impl Scanner {
             .open_fields
             .iter()
             .rposition(|&field| self.story.fields[field].in_instruction);
-        let from = reading.map_or(0, |at| at + 1);
+        let mut from = reading.map_or(0, |at| at + 1);
+        // A hidden field retains its own cache, including nested result runs,
+        // but none of that text belongs to its enclosing displayed result.
+        let hidden = self.open_fields[from..]
+            .iter()
+            .rposition(|&field| self.story.fields[field].hidden_result)
+            .map(|at| from + at);
+        if let Some(at) = hidden {
+            from = at;
+        }
         for &field in &self.open_fields[from..] {
             self.story.fields[field].result_text.push_str(text);
         }
-        if reading.is_some() {
+        for name in self.open_bookmarks.values() {
+            if let Some(bookmark) = self.story.bookmarks.get_mut(&name.to_lowercase()) {
+                let assignment_cache =
+                    hidden.is_some_and(|at| bookmark.assignment == Some(self.open_fields[at]));
+                if assignment_cache || (reading.is_none() && hidden.is_none()) {
+                    bookmark.text.push_str(text);
+                }
+            }
+        }
+        if reading.is_some() || hidden.is_some() {
             return;
         }
         if let Some(paragraph) = self.paragraph {
             self.story.paragraphs[paragraph].text.push_str(text);
-        }
-        for name in self.open_bookmarks.values() {
-            if let Some(bookmark) = self.story.bookmarks.get_mut(&name.to_lowercase()) {
-                bookmark.text.push_str(text);
-            }
         }
         if let Some(table) = self.tables.last() {
             if let Some(cell) = table.cell {
@@ -551,14 +614,15 @@ impl Scanner {
                         self.story.fields[index].span_runs.push(element.id);
                     }
                     Some("separate") => {
-                        if let Some(&field) = self.open_fields.last() {
-                            let field = &mut self.story.fields[field];
+                        if let Some(&index) = self.open_fields.last() {
+                            let field = &mut self.story.fields[index];
                             if field.in_instruction {
                                 field.in_instruction = false;
                                 field.separate = Some(Marker {
                                     run: element.id,
                                     child: child.id,
                                 });
+                                self.hide_result_if_needed(index);
                             }
                         }
                     }
@@ -682,7 +746,7 @@ impl Scanner {
         });
         // A simple field nested in an instruction is an operand like a
         // complex one.
-        let _ = index;
+        self.hide_result_if_needed(index);
         self.walk(element);
         self.close_field();
     }
@@ -751,6 +815,69 @@ mod tests {
         assert_eq!(story.fields[2].result_text, "Ann");
         // The nested result is no visible text of its own.
         assert_eq!(story.paragraphs[0].text, "A otherAnn");
+    }
+
+    #[test]
+    fn hidden_results_keep_their_cache_without_leaking_into_visible_projections() {
+        for complex in [false, true] {
+            for instruction in [
+                "SET Counter 10",
+                "ASK Counter Prompt",
+                "PRIVATE",
+                "XE Index",
+                "TA Authority",
+                "TC Entry",
+                "RD chapter.docx",
+            ] {
+                let result = concat!(
+                    "<w:bookmarkStart w:id=\"1\" w:name=\"Stored\"/>",
+                    "<w:r><w:t>900</w:t></w:r>",
+                    "<w:fldSimple w:instr=\"DOCVARIABLE Cached\"><w:r><w:t>1</w:t></w:r></w:fldSimple>",
+                    "<w:bookmarkEnd w:id=\"1\"/>"
+                );
+                let code = format!("{instruction} \\* MERGEFORMAT");
+                let hidden = if complex {
+                    format!("<w:r><w:fldChar w:fldCharType=\"begin\" w:fldLock=\"true\"/></w:r><w:r><w:instrText>{code}</w:instrText></w:r><w:r><w:fldChar w:fldCharType=\"separate\"/></w:r>{result}<w:r><w:fldChar w:fldCharType=\"end\"/></w:r>")
+                } else {
+                    format!(
+                        "<w:fldSimple w:instr=\"{code}\" w:fldLock=\"true\">{result}</w:fldSimple>"
+                    )
+                };
+                let story = scan(&format!("<w:tbl><w:tr><w:tc><w:p><w:bookmarkStart w:id=\"0\" w:name=\"Shown\"/><w:fldSimple w:instr=\"REF Other\"><w:r><w:t>A</w:t></w:r>{hidden}<w:r><w:t>B</w:t></w:r></w:fldSimple><w:bookmarkEnd w:id=\"0\"/></w:p></w:tc></w:tr></w:tbl>"));
+                assert_eq!(story.fields[0].result_text, "AB");
+                assert_eq!(story.fields[1].result_text, "9001");
+                assert!(story.fields[1].locked);
+                assert_eq!(story.fields[2].result_text, "1");
+                assert_eq!(story.paragraphs[0].text, "AB");
+                assert_eq!(story.bookmarks["shown"].text, "AB");
+                assert_eq!(
+                    story.bookmarks["stored"].text,
+                    if instruction.starts_with("SET ") || instruction.starts_with("ASK ") {
+                        "9001"
+                    } else {
+                        ""
+                    }
+                );
+                assert_eq!(story.tables[0].rows[0][0].text, "AB\n");
+            }
+        }
+    }
+
+    #[test]
+    fn addin_results_reach_visible_projections_without_exposing_nested_storage() {
+        for locked in [false, true] {
+            let story = scan(&format!(
+                r#"<w:tbl><w:tr><w:tc><w:p><w:bookmarkStart w:id="0" w:name="Shown"/><w:fldSimple w:instr="REF Other"><w:r><w:t>A</w:t></w:r><w:fldSimple w:instr="ADDIN vendor-payload" w:fldLock="{locked}"><w:r><w:t>900</w:t></w:r><w:fldSimple w:instr="PRIVATE"><w:r><w:t>secret</w:t></w:r></w:fldSimple></w:fldSimple><w:r><w:t>B</w:t></w:r></w:fldSimple><w:bookmarkEnd w:id="0"/></w:p></w:tc></w:tr></w:tbl>"#
+            ));
+            assert_eq!(story.fields[0].result_text, "A900B");
+            assert_eq!(story.fields[1].result_text, "900");
+            assert_eq!(story.fields[1].locked, locked);
+            assert!(!story.fields[1].hidden_result);
+            assert_eq!(story.fields[2].result_text, "secret");
+            assert_eq!(story.paragraphs[0].text, "A900B");
+            assert_eq!(story.bookmarks["shown"].text, "A900B");
+            assert_eq!(story.tables[0].rows[0][0].text, "A900B\n");
+        }
     }
 
     #[test]
