@@ -14812,6 +14812,50 @@ mod tests {
     }
 
     #[test]
+    fn an_index_entry_marked_in_an_empty_paragraph_gets_the_document_defaults() {
+        // The XE marker's run takes its formatting from a run beside it. In
+        // an empty paragraph there is none, and it had no font or size until
+        // the document was reopened, when the load filled in the defaults.
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/blank.docx"),
+        )
+        .expect("read fixture");
+        let mut word_doc =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+        apply_headless_commands_to_document(
+            &mut word_doc,
+            &HeadlessEditRequest {
+                commands: vec![HeadlessCommand::MarkIndexEntry {
+                    paragraph: 0,
+                    offset: 0,
+                    term: "t".into(),
+                }],
+            },
+        )
+        .expect("marked");
+        let reloaded = executor::block_on(WordDocument::load(
+            &word_doc.export_docx().expect("export"),
+            &Options::default(),
+        ))
+        .expect("reload");
+        let marker = |word_doc: &WordDocument| {
+            let run = word_doc
+                .paragraph(0)
+                .and_then(|paragraph| paragraph.runs.iter().find(|run| run.field.is_some()))
+                .cloned()
+                .expect("index entry run");
+            let properties = run.properties.unwrap_or_default();
+            (
+                properties.font_size,
+                properties.fonts.and_then(|fonts| fonts.east_asia),
+            )
+        };
+        assert!(marker(&reloaded).0.is_some());
+        assert_eq!(marker(&word_doc), marker(&reloaded));
+    }
+
+    #[test]
     fn a_selection_from_a_computed_field_into_the_next_paragraph_keeps_it_whole() {
         // The IF field's result is computed, so it has no width: a selection
         // from just before it to the next paragraph leaves the field at its
