@@ -18317,6 +18317,7 @@ where
         let track_footnote_placement = self.tracks_footnote_placement();
 
         let mut shown_field_codes: Vec<XmlNodeId> = Vec::new();
+        let mut previous_visible_run_index = None;
         let mut advance_raise_pt = 0.0_f32;
         for (run_index, run) in paragraph.runs.iter().enumerate() {
             if let Some(from) = format_change_from.take() {
@@ -18436,6 +18437,11 @@ where
                 }
                 continue;
             }
+
+            // A hidden first result run has not drawn the field's value. Compare
+            // against the previous visible run, including across hidden runs.
+            let previous_visible_run = previous_visible_run_index;
+            previous_visible_run_index = Some(run_index);
 
             // An EQ field is drawn as its switches lay out (`\f` a fraction,
             // `\r` a radical …), in place of its saved result.
@@ -18607,7 +18613,7 @@ where
                 // resolved value replaces that saved result; it must not be
                 // appended or the field would render twice.
                 if let Some(value) = self.resolve_run_field(field) {
-                    if !continues_field(&paragraph.runs, run_index) {
+                    if !continues_field(&paragraph.runs, previous_visible_run, run_index) {
                         segment.push_str(&value);
                     }
                 } else if !run.text.is_empty() {
@@ -27289,7 +27295,7 @@ where
                 .and_then(|field| self.resolve_run_field(field))
             {
                 Some(value) => {
-                    if !continues_field(&paragraph.runs, run_index) {
+                    if !continues_field(&paragraph.runs, run_index.checked_sub(1), run_index) {
                         text.push_str(&value);
                     }
                 }
@@ -33875,7 +33881,11 @@ where
                     offset = offset.saturating_add(
                         self.resolve_run_field(field)
                             .map(|value| {
-                                if continues_field(&paragraph.runs, run_index) {
+                                if continues_field(
+                                    &paragraph.runs,
+                                    run_index.checked_sub(1),
+                                    run_index,
+                                ) {
                                     0
                                 } else {
                                     value.len()
@@ -37991,9 +38001,8 @@ fn select_header_footer_variant<'a, T: ?Sized>(
 /// carries the field. A value the renderer works out is the whole result, so
 /// it is drawn for the field's first run only: drawn for each, a date showed
 /// two or three times.
-fn continues_field(runs: &[Run], index: usize) -> bool {
-    let Some(previous) = index
-        .checked_sub(1)
+fn continues_field(runs: &[Run], previous_index: Option<usize>, index: usize) -> bool {
+    let Some(previous) = previous_index
         .and_then(|previous| runs.get(previous))
         .and_then(|run| run.field.as_ref())
     else {
@@ -47454,6 +47463,10 @@ mod tests {
     /// The text a render of `document` paints, in drawing order, with the
     /// clock the date fields read set to 2026/05/30.
     fn painted_document_text(document: &Document) -> String {
+        painted_document_text_with_options(document, &Options::default())
+    }
+
+    fn painted_document_text_with_options(document: &Document, options: &Options) -> String {
         use jade_painter::recording::Op;
         let (mut renderer, painter) = recording_renderer();
         renderer.set_current_datetime(Some(FieldDateTime {
@@ -47465,7 +47478,7 @@ mod tests {
             second: 0,
             weekday: 6,
         }));
-        renderer.render(document, &Options::default()).unwrap();
+        renderer.render(document, options).unwrap();
         painter
             .ops()
             .into_iter()
@@ -47566,6 +47579,81 @@ mod tests {
         ))
         .expect("reload");
         assert_eq!(count(reloaded.document.as_ref().unwrap()), 1, "reloaded");
+    }
+
+    #[test]
+    fn a_split_date_field_survives_its_hidden_deleted_first_run() {
+        let bytes = docx_with_document_xml(
+            r#"<?xml version="1.0" encoding="UTF-8"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:fldSimple w:instr=" DATE \@ &quot;yyyy/MM/dd&quot; "><w:del w:id="1" w:author="reviewer" w:date="2026-11-03T00:00:00Z"><w:r><w:delText>2026/</w:delText></w:r></w:del><w:r><w:t>11/02</w:t></w:r></w:fldSimple></w:p></w:body></w:document>"#,
+        );
+        let model = futures::executor::block_on(WordDocument::load(&bytes, &Options::default()))
+            .expect("load");
+        let paragraph = model.paragraph(0).expect("paragraph");
+        assert_eq!(paragraph.runs.len(), 2);
+        assert!(run_is_hidden_revision(&paragraph.runs[0], false, false));
+        assert!(!run_is_hidden_revision(&paragraph.runs[1], false, false));
+        assert_eq!(
+            paragraph.runs[0].field.as_ref().unwrap().source_field_id,
+            paragraph.runs[1].field.as_ref().unwrap().source_field_id,
+        );
+        assert_eq!(
+            painted_document_text(model.document.as_ref().unwrap())
+                .matches("2026/05/30")
+                .count(),
+            1,
+            "the surviving result must render when its preceding result run is hidden",
+        );
+    }
+
+    #[test]
+    fn split_date_fields_follow_visible_runs_in_each_revision_view() {
+        let plain = "<w:r><w:t>part</w:t></w:r>";
+        let deleted =
+            r#"<w:del w:id="1" w:author="reviewer"><w:r><w:delText>part</w:delText></w:r></w:del>"#;
+        let inserted = r#"<w:ins w:id="2" w:author="reviewer"><w:r><w:t>part</w:t></w:r></w:ins>"#;
+        let hidden = "<w:r><w:rPr><w:vanish/></w:rPr><w:t>part</w:t></w:r>";
+        for (name, result, original, markup) in [
+            ("deleted first", format!("{deleted}{plain}"), false, false),
+            ("inserted first", format!("{inserted}{plain}"), true, false),
+            ("hidden first", format!("{hidden}{plain}"), false, false),
+            (
+                "deleted middle",
+                format!("{plain}{deleted}{plain}"),
+                false,
+                false,
+            ),
+            ("shown deletion", format!("{deleted}{plain}"), false, true),
+        ] {
+            for complex in [false, true] {
+                let field = if complex {
+                    format!(
+                        r#"<w:r><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:instrText> DATE \@ "yyyy/MM/dd" </w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r>{result}<w:r><w:fldChar w:fldCharType="end"/></w:r>"#,
+                    )
+                } else {
+                    format!(
+                        r#"<w:fldSimple w:instr=" DATE \@ &quot;yyyy/MM/dd&quot; ">{result}</w:fldSimple>"#
+                    )
+                };
+                let bytes = docx_with_document_xml(&format!(
+                    r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p>{field}</w:p></w:body></w:document>"#,
+                ));
+                let model =
+                    futures::executor::block_on(WordDocument::load(&bytes, &Options::default()))
+                        .expect("load");
+                let options = Options {
+                    render_original: original,
+                    render_changes: markup,
+                    ..Options::default()
+                };
+                assert_eq!(
+                    painted_document_text_with_options(model.document.as_ref().unwrap(), &options)
+                        .matches("2026/05/30")
+                        .count(),
+                    1,
+                    "{name}, complex={complex}",
+                );
+            }
+        }
     }
 
     #[test]
