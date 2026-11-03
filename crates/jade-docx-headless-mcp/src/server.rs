@@ -1370,6 +1370,10 @@ enum ArgType {
     Object,
     /// One table border edge: `{ style, width, color }`, or null.
     BorderEdge,
+    /// A text frame (`w:framePr`): `{ width, height, height_rule, x,
+    /// x_align, h_anchor, y, y_align, v_anchor, wrap, h_space, v_space }`,
+    /// or null.
+    ParagraphFrame,
     /// `HeadlessCommand` objects — a `oneOf` over [`COMMANDS`].
     CommandList,
     /// `HeadlessQuery` objects — a `oneOf` over [`QUERIES`].
@@ -1565,6 +1569,29 @@ impl ArgType {
                 }
             }),
             ArgType::Object => json!({ "type": "object" }),
+            ArgType::ParagraphFrame => {
+                let length =
+                    |description: &str| json!({ "type": "number", "description": description });
+                let choice = |values: &[&str], description: &str| json!({ "type": "string", "enum": values, "description": description });
+                json!({
+                    "type": ["object", "null"],
+                    "properties": {
+                        "width": length("Width in points; left out is auto."),
+                        "height": length("Height in points, read by height_rule."),
+                        "height_rule": choice(&["auto", "atLeast", "exact"], "How height is read."),
+                        "x": length("Horizontal distance from h_anchor in points."),
+                        "x_align": choice(&["left", "center", "right", "inside", "outside"], "Horizontal alignment; wins over x."),
+                        "h_anchor": choice(&["text", "margin", "page"], "Horizontal base: column, margin or page."),
+                        "y": length("Vertical distance from v_anchor in points."),
+                        "y_align": choice(&["inline", "top", "center", "bottom", "inside", "outside"], "Vertical alignment; wins over y."),
+                        "v_anchor": choice(&["text", "margin", "page"], "Vertical base: text (moves with the paragraph), margin or page."),
+                        "wrap": choice(&["auto", "notBeside", "around", "tight", "through", "none"], "Text wrapping round the frame."),
+                        "h_space": length("Distance from text left and right, in points."),
+                        "v_space": length("Distance from text above and below, in points.")
+                    },
+                    "additionalProperties": false
+                })
+            }
             ArgType::BorderEdge => json!({
                 "type": ["object", "null"],
                 "properties": {
@@ -3671,7 +3698,7 @@ const COMMANDS: &[Variant] = &[
         &[
             req("start_paragraph", ArgType::Index, "First paragraph of the range."),
             req("end_paragraph", ArgType::Index, "Last paragraph of the range (inclusive)."),
-            opt("frame", ArgType::Object, "{ width?, height?, height_rule?: auto|atLeast|exact, x?, x_align?, h_anchor?: text|margin|page, y?, y_align?, v_anchor?, wrap?: around|none|..., h_space?, v_space? } in points; null removes the frame."),
+            opt("frame", ArgType::ParagraphFrame, "The frame, lengths in points; null removes it."),
         ],
     ),
     variant(
@@ -6043,6 +6070,14 @@ mod tests {
             ArgType::CellList => json!([{ "row": 0, "column": 0, "column_span": 1 }]),
             ArgType::SortKeyList => json!([{ "column": 0, "kind": "number", "descending": true }]),
             ArgType::BorderEdge => json!({ "style": "single", "width": 0.5, "color": "#000000" }),
+            ArgType::ParagraphFrame => json!({
+                "width": 144.0,
+                "wrap": "around",
+                "h_anchor": "margin",
+                "x_align": "right",
+                "v_anchor": "text",
+                "y": 0.0
+            }),
             ArgType::Object
             | ArgType::CommandList
             | ArgType::QueryList
