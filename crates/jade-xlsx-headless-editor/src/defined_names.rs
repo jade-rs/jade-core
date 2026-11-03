@@ -36,6 +36,27 @@ impl HeadlessWorkbook {
         Ok(true)
     }
 
+    /// Excel's built-in names a command keeps for a sheet (an Advanced
+    /// Filter's `_xlnm._FilterDatabase`, `_xlnm.Criteria`, `_xlnm.Extract`)
+    /// set, and others of them removed: one undo step, false when nothing
+    /// changed.
+    pub fn set_built_in_names(
+        &mut self,
+        definitions: &[DefinedName],
+        deleted: &[(String, Option<usize>)],
+    ) -> Result<bool> {
+        let written = jade_xlsx_writer::defined_names::set_built_in_names(
+            &self.source,
+            definitions,
+            deleted,
+        )?;
+        if written == self.source {
+            return Ok(false);
+        }
+        self.commit_sheet_change(written, |_| {})?;
+        Ok(true)
+    }
+
     /// Deletes a name in this scope, returning false if it did not exist.
     pub fn delete_defined_name(&mut self, name: &str, scope: Option<usize>) -> Result<bool> {
         let written =

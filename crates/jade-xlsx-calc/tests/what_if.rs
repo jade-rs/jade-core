@@ -74,3 +74,35 @@ fn a_probe_evaluates_with_trial_values_and_then_puts_them_back() {
         vec![CellValue::Number(6.0)]
     );
 }
+
+#[test]
+fn a_computed_criterion_is_decided_for_each_record_from_the_first() {
+    // Sales in A2:A5; the criterion in C2, written for the first record:
+    // above the average of them all.
+    let book = read_xlsx(&package(
+        r#"<row r="1"><c r="A1" t="inlineStr"><is><t>Sales</t></is></c></row><row r="2"><c r="A2"><v>10</v></c><c r="C2"><f>A2&gt;AVERAGE($A$2:$A$5)</f><v>0</v></c></row><row r="3"><c r="A3"><v>40</v></c></row><row r="4"><c r="A4"><v>20</v></c></row><row r="5"><c r="A5"><v>50</v></c></row>"#,
+    ))
+    .unwrap();
+    let mut probe = what_if(&book, "UTC", &BTreeMap::new()).unwrap();
+    let cells: Vec<CellRef> = (1..=4).map(|row| CellRef::new(2, row)).collect();
+    let criterion = (0, CellRef::new(2, 1));
+    assert_eq!(
+        probe
+            .formula_holds(
+                &book,
+                criterion.0,
+                criterion.1,
+                "A2>AVERAGE($A$2:$A$5)",
+                &cells
+            )
+            .unwrap(),
+        Some(vec![false, true, false, true])
+    );
+    // A formula the engine cannot read decides nothing.
+    assert_eq!(
+        probe
+            .formula_holds(&book, criterion.0, criterion.1, "A2>(", &cells)
+            .unwrap(),
+        None
+    );
+}

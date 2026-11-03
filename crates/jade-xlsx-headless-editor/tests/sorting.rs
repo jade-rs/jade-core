@@ -21,6 +21,7 @@ fn sort(reference: &str, header: bool, keys: &[(u32, bool)]) -> SortRequest {
                 column: *column,
                 descending: *descending,
                 color: None,
+                custom_list: None,
             })
             .collect(),
         by_columns: false,
@@ -696,6 +697,7 @@ fn sorting_by_colour_puts_that_colour_on_top_or_bottom() {
             font: false,
             rgb: rgb.into(),
         }),
+        custom_list: None,
     };
     let request = |keys: Vec<SortKey>| SortRequest {
         reference: "K31:K36".into(),
@@ -738,6 +740,7 @@ fn sorting_by_colour_puts_that_colour_on_top_or_bottom() {
             font: true,
             rgb: "C00000".into(),
         }),
+        custom_list: None,
     };
     book.sort_range(NAME, &request(vec![font])).unwrap();
     assert_eq!(column(&book)[0], "e");
@@ -842,6 +845,7 @@ fn sorting_left_to_right_moves_whole_columns() {
             column: 0,
             descending: false,
             color: None,
+            custom_list: None,
         }],
         by_columns: true,
     };
