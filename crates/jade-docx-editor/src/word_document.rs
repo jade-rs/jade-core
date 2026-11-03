@@ -840,6 +840,8 @@ mod review_tools;
 pub use protection::{
     hash_password, EditableRange, EditingKind, EditingRestriction, PasswordHash, WriteProtection,
 };
+#[path = "word_document/ole_objects.rs"]
+pub mod ole_objects;
 #[path = "word_document/signature_lines.rs"]
 mod signature_lines;
 #[path = "word_document/table_revisions.rs"]

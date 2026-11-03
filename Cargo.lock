@@ -1971,6 +1971,7 @@ dependencies = [
  "tracing-subscriber",
  "unicode-script",
  "unicode-segmentation",
+ "uuid",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",

@@ -44,6 +44,7 @@ pub mod insert_field;
 pub mod insert_footnote;
 pub mod insert_image;
 pub mod insert_index;
+pub mod insert_ole_object;
 pub mod insert_paragraph_break;
 pub mod insert_positional_tab;
 pub mod insert_section_break;
