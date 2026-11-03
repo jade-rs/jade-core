@@ -7,3 +7,4 @@
 cc 9ba6345f2f651dd18b5404453aa8a677a85853e515944f517ba2e82190d6ee5c # shrinks to value = 0, depth = 1, wrapped = false
 cc bcf7fd04007f87ed73638b0efcc1ecad51c4049619dc7f6405c9a2e217facd9a # shrinks to value = ['"', '{']
 cc a470fd72804952bc828b56b2acd6337eb4e33bd65adc086dfcef9900c09eb650 # shrinks to ops = [Insert(Name, 0), Update(1), Edit(Fill, 0)]
+cc 553952dacc5ab6208cb26bf38d566ddaacaa04ea9eedd48d49ff5cea9405426a # shrinks to ops = [Add(0, 0), Add(7, 0), Add(1, 0), Cite(0), Reload, Cite(7)]

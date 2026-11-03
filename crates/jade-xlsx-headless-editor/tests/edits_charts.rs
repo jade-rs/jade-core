@@ -7,8 +7,10 @@
 
 use jade_xlsx_headless_api::CellInput;
 use jade_xlsx_headless_editor::{
-    ChartChange, ChartKind, HeadlessError, HeadlessWorkbook, LegendPosition,
+    chart_kind, chart_series, ChartChange, ChartKind, HeadlessError, HeadlessWorkbook,
+    LegendPosition,
 };
+use jade_xlsx_layout::chart::{layout_chart, ChartOp};
 use jade_xlsx_layout::{layout_sheet, LayoutOptions, Rect};
 use jade_xlsx_reader::chart::Chart;
 use jade_xlsx_reader::CellRef;
@@ -165,19 +167,88 @@ fn a_wide_range_makes_a_series_of_each_row() {
     );
 }
 
+/// The chart's paint: what the layout draws of it, nothing when it
+/// cannot.
+fn painted(book: &HeadlessWorkbook, id: u32) -> Vec<ChartOp> {
+    let sheet = &book.workbook().sheets[0];
+    let chart = chart(book, 0, id);
+    let frame = Rect {
+        x: 0.0,
+        y: 0.0,
+        width: 480.0,
+        height: 288.0,
+    };
+    layout_chart(
+        &chart,
+        frame,
+        sheet,
+        Some(book.workbook()),
+        &LayoutOptions::default(),
+        &book.workbook().styles,
+    )
+    .ops
+}
+
 #[test]
 fn every_kind_is_made_as_excel_makes_it() {
     let cases = [
         (ChartKind::Column, "barChart", "clustered", false),
         (ChartKind::StackedColumn, "barChart", "stacked", false),
+        (
+            ChartKind::PercentStackedColumn,
+            "barChart",
+            "percentStacked",
+            false,
+        ),
         (ChartKind::Bar, "barChart", "clustered", true),
         (ChartKind::StackedBar, "barChart", "stacked", true),
+        (
+            ChartKind::PercentStackedBar,
+            "barChart",
+            "percentStacked",
+            true,
+        ),
         (ChartKind::Line, "lineChart", "standard", false),
+        (ChartKind::StackedLine, "lineChart", "stacked", false),
+        (
+            ChartKind::PercentStackedLine,
+            "lineChart",
+            "percentStacked",
+            false,
+        ),
         (ChartKind::LineWithMarkers, "lineChart", "standard", false),
+        (
+            ChartKind::StackedLineWithMarkers,
+            "lineChart",
+            "stacked",
+            false,
+        ),
+        (
+            ChartKind::PercentStackedLineWithMarkers,
+            "lineChart",
+            "percentStacked",
+            false,
+        ),
         (ChartKind::Area, "areaChart", "standard", false),
+        (ChartKind::StackedArea, "areaChart", "stacked", false),
+        (
+            ChartKind::PercentStackedArea,
+            "areaChart",
+            "percentStacked",
+            false,
+        ),
         (ChartKind::Pie, "pieChart", "", false),
         (ChartKind::Doughnut, "doughnutChart", "", false),
         (ChartKind::Scatter, "scatterChart", "", false),
+        (ChartKind::ScatterSmoothMarkers, "scatterChart", "", false),
+        (ChartKind::ScatterSmooth, "scatterChart", "", false),
+        (ChartKind::ScatterLinesMarkers, "scatterChart", "", false),
+        (ChartKind::ScatterLines, "scatterChart", "", false),
+        (ChartKind::Bubble, "bubbleChart", "", false),
+        (ChartKind::Radar, "radarChart", "", false),
+        (ChartKind::RadarWithMarkers, "radarChart", "", false),
+        (ChartKind::FilledRadar, "radarChart", "", false),
+        (ChartKind::Combo, "barChart", "clustered", false),
     ];
     for (kind, element, grouping, horizontal) in cases {
         let mut book = open("grid-operations-workbook.xlsx");
@@ -194,8 +265,238 @@ fn every_kind_is_made_as_excel_makes_it() {
             "{kind:?}: {:?}",
             read.unsupported_properties
         );
+        // Read back as the type it was made as.
+        assert_eq!(chart_kind(&read), Some(kind), "{kind:?}");
         assert!(drawn(&reopened, id), "{kind:?}");
+        assert!(!painted(&reopened, id).is_empty(), "{kind:?}");
     }
+}
+
+/// Lines (or none) and markers (or none) as each scatter's name says.
+#[test]
+fn scatter_lines_and_markers_are_drawn_as_their_type_says() {
+    let lines = |ops: &[ChartOp]| {
+        ops.iter()
+            .filter(
+                |op| matches!(op, ChartOp::Path { closed: false, points, .. } if points.len() > 2),
+            )
+            .count()
+    };
+    let mut book = open("grid-operations-workbook.xlsx");
+    let markers_only = book
+        .insert_chart(SHEET, "B1:C4", ChartKind::Scatter)
+        .unwrap();
+    let joined = book
+        .insert_chart(SHEET, "B1:C4", ChartKind::ScatterLines)
+        .unwrap();
+    let smooth = book
+        .insert_chart(SHEET, "B1:C4", ChartKind::ScatterSmooth)
+        .unwrap();
+    assert_eq!(lines(&painted(&book, markers_only)), 0);
+    assert_eq!(lines(&painted(&book, joined)), 1);
+    // A curve is drawn through more points than it has.
+    let curve = painted(&book, smooth)
+        .into_iter()
+        .find_map(|op| match op {
+            ChartOp::Path {
+                closed: false,
+                points,
+                ..
+            } if points.len() > 3 => Some(points.len()),
+            _ => None,
+        })
+        .unwrap();
+    assert!(curve > 3);
+}
+
+/// A bubble chart over Y and size columns: the values and the sizes.
+#[test]
+fn a_bubble_chart_takes_values_and_sizes() {
+    let mut book = open("grid-operations-workbook.xlsx");
+    let id = book
+        .insert_chart(SHEET, "B1:C4", ChartKind::Bubble)
+        .unwrap();
+    let made = chart(&book, 0, id);
+    assert_eq!(made.series.len(), 1);
+    assert_eq!(
+        made.series[0].values.formula.as_deref(),
+        Some("Operations!$B$2:$B$4")
+    );
+    assert_eq!(
+        made.series[0].bubble_sizes.formula.as_deref(),
+        Some("Operations!$C$2:$C$4")
+    );
+    // With an X column first, it is the X values.
+    let id = book
+        .insert_chart(SHEET, "A1:C4", ChartKind::Bubble)
+        .unwrap();
+    let made = chart(&book, 0, id);
+    assert_eq!(
+        made.series[0].x_values.formula.as_deref(),
+        Some("Operations!$A$2:$A$4")
+    );
+    assert_eq!(
+        made.series[0].name.formula.as_deref(),
+        Some("Operations!$B$1")
+    );
+}
+
+/// Clustered Column - Line on Secondary Axis: the first series a column,
+/// the next a line against axes of its own; Change Chart Type keeps them
+/// apart until a type of one plot is picked.
+#[test]
+fn a_combination_puts_a_line_on_the_secondary_axis() {
+    let mut book = open("grid-operations-workbook.xlsx");
+    let id = book
+        .insert_combo_chart(SHEET, "A1:C4", ChartKind::Column, ChartKind::Line, true)
+        .unwrap();
+    let reopened = HeadlessWorkbook::open(&book.export_bytes().unwrap()).unwrap();
+    let made = chart(&reopened, 0, id);
+    assert_eq!(made.kind, "barChart");
+    assert_eq!(made.series.len(), 1);
+    assert_eq!(made.extra_plots.len(), 1);
+    assert_eq!(made.extra_plots[0].kind, "lineChart");
+    assert!(made.extra_plots[0].secondary);
+    assert!(made.secondary_value_axis.is_some());
+    assert!(
+        made.unsupported_properties.is_empty(),
+        "{:?}",
+        made.unsupported_properties
+    );
+    assert_eq!(chart_kind(&made), Some(ChartKind::Combo));
+    assert!(!painted(&reopened, id).is_empty());
+    // Moved back to the primary axis, as a series of its own.
+    let mut series = chart_series(&made);
+    assert_eq!(series[1].kind, Some(ChartKind::Line));
+    assert!(series[1].secondary);
+    series[1].secondary = false;
+    book.set_chart(
+        SHEET,
+        id,
+        &ChartChange {
+            series: Some(series),
+            ..ChartChange::default()
+        },
+    )
+    .unwrap();
+    let changed = chart(&book, 0, id);
+    assert!(!changed.extra_plots[0].secondary);
+    assert!(changed.secondary_value_axis.is_none());
+    // One type for all: the combination goes.
+    book.set_chart(
+        SHEET,
+        id,
+        &ChartChange {
+            kind: Some(ChartKind::Column),
+            ..ChartChange::default()
+        },
+    )
+    .unwrap();
+    let changed = chart(&book, 0, id);
+    assert!(changed.extra_plots.is_empty());
+    assert_eq!(changed.series.len(), 2);
+}
+
+/// Select Data Source: a series edited, one added, one removed; Switch
+/// Row/Column reads the range the other way.
+#[test]
+fn select_data_source_edits_adds_and_removes_series_and_switches_rows() {
+    let mut book = open("grid-operations-workbook.xlsx");
+    let id = book
+        .insert_chart(SHEET, "A1:C4", ChartKind::Column)
+        .unwrap();
+    let mut series = chart_series(&chart(&book, 0, id));
+    series[0].name = Some("\"Plan\"".into());
+    series[0].values = "Operations!$B$2:$B$3".into();
+    series.remove(1);
+    series.push(jade_xlsx_writer::SeriesReferences {
+        name: Some("Operations!$A$1".into()),
+        categories: Some("Operations!$A$2:$A$4".into()),
+        text_categories: true,
+        values: "Operations!$C$2:$C$4".into(),
+        bubble_sizes: None,
+        kind: None,
+        secondary: false,
+    });
+    book.set_chart(
+        SHEET,
+        id,
+        &ChartChange {
+            series: Some(series),
+            ..ChartChange::default()
+        },
+    )
+    .unwrap();
+    let changed = chart(&book, 0, id);
+    // A name typed as text is the series' own.
+    assert_eq!(changed.series[0].name.points, [Some("Plan".to_string())]);
+    assert_eq!(chart_series(&changed)[0].name.as_deref(), Some("\"Plan\""));
+    assert_eq!(
+        formulas(&changed),
+        [
+            (
+                None,
+                Some("Operations!$A$2:$A$4".to_string()),
+                Some("Operations!$B$2:$B$3".to_string())
+            ),
+            (
+                Some("Operations!$A$1".to_string()),
+                Some("Operations!$A$2:$A$4".to_string()),
+                Some("Operations!$C$2:$C$4".to_string())
+            ),
+        ]
+    );
+    // No series at all is refused.
+    assert!(book
+        .set_chart(
+            SHEET,
+            id,
+            &ChartChange {
+                series: Some(Vec::new()),
+                ..ChartChange::default()
+            },
+        )
+        .is_err());
+    // Back to A1:C4, then switched: a series for each row.
+    book.set_chart(
+        SHEET,
+        id,
+        &ChartChange {
+            data: Some("A1:C4".into()),
+            ..ChartChange::default()
+        },
+    )
+    .unwrap();
+    book.set_chart(
+        SHEET,
+        id,
+        &ChartChange {
+            switch_rows: true,
+            ..ChartChange::default()
+        },
+    )
+    .unwrap();
+    let switched = chart(&book, 0, id);
+    assert_eq!(switched.series.len(), 3);
+    assert_eq!(
+        formulas(&switched)[0],
+        (
+            Some("Operations!$A$2".to_string()),
+            Some("Operations!$B$1:$C$1".to_string()),
+            Some("Operations!$B$2:$C$2".to_string())
+        )
+    );
+    // And back.
+    book.set_chart(
+        SHEET,
+        id,
+        &ChartChange {
+            switch_rows: true,
+            ..ChartChange::default()
+        },
+    )
+    .unwrap();
+    assert_eq!(chart(&book, 0, id).series.len(), 2);
 }
 
 #[test]

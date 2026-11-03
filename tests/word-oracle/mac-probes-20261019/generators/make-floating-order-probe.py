@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Word probe: a floating table whose w:tblpPr precedes w:tblStyle.
+"""Word probe: an inline table followed by a floating table.
 
-usage: make-floating-order-probe.py <out-dir>
-Two one-cell tables positioned at the right margin by w:tblpPr. The first
-writes w:tblpPr before w:tblStyle, against CT_TblPr's order; the second
-writes them in order and sits 360pt below the page top. Filler paragraphs
-give the floating table text to wrap around. Compatibility mode 14.
+usage: make-floating-order-probe.py <out-dir> [--malformed]
+The valid default preserves Word for Mac's captured layout: its first table
+is inline; the second floats 360pt below the page top. --malformed reproduces
+the historical schema violation (tblpPr before tblStyle), which Word for Mac
+ignores. Write that variant only to a test-private directory.
 """
 import os, sys, zipfile
 W = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
@@ -15,7 +15,7 @@ def table(label, y, ordered):
     position = (f'<w:tblpPr w:horzAnchor="margin" w:vertAnchor="page" w:tblpXSpec="right" w:tblpY="{y}" '
                 'w:leftFromText="180" w:rightFromText="180" w:topFromText="90" w:bottomFromText="90"/>')
     style = '<w:tblStyle w:val="TableGrid"/>'
-    head = style + position if ordered else position + style
+    head = style + position if ordered else (position + style if '--malformed' in sys.argv[2:] else style)
     return (f'<w:tbl><w:tblPr>{head}<w:tblW w:type="dxa" w:w="2160"/><w:tblLayout w:type="fixed"/></w:tblPr>'
             '<w:tblGrid><w:gridCol w:w="2160"/></w:tblGrid><w:tr><w:tc><w:tcPr><w:tcW w:type="dxa" w:w="2160"/>'
             f'<w:shd w:val="clear" w:color="auto" w:fill="E2F0D9"/></w:tcPr><w:p><w:pPr><w:jc w:val="center"/></w:pPr>'

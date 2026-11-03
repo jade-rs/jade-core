@@ -10952,7 +10952,7 @@ mod tests {
     fn paragraphs_an_edit_makes_take_the_defaults_a_load_gives() {
         // A load fills into every paragraph what its styles give it (Normal's
         // justification, a table style's spacing, the runs' fonts); nothing
-        // filled it into the cells of a new table or row (or the cell a column
+        // filled it into the cells of a new table, row or column (or the cell a column
         // deletion leaves a row), a table of contents'
         // lines or a footnote's new text. They showed left-aligned, without
         // the spacing and in the fallback font until the document was
@@ -11018,6 +11018,17 @@ mod tests {
                 template_row: None,
             }],
             4,
+        );
+        // A column put in a table whose style spaces its cells.
+        check(
+            "word-mac-probe-floating-horizontal-15.docx",
+            vec![HeadlessCommand::InsertTableColumn {
+                table_order_index: 0,
+                column_index: 1,
+                width: None,
+                template_column: None,
+            }],
+            2,
         );
         // A column deleted from under a row's only cell: the row gets a new
         // one.
@@ -13975,6 +13986,192 @@ mod tests {
     }
 
     #[test]
+    fn text_typed_after_a_new_computed_field_is_saved() {
+        // A date or 囲い文字 field put in by the editor holds its result as
+        // its run's text. Typed at its end, the text joined that result and
+        // was lost on save, where only the field is written.
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/blank.docx"),
+        )
+        .expect("read fixture");
+        let fields = [
+            HeadlessCommand::InsertDateTimeField {
+                start_paragraph: 0,
+                start_offset: 5,
+                end_paragraph: 0,
+                end_offset: 5,
+                time: false,
+                format: "yyyy/MM/dd".to_string(),
+                cached_text: "2026/11/02".to_string(),
+            },
+            HeadlessCommand::InsertEnclosedCharacter {
+                start_paragraph: 0,
+                start_offset: 5,
+                end_paragraph: 0,
+                end_offset: 5,
+                text: "1".to_string(),
+                enclosure: "○".to_string(),
+            },
+        ];
+        let plain = |word_doc: &WordDocument| -> String {
+            word_doc
+                .paragraph(0)
+                .map(|paragraph| {
+                    paragraph
+                        .runs
+                        .iter()
+                        .filter(|run| run.field.is_none())
+                        .map(|run| run.text.as_str())
+                        .collect()
+                })
+                .unwrap_or_default()
+        };
+        for field in fields {
+            let mut word_doc =
+                executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+            apply_headless_commands_to_document(
+                &mut word_doc,
+                &HeadlessEditRequest {
+                    commands: vec![
+                        HeadlessCommand::InsertText {
+                            paragraph: 0,
+                            offset: 0,
+                            text: "Hello".to_string(),
+                        },
+                        field,
+                    ],
+                },
+            )
+            .expect("field");
+            let end = paragraph_text(&word_doc, 0).len();
+            apply_headless_commands_to_document(
+                &mut word_doc,
+                &HeadlessEditRequest {
+                    commands: vec![HeadlessCommand::InsertText {
+                        paragraph: 0,
+                        offset: end,
+                        text: " after".to_string(),
+                    }],
+                },
+            )
+            .expect("typed after the field");
+            assert_eq!(plain(&word_doc), "Hello after");
+            let reloaded = executor::block_on(WordDocument::load(
+                &word_doc.export_docx().expect("export"),
+                &Options::default(),
+            ))
+            .expect("reload");
+            assert_eq!(plain(&reloaded), "Hello after");
+        }
+    }
+
+    #[test]
+    fn table_to_text_preserves_partial_direct_spacing_and_indent_on_reload() {
+        let original = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/word-mac-probe-floating-horizontal-15.docx"),
+        )
+        .expect("read fixture");
+        for direct in [
+            r#"<w:spacing w:before="240"/>"#,
+            r#"<w:spacing w:beforeLines="100"/>"#,
+            r#"<w:spacing w:after="0"/>"#,
+            r#"<w:spacing w:afterLines="100"/>"#,
+            r#"<w:spacing w:beforeAutospacing="0"/>"#,
+            r#"<w:spacing w:afterAutospacing="1"/>"#,
+            r#"<w:spacing w:line="360"/>"#,
+            r#"<w:spacing w:line="240" w:lineRule="exact"/>"#,
+            r#"<w:ind w:left="0"/>"#,
+            r#"<w:ind w:startChars="0"/>"#,
+            r#"<w:ind w:rightChars="0"/>"#,
+            r#"<w:ind w:firstLineChars="0"/>"#,
+        ] {
+            let mut archive = zip::ZipArchive::new(std::io::Cursor::new(&original)).expect("zip");
+            let mut package = zip::ZipWriter::new(std::io::Cursor::new(Vec::new()));
+            for entry in 0..archive.len() {
+                let mut entry = archive.by_index(entry).expect("entry");
+                let name = entry.name().expect("entry name").to_string();
+                let mut data = Vec::new();
+                std::io::Read::read_to_end(&mut entry, &mut data).expect("read");
+                if name == "word/document.xml" {
+                    let xml = String::from_utf8(data).expect("XML");
+                    let before = "<w:pPr><w:jc w:val=\"left\"/></w:pPr><w:r><w:t>MC</w:t>";
+                    assert_eq!(xml.matches(before).count(), 1, "target cell exists once");
+                    data = xml
+                        .replace(
+                            before,
+                            &format!(
+                                "<w:pPr>{direct}<w:jc w:val=\"left\"/></w:pPr><w:r><w:t>MC</w:t>"
+                            ),
+                        )
+                        .into_bytes();
+                } else if name == "word/styles.xml" {
+                    let xml = String::from_utf8(data).expect("styles XML");
+                    let table = r#"<w:spacing w:after="0" w:line="240" w:lineRule="auto"/>"#;
+                    assert_eq!(xml.matches(table).count(), 1);
+                    // Distinct inherited groups expose a stale table distance
+                    // even when the direct group happens to equal the old value.
+                    data = xml
+                        .replace(
+                            table,
+                            &format!(
+                                r#"{table}<w:ind w:left="720" w:right="1440" w:firstLine="360"/>"#
+                            ),
+                        )
+                        .into_bytes();
+                }
+                package
+                    .start_file(name, zip::write::SimpleFileOptions::default())
+                    .expect("start");
+                std::io::Write::write_all(&mut package, &data).expect("write");
+            }
+            let bytes = package.finish().expect("finish").into_inner();
+            let mut document =
+                executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+            apply_headless_commands_to_document(
+                &mut document,
+                &HeadlessEditRequest {
+                    commands: vec![HeadlessCommand::ConvertTableToText {
+                        table_order_index: 1,
+                        separator: "\t".to_string(),
+                    }],
+                },
+            )
+            .expect("convert");
+            let reloaded = executor::block_on(WordDocument::load(
+                &document.export_docx().expect("export"),
+                &Options::default(),
+            ))
+            .expect("reload");
+            let properties = |doc: &WordDocument| {
+                (0..doc.paragraph_count())
+                    .filter_map(|index| doc.paragraph(index))
+                    .find(|paragraph| {
+                        paragraph
+                            .runs
+                            .iter()
+                            .map(|run| run.text.as_str())
+                            .collect::<String>()
+                            == "MC"
+                    })
+                    .expect("converted MC paragraph")
+                    .properties
+                    .as_ref()
+                    .expect("paragraph properties")
+                    .clone()
+            };
+            let actual = properties(&document);
+            let expected = properties(&reloaded);
+            if direct == r#"<w:spacing w:before="240"/>"# {
+                assert_eq!(actual.spacing.as_ref().and_then(|s| s.before), Some(12.0));
+            }
+            assert_eq!(actual.spacing, expected.spacing, "spacing: {direct}");
+            assert_eq!(actual.indent, expected.indent, "indent: {direct}");
+        }
+    }
+
+    #[test]
     fn an_edit_in_a_text_box_keeps_its_complex_field() {
         // document-variable-fields.docx's VML text box holds a DOCVARIABLE
         // field. Formatting, a comment or italics anywhere in that paragraph
@@ -14612,6 +14809,222 @@ mod tests {
             },
             1,
         );
+    }
+
+    #[test]
+    fn a_selection_from_a_computed_field_into_the_next_paragraph_keeps_it_whole() {
+        // The IF field's result is computed, so it has no width: a selection
+        // from just before it to the next paragraph leaves the field at its
+        // edge, which stays. Joining the paragraphs kept the field's code and
+        // dropped its result run; the field was gone from the page and came
+        // back when the document was reopened.
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/if-compare-field-edge-cases.docx"),
+        )
+        .expect("read fixture");
+        let mut word_doc =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+        let paragraph = (0..word_doc.paragraph_count())
+            .find(|&index| paragraph_text(&word_doc, index) == "Nested bookmark operand: ")
+            .expect("field paragraph");
+        let if_fields = |word_doc: &WordDocument| {
+            word_doc.paragraph(paragraph).map_or(0, |paragraph| {
+                paragraph
+                    .runs
+                    .iter()
+                    .filter(|run| {
+                        matches!(
+                            run.field.as_ref().map(|field| &field.kind),
+                            Some(crate::document::RunFieldKind::If { .. })
+                        )
+                    })
+                    .count()
+            })
+        };
+        apply_headless_commands_to_document(
+            &mut word_doc,
+            &HeadlessEditRequest {
+                commands: vec![HeadlessCommand::ReplaceRange {
+                    start_paragraph: paragraph,
+                    start_offset: "Nested bookmark operand: ".len(),
+                    end_paragraph: paragraph + 1,
+                    end_offset: "120 - Same-pa".len(),
+                    text: "x".into(),
+                }],
+            },
+        )
+        .expect("edited");
+        let exported = word_doc.export_docx().expect("export");
+        let reloaded =
+            executor::block_on(WordDocument::load(&exported, &Options::default())).expect("reload");
+        assert_eq!(if_fields(&reloaded), 2);
+        assert_eq!(if_fields(&word_doc), if_fields(&reloaded));
+    }
+
+    #[test]
+    fn paragraph_formatting_across_a_block_equation_formats_the_paragraphs_around_it() {
+        // A block equation has no paragraph. Numbering a range across one
+        // numbered the paragraph before it and then failed on the equation,
+        // so the change was neither finished nor on the undo stack: undoing
+        // the edit before it took that paragraph's numbering out of the model
+        // and left its `w:numPr` in the file.
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/math.docx"),
+        )
+        .expect("read fixture");
+        let mut word_doc =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+        let equation = (1..word_doc.paragraph_count() - 1)
+            .find(|&index| {
+                word_doc.is_math_surface(index)
+                    && word_doc.paragraph(index - 1).is_some()
+                    && word_doc.paragraph(index + 1).is_some()
+            })
+            .expect("a block equation between paragraphs");
+        let (before, after) = (equation - 1, equation + 1);
+        let numbered = |word_doc: &WordDocument, index: usize| {
+            word_doc
+                .paragraph(index)
+                .and_then(|paragraph| paragraph.properties.as_ref())
+                .and_then(|properties| properties.numbering.as_ref())
+                .and_then(|numbering| numbering.id.clone())
+        };
+        let alignment = |word_doc: &WordDocument, index: usize| {
+            word_doc
+                .paragraph(index)
+                .and_then(|paragraph| paragraph.properties.as_ref())
+                .and_then(|properties| properties.alignment.clone())
+        };
+        let mut command_executor = CommandExecutor::new();
+        apply_headless_commands_with_executor_to_document(
+            &mut word_doc,
+            &mut command_executor,
+            None,
+            &HeadlessEditRequest {
+                commands: vec![
+                    HeadlessCommand::SetNumbering {
+                        start_paragraph: before,
+                        end_paragraph: after,
+                        num_id: Some("1".into()),
+                        level: Some(0),
+                    },
+                    HeadlessCommand::SetParagraphAlignment {
+                        start_paragraph: before,
+                        end_paragraph: after,
+                        alignment: "center".into(),
+                    },
+                ],
+            },
+        )
+        .expect("formats across the equation");
+        for index in [before, after] {
+            assert_eq!(numbered(&word_doc, index).as_deref(), Some("1"), "p{index}");
+            assert_eq!(
+                alignment(&word_doc, index).as_deref(),
+                Some("center"),
+                "p{index}"
+            );
+        }
+        let reloaded = executor::block_on(WordDocument::load(
+            &word_doc.export_docx().expect("export"),
+            &Options::default(),
+        ))
+        .expect("reload");
+        for index in [before, after] {
+            assert_eq!(numbered(&reloaded, index), numbered(&word_doc, index));
+            assert_eq!(alignment(&reloaded, index), alignment(&word_doc, index));
+        }
+
+        let mut selection = None;
+        for _ in 0..2 {
+            command_executor
+                .undo(&mut CommandContext::new(&mut word_doc, &mut selection))
+                .expect("undo");
+        }
+        let reloaded = executor::block_on(WordDocument::load(
+            &word_doc.export_docx().expect("export"),
+            &Options::default(),
+        ))
+        .expect("reload");
+        for index in [before, after] {
+            assert_eq!(numbered(&word_doc, index), None, "p{index}");
+            assert_eq!(numbered(&reloaded, index), None, "p{index}");
+        }
+    }
+
+    #[test]
+    fn a_table_edit_leaves_a_new_table_of_contents_fields_whole() {
+        // A table of contents the editor generated had no runs for its page
+        // fields' markers, which a load gives runs of their own. A table edit
+        // remaps the document's XML ids: the page number bound to its field's
+        // begin marker, and striking through the entry then saved a field
+        // with a begin and no end.
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/scroll-offset-repro.docx"),
+        )
+        .expect("read fixture");
+        let mut word_doc =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+        apply_headless_commands_to_document(
+            &mut word_doc,
+            &HeadlessEditRequest {
+                commands: vec![
+                    HeadlessCommand::InsertTableOfContents {
+                        after_paragraph: 107,
+                        outline_min: 1,
+                        outline_max: 3,
+                    },
+                    HeadlessCommand::DeleteTableColumn {
+                        table_order_index: 0,
+                        column_index: 1,
+                    },
+                    HeadlessCommand::ApplyStrike {
+                        start_paragraph: 122,
+                        start_offset: 99,
+                        end_paragraph: 123,
+                        end_offset: 43,
+                        double: false,
+                        enabled: true,
+                    },
+                ],
+            },
+        )
+        .expect("edited");
+        let exported = word_doc.export_docx().expect("export");
+        let mut archive =
+            zip::ZipArchive::new(std::io::Cursor::new(exported.as_slice())).expect("package");
+        let mut xml = String::new();
+        std::io::Read::read_to_string(
+            &mut archive.by_name("word/document.xml").expect("document part"),
+            &mut xml,
+        )
+        .expect("read part");
+        assert_eq!(
+            xml.matches("w:fldCharType=\"begin\"").count(),
+            xml.matches("w:fldCharType=\"end\"").count()
+        );
+        let reloaded =
+            executor::block_on(WordDocument::load(&exported, &Options::default())).expect("reload");
+        let page_fields = |word_doc: &WordDocument, index: usize| {
+            word_doc.paragraph(index).map_or(0, |paragraph| {
+                paragraph
+                    .runs
+                    .iter()
+                    .filter(|run| {
+                        matches!(
+                            run.field.as_ref().map(|field| &field.kind),
+                            Some(crate::document::RunFieldKind::PageRef { .. })
+                        )
+                    })
+                    .count()
+            })
+        };
+        for index in 120..126 {
+            assert_eq!(page_fields(&reloaded, index), 1, "entry {index}");
+        }
     }
 
     #[test]
@@ -19055,6 +19468,57 @@ mod tests {
     }
 
     #[test]
+    fn merging_across_a_legacy_horizontal_merge_saves_one_cell() {
+        // table-legacy-hmerge.docx's second row spans its last two columns
+        // with a legacy `w:hMerge` restart and continuation. The reader folds
+        // the continuation into the cell it continues; merging that row's
+        // cells removed the cells the model knows and left the continuation,
+        // so the row was saved four columns wide and its paragraph came back.
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/table-legacy-hmerge.docx"),
+        )
+        .expect("read fixture");
+        let mut word_doc =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+        apply_headless_commands_to_document(
+            &mut word_doc,
+            &HeadlessEditRequest {
+                commands: vec![HeadlessCommand::MergeTableCells {
+                    table_order_index: 0,
+                    selected_cells: vec![
+                        jade_docx_headless_api::HeadlessTableCellSelection {
+                            row: 1,
+                            column: 0,
+                            column_span: 1,
+                        },
+                        jade_docx_headless_api::HeadlessTableCellSelection {
+                            row: 1,
+                            column: 1,
+                            column_span: 1,
+                        },
+                    ],
+                }],
+            },
+        )
+        .expect("merged");
+        let reloaded = executor::block_on(WordDocument::load(
+            &word_doc.export_docx().expect("export"),
+            &Options::default(),
+        ))
+        .expect("reload");
+        assert_eq!(reloaded.paragraph_count(), word_doc.paragraph_count());
+        let row = |word_doc: &WordDocument| {
+            word_doc
+                .table_by_order(0)
+                .and_then(|table| table.rows.get(1))
+                .map(|row| row.cells.iter().map(|cell| cell.span).collect::<Vec<_>>())
+        };
+        assert_eq!(row(&word_doc), Some(vec![Some(3)]));
+        assert_eq!(row(&reloaded), row(&word_doc));
+    }
+
+    #[test]
     fn merge_table_cells_command_merges_selected_cells() {
         let mut word_doc = sample_table_document();
         let request = HeadlessEditRequest {
@@ -21661,12 +22125,8 @@ mod tests {
     }
 
     fn review_duplicate_ids_document() -> WordDocument {
-        let bytes = std::fs::read(
-            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-                .join("../../public/fixtures/review-duplicate-ids.docx"),
-        )
-        .expect("read review-duplicate-ids fixture");
-        executor::block_on(WordDocument::load(&bytes, &Options::default()))
+        let bytes = include_bytes!("../tests/fixtures/review-duplicate-ids.docx");
+        executor::block_on(WordDocument::load(bytes, &Options::default()))
             .expect("load review-duplicate-ids fixture")
     }
 

@@ -62,15 +62,15 @@ def main():
                 ("floating-three", r("Hello   ") + floating + r("World")),
                 ("text-three", r("Hello   World")),
             ]
-            drawing_id = 0
+        drawing_id = 0
 
-            def unique_id(match):
-                nonlocal drawing_id
-                drawing_id += 1
-                return match.group(1) + str(drawing_id) + match.group(2)
+        def unique_id(match):
+            nonlocal drawing_id
+            drawing_id += 1
+            return match.group(1) + str(drawing_id) + match.group(2)
 
-            cases = [(name, re.sub(r'(<wp:docPr\b[^>]*\bid=")[^"]+(")', unique_id, xml))
-                     for name, xml in cases]
+        cases = [(name, re.sub(r'(<wp:docPr\b[^>]*\bid=")[^"]+(")', unique_id, xml))
+                 for name, xml in cases]
         body = "".join(f"<w:p>{xml}</w:p>" for _, xml in cases)
         doc = re.sub(r"<w:body>.*?(<w:sectPr)", lambda m: "<w:body>" + body + m.group(1), doc, flags=re.S)
         settings = archive.read("word/settings.xml").decode()

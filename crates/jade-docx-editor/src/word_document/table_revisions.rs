@@ -429,6 +429,9 @@ impl WordDocument {
         rows: Vec<(usize, usize, bool, bool)>,
     ) -> Result<usize, String> {
         let count = rows.len();
+        let comments_before = (!self.comments.is_empty()
+            && rows.iter().any(|(_, _, removes, _)| *removes))
+        .then(|| self.referenced_comment_ids());
         let mut grouped = std::collections::BTreeMap::<_, Vec<_>>::new();
         for (table, row, removes, deletion) in rows {
             grouped
@@ -468,6 +471,12 @@ impl WordDocument {
                 }
                 self.set_table_row_revision(table, row, mark)?;
             }
+        }
+        if let Some(comments_before) = comments_before {
+            let comments_after = self.referenced_comment_ids();
+            let mut orphaned: Vec<_> = comments_before.difference(&comments_after).collect();
+            orphaned.sort();
+            crate::commands::snapshot_edit::delete_orphaned_comments(self, &orphaned)?;
         }
         Ok(count)
     }

@@ -45,6 +45,32 @@ pub struct ChartSeries {
     /// `c:smooth`: the line is drawn as a curve through its points.
     #[serde(default)]
     pub smooth: bool,
+    /// The series' line: none, its width and dash.
+    #[serde(default)]
+    pub line: LineFormat,
+}
+/// A line's look (`a:ln`).
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub struct LineFormat {
+    /// `a:noFill`: no line at all.
+    pub none: bool,
+    /// `w`, in EMU.
+    pub width: Option<u32>,
+    /// `a:prstDash`: `solid`, `dash`, `sysDot`, `lgDashDot`…
+    pub dash: Option<String>,
+}
+fn line_format(properties: Option<&Node>) -> LineFormat {
+    let Some(line) = properties.and_then(|n| n.dchild("ln")) else {
+        return LineFormat::default();
+    };
+    LineFormat {
+        none: line.dchild("noFill").is_some(),
+        width: line.attrs.get("w").and_then(|w| w.parse().ok()),
+        dash: line
+            .dchild("prstDash")
+            .and_then(|n| n.attrs.get("val"))
+            .cloned(),
+    }
 }
 /// What a data label shows and where (`c:dLbls`).
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
@@ -569,6 +595,7 @@ fn parse_series(
         smooth: ser
             .child("smooth")
             .is_some_and(|n| n.attrs.get("val").is_none_or(|v| v != "0" && v != "false")),
+        line: line_format(ser.child("spPr")),
     };
     for point in ser.children.iter().filter(|n| n.main && n.name == "dPt") {
         if let Some(index) = point.val("idx").and_then(|v| v.parse::<usize>().ok()) {

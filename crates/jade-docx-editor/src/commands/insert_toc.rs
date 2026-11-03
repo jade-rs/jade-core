@@ -132,6 +132,15 @@ mod tests {
     use std::path::PathBuf;
     use zip::ZipArchive;
 
+    /// What `paragraph`, a generated entry, says before its page number. It
+    /// reads as a loaded entry: the first one's first runs are the table of
+    /// contents field's markers, and a tab kept in its text splits its runs.
+    fn first_text(paragraph: &Paragraph) -> String {
+        let text: String = paragraph.runs.iter().map(|run| run.text.as_str()).collect();
+        text.rsplit_once('\t')
+            .map_or(text.clone(), |(label, _)| label.to_string())
+    }
+
     fn fixture_path(name: &str) -> PathBuf {
         PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("..")
@@ -448,9 +457,9 @@ mod tests {
             .iter()
             .map(|element| element.as_paragraph().expect("generated TOC paragraph"))
             .collect();
-        let labels: Vec<&str> = generated
+        let labels: Vec<String> = generated
             .iter()
-            .map(|paragraph| paragraph.runs[0].text.as_str())
+            .map(|paragraph| first_text(paragraph))
             .collect();
         assert_eq!(
             labels,
@@ -571,7 +580,7 @@ mod tests {
             .and_then(|body| body.elements.get(1))
             .and_then(BodyElement::as_paragraph)
             .expect("inserted TOC paragraph");
-        assert_eq!(inserted.runs[0].text, "Appendix A");
+        assert_eq!(first_text(inserted), "Appendix A");
         assert_eq!(
             inserted.properties.as_ref().unwrap().style.as_deref(),
             Some("TOC2")
@@ -749,7 +758,8 @@ mod tests {
                     matches!(
                         run.field.as_ref().map(|field| &field.kind),
                         Some(RunFieldKind::PageRef { .. })
-                    ) && run.field.as_ref().unwrap().cached_text.as_deref() == Some("1")
+                    ) && (run.text == "1"
+                        || run.field.as_ref().unwrap().cached_text.as_deref() == Some("1"))
                 }));
                 paragraph
                     .runs
@@ -837,7 +847,7 @@ mod tests {
                 .and_then(|document| document.body.as_ref())
                 .and_then(|body| body.elements.get(1))
                 .and_then(BodyElement::as_paragraph)
-                .map(|paragraph| paragraph.runs[0].text.clone())
+                .map(first_text)
                 .expect("generated TOC entry")
         };
 
@@ -903,7 +913,7 @@ mod tests {
             .and_then(|body| body.elements.get(1))
             .and_then(BodyElement::as_paragraph)
             .expect("generated table-of-figures entry");
-        assert_eq!(entry.runs[0].text, "Figure 1: Architecture");
+        assert_eq!(first_text(entry), "Figure 1: Architecture");
         assert_eq!(
             entry.properties.as_ref().unwrap().style.as_deref(),
             Some("TableofFigures")

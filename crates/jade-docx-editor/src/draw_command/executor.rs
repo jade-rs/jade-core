@@ -1282,7 +1282,14 @@ fn try_execute_bmp_glyph_run_batch<P: Painter>(
     glyphs: &[crate::draw_command::GlyphRunStep],
     font_state: &mut FontStateTracker,
 ) -> Result<bool, P::Error> {
-    let mut text = String::with_capacity(glyphs.len());
+    // The buffer stores UTF-8 bytes, not glyphs: a BMP character needs up to
+    // three bytes. Use the source length as a bounded estimate so dense CJK
+    // runs do not repeatedly grow, without reserving an entire large source
+    // string when this batch references only a few glyphs.
+    let text_capacity = run_text
+        .len()
+        .clamp(glyphs.len(), glyphs.len().saturating_mul(3));
+    let mut text = String::with_capacity(text_capacity);
     let mut x_positions = Vec::with_capacity(glyphs.len());
     // Most replayed runs use one font and take the single-font JS path. Allocate
     // indexes only after discovering a font change that requires the multi-font path.
@@ -2443,6 +2450,7 @@ mod painter_backend_tests {
     use super::*;
     use crate::draw_command::{GlyphRunStep, TextStyle};
     use jade_painter::recording::{Op, RecordingPainter};
+    use proptest::prelude::*;
     use std::rc::Rc;
 
     fn style() -> TextStyle {
@@ -2530,6 +2538,60 @@ mod painter_backend_tests {
             "every glyph should be painted individually: {:?}",
             painter.ops()
         );
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(128))]
+
+        #[test]
+        fn glyph_run_fallback_preserves_unicode_ranges_and_positions(
+            characters in proptest::collection::vec(
+                prop_oneof![Just('A'), Just('é'), Just('税'), Just('\u{0301}'), Just('😀')],
+                0..96,
+            ),
+            selections in proptest::collection::vec((0usize..128, 0u16..3, -500i32..500), 0..128),
+        ) {
+            let painter = RecordingPainter::new();
+            let text: String = characters.iter().collect();
+            let mut starts = Vec::with_capacity(characters.len());
+            let mut offset = 0;
+            for ch in &characters {
+                starts.push(offset);
+                offset += ch.len_utf8();
+            }
+            let mut glyphs = Vec::with_capacity(selections.len());
+            let mut expected = Vec::new();
+            for (index, font_index, x_offset) in selections {
+                // Generated references may be sparse, repeated, reordered or invalid.
+                let (start, end) = if let Some(ch) = characters.get(index) {
+                    if font_index < 2 {
+                        expected.push((ch.to_string(), 8.0 + f64::from(x_offset), 21.0));
+                    }
+                    (starts[index] as u32, (starts[index] + ch.len_utf8()) as u32)
+                } else {
+                    (u32::MAX, u32::MAX)
+                };
+                glyphs.push(GlyphRunStep {
+                    text_start: start,
+                    text_end: end,
+                    font_index,
+                    x_offset: f64::from(x_offset),
+                });
+            }
+            execute_commands(&painter, &[DrawCommand::TextRun {
+                text: Rc::from(text),
+                x: 8.0,
+                y: 21.0,
+                style: style(),
+                fonts: vec![Rc::from("10.50pt 'Noto Sans JP'"), Rc::from("10.50pt Calibri")],
+                glyphs,
+            }]).unwrap();
+            let actual: Vec<_> = painter.ops().into_iter().filter_map(|op| match op {
+                Op::FillText(text, x, y) => Some((text, x, y)),
+                _ => None,
+            }).collect();
+            prop_assert_eq!(actual, expected);
+        }
     }
 
     #[test]

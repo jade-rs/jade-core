@@ -9,6 +9,7 @@ use super::properties::{DocumentProperties, PropertyValue};
 use super::scan::{Role, ScannedField, Story};
 use super::write::NewResult;
 use super::FieldEnvironment;
+use crate::word::references::citations::{render_citation, BibliographyStyle};
 use crate::word_document::CitationSourceInfo;
 use jade_docx_reader::field_datetime::{
     datetime_from_unix, format_word_date, parse_core_property_datetime, unix_seconds, FieldDateTime,
@@ -39,6 +40,8 @@ pub(crate) struct DocumentData {
     /// AutoText entries (`word/glossary/document.xml`) by lowercased name.
     pub glossary: HashMap<String, String>,
     pub sources: Vec<CitationSourceInfo>,
+    pub citation_style: Option<BibliographyStyle>,
+    pub citation_order: Vec<String>,
     pub words: usize,
     pub characters: usize,
     pub characters_with_spaces: usize,
@@ -215,7 +218,7 @@ impl<'a> Evaluation<'a> {
     /// A merge field's value for the recipient the merge previews, through
     /// the mail-merge evaluator (`word_document::mail_merge::fields`); `None`
     /// when no recipient is previewed or the field is not the merge's.
-    fn merge_value(&self, code: &FieldCode, instruction: &str) -> Option<String> {
+    fn merge_value(&self, code: &FieldCode, field: &ScannedField) -> Option<String> {
         const MERGE_FIELDS: [&str; 5] = [
             "MERGEFIELD",
             "ADDRESSBLOCK",
@@ -227,10 +230,12 @@ impl<'a> Evaluation<'a> {
         if !MERGE_FIELDS.contains(&code.name.as_str()) {
             return None;
         }
+        let instruction =
+            field.instruction_with(|child| self.values[child].clone().unwrap_or_default());
         crate::word_document::mail_merge::fields::evaluate_instruction(
             request,
             *record,
-            instruction,
+            &instruction,
         )
     }
 
@@ -239,32 +244,48 @@ impl<'a> Evaluation<'a> {
             return value.clone();
         }
         let field = &self.story.fields[index];
-        let instruction = {
-            let pieces: Vec<usize> = field
-                .pieces
-                .iter()
-                .filter_map(|piece| match piece {
-                    super::scan::Piece::Field(child) => Some(*child),
-                    _ => None,
-                })
-                .collect();
-            let mut nested = HashMap::new();
-            for child in pieces {
-                let value = self.evaluate(child);
-                nested.insert(child, value);
-            }
-            field.instruction_with(|child| nested.remove(&child).unwrap_or_default())
+        let children: Vec<usize> = field
+            .pieces
+            .iter()
+            .filter_map(|piece| match piece {
+                super::scan::Piece::Field(child) => Some(*child),
+                _ => None,
+            })
+            .collect();
+        for child in children {
+            self.evaluate(child);
+        }
+        // Storage and assignment fields retain their XML cache, but contribute
+        // an empty operand even when locked or outside the update selection.
+        let current = if field.hidden_result {
+            String::new()
+        } else {
+            field.result_text.clone()
         };
-        let current = field.result_text.clone();
-        let Some(code) = FieldCode::parse(&instruction) else {
+        let Some(code) = field.code_with(|child| self.values[child].as_deref().unwrap_or_default())
+        else {
             self.values[index] = Some(current.clone());
             return current;
         };
         let locked = field.locked;
         let evaluated = if locked {
             Evaluated::Keep
-        } else if let Some(text) = self.merge_value(&code, &instruction) {
+        } else if let Some(text) = self.merge_value(&code, field) {
             Evaluated::Final(text)
+        } else if code.name == "CITATION" {
+            self.data
+                .citation_style
+                .and_then(|style| {
+                    render_citation(
+                        &field.instruction_with(|child| {
+                            self.values[child].clone().unwrap_or_default()
+                        }),
+                        &self.data.sources,
+                        &self.data.citation_order,
+                        style,
+                    )
+                })
+                .map_or(Evaluated::Keep, Evaluated::Final)
         } else {
             self.evaluate_code(index, &code)
         };
@@ -866,47 +887,6 @@ impl<'a> Evaluation<'a> {
                 Some(text) => Evaluated::Value(FieldValue::Text(text)),
                 None => Evaluated::Keep,
             },
-            "CITATION" => match first.and_then(|tag| {
-                self.data
-                    .sources
-                    .iter()
-                    .find(|source| source.tag.eq_ignore_ascii_case(&tag))
-                    .cloned()
-            }) {
-                Some(source) => {
-                    let mut text = source.citation_text();
-                    if let Some(page) = code.switch_value("p") {
-                        text.insert_str(text.len() - 1, &format!(", {page}"));
-                    }
-                    if code.has_switch("n") {
-                        // Suppress the author.
-                        text = format!("({})", source.year);
-                    }
-                    if code.has_switch("y") {
-                        text = format!("({})", source.author);
-                    }
-                    if let Some(prefix) = code.switch_value("f") {
-                        text.insert_str(1, prefix);
-                    }
-                    if let Some(suffix) = code.switch_value("s") {
-                        text.insert_str(text.len() - 1, suffix);
-                    }
-                    Evaluated::Final(text)
-                }
-                None => Evaluated::Keep,
-            },
-            "BIBLIOGRAPHY" => {
-                if self.data.sources.is_empty() {
-                    return Evaluated::Final(error_text(
-                        japanese,
-                        "There are no sources in the current document.",
-                        "現在の文書には資料文献がありません。",
-                    ));
-                }
-                let mut sources = self.data.sources.clone();
-                sources.sort_by(|a, b| a.author.to_lowercase().cmp(&b.author.to_lowercase()));
-                Evaluated::Paragraphs(sources.iter().map(|s| s.bibliography_line()).collect())
-            }
             "INDEX" => self.index(code),
             "TOA" => self.table_of_authorities(code),
             // No result: these mark text for other fields or hold data.
@@ -915,11 +895,11 @@ impl<'a> Evaluation<'a> {
             // by their own command, mail-merge and linked objects need data
             // Jade has no source for, form fields hold what was typed and EQ
             // draws its equation from its code.
-            "TOC" | "EQ" | "LINK" | "EMBED" | "DDE" | "DDEAUTO" | "DATABASE" | "NEXT"
-            | "NEXTIF" | "SKIPIF" | "MERGEREC" | "MERGESEQ" | "FORMTEXT" | "FORMCHECKBOX"
-            | "FORMDROPDOWN" | "PRINT" | "BARCODE" | "DISPLAYBARCODE" | "MERGEBARCODE"
-            | "GREETINGLINE" | "ADDRESSBLOCK" | "BIDIOUTLINE" | "SHAPE" | "CONTROL" | "OCX"
-            | "IMPORT" | "SUBJECTS" => Evaluated::Keep,
+            "TOC" | "BIBLIOGRAPHY" | "EQ" | "LINK" | "EMBED" | "DDE" | "DDEAUTO" | "DATABASE"
+            | "NEXT" | "NEXTIF" | "SKIPIF" | "MERGEREC" | "MERGESEQ" | "FORMTEXT"
+            | "FORMCHECKBOX" | "FORMDROPDOWN" | "PRINT" | "BARCODE" | "DISPLAYBARCODE"
+            | "MERGEBARCODE" | "GREETINGLINE" | "ADDRESSBLOCK" | "BIDIOUTLINE" | "SHAPE"
+            | "CONTROL" | "OCX" | "IMPORT" | "SUBJECTS" => Evaluated::Keep,
             // A field named by a bookmark alone is a REF.
             name => {
                 let bookmark = self
@@ -1154,9 +1134,8 @@ impl<'a> Evaluation<'a> {
         if field.locked || !self.is_selected(index) {
             return;
         }
-        let instruction =
-            field.instruction_with(|child| self.values[child].clone().unwrap_or_default());
-        let Some(code) = FieldCode::parse(&instruction) else {
+        let Some(code) = field.code_with(|child| self.values[child].as_deref().unwrap_or_default())
+        else {
             return;
         };
         if code.name != "SEQ" {

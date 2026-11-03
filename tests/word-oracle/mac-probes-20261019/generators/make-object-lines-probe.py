@@ -36,6 +36,13 @@ for extra in ("", 'stroked="f"'):
     n += 1
     body += p(t(f"B{n}")) + p(text_box(extra))
 body += p(t("End"))
+# Each copied picture needs its own drawing ID, including the same size twice.
+drawing_id = 0
+def unique_id(match):
+    global drawing_id
+    drawing_id += 1
+    return match.group(1) + str(drawing_id) + match.group(2)
+body = re.sub(r'(<wp:docPr\b[^>]*\bid=")[^"]+(")', unique_id, body)
 doc = re.sub(r"<w:body>.*?(<w:sectPr)", lambda m: "<w:body>" + body + m.group(1), doc, flags=re.S)
 with zipfile.ZipFile(os.path.join(out, "word-mac-probe-object-lines.docx"), "w", zipfile.ZIP_DEFLATED) as o:
     for item in z.infolist():

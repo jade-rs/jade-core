@@ -13,6 +13,13 @@ those probes captured again here are identical to the originals.
 `generators/` holds the scripts that wrote the documents. Their styles set
 `w:kern w:val="2"` in `w:rPrDefault`, so every run is kerned.
 
+The schema cleanup retains the original malformed `floating-order` input in
+native-render test fixtures. The public derivative removes the first table's
+ignored position so it stays inline, preserving the captured Mac coordinates.
+Its generator now emits that valid derivative by default; `--malformed`
+reproduces the historical control in a private output directory. See
+[schema repair provenance](../schema-repairs.md).
+
 | Fixture | What Word shows |
 | --- | --- |
 | `vert-align` | A superscript or subscript run is drawn at 0.65 of its size in Century and Calibri and 0.6 in Yu Mincho and MS Mincho, to the nearest half point (8–20pt). The raise follows the face too (`word_mac_script_baseline_offset_em`, measured on the per-glyph baselines of `mac-probes-20261030`): Century 0.257 up and 0.066 down, Yu Mincho 0.350 and 0.075, Calibri 0.333 and 0.094, MS Mincho 0.40 and 0.11 of the run's size. Laid out in Word's own faces, every shifted run's distance from its line's baseline then matches Word's within 0.33pt but Calibri 9pt's superscript (0.6pt), and even with the bundled stand-in faces the page now breaks after the paragraph Word's does. A shifted run neither moves nor sizes its line: a raised and a lowered run of the same face and size give Word the same line pitch, MS Mincho's and Calibri's too, whose raised tops pass the unshifted run's (`script_shift_px`). In Word's faces every baseline is then within 0.66pt of Word's, no longer drifting by up to 1.5pt down the page. The probe stays outside the strict set: Word puts each baseline on a 0.24pt grid, and the bundled stand-in faces differ in advance. |
