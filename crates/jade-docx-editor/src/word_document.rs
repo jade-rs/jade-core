@@ -17526,8 +17526,43 @@ impl WordDocument {
         if !self.is_body_paragraph_surface(rendered_end.paragraph) {
             return Err("index entries can only be marked in body paragraphs".to_string());
         }
-        let model_end = self.rendered_to_model_text_position(rendered_end);
+        let mut model_end = self.rendered_to_model_text_position(rendered_end);
         self.validate_text_position_boundary(model_end)?;
+        // A field result can span several runs after formatting. Anchor after
+        // its complete wrapper, including at a boundary between its fragments.
+        // Equal field instructions can belong to separate adjacent wrappers.
+        if let Some(paragraph) = self.paragraph(model_end.paragraph) {
+            let mut start = 0usize;
+            for (index, run) in paragraph.runs.iter().enumerate() {
+                let end = start + run.text.len();
+                if start <= model_end.offset && model_end.offset < end {
+                    if let Some(field) = run.field.as_ref() {
+                        let same_field = |other: &Run| {
+                            other.field.as_ref().is_some_and(|other| {
+                                other.kind == field.kind
+                                    && other.source_field_id == field.source_field_id
+                            })
+                        };
+                        // At the start of a distinct wrapper the marker already
+                        // lies between fields and must stay at that boundary.
+                        if start == model_end.offset
+                            && (index == 0 || !same_field(&paragraph.runs[index - 1]))
+                        {
+                            break;
+                        }
+                        model_end.offset = end;
+                        for fragment in paragraph.runs[index + 1..]
+                            .iter()
+                            .take_while(|run| same_field(run))
+                        {
+                            model_end.offset += fragment.text.len();
+                        }
+                    }
+                    break;
+                }
+                start = end;
+            }
+        }
 
         let mut properties = self
             .paragraph(model_end.paragraph)

@@ -158,6 +158,14 @@ pub(crate) fn render_shape_clipped<P: Painter>(
         clip(painter);
     }
 
+    if let PlacedGeometry::Ink(ink) = &shape.geometry {
+        draw_ink(painter, shape, ink, usize::MAX)?;
+        if transformed {
+            painter.restore();
+        }
+        return Ok(());
+    }
+
     if shape.geometry == PlacedGeometry::Line {
         // A connector is only its stroke; one without an explicit outline
         // still draws, the way PowerPoint gives it the default line.
@@ -963,7 +971,7 @@ fn outline_polygons(shape: &PlacedShape) -> Vec<Vec<(f64, f64)>> {
         }
     };
     match &shape.geometry {
-        PlacedGeometry::Rect | PlacedGeometry::Line => vec![vec![
+        PlacedGeometry::Rect | PlacedGeometry::Line | PlacedGeometry::Ink(_) => vec![vec![
             (rect.x, rect.y),
             (rect.x + rect.width, rect.y),
             (rect.x + rect.width, rect.y + rect.height),
@@ -1301,10 +1309,34 @@ fn mix_css_colors(a: &str, b: &str, t: f64) -> String {
     }
 }
 
+/// Draws ink's strokes stretched over the shape's box: all of them, or as
+/// インクの再生 has them, the first `points` points in drawing order.
+pub fn draw_ink<P: Painter>(
+    painter: &P,
+    shape: &PlacedShape,
+    ink: &jade_pptx_layout::PlacedInk,
+    points: usize,
+) -> Result<(), P::Error> {
+    let rect = shape.paint_rect();
+    let sx = rect.width / ink.width.max(1e-6);
+    let sy = rect.height / ink.height.max(1e-6);
+    let place = |&(x, y): &(f64, f64)| (rect.x + x * sx, rect.y + y * sy);
+    let mut left = points;
+    for trace in &ink.traces {
+        if left == 0 {
+            break;
+        }
+        let count = trace.points.len().min(left);
+        jade_ink::paint::paint_points(painter, trace, &place, sx.min(sy), count)?;
+        left -= count;
+    }
+    Ok(())
+}
+
 /// Builds the shape's outline as the current path, for clipping.
 fn geometry_path<P: Painter>(painter: &P, shape: &PlacedShape) -> Result<(), P::Error> {
     match &shape.geometry {
-        PlacedGeometry::Rect | PlacedGeometry::Line => {
+        PlacedGeometry::Rect | PlacedGeometry::Line | PlacedGeometry::Ink(_) => {
             painter.begin_path();
             painter.rect(
                 shape.paint_rect().x,
@@ -1419,8 +1451,9 @@ fn fill_geometry<P: Painter>(painter: &P, shape: &PlacedShape) -> Result<(), P::
                 }
             }
         }
-        // A line has no interior; render_shape strokes it before this runs.
-        PlacedGeometry::Line => {}
+        // A line has no interior; render_shape strokes it before this runs,
+        // and draws ink's strokes itself.
+        PlacedGeometry::Line | PlacedGeometry::Ink(_) => {}
     }
     Ok(())
 }
@@ -1474,7 +1507,7 @@ fn stroke_geometry<P: Painter>(painter: &P, shape: &PlacedShape) -> Result<(), P
                 draw_line_ends(painter, outline, &points);
             }
         }
-        PlacedGeometry::Line => {}
+        PlacedGeometry::Line | PlacedGeometry::Ink(_) => {}
     }
     Ok(())
 }
