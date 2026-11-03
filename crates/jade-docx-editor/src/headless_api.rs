@@ -3856,6 +3856,45 @@ pub fn apply_headless_commands_with_executor_to_document(
                     )
                     .map_err(|source| HeadlessApiApplyError::Command { index, source })?;
             }
+            HeadlessCommand::SetManuscriptGrid {
+                style,
+                chars,
+                lines,
+                color,
+            } => {
+                use jade_docx_reader::document::{ManuscriptGrid, ManuscriptStyle};
+                let grid = match style.as_deref() {
+                    None => None,
+                    Some(style) => Some(ManuscriptGrid {
+                        style: match style {
+                            "squares" => ManuscriptStyle::Squares,
+                            "lines" => ManuscriptStyle::Lines,
+                            "frame" => ManuscriptStyle::Frame,
+                            other => {
+                                return Err(HeadlessApiApplyError::Command {
+                                    index,
+                                    source: CommandError::Custom(format!(
+                                    "manuscript style must be squares, lines or frame, not {other}"
+                                )),
+                                })
+                            }
+                        },
+                        chars: *chars,
+                        lines: *lines,
+                        color: color.clone(),
+                    }),
+                };
+                let mut ctx = CommandContext::new(word_doc, &mut selection);
+                command_executor
+                    .execute(
+                        Box::new(SnapshotEditCommand::new(
+                            "set_manuscript_grid",
+                            move |document| document.set_manuscript_grid(grid.clone()).map(|_| ()),
+                        )),
+                        &mut ctx,
+                    )
+                    .map_err(|source| HeadlessApiApplyError::Command { index, source })?;
+            }
             HeadlessCommand::SetHyphenation { patch } => {
                 let patch = patch.clone();
                 let mut ctx = CommandContext::new(word_doc, &mut selection);

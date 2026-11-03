@@ -2285,6 +2285,18 @@ pub enum HeadlessCommand {
         #[serde(default)]
         layout: Option<String>,
     },
+    /// 原稿用紙設定's drawing: the manuscript-paper grid in every header over
+    /// the final section's body box — `squares` (マス目付き), `lines`
+    /// (下線付き) or `frame` (外枠付き), `chars` × `lines`, in `color`
+    /// (`#RRGGBB`). `style` omitted (なし) takes it away. The page, margins
+    /// and `snapToChars` grid are set with `set_section_layout` first.
+    SetManuscriptGrid {
+        #[serde(default)]
+        style: Option<String>,
+        chars: u32,
+        lines: u32,
+        color: String,
+    },
     /// Replaces the package-wide Word theme fonts and color scheme while
     /// preserving unmodeled theme XML.
     SetDocumentTheme {
@@ -2485,6 +2497,7 @@ impl HeadlessCommand {
             HeadlessCommand::SetPageColumns { .. } => "set_page_columns",
             HeadlessCommand::SetPageBorders { .. } => "set_page_borders",
             HeadlessCommand::SetWatermark { .. } => "set_watermark",
+            HeadlessCommand::SetManuscriptGrid { .. } => "set_manuscript_grid",
             HeadlessCommand::SetDocumentTheme { .. } => "set_document_theme",
             HeadlessCommand::SetPageBackgroundColor { .. } => "set_page_background_color",
             HeadlessCommand::SetParagraphLineSpacing { .. } => "set_paragraph_line_spacing",
