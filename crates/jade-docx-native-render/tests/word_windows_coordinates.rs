@@ -221,6 +221,10 @@ fn windows_word_baselines_with_bundled_standins() {
             .iter()
             .filter(|fixture| {
                 fixture["name"] == "word-windows-yu-gothic-lines"
+                    || fixture["name"]
+                        .as_str()
+                        .unwrap()
+                        .starts_with("word-windows-tnr-")
                     || (reference["coordinate_source"] == "Word Page.EnhMetaFileBits / MS-EMF"
                         && matches!(
                             fixture["name"].as_str(),
@@ -240,6 +244,9 @@ fn windows_word_baselines_with_bundled_standins() {
                 "word-windows-yu-gothic-lines" => (24, 2160),
                 "yokohama_page1" => (1, 853),
                 "yokohama_page6" => (5, 5425),
+                "word-windows-tnr-balanced-sweep" | "word-windows-tnr-unbalanced-sweep" => {
+                    (20, 480)
+                }
                 _ => unreachable!(),
             };
             assert_eq!(doc.page_count(), page_count);

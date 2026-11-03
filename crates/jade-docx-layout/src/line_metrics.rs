@@ -584,13 +584,33 @@ pub fn word_compressed_punctuation_east_asian_advance_scale() -> f64 {
 }
 
 /// Windows Word 16.0.19127 EMF origins in contract.docx leave a quarter em
-/// on both sides of Times New Roman letters next to Japanese text. Other
-/// faces retain their measured policy until their origins are captured.
-pub(crate) fn word_windows_latin_auto_space_gap(font_descriptor: &str) -> Option<f64> {
+/// on both sides of balanced Times New Roman letters next to Japanese text.
+/// Without balancing, the trailing gap uses half the face's OS/2 average width.
+/// Other faces retain their measured policy until their origins are captured.
+pub(crate) fn word_windows_latin_auto_space_metrics(
+    font_descriptor: &str,
+    balanced: bool,
+) -> Option<WordAutoSpace> {
     let (size_pt, family) = split_font_descriptor(font_descriptor)?;
     let family = family.split(',').next()?.trim().trim_matches(['\'', '"']);
-    (family == "Times New Roman" && size_pt.is_finite() && size_pt > 0.0)
-        .then_some(f64::from(size_pt) / 3.0)
+    if family != "Times New Roman" || !size_pt.is_finite() || size_pt <= 0.0 {
+        return None;
+    }
+    let trailing_share = if balanced {
+        1.0
+    } else {
+        let units = match font_descriptor_style(font_descriptor) {
+            (true, true) => 844.0,
+            (true, false) => 874.0,
+            (false, true) => 823.0,
+            (false, false) => 821.0,
+        };
+        2.0 * units / 2048.0
+    };
+    Some(WordAutoSpace {
+        em_px: f64::from(size_pt) * 96.0 / 72.0,
+        trailing_share,
+    })
 }
 
 /// [`WordAutoSpace`] for a glyph drawn with `font_descriptor` in Word for Mac,
@@ -2030,12 +2050,40 @@ fn synthetic_bold_descriptor_needs_style_scan(font_descriptor: &str) -> bool {
     !(first.is_ascii() && first.ends_with("pt"))
 }
 
+pub(crate) fn word_windows_cjk_synthetic_bold_extra_advance_px(font_descriptor: &str) -> f64 {
+    if !synthetic_bold_descriptor_needs_style_scan(font_descriptor)
+        || !font_descriptor_style(font_descriptor).0
+    {
+        return 0.0;
+    }
+    let Some((size_pt, family)) = split_font_descriptor(font_descriptor) else {
+        return 0.0;
+    };
+    let family = family
+        .split(',')
+        .next()
+        .unwrap_or_default()
+        .trim()
+        .trim_matches(['\'', '"']);
+    // Windows Word 16.0.19127's MS Mincho synthetic bold CJK advances:
+    // the paired Latin/CJK sweeps at 9, 10.5, 12, 20 and 40pt retain the
+    // full CJK cell plus 1/200 em. Real Latin bold and half cells are separate.
+    if matches!(family, "MS Mincho" | "ＭＳ 明朝" | "MS 明朝" | "ＭＳ明朝")
+        && size_pt.is_finite()
+        && size_pt > 0.0
+    {
+        f64::from(size_pt) * 96.0 / 72.0 / 200.0
+    } else {
+        0.0
+    }
+}
+
 /// Extra advance, in px, that Word for Mac gives a glyph it emboldens itself:
 /// 1/50 em for a bold run in a face without a bold style (Yu Mincho, MS
 /// Mincho, MS Gothic, and Century, which Word for Mac ships without one).
 /// Word for Mac 16.113 sets bold 10.5pt `第1条（目的）` in either face at a
-/// 10.71pt pitch and the 16pt title at 16.32pt; Word for Windows keeps 10.5pt
-/// (`wrong-num` Word COM trace), so this is 0 there.
+/// 10.71pt pitch and the 16pt title at 16.32pt. Windows CJK uses the
+/// separate, smaller observed advance above; half cells retain their own policy.
 pub fn word_synthetic_bold_extra_advance_px(font_descriptor: &str) -> f64 {
     if word_layout_platform() != WordLayoutPlatform::Mac {
         return 0.0;

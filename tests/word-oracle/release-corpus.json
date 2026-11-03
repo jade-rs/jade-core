@@ -746,6 +746,14 @@
       "docx_sha256": "92aa454d75835ec0d193192d91d82220459b5362ec054addad778c7d8308269c"
     },
     {
+      "fixture": "word-windows-tnr-balanced-sweep",
+      "docx_sha256": "ec03028acb321b560c167b76a5d3da2973becab5c32e00c0cca291e63b8ab6f8"
+    },
+    {
+      "fixture": "word-windows-tnr-unbalanced-sweep",
+      "docx_sha256": "24837ed1f4e9b3d038e4823224001057e3b05f5ea37f51e3b0582596b3182dd3"
+    },
+    {
       "fixture": "word-windows-yu-gothic-lines",
       "docx_sha256": "685352a2ff6b33fa4bbfdf71ff2554bbe4231babc5a54ee2c279ebd0dacc0c95"
     },
