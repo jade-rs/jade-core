@@ -198,7 +198,7 @@ impl WordDocument {
 
 /// The commands that change paragraph formatting: with changes tracked,
 /// what each one changes is recorded as a `w:pPrChange`.
-pub(crate) const PARAGRAPH_FORMAT_COMMANDS: [&str; 16] = [
+pub(crate) const PARAGRAPH_FORMAT_COMMANDS: [&str; 17] = [
     "adjust_paragraph_indent",
     "apply_multilevel_list",
     "reset_paragraph_formatting",
@@ -208,6 +208,7 @@ pub(crate) const PARAGRAPH_FORMAT_COMMANDS: [&str; 16] = [
     "set_paragraph_direction",
     "set_paragraph_indent",
     "set_paragraph_line_spacing",
+    "set_paragraph_outline_level",
     "set_paragraph_pagination",
     "set_paragraph_style",
     "set_paragraph_visuals",

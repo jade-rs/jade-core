@@ -1370,6 +1370,20 @@ pub enum HeadlessCommand {
         #[serde(default)]
         widow_control: Option<bool>,
     },
+    /// The 段落 dialog's アウトライン レベル and 既定で折りたたみ (ECMA-376
+    /// Part 1 §17.3.1.20 `w:outlineLvl`; the `w15:collapsed` extension Word
+    /// 2013 writes). `level` is 0–8 for レベル 1–9 and 9 for 本文: the level
+    /// the paragraph's style already gives takes the direct `w:outlineLvl`
+    /// away, any other is written. `collapsed` writes or removes
+    /// `w15:collapsed`. `None` leaves either as it is.
+    SetParagraphOutlineLevel {
+        start_paragraph: usize,
+        end_paragraph: usize,
+        #[serde(default)]
+        level: Option<u8>,
+        #[serde(default)]
+        collapsed: Option<bool>,
+    },
     /// Word's Ctrl+0: add 12pt of space before each paragraph in the range,
     /// or remove it when every paragraph already has exactly 12pt.
     ToggleParagraphSpaceBefore {
@@ -2395,6 +2409,7 @@ impl HeadlessCommand {
             HeadlessCommand::AdjustParagraphIndent { .. } => "adjust_paragraph_indent",
             HeadlessCommand::ToggleParagraphSpaceBefore { .. } => "toggle_paragraph_space_before",
             HeadlessCommand::SetParagraphPagination { .. } => "set_paragraph_pagination",
+            HeadlessCommand::SetParagraphOutlineLevel { .. } => "set_paragraph_outline_level",
             HeadlessCommand::ResetParagraphFormatting { .. } => "reset_paragraph_formatting",
             HeadlessCommand::AdjustFontSize { .. } => "adjust_font_size",
             HeadlessCommand::SetParagraphMetrics { .. } => "set_paragraph_metrics",

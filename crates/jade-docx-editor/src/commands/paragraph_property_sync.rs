@@ -255,6 +255,23 @@ pub(crate) fn sync_paragraph_toggle_xml(
     });
 }
 
+/// Puts `child` in the paragraph's `w:pPr` in its `CT_PPrBase` place,
+/// replacing one of the same name, or takes that one away (`None`).
+pub(crate) fn sync_paragraph_child_xml(
+    word_doc: &mut WordDocument,
+    paragraph_index: usize,
+    tag: &'static str,
+    attributes: Option<Vec<XmlAttribute>>,
+) {
+    sync_paragraph_properties_xml(word_doc, paragraph_index, |raw, paragraph_properties| {
+        remove_paragraph_property_child(paragraph_properties, tag);
+        if let Some(attributes) = attributes.clone() {
+            let child = raw.create_element(tag, attributes, Vec::new());
+            insert_paragraph_property_child(paragraph_properties, child);
+        }
+    });
+}
+
 pub(crate) fn sync_paragraph_shading_xml(
     word_doc: &mut WordDocument,
     paragraph_index: usize,
@@ -522,9 +539,19 @@ fn paragraph_property_rank(name: &str) -> u8 {
         "w:spacing" => 6,
         "w:ind" => 7,
         "w:contextualSpacing" | "w:mirrorIndents" | "w:suppressOverlap" => 8,
-        "w:jc" | "w:textDirection" | "w:textAlignment" | "w:textboxTightWrap" | "w:outlineLvl"
-        | "w:divId" | "w:cnfStyle" | "w:rPr" | "w:sectPr" | "w:pPrChange" => 9,
-        _ => 10,
+        "w:jc" => 9,
+        "w:textDirection" => 10,
+        "w:textAlignment" => 11,
+        "w:textboxTightWrap" => 12,
+        "w:outlineLvl" => 13,
+        "w:divId" => 14,
+        "w:cnfStyle" => 15,
+        // Word 2013's 既定で折りたたみ, after the base properties.
+        "w15:collapsed" => 16,
+        "w:rPr" => 17,
+        "w:sectPr" => 18,
+        "w:pPrChange" => 19,
+        _ => 20,
     }
 }
 

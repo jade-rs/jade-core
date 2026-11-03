@@ -2241,6 +2241,14 @@ const COMMANDS: &[Variant] = &[
         ],
     ),
     paragraphs(
+        "set_paragraph_outline_level",
+        "The paragraph dialog's outline level and collapsed-by-default, as direct formatting on the range: level 0-8 is Level 1-9 and 9 is body text (the level the paragraph style already gives removes the direct w:outlineLvl); collapsed writes or removes Word 2013's w15:collapsed. Omitted options stay as they are. One undo step.",
+        &[
+            opt("level", ArgType::Index, "0-8 for outline Level 1-9, 9 for body text."),
+            opt("collapsed", ArgType::Flag, "Collapse the heading by default when the document opens."),
+        ],
+    ),
+    paragraphs(
         "reset_paragraph_formatting",
         "Word's Ctrl+Q: strip direct paragraph formatting (alignment, indents, spacing, shading, borders, tab stops, frames) from the range while keeping each paragraph's style, numbering, and run formatting.",
         &[],
