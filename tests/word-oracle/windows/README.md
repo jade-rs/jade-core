@@ -28,12 +28,16 @@ bundled stand-ins. It also checks 21 actual Word X/Y origins in
 `numbering-restart`: the fixed-pitch B/C/D/E rows and all five numeric
 boundaries after the Japanese list text. Thus the grid-space and numeric-gap
 regressions fail CI without installing or redistributing Microsoft fonts.
+The Yu Gothic probe also checks all 2,160 raw X/Y origins on 24 pages with
+bundled stand-ins, covering Regular, Light, Medium and Bold at 9, 10, 10.5,
+11, 12 and 20pt. Its package deliberately omits styles: importing Mac
+justification into Windows would stretch the wrapped 20pt rows.
 Full installed-font X/Y comparisons run on the Windows
 Word machine; no Microsoft font binaries are redistributed to CI.
 
 Collected product versions: **16.0.19127.20860**. No other installed Word
-version is claimed. This version currently has eleven passing unique documents,
-60 pages and 6,794 glyphs. The earlier numbering-label capture retains its
+version is claimed. This version currently has twelve passing unique documents,
+84 pages and 8,954 glyphs. The earlier numbering-label capture retains its
 1.83pt failure; a later capture records the corrected result. Contract and
 Yokohama references still have subpoint residuals and are not promoted.
 The 2026-11-03 `numbering-restart` capture is also retained as pending:
@@ -62,3 +66,11 @@ X/Y threshold. The earlier failing capture remains intact. Windows fixes
 remove synthetic bold widening from fixed-pitch Latin cells, include both
 tracking intervals in full grid cells, and retain Japanese-face numeric gaps
 under the default font hint. Mac metric selection is unchanged.
+
+The clean-source `20261103T072439513Z-7e74b1ab` capture promotes
+`word-windows-yu-gothic-lines` (2,160/2,160 matching origins). Windows
+uses the Yu Gothic OS/2 usWin boxes and left-aligned unstyled Normal;
+Mac keeps its original hhea boxes and Normal style. The same capture
+retains the latest Contract and Yokohama residuals as pending. Its original
+Yokohama PDF places the Article 15-6-2 item-3 heading and its reason on
+page 4, validating the corrected Windows headless pagination expectation.
