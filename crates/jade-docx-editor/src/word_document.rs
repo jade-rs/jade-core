@@ -36603,8 +36603,9 @@ impl WordDocument {
                 }
             }
 
-            if let Some(fit_text) = props.fit_text.as_ref() {
-                Self::upsert_run_fit_text_child(doc, &mut element, fit_text);
+            match props.fit_text.as_ref() {
+                Some(fit_text) => Self::upsert_run_fit_text_child(doc, &mut element, fit_text),
+                None => Self::remove_run_property_child(&mut element, "w:fitText"),
             }
 
             let fonts = if direct.known {
