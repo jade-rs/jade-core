@@ -131,6 +131,10 @@ pub struct Document {
     /// there is no watermark or its shape could not be read.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub watermark_style: Option<WatermarkStyle>,
+    /// 原稿用紙設定: the manuscript-paper grid Word draws in the headers (a
+    /// VML group whose id starts `Genko:`). `None` when there is none.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub manuscript_grid: Option<ManuscriptGrid>,
     /// Table-of-contents fields found in the body, in document order. Each entry
     /// is the parsed switch set of one `TOC` field instruction
     /// (`{ TOC \o "1-3" \h \z \u }`; ECMA-376 Part 1 §17.16.5.68). The TOC
@@ -5995,6 +5999,29 @@ impl RunProperties {
             && self.east_asian_layout.is_none()
             && self.text_effects.is_none()
     }
+}
+
+/// 原稿用紙設定's スタイル: what each square of the grid is drawn as.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub enum ManuscriptStyle {
+    /// マス目付き原稿用紙: a square per character.
+    Squares,
+    /// 下線付き原稿用紙: a rule under each line.
+    Lines,
+    /// 外枠付き原稿用紙: a frame round the body, ruled between the lines.
+    Frame,
+}
+
+/// The manuscript-paper grid (原稿用紙設定): its style, 文字数 × 行数 and
+/// 罫線の色 (`#RRGGBB`).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct ManuscriptGrid {
+    pub style: ManuscriptStyle,
+    pub chars: u32,
+    pub lines: u32,
+    pub color: String,
 }
 
 /// How Word draws a text watermark (デザイン › 透かし › ユーザー設定の透かし),

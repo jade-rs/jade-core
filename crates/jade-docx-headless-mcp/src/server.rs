@@ -3951,6 +3951,20 @@ const COMMANDS: &[Variant] = &[
         ],
     ),
     variant(
+        "set_manuscript_grid",
+        "Draw or remove Word's manuscript-paper grid (原稿用紙) in every header over the body box; set the page, margins and snapToChars grid with set_section_layout first.",
+        &[
+            opt(
+                "style",
+                ArgType::Choice(&["squares", "lines", "frame"]),
+                "Squares, underlines or a ruled frame; omitted removes the grid.",
+            ),
+            req("chars", ArgType::Index, "Characters per line."),
+            req("lines", ArgType::Index, "Lines per page."),
+            req("color", ArgType::Text, "Rule color as #RRGGBB."),
+        ],
+    ),
+    variant(
         "set_document_theme",
         "Author the package-wide Word document theme while preserving unmodeled theme XML.",
         &[req(

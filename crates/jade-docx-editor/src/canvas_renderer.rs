@@ -3624,6 +3624,8 @@ where
     /// The watermark's look: font, size, color, transparency, layout and the
     /// shape box its text is stretched to fill.
     watermark_style: Option<jade_docx_reader::document::WatermarkStyle>,
+    /// 原稿用紙設定's grid, drawn behind the text on every page.
+    manuscript_grid: Option<jade_docx_reader::document::ManuscriptGrid>,
     /// Numeral format (`w:pgNumType/@w:fmt`, lowercased) applied to `PAGE`
     /// fields. `None` = decimal. ECMA-376 Part 1 §17.6.12. MVP: the default
     /// section's value is applied document-wide.
@@ -8481,6 +8483,7 @@ where
             page_background_color: None,
             watermark_text: None,
             watermark_style: None,
+            manuscript_grid: None,
             page_number_format: None,
             page_number_start: None,
             section_page_numbering: Vec::new(),
@@ -10507,6 +10510,7 @@ where
                     }
                 }
                 self.draw_watermark()?;
+                self.draw_manuscript_grid();
                 self.invalidate_context_state_tracking();
                 self.band_redraw_clip_active = true;
                 return Ok(());
@@ -10532,6 +10536,7 @@ where
             }
         }
         self.draw_watermark()?;
+        self.draw_manuscript_grid();
         if !self.hides_page_chrome() {
             self.draw_page_borders(page);
         }
@@ -10630,6 +10635,55 @@ where
         })();
         context.restore();
         draw_result.map_err(PainterError::into_js_value)
+    }
+
+    /// Draws 原稿用紙設定's grid over the body box — the same strokes the
+    /// header drawing is saved with
+    /// ([`crate::word_document::manuscript::manuscript_strokes`]). Like the
+    /// watermark it is redrawn whole on a band repaint, clipped to the band.
+    fn draw_manuscript_grid(&self) {
+        use crate::word_document::manuscript::{
+            manuscript_is_vertical, manuscript_strokes, ManuscriptStroke,
+        };
+        if self.pageless_mode {
+            return;
+        }
+        let Some(grid) = self.manuscript_grid.as_ref() else {
+            return;
+        };
+        let (left, top) = (self.margin_left, self.margin_top);
+        let width = self.page_width - self.margin_left - self.margin_right;
+        let height = self.page_height - self.margin_top - self.margin_bottom;
+        if width <= 0.0 || height <= 0.0 {
+            return;
+        }
+        let vertical = manuscript_is_vertical(self.current_text_direction);
+        let context = self.host.painter();
+        context.save();
+        context.set_stroke_style_str(&grid.color);
+        context.set_line_width(points_to_px(0.5).max(0.75));
+        for stroke in manuscript_strokes(grid, vertical, width as f32, height as f32) {
+            match stroke {
+                ManuscriptStroke::Rect {
+                    x,
+                    y,
+                    width,
+                    height,
+                } => context.stroke_rect(
+                    left + f64::from(x),
+                    top + f64::from(y),
+                    f64::from(width),
+                    f64::from(height),
+                ),
+                ManuscriptStroke::Line { from, to } => {
+                    context.begin_path();
+                    context.move_to(left + f64::from(from.0), top + f64::from(from.1));
+                    context.line_to(left + f64::from(to.0), top + f64::from(to.1));
+                    context.stroke();
+                }
+            }
+        }
+        context.restore();
     }
 
     /// Draws vertical separator rules between columns (`w:cols w:sep="true"`,
@@ -15821,6 +15875,7 @@ where
         // Word stores text watermarks as a VML text path in the page header.
         self.watermark_text = document.watermark_text.clone();
         self.watermark_style = document.watermark_style.clone();
+        self.manuscript_grid = document.manuscript_grid.clone();
 
         // Resolve `w:pgNumType` (numeral format + start offset) for PAGE fields
         // from the default section. MVP: a single document-wide value.

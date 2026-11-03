@@ -854,6 +854,9 @@ mod references;
 #[path = "word_document/hyphenation.rs"]
 mod hyphenation;
 
+#[path = "word_document/manuscript.rs"]
+pub mod manuscript;
+
 #[path = "word_document/format_state.rs"]
 pub mod format_state;
 
@@ -2842,6 +2845,8 @@ impl WordDocument {
             let watermark = Self::watermark_from_loaded_headers(&document, &parsed_doc, &doc_part);
             parsed_doc.watermark_style = watermark.as_ref().map(|(_, style)| style.clone());
             parsed_doc.watermark_text = watermark.map(|(text, _)| text);
+            parsed_doc.manuscript_grid =
+                Self::manuscript_from_loaded_headers(&document, &parsed_doc, &doc_part);
             document.even_and_odd_headers = doc_settings.even_and_odd_headers;
 
             // Before the styles fill paragraphs in: the paragraph a textless
