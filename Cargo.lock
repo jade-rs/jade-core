@@ -1902,6 +1902,7 @@ dependencies = [
  "jade-docx-layout",
  "jade-docx-reader",
  "jade-docx-writer",
+ "jade-ink",
  "jade-selection",
  "png 0.17.16",
  "proptest",
