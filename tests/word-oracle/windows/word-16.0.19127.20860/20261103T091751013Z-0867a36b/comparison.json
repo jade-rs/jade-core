@@ -1,0 +1,32 @@
+[
+  {
+    "fixture": "word-windows-tnr-balanced-sweep",
+    "word_pages": 20,
+    "native_pages": 20,
+    "word_glyphs": 480,
+    "native_glyphs": 480,
+    "matched": 480,
+    "within_0_375pt": 480,
+    "x_p50": 0.05622436523435681,
+    "x_p95": 0.15632324218751137,
+    "y_p50": 0.027496337890625,
+    "y_p95": 0.08221435546875,
+    "first_errors": [],
+    "pdf_sha256": "be8a215ec926ff936f2c9640631eb058f7a885604065e33c6fbb13425213d525"
+  },
+  {
+    "fixture": "word-windows-tnr-unbalanced-sweep",
+    "word_pages": 20,
+    "native_pages": 20,
+    "word_glyphs": 480,
+    "native_glyphs": 480,
+    "matched": 480,
+    "within_0_375pt": 480,
+    "x_p50": 0.0541839599609375,
+    "x_p95": 0.16650177001953637,
+    "y_p50": 0.027496337890625,
+    "y_p95": 0.08221435546875,
+    "first_errors": [],
+    "pdf_sha256": "50bce0c9d61760652a9d246a174b4dfcc1ec594ade6b136c83be13591d67dfc6"
+  }
+]

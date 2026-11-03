@@ -1228,11 +1228,19 @@ impl ResolvedRunStyle {
     /// style clones. Public descriptor replacement still resolves fresh metrics.
     #[inline]
     pub(crate) fn ascii_advance_px(&self, ascii: u8) -> Option<f64> {
+        // Mac paragraphs can run on a Windows-default thread. The TNR facts
+        // added for Windows must not change the existing Mac host fallback.
         self.ascii_metrics()
+            .filter(|metrics| {
+                !matches!(
+                    metrics,
+                    crate::line_metrics::WordAsciiMetrics::TimesNewRoman(..)
+                )
+            })
             .and_then(|metrics| metrics.advance_px(ascii))
     }
 
-    pub(crate) fn windows_fixed_ascii_advance_px(&self, ascii: u8) -> Option<f64> {
+    pub(crate) fn windows_requested_ascii_advance_px(&self, ascii: u8) -> Option<f64> {
         use crate::line_metrics::WordAsciiMetrics;
         self.ascii_metrics()
             .filter(|metrics| {
@@ -1241,6 +1249,7 @@ impl ResolvedRunStyle {
                     WordAsciiMetrics::Fixed(..)
                         | WordAsciiMetrics::YuMincho(..)
                         | WordAsciiMetrics::YuMinchoBold(..)
+                        | WordAsciiMetrics::TimesNewRoman(..)
                 )
             })
             .and_then(|metrics| metrics.advance_px(ascii))

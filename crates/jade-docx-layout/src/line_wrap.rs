@@ -1145,7 +1145,19 @@ fn uses_requested_ascii_width(context: &GraphemeAdvanceContext<'_>) -> bool {
             || context
                 .font_descriptor
                 .and_then(crate::line_metrics::cached_word_fixed_east_asian_em_px)
-                .is_some())
+                .is_some()
+            || (context
+                .paragraph_style
+                .is_none_or(|p| p.oracle_advance_px_by_text_offset.is_none())
+                && context.font_descriptor.is_some_and(|descriptor| {
+                    matches!(
+                        crate::line_metrics::word_ascii_metrics_for_platform(
+                            descriptor,
+                            crate::line_metrics::WordLayoutPlatform::Windows
+                        ),
+                        Some(crate::line_metrics::WordAsciiMetrics::TimesNewRoman(..))
+                    )
+                })))
 }
 
 fn compute_resolved_grapheme_advance(
@@ -1168,8 +1180,19 @@ fn compute_resolved_grapheme_advance(
             == crate::line_metrics::WordLayoutPlatform::Mac
         {
             style.ascii_advance_px(context.grapheme.as_bytes()[0])
+        } else if context
+            .paragraph_style
+            .is_some_and(|p| p.oracle_advance_px_by_text_offset.is_some())
+            && matches!(
+                style.ascii_metrics_for_descriptor(&style.font_descriptor_latin_ascii),
+                Some(crate::line_metrics::WordAsciiMetrics::TimesNewRoman(..))
+            )
+        {
+            // Legacy traces omit terminal advances. Keep their established
+            // host fallback for unmapped glyphs instead of mixing versions.
+            None
         } else {
-            style.windows_fixed_ascii_advance_px(context.grapheme.as_bytes()[0])
+            style.windows_requested_ascii_advance_px(context.grapheme.as_bytes()[0])
         }
     } else {
         None
@@ -2707,8 +2730,10 @@ fn compute_text_advance_step_with_descriptor<'a, C: LineWrapContext>(
     let synthetic_bold_extra = if measured_width_is_oracle || is_whitespace_text(grapheme) {
         0.0
     } else if script == ScriptCategory::EastAsia
-        && paragraph_style
-            .is_some_and(|p| p.word_platform == crate::line_metrics::WordLayoutPlatform::Windows)
+        && paragraph_style.is_some_and(|p| {
+            p.word_platform == crate::line_metrics::WordLayoutPlatform::Windows
+                && p.oracle_advance_px_by_text_offset.is_none()
+        })
     {
         crate::line_metrics::word_windows_cjk_synthetic_bold_extra_advance_px(font_descriptor)
     } else {
@@ -2724,16 +2749,42 @@ fn compute_text_advance_step_with_descriptor<'a, C: LineWrapContext>(
             .and_then(|cell| style.monospace_em_px(font_descriptor).map(|em| em * cell))
             .or_else(|| crate::line_metrics::word_mac_emoji_advance_px(grapheme, font_descriptor))
     };
+    // Requested Windows font facts already own these advances below. Do not
+    // measure the substitute face first only to discard its width afterward.
+    let requested_ascii_measure = if !measured_width_is_oracle
+        && monospace_width.is_none()
+        && script == ScriptCategory::Latin
+        && grapheme.len() == 1
+        && (b' '..=b'~').contains(&grapheme.as_bytes()[0])
+        && paragraph_style.is_some_and(|p| {
+            p.word_platform == crate::line_metrics::WordLayoutPlatform::Windows
+                && p.oracle_advance_px_by_text_offset.is_none()
+        }) {
+        style
+            .ascii_metrics_for_descriptor(font_descriptor)
+            .filter(|metrics| {
+                matches!(
+                    metrics,
+                    crate::line_metrics::WordAsciiMetrics::TimesNewRoman(..)
+                )
+            })
+            .and_then(|metrics| metrics.advance_px(grapheme.as_bytes()[0]))
+    } else {
+        None
+    };
     let measured_glyph_width = match (oracle_measured_glyph_width, monospace_width) {
         (Some(width), _) => width,
         (None, Some(width)) => width + synthetic_bold_extra,
         (None, None) => {
-            ctx.measure_text_with_font_key(
-                grapheme,
-                font_descriptor,
-                font_descriptor_hash,
-                font_descriptor_id,
-            )? + synthetic_bold_extra
+            (match requested_ascii_measure {
+                Some(width) => width,
+                None => ctx.measure_text_with_font_key(
+                    grapheme,
+                    font_descriptor,
+                    font_descriptor_hash,
+                    font_descriptor_id,
+                )?,
+            }) + synthetic_bold_extra
         }
     };
     let extra_spacing = if !measured_width_is_oracle
@@ -2851,7 +2902,8 @@ fn compute_text_advance_step_with_descriptor<'a, C: LineWrapContext>(
                     next_grapheme,
                     font_descriptor,
                 )
-            }),
+            })
+            .or(requested_ascii_measure),
     );
     // When the resolved font slot is genuinely Default, Word for Windows keeps
     // numeric text in the ANSI classification and does not add the East-Asian
@@ -15939,6 +15991,7 @@ mod tests {
             start: 0,
             end: text.len(),
             properties: Some(Rc::new(RunProperties {
+                font_family: Some("Recording Test".into()),
                 fit_text: Some(RunFitText {
                     val: 300,
                     id: Some(50),
@@ -15982,6 +16035,7 @@ mod tests {
                 start,
                 end,
                 properties: Some(Rc::new(RunProperties {
+                    font_family: Some("Recording Test".into()),
                     fit_text: Some(RunFitText {
                         val: 300,
                         id: Some(id),

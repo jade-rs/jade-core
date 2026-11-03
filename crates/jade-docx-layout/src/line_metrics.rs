@@ -745,7 +745,8 @@ pub fn word_fixed_ascii_advance_px(font_descriptor: &str) -> Option<f64> {
         | WordAsciiMetrics::NotoSans(_)
         | WordAsciiMetrics::Calibri(_, _)
         | WordAsciiMetrics::Aptos(_, _)
-        | WordAsciiMetrics::Bookman(_) => None,
+        | WordAsciiMetrics::Bookman(_)
+        | WordAsciiMetrics::TimesNewRoman(_, _, _) => None,
     }
 }
 
@@ -763,6 +764,7 @@ pub(crate) enum WordAsciiMetrics {
     Calibri(f64, bool),
     Aptos(f64, bool),
     Bookman(f64),
+    TimesNewRoman(f64, bool, bool),
 }
 
 // Numeric hmtx facts only: 52 regular / 55 bold ASCII mappings in 42 / 11
@@ -1293,6 +1295,22 @@ impl WordAsciiMetrics {
                 };
                 (units != 0).then_some(unit_px * f64::from(units))
             }
+            Self::TimesNewRoman(unit_px, bold, italic) => {
+                // Windows hmtx facts validated against both Word boundary
+                // sweeps. Unobserved glyphs retain host font measurement.
+                let units = match (ascii, bold, italic) {
+                    (b'a', false, false) => 909.0,
+                    (b'a', _, _) => 1024.0,
+                    (b's', _, _) => 797.0,
+                    (b'd', true, false) => 1139.0,
+                    (b'd', _, _) => 1024.0,
+                    (b'Y', true, true) => 1251.0,
+                    (b'Y', false, true) => 1139.0,
+                    (b'Y', _, false) => 1479.0,
+                    _ => return None,
+                };
+                Some(unit_px * units)
+            }
             Self::Bookman(unit_px) => {
                 // Fourteen source-matched hmtx mappings in Word Mac's math
                 // PDF. Other characters and style variants keep host widths.
@@ -1795,6 +1813,9 @@ fn parse_word_ascii_metrics(
         "游ゴシック Light" | "Yu Gothic Light" | "YuGothic-Light" if !bold && !italic => {
             Some(WordAsciiMetrics::YuGothicLight(em_px / 2048.0))
         }
+        "Times New Roman" if platform == WordLayoutPlatform::Windows => Some(
+            WordAsciiMetrics::TimesNewRoman(em_px / 2048.0, bold, italic),
+        ),
         "Century" if !bold && !italic => Some(WordAsciiMetrics::Century(em_px / 2048.0)),
         "Bookman Old Style" if !bold && !italic => Some(WordAsciiMetrics::Bookman(em_px / 2048.0)),
         "Calibri" if !italic => Some(WordAsciiMetrics::Calibri(em_px / 2048.0, bold)),

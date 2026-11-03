@@ -4,11 +4,13 @@ References are separated by complete Word product version and immutable capture 
 The captured application is **16.0.19127.20860**; no other Word build has been
 measured. New builds create additional directories and keep older versions' tests.
 
-The regression index covers **15 unique documents, 93 pages and 17,139 visible
+The regression index covers **17 unique documents, 133 pages and 18,099 visible
 non-whitespace characters**, combining original PDF origins and Word drawing
 origins. Each registered set checks text, order, page count and both absolute
 coordinate axes within **0.375pt**. No origin fitting or tolerance increase is used.
 Mac references and their tolerances are independent and unchanged.
+Legacy partial COM traces retain their existing fallback for omitted terminal
+advances; complete EMF origins are checked independently without replay overrides.
 
 ## Drawing origins and PDF origins
 
@@ -19,12 +21,14 @@ EMF bounds, drawing mode, transforms, paper dimensions and hashes, and rejects
 unsupported text encodings rather than guessing coordinates. CI reconstructs
 registered references from the original EMF files and rejects changed origins.
 
-The drawing sets contain all **10,908 characters** of `yokohama_page1`,
+The drawing sets contain all **11,868 characters** of `yokohama_page1`,
 `yokohama_page6`, `contract`, `numbering-restart` and
-`word-windows-yu-gothic-lines`. The first four-document set is
+`word-windows-yu-gothic-lines`, plus both Times New Roman boundary sweeps. The first four-document set is
 `20261103T081431275Z-eac136ae`; the corrected contract is separately registered in
-`20261103T082355941Z-8b9726d7` (1,907/1,907). Both were captured from clean engine
-source. Original PDF exports and their comparisons remain alongside them:
+`20261103T082355941Z-8b9726d7` (1,907/1,907). These were captured from clean engine
+source. Capture `20261103T091751013Z-0867a36b` adds both 20-page, 480-character
+Times New Roman probes: Regular/Bold/Italic/Bold Italic at 9, 10.5, 12, 20
+and 40pt, with and without SBCS/DBCS balancing. All 960 origins pass. Original PDF exports and their comparisons remain alongside them:
 PDF export rounding still creates subpoint differences in the Yokohama and
 contract PDFs, so those PDF comparisons are not promoted as passing PDF origins.
 
@@ -33,7 +37,8 @@ contract PDFs, so those PDF comparisons are not promoted as passing PDF origins.
 The installed-font test compares every registered origin, including auxiliary
 text such as footers, on the Windows Word capture machine. The Windows Actions
 job also checks full X/Y origins for both Yokohama documents (6,278 characters)
-and the Yu Gothic probe (2,160 characters) using bundled font stand-ins. It
+the Yu Gothic probe (2,160 characters), and both Times New Roman sweeps
+(960 characters) using bundled font stand-ins. It
 checks 21 numbering/grid boundary origins and 144 controlled baseline lines.
 The Yu Gothic fixture covers Regular, Light, Medium and Bold at six sizes and
 omits styles to catch accidental import of Mac's implicit justification.

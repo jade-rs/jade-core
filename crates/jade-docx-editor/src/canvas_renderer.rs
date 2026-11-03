@@ -268,6 +268,7 @@ pub(crate) mod ink_preview;
 #[cfg(test)]
 mod ink_tests;
 mod keep_next;
+mod line_height_cache;
 #[cfg(test)]
 mod note_tests;
 #[cfg(test)]
@@ -3944,6 +3945,7 @@ where
     font_line_box_height_cache: RefCell<FxHashMap<String, f64>>,
     /// Cache for paragraph wrap results to avoid redundant measure_text calls.
     paragraph_wrap_cache: Rc<RefCell<ParagraphWrapCache>>,
+    line_height_plan_cache: RefCell<line_height_cache::LineHeightPlanCache>,
     /// Content-addressed intrinsic/autofit results shared by consecutive table
     /// renders. Final row placement still runs every pass against current page
     /// geometry; only deterministic text measurements are retained.
@@ -8647,6 +8649,7 @@ where
             trailing_overhang_cache: RefCell::new(FxHashMap::default()),
             font_line_box_height_cache: RefCell::new(FxHashMap::default()),
             paragraph_wrap_cache: Rc::new(RefCell::new(ParagraphWrapCache::default())),
+            line_height_plan_cache: RefCell::default(),
             table_autofit_cache: RefCell::new(table::TableAutofitCache::default()),
             table_autofit_cache_enabled: true,
             table_text_measure_cache: Rc::new(RefCell::new(TextMeasureCache::default())),
@@ -9673,6 +9676,7 @@ where
     #[allow(dead_code)]
     pub fn clear_paragraph_wrap_cache(&mut self) {
         self.paragraph_wrap_cache.borrow_mut().clear();
+        self.line_height_plan_cache.borrow_mut().clear();
     }
 
     /// Invalidates paragraph wrap cache from a specific paragraph index onwards.
@@ -21456,22 +21460,13 @@ where
                     || paragraph_style.word_proportional_line_sizing.is_some()
             })
             .and_then(|numbering| self.numbering_first_line_ascent(numbering));
-        let line_heights = if numbering_ascent.is_some() {
-            WrappedLine::line_heights_px_with_numbering_ascent(
-                &lines,
-                paragraph_style,
-                line_height,
-                paragraph_mark_font_box,
-                numbering_ascent,
-            )
-        } else {
-            WrappedLine::line_heights_px_with_paragraph_mark(
-                &lines,
-                paragraph_style,
-                line_height,
-                paragraph_mark_font_box,
-            )
-        };
+        let line_heights = self.line_height_plan_cache.borrow_mut().heights(
+            &lines,
+            paragraph_style,
+            line_height,
+            paragraph_mark_font_box,
+            numbering_ascent,
+        );
         let band_height = |band: usize| {
             let start = band_starts[band];
             let end = band_starts.get(band + 1).copied().unwrap_or(lines.len());
@@ -42761,7 +42756,15 @@ mod tests {
                     .body
                     .and_then(|body| body.elements.into_iter().next())
                     .and_then(|element| match element {
-                        BodyElement::Paragraph(paragraph) => Some(*paragraph),
+                        BodyElement::Paragraph(mut paragraph) => {
+                            for run in &mut paragraph.runs {
+                                run.properties = Some(RunProperties {
+                                    font_family: Some("Recording Test".into()),
+                                    ..Default::default()
+                                });
+                            }
+                            Some(*paragraph)
+                        }
                         _ => None,
                     })
                     .expect("one paragraph"),
@@ -44474,20 +44477,14 @@ mod tests {
         use jade_painter::recording::{Op, RecordingPainter};
         let renderer = renderer_measuring(&[("a", 10.0), ("b", 10.0), ("c", 10.0)]);
         let painter = RecordingPainter::new();
+        let style = renderer.resolve_applied_run_style_cached(Some(&RunProperties {
+            font_family: Some("Recording Test".into()),
+            ..Default::default()
+        }));
 
         let (width, _) = renderer
             .draw_text_with_spacing(
-                &painter,
-                "abc",
-                5.0,
-                50.0,
-                0.0,
-                &test_applied_style(1.0),
-                None,
-                None,
-                None,
-                None,
-                None,
+                &painter, "abc", 5.0, 50.0, 0.0, &style, None, None, None, None, None,
             )
             .expect("recording backend is infallible");
 
