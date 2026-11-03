@@ -38,6 +38,8 @@ members = [
   "crates/jade-preview-plugin-api",
   "crates/jade-opc",
   "crates/jade-pptx-reader",
+  "crates/jade-smartart",
+  "crates/jade-picture-effects",
   "crates/jade-pptx-writer",
   "crates/jade-pptx-layout",
   "crates/jade-pptx-render",
