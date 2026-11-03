@@ -10,9 +10,10 @@ use jade_docx_layout::selection::{SelectionRange, TextPosition};
 use super::paragraph_undo::{commented_body_paragraph, ParagraphRangeUndo};
 use super::raw_xml_undo::RawXmlUndo;
 use super::text_edit::{
-    append_rebased_tail_comment_anchors, apply_text_edit, range_contains_deleted_revision,
-    rebase_comment_anchors_for_edit, split_runs_at_preserving_source, unprotected_spans,
-    CommentAnchors, DeletedFields, ZeroWidthRuns,
+    append_rebased_tail_comment_anchors, apply_text_edit, is_empty_field_result,
+    range_contains_deleted_revision, rebase_comment_anchors_for_edit,
+    split_runs_at_preserving_source, unprotected_spans, CommentAnchors, DeletedFields,
+    ZeroWidthRuns,
 };
 use super::{Command, CommandContext, CommandError, CommandResult, HistoryRenderFootprint};
 
@@ -1370,6 +1371,10 @@ impl FoldedSelection {
             }
             paragraph_start = position + 1;
         }
+        // A computed field's result goes or stays with its code. Cut with the
+        // text, a field right at the start of the selection lost its result
+        // run and kept its code, and came back on reload.
+        let keeps_as_code = |run: &Run| zero_width.keeps(run) || is_empty_field_result(run);
         let dropped = if keeps_every_field {
             HashSet::new()
         } else {
@@ -1377,7 +1382,7 @@ impl FoldedSelection {
             runs.iter()
                 .enumerate()
                 .filter(|&(index, &(run, position))| {
-                    zero_width.keeps(run) && !fields.keeps_zero_width(index, position)
+                    keeps_as_code(run) && !fields.keeps_zero_width(index, position)
                 })
                 .filter_map(|(_, (run, _))| run.node_id)
                 .collect()
@@ -1399,7 +1404,7 @@ impl FoldedSelection {
                 let _ = split_runs_at_preserving_source(&mut selected, end_offset, &zero_width);
             }
             for mut run in selected {
-                if zero_width.keeps(&run) {
+                if keeps_as_code(&run) {
                     let Some(id) = run.node_id.filter(|id| !dropped.contains(id)) else {
                         continue;
                     };

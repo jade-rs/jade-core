@@ -1502,7 +1502,7 @@ fn table_cell_fit_text_fixture_preserves_enabled_and_disabled_cells() {
 fn table_repeating_header_fixture_parses_empty_on_and_explicit_false() {
     let xml = read_document_xml("table-repeating-header.docx");
     assert!(xml.contains("<w:tblHeader/>"));
-    assert!(xml.contains("<w:tblHeader w:val=\"false\"/>"));
+    assert!(xml.contains("<w:tblHeader w:val=\"off\"/>"));
     let document = DocumentParser::new()
         .parse_document_xml(&xml)
         .expect("parse repeating table-header fixture");

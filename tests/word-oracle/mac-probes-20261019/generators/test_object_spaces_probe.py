@@ -34,6 +34,8 @@ class ObjectSpaceProbe(unittest.TestCase):
                              ["Hello World", "Hello  World", "Hello World "])
             self.assertEqual(len(doc.findall(".//" + WP + "inline")), 5)
             self.assertEqual(len(doc.findall(".//" + WP + "anchor")), 1)
+            ids = [p.get("id") for p in doc.findall(".//" + WP + "docPr")]
+            self.assertEqual(len(ids), len(set(ids)))
 
     def test_space_run_pair_has_identical_content_and_opposite_balance_setting(self):
         with tempfile.TemporaryDirectory() as out:

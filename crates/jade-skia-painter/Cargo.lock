@@ -1237,6 +1237,7 @@ dependencies = [
  "jade-docx-merge",
  "jade-docx-reader",
  "jade-docx-writer",
+ "jade-ink",
  "jade-opc",
  "jade-painter",
  "jade-pptx-layout",
@@ -1314,6 +1315,7 @@ name = "jade-docx-reader"
 version = "0.1.0"
 dependencies = [
  "encoding_rs",
+ "jade-ink",
  "jade-opc",
  "quick-xml 0.41.0",
  "serde",
@@ -1329,6 +1331,16 @@ dependencies = [
  "memchr",
  "thiserror 2.0.20",
  "zip",
+]
+
+[[package]]
+name = "jade-ink"
+version = "0.1.0"
+dependencies = [
+ "jade-painter",
+ "png 0.17.16",
+ "quick-xml 0.41.0",
+ "serde",
 ]
 
 [[package]]
@@ -1355,9 +1367,14 @@ name = "jade-painter"
 version = "0.1.0"
 
 [[package]]
+name = "jade-picture-effects"
+version = "0.1.0"
+
+[[package]]
 name = "jade-pptx-layout"
 version = "0.1.0"
 dependencies = [
+ "jade-picture-effects",
  "jade-pptx-reader",
  "jade-text-layout",
  "serde",
@@ -1369,7 +1386,9 @@ dependencies = [
 name = "jade-pptx-reader"
 version = "0.1.0"
 dependencies = [
+ "jade-ink",
  "jade-opc",
+ "jade-smartart",
  "quick-xml 0.39.4",
  "serde",
  "thiserror 2.0.20",
@@ -1399,6 +1418,13 @@ dependencies = [
  "lopdf",
  "rustybuzz",
  "skia-safe",
+]
+
+[[package]]
+name = "jade-smartart"
+version = "0.1.0"
+dependencies = [
+ "quick-xml 0.39.4",
 ]
 
 [[package]]

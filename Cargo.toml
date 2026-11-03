@@ -33,6 +33,7 @@ members = [
   "crates/jade-docx-headless-mcp",
   "crates/jade-canvas-painter",
   "crates/jade-painter",
+  "crates/jade-ink",
   "crates/jade-docx-pdf-renderer",
   "crates/jade-docx-para-compare",
   "crates/jade-preview-plugin-api",

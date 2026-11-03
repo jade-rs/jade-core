@@ -1,10 +1,11 @@
-//! Word ink: the InkML parts (W3C InkML 2011) a `w14:contentPart` points at.
+//! Office ink: the InkML parts (W3C InkML 2011) a `w14:contentPart` (Word)
+//! or `p:contentPart` (PowerPoint) points at.
 //!
-//! Word keeps each ink drawing as a drawing whose graphic is a
-//! `w14:contentPart` relating to an `application/inkml+xml` part, inside an
-//! `mc:AlternateContent` whose fallback is a picture of the strokes. This
-//! reads such a part into strokes in the drawing's own pixel box, and writes
-//! strokes back as InkML Word reads.
+//! Both keep each ink drawing as a content part relating to an
+//! `application/inkml+xml` part, inside an `mc:AlternateContent` whose
+//! fallback is a picture of the strokes. This reads such a part into strokes
+//! in the drawing's own pixel box, and writes strokes back as InkML Office
+//! reads.
 
 use quick_xml::events::Event;
 use quick_xml::Reader;
@@ -512,6 +513,43 @@ fn escape(text: &str) -> String {
         .replace('<', "&lt;")
         .replace('>', "&gt;")
         .replace('"', "&quot;")
+}
+
+/// A box: left, top, width, height in px.
+pub type InkBox = (f64, f64, f64, f64);
+
+/// The least an ink drawing's box measures across: its widest stroke (and a
+/// pixel). A perfectly straight vertical or horizontal stroke has no extent
+/// of its own across it; a box of none leaves the drawing's size to whatever
+/// lays it out.
+pub fn ink_min_extent(traces: &[InkTrace]) -> f64 {
+    traces
+        .iter()
+        .map(|trace| trace.brush.width_px.max(trace.brush.height_px))
+        .filter(|width| width.is_finite())
+        .fold(1.0, f64::max)
+}
+
+/// The page-coordinate box of `traces` with their brushes, and the traces
+/// moved into it.
+pub fn traces_in_box(traces: &[InkTrace]) -> Option<(InkBox, Vec<InkTrace>)> {
+    let (left, top, right, bottom) = InkContent::bounds(traces)?;
+    let moved = traces
+        .iter()
+        .map(|trace| InkTrace {
+            points: trace
+                .points
+                .iter()
+                .map(|&(x, y)| (x - left, y - top))
+                .collect(),
+            brush: trace.brush.clone(),
+        })
+        .collect();
+    let min = ink_min_extent(traces);
+    Some((
+        (left, top, (right - left).max(min), (bottom - top).max(min)),
+        moved,
+    ))
 }
 
 #[cfg(test)]

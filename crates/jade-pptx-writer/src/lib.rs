@@ -7,6 +7,7 @@ pub use xml::layouts::{
     SlideLayoutInfo,
 };
 pub mod animation;
+pub mod media;
 mod picture_format;
 mod presenting;
 mod shape_insertion;
@@ -622,6 +623,7 @@ pub fn set_shape_transform(
     let baseline = inherited_shape_transform(&deck, slide, id);
     let before = xml::shapes(&xml)?.into_iter().find(|shape| shape.id == id);
     let changed = xml::set_transform(&xml, id, transform, baseline)?;
+    let changed = xml::media::follow_ink_transform(&changed, id, transform)?;
     if changed == xml {
         return Ok(bytes.to_vec());
     }

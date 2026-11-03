@@ -12,6 +12,7 @@ pub use blip::BlipEffect;
 pub mod animation;
 pub mod chart;
 pub mod error;
+pub mod media;
 mod shape_guides;
 pub mod slide;
 mod slide_theme;
@@ -37,6 +38,11 @@ pub use chart::{
     DataLabels,
 };
 pub use error::{PptxError, Result};
+pub use media::{
+    cue_at, media_duration_ms, parse_media_playback, parse_webvtt, CaptionCue, CaptionPlacement,
+    CaptionTrack, Ink, InkBrush, InkTool, InkTrace, Media, MediaBookmark, MediaKind, MediaPlayback,
+    MediaStart,
+};
 pub use shape_guides::ShapeGuides;
 pub use slide::{
     diagram_drawing_rel_id, parse_diagram_drawing_xml, Chart, CustomGeometry, GeometryPath,
@@ -273,6 +279,12 @@ pub fn read_deck(bytes: &[u8]) -> Result<Deck> {
                 &entry.part_name,
                 &theme_colors,
             )?;
+            resolve_ink_and_media(
+                &package,
+                &mut content.shapes,
+                &relationships,
+                &entry.part_name,
+            )?;
             layout_part = relationships
                 .by_type_suffix("/slideLayout")
                 .into_iter()
@@ -383,7 +395,7 @@ fn resolve_slide_number_fields(shapes: &mut [ShapeItem], slide_number: usize) {
                     }
                 }
             }
-            ShapeItem::Picture(_) | ShapeItem::Chart(_) => {}
+            ShapeItem::Picture(_) | ShapeItem::Chart(_) | ShapeItem::Ink(_) => {}
         }
     }
 }
@@ -448,7 +460,7 @@ fn resolve_hyperlinks(shapes: &mut [ShapeItem], relationships: &jade_opc::Relati
                     }
                 }
             }
-            ShapeItem::Picture(_) | ShapeItem::Chart(_) => {}
+            ShapeItem::Picture(_) | ShapeItem::Chart(_) | ShapeItem::Ink(_) => {}
         }
     }
 }
@@ -572,7 +584,7 @@ fn visit_shape_bullets(shapes: &mut [ShapeItem], visit: &mut dyn FnMut(&mut Bull
                     }
                 }
             }
-            ShapeItem::Picture(_) | ShapeItem::Chart(_) => {}
+            ShapeItem::Picture(_) | ShapeItem::Chart(_) | ShapeItem::Ink(_) => {}
         }
     }
 }
@@ -606,9 +618,101 @@ fn resolve_image_parts(
                     .and_then(|id| relationships.target(id))
                     .map(|target| jade_opc::resolve_target(slide_part, target));
             }
-            ShapeItem::Table(_) | ShapeItem::Chart(_) => {}
+            ShapeItem::Table(_) | ShapeItem::Chart(_) | ShapeItem::Ink(_) => {}
         }
     }
+}
+
+/// Reads each ink drawing's InkML part into its strokes, and finds each
+/// video and audio's media: the embedded part, or a linked file's target.
+fn resolve_ink_and_media(
+    package: &OpcPackage,
+    shapes: &mut [ShapeItem],
+    relationships: &jade_opc::Relationships,
+    slide_part: &str,
+) -> Result<()> {
+    for item in shapes {
+        match item {
+            ShapeItem::Ink(ink) => {
+                let Some(part) = ink
+                    .rel_id
+                    .as_deref()
+                    .and_then(|id| relationships.relationship(id))
+                    .filter(|relationship| !relationship.external)
+                    .map(|relationship| jade_opc::resolve_target(slide_part, &relationship.target))
+                else {
+                    continue;
+                };
+                if let Some(xml) = package.part_str(&part)? {
+                    let traces = jade_ink::inkml::parse_inkml(&xml);
+                    let (width, height) = ink
+                        .transform
+                        .map(|t| (emu_to_px(t.extent_emu.0), emu_to_px(t.extent_emu.1)))
+                        .unwrap_or((0.0, 0.0));
+                    ink.traces = jade_ink::inkml::fit_traces_to_box(traces, width, height);
+                }
+                ink.ink_part = Some(part);
+            }
+            ShapeItem::Picture(picture) => {
+                let Some(media) = picture.media.as_mut() else {
+                    continue;
+                };
+                if let Some(relationship) = media
+                    .embed_rel_id
+                    .as_deref()
+                    .and_then(|id| relationships.relationship(id))
+                {
+                    if relationship.external {
+                        media.linked_target = Some(relationship.target.clone());
+                    } else {
+                        media.media_part =
+                            Some(jade_opc::resolve_target(slide_part, &relationship.target));
+                    }
+                }
+                if media.media_part.is_none() {
+                    // A linked file: p14:media r:link, else the file element's.
+                    let linked = media
+                        .link_rel_id
+                        .as_deref()
+                        .or(media.file_rel_id.as_deref())
+                        .and_then(|id| relationships.relationship(id));
+                    match linked {
+                        Some(relationship) if relationship.external => {
+                            media.linked_target = Some(relationship.target.clone());
+                        }
+                        Some(relationship) => {
+                            media.media_part =
+                                Some(jade_opc::resolve_target(slide_part, &relationship.target));
+                        }
+                        None => {}
+                    }
+                }
+                for track in &mut media.captions {
+                    let Some(relationship) = track
+                        .rel_id
+                        .as_deref()
+                        .and_then(|id| relationships.relationship(id))
+                    else {
+                        continue;
+                    };
+                    if relationship.external {
+                        track.linked_target = Some(relationship.target.clone());
+                        continue;
+                    }
+                    let part = jade_opc::resolve_target(slide_part, &relationship.target);
+                    if let Some(text) = package.part_str(&part)? {
+                        track.cues = media::parse_webvtt(&text);
+                    }
+                    track.part = Some(part);
+                }
+            }
+            ShapeItem::Group(group) => {
+                resolve_ink_and_media(package, &mut group.children, relationships, slide_part)?;
+            }
+            _ => {}
+        }
+    }
+    Ok(())
 }
 
 /// Reads each chart frame's part: kind, title and cached series.

@@ -61,7 +61,7 @@ fn map_body_elements(elements: &mut [BodyElement], xml_parent: &XmlElement, doc:
                     .take()
                     .or_else(|| find_next_with_name(&mut iter, "w:p"));
                 if let Some(xml_paragraph) = xml_paragraph {
-                    map_paragraph(paragraph.as_mut(), xml_paragraph, doc);
+                    attach_paragraph_xml_ids(paragraph.as_mut(), xml_paragraph, doc);
                 } else {
                     paragraph.as_mut().node_id = None;
                 }
@@ -95,7 +95,14 @@ fn map_body_elements(elements: &mut [BodyElement], xml_parent: &XmlElement, doc:
     }
 }
 
-fn map_paragraph(paragraph: &mut Paragraph, xml_paragraph: &XmlElement, doc: &DocxXmlDocument) {
+/// Links one already-parsed paragraph to its final XML subtree, including
+/// field containers and runs nested in hyperlinks. Use after inserting a
+/// generated paragraph, whose temporary XML IDs are reassigned on insertion.
+pub fn attach_paragraph_xml_ids(
+    paragraph: &mut Paragraph,
+    xml_paragraph: &XmlElement,
+    doc: &DocxXmlDocument,
+) {
     paragraph.node_id = Some(xml_paragraph.id);
 
     for run in &mut paragraph.runs {
@@ -448,10 +455,40 @@ fn map_table_row(row: &mut TableRow, xml_row: &XmlElement, doc: &DocxXmlDocument
     row.node_id = Some(xml_row.id);
     let mut cells = Vec::new();
     collect_transparently_wrapped_children(&xml_row.children, &["w:tc"], &mut cells);
-    let mut xml_cells = cells.into_iter();
+    // Ordinary rows need no legacy reconstruction or property scans.
+    if cells.len() == row.cells.len() {
+        for (cell, xml_cell) in row.cells.iter_mut().zip(cells) {
+            map_table_cell(cell, xml_cell, doc);
+        }
+        return;
+    }
+    let mut xml_cells = cells.into_iter().peekable();
     for cell in &mut row.cells {
         if let Some(xml_cell) = xml_cells.next() {
-            map_table_cell(cell, xml_cell, doc);
+            if horizontal_merge_kind(xml_cell) == Some("restart") {
+                while xml_cells
+                    .peek()
+                    .is_some_and(|next| horizontal_merge_kind(next) == Some("continue"))
+                {
+                    xml_cells.next();
+                }
+                match normalized_legacy_horizontal_merge_cell(
+                    xml_row,
+                    xml_cell.id,
+                    &doc.root().attributes,
+                ) {
+                    Ok(Some(normalized)) => map_table_cell(cell, &normalized, doc),
+                    Ok(None) => map_table_cell(cell, xml_cell, doc),
+                    Err(_) => {
+                        // Never attach a logical block to an unrelated raw cell
+                        // if a malformed legacy group cannot be reconstructed.
+                        cell.node_id = None;
+                        clear_block_ids(cell.blocks.as_mut_slice());
+                    }
+                }
+            } else {
+                map_table_cell(cell, xml_cell, doc);
+            }
         } else {
             cell.node_id = None;
             clear_block_ids(cell.blocks.as_mut_slice());
@@ -565,6 +602,138 @@ fn clear_block_ids(blocks: &mut [BodyElement]) {
                 // Math paragraphs currently do not carry XML node IDs.
             }
         }
+    }
+}
+
+/// The raw form of a reader-normalized legacy cell, retaining the original
+/// block/run ids. No stored XML is changed: callers can use this view for id
+/// mapping or gather its content before a structural edit.
+///
+/// Only legacy groups take this path. Reparse the small group without its
+/// horizontal markers so the *same reader contract* decides which mandatory
+/// empty paragraphs to discard, including fields, equations and drawings.
+pub fn normalized_legacy_horizontal_merge_cell(
+    row: &XmlElement,
+    cell_id: XmlNodeId,
+    root_attributes: &[super::XmlAttribute],
+) -> Result<Option<XmlElement>, String> {
+    let mut cells = Vec::new();
+    collect_transparently_wrapped_children(&row.children, &["w:tc"], &mut cells);
+    let Some(at) = cells.iter().position(|cell| cell.id == cell_id) else {
+        return Err("legacy merge source cell is missing".into());
+    };
+    if horizontal_merge_kind(cells[at]) != Some("restart") {
+        return Ok(None);
+    }
+    let end = at
+        + 1
+        + cells[at + 1..]
+            .iter()
+            .take_while(|cell| horizontal_merge_kind(cell) == Some("continue"))
+            .count();
+    if end == at + 1 {
+        return Ok(None);
+    }
+    let sources = &cells[at..end];
+    let mut unmerged_row = XmlElement {
+        id: row.id,
+        name: row.name.clone(),
+        attributes: row.attributes.clone(),
+        children: Vec::new(),
+    };
+    unmerged_row.children = sources.iter().map(|cell| {
+        let mut cell = (*cell).clone();
+        for child in &mut cell.children {
+            if let XmlNode::Element(properties) = child {
+                if properties.name == "w:tcPr" {
+                    properties.children.retain(|node| !matches!(node, XmlNode::Element(element) if element.name == "w:hMerge"));
+                }
+            }
+        }
+        XmlNode::Element(cell)
+    }).collect();
+    let wrap = |name: &str, children: Vec<XmlNode>| XmlElement {
+        id: XmlNodeId::new(0),
+        name: name.into(),
+        attributes: Vec::new(),
+        children,
+    };
+    let mut root = wrap(
+        "w:document",
+        vec![XmlNode::Element(wrap(
+            "w:body",
+            vec![XmlNode::Element(wrap(
+                "w:tbl",
+                vec![XmlNode::Element(unmerged_row)],
+            ))],
+        ))],
+    );
+    root.attributes = root_attributes.to_vec();
+    let mut xml = String::new();
+    let plan = super::schema::write_plan(&root);
+    root.write_with(&mut xml, plan.namespaces.as_ref(), &plan.renumbered, None)
+        .map_err(|error| error.to_string())?;
+    let parsed = DocumentParser::new()
+        .parse_document_xml(&xml)
+        .map_err(|error| error.to_string())?;
+    let parsed_cells = parsed
+        .body
+        .as_ref()
+        .and_then(|body| body.elements.first())
+        .and_then(|block| {
+            if let BodyElement::Table(table) = block {
+                table.rows.first().map(|row| &row.cells)
+            } else {
+                None
+            }
+        })
+        .ok_or_else(|| "legacy merge group could not be parsed".to_owned())?;
+    if parsed_cells.len() != sources.len() {
+        return Err("legacy merge group changed cell count".into());
+    }
+    let mut normalized = (*sources[0]).clone();
+    let properties: Vec<_> = normalized
+        .children
+        .iter()
+        .filter(|node| matches!(node, XmlNode::Element(element) if element.name == "w:tcPr"))
+        .cloned()
+        .collect();
+    let mut content: Vec<_> = normalized
+        .children
+        .iter()
+        .filter(|node| !matches!(node, XmlNode::Element(element) if element.name == "w:tcPr"))
+        .cloned()
+        .collect();
+    let mut has_content = DocumentParser::legacy_merge_blocks_have_content(&parsed_cells[0].blocks);
+    for (source, parsed) in sources.iter().zip(parsed_cells).skip(1) {
+        if DocumentParser::legacy_merge_blocks_have_content(&parsed.blocks) {
+            if !has_content {
+                content.clear();
+            }
+            has_content = true;
+            content.extend(source.children.iter().filter(|node| !matches!(node, XmlNode::Element(element) if element.name == "w:tcPr")).cloned());
+        }
+    }
+    normalized.children = properties;
+    normalized.children.extend(content);
+    Ok(Some(normalized))
+}
+
+fn horizontal_merge_kind(cell: &XmlElement) -> Option<&'static str> {
+    let merge = element_children(cell)
+        .find(|child| child.name == "w:tcPr")
+        .and_then(|properties| {
+            element_children(properties).find(|child| child.name == "w:hMerge")
+        })?;
+    match merge
+        .attributes
+        .iter()
+        .find(|attribute| attribute.name == "w:val")
+    {
+        None => Some("continue"),
+        Some(attribute) if attribute.value.eq_ignore_ascii_case("restart") => Some("restart"),
+        Some(attribute) if attribute.value.eq_ignore_ascii_case("continue") => Some("continue"),
+        Some(_) => None,
     }
 }
 

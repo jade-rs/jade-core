@@ -145,6 +145,11 @@ impl Session {
         let mut ctx = CommandContext::new(&mut self.document, &mut self.selection);
         assert!(self.executor.undo(&mut ctx).unwrap());
     }
+
+    fn redo(&mut self) {
+        let mut ctx = CommandContext::new(&mut self.document, &mut self.selection);
+        assert!(self.executor.redo(&mut ctx).unwrap());
+    }
 }
 
 fn host() -> FieldHost {
@@ -330,7 +335,1346 @@ fn editing_a_code_reevaluates_the_field() {
 mod stateful {
     use super::*;
     use jade_docx_editor::fields::FieldInfo;
+    use jade_docx_editor::word::references::citations::{BibliographyStyle, Source, WordCitations};
     use proptest::prelude::*;
+
+    fn citation_source(tag: &str) -> Source {
+        Source {
+            tag: tag.into(),
+            source_type: "Book".into(),
+            author: "Smith, John".into(),
+            title: "A source".into(),
+            year: "2020".into(),
+            publisher: None,
+            url: None,
+        }
+    }
+
+    #[test]
+    fn browser_citation_fields_replace_selection_restyle_and_survive_f9_and_history() {
+        use jade_docx_editor::fields::{FieldCommand, FieldEnvironment, FieldScope};
+        use jade_docx_editor::word::references::citations::{
+            insert_bibliography_command, insert_citation_command, set_style_command,
+        };
+        let mut session = Session::blank();
+        session.type_text("before選択after");
+        session
+            .add_source(Source {
+                publisher: Some("出版 & <社>".into()),
+                url: Some("https://example.test/?a=1&b=2".into()),
+                ..citation_source("Tag \"資料\"\\")
+            })
+            .unwrap();
+        let mut document = session.document;
+        let baseline = document.export_docx().unwrap();
+        let range = SelectionRange::new(TextPosition::new(0, 6), TextPosition::new(0, 12));
+        let mut selection = Some(range);
+        let mut commands = CommandExecutor::new();
+        {
+            let mut ctx = CommandContext::new(&mut document, &mut selection);
+            commands
+                .execute(
+                    Box::new(insert_citation_command(range, "Tag \"資料\"\\".into())),
+                    &mut ctx,
+                )
+                .unwrap();
+            commands
+                .execute(
+                    Box::new(insert_bibliography_command(0, "References".into())),
+                    &mut ctx,
+                )
+                .unwrap();
+            commands
+                .execute(
+                    Box::new(set_style_command(
+                        "IEEE".into(),
+                        "\\IEEE2006OfficeOnline.xsl".into(),
+                    )),
+                    &mut ctx,
+                )
+                .unwrap();
+            commands
+                .execute(
+                    Box::new(FieldCommand::update(
+                        FieldScope::Document,
+                        FieldEnvironment::default(),
+                    )),
+                    &mut ctx,
+                )
+                .unwrap();
+        }
+        let applied = document.export_docx().unwrap();
+        capture(&applied, "browser live citation and bibliography");
+        let reopened = block_on(WordDocument::load(&applied, &Options::default())).unwrap();
+        assert_eq!(reopened.inline_fields("CITATION").len(), 1);
+        assert_eq!(reopened.field_blocks().len(), 1);
+        let text = |document: &WordDocument, index| document.body_paragraph_text(index).unwrap();
+        for index in 0..3 {
+            assert_eq!(text(&reopened, index), text(&document, index));
+        }
+        assert_eq!(text(&reopened, 0), "before[1]after");
+        assert_eq!(text(&reopened, 1), "References");
+        assert_eq!(
+            text(&reopened, 2),
+            "[1] J. Smith, A source, 出版 & <社>, 2020. https://example.test/?a=1&b=2"
+        );
+        {
+            let mut ctx = CommandContext::new(&mut document, &mut selection);
+            for _ in 0..4 {
+                assert!(commands.undo(&mut ctx).unwrap());
+            }
+        }
+        assert_eq!(document.export_docx().unwrap(), baseline);
+        assert_eq!(selection, Some(range));
+        {
+            let mut ctx = CommandContext::new(&mut document, &mut selection);
+            for _ in 0..4 {
+                assert!(commands.redo(&mut ctx).unwrap());
+            }
+        }
+        assert_eq!(document.export_docx().unwrap(), applied);
+    }
+
+    #[test]
+    fn browser_field_rejections_preserve_document_selection_and_history() {
+        use jade_docx_editor::word::references::citations::{
+            insert_bibliography_command, insert_citation_command,
+        };
+        let mut session = Session::blank();
+        session.type_text("選択 text");
+        session.add_source(citation_source("Source0")).unwrap();
+        let mut document = session.document;
+        let range = SelectionRange::new(TextPosition::new(0, 0), TextPosition::new(0, 6));
+        let mut selection = Some(range);
+        let mut commands = CommandExecutor::new();
+        for command in [
+            Box::new(insert_citation_command(range, "missing".into())) as Box<dyn Command>,
+            Box::new(insert_bibliography_command(0, " \n ".into())),
+            Box::new(insert_bibliography_command(0, "a\nb".into())),
+            Box::new(insert_bibliography_command(0, "a".repeat(257))),
+            Box::new(insert_bibliography_command(usize::MAX, "References".into())),
+        ] {
+            let before = document.export_docx().unwrap();
+            let mut ctx = CommandContext::new(&mut document, &mut selection);
+            assert!(commands.execute(command, &mut ctx).is_err());
+            assert!(!commands.undo(&mut ctx).unwrap());
+            assert_eq!(document.export_docx().unwrap(), before);
+            assert_eq!(selection, Some(range));
+        }
+        document
+            .set_bibliography_style("Custom", "\\Custom.xsl")
+            .unwrap();
+        for command in [
+            insert_citation_command(range, "Source0".into()),
+            insert_bibliography_command(0, "References".into()),
+        ] {
+            let before = document.export_docx().unwrap();
+            let mut ctx = CommandContext::new(&mut document, &mut selection);
+            assert!(commands.execute(Box::new(command), &mut ctx).is_err());
+            assert!(!commands.undo(&mut ctx).unwrap());
+            assert_eq!(document.export_docx().unwrap(), before);
+            assert_eq!(selection, Some(range));
+        }
+    }
+
+    #[test]
+    fn f9_keeps_citation_styles_and_unsupported_word_results() {
+        use jade_docx_editor::fields::FieldScope;
+
+        for (style, expected) in [
+            (BibliographyStyle::Apa, "(Smith, 2020)"),
+            (BibliographyStyle::Chicago, "(Smith 2020)"),
+            (BibliographyStyle::Gb7714, "[1]"),
+            (BibliographyStyle::Harvard, "(Smith, 2020)"),
+            (BibliographyStyle::Ieee, "[1]"),
+            (BibliographyStyle::Iso690Author, "(SMITH, 2020)"),
+            (BibliographyStyle::Iso690Numeric, "(1)"),
+            (BibliographyStyle::Mla, "(Smith)"),
+            (BibliographyStyle::Sist02, "[1]"),
+            (BibliographyStyle::Turabian, "(Smith 2020)"),
+        ] {
+            let mut session = Session::blank();
+            session.add_source(citation_source("One")).unwrap();
+            session.add_source(citation_source("Two")).unwrap();
+            session.set_bibliography_style(style).unwrap();
+            session.insert_citation("One").unwrap();
+            for code in [r#"CITATION One \m Two"#, r#"CITATION One \p "12-14""#] {
+                session
+                    .document
+                    .insert_inline_field(TextPosition::new(0, 0), code, "Word's formatted citation")
+                    .unwrap();
+            }
+            session
+                .update_fields(FieldScope::Document, &host(), HashMap::new())
+                .unwrap();
+            assert_eq!(
+                session
+                    .document
+                    .inline_fields("CITATION")
+                    .iter()
+                    .map(|f| f.text.as_str())
+                    .collect::<Vec<_>>(),
+                [
+                    "Word's formatted citation",
+                    "Word's formatted citation",
+                    expected
+                ],
+                "{style:?}"
+            );
+            let bytes = session.document.export_docx().unwrap();
+            capture(&bytes, &format!("F9 citation style {style:?}"));
+            session.document = block_on(WordDocument::load(&bytes, &Options::default())).unwrap();
+            session
+                .update_fields(FieldScope::Document, &host(), HashMap::new())
+                .unwrap();
+            assert_eq!(
+                session
+                    .document
+                    .inline_fields("CITATION")
+                    .iter()
+                    .map(|f| f.text.as_str())
+                    .collect::<Vec<_>>(),
+                [
+                    "Word's formatted citation",
+                    "Word's formatted citation",
+                    expected
+                ],
+                "{style:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn f9_bibliography_keeps_heading_and_paragraph_formatting() {
+        use jade_docx_editor::fields::FieldScope;
+
+        for style in [BibliographyStyle::Apa, BibliographyStyle::Ieee] {
+            let mut session = Session::blank();
+            session.add_source(citation_source("One")).unwrap();
+            session.set_bibliography_style(style).unwrap();
+            session.insert_citation("One").unwrap();
+            session.insert_bibliography(Some("References")).unwrap();
+            let before = session.document.export_docx().unwrap();
+            session
+                .update_fields(FieldScope::Document, &host(), HashMap::new())
+                .unwrap();
+            let block = session
+                .document
+                .field_blocks()
+                .into_iter()
+                .find(|b| b.name() == "BIBLIOGRAPHY")
+                .unwrap();
+            let heading = session.document.paragraph(block.start).unwrap();
+            assert_eq!(
+                heading
+                    .runs
+                    .iter()
+                    .map(|r| r.text.as_str())
+                    .collect::<String>(),
+                "References",
+                "{style:?}"
+            );
+            assert_eq!(
+                heading.properties.as_ref().unwrap().style.as_deref(),
+                Some("Heading1")
+            );
+            let after = session.document.export_docx().unwrap();
+            // A second update must keep the regenerated paragraph properties too.
+            session.document = block_on(WordDocument::load(&after, &Options::default())).unwrap();
+            session
+                .update_fields(FieldScope::Document, &host(), HashMap::new())
+                .unwrap();
+            let updated = session.document.export_docx().unwrap();
+            session.document = block_on(WordDocument::load(&updated, &Options::default())).unwrap();
+            let original = block_on(WordDocument::load(&before, &Options::default())).unwrap();
+            for index in block.start..=block.end {
+                let a = original.paragraph(index).unwrap();
+                let b = session.document.paragraph(index).unwrap();
+                assert_eq!(
+                    serde_json::to_value(&a.properties).unwrap(),
+                    serde_json::to_value(&b.properties).unwrap(),
+                    "{style:?}: paragraph {index}"
+                );
+                assert_eq!(
+                    a.runs.iter().map(|r| r.text.as_str()).collect::<String>(),
+                    b.runs.iter().map(|r| r.text.as_str()).collect::<String>()
+                );
+            }
+            capture(&after, &format!("F9 bibliography style {style:?}"));
+        }
+    }
+
+    #[test]
+    fn f9_bibliography_obeys_selection_locks_and_history() {
+        use jade_docx_editor::fields::FieldScope;
+        use jade_docx_editor::word_document::FieldBlockLine;
+
+        let mut session = Session::blank();
+        session.add_source(citation_source("One")).unwrap();
+        session
+            .document
+            .set_bibliography_style("IEEE", "\\IEEE2006OfficeOnline.xsl")
+            .unwrap();
+        for text in ["First cached bibliography", "Second cached bibliography"] {
+            let at = session.document.paragraph_count() - 1;
+            session
+                .document
+                .insert_field_block(
+                    at,
+                    "BIBLIOGRAPHY",
+                    &[FieldBlockLine {
+                        text: text.into(),
+                        ..FieldBlockLine::default()
+                    }],
+                )
+                .unwrap();
+        }
+        let blocks = session.document.field_blocks();
+        let first = blocks[0].start;
+        let second = blocks[1].start;
+        let second_scope =
+            FieldScope::Selection(SelectionRange::collapsed(TextPosition::new(second, 1)));
+        session
+            .update_fields(second_scope, &host(), HashMap::new())
+            .unwrap();
+        let text_at = |session: &Session, index| {
+            session
+                .document
+                .paragraph(index)
+                .unwrap()
+                .runs
+                .iter()
+                .map(|r| {
+                    r.field
+                        .as_ref()
+                        .and_then(|f| f.resolved_value.as_deref().or(f.cached_text.as_deref()))
+                        .unwrap_or(&r.text)
+                })
+                .collect::<String>()
+        };
+        assert_eq!(text_at(&session, first), "First cached bibliography");
+        assert_eq!(text_at(&session, second), "[1] J. Smith, A source, 2020.");
+        session.undo();
+        assert_eq!(text_at(&session, second), "Second cached bibliography");
+        let mut ctx = CommandContext::new(&mut session.document, &mut session.selection);
+        assert!(session.executor.redo(&mut ctx).unwrap());
+        assert_eq!(text_at(&session, second), "[1] J. Smith, A source, 2020.");
+        // A locked computed result lives in the cache, at model offset zero.
+        session.selection = Some(SelectionRange::collapsed(TextPosition::new(first, 0)));
+        session.lock_fields(true).unwrap();
+        assert_eq!(session.selected_fields().len(), 1);
+        assert!(session.selected_fields()[0].locked);
+        session
+            .update_fields(FieldScope::Document, &host(), HashMap::new())
+            .unwrap();
+        assert_eq!(text_at(&session, first), "First cached bibliography");
+        session.lock_fields(false).unwrap();
+        assert_eq!(session.selected_fields().len(), 1);
+        assert!(!session.selected_fields()[0].locked);
+        session
+            .update_fields(FieldScope::Document, &host(), HashMap::new())
+            .unwrap();
+        assert_eq!(text_at(&session, first), "[1] J. Smith, A source, 2020.");
+        capture(
+            &session.document.export_docx().unwrap(),
+            "F9 bibliography selection locks and history",
+        );
+    }
+
+    #[test]
+    fn f9_preserves_unsupported_bibliography_switches_and_unknown_styles() {
+        use jade_docx_editor::fields::FieldScope;
+        use jade_docx_editor::word_document::FieldBlockLine;
+
+        for (style, code) in [
+            ("IEEE", r#"BIBLIOGRAPHY \f 1041"#),
+            ("Custom Word Style", "BIBLIOGRAPHY"),
+        ] {
+            let mut session = Session::blank();
+            session.add_source(citation_source("One")).unwrap();
+            session
+                .document
+                .insert_inline_field(TextPosition::new(0, 0), "CITATION One", "Word citation")
+                .unwrap();
+            session
+                .document
+                .set_bibliography_style(style, "custom.xsl")
+                .unwrap();
+            session
+                .document
+                .insert_field_block(
+                    0,
+                    code,
+                    &[FieldBlockLine {
+                        text: "Word bibliography".into(),
+                        ..FieldBlockLine::default()
+                    }],
+                )
+                .unwrap();
+            session
+                .update_fields(FieldScope::Document, &host(), HashMap::new())
+                .unwrap();
+            let text: String = session
+                .document
+                .paragraph(1)
+                .unwrap()
+                .runs
+                .iter()
+                .map(|r| {
+                    r.field
+                        .as_ref()
+                        .and_then(|f| f.resolved_value.as_deref().or(f.cached_text.as_deref()))
+                        .unwrap_or(&r.text)
+                })
+                .collect();
+            assert_eq!(text, "Word bibliography", "{style}: {code}");
+            if style == "Custom Word Style" {
+                assert_eq!(
+                    session.document.inline_fields("CITATION")[0].text,
+                    "Word citation"
+                );
+            } else {
+                session
+                    .set_bibliography_style(BibliographyStyle::Apa)
+                    .unwrap();
+                session.update_bibliography().unwrap();
+                let text: String = session
+                    .document
+                    .paragraph(1)
+                    .unwrap()
+                    .runs
+                    .iter()
+                    .map(|r| {
+                        r.field
+                            .as_ref()
+                            .and_then(|f| f.resolved_value.as_deref().or(f.cached_text.as_deref()))
+                            .unwrap_or(&r.text)
+                    })
+                    .collect();
+                assert_eq!(
+                    text, "Word bibliography",
+                    "unsupported filters survive every update route"
+                );
+            }
+            capture(
+                &session.document.export_docx().unwrap(),
+                "F9 unsupported bibliography cache",
+            );
+        }
+    }
+
+    #[test]
+    fn f9_updates_interleaved_tocs_and_growing_bibliographies() {
+        use jade_docx_editor::fields::FieldScope;
+        use jade_docx_editor::word_document::FieldBlockLine;
+
+        let mut session = Session::blank();
+        session.add_source(citation_source("One")).unwrap();
+        session.add_source(citation_source("Two")).unwrap();
+        session
+            .document
+            .set_bibliography_style("IEEE", "IEEE.xsl")
+            .unwrap();
+        for code in ["BIBLIOGRAPHY", r#"TOC \o "1-3""#, "BIBLIOGRAPHY"] {
+            let at = session.document.paragraph_count() - 1;
+            session
+                .document
+                .insert_field_block(
+                    at,
+                    code,
+                    &[FieldBlockLine {
+                        text: "Cached result".into(),
+                        ..FieldBlockLine::default()
+                    }],
+                )
+                .unwrap();
+        }
+        session
+            .update_fields(FieldScope::Document, &host(), HashMap::new())
+            .unwrap();
+        let blocks = session.document.field_blocks();
+        assert_eq!(
+            blocks.iter().map(|b| b.name()).collect::<Vec<_>>(),
+            ["BIBLIOGRAPHY", "TOC", "BIBLIOGRAPHY"]
+        );
+        for block in blocks.iter().filter(|b| b.name() == "BIBLIOGRAPHY") {
+            assert_eq!(block.end - block.start, 1);
+            let text: String = (block.start..=block.end)
+                .flat_map(|p| &session.document.paragraph(p).unwrap().runs)
+                .map(|r| r.text.as_str())
+                .collect();
+            assert_eq!(
+                text,
+                "[1] J. Smith, A source, 2020.[2] J. Smith, A source, 2020."
+            );
+        }
+        capture(
+            &session.document.export_docx().unwrap(),
+            "F9 interleaved growing bibliography and TOC",
+        );
+    }
+
+    #[test]
+    fn deleting_the_last_uncited_source_updates_the_bibliography_and_history() {
+        use jade_docx_editor::fields::FieldScope;
+        use jade_docx_editor::word::references::citations::insert_bibliography_command;
+
+        let mut session = Session::blank();
+        session.add_source(citation_source("Only")).unwrap();
+        session
+            .execute_command(
+                Box::new(insert_bibliography_command(0, "References".into())),
+                false,
+            )
+            .unwrap();
+        let before = session.document.export_docx().unwrap();
+        session.delete_source("Only").unwrap();
+        let deleted = session.document.export_docx().unwrap();
+        let text = |document: &WordDocument| -> String {
+            let block = document.field_blocks().pop().unwrap();
+            (block.start..=block.end)
+                .flat_map(|p| &document.paragraph(p).unwrap().runs)
+                .map(|run| run.text.as_str())
+                .collect()
+        };
+        assert_eq!(
+            text(&session.document),
+            "References現在の文書には資料文献がありません。"
+        );
+        session.undo();
+        assert_eq!(session.document.export_docx().unwrap(), before);
+        let mut ctx = CommandContext::new(&mut session.document, &mut session.selection);
+        assert!(session.executor.redo(&mut ctx).unwrap());
+        assert_eq!(session.document.export_docx().unwrap(), deleted);
+        session.document = block_on(WordDocument::load(&deleted, &Options::default())).unwrap();
+        session
+            .update_fields(FieldScope::Document, &host(), HashMap::new())
+            .unwrap();
+        assert_eq!(
+            text(&session.document),
+            "References現在の文書には資料文献がありません。"
+        );
+        capture(
+            &session.document.export_docx().unwrap(),
+            "last uncited source removed",
+        );
+    }
+
+    #[test]
+    fn f9_empty_bibliography_keeps_its_heading() {
+        use jade_docx_editor::fields::FieldScope;
+
+        let mut session = Session::blank();
+        session
+            .document
+            .insert_field_block(
+                0,
+                "BIBLIOGRAPHY",
+                &[
+                    jade_docx_editor::word_document::FieldBlockLine {
+                        text: "References".into(),
+                        style: Some("Heading1".into()),
+                        ..Default::default()
+                    },
+                    jade_docx_editor::word_document::FieldBlockLine {
+                        text: "Old bibliography".into(),
+                        ..Default::default()
+                    },
+                ],
+            )
+            .unwrap();
+        session
+            .update_fields(FieldScope::Document, &host(), HashMap::new())
+            .unwrap();
+        let block = session.document.field_blocks().pop().unwrap();
+        let text: String = (block.start..=block.end)
+            .flat_map(|p| &session.document.paragraph(p).unwrap().runs)
+            .map(|r| r.text.as_str())
+            .collect();
+        assert_eq!(text, "References現在の文書には資料文献がありません。");
+        capture(
+            &session.document.export_docx().unwrap(),
+            "F9 empty bibliography with heading",
+        );
+    }
+
+    #[test]
+    fn quoted_citation_tags_restyle_and_protect_the_source_after_reload() {
+        for instruction in [r#"CITATION "Tag" \l 1041"#, r#"CITATION \l 1041 "Tag""#] {
+            let mut session = Session::blank();
+            session.add_source(citation_source("Tag")).unwrap();
+            session
+                .document
+                .insert_inline_field(TextPosition::new(0, 0), instruction, "Old")
+                .unwrap();
+            let bytes = session.document.export_docx().unwrap();
+            capture(&bytes, "imported quoted citation");
+            session.document = block_on(WordDocument::load(&bytes, &Options::default())).unwrap();
+            assert_eq!(session.cited_tags(), ["Tag"]);
+            assert!(session.delete_source("Tag").is_err());
+            session
+                .set_bibliography_style(BibliographyStyle::Ieee)
+                .unwrap();
+            assert_eq!(session.document.inline_fields("CITATION")[0].text, "[1]");
+            session.undo();
+            assert_eq!(session.document.inline_fields("CITATION")[0].text, "Old");
+        }
+    }
+
+    #[test]
+    fn authored_citation_tags_survive_renaming_history_and_reload() {
+        for tag in ["Tag", "a b", "a\"b", "\\tag", "a\\b"] {
+            let mut session = Session::blank();
+            let returned = session
+                .add_source(citation_source(&format!(" {tag} ")))
+                .unwrap();
+            assert_eq!(returned, tag);
+            session.insert_citation(&returned).unwrap();
+            assert_eq!(session.cited_tags(), [tag]);
+            assert_eq!(
+                session.document.inline_fields("CITATION")[0].text,
+                "(Smith, 2020)"
+            );
+            let mut replacement = citation_source("Renamed tag");
+            replacement.year = "2025".into();
+            session.edit_source(tag, replacement).unwrap();
+            assert_eq!(session.cited_tags(), ["Renamed tag"]);
+            assert_eq!(
+                session.document.inline_fields("CITATION")[0].text,
+                "(Smith, 2025)"
+            );
+            session.undo();
+            assert_eq!(session.cited_tags(), [tag]);
+            assert_eq!(
+                session.document.inline_fields("CITATION")[0].text,
+                "(Smith, 2020)"
+            );
+            let bytes = session.document.export_docx().unwrap();
+            capture(&bytes, &format!("authored citation tag {tag:?}"));
+            session.document = block_on(WordDocument::load(&bytes, &Options::default())).unwrap();
+            assert_eq!(session.cited_tags(), [tag]);
+            assert!(session.delete_source(tag).is_err());
+        }
+    }
+
+    #[test]
+    fn repeated_citations_leave_the_caret_after_the_new_field() {
+        let mut session = Session::blank();
+        session.add_source(citation_source("Tag")).unwrap();
+        session.insert_citation("Tag").unwrap();
+        session.insert_citation("Tag").unwrap();
+        assert_eq!(
+            session.selection.unwrap().focus,
+            TextPosition::new(0, "(Smith, 2020)(Smith, 2020)".len())
+        );
+        session.type_text("!");
+        let text: String = session
+            .document
+            .paragraph(0)
+            .unwrap()
+            .runs
+            .iter()
+            .map(|run| run.text.as_str())
+            .collect();
+        assert_eq!(text, "(Smith, 2020)(Smith, 2020)!");
+    }
+
+    #[test]
+    fn locked_citations_keep_source_links_numbering_and_cached_results() {
+        use jade_docx_editor::fields::FieldScope;
+        for combined in [false, true] {
+            let mut session = Session::blank();
+            for tag in ["Other", "One", "Two"] {
+                session.add_source(citation_source(tag)).unwrap();
+            }
+            session.insert_citation("Other").unwrap();
+            let instruction = if combined {
+                r#"CITATION "One" \l 1041 \m "Two""#
+            } else {
+                r#"CITATION "One" \l 1041"#
+            };
+            session.selection = Some(
+                session
+                    .document
+                    .insert_inline_field(
+                        TextPosition::new(0, 0),
+                        instruction,
+                        "Word's saved citation",
+                    )
+                    .unwrap(),
+            );
+            session.caret(0);
+            session.lock_fields(true).unwrap();
+            assert!(session.selected_fields()[0].locked);
+            let bytes = session.document.export_docx().unwrap();
+            session.document = block_on(WordDocument::load(&bytes, &Options::default())).unwrap();
+            let tags = if combined {
+                vec!["One", "Two", "Other"]
+            } else {
+                vec!["One", "Other"]
+            };
+            assert_eq!(session.cited_tags(), tags);
+            let before = session.document.export_docx().unwrap();
+            let selection = session.selection;
+            for tag in tags {
+                assert!(session.delete_source(tag).is_err());
+                assert_eq!(session.document.export_docx().unwrap(), before);
+                assert_eq!(session.selection, selection);
+            }
+            session
+                .set_bibliography_style(BibliographyStyle::Ieee)
+                .unwrap();
+            let number = if combined { 3 } else { 2 };
+            assert_eq!(
+                session.document.body_paragraph_text(0).unwrap(),
+                format!("Word's saved citation[{number}]")
+            );
+            let before_rename = session.document.export_docx().unwrap();
+            let mut replacement = citation_source("Renamed tag");
+            replacement.author = "Jones, Jane".into();
+            replacement.year = "2025".into();
+            session.edit_source("One", replacement).unwrap();
+            assert!(session.selected_fields()[0].locked);
+            assert!(session.selected_fields()[0]
+                .code
+                .contains("\"Renamed tag\""));
+            let renamed = session.document.export_docx().unwrap();
+            capture(
+                &renamed,
+                &format!("locked citation rename combined={combined}"),
+            );
+            session.undo();
+            assert_eq!(session.document.export_docx().unwrap(), before_rename);
+            let mut ctx = CommandContext::new(&mut session.document, &mut session.selection);
+            assert!(session.executor.redo(&mut ctx).unwrap());
+            assert_eq!(session.document.export_docx().unwrap(), renamed);
+            session.document = block_on(WordDocument::load(&renamed, &Options::default())).unwrap();
+            assert_eq!(session.cited_tags()[0], "Renamed tag");
+            assert!(session.delete_source("Renamed tag").is_err());
+            session
+                .update_fields(FieldScope::Document, &host(), HashMap::new())
+                .unwrap();
+            assert_eq!(
+                session.document.body_paragraph_text(0).unwrap(),
+                format!("Word's saved citation[{number}]")
+            );
+            session.lock_fields(false).unwrap();
+            session
+                .update_fields(FieldScope::Document, &host(), HashMap::new())
+                .unwrap();
+            assert_eq!(
+                session.document.body_paragraph_text(0).unwrap(),
+                if combined {
+                    "Word's saved citation[3]"
+                } else {
+                    "[1][2]"
+                }
+            );
+        }
+    }
+
+    #[test]
+    fn source_edits_and_style_changes_keep_locked_bibliography_results() {
+        use jade_docx_editor::fields::FieldScope;
+        let mut session = Session::blank();
+        session.add_source(citation_source("One")).unwrap();
+        session.insert_bibliography(Some("References")).unwrap();
+        let start = session.document.field_blocks()[0].start;
+        session.selection = Some(SelectionRange::collapsed(TextPosition::new(start, 0)));
+        session.lock_fields(true).unwrap();
+        let before = session.document.export_docx().unwrap();
+        let text = |session: &Session| {
+            let block = &session.document.field_blocks()[0];
+            (block.start..=block.end)
+                .map(|index| session.document.body_paragraph_text(index).unwrap())
+                .collect::<Vec<_>>()
+        };
+        let saved = text(&session);
+        session
+            .set_bibliography_style(BibliographyStyle::Ieee)
+            .unwrap();
+        let mut source = citation_source("One");
+        source.author = "Jones, Jane".into();
+        session.edit_source("One", source).unwrap();
+        assert_eq!(text(&session), saved);
+        assert!(session.selected_fields()[0].locked);
+        let bytes = session.document.export_docx().unwrap();
+        capture(&bytes, "locked bibliography after source edit and restyle");
+        session.undo();
+        session.undo();
+        assert_eq!(session.document.export_docx().unwrap(), before);
+        session.redo();
+        session.redo();
+        assert_eq!(session.document.export_docx().unwrap(), bytes);
+        session = Session {
+            document: block_on(WordDocument::load(&bytes, &Options::default())).unwrap(),
+            executor: CommandExecutor::new(),
+            selection: Some(SelectionRange::collapsed(TextPosition::new(start, 0))),
+        };
+        assert_eq!(text(&session), saved);
+        assert!(session.selected_fields()[0].locked);
+        let reopened = session.document.export_docx().unwrap();
+        session.lock_fields(false).unwrap();
+        session
+            .update_fields(FieldScope::Document, &host(), HashMap::new())
+            .unwrap();
+        assert_eq!(
+            text(&session),
+            ["References", "[1] J. Jones, A source, 2020."]
+        );
+        let updated = session.document.export_docx().unwrap();
+        session.undo();
+        session.undo();
+        assert_eq!(session.document.export_docx().unwrap(), reopened);
+        session.redo();
+        session.redo();
+        assert_eq!(session.document.export_docx().unwrap(), updated);
+    }
+
+    #[test]
+    fn combined_citations_keep_cached_results_and_every_source_link() {
+        for instruction in [
+            r#"CITATION "One" \l 1041 \m "Two words""#,
+            r#"CITATION "One" \p "12-14""#,
+        ] {
+            let mut session = Session::blank();
+            session.add_source(citation_source("One")).unwrap();
+            session.add_source(citation_source("Two words")).unwrap();
+            session
+                .document
+                .insert_inline_field(
+                    TextPosition::new(0, 0),
+                    instruction,
+                    "Word's combined / page-specific citation",
+                )
+                .unwrap();
+            session
+                .set_bibliography_style(BibliographyStyle::Ieee)
+                .unwrap();
+            assert_eq!(
+                session.document.inline_fields("CITATION")[0].text,
+                "Word's combined / page-specific citation"
+            );
+            assert!(session.delete_source("One").is_err());
+            if instruction.contains(r"\m") {
+                assert_eq!(session.cited_tags(), ["One", "Two words"]);
+                assert!(session.delete_source("Two words").is_err());
+                session
+                    .edit_source("Two words", citation_source("New tag"))
+                    .unwrap();
+                assert_eq!(session.cited_tags(), ["One", "New tag"]);
+            }
+            let bytes = session.document.export_docx().unwrap();
+            capture(&bytes, instruction);
+            session.document = block_on(WordDocument::load(&bytes, &Options::default())).unwrap();
+            assert_eq!(
+                session.document.inline_fields("CITATION")[0].text,
+                "Word's combined / page-specific citation"
+            );
+        }
+    }
+
+    #[test]
+    fn citation_after_a_growing_bibliography_keeps_its_caret_and_heading() {
+        let mut session = Session::blank();
+        let blank = session.document.paragraph(0).unwrap().clone();
+        session.add_source(citation_source("One")).unwrap();
+        session.insert_bibliography(Some("References")).unwrap();
+        let after = session
+            .document
+            .insert_paragraph_after(session.document.paragraph_count() - 1, blank)
+            .unwrap();
+        session.add_source(citation_source("Two")).unwrap();
+        session.selection = Some(SelectionRange::collapsed(TextPosition::new(after, 0)));
+        session.insert_citation("One").unwrap();
+        let field = &session.document.inline_fields("CITATION")[0];
+        assert_eq!(
+            session.selection.unwrap().focus,
+            TextPosition::new(field.paragraph, field.text.len())
+        );
+        assert_eq!(field.paragraph, after + 1);
+        assert_eq!(
+            session
+                .document
+                .paragraph(1)
+                .unwrap()
+                .runs
+                .iter()
+                .map(|r| r.text.as_str())
+                .collect::<String>(),
+            "References"
+        );
+        let bytes = session.document.export_docx().unwrap();
+        capture(&bytes, "citation after regenerated bibliography heading");
+        session.document = block_on(WordDocument::load(&bytes, &Options::default())).unwrap();
+        session.update_bibliography().unwrap();
+        assert_eq!(
+            session
+                .document
+                .paragraph(1)
+                .unwrap()
+                .runs
+                .iter()
+                .map(|r| r.text.as_str())
+                .collect::<String>(),
+            "References"
+        );
+        assert_eq!(
+            session.document.inline_fields("CITATION")[0].paragraph,
+            after + 1
+        );
+    }
+
+    #[test]
+    fn missing_imported_citation_sources_do_not_offset_numbering() {
+        let mut session = Session::blank();
+        session.add_source(citation_source("Tag")).unwrap();
+        session
+            .document
+            .insert_inline_field(
+                TextPosition::new(0, 0),
+                "CITATION Missing",
+                "Imported result",
+            )
+            .unwrap();
+        session.caret("Imported result".len());
+        session.insert_citation("Tag").unwrap();
+        session
+            .set_bibliography_style(BibliographyStyle::Ieee)
+            .unwrap();
+        assert_eq!(
+            session
+                .document
+                .inline_fields("CITATION")
+                .iter()
+                .map(|f| f.text.as_str())
+                .collect::<Vec<_>>(),
+            ["Imported result", "[1]"]
+        );
+        session.insert_bibliography(None).unwrap();
+        let bytes = session.document.export_docx().unwrap();
+        capture(&bytes, "missing imported source before numbered citation");
+        let loaded = block_on(WordDocument::load(&bytes, &Options::default())).unwrap();
+        assert_eq!(loaded.inline_fields("CITATION")[1].text, "[1]");
+    }
+
+    #[test]
+    fn every_offered_citation_source_type_can_be_added_and_reloaded() {
+        use jade_docx_editor::word::references::citations::SOURCE_TYPES;
+        for source_type in SOURCE_TYPES.into_iter().chain(["Misc"]) {
+            let mut session = Session::blank();
+            let mut source = citation_source("Tag");
+            source.source_type = source_type.into();
+            session.add_source(source).unwrap();
+            let bytes = session.document.export_docx().unwrap();
+            capture(&bytes, source_type);
+            session.document = block_on(WordDocument::load(&bytes, &Options::default())).unwrap();
+            assert_eq!(session.sources()[0].source_type, source_type);
+        }
+    }
+
+    #[test]
+    fn literal_citation_switches_survive_formatting_and_reload() {
+        use jade_docx_editor::word::fields::{code_has_switch, toggle_switch};
+
+        for tag in ["{", "}", "a{b", "a}b", "{x}"] {
+            let mut session = Session::blank();
+            session.add_source(citation_source("One")).unwrap();
+            session.add_source(citation_source(tag)).unwrap();
+            let code = toggle_switch("CITATION One", "\\m", Some(tag));
+            let code = toggle_switch(&code, "\\*", Some("MERGEFORMAT"));
+            assert!(code_has_switch(&code, "\\m", Some(tag)), "{code}");
+            session
+                .document
+                .insert_inline_field(TextPosition::new(0, 0), &code, "Word's combined citation")
+                .unwrap();
+            assert_eq!(session.cited_tags(), ["One", tag]);
+            let bytes = session.document.export_docx().unwrap();
+            capture(&bytes, &code);
+            session.document = block_on(WordDocument::load(&bytes, &Options::default())).unwrap();
+            assert_eq!(session.cited_tags(), ["One", tag]);
+            assert!(session.delete_source(tag).is_err());
+            assert_eq!(
+                session.document.inline_fields("CITATION")[0].text,
+                "Word's combined citation"
+            );
+        }
+    }
+
+    const CITATION_TAGS: [&str; 12] = [
+        "Tag",
+        "two words",
+        "a\"b",
+        "\\tag",
+        "a\\b",
+        "tail\\",
+        "資料",
+        "{x}",
+        "{",
+        "}",
+        "a{b",
+        "a}b",
+    ];
+
+    #[derive(Clone, Debug, Default, PartialEq, Eq)]
+    struct CitationModel {
+        sources: Vec<(String, u8)>,
+        citations: Vec<String>,
+        numbered: bool,
+        has_catalog: bool,
+    }
+
+    #[derive(Clone, Debug)]
+    enum CitationOp {
+        Add(u8, u8),
+        Cite(u8),
+        BrowserCite(u8),
+        Rename(u8, u8, u8),
+        Delete(u8),
+        Style(bool),
+        BrowserStyle(bool),
+        Update,
+        Undo,
+        Redo,
+        Reload,
+    }
+
+    fn citation_operations() -> impl Strategy<Value = Vec<CitationOp>> {
+        let tags = CITATION_TAGS.len() as u8;
+        prop::collection::vec(
+            prop_oneof![
+                4 => (0u8..tags, 0u8..5).prop_map(|(tag, year)| CitationOp::Add(tag, year)),
+                3 => (0u8..tags).prop_map(CitationOp::Cite),
+                2 => (0u8..tags).prop_map(CitationOp::BrowserCite),
+                4 => (0u8..tags, 0u8..tags, 0u8..5).prop_map(|(old, new, year)| CitationOp::Rename(old, new, year)),
+                2 => (0u8..tags).prop_map(CitationOp::Delete),
+                1 => any::<bool>().prop_map(CitationOp::Style),
+                1 => any::<bool>().prop_map(CitationOp::BrowserStyle),
+                3 => Just(CitationOp::Update),
+                3 => Just(CitationOp::Undo),
+                2 => Just(CitationOp::Redo),
+                2 => Just(CitationOp::Reload),
+            ],
+            1..49,
+        )
+    }
+
+    fn citation_sequence(ops: &[CitationOp]) {
+        let mut session = Session::blank();
+        let mut model = CitationModel::default();
+        let mut undo = Vec::new();
+        let mut redo = Vec::new();
+        for (step, op) in ops.iter().enumerate() {
+            let before = model.clone();
+            let mut selection_before = session.selection;
+            let mut expected_ok = true;
+            let mut records_history = true;
+            let source = |tag: u8, year: u8| {
+                let mut source = citation_source(&format!(" {} ", CITATION_TAGS[tag as usize]));
+                source.year = (2020 + u16::from(year)).to_string();
+                source
+            };
+            let result = match *op {
+                CitationOp::Add(tag, year) => {
+                    let tag_value = CITATION_TAGS[tag as usize];
+                    expected_ok = !model.sources.iter().any(|(tag, _)| tag == tag_value);
+                    if expected_ok {
+                        model.sources.push((tag_value.into(), year));
+                        model.has_catalog = true;
+                    }
+                    session
+                        .add_source(source(tag, year))
+                        .map(|returned| assert_eq!(returned, tag_value))
+                }
+                CitationOp::Cite(tag) | CitationOp::BrowserCite(tag) => {
+                    let tag = CITATION_TAGS[tag as usize];
+                    expected_ok = model.sources.iter().any(|(existing, _)| existing == tag);
+                    if expected_ok {
+                        model.citations.insert(0, tag.into());
+                    }
+                    // Offset zero unambiguously means before every field,
+                    // including loaded computed fields with cache-only text.
+                    session.caret(0);
+                    selection_before = session.selection;
+                    if matches!(op, CitationOp::BrowserCite(_)) {
+                        session.execute_command(Box::new(
+                            jade_docx_editor::word::references::citations::insert_citation_command(
+                                session.selection.unwrap(), tag.into(),
+                            ),
+                        ), false)
+                    } else {
+                        session.insert_citation(tag).map(|_| ())
+                    }
+                }
+                CitationOp::Rename(old, new, year) => {
+                    let old_tag = CITATION_TAGS[old as usize];
+                    let new_tag = CITATION_TAGS[new as usize];
+                    let found = model.sources.iter().position(|(tag, _)| tag == old_tag);
+                    expected_ok = found.is_some()
+                        && (old == new || !model.sources.iter().any(|(tag, _)| tag == new_tag));
+                    if expected_ok {
+                        model.sources[found.unwrap()] = (new_tag.into(), year);
+                        for tag in &mut model.citations {
+                            if tag == old_tag {
+                                *tag = new_tag.into();
+                            }
+                        }
+                    }
+                    session.edit_source(old_tag, source(new, year))
+                }
+                CitationOp::Delete(tag) => {
+                    let tag = CITATION_TAGS[tag as usize];
+                    expected_ok = model.sources.iter().any(|(existing, _)| existing == tag)
+                        && !model.citations.iter().any(|cited| cited == tag);
+                    if expected_ok {
+                        model.sources.retain(|(existing, _)| existing != tag);
+                    }
+                    session.delete_source(tag)
+                }
+                CitationOp::Style(numbered) | CitationOp::BrowserStyle(numbered) => {
+                    expected_ok = if matches!(op, CitationOp::BrowserStyle(_)) {
+                        model.has_catalog
+                    } else {
+                        !model.sources.is_empty()
+                    };
+                    if expected_ok {
+                        model.numbered = numbered;
+                    }
+                    let style = if numbered {
+                        BibliographyStyle::Ieee
+                    } else {
+                        BibliographyStyle::Apa
+                    };
+                    if matches!(op, CitationOp::BrowserStyle(_)) {
+                        session.execute_command(
+                            Box::new(
+                                jade_docx_editor::word::references::citations::set_style_command(
+                                    style.name().into(),
+                                    style.stylesheet().into(),
+                                ),
+                            ),
+                            true,
+                        )
+                    } else {
+                        session.set_bibliography_style(style)
+                    }
+                }
+                CitationOp::Update => session.update_fields(
+                    jade_docx_editor::fields::FieldScope::Document,
+                    &host(),
+                    HashMap::new(),
+                ),
+                CitationOp::Undo | CitationOp::Redo => {
+                    records_history = false;
+                    let expected_changed = if matches!(op, CitationOp::Undo) {
+                        if let Some(previous) = undo.pop() {
+                            redo.push(model.clone());
+                            model = previous;
+                            true
+                        } else {
+                            false
+                        }
+                    } else if let Some(next) = redo.pop() {
+                        undo.push(model.clone());
+                        model = next;
+                        true
+                    } else {
+                        false
+                    };
+                    let mut ctx =
+                        CommandContext::new(&mut session.document, &mut session.selection);
+                    let changed = if matches!(op, CitationOp::Undo) {
+                        session.executor.undo(&mut ctx)
+                    } else {
+                        session.executor.redo(&mut ctx)
+                    }
+                    .unwrap();
+                    assert_eq!(changed, expected_changed, "step {step}: {op:?}; {ops:?}");
+                    Ok(())
+                }
+                CitationOp::Reload => {
+                    records_history = false;
+                    let bytes = session.document.export_docx().unwrap();
+                    capture(&bytes, &format!("citation step {step}: {ops:?}"));
+                    session.document =
+                        block_on(WordDocument::load(&bytes, &Options::default())).unwrap();
+                    session.executor = CommandExecutor::new();
+                    undo.clear();
+                    redo.clear();
+                    Ok(())
+                }
+            };
+            assert_eq!(
+                result.is_ok(),
+                expected_ok,
+                "step {step}: {op:?}; {result:?}; {ops:?}"
+            );
+            if records_history && expected_ok {
+                undo.push(before);
+                redo.clear();
+            }
+            if !expected_ok {
+                assert_eq!(
+                    session.selection, selection_before,
+                    "rejected step {step}: {op:?}"
+                );
+            }
+            let sources: Vec<_> = session
+                .sources()
+                .into_iter()
+                .map(|s| (s.tag, s.year))
+                .collect();
+            assert_eq!(
+                sources,
+                model
+                    .sources
+                    .iter()
+                    .map(|(tag, year)| (tag.clone(), (2020 + u16::from(*year)).to_string()))
+                    .collect::<Vec<_>>(),
+                "sources step {step}: {op:?}; {ops:?}"
+            );
+            let mut order = Vec::new();
+            let expected_texts: Vec<_> = model
+                .citations
+                .iter()
+                .map(|tag| {
+                    if !order.contains(tag) {
+                        order.push(tag.clone());
+                    }
+                    let number = order.iter().position(|cited| cited == tag).unwrap() + 1;
+                    if model.numbered {
+                        format!("[{number}]")
+                    } else {
+                        let year = model
+                            .sources
+                            .iter()
+                            .find(|(source, _)| source == tag)
+                            .unwrap()
+                            .1;
+                        format!("(Smith, {})", 2020 + u16::from(year))
+                    }
+                })
+                .collect();
+            assert_eq!(
+                session.cited_tags(),
+                order,
+                "tags step {step}: {op:?}; {ops:?}"
+            );
+            assert_eq!(
+                session
+                    .document
+                    .inline_fields("CITATION")
+                    .iter()
+                    .map(|f| f.text.clone())
+                    .collect::<Vec<_>>(),
+                expected_texts,
+                "results step {step}: {op:?}; {ops:?}"
+            );
+            assert_eq!(
+                session.document.body_paragraph_text(0).unwrap(),
+                expected_texts.concat(),
+                "display text step {step}: {op:?}; {ops:?}"
+            );
+            assert_eq!(
+                session.document.bibliography_style().as_deref(),
+                model
+                    .has_catalog
+                    .then_some(if model.numbered { "IEEE" } else { "APA" }),
+                "style step {step}: {op:?}; {ops:?}"
+            );
+            if matches!(op, CitationOp::Cite(_) | CitationOp::BrowserCite(_)) && expected_ok {
+                assert_eq!(
+                    session.selection.unwrap().focus,
+                    TextPosition::new(0, expected_texts.first().unwrap().len()),
+                    "caret step {step}: {op:?}; {ops:?}"
+                );
+            }
+            if std::env::var_os("JADE_FIELD_PBT_EXPORT_DIR").is_some() {
+                capture(
+                    &session.document.export_docx().unwrap(),
+                    &format!("citation step {step}: {op:?}; {ops:?}"),
+                );
+            }
+        }
+        let bytes = session.document.export_docx().unwrap();
+        capture(&bytes, &format!("citation final: {ops:?}"));
+        let loaded = block_on(WordDocument::load(&bytes, &Options::default())).unwrap();
+        assert_eq!(loaded.citation_sources(), session.sources());
+        assert_eq!(
+            loaded
+                .inline_fields("CITATION")
+                .iter()
+                .map(|f| (f.instruction.clone(), f.text.clone()))
+                .collect::<Vec<_>>(),
+            session
+                .document
+                .inline_fields("CITATION")
+                .iter()
+                .map(|f| (f.instruction.clone(), f.text.clone()))
+                .collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
+    fn browser_style_requires_a_catalog_and_preserves_an_empty_catalog() {
+        citation_sequence(&[
+            CitationOp::BrowserStyle(false),
+            CitationOp::Add(0, 0),
+            CitationOp::Delete(0),
+            CitationOp::Style(true),
+            CitationOp::BrowserStyle(true),
+            CitationOp::Reload,
+            CitationOp::BrowserStyle(false),
+            CitationOp::Undo,
+            CitationOp::Redo,
+            CitationOp::Add(0, 0),
+            CitationOp::BrowserCite(0),
+        ]);
+    }
+
+    #[test]
+    fn citation_reload_keeps_results_and_the_inserted_caret() {
+        citation_sequence(&[
+            CitationOp::Add(0, 0),
+            CitationOp::Cite(0),
+            CitationOp::Update,
+            CitationOp::Reload,
+            CitationOp::Style(true),
+            CitationOp::Update,
+            CitationOp::Undo,
+            CitationOp::Redo,
+        ]);
+        citation_sequence(&[
+            CitationOp::Add(0, 0),
+            CitationOp::Add(7, 0),
+            CitationOp::Add(1, 0),
+            CitationOp::Cite(0),
+            CitationOp::Reload,
+            CitationOp::Cite(7),
+        ]);
+        citation_sequence(&[
+            CitationOp::Add(3, 0),
+            CitationOp::Cite(3),
+            CitationOp::Reload,
+            CitationOp::Cite(3),
+            CitationOp::Rename(3, 2, 1),
+            CitationOp::Undo,
+            CitationOp::Redo,
+        ]);
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig {
+            cases: 64,
+            max_shrink_iters: 2048,
+            failure_persistence: Some(Box::new(proptest::test_runner::FileFailurePersistence::WithSource("proptest-regressions"))),
+            ..ProptestConfig::default()
+        })]
+        #[test]
+        fn citation_operation_sequences_match_model(ops in citation_operations()) {
+            citation_sequence(&ops);
+        }
+    }
 
     #[derive(Clone, Copy, Debug)]
     enum Code {
@@ -1440,6 +2784,287 @@ mod stateful {
             capture(&bytes, "nested SET execution order");
             assert_eq!(assignment_bookmarks(&bytes), ["20"]);
             session.document = block_on(WordDocument::load(&bytes, &Options::default())).unwrap();
+        }
+    }
+
+    #[test]
+    fn selected_ref_reads_saved_assignment_inside_an_unselected_instruction() {
+        for simple in [false, true] {
+            for instruction in ["SET Counter 10", "ASK Counter Prompt"] {
+                let result = "<w:bookmarkStart w:id=\"0\" w:name=\"Counter\"/><w:r><w:t>900</w:t></w:r><w:bookmarkEnd w:id=\"0\"/>";
+                let nested = if simple {
+                    format!("<w:fldSimple w:instr=\"{instruction}\">{result}</w:fldSimple>")
+                } else {
+                    format!("<w:r><w:fldChar w:fldCharType=\"begin\"/></w:r><w:r><w:instrText>{instruction}</w:instrText></w:r><w:r><w:fldChar w:fldCharType=\"separate\"/></w:r>{result}<w:r><w:fldChar w:fldCharType=\"end\"/></w:r>")
+                };
+                let source = body_source(&format!("<w:p><w:r><w:fldChar w:fldCharType=\"begin\"/></w:r><w:r><w:instrText xml:space=\"preserve\">IF </w:instrText></w:r>{nested}<w:r><w:instrText xml:space=\"preserve\"> = &quot;&quot; &quot;Hidden&quot; &quot;Leaked&quot;</w:instrText></w:r><w:r><w:fldChar w:fldCharType=\"separate\"/></w:r><w:r><w:t>Old</w:t></w:r><w:r><w:fldChar w:fldCharType=\"end\"/></w:r></w:p><w:p><w:fldSimple w:instr=\"REF Counter\"><w:r><w:t>0</w:t></w:r></w:fldSimple></w:p>"));
+                let mut session = Session {
+                    document: block_on(WordDocument::load(&source, &Options::default())).unwrap(),
+                    selection: None,
+                    executor: CommandExecutor::new(),
+                };
+                for _ in 0..2 {
+                    select_assignment(&mut session, 1);
+                    let scope =
+                        jade_docx_editor::fields::FieldScope::Selection(session.selection.unwrap());
+                    session
+                        .update_fields(scope, &host(), HashMap::new())
+                        .unwrap();
+                    assert_eq!(
+                        session.selected_fields()[0].result,
+                        "900",
+                        "{instruction}, simple={simple}"
+                    );
+                    let bytes = session.document.export_docx().unwrap();
+                    capture(&bytes, "saved nested assignment");
+                    session.document =
+                        block_on(WordDocument::load(&bytes, &Options::default())).unwrap();
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn addin_nested_operands_use_the_owners_result_on_f9() {
+        use jade_docx_editor::fields::FieldScope;
+        for simple in [false, true] {
+            for locked in [false, true] {
+                let nested = if simple {
+                    format!(
+                        r#"<w:fldSimple w:instr="ADDIN vendor-payload" w:fldLock="{locked}"><w:r><w:t>900</w:t></w:r></w:fldSimple>"#
+                    )
+                } else {
+                    format!(
+                        r#"<w:r><w:fldChar w:fldCharType="begin" w:fldLock="{locked}"/></w:r><w:r><w:instrText>ADDIN vendor-payload</w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r><w:r><w:t>900</w:t></w:r><w:r><w:fldChar w:fldCharType="end"/></w:r>"#
+                    )
+                };
+                let source = body_source(&format!(
+                    r#"<w:p><w:r><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:instrText xml:space="preserve">IF </w:instrText></w:r>{nested}<w:r><w:instrText xml:space="preserve"> = 900 &quot;Owner result&quot; &quot;Missing result&quot;</w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r><w:r><w:t>Old</w:t></w:r><w:r><w:fldChar w:fldCharType="end"/></w:r></w:p>"#
+                ));
+                let mut session = Session {
+                    document: block_on(WordDocument::load(&source, &Options::default())).unwrap(),
+                    selection: None,
+                    executor: CommandExecutor::new(),
+                };
+                for _ in 0..2 {
+                    session
+                        .update_fields(FieldScope::Document, &host(), HashMap::new())
+                        .unwrap();
+                    session.whole_paragraph();
+                    assert_eq!(session.selected_fields()[0].result, "Owner result");
+                    let bytes = session.document.export_docx().unwrap();
+                    capture(&bytes, "visible ADDIN operand");
+                    session.document =
+                        block_on(WordDocument::load(&bytes, &Options::default())).unwrap();
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn nested_results_are_literal_return_values() {
+        for simple in [false, true] {
+            for quoted in [false, true] {
+                run_nested_literals(
+                    simple,
+                    quoted,
+                    &[
+                        LiteralOp::Update("a\"b".into(), true),
+                        LiteralOp::Update("\\switch".into(), false),
+                        LiteralOp::Update("a b\\".into(), true),
+                        LiteralOp::Update("\" = 0 \"Wrong\" \"Injected".into(), false),
+                        LiteralOp::Undo,
+                        LiteralOp::Redo,
+                        LiteralOp::Reload,
+                    ],
+                );
+            }
+        }
+    }
+
+    #[derive(Clone, Debug)]
+    enum LiteralOp {
+        Update(String, bool),
+        Lock(bool),
+        Undo,
+        Redo,
+        Reload,
+    }
+
+    #[derive(Clone, Debug, PartialEq, Eq)]
+    struct LiteralState {
+        result: String,
+        locked: bool,
+    }
+
+    fn run_nested_literals(simple: bool, quoted: bool, ops: &[LiteralOp]) {
+        use jade_docx_editor::fields::FieldScope;
+        let nested = if simple {
+            r#"<w:fldSimple w:instr="USERNAME"><w:r><w:t>Owner</w:t></w:r></w:fldSimple>"#
+        } else {
+            r#"<w:r><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:instrText>USERNAME</w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r><w:r><w:t>Owner</w:t></w:r><w:r><w:fldChar w:fldCharType="end"/></w:r>"#
+        };
+        let quote = if quoted { "&quot;" } else { "" };
+        let source = body_source(&format!(
+            r#"<w:p><w:r><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:instrText xml:space="preserve">IF 1 = 1 {quote}</w:instrText></w:r>{nested}<w:r><w:instrText xml:space="preserve">{quote} &quot;Wrong&quot;</w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r><w:r><w:t>Old</w:t></w:r><w:r><w:fldChar w:fldCharType="end"/></w:r></w:p>"#
+        ));
+        let mut session = Session {
+            document: block_on(WordDocument::load(&source, &Options::default())).unwrap(),
+            selection: None,
+            executor: CommandExecutor::new(),
+        };
+        let mut model = LiteralState {
+            result: "Old".into(),
+            locked: false,
+        };
+        let mut undo = Vec::new();
+        let mut redo = Vec::new();
+        for (step, op) in ops.iter().enumerate() {
+            session.whole_paragraph();
+            let before = model.clone();
+            match op {
+                LiteralOp::Update(value, document) => {
+                    let mut environment = host();
+                    environment.user_name = value.clone();
+                    let scope = if *document {
+                        FieldScope::Document
+                    } else {
+                        session.field_scope()
+                    };
+                    session
+                        .update_fields(scope, &environment, HashMap::new())
+                        .unwrap();
+                    if !model.locked {
+                        model.result = value.clone();
+                    }
+                    undo.push(before);
+                    redo.clear();
+                }
+                LiteralOp::Lock(locked) => {
+                    session.lock_fields(*locked).unwrap();
+                    model.locked = *locked;
+                    undo.push(before);
+                    redo.clear();
+                }
+                LiteralOp::Undo | LiteralOp::Redo => {
+                    let (from, to) = if matches!(op, LiteralOp::Undo) {
+                        (&mut undo, &mut redo)
+                    } else {
+                        (&mut redo, &mut undo)
+                    };
+                    let changed = if let Some(previous) = from.pop() {
+                        to.push(std::mem::replace(&mut model, previous));
+                        true
+                    } else {
+                        false
+                    };
+                    let mut context =
+                        CommandContext::new(&mut session.document, &mut session.selection);
+                    let actual = if matches!(op, LiteralOp::Undo) {
+                        session.executor.undo(&mut context)
+                    } else {
+                        session.executor.redo(&mut context)
+                    }
+                    .unwrap();
+                    assert_eq!(actual, changed, "step {step}: {op:?}, ops={ops:?}");
+                }
+                LiteralOp::Reload => {
+                    let bytes = session.document.export_docx().unwrap();
+                    session.document =
+                        block_on(WordDocument::load(&bytes, &Options::default())).unwrap();
+                    session.executor = CommandExecutor::new();
+                    undo.clear();
+                    redo.clear();
+                }
+            }
+            let context =
+                format!("simple={simple}, quoted={quoted}, step {step}: {op:?}, ops={ops:?}");
+            session.whole_paragraph();
+            let fields = session.selected_fields();
+            assert_eq!(fields.len(), 1, "{context}");
+            assert_eq!(fields[0].result, model.result, "{context}");
+            assert_eq!(fields[0].locked, model.locked, "{context}");
+            assert_eq!(session.executor.undo_depth(), undo.len(), "{context}");
+            let bytes = session.document.export_docx().unwrap();
+            capture(&bytes, &context);
+            let mut reloaded = Session {
+                document: block_on(WordDocument::load(&bytes, &Options::default())).unwrap(),
+                selection: None,
+                executor: CommandExecutor::new(),
+            };
+            reloaded.whole_paragraph();
+            let fields = reloaded.selected_fields();
+            assert_eq!(fields.len(), 1, "reloaded: {context}");
+            assert_eq!(fields[0].result, model.result, "reloaded: {context}");
+            assert_eq!(fields[0].locked, model.locked, "reloaded: {context}");
+        }
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig {
+            failure_persistence: Some(Box::new(proptest::test_runner::FileFailurePersistence::WithSource("proptest-regressions"))),
+            ..ProptestConfig::with_cases(64)
+        })]
+        #[test]
+        fn nested_literal_operation_sequences_match_model(
+            simple in any::<bool>(),
+            quoted in any::<bool>(),
+            ops in prop::collection::vec(prop_oneof![
+                5 => (prop::collection::vec(prop::sample::select(vec!['a', 'Z', '日', ' ', '\t', '\n', '"', '\\', '=', '*', '?', '{', '}', '&', '<']), 0..20), any::<bool>())
+                    .prop_map(|(chars, document)| LiteralOp::Update(chars.into_iter().collect(), document)),
+                2 => any::<bool>().prop_map(LiteralOp::Lock),
+                2 => Just(LiteralOp::Undo),
+                2 => Just(LiteralOp::Redo),
+                2 => Just(LiteralOp::Reload),
+            ], 1..25),
+        ) {
+            run_nested_literals(simple, quoted, &ops);
+        }
+    }
+
+    #[test]
+    fn hidden_nested_operands_do_not_expose_saved_caches_on_f9() {
+        use jade_docx_editor::fields::FieldScope;
+        for simple in [false, true] {
+            for locked in [false, true] {
+                for instruction in [
+                    "PRIVATE",
+                    "XE Index",
+                    "TA Authority",
+                    "TC Entry",
+                    "RD chapter.docx",
+                    "SET Counter 10",
+                    "ASK Counter Prompt",
+                ] {
+                    let nested = if simple {
+                        format!("<w:fldSimple w:instr=\"{instruction}\" w:fldLock=\"{locked}\"><w:r><w:t>900</w:t></w:r></w:fldSimple>")
+                    } else {
+                        format!("<w:r><w:fldChar w:fldCharType=\"begin\" w:fldLock=\"{locked}\"/></w:r><w:r><w:instrText>{instruction}</w:instrText></w:r><w:r><w:fldChar w:fldCharType=\"separate\"/></w:r><w:r><w:t>900</w:t></w:r><w:r><w:fldChar w:fldCharType=\"end\"/></w:r>")
+                    };
+                    let source = body_source(&format!("<w:p><w:r><w:fldChar w:fldCharType=\"begin\"/></w:r><w:r><w:instrText xml:space=\"preserve\">IF </w:instrText></w:r>{nested}<w:r><w:instrText xml:space=\"preserve\"> = &quot;&quot; &quot;Hidden&quot; &quot;Leaked&quot;</w:instrText></w:r><w:r><w:fldChar w:fldCharType=\"separate\"/></w:r><w:r><w:t>Old</w:t></w:r><w:r><w:fldChar w:fldCharType=\"end\"/></w:r></w:p>"));
+                    let mut session = Session {
+                        document: block_on(WordDocument::load(&source, &Options::default()))
+                            .unwrap(),
+                        selection: None,
+                        executor: CommandExecutor::new(),
+                    };
+                    for _ in 0..2 {
+                        session
+                            .update_fields(FieldScope::Document, &host(), HashMap::new())
+                            .unwrap();
+                        session.whole_paragraph();
+                        assert_eq!(
+                            session.selected_fields()[0].result,
+                            "Hidden",
+                            "{instruction}, simple={simple}, locked={locked}"
+                        );
+                        let bytes = session.document.export_docx().unwrap();
+                        capture(&bytes, "hidden nested operand");
+                        session.document =
+                            block_on(WordDocument::load(&bytes, &Options::default())).unwrap();
+                    }
+                }
+            }
         }
     }
 

@@ -816,7 +816,7 @@ pub fn write_sort_state(
     sheet: &Sheet,
     table: Option<&str>,
     range: CellRange,
-    keys: &[(u32, bool)],
+    keys: &[(u32, bool, Option<String>)],
     case_sensitive: bool,
 ) -> Result<Vec<u8>> {
     if range.start.row > range.end.row
@@ -825,7 +825,7 @@ pub fn write_sort_state(
         || keys.len() > 64
         || keys
             .iter()
-            .any(|(column, _)| *column < range.start.column || *column > range.end.column)
+            .any(|(column, _, _)| *column < range.start.column || *column > range.end.column)
     {
         return Err(error("invalid sort state"));
     }
@@ -864,13 +864,18 @@ pub fn write_sort_state(
         .transpose()?
         .unwrap_or_else(|| namespace_prefix(root.name.as_bytes()));
     let mut conditions = String::new();
-    for (column, descending) in keys {
+    for (column, descending, list) in keys {
         let key = CellRange {
             start: CellRef::new(*column, range.start.row),
             end: CellRef::new(*column, range.end.row),
         };
+        // A custom list's order, as Excel saves it: its entries, by commas.
+        let list = list
+            .as_ref()
+            .map(|list| format!(" customList=\"{}\"", escape(list)))
+            .unwrap_or_default();
         conditions.push_str(&format!(
-            "<{prefix}sortCondition ref=\"{}\" descending=\"{}\"/>",
+            "<{prefix}sortCondition ref=\"{}\" descending=\"{}\"{list}/>",
             range_text(key),
             u8::from(*descending)
         ));

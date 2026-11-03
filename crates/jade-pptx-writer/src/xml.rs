@@ -8,6 +8,7 @@ pub(crate) mod crop;
 pub(crate) mod diagrams;
 mod formatting;
 pub(crate) mod grouping;
+pub(crate) mod media;
 mod objects;
 pub(crate) mod picture_ranges;
 pub(crate) mod pictures;

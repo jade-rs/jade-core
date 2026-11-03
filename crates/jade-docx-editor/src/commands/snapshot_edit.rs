@@ -342,7 +342,7 @@ impl PackageSnapshotCommand {
 /// Deletes the comments an edit unanchored. Deleting one takes its replies
 /// with it, so a reply orphaned together with its parent can be gone by the
 /// time its turn comes.
-fn delete_orphaned_comments(
+pub(crate) fn delete_orphaned_comments(
     document: &mut WordDocument,
     orphaned: &[&String],
 ) -> Result<(), String> {

@@ -9,6 +9,7 @@ jade-opc = { path = "../jade-opc" }
 jade-pptx-reader = { path = "../jade-pptx-reader" }
 jade-pptx-layout = { path = "../jade-pptx-layout" }
 jade-smartart = { path = "../jade-smartart" }
+jade-ink = { path = "../jade-ink" }
 quick-xml = "0.39"
 serde = { version = "1.0", features = ["derive"] }
 thiserror = "2.0"

@@ -336,6 +336,81 @@ fn compression_downsamples_to_the_shown_size_and_drops_cropped_parts() {
 }
 
 #[test]
+fn compression_keeps_svg_crop_and_fallback_together() {
+    let svg = br##"<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="512"><path d="M0 0h1024v512H0z" fill="#FF0000"/><path d="M0 0L1024 512H0z" fill="#0000FF"/></svg>"##;
+    for all_pictures in [false, true] {
+        for delete_cropped in [true, false] {
+            let mut session = EditSession::open(DECK).unwrap();
+            let placement = Transform {
+                extent_emu: (914_400, 457_200),
+                ..bounds()
+            };
+            let id = session.insert_svg_picture(0, placement, svg).unwrap();
+            session
+                .set_picture_crop(
+                    0,
+                    id,
+                    jade_pptx_reader::SourceRect {
+                        left: 25_000,
+                        ..Default::default()
+                    },
+                    true,
+                )
+                .unwrap();
+            let bitmap_id = all_pictures.then(|| {
+                session
+                    .insert_picture(0, placement, &png(1000, 500))
+                    .unwrap()
+                    .id
+            });
+            let before = session.bytes().to_vec();
+            let original = picture(&before, id);
+            let package = OpcPackage::open(&before).unwrap();
+            let original_fallback = package
+                .part(original.image_part.as_deref().unwrap())
+                .unwrap();
+            let original_svg = package.part(original.svg_part.as_deref().unwrap()).unwrap();
+            let count = session
+                .compress_pictures((!all_pictures).then_some((0, id)), 72, delete_cropped)
+                .unwrap();
+            let current = picture(session.bytes(), id);
+            assert_eq!(
+                current.source_rect, original.source_rect,
+                "SVG crop must remain shared by both representations"
+            );
+            assert_eq!(current.image_part, original.image_part);
+            assert_eq!(current.svg_part, original.svg_part);
+            let package = OpcPackage::open(session.bytes()).unwrap();
+            assert_eq!(
+                package
+                    .part(current.image_part.as_deref().unwrap())
+                    .unwrap(),
+                original_fallback
+            );
+            assert_eq!(
+                package.part(current.svg_part.as_deref().unwrap()).unwrap(),
+                original_svg
+            );
+            if let Some(bitmap_id) = bitmap_id {
+                assert!(count >= 1, "the bitmap must still be compressed");
+                assert_ne!(
+                    picture(session.bytes(), bitmap_id).image_part,
+                    picture(&before, bitmap_id).image_part
+                );
+                let after = session.bytes().to_vec();
+                assert!(session.undo());
+                assert_eq!(session.bytes(), before);
+                assert!(session.redo());
+                assert_eq!(session.bytes(), after);
+            } else {
+                assert_eq!(count, 0);
+                assert_eq!(session.bytes(), before);
+            }
+        }
+    }
+}
+
+#[test]
 fn svg_pictures_carry_a_png_stand_in_and_take_a_graphic_fill() {
     let svg = br##"<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M2 2h20v20H2z" fill="#000000"/><circle cx="12" cy="12" r="4" fill="none" stroke="#000"/></svg>"##;
     let mut session = EditSession::open(DECK).unwrap();
@@ -396,4 +471,46 @@ fn an_svg_converts_to_freeforms_in_a_group() {
     assert!(xml.contains("<a:off x=\"952500\" y=\"952500\"/>"));
     assert!(session.undo());
     assert!(picture(session.bytes(), id).svg_part.is_some());
+}
+
+#[test]
+fn svg_conversion_preserves_rotation_and_both_flips_in_one_history_step() {
+    let svg = br##"<svg xmlns="http://www.w3.org/2000/svg" width="24" height="12"><path d="M0 0h24L0 12z" fill="#FF0000"/></svg>"##;
+    for (rotation, flip_h, flip_v) in [
+        (37 * 60_000, false, false),
+        (0, true, false),
+        (0, false, true),
+        (-23 * 60_000, true, true),
+    ] {
+        let placement = Transform {
+            rotation_60000ths: rotation,
+            flip_h,
+            flip_v,
+            ..bounds()
+        };
+        let mut session = EditSession::open(DECK).unwrap();
+        let id = session.insert_svg_picture(0, placement, svg).unwrap();
+        let before = session.bytes().to_vec();
+        let group_id = session.convert_svg_to_shapes(0, id).unwrap();
+        let converted = session.bytes().to_vec();
+        let deck = read_deck(&converted).unwrap();
+        let group = deck.slides[0]
+            .content
+            .shapes
+            .iter()
+            .find_map(|item| match item {
+                ShapeItem::Group(group) if group.id == Some(group_id) => Some(group),
+                _ => None,
+            })
+            .unwrap();
+        let transform = group.transform.unwrap();
+        assert_eq!(transform.outer, placement);
+        assert_eq!(transform.child_offset_emu, placement.offset_emu);
+        assert_eq!(transform.child_extent_emu, placement.extent_emu);
+        assert_eq!(group.children.len(), 1);
+        assert!(session.undo());
+        assert_eq!(session.bytes(), before);
+        assert!(session.redo());
+        assert_eq!(session.bytes(), converted);
+    }
 }
