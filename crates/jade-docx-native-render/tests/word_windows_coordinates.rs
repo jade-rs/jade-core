@@ -76,9 +76,13 @@ fn spatial_order(glyphs: &mut [Value]) {
     }
 }
 
-fn body_glyphs(doc: &NativeDocument) -> Vec<Value> {
+fn all_glyphs(doc: &mut NativeDocument) -> Vec<Value> {
     let mut glyphs = Vec::new();
-    for line in doc.renderer().layout_debug_lines() {
+    let mut lines = doc.renderer().layout_debug_lines();
+    let snapshot = doc.capture_full_layout_debug().unwrap();
+    assert!(snapshot.complete);
+    lines.extend(snapshot.auxiliary_lines.into_iter().map(|entry| entry.line));
+    for line in lines {
         for fragment in line.fragments {
             for glyph in fragment.glyphs {
                 if glyph.text.is_empty()
@@ -230,7 +234,7 @@ fn windows_word_baselines_with_bundled_standins() {
                 fixture["docx_sha256"],
                 format!("{:x}", Sha256::digest(&bytes))
             );
-            let doc = NativeDocument::open(&bytes, 816.0, 1056.0, &faces).unwrap();
+            let mut doc = NativeDocument::open(&bytes, 816.0, 1056.0, &faces).unwrap();
             assert_eq!(fixture["page_count"], doc.page_count());
             let (page_count, glyph_count) = match name {
                 "word-windows-yu-gothic-lines" => (24, 2160),
@@ -240,7 +244,7 @@ fn windows_word_baselines_with_bundled_standins() {
             };
             assert_eq!(doc.page_count(), page_count);
             let mut expected = fixture["glyphs"].as_array().unwrap().clone();
-            let mut actual = body_glyphs(&doc);
+            let mut actual = all_glyphs(&mut doc);
             assert_eq!(expected.len(), glyph_count);
             assert_eq!(actual.len(), expected.len());
             spatial_order(&mut expected);

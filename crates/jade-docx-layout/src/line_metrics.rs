@@ -583,6 +583,16 @@ pub fn word_compressed_punctuation_east_asian_advance_scale() -> f64 {
     }
 }
 
+/// Windows Word 16.0.19127 EMF origins in contract.docx leave a quarter em
+/// on both sides of Times New Roman letters next to Japanese text. Other
+/// faces retain their measured policy until their origins are captured.
+pub(crate) fn word_windows_latin_auto_space_gap(font_descriptor: &str) -> Option<f64> {
+    let (size_pt, family) = split_font_descriptor(font_descriptor)?;
+    let family = family.split(',').next()?.trim().trim_matches(['\'', '"']);
+    (family == "Times New Roman" && size_pt.is_finite() && size_pt > 0.0)
+        .then_some(f64::from(size_pt) / 3.0)
+}
+
 /// [`WordAutoSpace`] for a glyph drawn with `font_descriptor` in Word for Mac,
 /// or `None` for a face whose `xAvgCharWidth` is not known. Word for Windows
 /// keeps its COM-traced gaps: 2.25pt after an MS Mincho digit in

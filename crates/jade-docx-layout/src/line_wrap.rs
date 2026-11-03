@@ -1626,6 +1626,16 @@ pub fn implicit_latin_east_asian_gap_width(
         return (0.0, 0.0);
     }
 
+    if let Some(gap) = font_descriptor
+        .filter(|_| paragraph_style.word_platform == crate::line_metrics::WordLayoutPlatform::Windows)
+        .and_then(crate::line_metrics::word_windows_latin_auto_space_gap)
+    {
+        return (
+            if prev_is_east_asia { gap } else { 0.0 },
+            if next_is_east_asia { gap } else { 0.0 },
+        );
+    }
+
     let face_metrics = (paragraph_style.word_platform
         == crate::line_metrics::WordLayoutPlatform::Mac)
         .then(|| {
@@ -17805,6 +17815,39 @@ mod tests {
             );
 
             assert!((extra - 3.5).abs() < 1e-9);
+        }
+    }
+
+    #[test]
+    fn windows_times_new_roman_boundary_gaps_match_word_drawing_origins() {
+        use crate::line_metrics::{set_word_layout_platform, WordLayoutPlatform};
+        for platform in [WordLayoutPlatform::Windows, WordLayoutPlatform::Mac] {
+            set_word_layout_platform(platform);
+            let paragraph = ParagraphStyle {
+                enable_line_break_rules: true,
+                word_platform: platform,
+                ..ParagraphStyle::default()
+            };
+            for size in [10.5, 12.0] {
+                let descriptor = format!("{size:.2}pt 'Times New Roman'");
+                let (leading, trailing) = implicit_latin_east_asian_gap_width(
+                    &paragraph,
+                    "a",
+                    ScriptCategory::Latin,
+                    6.0,
+                    Some("第"),
+                    Some("項"),
+                    Some(&descriptor),
+                );
+                let quarter_em = size / 3.0;
+                assert!((leading - quarter_em).abs() < 1e-9);
+                let expected_trailing = if platform == WordLayoutPlatform::Windows {
+                    quarter_em
+                } else {
+                    quarter_em * 2.0 * 821.0 / 2048.0
+                };
+                assert!((trailing - expected_trailing).abs() < 1e-9);
+            }
         }
     }
 

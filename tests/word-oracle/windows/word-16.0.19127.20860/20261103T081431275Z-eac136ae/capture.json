@@ -1,0 +1,311 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261103T081431275Z-eac136ae",
+  "captured_at_utc": "2026-11-03T08:14:31.3040993Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20860",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "9bafe09d0c458006744b9edce767a328ba2da1bb5d9a460e5830c47bf6d7f1d1"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "documents": [
+    {
+      "name": "yokohama_page1",
+      "source": "jade-core\\public\\fixtures\\yokohama_page1.docx",
+      "sha256": "02a6ffec5671a28106245a24288b5cb7922570ae17984e903307e9eefb9ea4ff",
+      "pdf": "yokohama_page1.pdf",
+      "pdf_sha256": "cde20fc6e6a2fc618c1a2b63bf05b37d3251a1e0f8ba626004e7e5b783099b72",
+      "pages": 1,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "yokohama_page1.page-001.emf",
+          "sha256": "c32e276ce8d236a26c72f0fdb5bca076ca8a23288a1568f957fe947ad6865fd9",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    },
+    {
+      "name": "yokohama_page6",
+      "source": "jade-core\\public\\fixtures\\yokohama_page6.docx",
+      "sha256": "c7a20d83cb5f9dfe42d22b480071026b0e074fc07e25abbe38b398b1c0790081",
+      "pdf": "yokohama_page6.pdf",
+      "pdf_sha256": "52991aad185a155228669a7b96e5bd2ab2d94708b70c2c42c8e497e39318b8ee",
+      "pages": 5,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "yokohama_page6.page-001.emf",
+          "sha256": "624c7e0d630d27972b332565ba2200906ea4edafbab0902af651ad089a4eb115",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 2,
+          "file": "yokohama_page6.page-002.emf",
+          "sha256": "d0f2e6217d62249ff56d43f68f3b6807084fa861e197c90524720a325c14870b",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 3,
+          "file": "yokohama_page6.page-003.emf",
+          "sha256": "46e3625500494d41dd48e5b67b3527052cacbfde13d94ac9057c8d7ed33f9e36",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 4,
+          "file": "yokohama_page6.page-004.emf",
+          "sha256": "491dc16fb6ac73640f14400db12e8fbc90c7ebefd30f588663ab2653d9a9e940",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 5,
+          "file": "yokohama_page6.page-005.emf",
+          "sha256": "a30f3c308cf4d3920bc9fea28f69e33bc7e40130fbd1cd6b03c2ad69d7b76470",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    },
+    {
+      "name": "contract",
+      "source": "jade-core\\public\\fixtures\\contract.docx",
+      "sha256": "682d4f785f8d1b283ded73ddceedce377fcc840e15130a2a87fa90ee9a078467",
+      "pdf": "contract.pdf",
+      "pdf_sha256": "699756abc9fbd3ff304154b0cdbfa6ea2edbdffee2bf37a328bddac2f7478c94",
+      "pages": 3,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "contract.page-001.emf",
+          "sha256": "f8242228e4cf96194531afa5cda95a9796e6d08e00ee840f39b3b1f1894cc01a",
+          "width_pt": 595.2,
+          "height_pt": 841.9
+        },
+        {
+          "page": 2,
+          "file": "contract.page-002.emf",
+          "sha256": "e0b00d6b57a91300d980c3b0629b5ee841107bf81b62b4326420aad7b82d754a",
+          "width_pt": 595.2,
+          "height_pt": 841.9
+        },
+        {
+          "page": 3,
+          "file": "contract.page-003.emf",
+          "sha256": "f585dda7f809897d9ffc3ed31290f345fe17e52b78223b0180f4b1b9d6cf98b8",
+          "width_pt": 595.2,
+          "height_pt": 841.9
+        }
+      ]
+    },
+    {
+      "name": "numbering-restart",
+      "source": "jade-core\\public\\fixtures\\numbering-restart.docx",
+      "sha256": "b0fc380009a6942f9fac6862748495b21136a6c84c149d50a13f02daab0e9a20",
+      "pdf": "numbering-restart.pdf",
+      "pdf_sha256": "496d25d2feb3f495deae0162b72d5461ac7a17011a6965467d8de9b1b0b1a2ca",
+      "pages": 2,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "numbering-restart.page-001.emf",
+          "sha256": "6dd9bfb3ecf6080d939d54627062367917a15e812519773f0860484eaf269499",
+          "width_pt": 595.35,
+          "height_pt": 842.0
+        },
+        {
+          "page": 2,
+          "file": "numbering-restart.page-002.emf",
+          "sha256": "387c70d6dc927389d159063eb75b7cd6cc2157d9a352a7fd9d4b8dae5c8cba85",
+          "width_pt": 595.35,
+          "height_pt": 842.0
+        }
+      ]
+    },
+    {
+      "name": "word-windows-yu-gothic-lines",
+      "source": "jade-core\\public\\fixtures\\word-windows-yu-gothic-lines.docx",
+      "sha256": "685352a2ff6b33fa4bbfdf71ff2554bbe4231babc5a54ee2c279ebd0dacc0c95",
+      "pdf": "word-windows-yu-gothic-lines.pdf",
+      "pdf_sha256": "f83e8d043891175accf347a4c40fad67e0d9cd9fbe2f4cfb6a2e4fed69f5f9fc",
+      "pages": 24,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-yu-gothic-lines.page-001.emf",
+          "sha256": "d37cac66ada9f26a0ae2d87c33dbe5bf12eadff8dcab2ce6c0ce1925f199861f",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 2,
+          "file": "word-windows-yu-gothic-lines.page-002.emf",
+          "sha256": "58f6a4a0a9c76c3d15ca3dba141b1d5a34274e2dbc4e9b4e1f8307a6b8f96756",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 3,
+          "file": "word-windows-yu-gothic-lines.page-003.emf",
+          "sha256": "a2af69760e519965662de770751171d39cd785d38625453ce0a37b303782fcb6",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 4,
+          "file": "word-windows-yu-gothic-lines.page-004.emf",
+          "sha256": "031f2b89e016a1b866d74cef6f1b47b1bb870b0a094616c8eed9c0d6cab84377",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 5,
+          "file": "word-windows-yu-gothic-lines.page-005.emf",
+          "sha256": "7294bcecb862fdb979455022cd403d31adad00614330f4c48ec7b611ff785301",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 6,
+          "file": "word-windows-yu-gothic-lines.page-006.emf",
+          "sha256": "445307ff6ac38589a97b286b08712c328168431e3d72bd4fdb1e3165c61d6e1f",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 7,
+          "file": "word-windows-yu-gothic-lines.page-007.emf",
+          "sha256": "8eb76ace4e0fe5352d760c767b8b137bc25b01fdfb1ef879b4a6bf4dabfe76aa",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 8,
+          "file": "word-windows-yu-gothic-lines.page-008.emf",
+          "sha256": "034e1917fed731ce952b319ca9201a407238820bd1b0ecc3510a7b1672a6d539",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 9,
+          "file": "word-windows-yu-gothic-lines.page-009.emf",
+          "sha256": "e238c12653b24d078418e749208c966a66c4fff3493d2dc7de33eb62aa61adfd",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 10,
+          "file": "word-windows-yu-gothic-lines.page-010.emf",
+          "sha256": "baffa0a540ffa68a24bc00797fccc8dff4c58838267f856d27c5012eb0236a97",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 11,
+          "file": "word-windows-yu-gothic-lines.page-011.emf",
+          "sha256": "0b27f557316b1022a5406c566c48c06724f6b32d4cae03fbb27a22e994894c99",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 12,
+          "file": "word-windows-yu-gothic-lines.page-012.emf",
+          "sha256": "25b30f93844fe8d9cd3f86514b67a996d4bff1c4a5a0df53a84a40326ae0d08e",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 13,
+          "file": "word-windows-yu-gothic-lines.page-013.emf",
+          "sha256": "767f6d3ec87c1f2ef17cc97152c05cc3cc5366f86bc4ba8d70758a8ab8d07896",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 14,
+          "file": "word-windows-yu-gothic-lines.page-014.emf",
+          "sha256": "1a87ca1409647429d9774433d61721c0b1b8f21aa4bfc7afb384258f6052e99f",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 15,
+          "file": "word-windows-yu-gothic-lines.page-015.emf",
+          "sha256": "6eda350b08ddfcb6c39dc6da6898b157f50d6dba70d1ce8c67ca552dd622f275",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 16,
+          "file": "word-windows-yu-gothic-lines.page-016.emf",
+          "sha256": "e18f09666360a441e971bb438be0a5f13c28df2d7979ec23faaa7d832c51c0f7",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 17,
+          "file": "word-windows-yu-gothic-lines.page-017.emf",
+          "sha256": "a83b0b688f024299747a36c7ea692c4d15c632623f0222ac1595dcb82201e8ea",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 18,
+          "file": "word-windows-yu-gothic-lines.page-018.emf",
+          "sha256": "2eb4cdff654d449dadd4403358cc1cc9d018ee4783d57196547797ce0dbbcfb2",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 19,
+          "file": "word-windows-yu-gothic-lines.page-019.emf",
+          "sha256": "fef866f807cd05403bcff4b12791c592fd8fe7e516d438b0efc2df48e4ce5ba3",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 20,
+          "file": "word-windows-yu-gothic-lines.page-020.emf",
+          "sha256": "0ddcd293f86bd3fd0755a8fb4c06d6e58091cede1a33eaa51c97214d870b35c3",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 21,
+          "file": "word-windows-yu-gothic-lines.page-021.emf",
+          "sha256": "bb3b6b6b39cca9702e4f1dc964ec87351ee643f6c8234599b3e5e6c6074fa33f",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 22,
+          "file": "word-windows-yu-gothic-lines.page-022.emf",
+          "sha256": "e51ba66383c0cc072150a05ba60fbcd9207456836b64772ffda1f96e2aa8cb25",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 23,
+          "file": "word-windows-yu-gothic-lines.page-023.emf",
+          "sha256": "937e703a53e9ef7b770500336db4b28d49f355a4d59edacb3d997f56c3547bba",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 24,
+          "file": "word-windows-yu-gothic-lines.page-024.emf",
+          "sha256": "6c77f5b9262c7cc7466e0b04f95e3f5a699ec2d006fab91308ab73760ab3830a",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    }
+  ]
+}
