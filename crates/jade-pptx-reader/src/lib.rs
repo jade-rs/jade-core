@@ -9,6 +9,7 @@
 
 mod blip;
 pub use blip::BlipEffect;
+pub mod animation;
 pub mod chart;
 pub mod error;
 mod shape_guides;
