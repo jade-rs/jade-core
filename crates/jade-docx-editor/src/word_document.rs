@@ -17526,8 +17526,31 @@ impl WordDocument {
         if !self.is_body_paragraph_surface(rendered_end.paragraph) {
             return Err("index entries can only be marked in body paragraphs".to_string());
         }
-        let model_end = self.rendered_to_model_text_position(rendered_end);
+        let mut model_end = self.rendered_to_model_text_position(rendered_end);
         self.validate_text_position_boundary(model_end)?;
+        // A field's result is one indivisible run, or several that an edit
+        // split it into. Word nests an entry marked inside it in the result;
+        // the model has no nested result, so the marker split the field and
+        // the saved file lost it. The marker goes after the field instead.
+        if let Some(paragraph) = self.paragraph(model_end.paragraph) {
+            let mut start = 0usize;
+            let mut inside: Option<&RunFieldKind> = None;
+            for run in &paragraph.runs {
+                let end = start + run.text.len();
+                match (inside, run.field.as_ref()) {
+                    (Some(kind), Some(field)) if field.kind == *kind => {
+                        model_end.offset = end;
+                    }
+                    (Some(_), _) => break,
+                    (None, Some(field)) if start < model_end.offset && model_end.offset < end => {
+                        inside = Some(&field.kind);
+                        model_end.offset = end;
+                    }
+                    _ => {}
+                }
+                start = end;
+            }
+        }
 
         let mut properties = self
             .paragraph(model_end.paragraph)
