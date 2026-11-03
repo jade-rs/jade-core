@@ -155,6 +155,33 @@ pub(crate) fn sync_paragraph_drop_cap_xml(
     });
 }
 
+/// Writes paragraph `paragraph_index`'s `w:framePr` for a text frame, or
+/// removes it.
+pub(crate) fn sync_paragraph_frame_xml(
+    word_doc: &mut WordDocument,
+    paragraph_index: usize,
+    frame: Option<&crate::document::ParagraphFrame>,
+) {
+    sync_paragraph_properties_xml(word_doc, paragraph_index, |raw, paragraph_properties| {
+        remove_paragraph_property_child(paragraph_properties, "w:framePr");
+        let Some(frame) = frame else {
+            return;
+        };
+        let child = raw.create_element(
+            "w:framePr",
+            crate::commands::set_paragraph_frame::frame_attributes(frame)
+                .into_iter()
+                .map(|(name, value)| XmlAttribute {
+                    name: name.to_string(),
+                    value,
+                })
+                .collect(),
+            Vec::new(),
+        );
+        insert_paragraph_property_child(paragraph_properties, child);
+    });
+}
+
 /// Direct attributes named by an edit, rather than every materialized style value.
 #[derive(Clone, Copy)]
 pub(crate) struct IndentXmlChange {

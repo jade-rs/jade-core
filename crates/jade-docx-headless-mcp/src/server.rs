@@ -3666,6 +3666,15 @@ const COMMANDS: &[Variant] = &[
         ],
     ),
     variant(
+        "set_paragraph_frame",
+        "Put body paragraphs in a Word text frame (w:framePr: wrap, size, position and base, distance from text), or remove it with frame null.",
+        &[
+            req("start_paragraph", ArgType::Index, "First paragraph of the range."),
+            req("end_paragraph", ArgType::Index, "Last paragraph of the range (inclusive)."),
+            opt("frame", ArgType::Object, "{ width?, height?, height_rule?: auto|atLeast|exact, x?, x_align?, h_anchor?: text|margin|page, y?, y_align?, v_anchor?, wrap?: around|none|..., h_space?, v_space? } in points; null removes the frame."),
+        ],
+    ),
+    variant(
         "sort_paragraphs",
         "Sort adjacent body paragraphs by their text (Word's Sort with the Paragraphs key), optionally keeping the first as a header.",
         &[

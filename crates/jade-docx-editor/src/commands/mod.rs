@@ -90,6 +90,7 @@ pub mod set_paragraph_line_spacing;
 pub mod set_paragraph_metrics;
 pub mod set_paragraph_options;
 pub mod set_paragraph_outline_level;
+pub mod set_paragraph_frame;
 pub mod set_paragraph_pagination;
 pub mod set_paragraph_style;
 pub mod set_paragraph_tabs;

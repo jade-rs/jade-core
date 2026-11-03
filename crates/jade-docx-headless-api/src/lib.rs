@@ -318,6 +318,53 @@ pub enum HeadlessTableCellInsertDirection {
     ShiftDown,
 }
 
+/// Word's 枠 (`w:framePr`, ECMA-376 Part 1 §17.3.1.11) as the 枠の書式設定
+/// dialog sets it. Lengths are points; a size left out is 自動, a position
+/// left out is 0 from its base.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+pub struct HeadlessParagraphFrame {
+    /// 幅 (`w:w`); `None` is 自動.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub width: Option<f32>,
+    /// 高さ (`w:h`), read by `height_rule`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub height: Option<f32>,
+    /// `auto` (自動), `atLeast` (最小値) or `exact` (固定値).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub height_rule: Option<String>,
+    /// 水平方向の位置 as a distance (`w:x`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub x: Option<f32>,
+    /// 水平方向の位置 by alignment (`w:xAlign`): `left`, `center`, `right`,
+    /// `inside` or `outside`; it wins over `x`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub x_align: Option<String>,
+    /// 水平方向の基準 (`w:hAnchor`): `text` (段), `margin` or `page`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub h_anchor: Option<String>,
+    /// 垂直方向の位置 as a distance (`w:y`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub y: Option<f32>,
+    /// 垂直方向の位置 by alignment (`w:yAlign`): `top`, `center`, `bottom`,
+    /// `inside`, `outside` or `inline`; it wins over `y`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub y_align: Option<String>,
+    /// 垂直方向の基準 (`w:vAnchor`): `text` (段落: 文字列と一緒に移動する),
+    /// `margin` or `page`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub v_anchor: Option<String>,
+    /// 文字列の折り返し (`w:wrap`): `around` (周囲) or `none` (なし), or
+    /// `notBeside`, `tight`, `through`, `auto`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub wrap: Option<String>,
+    /// 文字列との間隔, left and right (`w:hSpace`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub h_space: Option<f32>,
+    /// 文字列との間隔, above and below (`w:vSpace`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub v_space: Option<f32>,
+}
+
 /// How 並べ替え compares one column: Word's 種類.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
 #[serde(rename_all = "snake_case")]
@@ -1284,6 +1331,15 @@ pub enum HeadlessCommand {
         kind: Option<HeadlessDropCapKind>,
         #[serde(default = "default_drop_cap_lines")]
         lines: u8,
+    },
+    /// 枠 (開発 › 旧形式のツール › 枠, 枠の書式設定): paragraphs
+    /// `start_paragraph..=end_paragraph` in one text frame, or — with
+    /// `frame: null` — 枠の削除. A paragraph with a drop cap is refused.
+    SetParagraphFrame {
+        start_paragraph: usize,
+        end_paragraph: usize,
+        #[serde(default)]
+        frame: Option<HeadlessParagraphFrame>,
     },
     /// Paragraph options Word sets from its タブとリーダー, 線種とページ罫線と
     /// 網かけの設定 and 段落 dialogs. Each field left out stays as it is.
@@ -2432,6 +2488,7 @@ impl HeadlessCommand {
             HeadlessCommand::SetParagraphShading { .. } => "set_paragraph_shading",
             HeadlessCommand::SetParagraphBorders { .. } => "set_paragraph_borders",
             HeadlessCommand::SetDropCap { .. } => "set_drop_cap",
+            HeadlessCommand::SetParagraphFrame { .. } => "set_paragraph_frame",
             HeadlessCommand::SetParagraphOptions { .. } => "set_paragraph_options",
             HeadlessCommand::SetParagraphTabs { .. } => "set_paragraph_tabs",
             HeadlessCommand::SetParagraphIndent { .. } => "set_paragraph_indent",

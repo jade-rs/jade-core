@@ -2649,6 +2649,33 @@ pub fn apply_headless_commands_with_executor_to_document(
                     )
                     .map_err(|source| HeadlessApiApplyError::Command { index, source })?;
             }
+            HeadlessCommand::SetParagraphFrame {
+                start_paragraph,
+                end_paragraph,
+                frame,
+            } => {
+                let frame = frame
+                    .as_ref()
+                    .map(crate::commands::set_paragraph_frame::frame_from_headless)
+                    .transpose()
+                    .map_err(|message| HeadlessApiApplyError::Command {
+                        index,
+                        source: CommandError::Custom(message),
+                    })?;
+                let mut ctx = CommandContext::new(word_doc, &mut selection);
+                command_executor
+                    .execute(
+                        Box::new(
+                            crate::commands::set_paragraph_frame::SetParagraphFrameCommand::new(
+                                *start_paragraph,
+                                *end_paragraph,
+                                frame,
+                            ),
+                        ),
+                        &mut ctx,
+                    )
+                    .map_err(|source| HeadlessApiApplyError::Command { index, source })?;
+            }
             HeadlessCommand::SetParagraphOptions {
                 start_paragraph,
                 end_paragraph,
