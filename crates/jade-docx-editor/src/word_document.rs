@@ -5,7 +5,7 @@ use crate::chart::{
     parse_chart_xml_for_preview, validate_chart,
 };
 use crate::commands::text_edit::{
-    apply_text_edit, create_run_from_template, normalize_break_runs,
+    apply_text_edit, create_run_from_template, is_empty_field_result, normalize_break_runs,
     rebase_comment_anchors_for_edit, run_carries_content, split_runs_at_preserving_source,
     FieldChars, ZeroWidthRuns,
 };
@@ -29926,7 +29926,16 @@ impl WordDocument {
         // Text that is still a tracked insertion stays one, inside the
         // deletion, as Word keeps it: rejecting the deletion gives the
         // insertion back, and rejecting every change removes the text.
-        for run in middle.iter_mut().filter(|run| !zero_width.keeps(run)) {
+        //
+        // A result-less field before the range's first text (an XE entry, a
+        // computed field) sits at its edge, where an untracked deletion
+        // leaves it. Marked deleted, it was saved outside the `w:del`, and
+        // accepting the deletion took it out of the model alone.
+        let before_text = middle.iter().take_while(|run| run.text.is_empty()).count();
+        for (index, run) in middle.iter_mut().enumerate() {
+            if zero_width.keeps(run) || (index < before_text && is_empty_field_result(run)) {
+                continue;
+            }
             run.revision = Some(deleted_over(run.revision.take(), &revision_mark));
             run.node_id = None;
             run.text_node_id = None;
