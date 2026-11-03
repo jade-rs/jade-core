@@ -3396,6 +3396,7 @@ pub fn apply_headless_commands_with_executor_to_document(
                         style: jade_docx_reader::document::WatermarkStyle {
                             font: font.clone(),
                             size_pt: *size,
+                            fit_shape: None,
                             color: color.clone().unwrap_or(defaults.color),
                             semitransparent: semitransparent.unwrap_or(true),
                             horizontal,
