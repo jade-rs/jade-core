@@ -73,6 +73,10 @@ struct ActiveField {
     // materialized when the element closes without adding visible content.
     paragraph_run_start: Option<usize>,
     sequence_result_run: Option<usize>,
+    // Whether a run has already carried this field's result. Its closing
+    // `fldChar` run is then only a boundary, even when a nested field's run
+    // sits between the two.
+    has_result_run: bool,
 }
 
 #[derive(Clone)]
@@ -343,6 +347,7 @@ impl DocumentParser {
         let mut current_run_field_text = String::new();
         let mut current_run_sequence_result = None;
         let mut current_run_has_field_end = false;
+        let mut current_run_field_has_result = false;
         let mut active_fields: Vec<ActiveField> = Vec::new();
         // Nested fields that depend on a forward bookmark cannot be evaluated
         // when their closing tag is encountered. Keep their semantic kind and
@@ -1063,6 +1068,9 @@ impl DocumentParser {
                             current_run_sequence_result = current_field
                                 .as_ref()
                                 .and_then(|(_, ctx)| ctx.sequence_result_run);
+                            current_run_field_has_result = current_field
+                                .as_ref()
+                                .is_some_and(|(_, ctx)| ctx.has_result_run);
                             current_run_is_instruction_operand =
                                 current_field.is_some_and(|(_, ctx)| ctx.is_instruction_operand);
                             current_run_field_text.clear();
@@ -3514,13 +3522,15 @@ impl DocumentParser {
                                     let duplicates_previous_result = current_run_has_field_end
                                         && run.text.is_empty()
                                         && cached_text.is_none()
-                                        && paragraph.runs.last().is_some_and(|previous| {
-                                            previous
-                                                .field
-                                                .as_ref()
-                                                .is_some_and(|field| field.kind == kind)
-                                        });
+                                        && current_run_field_has_result;
                                     if !duplicates_previous_result {
+                                        if let Some(field) = active_fields
+                                            .iter_mut()
+                                            .rev()
+                                            .find(|field| field.kind.as_ref() == Some(&kind))
+                                        {
+                                            field.has_result_run = true;
+                                        }
                                         // A HYPERLINK field carries interaction
                                         // metadata in its instruction rather than a
                                         // surrounding `w:hyperlink` element. Attach
@@ -9171,6 +9181,7 @@ impl DocumentParser {
                     word_mac_body_result: None,
                     paragraph_run_start: None,
                     sequence_result_run: None,
+                    has_result_run: false,
                 });
             }
             Some("separate") => {
@@ -9282,6 +9293,7 @@ impl DocumentParser {
                         word_mac_body_result: None,
                         paragraph_run_start: Some(paragraph_run_start),
                         sequence_result_run: None,
+                        has_result_run: false,
                     });
                 } else if field_instruction_is_toc(&instr) {
                     toc_fields.push(parse_toc_switches(&instr));
@@ -20186,6 +20198,41 @@ mod tests {
             Some("after field")
         );
         assert!(paragraph.runs.last().is_some_and(|run| run.field.is_none()));
+    }
+
+    #[test]
+    fn a_field_nested_in_a_result_does_not_turn_the_outer_end_into_a_second_result() {
+        // The outer field's result is already "2"; its closing run follows the
+        // nested PAGE rather than that result, but it is the same boundary.
+        let body = r#"
+            <w:bookmarkStart w:id="1" w:name="target"/>
+            <w:p>
+              <w:r><w:fldChar w:fldCharType="begin"/></w:r>
+              <w:r><w:instrText> PAGEREF target \h </w:instrText></w:r>
+              <w:r><w:fldChar w:fldCharType="separate"/></w:r>
+              <w:r><w:t>2</w:t></w:r>
+              <w:fldSimple w:instr=" PAGE "><w:r><w:t>1</w:t></w:r></w:fldSimple>
+              <w:r><w:fldChar w:fldCharType="end"/></w:r>
+              <w:r><w:t>after</w:t></w:r>
+            </w:p>
+            <w:bookmarkEnd w:id="1"/>
+        "#;
+        let doc = parse_document_from_body(body);
+        let paragraph = doc
+            .body
+            .as_ref()
+            .and_then(|b| b.elements.first())
+            .and_then(BodyElement::as_paragraph)
+            .expect("paragraph");
+        let fields: Vec<_> = paragraph
+            .runs
+            .iter()
+            .filter_map(|run| run.field.as_ref())
+            .collect();
+
+        assert_eq!(fields.len(), 2, "{fields:?}");
+        assert!(matches!(fields[0].kind, RunFieldKind::PageRef { .. }));
+        assert_eq!(fields[1].kind, RunFieldKind::PageNumber);
     }
 
     #[test]

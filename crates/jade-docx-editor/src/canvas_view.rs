@@ -12829,6 +12829,8 @@ impl OffscreenDocumentView {
                     bottom: spec.bottom.clone(),
                     left: spec.left.clone(),
                     right: spec.right.clone(),
+                    tl2br: None,
+                    tr2bl: None,
                 })
                 .collect()
         })

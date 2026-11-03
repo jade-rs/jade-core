@@ -19,7 +19,8 @@ use super::run_backup::{capture_paragraph_runs, restore_paragraph_runs, Paragrap
 use super::text_edit::{apply_run_properties, mutate_run_properties};
 use super::{Command, CommandContext, CommandError, CommandResult};
 use crate::document::{
-    BorderEdge, EastAsianLayout, Paragraph, RunFonts, RunProperties, RunThemeColor, Shading,
+    BorderEdge, EastAsianLayout, Paragraph, RunFitText, RunFonts, RunProperties, RunThemeColor,
+    Shading,
 };
 use crate::docx_xml::{XmlAttribute, XmlElement, XmlNode, XmlNodeId};
 use jade_docx_layout::selection::SelectionRange;
@@ -524,6 +525,14 @@ fn apply_patch(props: &mut RunProperties, format: &HeadlessRunFormat, layout_id:
     if let Some(layout) = format.east_asian_layout.as_ref() {
         apply_east_asian_layout(props, layout, layout_id);
     }
+    if let Some(width) = format.fit_text {
+        // One `w:id` for the whole range: Word spreads the runs that share
+        // it over the width as one.
+        props.fit_text = (width.is_finite() && width > 0.0).then(|| RunFitText {
+            val: (width * 20.0).round().clamp(1.0, 31_680.0 * 20.0) as u32,
+            id: Some((layout_id % i64::from(i32::MAX)) as i32),
+        });
+    }
     apply_text_effects(props, format);
 }
 
@@ -832,5 +841,9 @@ pub fn run_format_of(props: &RunProperties) -> HeadlessRunFormat {
                 vert: layout.vert,
                 vert_compress: layout.vert_compress,
             }),
+        fit_text: props
+            .fit_text
+            .as_ref()
+            .map(|fit_text| fit_text.val as f32 / 20.0),
     }
 }

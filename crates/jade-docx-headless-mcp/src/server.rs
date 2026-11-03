@@ -3163,7 +3163,7 @@ const COMMANDS: &[Variant] = &[
     ),
     variant(
         "set_table_cell_borders",
-        "Set one cell's own borders, which win over the table's defaults — the way a total row gets a double rule above it. A cell has only its four edges.",
+        "Set one cell's own borders, which win over the table's defaults — the way a total row gets a double rule above it. A cell has its four edges and two diagonals.",
         &[
             req(
                 "table_order_index",
@@ -3180,6 +3180,16 @@ const COMMANDS: &[Variant] = &[
             opt("bottom", ArgType::BorderEdge, "Bottom edge."),
             opt("left", ArgType::BorderEdge, "Left edge."),
             opt("right", ArgType::BorderEdge, "Right edge."),
+            opt(
+                "tl2br",
+                ArgType::BorderEdge,
+                "Diagonal from the top-left corner to the bottom-right; style none removes it.",
+            ),
+            opt(
+                "tr2bl",
+                ArgType::BorderEdge,
+                "Diagonal from the top-right corner to the bottom-left; style none removes it.",
+            ),
         ],
     ),
     variant(
@@ -3938,6 +3948,20 @@ const COMMANDS: &[Variant] = &[
                 ArgType::Choice(&["diagonal", "horizontal"]),
                 "Diagonal (default) or horizontal.",
             ),
+        ],
+    ),
+    variant(
+        "set_manuscript_grid",
+        "Draw or remove Word's manuscript-paper grid (原稿用紙) in every header over the body box; set the page, margins and snapToChars grid with set_section_layout first.",
+        &[
+            opt(
+                "style",
+                ArgType::Choice(&["squares", "lines", "frame"]),
+                "Squares, underlines or a ruled frame; omitted removes the grid.",
+            ),
+            req("chars", ArgType::Index, "Characters per line."),
+            req("lines", ArgType::Index, "Lines per page."),
+            req("color", ArgType::Text, "Rule color as #RRGGBB."),
         ],
     ),
     variant(

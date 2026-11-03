@@ -39,6 +39,7 @@ pub use range_authentication::{
 };
 mod sheets;
 mod sort;
+mod sparklines;
 mod tables;
 
 /// A spilled value as a cell holds it.
@@ -78,6 +79,7 @@ use jade_xlsx_headless_api::{
     WorkbookSummary,
 };
 use jade_xlsx_layout::{column_label, number_format};
+pub use jade_xlsx_reader::sparkline::{Sparkline, SparklineGroup};
 pub use jade_xlsx_reader::SheetProtection;
 use jade_xlsx_reader::{
     Axis, Cell, CellRange, CellRef, CellValue, DateSystem, HeaderFooter, Shape, ShapeKind, Sheet,
@@ -104,6 +106,7 @@ use jade_xlsx_writer::{
 };
 pub use objects::ShapeAnchor;
 pub use pivots::{PivotCreationSummary, PivotDeletionSummary, PivotRefreshSummary};
+pub use sparklines::{new_group as new_sparkline_group, pair as pair_sparklines};
 pub use tables::{TableOptions, TableResult, TableStyle, TableTotal, TableUpdate, TotalFunction};
 use thiserror::Error;
 

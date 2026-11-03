@@ -1937,7 +1937,7 @@ pub enum HeadlessCommand {
         inside_v: Option<HeadlessBorderEdge>,
     },
     /// One cell's own borders (`w:tcBorders`), which win over the table's
-    /// defaults. A cell has only its four edges.
+    /// defaults: its four edges and its two diagonals (斜め罫線).
     SetTableCellBorders {
         table_order_index: usize,
         row: usize,
@@ -1950,6 +1950,13 @@ pub enum HeadlessCommand {
         left: Option<HeadlessBorderEdge>,
         #[serde(default)]
         right: Option<HeadlessBorderEdge>,
+        /// 斜め罫線 (右下がり): top-left to bottom-right (`w:tl2br`); style
+        /// `none` takes it away.
+        #[serde(default)]
+        tl2br: Option<HeadlessBorderEdge>,
+        /// 斜め罫線 (右上がり): top-right to bottom-left (`w:tr2bl`).
+        #[serde(default)]
+        tr2bl: Option<HeadlessBorderEdge>,
     },
     /// Row properties for a table that runs over a page break: repeat this row
     /// as the header at the top of every page (`w:tblHeader`), and keep the row
@@ -2278,6 +2285,18 @@ pub enum HeadlessCommand {
         #[serde(default)]
         layout: Option<String>,
     },
+    /// 原稿用紙設定's drawing: the manuscript-paper grid in every header over
+    /// the final section's body box — `squares` (マス目付き), `lines`
+    /// (下線付き) or `frame` (外枠付き), `chars` × `lines`, in `color`
+    /// (`#RRGGBB`). `style` omitted (なし) takes it away. The page, margins
+    /// and `snapToChars` grid are set with `set_section_layout` first.
+    SetManuscriptGrid {
+        #[serde(default)]
+        style: Option<String>,
+        chars: u32,
+        lines: u32,
+        color: String,
+    },
     /// Replaces the package-wide Word theme fonts and color scheme while
     /// preserving unmodeled theme XML.
     SetDocumentTheme {
@@ -2478,6 +2497,7 @@ impl HeadlessCommand {
             HeadlessCommand::SetPageColumns { .. } => "set_page_columns",
             HeadlessCommand::SetPageBorders { .. } => "set_page_borders",
             HeadlessCommand::SetWatermark { .. } => "set_watermark",
+            HeadlessCommand::SetManuscriptGrid { .. } => "set_manuscript_grid",
             HeadlessCommand::SetDocumentTheme { .. } => "set_document_theme",
             HeadlessCommand::SetPageBackgroundColor { .. } => "set_page_background_color",
             HeadlessCommand::SetParagraphLineSpacing { .. } => "set_paragraph_line_spacing",

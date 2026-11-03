@@ -33,6 +33,12 @@ pub struct SparklineGroup {
     pub max_axis: String,
     pub manual_min: Option<f64>,
     pub manual_max: Option<f64>,
+    /// `dateAxis`: points spaced by the dates in `date_range`.
+    #[serde(default)]
+    pub date_axis: bool,
+    /// The group's `xm:f`: the cells holding each point's date.
+    #[serde(default)]
+    pub date_range: Option<String>,
     pub color_series: Option<Color>,
     pub color_negative: Option<Color>,
     pub color_axis: Option<Color>,
@@ -121,6 +127,7 @@ pub fn parse_sparklines(xml: &str) -> Result<Vec<SparklineGroup>> {
     let mut group: Option<(usize, SparklineGroup)> = None;
     let mut sparkline: Option<PendingSparkline> = None;
     let mut leaf: Option<Leaf> = None;
+    let mut date_leaf: Option<(usize, String)> = None;
     loop {
         let event = reader.read_event()?;
         match &event {
@@ -160,6 +167,7 @@ pub fn parse_sparklines(xml: &str) -> Result<Vec<SparklineGroup>> {
                             .unwrap_or_else(|| "individual".into()),
                         manual_min: number(b"manualMin")?,
                         manual_max: number(b"manualMax")?,
+                        date_axis: flag(element, b"dateAxis")?,
                         ..Default::default()
                     };
 
@@ -206,6 +214,13 @@ pub fn parse_sparklines(xml: &str) -> Result<Vec<SparklineGroup>> {
                         cell: None,
                     });
                 } else if namespace == XM_NAMESPACE
+                    && name == b"f"
+                    && !empty
+                    && sparkline.is_none()
+                    && group.as_ref().is_some_and(|(at, _)| at + 1 == depth)
+                {
+                    date_leaf = Some((depth, String::new()));
+                } else if namespace == XM_NAMESPACE
                     && matches!(name.as_slice(), b"f" | b"sqref")
                     && sparkline.as_ref().is_some_and(|s| s.depth + 1 == depth)
                 {
@@ -225,6 +240,10 @@ pub fn parse_sparklines(xml: &str) -> Result<Vec<SparklineGroup>> {
                 }
             }
             Event::Text(value) => {
+                if let Some((_, text)) = date_leaf.as_mut().filter(|(at, _)| stack.len() == at + 1)
+                {
+                    text.push_str(&value.decode()?);
+                }
                 if let Some(leaf) = leaf.as_mut().filter(|v| stack.len() == v.depth + 1) {
                     leaf.text.push_str(&value.decode()?);
                 }
@@ -247,6 +266,12 @@ pub fn parse_sparklines(xml: &str) -> Result<Vec<SparklineGroup>> {
             }
             Event::End(_) => {
                 let depth = stack.len().saturating_sub(1);
+                if date_leaf.as_ref().is_some_and(|(at, _)| *at == depth) {
+                    let (_, text) = date_leaf.take().unwrap();
+                    if let Some((_, group)) = group.as_mut() {
+                        group.date_range = Some(text.trim().to_string()).filter(|t| !t.is_empty());
+                    }
+                }
                 if leaf.as_ref().is_some_and(|v| v.depth == depth) {
                     let value = leaf.take().unwrap();
                     if let Some(sparkline) = sparkline.as_mut() {

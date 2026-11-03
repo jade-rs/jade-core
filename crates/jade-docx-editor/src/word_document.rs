@@ -811,6 +811,10 @@ pub enum BorderSide {
     Right,
     InsideH,
     InsideV,
+    /// A cell's 斜め罫線 (右下がり), `w:tl2br`.
+    Tl2br,
+    /// A cell's 斜め罫線 (右上がり), `w:tr2bl`.
+    Tr2bl,
 }
 
 impl BorderSide {
@@ -823,6 +827,8 @@ impl BorderSide {
             BorderSide::Right => "right",
             BorderSide::InsideH => "inside-h",
             BorderSide::InsideV => "inside-v",
+            BorderSide::Tl2br => "tl2br",
+            BorderSide::Tr2bl => "tr2bl",
         }
     }
 }
@@ -847,6 +853,9 @@ mod references;
 
 #[path = "word_document/hyphenation.rs"]
 mod hyphenation;
+
+#[path = "word_document/manuscript.rs"]
+pub mod manuscript;
 
 #[path = "word_document/format_state.rs"]
 pub mod format_state;
@@ -877,6 +886,10 @@ pub struct TableBorderSpec {
     pub right: Option<BorderEdgeSpec>,
     pub inside_h: Option<BorderEdgeSpec>,
     pub inside_v: Option<BorderEdgeSpec>,
+    /// A cell's diagonal from its top-left corner (斜め罫線 右下がり).
+    pub tl2br: Option<BorderEdgeSpec>,
+    /// A cell's diagonal from its top-right corner (斜め罫線 右上がり).
+    pub tr2bl: Option<BorderEdgeSpec>,
 }
 
 fn table_style_preset_fill(preset: &str, row: usize) -> Result<&'static str, String> {
@@ -936,6 +949,8 @@ impl TableBorderSpec {
             (BorderSide::Right, self.right.as_ref()),
             (BorderSide::InsideH, self.inside_h.as_ref()),
             (BorderSide::InsideV, self.inside_v.as_ref()),
+            (BorderSide::Tl2br, self.tl2br.as_ref()),
+            (BorderSide::Tr2bl, self.tr2bl.as_ref()),
         ];
         let mut validated = Vec::new();
         for (side, edge) in edges {
@@ -1105,7 +1120,10 @@ impl PageBorderSpec {
                 BorderSide::Bottom => borders.bottom = Some(edge),
                 BorderSide::Left => borders.left = Some(edge),
                 BorderSide::Right => borders.right = Some(edge),
-                BorderSide::InsideH | BorderSide::InsideV => unreachable!("page edges are outer"),
+                BorderSide::InsideH
+                | BorderSide::InsideV
+                | BorderSide::Tl2br
+                | BorderSide::Tr2bl => unreachable!("page edges are outer"),
             }
         }
         if !visible {
@@ -2827,6 +2845,8 @@ impl WordDocument {
             let watermark = Self::watermark_from_loaded_headers(&document, &parsed_doc, &doc_part);
             parsed_doc.watermark_style = watermark.as_ref().map(|(_, style)| style.clone());
             parsed_doc.watermark_text = watermark.map(|(text, _)| text);
+            parsed_doc.manuscript_grid =
+                Self::manuscript_from_loaded_headers(&document, &parsed_doc, &doc_part);
             document.even_and_odd_headers = doc_settings.even_and_odd_headers;
 
             // Before the styles fill paragraphs in: the paragraph a textless
@@ -22957,6 +22977,7 @@ impl WordDocument {
                 right: Some(border.clone()),
                 inside_h: Some(border.clone()),
                 inside_v: Some(border),
+                ..TableBorderSpec::default()
             },
         )
     }
@@ -23001,6 +23022,12 @@ impl WordDocument {
         spec: &TableBorderSpec,
     ) -> Result<(), String> {
         let edges = spec.validated_edges()?;
+        if edges
+            .iter()
+            .any(|(side, _)| matches!(side, BorderSide::Tl2br | BorderSide::Tr2bl))
+        {
+            return Err("tl2br / tr2bl are cell borders; a table has none of its own".to_string());
+        }
         let table_id = {
             let table = self
                 .table_mut_by_order(table_order_index)
@@ -23018,6 +23045,7 @@ impl WordDocument {
                     }
                     BorderSide::InsideH => &mut borders.inside_h,
                     BorderSide::InsideV => &mut borders.inside_v,
+                    BorderSide::Tl2br | BorderSide::Tr2bl => continue,
                 };
                 *slot = Some(value.to_border_edge());
             }
@@ -23054,6 +23082,14 @@ impl WordDocument {
             let cell = self.table_cell_mut_at(table_order_index, row, column)?;
             for (side, value) in &edges {
                 let name = side.style_prefix();
+                let diagonal = matches!(side, BorderSide::Tl2br | BorderSide::Tr2bl);
+                if diagonal && matches!(value.style.as_deref(), Some("none" | "nil")) {
+                    // No diagonal is no `w:tl2br` / `w:tr2bl` at all.
+                    for part in ["style", "width", "color"] {
+                        cell.style.remove(&format!("border-{name}-{part}"));
+                    }
+                    continue;
+                }
                 match value.style.as_deref() {
                     Some(style) => {
                         cell.style
@@ -23093,7 +23129,142 @@ impl WordDocument {
             };
             *slot = Some(value.to_border_edge());
         }
-        self.sync_borders_xml(cell_id, "w:tcPr", "w:tcBorders", &resolved)
+        self.sync_borders_xml(cell_id, "w:tcPr", "w:tcBorders", &resolved)?;
+        let diagonals = self.cell_diagonals_from_style(table_order_index, row, column)?;
+        self.sync_cell_diagonals_xml(cell_id, diagonals)
+    }
+
+    /// A cell's diagonals (`w:tl2br`, `w:tr2bl`) as its style keys hold them.
+    fn cell_diagonals_from_style(
+        &self,
+        table_order_index: usize,
+        row: usize,
+        column: usize,
+    ) -> Result<[Option<BorderEdge>; 2], String> {
+        let table = self
+            .table_by_order(table_order_index)
+            .ok_or_else(|| format!("table {table_order_index} was not found"))?;
+        let target_row = table
+            .rows
+            .get(row)
+            .ok_or_else(|| format!("row {row} is out of range"))?;
+        let cell_index = Self::row_cell_boundaries(target_row)
+            .into_iter()
+            .find(|boundary| column >= boundary.start && column < boundary.end)
+            .map(|boundary| boundary.cell_index)
+            .ok_or_else(|| format!("column {column} is out of range in row {row}"))?;
+        let cell = target_row
+            .cells
+            .get(cell_index)
+            .ok_or_else(|| format!("cell ({row}, {column}) was not found"))?;
+        let edge = |name: &str| {
+            let style = cell.style.get(&format!("border-{name}-style"))?;
+            if matches!(style.as_str(), "none" | "nil") {
+                return None;
+            }
+            let width_pt = cell
+                .style
+                .get(&format!("border-{name}-width"))
+                .and_then(|value| {
+                    let value = value.trim();
+                    match value.strip_suffix("pt") {
+                        Some(points) => points.trim().parse::<f32>().ok(),
+                        // The parser keeps `w:sz`, eighths of a point.
+                        None => value.parse::<f32>().ok().map(|eighths| eighths / 8.0),
+                    }
+                });
+            Some(BorderEdge {
+                val: Some(style.clone()),
+                size_eighths: width_pt.map(|pt| (pt * 8.0).round().max(0.0) as u32),
+                space: None,
+                color: cell
+                    .style
+                    .get(&format!("border-{name}-color"))
+                    .filter(|color| !color.eq_ignore_ascii_case("auto"))
+                    .map(|color| {
+                        format!("#{}", color.trim_start_matches('#').to_ascii_uppercase())
+                    }),
+            })
+        };
+        Ok([edge("tl2br"), edge("tr2bl")])
+    }
+
+    /// Writes a cell's diagonals at the end of its `w:tcBorders`, where the
+    /// schema puts them (after `w:insideV`), or takes them out.
+    fn sync_cell_diagonals_xml(
+        &mut self,
+        node_id: Option<XmlNodeId>,
+        diagonals: [Option<BorderEdge>; 2],
+    ) -> Result<(), String> {
+        let Some(node_id) = node_id else {
+            return Ok(());
+        };
+        let Some(raw) = self.raw_document.as_mut() else {
+            return Ok(());
+        };
+        let properties_id = Self::ensure_properties_element(raw, node_id, "w:tcPr")?;
+        let mut elements = Vec::new();
+        for (name, edge) in ["w:tl2br", "w:tr2bl"].into_iter().zip(diagonals.iter()) {
+            let Some(edge) = edge else { continue };
+            let mut attributes = vec![XmlAttribute {
+                name: "w:val".to_string(),
+                value: edge.val.clone().unwrap_or_else(|| "single".to_string()),
+            }];
+            if let Some(size) = edge.size_eighths {
+                attributes.push(XmlAttribute {
+                    name: "w:sz".to_string(),
+                    value: size.to_string(),
+                });
+            }
+            attributes.push(XmlAttribute {
+                name: "w:space".to_string(),
+                value: "0".to_string(),
+            });
+            attributes.push(XmlAttribute {
+                name: "w:color".to_string(),
+                value: edge
+                    .color
+                    .clone()
+                    .map(|color| color.trim_start_matches('#').to_ascii_uppercase())
+                    .unwrap_or_else(|| "auto".to_string()),
+            });
+            elements.push(XmlNode::Element(raw.create_element(
+                name,
+                attributes,
+                Vec::new(),
+            )));
+        }
+        let has_borders = raw.element(properties_id).is_some_and(|properties| {
+            properties.children.iter().any(
+                |node| matches!(node, XmlNode::Element(element) if element.name == "w:tcBorders"),
+            )
+        });
+        if !has_borders {
+            if elements.is_empty() {
+                return Ok(());
+            }
+            let borders = raw.create_element("w:tcBorders", Vec::new(), Vec::new());
+            let properties = raw
+                .element_mut(properties_id)
+                .ok_or_else(|| "failed to locate w:tcPr".to_string())?;
+            properties.children.push(XmlNode::Element(borders));
+        }
+        let properties = raw
+            .element_mut(properties_id)
+            .ok_or_else(|| "failed to locate w:tcPr".to_string())?;
+        if let Some(XmlNode::Element(borders)) = properties
+            .children
+            .iter_mut()
+            .find(|node| matches!(node, XmlNode::Element(element) if element.name == "w:tcBorders"))
+        {
+            borders.children.retain(|node| {
+                !matches!(node, XmlNode::Element(element)
+                    if element.name == "w:tl2br" || element.name == "w:tr2bl")
+            });
+            borders.children.extend(elements);
+        }
+        raw.rebuild_index_for_subtree(node_id);
+        Ok(())
     }
 
     /// Word table properties: authored height in points, independent of the
@@ -36451,8 +36622,9 @@ impl WordDocument {
                 }
             }
 
-            if let Some(fit_text) = props.fit_text.as_ref() {
-                Self::upsert_run_fit_text_child(doc, &mut element, fit_text);
+            match props.fit_text.as_ref() {
+                Some(fit_text) => Self::upsert_run_fit_text_child(doc, &mut element, fit_text),
+                None => Self::remove_run_property_child(&mut element, "w:fitText"),
             }
 
             let fonts = if direct.known {

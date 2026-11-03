@@ -3857,6 +3857,45 @@ pub fn apply_headless_commands_with_executor_to_document(
                     )
                     .map_err(|source| HeadlessApiApplyError::Command { index, source })?;
             }
+            HeadlessCommand::SetManuscriptGrid {
+                style,
+                chars,
+                lines,
+                color,
+            } => {
+                use jade_docx_reader::document::{ManuscriptGrid, ManuscriptStyle};
+                let grid = match style.as_deref() {
+                    None => None,
+                    Some(style) => Some(ManuscriptGrid {
+                        style: match style {
+                            "squares" => ManuscriptStyle::Squares,
+                            "lines" => ManuscriptStyle::Lines,
+                            "frame" => ManuscriptStyle::Frame,
+                            other => {
+                                return Err(HeadlessApiApplyError::Command {
+                                    index,
+                                    source: CommandError::Custom(format!(
+                                    "manuscript style must be squares, lines or frame, not {other}"
+                                )),
+                                })
+                            }
+                        },
+                        chars: *chars,
+                        lines: *lines,
+                        color: color.clone(),
+                    }),
+                };
+                let mut ctx = CommandContext::new(word_doc, &mut selection);
+                command_executor
+                    .execute(
+                        Box::new(SnapshotEditCommand::new(
+                            "set_manuscript_grid",
+                            move |document| document.set_manuscript_grid(grid.clone()).map(|_| ()),
+                        )),
+                        &mut ctx,
+                    )
+                    .map_err(|source| HeadlessApiApplyError::Command { index, source })?;
+            }
             HeadlessCommand::SetHyphenation { patch } => {
                 let patch = patch.clone();
                 let mut ctx = CommandContext::new(word_doc, &mut selection);
@@ -4407,6 +4446,7 @@ pub fn apply_headless_commands_with_executor_to_document(
                     right: right.as_ref().map(border_edge_spec),
                     inside_h: inside_h.as_ref().map(border_edge_spec),
                     inside_v: inside_v.as_ref().map(border_edge_spec),
+                    ..TableBorderSpec::default()
                 };
                 execute_snapshot_edit(
                     word_doc,
@@ -4426,6 +4466,8 @@ pub fn apply_headless_commands_with_executor_to_document(
                 bottom,
                 left,
                 right,
+                tl2br,
+                tr2bl,
             } => {
                 let (table_order_index, row, column) = (*table_order_index, *row, *column);
                 let spec = TableBorderSpec {
@@ -4433,6 +4475,8 @@ pub fn apply_headless_commands_with_executor_to_document(
                     bottom: bottom.as_ref().map(border_edge_spec),
                     left: left.as_ref().map(border_edge_spec),
                     right: right.as_ref().map(border_edge_spec),
+                    tl2br: tl2br.as_ref().map(border_edge_spec),
+                    tr2bl: tr2bl.as_ref().map(border_edge_spec),
                     ..TableBorderSpec::default()
                 };
                 execute_snapshot_edit(
