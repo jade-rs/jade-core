@@ -2,8 +2,8 @@
 use crate::{number_format, LayoutOptions, Rect, ResolvedFont};
 use jade_xlsx_reader::{
     chart::{
-        resolve_chart_reference, Chart, ChartAxis, ChartColor, ChartData, ChartPointState,
-        ChartSeries, DataLabels, ErrorBars, LineFormat, Trendline,
+        resolve_chart_reference, AreaFill, Chart, ChartAxis, ChartColor, ChartData,
+        ChartPointState, ChartSeries, DataLabels, ErrorBars, LineFormat, Trendline,
     },
     CellValue, DateSystem, Sheet, StyleTable, Workbook,
 };
@@ -167,6 +167,121 @@ fn number(value: Option<&String>) -> Option<f64> {
         .and_then(|v| v.parse::<f64>().ok())
         .filter(|v| v.is_finite())
 }
+/// One colour standing for `fill`: a gradient's stops blended, a
+/// pattern's colours as they mix at a distance; `None` for no fill.
+fn fill_rgb(chart: &Chart, fill: &AreaFill) -> Option<[u8; 3]> {
+    let mix = |a: [u8; 3], b: [u8; 3], t: f64| -> [u8; 3] {
+        [0, 1, 2].map(|i| (f64::from(a[i]) * (1.0 - t) + f64::from(b[i]) * t).round() as u8)
+    };
+    match fill {
+        AreaFill::None => None,
+        AreaFill::Solid(color) => Some(resolved_color(chart, color).unwrap_or([255, 255, 255])),
+        AreaFill::Gradient(stops, _) => {
+            let colors: Vec<[u8; 3]> = stops
+                .iter()
+                .filter_map(|(_, color)| resolved_color(chart, color))
+                .collect();
+            let first = *colors.first()?;
+            Some(
+                colors[1..]
+                    .iter()
+                    .enumerate()
+                    .fold(first, |sum, (i, color)| {
+                        mix(sum, *color, 1.0 / (i as f64 + 2.0))
+                    }),
+            )
+        }
+        AreaFill::Pattern(preset, foreground, background) => {
+            let fg = resolved_color(chart, foreground).unwrap_or([0, 0, 0]);
+            let bg = resolved_color(chart, background).unwrap_or([255, 255, 255]);
+            // How much of the pattern is foreground: `pct20` a fifth.
+            let share = preset
+                .strip_prefix("pct")
+                .and_then(|n| n.parse::<f64>().ok())
+                .map_or(0.4, |n| n / 100.0);
+            Some(mix(bg, fg, share))
+        }
+    }
+}
+/// `rect` filled as `fill` says: a gradient in bands along its angle.
+fn fill_rect(
+    ops: &mut Vec<ChartOp>,
+    chart: &Chart,
+    rect: Rect,
+    fill: &AreaFill,
+    stroke: Option<String>,
+) {
+    if let AreaFill::Gradient(stops, angle) = fill {
+        let colors: Vec<(f64, [u8; 3])> = stops
+            .iter()
+            .filter_map(|(at, color)| {
+                Some((f64::from(*at) / 100_000.0, resolved_color(chart, color)?))
+            })
+            .collect();
+        if colors.len() >= 2 && rect.width > 0.0 && rect.height > 0.0 {
+            let color_at = |t: f64| -> [u8; 3] {
+                let after = colors
+                    .iter()
+                    .position(|(at, _)| *at >= t)
+                    .unwrap_or(colors.len() - 1);
+                if after == 0 {
+                    return colors[0].1;
+                }
+                let (a, ca) = colors[after - 1];
+                let (b, cb) = colors[after];
+                let f = if b > a {
+                    ((t - a) / (b - a)).clamp(0.0, 1.0)
+                } else {
+                    1.0
+                };
+                [0, 1, 2]
+                    .map(|i| (f64::from(ca[i]) * (1.0 - f) + f64::from(cb[i]) * f).round() as u8)
+            };
+            // Down the rectangle from 45° to 135°, across it otherwise.
+            let degrees = (f64::from(*angle) / 60_000.0).rem_euclid(360.0);
+            let down = (45.0..135.0).contains(&degrees) || (225.0..315.0).contains(&degrees);
+            let backwards = (135.0..315.0).contains(&degrees);
+            let bands = 24;
+            for band in 0..bands {
+                let t = (band as f64 + 0.5) / bands as f64;
+                let color = color_at(if backwards { 1.0 - t } else { t });
+                let part = if down {
+                    Rect {
+                        x: rect.x,
+                        y: rect.y + rect.height * band as f64 / bands as f64,
+                        width: rect.width,
+                        height: rect.height / bands as f64 + 0.5,
+                    }
+                } else {
+                    Rect {
+                        x: rect.x + rect.width * band as f64 / bands as f64,
+                        y: rect.y,
+                        width: rect.width / bands as f64 + 0.5,
+                        height: rect.height,
+                    }
+                };
+                ops.push(ChartOp::Rectangle {
+                    rect: part,
+                    fill: Some(rgb(color)),
+                    stroke: None,
+                });
+            }
+            if stroke.is_some() {
+                ops.push(ChartOp::Rectangle {
+                    rect,
+                    fill: None,
+                    stroke,
+                });
+            }
+            return;
+        }
+    }
+    ops.push(ChartOp::Rectangle {
+        rect,
+        fill: fill_rgb(chart, fill).map(rgb),
+        stroke,
+    });
+}
 fn rgb(rgb: [u8; 3]) -> String {
     format!("#{:02x}{:02x}{:02x}", rgb[0], rgb[1], rgb[2])
 }
@@ -190,6 +305,28 @@ fn resolved_color(chart: &Chart, color: &ChartColor) -> Option<[u8; 3]> {
 /// Excel's automatic series colours: the six accents, then the same accents
 /// darkened, then lightened.
 fn automatic(chart: &Chart, index: usize) -> [u8; 3] {
+    // Chart Styles' columns: 1 greys, 2 the accents, 3 to 8 one accent in
+    // shades.
+    let column = chart.style.map_or(1, |style| (style.clamp(1, 48) - 1) % 8);
+    if column != 1 {
+        let base = if column == 0 {
+            [128, 128, 128]
+        } else {
+            chart.palette[(column - 2) as usize]
+        };
+        let steps = [0.0, -0.5, 0.4, -0.25, 0.6, -0.7, 0.2, -0.1];
+        let step = steps[index % steps.len()];
+        return base.map(|c| {
+            let c = f64::from(c);
+            (if step < 0.0 {
+                c * (1.0 + step)
+            } else {
+                c + (255.0 - c) * step
+            })
+            .round()
+            .clamp(0.0, 255.0) as u8
+        });
+    }
     let base = chart.palette[index % 6];
     let shade = |factor: f64| base.map(|c| (f64::from(c) * factor).round().min(255.0) as u8);
     let tint = |factor: f64| {
@@ -239,6 +376,9 @@ struct Scale {
     reverse: bool,
     /// A logarithmic axis's base.
     log: Option<f64>,
+    /// Between minor gridlines: the axis's minor unit, or a fifth of a
+    /// major one.
+    minor: f64,
 }
 impl Scale {
     fn fraction(self, value: f64) -> f64 {
@@ -270,6 +410,41 @@ impl Scale {
         (0..=count.min(200))
             .map(|i| first + i as f64 * self.step)
             .collect()
+    }
+    fn minor_ticks(self) -> Vec<f64> {
+        if let Some(base) = self.log {
+            // Each decade's multiples.
+            let mut ticks = Vec::new();
+            let mut decade = self.min;
+            while decade < self.max && ticks.len() < 400 {
+                for k in 2..(base as usize).min(10) {
+                    let tick = decade * k as f64;
+                    if tick < self.max {
+                        ticks.push(tick);
+                    }
+                }
+                decade *= base;
+            }
+            return ticks;
+        }
+        if self.minor.is_nan() || self.minor <= 0.0 || (self.max - self.min) / self.minor > 1000.0 {
+            return Vec::new();
+        }
+        let first = (self.min / self.minor).ceil() * self.minor;
+        let count = ((self.max - first) / self.minor + 1e-9).floor().max(0.0) as usize;
+        (0..=count).map(|i| first + i as f64 * self.minor).collect()
+    }
+    /// Where the other axis crosses this one, as `crosses` or `crossesAt`
+    /// on the other axis says; bars and areas grow from there.
+    fn crossing(self, other: &ChartAxis) -> f64 {
+        if let Some(at) = parse_number(&other.crosses_at) {
+            return at.clamp(self.min, self.max);
+        }
+        match other.crosses.as_deref() {
+            Some("max") => self.max,
+            Some("min") => self.min,
+            _ => self.base(),
+        }
     }
     /// Where bars and areas grow from: zero, or the axis edge nearer to it.
     fn base(self) -> f64 {
@@ -325,6 +500,7 @@ fn scale(
             step: base,
             reverse: axis.reverse,
             log: Some(base),
+            minor: base,
         };
     }
     if !min.is_finite() {
@@ -362,18 +538,23 @@ fn scale(
             step: 0.2,
             reverse: axis.reverse,
             log: None,
+            minor: 0.04,
         };
     }
     if (max - min) / step > 200.0 {
         issues.push("axis tick limit".into());
         step = (max - min) / 5.0;
     }
+    let minor = parse_number(&axis.minor_unit)
+        .filter(|unit| *unit > 0.0)
+        .unwrap_or(step / 5.0);
     Scale {
         min,
         max,
         step,
         reverse: axis.reverse,
         log: None,
+        minor,
     }
 }
 fn label(value: f64, format: Option<&str>, dates: DateSystem) -> String {
@@ -836,11 +1017,19 @@ pub fn layout_chart(
         return result;
     }
     let ops = &mut result.ops;
-    ops.push(ChartOp::Rectangle {
-        rect: frame,
-        fill: Some("#ffffff".into()),
-        stroke: Some("#d9d9d9".into()),
-    });
+    fill_rect(
+        ops,
+        chart,
+        frame,
+        chart
+            .chart_fill
+            .as_ref()
+            .unwrap_or(&AreaFill::Solid(ChartColor {
+                rgb: Some([255, 255, 255]),
+                scheme: None,
+            })),
+        Some("#d9d9d9".into()),
+    );
     let mut plot = Rect {
         x: frame.x + 52.0,
         y: frame.y + if title.is_empty() { 16.0 } else { 36.0 },
@@ -1090,14 +1279,16 @@ fn layout_pie(
             } else {
                 points.push((cx, cy));
             }
-            path(
-                ops,
-                points,
-                true,
-                Some(point_color(chart, 0, i, chart.vary_colors)),
-                Some("#ffffff".into()),
-                1.0,
-            );
+            let own = series
+                .spec
+                .fill
+                .as_ref()
+                .filter(|_| !series.spec.point_colors.contains_key(&i) && !chart.vary_colors);
+            let fill = match own {
+                Some(fill) => fill_rgb(chart, fill).map(rgb),
+                None => Some(point_color(chart, 0, i, chart.vary_colors)),
+            };
+            path(ops, points, true, fill, Some("#ffffff".into()), 1.0);
             if let Some(text) = labels_for(view, series).and_then(|labels| {
                 label_text(
                     labels,
@@ -1635,6 +1826,23 @@ fn layout_cartesian(
     if secondary_title.is_some() {
         plot.width = (plot.width - 18.0).max(1.0);
     }
+    // A data table under the plot, in the category labels' place.
+    let series_count: usize = plots.iter().map(|view| view.series.len()).sum();
+    let table = chart
+        .data_table
+        .as_ref()
+        .filter(|_| !xy && !horizontal && series_count > 0);
+    const ROW: f64 = 16.0;
+    if table.is_some() {
+        let room = ROW * (series_count as f64 + 1.0) - 18.0;
+        plot.height = (plot.height - room.max(0.0)).max(1.0);
+        plot.x += 40.0;
+        plot.width = (plot.width - 40.0).max(1.0);
+    }
+    // The plot area's fill, under its gridlines.
+    if let Some(fill) = &chart.plot_fill {
+        fill_rect(ops, chart, plot, fill, None);
+    }
     if let Some(title) = left_title {
         upright_text(
             ops,
@@ -1835,11 +2043,28 @@ fn layout_cartesian(
         .number_format
         .clone()
         .or_else(|| chart.series[0].values.format_code.clone());
+    if primary_axis.minor_gridlines {
+        for tick in sy.minor_ticks() {
+            let coordinate = y(tick);
+            if horizontal {
+                line(
+                    ops,
+                    (coordinate, plot.y),
+                    (coordinate, plot.bottom()),
+                    "#f2f2f2",
+                )
+            } else {
+                line(
+                    ops,
+                    (plot.x, coordinate),
+                    (plot.right(), coordinate),
+                    "#f2f2f2",
+                )
+            }
+        }
+    }
     for tick in sy.ticks() {
         let coordinate = y(tick);
-        if primary_axis.hidden {
-            continue;
-        }
         if primary_axis.gridlines {
             if horizontal {
                 line(
@@ -1856,6 +2081,9 @@ fn layout_cartesian(
                     "#d9d9d9",
                 )
             }
+        }
+        if primary_axis.hidden {
+            continue;
         }
         let text_value = label(tick, value_format.as_deref(), dates);
         if horizontal {
@@ -1909,7 +2137,7 @@ fn layout_cartesian(
             );
         }
     }
-    let zero = y(sy.base());
+    let zero = y(sy.crossing(&chart.category_axis));
     if !primary_axis.hidden {
         if horizontal {
             line(
@@ -1954,6 +2182,12 @@ fn layout_cartesian(
         scale(values.into_iter(), &chart.category_axis, false, issues)
     });
     let x_of_value = |x: f64| plot.x + sx.map_or(0.0, |sx| sx.fraction(x)) * plot.width;
+    if let Some(sx) = sx.filter(|_| chart.category_axis.minor_gridlines) {
+        for tick in sx.minor_ticks() {
+            let x = x_of_value(tick);
+            line(ops, (x, plot.y), (x, plot.bottom()), "#f2f2f2");
+        }
+    }
     if let Some(sx) = sx {
         for tick in sx.ticks() {
             if chart.category_axis.hidden {
@@ -2054,7 +2288,89 @@ fn layout_cartesian(
         }
     };
     if let Some(c) = categories.as_ref() {
-        if !chart.category_axis.hidden {
+        if let Some(table) = table {
+            let top = plot.bottom();
+            let left = plot.x - 40.0 - 6.0;
+            let rows = series_count + 1;
+            let bottom = top + ROW * rows as f64;
+            let width = slot;
+            for (slot_index, text_value) in &c.labels {
+                text(
+                    ops,
+                    text_value.clone(),
+                    (category_at(*slot_index), top + 12.0),
+                    "center",
+                    (width - 4.0).max(1.0),
+                    false,
+                    options,
+                );
+            }
+            let mut row = 1;
+            for view in plots {
+                for series in &view.series {
+                    let y = top + ROW * row as f64;
+                    let mut name_x = plot.x - 4.0;
+                    if table.keys {
+                        let color = rgb(series_rgb(chart, series.spec, series.palette));
+                        ops.push(ChartOp::Rectangle {
+                            rect: Rect {
+                                x: left + 3.0,
+                                y: y + 5.0,
+                                width: 6.0,
+                                height: 6.0,
+                            },
+                            fill: Some(color),
+                            stroke: None,
+                        });
+                        name_x = name_x.max(left + 12.0);
+                    }
+                    text(
+                        ops,
+                        series.name.clone(),
+                        (name_x, y + 12.0),
+                        "right",
+                        (plot.x - left - 6.0).max(1.0),
+                        false,
+                        options,
+                    );
+                    for (i, slot_index) in c.slots.iter().enumerate() {
+                        let (Some(slot_index), Some(Some(value))) =
+                            (slot_index, series.values.get(i))
+                        else {
+                            continue;
+                        };
+                        text(
+                            ops,
+                            label(*value, series.spec.values.format_code.as_deref(), dates),
+                            (category_at(*slot_index), y + 12.0),
+                            "center",
+                            (width - 4.0).max(1.0),
+                            false,
+                            options,
+                        );
+                    }
+                    row += 1;
+                }
+            }
+            let border = "#bfbfbf";
+            if table.horizontal_borders {
+                for r in 1..rows {
+                    let y = top + ROW * r as f64;
+                    line(ops, (left, y), (plot.right(), y), border);
+                }
+            }
+            if table.vertical_borders {
+                for k in 0..=c.count as usize {
+                    let x = plot.x + k as f64 * slot;
+                    line(ops, (x, top), (x, bottom), border);
+                }
+            }
+            if table.outline {
+                line(ops, (left, top + ROW), (left, bottom), border);
+                line(ops, (left, bottom), (plot.right(), bottom), border);
+                line(ops, (plot.right(), top), (plot.right(), bottom), border);
+            }
+        } else if !chart.category_axis.hidden {
             let width = if chart.category_axis.date && c.labels.len() > 1 {
                 (c.labels[1].0 - c.labels[0].0) * slot
             } else {
@@ -2129,7 +2445,11 @@ fn layout_cartesian(
             sy
         };
         let value_at = |v: f64| to_axis(scale, v);
-        let base = value_at(scale.base());
+        let base = value_at(if view.secondary {
+            scale.base()
+        } else {
+            scale.crossing(&chart.category_axis)
+        });
         let stacked = matches!(view.grouping, "stacked" | "percentStacked");
         match view.kind {
             "barChart" => {
@@ -2176,17 +2496,26 @@ fn layout_cartesian(
                                 height: (b - a).abs(),
                             }
                         };
-                        ops.push(ChartOp::Rectangle {
-                            rect,
-                            fill: Some(rgb(point_rgb(
-                                chart,
-                                series.spec,
-                                series.palette,
-                                i,
-                                view.vary_colors && view.series.len() == 1,
-                            ))),
-                            stroke: None,
-                        });
+                        let vary = view.vary_colors && view.series.len() == 1;
+                        match series
+                            .spec
+                            .fill
+                            .as_ref()
+                            .filter(|_| !vary && !series.spec.point_colors.contains_key(&i))
+                        {
+                            Some(fill) => fill_rect(ops, chart, rect, fill, None),
+                            None => ops.push(ChartOp::Rectangle {
+                                rect,
+                                fill: Some(rgb(point_rgb(
+                                    chart,
+                                    series.spec,
+                                    series.palette,
+                                    i,
+                                    vary,
+                                ))),
+                                stroke: None,
+                            }),
+                        }
                         if let Some(text) = labels_for(view, series).and_then(|spec| {
                             label_text(spec, series, i, series.values[i]?, None, dates)
                         }) {
@@ -2292,6 +2621,10 @@ fn layout_cartesian(
                 };
                 for (s, series) in view.series.iter().enumerate() {
                     let color = rgb(series_rgb(chart, series.spec, series.palette));
+                    let area_color = match series.spec.fill.as_ref() {
+                        Some(fill) => fill_rgb(chart, fill).map(rgb),
+                        None => Some(color.clone()),
+                    };
                     let smooth_line = series.spec.smooth
                         || (view.kind == "scatterChart"
                             && view.scatter_style.starts_with("smooth"));
@@ -2307,8 +2640,8 @@ fn layout_cartesian(
                                 ops,
                                 points,
                                 true,
-                                Some(color.clone()),
-                                Some(color.clone()),
+                                area_color.clone(),
+                                area_color.clone(),
                                 1.0,
                             )
                         } else {

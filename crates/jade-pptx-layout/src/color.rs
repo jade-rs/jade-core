@@ -18,7 +18,7 @@ pub fn resolve_color(color: &Color, theme: &ThemeColors) -> String {
     }
 }
 
-fn resolve_rgba(color: &Color, theme: &ThemeColors) -> (u8, u8, u8, f64) {
+pub(crate) fn resolve_rgba(color: &Color, theme: &ThemeColors) -> (u8, u8, u8, f64) {
     match color {
         Color::Srgb(hex) => {
             let (r, g, b) = parse_hex(hex).unwrap_or((0, 0, 0));

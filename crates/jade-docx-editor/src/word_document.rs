@@ -32364,25 +32364,29 @@ impl WordDocument {
                 },
                 _ => None,
             };
-            // A result-less simple field the model has no run for (a TC or
-            // XE entry) marks a place in the text: it goes to the side that
-            // place falls on. Put in both, a split paragraph listed its TOC
-            // entry twice.
-            let unmodeled_field = match child {
-                XmlNode::Element(element) => {
-                    Self::is_zero_width_field_container(element)
-                        && !element
-                            .attributes
-                            .iter()
-                            .find(|attribute| attribute.name == "w:instr")
-                            .is_some_and(|instr| {
-                                DocumentParser::simple_field_kind(&instr.value).is_some()
-                            })
+            // A result-less simple field (a TC or XE entry, an AUTONUM)
+            // marks a place in the text: it goes to the side that place falls
+            // on. Put in both, a split paragraph listed its TOC entry twice.
+            // At the split, a field the model has a run for goes with the
+            // text after it, as that run does in the model's split: kept
+            // before it, the field stayed in the first paragraph's XML while
+            // the model moved it, and the file had it twice. A TC entry has
+            // no run, and stays with the heading it ends.
+            let zero_width_field = match child {
+                XmlNode::Element(element) if Self::is_zero_width_field_container(element) => {
+                    let modeled = element
+                        .attributes
+                        .iter()
+                        .find(|attribute| attribute.name == "w:instr")
+                        .is_some_and(|instr| {
+                            DocumentParser::parse_field_instruction(&instr.value).is_some()
+                        });
+                    Some(modeled)
                 }
-                _ => false,
+                _ => None,
             };
-            if unmodeled_field {
-                if position <= offset {
+            if let Some(modeled) = zero_width_field {
+                if position < offset || (position == offset && !modeled) {
                     head.push(child.clone());
                 } else {
                     tail.push(child.clone());

@@ -283,7 +283,7 @@ fn with_workbook_scopes<T>(
         .sheets
         .iter()
         .map(|sheet| {
-            let (filtered_ranges, unknown_filtered_range) = sheet.filtered_row_ranges();
+            let (filtered_ranges, unknown_filtered_range) = workbook.filtered_row_ranges(sheet);
             ironcalc_base::row_visibility::SheetVisibility {
                 default_hidden: sheet.default_rows_hidden,
                 overrides: sheet

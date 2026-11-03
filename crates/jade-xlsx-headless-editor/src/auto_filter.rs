@@ -491,7 +491,7 @@ impl HeadlessWorkbook {
                 states.insert(sheet.name.clone(), state.clone());
                 continue;
             }
-            let (mut ranges, unknown) = sheet.filtered_row_ranges();
+            let (mut ranges, unknown) = self.workbook.filtered_row_ranges(sheet);
             if unknown {
                 continue;
             }
@@ -589,7 +589,7 @@ impl HeadlessWorkbook {
     ) -> BTreeMap<String, FilterRowState> {
         let mut states = self.filter_row_state.clone();
         if let Ok(sheet) = self.sheet(sheet_name) {
-            let (mut ranges, unknown) = sheet.filtered_row_ranges();
+            let (mut ranges, unknown) = self.workbook.filtered_row_ranges(sheet);
             if !unknown {
                 if let Some(filter) = &sheet.auto_filter {
                     if let Some(range) = filter.reference {
@@ -633,7 +633,7 @@ impl HeadlessWorkbook {
     ) -> BTreeMap<String, FilterRowState> {
         let mut sizes = BTreeMap::new();
         if let Ok(sheet) = self.sheet(sheet_name) {
-            let (ranges, unknown) = sheet.filtered_row_ranges();
+            let (ranges, unknown) = self.workbook.filtered_row_ranges(sheet);
             if !unknown {
                 for (first, end) in ranges {
                     if end - first < ROW_LIMIT {
@@ -839,7 +839,7 @@ impl HeadlessWorkbook {
         {
             return Err(error("saved filter visibility snapshot is invalid"));
         }
-        if sheet.filtered_row_ranges().1 {
+        if self.workbook.filtered_row_ranges(sheet).1 {
             return Err(error("existing filtered row range is unavailable"));
         }
         let disable = matches!(change, AutoFilterChange::Disable { .. });
@@ -1458,7 +1458,7 @@ impl HeadlessWorkbook {
         self.commit_filter_bytes(written, sheet_name, row_state)?;
         Ok(summary)
     }
-    fn commit_filter_bytes(
+    pub(super) fn commit_filter_bytes(
         &mut self,
         mut written: Vec<u8>,
         sheet: &str,

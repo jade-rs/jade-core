@@ -118,6 +118,64 @@ impl WhatIf {
             _ => None,
         })
     }
+
+    /// Whether `formula`, written for the cell `anchor` of `sheet`, holds at
+    /// each of `cells` of that sheet — its relative references moved along,
+    /// as an Advanced Filter's computed criterion is decided for each
+    /// record — with the workbook's values as they are. `None` when the
+    /// engine cannot read the formula.
+    pub fn formula_holds(
+        &mut self,
+        workbook: &Workbook,
+        sheet: usize,
+        anchor: CellRef,
+        formula: &str,
+        cells: &[CellRef],
+    ) -> Result<Option<Vec<bool>>> {
+        let system = match workbook.date_system {
+            DateSystem::Nineteen00 => ironcalc_base::date_system::DateSystem::Excel1900,
+            DateSystem::Nineteen04 => ironcalc_base::date_system::DateSystem::Excel1904,
+        };
+        let restore = std::mem::take(&mut self.set);
+        let model = &mut self.model;
+        let formula = jade_xlsx_reader::collapse_ref_errors(&table_formula(
+            workbook,
+            sheet,
+            Some(anchor),
+            formula,
+        ));
+        with_workbook_scopes(workbook, &self.manual, self.instant, || {
+            ironcalc_base::date_system::with_date_system(system, || {
+                if !restore.is_empty() {
+                    for &(on, at) in &restore {
+                        put_back(model, workbook, on, at);
+                    }
+                    model.evaluate();
+                }
+                let Some(parsed) = model.parse_anchored_formula(
+                    &formula,
+                    sheet as u32,
+                    anchor.row as i32 + 1,
+                    anchor.column as i32 + 1,
+                ) else {
+                    return Ok(None);
+                };
+                Ok(Some(
+                    cells
+                        .iter()
+                        .map(|at| {
+                            model.anchored_formula_holds(
+                                &parsed,
+                                sheet as u32,
+                                at.row as i32 + 1,
+                                at.column as i32 + 1,
+                            )
+                        })
+                        .collect(),
+                ))
+            })
+        })
+    }
 }
 
 /// Empties a cell of the model, so a value set in it replaces a formula.

@@ -1,0 +1,9 @@
+[package]
+name = "jade-smartart"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "SmartArt (DrawingML diagrams): the data model, the built-in layouts, colours and styles, and the cached drawing Office keeps."
+
+[dependencies]
+quick-xml = "0.39"

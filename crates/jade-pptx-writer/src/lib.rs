@@ -6,9 +6,19 @@ pub use xml::layouts::{
     validate_slide_layout, validate_slide_layouts, validate_slide_reset, validate_slide_resets,
     SlideLayoutInfo,
 };
+mod picture_format;
 mod shape_insertion;
+pub use picture_format::{
+    compress_pictures, convert_svg_to_shapes, format_picture, insert_svg_picture, picture_format,
+    PictureEdit, PictureEffect, PictureFormatInfo, PictureStyle, Recolor, PICTURE_STYLES,
+};
+mod smartart;
 mod xml;
 pub use shape_insertion::{insert_shape, validate_shape_insert, ShapeInsert, ShapePreset};
+pub use smartart::{
+    convert_smartart_to_shapes, convert_text_to_smartart, edit_smartart, insert_smartart,
+    set_smartart_picture, smartart, SmartArtEdit, SmartArtInfo, SmartArtShape,
+};
 pub use xml::shape_style::{
     set_shape_style, shape_style, validate_shape_style, ShapePaintInfo, ShapeStyleEdit,
     ShapeStyleInfo,
@@ -1065,6 +1075,73 @@ impl EditSession {
         let (next, inserted) = insert_picture(self.bytes(), slide, transform, image)?;
         self.commit(next);
         Ok(inserted)
+    }
+    pub fn insert_smartart(
+        &mut self,
+        slide: usize,
+        transform: jade_pptx_reader::Transform,
+        layout: &str,
+        nodes: &[jade_smartart::Node],
+    ) -> Result<u32> {
+        let (next, id) = insert_smartart(self.bytes(), slide, transform, layout, nodes)?;
+        self.commit(next);
+        Ok(id)
+    }
+    pub fn edit_smartart(&mut self, slide: usize, id: u32, edit: &SmartArtEdit) -> Result<bool> {
+        let next = edit_smartart(self.bytes(), slide, id, edit)?;
+        Ok(self.commit(next))
+    }
+    pub fn set_smartart_picture(
+        &mut self,
+        slide: usize,
+        id: u32,
+        node: &str,
+        image: &[u8],
+    ) -> Result<bool> {
+        let next = set_smartart_picture(self.bytes(), slide, id, node, image)?;
+        Ok(self.commit(next))
+    }
+    pub fn convert_smartart_to_shapes(&mut self, slide: usize, id: u32) -> Result<u32> {
+        let (next, group) = convert_smartart_to_shapes(self.bytes(), slide, id)?;
+        self.commit(next);
+        Ok(group)
+    }
+    pub fn convert_text_to_smartart(&mut self, slide: usize, id: u32, layout: &str) -> Result<u32> {
+        let (next, frame) = convert_text_to_smartart(self.bytes(), slide, id, layout)?;
+        self.commit(next);
+        Ok(frame)
+    }
+    /// One 図の形式 command on picture `id`.
+    pub fn format_picture(&mut self, slide: usize, id: u32, edit: &PictureEdit) -> Result<bool> {
+        let next = format_picture(self.bytes(), slide, id, edit)?;
+        Ok(self.commit(next))
+    }
+    /// 図の圧縮; how many pictures got smaller.
+    pub fn compress_pictures(
+        &mut self,
+        only: Option<(usize, u32)>,
+        ppi: u32,
+        delete_cropped: bool,
+    ) -> Result<usize> {
+        let (next, count) = compress_pictures(self.bytes(), only, ppi, delete_cropped)?;
+        self.commit(next);
+        Ok(count)
+    }
+    /// 図形に変換 on an SVG picture: the group it becomes.
+    pub fn convert_svg_to_shapes(&mut self, slide: usize, id: u32) -> Result<u32> {
+        let (next, group) = convert_svg_to_shapes(self.bytes(), slide, id)?;
+        self.commit(next);
+        Ok(group)
+    }
+    pub fn insert_svg_picture(
+        &mut self,
+        slide: usize,
+        transform: jade_pptx_reader::Transform,
+        svg: &[u8],
+    ) -> Result<u32> {
+        let (next, id) = insert_svg_picture(self.bytes(), slide, transform, svg)?;
+        self.commit(next);
+        Ok(id)
     }
     pub fn set_picture_crop(
         &mut self,
