@@ -1,21 +1,32 @@
 use super::{Command, CommandContext, CommandError, CommandResult, HistoryRenderFootprint};
-use crate::word_document::WordDocumentSnapshot;
+use crate::word_document::{WatermarkSpec, WordDocumentSnapshot};
 use jade_docx_layout::selection::SelectionRange;
 
 /// Replaces or clears the Word-compatible VML text watermark in every
 /// referenced header variant. A package snapshot makes the multi-part edit,
 /// selection, and undo/redo history atomic.
 pub struct SetWatermarkCommand {
-    text: Option<String>,
+    spec: Option<WatermarkSpec>,
     snapshot: Option<WordDocumentSnapshot>,
     previous_selection: Option<SelectionRange>,
     changed: bool,
 }
 
 impl SetWatermarkCommand {
+    /// A watermark of Word's default look (silver, semitransparent,
+    /// diagonal, size automatic), or `None` to take it away.
     pub fn new(text: Option<String>) -> Self {
-        Self {
+        Self::with_spec(text.map(|text| WatermarkSpec {
             text,
+            style: Default::default(),
+        }))
+    }
+
+    /// A watermark with its look (ユーザー設定の透かし), or `None` to take it
+    /// away.
+    pub fn with_spec(spec: Option<WatermarkSpec>) -> Self {
+        Self {
+            spec,
             snapshot: None,
             previous_selection: None,
             changed: false,
@@ -34,7 +45,7 @@ impl Command for SetWatermarkCommand {
             .snapshot_including_package()
             .ok_or(CommandError::DocumentUnavailable)?;
         let previous_selection = *ctx.selection;
-        match ctx.document.set_watermark_text(self.text.as_deref()) {
+        match ctx.document.set_watermark(self.spec.clone()) {
             Ok(changed) => {
                 self.snapshot = Some(snapshot);
                 self.previous_selection = previous_selection;
@@ -292,6 +303,86 @@ mod tests {
             .expect("cleared default header");
         assert!(default_cleared.contains("KEEP HEADER"));
         assert!(default_cleared.contains("<x:keep x:value=\"yes\"/>"));
+    }
+
+    /// ユーザー設定の透かし: the font, size, color, 半透明 and レイアウト are
+    /// written into the VML as Word writes them and read back on open.
+    #[test]
+    fn a_styled_watermark_round_trips_its_look() {
+        use jade_docx_reader::document::WatermarkStyle;
+        let mut document = load_fixture();
+        let style = WatermarkStyle {
+            font: Some("游ゴシック".to_string()),
+            size_pt: Some(72.0),
+            color: "#ff0000".to_string(),
+            semitransparent: false,
+            horizontal: true,
+            width_pt: None,
+            height_pt: None,
+        };
+        let mut selection = Some(SelectionRange::collapsed(TextPosition::new(0, 0)));
+        let mut context = CommandContext::new(&mut document, &mut selection);
+        let mut commands = CommandExecutor::new();
+        commands
+            .execute(
+                Box::new(SetWatermarkCommand::with_spec(Some(WatermarkSpec {
+                    text: "至急".to_string(),
+                    style,
+                }))),
+                &mut context,
+            )
+            .expect("set styled watermark");
+        let bytes = document.export_docx().expect("export");
+        let headers = header_xmls(&bytes);
+        let xml = &headers[0].1;
+        assert!(
+            xml.contains("font-family:&quot;游ゴシック&quot;;font-size:72pt"),
+            "{xml}"
+        );
+        assert!(xml.contains("fillcolor=\"#FF0000\""), "{xml}");
+        assert!(
+            !xml.contains("rotation:315"),
+            "horizontal has no rotation: {xml}"
+        );
+        assert!(
+            !xml.contains("<v:fill "),
+            "opaque has no fill opacity: {xml}"
+        );
+        assert!(xml.contains("width:144pt;height:72pt"), "{xml}");
+
+        let reopened =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("reopen");
+        let parsed = reopened.document.as_deref().expect("document");
+        assert_eq!(parsed.watermark_text.as_deref(), Some("至急"));
+        let read = parsed.watermark_style.clone().expect("style");
+        assert_eq!(read.font.as_deref(), Some("游ゴシック"));
+        assert_eq!(read.size_pt, Some(72.0));
+        assert_eq!(read.color, "#FF0000");
+        assert!(!read.semitransparent && read.horizontal);
+        assert_eq!((read.width_pt, read.height_pt), (Some(144.0), Some(72.0)));
+
+        // Word's default look: silver, semitransparent, diagonal, automatic.
+        let mut document = reopened;
+        assert!(document
+            .set_watermark_text(Some("社外秘"))
+            .expect("default"));
+        let bytes = document.export_docx().expect("export default");
+        let xml = header_xmls(&bytes).remove(0).1;
+        assert!(xml.contains("fillcolor=\"silver\""), "{xml}");
+        assert!(xml.contains("rotation:315"), "{xml}");
+        assert!(xml.contains("<v:fill opacity=\".5\"/>"), "{xml}");
+        assert!(xml.contains("font-size:1pt"), "{xml}");
+        let style = document
+            .document
+            .as_deref()
+            .and_then(|document| document.watermark_style.clone())
+            .expect("default style");
+        assert!(style.semitransparent && !style.horizontal && style.size_pt.is_none());
+        // 自動 diagonal: the rotated box fits the body's shorter side.
+        let (width, height) = (style.width_pt.unwrap(), style.height_pt.unwrap());
+        assert!((width / height - 3.0).abs() < 0.01, "{width} x {height}");
+        // Applying the same look again is a no-op.
+        assert!(!document.set_watermark_text(Some("社外秘")).expect("same"));
     }
 
     #[test]

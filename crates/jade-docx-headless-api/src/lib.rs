@@ -2262,6 +2262,21 @@ pub enum HeadlessCommand {
         clear: bool,
         #[serde(default)]
         text: Option<String>,
+        /// フォント: the text path's font family; omitted keeps Word's default.
+        #[serde(default)]
+        font: Option<String>,
+        /// サイズ in points; omitted is 自動 (the text fills the page).
+        #[serde(default)]
+        size: Option<f32>,
+        /// 色 as `#RRGGBB`; omitted is Word's silver (`#C0C0C0`).
+        #[serde(default)]
+        color: Option<String>,
+        /// 半透明にする; omitted is on, as Word's dialog starts.
+        #[serde(default)]
+        semitransparent: Option<bool>,
+        /// レイアウト: `diagonal` (対角線上, the default) or `horizontal` (水平).
+        #[serde(default)]
+        layout: Option<String>,
     },
     /// Replaces the package-wide Word theme fonts and color scheme while
     /// preserving unmodeled theme XML.
@@ -2914,6 +2929,7 @@ mod tests {
             HeadlessCommand::SetWatermark {
                 clear: false,
                 text: Some(value),
+                ..
             } if value == "社外秘"
         ));
 
