@@ -746,6 +746,10 @@
       "docx_sha256": "92aa454d75835ec0d193192d91d82220459b5362ec054addad778c7d8308269c"
     },
     {
+      "fixture": "word-windows-yu-gothic-lines",
+      "docx_sha256": "685352a2ff6b33fa4bbfdf71ff2554bbe4231babc5a54ee2c279ebd0dacc0c95"
+    },
+    {
       "fixture": "wrong-num",
       "docx_sha256": "d553ecaf5868bc2cf80c0c293073d9ec8842890a6e3e3ef9a1aa048f7cc5191e"
     },

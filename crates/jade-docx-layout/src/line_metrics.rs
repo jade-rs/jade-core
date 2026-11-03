@@ -2172,6 +2172,24 @@ pub fn word_east_asian_font_vertical_units(family: &str) -> Option<(f32, f32, f3
             // useFELayout, give 1.673em single spacing and 1.188em ascent.
             Some((2038.0, 598.0, 2048.0))
         }
+        // Windows YuGoth*.ttc uses its OS/2 usWin box, like Yu Mincho.
+        // Word 16.0.19127 long-line probes at 9/10/10.5/11/12/20pt
+        // reproduce the baseline and successive line pitch from these units.
+        "游ゴシック" | "Yu Gothic" | "YuGothic"
+            if word_layout_platform() == WordLayoutPlatform::Windows =>
+        {
+            Some((2017.0, 619.0, 2048.0))
+        }
+        "游ゴシック Light" | "Yu Gothic Light" | "YuGothic-Light"
+            if word_layout_platform() == WordLayoutPlatform::Windows =>
+        {
+            Some((2026.0, 610.0, 2048.0))
+        }
+        "游ゴシック Medium" | "Yu Gothic Medium"
+            if word_layout_platform() == WordLayoutPlatform::Windows =>
+        {
+            Some((2028.0, 608.0, 2048.0))
+        }
         "游明朝"
         | "Yu Mincho"
         | "YuMincho"

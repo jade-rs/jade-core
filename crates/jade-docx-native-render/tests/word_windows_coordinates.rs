@@ -64,6 +64,31 @@ fn spatial_order(glyphs: &mut [Value]) {
     }
 }
 
+fn body_glyphs(doc: &NativeDocument) -> Vec<Value> {
+    let mut glyphs = Vec::new();
+    for line in doc.renderer().layout_debug_lines() {
+        for fragment in line.fragments {
+            for glyph in fragment.glyphs {
+                if glyph.text.is_empty()
+                    || glyph
+                        .text
+                        .chars()
+                        .all(|ch| ch.is_whitespace() || ch.is_control())
+                {
+                    continue;
+                }
+                glyphs.push(json!([
+                    line.page + 1,
+                    glyph.text,
+                    (fragment.x + glyph.x - 2.0 * line.report_x_offset) * 0.75,
+                    fragment.baseline * 0.75
+                ]));
+            }
+        }
+    }
+    glyphs
+}
+
 #[test]
 #[cfg(target_os = "windows")]
 fn windows_word_font_boxes_and_grid_origins() {
@@ -162,7 +187,9 @@ fn windows_word_baselines_with_bundled_standins() {
             "MS Mincho",
             "MS Gothic",
             "Yu Mincho",
+            "Yu Gothic",
             "Yu Gothic Light",
+            "Yu Gothic Medium",
         ]
         .into_iter()
         .map(|family| FaceSpec {
@@ -172,6 +199,41 @@ fn windows_word_baselines_with_bundled_standins() {
         })
         .collect();
         let mut checked = 0;
+        for fixture in reference["fixtures"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|fixture| fixture["name"] == "word-windows-yu-gothic-lines")
+        {
+            let bytes = std::fs::read(repo_path(
+                "public/fixtures/word-windows-yu-gothic-lines.docx",
+            ))
+            .unwrap();
+            assert_eq!(
+                fixture["docx_sha256"],
+                format!("{:x}", Sha256::digest(&bytes))
+            );
+            let doc = NativeDocument::open(&bytes, 816.0, 1056.0, &faces).unwrap();
+            assert_eq!(fixture["page_count"], doc.page_count());
+            assert_eq!(doc.page_count(), 24);
+            let mut expected = fixture["glyphs"].as_array().unwrap().clone();
+            let mut actual = body_glyphs(&doc);
+            assert_eq!(expected.len(), 2160);
+            assert_eq!(actual.len(), expected.len());
+            spatial_order(&mut expected);
+            spatial_order(&mut actual);
+            for (actual, expected) in actual.iter().zip(&expected) {
+                assert_eq!(actual[0], expected[0]);
+                assert_eq!(actual[1], expected[1]);
+                for axis in [2, 3] {
+                    assert!(
+                        (actual[axis].as_f64().unwrap() - expected[axis].as_f64().unwrap()).abs()
+                            <= 0.375,
+                        "Yu Gothic stand-ins: {actual} vs Word {expected}"
+                    );
+                }
+            }
+        }
         for fixture in reference["fixtures"]
             .as_array()
             .unwrap()

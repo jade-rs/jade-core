@@ -2718,7 +2718,15 @@ impl WordDocument {
             // editing a header/footer use the same defaults as the body.
             // The package is not given a styles part until an edit writes one.
             if !styles_read {
-                document.styles_part = Some(StylesPart::word_default());
+                document.styles_part = Some(
+                    if jade_docx_layout::line_metrics::word_layout_platform()
+                        == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+                    {
+                        StylesPart::word_default_windows()
+                    } else {
+                        StylesPart::word_default()
+                    },
+                );
             } else if let Some(styles) = document.styles_part.as_mut() {
                 styles.inherit_missing_word_run_defaults();
             }

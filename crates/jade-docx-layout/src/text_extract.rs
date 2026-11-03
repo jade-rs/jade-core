@@ -568,7 +568,10 @@ fn apply_document_settings(document: &mut Document, settings: &DocumentSettings)
     document.hyphenation = settings.hyphenation;
     document.book_fold_printing = settings.book_fold_printing;
     document.print_two_on_one = settings.print_two_on_one;
-    if settings.character_spacing_control.as_deref() == Some("doNotCompress") {
+    if crate::line_metrics::word_layout_platform()
+        == crate::line_metrics::WordLayoutPlatform::Windows
+        || settings.character_spacing_control.as_deref() == Some("doNotCompress")
+    {
         document.snap_to_grid_default = settings.snap_to_grid_default;
         document.east_asian_line_breaking = settings.to_line_breaking_settings();
     }
@@ -2748,7 +2751,10 @@ pub fn layout_docx_lines_from_package_with_oracle_advances<C: LineWrapContext>(
         document.hyphenation = settings.hyphenation;
         document.book_fold_printing = settings.book_fold_printing;
         document.print_two_on_one = settings.print_two_on_one;
-        if needs_style_defaults {
+        if needs_style_defaults
+            || crate::line_metrics::word_layout_platform()
+                == crate::line_metrics::WordLayoutPlatform::Windows
+        {
             // Word oracle comparisons need selected document-level compatibility
             // settings. The contract trace
             // (`target/contract-rich-word-trace.json`, compared in
@@ -2760,9 +2766,11 @@ pub fn layout_docx_lines_from_package_with_oracle_advances<C: LineWrapContext>(
             // showed that applying those flags with the current Noto substitute
             // metrics moves the existing golden farther from Word, so that needs a
             // separate metric-calibration slice. As with style defaults above, we
-            // only apply these settings when visible paragraphs lack explicit East
+            // only apply these settings on Mac when visible paragraphs lack explicit East
             // Asian fonting; all-explicit-font documents such as
-            // `noto-jp-yokohama_page6.docx` keep the established Noto oracle path.
+            // `noto-jp-yokohama_page6.docx` keep the established Mac Noto oracle path.
+            // Windows now has requested-face cells and line boxes: retain its
+            // actual FE/grid settings even when every run names its font.
             apply_document_settings(&mut document, &settings);
         }
     }
@@ -5445,7 +5453,17 @@ mod tests {
     }
 
     #[test]
-    fn word_oracle_docx_settings_do_not_enable_fe_layout_for_compress_punctuation() {
+    fn compress_punctuation_settings_enable_windows_fe_and_preserve_mac_policy() {
+        use crate::line_metrics::{
+            set_word_layout_platform, word_layout_platform, WordLayoutPlatform,
+        };
+        struct Restore(WordLayoutPlatform);
+        impl Drop for Restore {
+            fn drop(&mut self) {
+                set_word_layout_platform(self.0);
+            }
+        }
+        let _restore = Restore(word_layout_platform());
         let settings = DocumentSettings::from_xml(
             r#"<w:settings xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
                 <w:characterSpacingControl w:val="compressPunctuation"/>
@@ -5455,16 +5473,26 @@ mod tests {
               </w:settings>"#,
         )
         .expect("settings should parse");
-        let mut document = Document::default();
-
-        apply_document_settings(&mut document, &settings);
-
-        assert!(!document.snap_to_grid_default);
-        assert!(!document.east_asian_line_breaking.use_east_asian_layout);
-        assert_eq!(
-            document.east_asian_line_breaking.character_spacing_control,
-            None
-        );
+        for (platform, enabled) in [
+            (WordLayoutPlatform::Mac, false),
+            (WordLayoutPlatform::Windows, true),
+        ] {
+            set_word_layout_platform(platform);
+            let mut document = Document::default();
+            apply_document_settings(&mut document, &settings);
+            assert_eq!(document.snap_to_grid_default, enabled);
+            assert_eq!(
+                document.east_asian_line_breaking.use_east_asian_layout,
+                enabled
+            );
+            assert_eq!(
+                document
+                    .east_asian_line_breaking
+                    .character_spacing_control
+                    .as_deref(),
+                enabled.then_some("compressPunctuation")
+            );
+        }
     }
 
     #[test]

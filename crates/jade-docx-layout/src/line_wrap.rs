@@ -1304,14 +1304,14 @@ fn compute_grapheme_advance_with_ascii_width(
     let windows_fixed_cjk = script == ScriptCategory::EastAsia
         && paragraph_style
             .is_some_and(|p| p.word_platform == crate::line_metrics::WordLayoutPlatform::Windows)
-        && resolved_style
-            .and_then(|style| {
-                font_descriptor.and_then(|descriptor| style.monospace_em_px(descriptor))
-            })
-            .or_else(|| {
-                font_descriptor.and_then(crate::line_metrics::cached_word_fixed_east_asian_em_px)
-            })
-            .is_some();
+        && font_descriptor.is_some_and(|descriptor| {
+            resolved_style
+                .map_or_else(
+                    || crate::line_metrics::cached_word_fixed_east_asian_em_px(descriptor),
+                    |style| style.fixed_cjk_em_px(descriptor),
+                )
+                .is_some()
+        });
     let glyph_width = if !measured_width_is_oracle
         && !windows_fixed_cjk
         && script == ScriptCategory::EastAsia
@@ -1703,37 +1703,12 @@ pub fn implicit_numeric_east_asian_gap_width(
         font_descriptor,
         prev_auto_space,
     } = context;
-    if !paragraph_style.enable_line_break_rules
-        && (paragraph_style.word_platform == crate::line_metrics::WordLayoutPlatform::Mac
-            || font_descriptor
-                .and_then(crate::line_metrics::cached_word_fixed_east_asian_em_px)
-                .is_none())
-    {
-        return 0.0;
-    }
-    if paragraph_style
-        .east_asian_rules
-        .balance_single_byte_double_byte_width
-        && paragraph_style.east_asian_rules.auto_space_dn != Some(true)
-        && crate::line_metrics::word_balance_suppresses_numeric_auto_space(
-            paragraph_style.word_platform,
-        )
-        && font_descriptor.is_none_or(|d| crate::line_metrics::word_ascii_metrics(d).is_none())
-        || paragraph_style.east_asian_rules.auto_space_dn == Some(false)
-    {
-        return 0.0;
-    }
-    if !is_ascii_digit_grapheme(grapheme) {
-        let prev_is_digit = prev_grapheme.is_some_and(is_ascii_digit_grapheme);
-        let current_is_east_asia = script == ScriptCategory::EastAsia;
-        if !(prev_is_digit && current_is_east_asia) {
-            return 0.0;
-        }
-    }
-
     // Each boundary needs only one side classified, so classify lazily: this
     // runs for every grapheme of East Asian text.
     let current_is_digit = is_ascii_digit_grapheme(grapheme);
+    if !current_is_digit && script != ScriptCategory::EastAsia {
+        return 0.0;
+    }
     let boundary_weight = if current_is_digit {
         if !prev_grapheme.is_some_and(is_auto_space_east_asian_text) {
             return 0.0;
@@ -1758,6 +1733,26 @@ pub fn implicit_numeric_east_asian_gap_width(
         return 0.0;
     }
 
+    if !paragraph_style.enable_line_break_rules
+        && (paragraph_style.word_platform == crate::line_metrics::WordLayoutPlatform::Mac
+            || font_descriptor
+                .and_then(crate::line_metrics::cached_word_fixed_east_asian_em_px)
+                .is_none())
+    {
+        return 0.0;
+    }
+    if paragraph_style
+        .east_asian_rules
+        .balance_single_byte_double_byte_width
+        && paragraph_style.east_asian_rules.auto_space_dn != Some(true)
+        && crate::line_metrics::word_balance_suppresses_numeric_auto_space(
+            paragraph_style.word_platform,
+        )
+        && font_descriptor.is_none_or(|d| crate::line_metrics::word_ascii_metrics(d).is_none())
+        || paragraph_style.east_asian_rules.auto_space_dn == Some(false)
+    {
+        return 0.0;
+    }
     if paragraph_style.word_platform == crate::line_metrics::WordLayoutPlatform::Windows {
         if let Some(em) =
             font_descriptor.and_then(crate::line_metrics::cached_word_fixed_east_asian_em_px)
@@ -3373,6 +3368,7 @@ impl WrappedLine {
         }
         let visible = self.clusters.iter().any(|cluster| !cluster.is_whitespace);
         let mut extent: Option<(f64, f64)> = None;
+        let mut previous_box = None;
         for cluster in &self.clusters {
             if visible && cluster.is_whitespace {
                 continue;
@@ -3386,16 +3382,16 @@ impl WrappedLine {
                 let layout = cluster.layout.as_ref()?;
                 (layout.font_ascent?, layout.font_descent?)
             };
-            // Uniform text dominates a line. The current extent has already
-            // passed validation, so identical following boxes need no more
-            // validation or floating-point maxima. Positioned and mixed-size
-            // runs still take the full path.
-            if extent == Some((a, d)) {
+            // Repeated glyph boxes need no more validation or maxima. Keep
+            // the actual previous pair: a mixed-font extent can combine one
+            // face's ascent with another's descent and match neither face.
+            if previous_box == Some((a, d)) {
                 continue;
             }
             if !a.is_finite() || !d.is_finite() || a < 0.0 || d < 0.0 {
                 return None;
             }
+            previous_box = Some((a, d));
             extent =
                 Some(extent.map_or((a, d), |(ascent, descent)| (ascent.max(a), descent.max(d))));
         }
