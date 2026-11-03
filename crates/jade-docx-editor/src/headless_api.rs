@@ -15223,6 +15223,155 @@ mod tests {
     }
 
     #[test]
+    fn an_index_entry_stays_between_adjacent_complex_merge_fields() {
+        let field = |result: &str| {
+            format!(
+                r#"<w:r><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:instrText xml:space="preserve"> MERGEFIELD Name </w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r><w:r><w:t>{result}</w:t></w:r><w:r><w:fldChar w:fldCharType="end"/></w:r>"#
+            )
+        };
+        // Inspect the saved XML independently of run identities and byte offsets:
+        // an XE marker must be between the complete complex field wrappers.
+        let check = |xml: &str, expected_position: usize, expected_text: &str| {
+            use quick_xml::{events::Event, Reader};
+            let markers: Vec<_> = tc_marker_positions(xml)
+                .into_iter()
+                .filter(|(instruction, _)| instruction.contains("XE "))
+                .collect();
+            assert_eq!(markers.len(), 1, "{xml}");
+            assert_eq!(markers[0].1, expected_position, "{xml}");
+            assert_eq!(xml.matches("MERGEFIELD Name").count(), 2, "{xml}");
+            let mut reader = Reader::from_str(xml);
+            let (mut depth, mut begins, mut ends) = (0usize, 0usize, 0usize);
+            let mut in_text = false;
+            let mut text = String::new();
+            loop {
+                match reader.read_event().expect("XML") {
+                    Event::Start(element) | Event::Empty(element) => {
+                        match element.name().as_ref() {
+                            b"w:fldChar" => {
+                                let field_type = element
+                                    .attributes()
+                                    .map(|attr| attr.expect("attribute"))
+                                    .find(|attr| attr.key.as_ref() == b"w:fldCharType")
+                                    .expect("field character type");
+                                match field_type.value.as_ref() {
+                                    b"begin" => {
+                                        depth += 1;
+                                        begins += 1;
+                                    }
+                                    b"end" => {
+                                        depth = depth.checked_sub(1).expect("balanced fields");
+                                        ends += 1;
+                                    }
+                                    _ => {}
+                                }
+                            }
+                            b"w:fldSimple" => {
+                                if element
+                                    .attributes()
+                                    .map(|attr| attr.expect("attribute"))
+                                    .any(|attr| {
+                                        attr.key.as_ref() == b"w:instr"
+                                            && attr.value.windows(3).any(|part| part == b"XE ")
+                                    })
+                                {
+                                    assert_eq!(
+                                        depth, 0,
+                                        "XE must stay outside complex field scopes: {xml}"
+                                    );
+                                }
+                            }
+                            b"w:t" => in_text = true,
+                            _ => {}
+                        }
+                    }
+                    Event::End(element) if element.name().as_ref() == b"w:t" => in_text = false,
+                    Event::Text(value) if in_text => {
+                        text.push_str(&value.xml10_content().expect("text"))
+                    }
+                    Event::Eof => break,
+                    _ => {}
+                }
+            }
+            assert_eq!((depth, begins, ends), (0, 2, 2), "{xml}");
+            assert_eq!(text, expected_text, "{xml}");
+        };
+        for (first, second) in [
+            ("Alice", "Bobby"),
+            ("あいうえ", "漢字かな"),
+            ("é🙂中x", "x👩‍💻é"),
+        ] {
+            let prefix = "prefix ";
+            let body = format!(
+                r#"<w:p><w:r><w:t xml:space="preserve">{prefix}</w:t></w:r>{}{}<w:r><w:t xml:space="preserve"> suffix</w:t></w:r></w:p>"#,
+                field(first),
+                field(second)
+            );
+            let expected_text = format!("{prefix}{first}{second} suffix");
+            for fragmented in [false, true] {
+                for (result, preceding) in [(first, ""), (second, first)] {
+                    for boundary in result
+                        .char_indices()
+                        .map(|(index, _)| index)
+                        .chain(std::iter::once(result.len()))
+                    {
+                        let mut doc = tc_test_document(&body);
+                        if fragmented {
+                            for (value, before) in [(first, ""), (second, first)] {
+                                let start = prefix.len() + before.len();
+                                let positions: Vec<_> =
+                                    value.char_indices().map(|(index, _)| index).collect();
+                                apply_headless_commands_to_document(
+                                    &mut doc,
+                                    &HeadlessEditRequest {
+                                        commands: vec![HeadlessCommand::SetFontSize {
+                                            start_paragraph: 0,
+                                            start_offset: start + positions[1],
+                                            end_paragraph: 0,
+                                            end_offset: start + positions[3],
+                                            font_size: 16.0,
+                                        }],
+                                    },
+                                )
+                                .expect("split complex field result formatting");
+                            }
+                        }
+                        apply_headless_commands_to_document(
+                            &mut doc,
+                            &HeadlessEditRequest {
+                                commands: vec![HeadlessCommand::MarkIndexEntry {
+                                    paragraph: 0,
+                                    offset: prefix.len() + preceding.len() + boundary,
+                                    term: "first name".into(),
+                                }],
+                            },
+                        )
+                        .expect("mark a complex field boundary");
+                        let expected_position = prefix.chars().count()
+                            + preceding.chars().count()
+                            + if boundary == 0 {
+                                0
+                            } else {
+                                result.chars().count()
+                            };
+                        check(&toc_document_xml(&doc), expected_position, &expected_text);
+                        let reloaded = executor::block_on(WordDocument::load(
+                            &doc.export_docx().expect("export"),
+                            &Options::default(),
+                        ))
+                        .expect("reload");
+                        check(
+                            &toc_document_xml(&reloaded),
+                            expected_position,
+                            &expected_text,
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
     fn paragraph_formatting_across_a_block_equation_formats_the_paragraphs_around_it() {
         // A block equation has no paragraph. Numbering a range across one
         // numbered the paragraph before it and then failed on the equation,
