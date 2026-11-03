@@ -4452,6 +4452,62 @@ mod tests {
     }
 
     #[test]
+    fn stripes_show_the_fill_and_draw_their_lines_on_a_page_grid() {
+        let s = shading(Some("horzstripe"), Some("#FF0000"), Some("#00FF00"));
+        assert_eq!(s.resolved_background_color().as_deref(), Some("#00FF00"));
+        let pattern = s.pattern().unwrap();
+        assert_eq!(pattern.lines, ShadingLines::Horizontal);
+        assert!(!pattern.thin);
+        // A band from y 5 to 15: lines at 8 and 12, the one at 4 cut to 5–6.
+        let (rows, columns, diagonals) = pattern.lines_in(0.0, 5.0, 10.0, 10.0);
+        assert_eq!(rows, vec![(5.0, 1.0), (8.0, 2.0), (12.0, 2.0)]);
+        assert!(columns.is_empty() && diagonals.is_empty());
+        // No fill: only the lines, nothing behind them.
+        let lines_only = shading(Some("thinvertstripe"), None, None);
+        assert_eq!(lines_only.resolved_background_color(), None);
+        assert_eq!(lines_only.pattern_color(), "#000000");
+        let thin = lines_only.pattern().unwrap();
+        assert!(thin.thin && thin.lines == ShadingLines::Vertical);
+        let (_, columns, _) = thin.lines_in(0.0, 0.0, 8.0, 2.0);
+        assert_eq!(columns, vec![(0.0, 1.0), (4.0, 1.0)]);
+        for (value, lines) in [
+            ("diagStripe", ShadingLines::DiagonalDown),
+            ("reverseDiagStripe", ShadingLines::DiagonalUp),
+            ("horzCross", ShadingLines::Cross),
+            ("thinDiagCross", ShadingLines::DiagonalCross),
+        ] {
+            assert_eq!(shading(Some(value), None, None).pattern().unwrap().lines, lines);
+        }
+        assert_eq!(shading(Some("pct25"), None, None).pattern(), None);
+        assert_eq!(shading(Some("clear"), None, None).pattern(), None);
+    }
+
+    #[test]
+    fn diagonals_are_cut_to_the_rectangle() {
+        let pattern = shading(Some("diagStripe"), None, None).pattern().unwrap();
+        let (_, _, segments) = pattern.lines_in(0.0, 0.0, 8.0, 8.0);
+        assert!(!segments.is_empty());
+        for ((x0, y0), (x1, y1)) in &segments {
+            for (x, y) in [(x0, y0), (x1, y1)] {
+                assert!((0.0..=8.0).contains(x) && (0.0..=8.0).contains(y));
+            }
+            // Down to the right: y grows with x.
+            assert!((y1 - y0) * (x1 - x0) > 0.0);
+        }
+        // The main diagonal is one of them.
+        assert!(segments.contains(&((0.0, 0.0), (8.0, 8.0))));
+        let up = shading(Some("reverseDiagStripe"), None, None).pattern().unwrap();
+        let (_, _, segments) = up.lines_in(0.0, 0.0, 8.0, 8.0);
+        assert!(segments.contains(&((0.0, 8.0), (8.0, 0.0))));
+    }
+
+    #[test]
+    fn an_automatic_percentage_is_black_over_white() {
+        let s = shading(Some("pct25"), None, None);
+        assert_eq!(s.resolved_background_color().as_deref(), Some("#BFBFBF"));
+    }
+
+    #[test]
     fn percentage_pattern_blends_foreground_over_fill() {
         let s = shading(Some("pct25"), Some("#FF0000"), Some("#0000FF"));
         assert_eq!(s.resolved_background_color().as_deref(), Some("#4000BF"));
@@ -5266,8 +5322,11 @@ impl Shading {
     ///   the `fill`.
     /// - percentage patterns (`pct25`, …): blend `color` over `fill` using the
     ///   encoded foreground coverage.
-    /// - stripe patterns (`horzStripe`, …): use `fill` (falling back to
-    ///   `color`) until patterned canvas brushes are available.
+    /// - stripe and cross patterns (`horzStripe`, …): the `fill` alone; the
+    ///   lines are drawn over it in [`Self::pattern_color`] ([`Self::pattern`]).
+    ///
+    /// A percentage with an automatic colour is black over white, as Word
+    /// shows `pct25` with `w:color="auto"`.
     pub fn resolved_background_color(&self) -> Option<String> {
         fn parse_hex_rgb(value: &str) -> Option<[u8; 3]> {
             let value = value.strip_prefix('#').unwrap_or(value);
@@ -5294,10 +5353,15 @@ impl Shading {
             .as_deref()
             .and_then(|value| percentage_pattern(&value.to_ascii_lowercase()))
         {
-            if let (Some(foreground), Some(background)) = (
-                self.color.as_deref().and_then(parse_hex_rgb),
-                self.fill.as_deref().and_then(parse_hex_rgb),
-            ) {
+            let foreground = match self.color.as_deref() {
+                None => Some([0, 0, 0]),
+                Some(color) => parse_hex_rgb(color),
+            };
+            let background = match self.fill.as_deref() {
+                None => Some([255, 255, 255]),
+                Some(fill) => parse_hex_rgb(fill),
+            };
+            if let (Some(foreground), Some(background)) = (foreground, background) {
                 let blend = |foreground: u8, background: u8| {
                     ((u16::from(foreground) * u16::from(percentage)
                         + u16::from(background) * u16::from(100 - percentage)
@@ -5318,9 +5382,171 @@ impl Shading {
             .is_some_and(|v| v.eq_ignore_ascii_case("solid"));
         if is_solid {
             self.color.clone().or_else(|| self.fill.clone())
+        } else if self.pattern().is_some() {
+            self.fill.clone()
         } else {
             self.fill.clone().or_else(|| self.color.clone())
         }
+    }
+
+    /// The lines a stripe or cross pattern draws over the fill (ECMA-376
+    /// Part 1 §17.18.78 `ST_Shd`): `None` for clear, solid, a percentage and
+    /// anything unknown.
+    pub fn pattern(&self) -> Option<ShadingPattern> {
+        let value = self.val.as_deref()?.to_ascii_lowercase();
+        let (thin, lines) = match value.strip_prefix("thin") {
+            Some(rest) => (true, rest.to_string()),
+            None => (false, value),
+        };
+        let lines = match lines.as_str() {
+            "horzstripe" => ShadingLines::Horizontal,
+            "vertstripe" => ShadingLines::Vertical,
+            "diagstripe" => ShadingLines::DiagonalDown,
+            "reversediagstripe" => ShadingLines::DiagonalUp,
+            "horzcross" => ShadingLines::Cross,
+            "diagcross" => ShadingLines::DiagonalCross,
+            _ => return None,
+        };
+        Some(ShadingPattern { lines, thin })
+    }
+
+    /// The colour a pattern's lines are drawn in: `w:color`, black for
+    /// automatic.
+    pub fn pattern_color(&self) -> String {
+        self.color.clone().unwrap_or_else(|| "#000000".to_string())
+    }
+}
+
+/// Which lines a shading pattern draws.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum ShadingLines {
+    /// 横縞 (`horzStripe`).
+    Horizontal,
+    /// 縦縞 (`vertStripe`).
+    Vertical,
+    /// 右下がり斜線 (`diagStripe`): from the top left down to the right.
+    DiagonalDown,
+    /// 右上がり斜線 (`reverseDiagStripe`).
+    DiagonalUp,
+    /// 格子 (`horzCross`).
+    Cross,
+    /// 斜め格子 (`diagCross`).
+    DiagonalCross,
+}
+
+/// A stripe or cross shading pattern: its lines, and whether it is the 細
+/// (`thin…`) one.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct ShadingPattern {
+    pub lines: ShadingLines,
+    pub thin: bool,
+}
+
+impl ShadingPattern {
+    /// The distance from one line to the next, in CSS pixels at 100 %: Word
+    /// draws its patterns on a 4-pixel cell.
+    pub const PERIOD_PX: f64 = 4.0;
+
+    /// How wide a line is, in CSS pixels: half the cell for the dark
+    /// patterns, a pixel for the 細 ones.
+    pub fn line_width_px(&self) -> f64 {
+        if self.thin {
+            1.0
+        } else {
+            2.0
+        }
+    }
+
+    /// The pattern's lines over the rectangle, in page pixels: (horizontal
+    /// bands as `(y, height)`, vertical bands as `(x, width)`, diagonals as
+    /// segments `((x0, y0), (x1, y1))`, already cut to the rectangle).
+    /// Lines sit on a grid fixed to the page, so the pattern runs on
+    /// unbroken from one line box to the next.
+    #[allow(clippy::type_complexity)]
+    pub fn lines_in(
+        &self,
+        x: f64,
+        y: f64,
+        width: f64,
+        height: f64,
+    ) -> (Vec<(f64, f64)>, Vec<(f64, f64)>, Vec<((f64, f64), (f64, f64))>) {
+        let period = Self::PERIOD_PX;
+        let line = self.line_width_px();
+        let mut horizontal = Vec::new();
+        let mut vertical = Vec::new();
+        let mut diagonal = Vec::new();
+        if width <= 0.0 || height <= 0.0 {
+            return (horizontal, vertical, diagonal);
+        }
+        let bands = |start: f64, length: f64, out: &mut Vec<(f64, f64)>| {
+            let mut at = (start / period).floor() * period;
+            while at < start + length {
+                let from = at.max(start);
+                let to = (at + line).min(start + length);
+                if to > from {
+                    out.push((from, to - from));
+                }
+                at += period;
+            }
+        };
+        let (rows, columns, down, up) = match self.lines {
+            ShadingLines::Horizontal => (true, false, false, false),
+            ShadingLines::Vertical => (false, true, false, false),
+            ShadingLines::DiagonalDown => (false, false, true, false),
+            ShadingLines::DiagonalUp => (false, false, false, true),
+            ShadingLines::Cross => (true, true, false, false),
+            ShadingLines::DiagonalCross => (false, false, true, true),
+        };
+        if rows {
+            bands(y, height, &mut horizontal);
+        }
+        if columns {
+            bands(x, width, &mut vertical);
+        }
+        // A diagonal is the line x - y = c (down) or x + y = c (up), c on
+        // the grid, cut to the rectangle.
+        let (right, bottom) = (x + width, y + height);
+        let mut cut = |down: bool| {
+            let (low, high) = if down {
+                (x - bottom, right - y)
+            } else {
+                (x + y, right + bottom)
+            };
+            let mut c = (low / period).floor() * period;
+            while c <= high {
+                // Where the line crosses each edge, kept when on it.
+                let mut points: Vec<(f64, f64)> = Vec::with_capacity(4);
+                let at_x = |px: f64| if down { px - c } else { c - px };
+                let at_y = |py: f64| if down { py + c } else { c - py };
+                for px in [x, right] {
+                    let py = at_x(px);
+                    if py >= y && py <= bottom {
+                        points.push((px, py));
+                    }
+                }
+                for py in [y, bottom] {
+                    let px = at_y(py);
+                    if px > x && px < right {
+                        points.push((px, py));
+                    }
+                }
+                points.sort_by(|a, b| a.0.total_cmp(&b.0));
+                points.dedup_by(|a, b| (a.0 - b.0).abs() < 1e-9 && (a.1 - b.1).abs() < 1e-9);
+                if let (Some(first), Some(last)) = (points.first(), points.last()) {
+                    if (first.0 - last.0).abs() > 1e-9 || (first.1 - last.1).abs() > 1e-9 {
+                        diagonal.push((*first, *last));
+                    }
+                }
+                c += period;
+            }
+        };
+        if down {
+            cut(true);
+        }
+        if up {
+            cut(false);
+        }
+        (horizontal, vertical, diagonal)
     }
 }
 
