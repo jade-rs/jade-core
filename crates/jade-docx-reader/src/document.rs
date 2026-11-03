@@ -2284,8 +2284,9 @@ pub struct RunHyperlink {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct RunField {
     pub kind: RunFieldKind,
-    /// Original simple-field wrapper identity retained by split fragments. This prevents
-    /// a newly inserted field from joining a neighbouring simple-field wrapper.
+    /// Original simple-field wrapper or complex-field begin-run identity retained
+    /// by split result fragments. Distinct fields keep distinct identities even
+    /// when their instructions match.
     #[serde(skip)]
     pub source_field_id: Option<XmlNodeId>,
     /// Word's last-computed result text for a computed field (the run children

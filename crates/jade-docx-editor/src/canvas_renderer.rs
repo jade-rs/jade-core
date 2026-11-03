@@ -37995,7 +37995,8 @@ fn select_header_footer_variant<'a, T: ?Sized>(
     )
 }
 
-/// Whether run `index` holds more of the field the run before it holds. Word
+/// Whether run `index` holds more of the same identified field as the prior
+/// relevant run. Missing XML identities do not establish a shared field. Word
 /// saves a result formatted two ways as two runs, and an edit splits one
 /// (around a comment's reference, or formatting part of it); each run
 /// carries the field. A value the renderer works out is the whole result, so
@@ -38011,7 +38012,9 @@ fn continues_field(runs: &[Run], previous_index: Option<usize>, index: usize) ->
     runs.get(index)
         .and_then(|run| run.field.as_ref())
         .is_some_and(|field| {
-            field.kind == previous.kind && field.source_field_id == previous.source_field_id
+            field.source_field_id.is_some()
+                && field.kind == previous.kind
+                && field.source_field_id == previous.source_field_id
         })
 }
 
@@ -47579,6 +47582,38 @@ mod tests {
         ))
         .expect("reload");
         assert_eq!(count(reloaded.document.as_ref().unwrap()), 1, "reloaded");
+    }
+
+    #[test]
+    fn adjacent_fields_without_source_ids_remain_distinct() {
+        let field = r#"<w:fldSimple w:instr=" DATE \@ &quot;yyyy/MM/dd&quot; "><w:r><w:t>saved</w:t></w:r></w:fldSimple>"#;
+        let bytes = docx_with_document_xml(&format!(
+            r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p>{field}{field}</w:p></w:body></w:document>"#,
+        ));
+        let model = futures::executor::block_on(WordDocument::load(&bytes, &Options::default()))
+            .expect("load");
+        let mut document = model.document.as_ref().unwrap().as_ref().clone();
+        assert_eq!(
+            painted_document_text(&document)
+                .matches("2026/05/30")
+                .count(),
+            2
+        );
+        let BodyElement::Paragraph(paragraph) = &mut document.body.as_mut().unwrap().elements[0]
+        else {
+            panic!("paragraph");
+        };
+        // In-memory documents may have fields without backing XML. Lack of
+        // an identity is not evidence that adjacent fields are the same one.
+        for run in &mut paragraph.runs {
+            run.field.as_mut().unwrap().source_field_id = None;
+        }
+        assert_eq!(
+            painted_document_text(&document)
+                .matches("2026/05/30")
+                .count(),
+            2
+        );
     }
 
     #[test]
