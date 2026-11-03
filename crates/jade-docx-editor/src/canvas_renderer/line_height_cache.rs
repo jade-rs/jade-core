@@ -20,10 +20,31 @@ struct Inputs {
     first_band_end: usize,
 }
 
+#[derive(Debug)]
+pub(super) enum LineHeights {
+    Fresh(Vec<f64>),
+    Shared(Rc<[f64]>),
+}
+impl std::ops::Deref for LineHeights {
+    type Target = [f64];
+    fn deref(&self) -> &[f64] {
+        match self {
+            Self::Fresh(values) => values,
+            Self::Shared(values) => values,
+        }
+    }
+}
+#[cfg(test)]
+impl PartialEq for LineHeights {
+    fn eq(&self, other: &Self) -> bool {
+        self[..] == other[..]
+    }
+}
+
 struct Entry {
     lines: Weak<[WrappedLine]>,
     inputs: Inputs,
-    heights: Option<Vec<f64>>,
+    heights: Option<Rc<[f64]>>,
 }
 
 #[derive(Default)]
@@ -43,7 +64,7 @@ impl LineHeightPlanCache {
         fallback: f64,
         mark: Option<(f64, f64)>,
         label: Option<f64>,
-    ) -> Option<Vec<f64>> {
+    ) -> Option<LineHeights> {
         let compute = || {
             if label.is_some() {
                 WrappedLine::line_heights_px_with_numbering_ascent(
@@ -58,7 +79,7 @@ impl LineHeightPlanCache {
             || word_layout_platform() != WordLayoutPlatform::Windows
             || lines.len() > MAX_LINES
         {
-            return compute();
+            return compute().map(LineHeights::Fresh);
         }
         let inputs = Inputs {
             fallback,
@@ -78,10 +99,13 @@ impl LineHeightPlanCache {
                     .upgrade()
                     .is_some_and(|cached| Rc::ptr_eq(&cached, lines))
             {
-                return entry.heights.clone();
+                return entry
+                    .heights
+                    .as_ref()
+                    .map(|heights| LineHeights::Shared(Rc::clone(heights)));
             }
         }
-        let heights = compute();
+        let heights: Option<Rc<[f64]>> = compute().map(Rc::from);
         if self.entries.len() >= MAX_ENTRIES {
             self.entries.clear();
         }
@@ -95,7 +119,7 @@ impl LineHeightPlanCache {
                 heights: heights.clone(),
             },
         );
-        heights
+        heights.map(LineHeights::Shared)
     }
 }
 
@@ -165,8 +189,9 @@ mod tests {
         fallback: f64,
         mark: Option<(f64, f64)>,
         label: Option<f64>,
-    ) -> Option<Vec<f64>> {
+    ) -> Option<LineHeights> {
         WrappedLine::line_heights_px_with_numbering_ascent(lines, style, fallback, mark, label)
+            .map(LineHeights::Fresh)
     }
     #[test]
     fn plans_reuse_only_unchanged_wraps_and_spacing_inputs() {
@@ -242,6 +267,27 @@ mod tests {
         assert!(cache.entries.is_empty());
         set_word_layout_platform(WordLayoutPlatform::Windows);
     }
+    #[test]
+    fn windows_hits_share_the_plan_and_mac_keeps_its_fresh_vector() {
+        let (lines, mut style) = fixture();
+        let mut cache = LineHeightPlanCache::default();
+        let first = cache.heights(&lines, &style, 16.0, None, None).unwrap();
+        let second = cache.heights(&lines, &style, 16.0, None, None).unwrap();
+        let (LineHeights::Shared(a), LineHeights::Shared(b)) = (&first, &second) else {
+            panic!("Windows plans should retain a single shared allocation");
+        };
+        assert!(Rc::ptr_eq(a, b));
+        cache.clear();
+        assert_eq!(first, second);
+        style.word_platform = WordLayoutPlatform::Mac;
+        set_word_layout_platform(WordLayoutPlatform::Mac);
+        let mac = cache.heights(&lines, &style, 16.0, None, None).unwrap();
+        assert!(matches!(mac, LineHeights::Fresh(_)));
+        assert_eq!(mac, fresh(&lines, &style, 16.0, None, None).unwrap());
+        assert!(cache.entries.is_empty());
+        set_word_layout_platform(WordLayoutPlatform::Windows);
+    }
+
     #[test]
     fn retained_weak_slices_and_plan_vectors_are_bounded() {
         let (lines, style) = fixture();
