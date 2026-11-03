@@ -17528,25 +17528,37 @@ impl WordDocument {
         }
         let mut model_end = self.rendered_to_model_text_position(rendered_end);
         self.validate_text_position_boundary(model_end)?;
-        // A field's result is one indivisible run, or several that an edit
-        // split it into. Word nests an entry marked inside it in the result;
-        // the model has no nested result, so the marker split the field and
-        // the saved file lost it. The marker goes after the field instead.
+        // A field result can span several runs after formatting. Anchor after
+        // its complete wrapper, including at a boundary between its fragments.
+        // Equal field instructions can belong to separate adjacent wrappers.
         if let Some(paragraph) = self.paragraph(model_end.paragraph) {
             let mut start = 0usize;
-            let mut inside: Option<&RunFieldKind> = None;
-            for run in &paragraph.runs {
+            for (index, run) in paragraph.runs.iter().enumerate() {
                 let end = start + run.text.len();
-                match (inside, run.field.as_ref()) {
-                    (Some(kind), Some(field)) if field.kind == *kind => {
+                if start <= model_end.offset && model_end.offset < end {
+                    if let Some(field) = run.field.as_ref() {
+                        let same_field = |other: &Run| {
+                            other.field.as_ref().is_some_and(|other| {
+                                other.kind == field.kind
+                                    && other.source_field_id == field.source_field_id
+                            })
+                        };
+                        // At the start of a distinct wrapper the marker already
+                        // lies between fields and must stay at that boundary.
+                        if start == model_end.offset
+                            && (index == 0 || !same_field(&paragraph.runs[index - 1]))
+                        {
+                            break;
+                        }
                         model_end.offset = end;
+                        for fragment in paragraph.runs[index + 1..]
+                            .iter()
+                            .take_while(|run| same_field(run))
+                        {
+                            model_end.offset += fragment.text.len();
+                        }
                     }
-                    (Some(_), _) => break,
-                    (None, Some(field)) if start < model_end.offset && model_end.offset < end => {
-                        inside = Some(&field.kind);
-                        model_end.offset = end;
-                    }
-                    _ => {}
+                    break;
                 }
                 start = end;
             }
