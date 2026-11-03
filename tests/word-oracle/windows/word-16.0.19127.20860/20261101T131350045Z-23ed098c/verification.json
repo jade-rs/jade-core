@@ -1,0 +1,13 @@
+{
+  "engine_commit": "75bb5fc67af6180c56ed3ea5805e51e2648beec4",
+  "word_product_version": "16.0.19127.20860",
+  "capture_id": "20261101T131350045Z-23ed098c",
+  "engine_source_worktree_dirty": true,
+  "strict_fixtures": [
+    "word-mac-probe-numbering-label"
+  ],
+  "matching_fixtures": [
+    "word-mac-probe-numbering-label"
+  ],
+  "pending_fixtures": []
+}

@@ -136,6 +136,62 @@ jobs:
           python3 -m unittest discover -s scripts -p test_audit_mac_release_corpus.py
           python3 scripts/audit-mac-release-corpus.py
 
+  # Run the coordinate gate independently: a lint/PDF dependency failure in
+  # native-macos must not prevent the Mac coordinate comparison from running.
+  word-mac-coordinates:
+    name: Mac Word coordinate match
+    runs-on: macos-latest
+    timeout-minutes: 45
+    env:
+      RUSTUP_TOOLCHAIN: stable
+      CARGO_TARGET_DIR: ${{ github.workspace }}/target/word-mac-coordinates
+      CARGO_PROFILE_DEV_DEBUG: '0'
+      CARGO_PROFILE_TEST_DEBUG: '0'
+      CARGO_INCREMENTAL: '0'
+      CARGO_BUILD_JOBS: '2'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+        with:
+          workspaces: |
+            . -> target/word-mac-coordinates
+      - name: Compare Mac drawing coordinates with committed Word references
+        run: cargo test --manifest-path crates/jade-docx-native-render/Cargo.toml --locked --test word_mac_coordinates -- --test-threads=1
+      - name: Upload coordinate differences
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: mac-word-coordinate-differences
+          path: crates/jade-docx-native-render/target/word-mac-coordinates
+          if-no-files-found: ignore
+
+  windows-word-baselines:
+    name: Windows Word baselines by version
+    runs-on: windows-latest
+    timeout-minutes: 45
+    env:
+      RUSTUP_TOOLCHAIN: stable
+      SKIA_BINARIES_URL: https://github.com/rust-skia/skia-binaries/releases/download/0.87.0/skia-binaries-e551f334ad5cbdf43abf-x86_64-pc-windows-msvc-pdf-svg-textlayout-vulkan-webpd-webpe.tar.gz
+      CARGO_PROFILE_DEV_DEBUG: '0'
+      CARGO_PROFILE_TEST_DEBUG: '0'
+      CARGO_INCREMENTAL: '0'
+      CARGO_BUILD_JOBS: '2'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+        with:
+          workspaces: crates/jade-docx-native-render
+      # No Office installation/font redistribution is required for this
+      # vertical-policy check. Full installed-font XY tests run on the Word
+      # capture machine via jade-office/scripts/test-windows-word.ps1.
+      - name: Compare every registered Word version's baselines
+        run: cargo test --manifest-path crates/jade-docx-native-render/Cargo.toml --locked --test word_windows_coordinates windows_word_baselines_with_bundled_standins -- --exact
+
   native-macos:
     runs-on: macos-latest
     timeout-minutes: 90

@@ -1269,7 +1269,17 @@ fn compute_grapheme_advance_with_ascii_width(
             text_scale_x,
         )
     };
+    // Windows Word's fixed Japanese faces retain full cells. The old
+    // heuristic 1% expansion / 18% punctuation reduction changes both the
+    // pair positions and wrap points in the live Windows Word PDF probes.
+    let windows_fixed_cjk = script == ScriptCategory::EastAsia
+        && paragraph_style
+            .is_some_and(|p| p.word_platform == crate::line_metrics::WordLayoutPlatform::Windows)
+        && font_descriptor
+            .and_then(crate::line_metrics::word_fixed_east_asian_em_px)
+            .is_some();
     let glyph_width = if !measured_width_is_oracle
+        && !windows_fixed_cjk
         && script == ScriptCategory::EastAsia
         && paragraph_style.is_some_and(|style| style.east_asian_advance_scale > 1.0)
     {
@@ -1280,7 +1290,7 @@ fn compute_grapheme_advance_with_ascii_width(
     } else {
         glyph_width
     };
-    let punctuation_adjustment = if measured_width_is_oracle {
+    let punctuation_adjustment = if measured_width_is_oracle || windows_fixed_cjk {
         0.0
     } else {
         paragraph_style
@@ -2480,12 +2490,9 @@ fn pair_has_fixed_cjk_advances(
     style: &ResolvedRunStyle,
     state: &TextAdvanceState,
     measured_width: f64,
-    paragraph_style: Option<&ParagraphStyle>,
+    _paragraph_style: Option<&ParagraphStyle>,
 ) -> bool {
     if script != ScriptCategory::EastAsia
-        || paragraph_style.map_or_else(crate::line_metrics::word_layout_platform, |p| {
-            p.word_platform
-        }) != crate::line_metrics::WordLayoutPlatform::Mac
         || !is_fixed_fullwidth_cjk_scalar(grapheme)
         || !state
             .prev_grapheme
@@ -2516,7 +2523,7 @@ fn pair_has_fixed_cjk_advances(
             .is_some_and(|width| (width - em).abs() <= tolerance)
 }
 
-fn mac_fixed_punctuation_pair_adjustment(
+fn fixed_punctuation_pair_adjustment(
     grapheme: &str,
     script: ScriptCategory,
     font_descriptor: &str,
@@ -2525,12 +2532,11 @@ fn mac_fixed_punctuation_pair_adjustment(
     measured_width: f64,
     paragraph_style: Option<&ParagraphStyle>,
 ) -> Option<f64> {
-    let paragraph_style = paragraph_style?;
+    paragraph_style?;
     // Word for Mac 16.114 shares the blank of a kerned pair whatever
     // `characterSpacingControl` says (probe pairs-kerned and its
     // doNotCompress twin are identical).
     if script != ScriptCategory::EastAsia
-        || paragraph_style.word_platform != crate::line_metrics::WordLayoutPlatform::Mac
         || state.prev_font_descriptor_hash != Some(font_descriptor_hash)
     {
         return None;
@@ -2628,7 +2634,7 @@ fn compute_text_advance_step_with_descriptor<'a, C: LineWrapContext>(
     let punctuation_adjustment = if measured_width_is_oracle || !style.enable_pair_kerning {
         None
     } else {
-        mac_fixed_punctuation_pair_adjustment(
+        fixed_punctuation_pair_adjustment(
             grapheme,
             script,
             font_descriptor,

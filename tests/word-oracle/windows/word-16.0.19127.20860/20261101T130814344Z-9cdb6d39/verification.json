@@ -1,0 +1,14 @@
+{
+  "engine_commit": "b2b735aea8629ce96f55ff0a5ea4d877ffa0600c",
+  "word_product_version": "16.0.19127.20860",
+  "capture_id": "20261101T130814344Z-9cdb6d39",
+  "strict_fixtures": [
+    "word-mac-probe-ruby-grid",
+    "word-mac-probe-ruby-nogrid"
+  ],
+  "matching_fixtures": [
+    "word-mac-probe-ruby-grid",
+    "word-mac-probe-ruby-nogrid"
+  ],
+  "pending_fixtures": []
+}

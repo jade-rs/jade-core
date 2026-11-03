@@ -1,0 +1,28 @@
+{
+  "engine_commit": "b2b735aea8629ce96f55ff0a5ea4d877ffa0600c",
+  "word_product_version": "16.0.19127.20860",
+  "capture_id": "20261101T130521628Z-902306ab",
+  "strict_fixtures": [
+    "word-windows-controlled-fe-0",
+    "word-windows-controlled-fe-0-grid",
+    "word-windows-controlled-fe-1",
+    "word-windows-controlled-fe-1-grid",
+    "word-mac-probe-pairs-kerned",
+    "word-mac-probe-squeeze-plain",
+    "word-mac-probe-indent"
+  ],
+  "matching_fixtures": [
+    "word-mac-probe-indent",
+    "word-mac-probe-pairs-kerned",
+    "word-mac-probe-squeeze-plain",
+    "word-windows-controlled-fe-0",
+    "word-windows-controlled-fe-0-grid",
+    "word-windows-controlled-fe-1",
+    "word-windows-controlled-fe-1-grid"
+  ],
+  "pending_fixtures": [
+    "contract",
+    "word-mac-probe-numbering-label",
+    "yokohama_page6"
+  ]
+}

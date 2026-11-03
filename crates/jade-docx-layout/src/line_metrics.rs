@@ -550,12 +550,9 @@ pub const WORD_MAC_NUMBERING_SUFFIX_SPACE_STACK: &str = "Arial, 'Liberation Sans
 /// label's descriptor with its family replaced by Arial. Word for Mac 16.114
 /// makes that space 0.278 em of the label size (Arial's and Century's space)
 /// whatever face the label, the paragraph mark, the paragraph style, the
-/// following run or the document defaults name. `None` on Word for Windows,
-/// whose traces were fitted with the label's high-ANSI face.
+/// following run or the document defaults name. Windows 16.0.19127's indent
+/// probe confirms the same width when the paragraph mark names MS Mincho.
 pub fn word_numbering_suffix_space_descriptor(label_descriptor: &str) -> Option<String> {
-    if word_layout_platform() != WordLayoutPlatform::Mac {
-        return None;
-    }
     let mut offset = 0;
     for token in label_descriptor.split_inclusive(char::is_whitespace) {
         offset += token.len();
@@ -2119,6 +2116,20 @@ pub fn word_east_asian_font_vertical_units(family: &str) -> Option<(f32, f32, f3
         | "Yu Mincho Light"
         | "游明朝 Demibold"
         | "Yu Mincho Demibold"
+            if word_layout_platform() == WordLayoutPlatform::Windows =>
+        {
+            // Windows Word 16.0.19127: Yu Mincho's OS/2 usWin box,
+            // not the Mac hhea box. 10.5/12/20pt probes, with and without
+            // useFELayout, give 1.673em single spacing and 1.188em ascent.
+            Some((2038.0, 598.0, 2048.0))
+        }
+        "游明朝"
+        | "Yu Mincho"
+        | "YuMincho"
+        | "游明朝 Light"
+        | "Yu Mincho Light"
+        | "游明朝 Demibold"
+        | "Yu Mincho Demibold"
         | "游ゴシック"
         | "Yu Gothic"
         | "YuGothic"
@@ -2227,10 +2238,13 @@ pub fn word_east_asian_font_line_box_applies(
 /// Word for Mac 16.113 always does: with `w:useFELayout` removed (and
 /// compatibility mode 15) an 11pt MS Mincho line is still 14.24pt, and
 /// `yokohama_page6` (10.5pt MS Mincho, no `useFELayout`) prints 13.65pt
-/// lines. Word for Windows only does with `w:useFELayout`: without it
-/// `yokohama_page6` only reaches its Word page 3 content at 13.8pt lines.
-pub fn word_sizes_east_asian_lines_from_faces(document_uses_east_asian_layout: bool) -> bool {
-    document_uses_east_asian_layout || word_layout_platform() == WordLayoutPlatform::Mac
+/// lines. Windows Word 16.0.19127 also uses the known face's box without
+/// `w:useFELayout` (controlled Arial/TNR/MS Mincho/Yu Mincho probes).
+pub fn word_sizes_east_asian_lines_from_faces(_document_uses_east_asian_layout: bool) -> bool {
+    // Word for Windows 16.0.19127 uses the same known-face path even without
+    // useFELayout: Arial, Times New Roman, MS Mincho and Yu Mincho probes
+    // at 10.5/12/20pt keep their first baseline and single-line advances.
+    true
 }
 
 /// The single line height, in em, Word gives a line set in a Latin face it
@@ -2804,12 +2818,10 @@ pub fn word_east_asian_font_metrics_apply_on_grid(
 /// Mincho baseline 12.83pt below the top of an 18pt grid line (half of
 /// 18 − 13.61 plus its 10.58pt ascent), a Yu Mincho one 12.59pt, and 16pt text
 /// that needs two grid lines 23.87pt below the top of the 36pt pair. Word for
-/// Windows has not been traced for this (jlsi/jade#437), so its lines keep
-/// their leading below the text.
+/// Windows 16.0.19127 also centres the box and rounds tall lines up to whole
+/// grid pitches (10.5/12/20pt Arial/TNR/MS Mincho/Yu Mincho probes).
 pub fn word_grid_line_centres_text(snap_to_grid: bool, doc_grid: Option<&DocGrid>) -> bool {
-    word_layout_platform() == WordLayoutPlatform::Mac
-        && snap_to_grid
-        && doc_grid_has_active_line_grid(doc_grid)
+    snap_to_grid && doc_grid_has_active_line_grid(doc_grid)
 }
 
 /// Raises an auto single line height to Word's East Asian font line box when
@@ -2872,6 +2884,14 @@ fn effective_doc_grid_line_pitch_pt(
     base_font_size: f32,
 ) -> Option<f32> {
     let raw_pitch = doc_grid.and_then(|g| g.line_pitch)?;
+    // A large Windows run consumes multiple authored grid pitches; it does
+    // not replace a valid pitch with a body-height-derived estimate.
+    if word_layout_platform() == WordLayoutPlatform::Windows
+        && raw_pitch.is_finite()
+        && raw_pitch >= 8.0
+    {
+        return Some(raw_pitch);
+    }
     let min_credible = (base_font_size * 1.12).max(8.0);
     if raw_pitch >= min_credible {
         return Some(raw_pitch);
@@ -3286,8 +3306,8 @@ mod tests {
         assert_eq!(word_numbering_suffix_space_descriptor("Courier"), None);
         set_word_layout_platform(WordLayoutPlatform::Windows);
         assert_eq!(
-            word_numbering_suffix_space_descriptor("10.50pt 'Courier New', monospace"),
-            None
+            word_numbering_suffix_space_descriptor("10.50pt 'Courier New', monospace").as_deref(),
+            Some("10.50pt Arial, 'Liberation Sans', sans-serif")
         );
     }
 
@@ -3549,7 +3569,7 @@ mod tests {
         );
         assert!(WordGridLineSizing::new(None, false, Some(&grid), Some(650.0), 11.0).is_none());
         set_word_layout_platform(WordLayoutPlatform::Windows);
-        assert!(WordGridLineSizing::new(None, true, Some(&grid), Some(650.0), 11.0).is_none());
+        assert!(WordGridLineSizing::new(None, true, Some(&grid), Some(650.0), 11.0).is_some());
     }
 
     /// Word for Mac 16.114 atLeast probe (18pt `lines` grid, 10.5pt MS
@@ -4101,6 +4121,7 @@ mod tests {
 
     #[test]
     fn word_run_line_takes_the_faces_its_characters_use() {
+        set_word_layout_platform(WordLayoutPlatform::Mac);
         let latin = "11.00pt Calibri";
         let east_asia = "11.00pt '游明朝'";
         let height =
@@ -4115,7 +4136,7 @@ mod tests {
         assert!((yu - 15.7655).abs() < 0.01, "{yu}");
         assert_eq!(run("あいう", latin, false), Err(()));
         assert_eq!(height(run("あいAbc", latin, true)), Some(yu));
-        assert_eq!(run("Abc", "11.00pt 'Noto Sans'", true), Err(()));
+        assert_eq!(run("Abc", "11.00pt 'Unknown Font'", true), Err(()));
         // Latin text set in an East Asian face takes that face's box.
         assert_eq!(height(run("Abc", east_asia, true)), Some(yu));
         assert_eq!(run("Abc", east_asia, false), Err(()));
@@ -4247,7 +4268,7 @@ mod tests {
 
     #[test]
     fn word_for_mac_sizes_east_asian_lines_without_fe_layout() {
-        assert!(!word_sizes_east_asian_lines_from_faces(false));
+        assert!(word_sizes_east_asian_lines_from_faces(false));
         assert!(word_sizes_east_asian_lines_from_faces(true));
         set_word_layout_platform(WordLayoutPlatform::Mac);
         let mac = word_sizes_east_asian_lines_from_faces(false);
@@ -4747,6 +4768,7 @@ mod tests {
 
     #[test]
     fn word_east_asian_font_line_height_follows_the_requested_face() {
+        set_word_layout_platform(WordLayoutPlatform::Mac);
         // Word for Mac 16.113, 30 single-spaced lines: Yu Mincho 10.5pt
         // advances 15.0455pt a line, MS Mincho 12pt 15.5669pt and 10.5pt
         // 13.6138pt (each ±0.01pt after 0.24pt quantization).
@@ -4788,7 +4810,7 @@ mod tests {
             true
         ));
         assert!(!word_east_asian_font_line_box_applies(None, true, true));
-        assert!(!word_east_asian_font_line_box_applies(None, false, false));
+        assert!(word_east_asian_font_line_box_applies(None, false, false));
         assert_eq!(
             apply_word_east_asian_font_line_height(13.65, true, Some(15.04)),
             15.04

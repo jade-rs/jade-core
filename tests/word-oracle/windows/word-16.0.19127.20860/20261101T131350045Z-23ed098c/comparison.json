@@ -1,0 +1,17 @@
+[
+  {
+    "fixture": "word-mac-probe-numbering-label",
+    "word_pages": 1,
+    "native_pages": 1,
+    "word_glyphs": 105,
+    "native_glyphs": 105,
+    "matched": 105,
+    "within_0_375pt": 105,
+    "x_p50": 0.1365966796875,
+    "x_p95": 0.2004241943359375,
+    "y_p50": 0.026561737060546875,
+    "y_p95": 0.06287765502929688,
+    "first_errors": [],
+    "pdf_sha256": "15842989f1fa4475f2fa074ba28e877074a885f766908e4b1bce81ade16d8490"
+  }
+]

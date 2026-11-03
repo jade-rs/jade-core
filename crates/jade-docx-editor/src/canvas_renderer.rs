@@ -31786,11 +31786,9 @@ where
     }
 
     fn numbering_first_line_ascent(&self, numbering: &PendingNumberingRender) -> Option<f64> {
-        if jade_docx_layout::line_metrics::word_layout_platform()
-            != jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
-        {
-            return None;
-        }
+        // Windows Word 16.0.19127.20860 also raises the first line for a
+        // larger numbering label (word-mac-probe-numbering-label, row 3).
+        // Unknown label metrics still retain the existing fallback.
         let style = self.resolve_applied_run_style_cached(numbering.display_props.as_ref());
         let mut ascent: Option<f64> = None;
         let mut previous_descriptor = None;

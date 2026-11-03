@@ -1,0 +1,32 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261101T130814344Z-9cdb6d39",
+  "captured_at_utc": "2026-11-01T13:08:14.3641884Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20860",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "9bafe09d0c458006744b9edce767a328ba2da1bb5d9a460e5830c47bf6d7f1d1"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "documents": [
+    {
+      "name": "word-mac-probe-ruby-nogrid",
+      "source": "jade-core\\public\\fixtures\\word-mac-probe-ruby-nogrid.docx",
+      "sha256": "00e63f0afebccb1ee8d5c636d122500305d39993efcd26f7b654d45a911390da",
+      "pdf": "word-mac-probe-ruby-nogrid.pdf",
+      "pdf_sha256": "7386820f7a97113eecd225d9748791f52999f7c7575ade6eaf954f54bf0686ba",
+      "pages": 1
+    },
+    {
+      "name": "word-mac-probe-ruby-grid",
+      "source": "jade-core\\public\\fixtures\\word-mac-probe-ruby-grid.docx",
+      "sha256": "c21887162babada78719552a1160e468fba3d115104220a83e24401d9f942cdf",
+      "pdf": "word-mac-probe-ruby-grid.pdf",
+      "pdf_sha256": "c19068cdaa2c091b9a683e558a4c07ff7f4ed8557ca0734b2aa6b94056113b0a",
+      "pages": 2
+    }
+  ]
+}
