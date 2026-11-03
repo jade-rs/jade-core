@@ -180,6 +180,10 @@ pub struct HeadlessRunFormat {
     /// 組み文字, 割注 and 縦中横; an empty layout takes them off.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub east_asian_layout: Option<HeadlessEastAsianLayout>,
+    /// 文字の均等割り付け (`w:fitText`): the width in points the text is
+    /// spread over, as one group; `0` takes it off (解除).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fit_text: Option<f32>,
     /// 校正言語 for Latin text (`w:lang/@w:val`, a BCP 47 tag such as
     /// `en-US`); empty takes it off.
     #[serde(default, skip_serializing_if = "Option::is_none")]

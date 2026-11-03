@@ -3621,6 +3621,9 @@ where
     /// body content on every page. The raw VML remains in the header part for
     /// DOCX round-tripping; this is the canvas projection of that state.
     watermark_text: Option<String>,
+    /// The watermark's look: font, size, color, transparency, layout and the
+    /// shape box its text is stretched to fill.
+    watermark_style: Option<jade_docx_reader::document::WatermarkStyle>,
     /// Numeral format (`w:pgNumType/@w:fmt`, lowercased) applied to `PAGE`
     /// fields. `None` = decimal. ECMA-376 Part 1 §17.6.12. MVP: the default
     /// section's value is applied document-wide.
@@ -8498,6 +8501,7 @@ where
             section_page_borders: Vec::new(),
             page_background_color: None,
             watermark_text: None,
+            watermark_style: None,
             page_number_format: None,
             page_number_start: None,
             section_page_numbering: Vec::new(),
@@ -10571,27 +10575,78 @@ where
             return Ok(());
         }
 
+        let style = self.watermark_style.clone().unwrap_or_default();
         let context = self.host.painter();
         let painter = self.host.painter();
-        let target_width = self.page_width * 0.76;
-        let mut font_size = (self.page_width * 0.12).clamp(48.0, 116.0);
+        // Word centres the shape on the margin box
+        // (`mso-position-*-relative:margin`).
+        let body_right = self.page_width - self.margin_right;
+        let body_bottom = self.page_height - self.margin_bottom;
+        let (center_x, center_y) = if body_right > self.margin_left && body_bottom > self.margin_top
+        {
+            (
+                (self.margin_left + body_right) / 2.0,
+                (self.margin_top + body_bottom) / 2.0,
+            )
+        } else {
+            (self.page_width / 2.0, self.page_height / 2.0)
+        };
+        let family = match style.font.as_deref() {
+            Some(font) => format!("\"{}\", sans-serif", font.replace('"', "")),
+            None => "sans-serif".to_string(),
+        };
         context.save();
         let draw_result = (|| {
-            context.set_font(&format!("700 {font_size:.2}px sans-serif"));
-            let mut measured_width = painter.measure_text_width(text)?;
-            if measured_width > target_width && measured_width > 0.0 {
-                font_size *= target_width / measured_width;
-                context.set_font(&format!("700 {font_size:.2}px sans-serif"));
-                measured_width = painter.measure_text_width(text)?;
-            }
-            context.set_global_alpha(if self.dark_mode_text { 0.23 } else { 0.18 });
-            context.set_fill_style_str(if self.dark_mode_text {
-                "#B8BEC9"
+            let shape_box = style
+                .width_pt
+                .zip(style.height_pt)
+                .filter(|(width, height)| *width > 0.0 && *height > 0.0);
+            let (font_size, measured_width, stretch) = match shape_box {
+                // `fitshape`: the text path is scaled to fill the shape box.
+                Some((width, height)) => {
+                    let font_size = points_to_px(height);
+                    context.set_font(&format!("{font_size:.2}px {family}"));
+                    let measured_width = painter.measure_text_width(text)?;
+                    let stretch = if measured_width > 0.0 {
+                        points_to_px(width) / measured_width
+                    } else {
+                        1.0
+                    };
+                    (font_size, measured_width, stretch)
+                }
+                None => {
+                    let target_width = self.page_width * 0.76;
+                    let mut font_size = match style.size_pt {
+                        Some(size) => points_to_px(size),
+                        None => (self.page_width * 0.12).clamp(48.0, 116.0),
+                    };
+                    context.set_font(&format!("{font_size:.2}px {family}"));
+                    let mut measured_width = painter.measure_text_width(text)?;
+                    if style.size_pt.is_none()
+                        && measured_width > target_width
+                        && measured_width > 0.0
+                    {
+                        font_size *= target_width / measured_width;
+                        context.set_font(&format!("{font_size:.2}px {family}"));
+                        measured_width = painter.measure_text_width(text)?;
+                    }
+                    (font_size, measured_width, 1.0)
+                }
+            };
+            if self.dark_mode_text {
+                context.set_global_alpha(0.23);
+                context.set_fill_style_str("#B8BEC9");
             } else {
-                "#808080"
-            });
-            context.translate(self.page_width / 2.0, self.page_height / 2.0)?;
-            context.rotate(-std::f64::consts::FRAC_PI_4)?;
+                context.set_global_alpha(if style.semitransparent { 0.5 } else { 1.0 });
+                context.set_fill_style_str(&style.color);
+            }
+            context.translate(center_x, center_y)?;
+            if !style.horizontal {
+                context.rotate(-std::f64::consts::FRAC_PI_4)?;
+            }
+            if (stretch - 1.0).abs() > 1e-3 {
+                context.scale(stretch, 1.0)?;
+            }
             context.fill_text(text, -measured_width / 2.0, font_size * 0.34)
         })();
         context.restore();
@@ -15786,6 +15841,7 @@ where
 
         // Word stores text watermarks as a VML text path in the page header.
         self.watermark_text = document.watermark_text.clone();
+        self.watermark_style = document.watermark_style.clone();
 
         // Resolve `w:pgNumType` (numeral format + start offset) for PAGE fields
         // from the default section. MVP: a single document-wide value.
@@ -18338,6 +18394,7 @@ where
         let track_footnote_placement = self.tracks_footnote_placement();
 
         let mut shown_field_codes: Vec<XmlNodeId> = Vec::new();
+        let mut previous_visible_run_index = None;
         let mut advance_raise_pt = 0.0_f32;
         for (run_index, run) in paragraph.runs.iter().enumerate() {
             if let Some(from) = format_change_from.take() {
@@ -18457,6 +18514,11 @@ where
                 }
                 continue;
             }
+
+            // A hidden first result run has not drawn the field's value. Compare
+            // against the previous visible run, including across hidden runs.
+            let previous_visible_run = previous_visible_run_index;
+            previous_visible_run_index = Some(run_index);
 
             // An EQ field is drawn as its switches lay out (`\f` a fraction,
             // `\r` a radical …), in place of its saved result.
@@ -18628,7 +18690,9 @@ where
                 // resolved value replaces that saved result; it must not be
                 // appended or the field would render twice.
                 if let Some(value) = self.resolve_run_field(field) {
-                    segment.push_str(&value);
+                    if !continues_field(&paragraph.runs, previous_visible_run, run_index) {
+                        segment.push_str(&value);
+                    }
                 } else if !run.text.is_empty() {
                     segment.push_str(&run.text);
                 }
@@ -27298,13 +27362,21 @@ where
     fn text_box_paragraph_layout(&self, paragraph: &Paragraph) -> (String, Vec<RunStyle>) {
         let mut text = String::new();
         let mut run_styles = Vec::with_capacity(paragraph.runs.len());
-        for run in &paragraph.runs {
+        for (run_index, run) in paragraph.runs.iter().enumerate() {
             let start = text.len();
-            text.push_str(&run.text);
-            if let Some(field) = run.field.as_ref() {
-                if let Some(value) = self.resolve_run_field(field) {
-                    text.push_str(&value);
+            // As in the body: a resolved value replaces the saved result,
+            // once per field.
+            match run
+                .field
+                .as_ref()
+                .and_then(|field| self.resolve_run_field(field))
+            {
+                Some(value) => {
+                    if !continues_field(&paragraph.runs, run_index.checked_sub(1), run_index) {
+                        text.push_str(&value);
+                    }
                 }
+                None => text.push_str(&run.text),
             }
             if text.len() > start {
                 run_styles.push(RunStyle {
@@ -33873,7 +33945,7 @@ where
             };
             let mut offset = 0usize;
             let mut links = Vec::new();
-            for run in &paragraph.runs {
+            for (run_index, run) in paragraph.runs.iter().enumerate() {
                 let start = offset;
                 // Field result text is stored outside `run.text`: complex and
                 // simple fields keep Word's displayed value in `cached_text`
@@ -33883,7 +33955,17 @@ where
                 if let Some(field) = run.field.as_ref() {
                     offset = offset.saturating_add(
                         self.resolve_run_field(field)
-                            .map(|value| value.len())
+                            .map(|value| {
+                                if continues_field(
+                                    &paragraph.runs,
+                                    run_index.checked_sub(1),
+                                    run_index,
+                                ) {
+                                    0
+                                } else {
+                                    value.len()
+                                }
+                            })
                             .unwrap_or(run.text.len()),
                     );
                 } else {
@@ -37986,6 +38068,29 @@ fn select_header_footer_variant<'a, T: ?Sized>(
         first_lines,
         even_lines,
     )
+}
+
+/// Whether run `index` holds more of the same identified field as the prior
+/// relevant run. Missing XML identities do not establish a shared field. Word
+/// saves a result formatted two ways as two runs, and an edit splits one
+/// (around a comment's reference, or formatting part of it); each run
+/// carries the field. A value the renderer works out is the whole result, so
+/// it is drawn for the field's first run only: drawn for each, a date showed
+/// two or three times.
+fn continues_field(runs: &[Run], previous_index: Option<usize>, index: usize) -> bool {
+    let Some(previous) = previous_index
+        .and_then(|previous| runs.get(previous))
+        .and_then(|run| run.field.as_ref())
+    else {
+        return false;
+    };
+    runs.get(index)
+        .and_then(|run| run.field.as_ref())
+        .is_some_and(|field| {
+            field.source_field_id.is_some()
+                && field.kind == previous.kind
+                && field.source_field_id == previous.source_field_id
+        })
 }
 
 #[cfg(test)]
@@ -47431,6 +47536,234 @@ mod tests {
             renderer.text_box_paragraph_layout(&paragraph).0,
             "Textbox channel: Beta & Preview"
         );
+    }
+
+    /// The text a render of `document` paints, in drawing order, with the
+    /// clock the date fields read set to 2026/05/30.
+    fn painted_document_text(document: &Document) -> String {
+        painted_document_text_with_options(document, &Options::default())
+    }
+
+    fn painted_document_text_with_options(document: &Document, options: &Options) -> String {
+        use jade_painter::recording::Op;
+        let (mut renderer, painter) = recording_renderer();
+        renderer.set_current_datetime(Some(FieldDateTime {
+            year: 2026,
+            month: 5,
+            day: 30,
+            hour: 9,
+            minute: 5,
+            second: 0,
+            weekday: 6,
+        }));
+        renderer.render(document, options).unwrap();
+        painter
+            .ops()
+            .into_iter()
+            .filter_map(|op| match op {
+                Op::FillText(text, _, _) => Some(text),
+                _ => None,
+            })
+            .collect()
+    }
+
+    fn docx_with_document_xml(document_xml: &str) -> Vec<u8> {
+        use std::io::Write;
+        let mut cursor = std::io::Cursor::new(Vec::new());
+        {
+            let mut zip = zip::ZipWriter::new(&mut cursor);
+            let options = zip::write::SimpleFileOptions::default();
+            for (name, part) in [
+                (
+                    "[Content_Types].xml",
+                    r#"<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="xml" ContentType="application/xml"/><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>"#,
+                ),
+                (
+                    "_rels/.rels",
+                    r#"<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>"#,
+                ),
+                ("word/document.xml", document_xml),
+            ] {
+                zip.start_file(name, options).unwrap();
+                zip.write_all(part.as_bytes()).unwrap();
+            }
+            zip.finish().unwrap();
+        }
+        cursor.into_inner()
+    }
+
+    #[test]
+    fn a_field_whose_result_spans_runs_is_drawn_once() {
+        // A field's result can be held by several runs: Word saves a result
+        // formatted in two ways as two `w:r`s, and a comment anchored inside
+        // a result splits it around the comment's reference. Each run carries
+        // the field, and each drew the field's whole value: the date showed
+        // two or three times.
+        use crate::headless_api::apply_headless_commands_to_document;
+        use jade_docx_headless_api::{HeadlessCommand, HeadlessEditRequest};
+        let date = "2026/05/30";
+        let count = |document: &Document| painted_document_text(document).matches(date).count();
+
+        let saved = docx_with_document_xml(
+            r#"<?xml version="1.0" encoding="UTF-8"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:t xml:space="preserve">Dated </w:t></w:r><w:fldSimple w:instr=" DATE \@ &quot;yyyy/MM/dd&quot; "><w:r><w:t>2026/</w:t></w:r><w:r><w:rPr><w:b/></w:rPr><w:t>11/02</w:t></w:r></w:fldSimple></w:p></w:body></w:document>"#,
+        );
+        let model = futures::executor::block_on(WordDocument::load(&saved, &Options::default()))
+            .expect("load");
+        assert_eq!(count(model.document.as_ref().unwrap()), 1, "two saved runs");
+
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/word-mac-probe-kern-default.docx"),
+        )
+        .expect("read fixture");
+        let mut model =
+            futures::executor::block_on(WordDocument::load(&bytes, &Options::default()))
+                .expect("load");
+        apply_headless_commands_to_document(
+            &mut model,
+            &HeadlessEditRequest {
+                commands: vec![
+                    HeadlessCommand::InsertDateTimeField {
+                        start_paragraph: 4,
+                        start_offset: 14,
+                        end_paragraph: 4,
+                        end_offset: 38,
+                        time: false,
+                        format: "yyyy/MM/dd".into(),
+                        cached_text: "2026/11/02".into(),
+                    },
+                    HeadlessCommand::AddComment {
+                        start_paragraph: 2,
+                        start_offset: Some(19),
+                        end_paragraph: 4,
+                        end_offset: Some(22),
+                        text: "c".into(),
+                        author: Some("reviewer".into()),
+                        initials: None,
+                        date: None,
+                    },
+                ],
+            },
+        )
+        .expect("edited");
+        assert_eq!(
+            count(model.document.as_ref().unwrap()),
+            1,
+            "commented inside"
+        );
+        let reloaded = futures::executor::block_on(WordDocument::load(
+            &model.export_docx().expect("export"),
+            &Options::default(),
+        ))
+        .expect("reload");
+        assert_eq!(count(reloaded.document.as_ref().unwrap()), 1, "reloaded");
+    }
+
+    #[test]
+    fn adjacent_fields_without_source_ids_remain_distinct() {
+        let field = r#"<w:fldSimple w:instr=" DATE \@ &quot;yyyy/MM/dd&quot; "><w:r><w:t>saved</w:t></w:r></w:fldSimple>"#;
+        let bytes = docx_with_document_xml(&format!(
+            r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p>{field}{field}</w:p></w:body></w:document>"#,
+        ));
+        let model = futures::executor::block_on(WordDocument::load(&bytes, &Options::default()))
+            .expect("load");
+        let mut document = model.document.as_ref().unwrap().as_ref().clone();
+        assert_eq!(
+            painted_document_text(&document)
+                .matches("2026/05/30")
+                .count(),
+            2
+        );
+        let BodyElement::Paragraph(paragraph) = &mut document.body.as_mut().unwrap().elements[0]
+        else {
+            panic!("paragraph");
+        };
+        // In-memory documents may have fields without backing XML. Lack of
+        // an identity is not evidence that adjacent fields are the same one.
+        for run in &mut paragraph.runs {
+            run.field.as_mut().unwrap().source_field_id = None;
+        }
+        assert_eq!(
+            painted_document_text(&document)
+                .matches("2026/05/30")
+                .count(),
+            2
+        );
+    }
+
+    #[test]
+    fn a_split_date_field_survives_its_hidden_deleted_first_run() {
+        let bytes = docx_with_document_xml(
+            r#"<?xml version="1.0" encoding="UTF-8"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:fldSimple w:instr=" DATE \@ &quot;yyyy/MM/dd&quot; "><w:del w:id="1" w:author="reviewer" w:date="2026-11-03T00:00:00Z"><w:r><w:delText>2026/</w:delText></w:r></w:del><w:r><w:t>11/02</w:t></w:r></w:fldSimple></w:p></w:body></w:document>"#,
+        );
+        let model = futures::executor::block_on(WordDocument::load(&bytes, &Options::default()))
+            .expect("load");
+        let paragraph = model.paragraph(0).expect("paragraph");
+        assert_eq!(paragraph.runs.len(), 2);
+        assert!(run_is_hidden_revision(&paragraph.runs[0], false, false));
+        assert!(!run_is_hidden_revision(&paragraph.runs[1], false, false));
+        assert_eq!(
+            paragraph.runs[0].field.as_ref().unwrap().source_field_id,
+            paragraph.runs[1].field.as_ref().unwrap().source_field_id,
+        );
+        assert_eq!(
+            painted_document_text(model.document.as_ref().unwrap())
+                .matches("2026/05/30")
+                .count(),
+            1,
+            "the surviving result must render when its preceding result run is hidden",
+        );
+    }
+
+    #[test]
+    fn split_date_fields_follow_visible_runs_in_each_revision_view() {
+        let plain = "<w:r><w:t>part</w:t></w:r>";
+        let deleted =
+            r#"<w:del w:id="1" w:author="reviewer"><w:r><w:delText>part</w:delText></w:r></w:del>"#;
+        let inserted = r#"<w:ins w:id="2" w:author="reviewer"><w:r><w:t>part</w:t></w:r></w:ins>"#;
+        let hidden = "<w:r><w:rPr><w:vanish/></w:rPr><w:t>part</w:t></w:r>";
+        for (name, result, original, markup) in [
+            ("deleted first", format!("{deleted}{plain}"), false, false),
+            ("inserted first", format!("{inserted}{plain}"), true, false),
+            ("hidden first", format!("{hidden}{plain}"), false, false),
+            (
+                "deleted middle",
+                format!("{plain}{deleted}{plain}"),
+                false,
+                false,
+            ),
+            ("shown deletion", format!("{deleted}{plain}"), false, true),
+        ] {
+            for complex in [false, true] {
+                let field = if complex {
+                    format!(
+                        r#"<w:r><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:instrText> DATE \@ "yyyy/MM/dd" </w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r>{result}<w:r><w:fldChar w:fldCharType="end"/></w:r>"#,
+                    )
+                } else {
+                    format!(
+                        r#"<w:fldSimple w:instr=" DATE \@ &quot;yyyy/MM/dd&quot; ">{result}</w:fldSimple>"#
+                    )
+                };
+                let bytes = docx_with_document_xml(&format!(
+                    r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p>{field}</w:p></w:body></w:document>"#,
+                ));
+                let model =
+                    futures::executor::block_on(WordDocument::load(&bytes, &Options::default()))
+                        .expect("load");
+                let options = Options {
+                    render_original: original,
+                    render_changes: markup,
+                    ..Options::default()
+                };
+                assert_eq!(
+                    painted_document_text_with_options(model.document.as_ref().unwrap(), &options)
+                        .matches("2026/05/30")
+                        .count(),
+                    1,
+                    "{name}, complex={complex}",
+                );
+            }
+        }
     }
 
     #[test]
