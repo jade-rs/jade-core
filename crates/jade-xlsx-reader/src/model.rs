@@ -1569,4 +1569,49 @@ impl Workbook {
     pub fn sheet_by_name(&self, name: &str) -> Option<&Sheet> {
         self.sheets.iter().find(|sheet| sheet.name == name)
     }
+
+    /// The list `sheet`'s last filter was applied to, from its
+    /// `_xlnm._FilterDatabase` name: what an Advanced Filter in place
+    /// leaves, a sheet in filter mode with no AutoFilter.
+    pub fn filter_database(&self, sheet: &Sheet) -> Option<CellRange> {
+        let index = self
+            .sheets
+            .iter()
+            .position(|found| found.name == sheet.name)?;
+        let name = self.defined_names.iter().find(|defined| {
+            defined.local_sheet_index == Some(index)
+                && defined.name.eq_ignore_ascii_case("_xlnm._FilterDatabase")
+        })?;
+        let formula = name.formula.trim_start_matches('=');
+        let (on, range) = formula.rsplit_once('!')?;
+        let on = on.trim_matches('\'').replace("''", "'");
+        if on != sheet.name {
+            return None;
+        }
+        CellRange::parse(&range.replace('$', "")).ok()
+    }
+
+    /// [`Sheet::filtered_row_ranges`], with the records of an Advanced
+    /// Filter applied in place: a sheet in filter mode with no AutoFilter
+    /// criteria filters its `_xlnm._FilterDatabase` list's records.
+    pub fn filtered_row_ranges(&self, sheet: &Sheet) -> (Vec<(u32, u32)>, bool) {
+        let (ranges, unknown) = sheet.filtered_row_ranges();
+        let criteria = sheet
+            .auto_filter
+            .as_ref()
+            .is_some_and(|filter| filter.has_criteria())
+            || sheet
+                .tables
+                .iter()
+                .any(|table| table.filter.as_ref().is_some_and(|f| f.has_criteria()));
+        if sheet.filter_mode != Some(true) || criteria || !ranges.is_empty() {
+            return (ranges, unknown);
+        }
+        match self.filter_database(sheet) {
+            Some(list) if list.end.row > list.start.row => {
+                (vec![(list.start.row + 1, list.end.row)], false)
+            }
+            _ => (ranges, unknown),
+        }
+    }
 }

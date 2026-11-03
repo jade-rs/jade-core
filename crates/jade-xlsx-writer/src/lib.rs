@@ -38,6 +38,7 @@ mod calc;
 pub mod cell_shift;
 mod cell_shift_extensions;
 pub mod chart_cache;
+pub mod chart_format;
 pub mod charts;
 pub mod clipboard;
 pub mod conditional_formats;

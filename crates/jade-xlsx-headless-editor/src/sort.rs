@@ -48,8 +48,33 @@ enum SortValue {
     Bool(bool),
     Error,
     Blank,
+    /// A value sorted by a custom list: its place in the list (the list's
+    /// length when it is not in it), then the value itself.
+    Custom(usize, Box<SortValue>),
+}
+
+/// Where `value` comes in a custom list, matched as its text without case;
+/// the list's length when it is not there.
+fn custom_rank(value: Option<&CellValue>, list: &[String]) -> usize {
+    let text = match value {
+        Some(CellValue::Text(text)) => text.trim().to_lowercase(),
+        Some(CellValue::Number(number)) => number.to_string(),
+        Some(CellValue::Bool(flag)) => if *flag { "true" } else { "false" }.to_string(),
+        _ => return list.len(),
+    };
+    list.iter()
+        .position(|entry| entry.trim().to_lowercase() == text)
+        .unwrap_or(list.len())
 }
 impl SortValue {
+    /// Text the ASCII order cannot weigh, through a custom list's value.
+    fn lacks_ascii(&self) -> bool {
+        match self {
+            Self::Text { ascii: None, .. } => true,
+            Self::Custom(_, value) => value.lacks_ascii(),
+            _ => false,
+        }
+    }
     fn new(value: Option<&CellValue>, reading: Option<&str>, case_sensitive: bool) -> Self {
         match value {
             Some(CellValue::Number(value)) => Self::Number(*value),
@@ -70,6 +95,7 @@ impl SortValue {
             Self::Bool(_) => 2,
             Self::Error => 3,
             Self::Blank => 4,
+            Self::Custom(_, value) => value.rank(),
         }
     }
     fn compare(
@@ -79,6 +105,15 @@ impl SortValue {
         ascii: bool,
         collator: &CollatorBorrowed<'_>,
     ) -> Ordering {
+        if let (Self::Custom(a_rank, a), Self::Custom(b_rank, b)) = (self, other) {
+            // Blanks last, as ever; then the list's order, then the values.
+            if matches!(**a, Self::Blank) || matches!(**b, Self::Blank) {
+                return a.rank().cmp(&b.rank());
+            }
+            let order = a_rank.cmp(b_rank);
+            let order = if descending { order.reverse() } else { order };
+            return order.then_with(|| a.compare(b, descending, ascii, collator));
+        }
         if matches!(self, Self::Blank) || matches!(other, Self::Blank) {
             return self.rank().cmp(&other.rank());
         }
@@ -212,7 +247,7 @@ impl HeadlessWorkbook {
             .filter_row_state
             .get(sheet_name)
             .is_some_and(|state| state.invalid)
-            || sheet.filtered_row_ranges().1
+            || self.workbook.filtered_row_ranges(sheet).1
         {
             return Err(error("saved filter visibility cannot be established"));
         }
@@ -328,11 +363,18 @@ impl HeadlessWorkbook {
                     values.push(SortValue::Number(if of { 0.0 } else { 1.0 }));
                     continue;
                 }
-                values.push(SortValue::new(
+                let value = SortValue::new(
                     cell.map(|cell| &cell.value),
                     reading.and_then(|reading| reading.key.as_deref()),
                     request.case_sensitive,
-                ));
+                );
+                values.push(match &key.custom_list {
+                    Some(list) => SortValue::Custom(
+                        custom_rank(cell.map(|cell| &cell.value), list),
+                        Box::new(value),
+                    ),
+                    None => value,
+                });
             }
             keyed.push((row, values));
         }
@@ -340,9 +382,7 @@ impl HeadlessWorkbook {
         let ascii_columns: Vec<_> = (0..request.keys.len())
             .map(|index| {
                 locale.id.language.as_str() == "en"
-                    && keyed.iter().all(|(_, values)| {
-                        !matches!(&values[index], SortValue::Text { ascii: None, .. })
-                    })
+                    && keyed.iter().all(|(_, values)| !values[index].lacks_ascii())
             })
             .collect();
         keyed.sort_by(|(_, a), (_, b)| {
@@ -369,7 +409,13 @@ impl HeadlessWorkbook {
             let keys: Vec<_> = request
                 .keys
                 .iter()
-                .map(|key| (body.start.column + key.column, key.descending))
+                .map(|key| {
+                    (
+                        body.start.column + key.column,
+                        key.descending,
+                        key.custom_list.as_ref().map(|list| list.join(",")),
+                    )
+                })
                 .collect();
             written = jade_xlsx_writer::sort::write_sort_state(
                 &written,
@@ -594,20 +640,22 @@ impl HeadlessWorkbook {
                 ) {
                     return Err(error("nonfinite sort key"));
                 }
-                values.push(SortValue::new(
-                    cell.map(|cell| &cell.value),
-                    None,
-                    request.case_sensitive,
-                ));
+                let value =
+                    SortValue::new(cell.map(|cell| &cell.value), None, request.case_sensitive);
+                values.push(match &key.custom_list {
+                    Some(list) => SortValue::Custom(
+                        custom_rank(cell.map(|cell| &cell.value), list),
+                        Box::new(value),
+                    ),
+                    None => value,
+                });
             }
             keyed.push((column, values));
         }
         let ascii_keys: Vec<_> = (0..request.keys.len())
             .map(|index| {
                 locale.id.language.as_str() == "en"
-                    && keyed.iter().all(|(_, values)| {
-                        !matches!(&values[index], SortValue::Text { ascii: None, .. })
-                    })
+                    && keyed.iter().all(|(_, values)| !values[index].lacks_ascii())
             })
             .collect();
         keyed.sort_by(|(_, a), (_, b)| {
