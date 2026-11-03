@@ -28,8 +28,8 @@ bundled stand-ins. Full installed-font X/Y comparisons run on the Windows
 Word machine; no Microsoft font binaries are redistributed to CI.
 
 Collected product versions: **16.0.19127.20860**. No other installed Word
-version is claimed. This version currently has ten passing unique documents,
-58 pages and 6,231 glyphs. The earlier numbering-label capture retains its
+version is claimed. This version currently has eleven passing unique documents,
+60 pages and 6,794 glyphs. The earlier numbering-label capture retains its
 1.83pt failure; a later capture records the corrected result. Contract and
 Yokohama references still have subpoint residuals and are not promoted.
 The 2026-11-03 `numbering-restart` capture is also retained as pending:
@@ -51,3 +51,10 @@ The Python tools require PyMuPDF. Archiving validates hashes, refuses an
 existing destination, rejects mixed-version references, and never promotes
 coordinate failures. A future Word build automatically gets its own version
 directory; collecting one does not replace older builds' tests.
+
+The later `20261103T061428054Z-5f5076bb` capture promotes
+`numbering-restart`: all 563 glyphs on both pages pass the unchanged 0.375pt
+X/Y threshold. The earlier failing capture remains intact. Windows fixes
+remove synthetic bold widening from fixed-pitch Latin cells, include both
+tracking intervals in full grid cells, and retain Japanese-face numeric gaps
+under the default font hint. Mac metric selection is unchanged.

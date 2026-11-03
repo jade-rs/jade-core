@@ -1,0 +1,24 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261103T061428054Z-5f5076bb",
+  "captured_at_utc": "2026-11-03T06:14:28.0794835Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20860",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "9bafe09d0c458006744b9edce767a328ba2da1bb5d9a460e5830c47bf6d7f1d1"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "documents": [
+    {
+      "name": "numbering-restart",
+      "source": "jade-core\\public\\fixtures\\numbering-restart.docx",
+      "sha256": "b0fc380009a6942f9fac6862748495b21136a6c84c149d50a13f02daab0e9a20",
+      "pdf": "numbering-restart.pdf",
+      "pdf_sha256": "808980f5a6ebf34e6cc5c87e0898cab0679c7c7b5de0bbbe365b50f37e3bfdcf",
+      "pages": 2
+    }
+  ]
+}
