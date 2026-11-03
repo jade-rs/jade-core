@@ -38,6 +38,18 @@ fn reference_sets() -> Vec<(PathBuf, Value)> {
         reference["_fixture_count"] = entry["fixture_count"].clone();
         reference["_glyph_count"] = entry["glyph_count"].clone();
         reference["_baseline_line_count"] = entry["baseline_line_count"].clone();
+        for fixture in reference["fixtures"].as_array().unwrap() {
+            if let Some(pages) = fixture["metafiles"].as_array() {
+                assert_eq!(pages.len() as u64, fixture["page_count"].as_u64().unwrap());
+                for (index, page) in pages.iter().enumerate() {
+                    assert_eq!(page["page"], index + 1);
+                    let file = page["file"].as_str().unwrap();
+                    assert!(!file.contains(['/', '\\']));
+                    let raw = std::fs::read(directory.join(file)).unwrap();
+                    assert_eq!(page["sha256"], format!("{:x}", Sha256::digest(raw)));
+                }
+            }
+        }
         sets.push((directory, reference));
     }
     sets
@@ -203,22 +215,33 @@ fn windows_word_baselines_with_bundled_standins() {
             .as_array()
             .unwrap()
             .iter()
-            .filter(|fixture| fixture["name"] == "word-windows-yu-gothic-lines")
+            .filter(|fixture| {
+                fixture["name"] == "word-windows-yu-gothic-lines"
+                    || (reference["coordinate_source"] == "Word Page.EnhMetaFileBits / MS-EMF"
+                        && matches!(
+                            fixture["name"].as_str(),
+                            Some("yokohama_page1" | "yokohama_page6")
+                        ))
+            })
         {
-            let bytes = std::fs::read(repo_path(
-                "public/fixtures/word-windows-yu-gothic-lines.docx",
-            ))
-            .unwrap();
+            let name = fixture["name"].as_str().unwrap();
+            let bytes = std::fs::read(repo_path(&format!("public/fixtures/{name}.docx"))).unwrap();
             assert_eq!(
                 fixture["docx_sha256"],
                 format!("{:x}", Sha256::digest(&bytes))
             );
             let doc = NativeDocument::open(&bytes, 816.0, 1056.0, &faces).unwrap();
             assert_eq!(fixture["page_count"], doc.page_count());
-            assert_eq!(doc.page_count(), 24);
+            let (page_count, glyph_count) = match name {
+                "word-windows-yu-gothic-lines" => (24, 2160),
+                "yokohama_page1" => (1, 853),
+                "yokohama_page6" => (5, 5425),
+                _ => unreachable!(),
+            };
+            assert_eq!(doc.page_count(), page_count);
             let mut expected = fixture["glyphs"].as_array().unwrap().clone();
             let mut actual = body_glyphs(&doc);
-            assert_eq!(expected.len(), 2160);
+            assert_eq!(expected.len(), glyph_count);
             assert_eq!(actual.len(), expected.len());
             spatial_order(&mut expected);
             spatial_order(&mut actual);
@@ -229,7 +252,7 @@ fn windows_word_baselines_with_bundled_standins() {
                     assert!(
                         (actual[axis].as_f64().unwrap() - expected[axis].as_f64().unwrap()).abs()
                             <= 0.375,
-                        "Yu Gothic stand-ins: {actual} vs Word {expected}"
+                        "{name} stand-ins: {actual} vs Word {expected}"
                     );
                 }
             }

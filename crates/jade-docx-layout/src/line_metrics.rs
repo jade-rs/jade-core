@@ -2242,12 +2242,12 @@ pub fn word_east_asian_font_vertical_metrics_px(font_descriptor: &str) -> Option
 
 /// A list label contributes above the baseline; the body's descent remains.
 /// Meiryo's source-matched Mac contract subsets supply hhea 2171/-901 at
-/// 2048 units/em. Keep this label observation separate from body line sizing.
+/// 2048 units/em. Windows Meiryo has the same hhea and OS/2 usWin box;
+/// its Word EMF label also raises the first body baseline. Keep this label
+/// observation separate from body line sizing.
 pub fn word_numbering_font_ascent_px(font_descriptor: &str) -> Option<f64> {
     let (size_pt, family) = split_font_descriptor(font_descriptor)?;
-    if word_layout_platform() == WordLayoutPlatform::Mac
-        && matches!(family.trim_matches(['\'', '"']), "Meiryo" | "メイリオ")
-    {
+    if matches!(family.trim_matches(['\'', '"']), "Meiryo" | "メイリオ") {
         let half_leading = word_east_asian_font_half_leading_units(2171.0, 901.0);
         return Some(f64::from(size_pt) * 96.0 / 72.0 * f64::from(2171.0 + half_leading) / 2048.0);
     }

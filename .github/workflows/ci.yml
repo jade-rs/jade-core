@@ -189,6 +189,14 @@ jobs:
       # No Office installation/font redistribution is required for this
       # vertical-policy check. Full installed-font XY tests run on the Word
       # capture machine via jade-office/scripts/test-windows-word.ps1.
+      - name: Setup drawing-reference verifier Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12'
+      - name: Verify drawing-origin extraction and rejection cases
+        run: python -m unittest discover -s scripts/word-oracle -p test_windows_emf.py
+      - name: Reconstruct registered origins from original Word drawing files
+        run: python scripts/word-oracle/extract_windows_emf.py --verify-index tests/word-oracle/windows/index.json
       - name: Compare every registered Word version's baselines
         run: cargo test --manifest-path crates/jade-docx-native-render/Cargo.toml --locked --test word_windows_coordinates windows_word_baselines_with_bundled_standins -- --exact
 

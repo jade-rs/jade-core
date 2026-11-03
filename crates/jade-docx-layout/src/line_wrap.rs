@@ -1428,7 +1428,7 @@ fn compute_grapheme_advance_with_ascii_width(
     } else {
         paragraph_style
             .map(|style| {
-                implicit_numeric_east_asian_gap_width(
+                implicit_numeric_east_asian_gap_width_with_style(
                     style,
                     ImplicitNumericGapContext {
                         grapheme,
@@ -1440,6 +1440,7 @@ fn compute_grapheme_advance_with_ascii_width(
                         font_descriptor,
                         prev_auto_space,
                     },
+                    resolved_style,
                 )
             })
             .unwrap_or(0.0)
@@ -1693,6 +1694,14 @@ pub fn implicit_numeric_east_asian_gap_width(
     paragraph_style: &ParagraphStyle,
     context: ImplicitNumericGapContext<'_>,
 ) -> f64 {
+    implicit_numeric_east_asian_gap_width_with_style(paragraph_style, context, None)
+}
+
+fn implicit_numeric_east_asian_gap_width_with_style(
+    paragraph_style: &ParagraphStyle,
+    context: ImplicitNumericGapContext<'_>,
+    resolved_style: Option<&ResolvedRunStyle>,
+) -> f64 {
     let ImplicitNumericGapContext {
         grapheme,
         script,
@@ -1703,6 +1712,14 @@ pub fn implicit_numeric_east_asian_gap_width(
         font_descriptor,
         prev_auto_space,
     } = context;
+    let fixed_em_px = || {
+        font_descriptor.and_then(|descriptor| {
+            resolved_style.map_or_else(
+                || crate::line_metrics::cached_word_fixed_east_asian_em_px(descriptor),
+                |style| style.observed_cjk_em_px(descriptor),
+            )
+        })
+    };
     // Each boundary needs only one side classified, so classify lazily: this
     // runs for every grapheme of East Asian text.
     let current_is_digit = is_ascii_digit_grapheme(grapheme);
@@ -1735,9 +1752,7 @@ pub fn implicit_numeric_east_asian_gap_width(
 
     if !paragraph_style.enable_line_break_rules
         && (paragraph_style.word_platform == crate::line_metrics::WordLayoutPlatform::Mac
-            || font_descriptor
-                .and_then(crate::line_metrics::cached_word_fixed_east_asian_em_px)
-                .is_none())
+            || fixed_em_px().is_none())
     {
         return 0.0;
     }
@@ -1748,15 +1763,20 @@ pub fn implicit_numeric_east_asian_gap_width(
         && crate::line_metrics::word_balance_suppresses_numeric_auto_space(
             paragraph_style.word_platform,
         )
-        && font_descriptor.is_none_or(|d| crate::line_metrics::word_ascii_metrics(d).is_none())
+        && font_descriptor.is_none_or(|descriptor| {
+            resolved_style
+                .map_or_else(
+                    || crate::line_metrics::word_ascii_metrics(descriptor),
+                    |style| style.ascii_metrics_for_descriptor(descriptor),
+                )
+                .is_none()
+        })
         || paragraph_style.east_asian_rules.auto_space_dn == Some(false)
     {
         return 0.0;
     }
     if paragraph_style.word_platform == crate::line_metrics::WordLayoutPlatform::Windows {
-        if let Some(em) =
-            font_descriptor.and_then(crate::line_metrics::cached_word_fixed_east_asian_em_px)
-        {
+        if let Some(em) = fixed_em_px() {
             return em * 0.25;
         }
     }
