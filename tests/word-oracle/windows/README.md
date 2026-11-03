@@ -24,7 +24,11 @@ refused unless every glyph, page and origin matches Word within 0.375pt.
 Tests compare every registered capture/version and the original legacy
 capture. Mac evidence and its thresholds are independent and unchanged.
 The portable CI check verifies the controlled probes' baselines using
-bundled stand-ins. Full installed-font X/Y comparisons run on the Windows
+bundled stand-ins. It also checks 21 actual Word X/Y origins in
+`numbering-restart`: the fixed-pitch B/C/D/E rows and all five numeric
+boundaries after the Japanese list text. Thus the grid-space and numeric-gap
+regressions fail CI without installing or redistributing Microsoft fonts.
+Full installed-font X/Y comparisons run on the Windows
 Word machine; no Microsoft font binaries are redistributed to CI.
 
 Collected product versions: **16.0.19127.20860**. No other installed Word

@@ -6,7 +6,6 @@ use jade_docx_layout::line_metrics::{set_word_layout_platform, WordLayoutPlatfor
 #[cfg(target_os = "windows")]
 use jade_docx_native_render::system_fonts;
 use jade_docx_native_render::{FaceSpec, NativeDocument};
-#[cfg(target_os = "windows")]
 use serde_json::json;
 use serde_json::Value;
 use sha2::{Digest, Sha256};
@@ -44,7 +43,6 @@ fn reference_sets() -> Vec<(PathBuf, Value)> {
     sets
 }
 
-#[cfg(target_os = "windows")]
 fn spatial_order(glyphs: &mut [Value]) {
     glyphs.sort_by(|a, b| {
         a[0].as_u64()
@@ -162,7 +160,9 @@ fn windows_word_baselines_with_bundled_standins() {
             "Arial",
             "Times New Roman",
             "MS Mincho",
+            "MS Gothic",
             "Yu Mincho",
+            "Yu Gothic Light",
         ]
         .into_iter()
         .map(|family| FaceSpec {
@@ -172,6 +172,76 @@ fn windows_word_baselines_with_bundled_standins() {
         })
         .collect();
         let mut checked = 0;
+        for fixture in reference["fixtures"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|fixture| fixture["name"] == "numbering-restart")
+        {
+            let bytes = std::fs::read(repo_path("public/fixtures/numbering-restart.docx")).unwrap();
+            assert_eq!(
+                fixture["docx_sha256"],
+                format!("{:x}", Sha256::digest(&bytes))
+            );
+            let doc = NativeDocument::open(&bytes, 816.0, 1056.0, &faces).unwrap();
+            assert_eq!(fixture["page_count"], doc.page_count());
+            let expected = fixture["glyphs"].as_array().unwrap();
+            let numeric_rows: Vec<_> = expected
+                .iter()
+                .filter(|g| g[1] == "括")
+                .map(|g| {
+                    (
+                        g[0].as_u64().unwrap(),
+                        g[3].as_f64().unwrap(),
+                        g[2].as_f64().unwrap(),
+                    )
+                })
+                .collect();
+            assert_eq!(numeric_rows.len(), 5);
+            let selected = |g: &&Value| {
+                matches!(g[1].as_str(), Some("B" | "C" | "D" | "E"))
+                    || (matches!(g[1].as_str(), Some("1" | "2" | "3" | "4" | "5"))
+                        && numeric_rows.iter().any(|(page, y, x)| {
+                            g[0] == *page
+                                && g[2].as_f64().unwrap() > *x
+                                && (g[3].as_f64().unwrap() - y).abs() <= 0.375
+                        }))
+            };
+            let mut expected: Vec<_> = expected.iter().filter(selected).cloned().collect();
+            let mut actual = Vec::new();
+            for line in doc.renderer().layout_debug_lines() {
+                for fragment in line.fragments {
+                    for glyph in fragment.glyphs {
+                        actual.push(json!([
+                            line.page + 1,
+                            glyph.text,
+                            (fragment.x + glyph.x - 2.0 * line.report_x_offset) * 0.75,
+                            fragment.baseline * 0.75
+                        ]));
+                    }
+                }
+            }
+            actual = actual.iter().filter(selected).cloned().collect();
+            assert_eq!(
+                expected.len(),
+                21,
+                "fixed cells and all five numeric boundaries"
+            );
+            assert_eq!(actual.len(), expected.len());
+            spatial_order(&mut expected);
+            spatial_order(&mut actual);
+            for (actual, expected) in actual.iter().zip(&expected) {
+                assert_eq!(actual[0], expected[0]);
+                assert_eq!(actual[1], expected[1]);
+                for axis in [2, 3] {
+                    assert!(
+                        (actual[axis].as_f64().unwrap() - expected[axis].as_f64().unwrap()).abs()
+                            <= 0.375,
+                        "numbering stand-ins: {actual} vs Word {expected}"
+                    );
+                }
+            }
+        }
         for fixture in reference["fixtures"]
             .as_array()
             .unwrap()
