@@ -14318,8 +14318,8 @@ mod tests {
             Some("游明朝")
         );
         assert_eq!(run.and_then(|props| props.font_size), Some(10.5));
-        let normal_alignment = if jade_docx_layout::line_metrics::word_layout_platform()
-            == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+        let normal_alignment = if jade_docx_reader::word_platform::word_layout_platform()
+            == jade_docx_reader::word_platform::WordLayoutPlatform::Windows
         {
             "left"
         } else {
@@ -17092,8 +17092,8 @@ mod tests {
             &Options::default(),
         ))
         .expect("reload");
-        let normal_alignment = if jade_docx_layout::line_metrics::word_layout_platform()
-            == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+        let normal_alignment = if jade_docx_reader::word_platform::word_layout_platform()
+            == jade_docx_reader::word_platform::WordLayoutPlatform::Windows
         {
             "left"
         } else {

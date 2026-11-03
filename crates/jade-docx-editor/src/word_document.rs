@@ -2719,8 +2719,8 @@ impl WordDocument {
             // The package is not given a styles part until an edit writes one.
             if !styles_read {
                 document.styles_part = Some(
-                    if jade_docx_layout::line_metrics::word_layout_platform()
-                        == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+                    if jade_docx_reader::word_platform::word_layout_platform()
+                        == jade_docx_reader::word_platform::WordLayoutPlatform::Windows
                     {
                         StylesPart::word_default_windows()
                     } else {

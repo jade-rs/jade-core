@@ -291,8 +291,8 @@ mod tests {
                 let properties = paragraph.properties.as_ref().expect("paragraph properties");
                 // The package has no styles part, so a paragraph that sets
                 // no alignment takes the platform's built-in Normal.
-                let normal_alignment = if jade_docx_layout::line_metrics::word_layout_platform()
-                    == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows { "left" } else { "both" };
+                let normal_alignment = if jade_docx_reader::word_platform::word_layout_platform()
+                    == jade_docx_reader::word_platform::WordLayoutPlatform::Windows { "left" } else { "both" };
                 prop_assert_eq!(
                     properties.alignment.as_deref(),
                     expected.alignment.as_deref().or(Some(normal_alignment)),
