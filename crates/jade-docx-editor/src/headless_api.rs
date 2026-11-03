@@ -14812,6 +14812,75 @@ mod tests {
     }
 
     #[test]
+    fn a_tracked_deletion_from_an_index_entry_leaves_the_entry() {
+        // An XE entry has no width. A tracked deletion starting at it marked
+        // it deleted with the text after it, though an untracked one leaves a
+        // field at its edge; the file kept it outside the `w:del`, and
+        // accepting the deletion took it out of the model alone.
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/note-styles-creation.docx"),
+        )
+        .expect("read fixture");
+        let mut word_doc =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+        let index_entries = |word_doc: &WordDocument| {
+            word_doc.paragraph(0).map_or(0, |paragraph| {
+                paragraph
+                    .runs
+                    .iter()
+                    .filter(|run| {
+                        matches!(
+                            run.field.as_ref().map(|field| &field.kind),
+                            Some(crate::document::RunFieldKind::NonDisplay { .. })
+                        )
+                    })
+                    .count()
+            })
+        };
+        apply_headless_commands_to_document(
+            &mut word_doc,
+            &HeadlessEditRequest {
+                commands: vec![
+                    HeadlessCommand::StartChangeTracking {
+                        author: Some("reviewer".into()),
+                        initials: None,
+                        date: None,
+                        date_utc: None,
+                    },
+                    HeadlessCommand::MarkIndexEntry {
+                        paragraph: 0,
+                        offset: 6,
+                        term: "t".into(),
+                    },
+                    HeadlessCommand::DeleteText {
+                        paragraph: 0,
+                        offset: 6,
+                        direction: HeadlessDeleteDirection::Forward,
+                        count: 4,
+                    },
+                    HeadlessCommand::AcceptRevisions {
+                        kind: None,
+                        start_paragraph: None,
+                        end_paragraph: None,
+                        revision_id: None,
+                        revision_ids: None,
+                        revision_targets: None,
+                    },
+                ],
+            },
+        )
+        .expect("edited");
+        let reloaded = executor::block_on(WordDocument::load(
+            &word_doc.export_docx().expect("export"),
+            &Options::default(),
+        ))
+        .expect("reload");
+        assert_eq!(index_entries(&reloaded), 1);
+        assert_eq!(index_entries(&word_doc), 1);
+    }
+
+    #[test]
     fn splitting_a_paragraph_keeps_a_result_less_field_on_one_side() {
         // A result-less simple field (an XE entry the editor marked, the
         // AUTONUM fields of `toc.docx`) has no width. The model's split sends
