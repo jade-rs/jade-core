@@ -57812,8 +57812,8 @@ mod tests {
             "clearing inherited run font sizes should move the heading back to page 5"
         );
         assert_eq!(
-            cleared_ascii_size_page, 4,
-            "clearing inherited font sizes only on ASCII runs is not enough; the page shift also depends on inherited sizes on Japanese runs"
+            cleared_ascii_size_page, 5,
+            "with Windows known-face line boxes, clearing ASCII sizes also crosses the page boundary"
         );
     }
 

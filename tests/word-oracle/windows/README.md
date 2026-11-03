@@ -32,6 +32,12 @@ version is claimed. This version currently has ten passing unique documents,
 58 pages and 6,231 glyphs. The earlier numbering-label capture retains its
 1.83pt failure; a later capture records the corrected result. Contract and
 Yokohama references still have subpoint residuals and are not promoted.
+The 2026-11-03 `numbering-restart` capture is also retained as pending:
+both outputs contain 2 pages and 563 glyphs, but only 321 glyphs satisfy
+the full X/Y threshold (X p95 2.824pt, Y p95 0.232pt).
+Another capture that day preserves `yokohama_page1`: 1 page and 853 glyphs
+in both outputs, with 282 passing full X/Y (X p95 7.272pt, Y p95 0.118pt).
+These remaining horizontal differences are not hidden by origin alignment.
 
 Parent-repository commands (run from jade-office):
 

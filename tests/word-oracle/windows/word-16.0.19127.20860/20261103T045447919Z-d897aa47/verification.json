@@ -1,0 +1,11 @@
+{
+  "engine_commit": "9238465c5c4cff8f0a0b9ef4d6ac26f866143d16",
+  "word_product_version": "16.0.19127.20860",
+  "capture_id": "20261103T045447919Z-d897aa47",
+  "engine_source_worktree_dirty": true,
+  "strict_fixtures": [],
+  "matching_fixtures": [],
+  "pending_fixtures": [
+    "yokohama_page1"
+  ]
+}
