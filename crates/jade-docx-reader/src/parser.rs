@@ -14687,6 +14687,22 @@ mod tests {
     }
 
     #[test]
+    fn a_positional_tab_alone_keeps_the_paragraph_properties() {
+        // A paragraph with no w:pPr whose only property is its ptab: the
+        // properties are not dropped as empty.
+        let document = parse_document_from_body(
+            r#"<w:p><w:r><w:t>Chapter</w:t><w:ptab w:relativeTo="margin" w:alignment="right" w:leader="dot"/><w:t>12</w:t></w:r></w:p>"#,
+        );
+        let body = document.body.expect("body");
+        let BodyElement::Paragraph(paragraph) = &body.elements[0] else {
+            panic!("expected paragraph");
+        };
+        let tabs = &paragraph.properties.as_ref().expect("properties").positional_tabs;
+        assert_eq!(tabs.len(), 1);
+        assert_eq!(tabs[0].alignment, PositionalTabAlignment::Right);
+    }
+
+    #[test]
     fn parses_positional_tab_as_tab_character() {
         // `<w:ptab/>` (§17.3.3.16) is an absolute-position tab. Dropping it loses
         // the gap; emit a regular tab so the text isn't run together.

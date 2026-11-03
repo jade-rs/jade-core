@@ -4247,7 +4247,7 @@ mod tests {
     use super::BorderEdge;
     use super::Indent;
     use super::ParagraphBorders;
-    use super::Shading;
+    use super::{Shading, ShadingLines};
     use super::TextBoxBorderStyle;
     use super::{
         apply_field_text_case, heading_style_level, parse_outline_range, parse_toc_entry_field,
