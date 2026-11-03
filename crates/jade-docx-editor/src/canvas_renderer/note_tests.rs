@@ -98,6 +98,31 @@ fn surface_page(renderer: &Renderer, index: usize) -> Option<usize> {
     Some(renderer.page_for_y(line.absolute_top))
 }
 
+/// A paragraph may start on one page and put its note mark on the next.
+/// Compare the note with the actual mark, including all digits of the mark.
+fn reference_mark_page(renderer: &Renderer, index: usize, id: &str) -> usize {
+    let paragraph = &renderer.selection.paragraphs()[index];
+    let mark = renderer.footnote_display_map[id].to_string();
+    assert!(paragraph.text.ends_with(&mark), "{:?}", paragraph.text);
+    let start = paragraph.text.len() - mark.len();
+    let pages: Vec<_> = paragraph
+        .lines
+        .iter()
+        .filter(|line| {
+            line.fragments
+                .iter()
+                .any(|fragment| fragment.start < paragraph.text.len() && fragment.end > start)
+        })
+        .map(|line| renderer.page_for_y(line.absolute_top))
+        .collect();
+    let page = *pages.first().expect("reference mark is drawn");
+    assert!(
+        pages.iter().all(|other| *other == page),
+        "split note mark {id}: {pages:?}"
+    );
+    page
+}
+
 /// Index of the first registered surface whose text starts with `prefix`.
 fn surface_starting_with(renderer: &Renderer, prefix: &str) -> usize {
     renderer
@@ -200,7 +225,9 @@ fn table_rows_number_notes_on_the_page_they_are_placed() {
     };
     references.push(("1".into(), page_of("Before the table")));
     for row in 1..=60 {
-        references.push(((row + 1).to_string(), page_of(&format!("Row {row} "))));
+        let id = (row + 1).to_string();
+        let surface = surface_starting_with(&renderer, &format!("Row {row} "));
+        references.push((id.clone(), reference_mark_page(&renderer, surface, &id)));
     }
     references.push(("70".into(), page_of("Last line of section one")));
     let first_page = references.first().unwrap().1;
@@ -309,11 +336,11 @@ fn table_row_notes_stay_on_their_reference_page_inside_the_body() {
     let body_bottom = renderer.page_height - renderer.margin_bottom + 0.5;
     for row in 1..=60 {
         let id = (row + 1).to_string();
-        let reference = surface_page(
+        let reference = reference_mark_page(
             &renderer,
             surface_starting_with(&renderer, &format!("Row {row} ")),
-        )
-        .expect("row line");
+            &id,
+        );
         let note = model.footnote_paragraph_index(&id).expect("note surface");
         let lines = surface_line_bottoms(&renderer, note);
         assert!(!lines.is_empty(), "note {id} renders");

@@ -2782,6 +2782,30 @@ pub fn run_font_slots(run: &Run, east_asian_document: bool) -> (bool, bool) {
 /// `(Latin, East Asian)`: a visible character outside or inside the East Asian
 /// slot ([`text_uses_east_asian_font`]). Stops once both are found.
 pub fn text_font_slots(text: &str) -> (bool, bool) {
+    // Repaints and tracked-change passes revisit the same run text. Cache the
+    // pure classification by content, so edits cannot reuse stale slot flags.
+    // Short strings are cheaper to classify directly; bound retained text.
+    if !(16..=1024).contains(&text.len()) {
+        return text_font_slots_uncached(text);
+    }
+    thread_local! {
+        static SLOTS: std::cell::RefCell<rustc_hash::FxHashMap<String, (bool, bool)>> = Default::default();
+    }
+    SLOTS.with(|slots| {
+        let mut slots = slots.borrow_mut();
+        if let Some(value) = slots.get(text) {
+            return *value;
+        }
+        let value = text_font_slots_uncached(text);
+        if slots.len() >= 256 {
+            slots.clear();
+        }
+        slots.insert(text.to_owned(), value);
+        value
+    })
+}
+
+fn text_font_slots_uncached(text: &str) -> (bool, bool) {
     let mut buffer = [0_u8; 4];
     let (mut latin, mut east_asian) = (false, false);
     for ch in text.chars() {
@@ -2813,6 +2837,36 @@ pub fn text_font_slots(text: &str) -> (bool, bool) {
 
 /// Splits a CSS font shorthand into its point size and first family.
 fn split_font_descriptor(font_descriptor: &str) -> Option<(f32, &str)> {
+    // Metric lookups share a small set of descriptors, often alternating
+    // between Latin and East Asian slots. Retain byte ranges, not borrowed
+    // family strings, so the result always borrows from the caller's input.
+    type Parsed = Option<(f32, usize, usize)>;
+    thread_local! {
+        static DESCRIPTORS: std::cell::RefCell<rustc_hash::FxHashMap<String, Parsed>> = Default::default();
+    }
+    if font_descriptor.len() > 1024 {
+        return split_font_descriptor_uncached(font_descriptor);
+    }
+    DESCRIPTORS.with(|descriptors| {
+        let mut descriptors = descriptors.borrow_mut();
+        let parsed = if let Some(parsed) = descriptors.get(font_descriptor) {
+            *parsed
+        } else {
+            let parsed = split_font_descriptor_uncached(font_descriptor).map(|(size, family)| {
+                let start = family.as_ptr() as usize - font_descriptor.as_ptr() as usize;
+                (size, start, family.len())
+            });
+            if descriptors.len() >= 128 {
+                descriptors.clear();
+            }
+            descriptors.insert(font_descriptor.to_owned(), parsed);
+            parsed
+        };
+        parsed.map(|(size, start, len)| (size, &font_descriptor[start..start + len]))
+    })
+}
+
+fn split_font_descriptor_uncached(font_descriptor: &str) -> Option<(f32, &str)> {
     let mut rest = font_descriptor.trim_start();
     loop {
         let token_end = rest.find(char::is_whitespace)?;
@@ -3152,6 +3206,55 @@ pub fn resolve_line_height_points_with_default_multiplier(
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn descriptor_cache_matches_parser_after_replacement_and_eviction() {
+        let descriptors = [
+            "italic 700 10.5pt 'ＭＳ 明朝', serif",
+            "  12pt\tArial, sans-serif ",
+            "9.25pt \"Yu Mincho\", serif",
+            "not a descriptor",
+            "10pt ",
+        ];
+        for _ in 0..2 {
+            for descriptor in descriptors {
+                let owned = descriptor.to_owned();
+                assert_eq!(
+                    split_font_descriptor(&owned),
+                    split_font_descriptor_uncached(&owned)
+                );
+            }
+        }
+        for index in 0..256 {
+            let descriptor = format!("{}pt 'Family {index}', serif", index + 1);
+            assert_eq!(
+                split_font_descriptor(&descriptor),
+                split_font_descriptor_uncached(&descriptor)
+            );
+        }
+        for descriptor in descriptors {
+            assert_eq!(
+                split_font_descriptor(descriptor),
+                split_font_descriptor_uncached(descriptor)
+            );
+        }
+    }
+
+    #[test]
+    fn cached_font_slots_match_edited_and_evicted_text() {
+        let mut text = "Repeated Latin characters".to_owned();
+        for suffix in ["", "漢字", "\t\n", "é", "あいう", ""] {
+            text.push_str(suffix);
+            for _ in 0..2 {
+                assert_eq!(text_font_slots(&text), text_font_slots_uncached(&text));
+            }
+        }
+        for index in 0..512 {
+            let text = format!("テキストを分類する {index}");
+            assert_eq!(text_font_slots(&text), text_font_slots_uncached(&text));
+        }
+        assert_eq!(text_font_slots(&text), text_font_slots_uncached(&text));
+    }
+
     #[test]
     fn fast_font_slot_classification_matches_unicode_rules() {
         let mut buffer = [0; 4];
