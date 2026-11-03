@@ -1118,6 +1118,8 @@ impl BordersDialog {
                             bottom: edge(bottom),
                             left: edge(left),
                             right: edge(right),
+                            tl2br: None,
+                            tr2bl: None,
                         });
                     }
                 }
@@ -2483,6 +2485,8 @@ fn strip_untouched(command: HeadlessCommand, touched: [bool; 6]) -> HeadlessComm
             bottom,
             left,
             right,
+            tl2br,
+            tr2bl,
         } => HeadlessCommand::SetTableCellBorders {
             table_order_index,
             row,
@@ -2492,6 +2496,8 @@ fn strip_untouched(command: HeadlessCommand, touched: [bool; 6]) -> HeadlessComm
             bottom: bottom.filter(|_| touched[1] || touched[4]),
             left: left.filter(|_| touched[2] || touched[5]),
             right: right.filter(|_| touched[3] || touched[5]),
+            tl2br,
+            tr2bl,
         },
         other => other,
     }

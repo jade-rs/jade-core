@@ -3345,13 +3345,26 @@ pub fn apply_headless_commands_with_executor_to_document(
                     )
                     .map_err(|source| HeadlessApiApplyError::Command { index, source })?;
             }
-            HeadlessCommand::SetWatermark { clear, text } => {
+            HeadlessCommand::SetWatermark {
+                clear,
+                text,
+                font,
+                size,
+                color,
+                semitransparent,
+                layout,
+            } => {
+                let styled = font.is_some()
+                    || size.is_some()
+                    || color.is_some()
+                    || semitransparent.is_some()
+                    || layout.is_some();
                 let text = if *clear {
-                    if text.is_some() {
+                    if text.is_some() || styled {
                         return Err(HeadlessApiApplyError::Command {
                             index,
                             source: CommandError::Custom(
-                                "set_watermark clear=true cannot include text".into(),
+                                "set_watermark clear=true cannot include text or a look".into(),
                             ),
                         });
                     }
@@ -3364,9 +3377,36 @@ pub fn apply_headless_commands_with_executor_to_document(
                         ),
                     })?)
                 };
+                let horizontal = match layout.as_deref() {
+                    None | Some("diagonal") => false,
+                    Some("horizontal") => true,
+                    Some(other) => {
+                        return Err(HeadlessApiApplyError::Command {
+                            index,
+                            source: CommandError::Custom(format!(
+                                "set_watermark layout must be diagonal or horizontal, not {other}"
+                            )),
+                        })
+                    }
+                };
+                let spec = text.map(|text| {
+                    let defaults = jade_docx_reader::document::WatermarkStyle::default();
+                    crate::word_document::WatermarkSpec {
+                        text,
+                        style: jade_docx_reader::document::WatermarkStyle {
+                            font: font.clone(),
+                            size_pt: *size,
+                            color: color.clone().unwrap_or(defaults.color),
+                            semitransparent: semitransparent.unwrap_or(true),
+                            horizontal,
+                            width_pt: None,
+                            height_pt: None,
+                        },
+                    }
+                });
                 let mut ctx = CommandContext::new(word_doc, &mut selection);
                 command_executor
-                    .execute(Box::new(SetWatermarkCommand::new(text)), &mut ctx)
+                    .execute(Box::new(SetWatermarkCommand::with_spec(spec)), &mut ctx)
                     .map_err(|source| HeadlessApiApplyError::Command { index, source })?;
             }
             HeadlessCommand::SetDocumentTheme { theme } => {
@@ -4366,6 +4406,7 @@ pub fn apply_headless_commands_with_executor_to_document(
                     right: right.as_ref().map(border_edge_spec),
                     inside_h: inside_h.as_ref().map(border_edge_spec),
                     inside_v: inside_v.as_ref().map(border_edge_spec),
+                    ..TableBorderSpec::default()
                 };
                 execute_snapshot_edit(
                     word_doc,
@@ -4385,6 +4426,8 @@ pub fn apply_headless_commands_with_executor_to_document(
                 bottom,
                 left,
                 right,
+                tl2br,
+                tr2bl,
             } => {
                 let (table_order_index, row, column) = (*table_order_index, *row, *column);
                 let spec = TableBorderSpec {
@@ -4392,6 +4435,8 @@ pub fn apply_headless_commands_with_executor_to_document(
                     bottom: bottom.as_ref().map(border_edge_spec),
                     left: left.as_ref().map(border_edge_spec),
                     right: right.as_ref().map(border_edge_spec),
+                    tl2br: tl2br.as_ref().map(border_edge_spec),
+                    tr2bl: tr2bl.as_ref().map(border_edge_spec),
                     ..TableBorderSpec::default()
                 };
                 execute_snapshot_edit(
@@ -10056,10 +10101,20 @@ mod tests {
             HeadlessCommand::SetWatermark {
                 clear: true,
                 text: Some("draft".to_string()),
+                font: None,
+                size: None,
+                color: None,
+                semitransparent: None,
+                layout: None,
             },
             HeadlessCommand::SetWatermark {
                 clear: false,
                 text: None,
+                font: None,
+                size: None,
+                color: None,
+                semitransparent: None,
+                layout: None,
             },
         ] {
             let mut word_doc = sample_document("body");

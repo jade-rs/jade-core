@@ -12829,6 +12829,8 @@ impl OffscreenDocumentView {
                     bottom: spec.bottom.clone(),
                     left: spec.left.clone(),
                     right: spec.right.clone(),
+                    tl2br: None,
+                    tr2bl: None,
                 })
                 .collect()
         })
@@ -19066,11 +19068,21 @@ impl OffscreenDocumentView {
             HeadlessCommand::SetWatermark {
                 clear: true,
                 text: None,
+                font: None,
+                size: None,
+                color: None,
+                semitransparent: None,
+                layout: None,
             }
         } else if let Some(text) = value.as_string() {
             HeadlessCommand::SetWatermark {
                 clear: false,
                 text: Some(text),
+                font: None,
+                size: None,
+                color: None,
+                semitransparent: None,
+                layout: None,
             }
         } else {
             return Err(JsValue::from_str("watermark must be a string or null"));
