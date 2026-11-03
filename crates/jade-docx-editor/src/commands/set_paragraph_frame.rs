@@ -152,8 +152,14 @@ pub fn frame_attributes(frame: &ParagraphFrame) -> Vec<(&'static str, String)> {
     };
     push("w:w", frame.width_twips.map(|value| value.to_string()));
     push("w:h", frame.height_twips.map(|value| value.to_string()));
-    push("w:vSpace", frame.v_space_twips.map(|value| value.to_string()));
-    push("w:hSpace", frame.h_space_twips.map(|value| value.to_string()));
+    push(
+        "w:vSpace",
+        frame.v_space_twips.map(|value| value.to_string()),
+    );
+    push(
+        "w:hSpace",
+        frame.h_space_twips.map(|value| value.to_string()),
+    );
     push("w:wrap", spec.wrap);
     push("w:hAnchor", spec.h_anchor);
     push("w:vAnchor", spec.v_anchor);
@@ -178,7 +184,11 @@ pub struct SetParagraphFrameCommand {
 }
 
 impl SetParagraphFrameCommand {
-    pub fn new(start_paragraph: usize, end_paragraph: usize, frame: Option<ParagraphFrame>) -> Self {
+    pub fn new(
+        start_paragraph: usize,
+        end_paragraph: usize,
+        frame: Option<ParagraphFrame>,
+    ) -> Self {
         Self {
             start_paragraph: start_paragraph.min(end_paragraph),
             end_paragraph: start_paragraph.max(end_paragraph),
@@ -229,7 +239,10 @@ impl Command for SetParagraphFrameCommand {
                 .ok_or(CommandError::ParagraphUnavailable)?;
             self.previous_properties
                 .push((index, paragraph.properties.clone()));
-            paragraph.properties.get_or_insert_with(Default::default).frame = self.frame;
+            paragraph
+                .properties
+                .get_or_insert_with(Default::default)
+                .frame = self.frame;
             sync_paragraph_frame_xml(ctx.document, index, self.frame.as_ref());
         }
         Ok(())
@@ -327,7 +340,11 @@ mod tests {
             let mut ctx = CommandContext::new(&mut document, &mut selection);
             executor
                 .execute(
-                    Box::new(SetParagraphFrameCommand::new(paragraph, paragraph, Some(frame))),
+                    Box::new(SetParagraphFrameCommand::new(
+                        paragraph,
+                        paragraph,
+                        Some(frame),
+                    )),
                     &mut ctx,
                 )
                 .unwrap();

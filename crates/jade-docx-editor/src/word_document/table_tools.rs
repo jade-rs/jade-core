@@ -1014,15 +1014,15 @@ impl WordDocument {
             {
                 return Err("a section break is among the paragraphs".to_string());
             }
-            entries.push((element, SortValue::of(&paragraph_plain_text(paragraph), kind)));
+            entries.push((
+                element,
+                SortValue::of(&paragraph_plain_text(paragraph), kind),
+            ));
         }
         if entries.len() < 2 {
             return Ok(());
         }
-        if entries
-            .windows(2)
-            .any(|pair| pair[1].0 != pair[0].0 + 1)
-        {
+        if entries.windows(2).any(|pair| pair[1].0 != pair[0].0 + 1) {
             return Err("only adjacent paragraphs can be sorted".to_string());
         }
         let base = entries[0].0;
@@ -2730,31 +2730,38 @@ mod tests {
 
     #[test]
     fn paragraphs_sort_by_their_text_below_a_header_and_undo() {
-        let p = |text: &str| format!("<w:p><w:r><w:t xml:space=\"preserve\">{text}</w:t></w:r></w:p>");
+        let p =
+            |text: &str| format!("<w:p><w:r><w:t xml:space=\"preserve\">{text}</w:t></w:r></w:p>");
         let body = ["見出し", "みかん", "Banana", "", "apple", "after"]
             .map(p)
             .concat();
         let mut document = load(&package(&body, None));
         let before = document.export_docx().unwrap();
         let mut executor = CommandExecutor::new();
-        let sort = |document: &mut WordDocument, executor: &mut CommandExecutor, kind, descending| {
-            apply_headless_commands_with_executor_to_document(
-                document,
-                executor,
-                None,
-                &HeadlessEditRequest {
-                    commands: vec![HeadlessCommand::SortParagraphs {
-                        start_paragraph: 0,
-                        end_paragraph: 4,
-                        kind,
-                        descending,
-                        header: true,
-                    }],
-                },
-            )
-            .expect("sorts");
-        };
-        sort(&mut document, &mut executor, HeadlessTableSortKind::Text, false);
+        let sort =
+            |document: &mut WordDocument, executor: &mut CommandExecutor, kind, descending| {
+                apply_headless_commands_with_executor_to_document(
+                    document,
+                    executor,
+                    None,
+                    &HeadlessEditRequest {
+                        commands: vec![HeadlessCommand::SortParagraphs {
+                            start_paragraph: 0,
+                            end_paragraph: 4,
+                            kind,
+                            descending,
+                            header: true,
+                        }],
+                    },
+                )
+                .expect("sorts");
+            };
+        sort(
+            &mut document,
+            &mut executor,
+            HeadlessTableSortKind::Text,
+            false,
+        );
         assert_eq!(
             texts(&document),
             vec!["見出し", "", "apple", "Banana", "みかん", "after"]

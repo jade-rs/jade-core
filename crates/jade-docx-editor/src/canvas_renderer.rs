@@ -21252,10 +21252,8 @@ where
             return;
         }
         if self.should_draw_current_page_for_render() {
-            let _ = crate::draw_command::executor::execute_commands(
-                &self.host.painter(),
-                &commands,
-            );
+            let _ =
+                crate::draw_command::executor::execute_commands(&self.host.painter(), &commands);
             self.invalidate_context_state_tracking();
         }
         if let Some(buf) = commands_out.as_deref_mut() {
@@ -42960,12 +42958,14 @@ mod tests {
                 .as_mut()
                 .and_then(|body| body.elements.first_mut())
             {
-                paragraph.properties.get_or_insert_with(Default::default).shading =
-                    Some(jade_docx_reader::document::Shading {
-                        val: Some(value.to_ascii_lowercase()),
-                        color: Some("#C00000".to_string()),
-                        fill: Some("#FFFF00".to_string()),
-                    });
+                paragraph
+                    .properties
+                    .get_or_insert_with(Default::default)
+                    .shading = Some(jade_docx_reader::document::Shading {
+                    val: Some(value.to_ascii_lowercase()),
+                    color: Some("#C00000".to_string()),
+                    fill: Some("#FFFF00".to_string()),
+                });
             }
             let (mut renderer, painter) = recording_renderer();
             renderer
@@ -42996,10 +42996,17 @@ mod tests {
         assert!(!fill.is_empty(), "the fill is behind the stripes");
         let (bands, _) = drawn(&stripes, "#C00000");
         assert!(bands.len() > 2, "{bands:?}");
-        assert!(bands.iter().all(|band| band.3 <= 2.0 + 1e-9 && band.2 > 50.0));
+        assert!(bands
+            .iter()
+            .all(|band| band.3 <= 2.0 + 1e-9 && band.2 > 50.0));
         // On the page's grid, 4 px apart.
-        let whole: Vec<_> = bands.iter().filter(|band| (band.3 - 2.0).abs() < 1e-9).collect();
-        assert!(whole.windows(2).all(|pair| (pair[1].1 - pair[0].1 - 4.0).abs() < 1e-9));
+        let whole: Vec<_> = bands
+            .iter()
+            .filter(|band| (band.3 - 2.0).abs() < 1e-9)
+            .collect();
+        assert!(whole
+            .windows(2)
+            .all(|pair| (pair[1].1 - pair[0].1 - 4.0).abs() < 1e-9));
         assert!(whole.iter().all(|band| (band.1 / 4.0).fract().abs() < 1e-9));
 
         let columns = shaded("thinVertStripe");

@@ -4247,12 +4247,12 @@ mod tests {
     use super::BorderEdge;
     use super::Indent;
     use super::ParagraphBorders;
-    use super::{Shading, ShadingLines};
     use super::TextBoxBorderStyle;
     use super::{
         apply_field_text_case, heading_style_level, parse_outline_range, parse_toc_entry_field,
         parse_toc_switches, FieldTextCase,
     };
+    use super::{Shading, ShadingLines};
     use proptest::prelude::*;
 
     #[test]
@@ -4476,7 +4476,10 @@ mod tests {
             ("horzCross", ShadingLines::Cross),
             ("thinDiagCross", ShadingLines::DiagonalCross),
         ] {
-            assert_eq!(shading(Some(value), None, None).pattern().unwrap().lines, lines);
+            assert_eq!(
+                shading(Some(value), None, None).pattern().unwrap().lines,
+                lines
+            );
         }
         assert_eq!(shading(Some("pct25"), None, None).pattern(), None);
         assert_eq!(shading(Some("clear"), None, None).pattern(), None);
@@ -4496,7 +4499,9 @@ mod tests {
         }
         // The main diagonal is one of them.
         assert!(segments.contains(&((0.0, 0.0), (8.0, 8.0))));
-        let up = shading(Some("reverseDiagStripe"), None, None).pattern().unwrap();
+        let up = shading(Some("reverseDiagStripe"), None, None)
+            .pattern()
+            .unwrap();
         let (_, _, segments) = up.lines_in(0.0, 0.0, 8.0, 8.0);
         assert!(segments.contains(&((0.0, 8.0), (8.0, 0.0))));
     }
@@ -5347,7 +5352,12 @@ impl PositionalTab {
         vec![
             (
                 "w:relativeTo",
-                if self.relative_to_indent { "indent" } else { "margin" }.to_string(),
+                if self.relative_to_indent {
+                    "indent"
+                } else {
+                    "margin"
+                }
+                .to_string(),
             ),
             (
                 "w:alignment",
@@ -5552,7 +5562,11 @@ impl ShadingPattern {
         y: f64,
         width: f64,
         height: f64,
-    ) -> (Vec<(f64, f64)>, Vec<(f64, f64)>, Vec<((f64, f64), (f64, f64))>) {
+    ) -> (
+        Vec<(f64, f64)>,
+        Vec<(f64, f64)>,
+        Vec<((f64, f64), (f64, f64))>,
+    ) {
         let period = Self::PERIOD_PX;
         let line = self.line_width_px();
         let mut horizontal = Vec::new();

@@ -2441,16 +2441,13 @@ impl DocumentParser {
                             current_run_is_instruction_operand,
                         ) {
                             if let Some(ref mut run) = current_run {
-                                let ordinal = current_paragraph
-                                    .as_ref()
-                                    .map_or(0, |paragraph| {
-                                        paragraph
-                                            .runs
-                                            .iter()
-                                            .map(|run| run.text.matches('\t').count())
-                                            .sum()
-                                    })
-                                    + run.text.matches('\t').count();
+                                let ordinal = current_paragraph.as_ref().map_or(0, |paragraph| {
+                                    paragraph
+                                        .runs
+                                        .iter()
+                                        .map(|run| run.text.matches('\t').count())
+                                        .sum()
+                                }) + run.text.matches('\t').count();
                                 let attributes: Vec<(String, String)> = e
                                     .attributes()
                                     .flatten()
@@ -14697,7 +14694,11 @@ mod tests {
         let BodyElement::Paragraph(paragraph) = &body.elements[0] else {
             panic!("expected paragraph");
         };
-        let tabs = &paragraph.properties.as_ref().expect("properties").positional_tabs;
+        let tabs = &paragraph
+            .properties
+            .as_ref()
+            .expect("properties")
+            .positional_tabs;
         assert_eq!(tabs.len(), 1);
         assert_eq!(tabs[0].alignment, PositionalTabAlignment::Right);
     }

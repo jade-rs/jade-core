@@ -86,19 +86,17 @@ impl WordDocument {
     /// Whether paragraph `paragraph` opens collapsed: 既定で折りたたみ, Word
     /// 2013's `w15:collapsed` in its `w:pPr`.
     pub fn paragraph_collapsed_by_default(&self, paragraph: usize) -> bool {
-        crate::commands::paragraph_property_sync::snapshot_paragraph_properties_xml(
-            self, paragraph,
-        )
-        .is_some_and(|properties| {
-            properties.children.iter().any(|child| {
-                matches!(child, crate::docx_xml::XmlNode::Element(element)
+        crate::commands::paragraph_property_sync::snapshot_paragraph_properties_xml(self, paragraph)
+            .is_some_and(|properties| {
+                properties.children.iter().any(|child| {
+                    matches!(child, crate::docx_xml::XmlNode::Element(element)
                     if element.name == "w15:collapsed"
                         && !element.attributes.iter().any(|attribute| {
                             attribute.name == "w15:val"
                                 && matches!(attribute.value.as_str(), "0" | "false" | "off")
                         }))
+                })
             })
-        })
     }
 
     /// What the 段落 dialog's アウトライン レベル opens on.

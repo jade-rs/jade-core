@@ -368,7 +368,10 @@ fn positional_tab_target(
     let (left, right) = if stop.relative_to_indent {
         (base_x, column_right_edge - paragraph_style.right_indent)
     } else {
-        (base_x + paragraph_style.tab_origin_offset, column_right_edge)
+        (
+            base_x + paragraph_style.tab_origin_offset,
+            column_right_edge,
+        )
     };
     let target = match stop.alignment {
         TabAlignment::Center => (left + right) / 2.0,
@@ -6828,7 +6831,9 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
                 let positional = (!paragraph_style.positional_tabs.is_empty())
                     .then(|| {
                         let local = grapheme_start_abs.saturating_sub(base_offset);
-                        let ordinal = text.get(..local).map_or(0, |before| before.matches('\t').count());
+                        let ordinal = text
+                            .get(..local)
+                            .map_or(0, |before| before.matches('\t').count());
                         paragraph_style
                             .positional_tabs
                             .iter()
@@ -6837,12 +6842,9 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
                     })
                     .flatten();
                 let tab_target = |cursor_x: f64| match &positional {
-                    Some(stop) => positional_tab_target(
-                        stop,
-                        paragraph_style,
-                        base_x,
-                        column_right_edge,
-                    ),
+                    Some(stop) => {
+                        positional_tab_target(stop, paragraph_style, base_x, column_right_edge)
+                    }
                     None => find_next_tab_stop(paragraph_style, base_x, cursor_x),
                 };
                 let (target_x, alignment, mut leader_kind) = tab_target(cursor_x);

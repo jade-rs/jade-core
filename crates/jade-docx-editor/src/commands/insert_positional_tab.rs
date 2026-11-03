@@ -80,7 +80,9 @@ impl Command for InsertPositionalTabCommand {
         let text: String = paragraph.runs.iter().map(|run| run.text.as_str()).collect();
         let before = text
             .get(..self.position.offset)
-            .ok_or(CommandError::Custom("the offset is not in the paragraph".into()))?;
+            .ok_or(CommandError::Custom(
+                "the offset is not in the paragraph".into(),
+            ))?;
         let ordinal = before.matches('\t').count();
         self.previous_properties = Some(paragraph.properties.clone());
 
@@ -217,7 +219,12 @@ mod tests {
             after.contains(r#"<w:ptab w:relativeTo="margin" w:alignment="right" w:leader="dot"/>"#),
             "{after}"
         );
-        let props = document.paragraph(paragraph).unwrap().properties.clone().unwrap();
+        let props = document
+            .paragraph(paragraph)
+            .unwrap()
+            .properties
+            .clone()
+            .unwrap();
         assert_eq!(props.positional_tabs.len(), 1);
         assert_eq!(props.positional_tabs[0].ordinal, 0);
         let text: String = document
