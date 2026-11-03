@@ -1015,12 +1015,36 @@ pub struct SnapToCharsCacheKey {
     char_space_px_bits: u64,
 }
 
+/// Whether `grapheme` takes whole `snapToChars` cells: any character but
+/// spaces and controls — though the ideographic space (U+3000), which leaves
+/// a square empty at the head of a manuscript paragraph, takes its cell too.
+fn snaps_to_char_cells(grapheme: &str) -> bool {
+    grapheme.contains('\u{3000}')
+        || !grapheme
+            .chars()
+            .all(|ch| ch.is_whitespace() || ch.is_control())
+}
+
+/// Where a grapheme sits in the `snapToChars` cells it takes: the space the
+/// cells leave around its advance, before and after it. A `snapToChars`
+/// grid (`w:docGrid`, ECMA-376 Part 1 §17.6.5) gives each character a whole
+/// number of character pitches, and Word centres the character in them,
+/// East Asian or not: it is what puts each character of 原稿用紙 in the
+/// middle of its square, which sits in the middle of its pitch.
 pub fn snap_to_chars_cell_span_adjustment(
     grapheme: &str,
-    script: ScriptCategory,
     core_advance: f64,
     cell_width: f64,
 ) -> (f64, f64) {
+    if !snaps_to_char_cells(grapheme) {
+        return (0.0, 0.0);
+    }
+    centre_in_char_cells(core_advance, cell_width)
+}
+
+/// The space before and after an advance of `core_advance` centred in the
+/// whole `cell_width` cells it needs.
+fn centre_in_char_cells(core_advance: f64, cell_width: f64) -> (f64, f64) {
     if !core_advance.is_finite()
         || !cell_width.is_finite()
         || core_advance <= 0.0
@@ -1028,13 +1052,6 @@ pub fn snap_to_chars_cell_span_adjustment(
     {
         return (0.0, 0.0);
     }
-    if grapheme
-        .chars()
-        .all(|ch| ch.is_whitespace() || ch.is_control())
-    {
-        return (0.0, 0.0);
-    }
-
     let span_cells = (core_advance / cell_width).ceil().max(1.0);
     let snapped_advance = span_cells * cell_width;
     let slack = (snapped_advance - core_advance).max(0.0);
@@ -1042,12 +1059,8 @@ pub fn snap_to_chars_cell_span_adjustment(
         return (0.0, 0.0);
     }
 
-    if script == ScriptCategory::EastAsia {
-        (0.0, slack)
-    } else {
-        let leading = slack * 0.5;
-        (leading, slack - leading)
-    }
+    let leading = slack * 0.5;
+    (leading, slack - leading)
 }
 
 #[inline]
@@ -1414,9 +1427,7 @@ fn compute_grapheme_advance_with_ascii_width(
     let implicit_latin_trailing_gap = widen(implicit_latin_trailing_gap);
     let implicit_numeric_gap = widen(implicit_numeric_gap);
     let (snap_leading, snap_trailing) = snap_cell_width
-        .map(|cell_width| {
-            snap_to_chars_cell_span_adjustment(grapheme, script, core_advance, cell_width)
-        })
+        .map(|cell_width| snap_to_chars_cell_span_adjustment(grapheme, core_advance, cell_width))
         .unwrap_or((0.0, 0.0));
     let glyph_box_width =
         core_advance + snap_trailing + balance_extra + implicit_latin_trailing_gap;
@@ -4351,6 +4362,34 @@ pub fn layout_text_vertically<C: LineWrapContext>(
     available_height: Option<f64>,
     line_height: f64,
 ) -> Result<VerticalWrappedLayout, C::Error> {
+    layout_text_vertically_on_grid(
+        ctx,
+        text,
+        run_styles,
+        prefer_horizontal_latin,
+        base_offset,
+        available_height,
+        line_height,
+        None,
+    )
+}
+
+/// [`layout_text_vertically`] on a `snapToChars` grid when
+/// `snap_char_space_px` is set (the grid's `w:charSpace`): each character
+/// takes whole character pitches down the column — the East Asian em plus
+/// the extra space — and sits in the middle of them, its cluster's
+/// `leading_advance` holding the space above it.
+#[allow(clippy::too_many_arguments)]
+fn layout_text_vertically_on_grid<C: LineWrapContext>(
+    ctx: &C,
+    text: &str,
+    run_styles: &[RunStyle],
+    prefer_horizontal_latin: bool,
+    base_offset: usize,
+    available_height: Option<f64>,
+    line_height: f64,
+    snap_char_space_px: Option<f64>,
+) -> Result<VerticalWrappedLayout, C::Error> {
     let joined_runs = join_equal_runs_inside_graphemes(text, run_styles);
     let run_styles = joined_runs.as_ref();
     fn push_vertical_line(
@@ -4444,6 +4483,42 @@ pub fn layout_text_vertically<C: LineWrapContext>(
         Ok(())
     }
 
+    /// Widens the line just pushed to whole `cell`s and centres its glyph
+    /// in them.
+    fn snap_last_line_to_cells(
+        lines: &mut [WrappedLine],
+        cell: Option<f64>,
+        style: &ResolvedRunStyle,
+    ) {
+        let (Some(cell), Some(line)) = (cell, lines.last_mut()) else {
+            return;
+        };
+        let Some(cluster) = line.clusters.last_mut() else {
+            return;
+        };
+        if !snaps_to_char_cells(&cluster.text) {
+            return;
+        }
+        let (leading, trailing) = centre_in_char_cells(cluster.width, cell);
+        if leading + trailing <= f64::EPSILON {
+            return;
+        }
+        let script = classify_script(&cluster.text);
+        cluster.layout = Some(InlineClusterLayout {
+            character_border_edges: 0,
+            script,
+            font_slot: style.font_slot_for_grapheme(&cluster.text, script),
+            leading_advance: leading,
+            glyph_box_width: cluster.width + trailing,
+            measured_glyph_width: cluster.width,
+            adjusted_glyph_width: cluster.width,
+            font_descriptor_hash: 0,
+            font_ascent: None,
+            font_descent: None,
+        });
+        cluster.width += leading + trailing;
+    }
+
     let mut lines = Vec::new();
     let mut max_line_width: f64 = 0.0;
     let mut pending_ascii: Option<PendingAsciiLine> = None;
@@ -4464,6 +4539,20 @@ pub fn layout_text_vertically<C: LineWrapContext>(
         }
 
         let style = ctx.resolve_run_style(run_style.properties.as_deref())?;
+        // The run's character pitch on a `snapToChars` grid, as across a
+        // horizontal line ([`resolve_snap_to_chars_cell_width`]).
+        let cell = match snap_char_space_px {
+            Some(char_space) => {
+                let (descriptor, _, _) =
+                    style.descriptor_key_for_grapheme("あ", ScriptCategory::EastAsia);
+                let em = match crate::line_metrics::word_monospace_em_px(descriptor) {
+                    Some(em) => em,
+                    None => ctx.measure_text("あ", descriptor)?,
+                };
+                Some((em * EAST_ASIA_ADVANCE_SCALE * style.text_scale_x + char_space).max(1.0))
+            }
+            None => None,
+        };
         // 縦中横 (`w:eastAsianLayout w:vert`, ECMA-376 Part 1 §17.3.2.10):
         // the run is one upright horizontal group taking one character's
         // height in the column. Runs of the same group (one `w:id`) join it.
@@ -4516,6 +4605,7 @@ pub fn layout_text_vertically<C: LineWrapContext>(
                     hyperlink: &run_style.hyperlink,
                 },
             );
+            snap_last_line_to_cells(&mut lines, cell, &style);
             continue;
         }
         for (rel_offset, grapheme) in crate::graphemes::grapheme_indices(run_text) {
@@ -4609,6 +4699,7 @@ pub fn layout_text_vertically<C: LineWrapContext>(
                     hyperlink: &run_style.hyperlink,
                 },
             );
+            snap_last_line_to_cells(&mut lines, cell, &style);
         }
     }
 
@@ -4678,9 +4769,7 @@ pub fn layout_section_text_vertically<C: LineWrapContext>(
     available_height: Option<f64>,
     line_height: f64,
 ) -> Result<VerticalWrappedLayout, C::Error> {
-    let joined_runs = join_equal_runs_inside_graphemes(text, run_styles);
-    let run_styles = joined_runs.as_ref();
-    let mut layout = layout_text_vertically(
+    layout_section_text_vertically_on_grid(
         ctx,
         text,
         run_styles,
@@ -4688,6 +4777,36 @@ pub fn layout_section_text_vertically<C: LineWrapContext>(
         base_offset,
         available_height,
         line_height,
+        None,
+    )
+}
+
+/// [`layout_section_text_vertically`] on a `snapToChars` grid whose
+/// `w:charSpace` is `snap_char_space_px`: 縦書き manuscript paper, one
+/// character centred in each square down the column. A snapped glyph's
+/// `leading_advance` is the space above it in its cells.
+#[allow(clippy::too_many_arguments)]
+pub fn layout_section_text_vertically_on_grid<C: LineWrapContext>(
+    ctx: &C,
+    text: &str,
+    run_styles: &[RunStyle],
+    prefer_horizontal_latin: bool,
+    base_offset: usize,
+    available_height: Option<f64>,
+    line_height: f64,
+    snap_char_space_px: Option<f64>,
+) -> Result<VerticalWrappedLayout, C::Error> {
+    let joined_runs = join_equal_runs_inside_graphemes(text, run_styles);
+    let run_styles = joined_runs.as_ref();
+    let mut layout = layout_text_vertically_on_grid(
+        ctx,
+        text,
+        run_styles,
+        prefer_horizontal_latin,
+        base_offset,
+        available_height,
+        line_height,
+        snap_char_space_px,
     )?;
     let mut run_index = 0;
     let mut resolved_index = None;
@@ -4715,14 +4834,25 @@ pub fn layout_section_text_vertically<C: LineWrapContext>(
             if let Some((ascent, descent)) =
                 crate::line_metrics::word_vertical_glyph_metrics_px(descriptor)
             {
+                // A glyph snapped to grid cells keeps its place in them.
+                let (leading, glyph_box_width, glyph_width) = cluster.layout.as_ref().map_or(
+                    (0.0, cluster.width, cluster.width),
+                    |snapped| {
+                        (
+                            snapped.leading_advance,
+                            snapped.glyph_box_width,
+                            snapped.adjusted_glyph_width,
+                        )
+                    },
+                );
                 cluster.layout = Some(InlineClusterLayout {
                     character_border_edges: 0,
                     script,
                     font_slot: style.font_slot_for_grapheme(&cluster.text, script),
-                    leading_advance: 0.0,
-                    glyph_box_width: cluster.width,
-                    measured_glyph_width: cluster.width,
-                    adjusted_glyph_width: cluster.width,
+                    leading_advance: leading,
+                    glyph_box_width,
+                    measured_glyph_width: glyph_width,
+                    adjusted_glyph_width: glyph_width,
                     font_descriptor_hash: hash,
                     font_ascent: Some(ascent),
                     font_descent: Some(descent),
