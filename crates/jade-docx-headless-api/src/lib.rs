@@ -1937,7 +1937,7 @@ pub enum HeadlessCommand {
         inside_v: Option<HeadlessBorderEdge>,
     },
     /// One cell's own borders (`w:tcBorders`), which win over the table's
-    /// defaults. A cell has only its four edges.
+    /// defaults: its four edges and its two diagonals (斜め罫線).
     SetTableCellBorders {
         table_order_index: usize,
         row: usize,
@@ -1950,6 +1950,13 @@ pub enum HeadlessCommand {
         left: Option<HeadlessBorderEdge>,
         #[serde(default)]
         right: Option<HeadlessBorderEdge>,
+        /// 斜め罫線 (右下がり): top-left to bottom-right (`w:tl2br`); style
+        /// `none` takes it away.
+        #[serde(default)]
+        tl2br: Option<HeadlessBorderEdge>,
+        /// 斜め罫線 (右上がり): top-right to bottom-left (`w:tr2bl`).
+        #[serde(default)]
+        tr2bl: Option<HeadlessBorderEdge>,
     },
     /// Row properties for a table that runs over a page break: repeat this row
     /// as the header at the top of every page (`w:tblHeader`), and keep the row
