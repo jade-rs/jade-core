@@ -3386,6 +3386,13 @@ impl WrappedLine {
                 let layout = cluster.layout.as_ref()?;
                 (layout.font_ascent?, layout.font_descent?)
             };
+            // Uniform text dominates a line. The current extent has already
+            // passed validation, so identical following boxes need no more
+            // validation or floating-point maxima. Positioned and mixed-size
+            // runs still take the full path.
+            if extent == Some((a, d)) {
+                continue;
+            }
             if !a.is_finite() || !d.is_finite() || a < 0.0 || d < 0.0 {
                 return None;
             }

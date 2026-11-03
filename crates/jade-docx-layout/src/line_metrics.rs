@@ -1906,6 +1906,7 @@ thread_local! {
 /// Proportional faces and unknown descriptors keep their host shaping path.
 pub(crate) fn cached_word_fixed_east_asian_em_px(descriptor: &str) -> Option<f64> {
     thread_local! { static LAST: std::cell::RefCell<Option<(String, Option<f64>)>> = const { std::cell::RefCell::new(None) }; }
+    thread_local! { static FACES: std::cell::RefCell<rustc_hash::FxHashMap<String, Option<f64>>> = Default::default(); }
     LAST.with(|last| {
         let mut last = last.borrow_mut();
         if let Some((key, value)) = last.as_ref() {
@@ -1913,7 +1914,21 @@ pub(crate) fn cached_word_fixed_east_asian_em_px(descriptor: &str) -> Option<f64
                 return *value;
             }
         }
-        let value = word_fixed_east_asian_em_px(descriptor);
+        let value = FACES.with(|faces| {
+            let mut faces = faces.borrow_mut();
+            if let Some(value) = faces.get(descriptor) {
+                return *value;
+            }
+            let value = word_fixed_east_asian_em_px(descriptor);
+            if faces.len() >= 128 {
+                faces.clear();
+            }
+            // Do not retain arbitrarily large public descriptors.
+            if descriptor.len() <= 1024 {
+                faces.insert(descriptor.to_owned(), value);
+            }
+            value
+        });
         match last.as_mut() {
             Some((key, cached)) => {
                 key.clear();
