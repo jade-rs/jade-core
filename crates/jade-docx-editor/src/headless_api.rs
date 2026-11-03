@@ -15037,10 +15037,19 @@ mod tests {
             end_paragraph: 0,
             end_offset: 19,
         };
-        for commands in [
-            vec![date.clone(), mark.clone()],
-            vec![date.clone(), split_the_field, mark.clone()],
-        ] {
+        let mut cases = vec![vec![date.clone(), mark.clone()]];
+        for offset in 12..=21 {
+            cases.push(vec![
+                date.clone(),
+                split_the_field.clone(),
+                HeadlessCommand::MarkIndexEntry {
+                    paragraph: 0,
+                    offset,
+                    term: "boundary".into(),
+                },
+            ]);
+        }
+        for commands in cases {
             let bytes = std::fs::read(
                 std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
                     .join("../../public/fixtures/note-styles-creation.docx"),
@@ -15068,6 +15077,80 @@ mod tests {
             .expect("reload");
             assert_eq!(field_kinds(&reloaded), kinds, "{commands:?}");
         }
+    }
+
+    #[test]
+    fn an_index_entry_stays_between_distinct_adjacent_date_fields() {
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/note-styles-creation.docx"),
+        )
+        .expect("read fixture");
+        let mut word_doc =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+        let date = |start_offset, end_offset| HeadlessCommand::InsertDateTimeField {
+            start_paragraph: 0,
+            start_offset,
+            end_paragraph: 0,
+            end_offset,
+            time: false,
+            format: "yyyy/MM/dd".into(),
+            cached_text: "2026/11/02".into(),
+        };
+        apply_headless_commands_to_document(
+            &mut word_doc,
+            &HeadlessEditRequest {
+                commands: vec![
+                    date(11, 16),
+                    date(21, 21),
+                    HeadlessCommand::MarkIndexEntry {
+                        paragraph: 0,
+                        offset: 12,
+                        term: "first date".into(),
+                    },
+                ],
+            },
+        )
+        .expect("edited");
+        let marker_offset = |doc: &WordDocument| {
+            let mut offset = 0;
+            for run in &doc.paragraph(0).expect("paragraph").runs {
+                if matches!(
+                    run.field.as_ref().map(|field| &field.kind),
+                    Some(jade_docx_reader::RunFieldKind::NonDisplay { .. })
+                ) {
+                    return Some(offset);
+                }
+                offset += run.text.len();
+            }
+            None
+        };
+        assert_eq!(marker_offset(&word_doc), Some(21));
+        let reloaded = executor::block_on(WordDocument::load(
+            &word_doc.export_docx().expect("export"),
+            &Options::default(),
+        ))
+        .expect("reload");
+        let kinds: Vec<_> = reloaded
+            .paragraph(0)
+            .expect("paragraph")
+            .runs
+            .iter()
+            .filter_map(|run| run.field.as_ref().map(|field| &field.kind))
+            .collect();
+        assert_eq!(kinds.len(), 3, "{kinds:?}");
+        assert!(matches!(
+            kinds[0],
+            jade_docx_reader::RunFieldKind::Date { .. }
+        ));
+        assert!(matches!(
+            kinds[1],
+            jade_docx_reader::RunFieldKind::NonDisplay { .. }
+        ));
+        assert!(matches!(
+            kinds[2],
+            jade_docx_reader::RunFieldKind::Date { .. }
+        ));
     }
 
     #[test]
