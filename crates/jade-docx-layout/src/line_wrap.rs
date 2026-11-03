@@ -1627,7 +1627,9 @@ pub fn implicit_latin_east_asian_gap_width(
     }
 
     if let Some(gap) = font_descriptor
-        .filter(|_| paragraph_style.word_platform == crate::line_metrics::WordLayoutPlatform::Windows)
+        .filter(|_| {
+            paragraph_style.word_platform == crate::line_metrics::WordLayoutPlatform::Windows
+        })
         .and_then(crate::line_metrics::word_windows_latin_auto_space_gap)
     {
         return (
