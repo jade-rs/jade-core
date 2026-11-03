@@ -3293,6 +3293,96 @@ impl WrappedLine {
         object_line_extra_px: Option<f64>,
         label_ascent: Option<f64>,
     ) -> f64 {
+        if lines
+            .iter()
+            .all(|line| line.clusters.iter().all(|c| c.inline_object.is_none()))
+        {
+            return Self::physical_text_height_px(lines, style, fallback_px, label_ascent);
+        }
+        Self::physical_height_px_general(
+            lines,
+            style,
+            fallback_px,
+            mark_font_box,
+            object_line_extra_px,
+            label_ascent,
+        )
+    }
+
+    // Resolve a text line's font box once, sharing it between its spacing
+    // plan and physical bounds. No persistent cache: public clusters may be
+    // edited between calls. Object/paragraph-mark unions retain the general path.
+    fn physical_text_height_px(
+        lines: &[Self],
+        style: &ParagraphStyle,
+        fallback_px: f64,
+        label_ascent: Option<f64>,
+    ) -> f64 {
+        let first_band_end = (1..lines.len())
+            .find(|&index| !style.line_shares_float_band(index))
+            .unwrap_or(lines.len());
+        let mut has_base_plan = style.word_grid_line_sizing.is_some();
+        let mut total = 0.0;
+        let mut band_height = 0.0_f64;
+        for (index, line) in lines.iter().enumerate() {
+            let body = line.font_box_px();
+            let spacing = |font_box: Option<(f64, f64)>| {
+                let natural = font_box.map(|(a, d)| a + d);
+                if let Some(grid) = style.word_grid_line_sizing {
+                    grid.line_height_px(natural, fallback_px)
+                } else {
+                    style
+                        .word_proportional_line_sizing
+                        .map_or(fallback_px, |sizing| {
+                            sizing.line_height_px(natural, fallback_px)
+                        })
+                }
+            };
+            let mut height = spacing(body);
+            if !has_base_plan {
+                if (height - fallback_px).abs() > 0.000001 {
+                    has_base_plan = true;
+                } else {
+                    height = fallback_px;
+                }
+            }
+            let content = body.unwrap_or((height * 0.8, height * 0.2));
+            let content = if index < first_band_end {
+                crate::line_metrics::line_font_box_with_numbering_ascent(content, label_ascent)
+            } else {
+                content
+            };
+            if index < first_band_end
+                && (style.word_grid_line_sizing.is_some()
+                    || style.word_proportional_line_sizing.is_some())
+                && body.is_some_and(|(a, _)| {
+                    label_ascent.is_some_and(|label| label.is_finite() && label >= 0.0 && label > a)
+                })
+            {
+                let adjusted = spacing(Some(content));
+                if (adjusted - height).abs() > 0.000001 {
+                    height = adjusted;
+                }
+            }
+            let advance = height.max((content.0 + content.1).max(1.0));
+            if !style.line_shares_float_band(index) {
+                total += band_height + style.skipped_float_height_before(index, height);
+                band_height = advance;
+            } else {
+                band_height = band_height.max(advance);
+            }
+        }
+        total + band_height
+    }
+
+    fn physical_height_px_general(
+        lines: &[Self],
+        style: &ParagraphStyle,
+        fallback_px: f64,
+        mark_font_box: Option<(f64, f64)>,
+        object_line_extra_px: Option<f64>,
+        label_ascent: Option<f64>,
+    ) -> f64 {
         let heights = Self::line_heights_px_with_numbering_ascent(
             lines,
             style,
@@ -3398,7 +3488,6 @@ impl WrappedLine {
         }
         let visible = self.clusters.iter().any(|cluster| !cluster.is_whitespace);
         let mut extent: Option<(f64, f64)> = None;
-        let mut previous_box = None;
         for cluster in &self.clusters {
             if visible && cluster.is_whitespace {
                 continue;
@@ -3412,16 +3501,9 @@ impl WrappedLine {
                 let layout = cluster.layout.as_ref()?;
                 (layout.font_ascent?, layout.font_descent?)
             };
-            // Repeated glyph boxes need no more validation or maxima. Keep
-            // the actual previous pair: a mixed-font extent can combine one
-            // face's ascent with another's descent and match neither face.
-            if previous_box == Some((a, d)) {
-                continue;
-            }
             if !a.is_finite() || !d.is_finite() || a < 0.0 || d < 0.0 {
                 return None;
             }
-            previous_box = Some((a, d));
             extent =
                 Some(extent.map_or((a, d), |(ascent, descent)| (ascent.max(a), descent.max(d))));
         }
@@ -12275,6 +12357,44 @@ mod tests {
             let actual = WrappedLine::physical_height_px(&lines, &style, 16.0, None, None, None);
             set_word_layout_platform(WordLayoutPlatform::Windows);
             prop_assert!((actual - expected).abs() < 1e-6, "actual={actual}, expected={expected}");
+        }
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig { cases: 192, ..ProptestConfig::default() })]
+        #[test]
+        fn text_height_fast_path_matches_general_plan(
+            bands in proptest::collection::vec((4_u16..150, any::<bool>(), 0_u16..50, any::<bool>()), 1..12),
+            label in proptest::option::of(0_u16..150), fallback in 1_u16..80,
+            multiple in 5_u16..30, policy in 0_u8..3,
+        ) {
+            use crate::line_metrics::{set_word_layout_platform, WordLayoutPlatform, WordProportionalLineSizing, WordGridLineSizing};
+            for platform in [WordLayoutPlatform::Windows, WordLayoutPlatform::Mac] {
+                set_word_layout_platform(platform);
+                let spacing = jade_docx_reader::Spacing { line: Some(f32::from(multiple) / 10.0),
+                    line_rule: Some("auto".into()), ..Default::default() };
+                let grid = jade_docx_reader::DocGrid { grid_type: Some("lines".into()), line_pitch: Some(18.0), char_space: None };
+                let mut style = ParagraphStyle { word_platform: platform,
+                    word_proportional_line_sizing: (policy == 1).then(|| WordProportionalLineSizing::new(Some(&spacing), false, true)).flatten(),
+                    word_grid_line_sizing: (policy == 2).then(|| WordGridLineSizing::new(None, true, Some(&grid), None, 10.5)).flatten(),
+                    ..Default::default() };
+                let text = vec!["x y"; bands.len()].join("\n");
+                let mut lines = wrap_text_into_lines(&TestContext::new(10.0), &text, &[make_run(&text)], 0.0, &style, 0, 500.0).unwrap();
+                for (index, ((height, continuation, clearance, unknown), line)) in bands.iter().zip(&mut lines).enumerate() {
+                    for (i, cluster) in line.clusters.iter_mut().enumerate() {
+                        let metrics = cluster.layout.as_mut().unwrap();
+                        metrics.font_ascent = (!unknown).then_some(f64::from(*height) * if i == 0 {0.75} else {0.8});
+                        metrics.font_descent = Some(f64::from(*height) * 0.25);
+                    }
+                    style.float_line_segments.push(FloatLineSegment { start_x: 0.0, width: 500.0, skipped_lines_before: 0,
+                        exact_clearance_height: f64::from(*clearance), shares_band_with_previous: index > 0 && *continuation });
+                }
+                let fallback = f64::from(fallback);
+                let label = label.map(f64::from);
+                let expected = WrappedLine::physical_height_px_general(&lines, &style, fallback, Some((14.0, 4.0)), Some(6.0), label);
+                let actual = WrappedLine::physical_height_px(&lines, &style, fallback, Some((14.0, 4.0)), Some(6.0), label);
+                prop_assert!((actual - expected).abs() < 1e-9, "{platform:?} policy={policy}: {actual} vs {expected}");
+            }
         }
     }
 
