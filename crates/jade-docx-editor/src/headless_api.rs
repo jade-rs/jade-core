@@ -14954,6 +14954,79 @@ mod tests {
     }
 
     #[test]
+    fn an_index_entry_marked_inside_a_field_result_goes_after_the_field() {
+        // A field inserted while editing keeps its result as the run's text.
+        // An XE marker placed inside that text split the field around it, and
+        // the saved file had the field once and no index entry.
+        let field_kinds = |word_doc: &WordDocument| {
+            word_doc.paragraph(0).map_or_else(Vec::new, |paragraph| {
+                let mut kinds: Vec<String> = Vec::new();
+                for run in &paragraph.runs {
+                    let Some(field) = run.field.as_ref() else {
+                        continue;
+                    };
+                    let kind = format!("{:?}", field.kind);
+                    if kinds.last() != Some(&kind) {
+                        kinds.push(kind);
+                    }
+                }
+                kinds
+            })
+        };
+        let date = HeadlessCommand::InsertDateTimeField {
+            start_paragraph: 0,
+            start_offset: 11,
+            end_paragraph: 0,
+            end_offset: 16,
+            time: false,
+            format: "yyyy/MM/dd".into(),
+            cached_text: "2026/11/02".into(),
+        };
+        let mark = HeadlessCommand::MarkIndexEntry {
+            paragraph: 0,
+            offset: 12,
+            term: "t".into(),
+        };
+        let split_the_field = HeadlessCommand::ClearFormatting {
+            start_paragraph: 0,
+            start_offset: 13,
+            end_paragraph: 0,
+            end_offset: 19,
+        };
+        for commands in [
+            vec![date.clone(), mark.clone()],
+            vec![date.clone(), split_the_field, mark.clone()],
+        ] {
+            let bytes = std::fs::read(
+                std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                    .join("../../public/fixtures/note-styles-creation.docx"),
+            )
+            .expect("read fixture");
+            let mut word_doc =
+                executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+            apply_headless_commands_to_document(
+                &mut word_doc,
+                &HeadlessEditRequest {
+                    commands: commands.clone(),
+                },
+            )
+            .expect("edited");
+            let kinds = field_kinds(&word_doc);
+            assert_eq!(kinds.len(), 2, "{commands:?}: {kinds:?}");
+            assert!(
+                kinds[1].starts_with("NonDisplay"),
+                "{commands:?}: {kinds:?}"
+            );
+            let reloaded = executor::block_on(WordDocument::load(
+                &word_doc.export_docx().expect("export"),
+                &Options::default(),
+            ))
+            .expect("reload");
+            assert_eq!(field_kinds(&reloaded), kinds, "{commands:?}");
+        }
+    }
+
+    #[test]
     fn paragraph_formatting_across_a_block_equation_formats_the_paragraphs_around_it() {
         // A block equation has no paragraph. Numbering a range across one
         // numbered the paragraph before it and then failed on the equation,
