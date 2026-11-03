@@ -1,76 +1,60 @@
-# Windows Word references by product version
+# Windows Word coordinate references
 
-Evidence is append-only, grouped by the complete WINWORD.EXE product version
-and an independent capture ID:
+References are separated by complete Word product version and immutable capture ID.
+The captured application is **16.0.19127.20860**; no other Word build has been
+measured. New builds create additional directories and keep older versions' tests.
 
-```
-word-16.0.19127.20860/20261101T130521628Z-902306ab/
-```
+The regression index covers **15 unique documents, 93 pages and 17,139 visible
+non-whitespace characters**, combining original PDF origins and Word drawing
+origins. Each registered set checks text, order, page count and both absolute
+coordinate axes within **0.375pt**. No origin fitting or tolerance increase is used.
+Mac references and their tolerances are independent and unchanged.
 
-`Application.Version` (`16.0`) and `Application.Build` (`16.0.19127`) are not
-specific enough. `capture.json` records both and the full product version,
-executable SHA-256, UTC acquisition time, Windows OS description, original
-DOCX hashes and exported PDF hashes. Word opens source files read-only;
-changed source/executable bytes invalidate a capture. Repeated captures use
-new IDs, so neither a new build nor another run overwrites historical data.
+## Drawing origins and PDF origins
 
-Each directory preserves the original Word PDFs, independently extracted
-`word-reference.json`, native `comparison.json`, and `verification.json`.
-The latter identifies the engine commit and whether source changes were
-present. Reports retain failures as well as successes.
+`Page.EnhMetaFileBits` records Word's Unicode text origins and per-character
+advances. The extractor maps the whole-page logical canvas to Word's exact
+PageSetup dimensions; it does not fit positions to the native renderer. It checks
+EMF bounds, drawing mode, transforms, paper dimensions and hashes, and rejects
+unsupported text encodings rather than guessing coordinates. CI reconstructs
+registered references from the original EMF files and rejects changed origins.
 
-`index.json` registers explicitly promoted `strict.json` sets. Promotion is
-refused unless every glyph, page and origin matches Word within 0.375pt.
-Tests compare every registered capture/version and the original legacy
-capture. Mac evidence and its thresholds are independent and unchanged.
-The portable CI check verifies the controlled probes' baselines using
-bundled stand-ins. It also checks 21 actual Word X/Y origins in
-`numbering-restart`: the fixed-pitch B/C/D/E rows and all five numeric
-boundaries after the Japanese list text. Thus the grid-space and numeric-gap
-regressions fail CI without installing or redistributing Microsoft fonts.
-The Yu Gothic probe also checks all 2,160 raw X/Y origins on 24 pages with
-bundled stand-ins, covering Regular, Light, Medium and Bold at 9, 10, 10.5,
-11, 12 and 20pt. Its package deliberately omits styles: importing Mac
-justification into Windows would stretch the wrapped 20pt rows.
-Full installed-font X/Y comparisons run on the Windows
-Word machine; no Microsoft font binaries are redistributed to CI.
+The drawing sets contain all **10,908 characters** of `yokohama_page1`,
+`yokohama_page6`, `contract`, `numbering-restart` and
+`word-windows-yu-gothic-lines`. The first four-document set is
+`20261103T081431275Z-eac136ae`; the corrected contract is separately registered in
+`20261103T082355941Z-8b9726d7` (1,907/1,907). Both were captured from clean engine
+source. Original PDF exports and their comparisons remain alongside them:
+PDF export rounding still creates subpoint differences in the Yokohama and
+contract PDFs, so those PDF comparisons are not promoted as passing PDF origins.
 
-Collected product versions: **16.0.19127.20860**. No other installed Word
-version is claimed. This version currently has twelve passing unique documents,
-84 pages and 8,954 glyphs. The earlier numbering-label capture retains its
-1.83pt failure; a later capture records the corrected result. Contract and
-Yokohama references still have subpoint residuals and are not promoted.
-The 2026-11-03 `numbering-restart` capture is also retained as pending:
-both outputs contain 2 pages and 563 glyphs, but only 321 glyphs satisfy
-the full X/Y threshold (X p95 2.824pt, Y p95 0.232pt).
-Another capture that day preserves `yokohama_page1`: 1 page and 853 glyphs
-in both outputs, with 282 passing full X/Y (X p95 7.272pt, Y p95 0.118pt).
-These remaining horizontal differences are not hidden by origin alignment.
+## Regression gates
 
-Parent-repository commands (run from jade-office):
+The installed-font test compares every registered origin, including auxiliary
+text such as footers, on the Windows Word capture machine. The Windows Actions
+job also checks full X/Y origins for both Yokohama documents (6,278 characters)
+and the Yu Gothic probe (2,160 characters) using bundled font stand-ins. It
+checks 21 numbering/grid boundary origins and 144 controlled baseline lines.
+The Yu Gothic fixture covers Regular, Light, Medium and Bold at six sizes and
+omits styles to catch accidental import of Mac's implicit justification.
+No Microsoft font binaries are redistributed.
+
+Every capture preserves original PDFs, optionally original page EMFs, raw
+references, comparisons and verification metadata. Metadata binds source,
+application executable, PDF and EMF hashes, full version, engine commit and
+source cleanliness. Historical failures remain intact; only explicitly selected
+fully passing fixtures enter `index.json`. Promotion refuses overwritten,
+incomplete, mixed-version, changed or mismatching evidence.
+
+Run from jade-office:
 
 ```powershell
-./scripts/check-word-windows.ps1 -Documents <DOCX paths> -PythonExecutable <python.exe>
-python scripts/archive-word-windows-capture.py <capture.json> --strict <passing fixture names>
+./scripts/check-word-windows.ps1 -Documents <DOCX paths> -PythonExecutable <python.exe> -CaptureMetafiles
+python scripts/archive-word-windows-capture.py <capture.json> --reference-kind emf --strict <passing fixture names>
 ./scripts/test-windows-word.ps1
 ```
 
-The Python tools require PyMuPDF. Archiving validates hashes, refuses an
-existing destination, rejects mixed-version references, and never promotes
-coordinate failures. A future Word build automatically gets its own version
-directory; collecting one does not replace older builds' tests.
-
-The later `20261103T061428054Z-5f5076bb` capture promotes
-`numbering-restart`: all 563 glyphs on both pages pass the unchanged 0.375pt
-X/Y threshold. The earlier failing capture remains intact. Windows fixes
-remove synthetic bold widening from fixed-pitch Latin cells, include both
-tracking intervals in full grid cells, and retain Japanese-face numeric gaps
-under the default font hint. Mac metric selection is unchanged.
-
-The clean-source `20261103T072439513Z-7e74b1ab` capture promotes
-`word-windows-yu-gothic-lines` (2,160/2,160 matching origins). Windows
-uses the Yu Gothic OS/2 usWin boxes and left-aligned unstyled Normal;
-Mac keeps its original hhea boxes and Normal style. The same capture
-retains the latest Contract and Yokohama residuals as pending. Its original
-Yokohama PDF places the Article 15-6-2 item-3 heading and its reason on
-page 4, validating the corrected Windows headless pagination expectation.
+Omitting `-CaptureMetafiles` retains the PDF-only workflow; PDF extraction needs
+PyMuPDF. EMF extraction uses Python's standard library. Old numbering-label,
+numbering-restart and Yokohama failures remain in their original captures and
+are superseded by later passing captures, never overwritten.
