@@ -274,6 +274,7 @@ mod note_tests;
 #[cfg(test)]
 mod opentype_features_tests;
 mod page_layers;
+mod paragraph_font_cache;
 mod paragraph_join;
 #[cfg(test)]
 mod preset_shape_tests;
@@ -3970,6 +3971,8 @@ where
     last_render_prefix_skips: u64,
     /// Cache for resolved run styles keyed by run properties + doc-grid spacing.
     applied_run_style_cache: RefCell<FxHashMap<u64, Rc<AppliedRunStyle>>>,
+    /// Windows font-line summaries, validated against owned run inputs.
+    paragraph_font_cache: RefCell<paragraph_font_cache::ParagraphFontCache>,
     /// See [`CanvasRenderer::effective_run_properties_rc`].
     effective_run_properties_cache: RefCell<FxHashMap<u64, Vec<EffectiveRunPropertiesEntry>>>,
     /// Fast path for shared run properties produced by `jade-docx-layout`. The cache
@@ -8658,6 +8661,7 @@ where
             last_render_body_element_count: 0,
             last_render_prefix_skips: 0,
             applied_run_style_cache: RefCell::new(FxHashMap::default()),
+            paragraph_font_cache: RefCell::new(Default::default()),
             effective_run_properties_cache: RefCell::new(FxHashMap::default()),
             applied_run_style_identity_cache: RefCell::new(FxHashMap::default()),
             word_run_faces_cache: RefCell::new(FxHashMap::default()),
@@ -9429,6 +9433,7 @@ where
     pub fn clear_text_measure_cache(&mut self) {
         // Wrapped table lines also retain measured advances and font ascents.
         self.clear_paragraph_wrap_cache();
+        self.paragraph_font_cache.borrow_mut().clear();
         self.text_measure_cache.borrow_mut().clear();
         self.font_vertical_metrics_cache.borrow_mut().clear();
         self.trailing_overhang_cache.borrow_mut().clear();
@@ -14148,6 +14153,7 @@ where
             ),
         ) {
             // The same run properties now resolve to other descriptors.
+            self.paragraph_font_cache.borrow_mut().clear();
             self.applied_run_style_cache.borrow_mut().clear();
             self.applied_run_style_identity_cache.borrow_mut().clear();
             self.clear_paragraph_wrap_cache();
@@ -20729,6 +20735,20 @@ where
                     .latin_line_height_pt(),
             ));
         }
+        // Blank paragraphs above keep their original mark/first-run policy.
+        // Preserve the entire Mac computation, including diagnostic contexts.
+        let cache_context = (jade_docx_layout::line_metrics::word_layout_platform()
+            == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows)
+            .then_some(paragraph_font_cache::Context {
+                east_asian: self.document_east_asian_rules.use_east_asian_layout,
+                underline: self.document_east_asian_rules.space_for_underline,
+                char_spacing: self.current_doc_grid_char_spacing_px.map(f64::to_bits),
+            });
+        if let Some(context) = cache_context {
+            if let Some(lines) = self.paragraph_font_cache.borrow().get(paragraph, context) {
+                return Ok(lines);
+            }
+        }
         let mut east_asian_line: Option<f32> = None;
         let mut runs = Vec::with_capacity(paragraph.runs.len());
         // Consecutive runs usually share their direct formatting, and with it
@@ -20783,7 +20803,13 @@ where
                 underline_depth,
             ));
         }
-        Ok((east_asian_line, word_tallest_single_line_height_pt(runs)))
+        let lines = (east_asian_line, word_tallest_single_line_height_pt(runs));
+        if let Some(context) = cache_context {
+            self.paragraph_font_cache
+                .borrow_mut()
+                .insert(paragraph, context, lines);
+        }
+        Ok(lines)
     }
 
     /// [`WordRunFaces`] of `resolved`'s font descriptors, parsed once per
@@ -49723,6 +49749,95 @@ mod tests {
                 .and_then(|props| props.color.as_deref()),
             Some("#ff0000")
         );
+    }
+
+    #[test]
+    fn windows_paragraph_font_cache_matches_fresh_after_public_edits() {
+        use jade_docx_layout::line_metrics::{set_word_layout_platform, WordLayoutPlatform};
+        set_word_layout_platform(WordLayoutPlatform::Windows);
+        let (mut renderer, _) = recording_renderer();
+        renderer.document_east_asian_rules.use_east_asian_layout = true;
+        let mut paragraph = Paragraph {
+            runs: vec![text_box_run(
+                "漢a",
+                Some(RunProperties {
+                    font_family: Some("MS Mincho".into()),
+                    font_size: Some(12.0),
+                    ..Default::default()
+                }),
+            )],
+            properties: None,
+            node_id: Some(XmlNodeId::new(17)),
+            comment_ranges: Vec::new(),
+            comment_markers: Vec::new(),
+        };
+        let compare = |renderer: &CanvasRenderer<jade_painter::recording::RecordingPainter>,
+                       paragraph: &Paragraph| {
+            let cached = renderer.paragraph_word_font_lines_pt(paragraph).unwrap();
+            renderer.paragraph_font_cache.borrow_mut().clear();
+            let fresh = renderer.paragraph_word_font_lines_pt(paragraph).unwrap();
+            assert_eq!(cached, fresh);
+            assert_eq!(
+                renderer.paragraph_word_font_lines_pt(paragraph).unwrap(),
+                fresh
+            );
+            fresh
+        };
+        let original = compare(&renderer, &paragraph);
+        paragraph.runs[0].properties.as_mut().unwrap().font_size = Some(40.0);
+        let larger = compare(&renderer, &paragraph);
+        assert_ne!(original, larger);
+        paragraph.runs[0].text = "a".into();
+        compare(&renderer, &paragraph);
+        paragraph.runs.push(text_box_run(
+            "漢",
+            Some(RunProperties {
+                font_family: Some("Yu Gothic".into()),
+                font_size: Some(24.0),
+                ..Default::default()
+            }),
+        ));
+        compare(&renderer, &paragraph);
+        paragraph.runs[1].text.clear();
+        paragraph.runs[1].note_separator = Some(NoteSeparatorKind::Separator);
+        compare(&renderer, &paragraph);
+        renderer.document_east_asian_rules.use_east_asian_layout = false;
+        compare(&renderer, &paragraph);
+        renderer.document_east_asian_rules.space_for_underline = true;
+        paragraph.runs[0].properties.as_mut().unwrap().underline = Some(true);
+        compare(&renderer, &paragraph);
+        renderer.current_doc_grid_char_spacing_px = Some(1.0);
+        compare(&renderer, &paragraph);
+        paragraph.runs.truncate(1);
+        paragraph.runs[0].properties = None;
+        paragraph.properties = Some(ParagraphProperties {
+            style: Some(Rc::from("Caption")),
+            ..Default::default()
+        });
+        for size in [20, 40] {
+            let xml = format!(
+                r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+                <w:style w:type="paragraph" w:styleId="Caption"><w:rPr>
+                <w:rFonts w:ascii="MS Mincho" w:eastAsia="MS Mincho"/><w:sz w:val="{size}"/>
+                </w:rPr></w:style></w:styles>"#
+            );
+            renderer.set_style_context(Some(Rc::new(StylesPart::from_xml(&xml).unwrap())), None);
+            compare(&renderer, &paragraph);
+        }
+        paragraph.properties.as_mut().unwrap().style = None;
+        compare(&renderer, &paragraph);
+        // A copied paragraph can retain its XML ID; content validation still applies.
+        let mut replacement = paragraph.clone();
+        replacement.runs[0].properties = Some(RunProperties {
+            font_family: Some("MS Mincho".into()),
+            font_size: Some(9.0),
+            ..Default::default()
+        });
+        compare(&renderer, &replacement);
+        replacement.runs[0].text = " \t".into();
+        compare(&renderer, &replacement);
+        set_word_layout_platform(WordLayoutPlatform::Mac);
+        compare(&renderer, &paragraph);
     }
 
     #[test]
