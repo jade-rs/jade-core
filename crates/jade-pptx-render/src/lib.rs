@@ -7,6 +7,8 @@
 //! Paint order is the slide's z-order: the layout's shape list, back to front,
 //! each shape filling, then stroking, then drawing its text.
 
+pub mod animation;
+
 use std::cell::RefCell;
 
 use jade_painter::Painter;
@@ -57,6 +59,20 @@ pub fn render_slide_with<P: Painter>(
     options: &RenderOptions,
     draw_image: &mut DrawImage<'_>,
 ) -> Result<(), P::Error> {
+    render_background(painter, layout, options)?;
+    painter.set_text_baseline("alphabetic");
+    for shape in &layout.shapes {
+        render_shape(painter, shape, options, draw_image)?;
+    }
+    Ok(())
+}
+
+/// The slide's ground, under every shape.
+pub(crate) fn render_background<P: Painter>(
+    painter: &P,
+    layout: &SlideLayout,
+    options: &RenderOptions,
+) -> Result<(), P::Error> {
     // The slide's own background wins; the option is the fallback ground.
     if let Some(gradient) = &layout.background_gradient {
         painter.save();
@@ -79,10 +95,6 @@ pub fn render_slide_with<P: Painter>(
     {
         painter.set_fill_style_str(background);
         painter.fill_rect(0.0, 0.0, layout.width_px, layout.height_px);
-    }
-    painter.set_text_baseline("alphabetic");
-    for shape in &layout.shapes {
-        render_shape(painter, shape, options, draw_image)?;
     }
     Ok(())
 }
@@ -110,6 +122,20 @@ fn render_shape<P: Painter>(
     options: &RenderOptions,
     draw_image: &mut DrawImage<'_>,
 ) -> Result<(), P::Error> {
+    render_shape_clipped(painter, shape, options, draw_image, None)
+}
+
+/// A clip set inside a shape's own transform, in its unrotated frame: the
+/// slide show's reveal masks and letter-by-letter pieces.
+pub(crate) type LocalClip<'a, P> = &'a dyn Fn(&P);
+
+pub(crate) fn render_shape_clipped<P: Painter>(
+    painter: &P,
+    shape: &PlacedShape,
+    options: &RenderOptions,
+    draw_image: &mut DrawImage<'_>,
+    local_clip: Option<LocalClip<'_, P>>,
+) -> Result<(), P::Error> {
     let transformed = !shape.group_transforms.is_empty()
         || shape.rotation_rad != 0.0
         || shape.flip_h
@@ -126,6 +152,10 @@ fn render_shape<P: Painter>(
             painter.scale(transform.scale.0, transform.scale.1)?;
         }
         painter.translate(-rect.x - rect.width / 2.0, -rect.y - rect.height / 2.0)?;
+    }
+    if let Some(clip) = local_clip {
+        painter.save();
+        clip(painter);
     }
 
     if shape.geometry == PlacedGeometry::Line {
@@ -162,6 +192,9 @@ fn render_shape<P: Painter>(
                 (rect.x + rect.width, rect.y + rect.height),
             ],
         );
+        if local_clip.is_some() {
+            painter.restore();
+        }
         if transformed {
             painter.restore();
         }
@@ -201,6 +234,9 @@ fn render_shape<P: Painter>(
         None => draw_content(painter, shape, options, draw_image, 1.0)?,
     }
 
+    if local_clip.is_some() {
+        painter.restore();
+    }
     if transformed {
         painter.restore();
     }
@@ -983,7 +1019,7 @@ fn outline_polygons(shape: &PlacedShape) -> Vec<Vec<(f64, f64)>> {
 /// A canvas font shorthand: the Latin face first, the East Asian face as its
 /// fallback, so a Japanese run named through `<a:ea>` finds its glyphs even
 /// when its `<a:latin>` face has none.
-fn font_shorthand(run: &jade_pptx_layout::PlacedRun, options: &RenderOptions) -> String {
+pub(crate) fn font_shorthand(run: &jade_pptx_layout::PlacedRun, options: &RenderOptions) -> String {
     shorthand_for(
         run.size_pt,
         run.bold,

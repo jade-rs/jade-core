@@ -93,13 +93,16 @@ impl HeadlessWorkbook {
 
     /// The data tables' results worked out again and written, as part of a
     /// recalculation — no undo step of their own. With `complete`, the
-    /// workbook stops asking for a full calculation on load.
+    /// workbook stops asking for a full calculation on load. Under
+    /// Automatic except for Data Tables, an edit's recalculation leaves
+    /// them for Calculate Now.
     pub(crate) fn write_data_tables(&mut self, complete: bool) -> Result<()> {
-        if self
-            .workbook
-            .sheets
-            .iter()
-            .all(|sheet| sheet.data_tables.is_empty())
+        if self.data_tables_wait
+            || self
+                .workbook
+                .sheets
+                .iter()
+                .all(|sheet| sheet.data_tables.is_empty())
         {
             return Ok(());
         }

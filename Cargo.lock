@@ -2270,6 +2270,8 @@ dependencies = [
  "jade-painter",
  "jade-pptx-layout",
  "jade-pptx-reader",
+ "serde_json",
+ "unicode-segmentation",
 ]
 
 [[package]]

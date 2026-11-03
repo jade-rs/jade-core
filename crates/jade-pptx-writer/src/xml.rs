@@ -3,6 +3,7 @@ use jade_pptx_reader::Transform;
 use quick_xml::{events::Event, name::ResolveResult, NsReader};
 use std::ops::Range;
 
+pub(crate) mod animation;
 pub(crate) mod crop;
 pub(crate) mod diagrams;
 mod formatting;
