@@ -6,6 +6,7 @@ license = "MIT"
 
 [dependencies]
 jade-opc = { path = "../jade-opc" }
+jade-ink = { path = "../jade-ink" }
 serde = { version = "1.0", features = ["derive", "rc"] }
 quick-xml = "0.41"
 encoding_rs = "0.8"

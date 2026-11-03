@@ -199,6 +199,7 @@ pub fn layout_view(deck: &Deck, index: usize) -> Result<SlideLayoutView> {
                     PlacedGeometry::Polygon(_) => "polygon",
                     PlacedGeometry::Path(_) => "path",
                     PlacedGeometry::Paths(_) => "preset_path",
+                    PlacedGeometry::Ink(_) => "ink",
                 }
                 .to_string(),
                 fill: placed.fill.clone(),
@@ -521,6 +522,20 @@ fn shape_view(item: &ShapeItem, rects: &BTreeMap<u32, RectPx>) -> ShapeView {
                 children,
             }
         }
+        ShapeItem::Ink(ink) => ShapeView {
+            kind: ShapeKind::Ink,
+            id: ink.id,
+            name: ink.name.clone(),
+            placeholder: None,
+            geometry: None,
+            rect: rect_of(ink.id),
+            text: None,
+            rows: Vec::new(),
+            image_part: None,
+            chart: None,
+            hyperlinks: Vec::new(),
+            children: Vec::new(),
+        },
         ShapeItem::Chart(chart) => ShapeView {
             kind: ShapeKind::Chart,
             id: chart.id,
@@ -662,7 +677,7 @@ fn collect_text(shapes: &[ShapeItem], visit: &mut impl FnMut(&str, &str, ShapeKi
                     visit(&chart.name, &text, ShapeKind::Chart);
                 }
             }
-            ShapeItem::Picture(_) => {}
+            ShapeItem::Picture(_) | ShapeItem::Ink(_) => {}
         }
     }
 }
@@ -692,7 +707,7 @@ fn collect_readable(shapes: &[ShapeItem], out: &mut String) {
                     out.push('\n');
                 }
             }
-            ShapeItem::Picture(_) => {}
+            ShapeItem::Picture(_) | ShapeItem::Ink(_) => {}
         }
     }
 }
