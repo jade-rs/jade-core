@@ -3163,7 +3163,7 @@ const COMMANDS: &[Variant] = &[
     ),
     variant(
         "set_table_cell_borders",
-        "Set one cell's own borders, which win over the table's defaults — the way a total row gets a double rule above it. A cell has only its four edges.",
+        "Set one cell's own borders, which win over the table's defaults — the way a total row gets a double rule above it. A cell has its four edges and two diagonals.",
         &[
             req(
                 "table_order_index",
@@ -3180,6 +3180,16 @@ const COMMANDS: &[Variant] = &[
             opt("bottom", ArgType::BorderEdge, "Bottom edge."),
             opt("left", ArgType::BorderEdge, "Left edge."),
             opt("right", ArgType::BorderEdge, "Right edge."),
+            opt(
+                "tl2br",
+                ArgType::BorderEdge,
+                "Diagonal from the top-left corner to the bottom-right; style none removes it.",
+            ),
+            opt(
+                "tr2bl",
+                ArgType::BorderEdge,
+                "Diagonal from the top-right corner to the bottom-left; style none removes it.",
+            ),
         ],
     ),
     variant(
