@@ -1956,6 +1956,43 @@ pub fn apply_headless_commands_with_executor_to_document(
                     )
                     .map_err(|source| HeadlessApiApplyError::Command { index, source })?;
             }
+            HeadlessCommand::InsertPositionalTab {
+                paragraph,
+                offset,
+                alignment,
+                relative_to,
+                leader,
+            } => {
+                use crate::commands::insert_positional_tab::InsertPositionalTabCommand;
+                use crate::document::{PositionalTab, PositionalTabAlignment};
+                validate_text_offset(word_doc, index, *paragraph, *offset)?;
+                let alignment = match alignment.as_str() {
+                    "left" => PositionalTabAlignment::Left,
+                    "center" => PositionalTabAlignment::Center,
+                    "right" => PositionalTabAlignment::Right,
+                    other => {
+                        return Err(HeadlessApiApplyError::Command {
+                            index,
+                            source: CommandError::Custom(format!(
+                                "a positional tab aligns left, center or right, not {other}"
+                            )),
+                        })
+                    }
+                };
+                let tab = PositionalTab {
+                    ordinal: 0,
+                    alignment,
+                    relative_to_indent: relative_to.as_deref() == Some("indent"),
+                    leader: leader.clone().filter(|leader| leader != "none"),
+                };
+                let mut ctx = CommandContext::new(word_doc, &mut selection);
+                command_executor
+                    .execute(
+                        Box::new(InsertPositionalTabCommand::new(*paragraph, *offset, tab)),
+                        &mut ctx,
+                    )
+                    .map_err(|source| HeadlessApiApplyError::Command { index, source })?;
+            }
             HeadlessCommand::ClearFormatting {
                 start_paragraph,
                 start_offset,

@@ -2433,15 +2433,42 @@ impl DocumentParser {
                         }
                     }
                     b"w:ptab" => {
-                        // Absolute position tab (ECMA-376 Part 1 §17.3.3.16).
-                        // We do not resolve the absolute alignment/leader yet, but
-                        // dropping it loses the tab entirely; emit a regular tab
-                        // so the gap is preserved instead of vanishing.
+                        // Absolute position tab (ECMA-376 Part 1 §17.3.3.16): a
+                        // tab character of the text, laid out from its own
+                        // alignment, base and leader (`positional_tabs`).
                         if Self::keeps_field_result_in_run_text(
                             current_run_field.as_ref(),
                             current_run_is_instruction_operand,
                         ) {
                             if let Some(ref mut run) = current_run {
+                                let ordinal = current_paragraph
+                                    .as_ref()
+                                    .map_or(0, |paragraph| {
+                                        paragraph
+                                            .runs
+                                            .iter()
+                                            .map(|run| run.text.matches('\t').count())
+                                            .sum()
+                                    })
+                                    + run.text.matches('\t').count();
+                                let attributes: Vec<(String, String)> = e
+                                    .attributes()
+                                    .flatten()
+                                    .map(|attr| {
+                                        (
+                                            String::from_utf8_lossy(attr.key.as_ref()).into_owned(),
+                                            String::from_utf8_lossy(&attr.value).into_owned(),
+                                        )
+                                    })
+                                    .collect();
+                                if let Some(props) = current_paragraph_props.as_mut() {
+                                    props.positional_tabs.push(PositionalTab::from_attributes(
+                                        ordinal,
+                                        attributes
+                                            .iter()
+                                            .map(|(name, value)| (name.as_str(), value.as_str())),
+                                    ));
+                                }
                                 run.text.push('\t');
                                 paragraph_text_len += 1;
                             }
@@ -14679,6 +14706,16 @@ mod tests {
             _ => panic!("expected paragraph"),
         };
         assert_eq!(paragraph.runs[0].text, "left\tright");
+        let tabs = &paragraph.properties.as_ref().unwrap().positional_tabs;
+        assert_eq!(
+            tabs,
+            &vec![PositionalTab {
+                ordinal: 0,
+                alignment: PositionalTabAlignment::Right,
+                relative_to_indent: false,
+                leader: Some("dot".to_string()),
+            }]
+        );
     }
 
     #[test]

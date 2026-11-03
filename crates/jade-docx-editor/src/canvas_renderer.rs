@@ -10967,6 +10967,7 @@ where
             props.shading.hash(&mut hasher);
             props.borders.hash(&mut hasher);
             props.drop_cap.hash(&mut hasher);
+            props.positional_tabs.hash(&mut hasher);
             for tab in &props.tabs {
                 tab.kind.hash(&mut hasher);
                 tab.position.map(f32::to_bits).hash(&mut hasher);
@@ -11242,6 +11243,7 @@ where
                 props.shading.hash(&mut hasher);
                 props.borders.hash(&mut hasher);
                 props.drop_cap.hash(&mut hasher);
+                props.positional_tabs.hash(&mut hasher);
                 for tab in &props.tabs {
                     tab.kind.hash(&mut hasher);
                     tab.position.map(f32::to_bits).hash(&mut hasher);
@@ -18069,6 +18071,8 @@ where
             paragraph_style.first_line_indent = 0.0;
         }
         if let Some(props) = &paragraph.properties {
+            paragraph_style.positional_tabs =
+                jade_docx_layout::line_wrap::resolve_positional_tabs(&props.positional_tabs);
             if !props.tabs.is_empty() {
                 paragraph_style.tab_stops = resolve_tab_stops(&props.tabs);
                 #[cfg(all(debug_assertions, target_arch = "wasm32"))]

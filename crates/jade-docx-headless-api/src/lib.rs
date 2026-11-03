@@ -1017,6 +1017,21 @@ pub enum HeadlessCommand {
         offset: usize,
         text: String,
     },
+    /// 位置合わせタブの挿入: an absolute position tab (ECMA-376 Part 1
+    /// §17.3.3.16 `w:ptab`) at a byte offset — a tab character that aligns
+    /// the text after it to the `left`, `center` or `right` of the margins
+    /// (`relative_to` `margin`, the default) or of the paragraph's indents
+    /// (`indent`), with an optional leader (`dot`, `hyphen`, `underscore`,
+    /// `middleDot`).
+    InsertPositionalTab {
+        paragraph: usize,
+        offset: usize,
+        alignment: String,
+        #[serde(default)]
+        relative_to: Option<String>,
+        #[serde(default)]
+        leader: Option<String>,
+    },
     ReplaceRange {
         start_paragraph: usize,
         start_offset: usize,
@@ -2368,6 +2383,7 @@ impl HeadlessCommand {
     pub fn name(&self) -> &'static str {
         match self {
             HeadlessCommand::InsertText { .. } => "insert_text",
+            HeadlessCommand::InsertPositionalTab { .. } => "insert_positional_tab",
             HeadlessCommand::ReplaceRange { .. } => "replace_range",
             HeadlessCommand::ReplacePlaceholder { .. } => "replace_placeholder",
             HeadlessCommand::DeleteText { .. } => "delete_text",

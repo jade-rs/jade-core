@@ -1750,6 +1750,17 @@ const fn paragraphs(
 const COMMANDS: &[Variant] = &[
     // -- text -------------------------------------------------------------
     variant(
+        "insert_positional_tab",
+        "Word's Insert Alignment Tab: an absolute position tab (w:ptab) at a byte offset, which aligns the text after it to the left, center or right of the margins or of the paragraph's indents, ignoring the tab stops. One undo step.",
+        &[
+            req("paragraph", ArgType::Index, "Zero-based paragraph index."),
+            req("offset", ArgType::Index, "Byte offset inside the paragraph."),
+            req("alignment", ArgType::Choice(&["left", "center", "right"]), "How the text after the tab is aligned."),
+            opt("relative_to", ArgType::Choice(&["margin", "indent"]), "Measure from the margins (default) or from the paragraph's indents."),
+            opt("leader", ArgType::Choice(&["none", "dot", "hyphen", "underscore", "middleDot"]), "The leader drawn up to the tab's position."),
+        ],
+    ),
+    variant(
         "insert_text",
         "Insert text at a byte offset inside a paragraph.",
         &[

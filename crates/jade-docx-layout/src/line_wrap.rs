@@ -263,6 +263,10 @@ pub struct ParagraphStyle {
     pub hyphenation: Option<ParagraphHyphenation>,
     /// `ADVANCE` fields' horizontal moves, by layout-text offset, in order.
     pub advances: Vec<crate::advance_field::ParagraphAdvance>,
+    /// Absolute position tabs (`w:ptab`): the tab characters, by their
+    /// order among the paragraph's tabs, that align to a margin or indent
+    /// position rather than to the next tab stop.
+    pub positional_tabs: Vec<PositionalTabStop>,
 }
 
 /// Word's automatic hyphenation as one paragraph applies it.
@@ -334,8 +338,44 @@ impl Default for ParagraphStyle {
             float_line_segments: Vec::new(),
             hyphenation: None,
             advances: Vec::new(),
+            positional_tabs: Vec::new(),
         }
     }
+}
+
+/// An absolute position tab (ECMA-376 Part 1 §17.3.3.16) as the wrapper
+/// lays it out.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct PositionalTabStop {
+    /// Which of the paragraph's tab characters it is (0-based).
+    pub ordinal: usize,
+    /// Left, center or right.
+    pub alignment: TabAlignment,
+    pub leader: TabLeader,
+    /// Measured between the paragraph's indents rather than the margins.
+    pub relative_to_indent: bool,
+}
+
+/// Where an absolute position tab aligns the text after it: the left edge,
+/// the middle or the right edge of the text margins (or of the paragraph's
+/// indents), as Word places a header's centre and right parts.
+fn positional_tab_target(
+    stop: &PositionalTabStop,
+    paragraph_style: &ParagraphStyle,
+    base_x: f64,
+    column_right_edge: f64,
+) -> (f64, TabAlignment, TabLeader) {
+    let (left, right) = if stop.relative_to_indent {
+        (base_x, column_right_edge - paragraph_style.right_indent)
+    } else {
+        (base_x + paragraph_style.tab_origin_offset, column_right_edge)
+    };
+    let target = match stop.alignment {
+        TabAlignment::Center => (left + right) / 2.0,
+        TabAlignment::Right => right,
+        _ => left,
+    };
+    (target, stop.alignment, stop.leader)
 }
 
 impl ParagraphStyle {
@@ -5659,6 +5699,28 @@ pub trait LineWrapContext {
     }
 }
 
+/// The wrapper's terms for a paragraph's `w:ptab`s.
+pub fn resolve_positional_tabs(
+    tabs: &[jade_docx_reader::document::PositionalTab],
+) -> Vec<PositionalTabStop> {
+    use jade_docx_reader::document::PositionalTabAlignment;
+    tabs.iter()
+        .map(|tab| PositionalTabStop {
+            ordinal: tab.ordinal,
+            alignment: match tab.alignment {
+                PositionalTabAlignment::Left => TabAlignment::Left,
+                PositionalTabAlignment::Center => TabAlignment::Center,
+                PositionalTabAlignment::Right => TabAlignment::Right,
+            },
+            leader: tab
+                .leader
+                .as_deref()
+                .map_or(TabLeader::None, tab_leader_from_str),
+            relative_to_indent: tab.relative_to_indent,
+        })
+        .collect()
+}
+
 /// Normalizes raw `TabStop` entries into `ParagraphTabStop` structures.
 pub fn resolve_tab_stops(tabs: &[TabStop]) -> Vec<ParagraphTabStop> {
     let mut result: Vec<ParagraphTabStop> = Vec::new();
@@ -6761,8 +6823,29 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
                     paragraph_style,
                 );
                 let cursor_x = line_origin + tab_stop_cursor_width;
-                let (target_x, alignment, mut leader_kind) =
-                    find_next_tab_stop(paragraph_style, base_x, cursor_x);
+                // An absolute position tab goes to its own position, whatever
+                // the tab stops say.
+                let positional = (!paragraph_style.positional_tabs.is_empty())
+                    .then(|| {
+                        let local = grapheme_start_abs.saturating_sub(base_offset);
+                        let ordinal = text.get(..local).map_or(0, |before| before.matches('\t').count());
+                        paragraph_style
+                            .positional_tabs
+                            .iter()
+                            .find(|stop| stop.ordinal == ordinal)
+                            .copied()
+                    })
+                    .flatten();
+                let tab_target = |cursor_x: f64| match &positional {
+                    Some(stop) => positional_tab_target(
+                        stop,
+                        paragraph_style,
+                        base_x,
+                        column_right_edge,
+                    ),
+                    None => find_next_tab_stop(paragraph_style, base_x, cursor_x),
+                };
+                let (target_x, alignment, mut leader_kind) = tab_target(cursor_x);
 
                 let mut previous_width = current_width;
                 let mut desired_width = tab_segment_start_width(
@@ -6791,7 +6874,7 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
                     let next_line_origin =
                         paragraph_style.line_base_x(base_x, next_line_index) + next_line_indent;
                     let (next_target_x, next_alignment, next_leader_kind) =
-                        find_next_tab_stop(paragraph_style, base_x, next_line_origin);
+                        tab_target(next_line_origin);
                     let next_desired_width = tab_segment_start_width(
                         next_target_x,
                         next_line_origin,

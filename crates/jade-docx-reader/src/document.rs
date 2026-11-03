@@ -5169,6 +5169,11 @@ pub struct ParagraphProperties {
     /// `\o`. This is parse-time metadata and does not change layout.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub outline_level_is_direct: bool,
+    /// The paragraph's absolute position tabs (`w:ptab`, ECMA-376 Part 1
+    /// §17.3.3.16), in text order. Each is a tab character of the text: the
+    /// `ordinal`-th `\t` of the paragraph.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub positional_tabs: Vec<PositionalTab>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub east_asian_settings: Option<EastAsianLineBreakingSettings>,
     /// Paragraph shading (`w:shd` inside `w:pPr`).  See ECMA-376 Part 1
@@ -5280,6 +5285,84 @@ impl BorderEdge {
         self.val
             .as_deref()
             .is_some_and(|v| !matches!(v, "nil" | "none"))
+    }
+}
+
+/// Where an absolute position tab (`w:ptab`) aligns what follows it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub enum PositionalTabAlignment {
+    #[default]
+    Left,
+    Center,
+    Right,
+}
+
+/// An absolute position tab (`w:ptab`): which tab character of the
+/// paragraph it is, how it aligns the text after it, whether it measures
+/// from the margins or the paragraph's indents, and its leader.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct PositionalTab {
+    /// The paragraph's `ordinal`-th tab character (0-based).
+    pub ordinal: usize,
+    pub alignment: PositionalTabAlignment,
+    /// `w:relativeTo="indent"`; otherwise the margins.
+    pub relative_to_indent: bool,
+    /// `w:leader`: `none`, `dot`, `hyphen`, `underscore` or `middleDot`.
+    pub leader: Option<String>,
+}
+
+impl PositionalTab {
+    /// Reads `w:alignment`, `w:relativeTo` and `w:leader`.
+    pub fn from_attributes<'a>(
+        ordinal: usize,
+        attributes: impl IntoIterator<Item = (&'a str, &'a str)>,
+    ) -> Self {
+        let mut tab = Self {
+            ordinal,
+            ..Self::default()
+        };
+        for (name, value) in attributes {
+            match name {
+                "w:alignment" => {
+                    tab.alignment = match value {
+                        "center" => PositionalTabAlignment::Center,
+                        "right" => PositionalTabAlignment::Right,
+                        _ => PositionalTabAlignment::Left,
+                    }
+                }
+                "w:relativeTo" => tab.relative_to_indent = value == "indent",
+                "w:leader" => {
+                    tab.leader = (value != "none").then(|| value.to_string());
+                }
+                _ => {}
+            }
+        }
+        tab
+    }
+
+    /// The `w:ptab` attributes, as Word writes them.
+    pub fn attributes(&self) -> Vec<(&'static str, String)> {
+        vec![
+            (
+                "w:relativeTo",
+                if self.relative_to_indent { "indent" } else { "margin" }.to_string(),
+            ),
+            (
+                "w:alignment",
+                match self.alignment {
+                    PositionalTabAlignment::Left => "left",
+                    PositionalTabAlignment::Center => "center",
+                    PositionalTabAlignment::Right => "right",
+                }
+                .to_string(),
+            ),
+            (
+                "w:leader",
+                self.leader.clone().unwrap_or_else(|| "none".to_string()),
+            ),
+        ]
     }
 }
 
