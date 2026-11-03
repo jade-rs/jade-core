@@ -978,6 +978,81 @@ impl WordDocument {
         Ok(())
     }
 
+    /// 並べ替え outside a table: body paragraphs `start..=end` reordered by
+    /// their text (Word's 段落 key), the first left in place when `header` is
+    /// set (見出し行). Paragraphs that compare equal keep their order.
+    pub fn sort_paragraphs(
+        &mut self,
+        start: usize,
+        end: usize,
+        kind: TableSortKind,
+        descending: bool,
+        header: bool,
+    ) -> Result<(), String> {
+        if start > end {
+            return Err("the paragraphs to sort are out of order".to_string());
+        }
+        let first = if header { start + 1 } else { start };
+        // Each paragraph's body element and sort value.
+        let mut entries: Vec<(usize, SortValue)> = Vec::new();
+        for surface in first..=end {
+            let element = match self.paragraph_surfaces.get(surface) {
+                Some(ParagraphSurface::Body { path }) => match path.as_slice() {
+                    [PathEntry::Element(element)] => *element,
+                    _ => return Err("only paragraphs outside tables can be sorted".to_string()),
+                },
+                _ => return Err("only body paragraphs can be sorted".to_string()),
+            };
+            let paragraph = self
+                .paragraph(surface)
+                .ok_or_else(|| format!("paragraph {surface} was not found"))?;
+            if surface != end
+                && paragraph
+                    .properties
+                    .as_ref()
+                    .is_some_and(|props| props.section.is_some())
+            {
+                return Err("a section break is among the paragraphs".to_string());
+            }
+            entries.push((element, SortValue::of(&paragraph_plain_text(paragraph), kind)));
+        }
+        if entries.len() < 2 {
+            return Ok(());
+        }
+        if entries
+            .windows(2)
+            .any(|pair| pair[1].0 != pair[0].0 + 1)
+        {
+            return Err("only adjacent paragraphs can be sorted".to_string());
+        }
+        let base = entries[0].0;
+        let mut order: Vec<usize> = (0..entries.len()).collect();
+        order.sort_by(|&a, &b| {
+            let order = entries[a].1.compare(&entries[b].1);
+            if descending {
+                order.reverse()
+            } else {
+                order
+            }
+        });
+        // Move each paragraph into its slot, front to back; `current` tracks
+        // where the not-yet-placed ones sit now.
+        let mut current: Vec<usize> = (0..entries.len()).collect();
+        for (slot, &original) in order.iter().enumerate() {
+            let from = current[original];
+            if from != slot {
+                self.move_body_elements(base + from, base + from, base + slot)?;
+                for position in current.iter_mut() {
+                    if *position >= slot && *position < from {
+                        *position += 1;
+                    }
+                }
+                current[original] = slot;
+            }
+        }
+        Ok(())
+    }
+
     // ---- formulas ------------------------------------------------------------
 
     /// The table cell paragraph `surface` is in, innermost table first: the
@@ -2651,6 +2726,85 @@ mod tests {
             cell_texts(&document, 0),
             vec![vec!["2023年12月5日"], vec!["2024-01-31"], vec!["2024/3/1"]]
         );
+    }
+
+    #[test]
+    fn paragraphs_sort_by_their_text_below_a_header_and_undo() {
+        let p = |text: &str| format!("<w:p><w:r><w:t xml:space=\"preserve\">{text}</w:t></w:r></w:p>");
+        let body = ["見出し", "みかん", "Banana", "", "apple", "after"]
+            .map(p)
+            .concat();
+        let mut document = load(&package(&body, None));
+        let before = document.export_docx().unwrap();
+        let mut executor = CommandExecutor::new();
+        let sort = |document: &mut WordDocument, executor: &mut CommandExecutor, kind, descending| {
+            apply_headless_commands_with_executor_to_document(
+                document,
+                executor,
+                None,
+                &HeadlessEditRequest {
+                    commands: vec![HeadlessCommand::SortParagraphs {
+                        start_paragraph: 0,
+                        end_paragraph: 4,
+                        kind,
+                        descending,
+                        header: true,
+                    }],
+                },
+            )
+            .expect("sorts");
+        };
+        sort(&mut document, &mut executor, HeadlessTableSortKind::Text, false);
+        assert_eq!(
+            texts(&document),
+            vec!["見出し", "", "apple", "Banana", "みかん", "after"]
+        );
+        assert_eq!(
+            texts(&load(&document.export_docx().unwrap())),
+            texts(&document)
+        );
+        let mut selection = None;
+        executor
+            .undo(&mut CommandContext::new(&mut document, &mut selection))
+            .expect("undo");
+        assert_eq!(
+            part(&document.export_docx().unwrap(), "word/document.xml"),
+            part(&before, "word/document.xml")
+        );
+
+        // Numbers, largest first; no header.
+        let body = ["10 個", "2 個", "33", "x"].map(p).concat();
+        let mut document = load(&package(&body, None));
+        apply(
+            &mut document,
+            HeadlessCommand::SortParagraphs {
+                start_paragraph: 0,
+                end_paragraph: 3,
+                kind: HeadlessTableSortKind::Number,
+                descending: true,
+                header: false,
+            },
+        );
+        assert_eq!(texts(&document), vec!["33", "10 個", "2 個", "x"]);
+    }
+
+    #[test]
+    fn paragraphs_in_a_table_are_not_sorted_as_paragraphs() {
+        let body = format!("<w:p/>{}<w:p/>", table(&[&["b"], &["a"]]));
+        let mut document = load(&package(&body, None));
+        let result = apply_headless_commands_to_document(
+            &mut document,
+            &HeadlessEditRequest {
+                commands: vec![HeadlessCommand::SortParagraphs {
+                    start_paragraph: 0,
+                    end_paragraph: 2,
+                    kind: HeadlessTableSortKind::Text,
+                    descending: false,
+                    header: false,
+                }],
+            },
+        );
+        assert!(result.is_err());
     }
 
     #[test]

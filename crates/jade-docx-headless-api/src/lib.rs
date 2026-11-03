@@ -2211,6 +2211,19 @@ pub enum HeadlessCommand {
         #[serde(default)]
         header_rows: usize,
     },
+    /// 並べ替え outside a table: body paragraphs `start_paragraph..=
+    /// end_paragraph` ordered by their text (Word's 段落 key); with `header`
+    /// the first one is a 見出し行 and stays first.
+    SortParagraphs {
+        start_paragraph: usize,
+        end_paragraph: usize,
+        #[serde(default)]
+        kind: HeadlessTableSortKind,
+        #[serde(default)]
+        descending: bool,
+        #[serde(default)]
+        header: bool,
+    },
     /// Word's 計算式: an `=` field at the caret, whose result is computed now
     /// from the table around it — `=SUM(ABOVE)`, `=AVERAGE(LEFT)`,
     /// `=B2*C2`, … `number_format` is the `\#` picture (`0`, `#,##0`,
@@ -2508,6 +2521,7 @@ impl HeadlessCommand {
             HeadlessCommand::ConvertTextToTable { .. } => "convert_text_to_table",
             HeadlessCommand::ConvertTableToText { .. } => "convert_table_to_text",
             HeadlessCommand::SortTable { .. } => "sort_table",
+            HeadlessCommand::SortParagraphs { .. } => "sort_paragraphs",
             HeadlessCommand::InsertTableFormula { .. } => "insert_table_formula",
             HeadlessCommand::UpdateTableFormulas => "update_table_formulas",
             HeadlessCommand::SetNumbering { .. } => "set_numbering",

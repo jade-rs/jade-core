@@ -5224,6 +5224,36 @@ pub fn apply_headless_commands_with_executor_to_document(
                     move |doc| doc.sort_table(table_order_index, &keys, header_rows),
                 )?;
             }
+            HeadlessCommand::SortParagraphs {
+                start_paragraph,
+                end_paragraph,
+                kind,
+                descending,
+                header,
+            } => {
+                let (start, end, descending, header) =
+                    (*start_paragraph, *end_paragraph, *descending, *header);
+                let kind = match kind {
+                    jade_docx_headless_api::HeadlessTableSortKind::Text => {
+                        crate::word_document::TableSortKind::Text
+                    }
+                    jade_docx_headless_api::HeadlessTableSortKind::Number => {
+                        crate::word_document::TableSortKind::Number
+                    }
+                    jade_docx_headless_api::HeadlessTableSortKind::Date => {
+                        crate::word_document::TableSortKind::Date
+                    }
+                };
+                execute_snapshot_edit(
+                    word_doc,
+                    command_executor,
+                    &mut selection,
+                    index,
+                    "sort_paragraphs",
+                    EditScope::Document,
+                    move |doc| doc.sort_paragraphs(start, end, kind, descending, header),
+                )?;
+            }
             HeadlessCommand::InsertTableFormula {
                 paragraph,
                 offset,

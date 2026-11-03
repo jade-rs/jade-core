@@ -3666,6 +3666,17 @@ const COMMANDS: &[Variant] = &[
         ],
     ),
     variant(
+        "sort_paragraphs",
+        "Sort adjacent body paragraphs by their text (Word's Sort with the Paragraphs key), optionally keeping the first as a header.",
+        &[
+            req("start_paragraph", ArgType::Index, "First paragraph of the range."),
+            req("end_paragraph", ArgType::Index, "Last paragraph of the range (inclusive)."),
+            opt("kind", ArgType::Choice(&["text", "number", "date"]), "How to compare: text (default), number or date."),
+            opt("descending", ArgType::Flag, "Sort Z to A / largest first."),
+            opt("header", ArgType::Flag, "The first paragraph is a header row and stays first."),
+        ],
+    ),
+    variant(
         "insert_table_formula",
         "Insert a formula field into a table cell (Word's Formula, e.g. =SUM(ABOVE)), with its result computed.",
         &[
