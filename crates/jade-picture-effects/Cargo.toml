@@ -1,0 +1,15 @@
+[package]
+name = "jade-picture-effects"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "What Office's picture tools do to a picture's pixels: corrections, colour, artistic effects, background removal, SVG and animated GIF frames, compression."
+
+[features]
+default = ["pixels"]
+# Decoding and drawing pictures; without it only the effect keys.
+pixels = ["dep:image", "dep:resvg"]
+
+[dependencies]
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "gif"], optional = true }
+resvg = { version = "0.45.1", default-features = false, optional = true }

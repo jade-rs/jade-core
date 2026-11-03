@@ -47,9 +47,11 @@ pub fn picture_info(bytes: &[u8]) -> Result<PictureInfo> {
     let mime_type = match format {
         ImageFormat::Png => "image/png",
         ImageFormat::Jpeg => "image/jpeg",
+        // An animated GIF plays on the slide as in PowerPoint.
+        ImageFormat::Gif => "image/gif",
         _ => {
             return Err(WriteError::InvalidPicture(
-                "only PNG and JPEG are supported".into(),
+                "only PNG, JPEG and GIF are supported".into(),
             ))
         }
     };
@@ -99,7 +101,7 @@ pub fn picture_info(bytes: &[u8]) -> Result<PictureInfo> {
     })
 }
 
-fn media_part(package: &OpcPackage, bytes: &[u8], mime: &str) -> Result<String> {
+pub(crate) fn media_part(package: &OpcPackage, bytes: &[u8], mime: &str) -> Result<String> {
     let mut reserved: HashSet<String> = package.part_names().iter().cloned().collect();
     let types = package.required_part_str("[Content_Types].xml")?;
     for node in xml::parse_document_nodes(&types)? {
@@ -133,7 +135,12 @@ fn media_part(package: &OpcPackage, bytes: &[u8], mime: &str) -> Result<String> 
         }
     }
     let digest = format!("{:x}", Sha256::digest(bytes));
-    let extension = if mime == "image/png" { "png" } else { "jpeg" };
+    let extension = match mime {
+        "image/png" => "png",
+        "image/gif" => "gif",
+        "image/svg+xml" => "svg",
+        _ => "jpeg",
+    };
     for suffix in 0.. {
         let tail = if suffix == 0 {
             String::new()
