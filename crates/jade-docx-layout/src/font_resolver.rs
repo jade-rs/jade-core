@@ -1195,7 +1195,7 @@ impl ResolvedRunStyle {
         })
     }
 
-    #[inline]
+    #[inline(always)]
     pub(crate) fn windows_cjk_bold_extra_px(&self, descriptor: &str) -> f64 {
         let cached = self.cjk_metrics();
         let extras = cached.windows_bold_extra_px.get_or_init(|| {

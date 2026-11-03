@@ -2105,6 +2105,7 @@ pub(crate) fn word_windows_cjk_synthetic_bold_extra_advance_px(font_descriptor: 
 /// Word for Mac 16.113 sets bold 10.5pt `第1条（目的）` in either face at a
 /// 10.71pt pitch and the 16pt title at 16.32pt. Windows CJK uses the
 /// separate, smaller observed advance above; half cells retain their own policy.
+#[inline]
 pub fn word_synthetic_bold_extra_advance_px(font_descriptor: &str) -> f64 {
     if word_layout_platform() != WordLayoutPlatform::Mac {
         return 0.0;
@@ -2432,6 +2433,7 @@ pub fn word_font_vertical_metrics_px(font_descriptor: &str) -> Option<(f64, f64)
 /// run names, so its line is taller than the run's own face makes it
 /// (`toc-caption-edge-cases`: a 10.5pt Arial caption with 🧭 is 2.1pt taller
 /// at 1.15 lines). `None` off Mac and for other clusters.
+#[inline]
 pub fn word_mac_emoji_vertical_metrics_px(
     grapheme: &str,
     font_descriptor: &str,
@@ -2449,6 +2451,7 @@ pub fn word_mac_emoji_vertical_metrics_px(
 /// run's size, Apple Color Emoji's 800-unit advance, where the host measures
 /// its own emoji face wider (`toc-caption-edge-cases`: 🧭 at 10.5pt advances
 /// 10.5pt). `None` off Mac and for other clusters.
+#[inline]
 pub fn word_mac_emoji_advance_px(grapheme: &str, font_descriptor: &str) -> Option<f64> {
     if word_layout_platform() != WordLayoutPlatform::Mac || !is_emoji_presentation_cluster(grapheme)
     {

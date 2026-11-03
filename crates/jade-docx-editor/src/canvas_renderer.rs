@@ -280,6 +280,7 @@ mod paragraph_join;
 mod preset_shape_tests;
 #[cfg(test)]
 mod recording_host;
+mod run_style_key;
 #[cfg(test)]
 mod section_tests;
 mod structure;
@@ -31076,6 +31077,11 @@ where
         properties: Option<&RunProperties>,
         doc_grid_char_spacing_px: Option<f64>,
     ) -> u64 {
+        if jade_docx_layout::line_metrics::word_layout_platform()
+            == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+        {
+            return run_style_key::windows_key(properties, doc_grid_char_spacing_px);
+        }
         let mut hasher = FxHasher::default();
         doc_grid_char_spacing_px.map(f64::to_bits).hash(&mut hasher);
         if let Some(props) = properties {

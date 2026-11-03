@@ -23,6 +23,7 @@ pub fn set_word_layout_platform(platform: WordLayoutPlatform) {
     WORD_LAYOUT_PLATFORM.with(|cell| cell.set(platform));
 }
 
+#[inline]
 pub fn word_layout_platform() -> WordLayoutPlatform {
     WORD_LAYOUT_PLATFORM.with(std::cell::Cell::get)
 }
