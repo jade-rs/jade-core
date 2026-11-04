@@ -8,7 +8,7 @@
 use crate::SkiaRenderHost;
 use futures::executor::block_on;
 pub use jade_docx_editor::canvas_renderer::CaretAffinity;
-use jade_docx_editor::canvas_renderer::{CanvasRenderer, FullLayoutDebugSnapshot};
+use jade_docx_editor::canvas_renderer::{CanvasRenderer, FieldShading, FullLayoutDebugSnapshot};
 use jade_docx_editor::commands::transform_object::TransformObjectCommand;
 use jade_docx_editor::commands::{
     Command, CommandContext, CommandExecutor, HistoryRenderFootprint,
@@ -257,6 +257,8 @@ pub struct NativeDocument {
     field_datetime: Option<FieldDateTime>,
     /// Which fields show their codes (⌥F9, ⇧F9).
     field_codes: FieldCodeView,
+    /// フィールドの網かけ, on screen only.
+    field_shading: FieldShading,
     /// A view's page box in place of the sections' (Web レイアウト, 閲覧
     /// モード); kept here so a renderer built again keeps it.
     view_geometry: Option<jade_docx_editor::canvas_renderer::ViewGeometry>,
@@ -402,6 +404,7 @@ impl NativeDocument {
             fonts,
             field_datetime: None,
             field_codes: FieldCodeView::default(),
+            field_shading: FieldShading::Never,
             math_face: math_face_of(faces),
             view_geometry: None,
             outline_indents: None,
@@ -750,6 +753,7 @@ impl NativeDocument {
         renderer.set_outline_indents(self.outline_indents.clone());
         renderer.set_selection_range_for_render(self.selection);
         renderer.set_current_datetime(self.field_datetime.map(renderer_datetime));
+        renderer.set_field_shading(self.field_shading.clone());
         if self.field_codes != FieldCodeView::default() {
             renderer.set_field_code_display(Some(field_code_display(
                 &self.word_document,
@@ -1500,6 +1504,24 @@ impl NativeDocument {
     /// Without one they show the result Word saved.
     pub fn set_field_datetime(&mut self, datetime: Option<FieldDateTime>) {
         self.field_datetime = datetime;
+    }
+
+    /// フィールドの網かけ: which fields' text is drawn on Word's grey (on
+    /// screen; a PDF leaves it out). Repaints when it changed; whether it
+    /// did.
+    pub fn set_field_shading(&mut self, shading: FieldShading) -> Result<bool, String> {
+        if self.field_shading == shading {
+            return Ok(false);
+        }
+        self.field_shading = shading.clone();
+        self.renderer.set_field_shading(shading);
+        self.repaint_all()?;
+        Ok(true)
+    }
+
+    /// Which fields are drawn shaded.
+    pub fn field_shading(&self) -> &FieldShading {
+        &self.field_shading
     }
 
     /// Which fields show their codes.

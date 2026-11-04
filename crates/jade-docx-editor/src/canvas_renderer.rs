@@ -980,6 +980,23 @@ fn shape_group_contains_text(group: &RunShapeGroup) -> bool {
 /// first run) and its `{ CODE }`.
 pub type FieldCodeDisplay = HashMap<XmlNodeId, (XmlNodeId, Rc<str>)>;
 
+/// フィールドの網かけ (Word 環境設定 › 表示): which fields' text is drawn on
+/// Word's grey. A view setting — never part of the document or a PDF.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub enum FieldShading {
+    /// 表示しない.
+    #[default]
+    Never,
+    /// 常に表示する.
+    Always,
+    /// 選択時に表示する: the runs of the fields the selection is in (see
+    /// `fields::field_shading_runs`).
+    Runs(Rc<HashSet<XmlNodeId>>),
+}
+
+/// Word's field shading grey.
+const FIELD_SHADING_FILL: &str = "D9D9D9";
+
 /// Host clock snapshot used to resolve `DATE`/`TIME` fields. All fields use the
 /// host's local timezone; `weekday` is 0 = Sunday .. 6 = Saturday.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -3796,6 +3813,8 @@ where
     /// place of its field — `(field, code)`, the field named by its first
     /// run. A field's runs show its code once.
     field_code_display: Option<Rc<FieldCodeDisplay>>,
+    /// フィールドの網かけ.
+    field_shading: FieldShading,
     header_drawn: bool,
     footer_drawn: bool,
     editing_mode: crate::canvas_view::EditingMode,
@@ -8602,6 +8621,7 @@ where
             bookmark_note_targets: HashMap::new(),
             current_datetime: None,
             field_code_display: None,
+            field_shading: FieldShading::Never,
             header_drawn: false,
             footer_drawn: false,
             editing_mode: crate::canvas_view::EditingMode::Body,
@@ -18616,6 +18636,29 @@ where
                 } else {
                     resolved_run_properties
                 };
+            // フィールドの網かけ: a field's text on Word's grey, under any
+            // highlight or shading of its own.
+            let resolved_run_properties = if self.field_shaded(run, field_code.is_some()) {
+                let mut properties = resolved_run_properties
+                    .as_deref()
+                    .cloned()
+                    .unwrap_or_default();
+                if properties.highlight.is_none()
+                    && properties
+                        .shading
+                        .as_ref()
+                        .is_none_or(jade_docx_reader::document::Shading::is_empty)
+                {
+                    properties.shading = Some(jade_docx_reader::document::Shading {
+                        val: Some("clear".to_string()),
+                        color: Some("auto".to_string()),
+                        fill: Some(FIELD_SHADING_FILL.to_string()),
+                    });
+                }
+                Some(Rc::new(properties))
+            } else {
+                resolved_run_properties
+            };
             // Text after an ADVANCE \u or \d sits that much higher or lower.
             let resolved_run_properties = if advance_raise_pt.abs() > f32::EPSILON {
                 let mut properties = resolved_run_properties
@@ -36820,6 +36863,32 @@ where
         self.field_code_display = display.map(Rc::new);
         self.clear_paragraph_render_cache();
         self.invalidate_layout_from(0);
+    }
+
+    /// Draws fields' text on Word's grey as `shading` says. Paint and layout
+    /// caches are dropped when it changes, as the runs' fills do.
+    pub fn set_field_shading(&mut self, shading: FieldShading) {
+        if shading == self.field_shading {
+            return;
+        }
+        self.field_shading = shading;
+        self.clear_paragraph_render_cache();
+        self.invalidate_layout_from(0);
+    }
+
+    /// Whether a body run of a field is drawn on the field shading grey.
+    fn field_shaded(&self, run: &Run, shows_code: bool) -> bool {
+        if self.rendering_header_footer_story || self.rendering_note_story {
+            return false;
+        }
+        if run.field.is_none() && !shows_code {
+            return false;
+        }
+        match &self.field_shading {
+            FieldShading::Never => false,
+            FieldShading::Always => true,
+            FieldShading::Runs(runs) => run.node_id.is_some_and(|id| runs.contains(&id)),
+        }
     }
 
     /// The field code a body run shows instead of its content.
