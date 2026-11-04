@@ -7643,21 +7643,15 @@ impl DocumentParser {
         Ok(Some(image))
     }
 
-    /// A `w:ptab`'s alignment, base and leader. Read through the XML tree's
-    /// own attribute reader and kept out of line: a new direct use of
-    /// quick-xml's attribute iterator stopped it being inlined into that
-    /// reader, which every element of every part goes through.
+    /// A `w:ptab`'s alignment, base and leader, read from the tag's raw
+    /// attribute text. Its values are plain tokens, and keeping this off
+    /// quick-xml's attribute iterator leaves that iterator inlined into the
+    /// XML tree's attribute reader, which every element goes through.
     #[cold]
     #[inline(never)]
     fn positional_tab(ordinal: usize, element: &BytesStart<'_>) -> PositionalTab {
-        let attributes =
-            crate::docx_xml::XmlAttribute::parse_attributes(element).unwrap_or_default();
-        PositionalTab::from_attributes(
-            ordinal,
-            attributes
-                .iter()
-                .map(|attribute| (attribute.name.as_str(), attribute.value.as_str())),
-        )
+        let raw = String::from_utf8_lossy(element.attributes_raw());
+        PositionalTab::from_attributes(ordinal, raw_attribute_pairs(&raw))
     }
 
     fn apply_ole_object_attributes(image: &mut RunImage, element: &BytesStart<'_>) {
@@ -11254,6 +11248,22 @@ type NoteProperties = (
     Option<bool>,
 );
 
+/// `name="value"` (or single-quoted) pairs of a start tag's raw attribute
+/// text, values left as written.
+fn raw_attribute_pairs(raw: &str) -> impl Iterator<Item = (&str, &str)> {
+    let mut rest = raw;
+    std::iter::from_fn(move || {
+        let eq = rest.find('=')?;
+        let name = rest[..eq].trim();
+        let after = rest[eq + 1..].trim_start();
+        let quote = after.chars().next().filter(|c| *c == '"' || *c == '\'')?;
+        let body = &after[1..];
+        let end = body.find(quote)?;
+        rest = &body[end + 1..];
+        Some((name, &body[..end]))
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -14686,6 +14696,21 @@ mod tests {
             _ => panic!("expected paragraph"),
         };
         assert_eq!(paragraph.runs[0].text, "HelloWorld");
+    }
+
+    #[test]
+    fn raw_attribute_pairs_read_either_quote_and_spacing() {
+        let pairs: Vec<_> =
+            raw_attribute_pairs(r#" w:alignment="right"  w:relativeTo = 'indent' w:leader="dot""#)
+                .collect();
+        assert_eq!(
+            pairs,
+            [
+                ("w:alignment", "right"),
+                ("w:relativeTo", "indent"),
+                ("w:leader", "dot")
+            ]
+        );
     }
 
     #[test]

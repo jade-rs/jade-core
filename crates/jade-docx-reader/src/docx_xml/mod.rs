@@ -1419,9 +1419,7 @@ pub struct XmlAttribute {
 }
 
 impl XmlAttribute {
-    pub(crate) fn parse_attributes(
-        e: &quick_xml::events::BytesStart<'_>,
-    ) -> Result<Vec<Self>, DocxXmlError> {
+    fn parse_attributes(e: &quick_xml::events::BytesStart<'_>) -> Result<Vec<Self>, DocxXmlError> {
         // Attribute names already live in the result. Reuse them for duplicate
         // detection instead of allocating quick-xml's separate key-range vector
         // for every element with attributes.
