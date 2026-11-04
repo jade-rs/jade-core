@@ -19532,8 +19532,7 @@ where
                             ShadingPaint::of(shading, |c| {
                                 !(self.dark_mode_text && is_default_page_background_shading(c))
                             })
-                        })
-                        .map(Rc::new),
+                        }),
                     paragraph_box_borders
                         .and_then(|borders| {
                             resolve_paragraph_box_borders(
@@ -21248,6 +21247,35 @@ where
         rect: (f64, f64, f64, f64),
         commands_out: &mut Option<&mut Vec<DrawCommand>>,
     ) {
+        // A plain fill, as nearly all shading is: draw it directly, without
+        // building and replaying a command list.
+        if shading.pattern.is_none() {
+            let Some(fill) = shading.fill.as_ref() else {
+                return;
+            };
+            let (x, y, width, height) = rect;
+            if width <= 0.0 || height <= 0.0 {
+                return;
+            }
+            if self.should_draw_current_page_for_render() {
+                let context = self.host.painter();
+                context.save();
+                context.set_fill_style_str(fill);
+                context.fill_rect(x, y, width, height);
+                context.restore();
+                self.reset_fill_style_state();
+            }
+            if let Some(buf) = commands_out.as_deref_mut() {
+                buf.push(DrawCommand::FillRect {
+                    x,
+                    y,
+                    width,
+                    height,
+                    color: Rc::clone(fill),
+                });
+            }
+            return;
+        }
         let commands = shading.commands(rect);
         if commands.is_empty() {
             return;
@@ -21523,7 +21551,7 @@ where
         top_leading_share: f64,
         exact_line_baseline_share: Option<f64>,
         pending_numbering: Option<&PendingNumberingRender>,
-        paragraph_shading: Option<Rc<ShadingPaint>>,
+        paragraph_shading: Option<ShadingPaint>,
         paragraph_borders: Option<Rc<ResolvedParagraphBorders>>,
         commands_out: Option<&mut Vec<DrawCommand>>,
         selection_lines_out: Option<&mut Vec<SelectionLineLayout>>,
@@ -22600,7 +22628,7 @@ where
             // (before highlights, selection, and glyphs). The band spans the
             // paragraph content box (left indent → right indent) and is the
             // same width on every line, matching Word's paragraph shading.
-            if let Some(shading) = paragraph_shading.as_deref() {
+            if let Some(shading) = paragraph_shading.as_ref() {
                 let band_x = paragraph_base_x;
                 if let Some(band_w) =
                     paragraph_shading_band_width(paragraph_base_x, default_right_limit)

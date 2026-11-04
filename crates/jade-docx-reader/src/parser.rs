@@ -2448,25 +2448,11 @@ impl DocumentParser {
                                         .map(|run| run.text.matches('\t').count())
                                         .sum()
                                 }) + run.text.matches('\t').count();
-                                let attributes: Vec<(String, String)> = e
-                                    .attributes()
-                                    .flatten()
-                                    .map(|attr| {
-                                        (
-                                            String::from_utf8_lossy(attr.key.as_ref()).into_owned(),
-                                            String::from_utf8_lossy(&attr.value).into_owned(),
-                                        )
-                                    })
-                                    .collect();
                                 if let Some(props) = current_paragraph_props.as_mut() {
-                                    props.positional_tabs.get_or_insert_with(Vec::new).push(
-                                        PositionalTab::from_attributes(
-                                            ordinal,
-                                            attributes.iter().map(|(name, value)| {
-                                                (name.as_str(), value.as_str())
-                                            }),
-                                        ),
-                                    );
+                                    props
+                                        .positional_tabs
+                                        .get_or_insert_with(Vec::new)
+                                        .push(Self::positional_tab(ordinal, e));
                                 }
                                 run.text.push('\t');
                                 paragraph_text_len += 1;
@@ -7655,6 +7641,23 @@ impl DocumentParser {
         }
 
         Ok(Some(image))
+    }
+
+    /// A `w:ptab`'s alignment, base and leader. Read through the XML tree's
+    /// own attribute reader and kept out of line: a new direct use of
+    /// quick-xml's attribute iterator stopped it being inlined into that
+    /// reader, which every element of every part goes through.
+    #[cold]
+    #[inline(never)]
+    fn positional_tab(ordinal: usize, element: &BytesStart<'_>) -> PositionalTab {
+        let attributes =
+            crate::docx_xml::XmlAttribute::parse_attributes(element).unwrap_or_default();
+        PositionalTab::from_attributes(
+            ordinal,
+            attributes
+                .iter()
+                .map(|attribute| (attribute.name.as_str(), attribute.value.as_str())),
+        )
     }
 
     fn apply_ole_object_attributes(image: &mut RunImage, element: &BytesStart<'_>) {

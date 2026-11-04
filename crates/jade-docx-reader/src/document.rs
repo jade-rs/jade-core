@@ -5488,20 +5488,23 @@ impl Shading {
     /// Part 1 §17.18.78 `ST_Shd`): `None` for clear, solid, a percentage and
     /// anything unknown.
     pub fn pattern(&self) -> Option<ShadingPattern> {
-        let value = self.val.as_deref()?.to_ascii_lowercase();
-        let (thin, lines) = match value.strip_prefix("thin") {
-            Some(rest) => (true, rest.to_string()),
-            None => (false, value),
+        // Without allocating: every shaded paragraph asks on every paint, and
+        // nearly all of them are `clear` or `solid`.
+        let value = self.val.as_deref()?;
+        let (thin, lines) = match value.get(..4) {
+            Some(prefix) if prefix.eq_ignore_ascii_case("thin") => (true, &value[4..]),
+            _ => (false, value),
         };
-        let lines = match lines.as_str() {
-            "horzstripe" => ShadingLines::Horizontal,
-            "vertstripe" => ShadingLines::Vertical,
-            "diagstripe" => ShadingLines::DiagonalDown,
-            "reversediagstripe" => ShadingLines::DiagonalUp,
-            "horzcross" => ShadingLines::Cross,
-            "diagcross" => ShadingLines::DiagonalCross,
-            _ => return None,
-        };
+        let lines = [
+            ("horzstripe", ShadingLines::Horizontal),
+            ("vertstripe", ShadingLines::Vertical),
+            ("diagstripe", ShadingLines::DiagonalDown),
+            ("reversediagstripe", ShadingLines::DiagonalUp),
+            ("horzcross", ShadingLines::Cross),
+            ("diagcross", ShadingLines::DiagonalCross),
+        ]
+        .into_iter()
+        .find_map(|(name, kind)| lines.eq_ignore_ascii_case(name).then_some(kind))?;
         Some(ShadingPattern { lines, thin })
     }
 
