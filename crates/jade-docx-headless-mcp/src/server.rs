@@ -3369,6 +3369,27 @@ const COMMANDS: &[Variant] = &[
         ],
     ),
     variant(
+        "set_table_alt_text",
+        "Set a table's alternative text (Word's 代替テキスト): the title and description screen readers announce.",
+        &[
+            req(
+                "table_order_index",
+                ArgType::Index,
+                "Zero-based index of the table in document order.",
+            ),
+            opt(
+                "title",
+                ArgType::Text,
+                "タイトル; omit to leave it, empty to remove it.",
+            ),
+            opt(
+                "description",
+                ArgType::Text,
+                "説明; omit to leave it, empty to remove it.",
+            ),
+        ],
+    ),
+    variant(
         "set_table_cell_text",
         "Replace the text of a single table cell.",
         &[

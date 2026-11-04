@@ -4735,6 +4735,29 @@ pub fn apply_headless_commands_with_executor_to_document(
                     move |doc| doc.set_table_direction(table_order_index, right_to_left),
                 )?;
             }
+            HeadlessCommand::SetTableAltText {
+                table_order_index,
+                title,
+                description,
+            } => {
+                let table_order_index = *table_order_index;
+                let (title, description) = (title.clone(), description.clone());
+                execute_snapshot_edit(
+                    word_doc,
+                    command_executor,
+                    &mut selection,
+                    index,
+                    "set_table_alt_text",
+                    EditScope::Document,
+                    move |doc| {
+                        doc.set_table_alt_text(
+                            table_order_index,
+                            title.as_deref(),
+                            description.as_deref(),
+                        )
+                    },
+                )?;
+            }
             HeadlessCommand::SetTableCellText {
                 table_order_index,
                 row,

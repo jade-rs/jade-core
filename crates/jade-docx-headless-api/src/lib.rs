@@ -2015,6 +2015,16 @@ pub enum HeadlessCommand {
         table_order_index: usize,
         right_to_left: bool,
     },
+    /// 代替テキスト: the table's タイトル (`w:tblCaption`) and 説明
+    /// (`w:tblDescription`). An absent one is left alone; an empty one is
+    /// taken off.
+    SetTableAltText {
+        table_order_index: usize,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        title: Option<String>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        description: Option<String>,
+    },
     /// One border edge: the line style (`single`, `double`, `dashed`, `none`,
     /// …), its thickness in points, and its colour. Absent parts fall back to a
     /// single line, Word's own default thickness, and `auto`.
@@ -2566,6 +2576,7 @@ impl HeadlessCommand {
             }
             HeadlessCommand::SetTableCellFitText { .. } => "set_table_cell_fit_text",
             HeadlessCommand::SetTableDirection { .. } => "set_table_direction",
+            HeadlessCommand::SetTableAltText { .. } => "set_table_alt_text",
             HeadlessCommand::ResetTableCellMargins { .. } => "reset_table_cell_margins",
             HeadlessCommand::SetTableRowHeightProperties { .. } => {
                 "set_table_row_height_properties"

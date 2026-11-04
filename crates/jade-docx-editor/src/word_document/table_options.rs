@@ -2,7 +2,8 @@
 //! written where the schema puts them so Word reads the table as written:
 //!
 //! - セル › オプション › 文字列をセル幅に合わせる (`w:tcFitText`);
-//! - 表 › 表の方向 (右から左 / 左から右, `w:bidiVisual`).
+//! - 表 › 表の方向 (右から左 / 左から右, `w:bidiVisual`);
+//! - 代替テキスト's タイトル and 説明 (`w:tblCaption`, `w:tblDescription`).
 
 use super::*;
 
@@ -148,6 +149,66 @@ impl WordDocument {
             right_to_left.then(Vec::new),
         )
     }
+
+    /// 代替テキスト: the table's タイトル and 説明 (`w:tblCaption`,
+    /// `w:tblDescription`), as written.
+    pub fn table_alt_text(&self, table_order_index: usize) -> (Option<String>, Option<String>) {
+        let Some(table_id) = self
+            .table_by_order(table_order_index)
+            .and_then(|table| table.node_id)
+        else {
+            return (None, None);
+        };
+        let Some(raw) = self.raw_document.as_ref() else {
+            return (None, None);
+        };
+        let value = |name: &str| {
+            let table = raw.element(table_id)?;
+            let properties = table.children.iter().find_map(|node| match node {
+                XmlNode::Element(element) if element.name == "w:tblPr" => Some(element),
+                _ => None,
+            })?;
+            properties.children.iter().find_map(|node| match node {
+                XmlNode::Element(element) if element.name == name => element
+                    .attributes
+                    .iter()
+                    .find(|attribute| attribute.name == "w:val")
+                    .map(|attribute| attribute.value.clone()),
+                _ => None,
+            })
+        };
+        (value("w:tblCaption"), value("w:tblDescription"))
+    }
+
+    /// 代替テキスト: the table's タイトル and 説明; `None` leaves one as it
+    /// is, an empty one takes it off.
+    pub fn set_table_alt_text(
+        &mut self,
+        table_order_index: usize,
+        title: Option<&str>,
+        description: Option<&str>,
+    ) -> Result<(), String> {
+        let table_id = self
+            .table_by_order(table_order_index)
+            .ok_or_else(|| format!("table {table_order_index} was not found"))?
+            .node_id;
+        for (name, value) in [("w:tblCaption", title), ("w:tblDescription", description)] {
+            let Some(value) = value else { continue };
+            self.put_ordered_property(
+                table_id,
+                "w:tblPr",
+                TABLE_PROPERTY_ORDER,
+                name,
+                (!value.is_empty()).then(|| {
+                    vec![XmlAttribute {
+                        name: "w:val".to_string(),
+                        value: value.to_string(),
+                    }]
+                }),
+            )?;
+        }
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -215,5 +276,38 @@ mod tests {
         assert!(!reopened.table_by_order(0).unwrap().bidi_visual);
         let (_, xml) = document_xml(&reopened);
         assert!(!xml.contains("bidiVisual"), "{xml}");
+    }
+
+    #[test]
+    fn alt_text_is_written_in_schema_order_and_read_back() {
+        let mut document = load(&docx_with_body(TABLE));
+        assert_eq!(document.table_alt_text(0), (None, None));
+        document
+            .set_table_alt_text(0, Some("社員名簿"), Some("氏名 & 部署の一覧"))
+            .unwrap();
+        let (saved, xml) = document_xml(&document);
+        let look = xml.find("<w:tblLook ").expect(&xml);
+        let caption = xml.find(r#"<w:tblCaption w:val="社員名簿"/>"#).expect(&xml);
+        let description = xml
+            .find(r#"<w:tblDescription w:val="氏名 &amp; 部署の一覧"/>"#)
+            .expect(&xml);
+        assert!(look < caption && caption < description, "{xml}");
+
+        let mut reopened = load(&saved);
+        assert_eq!(
+            reopened.table_alt_text(0),
+            (
+                Some("社員名簿".to_string()),
+                Some("氏名 & 部署の一覧".to_string())
+            )
+        );
+        // `None` leaves one alone; an empty one takes it off.
+        reopened.set_table_alt_text(0, Some(""), None).unwrap();
+        assert_eq!(
+            reopened.table_alt_text(0),
+            (None, Some("氏名 & 部署の一覧".to_string()))
+        );
+        let (_, xml) = document_xml(&reopened);
+        assert!(!xml.contains("tblCaption"), "{xml}");
     }
 }
