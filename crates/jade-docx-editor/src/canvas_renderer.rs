@@ -484,6 +484,9 @@ impl Default for CommentDecorationColors {
 const CROP_MARK_LENGTH_PX: f64 = 12.0;
 const CROP_MARK_STROKE_WIDTH: f64 = 1.0;
 const CROP_MARK_COLOR: &str = "#888888";
+/// 文字列の範囲: Word's dotted grey line round the text area.
+const TEXT_BOUNDARY_COLOR: &str = "#A6A6A6";
+const TEXT_BOUNDARY_DASH: [f64; 2] = [1.0, 2.0];
 /// Color of the vertical rule drawn between columns when `w:cols w:sep` is on.
 const COLUMN_SEPARATOR_COLOR: &str = "#000000";
 /// Stroke width (in CSS px) of the inter-column separator rule.
@@ -16238,11 +16241,11 @@ where
         if self.pageless_mode {
             return;
         }
-        if self
-            .last_options
-            .as_ref()
-            .is_some_and(|options| !options.show_crop_marks)
-        {
+        let (crop_marks, text_boundaries) =
+            self.last_options.as_ref().map_or((true, false), |options| {
+                (options.show_crop_marks, options.show_text_boundaries)
+            });
+        if !crop_marks && !text_boundaries {
             return;
         }
         if !self.should_draw_page_for_current_render(page) {
@@ -16252,6 +16255,26 @@ where
         let content_width = self.page_width - self.margin_left - self.margin_right;
         let content_height = self.page_height - self.margin_top - self.margin_bottom;
         if content_width <= 0.0 || content_height <= 0.0 {
+            return;
+        }
+        if text_boundaries {
+            let context = self.host.painter();
+            context.save();
+            context.set_stroke_style_str(TEXT_BOUNDARY_COLOR);
+            context.set_line_width(CROP_MARK_STROKE_WIDTH);
+            context.set_line_dash(&TEXT_BOUNDARY_DASH);
+            context.begin_path();
+            context.rect(
+                self.margin_left,
+                self.margin_top,
+                content_width,
+                content_height,
+            );
+            context.stroke();
+            context.set_line_dash(&[]);
+            context.restore();
+        }
+        if !crop_marks {
             return;
         }
 

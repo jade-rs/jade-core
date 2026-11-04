@@ -214,6 +214,9 @@ pub struct Options {
     pub render_alt_chunks: bool,
     pub show_formatting_marks: bool,
     pub show_crop_marks: bool,
+    /// 文字列の範囲 (Word 環境設定 › 表示): a dotted line round the text
+    /// area of each page. On screen only, off by default.
+    pub show_text_boundaries: bool,
     record_changes: bool,
     revision_author: Option<String>,
     /// ユーザー名の頭文字: written on comments beside the author. `None`
@@ -722,6 +725,7 @@ impl Default for Options {
             render_alt_chunks: true,
             show_formatting_marks: true,
             show_crop_marks: true,
+            show_text_boundaries: false,
             record_changes: false,
             revision_author: None,
             author_initials: None,

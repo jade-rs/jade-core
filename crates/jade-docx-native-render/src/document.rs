@@ -445,6 +445,7 @@ impl NativeDocument {
         options.show_formatting_marks = false;
         options.set_formatting_mark_kinds(Default::default());
         options.show_crop_marks = false;
+        options.show_text_boundaries = false;
         if let Some(markup) = pdf_options.markup {
             options.render_changes = markup;
             options.render_comments = markup;
@@ -1565,6 +1566,23 @@ impl NativeDocument {
     pub fn set_crop_marks(&mut self, show: bool) -> Result<(), String> {
         self.options.show_crop_marks = show;
         self.repaint_all().map(|_| ())
+    }
+
+    /// Whether the crop marks (トリムマーク) are drawn.
+    pub fn crop_marks(&self) -> bool {
+        self.options.show_crop_marks
+    }
+
+    /// Shows or hides 文字列の範囲, the dotted line round each page's text
+    /// area. On screen only: a PDF leaves it out.
+    pub fn set_text_boundaries(&mut self, show: bool) -> Result<(), String> {
+        self.options.show_text_boundaries = show;
+        self.repaint_all().map(|_| ())
+    }
+
+    /// Whether 文字列の範囲 is drawn.
+    pub fn text_boundaries(&self) -> bool {
+        self.options.show_text_boundaries
     }
 
     /// A table's model, as the headless API reports it.
