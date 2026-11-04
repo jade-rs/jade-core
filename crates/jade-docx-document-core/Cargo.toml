@@ -12,6 +12,8 @@ unexpected_cfgs = { level = "warn", check-cfg = ['cfg(kani)'] }
 [dependencies]
 base64 = "0.22"
 cfb = "0.7"
+# The Packager's class on an embedded file's compound file (ole_objects).
+uuid = { version = "1.26", default-features = false }
 sha2 = "0.10"
 png = "0.17"
 quick-xml = "0.41"
