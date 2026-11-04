@@ -2172,6 +2172,91 @@ fn parse_font_descriptor_size_pt(font_descriptor: &str) -> Option<f64> {
     })
 }
 
+/// What a shading (`w:shd`) paints: the background colour, and the lines a
+/// stripe or cross pattern draws over it (ECMA-376 Part 1 §17.18.78).
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct ShadingPaint {
+    pub fill: Option<Rc<str>>,
+    pub pattern: Option<(jade_docx_reader::document::ShadingPattern, Rc<str>)>,
+}
+
+impl ShadingPaint {
+    /// `None` when the shading paints nothing. `keep_fill` drops a
+    /// background (dark mode's white page).
+    pub(crate) fn of(
+        shading: &jade_docx_reader::document::Shading,
+        keep_fill: impl Fn(&str) -> bool,
+    ) -> Option<Self> {
+        let fill = shading
+            .resolved_background_color()
+            .filter(|color| keep_fill(color))
+            .map(|color| Rc::from(color.as_str()));
+        let pattern = shading
+            .pattern()
+            .map(|pattern| (pattern, Rc::from(shading.pattern_color().as_str())));
+        (fill.is_some() || pattern.is_some()).then_some(Self { fill, pattern })
+    }
+
+    /// The commands that paint it over a rectangle: the fill, then the
+    /// pattern's lines cut to the rectangle.
+    pub(crate) fn commands(&self, (x, y, width, height): (f64, f64, f64, f64)) -> Vec<DrawCommand> {
+        let mut commands = Vec::new();
+        if width <= 0.0 || height <= 0.0 {
+            return commands;
+        }
+        if let Some(fill) = &self.fill {
+            commands.push(DrawCommand::FillRect {
+                x,
+                y,
+                width,
+                height,
+                color: Rc::clone(fill),
+            });
+        }
+        if let Some((pattern, color)) = &self.pattern {
+            let (rows, columns, diagonals) = pattern.lines_in(x, y, width, height);
+            for (top, band) in rows {
+                commands.push(DrawCommand::FillRect {
+                    x,
+                    y: top,
+                    width,
+                    height: band,
+                    color: Rc::clone(color),
+                });
+            }
+            for (left, band) in columns {
+                commands.push(DrawCommand::FillRect {
+                    x: left,
+                    y,
+                    width: band,
+                    height,
+                    color: Rc::clone(color),
+                });
+            }
+            if !diagonals.is_empty() {
+                // A diagonal as wide across as a stripe is high.
+                let line_width = pattern.line_width_px() / std::f64::consts::SQRT_2;
+                commands.push(DrawCommand::Save);
+                commands.push(DrawCommand::ClipRect {
+                    x,
+                    y,
+                    width,
+                    height,
+                });
+                for (from, to) in diagonals {
+                    commands.push(DrawCommand::StrokePolyline {
+                        points: Rc::from(vec![from, to]),
+                        line_width,
+                        color: Rc::clone(color),
+                    });
+                }
+                commands.push(DrawCommand::Restore);
+            }
+        }
+        commands
+    }
+}
+
 /// Computes the width of a paragraph-shading band for a single line.
 ///
 /// The band spans the paragraph content box from the left edge (`base_x`)
@@ -10882,6 +10967,7 @@ where
             props.shading.hash(&mut hasher);
             props.borders.hash(&mut hasher);
             props.drop_cap.hash(&mut hasher);
+            props.positional_tabs.hash(&mut hasher);
             for tab in &props.tabs {
                 tab.kind.hash(&mut hasher);
                 tab.position.map(f32::to_bits).hash(&mut hasher);
@@ -11157,6 +11243,7 @@ where
                 props.shading.hash(&mut hasher);
                 props.borders.hash(&mut hasher);
                 props.drop_cap.hash(&mut hasher);
+                props.positional_tabs.hash(&mut hasher);
                 for tab in &props.tabs {
                     tab.kind.hash(&mut hasher);
                     tab.position.map(f32::to_bits).hash(&mut hasher);
@@ -17984,6 +18071,9 @@ where
             paragraph_style.first_line_indent = 0.0;
         }
         if let Some(props) = &paragraph.properties {
+            paragraph_style.positional_tabs = jade_docx_layout::line_wrap::resolve_positional_tabs(
+                props.positional_tabs.as_ref(),
+            );
             if !props.tabs.is_empty() {
                 paragraph_style.tab_stops = resolve_tab_stops(&props.tabs);
                 #[cfg(all(debug_assertions, target_arch = "wasm32"))]
@@ -19438,9 +19528,11 @@ where
                         .properties
                         .as_ref()
                         .and_then(|p| p.shading.as_ref())
-                        .and_then(|s| s.resolved_background_color())
-                        .filter(|c| !(self.dark_mode_text && is_default_page_background_shading(c)))
-                        .map(|c| Rc::from(c.as_str())),
+                        .and_then(|shading| {
+                            ShadingPaint::of(shading, |c| {
+                                !(self.dark_mode_text && is_default_page_background_shading(c))
+                            })
+                        }),
                     paragraph_box_borders
                         .and_then(|borders| {
                             resolve_paragraph_box_borders(
@@ -21147,6 +21239,57 @@ where
             .is_none_or(|options| options.revision_view().marks_up(mark))
     }
 
+    /// Paints a shading over a rectangle — its fill and its pattern — and
+    /// records it for cache replay.
+    fn paint_shading(
+        &self,
+        shading: &ShadingPaint,
+        rect: (f64, f64, f64, f64),
+        commands_out: &mut Option<&mut Vec<DrawCommand>>,
+    ) {
+        // A plain fill, as nearly all shading is: draw it directly, without
+        // building and replaying a command list.
+        if shading.pattern.is_none() {
+            let Some(fill) = shading.fill.as_ref() else {
+                return;
+            };
+            let (x, y, width, height) = rect;
+            if width <= 0.0 || height <= 0.0 {
+                return;
+            }
+            if self.should_draw_current_page_for_render() {
+                let context = self.host.painter();
+                context.save();
+                context.set_fill_style_str(fill);
+                context.fill_rect(x, y, width, height);
+                context.restore();
+                self.reset_fill_style_state();
+            }
+            if let Some(buf) = commands_out.as_deref_mut() {
+                buf.push(DrawCommand::FillRect {
+                    x,
+                    y,
+                    width,
+                    height,
+                    color: Rc::clone(fill),
+                });
+            }
+            return;
+        }
+        let commands = shading.commands(rect);
+        if commands.is_empty() {
+            return;
+        }
+        if self.should_draw_current_page_for_render() {
+            let _ =
+                crate::draw_command::executor::execute_commands(&self.host.painter(), &commands);
+            self.invalidate_context_state_tracking();
+        }
+        if let Some(buf) = commands_out.as_deref_mut() {
+            buf.extend(commands);
+        }
+    }
+
     /// Fills a single thin border rectangle for a paragraph border edge,
     /// painting immediately (when the current page is being drawn) and pushing
     /// a `DrawCommand::FillRect` so the border survives cache replay. No-ops on
@@ -21408,7 +21551,7 @@ where
         top_leading_share: f64,
         exact_line_baseline_share: Option<f64>,
         pending_numbering: Option<&PendingNumberingRender>,
-        paragraph_shading_color: Option<Rc<str>>,
+        paragraph_shading: Option<ShadingPaint>,
         paragraph_borders: Option<Rc<ResolvedParagraphBorders>>,
         commands_out: Option<&mut Vec<DrawCommand>>,
         selection_lines_out: Option<&mut Vec<SelectionLineLayout>>,
@@ -22485,28 +22628,16 @@ where
             // (before highlights, selection, and glyphs). The band spans the
             // paragraph content box (left indent → right indent) and is the
             // same width on every line, matching Word's paragraph shading.
-            if let Some(bg) = paragraph_shading_color.as_deref() {
+            if let Some(shading) = paragraph_shading.as_ref() {
                 let band_x = paragraph_base_x;
                 if let Some(band_w) =
                     paragraph_shading_band_width(paragraph_base_x, default_right_limit)
                 {
-                    if self.should_draw_current_page_for_render() {
-                        let context = self.host.painter();
-                        context.save();
-                        context.set_fill_style_str(bg);
-                        context.fill_rect(band_x, top, band_w, line_box_height);
-                        context.restore();
-                        self.reset_fill_style_state();
-                    }
-                    if let Some(buf) = commands_out.as_deref_mut() {
-                        buf.push(DrawCommand::FillRect {
-                            x: band_x,
-                            y: top,
-                            width: band_w,
-                            height: line_box_height,
-                            color: Rc::from(bg),
-                        });
-                    }
+                    self.paint_shading(
+                        shading,
+                        (band_x, top, band_w, line_box_height),
+                        &mut commands_out,
+                    );
                 }
             }
 
@@ -42840,6 +42971,85 @@ mod tests {
             }),
             ..Document::default()
         }
+    }
+
+    /// 網かけ's stripe and cross patterns are drawn as Word draws them: the
+    /// fill behind, then the lines in the pattern's colour on a grid fixed
+    /// to the page — bands for 横縞 / 縦縞, diagonals for 斜線 and 斜め格子.
+    #[test]
+    fn paragraph_shading_patterns_draw_their_lines() {
+        use jade_painter::recording::Op;
+
+        let shaded = |value: &str| {
+            let mut document = doc_with_paragraph_texts(&["Striped paragraph"]);
+            if let Some(BodyElement::Paragraph(paragraph)) = document
+                .body
+                .as_mut()
+                .and_then(|body| body.elements.first_mut())
+            {
+                paragraph
+                    .properties
+                    .get_or_insert_with(Default::default)
+                    .shading = Some(jade_docx_reader::document::Shading {
+                    val: Some(value.to_ascii_lowercase()),
+                    color: Some("#C00000".to_string()),
+                    fill: Some("#FFFF00".to_string()),
+                });
+            }
+            let (mut renderer, painter) = recording_renderer();
+            renderer
+                .render(&document, &Options::default())
+                .expect("render");
+            painter.ops()
+        };
+        // The fills set in each colour, then what each drew.
+        let drawn = |ops: &[Op], color: &str| {
+            let mut current = String::new();
+            let mut rects = Vec::new();
+            let mut lines = 0;
+            for op in ops {
+                match op {
+                    Op::SetFillStyle(style) => current = style.clone(),
+                    Op::FillRect(x, y, w, h) if current.eq_ignore_ascii_case(color) => {
+                        rects.push((*x, *y, *w, *h))
+                    }
+                    Op::SetStrokeStyle(style) if style.eq_ignore_ascii_case(color) => lines += 1,
+                    _ => {}
+                }
+            }
+            (rects, lines)
+        };
+
+        let stripes = shaded("horzStripe");
+        let (fill, _) = drawn(&stripes, "#FFFF00");
+        assert!(!fill.is_empty(), "the fill is behind the stripes");
+        let (bands, _) = drawn(&stripes, "#C00000");
+        assert!(bands.len() > 2, "{bands:?}");
+        assert!(bands
+            .iter()
+            .all(|band| band.3 <= 2.0 + 1e-9 && band.2 > 50.0));
+        // On the page's grid, 4 px apart.
+        let whole: Vec<_> = bands
+            .iter()
+            .filter(|band| (band.3 - 2.0).abs() < 1e-9)
+            .collect();
+        assert!(whole
+            .windows(2)
+            .all(|pair| (pair[1].1 - pair[0].1 - 4.0).abs() < 1e-9));
+        assert!(whole.iter().all(|band| (band.1 / 4.0).fract().abs() < 1e-9));
+
+        let columns = shaded("thinVertStripe");
+        let (bands, _) = drawn(&columns, "#C00000");
+        assert!(bands.len() > 2 && bands.iter().all(|band| band.2 <= 1.0 + 1e-9));
+
+        let trellis = shaded("diagCross");
+        let (_, lines) = drawn(&trellis, "#C00000");
+        assert!(lines > 4, "the diagonals are stroked: {lines}");
+
+        // A percentage stays one blended colour.
+        let tint = shaded("pct50");
+        let (bands, lines) = drawn(&tint, "#C00000");
+        assert!(bands.is_empty() && lines == 0);
     }
 
     /// Re-renders the table from scratch (as an edit above it would), returning

@@ -8035,10 +8035,13 @@ fn table_autofit_cache_signature(
     line_height_for: &dyn Fn(&Paragraph) -> f64,
     field_value_for: &dyn Fn(&RunField) -> Option<String>,
 ) -> Option<TableAutofitCacheSignature> {
-    let mut bytes = serde_json::to_vec(table).ok()?;
+    // A table's key runs to kilobytes: start there rather than growing from
+    // serde_json's 128 bytes on every paint.
+    let mut bytes = Vec::with_capacity(4096);
+    serde_json::to_writer(&mut bytes, table).ok()?;
     // `resolved_style` is intentionally skipped by the document serializer but
     // affects table and first-row typography, so retain it in the cache key.
-    bytes.extend_from_slice(format!("{:?}", table.resolved_style).as_bytes());
+    std::io::Write::write_fmt(&mut bytes, format_args!("{:?}", table.resolved_style)).ok()?;
     bytes.extend_from_slice(&available_width.to_bits().to_le_bytes());
     bytes.extend_from_slice(&default_padding_x.to_bits().to_le_bytes());
     for width in column_widths {

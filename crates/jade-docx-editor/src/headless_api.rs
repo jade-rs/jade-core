@@ -1956,6 +1956,43 @@ pub fn apply_headless_commands_with_executor_to_document(
                     )
                     .map_err(|source| HeadlessApiApplyError::Command { index, source })?;
             }
+            HeadlessCommand::InsertPositionalTab {
+                paragraph,
+                offset,
+                alignment,
+                relative_to,
+                leader,
+            } => {
+                use crate::commands::insert_positional_tab::InsertPositionalTabCommand;
+                use crate::document::{PositionalTab, PositionalTabAlignment};
+                validate_text_offset(word_doc, index, *paragraph, *offset)?;
+                let alignment = match alignment.as_str() {
+                    "left" => PositionalTabAlignment::Left,
+                    "center" => PositionalTabAlignment::Center,
+                    "right" => PositionalTabAlignment::Right,
+                    other => {
+                        return Err(HeadlessApiApplyError::Command {
+                            index,
+                            source: CommandError::Custom(format!(
+                                "a positional tab aligns left, center or right, not {other}"
+                            )),
+                        })
+                    }
+                };
+                let tab = PositionalTab {
+                    ordinal: 0,
+                    alignment,
+                    relative_to_indent: relative_to.as_deref() == Some("indent"),
+                    leader: leader.clone().filter(|leader| leader != "none"),
+                };
+                let mut ctx = CommandContext::new(word_doc, &mut selection);
+                command_executor
+                    .execute(
+                        Box::new(InsertPositionalTabCommand::new(*paragraph, *offset, tab)),
+                        &mut ctx,
+                    )
+                    .map_err(|source| HeadlessApiApplyError::Command { index, source })?;
+            }
             HeadlessCommand::ClearFormatting {
                 start_paragraph,
                 start_offset,
@@ -2612,6 +2649,33 @@ pub fn apply_headless_commands_with_executor_to_document(
                     )
                     .map_err(|source| HeadlessApiApplyError::Command { index, source })?;
             }
+            HeadlessCommand::SetParagraphFrame {
+                start_paragraph,
+                end_paragraph,
+                frame,
+            } => {
+                let frame = frame
+                    .as_ref()
+                    .map(crate::commands::set_paragraph_frame::frame_from_headless)
+                    .transpose()
+                    .map_err(|message| HeadlessApiApplyError::Command {
+                        index,
+                        source: CommandError::Custom(message),
+                    })?;
+                let mut ctx = CommandContext::new(word_doc, &mut selection);
+                command_executor
+                    .execute(
+                        Box::new(
+                            crate::commands::set_paragraph_frame::SetParagraphFrameCommand::new(
+                                *start_paragraph,
+                                *end_paragraph,
+                                frame,
+                            ),
+                        ),
+                        &mut ctx,
+                    )
+                    .map_err(|source| HeadlessApiApplyError::Command { index, source })?;
+            }
             HeadlessCommand::SetParagraphOptions {
                 start_paragraph,
                 end_paragraph,
@@ -2753,6 +2817,26 @@ pub fn apply_headless_commands_with_executor_to_document(
                                 page_break_before: *page_break_before,
                                 widow_control: *widow_control,
                             },
+                        )),
+                        &mut ctx,
+                    )
+                    .map_err(|source| HeadlessApiApplyError::Command { index, source })?;
+            }
+            HeadlessCommand::SetParagraphOutlineLevel {
+                start_paragraph,
+                end_paragraph,
+                level,
+                collapsed,
+            } => {
+                use crate::commands::set_paragraph_outline_level::SetParagraphOutlineLevelCommand;
+                let mut ctx = CommandContext::new(word_doc, &mut selection);
+                command_executor
+                    .execute(
+                        Box::new(SetParagraphOutlineLevelCommand::new(
+                            *start_paragraph,
+                            *end_paragraph,
+                            *level,
+                            *collapsed,
                         )),
                         &mut ctx,
                     )
@@ -5165,6 +5249,36 @@ pub fn apply_headless_commands_with_executor_to_document(
                     "sort_table",
                     EditScope::Document,
                     move |doc| doc.sort_table(table_order_index, &keys, header_rows),
+                )?;
+            }
+            HeadlessCommand::SortParagraphs {
+                start_paragraph,
+                end_paragraph,
+                kind,
+                descending,
+                header,
+            } => {
+                let (start, end, descending, header) =
+                    (*start_paragraph, *end_paragraph, *descending, *header);
+                let kind = match kind {
+                    jade_docx_headless_api::HeadlessTableSortKind::Text => {
+                        crate::word_document::TableSortKind::Text
+                    }
+                    jade_docx_headless_api::HeadlessTableSortKind::Number => {
+                        crate::word_document::TableSortKind::Number
+                    }
+                    jade_docx_headless_api::HeadlessTableSortKind::Date => {
+                        crate::word_document::TableSortKind::Date
+                    }
+                };
+                execute_snapshot_edit(
+                    word_doc,
+                    command_executor,
+                    &mut selection,
+                    index,
+                    "sort_paragraphs",
+                    EditScope::Document,
+                    move |doc| doc.sort_paragraphs(start, end, kind, descending, header),
                 )?;
             }
             HeadlessCommand::InsertTableFormula {

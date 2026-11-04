@@ -2433,15 +2433,27 @@ impl DocumentParser {
                         }
                     }
                     b"w:ptab" => {
-                        // Absolute position tab (ECMA-376 Part 1 §17.3.3.16).
-                        // We do not resolve the absolute alignment/leader yet, but
-                        // dropping it loses the tab entirely; emit a regular tab
-                        // so the gap is preserved instead of vanishing.
+                        // Absolute position tab (ECMA-376 Part 1 §17.3.3.16): a
+                        // tab character of the text, laid out from its own
+                        // alignment, base and leader (`positional_tabs`).
                         if Self::keeps_field_result_in_run_text(
                             current_run_field.as_ref(),
                             current_run_is_instruction_operand,
                         ) {
                             if let Some(ref mut run) = current_run {
+                                let ordinal = current_paragraph.as_ref().map_or(0, |paragraph| {
+                                    paragraph
+                                        .runs
+                                        .iter()
+                                        .map(|run| run.text.matches('\t').count())
+                                        .sum()
+                                }) + run.text.matches('\t').count();
+                                if let Some(props) = current_paragraph_props.as_mut() {
+                                    props
+                                        .positional_tabs
+                                        .get_or_insert_with(Vec::new)
+                                        .push(Self::positional_tab(ordinal, e));
+                                }
                                 run.text.push('\t');
                                 paragraph_text_len += 1;
                             }
@@ -7631,6 +7643,17 @@ impl DocumentParser {
         Ok(Some(image))
     }
 
+    /// A `w:ptab`'s alignment, base and leader, read from the tag's raw
+    /// attribute text. Its values are plain tokens, and keeping this off
+    /// quick-xml's attribute iterator leaves that iterator inlined into the
+    /// XML tree's attribute reader, which every element goes through.
+    #[cold]
+    #[inline(never)]
+    fn positional_tab(ordinal: usize, element: &BytesStart<'_>) -> PositionalTab {
+        let raw = String::from_utf8_lossy(element.attributes_raw());
+        PositionalTab::from_attributes(ordinal, raw_attribute_pairs(&raw))
+    }
+
     fn apply_ole_object_attributes(image: &mut RunImage, element: &BytesStart<'_>) {
         for attribute in element.attributes().flatten() {
             let value = String::from_utf8_lossy(&attribute.value).into_owned();
@@ -11225,6 +11248,22 @@ type NoteProperties = (
     Option<bool>,
 );
 
+/// `name="value"` (or single-quoted) pairs of a start tag's raw attribute
+/// text, values left as written.
+fn raw_attribute_pairs(raw: &str) -> impl Iterator<Item = (&str, &str)> {
+    let mut rest = raw;
+    std::iter::from_fn(move || {
+        let eq = rest.find('=')?;
+        let name = rest[..eq].trim();
+        let after = rest[eq + 1..].trim_start();
+        let quote = after.chars().next().filter(|c| *c == '"' || *c == '\'')?;
+        let body = &after[1..];
+        let end = body.find(quote)?;
+        rest = &body[end + 1..];
+        Some((name, &body[..end]))
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -14660,6 +14699,43 @@ mod tests {
     }
 
     #[test]
+    fn raw_attribute_pairs_read_either_quote_and_spacing() {
+        let pairs: Vec<_> =
+            raw_attribute_pairs(r#" w:alignment="right"  w:relativeTo = 'indent' w:leader="dot""#)
+                .collect();
+        assert_eq!(
+            pairs,
+            [
+                ("w:alignment", "right"),
+                ("w:relativeTo", "indent"),
+                ("w:leader", "dot")
+            ]
+        );
+    }
+
+    #[test]
+    fn a_positional_tab_alone_keeps_the_paragraph_properties() {
+        // A paragraph with no w:pPr whose only property is its ptab: the
+        // properties are not dropped as empty.
+        let document = parse_document_from_body(
+            r#"<w:p><w:r><w:t>Chapter</w:t><w:ptab w:relativeTo="margin" w:alignment="right" w:leader="dot"/><w:t>12</w:t></w:r></w:p>"#,
+        );
+        let body = document.body.expect("body");
+        let BodyElement::Paragraph(paragraph) = &body.elements[0] else {
+            panic!("expected paragraph");
+        };
+        let tabs = &paragraph
+            .properties
+            .as_ref()
+            .expect("properties")
+            .positional_tabs
+            .as_ref()
+            .expect("positional tabs");
+        assert_eq!(tabs.len(), 1);
+        assert_eq!(tabs[0].alignment, PositionalTabAlignment::Right);
+    }
+
+    #[test]
     fn parses_positional_tab_as_tab_character() {
         // `<w:ptab/>` (§17.3.3.16) is an absolute-position tab. Dropping it loses
         // the gap; emit a regular tab so the text isn't run together.
@@ -14679,6 +14755,22 @@ mod tests {
             _ => panic!("expected paragraph"),
         };
         assert_eq!(paragraph.runs[0].text, "left\tright");
+        let tabs = paragraph
+            .properties
+            .as_ref()
+            .unwrap()
+            .positional_tabs
+            .as_ref()
+            .unwrap();
+        assert_eq!(
+            tabs,
+            &vec![PositionalTab {
+                ordinal: 0,
+                alignment: PositionalTabAlignment::Right,
+                relative_to_indent: false,
+                leader: Some("dot".to_string()),
+            }]
+        );
     }
 
     #[test]

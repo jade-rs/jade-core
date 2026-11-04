@@ -25,6 +25,19 @@ pub struct ParagraphPaginationState {
     pub snap_to_grid: bool,
 }
 
+/// The 段落 dialog's アウトライン レベル and 既定で折りたたみ.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ParagraphOutlineState {
+    /// 0–8 for レベル 1–9, 9 for 本文.
+    pub level: u8,
+    /// The level the paragraph's style gives it: Word greys the list out
+    /// when that is a heading's (見出し 1–9 keep their level).
+    pub style_level: u8,
+    /// 既定で折りたたみ (`w15:collapsed`).
+    pub collapsed: bool,
+}
+
 impl WordDocument {
     /// The formatting of the run holding byte `offset` of paragraph
     /// `paragraph` — the run before it at the paragraph's end — as the
@@ -51,6 +64,53 @@ impl WordDocument {
         last.and_then(|run| run.properties.as_ref())
             .map(run_format_of)
             .unwrap_or_default()
+    }
+
+    /// The level paragraph `paragraph`'s style gives it: 0–8, or 9 for
+    /// 本文 (a style that sets none).
+    pub fn style_outline_level(&self, paragraph: usize) -> u8 {
+        let Some(styles) = self.styles_part.as_ref() else {
+            return 9;
+        };
+        let style = self
+            .paragraph(paragraph)
+            .and_then(|paragraph| paragraph.properties.as_ref())
+            .and_then(|props| props.style.as_deref().map(str::to_string))
+            .or_else(|| styles.default_paragraph_style_id().map(|id| id.to_string()));
+        style
+            .and_then(|style| styles.resolve_paragraph_properties(&style))
+            .and_then(|props| props.outline_level)
+            .map_or(9, |level| level.min(9))
+    }
+
+    /// Whether paragraph `paragraph` opens collapsed: 既定で折りたたみ, Word
+    /// 2013's `w15:collapsed` in its `w:pPr`.
+    pub fn paragraph_collapsed_by_default(&self, paragraph: usize) -> bool {
+        crate::commands::paragraph_property_sync::snapshot_paragraph_properties_xml(self, paragraph)
+            .is_some_and(|properties| {
+                properties.children.iter().any(|child| {
+                    matches!(child, crate::docx_xml::XmlNode::Element(element)
+                    if element.name == "w15:collapsed"
+                        && !element.attributes.iter().any(|attribute| {
+                            attribute.name == "w15:val"
+                                && matches!(attribute.value.as_str(), "0" | "false" | "off")
+                        }))
+                })
+            })
+    }
+
+    /// What the 段落 dialog's アウトライン レベル opens on.
+    pub fn paragraph_outline(&self, paragraph: usize) -> ParagraphOutlineState {
+        let level = self
+            .paragraph(paragraph)
+            .and_then(|paragraph| paragraph.properties.as_ref())
+            .and_then(|props| props.outline_level)
+            .map_or(9, |level| level.min(9));
+        ParagraphOutlineState {
+            level,
+            style_level: self.style_outline_level(paragraph),
+            collapsed: self.paragraph_collapsed_by_default(paragraph),
+        }
     }
 
     /// The paragraph's 改ページと改行 options, off where it sets none.
