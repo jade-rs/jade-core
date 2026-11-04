@@ -3331,6 +3331,28 @@ const COMMANDS: &[Variant] = &[
         ],
     ),
     variant(
+        "set_table_cell_fit_text",
+        "Squeeze or spread a cell's text to the cell's width (Word's 文字列をセル幅に合わせる).",
+        &[
+            req(
+                "table_order_index",
+                ArgType::Index,
+                "Zero-based index of the table in document order.",
+            ),
+            req("row", ArgType::Index, "Zero-based row index."),
+            req(
+                "column",
+                ArgType::Index,
+                "Zero-based logical-grid column; a merged cell answers to any column it spans.",
+            ),
+            req(
+                "fit",
+                ArgType::Flag,
+                "True fits the text to the cell's width; false lets it run as usual.",
+            ),
+        ],
+    ),
+    variant(
         "set_table_cell_text",
         "Replace the text of a single table cell.",
         &[

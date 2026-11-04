@@ -2002,6 +2002,14 @@ pub enum HeadlessCommand {
         column: usize,
         alignment: String,
     },
+    /// 文字列をセル幅に合わせる (`w:tcFitText`): the cell's text squeezed or
+    /// spread to the cell's width.
+    SetTableCellFitText {
+        table_order_index: usize,
+        row: usize,
+        column: usize,
+        fit: bool,
+    },
     /// One border edge: the line style (`single`, `double`, `dashed`, `none`,
     /// …), its thickness in points, and its colour. Absent parts fall back to a
     /// single line, Word's own default thickness, and `auto`.
@@ -2551,6 +2559,7 @@ impl HeadlessCommand {
             HeadlessCommand::SetTableCellVerticalAlignment { .. } => {
                 "set_table_cell_vertical_alignment"
             }
+            HeadlessCommand::SetTableCellFitText { .. } => "set_table_cell_fit_text",
             HeadlessCommand::ResetTableCellMargins { .. } => "reset_table_cell_margins",
             HeadlessCommand::SetTableRowHeightProperties { .. } => {
                 "set_table_row_height_properties"

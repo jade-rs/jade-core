@@ -4702,6 +4702,24 @@ pub fn apply_headless_commands_with_executor_to_document(
                     },
                 )?;
             }
+            HeadlessCommand::SetTableCellFitText {
+                table_order_index,
+                row,
+                column,
+                fit,
+            } => {
+                let (table_order_index, row, column, fit) =
+                    (*table_order_index, *row, *column, *fit);
+                execute_snapshot_edit(
+                    word_doc,
+                    command_executor,
+                    &mut selection,
+                    index,
+                    "set_table_cell_fit_text",
+                    EditScope::Document,
+                    move |doc| doc.set_table_cell_fit_text(table_order_index, row, column, fit),
+                )?;
+            }
             HeadlessCommand::SetTableCellText {
                 table_order_index,
                 row,

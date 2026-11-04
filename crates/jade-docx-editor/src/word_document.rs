@@ -847,6 +847,8 @@ mod signature_lines;
 #[path = "word_document/table_revisions.rs"]
 mod table_revisions;
 pub use table_revisions::RowRevision;
+#[path = "word_document/table_options.rs"]
+mod table_options;
 #[path = "word_document/table_tools.rs"]
 mod table_tools;
 
