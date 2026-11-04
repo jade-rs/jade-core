@@ -519,6 +519,7 @@ fn paragraph_options(
                     .transpose()
             })
             .transpose()?,
+        mirror_indents: None,
     })
 }
 
@@ -2685,8 +2686,9 @@ pub fn apply_headless_commands_with_executor_to_document(
                 suppress_auto_hyphens,
                 borders,
                 shading,
+                mirror_indents,
             } => {
-                let options = paragraph_options(
+                let mut options = paragraph_options(
                     tabs.as_deref(),
                     *contextual_spacing,
                     *suppress_line_numbers,
@@ -2695,6 +2697,7 @@ pub fn apply_headless_commands_with_executor_to_document(
                     shading.as_ref(),
                 )
                 .map_err(|source| HeadlessApiApplyError::Command { index, source })?;
+                options.mirror_indents = *mirror_indents;
                 let mut ctx = CommandContext::new(word_doc, &mut selection);
                 command_executor
                     .execute(

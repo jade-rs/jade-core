@@ -1364,6 +1364,10 @@ pub enum HeadlessCommand {
         borders: Option<HeadlessParagraphBorderBox>,
         #[serde(default)]
         shading: Option<Option<HeadlessParagraphShading>>,
+        /// 見開きページのインデント設定 (`w:mirrorIndents`): the left and
+        /// right indents become inside and outside.
+        #[serde(default)]
+        mirror_indents: Option<bool>,
     },
     /// Applies (or with `style_id: None` removes) a character style on a range.
     /// Offsets are the same rendered byte offsets the other range commands take.

@@ -3739,6 +3739,7 @@ const COMMANDS: &[Variant] = &[
             opt("suppress_auto_hyphens", ArgType::Flag, "Don't hyphenate."),
             opt("borders", ArgType::ParagraphBorderBox, "Replaces the whole border box."),
             opt("shading", ArgType::NullableParagraphShading, "The shading, or null to take it off."),
+            opt("mirror_indents", ArgType::Flag, "Mirror indents: left and right become inside and outside on facing pages."),
         ],
     ),
     // -- characters and Japanese typography -------------------------------
