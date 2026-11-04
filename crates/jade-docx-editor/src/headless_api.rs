@@ -3514,6 +3514,18 @@ pub fn apply_headless_commands_with_executor_to_document(
                     )
                     .map_err(|source| HeadlessApiApplyError::Command { index, source })?;
             }
+            HeadlessCommand::SetPageFill { fill } => {
+                let fill = fill.clone();
+                execute_snapshot_edit(
+                    word_doc,
+                    command_executor,
+                    &mut selection,
+                    index,
+                    "set_page_fill",
+                    EditScope::Document,
+                    move |doc| doc.set_page_fill(fill.as_ref()),
+                )?;
+            }
             HeadlessCommand::InsertAfterHeading {
                 heading,
                 text,

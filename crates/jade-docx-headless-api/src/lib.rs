@@ -222,6 +222,36 @@ pub struct HeadlessParagraphShading {
     pub fill: Option<String>,
 }
 
+/// A page fill effect (Word's 塗りつぶし効果).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+#[serde(deny_unknown_fields)]
+pub struct HeadlessPageFill {
+    /// `gradient`, `texture`, `pattern` or `picture`.
+    pub kind: String,
+    /// The page colour it starts from (`#RRGGBB`): a gradient's first
+    /// colour, a pattern's foreground. A texture or picture keeps the page
+    /// colour there is when absent.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub color: Option<String>,
+    /// A gradient's second colour, a pattern's background (`#RRGGBB`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub color2: Option<String>,
+    /// A gradient's angle, degrees: 0 top to bottom, -90 left to right, -45
+    /// and 45 the diagonals.
+    #[serde(default)]
+    pub angle: f64,
+    /// A gradient's focus, percent: 0, 100 (reversed), 50 and -50 (mirrored).
+    #[serde(default)]
+    pub focus: f64,
+    /// The texture tile, the pattern's bits (dark on light) or the picture:
+    /// PNG or JPEG, base64.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub image_base64: Option<String>,
+    /// Its name, as Word's `o:title`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub title: Option<String>,
+}
+
 /// Editable subset of the package-wide DrawingML document theme.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -2431,6 +2461,12 @@ pub enum HeadlessCommand {
     SetPageBackgroundColor {
         color: Option<String>,
     },
+    /// ページの色 › 塗りつぶし効果: a gradient, texture, pattern or picture
+    /// behind every page; `None` takes the effect off, leaving the colour.
+    SetPageFill {
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        fill: Option<HeadlessPageFill>,
+    },
     /// Sets the paragraph line-spacing multiplier (1.0/1.5/2.0; `None` clears).
     /// Paragraph spacing (`w:spacing`): the line height and the space above and
     /// below. `line` is a multiple of single spacing under the default `auto`
@@ -2632,6 +2668,7 @@ impl HeadlessCommand {
             HeadlessCommand::SetManuscriptGrid { .. } => "set_manuscript_grid",
             HeadlessCommand::SetDocumentTheme { .. } => "set_document_theme",
             HeadlessCommand::SetPageBackgroundColor { .. } => "set_page_background_color",
+            HeadlessCommand::SetPageFill { .. } => "set_page_fill",
             HeadlessCommand::SetParagraphLineSpacing { .. } => "set_paragraph_line_spacing",
             HeadlessCommand::InsertAfterHeading { .. } => "insert_after_heading",
             HeadlessCommand::InsertBeforeHeading { .. } => "insert_before_heading",

@@ -3722,6 +3722,8 @@ where
     /// `#RRGGBB`. Filled behind every page before content. `None` = default
     /// white/transparent page, leaving non-background documents unchanged.
     page_background_color: Option<String>,
+    /// 塗りつぶし効果 over the page colour.
+    page_background_fill: Option<jade_docx_reader::document::PageBackgroundFill>,
     /// Word-compatible text watermark (`v:textpath/@string`) rendered behind
     /// body content on every page. The raw VML remains in the header part for
     /// DOCX round-tripping; this is the canvas projection of that state.
@@ -8591,6 +8593,7 @@ where
             page_borders: None,
             section_page_borders: Vec::new(),
             page_background_color: None,
+            page_background_fill: None,
             watermark_text: None,
             watermark_style: None,
             manuscript_grid: None,
@@ -10621,6 +10624,7 @@ where
                         context.fill_rect(0.0, clip_top, self.page_width, clip_height);
                     }
                 }
+                self.draw_page_fill()?;
                 self.draw_watermark()?;
                 self.draw_manuscript_grid();
                 self.invalidate_context_state_tracking();
@@ -10647,12 +10651,120 @@ where
                 context.fill_rect(0.0, 0.0, self.page_width, self.page_height);
             }
         }
+        self.draw_page_fill()?;
         self.draw_watermark()?;
         self.draw_manuscript_grid();
         if !self.hides_page_chrome() {
             self.draw_page_borders(page);
         }
         self.draw_column_separators();
+        Ok(())
+    }
+
+    /// 塗りつぶし効果 behind the page's content: a gradient in narrow bands
+    /// along its angle, a texture or pattern tiled from the top left, a
+    /// picture stretched over the page.
+    fn draw_page_fill(&self) -> Result<(), JsValue> {
+        if self.pageless_mode {
+            return Ok(());
+        }
+        let Some(fill) = self.page_background_fill.as_ref() else {
+            return Ok(());
+        };
+        let (width, height) = (self.page_width, self.page_height);
+        if width <= 0.0 || height <= 0.0 {
+            return Ok(());
+        }
+        let context = self.host.painter();
+        match (fill.kind.as_str(), fill.data_uri.as_deref()) {
+            ("gradient" | "gradientRadial", _) => {
+                let channels = |color: Option<&str>, fallback: [f64; 3]| {
+                    let Some(hex) = color.map(|color| color.trim_start_matches('#')) else {
+                        return fallback;
+                    };
+                    let channel = |at: usize| {
+                        hex.get(at..at + 2)
+                            .and_then(|pair| u8::from_str_radix(pair, 16).ok())
+                    };
+                    match (channel(0), channel(2), channel(4)) {
+                        (Some(r), Some(g), Some(b)) => [r as f64, g as f64, b as f64],
+                        _ => fallback,
+                    }
+                };
+                let first = channels(
+                    fill.color
+                        .as_deref()
+                        .or(self.page_background_color.as_deref()),
+                    [255.0; 3],
+                );
+                let second = channels(fill.color2.as_deref(), [255.0; 3]);
+                // Along the axis: from the first colour to the second, or
+                // back, or out from the middle as the focus says.
+                let at = |t: f64| {
+                    let mirrored = 1.0 - (2.0 * t - 1.0).abs();
+                    let (from, to, u) = match fill.focus.round() as i64 {
+                        100 => (second, first, t),
+                        50 => (first, second, mirrored),
+                        -50 => (second, first, mirrored),
+                        _ => (first, second, t),
+                    };
+                    let mix = |i: usize| (from[i] + (to[i] - from[i]) * u).round() as u8;
+                    format!("#{:02X}{:02X}{:02X}", mix(0), mix(1), mix(2))
+                };
+                const BANDS: usize = 256;
+                // The bands run the page's extent along the axis, each wide
+                // enough to cover the page across it.
+                let radians = fill.angle.to_radians();
+                let extent = width * radians.sin().abs() + height * radians.cos().abs();
+                let reach = (width * width + height * height).sqrt();
+                let band = extent / BANDS as f64;
+                context.save();
+                let drawn: Result<(), JsValue> = (|| {
+                    context.begin_path();
+                    context.rect(0.0, 0.0, width, height);
+                    context.clip();
+                    context
+                        .translate(width / 2.0, height / 2.0)
+                        .map_err(PainterError::into_js_value)?;
+                    context
+                        .rotate(radians)
+                        .map_err(PainterError::into_js_value)?;
+                    for index in 0..BANDS {
+                        context.set_fill_style_str(&at((index as f64 + 0.5) / BANDS as f64));
+                        context.fill_rect(
+                            -reach / 2.0,
+                            -extent / 2.0 + band * index as f64,
+                            reach,
+                            band + 0.75,
+                        );
+                    }
+                    Ok(())
+                })();
+                context.restore();
+                drawn?;
+            }
+            ("tile" | "pattern", Some(uri)) => {
+                let (tile_width, tile_height) = fill.tile_size.unwrap_or((64.0, 64.0));
+                if tile_width < 1.0 || tile_height < 1.0 {
+                    return Ok(());
+                }
+                let mut y = 0.0;
+                while y < height {
+                    let mut x = 0.0;
+                    while x < width {
+                        self.host
+                            .draw_image_data_uri(uri, x, y, tile_width, tile_height, None);
+                        x += tile_width;
+                    }
+                    y += tile_height;
+                }
+            }
+            ("frame", Some(uri)) => {
+                self.host
+                    .draw_image_data_uri(uri, 0.0, 0.0, width, height, None);
+            }
+            _ => {}
+        }
         Ok(())
     }
 
@@ -15995,6 +16107,7 @@ where
 
         // Document page background color (`<w:background>`, §17.2.1).
         self.page_background_color = document.background_color.clone();
+        self.page_background_fill = document.background_fill.clone();
 
         // Word stores text watermarks as a VML text path in the page header.
         self.watermark_text = document.watermark_text.clone();
