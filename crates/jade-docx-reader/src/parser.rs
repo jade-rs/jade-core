@@ -349,6 +349,8 @@ impl DocumentParser {
         let mut current_run_has_field_end = false;
         let mut current_run_field_has_result = false;
         let mut active_fields: Vec<ActiveField> = Vec::new();
+        // Inside `w:background`, whose VML holds the page's fill effect.
+        let mut in_page_background = false;
         // Nested fields that depend on a forward bookmark cannot be evaluated
         // when their closing tag is encountered. Keep their semantic kind and
         // cached fallback until every bookmark in the document is available.
@@ -1905,12 +1907,15 @@ impl DocumentParser {
                             }
                         }
                         b"w:background" => {
-                            // `<w:document>` child: page background color. Any
-                            // child shape (`w:drawing`) flows through the
-                            // catch-all and is ignored (color only, MVP).
+                            // `<w:document>` child: page background color, and
+                            // in its VML (`v:background/v:fill`) a fill effect.
                             if let Some(color) = Self::parse_document_background(e.attributes()) {
                                 document.background_color = Some(color);
                             }
+                            in_page_background = true;
+                        }
+                        b"v:background" | b"v:fill" if in_page_background => {
+                            Self::parse_page_background_fill(e, &mut document);
                         }
                         _ => {}
                     }
@@ -1944,6 +1949,9 @@ impl DocumentParser {
                         if let Some(color) = Self::parse_document_background(e.attributes()) {
                             document.background_color = Some(color);
                         }
+                    }
+                    b"v:background" | b"v:fill" if in_page_background => {
+                        Self::parse_page_background_fill(e, &mut document);
                     }
                     b"w:p" => {
                         let props = Self::parse_para_id(e.attributes()).map(|para_id| {
@@ -3413,6 +3421,7 @@ impl DocumentParser {
                     _ => {}
                 },
                 Ok(Event::End(ref e)) => match e.name().as_ref() {
+                    b"w:background" => in_page_background = false,
                     b"w:t" | b"w:delText" => {
                         in_text = false;
                         let text_to_push = Self::line_feeds_as_spaces(if current_text_preserve {
@@ -8529,6 +8538,59 @@ impl DocumentParser {
             }
         }
         None
+    }
+
+    /// `v:background` (its `fillcolor`) and its `v:fill` under
+    /// `w:background`: the page's fill effect.
+    fn parse_page_background_fill(element: &BytesStart<'_>, document: &mut Document) {
+        let vml_color = |value: &str| {
+            let hex = value.trim().trim_start_matches('#');
+            let hex = hex.split_whitespace().next().unwrap_or("");
+            match hex.to_ascii_lowercase().as_str() {
+                "black" => Some("#000000".to_string()),
+                "white" => Some("#FFFFFF".to_string()),
+                _ if hex.len() == 6 && hex.chars().all(|c| c.is_ascii_hexdigit()) => {
+                    Some(format!("#{}", hex.to_ascii_uppercase()))
+                }
+                _ if hex.len() == 3 && hex.chars().all(|c| c.is_ascii_hexdigit()) => Some(format!(
+                    "#{}",
+                    hex.chars()
+                        .flat_map(|c| [c, c])
+                        .collect::<String>()
+                        .to_ascii_uppercase()
+                )),
+                _ => None,
+            }
+        };
+        let background = element.name().as_ref() == b"v:background";
+        let fill = document
+            .background_fill
+            .get_or_insert_with(Default::default);
+        for attr in element.attributes().flatten() {
+            let value = attr
+                .normalized_value(quick_xml::XmlVersion::Implicit1_0)
+                .map(|value| value.into_owned())
+                .unwrap_or_default();
+            match (background, attr.key.as_ref()) {
+                (true, b"fillcolor") => fill.color = vml_color(&value),
+                (false, b"type") => fill.kind = value.trim().to_string(),
+                (false, b"color2") => fill.color2 = vml_color(&value),
+                (false, b"angle") => fill.angle = value.trim().parse().unwrap_or(0.0),
+                (false, b"focus") => {
+                    fill.focus = value.trim().trim_end_matches('%').parse().unwrap_or(0.0)
+                }
+                (false, b"r:id") => fill.relationship_id = Some(value),
+                (false, b"o:title") => fill.title = Some(value).filter(|title| !title.is_empty()),
+                _ => {}
+            }
+        }
+        // A `v:background` without a fill effect is the plain colour.
+        if !background && fill.kind.is_empty() {
+            fill.kind = "solid".to_string();
+        }
+        if !background && fill.kind == "solid" {
+            document.background_fill = None;
+        }
     }
 
     fn parse_document_background(attributes: Attributes<'_>) -> Option<String> {

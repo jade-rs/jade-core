@@ -840,11 +840,17 @@ mod review_tools;
 pub use protection::{
     hash_password, EditableRange, EditingKind, EditingRestriction, PasswordHash, WriteProtection,
 };
+#[path = "word_document/ole_objects.rs"]
+pub mod ole_objects;
 #[path = "word_document/signature_lines.rs"]
 mod signature_lines;
 #[path = "word_document/table_revisions.rs"]
 mod table_revisions;
 pub use table_revisions::RowRevision;
+#[path = "word_document/page_fill.rs"]
+mod page_fill;
+#[path = "word_document/table_options.rs"]
+mod table_options;
 #[path = "word_document/table_tools.rs"]
 mod table_tools;
 
@@ -7135,6 +7141,7 @@ impl WordDocument {
                 );
             }
         }
+        Self::resolve_page_fill(document, doc_part, package);
     }
 
     fn resolve_equation3_objects(

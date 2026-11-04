@@ -1374,6 +1374,9 @@ enum ArgType {
     /// x_align, h_anchor, y, y_align, v_anchor, wrap, h_space, v_space }`,
     /// or null.
     ParagraphFrame,
+    /// A page fill effect: `{ kind, color, color2, angle, focus,
+    /// image_base64, title }`.
+    PageFill,
     /// `HeadlessCommand` objects — a `oneOf` over [`COMMANDS`].
     CommandList,
     /// `HeadlessQuery` objects — a `oneOf` over [`QUERIES`].
@@ -1592,6 +1595,20 @@ impl ArgType {
                     "additionalProperties": false
                 })
             }
+            ArgType::PageFill => json!({
+                "type": "object",
+                "properties": {
+                    "kind": { "type": "string", "enum": ["gradient", "texture", "pattern", "picture"], "description": "Word's 塗りつぶし効果 tab." },
+                    "color": { "type": "string", "description": "A gradient's first colour or a pattern's foreground, #RRGGBB; also the page colour." },
+                    "color2": { "type": "string", "description": "A gradient's second colour or a pattern's background, #RRGGBB." },
+                    "angle": { "type": "number", "description": "A gradient's angle in degrees: 0 top to bottom, -90 left to right, 45 and -45 the diagonals." },
+                    "focus": { "type": "number", "description": "A gradient's focus in percent: 0, 100 (reversed), 50 and -50 (mirrored)." },
+                    "image_base64": { "type": "string", "description": "The texture tile, the pattern's bits (dark on light) or the picture: PNG or JPEG, base64." },
+                    "title": { "type": "string", "description": "The fill's name, as Word's o:title." }
+                },
+                "required": ["kind"],
+                "additionalProperties": false
+            }),
             ArgType::BorderEdge => json!({
                 "type": ["object", "null"],
                 "properties": {
@@ -3331,6 +3348,65 @@ const COMMANDS: &[Variant] = &[
         ],
     ),
     variant(
+        "set_table_cell_fit_text",
+        "Squeeze or spread a cell's text to the cell's width (Word's 文字列をセル幅に合わせる).",
+        &[
+            req(
+                "table_order_index",
+                ArgType::Index,
+                "Zero-based index of the table in document order.",
+            ),
+            req("row", ArgType::Index, "Zero-based row index."),
+            req(
+                "column",
+                ArgType::Index,
+                "Zero-based logical-grid column; a merged cell answers to any column it spans.",
+            ),
+            req(
+                "fit",
+                ArgType::Flag,
+                "True fits the text to the cell's width; false lets it run as usual.",
+            ),
+        ],
+    ),
+    variant(
+        "set_table_direction",
+        "Lay a table's columns out from the right (Word's 表の方向: 右から左) or from the left.",
+        &[
+            req(
+                "table_order_index",
+                ArgType::Index,
+                "Zero-based index of the table in document order.",
+            ),
+            req(
+                "right_to_left",
+                ArgType::Flag,
+                "True puts the first column at the right edge; false at the left.",
+            ),
+        ],
+    ),
+    variant(
+        "set_table_alt_text",
+        "Set a table's alternative text (Word's 代替テキスト): the title and description screen readers announce.",
+        &[
+            req(
+                "table_order_index",
+                ArgType::Index,
+                "Zero-based index of the table in document order.",
+            ),
+            opt(
+                "title",
+                ArgType::Text,
+                "タイトル; omit to leave it, empty to remove it.",
+            ),
+            opt(
+                "description",
+                ArgType::Text,
+                "説明; omit to leave it, empty to remove it.",
+            ),
+        ],
+    ),
+    variant(
         "set_table_cell_text",
         "Replace the text of a single table cell.",
         &[
@@ -3739,6 +3815,7 @@ const COMMANDS: &[Variant] = &[
             opt("suppress_auto_hyphens", ArgType::Flag, "Don't hyphenate."),
             opt("borders", ArgType::ParagraphBorderBox, "Replaces the whole border box."),
             opt("shading", ArgType::NullableParagraphShading, "The shading, or null to take it off."),
+            opt("mirror_indents", ArgType::Flag, "Mirror indents: left and right become inside and outside on facing pages."),
         ],
     ),
     // -- characters and Japanese typography -------------------------------
@@ -4046,6 +4123,15 @@ const COMMANDS: &[Variant] = &[
             "color",
             ArgType::NullableText,
             "Background color as #RRGGBB; null clears it.",
+        )],
+    ),
+    variant(
+        "set_page_fill",
+        "Put a fill effect behind every page (Word's ページの色 › 塗りつぶし効果): a gradient, a tiled texture or pattern, or a picture.",
+        &[opt(
+            "fill",
+            ArgType::PageFill,
+            "The effect; omit to take it off and keep the page colour.",
         )],
     ),
     // -- heading-relative insertion ----------------------------------------
@@ -6077,6 +6163,13 @@ mod tests {
                 "x_align": "right",
                 "v_anchor": "text",
                 "y": 0.0
+            }),
+            ArgType::PageFill => json!({
+                "kind": "gradient",
+                "color": "#FFFFFF",
+                "color2": "#0070C0",
+                "angle": -90.0,
+                "focus": 50.0
             }),
             ArgType::Object
             | ArgType::CommandList

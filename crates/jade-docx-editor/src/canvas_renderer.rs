@@ -484,6 +484,9 @@ impl Default for CommentDecorationColors {
 const CROP_MARK_LENGTH_PX: f64 = 12.0;
 const CROP_MARK_STROKE_WIDTH: f64 = 1.0;
 const CROP_MARK_COLOR: &str = "#888888";
+/// 文字列の範囲: Word's dotted grey line round the text area.
+const TEXT_BOUNDARY_COLOR: &str = "#A6A6A6";
+const TEXT_BOUNDARY_DASH: [f64; 2] = [1.0, 2.0];
 /// Color of the vertical rule drawn between columns when `w:cols w:sep` is on.
 const COLUMN_SEPARATOR_COLOR: &str = "#000000";
 /// Stroke width (in CSS px) of the inter-column separator rule.
@@ -979,6 +982,23 @@ fn shape_group_contains_text(group: &RunShapeGroup) -> bool {
 /// What each body run shows while field codes are on: the field (by its
 /// first run) and its `{ CODE }`.
 pub type FieldCodeDisplay = HashMap<XmlNodeId, (XmlNodeId, Rc<str>)>;
+
+/// フィールドの網かけ (Word 環境設定 › 表示): which fields' text is drawn on
+/// Word's grey. A view setting — never part of the document or a PDF.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub enum FieldShading {
+    /// 表示しない.
+    #[default]
+    Never,
+    /// 常に表示する.
+    Always,
+    /// 選択時に表示する: the runs of the fields the selection is in (see
+    /// `fields::field_shading_runs`).
+    Runs(Rc<HashSet<XmlNodeId>>),
+}
+
+/// Word's field shading grey.
+const FIELD_SHADING_FILL: &str = "D9D9D9";
 
 /// Host clock snapshot used to resolve `DATE`/`TIME` fields. All fields use the
 /// host's local timezone; `weekday` is 0 = Sunday .. 6 = Saturday.
@@ -3702,6 +3722,8 @@ where
     /// `#RRGGBB`. Filled behind every page before content. `None` = default
     /// white/transparent page, leaving non-background documents unchanged.
     page_background_color: Option<String>,
+    /// 塗りつぶし効果 over the page colour.
+    page_background_fill: Option<jade_docx_reader::document::PageBackgroundFill>,
     /// Word-compatible text watermark (`v:textpath/@string`) rendered behind
     /// body content on every page. The raw VML remains in the header part for
     /// DOCX round-tripping; this is the canvas projection of that state.
@@ -3796,6 +3818,8 @@ where
     /// place of its field — `(field, code)`, the field named by its first
     /// run. A field's runs show its code once.
     field_code_display: Option<Rc<FieldCodeDisplay>>,
+    /// フィールドの網かけ.
+    field_shading: FieldShading,
     header_drawn: bool,
     footer_drawn: bool,
     editing_mode: crate::canvas_view::EditingMode,
@@ -8569,6 +8593,7 @@ where
             page_borders: None,
             section_page_borders: Vec::new(),
             page_background_color: None,
+            page_background_fill: None,
             watermark_text: None,
             watermark_style: None,
             manuscript_grid: None,
@@ -8602,6 +8627,7 @@ where
             bookmark_note_targets: HashMap::new(),
             current_datetime: None,
             field_code_display: None,
+            field_shading: FieldShading::Never,
             header_drawn: false,
             footer_drawn: false,
             editing_mode: crate::canvas_view::EditingMode::Body,
@@ -10598,6 +10624,7 @@ where
                         context.fill_rect(0.0, clip_top, self.page_width, clip_height);
                     }
                 }
+                self.draw_page_fill()?;
                 self.draw_watermark()?;
                 self.draw_manuscript_grid();
                 self.invalidate_context_state_tracking();
@@ -10624,12 +10651,120 @@ where
                 context.fill_rect(0.0, 0.0, self.page_width, self.page_height);
             }
         }
+        self.draw_page_fill()?;
         self.draw_watermark()?;
         self.draw_manuscript_grid();
         if !self.hides_page_chrome() {
             self.draw_page_borders(page);
         }
         self.draw_column_separators();
+        Ok(())
+    }
+
+    /// 塗りつぶし効果 behind the page's content: a gradient in narrow bands
+    /// along its angle, a texture or pattern tiled from the top left, a
+    /// picture stretched over the page.
+    fn draw_page_fill(&self) -> Result<(), JsValue> {
+        if self.pageless_mode {
+            return Ok(());
+        }
+        let Some(fill) = self.page_background_fill.as_ref() else {
+            return Ok(());
+        };
+        let (width, height) = (self.page_width, self.page_height);
+        if width <= 0.0 || height <= 0.0 {
+            return Ok(());
+        }
+        let context = self.host.painter();
+        match (fill.kind.as_str(), fill.data_uri.as_deref()) {
+            ("gradient" | "gradientRadial", _) => {
+                let channels = |color: Option<&str>, fallback: [f64; 3]| {
+                    let Some(hex) = color.map(|color| color.trim_start_matches('#')) else {
+                        return fallback;
+                    };
+                    let channel = |at: usize| {
+                        hex.get(at..at + 2)
+                            .and_then(|pair| u8::from_str_radix(pair, 16).ok())
+                    };
+                    match (channel(0), channel(2), channel(4)) {
+                        (Some(r), Some(g), Some(b)) => [r as f64, g as f64, b as f64],
+                        _ => fallback,
+                    }
+                };
+                let first = channels(
+                    fill.color
+                        .as_deref()
+                        .or(self.page_background_color.as_deref()),
+                    [255.0; 3],
+                );
+                let second = channels(fill.color2.as_deref(), [255.0; 3]);
+                // Along the axis: from the first colour to the second, or
+                // back, or out from the middle as the focus says.
+                let at = |t: f64| {
+                    let mirrored = 1.0 - (2.0 * t - 1.0).abs();
+                    let (from, to, u) = match fill.focus.round() as i64 {
+                        100 => (second, first, t),
+                        50 => (first, second, mirrored),
+                        -50 => (second, first, mirrored),
+                        _ => (first, second, t),
+                    };
+                    let mix = |i: usize| (from[i] + (to[i] - from[i]) * u).round() as u8;
+                    format!("#{:02X}{:02X}{:02X}", mix(0), mix(1), mix(2))
+                };
+                const BANDS: usize = 256;
+                // The bands run the page's extent along the axis, each wide
+                // enough to cover the page across it.
+                let radians = fill.angle.to_radians();
+                let extent = width * radians.sin().abs() + height * radians.cos().abs();
+                let reach = (width * width + height * height).sqrt();
+                let band = extent / BANDS as f64;
+                context.save();
+                let drawn: Result<(), JsValue> = (|| {
+                    context.begin_path();
+                    context.rect(0.0, 0.0, width, height);
+                    context.clip();
+                    context
+                        .translate(width / 2.0, height / 2.0)
+                        .map_err(PainterError::into_js_value)?;
+                    context
+                        .rotate(radians)
+                        .map_err(PainterError::into_js_value)?;
+                    for index in 0..BANDS {
+                        context.set_fill_style_str(&at((index as f64 + 0.5) / BANDS as f64));
+                        context.fill_rect(
+                            -reach / 2.0,
+                            -extent / 2.0 + band * index as f64,
+                            reach,
+                            band + 0.75,
+                        );
+                    }
+                    Ok(())
+                })();
+                context.restore();
+                drawn?;
+            }
+            ("tile" | "pattern", Some(uri)) => {
+                let (tile_width, tile_height) = fill.tile_size.unwrap_or((64.0, 64.0));
+                if tile_width < 1.0 || tile_height < 1.0 {
+                    return Ok(());
+                }
+                let mut y = 0.0;
+                while y < height {
+                    let mut x = 0.0;
+                    while x < width {
+                        self.host
+                            .draw_image_data_uri(uri, x, y, tile_width, tile_height, None);
+                        x += tile_width;
+                    }
+                    y += tile_height;
+                }
+            }
+            ("frame", Some(uri)) => {
+                self.host
+                    .draw_image_data_uri(uri, 0.0, 0.0, width, height, None);
+            }
+            _ => {}
+        }
         Ok(())
     }
 
@@ -15972,6 +16107,7 @@ where
 
         // Document page background color (`<w:background>`, §17.2.1).
         self.page_background_color = document.background_color.clone();
+        self.page_background_fill = document.background_fill.clone();
 
         // Word stores text watermarks as a VML text path in the page header.
         self.watermark_text = document.watermark_text.clone();
@@ -16218,11 +16354,11 @@ where
         if self.pageless_mode {
             return;
         }
-        if self
-            .last_options
-            .as_ref()
-            .is_some_and(|options| !options.show_crop_marks)
-        {
+        let (crop_marks, text_boundaries) =
+            self.last_options.as_ref().map_or((true, false), |options| {
+                (options.show_crop_marks, options.show_text_boundaries)
+            });
+        if !crop_marks && !text_boundaries {
             return;
         }
         if !self.should_draw_page_for_current_render(page) {
@@ -16232,6 +16368,26 @@ where
         let content_width = self.page_width - self.margin_left - self.margin_right;
         let content_height = self.page_height - self.margin_top - self.margin_bottom;
         if content_width <= 0.0 || content_height <= 0.0 {
+            return;
+        }
+        if text_boundaries {
+            let context = self.host.painter();
+            context.save();
+            context.set_stroke_style_str(TEXT_BOUNDARY_COLOR);
+            context.set_line_width(CROP_MARK_STROKE_WIDTH);
+            context.set_line_dash(&TEXT_BOUNDARY_DASH);
+            context.begin_path();
+            context.rect(
+                self.margin_left,
+                self.margin_top,
+                content_width,
+                content_height,
+            );
+            context.stroke();
+            context.set_line_dash(&[]);
+            context.restore();
+        }
+        if !crop_marks {
             return;
         }
 
@@ -18616,6 +18772,29 @@ where
                 } else {
                     resolved_run_properties
                 };
+            // フィールドの網かけ: a field's text on Word's grey, under any
+            // highlight or shading of its own.
+            let resolved_run_properties = if self.field_shaded(run, field_code.is_some()) {
+                let mut properties = resolved_run_properties
+                    .as_deref()
+                    .cloned()
+                    .unwrap_or_default();
+                if properties.highlight.is_none()
+                    && properties
+                        .shading
+                        .as_ref()
+                        .is_none_or(jade_docx_reader::document::Shading::is_empty)
+                {
+                    properties.shading = Some(jade_docx_reader::document::Shading {
+                        val: Some("clear".to_string()),
+                        color: Some("auto".to_string()),
+                        fill: Some(FIELD_SHADING_FILL.to_string()),
+                    });
+                }
+                Some(Rc::new(properties))
+            } else {
+                resolved_run_properties
+            };
             // Text after an ADVANCE \u or \d sits that much higher or lower.
             let resolved_run_properties = if advance_raise_pt.abs() > f32::EPSILON {
                 let mut properties = resolved_run_properties
@@ -36820,6 +36999,32 @@ where
         self.field_code_display = display.map(Rc::new);
         self.clear_paragraph_render_cache();
         self.invalidate_layout_from(0);
+    }
+
+    /// Draws fields' text on Word's grey as `shading` says. Paint and layout
+    /// caches are dropped when it changes, as the runs' fills do.
+    pub fn set_field_shading(&mut self, shading: FieldShading) {
+        if shading == self.field_shading {
+            return;
+        }
+        self.field_shading = shading;
+        self.clear_paragraph_render_cache();
+        self.invalidate_layout_from(0);
+    }
+
+    /// Whether a body run of a field is drawn on the field shading grey.
+    fn field_shaded(&self, run: &Run, shows_code: bool) -> bool {
+        if self.rendering_header_footer_story || self.rendering_note_story {
+            return false;
+        }
+        if run.field.is_none() && !shows_code {
+            return false;
+        }
+        match &self.field_shading {
+            FieldShading::Never => false,
+            FieldShading::Always => true,
+            FieldShading::Runs(runs) => run.node_id.is_some_and(|id| runs.contains(&id)),
+        }
     }
 
     /// The field code a body run shows instead of its content.

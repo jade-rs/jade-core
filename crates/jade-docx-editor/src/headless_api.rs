@@ -519,6 +519,7 @@ fn paragraph_options(
                     .transpose()
             })
             .transpose()?,
+        mirror_indents: None,
     })
 }
 
@@ -2685,8 +2686,9 @@ pub fn apply_headless_commands_with_executor_to_document(
                 suppress_auto_hyphens,
                 borders,
                 shading,
+                mirror_indents,
             } => {
-                let options = paragraph_options(
+                let mut options = paragraph_options(
                     tabs.as_deref(),
                     *contextual_spacing,
                     *suppress_line_numbers,
@@ -2695,6 +2697,7 @@ pub fn apply_headless_commands_with_executor_to_document(
                     shading.as_ref(),
                 )
                 .map_err(|source| HeadlessApiApplyError::Command { index, source })?;
+                options.mirror_indents = *mirror_indents;
                 let mut ctx = CommandContext::new(word_doc, &mut selection);
                 command_executor
                     .execute(
@@ -3510,6 +3513,18 @@ pub fn apply_headless_commands_with_executor_to_document(
                         &mut ctx,
                     )
                     .map_err(|source| HeadlessApiApplyError::Command { index, source })?;
+            }
+            HeadlessCommand::SetPageFill { fill } => {
+                let fill = fill.clone();
+                execute_snapshot_edit(
+                    word_doc,
+                    command_executor,
+                    &mut selection,
+                    index,
+                    "set_page_fill",
+                    EditScope::Document,
+                    move |doc| doc.set_page_fill(fill.as_ref()),
+                )?;
             }
             HeadlessCommand::InsertAfterHeading {
                 heading,
@@ -4695,6 +4710,62 @@ pub fn apply_headless_commands_with_executor_to_document(
                             row,
                             column,
                             &alignment,
+                        )
+                    },
+                )?;
+            }
+            HeadlessCommand::SetTableCellFitText {
+                table_order_index,
+                row,
+                column,
+                fit,
+            } => {
+                let (table_order_index, row, column, fit) =
+                    (*table_order_index, *row, *column, *fit);
+                execute_snapshot_edit(
+                    word_doc,
+                    command_executor,
+                    &mut selection,
+                    index,
+                    "set_table_cell_fit_text",
+                    EditScope::Document,
+                    move |doc| doc.set_table_cell_fit_text(table_order_index, row, column, fit),
+                )?;
+            }
+            HeadlessCommand::SetTableDirection {
+                table_order_index,
+                right_to_left,
+            } => {
+                let (table_order_index, right_to_left) = (*table_order_index, *right_to_left);
+                execute_snapshot_edit(
+                    word_doc,
+                    command_executor,
+                    &mut selection,
+                    index,
+                    "set_table_direction",
+                    EditScope::Document,
+                    move |doc| doc.set_table_direction(table_order_index, right_to_left),
+                )?;
+            }
+            HeadlessCommand::SetTableAltText {
+                table_order_index,
+                title,
+                description,
+            } => {
+                let table_order_index = *table_order_index;
+                let (title, description) = (title.clone(), description.clone());
+                execute_snapshot_edit(
+                    word_doc,
+                    command_executor,
+                    &mut selection,
+                    index,
+                    "set_table_alt_text",
+                    EditScope::Document,
+                    move |doc| {
+                        doc.set_table_alt_text(
+                            table_order_index,
+                            title.as_deref(),
+                            description.as_deref(),
                         )
                     },
                 )?;

@@ -119,6 +119,10 @@ pub struct Document {
     /// or absent leaves it `None` (the default white/transparent page).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub background_color: Option<String>,
+    /// 塗りつぶし効果 over the page colour (`w:background/v:background/
+    /// v:fill`, VML): a gradient, a tiled texture or pattern, or a picture.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub background_fill: Option<PageBackgroundFill>,
     /// Word-compatible text watermark discovered in a referenced header VML
     /// shape (`v:textpath/@string`). The raw header XML remains the export
     /// source of truth; this normalized value lets renderers and hosts expose
@@ -2130,6 +2134,42 @@ impl BodyElement {
             _ => None,
         }
     }
+}
+
+/// The page background's fill effect (Word's ページの色 › 塗りつぶし効果),
+/// as VML keeps it under `w:background`.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct PageBackgroundFill {
+    /// The VML fill type: `gradient`, `gradientRadial`, `tile` (a texture),
+    /// `pattern` or `frame` (a picture).
+    pub kind: String,
+    /// `v:background/@fillcolor`, `#RRGGBB`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub color: Option<String>,
+    /// `v:fill/@color2`, `#RRGGBB`: a gradient's second colour, a pattern's
+    /// background.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub color2: Option<String>,
+    /// A gradient's angle, degrees: 0 runs top to bottom, -90 left to right.
+    #[serde(default)]
+    pub angle: f64,
+    /// A gradient's focus, percent: 0 from the first colour, 100 from the
+    /// second, 50 the second in the middle, -50 the first in the middle.
+    #[serde(default)]
+    pub focus: f64,
+    /// `v:fill/@r:id`: the texture, pattern or picture part.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub relationship_id: Option<String>,
+    /// `v:fill/@o:title`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub title: Option<String>,
+    /// The picture as it is drawn — a pattern already in its colours —
+    /// filled in by the editor from the part.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub data_uri: Option<String>,
+    /// A tile's size, CSS px.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tile_size: Option<(f64, f64)>,
 }
 
 /// Represents a Word paragraph, including its inline runs and paragraph level

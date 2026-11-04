@@ -228,6 +228,35 @@ pub fn field_code_display(
     display
 }
 
+/// フィールドの網かけ's 選択時に表示する: the body runs of the fields the
+/// selection touches (the outermost, with what is nested in them), for
+/// `CanvasRenderer::set_field_shading`.
+pub fn field_shading_runs(doc: &WordDocument, range: SelectionRange) -> HashSet<XmlNodeId> {
+    let Some(raw) = doc.raw_document.as_ref() else {
+        return HashSet::new();
+    };
+    let story = scan::scan_document(raw.root());
+    let mut runs = HashSet::new();
+    for index in selected_fields(doc, &story, range) {
+        let mut top = index;
+        while let Some((parent, _)) = story.fields[top].parent {
+            top = parent;
+        }
+        let field = &story.fields[top];
+        runs.extend(field.span_runs.iter().copied());
+        if let Some(simple) = field.simple {
+            runs.insert(simple);
+            if let Some(element) = write::find_element(raw.root(), simple) {
+                runs.extend(element.children.iter().filter_map(|child| match child {
+                    XmlNode::Element(run) if run.name == "w:r" => Some(run.id),
+                    _ => None,
+                }));
+            }
+        }
+    }
+    runs
+}
+
 /// The fields the selection touches, in order.
 pub fn fields_at(doc: &WordDocument, range: SelectionRange) -> Vec<FieldInfo> {
     let Some(raw) = doc.raw_document.as_ref() else {
