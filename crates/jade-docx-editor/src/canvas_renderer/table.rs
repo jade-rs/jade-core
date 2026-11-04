@@ -12702,6 +12702,9 @@ fn layout_paragraph_with_table_context<P: Painter<Error: PainterError>>(
     )
 }
 
+/// A vertical section paragraph's columns. `snap_char_space_px` is the
+/// `w:charSpace` of a `snapToChars` grid, whose characters each take whole
+/// character pitches down the column, centred in them.
 pub(super) fn layout_vertical_paragraph_with_wrap_context<C: LineWrapContext>(
     context: &C,
     text: &str,
@@ -12709,8 +12712,9 @@ pub(super) fn layout_vertical_paragraph_with_wrap_context<C: LineWrapContext>(
     direction: TextDirection,
     available_height: Option<f64>,
     line_height: f64,
+    snap_char_space_px: Option<f64>,
 ) -> Result<CellParagraph, C::Error> {
-    let mut paragraph = layout_vertical_paragraph_with_run_styles_context(
+    let mut paragraph = layout_vertical_paragraph_on_grid(
         context,
         text,
         direction,
@@ -12718,6 +12722,7 @@ pub(super) fn layout_vertical_paragraph_with_wrap_context<C: LineWrapContext>(
         line_height,
         run_styles,
         true,
+        snap_char_space_px,
     )?;
     // Section text uses this table-like layout adapter too. Keep its resolved
     // run properties for painting, instead of falling back to TABLE_FONT.
@@ -12763,20 +12768,52 @@ fn layout_vertical_paragraph_with_run_styles_context<C: LineWrapContext>(
     run_styles: &[RunStyle],
     upright_section: bool,
 ) -> Result<CellParagraph, C::Error> {
-    let layout = if upright_section {
-        jade_docx_layout::line_wrap::layout_section_text_vertically
-    } else {
-        jade_docx_layout::line_wrap::layout_text_vertically
-    };
-    let wrapped = layout(
+    layout_vertical_paragraph_on_grid(
         context,
         text,
-        run_styles,
-        direction_prefers_horizontal_latin(direction),
-        0,
+        direction,
         available_height,
         line_height,
-    )?;
+        run_styles,
+        upright_section,
+        None,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn layout_vertical_paragraph_on_grid<C: LineWrapContext>(
+    context: &C,
+    text: &str,
+    direction: TextDirection,
+    available_height: Option<f64>,
+    line_height: f64,
+    run_styles: &[RunStyle],
+    upright_section: bool,
+    snap_char_space_px: Option<f64>,
+) -> Result<CellParagraph, C::Error> {
+    let prefer_horizontal_latin = direction_prefers_horizontal_latin(direction);
+    let wrapped = if upright_section {
+        jade_docx_layout::line_wrap::layout_section_text_vertically_on_grid(
+            context,
+            text,
+            run_styles,
+            prefer_horizontal_latin,
+            0,
+            available_height,
+            line_height,
+            snap_char_space_px,
+        )?
+    } else {
+        jade_docx_layout::line_wrap::layout_text_vertically(
+            context,
+            text,
+            run_styles,
+            prefer_horizontal_latin,
+            0,
+            available_height,
+            line_height,
+        )?
+    };
     let lines = wrapped
         .lines
         .iter()
@@ -12785,6 +12822,23 @@ fn layout_vertical_paragraph_with_run_styles_context<C: LineWrapContext>(
             if upright_section {
                 line.word_baseline_offset =
                     jade_docx_layout::line_wrap::wrapped_line_max_font_ascent(wrapped_line);
+                // A glyph centred in its grid cells: its baseline drops by
+                // the space above it, and it is centred across the column by
+                // its own width, not the cells it takes down it.
+                let snapped = wrapped_line
+                    .clusters
+                    .first()
+                    .and_then(|cluster| cluster.layout.as_ref())
+                    .filter(|layout| snap_char_space_px.is_some() && layout.leading_advance > 0.0);
+                if let Some(layout) = snapped {
+                    line.word_baseline_offset = line
+                        .word_baseline_offset
+                        .map(|ascent| ascent + layout.leading_advance);
+                    for glyph in &mut line.glyphs {
+                        glyph.x = 0.0;
+                        glyph.width = layout.adjusted_glyph_width;
+                    }
+                }
             }
             line
         })

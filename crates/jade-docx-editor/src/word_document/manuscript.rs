@@ -37,12 +37,17 @@ pub fn manuscript_is_vertical(direction: Option<TextDirection>) -> bool {
 /// The strokes of `grid` over a body box of `width` × `height` points.
 /// Horizontal text runs `chars` squares across and `lines` rows down;
 /// vertical text (縦書き) runs `chars` squares down and `lines` columns from
-/// the right. Each square sits in the middle of its line's pitch.
+/// the right. `pitches` is the section grid's character and line pitch (in
+/// the same unit as the box): the text is laid one character to a cell of
+/// those pitches, centred in it, so the squares take the same pitches and
+/// each sits in the middle of its cell, under its character. A pitch that
+/// would not fit its count in the box shares the box out evenly instead.
 pub fn manuscript_strokes(
     grid: &ManuscriptGrid,
     vertical: bool,
     width: f32,
     height: f32,
+    pitches: Option<(f32, f32)>,
 ) -> Vec<ManuscriptStroke> {
     let chars = grid.chars.max(1) as f32;
     let lines = grid.lines.max(1) as f32;
@@ -51,11 +56,18 @@ pub fn manuscript_strokes(
         return strokes;
     }
     // Along the line (a character's pitch) and across it (the line pitch).
-    let (char_pitch, line_pitch) = if vertical {
-        (height / chars, width / lines)
+    let (along, across) = if vertical {
+        (height, width)
     } else {
-        (width / chars, height / lines)
+        (width, height)
     };
+    let pitch = |pitch: Option<f32>, count: f32, extent: f32| {
+        pitch
+            .filter(|pitch| pitch.is_finite() && *pitch > 0.0 && pitch * count <= extent * 1.001)
+            .unwrap_or(extent / count)
+    };
+    let char_pitch = pitch(pitches.map(|pitches| pitches.0), chars, along);
+    let line_pitch = pitch(pitches.map(|pitches| pitches.1), lines, across);
     let side = char_pitch.min(line_pitch);
     let inset = (line_pitch - side) / 2.0;
     // The square of character `c` on line `l`.
@@ -171,6 +183,8 @@ struct BodyBox {
     page_width: f32,
     page_height: f32,
     vertical: bool,
+    /// The section grid's character and line pitch, when it has both.
+    pitches: Option<(f32, f32)>,
 }
 
 impl WordDocument {
@@ -262,6 +276,7 @@ impl WordDocument {
                         .and_then(|properties| properties.text_direction)
                 })
         });
+        let grid = self.section_layout(None).doc_grid;
         BodyBox {
             left,
             top,
@@ -270,6 +285,7 @@ impl WordDocument {
             page_width,
             page_height,
             vertical: manuscript_is_vertical(direction),
+            pitches: grid.char_pitch.zip(grid.line_pitch),
         }
     }
 
@@ -483,7 +499,8 @@ impl WordDocument {
         let twips = |points: f32| (points * 20.0).round() as i64;
         let color = grid.color.clone();
         let mut shapes = Vec::new();
-        for stroke in manuscript_strokes(grid, body.vertical, body.width, body.height) {
+        for stroke in manuscript_strokes(grid, body.vertical, body.width, body.height, body.pitches)
+        {
             let element = match stroke {
                 ManuscriptStroke::Rect {
                     x,
