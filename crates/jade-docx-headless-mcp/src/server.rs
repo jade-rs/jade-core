@@ -3353,6 +3353,22 @@ const COMMANDS: &[Variant] = &[
         ],
     ),
     variant(
+        "set_table_direction",
+        "Lay a table's columns out from the right (Word's 表の方向: 右から左) or from the left.",
+        &[
+            req(
+                "table_order_index",
+                ArgType::Index,
+                "Zero-based index of the table in document order.",
+            ),
+            req(
+                "right_to_left",
+                ArgType::Flag,
+                "True puts the first column at the right edge; false at the left.",
+            ),
+        ],
+    ),
+    variant(
         "set_table_cell_text",
         "Replace the text of a single table cell.",
         &[

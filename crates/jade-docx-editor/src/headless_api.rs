@@ -4720,6 +4720,21 @@ pub fn apply_headless_commands_with_executor_to_document(
                     move |doc| doc.set_table_cell_fit_text(table_order_index, row, column, fit),
                 )?;
             }
+            HeadlessCommand::SetTableDirection {
+                table_order_index,
+                right_to_left,
+            } => {
+                let (table_order_index, right_to_left) = (*table_order_index, *right_to_left);
+                execute_snapshot_edit(
+                    word_doc,
+                    command_executor,
+                    &mut selection,
+                    index,
+                    "set_table_direction",
+                    EditScope::Document,
+                    move |doc| doc.set_table_direction(table_order_index, right_to_left),
+                )?;
+            }
             HeadlessCommand::SetTableCellText {
                 table_order_index,
                 row,

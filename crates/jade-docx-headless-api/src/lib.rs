@@ -2010,6 +2010,11 @@ pub enum HeadlessCommand {
         column: usize,
         fit: bool,
     },
+    /// 表の方向 (`w:bidiVisual`): `true` lays the columns out from the right.
+    SetTableDirection {
+        table_order_index: usize,
+        right_to_left: bool,
+    },
     /// One border edge: the line style (`single`, `double`, `dashed`, `none`,
     /// …), its thickness in points, and its colour. Absent parts fall back to a
     /// single line, Word's own default thickness, and `auto`.
@@ -2560,6 +2565,7 @@ impl HeadlessCommand {
                 "set_table_cell_vertical_alignment"
             }
             HeadlessCommand::SetTableCellFitText { .. } => "set_table_cell_fit_text",
+            HeadlessCommand::SetTableDirection { .. } => "set_table_direction",
             HeadlessCommand::ResetTableCellMargins { .. } => "reset_table_cell_margins",
             HeadlessCommand::SetTableRowHeightProperties { .. } => {
                 "set_table_row_height_properties"

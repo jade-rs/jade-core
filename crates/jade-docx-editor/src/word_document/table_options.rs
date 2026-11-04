@@ -1,9 +1,32 @@
 //! 表のプロパティ's switches that have no layout command of their own,
 //! written where the schema puts them so Word reads the table as written:
 //!
-//! - セル › オプション › 文字列をセル幅に合わせる (`w:tcFitText`).
+//! - セル › オプション › 文字列をセル幅に合わせる (`w:tcFitText`);
+//! - 表 › 表の方向 (右から左 / 左から右, `w:bidiVisual`).
 
 use super::*;
+
+/// `w:tblPr`'s children in schema order (ECMA-376 Part 1 §17.4.60).
+const TABLE_PROPERTY_ORDER: &[&str] = &[
+    "w:tblStyle",
+    "w:tblpPr",
+    "w:tblOverlap",
+    "w:bidiVisual",
+    "w:tblStyleRowBandSize",
+    "w:tblStyleColBandSize",
+    "w:tblW",
+    "w:jc",
+    "w:tblCellSpacing",
+    "w:tblInd",
+    "w:tblBorders",
+    "w:shd",
+    "w:tblLayout",
+    "w:tblCellMar",
+    "w:tblLook",
+    "w:tblCaption",
+    "w:tblDescription",
+    "w:tblPrChange",
+];
 
 /// `w:tcPr`'s children in schema order (ECMA-376 Part 1 §17.4.70).
 const CELL_PROPERTY_ORDER: &[&str] = &[
@@ -102,6 +125,29 @@ impl WordDocument {
             fit.then(Vec::new),
         )
     }
+
+    /// 表の方向: 右から左 lays the table's columns out from the right
+    /// (`w:bidiVisual`), 左から右 as usual.
+    pub fn set_table_direction(
+        &mut self,
+        table_order_index: usize,
+        right_to_left: bool,
+    ) -> Result<(), String> {
+        let table_id = {
+            let table = self
+                .table_mut_by_order(table_order_index)
+                .ok_or_else(|| format!("table {table_order_index} was not found"))?;
+            table.bidi_visual = right_to_left;
+            table.node_id
+        };
+        self.put_ordered_property(
+            table_id,
+            "w:tblPr",
+            TABLE_PROPERTY_ORDER,
+            "w:bidiVisual",
+            right_to_left.then(Vec::new),
+        )
+    }
 }
 
 #[cfg(test)]
@@ -152,5 +198,22 @@ mod tests {
         let (_, xml) = document_xml(&reopened);
         assert!(!xml.contains("tcFitText"), "{xml}");
         assert!(xml.contains("<w:vAlign "), "{xml}");
+    }
+
+    #[test]
+    fn direction_is_written_in_schema_order_and_read_back() {
+        let mut document = load(&docx_with_body(TABLE));
+        document.set_table_direction(0, true).unwrap();
+        assert!(document.table_by_order(0).unwrap().bidi_visual);
+        let (saved, xml) = document_xml(&document);
+        let bidi = xml.find("<w:bidiVisual/>").expect(&xml);
+        assert!(bidi < xml.find("<w:tblW ").unwrap(), "{xml}");
+
+        let mut reopened = load(&saved);
+        assert!(reopened.table_by_order(0).unwrap().bidi_visual);
+        reopened.set_table_direction(0, false).unwrap();
+        assert!(!reopened.table_by_order(0).unwrap().bidi_visual);
+        let (_, xml) = document_xml(&reopened);
+        assert!(!xml.contains("bidiVisual"), "{xml}");
     }
 }
