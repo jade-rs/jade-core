@@ -1420,6 +1420,9 @@ pub struct XmlAttribute {
 
 impl XmlAttribute {
     fn parse_attributes(e: &quick_xml::events::BytesStart<'_>) -> Result<Vec<Self>, DocxXmlError> {
+        if let Some(attributes) = Self::parse_plain_attributes(e.attributes_raw()) {
+            return Ok(attributes);
+        }
         // Attribute names already live in the result. Reuse them for duplicate
         // detection instead of allocating quick-xml's separate key-range vector
         // for every element with attributes.
@@ -1459,6 +1462,58 @@ impl XmlAttribute {
             attributes.push(Self::from_attribute(attr)?);
         }
         Ok(attributes)
+    }
+
+    /// The common case read straight from the tag's text: well-formed
+    /// `name="value"` pairs whose values need no normalization (no `&`, tab
+    /// or line break) and whose names are unique. Those values are exactly
+    /// what quick-xml would return, and this keeps the reader's cost from
+    /// hanging on whether the optimizer inlines quick-xml's attribute
+    /// iterator here. Anything else returns `None` for the checked path.
+    fn parse_plain_attributes(raw: &[u8]) -> Option<Vec<Self>> {
+        // Each attribute has an '='. Values may contain it too, so this is
+        // only a bounded capacity hint.
+        let capacity = raw.iter().filter(|&&byte| byte == b'=').count().min(8);
+        let mut attributes = Vec::<Self>::with_capacity(capacity);
+        let mut rest = raw.trim_ascii_start();
+        while !rest.is_empty() {
+            let eq = rest.iter().position(|&byte| byte == b'=')?;
+            let name = rest[..eq].trim_ascii_end();
+            if name.is_empty()
+                || name
+                    .iter()
+                    .any(|&byte| byte.is_ascii_whitespace() || byte == b'"' || byte == b'\'')
+                || attributes
+                    .iter()
+                    .any(|previous| previous.name.as_bytes() == name)
+            {
+                return None;
+            }
+            let after = rest[eq + 1..].trim_ascii_start();
+            let quote = *after
+                .first()
+                .filter(|&&byte| byte == b'"' || byte == b'\'')?;
+            let body = &after[1..];
+            let end = body.iter().position(|&byte| byte == quote)?;
+            let value = &body[..end];
+            if value
+                .iter()
+                .any(|&byte| matches!(byte, b'&' | b'\t' | b'\r' | b'\n'))
+            {
+                return None;
+            }
+            rest = &body[end + 1..];
+            // Attributes are separated by whitespace.
+            if rest.first().is_some_and(|byte| !byte.is_ascii_whitespace()) {
+                return None;
+            }
+            attributes.push(Self {
+                name: String::from_utf8(name.to_vec()).ok()?,
+                value: String::from_utf8(value.to_vec()).ok()?,
+            });
+            rest = rest.trim_ascii_start();
+        }
+        Some(attributes)
     }
 
     fn from_attribute(attr: Attribute<'_>) -> Result<Self, DocxXmlError> {
@@ -1620,6 +1675,59 @@ fn push_escaped(buffer: &mut String, value: &str, entity: impl Fn(u8) -> Option<
 
 #[cfg(test)]
 pub(crate) mod tests {
+    #[test]
+    fn plain_attributes_read_as_quick_xml_reads_them() {
+        use quick_xml::events::Event;
+        let checked = |tag: &str| {
+            let mut reader = quick_xml::Reader::from_str(tag);
+            let Ok(Event::Empty(start)) = reader.read_event() else {
+                panic!("{tag} is one empty element");
+            };
+            let mut iter = start.attributes();
+            iter.with_checks(false);
+            let checked: Result<Vec<_>, DocxXmlError> = iter
+                .map(|attr| {
+                    attr.map_err(DocxXmlError::from)
+                        .and_then(super::XmlAttribute::from_attribute)
+                })
+                .collect();
+            (
+                super::XmlAttribute::parse_plain_attributes(start.attributes_raw()),
+                checked,
+            )
+        };
+        for tag in [
+            "<a/>",
+            "<a   />",
+            r#"<w:t xml:space="preserve"/>"#,
+            r#"<a x="1" y='two' z = "=3" />"#,
+            "<a x=\"\u{5b57}\" y=\"\"/>",
+            "<a\n\tx=\"1\"\r\n y=\"2\"/>",
+        ] {
+            let (plain, checked) = checked(tag);
+            let plain = plain.unwrap_or_else(|| panic!("{tag} is plain"));
+            let pairs = |attributes: &[super::XmlAttribute]| -> Vec<(String, String)> {
+                attributes
+                    .iter()
+                    .map(|attribute| (attribute.name.clone(), attribute.value.clone()))
+                    .collect()
+            };
+            assert_eq!(pairs(&plain), pairs(&checked.expect(tag)), "{tag}");
+        }
+        // Values to normalize, duplicates, missing quotes or separators and
+        // valueless names all take the checked path.
+        for tag in [
+            r#"<a x="&amp;"/>"#,
+            "<a x=\"1\n2\"/>",
+            r#"<a x="1" x="2"/>"#,
+            "<a x=1/>",
+            r#"<a x="1"y="2"/>"#,
+            r#"<a x y="2"/>"#,
+        ] {
+            assert!(checked(tag).0.is_none(), "{tag}");
+        }
+    }
+
     #[test]
     fn an_empty_run_counts_as_self_closing_as_it_is_written() {
         // The source's `<w:r/>` and an empty run made after parsing are both
