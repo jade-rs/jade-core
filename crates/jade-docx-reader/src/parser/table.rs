@@ -99,7 +99,7 @@ impl DocumentParser {
             && props.indent.as_ref().is_none_or(Self::indent_is_empty)
             && props.spacing.as_ref().is_none_or(Self::spacing_is_empty)
             && props.tabs.is_empty()
-            && props.positional_tabs.is_empty()
+            && props.positional_tabs.as_ref().is_none_or(Vec::is_empty)
             && props.shading.as_ref().is_none_or(|s| s.is_empty())
             && props.borders.as_ref().is_none_or(|b| b.is_empty())
             && props.contextual_spacing.is_none()

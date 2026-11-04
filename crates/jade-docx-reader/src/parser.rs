@@ -2459,12 +2459,14 @@ impl DocumentParser {
                                     })
                                     .collect();
                                 if let Some(props) = current_paragraph_props.as_mut() {
-                                    props.positional_tabs.push(PositionalTab::from_attributes(
-                                        ordinal,
-                                        attributes
-                                            .iter()
-                                            .map(|(name, value)| (name.as_str(), value.as_str())),
-                                    ));
+                                    props.positional_tabs.get_or_insert_with(Vec::new).push(
+                                        PositionalTab::from_attributes(
+                                            ordinal,
+                                            attributes.iter().map(|(name, value)| {
+                                                (name.as_str(), value.as_str())
+                                            }),
+                                        ),
+                                    );
                                 }
                                 run.text.push('\t');
                                 paragraph_text_len += 1;
@@ -14698,7 +14700,9 @@ mod tests {
             .properties
             .as_ref()
             .expect("properties")
-            .positional_tabs;
+            .positional_tabs
+            .as_ref()
+            .expect("positional tabs");
         assert_eq!(tabs.len(), 1);
         assert_eq!(tabs[0].alignment, PositionalTabAlignment::Right);
     }
@@ -14723,7 +14727,13 @@ mod tests {
             _ => panic!("expected paragraph"),
         };
         assert_eq!(paragraph.runs[0].text, "left\tright");
-        let tabs = &paragraph.properties.as_ref().unwrap().positional_tabs;
+        let tabs = paragraph
+            .properties
+            .as_ref()
+            .unwrap()
+            .positional_tabs
+            .as_ref()
+            .unwrap();
         assert_eq!(
             tabs,
             &vec![PositionalTab {

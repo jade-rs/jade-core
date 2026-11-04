@@ -266,7 +266,7 @@ pub struct ParagraphStyle {
     /// Absolute position tabs (`w:ptab`): the tab characters, by their
     /// order among the paragraph's tabs, that align to a margin or indent
     /// position rather than to the next tab stop.
-    pub positional_tabs: Vec<PositionalTabStop>,
+    pub positional_tabs: Option<Box<[PositionalTabStop]>>,
 }
 
 /// Word's automatic hyphenation as one paragraph applies it.
@@ -338,7 +338,7 @@ impl Default for ParagraphStyle {
             float_line_segments: Vec::new(),
             hyphenation: None,
             advances: Vec::new(),
-            positional_tabs: Vec::new(),
+            positional_tabs: None,
         }
     }
 }
@@ -5702,12 +5702,14 @@ pub trait LineWrapContext {
     }
 }
 
-/// The wrapper's terms for a paragraph's `w:ptab`s.
+/// The wrapper's terms for a paragraph's `w:ptab`s; `None` without any.
 pub fn resolve_positional_tabs(
-    tabs: &[jade_docx_reader::document::PositionalTab],
-) -> Vec<PositionalTabStop> {
+    tabs: Option<&Vec<jade_docx_reader::document::PositionalTab>>,
+) -> Option<Box<[PositionalTabStop]>> {
     use jade_docx_reader::document::PositionalTabAlignment;
-    tabs.iter()
+    let tabs = tabs.filter(|tabs| !tabs.is_empty())?;
+    let stops = tabs
+        .iter()
         .map(|tab| PositionalTabStop {
             ordinal: tab.ordinal,
             alignment: match tab.alignment {
@@ -5721,7 +5723,8 @@ pub fn resolve_positional_tabs(
                 .map_or(TabLeader::None, tab_leader_from_str),
             relative_to_indent: tab.relative_to_indent,
         })
-        .collect()
+        .collect();
+    Some(stops)
 }
 
 /// Normalizes raw `TabStop` entries into `ParagraphTabStop` structures.
@@ -6828,19 +6831,16 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
                 let cursor_x = line_origin + tab_stop_cursor_width;
                 // An absolute position tab goes to its own position, whatever
                 // the tab stops say.
-                let positional = (!paragraph_style.positional_tabs.is_empty())
-                    .then(|| {
+                let positional = paragraph_style
+                    .positional_tabs
+                    .as_deref()
+                    .and_then(|stops| {
                         let local = grapheme_start_abs.saturating_sub(base_offset);
                         let ordinal = text
                             .get(..local)
                             .map_or(0, |before| before.matches('\t').count());
-                        paragraph_style
-                            .positional_tabs
-                            .iter()
-                            .find(|stop| stop.ordinal == ordinal)
-                            .copied()
-                    })
-                    .flatten();
+                        stops.iter().find(|stop| stop.ordinal == ordinal).copied()
+                    });
                 let tab_target = |cursor_x: f64| match &positional {
                     Some(stop) => {
                         positional_tab_target(stop, paragraph_style, base_x, column_right_edge)

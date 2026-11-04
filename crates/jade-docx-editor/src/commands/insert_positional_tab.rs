@@ -127,17 +127,17 @@ impl Command for InsertPositionalTabCommand {
             .ok_or(CommandError::ParagraphUnavailable)?
             .properties
             .get_or_insert_with(Default::default);
-        for existing in &mut props.positional_tabs {
+        let tabs = props.positional_tabs.get_or_insert_with(Vec::new);
+        for existing in tabs.iter_mut() {
             if existing.ordinal >= ordinal {
                 existing.ordinal += 1;
             }
         }
-        let at = props
-            .positional_tabs
+        let at = tabs
             .iter()
             .position(|existing| existing.ordinal > ordinal)
-            .unwrap_or(props.positional_tabs.len());
-        props.positional_tabs.insert(at, tab);
+            .unwrap_or(tabs.len());
+        tabs.insert(at, tab);
         *ctx.selection = Some(SelectionRange::collapsed(TextPosition::new(
             index,
             self.position.offset + 1,
@@ -225,8 +225,9 @@ mod tests {
             .properties
             .clone()
             .unwrap();
-        assert_eq!(props.positional_tabs.len(), 1);
-        assert_eq!(props.positional_tabs[0].ordinal, 0);
+        let tabs = props.positional_tabs.as_ref().unwrap();
+        assert_eq!(tabs.len(), 1);
+        assert_eq!(tabs[0].ordinal, 0);
         let text: String = document
             .paragraph(paragraph)
             .unwrap()
@@ -246,7 +247,9 @@ mod tests {
             .properties
             .as_ref()
             .unwrap()
-            .positional_tabs;
+            .positional_tabs
+            .as_ref()
+            .unwrap();
         assert_eq!(tabs.len(), 1);
         assert_eq!(tabs[0].alignment, PositionalTabAlignment::Right);
 

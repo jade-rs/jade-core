@@ -5177,8 +5177,10 @@ pub struct ParagraphProperties {
     /// The paragraph's absolute position tabs (`w:ptab`, ECMA-376 Part 1
     /// §17.3.3.16), in text order. Each is a tab character of the text: the
     /// `ordinal`-th `\t` of the paragraph.
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub positional_tabs: Vec<PositionalTab>,
+    /// `None` when there are none, so the many paragraphs without one
+    /// clone and drop nothing for it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub positional_tabs: Option<Vec<PositionalTab>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub east_asian_settings: Option<EastAsianLineBreakingSettings>,
     /// Paragraph shading (`w:shd` inside `w:pPr`).  See ECMA-376 Part 1

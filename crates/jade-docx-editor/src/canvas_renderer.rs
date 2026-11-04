@@ -18071,8 +18071,9 @@ where
             paragraph_style.first_line_indent = 0.0;
         }
         if let Some(props) = &paragraph.properties {
-            paragraph_style.positional_tabs =
-                jade_docx_layout::line_wrap::resolve_positional_tabs(&props.positional_tabs);
+            paragraph_style.positional_tabs = jade_docx_layout::line_wrap::resolve_positional_tabs(
+                props.positional_tabs.as_ref(),
+            );
             if !props.tabs.is_empty() {
                 paragraph_style.tab_stops = resolve_tab_stops(&props.tabs);
                 #[cfg(all(debug_assertions, target_arch = "wasm32"))]
