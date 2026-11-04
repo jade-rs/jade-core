@@ -2804,11 +2804,16 @@ pub fn word_east_asian_font_metrics_apply_on_grid(
 /// Mincho baseline 12.83pt below the top of an 18pt grid line (half of
 /// 18 − 13.61 plus its 10.58pt ascent), a Yu Mincho one 12.59pt, and 16pt text
 /// that needs two grid lines 23.87pt below the top of the 36pt pair. Word for
-/// Windows has not been traced for this (jlsi/jade#437), so its lines keep
-/// their leading below the text.
+/// Windows has not been traced for line grids (jlsi/jade#437), so its lines
+/// keep their leading below the text — except on a `snapToChars` grid, the
+/// grid 原稿用紙設定 lays manuscript paper with: there every character sits
+/// in a square Word draws in the middle of its line pitch, on either Word.
 pub fn word_grid_line_centres_text(snap_to_grid: bool, doc_grid: Option<&DocGrid>) -> bool {
-    word_layout_platform() == WordLayoutPlatform::Mac
-        && snap_to_grid
+    snap_to_grid
+        && (word_layout_platform() == WordLayoutPlatform::Mac
+            || doc_grid
+                .and_then(|grid| grid.grid_type.as_deref())
+                .is_some_and(|kind| kind.eq_ignore_ascii_case("snapToChars")))
         && doc_grid_has_active_line_grid(doc_grid)
 }
 

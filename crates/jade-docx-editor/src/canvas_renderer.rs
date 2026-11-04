@@ -3626,6 +3626,9 @@ where
     watermark_style: Option<jade_docx_reader::document::WatermarkStyle>,
     /// 原稿用紙設定's grid, drawn behind the text on every page.
     manuscript_grid: Option<jade_docx_reader::document::ManuscriptGrid>,
+    /// The document's default font size, which a character grid's
+    /// `w:charSpace` widens into its character pitch.
+    default_font_size_pt: Option<f32>,
     /// Numeral format (`w:pgNumType/@w:fmt`, lowercased) applied to `PAGE`
     /// fields. `None` = decimal. ECMA-376 Part 1 §17.6.12. MVP: the default
     /// section's value is applied document-wide.
@@ -8484,6 +8487,7 @@ where
             watermark_text: None,
             watermark_style: None,
             manuscript_grid: None,
+            default_font_size_pt: None,
             page_number_format: None,
             page_number_start: None,
             section_page_numbering: Vec::new(),
@@ -10658,11 +10662,21 @@ where
             return;
         }
         let vertical = manuscript_is_vertical(self.current_text_direction);
+        // The cells the text is laid in: a character pitch is the default
+        // font size (Word's 10pt without one) widened by the grid's
+        // `w:charSpace`, as 文字数と行数 writes it.
+        let pitches = self.current_doc_grid.as_ref().and_then(|doc_grid| {
+            let base = self.default_font_size_pt.unwrap_or(10.0);
+            Some((
+                points_to_px(base + doc_grid.char_space?) as f32,
+                points_to_px(doc_grid.line_pitch?) as f32,
+            ))
+        });
         let context = self.host.painter();
         context.save();
         context.set_stroke_style_str(&grid.color);
         context.set_line_width(points_to_px(0.5).max(0.75));
-        for stroke in manuscript_strokes(grid, vertical, width as f32, height as f32) {
+        for stroke in manuscript_strokes(grid, vertical, width as f32, height as f32, pitches) {
             match stroke {
                 ManuscriptStroke::Rect {
                     x,
@@ -15876,6 +15890,7 @@ where
         self.watermark_text = document.watermark_text.clone();
         self.watermark_style = document.watermark_style.clone();
         self.manuscript_grid = document.manuscript_grid.clone();
+        self.default_font_size_pt = document.default_font_size;
 
         // Resolve `w:pgNumType` (numeral format + start offset) for PAGE fields
         // from the default section. MVP: a single document-wide value.
@@ -29601,6 +29616,9 @@ where
                 direction,
                 Some(column_length),
                 line_height,
+                paragraph_style
+                    .doc_grid_snap_to_chars
+                    .then(|| paragraph_style.doc_grid_char_space_px.unwrap_or(0.0)),
             )?,
             _ => {
                 let canvas = self.host.painter();
