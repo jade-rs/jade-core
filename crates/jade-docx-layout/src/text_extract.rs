@@ -1143,6 +1143,8 @@ fn build_paragraph_input<C: LineWrapContext>(
             paragraph_style.continuation_available_adjustment = points_to_px(10.5);
         }
         paragraph_style.tab_stops = resolve_tab_stops(&props.tabs);
+        paragraph_style.positional_tabs =
+            crate::line_wrap::resolve_positional_tabs(props.positional_tabs.as_ref());
         let defaults =
             EastAsianLineBreakingRules::from_settings(&document.east_asian_line_breaking);
         paragraph_style.east_asian_rules =

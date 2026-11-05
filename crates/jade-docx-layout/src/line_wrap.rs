@@ -263,6 +263,10 @@ pub struct ParagraphStyle {
     pub hyphenation: Option<ParagraphHyphenation>,
     /// `ADVANCE` fields' horizontal moves, by layout-text offset, in order.
     pub advances: Vec<crate::advance_field::ParagraphAdvance>,
+    /// Absolute position tabs (`w:ptab`): the tab characters, by their
+    /// order among the paragraph's tabs, that align to a margin or indent
+    /// position rather than to the next tab stop.
+    pub positional_tabs: Option<Box<[PositionalTabStop]>>,
 }
 
 /// Word's automatic hyphenation as one paragraph applies it.
@@ -334,8 +338,47 @@ impl Default for ParagraphStyle {
             float_line_segments: Vec::new(),
             hyphenation: None,
             advances: Vec::new(),
+            positional_tabs: None,
         }
     }
+}
+
+/// An absolute position tab (ECMA-376 Part 1 §17.3.3.16) as the wrapper
+/// lays it out.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct PositionalTabStop {
+    /// Which of the paragraph's tab characters it is (0-based).
+    pub ordinal: usize,
+    /// Left, center or right.
+    pub alignment: TabAlignment,
+    pub leader: TabLeader,
+    /// Measured between the paragraph's indents rather than the margins.
+    pub relative_to_indent: bool,
+}
+
+/// Where an absolute position tab aligns the text after it: the left edge,
+/// the middle or the right edge of the text margins (or of the paragraph's
+/// indents), as Word places a header's centre and right parts.
+fn positional_tab_target(
+    stop: &PositionalTabStop,
+    paragraph_style: &ParagraphStyle,
+    base_x: f64,
+    column_right_edge: f64,
+) -> (f64, TabAlignment, TabLeader) {
+    let (left, right) = if stop.relative_to_indent {
+        (base_x, column_right_edge - paragraph_style.right_indent)
+    } else {
+        (
+            base_x + paragraph_style.tab_origin_offset,
+            column_right_edge,
+        )
+    };
+    let target = match stop.alignment {
+        TabAlignment::Center => (left + right) / 2.0,
+        TabAlignment::Right => right,
+        _ => left,
+    };
+    (target, stop.alignment, stop.leader)
 }
 
 impl ParagraphStyle {
@@ -1015,12 +1058,36 @@ pub struct SnapToCharsCacheKey {
     char_space_px_bits: u64,
 }
 
+/// Whether `grapheme` takes whole `snapToChars` cells: any character but
+/// spaces and controls — though the ideographic space (U+3000), which leaves
+/// a square empty at the head of a manuscript paragraph, takes its cell too.
+fn snaps_to_char_cells(grapheme: &str) -> bool {
+    grapheme.contains('\u{3000}')
+        || !grapheme
+            .chars()
+            .all(|ch| ch.is_whitespace() || ch.is_control())
+}
+
+/// Where a grapheme sits in the `snapToChars` cells it takes: the space the
+/// cells leave around its advance, before and after it. A `snapToChars`
+/// grid (`w:docGrid`, ECMA-376 Part 1 §17.6.5) gives each character a whole
+/// number of character pitches, and Word centres the character in them,
+/// East Asian or not: it is what puts each character of 原稿用紙 in the
+/// middle of its square, which sits in the middle of its pitch.
 pub fn snap_to_chars_cell_span_adjustment(
     grapheme: &str,
-    script: ScriptCategory,
     core_advance: f64,
     cell_width: f64,
 ) -> (f64, f64) {
+    if !snaps_to_char_cells(grapheme) {
+        return (0.0, 0.0);
+    }
+    centre_in_char_cells(core_advance, cell_width)
+}
+
+/// The space before and after an advance of `core_advance` centred in the
+/// whole `cell_width` cells it needs.
+fn centre_in_char_cells(core_advance: f64, cell_width: f64) -> (f64, f64) {
     if !core_advance.is_finite()
         || !cell_width.is_finite()
         || core_advance <= 0.0
@@ -1028,13 +1095,6 @@ pub fn snap_to_chars_cell_span_adjustment(
     {
         return (0.0, 0.0);
     }
-    if grapheme
-        .chars()
-        .all(|ch| ch.is_whitespace() || ch.is_control())
-    {
-        return (0.0, 0.0);
-    }
-
     let span_cells = (core_advance / cell_width).ceil().max(1.0);
     let snapped_advance = span_cells * cell_width;
     let slack = (snapped_advance - core_advance).max(0.0);
@@ -1042,12 +1102,8 @@ pub fn snap_to_chars_cell_span_adjustment(
         return (0.0, 0.0);
     }
 
-    if script == ScriptCategory::EastAsia {
-        (0.0, slack)
-    } else {
-        let leading = slack * 0.5;
-        (leading, slack - leading)
-    }
+    let leading = slack * 0.5;
+    (leading, slack - leading)
 }
 
 #[inline]
@@ -1496,9 +1552,7 @@ fn compute_grapheme_advance_with_ascii_width(
     let implicit_latin_trailing_gap = widen(implicit_latin_trailing_gap);
     let implicit_numeric_gap = widen(implicit_numeric_gap);
     let (snap_leading, snap_trailing) = snap_cell_width
-        .map(|cell_width| {
-            snap_to_chars_cell_span_adjustment(grapheme, script, core_advance, cell_width)
-        })
+        .map(|cell_width| snap_to_chars_cell_span_adjustment(grapheme, core_advance, cell_width))
         .unwrap_or((0.0, 0.0));
     let glyph_box_width =
         core_advance + snap_trailing + balance_extra + implicit_latin_trailing_gap;
@@ -4533,6 +4587,34 @@ pub fn layout_text_vertically<C: LineWrapContext>(
     available_height: Option<f64>,
     line_height: f64,
 ) -> Result<VerticalWrappedLayout, C::Error> {
+    layout_text_vertically_on_grid(
+        ctx,
+        text,
+        run_styles,
+        prefer_horizontal_latin,
+        base_offset,
+        available_height,
+        line_height,
+        None,
+    )
+}
+
+/// [`layout_text_vertically`] on a `snapToChars` grid when
+/// `snap_char_space_px` is set (the grid's `w:charSpace`): each character
+/// takes whole character pitches down the column — the East Asian em plus
+/// the extra space — and sits in the middle of them, its cluster's
+/// `leading_advance` holding the space above it.
+#[allow(clippy::too_many_arguments)]
+fn layout_text_vertically_on_grid<C: LineWrapContext>(
+    ctx: &C,
+    text: &str,
+    run_styles: &[RunStyle],
+    prefer_horizontal_latin: bool,
+    base_offset: usize,
+    available_height: Option<f64>,
+    line_height: f64,
+    snap_char_space_px: Option<f64>,
+) -> Result<VerticalWrappedLayout, C::Error> {
     let joined_runs = join_equal_runs_inside_graphemes(text, run_styles);
     let run_styles = joined_runs.as_ref();
     fn push_vertical_line(
@@ -4626,6 +4708,42 @@ pub fn layout_text_vertically<C: LineWrapContext>(
         Ok(())
     }
 
+    /// Widens the line just pushed to whole `cell`s and centres its glyph
+    /// in them.
+    fn snap_last_line_to_cells(
+        lines: &mut [WrappedLine],
+        cell: Option<f64>,
+        style: &ResolvedRunStyle,
+    ) {
+        let (Some(cell), Some(line)) = (cell, lines.last_mut()) else {
+            return;
+        };
+        let Some(cluster) = line.clusters.last_mut() else {
+            return;
+        };
+        if !snaps_to_char_cells(&cluster.text) {
+            return;
+        }
+        let (leading, trailing) = centre_in_char_cells(cluster.width, cell);
+        if leading + trailing <= f64::EPSILON {
+            return;
+        }
+        let script = classify_script(&cluster.text);
+        cluster.layout = Some(InlineClusterLayout {
+            character_border_edges: 0,
+            script,
+            font_slot: style.font_slot_for_grapheme(&cluster.text, script),
+            leading_advance: leading,
+            glyph_box_width: cluster.width + trailing,
+            measured_glyph_width: cluster.width,
+            adjusted_glyph_width: cluster.width,
+            font_descriptor_hash: 0,
+            font_ascent: None,
+            font_descent: None,
+        });
+        cluster.width += leading + trailing;
+    }
+
     let mut lines = Vec::new();
     let mut max_line_width: f64 = 0.0;
     let mut pending_ascii: Option<PendingAsciiLine> = None;
@@ -4646,6 +4764,20 @@ pub fn layout_text_vertically<C: LineWrapContext>(
         }
 
         let style = ctx.resolve_run_style(run_style.properties.as_deref())?;
+        // The run's character pitch on a `snapToChars` grid, as across a
+        // horizontal line ([`resolve_snap_to_chars_cell_width`]).
+        let cell = match snap_char_space_px {
+            Some(char_space) => {
+                let (descriptor, _, _) =
+                    style.descriptor_key_for_grapheme("あ", ScriptCategory::EastAsia);
+                let em = match crate::line_metrics::word_monospace_em_px(descriptor) {
+                    Some(em) => em,
+                    None => ctx.measure_text("あ", descriptor)?,
+                };
+                Some((em * EAST_ASIA_ADVANCE_SCALE * style.text_scale_x + char_space).max(1.0))
+            }
+            None => None,
+        };
         // 縦中横 (`w:eastAsianLayout w:vert`, ECMA-376 Part 1 §17.3.2.10):
         // the run is one upright horizontal group taking one character's
         // height in the column. Runs of the same group (one `w:id`) join it.
@@ -4698,6 +4830,7 @@ pub fn layout_text_vertically<C: LineWrapContext>(
                     hyperlink: &run_style.hyperlink,
                 },
             );
+            snap_last_line_to_cells(&mut lines, cell, &style);
             continue;
         }
         for (rel_offset, grapheme) in crate::graphemes::grapheme_indices(run_text) {
@@ -4791,6 +4924,7 @@ pub fn layout_text_vertically<C: LineWrapContext>(
                     hyperlink: &run_style.hyperlink,
                 },
             );
+            snap_last_line_to_cells(&mut lines, cell, &style);
         }
     }
 
@@ -4860,9 +4994,7 @@ pub fn layout_section_text_vertically<C: LineWrapContext>(
     available_height: Option<f64>,
     line_height: f64,
 ) -> Result<VerticalWrappedLayout, C::Error> {
-    let joined_runs = join_equal_runs_inside_graphemes(text, run_styles);
-    let run_styles = joined_runs.as_ref();
-    let mut layout = layout_text_vertically(
+    layout_section_text_vertically_on_grid(
         ctx,
         text,
         run_styles,
@@ -4870,6 +5002,36 @@ pub fn layout_section_text_vertically<C: LineWrapContext>(
         base_offset,
         available_height,
         line_height,
+        None,
+    )
+}
+
+/// [`layout_section_text_vertically`] on a `snapToChars` grid whose
+/// `w:charSpace` is `snap_char_space_px`: 縦書き manuscript paper, one
+/// character centred in each square down the column. A snapped glyph's
+/// `leading_advance` is the space above it in its cells.
+#[allow(clippy::too_many_arguments)]
+pub fn layout_section_text_vertically_on_grid<C: LineWrapContext>(
+    ctx: &C,
+    text: &str,
+    run_styles: &[RunStyle],
+    prefer_horizontal_latin: bool,
+    base_offset: usize,
+    available_height: Option<f64>,
+    line_height: f64,
+    snap_char_space_px: Option<f64>,
+) -> Result<VerticalWrappedLayout, C::Error> {
+    let joined_runs = join_equal_runs_inside_graphemes(text, run_styles);
+    let run_styles = joined_runs.as_ref();
+    let mut layout = layout_text_vertically_on_grid(
+        ctx,
+        text,
+        run_styles,
+        prefer_horizontal_latin,
+        base_offset,
+        available_height,
+        line_height,
+        snap_char_space_px,
     )?;
     let mut run_index = 0;
     let mut resolved_index = None;
@@ -4897,14 +5059,25 @@ pub fn layout_section_text_vertically<C: LineWrapContext>(
             if let Some((ascent, descent)) =
                 crate::line_metrics::word_vertical_glyph_metrics_px(descriptor)
             {
+                // A glyph snapped to grid cells keeps its place in them.
+                let (leading, glyph_box_width, glyph_width) = cluster.layout.as_ref().map_or(
+                    (0.0, cluster.width, cluster.width),
+                    |snapped| {
+                        (
+                            snapped.leading_advance,
+                            snapped.glyph_box_width,
+                            snapped.adjusted_glyph_width,
+                        )
+                    },
+                );
                 cluster.layout = Some(InlineClusterLayout {
                     character_border_edges: 0,
                     script,
                     font_slot: style.font_slot_for_grapheme(&cluster.text, script),
-                    leading_advance: 0.0,
-                    glyph_box_width: cluster.width,
-                    measured_glyph_width: cluster.width,
-                    adjusted_glyph_width: cluster.width,
+                    leading_advance: leading,
+                    glyph_box_width,
+                    measured_glyph_width: glyph_width,
+                    adjusted_glyph_width: glyph_width,
                     font_descriptor_hash: hash,
                     font_ascent: Some(ascent),
                     font_descent: Some(descent),
@@ -5709,6 +5882,31 @@ pub trait LineWrapContext {
     ) -> Result<Option<(f64, f64)>, Self::Error> {
         Ok(None)
     }
+}
+
+/// The wrapper's terms for a paragraph's `w:ptab`s; `None` without any.
+pub fn resolve_positional_tabs(
+    tabs: Option<&Vec<jade_docx_reader::document::PositionalTab>>,
+) -> Option<Box<[PositionalTabStop]>> {
+    use jade_docx_reader::document::PositionalTabAlignment;
+    let tabs = tabs.filter(|tabs| !tabs.is_empty())?;
+    let stops = tabs
+        .iter()
+        .map(|tab| PositionalTabStop {
+            ordinal: tab.ordinal,
+            alignment: match tab.alignment {
+                PositionalTabAlignment::Left => TabAlignment::Left,
+                PositionalTabAlignment::Center => TabAlignment::Center,
+                PositionalTabAlignment::Right => TabAlignment::Right,
+            },
+            leader: tab
+                .leader
+                .as_deref()
+                .map_or(TabLeader::None, tab_leader_from_str),
+            relative_to_indent: tab.relative_to_indent,
+        })
+        .collect();
+    Some(stops)
 }
 
 /// Normalizes raw `TabStop` entries into `ParagraphTabStop` structures.
@@ -6813,8 +7011,25 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
                     paragraph_style,
                 );
                 let cursor_x = line_origin + tab_stop_cursor_width;
-                let (target_x, alignment, mut leader_kind) =
-                    find_next_tab_stop(paragraph_style, base_x, cursor_x);
+                // An absolute position tab goes to its own position, whatever
+                // the tab stops say.
+                let positional = paragraph_style
+                    .positional_tabs
+                    .as_deref()
+                    .and_then(|stops| {
+                        let local = grapheme_start_abs.saturating_sub(base_offset);
+                        let ordinal = text
+                            .get(..local)
+                            .map_or(0, |before| before.matches('\t').count());
+                        stops.iter().find(|stop| stop.ordinal == ordinal).copied()
+                    });
+                let tab_target = |cursor_x: f64| match &positional {
+                    Some(stop) => {
+                        positional_tab_target(stop, paragraph_style, base_x, column_right_edge)
+                    }
+                    None => find_next_tab_stop(paragraph_style, base_x, cursor_x),
+                };
+                let (target_x, alignment, mut leader_kind) = tab_target(cursor_x);
 
                 let mut previous_width = current_width;
                 let mut desired_width = tab_segment_start_width(
@@ -6843,7 +7058,7 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
                     let next_line_origin =
                         paragraph_style.line_base_x(base_x, next_line_index) + next_line_indent;
                     let (next_target_x, next_alignment, next_leader_kind) =
-                        find_next_tab_stop(paragraph_style, base_x, next_line_origin);
+                        tab_target(next_line_origin);
                     let next_desired_width = tab_segment_start_width(
                         next_target_x,
                         next_line_origin,

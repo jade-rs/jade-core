@@ -487,6 +487,9 @@ impl Default for CommentDecorationColors {
 const CROP_MARK_LENGTH_PX: f64 = 12.0;
 const CROP_MARK_STROKE_WIDTH: f64 = 1.0;
 const CROP_MARK_COLOR: &str = "#888888";
+/// 文字列の範囲: Word's dotted grey line round the text area.
+const TEXT_BOUNDARY_COLOR: &str = "#A6A6A6";
+const TEXT_BOUNDARY_DASH: [f64; 2] = [1.0, 2.0];
 /// Color of the vertical rule drawn between columns when `w:cols w:sep` is on.
 const COLUMN_SEPARATOR_COLOR: &str = "#000000";
 /// Stroke width (in CSS px) of the inter-column separator rule.
@@ -982,6 +985,23 @@ fn shape_group_contains_text(group: &RunShapeGroup) -> bool {
 /// What each body run shows while field codes are on: the field (by its
 /// first run) and its `{ CODE }`.
 pub type FieldCodeDisplay = HashMap<XmlNodeId, (XmlNodeId, Rc<str>)>;
+
+/// フィールドの網かけ (Word 環境設定 › 表示): which fields' text is drawn on
+/// Word's grey. A view setting — never part of the document or a PDF.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub enum FieldShading {
+    /// 表示しない.
+    #[default]
+    Never,
+    /// 常に表示する.
+    Always,
+    /// 選択時に表示する: the runs of the fields the selection is in (see
+    /// `fields::field_shading_runs`).
+    Runs(Rc<HashSet<XmlNodeId>>),
+}
+
+/// Word's field shading grey.
+const FIELD_SHADING_FILL: &str = "D9D9D9";
 
 /// Host clock snapshot used to resolve `DATE`/`TIME` fields. All fields use the
 /// host's local timezone; `weekday` is 0 = Sunday .. 6 = Saturday.
@@ -2173,6 +2193,91 @@ fn parse_font_descriptor_size_pt(font_descriptor: &str) -> Option<f64> {
         }
         parse_unit_token(token, "px").map(|px| px * 72.0 / 96.0)
     })
+}
+
+/// What a shading (`w:shd`) paints: the background colour, and the lines a
+/// stripe or cross pattern draws over it (ECMA-376 Part 1 §17.18.78).
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct ShadingPaint {
+    pub fill: Option<Rc<str>>,
+    pub pattern: Option<(jade_docx_reader::document::ShadingPattern, Rc<str>)>,
+}
+
+impl ShadingPaint {
+    /// `None` when the shading paints nothing. `keep_fill` drops a
+    /// background (dark mode's white page).
+    pub(crate) fn of(
+        shading: &jade_docx_reader::document::Shading,
+        keep_fill: impl Fn(&str) -> bool,
+    ) -> Option<Self> {
+        let fill = shading
+            .resolved_background_color()
+            .filter(|color| keep_fill(color))
+            .map(|color| Rc::from(color.as_str()));
+        let pattern = shading
+            .pattern()
+            .map(|pattern| (pattern, Rc::from(shading.pattern_color().as_str())));
+        (fill.is_some() || pattern.is_some()).then_some(Self { fill, pattern })
+    }
+
+    /// The commands that paint it over a rectangle: the fill, then the
+    /// pattern's lines cut to the rectangle.
+    pub(crate) fn commands(&self, (x, y, width, height): (f64, f64, f64, f64)) -> Vec<DrawCommand> {
+        let mut commands = Vec::new();
+        if width <= 0.0 || height <= 0.0 {
+            return commands;
+        }
+        if let Some(fill) = &self.fill {
+            commands.push(DrawCommand::FillRect {
+                x,
+                y,
+                width,
+                height,
+                color: Rc::clone(fill),
+            });
+        }
+        if let Some((pattern, color)) = &self.pattern {
+            let (rows, columns, diagonals) = pattern.lines_in(x, y, width, height);
+            for (top, band) in rows {
+                commands.push(DrawCommand::FillRect {
+                    x,
+                    y: top,
+                    width,
+                    height: band,
+                    color: Rc::clone(color),
+                });
+            }
+            for (left, band) in columns {
+                commands.push(DrawCommand::FillRect {
+                    x: left,
+                    y,
+                    width: band,
+                    height,
+                    color: Rc::clone(color),
+                });
+            }
+            if !diagonals.is_empty() {
+                // A diagonal as wide across as a stripe is high.
+                let line_width = pattern.line_width_px() / std::f64::consts::SQRT_2;
+                commands.push(DrawCommand::Save);
+                commands.push(DrawCommand::ClipRect {
+                    x,
+                    y,
+                    width,
+                    height,
+                });
+                for (from, to) in diagonals {
+                    commands.push(DrawCommand::StrokePolyline {
+                        points: Rc::from(vec![from, to]),
+                        line_width,
+                        color: Rc::clone(color),
+                    });
+                }
+                commands.push(DrawCommand::Restore);
+            }
+        }
+        commands
+    }
 }
 
 /// Computes the width of a paragraph-shading band for a single line.
@@ -3620,6 +3725,8 @@ where
     /// `#RRGGBB`. Filled behind every page before content. `None` = default
     /// white/transparent page, leaving non-background documents unchanged.
     page_background_color: Option<String>,
+    /// 塗りつぶし効果 over the page colour.
+    page_background_fill: Option<jade_docx_reader::document::PageBackgroundFill>,
     /// Word-compatible text watermark (`v:textpath/@string`) rendered behind
     /// body content on every page. The raw VML remains in the header part for
     /// DOCX round-tripping; this is the canvas projection of that state.
@@ -3627,6 +3734,11 @@ where
     /// The watermark's look: font, size, color, transparency, layout and the
     /// shape box its text is stretched to fill.
     watermark_style: Option<jade_docx_reader::document::WatermarkStyle>,
+    /// 原稿用紙設定's grid, drawn behind the text on every page.
+    manuscript_grid: Option<jade_docx_reader::document::ManuscriptGrid>,
+    /// The document's default font size, which a character grid's
+    /// `w:charSpace` widens into its character pitch.
+    default_font_size_pt: Option<f32>,
     /// Numeral format (`w:pgNumType/@w:fmt`, lowercased) applied to `PAGE`
     /// fields. `None` = decimal. ECMA-376 Part 1 §17.6.12. MVP: the default
     /// section's value is applied document-wide.
@@ -3709,6 +3821,8 @@ where
     /// place of its field — `(field, code)`, the field named by its first
     /// run. A field's runs show its code once.
     field_code_display: Option<Rc<FieldCodeDisplay>>,
+    /// フィールドの網かけ.
+    field_shading: FieldShading,
     header_drawn: bool,
     footer_drawn: bool,
     editing_mode: crate::canvas_view::EditingMode,
@@ -8506,8 +8620,11 @@ where
             page_borders: None,
             section_page_borders: Vec::new(),
             page_background_color: None,
+            page_background_fill: None,
             watermark_text: None,
             watermark_style: None,
+            manuscript_grid: None,
+            default_font_size_pt: None,
             page_number_format: None,
             page_number_start: None,
             section_page_numbering: Vec::new(),
@@ -8537,6 +8654,7 @@ where
             bookmark_note_targets: HashMap::new(),
             current_datetime: None,
             field_code_display: None,
+            field_shading: FieldShading::Never,
             header_drawn: false,
             footer_drawn: false,
             editing_mode: crate::canvas_view::EditingMode::Body,
@@ -10537,7 +10655,9 @@ where
                         context.fill_rect(0.0, clip_top, self.page_width, clip_height);
                     }
                 }
+                self.draw_page_fill()?;
                 self.draw_watermark()?;
+                self.draw_manuscript_grid();
                 self.invalidate_context_state_tracking();
                 self.band_redraw_clip_active = true;
                 return Ok(());
@@ -10562,11 +10682,120 @@ where
                 context.fill_rect(0.0, 0.0, self.page_width, self.page_height);
             }
         }
+        self.draw_page_fill()?;
         self.draw_watermark()?;
+        self.draw_manuscript_grid();
         if !self.hides_page_chrome() {
             self.draw_page_borders(page);
         }
         self.draw_column_separators();
+        Ok(())
+    }
+
+    /// 塗りつぶし効果 behind the page's content: a gradient in narrow bands
+    /// along its angle, a texture or pattern tiled from the top left, a
+    /// picture stretched over the page.
+    fn draw_page_fill(&self) -> Result<(), JsValue> {
+        if self.pageless_mode {
+            return Ok(());
+        }
+        let Some(fill) = self.page_background_fill.as_ref() else {
+            return Ok(());
+        };
+        let (width, height) = (self.page_width, self.page_height);
+        if width <= 0.0 || height <= 0.0 {
+            return Ok(());
+        }
+        let context = self.host.painter();
+        match (fill.kind.as_str(), fill.data_uri.as_deref()) {
+            ("gradient" | "gradientRadial", _) => {
+                let channels = |color: Option<&str>, fallback: [f64; 3]| {
+                    let Some(hex) = color.map(|color| color.trim_start_matches('#')) else {
+                        return fallback;
+                    };
+                    let channel = |at: usize| {
+                        hex.get(at..at + 2)
+                            .and_then(|pair| u8::from_str_radix(pair, 16).ok())
+                    };
+                    match (channel(0), channel(2), channel(4)) {
+                        (Some(r), Some(g), Some(b)) => [r as f64, g as f64, b as f64],
+                        _ => fallback,
+                    }
+                };
+                let first = channels(
+                    fill.color
+                        .as_deref()
+                        .or(self.page_background_color.as_deref()),
+                    [255.0; 3],
+                );
+                let second = channels(fill.color2.as_deref(), [255.0; 3]);
+                // Along the axis: from the first colour to the second, or
+                // back, or out from the middle as the focus says.
+                let at = |t: f64| {
+                    let mirrored = 1.0 - (2.0 * t - 1.0).abs();
+                    let (from, to, u) = match fill.focus.round() as i64 {
+                        100 => (second, first, t),
+                        50 => (first, second, mirrored),
+                        -50 => (second, first, mirrored),
+                        _ => (first, second, t),
+                    };
+                    let mix = |i: usize| (from[i] + (to[i] - from[i]) * u).round() as u8;
+                    format!("#{:02X}{:02X}{:02X}", mix(0), mix(1), mix(2))
+                };
+                const BANDS: usize = 256;
+                // The bands run the page's extent along the axis, each wide
+                // enough to cover the page across it.
+                let radians = fill.angle.to_radians();
+                let extent = width * radians.sin().abs() + height * radians.cos().abs();
+                let reach = (width * width + height * height).sqrt();
+                let band = extent / BANDS as f64;
+                context.save();
+                let drawn: Result<(), JsValue> = (|| {
+                    context.begin_path();
+                    context.rect(0.0, 0.0, width, height);
+                    context.clip();
+                    context
+                        .translate(width / 2.0, height / 2.0)
+                        .map_err(PainterError::into_js_value)?;
+                    context
+                        .rotate(radians)
+                        .map_err(PainterError::into_js_value)?;
+                    for index in 0..BANDS {
+                        context.set_fill_style_str(&at((index as f64 + 0.5) / BANDS as f64));
+                        context.fill_rect(
+                            -reach / 2.0,
+                            -extent / 2.0 + band * index as f64,
+                            reach,
+                            band + 0.75,
+                        );
+                    }
+                    Ok(())
+                })();
+                context.restore();
+                drawn?;
+            }
+            ("tile" | "pattern", Some(uri)) => {
+                let (tile_width, tile_height) = fill.tile_size.unwrap_or((64.0, 64.0));
+                if tile_width < 1.0 || tile_height < 1.0 {
+                    return Ok(());
+                }
+                let mut y = 0.0;
+                while y < height {
+                    let mut x = 0.0;
+                    while x < width {
+                        self.host
+                            .draw_image_data_uri(uri, x, y, tile_width, tile_height, None);
+                        x += tile_width;
+                    }
+                    y += tile_height;
+                }
+            }
+            ("frame", Some(uri)) => {
+                self.host
+                    .draw_image_data_uri(uri, 0.0, 0.0, width, height, None);
+            }
+            _ => {}
+        }
         Ok(())
     }
 
@@ -10661,6 +10890,65 @@ where
         })();
         context.restore();
         draw_result.map_err(PainterError::into_js_value)
+    }
+
+    /// Draws 原稿用紙設定's grid over the body box — the same strokes the
+    /// header drawing is saved with
+    /// ([`crate::word_document::manuscript::manuscript_strokes`]). Like the
+    /// watermark it is redrawn whole on a band repaint, clipped to the band.
+    fn draw_manuscript_grid(&self) {
+        use crate::word_document::manuscript::{
+            manuscript_is_vertical, manuscript_strokes, ManuscriptStroke,
+        };
+        if self.pageless_mode {
+            return;
+        }
+        let Some(grid) = self.manuscript_grid.as_ref() else {
+            return;
+        };
+        let (left, top) = (self.margin_left, self.margin_top);
+        let width = self.page_width - self.margin_left - self.margin_right;
+        let height = self.page_height - self.margin_top - self.margin_bottom;
+        if width <= 0.0 || height <= 0.0 {
+            return;
+        }
+        let vertical = manuscript_is_vertical(self.current_text_direction);
+        // The cells the text is laid in: a character pitch is the default
+        // font size (Word's 10pt without one) widened by the grid's
+        // `w:charSpace`, as 文字数と行数 writes it.
+        let pitches = self.current_doc_grid.as_ref().and_then(|doc_grid| {
+            let base = self.default_font_size_pt.unwrap_or(10.0);
+            Some((
+                points_to_px(base + doc_grid.char_space?) as f32,
+                points_to_px(doc_grid.line_pitch?) as f32,
+            ))
+        });
+        let context = self.host.painter();
+        context.save();
+        context.set_stroke_style_str(&grid.color);
+        context.set_line_width(points_to_px(0.5).max(0.75));
+        for stroke in manuscript_strokes(grid, vertical, width as f32, height as f32, pitches) {
+            match stroke {
+                ManuscriptStroke::Rect {
+                    x,
+                    y,
+                    width,
+                    height,
+                } => context.stroke_rect(
+                    left + f64::from(x),
+                    top + f64::from(y),
+                    f64::from(width),
+                    f64::from(height),
+                ),
+                ManuscriptStroke::Line { from, to } => {
+                    context.begin_path();
+                    context.move_to(left + f64::from(from.0), top + f64::from(from.1));
+                    context.line_to(left + f64::from(to.0), top + f64::from(to.1));
+                    context.stroke();
+                }
+            }
+        }
+        context.restore();
     }
 
     /// Draws vertical separator rules between columns (`w:cols w:sep="true"`,
@@ -10845,6 +11133,7 @@ where
             props.shading.hash(&mut hasher);
             props.borders.hash(&mut hasher);
             props.drop_cap.hash(&mut hasher);
+            props.positional_tabs.hash(&mut hasher);
             for tab in &props.tabs {
                 tab.kind.hash(&mut hasher);
                 tab.position.map(f32::to_bits).hash(&mut hasher);
@@ -11120,6 +11409,7 @@ where
                 props.shading.hash(&mut hasher);
                 props.borders.hash(&mut hasher);
                 props.drop_cap.hash(&mut hasher);
+                props.positional_tabs.hash(&mut hasher);
                 for tab in &props.tabs {
                     tab.kind.hash(&mut hasher);
                     tab.position.map(f32::to_bits).hash(&mut hasher);
@@ -15849,10 +16139,13 @@ where
 
         // Document page background color (`<w:background>`, §17.2.1).
         self.page_background_color = document.background_color.clone();
+        self.page_background_fill = document.background_fill.clone();
 
         // Word stores text watermarks as a VML text path in the page header.
         self.watermark_text = document.watermark_text.clone();
         self.watermark_style = document.watermark_style.clone();
+        self.manuscript_grid = document.manuscript_grid.clone();
+        self.default_font_size_pt = document.default_font_size;
 
         // Resolve `w:pgNumType` (numeral format + start offset) for PAGE fields
         // from the default section. MVP: a single document-wide value.
@@ -16093,11 +16386,11 @@ where
         if self.pageless_mode {
             return;
         }
-        if self
-            .last_options
-            .as_ref()
-            .is_some_and(|options| !options.show_crop_marks)
-        {
+        let (crop_marks, text_boundaries) =
+            self.last_options.as_ref().map_or((true, false), |options| {
+                (options.show_crop_marks, options.show_text_boundaries)
+            });
+        if !crop_marks && !text_boundaries {
             return;
         }
         if !self.should_draw_page_for_current_render(page) {
@@ -16107,6 +16400,26 @@ where
         let content_width = self.page_width - self.margin_left - self.margin_right;
         let content_height = self.page_height - self.margin_top - self.margin_bottom;
         if content_width <= 0.0 || content_height <= 0.0 {
+            return;
+        }
+        if text_boundaries {
+            let context = self.host.painter();
+            context.save();
+            context.set_stroke_style_str(TEXT_BOUNDARY_COLOR);
+            context.set_line_width(CROP_MARK_STROKE_WIDTH);
+            context.set_line_dash(&TEXT_BOUNDARY_DASH);
+            context.begin_path();
+            context.rect(
+                self.margin_left,
+                self.margin_top,
+                content_width,
+                content_height,
+            );
+            context.stroke();
+            context.set_line_dash(&[]);
+            context.restore();
+        }
+        if !crop_marks {
             return;
         }
 
@@ -17946,6 +18259,9 @@ where
             paragraph_style.first_line_indent = 0.0;
         }
         if let Some(props) = &paragraph.properties {
+            paragraph_style.positional_tabs = jade_docx_layout::line_wrap::resolve_positional_tabs(
+                props.positional_tabs.as_ref(),
+            );
             if !props.tabs.is_empty() {
                 paragraph_style.tab_stops = resolve_tab_stops(&props.tabs);
                 #[cfg(all(debug_assertions, target_arch = "wasm32"))]
@@ -18488,6 +18804,29 @@ where
                 } else {
                     resolved_run_properties
                 };
+            // フィールドの網かけ: a field's text on Word's grey, under any
+            // highlight or shading of its own.
+            let resolved_run_properties = if self.field_shaded(run, field_code.is_some()) {
+                let mut properties = resolved_run_properties
+                    .as_deref()
+                    .cloned()
+                    .unwrap_or_default();
+                if properties.highlight.is_none()
+                    && properties
+                        .shading
+                        .as_ref()
+                        .is_none_or(jade_docx_reader::document::Shading::is_empty)
+                {
+                    properties.shading = Some(jade_docx_reader::document::Shading {
+                        val: Some("clear".to_string()),
+                        color: Some("auto".to_string()),
+                        fill: Some(FIELD_SHADING_FILL.to_string()),
+                    });
+                }
+                Some(Rc::new(properties))
+            } else {
+                resolved_run_properties
+            };
             // Text after an ADVANCE \u or \d sits that much higher or lower.
             let resolved_run_properties = if advance_raise_pt.abs() > f32::EPSILON {
                 let mut properties = resolved_run_properties
@@ -19400,9 +19739,11 @@ where
                         .properties
                         .as_ref()
                         .and_then(|p| p.shading.as_ref())
-                        .and_then(|s| s.resolved_background_color())
-                        .filter(|c| !(self.dark_mode_text && is_default_page_background_shading(c)))
-                        .map(|c| Rc::from(c.as_str())),
+                        .and_then(|shading| {
+                            ShadingPaint::of(shading, |c| {
+                                !(self.dark_mode_text && is_default_page_background_shading(c))
+                            })
+                        }),
                     paragraph_box_borders
                         .and_then(|borders| {
                             resolve_paragraph_box_borders(
@@ -21129,6 +21470,57 @@ where
             .is_none_or(|options| options.revision_view().marks_up(mark))
     }
 
+    /// Paints a shading over a rectangle — its fill and its pattern — and
+    /// records it for cache replay.
+    fn paint_shading(
+        &self,
+        shading: &ShadingPaint,
+        rect: (f64, f64, f64, f64),
+        commands_out: &mut Option<&mut Vec<DrawCommand>>,
+    ) {
+        // A plain fill, as nearly all shading is: draw it directly, without
+        // building and replaying a command list.
+        if shading.pattern.is_none() {
+            let Some(fill) = shading.fill.as_ref() else {
+                return;
+            };
+            let (x, y, width, height) = rect;
+            if width <= 0.0 || height <= 0.0 {
+                return;
+            }
+            if self.should_draw_current_page_for_render() {
+                let context = self.host.painter();
+                context.save();
+                context.set_fill_style_str(fill);
+                context.fill_rect(x, y, width, height);
+                context.restore();
+                self.reset_fill_style_state();
+            }
+            if let Some(buf) = commands_out.as_deref_mut() {
+                buf.push(DrawCommand::FillRect {
+                    x,
+                    y,
+                    width,
+                    height,
+                    color: Rc::clone(fill),
+                });
+            }
+            return;
+        }
+        let commands = shading.commands(rect);
+        if commands.is_empty() {
+            return;
+        }
+        if self.should_draw_current_page_for_render() {
+            let _ =
+                crate::draw_command::executor::execute_commands(&self.host.painter(), &commands);
+            self.invalidate_context_state_tracking();
+        }
+        if let Some(buf) = commands_out.as_deref_mut() {
+            buf.extend(commands);
+        }
+    }
+
     /// Fills a single thin border rectangle for a paragraph border edge,
     /// painting immediately (when the current page is being drawn) and pushing
     /// a `DrawCommand::FillRect` so the border survives cache replay. No-ops on
@@ -21390,7 +21782,7 @@ where
         top_leading_share: f64,
         exact_line_baseline_share: Option<f64>,
         pending_numbering: Option<&PendingNumberingRender>,
-        paragraph_shading_color: Option<Rc<str>>,
+        paragraph_shading: Option<ShadingPaint>,
         paragraph_borders: Option<Rc<ResolvedParagraphBorders>>,
         commands_out: Option<&mut Vec<DrawCommand>>,
         selection_lines_out: Option<&mut Vec<SelectionLineLayout>>,
@@ -22458,28 +22850,16 @@ where
             // (before highlights, selection, and glyphs). The band spans the
             // paragraph content box (left indent → right indent) and is the
             // same width on every line, matching Word's paragraph shading.
-            if let Some(bg) = paragraph_shading_color.as_deref() {
+            if let Some(shading) = paragraph_shading.as_ref() {
                 let band_x = paragraph_base_x;
                 if let Some(band_w) =
                     paragraph_shading_band_width(paragraph_base_x, default_right_limit)
                 {
-                    if self.should_draw_current_page_for_render() {
-                        let context = self.host.painter();
-                        context.save();
-                        context.set_fill_style_str(bg);
-                        context.fill_rect(band_x, top, band_w, line_box_height);
-                        context.restore();
-                        self.reset_fill_style_state();
-                    }
-                    if let Some(buf) = commands_out.as_deref_mut() {
-                        buf.push(DrawCommand::FillRect {
-                            x: band_x,
-                            y: top,
-                            width: band_w,
-                            height: line_box_height,
-                            color: Rc::from(bg),
-                        });
-                    }
+                    self.paint_shading(
+                        shading,
+                        (band_x, top, band_w, line_box_height),
+                        &mut commands_out,
+                    );
                 }
             }
 
@@ -29589,6 +29969,9 @@ where
                 direction,
                 Some(column_length),
                 line_height,
+                paragraph_style
+                    .doc_grid_snap_to_chars
+                    .then(|| paragraph_style.doc_grid_char_space_px.unwrap_or(0.0)),
             )?,
             _ => {
                 let canvas = self.host.painter();
@@ -36664,6 +37047,32 @@ where
         self.invalidate_layout_from(0);
     }
 
+    /// Draws fields' text on Word's grey as `shading` says. Paint and layout
+    /// caches are dropped when it changes, as the runs' fills do.
+    pub fn set_field_shading(&mut self, shading: FieldShading) {
+        if shading == self.field_shading {
+            return;
+        }
+        self.field_shading = shading;
+        self.clear_paragraph_render_cache();
+        self.invalidate_layout_from(0);
+    }
+
+    /// Whether a body run of a field is drawn on the field shading grey.
+    fn field_shaded(&self, run: &Run, shows_code: bool) -> bool {
+        if self.rendering_header_footer_story || self.rendering_note_story {
+            return false;
+        }
+        if run.field.is_none() && !shows_code {
+            return false;
+        }
+        match &self.field_shading {
+            FieldShading::Never => false,
+            FieldShading::Always => true,
+            FieldShading::Runs(runs) => run.node_id.is_some_and(|id| runs.contains(&id)),
+        }
+    }
+
     /// The field code a body run shows instead of its content.
     fn field_code_for(&self, run: &Run) -> Option<(XmlNodeId, Rc<str>)> {
         if self.rendering_header_footer_story || self.rendering_note_story {
@@ -42821,6 +43230,85 @@ mod tests {
             }),
             ..Document::default()
         }
+    }
+
+    /// 網かけ's stripe and cross patterns are drawn as Word draws them: the
+    /// fill behind, then the lines in the pattern's colour on a grid fixed
+    /// to the page — bands for 横縞 / 縦縞, diagonals for 斜線 and 斜め格子.
+    #[test]
+    fn paragraph_shading_patterns_draw_their_lines() {
+        use jade_painter::recording::Op;
+
+        let shaded = |value: &str| {
+            let mut document = doc_with_paragraph_texts(&["Striped paragraph"]);
+            if let Some(BodyElement::Paragraph(paragraph)) = document
+                .body
+                .as_mut()
+                .and_then(|body| body.elements.first_mut())
+            {
+                paragraph
+                    .properties
+                    .get_or_insert_with(Default::default)
+                    .shading = Some(jade_docx_reader::document::Shading {
+                    val: Some(value.to_ascii_lowercase()),
+                    color: Some("#C00000".to_string()),
+                    fill: Some("#FFFF00".to_string()),
+                });
+            }
+            let (mut renderer, painter) = recording_renderer();
+            renderer
+                .render(&document, &Options::default())
+                .expect("render");
+            painter.ops()
+        };
+        // The fills set in each colour, then what each drew.
+        let drawn = |ops: &[Op], color: &str| {
+            let mut current = String::new();
+            let mut rects = Vec::new();
+            let mut lines = 0;
+            for op in ops {
+                match op {
+                    Op::SetFillStyle(style) => current = style.clone(),
+                    Op::FillRect(x, y, w, h) if current.eq_ignore_ascii_case(color) => {
+                        rects.push((*x, *y, *w, *h))
+                    }
+                    Op::SetStrokeStyle(style) if style.eq_ignore_ascii_case(color) => lines += 1,
+                    _ => {}
+                }
+            }
+            (rects, lines)
+        };
+
+        let stripes = shaded("horzStripe");
+        let (fill, _) = drawn(&stripes, "#FFFF00");
+        assert!(!fill.is_empty(), "the fill is behind the stripes");
+        let (bands, _) = drawn(&stripes, "#C00000");
+        assert!(bands.len() > 2, "{bands:?}");
+        assert!(bands
+            .iter()
+            .all(|band| band.3 <= 2.0 + 1e-9 && band.2 > 50.0));
+        // On the page's grid, 4 px apart.
+        let whole: Vec<_> = bands
+            .iter()
+            .filter(|band| (band.3 - 2.0).abs() < 1e-9)
+            .collect();
+        assert!(whole
+            .windows(2)
+            .all(|pair| (pair[1].1 - pair[0].1 - 4.0).abs() < 1e-9));
+        assert!(whole.iter().all(|band| (band.1 / 4.0).fract().abs() < 1e-9));
+
+        let columns = shaded("thinVertStripe");
+        let (bands, _) = drawn(&columns, "#C00000");
+        assert!(bands.len() > 2 && bands.iter().all(|band| band.2 <= 1.0 + 1e-9));
+
+        let trellis = shaded("diagCross");
+        let (_, lines) = drawn(&trellis, "#C00000");
+        assert!(lines > 4, "the diagonals are stroked: {lines}");
+
+        // A percentage stays one blended colour.
+        let tint = shaded("pct50");
+        let (bands, lines) = drawn(&tint, "#C00000");
+        assert!(bands.is_empty() && lines == 0);
     }
 
     /// Re-renders the table from scratch (as an edit above it would), returning

@@ -8,7 +8,7 @@
 use crate::SkiaRenderHost;
 use futures::executor::block_on;
 pub use jade_docx_editor::canvas_renderer::CaretAffinity;
-use jade_docx_editor::canvas_renderer::{CanvasRenderer, FullLayoutDebugSnapshot};
+use jade_docx_editor::canvas_renderer::{CanvasRenderer, FieldShading, FullLayoutDebugSnapshot};
 use jade_docx_editor::commands::transform_object::TransformObjectCommand;
 use jade_docx_editor::commands::{
     Command, CommandContext, CommandExecutor, HistoryRenderFootprint,
@@ -257,6 +257,8 @@ pub struct NativeDocument {
     field_datetime: Option<FieldDateTime>,
     /// Which fields show their codes (⌥F9, ⇧F9).
     field_codes: FieldCodeView,
+    /// フィールドの網かけ, on screen only.
+    field_shading: FieldShading,
     /// A view's page box in place of the sections' (Web レイアウト, 閲覧
     /// モード); kept here so a renderer built again keeps it.
     view_geometry: Option<jade_docx_editor::canvas_renderer::ViewGeometry>,
@@ -402,6 +404,7 @@ impl NativeDocument {
             fonts,
             field_datetime: None,
             field_codes: FieldCodeView::default(),
+            field_shading: FieldShading::Never,
             math_face: math_face_of(faces),
             view_geometry: None,
             outline_indents: None,
@@ -442,6 +445,7 @@ impl NativeDocument {
         options.show_formatting_marks = false;
         options.set_formatting_mark_kinds(Default::default());
         options.show_crop_marks = false;
+        options.show_text_boundaries = false;
         if let Some(markup) = pdf_options.markup {
             options.render_changes = markup;
             options.render_comments = markup;
@@ -750,6 +754,7 @@ impl NativeDocument {
         renderer.set_outline_indents(self.outline_indents.clone());
         renderer.set_selection_range_for_render(self.selection);
         renderer.set_current_datetime(self.field_datetime.map(renderer_datetime));
+        renderer.set_field_shading(self.field_shading.clone());
         if self.field_codes != FieldCodeView::default() {
             renderer.set_field_code_display(Some(field_code_display(
                 &self.word_document,
@@ -1502,6 +1507,24 @@ impl NativeDocument {
         self.field_datetime = datetime;
     }
 
+    /// フィールドの網かけ: which fields' text is drawn on Word's grey (on
+    /// screen; a PDF leaves it out). Repaints when it changed; whether it
+    /// did.
+    pub fn set_field_shading(&mut self, shading: FieldShading) -> Result<bool, String> {
+        if self.field_shading == shading {
+            return Ok(false);
+        }
+        self.field_shading = shading.clone();
+        self.renderer.set_field_shading(shading);
+        self.repaint_all()?;
+        Ok(true)
+    }
+
+    /// Which fields are drawn shaded.
+    pub fn field_shading(&self) -> &FieldShading {
+        &self.field_shading
+    }
+
     /// Which fields show their codes.
     pub fn field_code_view(&self) -> &FieldCodeView {
         &self.field_codes
@@ -1543,6 +1566,23 @@ impl NativeDocument {
     pub fn set_crop_marks(&mut self, show: bool) -> Result<(), String> {
         self.options.show_crop_marks = show;
         self.repaint_all().map(|_| ())
+    }
+
+    /// Whether the crop marks (トリムマーク) are drawn.
+    pub fn crop_marks(&self) -> bool {
+        self.options.show_crop_marks
+    }
+
+    /// Shows or hides 文字列の範囲, the dotted line round each page's text
+    /// area. On screen only: a PDF leaves it out.
+    pub fn set_text_boundaries(&mut self, show: bool) -> Result<(), String> {
+        self.options.show_text_boundaries = show;
+        self.repaint_all().map(|_| ())
+    }
+
+    /// Whether 文字列の範囲 is drawn.
+    pub fn text_boundaries(&self) -> bool {
+        self.options.show_text_boundaries
     }
 
     /// A table's model, as the headless API reports it.

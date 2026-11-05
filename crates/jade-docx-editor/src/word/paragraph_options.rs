@@ -444,6 +444,7 @@ pub trait WordParagraphOptions: WordSession {
                 suppress_auto_hyphens: command.suppress_auto_hyphens,
                 borders: command.borders,
                 shading: command.shading,
+                mirror_indents: None,
             },
             true,
         )
