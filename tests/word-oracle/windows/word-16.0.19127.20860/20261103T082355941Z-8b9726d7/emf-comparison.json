@@ -1,0 +1,23 @@
+[
+  {
+    "fixture": "contract",
+    "coordinate_source": "Word Page.EnhMetaFileBits / MS-EMF",
+    "word_pages": 3,
+    "native_pages": 3,
+    "word_glyphs": 1907,
+    "native_glyphs": 1907,
+    "matched": 1907,
+    "within_0_375pt": 1907,
+    "x_p50": 0.10499828338623729,
+    "x_p95": 0.23999828338628504,
+    "y_p50": 0.09789639236987568,
+    "y_p95": 0.10388270935963817,
+    "first_errors": [],
+    "pdf_sha256": "5dc1f47b861940f5cae8ef82eb8e19d1fa6e5abed6eedc5b0d0503555785c36d",
+    "metafile_sha256": [
+      "13a5fa15b9523b43ffac49f73383b037598e5348e97c1fdd14bea051b4f470bc",
+      "41d79570d69b798d68e909f18cae3b98c439e839d0d04810a386db25bfd3a7fd",
+      "6a7f7e91fb16703178f23cacfba8cab58ef29588ee4d4f445ce2fff44c7ae126"
+    ]
+  }
+]

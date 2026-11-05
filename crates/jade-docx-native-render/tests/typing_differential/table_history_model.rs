@@ -511,6 +511,16 @@ fn rows_and_cell_typing_keep_both_table_addresses_through_grouped_history() {
 }
 
 #[test]
+fn inserting_an_earlier_row_after_wrapping_later_cell_matches_fresh_pixels() {
+    use Operation::*;
+    check_sequence(&[
+        Row(0, 0, true),
+        CellText(1, 0, 0, "折り返し 日本語 ab ".repeat(8)),
+        Row(0, 0, true),
+    ]);
+}
+
+#[test]
 fn rejected_row_edits_and_empty_cell_typing_preserve_the_redo_branch() {
     use Operation::*;
     check_sequence(&[

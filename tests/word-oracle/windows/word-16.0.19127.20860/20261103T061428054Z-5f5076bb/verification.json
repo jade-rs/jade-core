@@ -1,0 +1,13 @@
+{
+  "engine_commit": "42b31188eb46f15ab7c96e7cb623eb5e527cdb13",
+  "word_product_version": "16.0.19127.20860",
+  "capture_id": "20261103T061428054Z-5f5076bb",
+  "engine_source_worktree_dirty": false,
+  "strict_fixtures": [
+    "numbering-restart"
+  ],
+  "matching_fixtures": [
+    "numbering-restart"
+  ],
+  "pending_fixtures": []
+}

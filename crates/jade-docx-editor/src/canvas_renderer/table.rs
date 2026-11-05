@@ -13616,6 +13616,21 @@ mod tests {
             }
         }
 
+        fn with_recording_font(mut self) -> Self {
+            let descriptor = TABLE_FONT.replace("Times New Roman", "Recording Test");
+            self.style = Rc::new(ResolvedRunStyle::new(
+                descriptor.clone(),
+                descriptor.clone(),
+                descriptor.clone(),
+                descriptor,
+                0.0,
+                1.0,
+                false,
+                None,
+            ));
+            self
+        }
+
         fn measure_calls(&self) -> u64 {
             self.measure_calls.get()
         }
@@ -13694,7 +13709,7 @@ mod tests {
             ..Default::default()
         };
         autofit_content_widths(
-            &OverhangingWrapContext(FixedWidthWrapContext::new()),
+            &OverhangingWrapContext(FixedWidthWrapContext::new().with_recording_font()),
             &table,
             &[100.0],
             0.0,
@@ -13972,7 +13987,7 @@ mod tests {
             hyphenation: Default::default(),
             styles_part: None,
         };
-        let context = FixedWidthWrapContext::new();
+        let context = FixedWidthWrapContext::new().with_recording_font();
         let text = "ab cd ef gh";
         for (alignment, expected_first_line) in [("both", "ab cd ef "), ("left", "ab cd ")] {
             let paragraph = Paragraph {

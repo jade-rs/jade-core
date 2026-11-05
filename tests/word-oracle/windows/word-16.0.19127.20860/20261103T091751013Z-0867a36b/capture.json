@@ -1,0 +1,316 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261103T091751013Z-0867a36b",
+  "captured_at_utc": "2026-11-03T09:17:51.0314108Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20860",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "9bafe09d0c458006744b9edce767a328ba2da1bb5d9a460e5830c47bf6d7f1d1"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "documents": [
+    {
+      "name": "word-windows-tnr-balanced-sweep",
+      "source": "jade-core\\public\\fixtures\\word-windows-tnr-balanced-sweep.docx",
+      "sha256": "ec03028acb321b560c167b76a5d3da2973becab5c32e00c0cca291e63b8ab6f8",
+      "pdf": "word-windows-tnr-balanced-sweep.pdf",
+      "pdf_sha256": "be8a215ec926ff936f2c9640631eb058f7a885604065e33c6fbb13425213d525",
+      "pages": 20,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-tnr-balanced-sweep.page-001.emf",
+          "sha256": "74d5dc1e032891967833f399a215a987f16ee684e2954c493f703b5500e91ef6",
+          "width_pt": 792.0,
+          "height_pt": 612.0
+        },
+        {
+          "page": 2,
+          "file": "word-windows-tnr-balanced-sweep.page-002.emf",
+          "sha256": "e79b417447b1e3f154716584d82071900a671986dd313416f19f8d59173bf62a",
+          "width_pt": 792.0,
+          "height_pt": 612.0
+        },
+        {
+          "page": 3,
+          "file": "word-windows-tnr-balanced-sweep.page-003.emf",
+          "sha256": "3f145a8c2ce46183e59b42e845e78694006aa1cfb91414229c5f4053ad8e7e2e",
+          "width_pt": 792.0,
+          "height_pt": 612.0
+        },
+        {
+          "page": 4,
+          "file": "word-windows-tnr-balanced-sweep.page-004.emf",
+          "sha256": "dedcbcf6226962281bc00e32fc4c7ddc0531a592b2a25c3c2ebf5c9c64abbf47",
+          "width_pt": 792.0,
+          "height_pt": 612.0
+        },
+        {
+          "page": 5,
+          "file": "word-windows-tnr-balanced-sweep.page-005.emf",
+          "sha256": "73c70625a646ddf93a03aeb67004fce37961b81c0527e0aa82cda082739fbd03",
+          "width_pt": 792.0,
+          "height_pt": 612.0
+        },
+        {
+          "page": 6,
+          "file": "word-windows-tnr-balanced-sweep.page-006.emf",
+          "sha256": "4839874aaa7201f66ede7475430e4e3a60a2d4170eadb5c2a34e40784b1059b9",
+          "width_pt": 792.0,
+          "height_pt": 612.0
+        },
+        {
+          "page": 7,
+          "file": "word-windows-tnr-balanced-sweep.page-007.emf",
+          "sha256": "23d14e29288bc7c2aea331be8445be6409bd3bb7e1bac441acb750883f59fb28",
+          "width_pt": 792.0,
+          "height_pt": 612.0
+        },
+        {
+          "page": 8,
+          "file": "word-windows-tnr-balanced-sweep.page-008.emf",
+          "sha256": "982488d1dbde034b05e0e7ba6a2a4d2bb8e4938b7b9e9cdbd61e4158cc477a89",
+          "width_pt": 792.0,
+          "height_pt": 612.0
+        },
+        {
+          "page": 9,
+          "file": "word-windows-tnr-balanced-sweep.page-009.emf",
+          "sha256": "394aa0f4211c3eef69091c892ee76430bc7cefe0df523e2c9735463afec78a75",
+          "width_pt": 792.0,
+          "height_pt": 612.0
+        },
+        {
+          "page": 10,
+          "file": "word-windows-tnr-balanced-sweep.page-010.emf",
+          "sha256": "9b78acf450b5bb1f20703ad3aecaf34377345ef65bb816d96aa7ad18c2f4c2f4",
+          "width_pt": 792.0,
+          "height_pt": 612.0
+        },
+        {
+          "page": 11,
+          "file": "word-windows-tnr-balanced-sweep.page-011.emf",
+          "sha256": "e5e9d1cf30d5eca29f519a91c47fc0e8ed472274fcb3dcb035eb21fc5260d9f6",
+          "width_pt": 792.0,
+          "height_pt": 612.0
+        },
+        {
+          "page": 12,
+          "file": "word-windows-tnr-balanced-sweep.page-012.emf",
+          "sha256": "8dd65ab1b6855390898c08530dd23062192d5c059cf1974161a56f072cdcc802",
+          "width_pt": 792.0,
+          "height_pt": 612.0
+        },
+        {
+          "page": 13,
+          "file": "word-windows-tnr-balanced-sweep.page-013.emf",
+          "sha256": "814a249f917831e8d8b8cb004c222d7d580f1dea4154efbb207f2e5cfcbc8ba1",
+          "width_pt": 792.0,
+          "height_pt": 612.0
+        },
+        {
+          "page": 14,
+          "file": "word-windows-tnr-balanced-sweep.page-014.emf",
+          "sha256": "a2a357ea3ed5236d3ca54c8c9768c518b1dc5fadecd27eeabc2ff10fa541cea1",
+          "width_pt": 792.0,
+          "height_pt": 612.0
+        },
+        {
+          "page": 15,
+          "file": "word-windows-tnr-balanced-sweep.page-015.emf",
+          "sha256": "21b9a529fb23e4d82417cefdd7b52ec5b6ef3df4d12420f99ad02851e02fb50b",
+          "width_pt": 792.0,
+          "height_pt": 612.0
+        },
+        {
+          "page": 16,
+          "file": "word-windows-tnr-balanced-sweep.page-016.emf",
+          "sha256": "1ecce2ff53e01378779943d27d50514b708d4cea7136a995e9977e498c04fbb4",
+          "width_pt": 792.0,
+          "height_pt": 612.0
+        },
+        {
+          "page": 17,
+          "file": "word-windows-tnr-balanced-sweep.page-017.emf",
+          "sha256": "58f6b2cd7f1cab5feafa6243922d3319fe9e371f10ba77fac917a5f72e851344",
+          "width_pt": 792.0,
+          "height_pt": 612.0
+        },
+        {
+          "page": 18,
+          "file": "word-windows-tnr-balanced-sweep.page-018.emf",
+          "sha256": "dc914da64b42071dee153cdcea81fc2b822eefd8aaa2fb406b83f03ca7076bb7",
+          "width_pt": 792.0,
+          "height_pt": 612.0
+        },
+        {
+          "page": 19,
+          "file": "word-windows-tnr-balanced-sweep.page-019.emf",
+          "sha256": "5825c2945ead31c1cdbd64ae19e42f614a4f63906629afba32879daced70f9fb",
+          "width_pt": 792.0,
+          "height_pt": 612.0
+        },
+        {
+          "page": 20,
+          "file": "word-windows-tnr-balanced-sweep.page-020.emf",
+          "sha256": "1fb1f2f4e7ca82f292035b540ba608cc697bbd76e04da64d40635c9d8d7ec713",
+          "width_pt": 792.0,
+          "height_pt": 612.0
+        }
+      ]
+    },
+    {
+      "name": "word-windows-tnr-unbalanced-sweep",
+      "source": "jade-core\\public\\fixtures\\word-windows-tnr-unbalanced-sweep.docx",
+      "sha256": "24837ed1f4e9b3d038e4823224001057e3b05f5ea37f51e3b0582596b3182dd3",
+      "pdf": "word-windows-tnr-unbalanced-sweep.pdf",
+      "pdf_sha256": "50bce0c9d61760652a9d246a174b4dfcc1ec594ade6b136c83be13591d67dfc6",
+      "pages": 20,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-tnr-unbalanced-sweep.page-001.emf",
+          "sha256": "5099062def95f1476f29928a005f9769dda20808d11d61ab8be4236d075a95d0",
+          "width_pt": 792.0,
+          "height_pt": 612.0
+        },
+        {
+          "page": 2,
+          "file": "word-windows-tnr-unbalanced-sweep.page-002.emf",
+          "sha256": "87952b3b0c973a273e1cb7e65bc3d44097ed633267b85c80a692ae89e2bccd2b",
+          "width_pt": 792.0,
+          "height_pt": 612.0
+        },
+        {
+          "page": 3,
+          "file": "word-windows-tnr-unbalanced-sweep.page-003.emf",
+          "sha256": "d622617800274eae812c90bf5e69fc537214f49963e479814f8d69307c385938",
+          "width_pt": 792.0,
+          "height_pt": 612.0
+        },
+        {
+          "page": 4,
+          "file": "word-windows-tnr-unbalanced-sweep.page-004.emf",
+          "sha256": "d50cf63cfa26e8a79271d683cbdf2723665b33040de0aa84b4509d657311945a",
+          "width_pt": 792.0,
+          "height_pt": 612.0
+        },
+        {
+          "page": 5,
+          "file": "word-windows-tnr-unbalanced-sweep.page-005.emf",
+          "sha256": "706a16be9406319b41bf2e59d3386083701ab804a2e48f5d3fc4b1cc90ea4db8",
+          "width_pt": 792.0,
+          "height_pt": 612.0
+        },
+        {
+          "page": 6,
+          "file": "word-windows-tnr-unbalanced-sweep.page-006.emf",
+          "sha256": "8d405f0534817d2f0526a61ab2144ec724ec54b4c009ec491ca1d0d21b86349f",
+          "width_pt": 792.0,
+          "height_pt": 612.0
+        },
+        {
+          "page": 7,
+          "file": "word-windows-tnr-unbalanced-sweep.page-007.emf",
+          "sha256": "6ffe9fb82f28a4bfdad459e4d5a531b180dd4fae1d253c7b251f7185c2e1c05f",
+          "width_pt": 792.0,
+          "height_pt": 612.0
+        },
+        {
+          "page": 8,
+          "file": "word-windows-tnr-unbalanced-sweep.page-008.emf",
+          "sha256": "594250014a5bed873322671ad52b39aa518f803b6238e5362ef94ad108530120",
+          "width_pt": 792.0,
+          "height_pt": 612.0
+        },
+        {
+          "page": 9,
+          "file": "word-windows-tnr-unbalanced-sweep.page-009.emf",
+          "sha256": "456295055a67cfae5c22e9bfdeff0761ebb3b2e76f862c3a50a5d476f9e390e0",
+          "width_pt": 792.0,
+          "height_pt": 612.0
+        },
+        {
+          "page": 10,
+          "file": "word-windows-tnr-unbalanced-sweep.page-010.emf",
+          "sha256": "5aa894f5cc3dc30c957228dee33e50797ad3600ca95fdc3723874c852b4c759c",
+          "width_pt": 792.0,
+          "height_pt": 612.0
+        },
+        {
+          "page": 11,
+          "file": "word-windows-tnr-unbalanced-sweep.page-011.emf",
+          "sha256": "0e42bdabefc4dbd72b84625276308d5d0bcf653579540ebda2a38e453b5f0763",
+          "width_pt": 792.0,
+          "height_pt": 612.0
+        },
+        {
+          "page": 12,
+          "file": "word-windows-tnr-unbalanced-sweep.page-012.emf",
+          "sha256": "a80373a45fb4ffe7e2c21cdb91048dc1b88c7f87afc15849eb18cd51a1e7dae6",
+          "width_pt": 792.0,
+          "height_pt": 612.0
+        },
+        {
+          "page": 13,
+          "file": "word-windows-tnr-unbalanced-sweep.page-013.emf",
+          "sha256": "fb228bccd8a2ad70de81d3aef517b8ab15de5e86d271e29c5eb4d02ec54a6adc",
+          "width_pt": 792.0,
+          "height_pt": 612.0
+        },
+        {
+          "page": 14,
+          "file": "word-windows-tnr-unbalanced-sweep.page-014.emf",
+          "sha256": "3ef1a5bfbe0865e1701c96b4ba623a161a0ac1c510fd28dd750ed8111756bf02",
+          "width_pt": 792.0,
+          "height_pt": 612.0
+        },
+        {
+          "page": 15,
+          "file": "word-windows-tnr-unbalanced-sweep.page-015.emf",
+          "sha256": "401ccb88645cefa82ce8fe720bc4b4ed317ebec70a3354c1052e50e905446d51",
+          "width_pt": 792.0,
+          "height_pt": 612.0
+        },
+        {
+          "page": 16,
+          "file": "word-windows-tnr-unbalanced-sweep.page-016.emf",
+          "sha256": "290fe515213fc95a2a1c4fa5afd44b277fe8b5178aa661ee87a1f1adf291c585",
+          "width_pt": 792.0,
+          "height_pt": 612.0
+        },
+        {
+          "page": 17,
+          "file": "word-windows-tnr-unbalanced-sweep.page-017.emf",
+          "sha256": "62cf12ff9dc9ab423cf6ff5e9843651a710eb31d205c2d592e426e9cf681bbc1",
+          "width_pt": 792.0,
+          "height_pt": 612.0
+        },
+        {
+          "page": 18,
+          "file": "word-windows-tnr-unbalanced-sweep.page-018.emf",
+          "sha256": "4650d9b793df5d2a776bca713bcb1600070d6d7ab67ef0cb5f725306a2b3b527",
+          "width_pt": 792.0,
+          "height_pt": 612.0
+        },
+        {
+          "page": 19,
+          "file": "word-windows-tnr-unbalanced-sweep.page-019.emf",
+          "sha256": "461af4f20c0ed2060ecb71725ad50212c1b1902702372c3ab738c3f4d13061e6",
+          "width_pt": 792.0,
+          "height_pt": 612.0
+        },
+        {
+          "page": 20,
+          "file": "word-windows-tnr-unbalanced-sweep.page-020.emf",
+          "sha256": "abb8bed2c9b9f382af087064ab01804a5ec2206a9c8238d2669ee7dcb6ff2dd6",
+          "width_pt": 792.0,
+          "height_pt": 612.0
+        }
+      ]
+    }
+  ]
+}

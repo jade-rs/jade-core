@@ -109,6 +109,23 @@ impl StylesPart {
         Self::from_xml(WORD_DEFAULT_STYLES_XML).expect("built-in styles parse")
     }
 
+    /// Windows Word 16.0.19127 leaves unstyled paragraphs left aligned.
+    /// Keep the Mac Normal defaults separate: importing its justification
+    /// stretches wrapped CJK lines in packages that have no styles part.
+    pub fn word_default_windows() -> Self {
+        let mut styles = Self::word_default();
+        for style in styles
+            .paragraph_styles
+            .values_mut()
+            .filter(|style| style.is_default)
+        {
+            if let Some(properties) = style.paragraph_properties.as_mut() {
+                properties.alignment = Some("left".into());
+            }
+        }
+        styles
+    }
+
     /// Apply Word's built-in run defaults when a present styles part omits
     /// `rPrDefault`. This is a load-time fallback, not authored formatting:
     /// explicit (even empty) defaults and all paragraph styles stay intact.
@@ -2852,6 +2869,30 @@ fn parse_tab_definition(element: &BytesStart) -> Option<TabStop> {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn windows_unstyled_normal_does_not_inherit_mac_justification() {
+        let mac = StylesPart::word_default();
+        let windows = StylesPart::word_default_windows();
+        assert_eq!(
+            mac.resolve_paragraph_properties("a")
+                .unwrap()
+                .alignment
+                .as_deref(),
+            Some("both")
+        );
+        assert_eq!(
+            windows
+                .resolve_paragraph_properties("a")
+                .unwrap()
+                .alignment
+                .as_deref(),
+            Some("left")
+        );
+        assert_eq!(
+            mac.resolve_run_properties("a"),
+            windows.resolve_run_properties("a")
+        );
+    }
 
     #[test]
     fn missing_word_run_defaults_do_not_replace_style_or_direct_formatting() {

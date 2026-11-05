@@ -98,6 +98,7 @@ fn underline_end(ops: &[Op]) -> f64 {
 #[test]
 fn trailing_spaces_are_underlined_only_under_ul_trail_space() {
     let underlined = RunProperties {
+        font_family: Some("Recording Test".into()),
         underline: Some(true),
         underline_color: Some("#ff0000".into()),
         ..RunProperties::default()

@@ -14597,12 +14597,19 @@ mod tests {
             Some("游明朝")
         );
         assert_eq!(run.and_then(|props| props.font_size), Some(10.5));
+        let normal_alignment = if jade_docx_reader::word_platform::word_layout_platform()
+            == jade_docx_reader::word_platform::WordLayoutPlatform::Windows
+        {
+            "left"
+        } else {
+            "both"
+        };
         assert_eq!(
             paragraph
                 .properties
                 .as_ref()
                 .and_then(|props| props.alignment.as_deref()),
-            Some("both")
+            Some(normal_alignment)
         );
         let exported = word_doc.export_docx().expect("export");
         let mut archive =
@@ -17582,7 +17589,17 @@ mod tests {
             &Options::default(),
         ))
         .expect("reload");
-        assert_eq!(alignments(&word_doc), vec![Some("both".to_string()); 3]);
+        let normal_alignment = if jade_docx_reader::word_platform::word_layout_platform()
+            == jade_docx_reader::word_platform::WordLayoutPlatform::Windows
+        {
+            "left"
+        } else {
+            "both"
+        };
+        assert_eq!(
+            alignments(&word_doc),
+            vec![Some(normal_alignment.to_string()); 3]
+        );
         assert_eq!(alignments(&reloaded), alignments(&word_doc));
     }
 

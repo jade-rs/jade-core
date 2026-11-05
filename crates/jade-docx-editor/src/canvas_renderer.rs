@@ -268,16 +268,19 @@ pub(crate) mod ink_preview;
 #[cfg(test)]
 mod ink_tests;
 mod keep_next;
+mod line_height_cache;
 #[cfg(test)]
 mod note_tests;
 #[cfg(test)]
 mod opentype_features_tests;
 mod page_layers;
+mod paragraph_font_cache;
 mod paragraph_join;
 #[cfg(test)]
 mod preset_shape_tests;
 #[cfg(test)]
 mod recording_host;
+mod run_style_key;
 #[cfg(test)]
 mod section_tests;
 mod structure;
@@ -4058,6 +4061,7 @@ where
     font_line_box_height_cache: RefCell<FxHashMap<String, f64>>,
     /// Cache for paragraph wrap results to avoid redundant measure_text calls.
     paragraph_wrap_cache: Rc<RefCell<ParagraphWrapCache>>,
+    line_height_plan_cache: RefCell<line_height_cache::LineHeightPlanCache>,
     /// Content-addressed intrinsic/autofit results shared by consecutive table
     /// renders. Final row placement still runs every pass against current page
     /// geometry; only deterministic text measurements are retained.
@@ -4082,6 +4086,8 @@ where
     last_render_prefix_skips: u64,
     /// Cache for resolved run styles keyed by run properties + doc-grid spacing.
     applied_run_style_cache: RefCell<FxHashMap<u64, Rc<AppliedRunStyle>>>,
+    /// Windows font-line summaries, validated against owned run inputs.
+    paragraph_font_cache: RefCell<paragraph_font_cache::ParagraphFontCache>,
     /// See [`CanvasRenderer::effective_run_properties_rc`].
     effective_run_properties_cache: RefCell<FxHashMap<u64, Vec<EffectiveRunPropertiesEntry>>>,
     /// Fast path for shared run properties produced by `jade-docx-layout`. The cache
@@ -7597,17 +7603,15 @@ where
                     });
                     let counter = NumberingCounter::default();
                     let saved_line_bottoms = self.measured_note_line_bottoms.take();
-                    self.measured_note_line_bottoms =
-                        (jade_docx_layout::line_metrics::word_layout_platform()
-                            == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac)
-                            .then(|| document.footnotes.get(&key.0))
-                            .flatten()
-                            .filter(|note| {
-                                note.body
-                                    .iter()
-                                    .all(|element| element.as_paragraph().is_some())
-                            })
-                            .map(|note| MeasuredNoteLineBottoms::new(note.body.len()));
+                    self.measured_note_line_bottoms = document
+                        .footnotes
+                        .get(&key.0)
+                        .filter(|note| {
+                            note.body
+                                .iter()
+                                .all(|element| element.as_paragraph().is_some())
+                        })
+                        .map(|note| MeasuredNoteLineBottoms::new(note.body.len()));
                     let height = self.measure_note_ids_height(
                         &document,
                         &options,
@@ -7683,12 +7687,35 @@ where
     /// it, keeping `allowance` (the line or row being placed) above it.
     fn reserve_footnote_area(&mut self, allowance: f64) -> Result<NoteAreaReserve, JsValue> {
         let full = self.measure_footnote_area()?;
+        let mut min_note_line = points_to_px(MIN_NOTE_LINE_PT as f32);
+        if jade_docx_layout::line_metrics::word_layout_platform()
+            == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+        {
+            let start = self
+                .footnote_carry
+                .map(|carry| carry.order_index)
+                .unwrap_or(self.rendered_footnote_count)
+                .min(self.footnote_order.len());
+            for id in &self.footnote_order[start..] {
+                if self.is_unplaced_footnote(id) {
+                    continue;
+                }
+                let number = self.footnote_display_map.get(id).copied().unwrap_or(0);
+                if let Some(first) = self
+                    .footnote_height_cache
+                    .get(&(id.clone(), number, None))
+                    .and_then(|plan| plan.line_bottoms.as_slice().first())
+                {
+                    min_note_line = min_note_line.max(*first);
+                }
+            }
+        }
         let decision = reserve_note_area(
             full,
             self.footnote_reserve_px,
             self.unreserved_body_bottom() - self.current_y,
             allowance,
-            points_to_px(MIN_NOTE_LINE_PT as f32),
+            min_note_line,
             points_to_px(FOOTNOTE_SEPARATOR_HEIGHT_PT),
             self.at_page_body_top(),
         );
@@ -8744,6 +8771,7 @@ where
             trailing_overhang_cache: RefCell::new(FxHashMap::default()),
             font_line_box_height_cache: RefCell::new(FxHashMap::default()),
             paragraph_wrap_cache: Rc::new(RefCell::new(ParagraphWrapCache::default())),
+            line_height_plan_cache: RefCell::default(),
             table_autofit_cache: RefCell::new(table::TableAutofitCache::default()),
             table_autofit_cache_enabled: true,
             table_text_measure_cache: Rc::new(RefCell::new(TextMeasureCache::default())),
@@ -8752,6 +8780,7 @@ where
             last_render_body_element_count: 0,
             last_render_prefix_skips: 0,
             applied_run_style_cache: RefCell::new(FxHashMap::default()),
+            paragraph_font_cache: RefCell::new(Default::default()),
             effective_run_properties_cache: RefCell::new(FxHashMap::default()),
             applied_run_style_identity_cache: RefCell::new(FxHashMap::default()),
             word_run_faces_cache: RefCell::new(FxHashMap::default()),
@@ -9523,6 +9552,7 @@ where
     pub fn clear_text_measure_cache(&mut self) {
         // Wrapped table lines also retain measured advances and font ascents.
         self.clear_paragraph_wrap_cache();
+        self.paragraph_font_cache.borrow_mut().clear();
         self.text_measure_cache.borrow_mut().clear();
         self.font_vertical_metrics_cache.borrow_mut().clear();
         self.trailing_overhang_cache.borrow_mut().clear();
@@ -9770,6 +9800,7 @@ where
     #[allow(dead_code)]
     pub fn clear_paragraph_wrap_cache(&mut self) {
         self.paragraph_wrap_cache.borrow_mut().clear();
+        self.line_height_plan_cache.borrow_mut().clear();
     }
 
     /// Invalidates paragraph wrap cache from a specific paragraph index onwards.
@@ -14413,6 +14444,7 @@ where
             ),
         ) {
             // The same run properties now resolve to other descriptors.
+            self.paragraph_font_cache.borrow_mut().clear();
             self.applied_run_style_cache.borrow_mut().clear();
             self.applied_run_style_identity_cache.borrow_mut().clear();
             self.clear_paragraph_wrap_cache();
@@ -21045,6 +21077,20 @@ where
                     .latin_line_height_pt(),
             ));
         }
+        // Blank paragraphs above keep their original mark/first-run policy.
+        // Preserve the entire Mac computation, including diagnostic contexts.
+        let cache_context = (jade_docx_layout::line_metrics::word_layout_platform()
+            == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows)
+            .then_some(paragraph_font_cache::Context {
+                east_asian: self.document_east_asian_rules.use_east_asian_layout,
+                underline: self.document_east_asian_rules.space_for_underline,
+                char_spacing: self.current_doc_grid_char_spacing_px.map(f64::to_bits),
+            });
+        if let Some(context) = cache_context {
+            if let Some(lines) = self.paragraph_font_cache.borrow().get(paragraph, context) {
+                return Ok(lines);
+            }
+        }
         let mut east_asian_line: Option<f32> = None;
         let mut runs = Vec::with_capacity(paragraph.runs.len());
         // Consecutive runs usually share their direct formatting, and with it
@@ -21099,7 +21145,13 @@ where
                 underline_depth,
             ));
         }
-        Ok((east_asian_line, word_tallest_single_line_height_pt(runs)))
+        let lines = (east_asian_line, word_tallest_single_line_height_pt(runs));
+        if let Some(context) = cache_context {
+            self.paragraph_font_cache
+                .borrow_mut()
+                .insert(paragraph, context, lines);
+        }
+        Ok(lines)
     }
 
     /// [`WordRunFaces`] of `resolved`'s font descriptors, parsed once per
@@ -21827,22 +21879,13 @@ where
                     || paragraph_style.word_proportional_line_sizing.is_some()
             })
             .and_then(|numbering| self.numbering_first_line_ascent(numbering));
-        let line_heights = if numbering_ascent.is_some() {
-            WrappedLine::line_heights_px_with_numbering_ascent(
-                &lines,
-                paragraph_style,
-                line_height,
-                paragraph_mark_font_box,
-                numbering_ascent,
-            )
-        } else {
-            WrappedLine::line_heights_px_with_paragraph_mark(
-                &lines,
-                paragraph_style,
-                line_height,
-                paragraph_mark_font_box,
-            )
-        };
+        let line_heights = self.line_height_plan_cache.borrow_mut().heights(
+            &lines,
+            paragraph_style,
+            line_height,
+            paragraph_mark_font_box,
+            numbering_ascent,
+        );
         let band_height = |band: usize| {
             let start = band_starts[band];
             let end = band_starts.get(band + 1).copied().unwrap_or(lines.len());
@@ -31417,6 +31460,11 @@ where
         properties: Option<&RunProperties>,
         doc_grid_char_spacing_px: Option<f64>,
     ) -> u64 {
+        if jade_docx_layout::line_metrics::word_layout_platform()
+            == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+        {
+            return run_style_key::windows_key(properties, doc_grid_char_spacing_px);
+        }
         let mut hasher = FxHasher::default();
         doc_grid_char_spacing_px.map(f64::to_bits).hash(&mut hasher);
         if let Some(props) = properties {
@@ -32241,11 +32289,9 @@ where
     }
 
     fn numbering_first_line_ascent(&self, numbering: &PendingNumberingRender) -> Option<f64> {
-        if jade_docx_layout::line_metrics::word_layout_platform()
-            != jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
-        {
-            return None;
-        }
+        // Windows Word 16.0.19127.20860 also raises the first line for a
+        // larger numbering label (word-mac-probe-numbering-label, row 3).
+        // Unknown label metrics still retain the existing fallback.
         let style = self.resolve_applied_run_style_cached(numbering.display_props.as_ref());
         let mut ascent: Option<f64> = None;
         let mut previous_descriptor = None;
@@ -43151,7 +43197,15 @@ mod tests {
                     .body
                     .and_then(|body| body.elements.into_iter().next())
                     .and_then(|element| match element {
-                        BodyElement::Paragraph(paragraph) => Some(*paragraph),
+                        BodyElement::Paragraph(mut paragraph) => {
+                            for run in &mut paragraph.runs {
+                                run.properties = Some(RunProperties {
+                                    font_family: Some("Recording Test".into()),
+                                    ..Default::default()
+                                });
+                            }
+                            Some(*paragraph)
+                        }
                         _ => None,
                     })
                     .expect("one paragraph"),
@@ -44943,20 +44997,14 @@ mod tests {
         use jade_painter::recording::{Op, RecordingPainter};
         let renderer = renderer_measuring(&[("a", 10.0), ("b", 10.0), ("c", 10.0)]);
         let painter = RecordingPainter::new();
+        let style = renderer.resolve_applied_run_style_cached(Some(&RunProperties {
+            font_family: Some("Recording Test".into()),
+            ..Default::default()
+        }));
 
         let (width, _) = renderer
             .draw_text_with_spacing(
-                &painter,
-                "abc",
-                5.0,
-                50.0,
-                0.0,
-                &test_applied_style(1.0),
-                None,
-                None,
-                None,
-                None,
-                None,
+                &painter, "abc", 5.0, 50.0, 0.0, &style, None, None, None, None, None,
             )
             .expect("recording backend is infallible");
 
@@ -50195,6 +50243,118 @@ mod tests {
                 .and_then(|props| props.color.as_deref()),
             Some("#ff0000")
         );
+    }
+
+    #[test]
+    fn windows_paragraph_font_cache_matches_fresh_after_public_edits() {
+        use jade_docx_layout::line_metrics::{set_word_layout_platform, WordLayoutPlatform};
+        set_word_layout_platform(WordLayoutPlatform::Windows);
+        let (mut renderer, _) = recording_renderer();
+        renderer.document_east_asian_rules.use_east_asian_layout = true;
+        let mut paragraph = Paragraph {
+            runs: vec![text_box_run(
+                "漢a",
+                Some(RunProperties {
+                    font_family: Some("MS Mincho".into()),
+                    font_size: Some(12.0),
+                    ..Default::default()
+                }),
+            )],
+            properties: None,
+            node_id: Some(XmlNodeId::new(17)),
+            comment_ranges: Vec::new(),
+            comment_markers: Vec::new(),
+        };
+        let compare = |renderer: &CanvasRenderer<jade_painter::recording::RecordingPainter>,
+                       paragraph: &Paragraph| {
+            let cached = renderer.paragraph_word_font_lines_pt(paragraph).unwrap();
+            renderer.paragraph_font_cache.borrow_mut().clear();
+            let fresh = renderer.paragraph_word_font_lines_pt(paragraph).unwrap();
+            assert_eq!(cached, fresh);
+            assert_eq!(
+                renderer.paragraph_word_font_lines_pt(paragraph).unwrap(),
+                fresh
+            );
+            fresh
+        };
+        let original = compare(&renderer, &paragraph);
+        let base = paragraph.runs[0].properties.clone().unwrap();
+        for size in [9.0, 12.0, 40.0] {
+            for baseline in [None, Some("superscript"), Some("subscript")] {
+                let mut props = base.clone();
+                props.font_size = Some(size);
+                props.baseline = baseline.map(Rc::from);
+                props.bold = Some(true);
+                props.italic = Some(true);
+                props.underline = Some(true);
+                props.underline_kind = Some(Rc::from("double"));
+                props.border = Some(BorderEdge {
+                    val: Some("single".into()),
+                    size_eighths: Some(8),
+                    space: Some(2),
+                    ..Default::default()
+                });
+                paragraph.runs[0].properties = Some(props);
+                compare(&renderer, &paragraph);
+                paragraph.runs[0].properties.as_mut().unwrap().color = Some("FF0000".into());
+                compare(&renderer, &paragraph);
+            }
+        }
+        paragraph.runs[0].properties = Some(base);
+        paragraph.runs[0].properties.as_mut().unwrap().font_size = Some(40.0);
+        let larger = compare(&renderer, &paragraph);
+        assert_ne!(original, larger);
+        paragraph.runs[0].text = "a".into();
+        compare(&renderer, &paragraph);
+        paragraph.runs.push(text_box_run(
+            "漢",
+            Some(RunProperties {
+                font_family: Some("Yu Gothic".into()),
+                font_size: Some(24.0),
+                ..Default::default()
+            }),
+        ));
+        compare(&renderer, &paragraph);
+        paragraph.runs[1].text.clear();
+        paragraph.runs[1].note_separator = Some(NoteSeparatorKind::Separator);
+        compare(&renderer, &paragraph);
+        renderer.document_east_asian_rules.use_east_asian_layout = false;
+        compare(&renderer, &paragraph);
+        renderer.document_east_asian_rules.space_for_underline = true;
+        paragraph.runs[0].properties.as_mut().unwrap().underline = Some(true);
+        compare(&renderer, &paragraph);
+        renderer.current_doc_grid_char_spacing_px = Some(1.0);
+        compare(&renderer, &paragraph);
+        paragraph.runs.truncate(1);
+        paragraph.runs[0].properties = None;
+        paragraph.properties = Some(ParagraphProperties {
+            style: Some(Rc::from("Caption")),
+            ..Default::default()
+        });
+        for size in [20, 40] {
+            let xml = format!(
+                r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+                <w:style w:type="paragraph" w:styleId="Caption"><w:rPr>
+                <w:rFonts w:ascii="MS Mincho" w:eastAsia="MS Mincho"/><w:sz w:val="{size}"/>
+                </w:rPr></w:style></w:styles>"#
+            );
+            renderer.set_style_context(Some(Rc::new(StylesPart::from_xml(&xml).unwrap())), None);
+            compare(&renderer, &paragraph);
+        }
+        paragraph.properties.as_mut().unwrap().style = None;
+        compare(&renderer, &paragraph);
+        // A copied paragraph can retain its XML ID; content validation still applies.
+        let mut replacement = paragraph.clone();
+        replacement.runs[0].properties = Some(RunProperties {
+            font_family: Some("MS Mincho".into()),
+            font_size: Some(9.0),
+            ..Default::default()
+        });
+        compare(&renderer, &replacement);
+        replacement.runs[0].text = " \t".into();
+        compare(&renderer, &replacement);
+        set_word_layout_platform(WordLayoutPlatform::Mac);
+        compare(&renderer, &paragraph);
     }
 
     #[test]
@@ -66898,7 +67058,13 @@ mod tests {
     /// paragraphs must resolve their line height exactly like body paragraphs.
     #[test]
     fn table_cell_paragraphs_share_the_body_line_height_resolution() {
-        let renderer = test_renderer();
+        let renderer = CanvasRenderer::with_host(
+            Box::new(NonCanvasHost {
+                painter: jade_painter::recording::RecordingPainter::new(),
+            }),
+            false,
+        )
+        .expect("recording renderer");
         // The test host has no canvas, so size the second paragraph through
         // its paragraph mark instead of a visible run: the mark takes part in
         // line-height resolution without touching the painter.

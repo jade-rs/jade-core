@@ -21,16 +21,13 @@ use crate::document::FontFace;
 pub const MATH_FAMILY: &str = "Cambria Math";
 
 /// Where Office keeps the faces it ships, in the order they are searched.
-/// `JADE_OFFICE_FONT_DIR` (a list separated by `:`) comes first.
+/// `JADE_OFFICE_FONT_DIR` (a platform path list: `;` on Windows, `:` elsewhere) comes first.
 pub fn office_font_directories() -> Vec<PathBuf> {
     let mut directories = Vec::new();
-    if let Ok(list) = std::env::var("JADE_OFFICE_FONT_DIR") {
-        directories.extend(
-            list.split(':')
-                .map(str::trim)
-                .filter(|entry| !entry.is_empty())
-                .map(PathBuf::from),
-        );
+    #[cfg(target_os = "windows")]
+    if let Some(list) = std::env::var_os("JADE_OFFICE_FONT_DIR") {
+        directories
+            .extend(std::env::split_paths(&list).filter(|path| !path.as_os_str().is_empty()));
     }
     directories.extend(
         [
@@ -46,10 +43,19 @@ pub fn office_font_directories() -> Vec<PathBuf> {
 
 /// The families a browser on a Mac gives CSS's generic names, which jade's
 /// fallback stacks end with.
+#[cfg(not(target_os = "windows"))]
 const GENERIC_FAMILIES: &[(&str, &str)] = &[
     ("serif", "Times"),
     ("sans-serif", "Helvetica"),
     ("monospace", "Courier"),
+];
+
+// Windows generic faces must resolve to fonts available to Word on Windows.
+#[cfg(target_os = "windows")]
+const GENERIC_FAMILIES: &[(&str, &str)] = &[
+    ("serif", "Times New Roman"),
+    ("sans-serif", "Arial"),
+    ("monospace", "Courier New"),
 ];
 
 /// One installed face.

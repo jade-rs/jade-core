@@ -730,6 +730,34 @@
       "schema_repair_source_sha256": "513f3ea7aaf3b49169c06f11e178ef446b4c9ec2e36ef2216b683ca574735ed2"
     },
     {
+      "fixture": "word-windows-controlled-fe-0",
+      "docx_sha256": "d2089766a80bd6fc5d01944a8c686e61203502f9b382388b067c2a19c47e468f"
+    },
+    {
+      "fixture": "word-windows-controlled-fe-0-grid",
+      "docx_sha256": "a9ebff2c35551ce10b8e19c5874f650e647744d736279cb3eae129089e43ca11"
+    },
+    {
+      "fixture": "word-windows-controlled-fe-1",
+      "docx_sha256": "2925ed1fe229bdd292cd7b67099c6ec5af6d5cfda4f39e8dca15b4f555942e44"
+    },
+    {
+      "fixture": "word-windows-controlled-fe-1-grid",
+      "docx_sha256": "92aa454d75835ec0d193192d91d82220459b5362ec054addad778c7d8308269c"
+    },
+    {
+      "fixture": "word-windows-tnr-balanced-sweep",
+      "docx_sha256": "ec03028acb321b560c167b76a5d3da2973becab5c32e00c0cca291e63b8ab6f8"
+    },
+    {
+      "fixture": "word-windows-tnr-unbalanced-sweep",
+      "docx_sha256": "24837ed1f4e9b3d038e4823224001057e3b05f5ea37f51e3b0582596b3182dd3"
+    },
+    {
+      "fixture": "word-windows-yu-gothic-lines",
+      "docx_sha256": "685352a2ff6b33fa4bbfdf71ff2554bbe4231babc5a54ee2c279ebd0dacc0c95"
+    },
+    {
       "fixture": "wrong-num",
       "docx_sha256": "d553ecaf5868bc2cf80c0c293073d9ec8842890a6e3e3ef9a1aa048f7cc5191e"
     },

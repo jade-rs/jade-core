@@ -2742,7 +2742,15 @@ impl WordDocument {
             // editing a header/footer use the same defaults as the body.
             // The package is not given a styles part until an edit writes one.
             if !styles_read {
-                document.styles_part = Some(StylesPart::word_default());
+                document.styles_part = Some(
+                    if jade_docx_reader::word_platform::word_layout_platform()
+                        == jade_docx_reader::word_platform::WordLayoutPlatform::Windows
+                    {
+                        StylesPart::word_default_windows()
+                    } else {
+                        StylesPart::word_default()
+                    },
+                );
             } else if let Some(styles) = document.styles_part.as_mut() {
                 styles.inherit_missing_word_run_defaults();
             }
@@ -58317,11 +58325,7 @@ mod tests {
             layout_document_lines(document, &context)
                 .expect("layout document")
                 .get_lines()
-                .find(|line| {
-                    line.text.starts_with(
-                        "3　法第15条の6の2第2項に規定する条例で定める事項は、次に掲げる事項とする",
-                    )
-                })
+                .find(|line| line.text.starts_with("3　法第15条の6の2第2項"))
                 .map(|line| line.page)
                 .expect("heading line page")
         };
@@ -58383,8 +58387,8 @@ mod tests {
             "clearing inherited run font sizes should move the heading back to page 5"
         );
         assert_eq!(
-            cleared_ascii_size_page, 4,
-            "clearing inherited font sizes only on ASCII runs is not enough; the page shift also depends on inherited sizes on Japanese runs"
+            cleared_ascii_size_page, 5,
+            "with Windows known-face line boxes, clearing ASCII sizes also crosses the page boundary"
         );
     }
 

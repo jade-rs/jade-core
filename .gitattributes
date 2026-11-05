@@ -3,3 +3,7 @@ TODO.md merge=union
 
 # Keep the vendored upstream bytes and generated patch intact for provenance.
 third_party/ironcalc-base/** -whitespace
+
+# Coordinate evidence is SHA-256 checked byte-for-byte on every platform.
+tests/word-oracle/**/*.json -text
+tests/word-oracle/*.json -text

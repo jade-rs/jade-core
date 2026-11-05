@@ -1,0 +1,32 @@
+[
+  {
+    "fixture": "word-mac-probe-ruby-grid",
+    "word_pages": 2,
+    "native_pages": 2,
+    "word_glyphs": 510,
+    "native_glyphs": 510,
+    "matched": 510,
+    "within_0_375pt": 510,
+    "x_p50": 0.09999847412109375,
+    "x_p95": 0.279998779296875,
+    "y_p50": 0.116546630859375,
+    "y_p95": 0.20208740234375,
+    "first_errors": [],
+    "pdf_sha256": "c19068cdaa2c091b9a683e558a4c07ff7f4ed8557ca0734b2aa6b94056113b0a"
+  },
+  {
+    "fixture": "word-mac-probe-ruby-nogrid",
+    "word_pages": 1,
+    "native_pages": 1,
+    "word_glyphs": 510,
+    "native_glyphs": 510,
+    "matched": 510,
+    "within_0_375pt": 510,
+    "x_p50": 0.09999847412109375,
+    "x_p95": 0.279998779296875,
+    "y_p50": 0.049835205078125,
+    "y_p95": 0.1323242187498863,
+    "first_errors": [],
+    "pdf_sha256": "7386820f7a97113eecd225d9748791f52999f7c7575ade6eaf954f54bf0686ba"
+  }
+]

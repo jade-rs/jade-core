@@ -1,0 +1,47 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261103T082355941Z-8b9726d7",
+  "captured_at_utc": "2026-11-03T08:23:55.9672662Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20860",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "9bafe09d0c458006744b9edce767a328ba2da1bb5d9a460e5830c47bf6d7f1d1"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "documents": [
+    {
+      "name": "contract",
+      "source": "jade-core\\public\\fixtures\\contract.docx",
+      "sha256": "682d4f785f8d1b283ded73ddceedce377fcc840e15130a2a87fa90ee9a078467",
+      "pdf": "contract.pdf",
+      "pdf_sha256": "5dc1f47b861940f5cae8ef82eb8e19d1fa6e5abed6eedc5b0d0503555785c36d",
+      "pages": 3,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "contract.page-001.emf",
+          "sha256": "13a5fa15b9523b43ffac49f73383b037598e5348e97c1fdd14bea051b4f470bc",
+          "width_pt": 595.2,
+          "height_pt": 841.9
+        },
+        {
+          "page": 2,
+          "file": "contract.page-002.emf",
+          "sha256": "41d79570d69b798d68e909f18cae3b98c439e839d0d04810a386db25bfd3a7fd",
+          "width_pt": 595.2,
+          "height_pt": 841.9
+        },
+        {
+          "page": 3,
+          "file": "contract.page-003.emf",
+          "sha256": "6a7f7e91fb16703178f23cacfba8cab58ef29588ee4d4f445ce2fff44c7ae126",
+          "width_pt": 595.2,
+          "height_pt": 841.9
+        }
+      ]
+    }
+  ]
+}

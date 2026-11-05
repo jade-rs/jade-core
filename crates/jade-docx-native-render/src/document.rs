@@ -2818,6 +2818,15 @@ impl NativeDocument {
                 .push(HistoryStep::Command { executor_steps: 1 });
         }
         self.renderer.set_selection_range_for_render(self.selection);
+        // Structural commands can renumber every following table paragraph.
+        // Their executor footprint requires a full render, just like history
+        // replay; a seek from the caret can retain stale earlier table pixels.
+        if self.executor.history_revision() != recorded
+            && self.executor.next_undo_render_footprint()
+                == Some(HistoryRenderFootprint::Structural)
+        {
+            return self.repaint_all();
+        }
 
         let edited = self
             .word_document

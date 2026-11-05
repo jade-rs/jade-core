@@ -1,0 +1,56 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261103T072439513Z-7e74b1ab",
+  "captured_at_utc": "2026-11-03T07:24:39.5381570Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20860",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "9bafe09d0c458006744b9edce767a328ba2da1bb5d9a460e5830c47bf6d7f1d1"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "documents": [
+    {
+      "name": "word-windows-yu-gothic-lines",
+      "source": "jade-core\\public\\fixtures\\word-windows-yu-gothic-lines.docx",
+      "sha256": "685352a2ff6b33fa4bbfdf71ff2554bbe4231babc5a54ee2c279ebd0dacc0c95",
+      "pdf": "word-windows-yu-gothic-lines.pdf",
+      "pdf_sha256": "e493aae22d657ce385c5980c66c3bd080b380b851a0a56dfab70774f9eac950a",
+      "pages": 24
+    },
+    {
+      "name": "yokohama_page1",
+      "source": "jade-core\\public\\fixtures\\yokohama_page1.docx",
+      "sha256": "02a6ffec5671a28106245a24288b5cb7922570ae17984e903307e9eefb9ea4ff",
+      "pdf": "yokohama_page1.pdf",
+      "pdf_sha256": "fc0baa6bdafb91cb692cf82a7dc57516d8384c6b1820663b7253c68e528b89ee",
+      "pages": 1
+    },
+    {
+      "name": "yokohama_page6",
+      "source": "jade-core\\public\\fixtures\\yokohama_page6.docx",
+      "sha256": "c7a20d83cb5f9dfe42d22b480071026b0e074fc07e25abbe38b398b1c0790081",
+      "pdf": "yokohama_page6.pdf",
+      "pdf_sha256": "e5a2551498679ecea05b7be2d0181cc6479faabbec99aed08afb4a05d932ba11",
+      "pages": 5
+    },
+    {
+      "name": "contract",
+      "source": "jade-core\\public\\fixtures\\contract.docx",
+      "sha256": "682d4f785f8d1b283ded73ddceedce377fcc840e15130a2a87fa90ee9a078467",
+      "pdf": "contract.pdf",
+      "pdf_sha256": "97cfd91dfd1b18dd29a21427b3b3bc50e270d4253cfba6dda26f111a2dcc311e",
+      "pages": 3
+    },
+    {
+      "name": "numbering-restart",
+      "source": "jade-core\\public\\fixtures\\numbering-restart.docx",
+      "sha256": "b0fc380009a6942f9fac6862748495b21136a6c84c149d50a13f02daab0e9a20",
+      "pdf": "numbering-restart.pdf",
+      "pdf_sha256": "3dc0f32706943ed101aa6c6c541093b47da739e7de9b876ea9eeeb242907939e",
+      "pages": 2
+    }
+  ]
+}
