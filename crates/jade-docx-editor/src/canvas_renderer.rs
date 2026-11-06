@@ -3617,6 +3617,8 @@ where
     /// document is unchanged; dropping/restoring it or replacing auxiliary
     /// stories invalidates this result. Never retain a raw document address.
     last_document_comment_anchors: Option<bool>,
+    /// Deleted-run scan for the exact immutable `last_document` snapshot.
+    last_document_deleted_runs: Option<bool>,
     /// A positive witness, not a cached answer: recheck this current body block
     /// before falling back to the complete scan. Safe across edits, document
     /// replacement and cache drops; it retains neither a document nor an address.
@@ -5057,9 +5059,11 @@ where
         // their cached commands do not contain comment decoration or metadata.
         // Revision ink is also emitted by the fresh paragraph draw. With no
         // numbering definitions there is no deleted-list offset state to reconstruct
-        // from the skipped prefix. Numbered markup still needs a full walk:
-        // PageStartSeekSnapshot does not store deleted_numbering_offsets.
+        // from the skipped prefix. Definitions alone are harmless when the
+        // immutable document contains no deleted runs. Otherwise numbered markup
+        // still needs a full walk: snapshots omit deleted_numbering_offsets.
         (!options.render_changes
+            || self.last_document_deleted_runs == Some(false)
             || self.last_numbering_part.as_ref().is_none_or(|part| {
                 part.abstract_nums.is_empty()
                     && part.numbering_instances.is_empty()
@@ -8267,6 +8271,61 @@ where
         next
     }
 
+    fn blocks_contain_deleted_runs(elements: &[BodyElement]) -> bool {
+        elements.iter().any(|element| match element {
+            BodyElement::Paragraph(paragraph) => paragraph.runs.iter().any(|run| {
+                run.revision.as_ref().is_some_and(|mark| {
+                    matches!(mark.kind, RevisionKind::Deleted | RevisionKind::MovedFrom)
+                }) || run
+                    .text_box
+                    .as_ref()
+                    .is_some_and(|text_box| Self::blocks_contain_deleted_runs(&text_box.blocks))
+            }),
+            BodyElement::Table(table) => table.rows.iter().any(|row| {
+                row.cells
+                    .iter()
+                    .any(|cell| Self::blocks_contain_deleted_runs(&cell.blocks))
+            }),
+            BodyElement::Math(_) => false,
+        })
+    }
+
+    fn document_contains_deleted_runs(&self, document: &Document) -> bool {
+        document
+            .body
+            .as_ref()
+            .is_some_and(|body| Self::blocks_contain_deleted_runs(&body.elements))
+            || document
+                .footnotes
+                .values()
+                .chain(document.endnotes.values())
+                .any(|note| Self::blocks_contain_deleted_runs(&note.body))
+            || [
+                self.header_body.as_ref(),
+                self.footer_body.as_ref(),
+                self.header_body_first.as_ref(),
+                self.footer_body_first.as_ref(),
+                self.header_body_even.as_ref(),
+                self.footer_body_even.as_ref(),
+            ]
+            .into_iter()
+            .flatten()
+            .any(|body| Self::blocks_contain_deleted_runs(&body.elements))
+            || self.section_header_footers.iter().any(|section| {
+                [
+                    section.header_body.as_ref(),
+                    section.footer_body.as_ref(),
+                    section.header_body_first.as_ref(),
+                    section.footer_body_first.as_ref(),
+                    section.header_body_even.as_ref(),
+                    section.footer_body_even.as_ref(),
+                ]
+                .into_iter()
+                .flatten()
+                .any(|body| Self::blocks_contain_deleted_runs(&body.elements))
+            })
+    }
+
     fn paragraph_contains_comment_anchors(paragraph: &Paragraph) -> bool {
         !paragraph.comment_ranges.is_empty()
             || !paragraph.comment_markers.is_empty()
@@ -8587,6 +8646,7 @@ where
             document_has_notes: false,
             document_has_comments: false,
             last_document_comment_anchors: None,
+            last_document_deleted_runs: None,
             comment_anchor_body_witness: std::cell::Cell::new(None),
             #[cfg(test)]
             comment_anchor_document_scans: std::cell::Cell::new(0),
@@ -12903,6 +12963,7 @@ where
         // member through them (`set_incremental_dirty_from`).
         self.last_document = None;
         self.last_document_comment_anchors = None;
+        self.last_document_deleted_runs = None;
         self.invalidate_paragraph_content_hash_cache();
     }
 
@@ -12984,6 +13045,7 @@ where
     /// failure, so this is normally the document the renderer last laid out.
     pub fn restore_document_cache(&mut self, document: Rc<Document>) {
         self.last_document_comment_anchors = None;
+        self.last_document_deleted_runs = None;
         self.last_document = Some(document);
     }
 
@@ -14180,6 +14242,19 @@ where
             cached_comment_anchors
         };
         self.document_has_comments = self.last_document_comment_anchors.unwrap_or(false);
+        let cached_deleted_runs = self
+            .last_document
+            .as_ref()
+            .filter(|cached| Rc::ptr_eq(cached, &document_rc))
+            .and(self.last_document_deleted_runs);
+        self.last_document_deleted_runs = if options.render_changes {
+            Some(
+                cached_deleted_runs
+                    .unwrap_or_else(|| self.document_contains_deleted_runs(document)),
+            )
+        } else {
+            cached_deleted_runs
+        };
         self.last_render_body_element_count = 0;
         self.last_render_prefix_skips = 0;
         // Edit-pixel-reuse: reset the one-shot signal at every render entry so a
@@ -35686,6 +35761,7 @@ where
         footer_body_even: Option<Body>,
     ) {
         self.last_document_comment_anchors = None;
+        self.last_document_deleted_runs = None;
         self.header_body = header_body;
         self.footer_body = footer_body;
         self.header_body_first = header_body_first;
@@ -35706,6 +35782,7 @@ where
     /// to fall back to the document-wide fields.
     pub fn set_section_header_footers(&mut self, sections: Vec<SectionHeaderFooters>) {
         self.last_document_comment_anchors = None;
+        self.last_document_deleted_runs = None;
         self.section_header_footers = sections;
     }
 
@@ -55340,6 +55417,57 @@ mod tests {
         renderer.last_numbering_part = Some(Rc::new(markup_seek_numbering()));
         assert!(!renderer.is_forward_window_seek_compatible_options(&options));
         assert!(!renderer.is_seek_compatible_options(&options));
+        renderer.last_document_deleted_runs = Some(false);
+        assert!(renderer.is_forward_window_seek_compatible_options(&options));
+        assert!(!renderer.is_seek_compatible_options(&options));
+        renderer.last_document_deleted_runs = Some(true);
+        assert!(!renderer.is_forward_window_seek_compatible_options(&options));
+    }
+
+    #[test]
+    fn markup_seek_rechecks_deleted_runs_after_document_replacement() {
+        let (host, _) = PerPageRecordingHost::new(2);
+        let mut renderer = CanvasRenderer::with_host(Box::new(host), false).unwrap();
+        let mut options = options_for_seek_tests();
+        options.render_changes = true;
+        let numbering = markup_seek_numbering();
+        let plain = Rc::new(doc_with_paragraph_texts(&["plain"]));
+        renderer
+            .render_with_numbering_rc(
+                Rc::clone(&plain),
+                &options,
+                Some(&numbering),
+                None,
+                None,
+                None,
+            )
+            .unwrap();
+        assert_eq!(renderer.last_document_deleted_runs, Some(false));
+        assert!(renderer.is_forward_window_seek_compatible_options(&options));
+        let mut deleted = (*plain).clone();
+        if let BodyElement::Paragraph(p) = &mut deleted.body.as_mut().unwrap().elements[0] {
+            p.runs[0].revision = build_revision_run(RevisionKind::Deleted).revision;
+        }
+        renderer
+            .render_with_numbering_rc(
+                Rc::new(deleted),
+                &options,
+                Some(&numbering),
+                None,
+                None,
+                None,
+            )
+            .unwrap();
+        assert_eq!(renderer.last_document_deleted_runs, Some(true));
+        assert!(!renderer.is_forward_window_seek_compatible_options(&options));
+        renderer.drop_document_cache();
+        assert_eq!(renderer.last_document_deleted_runs, None);
+        renderer.restore_document_cache(Rc::clone(&plain));
+        assert_eq!(renderer.last_document_deleted_runs, None);
+        renderer
+            .render_with_numbering_rc(plain, &options, Some(&numbering), None, None, None)
+            .unwrap();
+        assert!(renderer.is_forward_window_seek_compatible_options(&options));
     }
 
     fn markup_seek_numbering() -> NumberingPart {
