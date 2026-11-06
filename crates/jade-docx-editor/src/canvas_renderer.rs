@@ -4900,8 +4900,7 @@ where
     }
 
     fn is_seek_compatible_options(&self, options: &Options) -> bool {
-        !options.render_changes
-            && !(self.document_has_comments && options.render_comments)
+        !(options.render_changes || self.document_has_comments && options.render_comments)
             && self.is_forward_window_seek_compatible_options(options)
     }
 
