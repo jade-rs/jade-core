@@ -69,11 +69,12 @@ impl WordGridLineSizing {
         Some(((single_px * self.multiple / pitch_px).ceil().max(1.0)) * pitch_px)
     }
 }
-/// Each auto-spaced Mac line uses its own known font box. Unknown faces,
-/// exact/at-least spacing and snapped grids retain their other sizing paths.
+/// Each auto/minimum-spaced Mac line uses its own known font box. Unknown
+/// faces, exact spacing and snapped grids retain their other sizing paths.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct WordProportionalLineSizing {
     multiple: f64,
+    minimum_pt: Option<f64>,
 }
 
 impl WordProportionalLineSizing {
@@ -86,15 +87,23 @@ impl WordProportionalLineSizing {
         if word_layout_platform() != WordLayoutPlatform::Mac || snap || !all_faces_known {
             return None;
         }
-        let multiple = f64::from(proportional_line_multiple(spacing)?);
-        (multiple.is_finite() && multiple > 0.0).then_some(Self { multiple })
+        let minimum_pt = word_minimum_line_height_pt(spacing).map(f64::from);
+        let multiple = if minimum_pt.is_some() {
+            1.0
+        } else {
+            f64::from(proportional_line_multiple(spacing)?)
+        };
+        (multiple.is_finite() && multiple > 0.0).then_some(Self {
+            multiple,
+            minimum_pt,
+        })
     }
 
     pub fn line_height_px(self, single_px: Option<f64>, fallback_px: f64) -> f64 {
         single_px
             .filter(|px| px.is_finite() && *px > 0.0)
             .map_or(fallback_px, |single| {
-                (single * self.multiple).max(96.0 / 72.0)
+                (single * self.multiple).max(self.minimum_pt.unwrap_or(1.0) * 96.0 / 72.0)
             })
     }
 }
@@ -2775,14 +2784,17 @@ pub fn word_tallest_single_line_height_pt(
 /// through the East Asian font line box (`word_font_line_box`, see
 /// [`apply_word_east_asian_font_line_height`]) or a multiple of its tallest
 /// face's single line (see [`apply_word_font_proportional_line_height`]).
-/// Exact, at-least and grid-snapped lines outside the East Asian box need not
+/// Exact and grid-snapped lines outside the East Asian box need not
 /// measure their runs' faces.
 pub fn word_font_lines_affect_line_height(
     word_font_line_box: bool,
     spacing: Option<&Spacing>,
     snap_to_grid: bool,
 ) -> bool {
-    word_font_line_box || (!snap_to_grid && proportional_line_multiple(spacing).is_some())
+    word_font_line_box
+        || (!snap_to_grid
+            && (proportional_line_multiple(spacing).is_some()
+                || word_minimum_line_height_pt(spacing).is_some()))
 }
 
 /// Word's line height for an auto-spaced line whose faces all have known
@@ -2790,9 +2802,9 @@ pub fn word_font_lines_affect_line_height(
 /// run's single line ([`word_tallest_single_line_height_pt`]). Word for Mac
 /// 16.113 advances 1.15, 1.5 and 2.0 multiples of every face's own single
 /// line (Calibri 10.5pt at 2.0 → 25.64pt, MS Mincho 12pt at 1.5 → 23.35pt),
-/// not of the font size, and puts the extra below the text. Exact, at-least
-/// and grid-snapped lines, and lines with an unknown face, keep
-/// `line_height_pt`.
+/// not of the font size, and puts the extra below the text. Minimum spacing
+/// floors this font box at the authored value. Exact and grid-snapped lines,
+/// and lines with an unknown face, keep `line_height_pt`.
 pub fn apply_word_font_proportional_line_height(
     line_height_pt: f32,
     spacing: Option<&Spacing>,
@@ -2804,6 +2816,9 @@ pub fn apply_word_font_proportional_line_height(
     };
     if snap_to_grid {
         return line_height_pt;
+    }
+    if let Some(minimum) = word_minimum_line_height_pt(spacing) {
+        return single.max(minimum).max(1.0);
     }
     let Some(multiple) = proportional_line_multiple(spacing) else {
         return line_height_pt;
@@ -2830,6 +2845,19 @@ fn proportional_line_multiple(spacing: Option<&Spacing>) -> Option<f32> {
         Some("auto") | None => Some(line.max(0.0)),
         _ => None,
     }
+}
+
+/// Word for Mac sizes an unsnapped atLeast line from its fonts and only then
+/// applies w:line as a lower bound. Keep the existing Windows policy until
+/// its font metrics are independently verified.
+fn word_minimum_line_height_pt(spacing: Option<&Spacing>) -> Option<f32> {
+    if word_layout_platform() != WordLayoutPlatform::Mac {
+        return None;
+    }
+    spacing
+        .filter(|spacing| spacing.line_rule.as_deref() == Some("atLeast"))
+        .and_then(|spacing| spacing.line)
+        .filter(|line| line.is_finite() && *line > 0.0)
 }
 
 /// Word's line height, in points, for an empty paragraph whose mark is set in
@@ -2997,6 +3025,7 @@ pub fn word_east_asian_font_metrics_apply_on_grid(
 ) -> bool {
     word_sizes_east_asian_lines_from_faces(document_uses_east_asian_layout)
         && (proportional_line_multiple(spacing).is_some()
+            || word_minimum_line_height_pt(spacing).is_some()
             || (grid_centres_text
                 && spacing.is_some_and(|spacing| spacing.line_rule.as_deref() == Some("atLeast"))))
 }
@@ -3571,6 +3600,56 @@ mod tests {
     }
 
     use super::*;
+
+    #[test]
+    fn unsnapped_at_least_respects_word_font_line_box() {
+        set_word_layout_platform(WordLayoutPlatform::Mac);
+        let spacing = Spacing {
+            line: Some(12.0),
+            line_rule: Some("atLeast".into()),
+            ..Spacing::default()
+        };
+        // Word's Yu Mincho 12pt body advances 17.2pt with a 12pt minimum.
+        let single = word_east_asian_font_line_height_pt("12.00pt 'Yu Mincho'");
+        let actual = apply_word_font_proportional_line_height(12.0, Some(&spacing), false, single);
+        assert!((actual - 17.197266).abs() < 0.001, "{actual}");
+        assert!(word_font_lines_affect_line_height(
+            false,
+            Some(&spacing),
+            false
+        ));
+        assert!(word_east_asian_font_metrics_apply(Some(&spacing), false));
+        let sizing = WordProportionalLineSizing::new(Some(&spacing), false, true)
+            .expect("minimum spacing must size each physical line from its fonts");
+        let px = |pt: f64| pt * 96.0 / 72.0;
+        assert!(
+            (sizing.line_height_px(Some(px(17.197266)), px(24.0)) - px(17.197266)).abs() < 1e-5
+        );
+        assert_eq!(sizing.line_height_px(Some(px(10.0)), px(24.0)), px(12.0));
+        assert_eq!(sizing.line_height_px(Some(px(30.0)), px(24.0)), px(30.0));
+        assert_eq!(sizing.line_height_px(None, px(24.0)), px(24.0));
+        let larger_minimum = Spacing {
+            line: Some(24.0),
+            ..spacing.clone()
+        };
+        assert_eq!(
+            apply_word_font_proportional_line_height(24.0, Some(&larger_minimum), false, single),
+            24.0
+        );
+        let exact = Spacing {
+            line_rule: Some("exact".into()),
+            ..spacing.clone()
+        };
+        assert_eq!(
+            apply_word_font_proportional_line_height(12.0, Some(&exact), false, single),
+            12.0
+        );
+        assert!(WordProportionalLineSizing::new(Some(&exact), false, true).is_none());
+        assert!(WordProportionalLineSizing::new(Some(&spacing), true, true).is_none());
+        assert!(WordProportionalLineSizing::new(Some(&spacing), false, false).is_none());
+        set_word_layout_platform(WordLayoutPlatform::Windows);
+        assert!(WordProportionalLineSizing::new(Some(&spacing), false, true).is_none());
+    }
 
     #[test]
     fn table_cell_doc_grid_drops_only_the_line_pitch_without_adjust_line_height() {
