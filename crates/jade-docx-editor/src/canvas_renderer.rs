@@ -66129,7 +66129,7 @@ mod tests {
     }
 
     #[test]
-    fn known_word_auto_line_box_avoids_substitute_metrics_but_syncs_painter() {
+    fn known_word_auto_and_minimum_line_boxes_avoid_substitute_metrics_but_sync_painter() {
         use jade_docx_layout::line_metrics::{set_word_layout_platform, WordLayoutPlatform};
         use jade_painter::recording::Op;
         set_word_layout_platform(WordLayoutPlatform::Mac);
@@ -66138,6 +66138,7 @@ mod tests {
             ("Aptos", 12.0, 2500.0, 2048.0),
             ("Aptos Display", 20.0, 2500.0, 2048.0),
             ("MS Mincho", 12.0, 332.0, 256.0),
+            ("Yu Mincho", 12.0, 2935.0, 2048.0),
             ("Yu Gothic Light", 11.0, 2935.0, 2048.0),
         ] {
             let (renderer, painter) = recording_renderer();
@@ -66188,8 +66189,8 @@ mod tests {
             assert!(sizing.is_none());
             assert!(!renderer.font_line_box_height_cache.borrow().is_empty());
 
-            // A minimum line may still consume the host box; knowing the face
-            // alone must not suppress that fallback outside auto sizing.
+            // Minimum spacing uses the same known Word box as auto spacing,
+            // floored by the authored minimum instead of a line multiplier.
             paragraph.runs[0].properties.as_mut().unwrap().font_family = Some(face.into());
             let spacing = paragraph
                 .properties
@@ -66199,8 +66200,33 @@ mod tests {
                 .as_mut()
                 .unwrap();
             spacing.line_rule = Some("atLeast".into());
-            spacing.line = Some(25.0);
+            spacing.line = Some(12.0);
             renderer.font_line_box_height_cache.borrow_mut().clear();
+            let (minimum_height, sizing) = renderer
+                .resolve_paragraph_line_height_plan(&paragraph)
+                .unwrap();
+            assert!((minimum_height - (size * single_units / units_per_em).max(12.0)).abs() < 1e-4);
+            assert!(sizing.is_some());
+            assert!(renderer.font_line_box_height_cache.borrow().is_empty());
+
+            paragraph
+                .properties
+                .as_mut()
+                .unwrap()
+                .spacing
+                .as_mut()
+                .unwrap()
+                .line = Some(25.0);
+            let (minimum_height, sizing) = renderer
+                .resolve_paragraph_line_height_plan(&paragraph)
+                .unwrap();
+            assert!((minimum_height - (size * single_units / units_per_em).max(25.0)).abs() < 1e-4);
+            assert!(sizing.is_some());
+            assert!(renderer.font_line_box_height_cache.borrow().is_empty());
+
+            // Unknown faces still measure the host line box for minimum spacing.
+            paragraph.runs[0].properties.as_mut().unwrap().font_family =
+                Some("Unknown Layout Face".into());
             let (minimum_height, sizing) = renderer
                 .resolve_paragraph_line_height_plan(&paragraph)
                 .unwrap();

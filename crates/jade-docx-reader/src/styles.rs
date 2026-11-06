@@ -19,6 +19,7 @@ type ParseResult<T> = Result<T, Box<dyn std::error::Error>>;
 struct StyleParseState {
     in_supported_style: bool,
     in_paragraph_style: bool,
+    in_custom_style: bool,
     in_character_style: bool,
     /// Inside a `w:style w:type="table"`, whose own `w:pPr` cell paragraphs
     /// inherit.
@@ -848,6 +849,10 @@ impl StylesPart {
                     Some("paragraph") | Some("character") | Some("table")
                 );
                 state.in_paragraph_style = matches!(style_type.as_deref(), Some("paragraph"));
+                state.in_custom_style = attr_value(element, b"w:customStyle")
+                    .as_deref()
+                    .map(parse_on_off_value)
+                    .unwrap_or(false);
                 state.in_character_style = matches!(style_type.as_deref(), Some("character"));
                 state.in_table_style = matches!(style_type.as_deref(), Some("table"));
                 state.in_table_style_conditional = false;
@@ -1580,10 +1585,15 @@ impl StylesPart {
                 if let Some(style) = current_style.take() {
                     if !style.style_id.is_empty() {
                         if state.in_paragraph_style {
-                            if style
-                                .name
-                                .as_deref()
-                                .is_some_and(|name| name.eq_ignore_ascii_case("Normal"))
+                            // A user-defined style may share Normal's display
+                            // name without redefining the built-in Normal.
+                            // In particular, its widow control must not leak
+                            // into unstyled paragraphs through this merge.
+                            if !state.in_custom_style
+                                && style
+                                    .name
+                                    .as_deref()
+                                    .is_some_and(|name| name.eq_ignore_ascii_case("Normal"))
                             {
                                 self.normal_named_paragraph_styles
                                     .push(style.style_id.clone());
@@ -4285,6 +4295,44 @@ mod tests {
         let part = styles(style("Normal.0", false, 21), style("Normal", true, 24));
         assert_eq!(size_of(&part, "Normal"), Some(12.0));
         assert_eq!(size_of(&part, "Normal.0"), Some(12.0));
+    }
+
+    #[test]
+    fn custom_normal_does_not_replace_builtin_normal_pagination() {
+        let xml = r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:style w:type="paragraph" w:default="1" w:styleId="a">
+            <w:name w:val="Normal"/><w:pPr><w:widowControl w:val="0"/></w:pPr>
+          </w:style>
+          <w:style w:type="paragraph" w:customStyle="1" w:styleId="Normal">
+            <w:name w:val="Normal"/><w:basedOn w:val="a"/>
+            <w:pPr><w:widowControl/></w:pPr>
+          </w:style>
+        </w:styles>"#;
+        let part = StylesPart::from_xml(xml).expect("parse styles");
+        assert_eq!(part.default_paragraph_style_id(), Some("a"));
+        assert_eq!(
+            part.resolve_paragraph_properties("a")
+                .unwrap()
+                .widow_control,
+            Some(false)
+        );
+        assert_eq!(
+            part.resolve_paragraph_properties("Normal")
+                .unwrap()
+                .widow_control,
+            Some(true)
+        );
+        // An explicitly false flag still permits the built-in duplicate rule.
+        let builtin =
+            StylesPart::from_xml(&xml.replace("w:customStyle=\"1\"", "w:customStyle=\"0\""))
+                .unwrap();
+        assert_eq!(
+            builtin
+                .resolve_paragraph_properties("a")
+                .unwrap()
+                .widow_control,
+            Some(true)
+        );
     }
 
     #[test]
