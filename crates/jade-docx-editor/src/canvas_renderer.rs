@@ -55426,7 +55426,8 @@ mod tests {
 
     #[test]
     fn markup_seek_rechecks_deleted_runs_after_document_replacement() {
-        let mut renderer = test_renderer();
+        let (host, _) = PerPageRecordingHost::new(2);
+        let mut renderer = CanvasRenderer::with_host(Box::new(host), false).unwrap();
         let mut options = options_for_seek_tests();
         options.render_changes = true;
         let numbering = markup_seek_numbering();
