@@ -4900,7 +4900,8 @@ where
     }
 
     fn is_seek_compatible_options(&self, options: &Options) -> bool {
-        !(self.document_has_comments && options.render_comments)
+        !options.render_changes
+            && !(self.document_has_comments && options.render_comments)
             && self.is_forward_window_seek_compatible_options(options)
     }
 
@@ -4932,7 +4933,14 @@ where
         // highlights and visible comment annotations without prefix replay.
         // Keep ordinary/mid-page seeks and paragraph render-cache replay gated:
         // their cached commands do not contain comment decoration or metadata.
-        !options.render_changes && !notes_enabled && !options.pageless() && !self.mirror_margins
+        // Revision ink is also emitted by the fresh paragraph draw. With no
+        // numbering part there is no deleted-list offset state to reconstruct
+        // from the skipped prefix. Numbered markup still needs a full walk:
+        // PageStartSeekSnapshot does not store deleted_numbering_offsets.
+        (!options.render_changes || self.last_numbering_part.is_none())
+            && !notes_enabled
+            && !options.pageless()
+            && !self.mirror_margins
     }
 
     fn record_page_start_seek_snapshot(
@@ -54079,6 +54087,10 @@ mod tests {
     }
 
     fn check_anchored_comment_layout_extensions(chunks: &[usize], spanning: bool, kind: u8) {
+        check_review_layout_extensions(chunks, spanning, kind, false);
+    }
+
+    fn check_review_layout_extensions(chunks: &[usize], spanning: bool, kind: u8, markup: bool) {
         use jade_painter::recording::Op;
         let text = if spanning {
             "commented words ".repeat(300)
@@ -54102,6 +54114,27 @@ mod tests {
                 page_break_before: Some(!spanning && index > 0 && index % 3 == 0),
                 ..Default::default()
             });
+            if markup {
+                for (kind, text) in [
+                    (RevisionKind::Inserted, " inserted "),
+                    (RevisionKind::Deleted, " deleted "),
+                    (RevisionKind::MovedFrom, " moved from "),
+                    (RevisionKind::MovedTo, " moved to "),
+                ] {
+                    let mut run = build_revision_run(kind);
+                    run.text = text.into();
+                    run.revision.as_mut().unwrap().author = Some("reviewer".into());
+                    paragraph.runs.push(run);
+                }
+                let props = paragraph.properties.as_mut().unwrap();
+                props.has_format_change = true;
+                props.format_change_author = Some(Rc::from("reviewer"));
+                if index % 5 == 0 {
+                    props.mark_revision = build_revision_run(RevisionKind::Deleted)
+                        .revision
+                        .map(Box::new);
+                }
+            }
             match kind {
                 0 => paragraph.comment_ranges.push(CommentRange {
                     id: "1".into(),
@@ -54127,6 +54160,8 @@ mod tests {
         )]);
         let mut options = options_for_seek_tests();
         options.render_comments = true;
+        options.render_changes = markup;
+        options.show_formatting_marks = markup;
         options.show_crop_marks = false;
         let (host, pages) = PerPageRecordingHost::new(100);
         let mut renderer = CanvasRenderer::with_host(Box::new(host), false).unwrap();
@@ -54300,6 +54335,28 @@ mod tests {
     }
 
     #[test]
+    fn markup_layout_extensions_match_full_render_without_numbering() {
+        check_review_layout_extensions(&[2, 2, 4, 2], false, 0, true);
+        check_review_layout_extensions(&[2, 2, 2], true, 1, true);
+    }
+
+    #[test]
+    fn markup_only_allows_forward_seek_without_numbering() {
+        let mut renderer = test_renderer();
+        let mut options = options_for_seek_tests();
+        options.render_changes = true;
+        assert!(renderer.is_forward_window_seek_compatible_options(&options));
+        assert!(!renderer.is_seek_compatible_options(&options));
+        renderer.last_numbering_part = Some(Rc::new(NumberingPart {
+            abstract_nums: HashMap::new(),
+            numbering_instances: HashMap::new(),
+            picture_bullets: HashMap::new(),
+        }));
+        assert!(!renderer.is_forward_window_seek_compatible_options(&options));
+        assert!(!renderer.is_seek_compatible_options(&options));
+    }
+
+    #[test]
     fn anchored_comment_layout_extension_keeps_unsafe_mode_fallbacks() {
         for mode in 0..5 {
             let mut renderer = test_renderer();
@@ -54316,7 +54373,14 @@ mod tests {
                     renderer.document_has_notes = true;
                     options.render_endnotes = true;
                 }
-                2 => options.render_changes = true,
+                2 => {
+                    options.render_changes = true;
+                    renderer.last_numbering_part = Some(Rc::new(NumberingPart {
+                        abstract_nums: HashMap::new(),
+                        numbering_instances: HashMap::new(),
+                        picture_bullets: HashMap::new(),
+                    }));
+                }
                 3 => renderer.mirror_margins = true,
                 _ => renderer.current_text_direction = Some(TextDirection::TbRl),
             }
