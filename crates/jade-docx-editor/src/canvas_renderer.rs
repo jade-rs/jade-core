@@ -9364,6 +9364,21 @@ where
         self.prefer_visible_window_seek_once();
     }
 
+    /// Decoration-only repaint preserves authoritative pagination. Stop after
+    /// the visible window; offscreen dirty pixels are refreshed on demand.
+    pub(crate) fn decoration_repaint_page_limit(&self) -> Option<usize> {
+        if self.pageless_mode {
+            return self.layout_page_limit;
+        }
+        match self.visible_page_range.as_ref() {
+            Some(range) => Some(
+                self.layout_page_limit
+                    .map_or(*range.end(), |limit| limit.min(*range.end())),
+            ),
+            None => self.layout_page_limit,
+        }
+    }
+
     /// Sets a hard layout limit in pages (1-indexed, inclusive).
     /// Pass `None` to disable layout truncation (default).
     pub fn set_layout_page_limit(&mut self, limit: Option<usize>) {
@@ -54610,6 +54625,23 @@ mod tests {
         assert!(renderer
             .try_prepare_visible_window_page_seek(&options)
             .is_none());
+    }
+
+    #[test]
+    fn decoration_repaint_limit_covers_visible_pages_without_expanding_the_host_limit() {
+        let mut renderer = test_renderer();
+        renderer.pageless_mode = false;
+        renderer.set_layout_page_limit(None);
+        assert_eq!(renderer.decoration_repaint_page_limit(), None);
+        renderer.set_visible_page_range(Some(2..=4));
+        assert_eq!(renderer.decoration_repaint_page_limit(), Some(4));
+        renderer.set_layout_page_limit(Some(80));
+        assert_eq!(renderer.decoration_repaint_page_limit(), Some(4));
+        renderer.set_layout_page_limit(Some(3));
+        assert_eq!(renderer.decoration_repaint_page_limit(), Some(3));
+        renderer.pageless_mode = true;
+        assert_eq!(renderer.decoration_repaint_page_limit(), Some(3));
+        assert_eq!(renderer.layout_page_limit(), Some(3));
     }
 
     #[test]
