@@ -13760,7 +13760,20 @@ where
         // Get a reference to the document for use throughout the function.
         // The Rc is stored at the end for caching.
         let document: &Document = &document_rc;
-        self.document_has_notes = !document.footnotes.is_empty() || !document.endnotes.is_empty();
+        // Word stores separator definitions even in documents without note
+        // references. They do not participate in note layout and must not
+        // disable visible-window seek or local redraw while typing. Keep
+        // unknown note types conservative, including notes with empty bodies.
+        self.document_has_notes = document
+            .footnotes
+            .values()
+            .chain(document.endnotes.values())
+            .any(|note| {
+                !matches!(
+                    note.note_type.as_deref(),
+                    Some("separator" | "continuationSeparator" | "continuationNotice")
+                )
+            });
         let cached_comment_anchors = self
             .last_document
             .as_ref()
@@ -52026,6 +52039,66 @@ mod tests {
     }
 
     #[test]
+    fn separator_only_notes_keep_lazy_edit_fast_paths() {
+        for endnotes in [false, true] {
+            let mut document = doc_with_paragraph_texts(&["body"]);
+            let notes = if endnotes {
+                &mut document.endnotes
+            } else {
+                &mut document.footnotes
+            };
+            for (id, kind) in [
+                ("-1", "separator"),
+                ("0", "continuationSeparator"),
+                ("1", "continuationNotice"),
+            ] {
+                notes.insert(
+                    id.into(),
+                    crate::document::Note {
+                        id: id.into(),
+                        note_type: Some(kind.into()),
+                        body: doc_with_paragraph_texts(&["separator definition"])
+                            .body
+                            .unwrap()
+                            .elements,
+                    },
+                );
+            }
+            let (mut renderer, _) = recording_renderer();
+            let mut options = options_for_seek_tests();
+            options.render_footnotes = true;
+            options.render_endnotes = true;
+            renderer.render(&document, &options).unwrap();
+            assert!(
+                !renderer.document_has_notes,
+                "separator definitions do not lay out notes"
+            );
+            assert!(renderer.is_forward_window_seek_compatible_options(&options));
+            // A real note, including an empty or unknown-type note, must still
+            // retain the conservative note-layout guards.
+            for note_type in [None, Some("normal"), Some("unknown")] {
+                let mut with_note = document.clone();
+                let notes = if endnotes {
+                    &mut with_note.endnotes
+                } else {
+                    &mut with_note.footnotes
+                };
+                notes.insert(
+                    "2".into(),
+                    crate::document::Note {
+                        id: "2".into(),
+                        note_type: note_type.map(str::to_owned),
+                        ..Default::default()
+                    },
+                );
+                renderer.render(&with_note, &options).unwrap();
+                assert!(renderer.document_has_notes);
+                assert!(!renderer.is_forward_window_seek_compatible_options(&options));
+            }
+        }
+    }
+
+    #[test]
     fn unchecked_cache_replay_is_disabled_when_notes_enabled() {
         let mut renderer = test_renderer();
         renderer.document_has_notes = true;
@@ -52118,6 +52191,22 @@ mod tests {
                 position: if spanning { text.len() } else { 9 },
             });
         }
+        // Word-generated packages retain these definitions even when the
+        // body has no actual notes. Include them in the bounded-work and
+        // independent full-render comparisons for anchored-comment edits.
+        for notes in [&mut document.footnotes, &mut document.endnotes] {
+            notes.insert(
+                "-1".into(),
+                crate::document::Note {
+                    id: "-1".into(),
+                    note_type: Some("separator".into()),
+                    body: doc_with_paragraph_texts(&["separator definition"])
+                        .body
+                        .unwrap()
+                        .elements,
+                },
+            );
+        }
         let comments = HashMap::from([(
             "1".into(),
             DocumentComment {
@@ -52129,6 +52218,8 @@ mod tests {
         )]);
         let mut options = options_for_seek_tests();
         options.render_comments = true;
+        options.render_footnotes = true;
+        options.render_endnotes = true;
         options.show_crop_marks = false;
         let (host, pages) = PerPageRecordingHost::new(100);
         let mut renderer = CanvasRenderer::with_host(Box::new(host), false).unwrap();
