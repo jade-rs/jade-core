@@ -17937,7 +17937,13 @@ impl OffscreenDocumentView {
         let (snapshots, dirty_regions) = {
             let mut renderer_mut = self.renderer.borrow_mut();
             renderer_mut.prepare_decoration_repaint(changed_texts);
-            renderer_mut.rerender_with_cached_state()?;
+            let previous_limit = renderer_mut.layout_page_limit();
+            let repaint_limit = renderer_mut.decoration_repaint_page_limit();
+            renderer_mut.set_layout_page_limit(repaint_limit);
+            let result = renderer_mut.rerender_with_cached_state();
+            // The limit belongs only to this pixel repaint, including on error.
+            renderer_mut.set_layout_page_limit(previous_limit);
+            result?;
             self.capture_paged_images_with_policy(&mut renderer_mut, defer_snapshots)?
         };
 
