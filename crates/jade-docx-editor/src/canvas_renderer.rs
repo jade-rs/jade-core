@@ -4933,10 +4933,15 @@ where
         // Keep ordinary/mid-page seeks and paragraph render-cache replay gated:
         // their cached commands do not contain comment decoration or metadata.
         // Revision ink is also emitted by the fresh paragraph draw. With no
-        // numbering part there is no deleted-list offset state to reconstruct
+        // numbering definitions there is no deleted-list offset state to reconstruct
         // from the skipped prefix. Numbered markup still needs a full walk:
         // PageStartSeekSnapshot does not store deleted_numbering_offsets.
-        (!options.render_changes || self.last_numbering_part.is_none())
+        (!options.render_changes
+            || self.last_numbering_part.as_ref().is_none_or(|part| {
+                part.abstract_nums.is_empty()
+                    && part.numbering_instances.is_empty()
+                    && part.picture_bullets.is_empty()
+            }))
             && !notes_enabled
             && !options.pageless()
             && !self.mirror_margins
@@ -54162,6 +54167,7 @@ mod tests {
         options.render_changes = markup;
         options.show_formatting_marks = markup;
         options.show_crop_marks = false;
+        let numbering = markup.then(NumberingPart::new);
         let (host, pages) = PerPageRecordingHost::new(100);
         let mut renderer = CanvasRenderer::with_host(Box::new(host), false).unwrap();
         renderer.set_visible_page_range(Some(2..=2));
@@ -54170,7 +54176,7 @@ mod tests {
             .render_with_numbering_rc(
                 Rc::clone(&document),
                 &options,
-                None,
+                numbering.as_ref(),
                 None,
                 None,
                 Some(&comments),
@@ -54222,7 +54228,7 @@ mod tests {
                 .render_layout_with_numbering_rc(
                     Rc::clone(&document),
                     &options,
-                    None,
+                    numbering.as_ref(),
                     None,
                     None,
                     metadata,
@@ -54252,7 +54258,7 @@ mod tests {
                 .render_layout_with_numbering_rc(
                     Rc::clone(&document),
                     &options,
-                    None,
+                    numbering.as_ref(),
                     None,
                     None,
                     metadata,
@@ -54279,7 +54285,7 @@ mod tests {
                 .render_with_numbering_rc(
                     Rc::clone(&document),
                     &options,
-                    None,
+                    numbering.as_ref(),
                     None,
                     None,
                     metadata,
@@ -54290,7 +54296,7 @@ mod tests {
                 .render_with_numbering_rc(
                     Rc::clone(&document),
                     &options,
-                    None,
+                    numbering.as_ref(),
                     None,
                     None,
                     metadata,
@@ -54346,13 +54352,17 @@ mod tests {
         options.render_changes = true;
         assert!(renderer.is_forward_window_seek_compatible_options(&options));
         assert!(!renderer.is_seek_compatible_options(&options));
-        renderer.last_numbering_part = Some(Rc::new(NumberingPart {
-            abstract_nums: HashMap::new(),
-            numbering_instances: HashMap::new(),
-            picture_bullets: HashMap::new(),
-        }));
+        // WordDocument::load installs an empty part even without numbering.xml.
+        renderer.last_numbering_part = Some(Rc::new(NumberingPart::new()));
+        assert!(renderer.is_forward_window_seek_compatible_options(&options));
+        assert!(!renderer.is_seek_compatible_options(&options));
+        renderer.last_numbering_part = Some(Rc::new(markup_seek_numbering()));
         assert!(!renderer.is_forward_window_seek_compatible_options(&options));
         assert!(!renderer.is_seek_compatible_options(&options));
+    }
+
+    fn markup_seek_numbering() -> NumberingPart {
+        NumberingPart::from_xml(r#"<w:numbering xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:abstractNum w:abstractNumId="0"><w:lvl w:ilvl="0"><w:start w:val="1"/><w:numFmt w:val="decimal"/><w:lvlText w:val="%1."/></w:lvl></w:abstractNum><w:num w:numId="1"><w:abstractNumId w:val="0"/></w:num></w:numbering>"#).unwrap()
     }
 
     #[test]
@@ -54374,11 +54384,7 @@ mod tests {
                 }
                 2 => {
                     options.render_changes = true;
-                    renderer.last_numbering_part = Some(Rc::new(NumberingPart {
-                        abstract_nums: HashMap::new(),
-                        numbering_instances: HashMap::new(),
-                        picture_bullets: HashMap::new(),
-                    }));
+                    renderer.last_numbering_part = Some(Rc::new(markup_seek_numbering()));
                 }
                 3 => renderer.mirror_margins = true,
                 _ => renderer.current_text_direction = Some(TextDirection::TbRl),
