@@ -271,6 +271,7 @@ mod keep_next;
 mod line_height_cache;
 #[cfg(test)]
 mod note_tests;
+mod numbering_snapshot;
 #[cfg(test)]
 mod opentype_features_tests;
 mod page_layers;
@@ -36343,15 +36344,47 @@ where
 
     fn store_numbering_part(&mut self, numbering_part: Option<&NumberingPart>) {
         // Internal bitmap/layout replays borrow the cached immutable snapshot.
-        // External model references always get a fresh owned snapshot: pointer
-        // identity cannot validate mutable caller-owned numbering definitions.
+        // External references always refresh every field: pointer identity
+        // cannot validate mutable caller-owned numbering definitions.
         if numbering_part
             .zip(self.last_numbering_part.as_deref())
             .is_some_and(|(incoming, cached)| std::ptr::eq(incoming, cached))
         {
             return;
         }
-        self.last_numbering_part = numbering_part.map(|part| Rc::new(part.clone()));
+        // The idle keepNext measurer shares this snapshot and receives the
+        // refreshed one before it is used again. Release only that known owner
+        // so uniquely owned storage can be reused; other saved snapshots stay
+        // immutable and force a fresh clone below.
+        let cached = self.last_numbering_part.as_ref();
+        let refresh_measurer = self.keep_next_measurer.as_mut().is_some_and(|measurer| {
+            if measurer
+                .last_numbering_part
+                .as_ref()
+                .zip(cached)
+                .is_some_and(|(measured, cached)| Rc::ptr_eq(measured, cached))
+            {
+                measurer.last_numbering_part = None;
+                true
+            } else {
+                false
+            }
+        });
+        if let Some(incoming) = numbering_part {
+            if let Some(cached) = self.last_numbering_part.as_mut().and_then(Rc::get_mut) {
+                numbering_snapshot::refresh(cached, incoming);
+            } else {
+                self.last_numbering_part = Some(Rc::new(incoming.clone()));
+            }
+        } else {
+            self.last_numbering_part = None;
+        }
+        if refresh_measurer {
+            self.keep_next_measurer
+                .as_mut()
+                .unwrap()
+                .last_numbering_part = self.last_numbering_part.clone();
+        }
     }
 
     /// Lays out one auxiliary Word story through the ordinary body block
@@ -38646,6 +38679,7 @@ mod tests {
     use super::*;
 
     mod decoration_histories;
+    mod numbering_snapshot_histories;
     mod revision_snapshot_histories;
 
     // Vary topology and coordinates independently of the snapshot implementation.
