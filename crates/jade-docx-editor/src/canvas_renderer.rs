@@ -22167,13 +22167,18 @@ where
             };
             let lines_fit = if line_heights.is_some() {
                 let mut occupied = 0.0;
-                (0..band_count)
-                    .take_while(|&band| {
-                        let fits = occupied + band_fit_height(band) <= remaining + 1e-6;
-                        occupied += band_height(band);
-                        fits
-                    })
-                    .count()
+                let mut fit = 0;
+                while fit < band_count && occupied + band_height(fit) <= remaining + 1e-6 {
+                    occupied += band_height(fit);
+                    fit += 1;
+                }
+                // Only the first band past the foot can stay by its padding,
+                // and its font box walks the line's clusters: a paragraph that
+                // fits, the usual case for every keystroke, never pays for it.
+                if fit < band_count && occupied + band_fit_height(fit) <= remaining + 1e-6 {
+                    fit += 1;
+                }
+                fit
             } else {
                 ((remaining + 1e-6) / line_height).floor() as usize
             };
