@@ -63,6 +63,184 @@ fn value(bytes: &[u8], reference: &str) -> CellValue {
         .unwrap_or(CellValue::Empty)
 }
 
+fn existing_metadata(metadata: &str) -> (OpcPackage, String) {
+    let (bytes, part) = with_sequence();
+    let mut package = OpcPackage::open(&bytes).unwrap();
+    package.replace("xl/metadata.xml", metadata.as_bytes().to_vec());
+    let rels = package.part_str("xl/_rels/workbook.xml.rels").unwrap().unwrap().replace(
+        "</Relationships>",
+        r#"<Relationship Id="rId900" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/sheetMetadata" Target="metadata.xml"/></Relationships>"#);
+    package.replace("xl/_rels/workbook.xml.rels", rels.into_bytes());
+    (package, part)
+}
+
+#[test]
+fn metadata_append_handles_empty_qualified_and_foreign_containers() {
+    for metadata in [
+        r#"<metadata/>"#,
+        r#"<metadata xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><metadataTypes count="0"/><cellMetadata count="0"/></metadata>"#,
+        r#"<m:metadata xmlns:m="http://purl.oclc.org/ooxml/spreadsheetml/main"><m:metadataTypes count="0"/><m:cellMetadata count="0"/><m:valueMetadata count="0"/><m:extLst/></m:metadata>"#,
+        r#"<metadata xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:f="urn:foreign"><f:metadataTypes count="1"><f:metadataType name="XLDAPR"/></f:metadataTypes><extLst><ext uri="keep"/></extLst></metadata>"#,
+    ] {
+        let (mut package, _) = existing_metadata(metadata);
+        assert_eq!(
+            jade_xlsx_writer::spills::dynamic_array_metadata(&mut package).unwrap(),
+            Some(1),
+            "{metadata}"
+        );
+        let updated = package.part_str("xl/metadata.xml").unwrap().unwrap();
+        assert_eq!(
+            jade_xlsx_reader::array_metadata::cell_dynamic_array_flags(&updated).unwrap(),
+            [Some(true)],
+            "{updated}"
+        );
+        assert_eq!(
+            jade_xlsx_writer::spills::dynamic_array_metadata(&mut package).unwrap(),
+            Some(1)
+        );
+        assert_eq!(
+            package.part_str("xl/metadata.xml").unwrap().unwrap(),
+            updated
+        );
+    }
+}
+
+const FIXED_METADATA: &str = r#"<metadata xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><metadataTypes count="1"><metadataType name="XLDAPR"/></metadataTypes><futureMetadata name="XLDAPR" count="1"><bk><extLst><ext uri="{BDBB8CDC-FA1E-496E-A857-3C3F30C029C3}"><dynamicArrayProperties xmlns="http://schemas.microsoft.com/office/spreadsheetml/2017/dynamicarray" fDynamic="0"/></ext></extLst></bk></futureMetadata><cellMetadata count="1"><bk><rc t="1" v="0"/></bk></cellMetadata></metadata>"#;
+
+#[test]
+fn metadata_append_keeps_existing_false_links_and_flags() {
+    let (mut package, part) = existing_metadata(FIXED_METADATA);
+    let sheet = package
+        .part_str(&part)
+        .unwrap()
+        .unwrap()
+        .replacen("<c ", "<c cm=\"1\" ", 1);
+    package.replace(&part, sheet.into_bytes());
+    assert_eq!(
+        jade_xlsx_writer::spills::dynamic_array_metadata(&mut package).unwrap(),
+        Some(2)
+    );
+    let updated = package.part_str("xl/metadata.xml").unwrap().unwrap();
+    assert_eq!(
+        jade_xlsx_reader::array_metadata::cell_dynamic_array_flags(&updated).unwrap(),
+        [Some(false), Some(true)]
+    );
+    assert!(updated.contains(r#"<bk><rc t="1" v="0"/></bk>"#));
+    assert!(updated.contains(r#"fDynamic="0""#));
+}
+
+#[test]
+fn appended_metadata_keeps_dynamic_editing_after_save_and_reopen() {
+    use jade_xlsx_headless_api::CellInput;
+    use jade_xlsx_headless_editor::HeadlessWorkbook;
+    let (package, _) = existing_metadata(FIXED_METADATA);
+    let mut book = HeadlessWorkbook::open_for_editing(&package.write().unwrap()).unwrap();
+    let sheet = book.workbook().sheets[0].name.clone();
+    book.set(&sheet, "K1", CellInput::Number(3.0)).unwrap();
+    book.set(&sheet, "J1", CellInput::Formula("SEQUENCE(K1)".into()))
+        .unwrap();
+    assert_eq!(
+        book.workbook().sheets[0].array_formulas[0].kind,
+        jade_xlsx_reader::ArrayFormulaKind::Dynamic
+    );
+    book.set(&sheet, "K1", CellInput::Number(1.0)).unwrap();
+    assert!(book.cell(&sheet, "J3").unwrap().number.is_none());
+    let saved = book.save_bytes().unwrap();
+    let mut reopened = HeadlessWorkbook::open_for_editing(&saved).unwrap();
+    reopened.set(&sheet, "K1", CellInput::Number(4.0)).unwrap();
+    assert_eq!(reopened.cell(&sheet, "J4").unwrap().number, Some(4.0));
+    reopened.undo().unwrap();
+    assert!(reopened.cell(&sheet, "J4").unwrap().number.is_none());
+    let metadata = OpcPackage::open(reopened.bytes())
+        .unwrap()
+        .part_str("xl/metadata.xml")
+        .unwrap()
+        .unwrap();
+    assert_eq!(
+        jade_xlsx_reader::array_metadata::cell_dynamic_array_flags(&metadata).unwrap(),
+        [Some(false), Some(true)]
+    );
+}
+
+#[test]
+fn metadata_append_does_not_activate_dangling_or_ambiguous_old_links() {
+    for metadata in [
+        FIXED_METADATA.replace("v=\"0\"", "v=\"1\""),
+        FIXED_METADATA.replace("t=\"1\"", "t=\"2\""),
+        FIXED_METADATA.replace("<cellMetadata count=\"1\">", "<cellMetadata count=\"2\">"),
+        FIXED_METADATA.replace(
+            "</metadataTypes>",
+            "<metadataType name=\"XLDAPR\"/></metadataTypes>",
+        ),
+        FIXED_METADATA.replace("</metadata>", "<cellMetadata count=\"0\"/></metadata>"),
+    ] {
+        let (mut package, _) = existing_metadata(&metadata);
+        assert_eq!(
+            jade_xlsx_writer::spills::dynamic_array_metadata(&mut package).unwrap(),
+            None
+        );
+        assert_eq!(
+            package.part_str("xl/metadata.xml").unwrap().unwrap(),
+            metadata
+        );
+    }
+    let (mut package, part) = existing_metadata(FIXED_METADATA);
+    let sheet = package
+        .part_str(&part)
+        .unwrap()
+        .unwrap()
+        .replacen("<c ", "<c cm=\"2\" ", 1);
+    package.replace(&part, sheet.into_bytes());
+    assert_eq!(
+        jade_xlsx_writer::spills::dynamic_array_metadata(&mut package).unwrap(),
+        None
+    );
+    assert_eq!(
+        package.part_str("xl/metadata.xml").unwrap().unwrap(),
+        FIXED_METADATA
+    );
+}
+
+#[test]
+fn a_spill_appends_dynamic_metadata_without_replacing_existing_records() {
+    let (bytes, part) = with_sequence();
+    let mut package = OpcPackage::open(&bytes).unwrap();
+    let metadata = r#"<metadata xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><metadataTypes count="1"><metadataType name="XLRICHVALUE"/></metadataTypes><futureMetadata name="XLRICHVALUE" count="1"><bk><extLst><ext uri="untouched"><foreign xmlns="urn:foreign" value="keep"/></ext></extLst></bk></futureMetadata><cellMetadata count="1"><bk><rc t="1" v="0"/></bk></cellMetadata></metadata>"#;
+    package.replace("xl/metadata.xml", metadata.as_bytes().to_vec());
+    let rels = package.part_str("xl/_rels/workbook.xml.rels").unwrap().unwrap().replace(
+        "</Relationships>",
+        r#"<Relationship Id="rId900" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/sheetMetadata" Target="metadata.xml"/></Relationships>"#);
+    package.replace("xl/_rels/workbook.xml.rels", rels.into_bytes());
+    let written = write_spills(
+        &package.write().unwrap(),
+        &[spill(&part, "J1", "J1:J3", &[("J2", 2.0), ("J3", 3.0)])],
+        false,
+    )
+    .unwrap();
+    assert_eq!(
+        read_xlsx(&written).unwrap().sheets[0].array_formulas[0].kind,
+        jade_xlsx_reader::ArrayFormulaKind::Dynamic
+    );
+    let package = OpcPackage::open(&written).unwrap();
+    let appended = package.part_str("xl/metadata.xml").unwrap().unwrap();
+    assert!(appended.contains(r#"<metadataType name="XLRICHVALUE"/>"#));
+    assert!(appended.contains(r#"<bk><rc t="1" v="0"/></bk>"#));
+    assert!(appended.contains(r#"<foreign xmlns="urn:foreign" value="keep"/>"#));
+    assert_eq!(
+        jade_xlsx_reader::array_metadata::first_dynamic_array_cell_metadata(&appended).unwrap(),
+        Some(2)
+    );
+    let repeated = write_spills(&written, &[spill(&part, "J1", "J1:J3", &[])], false).unwrap();
+    assert_eq!(
+        OpcPackage::open(&repeated)
+            .unwrap()
+            .part_str("xl/metadata.xml")
+            .unwrap()
+            .unwrap(),
+        appended
+    );
+}
+
 #[test]
 fn a_typed_spill_is_saved_as_a_dynamic_array() {
     let (bytes, part) = with_sequence();
