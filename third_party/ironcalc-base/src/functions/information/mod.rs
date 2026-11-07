@@ -157,11 +157,13 @@ impl<'a> Model<'a> {
                     message: "argument must be a reference to a single cell".to_string(),
                 };
             }
+            let (formula_row, formula_column) =
+                self.formula_information_reference(left.sheet, left.row, left.column);
             let is_formula =
                 self.source_formulas
-                    .contains_key(&(left.sheet, left.row, left.column))
+                    .contains_key(&(left.sheet, formula_row, formula_column))
                     || self
-                        .get_cell_formula(left.sheet, left.row, left.column)
+                        .get_cell_formula(left.sheet, formula_row, formula_column)
                         .ok()
                         .flatten()
                         .is_some();

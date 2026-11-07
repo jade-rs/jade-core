@@ -9,6 +9,27 @@ use jade_xlsx_reader::{read_xlsx, CellRef, CellValue};
 use zip::write::SimpleFileOptions;
 
 #[test]
+fn cse_member_information_restores_after_trial_literals() {
+    let book = read_xlsx(&package(r#"<row r="1"><c r="A1"><f t="array" ref="A1:A3">SEQUENCE(3, 1)</f><v>1</v></c><c r="C1"><f>FORMULATEXT(A2)</f></c><c r="D1"><f>ISFORMULA(A2)</f></c></row><row r="2"><c r="A2"><v>2</v></c></row><row r="3"><c r="A3"><v>3</v></c></row>"#)).unwrap();
+    let mut probe = what_if(&book, "UTC", &BTreeMap::new()).unwrap();
+    let output = [(0, CellRef::new(2, 0)), (0, CellRef::new(3, 0))];
+    let original = vec![
+        CellValue::Text("{=SEQUENCE(3, 1)}".into()),
+        CellValue::Bool(true),
+    ];
+    assert_eq!(probe.probe(&book, &[], &output).unwrap(), original);
+    for at in [CellRef::new(0, 1), CellRef::new(0, 0)] {
+        assert_eq!(
+            probe
+                .probe(&book, &[(0, at, CellValue::Number(99.0))], &output)
+                .unwrap(),
+            vec![CellValue::Error("#N/A".into()), CellValue::Bool(false)]
+        );
+        assert_eq!(probe.probe(&book, &[], &output).unwrap(), original);
+    }
+}
+
+#[test]
 fn legacy_fixed_array_bounds_survive_trial_input_growth_and_restoration() {
     let book = read_xlsx(&package(r#"<row r="1"><c r="A1"><f t="array" ref="A1:A3">_xlfn.SEQUENCE(C1)</f><v>1</v></c><c r="C1"><v>2</v></c></row><row r="2"><c r="A2"><v>2</v></c></row><row r="3"><c r="A3" t="e"><v>#N/A</v></c></row>"#)).unwrap();
     let mut probe = what_if(&book, "UTC", &BTreeMap::new()).unwrap();
