@@ -7,6 +7,131 @@ fn book() -> HeadlessWorkbook {
 }
 
 #[test]
+fn clipboard_preserves_whole_legacy_arrays_and_rejects_partial_writes() {
+    for cut in [false, true] {
+        let mut book = book();
+        let sheet = book.workbook().sheets[0].name.clone();
+        let snapshot = book.copy_snapshot(&sheet, "A1:A3", cut).unwrap();
+        book.paste_snapshot(&snapshot, &sheet, "F2", false).unwrap();
+        let copied = book.workbook().sheets[0]
+            .array_formulas
+            .iter()
+            .find(|array| array.anchor == jade_xlsx_reader::CellRef::parse("F2").unwrap())
+            .expect("pasted CSE must retain its fixed array identity");
+        assert_eq!(copied.kind, jade_xlsx_reader::ArrayFormulaKind::Legacy);
+        assert_eq!(
+            copied.range,
+            jade_xlsx_reader::CellRange::parse("F2:F4").unwrap()
+        );
+        assert_eq!(book.cell(&sheet, "F4").unwrap().number, Some(3.0));
+        let saved = book.save_bytes().unwrap();
+        let reopened = HeadlessWorkbook::open_for_editing(&saved).unwrap();
+        assert_eq!(
+            reopened.workbook().sheets[0].array_formulas.len(),
+            if cut { 1 } else { 2 }
+        );
+        book.undo().unwrap();
+        assert_eq!(book.workbook().sheets[0].array_formulas.len(), 1);
+        book.redo().unwrap();
+        assert!(book.set(&sheet, "F3", CellInput::Blank).is_err());
+    }
+    let mut book = book();
+    let sheet = book.workbook().sheets[0].name.clone();
+    let before = book.bytes().to_vec();
+    let snapshot = book.copy_snapshot(&sheet, "D1", false).unwrap();
+    assert!(book.paste_snapshot(&snapshot, &sheet, "A2", false).is_err());
+    assert_eq!(book.bytes(), before);
+    let snapshot = book.copy_snapshot(&sheet, "A2", true).unwrap();
+    assert!(book.paste_snapshot(&snapshot, &sheet, "F2", false).is_err());
+    assert_eq!(book.bytes(), before);
+}
+
+#[test]
+fn legacy_clipboard_handles_cross_sheet_and_overlapping_moves() {
+    for cross_sheet in [false, true] {
+        let mut book = book();
+        let sheet = book.workbook().sheets[0].name.clone();
+        let target = if cross_sheet {
+            book.add_sheet("Destination", None).unwrap();
+            "Destination"
+        } else {
+            sheet.as_str()
+        };
+        let snapshot = book.copy_snapshot(&sheet, "A1:A3", true).unwrap();
+        book.paste_snapshot(&snapshot, target, "A2", false).unwrap();
+        let index = book
+            .workbook()
+            .sheets
+            .iter()
+            .position(|s| s.name == target)
+            .unwrap();
+        let array = &book.workbook().sheets[index].array_formulas[0];
+        assert_eq!(array.kind, jade_xlsx_reader::ArrayFormulaKind::Legacy);
+        assert_eq!(
+            array.range,
+            jade_xlsx_reader::CellRange::parse("A2:A4").unwrap()
+        );
+        for (at, value) in [("A2", 1.0), ("A3", 2.0), ("A4", 3.0)] {
+            assert_eq!(book.cell(target, at).unwrap().number, Some(value));
+        }
+        if cross_sheet {
+            assert!(book.workbook().sheets[0].array_formulas.is_empty());
+        }
+    }
+}
+
+#[test]
+fn copied_legacy_snapshot_keeps_its_original_array_after_source_replacement() {
+    let mut book = book();
+    let sheet = book.workbook().sheets[0].name.clone();
+    let snapshot = book.copy_snapshot(&sheet, "A1:A3", false).unwrap();
+    book.set_cells(
+        &sheet,
+        &[
+            ("A1".into(), CellInput::Blank),
+            ("A2".into(), CellInput::Blank),
+            ("A3".into(), CellInput::Blank),
+        ],
+    )
+    .unwrap();
+    book.paste_snapshot(&snapshot, &sheet, "F2", false).unwrap();
+    assert_eq!(
+        book.workbook().sheets[0].array_formulas[0].kind,
+        jade_xlsx_reader::ArrayFormulaKind::Legacy
+    );
+    assert_eq!(book.cell(&sheet, "F4").unwrap().number, Some(3.0));
+}
+
+#[test]
+fn cutting_a_precedent_preserves_legacy_identity_when_rewriting_formula_text() {
+    let baseline = book();
+    let mut package = OpcPackage::open(baseline.bytes()).unwrap();
+    let xml = package
+        .part_str("xl/worksheets/sheet1.xml")
+        .unwrap()
+        .unwrap();
+    package.replace(
+        "xl/worksheets/sheet1.xml",
+        xml.replace("{1;2;3}</f>", "D1+{1;2;3}</f>").into_bytes(),
+    );
+    let mut book = HeadlessWorkbook::open_for_editing(&package.write().unwrap()).unwrap();
+    let sheet = book.workbook().sheets[0].name.clone();
+    let snapshot = book.copy_snapshot(&sheet, "D1", true).unwrap();
+    book.paste_snapshot(&snapshot, &sheet, "F1", false).unwrap();
+    let array = &book.workbook().sheets[0].array_formulas[0];
+    assert_eq!(array.kind, jade_xlsx_reader::ArrayFormulaKind::Legacy);
+    assert_eq!(
+        array.range,
+        jade_xlsx_reader::CellRange::parse("A1:A3").unwrap()
+    );
+    assert_eq!(
+        book.cell(&sheet, "A2").unwrap().formula.as_deref(),
+        Some("F1+{1;2;3}")
+    );
+    assert_eq!(book.cell(&sheet, "A3").unwrap().number, Some(12.0));
+}
+
+#[test]
 fn structural_edits_cannot_split_legacy_arrays() {
     for columns in [false, true] {
         for inserted in [false, true] {
