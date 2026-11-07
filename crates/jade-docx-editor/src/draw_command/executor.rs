@@ -2252,7 +2252,7 @@ mod tests {
         #![proptest_config(proptest::test_runner::Config::with_cases(96))]
         #[test]
         fn font_feature_facts_match_parser_across_descriptor_lifecycles(
-            operations in proptest::collection::vec((0u8..6, 0usize..5), 1..100)
+            operations in proptest::collection::vec((0u8..6, 0usize..9), 1..100)
         ) {
             let mut tracker = FontStateTracker::new();
             let mut fonts: Vec<Rc<str>> = [
@@ -2261,6 +2261,10 @@ mod tests {
                 "italic 10.50pt Calibri ot:liga",
                 "10.50pt 'Not:an OpenType token'",
                 "10.50pt\u{3000}Calibri\u{3000}ot:liga",
+                "font:a ot:liga 10.50pt Calibri",
+                "font:ot:liga 10.50pt Calibri",
+                "font:\u{0085}ot:liga 10.50pt Calibri",
+                "ot: 10.50pt Calibri",
             ].into_iter().map(Rc::from).collect();
             for (operation, index) in operations {
                 match operation {
@@ -2272,7 +2276,7 @@ mod tests {
                     _ => {}
                 }
                 let font = Rc::clone(&fonts[index]);
-                let expected = jade_painter::font_features::has_features(&font);
+                let expected = jade_painter::font_features::features_token(&font).is_some();
                 proptest::prop_assert_eq!(tracker.font_has_features(&font), expected);
                 proptest::prop_assert_eq!(tracker.font_has_features(&font), expected);
             }
