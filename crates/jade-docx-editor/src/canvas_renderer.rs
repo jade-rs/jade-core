@@ -38652,6 +38652,9 @@ fn continues_field(runs: &[Run], previous_index: Option<usize>, index: usize) ->
 mod tests {
     use super::*;
 
+    mod decoration_histories;
+    mod revision_snapshot_histories;
+
     // Vary topology and coordinates independently of the snapshot implementation.
     fn set_resize_metadata_source(
         renderer: &mut CanvasRenderer,
@@ -55187,6 +55190,16 @@ mod tests {
     }
 
     fn check_review_layout_extensions(chunks: &[usize], spanning: bool, kind: u8, markup: bool) {
+        check_review_layout_extensions_with_numbering(chunks, spanning, kind, markup, false);
+    }
+
+    fn check_review_layout_extensions_with_numbering(
+        chunks: &[usize],
+        spanning: bool,
+        kind: u8,
+        markup: bool,
+        numbered: bool,
+    ) {
         use jade_painter::recording::Op;
         let text = if spanning {
             "commented words ".repeat(300)
@@ -55217,6 +55230,11 @@ mod tests {
                     (RevisionKind::MovedFrom, " moved from "),
                     (RevisionKind::MovedTo, " moved to "),
                 ] {
+                    // The numbered forward-seek path is eligible only while
+                    // no deleted/moved-from runs affect counter advancement.
+                    if numbered && matches!(kind, RevisionKind::Deleted | RevisionKind::MovedFrom) {
+                        continue;
+                    }
                     let mut run = build_revision_run(kind);
                     run.text = text.into();
                     run.revision.as_mut().unwrap().author = Some("reviewer".into());
@@ -55230,6 +55248,12 @@ mod tests {
                         .revision
                         .map(Box::new);
                 }
+            }
+            if numbered {
+                paragraph.properties.as_mut().unwrap().numbering = Some(Numbering {
+                    id: Some("1".into()),
+                    level: Some(0),
+                });
             }
             match kind {
                 0 => paragraph.comment_ranges.push(CommentRange {
@@ -55259,7 +55283,11 @@ mod tests {
         options.render_changes = markup;
         options.show_formatting_marks = markup;
         options.show_crop_marks = false;
-        let numbering = markup.then(NumberingPart::new);
+        let numbering = if numbered {
+            Some(markup_seek_numbering())
+        } else {
+            markup.then(NumberingPart::new)
+        };
         let (host, pages) = PerPageRecordingHost::new(100);
         let mut renderer = CanvasRenderer::with_host(Box::new(host), false).unwrap();
         renderer.set_visible_page_range(Some(2..=2));
@@ -55435,6 +55463,23 @@ mod tests {
     fn markup_layout_extensions_match_full_render_without_numbering() {
         check_review_layout_extensions(&[2, 2, 4, 2], false, 0, true);
         check_review_layout_extensions(&[2, 2, 2], true, 1, true);
+    }
+
+    #[test]
+    fn numbered_markup_layout_extensions_match_full_render() {
+        check_review_layout_extensions_with_numbering(&[2, 2, 4, 2], false, 0, true, true);
+        check_review_layout_extensions_with_numbering(&[2, 2, 2], true, 1, true, true);
+    }
+
+    proptest::proptest! {
+        #![proptest_config(proptest::test_runner::Config::with_cases(32))]
+        #[test]
+        fn numbered_markup_chunk_histories_match_full_render(
+            chunks in proptest::collection::vec(1usize..4, 2..6),
+            kind in 0u8..3,
+        ) {
+            check_review_layout_extensions_with_numbering(&chunks, false, kind, true, true);
+        }
     }
 
     #[test]
