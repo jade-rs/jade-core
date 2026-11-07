@@ -7,6 +7,29 @@ use jade_xlsx_reader::{read_xlsx, CellRef, CellValue};
 use zip::write::SimpleFileOptions;
 
 #[test]
+fn convert_celsius_uses_the_kelvin_offset_in_both_directions() {
+    assert_formulas(
+        &[
+            r#"ROUND(CONVERT(68,"F","C"),10)"#,
+            r#"ROUND(CONVERT(273.15,"K","C"),10)"#,
+            r#"ROUND(CONVERT(20,"C","C"),10)"#,
+            r#"ROUND(CONVERT(CONVERT(-40,"C","F"),"F","C"),10)"#,
+            r#"ROUND(CONVERT(16,"Reau","cel"),10)"#,
+            r#"ROUND(CONVERT(527.67,"Rank","C"),10)"#,
+        ],
+        &[
+            CellValue::Number(20.0),
+            CellValue::Number(0.0),
+            CellValue::Number(20.0),
+            CellValue::Number(-40.0),
+            CellValue::Number(20.0),
+            CellValue::Number(20.0),
+        ],
+        false,
+    );
+}
+
+#[test]
 fn complex_aggregates_accept_one_through_255_scalar_arguments() {
     let ones = std::iter::repeat_n("1", 255).collect::<Vec<_>>().join(",");
     for (function, expected, maximum) in [("IMSUM", "6+2i", "255"), ("IMPRODUCT", "6+12i", "1")] {

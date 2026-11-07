@@ -3,6 +3,42 @@ use jade_xlsx_headless_api::CellInput;
 use jade_xlsx_headless_editor::HeadlessWorkbook;
 
 #[test]
+fn celsius_conversion_follows_temperature_and_unit_edits_through_save() {
+    let mut package = OpcPackage::open(include_bytes!(
+        "../../../public/fixtures/sample-workbook.xlsx"
+    ))
+    .unwrap();
+    package.replace("xl/worksheets/sheet1.xml", br#"<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData/></worksheet>"#.to_vec());
+    let mut book = HeadlessWorkbook::open_for_editing(&package.write().unwrap()).unwrap();
+    let name = "売上サマリ";
+    book.set(name, "B1", CellInput::Number(68.0)).unwrap();
+    book.set(name, "C1", CellInput::Text("F".into())).unwrap();
+    book.set(
+        name,
+        "F1",
+        CellInput::Formula("ROUND(CONVERT(B1,C1,\"C\"),10)".into()),
+    )
+    .unwrap();
+    assert_eq!(book.cell(name, "F1").unwrap().number, Some(20.0));
+    book.set(name, "B1", CellInput::Number(32.0)).unwrap();
+    assert_eq!(book.cell(name, "F1").unwrap().number, Some(0.0));
+    book.undo().unwrap();
+    assert_eq!(book.cell(name, "F1").unwrap().number, Some(20.0));
+    book.redo().unwrap();
+    assert_eq!(book.cell(name, "F1").unwrap().number, Some(0.0));
+    book.set(name, "B1", CellInput::Number(273.15)).unwrap();
+    book.set(name, "C1", CellInput::Text("K".into())).unwrap();
+    assert_eq!(book.cell(name, "F1").unwrap().number, Some(0.0));
+    let saved = book.save_bytes().unwrap();
+    for reopened in [
+        HeadlessWorkbook::open(&saved).unwrap(),
+        HeadlessWorkbook::open_for_editing(&saved).unwrap(),
+    ] {
+        assert_eq!(reopened.cell(name, "F1").unwrap().number, Some(0.0));
+    }
+}
+
+#[test]
 fn variadic_complex_aggregates_follow_reference_edits_and_saved_text() {
     for (function, initial, changed) in [("IMSUM", "6+2i", "7+2i"), ("IMPRODUCT", "6+12i", "8+16i")]
     {
