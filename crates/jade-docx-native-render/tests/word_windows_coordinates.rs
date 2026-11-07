@@ -215,33 +215,39 @@ fn unclipped_table_capture_preserves_visible_pixels_and_origins_on_both_platform
         weight: 400,
         path: &font,
     });
-    let bytes = std::fs::read(repo_path(
-        "public/fixtures/word-windows-edge-table-negative-spacing-unequal-4-compat14.docx",
-    ))
-    .unwrap();
     let previous = jade_docx_layout::line_metrics::word_layout_platform();
-    for platform in [WordLayoutPlatform::Mac, WordLayoutPlatform::Windows] {
-        set_word_layout_platform(platform);
-        let mut doc = NativeDocument::open(&bytes, 816.0, 1056.0, &faces).unwrap();
-        let before = all_glyphs(&mut doc);
-        let pixels = doc.page_pixels(0).unwrap().0.to_vec();
-        let raw = all_glyphs_with_table_projection(&mut doc, true);
-        assert!(raw.len() >= before.len());
-        if platform == WordLayoutPlatform::Windows {
+    for fixture in [
+        "table-negative-spacing-unequal-4-compat14",
+        "table-positive-spacing-bidi-border-widths-compat14",
+        "table-positive-spacing-bidi-border-widths-compat15",
+    ] {
+        let bytes = std::fs::read(repo_path(&format!(
+            "public/fixtures/word-windows-edge-{fixture}.docx"
+        )))
+        .unwrap();
+        for platform in [WordLayoutPlatform::Mac, WordLayoutPlatform::Windows] {
+            set_word_layout_platform(platform);
+            let mut doc = NativeDocument::open(&bytes, 816.0, 1056.0, &faces).unwrap();
+            let before = all_glyphs(&mut doc);
+            let pixels = doc.page_pixels(0).unwrap().0.to_vec();
+            let raw = all_glyphs_with_table_projection(&mut doc, true);
+            assert!(raw.len() >= before.len());
+            if platform == WordLayoutPlatform::Windows {
+                assert!(
+                    raw.len() > before.len(),
+                    "fixture must exercise genuinely clipped glyphs"
+                );
+            }
             assert!(
-                raw.len() > before.len(),
-                "fixture must exercise genuinely clipped glyphs"
+                pixels == doc.page_pixels(0).unwrap().0,
+                "diagnostic changed visible pixels: {platform:?}"
+            );
+            assert_eq!(
+                before,
+                all_glyphs(&mut doc),
+                "diagnostic changed visible origins: {platform:?}"
             );
         }
-        assert!(
-            pixels == doc.page_pixels(0).unwrap().0,
-            "diagnostic changed visible pixels: {platform:?}"
-        );
-        assert_eq!(
-            before,
-            all_glyphs(&mut doc),
-            "diagnostic changed visible origins: {platform:?}"
-        );
     }
     set_word_layout_platform(previous);
 }
@@ -300,6 +306,30 @@ fn spaced_tables_preserve_origins_after_edit_export_and_undo() {
                 "R3C1 alpha",
             ),
             ("table-negative-spacing-columns-3-compat14", 29, 0, "R1C1"),
+            (
+                "table-negative-spacing-autofit-bidi-alignment-compat15",
+                15,
+                0,
+                "R1C1",
+            ),
+            (
+                "table-positive-spacing-sizing-autofit-bidi-compat14",
+                15,
+                0,
+                "R1C1",
+            ),
+            (
+                "table-zero-spacing-bidi-border-widths-compat15",
+                15,
+                0,
+                "R1C1",
+            ),
+            (
+                "table-positive-spacing-bidi-border-widths-compat14",
+                15,
+                0,
+                "R1C1",
+            ),
             ("table-negative-spacing-unequal-3-compat14", 29, 0, "R1C1"),
             ("table-negative-spacing-row-scopes-compat14", 15, 0, "R1C1"),
             (
@@ -501,12 +531,35 @@ fn windows_word_arial_edge_origins() {
                 "word-windows-edge-table-negative-spacing-row-scopes-compat14",
                 "word-windows-edge-table-negative-spacing-autofit-unequal-3-compat14",
                 "word-windows-edge-table-negative-spacing-bidi-unequal-3-compat14",
+                "word-windows-edge-table-negative-spacing-autofit-bidi-alignment-compat12",
+                "word-windows-edge-table-negative-spacing-autofit-bidi-alignment-compat14",
+                "word-windows-edge-table-negative-spacing-autofit-bidi-alignment-compat15",
+                "word-windows-edge-table-negative-spacing-autofit-bidi-unequal-3-compat12",
+                "word-windows-edge-table-negative-spacing-autofit-bidi-unequal-3-compat14",
+                "word-windows-edge-table-negative-spacing-autofit-bidi-unequal-3-compat15",
+                "word-windows-edge-table-negative-spacing-autofit-unequal-3-compat12",
+                "word-windows-edge-table-negative-spacing-autofit-unequal-3-compat15",
+                "word-windows-edge-table-negative-spacing-bidi-unequal-3-compat12",
+                "word-windows-edge-table-negative-spacing-bidi-unequal-3-compat15",
+                "word-windows-edge-table-positive-spacing-bidi-border-widths-compat14",
+                "word-windows-edge-table-positive-spacing-bidi-border-widths-compat15",
+                "word-windows-edge-table-positive-spacing-sizing-autofit-bidi-compat14",
+                "word-windows-edge-table-positive-spacing-sizing-autofit-bidi-compat15",
+                "word-windows-edge-table-positive-spacing-sizing-autofit-bidi-short-compat14",
+                "word-windows-edge-table-positive-spacing-sizing-autofit-ltr-compat14",
+                "word-windows-edge-table-positive-spacing-sizing-autofit-ltr-short-compat14",
+                "word-windows-edge-table-positive-spacing-sizing-fixed-bidi-compat14",
+                "word-windows-edge-table-positive-spacing-sizing-fixed-bidi-short-compat14",
+                "word-windows-edge-table-zero-spacing-bidi-border-widths-compat14",
+                "word-windows-edge-table-zero-spacing-bidi-border-widths-compat15",
+                "word-windows-edge-table-zero-spacing-ltr-border-widths-compat14",
+                "word-windows-edge-table-zero-spacing-ltr-border-widths-compat15",
             ]
             .map(str::to_owned)
         )
     );
     assert!(
-        checked >= 57956,
+        checked >= 68025,
         "do not silently remove edge-case coverage"
     );
 }

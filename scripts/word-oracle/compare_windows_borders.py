@@ -231,6 +231,31 @@ def run(index_path, executable, output_root):
     required.add('word-windows-edge-table-negative-spacing-row-scopes-compat14')
     required.update(f'word-windows-edge-table-negative-spacing-{variant}-unequal-3-compat14'
                     for variant in ('autofit', 'bidi'))
+    required.update((
+        'word-windows-edge-table-negative-spacing-autofit-bidi-alignment-compat12',
+        'word-windows-edge-table-negative-spacing-autofit-bidi-alignment-compat14',
+        'word-windows-edge-table-negative-spacing-autofit-bidi-alignment-compat15',
+        'word-windows-edge-table-negative-spacing-autofit-bidi-unequal-3-compat12',
+        'word-windows-edge-table-negative-spacing-autofit-bidi-unequal-3-compat14',
+        'word-windows-edge-table-negative-spacing-autofit-bidi-unequal-3-compat15',
+        'word-windows-edge-table-negative-spacing-autofit-unequal-3-compat12',
+        'word-windows-edge-table-negative-spacing-autofit-unequal-3-compat15',
+        'word-windows-edge-table-negative-spacing-bidi-unequal-3-compat12',
+        'word-windows-edge-table-negative-spacing-bidi-unequal-3-compat15',
+        'word-windows-edge-table-positive-spacing-bidi-border-widths-compat14',
+        'word-windows-edge-table-positive-spacing-bidi-border-widths-compat15',
+        'word-windows-edge-table-positive-spacing-sizing-autofit-bidi-compat14',
+        'word-windows-edge-table-positive-spacing-sizing-autofit-bidi-compat15',
+        'word-windows-edge-table-positive-spacing-sizing-autofit-bidi-short-compat14',
+        'word-windows-edge-table-positive-spacing-sizing-autofit-ltr-compat14',
+        'word-windows-edge-table-positive-spacing-sizing-autofit-ltr-short-compat14',
+        'word-windows-edge-table-positive-spacing-sizing-fixed-bidi-compat14',
+        'word-windows-edge-table-positive-spacing-sizing-fixed-bidi-short-compat14',
+        'word-windows-edge-table-zero-spacing-bidi-border-widths-compat14',
+        'word-windows-edge-table-zero-spacing-bidi-border-widths-compat15',
+        'word-windows-edge-table-zero-spacing-ltr-border-widths-compat14',
+        'word-windows-edge-table-zero-spacing-ltr-border-widths-compat15',
+    ))
     for entry in index['references']:
         folder = checked_path(root, entry['directory'])
         capture = json.loads((folder / 'capture.json').read_text(encoding='utf-8-sig'))
