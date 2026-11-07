@@ -11510,23 +11510,9 @@ where
             }
 
             if let Some(props) = run.properties.as_ref() {
-                props.bold.hash(&mut hasher);
-                props.italic.hash(&mut hasher);
-                props.bold_complex.hash(&mut hasher);
-                props.italic_complex.hash(&mut hasher);
-                props.underline.hash(&mut hasher);
+                run_style_key::boolean_flags(props).hash(&mut hasher);
                 props.underline_kind.hash(&mut hasher);
                 props.underline_color.hash(&mut hasher);
-                props.strike.hash(&mut hasher);
-                props.double_strike.hash(&mut hasher);
-                props.caps.hash(&mut hasher);
-                props.small_caps.hash(&mut hasher);
-                props.vanish.hash(&mut hasher);
-                props.spec_vanish.hash(&mut hasher);
-                props.shadow.hash(&mut hasher);
-                props.outline.hash(&mut hasher);
-                props.emboss.hash(&mut hasher);
-                props.imprint.hash(&mut hasher);
                 props
                     .text_effects
                     .as_ref()
@@ -38729,6 +38715,7 @@ mod tests {
     mod numbering_width_histories;
     mod paragraph_render_hash_tests;
     mod revision_snapshot_histories;
+    mod run_flag_histories;
 
     // Vary topology and coordinates independently of the snapshot implementation.
     fn set_resize_metadata_source(

@@ -1,7 +1,39 @@
-//! Windows style-cache keys: hash present values and one presence mask.
+//! Shared run-flag encoding and Windows style-cache keys.
 use jade_docx_reader::document::{FontHint, RunProperties};
 use rustc_hash::FxHasher;
 use std::hash::{Hash, Hasher};
+
+#[inline]
+pub(super) fn boolean_flags(props: &RunProperties) -> u64 {
+    // Two bits preserve None, explicit false and explicit true. They must
+    // remain distinct while direct formatting is resolved through styles.
+    [
+        props.bold,
+        props.italic,
+        props.bold_complex,
+        props.italic_complex,
+        props.underline,
+        props.strike,
+        props.double_strike,
+        props.caps,
+        props.small_caps,
+        props.vanish,
+        props.spec_vanish,
+        props.shadow,
+        props.outline,
+        props.emboss,
+        props.imprint,
+    ]
+    .into_iter()
+    .enumerate()
+    .fold(0_u64, |bits, (index, flag)| {
+        bits | (match flag {
+            None => 0,
+            Some(false) => 1,
+            Some(true) => 2,
+        } << (index * 2))
+    })
+}
 
 pub(super) fn windows_key(properties: Option<&RunProperties>, grid: Option<f64>) -> u64 {
     let mut hasher = FxHasher::default();
@@ -17,34 +49,7 @@ pub(super) fn windows_key(properties: Option<&RunProperties>, grid: Option<f64>)
     optional!(0, grid.map(f64::to_bits));
     if let Some(props) = properties {
         1_u8.hash(&mut hasher);
-        // Two bits preserve None, explicit false and explicit true. They must
-        // remain distinct while direct formatting is resolved through styles.
-        let flags = [
-            props.bold,
-            props.italic,
-            props.bold_complex,
-            props.italic_complex,
-            props.underline,
-            props.strike,
-            props.double_strike,
-            props.caps,
-            props.small_caps,
-            props.vanish,
-            props.spec_vanish,
-            props.shadow,
-            props.outline,
-            props.emboss,
-            props.imprint,
-        ]
-        .into_iter()
-        .enumerate()
-        .fold(0_u64, |bits, (index, flag)| {
-            bits | (match flag {
-                None => 0,
-                Some(false) => 1,
-                Some(true) => 2,
-            } << (index * 2))
-        });
+        let flags = boolean_flags(props);
         flags.hash(&mut hasher);
         optional!(1, props.style.as_ref());
         optional!(2, props.underline_kind.as_ref());
