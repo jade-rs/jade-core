@@ -4,6 +4,7 @@ use quick_xml::{events::Event, name::ResolveResult, NsReader};
 
 const DYNAMIC: &str = "http://schemas.microsoft.com/office/spreadsheetml/2017/dynamicarray";
 const EXTENSION: &str = "{BDBB8CDC-FA1E-496E-A857-3C3F30C029C3}";
+const MC: &str = "http://schemas.openxmlformats.org/markup-compatibility/2006";
 
 #[derive(Default)]
 struct Node {
@@ -11,6 +12,7 @@ struct Node {
     name: String,
     attributes: Vec<(String, String)>,
     children: Vec<usize>,
+    supported_choice: bool,
 }
 impl Node {
     fn attribute(&self, name: &str) -> Option<&str> {
@@ -34,11 +36,40 @@ fn children<'a>(
     namespace: &'a str,
     name: &'a str,
 ) -> impl Iterator<Item = usize> + 'a {
-    nodes[parent]
-        .children
-        .iter()
-        .copied()
+    compatible_children(nodes, parent)
+        .into_iter()
         .filter(move |&i| nodes[i].namespace == namespace && nodes[i].name == name)
+}
+
+fn compatible_children(nodes: &[Node], parent: usize) -> Vec<usize> {
+    let mut pending: Vec<_> = nodes[parent].children.iter().rev().copied().collect();
+    let mut result = Vec::new();
+    while let Some(index) = pending.pop() {
+        let node = &nodes[index];
+        if node.namespace != MC || node.name != "AlternateContent" {
+            result.push(index);
+            continue;
+        }
+        let selected = node
+            .children
+            .iter()
+            .copied()
+            .find(|&i| {
+                nodes[i].namespace == MC && nodes[i].name == "Choice" && nodes[i].supported_choice
+            })
+            .or_else(|| {
+                unique(
+                    node.children
+                        .iter()
+                        .copied()
+                        .filter(|&i| nodes[i].namespace == MC && nodes[i].name == "Fallback"),
+                )
+            });
+        if let Some(selected) = selected {
+            pending.extend(nodes[selected].children.iter().rev().copied());
+        }
+    }
+    result
 }
 fn unique(mut indexes: impl Iterator<Item = usize>) -> Option<usize> {
     let first = indexes.next()?;
@@ -49,6 +80,8 @@ fn unique(mut indexes: impl Iterator<Item = usize>) -> Option<usize> {
 /// Office's cell-metadata and type indexes are one-based; the future-metadata
 /// record index is zero-based. Unsupported or ambiguous links are not evidence
 /// of a dynamic array. XML errors are reported; unrelated metadata is ignored.
+/// This resolves the selected compatibility representation; it does not certify
+/// that the same index has the same meaning in other stored branches.
 pub fn first_dynamic_array_cell_metadata(xml: &str) -> Result<Option<u32>> {
     Ok(cell_dynamic_array_flags(xml)?
         .iter()
@@ -58,6 +91,7 @@ pub fn first_dynamic_array_cell_metadata(xml: &str) -> Result<Option<u32>> {
 
 /// Explicit dynamic/fixed flags indexed by Office's one-based `cm` minus one.
 /// An absent, unsupported, invalid or ambiguous record yields `None`.
+/// Compatibility content uses the first supported Choice, otherwise Fallback.
 pub fn cell_dynamic_array_flags(xml: &str) -> Result<Vec<Option<bool>>> {
     let mut reader = NsReader::from_str(xml);
     let mut nodes = vec![Node::default()];
@@ -87,11 +121,24 @@ pub fn cell_dynamic_array_flags(xml: &str) -> Result<Vec<Option<bool>>> {
                     }
                 }
                 let index = nodes.len();
+                let supported_choice = namespace == MC
+                    && element.local_name().as_ref() == b"Choice"
+                    && attributes.iter().find(|(key, _)| key == "Requires").is_some_and(|(_, required)| {
+                        let prefixes: Vec<_> = required.split_ascii_whitespace().collect();
+                        !prefixes.is_empty() && prefixes.iter().all(|prefix| {
+                            let qualified = format!("{prefix}:x");
+                            matches!(reader.resolver().resolve_element(quick_xml::name::QName(qualified.as_bytes())).0,
+                                ResolveResult::Bound(ns) if matches!(ns.as_ref(),
+                                    b"http://schemas.openxmlformats.org/spreadsheetml/2006/main" |
+                                    b"http://purl.oclc.org/ooxml/spreadsheetml/main") || ns.as_ref() == DYNAMIC.as_bytes())
+                        })
+                    });
                 nodes.push(Node {
                     namespace,
                     name: String::from_utf8_lossy(element.local_name().as_ref()).into_owned(),
                     attributes,
                     children: Vec::new(),
+                    supported_choice,
                 });
                 nodes[*stack.last().unwrap()].children.push(index);
                 if opened {
@@ -108,7 +155,7 @@ pub fn cell_dynamic_array_flags(xml: &str) -> Result<Vec<Option<bool>>> {
     if stack.len() != 1 {
         return Ok(Vec::new());
     }
-    let Some(root) = unique(nodes[0].children.iter().copied()) else {
+    let Some(root) = unique(compatible_children(&nodes, 0).into_iter()) else {
         return Ok(Vec::new());
     };
     let namespace = nodes[root].namespace.as_str();
@@ -181,6 +228,90 @@ mod tests {
     use super::*;
 
     const XML: &str = r#"<metadata xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:d="http://schemas.microsoft.com/office/spreadsheetml/2017/dynamicarray" xmlns:foreign="urn:foreign"><metadataTypes><metadataType name="OTHER"/><metadataType name="XLDAPR"/></metadataTypes><futureMetadata name="XLDAPR"><bk><extLst><ext uri="{bdbb8cdc-fa1e-496e-a857-3c3f30c029c3}"><d:dynamicArrayProperties fDynamic="false"/></ext></extLst></bk><bk><extLst><ext uri="{bdbb8cdc-fa1e-496e-a857-3c3f30c029c3}"><d:dynamicArrayProperties fDynamic="true"/></ext></extLst></bk></futureMetadata><cellMetadata><bk><rc t="2" v="0"/></bk><bk><rc t="2" v="1"/></bk></cellMetadata></metadata>"#;
+
+    #[test]
+    fn metadata_choices_resolve_required_namespaces_and_keep_first_supported_order() {
+        let property = "<d:dynamicArrayProperties fDynamic=\"true\"/>";
+        for (requires, expected) in [
+            ("known", Some(false)),
+            ("future", Some(true)),
+            ("missing", Some(true)),
+            ("known future", Some(true)),
+            ("", Some(true)),
+        ] {
+            let branch = format!("<mc:AlternateContent xmlns:mc=\"{MC}\"><mc:Choice xmlns:known=\"{DYNAMIC}\" xmlns:future=\"urn:future\" Requires=\"{requires}\"><d:dynamicArrayProperties fDynamic=\"false\"/></mc:Choice><mc:Fallback>{property}</mc:Fallback></mc:AlternateContent>");
+            for xml in [
+                XML.to_string(),
+                XML.replace(
+                    "http://schemas.openxmlformats.org/spreadsheetml/2006/main",
+                    "http://purl.oclc.org/ooxml/spreadsheetml/main",
+                ),
+            ] {
+                let xml = xml.replace(property, &branch);
+                assert_eq!(
+                    cell_dynamic_array_flags(&xml).unwrap(),
+                    [Some(false), expected]
+                );
+            }
+        }
+        let first = format!("<mc:AlternateContent xmlns:mc=\"{MC}\"><mc:Choice Requires=\"d\"><d:dynamicArrayProperties fDynamic=\"false\"/></mc:Choice><mc:Choice Requires=\"d\">{property}</mc:Choice><mc:Fallback>{property}</mc:Fallback></mc:AlternateContent>");
+        assert_eq!(
+            cell_dynamic_array_flags(&XML.replace(property, &first)).unwrap(),
+            [Some(false), Some(false)]
+        );
+        let empty = format!("<mc:AlternateContent xmlns:mc=\"{MC}\"><mc:Choice Requires=\"d\"/><mc:Fallback>{property}</mc:Fallback></mc:AlternateContent>");
+        assert_eq!(
+            cell_dynamic_array_flags(&XML.replace(property, &empty)).unwrap(),
+            [Some(false), None]
+        );
+        let mut nested = property.to_string();
+        for _ in 0..256 {
+            nested = format!("<mc:AlternateContent xmlns:mc=\"{MC}\"><mc:Choice Requires=\"d\">{nested}</mc:Choice><mc:Fallback/></mc:AlternateContent>");
+        }
+        assert_eq!(
+            cell_dynamic_array_flags(&XML.replace(property, &nested)).unwrap(),
+            [Some(false), Some(true)]
+        );
+        let foreign = first.replace(MC, "urn:foreign");
+        assert_eq!(
+            cell_dynamic_array_flags(&XML.replace(property, &foreign)).unwrap(),
+            [Some(false), None]
+        );
+    }
+
+    #[test]
+    fn reads_selected_metadata_compatibility_branches() {
+        let declared = XML.replacen(
+            "<metadata ",
+            "<metadata xmlns:mc=\"http://schemas.openxmlformats.org/markup-compatibility/2006\" ",
+            1,
+        );
+        for (start, end) in [
+            ("<metadataTypes>", "</metadataTypes>"),
+            ("<metadataType name=\"XLDAPR\"/>", ""),
+            ("<futureMetadata name=\"XLDAPR\">", "</futureMetadata>"),
+            ("<cellMetadata>", "</cellMetadata>"),
+            ("<rc t=\"2\" v=\"1\"/>", ""),
+            ("<d:dynamicArrayProperties fDynamic=\"true\"/>", ""),
+        ] {
+            let from = declared.find(start).unwrap();
+            let to = if end.is_empty() {
+                from + start.len()
+            } else {
+                from + declared[from..].find(end).unwrap() + end.len()
+            };
+            let content = &declared[from..to];
+            for requires in ["d", "future", "missing", "d future"] {
+                let branch = format!("<mc:AlternateContent xmlns:future=\"urn:future\"><mc:Choice Requires=\"{requires}\">{content}</mc:Choice><mc:Fallback>{content}</mc:Fallback></mc:AlternateContent>");
+                let xml = format!("{}{}{}", &declared[..from], branch, &declared[to..]);
+                assert_eq!(
+                    cell_dynamic_array_flags(&xml).unwrap(),
+                    [Some(false), Some(true)],
+                    "{start}, {requires}"
+                );
+            }
+        }
+    }
 
     #[test]
     fn resolves_type_and_record_indexes_with_namespace_aliases() {
