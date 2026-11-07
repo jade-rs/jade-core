@@ -9593,6 +9593,12 @@ impl WordDocument {
                 return Err("watermark size must be between 1 and 1638 points".to_string());
             }
         }
+        style.fit_shape = Some(style.fit_shape.unwrap_or(style.size_pt.is_none()));
+        if style.fit_shape == Some(false) && style.size_pt.is_none() {
+            // The generated text path uses 1pt when no size was supplied.
+            // Keep the in-memory style identical to the fixed size on disk.
+            style.size_pt = Some(1.0);
+        }
         style.color = normalize_watermark_color(&style.color)
             .ok_or_else(|| format!("watermark color must be #RRGGBB, not {}", style.color))?;
         if let Some(font) = style.font.as_deref() {
@@ -9745,7 +9751,7 @@ impl WordDocument {
         let document = DocxXmlDocument::parse(xml).ok()?;
         let text = Self::watermark_text_from_element(document.root())?;
         let style = Self::watermark_shape(document.root())
-            .map(watermark_style_from_shape)
+            .map(|shape| watermark_style_from_shape(document.root(), shape))
             .unwrap_or_default();
         Some((text, style))
     }
@@ -10003,13 +10009,21 @@ impl WordDocument {
         let font = style.font.as_deref().unwrap_or("DengXian");
         let size = style
             .size_pt
-            .map(|size| format!("{}pt", trim_watermark_number(size)))
+            .map(|size| format!("{size}pt"))
             .unwrap_or_else(|| "1pt".to_string());
         let text_path = xml.create_element(
             "v:textpath",
             vec![
                 attr("style", &format!("font-family:\"{font}\";font-size:{size}")),
                 attr("string", text),
+                attr(
+                    "fitshape",
+                    if style.fit_shape.unwrap_or(true) {
+                        "t"
+                    } else {
+                        "f"
+                    },
+                ),
             ],
             Vec::new(),
         );
@@ -40476,11 +40490,8 @@ fn watermark_looks_alike(
         style.font.clone().unwrap_or_else(|| "DengXian".to_string())
     };
     font(a) == font(b)
-        && match (a.size_pt, b.size_pt) {
-            (Some(a), Some(b)) => (a - b).abs() < 0.01,
-            (None, None) => true,
-            _ => false,
-        }
+        && a.size_pt == b.size_pt
+        && a.fit_shape.unwrap_or(true) == b.fit_shape.unwrap_or(true)
         && a.color.eq_ignore_ascii_case(&b.color)
         && a.semitransparent == b.semitransparent
         && a.horizontal == b.horizontal
@@ -40548,7 +40559,10 @@ fn watermark_text_em_width(text: &str) -> f32 {
 }
 
 /// The look of a watermark's `v:shape`.
-fn watermark_style_from_shape(shape: &XmlElement) -> jade_docx_reader::document::WatermarkStyle {
+fn watermark_style_from_shape(
+    root: &XmlElement,
+    shape: &XmlElement,
+) -> jade_docx_reader::document::WatermarkStyle {
     let attribute = |element: &XmlElement, name: &str| {
         element
             .attributes
@@ -40556,6 +40570,48 @@ fn watermark_style_from_shape(shape: &XmlElement) -> jade_docx_reader::document:
             .find(|attribute| attribute.name.rsplit(':').next() == Some(name))
             .map(|attribute| attribute.value.clone())
     };
+    // Shape-local text path attributes override the referenced shape type.
+    // VML's fitshape default is false, not a font-size threshold.
+    fn find_shape_type<'a>(element: &'a XmlElement, id: &str) -> Option<&'a XmlElement> {
+        if element.name.rsplit(':').next() == Some("shapetype")
+            && element
+                .attributes
+                .iter()
+                .any(|a| a.name == "id" && a.value == id)
+        {
+            return Some(element);
+        }
+        element.children.iter().find_map(|child| match child {
+            XmlNode::Element(child) => find_shape_type(child, id),
+            _ => None,
+        })
+    }
+    fn fit_shape(element: &XmlElement) -> Option<bool> {
+        element.children.iter().find_map(|child| {
+            let XmlNode::Element(child) = child else {
+                return None;
+            };
+            if child.name.rsplit(':').next() != Some("textpath") {
+                return None;
+            }
+            let value = child
+                .attributes
+                .iter()
+                .find(|a| a.name.rsplit(':').next() == Some("fitshape"))?;
+            match value.value.trim().to_ascii_lowercase().as_str() {
+                "t" | "true" | "1" => Some(true),
+                "f" | "false" | "0" => Some(false),
+                _ => None,
+            }
+        })
+    }
+    let inherited_fit_shape = attribute(shape, "type")
+        .and_then(|name| {
+            name.strip_prefix('#')
+                .and_then(|id| find_shape_type(root, id))
+        })
+        .and_then(fit_shape);
+    let fits_shape = fit_shape(shape).or(inherited_fit_shape).unwrap_or(false);
     let declarations = |style: &str| -> Vec<(String, String)> {
         style
             .split(';')
@@ -40585,6 +40641,7 @@ fn watermark_style_from_shape(shape: &XmlElement) -> jade_docx_reader::document:
             .map(|number| number * factor)
     };
     let mut style = jade_docx_reader::document::WatermarkStyle {
+        fit_shape: Some(fits_shape),
         semitransparent: false,
         ..Default::default()
     };
@@ -40635,8 +40692,11 @@ fn watermark_style_from_shape(shape: &XmlElement) -> jade_docx_reader::document:
                             }
                         }
                         "font-size" => {
-                            // Word's 自動 is 1pt, scaled by `fitshape`.
-                            style.size_pt = points(&value).filter(|size| *size > 1.01);
+                            // A 1pt text path fitted to the shape is Word's
+                            // automatic-size sentinel. A fixed 1pt font is valid.
+                            style.size_pt = points(&value).filter(|size| {
+                                size.is_finite() && *size > 0.0 && !(fits_shape && *size == 1.0)
+                            });
                         }
                         _ => {}
                     }
@@ -40684,6 +40744,31 @@ mod tests {
     use std::time::{Duration, Instant};
     use zip::write::SimpleFileOptions;
     use zip::ZipArchive;
+
+    #[test]
+    fn watermark_font_size_uses_fitshape_inheritance_instead_of_a_size_threshold() {
+        for (inherited, direct, expected) in [
+            ("t", "", None),
+            ("t", "fitshape=\"f\"", Some(1.0)),
+            ("f", "", Some(1.0)),
+            ("f", "fitshape=\"true\"", None),
+            ("", "", Some(1.0)),
+        ] {
+            let xml = format!(
+                r##"<w:hdr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+                xmlns:v="urn:schemas-microsoft-com:vml"><w:p><w:r><w:pict>
+                <v:shapetype id="wm"><v:textpath fitshape="{inherited}"/></v:shapetype>
+                <v:shape id="PowerPlusWaterMarkObject1" type="#wm" style="width:200pt;height:80pt">
+                  <v:textpath {direct} style="font-size:1pt" string="CONFIDENTIAL"/>
+                </v:shape></w:pict></w:r></w:p></w:hdr>"##
+            );
+            let (_, style) = WordDocument::watermark_from_xml(&xml).expect("watermark");
+            assert_eq!(
+                style.size_pt, expected,
+                "inherited={inherited}, direct={direct}"
+            );
+        }
+    }
 
     #[test]
     fn upsert_run_fonts_preserves_replacement_ids_and_canonical_attributes() {
