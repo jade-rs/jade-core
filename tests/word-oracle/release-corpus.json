@@ -802,6 +802,42 @@
       "fixture": "yokohama_table_row_heights",
       "docx_sha256": "08e862d1e00d782d5a54a31170c132e68749cd76fffbfcf706e2e492f4fabace",
       "schema_repair_source_sha256": "efc1e557d3f91ca84714616535c4d60aa645e0233db1cf4fd5711f54510bb1de"
+    },
+    {
+      "fixture": "word-windows-edge-arial-script-sweep-bold-italic",
+      "docx_sha256": "2234d3228250cfdbc74396699c42eef23436ff799f3e97ed84eb86f0d0fdae52"
+    },
+    {
+      "fixture": "word-windows-edge-arial-script-sweep-bold",
+      "docx_sha256": "644a659a7b4f173c6d0744fc927b01011d096cfd5600d76b9eb7c1698868f724"
+    },
+    {
+      "fixture": "word-windows-edge-arial-script-sweep-italic",
+      "docx_sha256": "f64874e311dc7bca8a1bc727d5d3a50e2570f15bd2981531db405e8b6ea0d2b3"
+    },
+    {
+      "fixture": "word-windows-edge-arial-script-sweep",
+      "docx_sha256": "c304eb98daf822e0e043db36aaae9febf4066d1610609c7d0426d0bf326f5ded"
+    },
+    {
+      "fixture": "word-windows-edge-indents",
+      "docx_sha256": "f7c87da6a605d366fb039a7d54467aacf5b8248118eb80b7db28a817e41c906e"
+    },
+    {
+      "fixture": "word-windows-edge-run-position",
+      "docx_sha256": "51d1cc390dd83e0f4cae80ca8920321b7644e7126148d505fa3139413a5df9c9"
+    },
+    {
+      "fixture": "word-windows-edge-run-width",
+      "docx_sha256": "ffc1b8c2823163a1faf87ee1c58cb237a2d6262fe2934c150bbe36d8ce4ee34d"
+    },
+    {
+      "fixture": "word-windows-edge-spacing",
+      "docx_sha256": "888abdd2e3aa2553c6a3776a21bfa87c57d6e57c214b3923b7f64b39af88f799"
+    },
+    {
+      "fixture": "word-windows-edge-tabs",
+      "docx_sha256": "d6831dbd8f4e78c7712e40a8d5b82347ad7855dbf7fff771d70098f058875853"
     }
   ]
 }
