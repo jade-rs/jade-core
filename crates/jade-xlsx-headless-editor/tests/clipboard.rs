@@ -3,6 +3,211 @@ use jade_xlsx_headless_api::CellInput;
 use jade_xlsx_headless_editor::{effective_style, FormatChange, HeadlessWorkbook};
 use jade_xlsx_reader::CellRef;
 const ORIGINAL: &[u8] = include_bytes!("../../../public/fixtures/grid-operations-workbook.xlsx");
+
+#[test]
+fn clipboard_keeps_scalar_array_evaluation_across_sheets_history_and_reopen() {
+    for cut in [false, true] {
+        for cross_sheet in [false, true] {
+            let baseline = book();
+            let mut workbook = HeadlessWorkbook::open_for_editing(baseline.bytes()).unwrap();
+            let target = if cross_sheet { "Target" } else { "Operations" };
+            for sheet in ["Operations", "Target"] {
+                workbook
+                    .set_cells(
+                        sheet,
+                        &[
+                            ("R1".into(), CellInput::Text("a".into())),
+                            ("R2".into(), CellInput::Text("bb".into())),
+                            ("R3".into(), CellInput::Text("ccc".into())),
+                        ],
+                    )
+                    .unwrap();
+            }
+            workbook
+                .set(
+                    "Operations",
+                    "K5",
+                    CellInput::Formula("SUM(LEN($R$1:$R$3))".into()),
+                )
+                .unwrap();
+            let snapshot = workbook.copy_snapshot("Operations", "K5", cut).unwrap();
+            workbook
+                .paste_snapshot(&snapshot, target, "L5", false)
+                .unwrap();
+            assert_eq!(
+                workbook.cell(target, "L5").unwrap().number,
+                Some(6.0),
+                "cut={cut}, cross_sheet={cross_sheet}"
+            );
+            let index = usize::from(cross_sheet);
+            assert!(workbook.workbook().sheets[index]
+                .array_formulas
+                .iter()
+                .any(|array| {
+                    array.anchor == CellRef::parse("L5").unwrap()
+                        && array.kind == jade_xlsx_reader::ArrayFormulaKind::Dynamic
+                }));
+            let input_sheet = if cut && cross_sheet {
+                "Operations"
+            } else {
+                target
+            };
+            workbook
+                .set(input_sheet, "R2", CellInput::Text("four".into()))
+                .unwrap();
+            assert_eq!(workbook.cell(target, "L5").unwrap().number, Some(8.0));
+            workbook.undo().unwrap();
+            assert_eq!(workbook.cell(target, "L5").unwrap().number, Some(6.0));
+            workbook.redo().unwrap();
+            let saved = workbook.save_bytes().unwrap();
+            let reopened = HeadlessWorkbook::open_for_editing(&saved).unwrap();
+            assert_eq!(reopened.cell(target, "L5").unwrap().number, Some(8.0));
+        }
+    }
+}
+
+#[test]
+fn dynamic_anchor_clipboard_respills_and_clears_a_cut_source_tail() {
+    for cut in [false, true] {
+        for source in ["K1", "K1:K3"] {
+            for target in ["Operations", "Target"] {
+                let baseline = book();
+                let mut workbook = HeadlessWorkbook::open_for_editing(baseline.bytes()).unwrap();
+                workbook
+                    .set("Operations", "K1", CellInput::Formula("SEQUENCE(3)".into()))
+                    .unwrap();
+                let snapshot = workbook.copy_snapshot("Operations", source, cut).unwrap();
+                workbook
+                    .paste_snapshot(&snapshot, target, "L1", false)
+                    .unwrap();
+                for (at, value) in [("L1", 1.0), ("L2", 2.0), ("L3", 3.0)] {
+                    assert_eq!(
+                        workbook.cell(target, at).unwrap().number,
+                        Some(value),
+                        "cut={cut}, source={source}, target={target}, at={at}"
+                    );
+                }
+                for at in ["K1", "K2", "K3"] {
+                    assert_eq!(
+                        workbook.cell("Operations", at).unwrap().number.is_none(),
+                        cut
+                    );
+                }
+            }
+        }
+    }
+    let baseline = book();
+    let mut workbook = HeadlessWorkbook::open_for_editing(baseline.bytes()).unwrap();
+    workbook
+        .set("Operations", "K1", CellInput::Formula("SEQUENCE(3)".into()))
+        .unwrap();
+    let before = workbook.bytes().to_vec();
+    let output = workbook.copy_snapshot("Operations", "K2", true).unwrap();
+    assert!(workbook
+        .paste_snapshot(&output, "Operations", "L1", false)
+        .is_err());
+    assert_eq!(workbook.bytes(), before);
+    let anchor = workbook.copy_snapshot("Operations", "K1", true).unwrap();
+    workbook
+        .paste_snapshot(&anchor, "Operations", "K2", false)
+        .unwrap();
+    for (at, value) in [("K2", 1.0), ("K3", 2.0), ("K4", 3.0)] {
+        assert_eq!(workbook.cell("Operations", at).unwrap().number, Some(value));
+    }
+    assert!(workbook.cell("Operations", "K1").unwrap().number.is_none());
+    workbook.undo().unwrap();
+    assert_eq!(workbook.cell("Operations", "K1").unwrap().number, Some(1.0));
+    assert!(workbook.cell("Operations", "K4").unwrap().number.is_none());
+}
+
+#[test]
+fn cutting_precedents_keeps_dynamic_evaluation_and_historical_copies_import_metadata() {
+    let baseline = book();
+    let mut workbook = HeadlessWorkbook::open_for_editing(baseline.bytes()).unwrap();
+    workbook
+        .set_cells(
+            "Operations",
+            &[
+                ("R1".into(), CellInput::Text("a".into())),
+                ("R2".into(), CellInput::Text("bb".into())),
+                ("R3".into(), CellInput::Text("ccc".into())),
+            ],
+        )
+        .unwrap();
+    workbook
+        .set(
+            "Operations",
+            "K5",
+            CellInput::Formula("SUM(LEN($R$1:$R$3))".into()),
+        )
+        .unwrap();
+    let historical = workbook.copy_snapshot("Operations", "K5", false).unwrap();
+    workbook.undo().unwrap();
+    workbook
+        .paste_snapshot(&historical, "Operations", "K5", false)
+        .unwrap();
+    assert_eq!(workbook.cell("Operations", "K5").unwrap().number, Some(6.0));
+    let inputs = workbook.copy_snapshot("Operations", "R1:R3", true).unwrap();
+    workbook
+        .paste_snapshot(&inputs, "Operations", "U1", false)
+        .unwrap();
+    assert_eq!(workbook.cell("Operations", "K5").unwrap().number, Some(6.0));
+    assert!(workbook.workbook().sheets[0]
+        .array_formulas
+        .iter()
+        .any(|array| {
+            array.anchor == CellRef::parse("K5").unwrap()
+                && array.kind == jade_xlsx_reader::ArrayFormulaKind::Dynamic
+        }));
+    let saved = workbook.save_bytes().unwrap();
+    let mut reopened = HeadlessWorkbook::open_for_editing(&saved).unwrap();
+    reopened
+        .set("Operations", "U2", CellInput::Text("four".into()))
+        .unwrap();
+    assert_eq!(reopened.cell("Operations", "K5").unwrap().number, Some(8.0));
+}
+
+#[test]
+fn clipboard_keeps_explicit_values_when_a_target_spill_is_blocked_or_replaced() {
+    for cut in [false, true] {
+        for target in ["K1", "K2"] {
+            let baseline = book();
+            let mut workbook = HeadlessWorkbook::open_for_editing(baseline.bytes()).unwrap();
+            workbook
+                .set("Operations", "K1", CellInput::Formula("SEQUENCE(3)".into()))
+                .unwrap();
+            workbook
+                .set("Operations", "R1", CellInput::Number(77.0))
+                .unwrap();
+            let snapshot = workbook.copy_snapshot("Operations", "R1", cut).unwrap();
+            workbook
+                .paste_snapshot(&snapshot, "Operations", target, false)
+                .unwrap();
+            assert_eq!(
+                workbook.cell("Operations", target).unwrap().number,
+                Some(77.0)
+            );
+            assert_eq!(
+                workbook.cell("Operations", "K1").unwrap().display,
+                if target == "K1" { "77" } else { "#SPILL!" }
+            );
+            assert!(workbook.cell("Operations", "K3").unwrap().number.is_none());
+            workbook.undo().unwrap();
+            assert_eq!(workbook.cell("Operations", "K2").unwrap().number, Some(2.0));
+            workbook.redo().unwrap();
+            let saved = workbook.save_bytes().unwrap();
+            let mut reopened = HeadlessWorkbook::open_for_editing(&saved).unwrap();
+            assert_eq!(
+                reopened.cell("Operations", target).unwrap().number,
+                Some(77.0)
+            );
+            if target == "K2" {
+                reopened.set("Operations", "K2", CellInput::Blank).unwrap();
+                assert_eq!(reopened.cell("Operations", "K3").unwrap().number, Some(3.0));
+            }
+        }
+    }
+}
 fn book() -> HeadlessWorkbook {
     let mut package = OpcPackage::open(ORIGINAL).unwrap();
     let sheet = package.part_str("xl/worksheets/sheet1.xml").unwrap().unwrap()
