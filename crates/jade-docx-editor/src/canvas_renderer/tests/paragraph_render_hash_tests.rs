@@ -1,6 +1,7 @@
 //! Check the renderer's use of the property digest, not only its conversion.
 use super::*;
 use jade_docx_reader::document::{Indent, Numbering, Spacing};
+use std::rc::Rc;
 
 type PropertyEdit = fn(&mut ParagraphProperties);
 
@@ -88,7 +89,16 @@ fn render_hash_observes_each_property_and_restores_previous_keys() {
         // Revisit earlier values in reverse order, with newly allocated owned
         // strings, rather than relying on the address of the first snapshot.
         for (name, props, digest) in changed.into_iter().rev() {
-            assert_eq!(key(props.clone()), digest, "revisit {name}");
+            let mut reallocated = props.clone();
+            for value in [&mut reallocated.alignment, &mut reallocated.style]
+                .into_iter()
+                .flatten()
+            {
+                let replacement: Rc<str> = Rc::from(value.as_ref());
+                assert!(!Rc::ptr_eq(value, &replacement));
+                *value = replacement;
+            }
+            assert_eq!(key(reallocated), digest, "revisit {name}");
             assert_eq!(key(base.clone()), original, "restore after revisit {name}");
         }
     }
