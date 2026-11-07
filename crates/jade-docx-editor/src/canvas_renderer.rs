@@ -11511,14 +11511,25 @@ where
 
             if let Some(props) = run.properties.as_ref() {
                 run_style_key::boolean_flags(props).hash(&mut hasher);
-                props.underline_kind.hash(&mut hasher);
-                props.underline_color.hash(&mut hasher);
+                // Preserve every optional text field's position with one tag.
+                // The outer fonts tag also distinguishes absent/empty fonts.
+                let mut text_presence = 0_u16;
+                macro_rules! hash_run_text {
+                    ($value:expr, $bit:expr) => {
+                        if let Some(value) = $value {
+                            text_presence |= 1 << $bit;
+                            value.hash(&mut hasher);
+                        }
+                    };
+                }
+                hash_run_text!(props.underline_kind.as_deref(), 0);
+                hash_run_text!(props.underline_color.as_deref(), 1);
                 props
                     .text_effects
                     .as_ref()
                     .map(|effects| format!("{effects:?}"))
                     .hash(&mut hasher);
-                props.emphasis.hash(&mut hasher);
+                hash_run_text!(props.emphasis.as_deref(), 2);
                 if let Some(ruby) = props.ruby.as_ref() {
                     ruby.text.hash(&mut hasher);
                     ruby.size_pt.map(f32::to_bits).hash(&mut hasher);
@@ -11535,7 +11546,7 @@ where
                     border.size_eighths.hash(&mut hasher);
                     border.color.hash(&mut hasher);
                 }
-                props.baseline.as_deref().hash(&mut hasher);
+                hash_run_text!(props.baseline.as_deref(), 3);
                 // Encode the five Option tags once; keep field order and all
                 // float bits, including signed zero and NaN payloads.
                 let mut metric_presence = 0_u8;
@@ -11553,12 +11564,13 @@ where
                 hash_metric!(text_scale, 3);
                 hash_metric!(font_size, 4);
                 metric_presence.hash(&mut hasher);
-                props.font_family.as_deref().hash(&mut hasher);
+                hash_run_text!(props.font_family.as_deref(), 4);
                 if let Some(fonts) = props.fonts.as_ref() {
-                    fonts.ascii.as_deref().hash(&mut hasher);
-                    fonts.h_ansi.as_deref().hash(&mut hasher);
-                    fonts.east_asia.as_deref().hash(&mut hasher);
-                    fonts.complex.as_deref().hash(&mut hasher);
+                    text_presence |= 1 << 12;
+                    hash_run_text!(fonts.ascii.as_deref(), 5);
+                    hash_run_text!(fonts.h_ansi.as_deref(), 6);
+                    hash_run_text!(fonts.east_asia.as_deref(), 7);
+                    hash_run_text!(fonts.complex.as_deref(), 8);
                     let hint_tag: u8 = match fonts.hint.as_ref().unwrap_or(&FontHint::Default) {
                         FontHint::Default => 0,
                         FontHint::EastAsia => 1,
@@ -11568,13 +11580,16 @@ where
                 } else {
                     0_u8.hash(&mut hasher);
                 }
-                props.color.as_deref().hash(&mut hasher);
-                props.highlight.as_deref().hash(&mut hasher);
-                props
-                    .shading
-                    .as_ref()
-                    .and_then(|sh| sh.resolved_background_color())
-                    .hash(&mut hasher);
+                hash_run_text!(props.color.as_deref(), 9);
+                hash_run_text!(props.highlight.as_deref(), 10);
+                hash_run_text!(
+                    props
+                        .shading
+                        .as_ref()
+                        .and_then(|sh| sh.resolved_background_color()),
+                    11
+                );
+                text_presence.hash(&mut hasher);
             } else {
                 0_u8.hash(&mut hasher);
             }

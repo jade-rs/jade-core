@@ -49,6 +49,142 @@ const METRICS: [(&str, MetricSetter, [f32; 5]); 5] = [
     ),
 ];
 
+// Raw optional strings are modeled separately from the renderer's cache key.
+// The shading field uses a clear fill, whose resolved background is the fill.
+type TextSetter = fn(&mut RunProperties, Option<&str>);
+const RUN_TEXT: [(&str, TextSetter, [&str; 5]); 12] = [
+    (
+        "underline_kind",
+        |p, v| p.underline_kind = v.map(Into::into),
+        ["single", "double", "wave", "", "none"],
+    ),
+    (
+        "underline_color",
+        |p, v| p.underline_color = v.map(Into::into),
+        ["#102030", "#8090A0", "auto", "", "#000000"],
+    ),
+    (
+        "emphasis",
+        |p, v| p.emphasis = v.map(Into::into),
+        ["none", "dot", "circle", "comma", "underdot"],
+    ),
+    (
+        "baseline",
+        |p, v| p.baseline = v.map(Into::into),
+        ["baseline", "superscript", "subscript", "", "baseline"],
+    ),
+    (
+        "font_family",
+        |p, v| p.font_family = v.map(Into::into),
+        ["Arial", "Courier New", "Noto Sans", "游明朝", ""],
+    ),
+    (
+        "ascii",
+        |p, v| {
+            if v.is_some() || p.fonts.is_some() {
+                p.fonts.get_or_insert_default().ascii = v.map(Into::into);
+            }
+        },
+        ["Arial", "Courier New", "Noto Sans", "游明朝", ""],
+    ),
+    (
+        "h_ansi",
+        |p, v| {
+            if v.is_some() || p.fonts.is_some() {
+                p.fonts.get_or_insert_default().h_ansi = v.map(Into::into);
+            }
+        },
+        ["Arial", "Courier New", "Noto Sans", "游明朝", ""],
+    ),
+    (
+        "east_asia",
+        |p, v| {
+            if v.is_some() || p.fonts.is_some() {
+                p.fonts.get_or_insert_default().east_asia = v.map(Into::into);
+            }
+        },
+        ["Arial", "Courier New", "Noto Sans", "游明朝", ""],
+    ),
+    (
+        "complex",
+        |p, v| {
+            if v.is_some() || p.fonts.is_some() {
+                p.fonts.get_or_insert_default().complex = v.map(Into::into);
+            }
+        },
+        ["Arial", "Courier New", "Noto Sans", "游明朝", ""],
+    ),
+    (
+        "color",
+        |p, v| p.color = v.map(Into::into),
+        ["#000000", "#E01020", "", "auto", "#20A030"],
+    ),
+    (
+        "highlight",
+        |p, v| p.highlight = v.map(Into::into),
+        ["yellow", "cyan", "none", "", "green"],
+    ),
+    (
+        "shading",
+        |p, v| {
+            p.shading = v.map(|fill| jade_docx_reader::document::Shading {
+                fill: Some(fill.into()),
+                ..Default::default()
+            })
+        },
+        ["#000000", "#E01020", "", "#8090A0", "#20A030"],
+    ),
+];
+
+#[test]
+fn render_hash_distinguishes_run_text_presence_positions_and_empty_fonts() {
+    let renderer = test_renderer();
+    let options = Options::default();
+    for content in [None, Some(ContentHash::new(7))] {
+        let mut paragraph = Paragraph {
+            runs: vec![build_run(None)],
+            properties: None,
+            node_id: None,
+            comment_ranges: Vec::new(),
+            comment_markers: Vec::new(),
+        };
+        for value in ["", "same", "\0", "税😀e\u{301}"] {
+            let mut keys = std::collections::HashSet::new();
+            let mut check = |props, state: String| {
+                paragraph.runs[0].properties = props;
+                let key = renderer.compute_paragraph_render_hash(&paragraph, &options, content);
+                assert!(
+                    keys.insert(key),
+                    "{state}, value={value:?}, content={content:?}"
+                );
+            };
+            check(None, "absent properties".into());
+            check(Some(RunProperties::default()), "absent fonts".into());
+            for presence in 0..(1 << RUN_TEXT.len()) {
+                let mut props = RunProperties {
+                    fonts: Some(RunFonts::default()),
+                    ..Default::default()
+                };
+                for (index, (_, setter, _)) in RUN_TEXT.iter().enumerate() {
+                    setter(&mut props, (presence & (1 << index) != 0).then_some(value));
+                }
+                check(Some(props), format!("presence={presence:#x}"));
+            }
+            for hint in [FontHint::EastAsia, FontHint::Complex] {
+                let props = RunProperties {
+                    fonts: Some(RunFonts {
+                        hint: Some(hint.clone()),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                };
+                check(Some(props), format!("hint={hint:?}"));
+            }
+            assert_eq!(keys.len(), 4100);
+        }
+    }
+}
+
 #[test]
 fn render_hash_distinguishes_metric_presence_positions_and_float_bits() {
     let renderer = test_renderer();
@@ -181,6 +317,8 @@ fn render_hash_distinguishes_run_flag_states_and_field_pairs() {
 enum Edit {
     Flag(usize, Option<bool>),
     Metric(usize, Option<f32>),
+    RunText(usize, Option<usize>),
+    ClearFonts,
     ClearProperties,
     Text(usize),
     Repaint,
@@ -194,6 +332,8 @@ fn edit() -> impl Strategy<Value = Edit> {
     prop_oneof![
         8 => (0..FLAGS.len(), prop::option::of(any::<bool>())).prop_map(|(i, v)| Edit::Flag(i, v)),
         8 => metric,
+        12 => (0..RUN_TEXT.len(), prop::option::of(0..5_usize)).prop_map(|(i, v)| Edit::RunText(i, v)),
+        1 => Just(Edit::ClearFonts),
         1 => Just(Edit::ClearProperties),
         2 => (0..TEXTS.len()).prop_map(Edit::Text),
         2 => Just(Edit::Repaint),
@@ -246,6 +386,7 @@ fn ink(painter: &RecordingPainter, state: &mut PaintState) -> Vec<(Op, PaintStat
             Op::SetFont(v) => Some(("font", v.clone())),
             Op::SetTextBaseline(v) => Some(("baseline", v.clone())),
             Op::SetLineWidth(v) => Some(("width", format!("{v:?}"))),
+            Op::SetLineDash(v) => Some(("dash", format!("{v:?}"))),
             Op::SetGlobalAlpha(v) => Some(("alpha", format!("{v:?}"))),
             Op::SetShadowColor(v) => Some(("shadow color", v.clone())),
             Op::SetShadowBlur(v) => Some(("shadow blur", format!("{v:?}"))),
@@ -294,6 +435,33 @@ fn ink(painter: &RecordingPainter, state: &mut PaintState) -> Vec<(Op, PaintStat
                     let (x, y) = point(x, y);
                     Op::LineTo(x, y)
                 }
+                Op::Arc(x, y, radius, start, end) => {
+                    assert!(
+                        sx > 0.0 && sy > 0.0,
+                        "positive axis-aligned formatting transforms"
+                    );
+                    let (x, y) = point(x, y);
+                    Op::Ellipse(
+                        x,
+                        y,
+                        rounded(sx * radius),
+                        rounded(sy * radius),
+                        0.0,
+                        start,
+                        end,
+                    )
+                }
+                Op::QuadraticCurveTo(cx, cy, x, y) => {
+                    let (cx, cy) = point(cx, cy);
+                    let (x, y) = point(x, y);
+                    Op::QuadraticCurveTo(cx, cy, x, y)
+                }
+                Op::BezierCurveTo(ax, ay, bx, by, x, y) => {
+                    let (ax, ay) = point(ax, ay);
+                    let (bx, by) = point(bx, by);
+                    let (x, y) = point(x, y);
+                    Op::BezierCurveTo(ax, ay, bx, by, x, y)
+                }
                 Op::BeginPath | Op::ClosePath | Op::Fill | Op::Stroke | Op::Clip => op,
                 _ => panic!("unexpected ink operation in formatting history: {op:?}"),
             };
@@ -316,6 +484,12 @@ fn ink(painter: &RecordingPainter, state: &mut PaintState) -> Vec<(Op, PaintStat
                 Op::FillText(..) | Op::StrokeText(..) | Op::FillShapedText(..)
             ) {
                 effective.insert("text scale", format!("{:?}", [rounded(sx), rounded(sy)]));
+            }
+            if matches!(op, Op::Stroke | Op::StrokeRect(..) | Op::StrokeText(..)) {
+                effective.insert(
+                    "dash",
+                    state.get("dash").cloned().unwrap_or_else(|| "[]".into()),
+                );
             }
             if !keys.is_empty() {
                 for (key, default) in [
@@ -375,6 +549,48 @@ fn ink_resolves_translation_and_preserves_text_scale() {
     );
 }
 
+#[test]
+fn ink_resolves_emphasis_arcs_and_preserves_dash_state() {
+    use jade_painter::Painter;
+    let direct = RecordingPainter::new();
+    direct.begin_path();
+    direct
+        .arc(32.0, 20.0, 4.0, 0.0, std::f64::consts::TAU)
+        .unwrap();
+    direct.fill();
+    let replay = RecordingPainter::new();
+    replay.save();
+    replay.translate(0.0, 10.0).unwrap();
+    replay.scale(0.5, 0.5).unwrap();
+    replay.begin_path();
+    replay
+        .arc(64.0, 20.0, 8.0, 0.0, std::f64::consts::TAU)
+        .unwrap();
+    replay.fill();
+    replay.restore();
+    assert_eq!(
+        ink(&direct, &mut PaintState::new()),
+        ink(&replay, &mut PaintState::new())
+    );
+
+    direct.clear();
+    replay.clear();
+    direct.set_line_dash(&[2.0, 3.0]);
+    direct.stroke();
+    replay.stroke();
+    assert_ne!(
+        ink(&direct, &mut PaintState::new()),
+        ink(&replay, &mut PaintState::new())
+    );
+    replay.clear();
+    replay.set_line_dash(&[2.0, 3.0]);
+    replay.stroke();
+    assert_eq!(
+        ink(&direct, &mut PaintState::new()),
+        ink(&replay, &mut PaintState::new())
+    );
+}
+
 fn check_history(edits: &[Edit], windows: bool) {
     use jade_docx_layout::line_metrics::{set_word_layout_platform, WordLayoutPlatform};
     let _restore = RestoreWordPlatform::mac();
@@ -391,6 +607,8 @@ fn check_history(edits: &[Edit], windows: bool) {
     let mut state = PaintState::new();
     let mut flags = [None; FLAGS.len()];
     let mut metrics = [None; METRICS.len()];
+    let mut strings = [None; RUN_TEXT.len()];
+    let mut fonts_present = false;
     let mut has_properties = false;
     let mut text = 0;
     for (step, edit) in std::iter::once(&Edit::Repaint).chain(edits).enumerate() {
@@ -409,7 +627,26 @@ fn check_history(edits: &[Edit], windows: bool) {
                 has_properties = true;
                 (METRICS[index].1)(paragraph.runs[0].properties.get_or_insert_default(), value);
             }
+            Edit::RunText(index, value) => {
+                strings[index] = value;
+                has_properties = true;
+                if (5..9).contains(&index) && value.is_some() {
+                    fonts_present = true;
+                }
+                (RUN_TEXT[index].1)(
+                    paragraph.runs[0].properties.get_or_insert_default(),
+                    value.map(|i| RUN_TEXT[index].2[i]),
+                );
+            }
+            Edit::ClearFonts => {
+                strings[5..9].fill(None);
+                fonts_present = false;
+                has_properties = true;
+                paragraph.runs[0].properties.get_or_insert_default().fonts = None;
+            }
             Edit::ClearProperties => {
+                strings.fill(None);
+                fonts_present = false;
                 flags.fill(None);
                 metrics.fill(None);
                 has_properties = false;
@@ -434,6 +671,12 @@ fn check_history(edits: &[Edit], windows: bool) {
             for ((_, setter, _), value) in METRICS.into_iter().zip(metrics) {
                 setter(&mut props, value);
             }
+            if fonts_present {
+                props.fonts = Some(RunFonts::default());
+            }
+            for ((_, setter, values), value) in RUN_TEXT.into_iter().zip(strings) {
+                setter(&mut props, value.map(|index| values[index]));
+            }
             paragraph.runs[0].properties = Some(props);
         }
         if !matches!(edit, Edit::Repaint) {
@@ -451,7 +694,7 @@ fn check_history(edits: &[Edit], windows: bool) {
         let (mut fresh, fresh_painter) = renderer_with_painter();
         fresh.render(&expected, &options).unwrap();
         let context =
-            format!("step {step}: {edit:?}, flags={flags:?}, metrics={metrics:?}, text={text}, windows={windows}");
+            format!("step {step}: {edit:?}, flags={flags:?}, metrics={metrics:?}, strings={strings:?}, fonts_present={fonts_present}, text={text}, windows={windows}");
         if step > 0 && matches!(edit, Edit::Repaint) {
             assert!(
                 warm.paragraph_render_cache_stats().hits > 0,
@@ -507,6 +750,32 @@ fn every_run_metric_survives_in_place_edits_and_restoration() {
                         Edit::Metric(index, Some(values[4])),
                         Edit::Metric(index, None),
                         Edit::Metric(index, Some(values[0])),
+                        Edit::ClearProperties,
+                        Edit::Repaint,
+                    ],
+                    windows,
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn every_run_text_field_survives_in_place_edits_and_restoration() {
+    for windows in [false, true] {
+        for text in 0..TEXTS.len() {
+            for index in 0..RUN_TEXT.len() {
+                check_history(
+                    &[
+                        Edit::Text(text),
+                        Edit::RunText(index, Some(0)),
+                        Edit::Repaint,
+                        Edit::RunText(index, Some(4)),
+                        Edit::RunText(index, None),
+                        Edit::Repaint,
+                        Edit::RunText(index, Some(0)),
+                        Edit::ClearFonts,
+                        Edit::Repaint,
                         Edit::ClearProperties,
                         Edit::Repaint,
                     ],
