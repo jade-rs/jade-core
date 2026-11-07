@@ -609,29 +609,7 @@ impl<'a> Model<'a> {
     }
 
     pub(crate) fn fn_improduct(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 2 {
-            return CalcResult::new_args_number_error(cell);
-        }
-
-        let (x1, y1, suffix) = match self.get_complex_number(&args[0], cell) {
-            Ok(s) => s,
-            Err(error) => return error,
-        };
-
-        let (x2, y2, suffix2) = match self.get_complex_number(&args[1], cell) {
-            Ok(s) => s,
-            Err(error) => return error,
-        };
-
-        if suffix != suffix2 {
-            return CalcResult::new_error(Error::VALUE, cell, "Different suffixes".to_string());
-        }
-        let complex = Complex {
-            x: x1 * x2 - y1 * y2,
-            y: x1 * y2 + y1 * x2,
-            suffix,
-        };
-        CalcResult::String(complex.to_string())
+        self.complex_scalar_aggregate(args, cell, true)
     }
     pub(crate) fn fn_imreal(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 1 {
@@ -778,26 +756,38 @@ impl<'a> Model<'a> {
     }
 
     pub(crate) fn fn_imsum(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 2 {
+        self.complex_scalar_aggregate(args, cell, false)
+    }
+
+    // Preserve scalar coercion/suffix policy; range aggregation needs native captures.
+    fn complex_scalar_aggregate(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+        product: bool,
+    ) -> CalcResult {
+        if !(1..=255).contains(&args.len()) {
             return CalcResult::new_args_number_error(cell);
         }
-        let (x1, y1, suffix) = match self.get_complex_number(&args[0], cell) {
-            Ok(s) => s,
+        let (mut x, mut y, suffix) = match self.get_complex_number(&args[0], cell) {
+            Ok(value) => value,
             Err(error) => return error,
         };
-        let (x2, y2, suffix2) = match self.get_complex_number(&args[1], cell) {
-            Ok(s) => s,
-            Err(error) => return error,
-        };
-        if suffix != suffix2 {
-            return CalcResult::new_error(Error::VALUE, cell, "Different suffixes".to_string());
+        for arg in &args[1..] {
+            let (next_x, next_y, next_suffix) = match self.get_complex_number(arg, cell) {
+                Ok(value) => value,
+                Err(error) => return error,
+            };
+            if suffix != next_suffix {
+                return CalcResult::new_error(Error::VALUE, cell, "Different suffixes".into());
+            }
+            (x, y) = if product {
+                (x * next_x - y * next_y, x * next_y + y * next_x)
+            } else {
+                (x + next_x, y + next_y)
+            };
         }
-        let complex = Complex {
-            x: x1 + x2,
-            y: y1 + y2,
-            suffix,
-        };
-        CalcResult::String(complex.to_string())
+        CalcResult::String(Complex { x, y, suffix }.to_string())
     }
 
     pub(crate) fn fn_imtan(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {

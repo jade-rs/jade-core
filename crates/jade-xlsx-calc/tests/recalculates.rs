@@ -7,6 +7,27 @@ use jade_xlsx_reader::{read_xlsx, CellRef, CellValue};
 use zip::write::SimpleFileOptions;
 
 #[test]
+fn complex_aggregates_accept_one_through_255_scalar_arguments() {
+    let ones = std::iter::repeat_n("1", 255).collect::<Vec<_>>().join(",");
+    for (function, expected, maximum) in [("IMSUM", "6+2i", "255"), ("IMPRODUCT", "6+12i", "1")] {
+        let single = format!(r#"{function}("1+2j")"#);
+        let three = format!(r#"{function}("1+2i",2,3)"#);
+        let full = format!("{function}({ones})");
+        let source_error = format!("{function}(1,2,#N/A)");
+        assert_formulas(
+            &[&single, &three, &full, &source_error],
+            &[
+                CellValue::Text("1+2j".into()),
+                CellValue::Text(expected.into()),
+                CellValue::Text(maximum.into()),
+                CellValue::Error("#N/A".into()),
+            ],
+            false,
+        );
+    }
+}
+
+#[test]
 fn complex_transcendentals_and_binary_operations_broadcast() {
     for (function, input, expected) in [
         ("IMCOS", 0, "1"),
