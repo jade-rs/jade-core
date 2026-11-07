@@ -7,6 +7,54 @@ use jade_xlsx_reader::{read_xlsx, CellRef, CellValue};
 use zip::write::SimpleFileOptions;
 
 #[test]
+fn conditional_aggregates_parse_numeric_criterion_spaces_without_trimming_text() {
+    let formulas = [
+        r#"COUNTIF(A1:A6,"< 20000")"#,
+        r#"COUNTIFS(A1:A6,"< 20000")"#,
+        r#"SUMIF(A1:A6,"< 20000",B1:B6)"#,
+        r#"SUMIFS(B1:B6,A1:A6,"< 20000")"#,
+        r#"AVERAGEIF(A1:A6,"< 20000",B1:B6)"#,
+        r#"AVERAGEIFS(B1:B6,A1:A6,"< 20000")"#,
+        r#"MAXIFS(B1:B6,A1:A6,"< 20000")"#,
+        r#"MINIFS(B1:B6,A1:A6,"< 20000")"#,
+        r#"COUNTIF(C1:C2,"= red ")"#,
+        r#"COUNTIF(C1:C2,"= * ")"#,
+    ];
+    let data = [10000, 15000, 19000, 17000, 20000, 30000];
+    let mut rows = String::new();
+    for (index, formula) in formulas.iter().enumerate() {
+        let r = index + 1;
+        rows.push_str(&format!("<row r=\"{r}\">"));
+        if let Some(number) = data.get(index) {
+            rows.push_str(&format!(
+                "<c r=\"A{r}\"><v>{number}</v></c><c r=\"B{r}\"><v>{r}</v></c>"
+            ));
+        }
+        if index < 2 {
+            let text = if index == 0 { " red " } else { "red" };
+            rows.push_str(&format!(
+                "<c r=\"C{r}\" t=\"inlineStr\"><is><t xml:space=\"preserve\">{text}</t></is></c>"
+            ));
+        }
+        let formula = formula.replace('&', "&amp;").replace('<', "&lt;");
+        rows.push_str(&format!("<c r=\"D{r}\"><f>{formula}</f></c></row>"));
+    }
+    let result = evaluate(&read_xlsx(&workbook(&sheet(&rows), None, false)).unwrap()).unwrap();
+    assert!(result.skipped.is_empty(), "{:?}", result.skipped);
+    for (index, expected) in [4.0, 4.0, 10.0, 10.0, 2.5, 2.5, 4.0, 1.0, 1.0, 1.0]
+        .into_iter()
+        .enumerate()
+    {
+        assert_eq!(
+            computed(&result, 0, &format!("D{}", index + 1)),
+            Some(&CellValue::Number(expected)),
+            "{}",
+            formulas[index]
+        );
+    }
+}
+
+#[test]
 fn financial_scalar_functions_broadcast_values_and_domain_errors() {
     for (values, expected, errors, invalid, singleton) in [
         (
