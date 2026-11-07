@@ -11456,7 +11456,19 @@
          }
      }
  
-@@ -1002,16 +1026,33 @@
+@@ -986,9 +1010,8 @@
+     }
+ 
+     // FORMULATEXT(reference)
+-    // Returns a formula as a string. Two differences with Excel:
+-    // - It returns the formula in English
+-    // - It formats the formula without spaces between elements
++    // Returns host-provided source text when available, with the canonical
++    // English formula as the fallback for engine-only cells.
+     pub(crate) fn fn_formulatext(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+         if args.len() != 1 {
+             return CalcResult::new_args_number_error(cell);
+@@ -1002,16 +1025,33 @@
                      message: "3D ranges not supported".to_string(),
                  };
              }
@@ -11500,7 +11512,7 @@
              } else {
                  CalcResult::Error {
                      error: Error::NA,
-@@ -1021,7 +1062,7 @@
+@@ -1021,7 +1061,7 @@
              }
          } else {
              CalcResult::Error {
@@ -20279,8 +20291,8 @@
  }
  
  impl<'a> Model<'a> {
-+    /// Sets original formula text for information functions when a host holds
-+    /// the calculated value as a literal. Pass None when replacing that cell.
++    /// Sets original display formula text for information functions, including
++    /// parsed formulas and values a host holds as literals. Clear on replacement.
 +    pub fn set_source_formula(
 +        &mut self,
 +        sheet: u32,

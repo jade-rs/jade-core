@@ -7,6 +7,56 @@ use jade_xlsx_reader::{read_xlsx, CellRef, CellValue};
 use zip::write::SimpleFileOptions;
 
 #[test]
+fn parsed_formula_source_spelling_survives_cache_and_kept_recalculation() {
+    let xml = sheet(
+        r#"<row r="1"><c r="A1"><v>2</v></c><c r="B1"><f>SUM(A1, 3)</f><v>5</v></c><c r="C1"><f>FORMULATEXT(B1)</f></c><c r="D1"><f>_xlfn.XLOOKUP(A1, A1:A1, B1:B1)</f><v>5</v></c><c r="E1"><f>FORMULATEXT(D1)</f></c></row>"#,
+    );
+    let mut book = read_xlsx(&workbook(&xml, None, false)).unwrap();
+    for _ in 0..2 {
+        let result = evaluate(&book).unwrap();
+        assert!(result.skipped.is_empty());
+        assert_eq!(
+            computed(&result, 0, "C1"),
+            Some(&CellValue::Text("=SUM(A1, 3)".into()))
+        );
+        assert_eq!(
+            computed(&result, 0, "E1"),
+            Some(&CellValue::Text("=XLOOKUP(A1, A1:A1, B1:B1)".into()))
+        );
+    }
+    let manual = Default::default();
+    let (_, session) = jade_xlsx_calc::evaluate_keeping(&book, "UTC", &manual).unwrap();
+    let mut session = session.expect("scalar formulas can keep their calculation model");
+    book.sheets[0]
+        .cell_at_mut(CellRef::new(0, 0))
+        .unwrap()
+        .value = CellValue::Number(4.0);
+    let result = jade_xlsx_calc::reevaluate(
+        &mut session,
+        &book,
+        "UTC",
+        &manual,
+        &[(0, CellRef::new(0, 0), CellValue::Number(4.0))],
+    )
+    .unwrap()
+    .unwrap();
+    assert_eq!(computed(&result, 0, "B1"), Some(&CellValue::Number(7.0)));
+    assert_eq!(
+        computed(&result, 0, "C1"),
+        Some(&CellValue::Text("=SUM(A1, 3)".into()))
+    );
+    book.sheets[0]
+        .cell_at_mut(CellRef::new(1, 0))
+        .unwrap()
+        .formula = Some("SUM(A1,  3)".into());
+    let result = evaluate(&book).unwrap();
+    assert_eq!(
+        computed(&result, 0, "C1"),
+        Some(&CellValue::Text("=SUM(A1,  3)".into()))
+    );
+}
+
+#[test]
 fn conditional_aggregates_parse_numeric_criterion_spaces_without_trimming_text() {
     let formulas = [
         r#"COUNTIF(A1:A6,"< 20000")"#,
@@ -4859,6 +4909,8 @@ fn structured_references_to_a_table_recalculate() {
     for (reference, formula) in [
         ("E1", "SUM(Table1[Qty])"),
         ("E2", "Table1[[#Totals],[Amount]]*2"),
+        ("F1", "FORMULATEXT(E1)"),
+        ("F2", "FORMULATEXT(E2)"),
     ] {
         let reference = CellRef::parse(reference).expect("reference");
         workbook.sheets[0]
@@ -4879,6 +4931,14 @@ fn structured_references_to_a_table_recalculate() {
     assert_eq!(computed(&outcome, 0, "C5"), Some(&CellValue::Number(749.0)));
     assert_eq!(computed(&outcome, 0, "E1"), Some(&CellValue::Number(6.0)));
     assert_eq!(
+        computed(&outcome, 0, "F1"),
+        Some(&CellValue::Text("=SUM(Table1[Qty])".into()))
+    );
+    assert_eq!(
+        computed(&outcome, 0, "F2"),
+        Some(&CellValue::Text("=Table1[[#Totals],[Amount]]*2".into()))
+    );
+    assert_eq!(
         computed(&outcome, 0, "E2"),
         Some(&CellValue::Number(1498.0))
     );
@@ -4893,6 +4953,10 @@ fn structured_references_to_a_table_recalculate() {
     cell.value = CellValue::Number(199.0);
     let outcome = evaluate(&workbook).expect("evaluate");
     assert_eq!(computed(&outcome, 0, "C5"), Some(&CellValue::Number(849.0)));
+    assert_eq!(
+        computed(&outcome, 0, "F2"),
+        Some(&CellValue::Text("=Table1[[#Totals],[Amount]]*2".into()))
+    );
     assert_eq!(
         computed(&outcome, 0, "E2"),
         Some(&CellValue::Number(1698.0))

@@ -732,6 +732,17 @@ fn project_with_epoch<'a>(
                         )
                     });
                     if set.is_ok() {
+                        model.set_source_formula(
+                            engine_sheet,
+                            engine_row,
+                            engine_column,
+                            Some(format!(
+                                "={}",
+                                formula_text::to_display_formula(
+                                    formula.strip_prefix('=').unwrap_or(formula)
+                                )
+                            )),
+                        );
                         if workbook.iteration.enabled {
                             // Iterative calculation goes on from the value
                             // the formula was saved with.
