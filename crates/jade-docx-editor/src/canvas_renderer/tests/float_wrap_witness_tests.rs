@@ -51,9 +51,10 @@ fn local_text_edits_revalidate_each_float_witness_without_scanning_the_document(
             assert_eq!(Rc::strong_count(document), 1);
             assert_eq!(Rc::weak_count(document), 0);
             let address = Rc::as_ptr(document);
-            model.paragraph_mut(0).unwrap().runs[0].text.push('x');
+            let edited = if step == 1 && kind != 2 { 3000 } else { 0 };
+            model.paragraph_mut(edited).unwrap().runs[0].text.push('x');
             assert_eq!(Rc::as_ptr(model.document.as_ref().unwrap()), address);
-            renderer.restore_local_text_edit_cache(cache, &model, 0);
+            renderer.restore_local_text_edit_cache(cache, &model, edited);
             assert!(renderer
                 .horizontal_float_wrap_cache
                 .get(model.document.as_ref().unwrap()));
