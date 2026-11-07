@@ -3,6 +3,82 @@ use jade_xlsx_headless_api::CellInput;
 use jade_xlsx_headless_editor::HeadlessWorkbook;
 
 #[test]
+fn complex_transcendental_ranges_follow_history_and_saved_text_types() {
+    for (formula, input, expected) in [
+        ("IMCOS(B1:B2)", "0", 1.0),
+        ("IMCOSH(B1:B2)", "0", 1.0),
+        ("IMCOT(B1:B2)", "1", 0.642093),
+        ("IMCSC(B1:B2)", "1", 1.188395),
+        ("IMCSCH(B1:B2)", "1", 0.850918),
+        ("IMEXP(B1:B2)", "0", 1.0),
+        ("IMLN(B1:B2)", "1", 0.0),
+        ("IMLOG10(B1:B2)", "10", 1.0),
+        ("IMLOG2(B1:B2)", "2", 1.0),
+        ("IMSEC(B1:B2)", "0", 1.0),
+        ("IMSECH(B1:B2)", "0", 1.0),
+        ("IMSIN(B1:B2)", "0", 0.0),
+        ("IMSINH(B1:B2)", "0", 0.0),
+        ("IMSQRT(B1:B2)", "4", 2.0),
+        ("IMTAN(B1:B2)", "0", 0.0),
+        ("IMDIV(B1:B2,{1,2})", "2+4i", 2.0),
+        ("IMSUB(B1:B2,{1,2})", "2+4i", 1.0),
+        ("IMPOWER(B1:B2,{2,3})", "2", 4.0),
+    ] {
+        let mut package = OpcPackage::open(include_bytes!(
+            "../../../public/fixtures/sample-workbook.xlsx"
+        ))
+        .unwrap();
+        package.replace("xl/worksheets/sheet1.xml", br#"<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData/></worksheet>"#.to_vec());
+        let mut book = HeadlessWorkbook::open_for_editing(&package.write().unwrap()).unwrap();
+        let name = "売上サマリ";
+        book.set(name, "B1", CellInput::Error("#N/A".into()))
+            .unwrap();
+        book.set(name, "B2", CellInput::Text(input.into())).unwrap();
+        book.set(name, "F1", CellInput::Formula(formula.into()))
+            .unwrap();
+        book.set(
+            name,
+            "J1",
+            CellInput::Formula("ROUND(IMREAL(F1#),6)".into()),
+        )
+        .unwrap();
+        assert_eq!(book.cell(name, "F1").unwrap().display, "#N/A", "{formula}");
+        assert_eq!(
+            book.cell(name, "J2").unwrap().number,
+            Some(expected),
+            "{formula}"
+        );
+        let text = book.cell(name, "F2").unwrap().display;
+        assert_eq!(book.cell(name, "F2").unwrap().number, None);
+        book.set(name, "B1", CellInput::Text(input.into())).unwrap();
+        assert_eq!(book.cell(name, "F1").unwrap().display, text, "{formula}");
+        book.undo().unwrap();
+        assert_eq!(book.cell(name, "F1").unwrap().display, "#N/A");
+        book.redo().unwrap();
+        assert_eq!(book.cell(name, "F1").unwrap().display, text);
+        book.undo().unwrap();
+        let saved = book.save_bytes().unwrap();
+        for reopened in [
+            HeadlessWorkbook::open(&saved).unwrap(),
+            HeadlessWorkbook::open_for_editing(&saved).unwrap(),
+        ] {
+            assert_eq!(reopened.cell(name, "F1").unwrap().display, "#N/A");
+            assert_eq!(
+                reopened.cell(name, "F2").unwrap().display,
+                text,
+                "{formula}"
+            );
+            assert_eq!(reopened.cell(name, "F2").unwrap().number, None);
+            assert_eq!(
+                reopened.cell(name, "J2").unwrap().number,
+                Some(expected),
+                "{formula}"
+            );
+        }
+    }
+}
+
+#[test]
 fn complex_component_ranges_follow_edits_history_and_saved_types() {
     for (formula, first, second) in [
         ("IMABS(B1:B2)", "5", "13"),
