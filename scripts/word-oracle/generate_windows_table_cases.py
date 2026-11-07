@@ -130,7 +130,7 @@ def negative_spacing_grid(widths, spacing='', row_scope=None):
     return '<w:tbl><w:tblPr><w:tblW w:w="6000" w:type="dxa"/><w:tblLayout w:type="fixed"/>' + spacing + '<w:tblBorders>' + border + '</w:tblBorders><w:tblCellMar>' + margins + '</w:tblCellMar></w:tblPr><w:tblGrid>' + ''.join(f'<w:gridCol w:w="{width}"/>' for width in widths) + '</w:tblGrid>' + ''.join(rows) + '</w:tbl>'
 
 
-def negative_spacing_column_sweep(count, weights=None):
+def negative_spacing_column_sweep(count, weights=None, variant=None):
     widths = [6000 // count] * count if weights is None else [6000 * weight // sum(weights) for weight in weights]
     body = []
     forms = [('omitted', ''), ('nil', '<w:tblCellSpacing w:w="0" w:type="nil"/>'), ('zero', '<w:tblCellSpacing w:w="0" w:type="dxa"/>')]
@@ -139,7 +139,15 @@ def negative_spacing_column_sweep(count, weights=None):
         body.append(m.para(m.run(f'Columns {count} spacing {name}')))
         body.append(negative_spacing_grid(widths, spacing))
     kind = 'columns' if weights is None else 'unequal'
-    m.write(f'table-negative-spacing-{kind}-{count}-compat14', ''.join(body), 14)
+    content = ''.join(body)
+    if variant == 'autofit':
+        content = content.replace('<w:tblLayout w:type="fixed"/>', '<w:tblLayout w:type="autofit"/>')
+    elif variant == 'bidi':
+        content = content.replace('<w:tblPr>', '<w:tblPr><w:bidiVisual/>')
+    elif variant is not None:
+        raise ValueError(f'Unknown negative-spacing variant: {variant}')
+    prefix = '' if variant is None else variant + '-'
+    m.write(f'table-negative-spacing-{prefix}{kind}-{count}-compat14', content, 14)
 
 
 def negative_spacing_row_scope_sweep():
@@ -187,3 +195,5 @@ if __name__ == '__main__':
     for weights in [(1, 3), (1, 2, 3), (1, 3, 2, 4)]:
         negative_spacing_column_sweep(len(weights), weights)
     negative_spacing_row_scope_sweep()
+    for variant in ['autofit', 'bidi']:
+        negative_spacing_column_sweep(3, (1, 2, 3), variant)

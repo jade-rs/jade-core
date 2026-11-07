@@ -7338,6 +7338,10 @@ fn compute_inline_body_table_x_inner(
     }
     let first_row = table.rows.iter().find(|row| !table_row_is_hidden(row));
     let separated = first_row.is_some_and(|row| row_uses_separate_cell_borders(row, table));
+    // An explicit zero DXA selects separate borders without a physical gap.
+    // Unlike a positive gap, it still hangs a legacy bidi table by its inset.
+    let positive_spacing =
+        first_row.is_some_and(|row| resolve_cell_spacing_px(row, table) > f64::EPSILON);
     let ignored_indent = table
         .style
         .get("table-indent-width-type")
@@ -7368,7 +7372,8 @@ fn compute_inline_body_table_x_inner(
         || (table.bidi_visual
             && (leading_text_inset == 0.0 || table.style.contains_key("margin-left")))
         || ignored_indent
-        || (separated && (table.bidi_visual || table.style.contains_key("margin-left")))
+        || (separated
+            && (table.style.contains_key("margin-left") || (table.bidi_visual && positive_spacing)))
         || table
             .style
             .get("margin-left")
@@ -7963,7 +7968,7 @@ fn apply_preferred_column_widths(
 /// the authored table extent while matching measured unequal-column positions.
 /// Mac retains its numeric spacing and column sizing policies.
 fn adjust_windows_negative_spacing_columns(table: &Table, widths: &mut [f64]) {
-    if widths.len() < 2 || resolve_table_layout_mode(table) != TableLayoutMode::Fixed {
+    if widths.len() < 2 {
         return;
     }
     let signed = |value: Option<f32>, style: &crate::document::StyleMap, key| {
@@ -19502,52 +19507,56 @@ mod tests {
         };
         let previous = word_layout_platform();
         for scope in ["table", "first-direct", "first-exception", "second-direct"] {
-            for twips in [-20, -40, -80] {
-                let mut table = Table {
-                    table_layout: Some(TableLayoutMode::Fixed),
-                    rows: vec![
-                        TableRow {
-                            cells: vec![TableCell::default(); 3],
-                            ..Default::default()
-                        };
-                        2
-                    ],
-                    ..Default::default()
-                };
-                let raw = format!("dxa:{twips}");
-                match scope {
-                    "table" => {
-                        table.style.insert("-jade-cell-spacing".into(), raw);
-                        table.cell_spacing = Some(0.0);
+            for layout_mode in [TableLayoutMode::Fixed, TableLayoutMode::Autofit] {
+                for twips in [-20, -40, -80] {
+                    let mut table = Table {
+                        table_layout: Some(layout_mode),
+                        rows: vec![
+                            TableRow {
+                                cells: vec![TableCell::default(); 3],
+                                ..Default::default()
+                            };
+                            2
+                        ],
+                        ..Default::default()
+                    };
+                    let raw = format!("dxa:{twips}");
+                    match scope {
+                        "table" => {
+                            table.style.insert("-jade-cell-spacing".into(), raw);
+                            table.cell_spacing = Some(0.0);
+                        }
+                        "first-exception" => {
+                            table.rows[0]
+                                .style
+                                .insert("-jade-cell-spacing-exception".into(), raw);
+                            table.rows[0].cell_spacing_exception = Some(0.0);
+                        }
+                        _ => {
+                            let row = usize::from(scope == "second-direct");
+                            table.rows[row]
+                                .style
+                                .insert("-jade-cell-spacing".into(), raw);
+                            table.rows[row].cell_spacing = Some(0.0);
+                        }
                     }
-                    "first-exception" => {
-                        table.rows[0]
-                            .style
-                            .insert("-jade-cell-spacing-exception".into(), raw);
-                        table.rows[0].cell_spacing_exception = Some(0.0);
-                    }
-                    _ => {
-                        let row = usize::from(scope == "second-direct");
-                        table.rows[row]
-                            .style
-                            .insert("-jade-cell-spacing".into(), raw);
-                        table.rows[row].cell_spacing = Some(0.0);
-                    }
+                    let original = vec![100.0, 200.0, 300.0];
+                    set_word_layout_platform(WordLayoutPlatform::Mac);
+                    let mut mac = original.clone();
+                    adjust_windows_negative_spacing_columns(&table, &mut mac);
+                    assert_eq!(mac, original, "Mac changed for {scope}/{twips}");
+                    set_word_layout_platform(WordLayoutPlatform::Windows);
+                    let mut windows = original.clone();
+                    adjust_windows_negative_spacing_columns(&table, &mut windows);
+                    assert!(
+                        (windows.iter().sum::<f64>() - original.iter().sum::<f64>()).abs() < 1e-9
+                    );
+                    assert_eq!(
+                        windows == original,
+                        scope == "second-direct",
+                        "first-row scope: {scope}/{twips}"
+                    );
                 }
-                let original = vec![100.0, 200.0, 300.0];
-                set_word_layout_platform(WordLayoutPlatform::Mac);
-                let mut mac = original.clone();
-                adjust_windows_negative_spacing_columns(&table, &mut mac);
-                assert_eq!(mac, original, "Mac changed for {scope}/{twips}");
-                set_word_layout_platform(WordLayoutPlatform::Windows);
-                let mut windows = original.clone();
-                adjust_windows_negative_spacing_columns(&table, &mut windows);
-                assert!((windows.iter().sum::<f64>() - original.iter().sum::<f64>()).abs() < 1e-9);
-                assert_eq!(
-                    windows == original,
-                    scope == "second-direct",
-                    "first-row scope: {scope}/{twips}"
-                );
             }
         }
         set_word_layout_platform(previous);
