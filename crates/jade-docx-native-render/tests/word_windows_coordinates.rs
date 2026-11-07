@@ -118,11 +118,13 @@ fn spaced_tables_preserve_origins_after_edit_export_and_undo() {
     });
     for platform in [WordLayoutPlatform::Mac, WordLayoutPlatform::Windows] {
         set_word_layout_platform(platform);
-        for (fixture, expected_page) in [
-            ("table-spacing-continuation-compat14", 1),
-            ("table-spacing-auto-compat14", 0),
-            ("table-spacing-at-least-continuation-compat14", 1),
-            ("table-spacing-mixed-borders-compat14", 0),
+        for (fixture, paragraph, expected_page) in [
+            ("table-spacing-continuation-compat14", 13, 1),
+            ("table-spacing-auto-compat14", 13, 0),
+            ("table-spacing-at-least-continuation-compat14", 13, 1),
+            ("table-spacing-mixed-borders-compat14", 13, 0),
+            ("table-collapsed-implicit-mixed-borders-compat14", 53, 0),
+            ("table-spacing-nil-mixed-borders-compat14", 53, 0),
         ] {
             let bytes = std::fs::read(repo_path(&format!(
                 "public/fixtures/word-windows-edge-{fixture}.docx"
@@ -131,7 +133,6 @@ fn spaced_tables_preserve_origins_after_edit_export_and_undo() {
             let mut doc = NativeDocument::open(&bytes, 816.0, 1056.0, &faces).unwrap();
             let mut before = all_glyphs(&mut doc);
             spatial_order(&mut before);
-            let paragraph = 13;
             assert_eq!(doc.paragraph_text(paragraph).as_deref(), Some("R3C1 alpha"));
             let caret = doc.place_caret(paragraph, 0).unwrap();
             let page = doc.page_and_offset(caret.document_y).0;

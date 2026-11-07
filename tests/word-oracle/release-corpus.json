@@ -1042,6 +1042,54 @@
     {
       "fixture": "word-windows-edge-table-spacing-hairline-borders-compat15",
       "docx_sha256": "7b7020d50e9c5d0eb5ddbe512a1f513bc0c464a7fdae2c848808471ef0afd346"
+    },
+    {
+      "fixture": "word-windows-edge-table-collapsed-implicit-mixed-borders-compat12",
+      "docx_sha256": "76ccb9048fafac10b73703b28a25059b97fb3961c3ab0f2443892fbaf937c890"
+    },
+    {
+      "fixture": "word-windows-edge-table-collapsed-implicit-mixed-borders-compat14",
+      "docx_sha256": "08572e1ece7a4f2f77768d7af1831ee42e8dcbbba799a26be66e74cb96233153"
+    },
+    {
+      "fixture": "word-windows-edge-table-collapsed-implicit-mixed-borders-compat15",
+      "docx_sha256": "dd4c15594d13e4fbd0f3f61c43e15d6c6863752260103be1ee3fdfe6dbe4204d"
+    },
+    {
+      "fixture": "word-windows-edge-table-spacing-auto-mixed-borders-compat12",
+      "docx_sha256": "f5422e652059f14b3f858bf5a87aa34ff98037e155947f53541843379b2e790a"
+    },
+    {
+      "fixture": "word-windows-edge-table-spacing-auto-mixed-borders-compat14",
+      "docx_sha256": "1a1c09f2e29b31a2467a4b2c4a6f9357dd42907a48a67b064920c2bf2d6bc784"
+    },
+    {
+      "fixture": "word-windows-edge-table-spacing-auto-mixed-borders-compat15",
+      "docx_sha256": "3f68333a2eb055146c1e47a75d75cd3320ec85085f60f9dec972066ff970bd03"
+    },
+    {
+      "fixture": "word-windows-edge-table-spacing-nil-mixed-borders-compat12",
+      "docx_sha256": "85731f191f84424ac7b920cc5db3a2b0d1d6e9b70a7265a2e80dbc81e92536a9"
+    },
+    {
+      "fixture": "word-windows-edge-table-spacing-nil-mixed-borders-compat14",
+      "docx_sha256": "dbd9d720ee49fe215bff76de35dad104b07c1fa3ad9f7847f43d2eb89001da48"
+    },
+    {
+      "fixture": "word-windows-edge-table-spacing-nil-mixed-borders-compat15",
+      "docx_sha256": "6cc84a3cdad1e78171e0f820d9dbbd9fd520d962d76163ae75a6e2f36e769d84"
+    },
+    {
+      "fixture": "word-windows-edge-table-spacing-percent-mixed-borders-compat12",
+      "docx_sha256": "9c80645d747acf6e264f84c120f8e7aa52a78be61cccf1b4b866fdf9e7e46050"
+    },
+    {
+      "fixture": "word-windows-edge-table-spacing-percent-mixed-borders-compat14",
+      "docx_sha256": "ae30e8c2e696cc7b68fd8df1386b41c28cca3cbb9712452353844b70c7c72ebe"
+    },
+    {
+      "fixture": "word-windows-edge-table-spacing-percent-mixed-borders-compat15",
+      "docx_sha256": "fe2d4ed56f53811218bfc36f0d3a770b52299318c97e1c77c3dcb4b106d9d249"
     }
   ]
 }
