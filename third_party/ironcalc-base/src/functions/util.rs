@@ -371,6 +371,8 @@ fn result_is_equal_to_empty(calc_result: &CalcResult) -> bool {
 /// it as a date and, on success, fall back to numeric comparison against the
 /// resulting Excel serial. This is what lets COUNTIF/SUMIF/AVERAGEIF (and the
 /// *IFS variants) match date-serial cells with date-string criteria.
+/// ASCII spaces pad numeric operands (for example `< 20000`). Strip them only
+/// for numeric parsing; text and wildcard criteria retain their original spaces.
 pub(crate) fn build_criteria<'a>(
     value: &'a CalcResult,
     locale: &'a Locale,
@@ -379,7 +381,7 @@ pub(crate) fn build_criteria<'a>(
         CalcResult::String(s) => {
             if let Some(v) = s.strip_prefix("<=") {
                 // TODO: I am not implementing <= ERROR or <= BOOLEAN
-                if let Ok(f) = v.parse::<f64>() {
+                if let Ok(f) = v.trim_matches(' ').parse::<f64>() {
                     Box::new(move |x| result_is_less_or_equal_than_number(x, f))
                 } else if v.is_empty() {
                     Box::new(move |_x| false)
@@ -390,7 +392,7 @@ pub(crate) fn build_criteria<'a>(
                 }
             } else if let Some(v) = s.strip_prefix(">=") {
                 // TODO: I am not implementing >= ERROR or >= BOOLEAN
-                if let Ok(f) = v.parse::<f64>() {
+                if let Ok(f) = v.trim_matches(' ').parse::<f64>() {
                     Box::new(move |x| result_is_greater_or_equal_than_number(x, f))
                 } else if v.is_empty() {
                     Box::new(move |_x| false)
@@ -400,7 +402,7 @@ pub(crate) fn build_criteria<'a>(
                     Box::new(move |x| result_is_greater_or_equal_than_string(x, &v.to_lowercase()))
                 }
             } else if let Some(v) = s.strip_prefix("<>") {
-                if let Ok(f) = v.parse::<f64>() {
+                if let Ok(f) = v.trim_matches(' ').parse::<f64>() {
                     Box::new(move |x| result_is_not_equal_to_number(x, f))
                 } else if let Ok(b) = v.to_lowercase().parse::<bool>() {
                     Box::new(move |x| result_is_not_equal_to_bool(x, b))
@@ -421,7 +423,7 @@ pub(crate) fn build_criteria<'a>(
                 }
             } else if let Some(v) = s.strip_prefix('<') {
                 // TODO: I am not implementing < ERROR or < BOOLEAN
-                if let Ok(f) = v.parse::<f64>() {
+                if let Ok(f) = v.trim_matches(' ').parse::<f64>() {
                     Box::new(move |x| result_is_less_than_number(x, f))
                 } else if v.is_empty() {
                     Box::new(move |_x| false)
@@ -432,7 +434,7 @@ pub(crate) fn build_criteria<'a>(
                 }
             } else if let Some(v) = s.strip_prefix('>') {
                 // TODO: I am not implementing > ERROR or > BOOLEAN
-                if let Ok(f) = v.parse::<f64>() {
+                if let Ok(f) = v.trim_matches(' ').parse::<f64>() {
                     Box::new(move |x| result_is_greater_than_number(x, f))
                 } else if v.is_empty() {
                     Box::new(move |_x| false)
@@ -447,7 +449,7 @@ pub(crate) fn build_criteria<'a>(
                 } else {
                     s
                 };
-                if let Ok(f) = v.parse::<f64>() {
+                if let Ok(f) = v.trim_matches(' ').parse::<f64>() {
                     Box::new(move |x| result_is_equal_to_number(x, f))
                 } else if let Ok(b) = v.to_lowercase().parse::<bool>() {
                     Box::new(move |x| result_is_equal_to_bool(x, b))

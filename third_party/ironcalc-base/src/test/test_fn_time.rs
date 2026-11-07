@@ -711,6 +711,23 @@ fn date_and_time_broadcast_check_product_size_before_allocating_the_result() {
     for index in 0..2 {
         assert_eq!(model._get_text(&format!("A{}", 67 + index)), "#ERROR!");
     }
+    for (index, formula) in [
+        "SLN(SEQUENCE(1001,1,1),0,SEQUENCE(1,1001,1))",
+        "SYD(SEQUENCE(1001,1,1),0,100,SEQUENCE(1,1001,1))",
+        "EFFECT(SEQUENCE(1001,1,1),SEQUENCE(1,1001,1))",
+        "NOMINAL(SEQUENCE(1001,1,1),SEQUENCE(1,1001,1))",
+        "RRI(SEQUENCE(1001,1,1),1,SEQUENCE(1,1001,1))",
+        "PDURATION(SEQUENCE(1001,1,1),1,SEQUENCE(1,1001,1))",
+    ]
+    .iter()
+    .enumerate()
+    {
+        model._set(&format!("A{}", 69 + index), &format!("={formula}"));
+    }
+    model.evaluate();
+    for index in 0..6 {
+        assert_eq!(model._get_text(&format!("A{}", 69 + index)), "#ERROR!");
+    }
 }
 
 #[test]

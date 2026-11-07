@@ -1010,9 +1010,8 @@ impl<'a> Model<'a> {
     }
 
     // FORMULATEXT(reference)
-    // Returns a formula as a string. Two differences with Excel:
-    // - It returns the formula in English
-    // - It formats the formula without spaces between elements
+    // Returns host-provided source text when available, with the canonical
+    // English formula as the fallback for engine-only cells.
     pub(crate) fn fn_formulatext(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);

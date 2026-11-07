@@ -1,5 +1,41 @@
 use jade_opc::OpcPackage;
+use jade_xlsx_headless_api::CellInput;
 use jade_xlsx_headless_editor::HeadlessWorkbook;
+
+#[test]
+fn parsed_formula_text_keeps_source_spacing_through_edits_history_and_save() {
+    let mut package = OpcPackage::open(include_bytes!(
+        "../../../public/fixtures/sample-workbook.xlsx"
+    ))
+    .unwrap();
+    package.replace("xl/worksheets/sheet1.xml",br#"<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData><row r="1"><c r="A1"><v>2</v></c><c r="B1"><f>SUM(A1, 3)</f><v>5</v></c><c r="C1"><f>FORMULATEXT(B1)</f></c></row></sheetData></worksheet>"#.to_vec());
+    let mut book = HeadlessWorkbook::open_for_editing(&package.write().unwrap()).unwrap();
+    let name = "売上サマリ";
+    assert_eq!(book.cell(name, "C1").unwrap().display, "=SUM(A1, 3)");
+    book.set(name, "B1", CellInput::Formula("SUM(A1,  4)".into()))
+        .unwrap();
+    assert_eq!(book.cell(name, "C1").unwrap().display, "=SUM(A1,  4)");
+    book.undo().unwrap();
+    assert_eq!(book.cell(name, "C1").unwrap().display, "=SUM(A1, 3)");
+    book.redo().unwrap();
+    assert_eq!(book.cell(name, "C1").unwrap().display, "=SUM(A1,  4)");
+    book.set(name, "A1", CellInput::Number(3.0)).unwrap();
+    assert_eq!(book.cell(name, "B1").unwrap().number, Some(7.0));
+    assert_eq!(book.cell(name, "C1").unwrap().display, "=SUM(A1,  4)");
+    book.set(name, "B1", CellInput::Number(6.0)).unwrap();
+    assert_eq!(book.cell(name, "C1").unwrap().display, "#N/A");
+    book.undo().unwrap();
+    assert_eq!(book.cell(name, "B1").unwrap().number, Some(7.0));
+    assert_eq!(book.cell(name, "C1").unwrap().display, "=SUM(A1,  4)");
+    let saved = book.save_bytes().unwrap();
+    for reopened in [
+        HeadlessWorkbook::open(&saved).unwrap(),
+        HeadlessWorkbook::open_for_editing(&saved).unwrap(),
+    ] {
+        assert_eq!(reopened.cell(name, "C1").unwrap().display, "=SUM(A1,  4)");
+        assert_eq!(reopened.cell(name, "B1").unwrap().number, Some(7.0));
+    }
+}
 
 #[test]
 fn hidden_source_formulas_follow_protection_inheritance_history_and_save() {

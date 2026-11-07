@@ -1182,39 +1182,41 @@ impl<'a> Model<'a> {
         if args.len() != 3 {
             return CalcResult::new_args_number_error(cell);
         }
-        let nper = match self.get_number(&args[0], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let pv = match self.get_number(&args[1], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let fv = match self.get_number(&args[2], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        if nper <= 0.0 {
-            return CalcResult::new_error(Error::NUM, cell, "nper should be >0".to_string());
-        }
-        // When the value is unchanged the rate is zero (this also covers the
-        // pv == fv == 0 case, which Excel returns as 0 rather than an error).
-        if fv == pv {
-            return CalcResult::Number(0.0);
-        }
-        if pv == 0.0 {
-            // Note error is NUM not DIV/0 also bellow
-            return CalcResult::new_error(Error::NUM, cell, "Division by 0".to_string());
-        }
-        let result = (fv / pv).powf(1.0 / nper) - 1.0;
-        if result.is_infinite() {
-            return CalcResult::new_error(Error::NUM, cell, "Division by 0".to_string());
-        }
-        if result.is_nan() {
-            return CalcResult::new_error(Error::NUM, cell, "Invalid data for RRI".to_string());
-        }
+        self.map_scalar_arguments(args, cell, |model, values| {
+            let nper = match model.cast_to_number(values[0].clone(), cell) {
+                Ok(f) => f,
+                Err(s) => return s,
+            };
+            let pv = match model.cast_to_number(values[1].clone(), cell) {
+                Ok(f) => f,
+                Err(s) => return s,
+            };
+            let fv = match model.cast_to_number(values[2].clone(), cell) {
+                Ok(f) => f,
+                Err(s) => return s,
+            };
+            if nper <= 0.0 {
+                return CalcResult::new_error(Error::NUM, cell, "nper should be >0".to_string());
+            }
+            // When the value is unchanged the rate is zero (this also covers the
+            // pv == fv == 0 case, which Excel returns as 0 rather than an error).
+            if fv == pv {
+                return CalcResult::Number(0.0);
+            }
+            if pv == 0.0 {
+                // Note error is NUM not DIV/0 also bellow
+                return CalcResult::new_error(Error::NUM, cell, "Division by 0".to_string());
+            }
+            let result = (fv / pv).powf(1.0 / nper) - 1.0;
+            if result.is_infinite() {
+                return CalcResult::new_error(Error::NUM, cell, "Division by 0".to_string());
+            }
+            if result.is_nan() {
+                return CalcResult::new_error(Error::NUM, cell, "Invalid data for RRI".to_string());
+            }
 
-        CalcResult::Number(result)
+            CalcResult::Number(result)
+        })
     }
 
     // SLN(cost, salvage, life)
@@ -1224,24 +1226,26 @@ impl<'a> Model<'a> {
         if args.len() != 3 {
             return CalcResult::new_args_number_error(cell);
         }
-        let cost = match self.get_number(&args[0], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let salvage = match self.get_number(&args[1], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let life = match self.get_number(&args[2], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        if life == 0.0 {
-            return CalcResult::new_error(Error::DIV, cell, "Division by 0".to_string());
-        }
-        let result = (cost - salvage) / life;
+        self.map_scalar_arguments(args, cell, |model, values| {
+            let cost = match model.cast_to_number(values[0].clone(), cell) {
+                Ok(f) => f,
+                Err(s) => return s,
+            };
+            let salvage = match model.cast_to_number(values[1].clone(), cell) {
+                Ok(f) => f,
+                Err(s) => return s,
+            };
+            let life = match model.cast_to_number(values[2].clone(), cell) {
+                Ok(f) => f,
+                Err(s) => return s,
+            };
+            if life == 0.0 {
+                return CalcResult::new_error(Error::DIV, cell, "Division by 0".to_string());
+            }
+            let result = (cost - salvage) / life;
 
-        CalcResult::Number(result)
+            CalcResult::Number(result)
+        })
     }
 
     // SYD(cost, salvage, life, per)
@@ -1251,31 +1255,37 @@ impl<'a> Model<'a> {
         if args.len() != 4 {
             return CalcResult::new_args_number_error(cell);
         }
-        let cost = match self.get_number(&args[0], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let salvage = match self.get_number(&args[1], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let life = match self.get_number(&args[2], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let per = match self.get_number(&args[3], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        if life == 0.0 {
-            return CalcResult::new_error(Error::NUM, cell, "Division by 0".to_string());
-        }
-        if per > life || per <= 0.0 {
-            return CalcResult::new_error(Error::NUM, cell, "per should be <= life".to_string());
-        }
-        let result = ((cost - salvage) * (life - per + 1.0) * 2.0) / (life * (life + 1.0));
+        self.map_scalar_arguments(args, cell, |model, values| {
+            let cost = match model.cast_to_number(values[0].clone(), cell) {
+                Ok(f) => f,
+                Err(s) => return s,
+            };
+            let salvage = match model.cast_to_number(values[1].clone(), cell) {
+                Ok(f) => f,
+                Err(s) => return s,
+            };
+            let life = match model.cast_to_number(values[2].clone(), cell) {
+                Ok(f) => f,
+                Err(s) => return s,
+            };
+            let per = match model.cast_to_number(values[3].clone(), cell) {
+                Ok(f) => f,
+                Err(s) => return s,
+            };
+            if life == 0.0 {
+                return CalcResult::new_error(Error::NUM, cell, "Division by 0".to_string());
+            }
+            if per > life || per <= 0.0 {
+                return CalcResult::new_error(
+                    Error::NUM,
+                    cell,
+                    "per should be <= life".to_string(),
+                );
+            }
+            let result = ((cost - salvage) * (life - per + 1.0) * 2.0) / (life * (life + 1.0));
 
-        CalcResult::Number(result)
+            CalcResult::Number(result)
+        })
     }
 
     // NOMINAL(effective_rate, npery)
@@ -1288,26 +1298,28 @@ impl<'a> Model<'a> {
         if args.len() != 2 {
             return CalcResult::new_args_number_error(cell);
         }
-        let effect_rate = match self.get_number_no_bools(&args[0], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let npery = match self.get_number_no_bools(&args[1], cell) {
-            Ok(f) => f.floor(),
-            Err(s) => return s,
-        };
-        if effect_rate <= 0.0 || npery < 1.0 {
-            return CalcResult::new_error(Error::NUM, cell, "Invalid arguments".to_string());
-        }
-        let result = ((1.0 + effect_rate).powf(1.0 / npery) - 1.0) * npery;
-        if result.is_infinite() {
-            return CalcResult::new_error(Error::DIV, cell, "Division by 0".to_string());
-        }
-        if result.is_nan() {
-            return CalcResult::new_error(Error::NUM, cell, "Invalid data for RRI".to_string());
-        }
+        self.map_scalar_arguments(args, cell, |model, values| {
+            let effect_rate = match model.cast_to_number_no_bools(values[0].clone(), cell) {
+                Ok(f) => f,
+                Err(s) => return s,
+            };
+            let npery = match model.cast_to_number_no_bools(values[1].clone(), cell) {
+                Ok(f) => f.floor(),
+                Err(s) => return s,
+            };
+            if effect_rate <= 0.0 || npery < 1.0 {
+                return CalcResult::new_error(Error::NUM, cell, "Invalid arguments".to_string());
+            }
+            let result = ((1.0 + effect_rate).powf(1.0 / npery) - 1.0) * npery;
+            if result.is_infinite() {
+                return CalcResult::new_error(Error::DIV, cell, "Division by 0".to_string());
+            }
+            if result.is_nan() {
+                return CalcResult::new_error(Error::NUM, cell, "Invalid data for RRI".to_string());
+            }
 
-        CalcResult::Number(result)
+            CalcResult::Number(result)
+        })
     }
 
     // EFFECT(nominal_rate, npery)
@@ -1320,26 +1332,28 @@ impl<'a> Model<'a> {
         if args.len() != 2 {
             return CalcResult::new_args_number_error(cell);
         }
-        let nominal_rate = match self.get_number_no_bools(&args[0], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let npery = match self.get_number_no_bools(&args[1], cell) {
-            Ok(f) => f.floor(),
-            Err(s) => return s,
-        };
-        if nominal_rate <= 0.0 || npery < 1.0 {
-            return CalcResult::new_error(Error::NUM, cell, "Invalid arguments".to_string());
-        }
-        let result = (1.0 + nominal_rate / npery).powf(npery) - 1.0;
-        if result.is_infinite() {
-            return CalcResult::new_error(Error::DIV, cell, "Division by 0".to_string());
-        }
-        if result.is_nan() {
-            return CalcResult::new_error(Error::NUM, cell, "Invalid data for RRI".to_string());
-        }
+        self.map_scalar_arguments(args, cell, |model, values| {
+            let nominal_rate = match model.cast_to_number_no_bools(values[0].clone(), cell) {
+                Ok(f) => f,
+                Err(s) => return s,
+            };
+            let npery = match model.cast_to_number_no_bools(values[1].clone(), cell) {
+                Ok(f) => f.floor(),
+                Err(s) => return s,
+            };
+            if nominal_rate <= 0.0 || npery < 1.0 {
+                return CalcResult::new_error(Error::NUM, cell, "Invalid arguments".to_string());
+            }
+            let result = (1.0 + nominal_rate / npery).powf(npery) - 1.0;
+            if result.is_infinite() {
+                return CalcResult::new_error(Error::DIV, cell, "Division by 0".to_string());
+            }
+            if result.is_nan() {
+                return CalcResult::new_error(Error::NUM, cell, "Invalid data for RRI".to_string());
+            }
 
-        CalcResult::Number(result)
+            CalcResult::Number(result)
+        })
     }
 
     // PDURATION(rate, pv, fv)
@@ -1353,30 +1367,32 @@ impl<'a> Model<'a> {
         if args.len() != 3 {
             return CalcResult::new_args_number_error(cell);
         }
-        let rate = match self.get_number(&args[0], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let pv = match self.get_number(&args[1], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let fv = match self.get_number(&args[2], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        if fv <= 0.0 || pv <= 0.0 || rate <= 0.0 {
-            return CalcResult::new_error(Error::NUM, cell, "Invalid arguments".to_string());
-        }
-        let result = (fv.ln() - pv.ln()) / ((1.0 + rate).ln());
-        if result.is_infinite() {
-            return CalcResult::new_error(Error::DIV, cell, "Division by 0".to_string());
-        }
-        if result.is_nan() {
-            return CalcResult::new_error(Error::NUM, cell, "Invalid data for RRI".to_string());
-        }
+        self.map_scalar_arguments(args, cell, |model, values| {
+            let rate = match model.cast_to_number(values[0].clone(), cell) {
+                Ok(f) => f,
+                Err(s) => return s,
+            };
+            let pv = match model.cast_to_number(values[1].clone(), cell) {
+                Ok(f) => f,
+                Err(s) => return s,
+            };
+            let fv = match model.cast_to_number(values[2].clone(), cell) {
+                Ok(f) => f,
+                Err(s) => return s,
+            };
+            if fv <= 0.0 || pv <= 0.0 || rate <= 0.0 {
+                return CalcResult::new_error(Error::NUM, cell, "Invalid arguments".to_string());
+            }
+            let result = (fv.ln() - pv.ln()) / ((1.0 + rate).ln());
+            if result.is_infinite() {
+                return CalcResult::new_error(Error::DIV, cell, "Division by 0".to_string());
+            }
+            if result.is_nan() {
+                return CalcResult::new_error(Error::NUM, cell, "Invalid data for RRI".to_string());
+            }
 
-        CalcResult::Number(result)
+            CalcResult::Number(result)
+        })
     }
 
     // This next three functions deal with Treasure Bills or T-Bills for short

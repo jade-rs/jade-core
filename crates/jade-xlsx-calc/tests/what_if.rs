@@ -8,6 +8,27 @@ use jade_xlsx_calc::what_if;
 use jade_xlsx_reader::{read_xlsx, CellRef, CellValue};
 use zip::write::SimpleFileOptions;
 
+#[test]
+fn parsed_source_formula_text_is_the_same_before_and_after_trial_replacement() {
+    let book=read_xlsx(&package(r#"<row r="1"><c r="A1"><f>SUM(1, 2)</f><v>3</v></c><c r="B1"><f>FORMULATEXT(A1)</f></c></row>"#)).unwrap();
+    let mut probe = what_if(&book, "UTC", &BTreeMap::new()).unwrap();
+    let source = (0, CellRef::new(0, 0));
+    let output = [(0, CellRef::new(1, 0))];
+    let text = vec![CellValue::Text("=SUM(1, 2)".into())];
+    assert_eq!(probe.probe(&book, &[], &output).unwrap(), text);
+    assert_eq!(
+        probe
+            .probe(
+                &book,
+                &[(source.0, source.1, CellValue::Number(10.0))],
+                &output
+            )
+            .unwrap(),
+        vec![CellValue::Error("#N/A".into())]
+    );
+    assert_eq!(probe.probe(&book, &[], &output).unwrap(), text);
+}
+
 fn package(rows: &str) -> Vec<u8> {
     let parts = [
         (

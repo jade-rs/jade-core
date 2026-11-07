@@ -3,6 +3,217 @@ use jade_xlsx_headless_api::CellInput;
 use jade_xlsx_headless_editor::HeadlessWorkbook;
 
 #[test]
+fn numeric_criterion_spaces_follow_edits_history_and_cached_reopen() {
+    let mut package = OpcPackage::open(include_bytes!(
+        "../../../public/fixtures/sample-workbook.xlsx"
+    ))
+    .unwrap();
+    package.replace("xl/worksheets/sheet1.xml", br#"<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData/></worksheet>"#.to_vec());
+    let mut book = HeadlessWorkbook::open_for_editing(&package.write().unwrap()).unwrap();
+    let name = "売上サマリ";
+    for (index, value) in [10000.0, 15000.0, 19000.0, 17000.0, 20000.0, 30000.0]
+        .into_iter()
+        .enumerate()
+    {
+        book.set(name, &format!("A{}", index + 1), CellInput::Number(value))
+            .unwrap();
+        book.set(
+            name,
+            &format!("B{}", index + 1),
+            CellInput::Number((index + 1) as f64),
+        )
+        .unwrap();
+    }
+    book.set(name, "E1", CellInput::Text("< 20000".into()))
+        .unwrap();
+    for (index, formula) in [
+        "COUNTIF(A1:A6,$E$1)",
+        "COUNTIFS(A1:A6,$E$1)",
+        "SUMIF(A1:A6,$E$1,B1:B6)",
+        "SUMIFS(B1:B6,A1:A6,$E$1)",
+        "AVERAGEIF(A1:A6,$E$1,B1:B6)",
+        "AVERAGEIFS(B1:B6,A1:A6,$E$1)",
+        "MAXIFS(B1:B6,A1:A6,$E$1)",
+        "MINIFS(B1:B6,A1:A6,$E$1)",
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        book.set(
+            name,
+            &format!("F{}", index + 1),
+            CellInput::Formula(formula.into()),
+        )
+        .unwrap();
+    }
+    let initial = [4.0, 4.0, 10.0, 10.0, 2.5, 2.5, 4.0, 1.0];
+    let changed = [5.0, 5.0, 15.0, 15.0, 3.0, 3.0, 5.0, 1.0];
+    for (index, value) in initial.into_iter().enumerate() {
+        assert_eq!(
+            book.cell(name, &format!("F{}", index + 1)).unwrap().number,
+            Some(value)
+        );
+    }
+    book.set(name, "E1", CellInput::Text("<= 20000 ".into()))
+        .unwrap();
+    for (index, value) in changed.into_iter().enumerate() {
+        assert_eq!(
+            book.cell(name, &format!("F{}", index + 1)).unwrap().number,
+            Some(value)
+        );
+    }
+    book.undo().unwrap();
+    assert_eq!(book.cell(name, "F1").unwrap().number, Some(4.0));
+    book.redo().unwrap();
+    assert_eq!(book.cell(name, "F1").unwrap().number, Some(5.0));
+    let saved = book.save_bytes().unwrap();
+    for reopened in [
+        HeadlessWorkbook::open(&saved).unwrap(),
+        HeadlessWorkbook::open_for_editing(&saved).unwrap(),
+    ] {
+        assert_eq!(reopened.cell(name, "E1").unwrap().display, "<= 20000 ");
+        for (index, value) in changed.into_iter().enumerate() {
+            assert_eq!(
+                reopened
+                    .cell(name, &format!("F{}", index + 1))
+                    .unwrap()
+                    .number,
+                Some(value)
+            );
+        }
+    }
+}
+
+#[test]
+fn financial_scalar_ranges_follow_parameter_edits_history_and_saved_errors() {
+    for (formula, input, corrected, left, right, first, next, lower, error) in [
+        (
+            "SLN(B1:B2,10,C1:D1)",
+            100.0,
+            190.0,
+            3.0,
+            6.0,
+            30.0,
+            60.0,
+            15.0,
+            "#DIV/0!",
+        ),
+        (
+            "SYD(B1:B2,10,3,C1:D1)",
+            100.0,
+            190.0,
+            1.0,
+            2.0,
+            45.0,
+            90.0,
+            30.0,
+            "#NUM!",
+        ),
+        (
+            "EFFECT(B1:B2,C1:D1)",
+            0.1,
+            0.2,
+            1.0,
+            2.0,
+            0.1,
+            0.2,
+            0.1025,
+            "#NUM!",
+        ),
+        (
+            "NOMINAL(B1:B2,C1:D1)",
+            0.21,
+            0.44,
+            1.0,
+            2.0,
+            0.21,
+            0.44,
+            0.2,
+            "#NUM!",
+        ),
+        (
+            "RRI(B1:B2,C1:D1,400)",
+            1.0,
+            2.0,
+            100.0,
+            200.0,
+            3.0,
+            1.0,
+            1.0,
+            "#NUM!",
+        ),
+        (
+            "PDURATION(B1:B2,100,C1:D1)",
+            1.0,
+            3.0,
+            400.0,
+            1600.0,
+            2.0,
+            1.0,
+            4.0,
+            "#NUM!",
+        ),
+    ] {
+        let mut package = OpcPackage::open(include_bytes!(
+            "../../../public/fixtures/sample-workbook.xlsx"
+        ))
+        .unwrap();
+        package.replace("xl/worksheets/sheet1.xml", br#"<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData/></worksheet>"#.to_vec());
+        let mut book = HeadlessWorkbook::open_for_editing(&package.write().unwrap()).unwrap();
+        let name = "売上サマリ";
+        for (at, value) in [
+            ("B1", CellInput::Error("#N/A".into())),
+            ("B2", CellInput::Number(input)),
+            ("C1", CellInput::Number(left)),
+            ("D1", CellInput::Number(right)),
+            ("F1", CellInput::Formula(format!("ROUND({formula},8)"))),
+            ("J1", CellInput::Formula("ROWS(F1#)*COLUMNS(F1#)".into())),
+        ] {
+            book.set(name, at, value).unwrap();
+        }
+        assert_eq!(book.cell(name, "F1").unwrap().display, "#N/A", "{formula}");
+        assert_eq!(
+            book.cell(name, "F2").unwrap().number,
+            Some(first),
+            "{formula}"
+        );
+        book.set(name, "B1", CellInput::Number(corrected)).unwrap();
+        assert_eq!(
+            book.cell(name, "F1").unwrap().number,
+            Some(next),
+            "{formula}"
+        );
+        book.set(name, "C1", CellInput::Number(0.0)).unwrap();
+        assert_eq!(book.cell(name, "F1").unwrap().display, error, "{formula}");
+        book.undo().unwrap();
+        assert_eq!(book.cell(name, "F1").unwrap().number, Some(next));
+        book.redo().unwrap();
+        assert_eq!(book.cell(name, "F1").unwrap().display, error);
+        book.undo().unwrap();
+        book.undo().unwrap();
+        let saved = book.save_bytes().unwrap();
+        for reopened in [
+            HeadlessWorkbook::open(&saved).unwrap(),
+            HeadlessWorkbook::open_for_editing(&saved).unwrap(),
+        ] {
+            assert_eq!(reopened.cell(name, "F1").unwrap().display, "#N/A");
+            assert_eq!(reopened.cell(name, "G1").unwrap().display, "#N/A");
+            assert_eq!(
+                reopened.cell(name, "F2").unwrap().number,
+                Some(first),
+                "{formula}"
+            );
+            assert_eq!(
+                reopened.cell(name, "G2").unwrap().number,
+                Some(lower),
+                "{formula}"
+            );
+            assert_eq!(reopened.cell(name, "J1").unwrap().number, Some(4.0));
+        }
+    }
+}
+
+#[test]
 fn dollar_conversion_ranges_follow_denominator_edits_and_saved_matrices() {
     for (function, value, corrected, first, next, lower) in [
         ("DOLLARDE", 1.02, 1.04, 1.125, 1.25, 1.0625),

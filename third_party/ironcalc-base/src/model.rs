@@ -263,8 +263,8 @@ pub struct CellIndex {
 }
 
 impl<'a> Model<'a> {
-    /// Sets original formula text for information functions when a host holds
-    /// the calculated value as a literal. Pass None when replacing that cell.
+    /// Sets original display formula text for information functions, including
+    /// parsed formulas and values a host holds as literals. Clear on replacement.
     pub fn set_source_formula(
         &mut self,
         sheet: u32,

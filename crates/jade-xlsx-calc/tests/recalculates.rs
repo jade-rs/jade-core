@@ -7,6 +7,176 @@ use jade_xlsx_reader::{read_xlsx, CellRef, CellValue};
 use zip::write::SimpleFileOptions;
 
 #[test]
+fn parsed_formula_source_spelling_survives_cache_and_kept_recalculation() {
+    let xml = sheet(
+        r#"<row r="1"><c r="A1"><v>2</v></c><c r="B1"><f>SUM(A1, 3)</f><v>5</v></c><c r="C1"><f>FORMULATEXT(B1)</f></c><c r="D1"><f>_xlfn.XLOOKUP(A1, A1:A1, B1:B1)</f><v>5</v></c><c r="E1"><f>FORMULATEXT(D1)</f></c></row>"#,
+    );
+    let mut book = read_xlsx(&workbook(&xml, None, false)).unwrap();
+    for _ in 0..2 {
+        let result = evaluate(&book).unwrap();
+        assert!(result.skipped.is_empty());
+        assert_eq!(
+            computed(&result, 0, "C1"),
+            Some(&CellValue::Text("=SUM(A1, 3)".into()))
+        );
+        assert_eq!(
+            computed(&result, 0, "E1"),
+            Some(&CellValue::Text("=XLOOKUP(A1, A1:A1, B1:B1)".into()))
+        );
+    }
+    let manual = Default::default();
+    let (_, session) = jade_xlsx_calc::evaluate_keeping(&book, "UTC", &manual).unwrap();
+    let mut session = session.expect("scalar formulas can keep their calculation model");
+    book.sheets[0]
+        .cell_at_mut(CellRef::new(0, 0))
+        .unwrap()
+        .value = CellValue::Number(4.0);
+    let result = jade_xlsx_calc::reevaluate(
+        &mut session,
+        &book,
+        "UTC",
+        &manual,
+        &[(0, CellRef::new(0, 0), CellValue::Number(4.0))],
+    )
+    .unwrap()
+    .unwrap();
+    assert_eq!(computed(&result, 0, "B1"), Some(&CellValue::Number(7.0)));
+    assert_eq!(
+        computed(&result, 0, "C1"),
+        Some(&CellValue::Text("=SUM(A1, 3)".into()))
+    );
+    book.sheets[0]
+        .cell_at_mut(CellRef::new(1, 0))
+        .unwrap()
+        .formula = Some("SUM(A1,  3)".into());
+    let result = evaluate(&book).unwrap();
+    assert_eq!(
+        computed(&result, 0, "C1"),
+        Some(&CellValue::Text("=SUM(A1,  3)".into()))
+    );
+}
+
+#[test]
+fn conditional_aggregates_parse_numeric_criterion_spaces_without_trimming_text() {
+    let formulas = [
+        r#"COUNTIF(A1:A6,"< 20000")"#,
+        r#"COUNTIFS(A1:A6,"< 20000")"#,
+        r#"SUMIF(A1:A6,"< 20000",B1:B6)"#,
+        r#"SUMIFS(B1:B6,A1:A6,"< 20000")"#,
+        r#"AVERAGEIF(A1:A6,"< 20000",B1:B6)"#,
+        r#"AVERAGEIFS(B1:B6,A1:A6,"< 20000")"#,
+        r#"MAXIFS(B1:B6,A1:A6,"< 20000")"#,
+        r#"MINIFS(B1:B6,A1:A6,"< 20000")"#,
+        r#"COUNTIF(C1:C2,"= red ")"#,
+        r#"COUNTIF(C1:C2,"= * ")"#,
+    ];
+    let data = [10000, 15000, 19000, 17000, 20000, 30000];
+    let mut rows = String::new();
+    for (index, formula) in formulas.iter().enumerate() {
+        let r = index + 1;
+        rows.push_str(&format!("<row r=\"{r}\">"));
+        if let Some(number) = data.get(index) {
+            rows.push_str(&format!(
+                "<c r=\"A{r}\"><v>{number}</v></c><c r=\"B{r}\"><v>{r}</v></c>"
+            ));
+        }
+        if index < 2 {
+            let text = if index == 0 { " red " } else { "red" };
+            rows.push_str(&format!(
+                "<c r=\"C{r}\" t=\"inlineStr\"><is><t xml:space=\"preserve\">{text}</t></is></c>"
+            ));
+        }
+        let formula = formula.replace('&', "&amp;").replace('<', "&lt;");
+        rows.push_str(&format!("<c r=\"D{r}\"><f>{formula}</f></c></row>"));
+    }
+    let result = evaluate(&read_xlsx(&workbook(&sheet(&rows), None, false)).unwrap()).unwrap();
+    assert!(result.skipped.is_empty(), "{:?}", result.skipped);
+    for (index, expected) in [4.0, 4.0, 10.0, 10.0, 2.5, 2.5, 4.0, 1.0, 1.0, 1.0]
+        .into_iter()
+        .enumerate()
+    {
+        assert_eq!(
+            computed(&result, 0, &format!("D{}", index + 1)),
+            Some(&CellValue::Number(expected)),
+            "{}",
+            formulas[index]
+        );
+    }
+}
+
+#[test]
+fn financial_scalar_functions_broadcast_values_and_domain_errors() {
+    for (values, expected, errors, invalid, singleton) in [
+        (
+            "SLN({100;190},10,{3,6})",
+            "{30,15;60,30}",
+            "SLN({#N/A;100},10,{0,3})",
+            "{#N/A,#N/A;#DIV/0!,30}",
+            "SLN({100},10,3)",
+        ),
+        (
+            "SYD({100;190},10,3,{1,2})",
+            "{45,30;90,60}",
+            "SYD({#N/A;100},10,3,{0,1})",
+            "{#N/A,#N/A;#NUM!,45}",
+            "SYD({100},10,3,1)",
+        ),
+        (
+            "EFFECT({0.1;0.2},{1,2})",
+            "{0.1,0.1025;0.2,0.21}",
+            "EFFECT({#N/A;0.1},{0,2})",
+            "{#N/A,#N/A;#NUM!,0.1025}",
+            "EFFECT({0.1},2)",
+        ),
+        (
+            "NOMINAL({0.21;0.44},{1,2})",
+            "{0.21,0.2;0.44,0.4}",
+            "NOMINAL({#N/A;0.21},{0,2})",
+            "{#N/A,#N/A;#NUM!,0.2}",
+            "NOMINAL({0.21},2)",
+        ),
+        (
+            "RRI({1;2},100,{400,1600})",
+            "{3,15;1,3}",
+            "RRI({#N/A;2},{0,100},400)",
+            "{#N/A,#N/A;#NUM!,1}",
+            "RRI({2},100,400)",
+        ),
+        (
+            "PDURATION({1;3},100,{400,1600})",
+            "{2,4;1,2}",
+            "PDURATION({#N/A;1},100,{0,400})",
+            "{#N/A,#N/A;#NUM!,2}",
+            "PDURATION({1},100,400)",
+        ),
+    ] {
+        let values = format!("ARRAYTOTEXT(ROUND({values},8),1)");
+        let errors = format!("ARRAYTOTEXT(ROUND({errors},8),1)");
+        let singleton = format!("TYPE({singleton})");
+        assert_formulas(
+            &[&values, &errors, &singleton],
+            &[
+                CellValue::Text(expected.into()),
+                CellValue::Text(invalid.into()),
+                CellValue::Number(64.0),
+            ],
+            false,
+        );
+    }
+    assert_formulas(
+        &[
+            "ARRAYTOTEXT(ROUND(EFFECT({TRUE,0.1},2.9),8),1)",
+            "ARRAYTOTEXT(ROUND(NOMINAL({TRUE,0.21},2.9),8),1)",
+        ],
+        &[
+            CellValue::Text("{#VALUE!,0.1025}".into()),
+            CellValue::Text("{#VALUE!,0.2}".into()),
+        ],
+        false,
+    );
+}
+
+#[test]
 fn dollar_conversions_broadcast_values_denominators_and_errors() {
     assert_formulas(
         &[
@@ -4739,6 +4909,8 @@ fn structured_references_to_a_table_recalculate() {
     for (reference, formula) in [
         ("E1", "SUM(Table1[Qty])"),
         ("E2", "Table1[[#Totals],[Amount]]*2"),
+        ("F1", "FORMULATEXT(E1)"),
+        ("F2", "FORMULATEXT(E2)"),
     ] {
         let reference = CellRef::parse(reference).expect("reference");
         workbook.sheets[0]
@@ -4759,6 +4931,14 @@ fn structured_references_to_a_table_recalculate() {
     assert_eq!(computed(&outcome, 0, "C5"), Some(&CellValue::Number(749.0)));
     assert_eq!(computed(&outcome, 0, "E1"), Some(&CellValue::Number(6.0)));
     assert_eq!(
+        computed(&outcome, 0, "F1"),
+        Some(&CellValue::Text("=SUM(Table1[Qty])".into()))
+    );
+    assert_eq!(
+        computed(&outcome, 0, "F2"),
+        Some(&CellValue::Text("=Table1[[#Totals],[Amount]]*2".into()))
+    );
+    assert_eq!(
         computed(&outcome, 0, "E2"),
         Some(&CellValue::Number(1498.0))
     );
@@ -4773,6 +4953,10 @@ fn structured_references_to_a_table_recalculate() {
     cell.value = CellValue::Number(199.0);
     let outcome = evaluate(&workbook).expect("evaluate");
     assert_eq!(computed(&outcome, 0, "C5"), Some(&CellValue::Number(849.0)));
+    assert_eq!(
+        computed(&outcome, 0, "F2"),
+        Some(&CellValue::Text("=Table1[[#Totals],[Amount]]*2".into()))
+    );
     assert_eq!(
         computed(&outcome, 0, "E2"),
         Some(&CellValue::Number(1698.0))
