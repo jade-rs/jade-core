@@ -175,44 +175,9 @@ pub fn dynamic_array_metadata(package: &mut OpcPackage) -> Result<Option<u32>> {
     Ok(Some(1))
 }
 
-/// Which cell-metadata block of `xml` (1-based) points at the `XLDAPR`
-/// metadata type.
+/// Resolves the referenced dynamic-array flag, not merely its metadata type.
 fn dynamic_array_index(xml: &str) -> Result<Option<u32>> {
-    let mut reader = Reader::from_str(xml);
-    let mut buf = Vec::new();
-    let mut types = 0u32;
-    let mut dynamic_type: Option<u32> = None;
-    let mut in_cell_metadata = false;
-    let mut blocks = 0u32;
-    loop {
-        match reader.read_event_into(&mut buf)? {
-            Event::Start(ref element) | Event::Empty(ref element) => {
-                match local(element.name().as_ref()) {
-                    b"metadataType" => {
-                        types += 1;
-                        if attribute(element, b"name")?.as_deref() == Some("XLDAPR") {
-                            dynamic_type = Some(types);
-                        }
-                    }
-                    b"cellMetadata" => in_cell_metadata = true,
-                    b"bk" if in_cell_metadata => blocks += 1,
-                    b"rc" if in_cell_metadata => {
-                        let kind = attribute(element, b"t")?.and_then(|t| t.parse::<u32>().ok());
-                        if kind.is_some() && kind == dynamic_type {
-                            return Ok(Some(blocks));
-                        }
-                    }
-                    _ => {}
-                }
-            }
-            Event::End(ref element) if local(element.name().as_ref()) == b"cellMetadata" => {
-                in_cell_metadata = false;
-            }
-            Event::Eof => return Ok(None),
-            _ => {}
-        }
-        buf.clear();
-    }
+    Ok(jade_xlsx_reader::array_metadata::first_dynamic_array_cell_metadata(xml)?)
 }
 
 /// The metadata part Excel writes for a workbook whose only cell metadata

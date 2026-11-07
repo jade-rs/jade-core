@@ -3,6 +3,19 @@
 use crate::test::util::new_empty_model;
 
 #[test]
+fn cse_follower_information_works_before_the_anchor_is_evaluated() {
+    let mut model = new_empty_model();
+    model._set("A1", "=FORMULATEXT(Z2)");
+    model._set("B1", "=ISFORMULA(Z3)");
+    model
+        .set_user_array_formula(0, 1, 26, 1, 3, "=SEQUENCE(3,1)")
+        .unwrap();
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "{=SEQUENCE(3,1)}");
+    assert_eq!(model._get_text("B1"), "TRUE");
+}
+
+#[test]
 fn wrong_number_of_arguments() {
     let mut model = new_empty_model();
     model._set("A1", "=FORMULATEXT()");

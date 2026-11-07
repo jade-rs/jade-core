@@ -3,6 +3,121 @@ use jade_xlsx_headless_api::CellInput;
 use jade_xlsx_headless_editor::HeadlessWorkbook;
 
 #[test]
+fn cse_member_information_survives_history_reopen_and_source_protection() {
+    let mut package = OpcPackage::open(include_bytes!(
+        "../../../public/fixtures/sample-workbook.xlsx"
+    ))
+    .unwrap();
+    package.replace("xl/worksheets/sheet1.xml", br#"<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData><row r="1"><c r="A1"><f t="array" ref="A1:A3">_xlfn.SEQUENCE(D1, 1)</f><v>1</v></c><c r="D1"><v>3</v></c><c r="E1"><f>FORMULATEXT(A2)</f></c><c r="F1"><f>ISFORMULA(A3)</f></c></row><row r="2"><c r="A2"><v>2</v></c></row><row r="3"><c r="A3"><v>3</v></c></row></sheetData></worksheet>"#.to_vec());
+    let mut book = HeadlessWorkbook::open_for_editing(&package.write().unwrap()).unwrap();
+    let name = "売上サマリ";
+    let text = "{=SEQUENCE(D1, 1)}";
+    assert_eq!(book.cell(name, "E1").unwrap().display, text);
+    assert_eq!(book.cell(name, "F1").unwrap().display, "TRUE");
+    book.set_cells(
+        name,
+        &[
+            ("A1".into(), CellInput::Blank),
+            ("A2".into(), CellInput::Blank),
+            ("A3".into(), CellInput::Blank),
+        ],
+    )
+    .unwrap();
+    assert_eq!(book.cell(name, "E1").unwrap().display, "#N/A");
+    assert_eq!(book.cell(name, "F1").unwrap().display, "FALSE");
+    book.undo().unwrap();
+    assert_eq!(book.cell(name, "E1").unwrap().display, text);
+    book.set_format(
+        name,
+        "A2",
+        &jade_xlsx_headless_editor::FormatChange {
+            formula_hidden: Some(true),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    assert_eq!(book.cell(name, "E1").unwrap().display, text);
+    book.protect_sheet(name, Default::default(), "", &[0; 16])
+        .unwrap();
+    assert_eq!(book.cell(name, "E1").unwrap().display, "#N/A");
+    assert_eq!(book.cell(name, "F1").unwrap().display, "TRUE");
+    let saved = book.save_bytes().unwrap();
+    for reopened in [
+        HeadlessWorkbook::open(&saved).unwrap(),
+        HeadlessWorkbook::open_for_editing(&saved).unwrap(),
+    ] {
+        assert_eq!(reopened.cell(name, "E1").unwrap().display, "#N/A");
+        assert_eq!(reopened.cell(name, "F1").unwrap().display, "TRUE");
+    }
+    book.unprotect_sheet(name, "").unwrap();
+    assert_eq!(book.cell(name, "E1").unwrap().display, text);
+}
+
+#[test]
+fn legacy_output_range_stays_fixed_through_growth_history_and_save() {
+    let mut package = OpcPackage::open(include_bytes!(
+        "../../../public/fixtures/sample-workbook.xlsx"
+    ))
+    .unwrap();
+    package.replace("xl/worksheets/sheet1.xml", br#"<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData><row r="1"><c r="A1"><f t="array" ref="A1:A3">_xlfn.SEQUENCE(D1)</f><v>1</v></c><c r="D1"><v>2</v></c><c r="E1"><f>FORMULATEXT(A1)</f></c></row><row r="2"><c r="A2"><v>2</v></c></row><row r="3"><c r="A3" t="e"><v>#N/A</v></c></row></sheetData></worksheet>"#.to_vec());
+    let mut book = HeadlessWorkbook::open_for_editing(&package.write().unwrap()).unwrap();
+    let name = "売上サマリ";
+    assert_eq!(book.cell(name, "A3").unwrap().display, "#N/A");
+    book.set(name, "D1", CellInput::Number(5.0)).unwrap();
+    assert_eq!(book.cell(name, "A3").unwrap().number, Some(3.0));
+    assert_eq!(book.cell(name, "A4").unwrap().display, "");
+    book.undo().unwrap();
+    assert_eq!(book.cell(name, "A3").unwrap().display, "#N/A");
+    book.redo().unwrap();
+    let saved = book.save_bytes().unwrap();
+    for reopened in [
+        HeadlessWorkbook::open(&saved).unwrap(),
+        HeadlessWorkbook::open_for_editing(&saved).unwrap(),
+    ] {
+        let array = reopened.workbook().sheets[0].array_formulas[0];
+        assert_eq!(
+            array.range,
+            jade_xlsx_reader::CellRange::parse("A1:A3").unwrap()
+        );
+        assert_eq!(array.kind, jade_xlsx_reader::ArrayFormulaKind::Legacy);
+        assert_eq!(reopened.cell(name, "A3").unwrap().number, Some(3.0));
+        assert_eq!(
+            reopened.cell(name, "E1").unwrap().display,
+            "{=SEQUENCE(D1)}"
+        );
+    }
+}
+
+#[test]
+fn legacy_array_anchor_text_keeps_braces_through_input_history_and_reopen() {
+    let mut package = OpcPackage::open(include_bytes!(
+        "../../../public/fixtures/sample-workbook.xlsx"
+    ))
+    .unwrap();
+    package.replace("xl/worksheets/sheet1.xml", br#"<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData><row r="1"><c r="A1"><v>2</v></c><c r="B1"><f t="array" ref="B1">SUM(A1, 3)</f><v>5</v></c><c r="C1"><f>FORMULATEXT(B1)</f></c></row></sheetData></worksheet>"#.to_vec());
+    let mut book = HeadlessWorkbook::open_for_editing(&package.write().unwrap()).unwrap();
+    let name = "売上サマリ";
+    assert_eq!(book.cell(name, "C1").unwrap().display, "{=SUM(A1, 3)}");
+    book.set(name, "A1", CellInput::Number(4.0)).unwrap();
+    assert_eq!(book.cell(name, "B1").unwrap().number, Some(7.0));
+    assert_eq!(book.cell(name, "C1").unwrap().display, "{=SUM(A1, 3)}");
+    book.undo().unwrap();
+    assert_eq!(book.cell(name, "B1").unwrap().number, Some(5.0));
+    book.redo().unwrap();
+    let saved = book.save_bytes().unwrap();
+    for reopened in [
+        HeadlessWorkbook::open(&saved).unwrap(),
+        HeadlessWorkbook::open_for_editing(&saved).unwrap(),
+    ] {
+        assert_eq!(reopened.cell(name, "C1").unwrap().display, "{=SUM(A1, 3)}");
+        assert_eq!(
+            reopened.workbook().sheets[0].array_formulas[0].kind,
+            jade_xlsx_reader::ArrayFormulaKind::Legacy
+        );
+    }
+}
+
+#[test]
 fn parsed_formula_text_keeps_source_spacing_through_edits_history_and_save() {
     let mut package = OpcPackage::open(include_bytes!(
         "../../../public/fixtures/sample-workbook.xlsx"

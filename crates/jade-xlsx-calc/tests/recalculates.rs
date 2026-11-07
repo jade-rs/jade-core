@@ -7,6 +7,145 @@ use jade_xlsx_reader::{read_xlsx, CellRef, CellValue};
 use zip::write::SimpleFileOptions;
 
 #[test]
+fn legacy_array_followers_keep_formula_identity_without_relative_translation() {
+    let xml = sheet(
+        r#"<row r="1"><c r="A1"><f t="array" ref="A1:A3">SEQUENCE(B1, 1)</f><v>1</v></c><c r="B1"><v>3</v></c><c r="C1"><f>FORMULATEXT(A2)</f></c><c r="D1"><f>ISFORMULA(A3)</f></c><c r="F1"><f>SEQUENCE(3,1)</f></c><c r="G1"><f>FORMULATEXT(F2)</f></c><c r="H1"><f>ISFORMULA(F3)</f></c></row><row r="2"><c r="A2"><v>2</v></c></row><row r="3"><c r="A3"><v>3</v></c></row>"#,
+    );
+    let result = evaluate(&read_xlsx(&workbook(&xml, None, false)).unwrap()).unwrap();
+    assert!(result.skipped.is_empty());
+    assert_eq!(
+        computed(&result, 0, "C1"),
+        Some(&CellValue::Text("{=SEQUENCE(B1, 1)}".into()))
+    );
+    assert_eq!(computed(&result, 0, "D1"), Some(&CellValue::Bool(true)));
+    assert_eq!(
+        computed(&result, 0, "G1"),
+        Some(&CellValue::Error("#N/A".into()))
+    );
+    assert_eq!(computed(&result, 0, "H1"), Some(&CellValue::Bool(false)));
+}
+
+#[test]
+fn held_and_huge_legacy_members_keep_sparse_formula_identity() {
+    for (range, formula, member) in [
+        ("A1:A3", "FUTUREFUNC( 1 )", "A2"),
+        ("A1:B1048576", "SUM(1, 2)", "B1048576"),
+    ] {
+        let xml = sheet(&format!(
+            r#"<row r="1"><c r="A1"><f t="array" ref="{range}">{formula}</f><v>7</v></c><c r="C1"><f>FORMULATEXT({member})</f></c><c r="D1"><f>ISFORMULA({member})</f></c></row><row r="2"><c r="A2"><v>8</v></c></row>"#
+        ));
+        let result = evaluate(&read_xlsx(&workbook(&xml, None, false)).unwrap()).unwrap();
+        assert!(!result.skipped.is_empty());
+        assert_eq!(
+            computed(&result, 0, "C1"),
+            Some(&CellValue::Text(format!("{{={formula}}}")))
+        );
+        assert_eq!(computed(&result, 0, "D1"), Some(&CellValue::Bool(true)));
+        assert!(result.spills.is_empty());
+    }
+}
+
+#[test]
+fn legacy_cse_truncates_larger_results_and_repeats_scalar_results() {
+    let xml = sheet(
+        r#"<row r="1"><c r="A1"><f t="array" ref="A1:A2">{1;2;3}</f><v>1</v></c><c r="B1"><f t="array" ref="B1:B3">7</f><v>7</v></c><c r="C1"><f>A3+B3</f></c></row><row r="2"><c r="A2"><v>2</v></c><c r="B2"><v>7</v></c></row><row r="3"><c r="A3"><v>99</v></c><c r="B3"><v>7</v></c></row>"#,
+    );
+    let result = evaluate(&read_xlsx(&workbook(&xml, None, false)).unwrap()).unwrap();
+    assert!(result.skipped.is_empty());
+    assert_eq!(computed(&result, 0, "C1"), Some(&CellValue::Number(106.0)));
+    for (anchor, range, values) in [("A1", "A1:A2", vec![2.0]), ("B1", "B1:B3", vec![7.0, 7.0])] {
+        let array = result
+            .spills
+            .iter()
+            .find(|spill| spill.anchor == CellRef::parse(anchor).unwrap())
+            .unwrap();
+        assert_eq!(
+            array.range,
+            jade_xlsx_reader::CellRange::parse(range).unwrap()
+        );
+        assert_eq!(
+            array
+                .cells
+                .iter()
+                .map(|cell| cell.value.clone())
+                .collect::<Vec<_>>(),
+            values
+                .into_iter()
+                .map(CellValue::Number)
+                .collect::<Vec<_>>()
+        );
+    }
+}
+
+#[test]
+fn unsupported_legacy_arrays_preserve_cached_followers_without_eager_expansion() {
+    for (formula, range) in [("FUTUREFUNC()", "A1:A3"), ("1", "A1:B1048576")] {
+        let xml = sheet(&format!(
+            r#"<row r="1"><c r="A1"><f t="array" ref="{range}">{formula}</f><v>10</v></c><c r="C1"><f>A2+1</f></c></row><row r="2"><c r="A2"><v>20</v></c></row>"#
+        ));
+        let result = evaluate(&read_xlsx(&workbook(&xml, None, false)).unwrap()).unwrap();
+        assert!(!result.skipped.is_empty(), "{range}");
+        assert_eq!(
+            computed(&result, 0, "C1"),
+            Some(&CellValue::Number(21.0)),
+            "{range}"
+        );
+        assert!(result.spills.is_empty());
+    }
+}
+
+#[test]
+fn legacy_cse_output_keeps_its_declared_range_when_the_result_is_shorter() {
+    let xml = sheet(
+        r#"<row r="1"><c r="A1"><f t="array" ref="A1:A3">{1;2}</f><v>1</v></c><c r="B1"><f>A3</f></c></row><row r="2"><c r="A2"><v>2</v></c></row><row r="3"><c r="A3" t="e"><v>#N/A</v></c></row>"#,
+    );
+    let book = read_xlsx(&workbook(&xml, None, false)).unwrap();
+    let result = evaluate(&book).unwrap();
+    assert!(result.skipped.is_empty());
+    let array = result
+        .spills
+        .iter()
+        .find(|spill| spill.anchor == CellRef::new(0, 0))
+        .unwrap();
+    assert_eq!(
+        array.range,
+        jade_xlsx_reader::CellRange::parse("A1:A3").unwrap()
+    );
+    assert_eq!(
+        array
+            .cells
+            .iter()
+            .find(|cell| cell.reference == CellRef::new(0, 2))
+            .map(|cell| &cell.value),
+        Some(&CellValue::Error("#N/A".into()))
+    );
+    assert_eq!(
+        computed(&result, 0, "B1"),
+        Some(&CellValue::Error("#N/A".into()))
+    );
+}
+
+#[test]
+fn legacy_array_formula_text_keeps_cse_braces_without_bracing_unknown_arrays() {
+    let xml = sheet(
+        r#"<row r="1"><c r="A1"><f t="array" ref="A1">SUM(1, 2)</f><v>3</v></c><c r="B1" cm="1"><f t="array" ref="B1">SUM(1, 2)</f><v>3</v></c><c r="C1"><f>FORMULATEXT(A1)</f></c><c r="D1"><f>FORMULATEXT(B1)</f></c></row>"#,
+    );
+    let book = read_xlsx(&workbook(&xml, None, false)).unwrap();
+    for _ in 0..2 {
+        let result = evaluate(&book).unwrap();
+        assert!(result.skipped.is_empty());
+        assert_eq!(
+            computed(&result, 0, "C1"),
+            Some(&CellValue::Text("{=SUM(1, 2)}".into()))
+        );
+        assert_eq!(
+            computed(&result, 0, "D1"),
+            Some(&CellValue::Text("=SUM(1, 2)".into()))
+        );
+    }
+}
+
+#[test]
 fn parsed_formula_source_spelling_survives_cache_and_kept_recalculation() {
     let xml = sheet(
         r#"<row r="1"><c r="A1"><v>2</v></c><c r="B1"><f>SUM(A1, 3)</f><v>5</v></c><c r="C1"><f>FORMULATEXT(B1)</f></c><c r="D1"><f>_xlfn.XLOOKUP(A1, A1:A1, B1:B1)</f><v>5</v></c><c r="E1"><f>FORMULATEXT(D1)</f></c></row>"#,

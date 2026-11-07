@@ -184,6 +184,20 @@ pub(crate) enum CellOrRange {
     Range((u32, i32, i32, i32, i32)),
 }
 
+pub(crate) struct SourceFormulaArea {
+    sheet: u32,
+    first: (i32, i32),
+    last: (i32, i32),
+}
+
+impl SourceFormulaArea {
+    fn contains(&self, sheet: u32, row: i32, column: i32) -> bool {
+        self.sheet == sheet
+            && (self.first.0..=self.last.0).contains(&row)
+            && (self.first.1..=self.last.1).contains(&column)
+    }
+}
+
 /// A dynamical IronCalc model.
 ///
 /// Its is composed of a `Workbook`. Everything else are dynamical quantities:
@@ -198,6 +212,8 @@ pub(crate) enum CellOrRange {
 ///   This is an optimization for large files (~1 million rows)
 pub struct Model<'a> {
     pub(crate) source_formulas: HashMap<(u32, i32, i32), String>,
+    pub(crate) source_formula_areas: Vec<SourceFormulaArea>,
+    pub(crate) source_formula_exclusions: HashSet<(u32, i32, i32)>,
     // Anchors that produced actual arrays in this evaluation, including 1x1
     // arrays whose first element is an error. Failed spills are not included.
     pub(crate) evaluated_arrays: HashSet<(u32, i32, i32)>,
@@ -275,9 +291,100 @@ impl<'a> Model<'a> {
         let key = (sheet, row, column);
         if let Some(formula) = formula {
             self.source_formulas.insert(key, formula);
+            self.source_formula_exclusions.remove(&key);
         } else {
             self.source_formulas.remove(&key);
+            if self
+                .source_formula_areas
+                .iter()
+                .any(|area| area.contains(sheet, row, column))
+            {
+                self.source_formula_exclusions.insert(key);
+            }
         }
+    }
+
+    /// Registers a host-owned legacy CSE area without allocating its cells.
+    /// Its top-left cell supplies the original formula text. Register after
+    /// projecting cached values; dynamic spill areas must not be registered.
+    pub fn register_source_array_formula(
+        &mut self,
+        sheet: u32,
+        first_row: i32,
+        first_column: i32,
+        last_row: i32,
+        last_column: i32,
+    ) {
+        if first_row > 0
+            && first_column > 0
+            && first_row <= last_row
+            && first_column <= last_column
+            && last_row <= LAST_ROW
+            && last_column <= LAST_COLUMN
+        {
+            self.source_formula_areas
+                .retain(|area| area.sheet != sheet || area.first != (first_row, first_column));
+            self.source_formula_areas.push(SourceFormulaArea {
+                sheet,
+                first: (first_row, first_column),
+                last: (last_row, last_column),
+            });
+        }
+    }
+
+    /// Restores the information-function identity of a host CSE member after
+    /// a temporary literal replacement, without creating a cell formula.
+    pub fn restore_source_array_member(&mut self, sheet: u32, row: i32, column: i32) {
+        self.source_formula_exclusions.remove(&(sheet, row, column));
+    }
+
+    pub(crate) fn formula_information_reference(
+        &self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+    ) -> (i32, i32) {
+        let key = (sheet, row, column);
+        if self.source_formula_exclusions.contains(&key) || self.source_formulas.contains_key(&key)
+        {
+            return (row, column);
+        }
+        let mut areas = self.source_formula_areas.iter().filter(|area| {
+            area.contains(sheet, row, column)
+                && (self
+                    .source_formulas
+                    .contains_key(&(sheet, area.first.0, area.first.1))
+                    || self.workbook.worksheet(sheet).ok().is_some_and(|sheet| {
+                        matches!(
+                            sheet.cell(area.first.0, area.first.1),
+                            Some(Cell::ArrayFormula {
+                                kind: ArrayKind::Cse,
+                                ..
+                            })
+                        )
+                    }))
+        });
+        if let Some(area) = areas.next() {
+            return if areas.next().is_none() {
+                area.first
+            } else {
+                (row, column)
+            };
+        }
+        if let Ok(worksheet) = self.workbook.worksheet(sheet) {
+            if let Some(Cell::SpillCell { a, .. }) = worksheet.cell(row, column) {
+                if matches!(
+                    worksheet.cell(a.0, a.1),
+                    Some(Cell::ArrayFormula {
+                        kind: ArrayKind::Cse,
+                        ..
+                    })
+                ) {
+                    return *a;
+                }
+            }
+        }
+        (row, column)
     }
     pub(crate) fn get_next_variable_id(&mut self) -> usize {
         let id = self.last_variable_id;
@@ -1198,7 +1305,7 @@ impl<'a> Model<'a> {
                             } else {
                                 let sv = match value {
                                     Some(node) => array_node_to_spill_value(node),
-                                    None => SpillValue::Error(Error::VALUE),
+                                    None => SpillValue::Error(Error::NA),
                                 };
                                 let existing_style =
                                     self.workbook.worksheets[sheet as usize].get_style(r, c);
@@ -1905,6 +2012,8 @@ impl<'a> Model<'a> {
 
         let mut model = Model {
             source_formulas: HashMap::new(),
+            source_formula_areas: Vec::new(),
+            source_formula_exclusions: HashSet::new(),
             evaluated_arrays: HashSet::new(),
             calculation: Default::default(),
             circular: false,
@@ -2939,6 +3048,16 @@ impl<'a> Model<'a> {
             formula_index = (shared_formulas.len() as i32) - 1;
         }
         worksheet.set_cell_with_array_formula(row, column, formula_index, style, width, height)?;
+        if let (Some(last_row), Some(last_column)) = (
+            height
+                .checked_sub(1)
+                .and_then(|height| row.checked_add(height)),
+            width
+                .checked_sub(1)
+                .and_then(|width| column.checked_add(width)),
+        ) {
+            self.register_source_array_formula(sheet, row, column, last_row, last_column);
+        }
         Ok(formula_index)
     }
 
@@ -4407,6 +4526,39 @@ impl Model<'_> {
     }
 }
 
+/// Where `formula` sits in a sheet's `shared` list, through `cache`: the
+/// entries appended since the last lookup are indexed first, and a stale
+/// hit (the list rewritten in place) rebuilds the index.
+fn find_shared_formula(
+    cache: &mut HashMap<u32, (usize, HashMap<String, usize>)>,
+    sheet: u32,
+    shared: &[String],
+    formula: &str,
+) -> Option<usize> {
+    let (covered, index) = cache.entry(sheet).or_default();
+    if *covered > shared.len() {
+        index.clear();
+        *covered = 0;
+    }
+    for (at, entry) in shared.iter().enumerate().skip(*covered) {
+        index.entry(entry.clone()).or_insert(at);
+    }
+    *covered = shared.len();
+    match index.get(formula) {
+        Some(&at) if shared.get(at).is_some_and(|entry| entry == formula) => Some(at),
+        Some(_) => {
+            index.clear();
+            for (at, entry) in shared.iter().enumerate() {
+                index.entry(entry.clone()).or_insert(at);
+            }
+            index.get(formula).copied()
+        }
+        // A list rewritten in place could still hold it; adding it again
+        // costs an entry, never a wrong formula.
+        None => None,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     #![allow(clippy::expect_used)]
@@ -4503,38 +4655,5 @@ mod tests {
         model.evaluate();
         assert_eq!(update_result, Ok(()));
         assert_eq!(model._get_formula("A1"), *"=-A2*2");
-    }
-}
-
-/// Where `formula` sits in a sheet's `shared` list, through `cache`: the
-/// entries appended since the last lookup are indexed first, and a stale
-/// hit (the list rewritten in place) rebuilds the index.
-fn find_shared_formula(
-    cache: &mut HashMap<u32, (usize, HashMap<String, usize>)>,
-    sheet: u32,
-    shared: &[String],
-    formula: &str,
-) -> Option<usize> {
-    let (covered, index) = cache.entry(sheet).or_default();
-    if *covered > shared.len() {
-        index.clear();
-        *covered = 0;
-    }
-    for (at, entry) in shared.iter().enumerate().skip(*covered) {
-        index.entry(entry.clone()).or_insert(at);
-    }
-    *covered = shared.len();
-    match index.get(formula) {
-        Some(&at) if shared.get(at).is_some_and(|entry| entry == formula) => Some(at),
-        Some(_) => {
-            index.clear();
-            for (at, entry) in shared.iter().enumerate() {
-                index.entry(entry.clone()).or_insert(at);
-            }
-            index.get(formula).copied()
-        }
-        // A list rewritten in place could still hold it; adding it again
-        // costs an entry, never a wrong formula.
-        None => None,
     }
 }

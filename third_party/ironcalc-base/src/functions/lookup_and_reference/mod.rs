@@ -1037,14 +1037,36 @@ impl<'a> Model<'a> {
                     "Formula is hidden by worksheet protection".into(),
                 );
             }
+            let (formula_row, formula_column) =
+                self.formula_information_reference(left.sheet, left.row, left.column);
             let formula = self
                 .source_formulas
-                .get(&(left.sheet, left.row, left.column))
+                .get(&(left.sheet, formula_row, formula_column))
                 .cloned()
                 .or_else(|| {
-                    self.get_english_cell_formula(left.sheet, left.row, left.column)
+                    self.get_english_cell_formula(left.sheet, formula_row, formula_column)
                         .ok()
                         .flatten()
+                        .map(|formula| {
+                            if self
+                                .workbook
+                                .worksheet(left.sheet)
+                                .ok()
+                                .is_some_and(|sheet| {
+                                    matches!(
+                                        sheet.cell(formula_row, formula_column),
+                                        Some(crate::types::Cell::ArrayFormula {
+                                            kind: crate::types::ArrayKind::Cse,
+                                            ..
+                                        })
+                                    )
+                                })
+                            {
+                                format!("{{{formula}}}")
+                            } else {
+                                formula
+                            }
+                        })
                 });
             if let Some(f) = formula {
                 if f.encode_utf16().count() > 8192 {

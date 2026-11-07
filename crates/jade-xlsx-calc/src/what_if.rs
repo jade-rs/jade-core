@@ -226,26 +226,28 @@ fn put_back(
             if let Some(value) = held {
                 set_literal(model, sheet as u32, row, column, value);
             } else {
-                let _ = model.update_cell_with_formula(sheet as u32, row, column, text);
+                let _ = crate::set_projected_formula(model, workbook, sheet, at, text);
             }
             model.set_source_formula(
                 sheet as u32,
                 row,
                 column,
-                Some(format!(
-                    "={}",
-                    crate::formula_text::to_display_formula(
-                        formula.strip_prefix('=').unwrap_or(&formula)
-                    )
-                )),
+                Some(crate::source_formula_text(workbook, sheet, at, &formula)),
             );
         }
-        None => set_literal(
-            model,
-            sheet as u32,
-            row,
-            column,
-            &cached_value(workbook, sheet, at),
-        ),
+        None => {
+            set_literal(
+                model,
+                sheet as u32,
+                row,
+                column,
+                &cached_value(workbook, sheet, at),
+            );
+            if workbook.sheets[sheet].array_formulas.iter().any(|array| {
+                array.kind == jade_xlsx_reader::ArrayFormulaKind::Legacy && array.outputs_to(at)
+            }) {
+                model.restore_source_array_member(sheet as u32, row, column);
+            }
+        }
     }
 }
