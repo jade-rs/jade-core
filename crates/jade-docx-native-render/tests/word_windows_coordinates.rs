@@ -249,12 +249,27 @@ fn windows_word_arial_edge_origins() {
                 "word-windows-edge-table-zero-horizontal-borders-compat14",
                 "word-windows-edge-table-zero-padding-compat12",
                 "word-windows-edge-table-zero-padding-compat14",
+                "word-windows-edge-table-spacing-auto-compat12",
+                "word-windows-edge-table-spacing-auto-compat14",
+                "word-windows-edge-table-spacing-auto-compat15",
+                "word-windows-edge-table-spacing-auto-borders-compat12",
+                "word-windows-edge-table-spacing-auto-borders-compat14",
+                "word-windows-edge-table-spacing-auto-borders-compat15",
+                "word-windows-edge-table-spacing-at-least-compat12",
+                "word-windows-edge-table-spacing-at-least-compat14",
+                "word-windows-edge-table-spacing-at-least-compat15",
+                "word-windows-edge-table-spacing-at-least-borders-compat12",
+                "word-windows-edge-table-spacing-at-least-borders-compat14",
+                "word-windows-edge-table-spacing-at-least-borders-compat15",
+                "word-windows-edge-table-spacing-at-least-continuation-compat12",
+                "word-windows-edge-table-spacing-at-least-continuation-compat14",
+                "word-windows-edge-table-spacing-at-least-continuation-compat15",
             ]
             .map(str::to_owned)
         )
     );
     assert!(
-        checked >= 27699,
+        checked >= 38361,
         "do not silently remove edge-case coverage"
     );
 }
