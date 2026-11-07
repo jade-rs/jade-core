@@ -36431,7 +36431,17 @@ where
         // even when adjacent fragments contain the same text.
         continues_field(runs, previous_index, index)
             && runs[index].field.as_ref().is_some_and(|field| {
-                self.resolve_run_field_with_cached_result(field, false)
+                // Numbered REF values are distributed across result runs by
+                // WordDocument::spread_ref_value to preserve their formatting.
+                // Those evaluated values are fragments too, not whole fields.
+                !matches!(
+                    field.kind.base_kind(),
+                    RunFieldKind::Ref {
+                        numbering: true,
+                        ..
+                    }
+                ) && self
+                    .resolve_run_field_with_cached_result(field, false)
                     .is_some()
             })
     }
@@ -47764,6 +47774,44 @@ mod tests {
                 .text_box_paragraph_layout(model.paragraph(0).unwrap())
                 .0,
             "第１１条",
+        );
+    }
+
+    #[test]
+    fn numbered_ref_retains_evaluated_result_fragments() {
+        let bytes = docx_with_document_xml(
+            r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:instrText> REF article \n </w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r><w:r><w:t>第</w:t></w:r><w:r><w:t>１</w:t></w:r><w:r><w:t>１</w:t></w:r><w:r><w:t>条</w:t></w:r><w:r><w:fldChar w:fldCharType="end"/></w:r></w:p></w:body></w:document>"#,
+        );
+        let model = futures::executor::block_on(WordDocument::load(&bytes, &Options::default()))
+            .expect("load");
+        let mut document = model.document.as_ref().unwrap().as_ref().clone();
+        let BodyElement::Paragraph(paragraph) = &mut document.body.as_mut().unwrap().elements[0]
+        else {
+            panic!("paragraph")
+        };
+        // The numbered-reference resolver supplies one value per saved run,
+        // including repeated characters in the article number.
+        for (run, value) in paragraph
+            .runs
+            .iter_mut()
+            .filter(|run| run.field.is_some())
+            .zip(["第", "２", "２", "条"])
+        {
+            run.field.as_mut().unwrap().resolved_value = Some(value.into());
+        }
+        assert_eq!(
+            test_renderer().text_box_paragraph_layout(paragraph).0,
+            "第２２条"
+        );
+        assert_eq!(
+            painted_document_text_with_options(
+                &document,
+                &Options {
+                    show_formatting_marks: false,
+                    ..Options::default()
+                }
+            ),
+            "第２２条"
         );
     }
 
