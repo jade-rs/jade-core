@@ -18590,7 +18590,7 @@ where
             if let Some(numbering) = &props.numbering {
                 if let (Some(num_id), Some(level)) = (&numbering.id, numbering.level) {
                     if let Some(numbering_part) = numbering_part {
-                        let level_info = numbering_part.get_level_info(num_id, level).cloned();
+                        let level_info = numbering_part.get_level_info(num_id, level);
                         let abstract_num_id =
                             numbering_part.abstract_num_id(num_id).unwrap_or_default();
                         let start_override = numbering_part.start_value(num_id, level);
@@ -28150,8 +28150,7 @@ where
         }
         if let Some((num_id, level)) = numbering {
             let numbering_part = self.last_numbering_part.as_deref();
-            let level_info =
-                numbering_part.and_then(|part| part.get_level_info(num_id, level).cloned());
+            let level_info = numbering_part.and_then(|part| part.get_level_info(num_id, level));
             if let (Some(numbering_part), Some(level_info)) = (numbering_part, level_info) {
                 let origin = jade_docx_layout::line_wrap::numbered_paragraph_origin(
                     x,
