@@ -122,6 +122,8 @@ pub enum HeadlessError {
     BadReference(String),
     #[error("duplicate cell reference `{0}` in one batch")]
     DuplicateReference(String),
+    #[error("cannot change part of legacy array `{sheet}!{range}`")]
+    PartialLegacyArray { sheet: String, range: String },
     /// A format change that names nothing to change.
     #[error("the format change names nothing to change")]
     EmptyFormatChange,
@@ -1363,6 +1365,43 @@ impl HeadlessWorkbook {
         self.write_edits_with_parts(edits, styles, Vec::new())
     }
 
+    /// A CSE array is one value-editing unit. Count only explicit writes in
+    /// the batch, so a tiny edit cannot expand a huge declared file range.
+    /// Formatting-only edits may change individual cells.
+    fn guard_legacy_array_edits(&self, edits: &[(usize, CellEdit)]) -> Result<()> {
+        let writes: HashSet<_> = edits
+            .iter()
+            .filter(|(_, edit)| !matches!(edit.value, NewValue::Unchanged))
+            .map(|(index, edit)| (*index, edit.reference))
+            .collect();
+        for (index, sheet) in self.workbook.sheets.iter().enumerate() {
+            for array in sheet
+                .array_formulas
+                .iter()
+                .filter(|array| array.kind == jade_xlsx_reader::ArrayFormulaKind::Legacy)
+            {
+                let range = array.range;
+                let count = writes
+                    .iter()
+                    .filter(|(at, cell)| {
+                        *at == index
+                            && (range.start.column..=range.end.column).contains(&cell.column)
+                            && (range.start.row..=range.end.row).contains(&cell.row)
+                    })
+                    .count() as u64;
+                let area = (u64::from(range.end.column) - u64::from(range.start.column) + 1)
+                    * (u64::from(range.end.row) - u64::from(range.start.row) + 1);
+                if count != 0 && count != area {
+                    return Err(HeadlessError::PartialLegacyArray {
+                        sheet: sheet.name.clone(),
+                        range: format_range(range),
+                    });
+                }
+            }
+        }
+        Ok(())
+    }
+
     /// Edits that write into an array formula's spill block it, as typing
     /// over a spilled cell does in Excel: the rest of the spill is cleared and
     /// the anchor's range shrinks to the anchor, so the next recalculation
@@ -1470,6 +1509,7 @@ impl HeadlessWorkbook {
         extra_parts: Vec<(String, String)>,
         base: Option<&[u8]>,
     ) -> Result<()> {
+        self.guard_legacy_array_edits(&edits)?;
         let (edits, blocked) = self.block_spills(edits);
         for (index, edit) in &edits {
             if !matches!(edit.value, NewValue::Unchanged) {
@@ -3052,6 +3092,12 @@ impl HeadlessWorkbook {
         // is cleared, and the anchor's range follows.
         for (index, sheet) in self.workbook.sheets.iter().enumerate() {
             for array in &sheet.array_formulas {
+                // Legacy outputs have fixed bounds, including when their
+                // calculation is held. Never resize them or enumerate a huge
+                // unsupported range merely because no dynamic spill returned.
+                if array.kind == jade_xlsx_reader::ArrayFormulaKind::Legacy {
+                    continue;
+                }
                 let now = spills
                     .iter()
                     .find(|spill| spill.sheet == index && spill.anchor == array.anchor)
