@@ -7,6 +7,26 @@ use jade_xlsx_reader::{read_xlsx, CellRef, CellValue};
 use zip::write::SimpleFileOptions;
 
 #[test]
+fn legacy_array_formula_text_keeps_cse_braces_without_bracing_unknown_arrays() {
+    let xml = sheet(
+        r#"<row r="1"><c r="A1"><f t="array" ref="A1">SUM(1, 2)</f><v>3</v></c><c r="B1" cm="1"><f t="array" ref="B1">SUM(1, 2)</f><v>3</v></c><c r="C1"><f>FORMULATEXT(A1)</f></c><c r="D1"><f>FORMULATEXT(B1)</f></c></row>"#,
+    );
+    let book = read_xlsx(&workbook(&xml, None, false)).unwrap();
+    for _ in 0..2 {
+        let result = evaluate(&book).unwrap();
+        assert!(result.skipped.is_empty());
+        assert_eq!(
+            computed(&result, 0, "C1"),
+            Some(&CellValue::Text("{=SUM(1, 2)}".into()))
+        );
+        assert_eq!(
+            computed(&result, 0, "D1"),
+            Some(&CellValue::Text("=SUM(1, 2)".into()))
+        );
+    }
+}
+
+#[test]
 fn parsed_formula_source_spelling_survives_cache_and_kept_recalculation() {
     let xml = sheet(
         r#"<row r="1"><c r="A1"><v>2</v></c><c r="B1"><f>SUM(A1, 3)</f><v>5</v></c><c r="C1"><f>FORMULATEXT(B1)</f></c><c r="D1"><f>_xlfn.XLOOKUP(A1, A1:A1, B1:B1)</f><v>5</v></c><c r="E1"><f>FORMULATEXT(D1)</f></c></row>"#,

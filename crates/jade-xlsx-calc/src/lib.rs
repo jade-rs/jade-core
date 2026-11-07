@@ -675,6 +675,24 @@ fn set_formula(
     Ok(())
 }
 
+/// Display identity is separate from the executable formula. Dynamic and
+/// unresolved array anchors must not inherit legacy CSE braces.
+fn source_formula_text(workbook: &Workbook, sheet: usize, at: CellRef, formula: &str) -> String {
+    let display = format!(
+        "={}",
+        formula_text::to_display_formula(formula.strip_prefix('=').unwrap_or(formula))
+    );
+    if workbook.sheets.get(sheet).is_some_and(|sheet| {
+        sheet.array_formulas.iter().any(|array| {
+            array.anchor == at && array.kind == jade_xlsx_reader::ArrayFormulaKind::Legacy
+        })
+    }) {
+        format!("{{{display}}}")
+    } else {
+        display
+    }
+}
+
 fn project_with_epoch<'a>(
     workbook: &Workbook,
     skipped: &HashMap<(usize, CellRef), CellValue>,
@@ -736,11 +754,11 @@ fn project_with_epoch<'a>(
                             engine_sheet,
                             engine_row,
                             engine_column,
-                            Some(format!(
-                                "={}",
-                                formula_text::to_display_formula(
-                                    formula.strip_prefix('=').unwrap_or(formula)
-                                )
+                            Some(source_formula_text(
+                                workbook,
+                                index,
+                                cell.reference,
+                                formula,
                             )),
                         );
                         if workbook.iteration.enabled {
@@ -770,11 +788,11 @@ fn project_with_epoch<'a>(
                         engine_sheet,
                         engine_row,
                         engine_column,
-                        Some(format!(
-                            "={}",
-                            formula_text::to_display_formula(
-                                formula.strip_prefix('=').unwrap_or(formula)
-                            )
+                        Some(source_formula_text(
+                            workbook,
+                            index,
+                            cell.reference,
+                            formula,
                         )),
                     );
                 }
