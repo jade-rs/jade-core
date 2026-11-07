@@ -798,6 +798,8 @@ pub struct CellView {
     /// are expanded to this cell's actual A1 references rather than reported
     /// only on the master cell. The value beside it is what the file cached;
     /// nothing recalculates yet.
+    /// Legacy CSE members expose their anchor's original formula without
+    /// translation or outer CSE braces. Their own cached values remain separate.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub formula: Option<String>,
     /// Cache freshness for a formula. Absent on non-formula cells.

@@ -1066,6 +1066,24 @@ fn decoded_reference(reference: &quick_xml::events::BytesRef<'_>) -> Option<Stri
 #[cfg(test)]
 mod tests {
     #[test]
+    fn formula_sources_share_only_proven_legacy_array_text() {
+        use super::*;
+        let xml = r#"<worksheet><sheetData><row r="1"><c r="A1"><f t="array" ref="A1:A3">SUM(B1, 2)</f><v>7</v></c><c r="B1"><v>5</v></c><c r="C1" cm="1"><f t="array" ref="C1:C3">SEQUENCE(3)</f></c><c r="D1"><f>1+2</f></c></row></sheetData></worksheet>"#;
+        let sheet = parse_sheet("Sheet1", "xl/worksheets/sheet1.xml", xml, &[]).unwrap();
+        assert_eq!(
+            sheet.formula_source_at(CellRef::new(0, 2)),
+            Some((CellRef::new(0, 0), "SUM(B1, 2)"))
+        );
+        assert!(sheet.cell_at(CellRef::new(0, 2)).is_none());
+        assert!(sheet.formula_source_at(CellRef::new(2, 2)).is_none());
+        assert!(sheet.formula_source_at(CellRef::new(1, 0)).is_none());
+        assert_eq!(
+            sheet.formula_source_at(CellRef::new(3, 0)),
+            Some((CellRef::new(3, 0), "1+2"))
+        );
+    }
+
+    #[test]
     fn array_identity_requires_a_resolved_dynamic_flag() {
         use super::*;
         for (attribute, flags, expected) in [

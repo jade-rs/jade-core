@@ -55,13 +55,17 @@ fn spilled_value(value: &CellValue) -> NewValue {
 
 fn formula_cache_state(cell: &Cell, needs_recalculation: bool) -> Option<FormulaState> {
     cell.formula.as_ref()?;
-    Some(if matches!(cell.value, CellValue::Empty) {
+    Some(formula_value_state(&cell.value, needs_recalculation))
+}
+
+fn formula_value_state(value: &CellValue, needs_recalculation: bool) -> FormulaState {
+    if matches!(value, CellValue::Empty) {
         FormulaState::Uncalculated
     } else if needs_recalculation {
         FormulaState::Stale
     } else {
         FormulaState::Cached
-    })
+    }
 }
 
 use std::collections::{BTreeMap, HashSet};
@@ -3177,7 +3181,14 @@ impl HeadlessWorkbook {
 
     pub fn formula_state(&self, sheet_index: usize, reference: CellRef) -> Option<FormulaState> {
         let sheet = self.workbook.sheets.get(sheet_index)?;
-        formula_cache_state(sheet.cell_at(reference)?, self.calculation_is_stale())
+        sheet.formula_source_at(reference)?;
+        Some(formula_value_state(
+            sheet
+                .cell_at(reference)
+                .map(|cell| &cell.value)
+                .unwrap_or(&CellValue::Empty),
+            self.calculation_is_stale(),
+        ))
     }
 
     fn calculation_is_stale(&self) -> bool {
@@ -3611,6 +3622,9 @@ impl HeadlessWorkbook {
         );
         let format = self.workbook.styles.cell_format(style_index);
         let value = cell.map(|cell| &cell.value).unwrap_or(&CellValue::Empty);
+        let formula = sheet
+            .formula_source_at(reference)
+            .map(|(_, source)| formula_text::to_display_formula(source));
         let conditional_style = jade_xlsx_layout::conditional_format::ConditionalStyles::new(
             sheet,
             &self.workbook.styles,
@@ -3649,13 +3663,10 @@ impl HeadlessWorkbook {
             )
             .text,
             // As Excel shows it, without the file's `_xlfn.` prefixes.
-            formula: cell.and_then(|cell| {
-                cell.formula
-                    .as_deref()
-                    .map(jade_xlsx_calc::formula_text::to_display_formula)
-            }),
-            formula_state: cell
-                .and_then(|cell| formula_cache_state(cell, self.calculation_is_stale())),
+            formula_state: formula
+                .as_ref()
+                .map(|_| formula_value_state(value, self.calculation_is_stale())),
+            formula,
             number_format,
             hyperlink: sheet.hyperlink_at(reference).map(|link| HyperlinkView {
                 target: link.target.clone(),

@@ -6,6 +6,31 @@ fn book() -> HeadlessWorkbook {
     book_with_range("A1:A3")
 }
 
+#[test]
+fn legacy_members_expose_formula_source_without_replacing_their_values() {
+    let mut book = book();
+    let sheet = book.workbook().sheets[0].name.clone();
+    for (index, at) in ["A1", "A2", "A3"].into_iter().enumerate() {
+        let cell = book.cell(&sheet, at).unwrap();
+        assert_eq!(cell.formula.as_deref(), Some("{1;2;3}"));
+        assert_eq!(cell.number, Some((index + 1) as f64));
+        assert!(cell.formula_state.is_some());
+        assert_eq!(
+            book.formula_state(0, jade_xlsx_reader::CellRef::parse(at).unwrap()),
+            cell.formula_state
+        );
+    }
+    let range = book.range(&sheet, "A1:A3").unwrap();
+    assert!(range
+        .rows
+        .iter()
+        .all(|row| row[0].formula.as_deref() == Some("{1;2;3}")));
+    book.set(&sheet, "D1", CellInput::Formula("SEQUENCE(3)".into()))
+        .unwrap();
+    assert!(book.cell(&sheet, "D2").unwrap().formula.is_none());
+    assert!(book.cell(&sheet, "D2").unwrap().formula_state.is_none());
+}
+
 fn book_with_range(range: &str) -> HeadlessWorkbook {
     let mut package = OpcPackage::open(include_bytes!(
         "../../../public/fixtures/sample-workbook.xlsx"
@@ -36,6 +61,13 @@ fn an_unsupported_large_legacy_array_is_preserved_and_rejects_partial_edits() {
     let sheet = book.workbook().sheets[0].name.clone();
     let range = jade_xlsx_reader::CellRange::parse("A1:XFD1048576").unwrap();
     assert_eq!(book.workbook().sheets[0].array_formulas[0].range, range);
+    let implicit = book.cell(&sheet, "XFD1048576").unwrap();
+    assert_eq!(implicit.formula.as_deref(), Some("{1;2;3}"));
+    assert_eq!(
+        implicit.formula_state,
+        Some(jade_xlsx_headless_api::FormulaState::Uncalculated)
+    );
+    assert!(implicit.number.is_none());
     let before = book.bytes().to_vec();
     assert!(matches!(
         book.set(&sheet, "A2", CellInput::Blank),
