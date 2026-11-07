@@ -1967,7 +1967,7 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Imsub => scalar_arguments(args),
         Function::Imsum => scalar_arguments(args),
         Function::Imtan => scalar_arguments(args),
-        Function::Convert => not_implemented(args),
+        Function::Convert => scalar_arguments(args),
         Function::Delta => scalar_arguments(args),
         Function::Gestep => scalar_arguments(args),
         Function::Subtotal => not_implemented(args),

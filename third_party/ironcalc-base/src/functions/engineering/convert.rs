@@ -47,18 +47,6 @@ impl<'a> Model<'a> {
         if args.len() != 3 {
             return CalcResult::new_args_number_error(cell);
         }
-        let value = match self.get_number(&args[0], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let from_unit = match self.get_string(&args[1], cell) {
-            Ok(s) => s,
-            Err(error) => return error,
-        };
-        let to_unit = match self.get_string(&args[2], cell) {
-            Ok(s) => s,
-            Err(error) => return error,
-        };
         let prefix = HashMap::from([
             ("Y", 1E+24),
             ("Z", 1E+21),
@@ -311,107 +299,131 @@ impl<'a> Model<'a> {
             }
         }
 
-        let mut to_unit_prefix = 1.0;
-        let mut from_unit_prefix = 1.0;
+        self.map_scalar_arguments(args, cell, |model, values| {
+            let value = match model.cast_to_number(values[0].clone(), cell) {
+                Ok(f) => f,
+                Err(s) => return s,
+            };
+            let from_unit = match model.cast_to_string(values[1].clone(), cell) {
+                Ok(s) => s,
+                Err(error) => return error,
+            };
+            let to_unit = match model.cast_to_string(values[2].clone(), cell) {
+                Ok(s) => s,
+                Err(error) => return error,
+            };
+            let mut to_unit_prefix = 1.0;
+            let mut from_unit_prefix = 1.0;
 
-        // kind of units (weight, distance, time, ...)
-        let mut to_unit_kind = "";
-        let mut from_unit_kind = "";
+            // kind of units (weight, distance, time, ...)
+            let mut to_unit_kind = "";
+            let mut from_unit_kind = "";
 
-        let mut to_unit_name = "";
-        let mut from_unit_name = "";
+            let mut to_unit_name = "";
+            let mut from_unit_name = "";
 
-        for (&name, unit) in &units {
-            for (&unit_name, unit_value) in unit {
-                if let Some(pk) = from_unit.strip_suffix(unit_name) {
-                    if pk.is_empty() {
-                        from_unit_kind = name;
-                        from_unit_prefix = 1.0 * unit_value;
-                        from_unit_name = unit_name;
-                    } else if let Some(modifier) = prefix.get(pk) {
-                        if mks.contains(&unit_name) && !all_units.contains(&from_unit.as_str()) {
-                            // We make sure:
-                            // 1. It is a unit that admits a modifier (like metres or grams)
-                            // 2. from_unit is not itself a unit
-                            let scale = if name == "area" && unit_name != "ar" {
-                                // 1 km2 is actually 10^6 m2
-                                *modifier * modifier
-                            } else if name == "volume" && volumes.contains(&unit_name) {
-                                // don't look at me I don't make the rules!
-                                *modifier * modifier * modifier
-                            } else {
-                                *modifier
-                            };
+            for (&name, unit) in &units {
+                for (&unit_name, unit_value) in unit {
+                    if let Some(pk) = from_unit.strip_suffix(unit_name) {
+                        if pk.is_empty() {
                             from_unit_kind = name;
-                            from_unit_prefix = scale * unit_value;
+                            from_unit_prefix = 1.0 * unit_value;
                             from_unit_name = unit_name;
+                        } else if let Some(modifier) = prefix.get(pk) {
+                            if mks.contains(&unit_name) && !all_units.contains(&from_unit.as_str())
+                            {
+                                // We make sure:
+                                // 1. It is a unit that admits a modifier (like metres or grams)
+                                // 2. from_unit is not itself a unit
+                                let scale = if name == "area" && unit_name != "ar" {
+                                    // 1 km2 is actually 10^6 m2
+                                    *modifier * modifier
+                                } else if name == "volume" && volumes.contains(&unit_name) {
+                                    // don't look at me I don't make the rules!
+                                    *modifier * modifier * modifier
+                                } else {
+                                    *modifier
+                                };
+                                from_unit_kind = name;
+                                from_unit_prefix = scale * unit_value;
+                                from_unit_name = unit_name;
+                            }
                         }
                     }
-                }
-                if let Some(pk) = to_unit.strip_suffix(unit_name) {
-                    if pk.is_empty() {
-                        to_unit_kind = name;
-                        to_unit_prefix = 1.0 * unit_value;
-                        to_unit_name = unit_name;
-                    } else if let Some(modifier) = prefix.get(pk) {
-                        if mks.contains(&unit_name) && !all_units.contains(&to_unit.as_str()) {
-                            let scale = if name == "area" && unit_name != "ar" {
-                                *modifier * modifier
-                            } else if name == "volume" && volumes.contains(&unit_name) {
-                                *modifier * modifier * modifier
-                            } else {
-                                *modifier
-                            };
+                    if let Some(pk) = to_unit.strip_suffix(unit_name) {
+                        if pk.is_empty() {
                             to_unit_kind = name;
-                            to_unit_prefix = scale * unit_value;
+                            to_unit_prefix = 1.0 * unit_value;
                             to_unit_name = unit_name;
+                        } else if let Some(modifier) = prefix.get(pk) {
+                            if mks.contains(&unit_name) && !all_units.contains(&to_unit.as_str()) {
+                                let scale = if name == "area" && unit_name != "ar" {
+                                    *modifier * modifier
+                                } else if name == "volume" && volumes.contains(&unit_name) {
+                                    *modifier * modifier * modifier
+                                } else {
+                                    *modifier
+                                };
+                                to_unit_kind = name;
+                                to_unit_prefix = scale * unit_value;
+                                to_unit_name = unit_name;
+                            }
                         }
+                    }
+                    if !from_unit_kind.is_empty() && !to_unit_kind.is_empty() {
+                        break;
                     }
                 }
                 if !from_unit_kind.is_empty() && !to_unit_kind.is_empty() {
                     break;
                 }
             }
-            if !from_unit_kind.is_empty() && !to_unit_kind.is_empty() {
-                break;
+            if from_unit_kind != to_unit_kind {
+                return CalcResult::new_error(Error::NA, cell, "Different units".to_string());
             }
-        }
-        if from_unit_kind != to_unit_kind {
-            return CalcResult::new_error(Error::NA, cell, "Different units".to_string());
-        }
 
-        // Let's check if it is temperature;
-        if from_unit_kind.is_empty() {
-            return CalcResult::new_error(Error::NA, cell, "Unit not found".to_string());
-        }
+            // Let's check if it is temperature;
+            if from_unit_kind.is_empty() {
+                return CalcResult::new_error(Error::NA, cell, "Unit not found".to_string());
+            }
 
-        if from_unit_kind == "temperature" {
-            // Temperature requires formula conversion
-            // Kelvin (K, k), Celsius (C,cel), Rankine (Rank), Réaumur (Reau)
-            let to_temperature = match to_unit_name {
-                "K" | "kel" => Temperature::Kelvin,
-                "C" | "cel" => Temperature::Celsius,
-                "Rank" => Temperature::Rankine,
-                "Reau" => Temperature::Reaumur,
-                "F" | "fah" => Temperature::Fahrenheit,
-                _ => {
-                    return CalcResult::new_error(Error::ERROR, cell, "Internal error".to_string());
-                }
-            };
-            let from_temperature = match from_unit_name {
-                "K" | "kel" => Temperature::Kelvin,
-                "C" | "cel" => Temperature::Celsius,
-                "Rank" => Temperature::Rankine,
-                "Reau" => Temperature::Reaumur,
-                "F" | "fah" => Temperature::Fahrenheit,
-                _ => {
-                    return CalcResult::new_error(Error::ERROR, cell, "Internal error".to_string());
-                }
-            };
-            let t = convert_temperature(value * from_unit_prefix, from_temperature, to_temperature)
-                / to_unit_prefix;
-            return CalcResult::Number(t);
-        }
-        CalcResult::Number(value * from_unit_prefix / to_unit_prefix)
+            if from_unit_kind == "temperature" {
+                // Temperature requires formula conversion
+                // Kelvin (K, k), Celsius (C,cel), Rankine (Rank), Réaumur (Reau)
+                let to_temperature = match to_unit_name {
+                    "K" | "kel" => Temperature::Kelvin,
+                    "C" | "cel" => Temperature::Celsius,
+                    "Rank" => Temperature::Rankine,
+                    "Reau" => Temperature::Reaumur,
+                    "F" | "fah" => Temperature::Fahrenheit,
+                    _ => {
+                        return CalcResult::new_error(
+                            Error::ERROR,
+                            cell,
+                            "Internal error".to_string(),
+                        );
+                    }
+                };
+                let from_temperature = match from_unit_name {
+                    "K" | "kel" => Temperature::Kelvin,
+                    "C" | "cel" => Temperature::Celsius,
+                    "Rank" => Temperature::Rankine,
+                    "Reau" => Temperature::Reaumur,
+                    "F" | "fah" => Temperature::Fahrenheit,
+                    _ => {
+                        return CalcResult::new_error(
+                            Error::ERROR,
+                            cell,
+                            "Internal error".to_string(),
+                        );
+                    }
+                };
+                let t =
+                    convert_temperature(value * from_unit_prefix, from_temperature, to_temperature)
+                        / to_unit_prefix;
+                return CalcResult::Number(t);
+            }
+            CalcResult::Number(value * from_unit_prefix / to_unit_prefix)
+        })
     }
 }
