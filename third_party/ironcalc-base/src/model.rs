@@ -1218,6 +1218,28 @@ impl<'a> Model<'a> {
                     }
                     // Check that the full spill area (based on actual result dimensions) is clear.
                     // The stored range may be (1,1) on first evaluation, so we must re-check here.
+                    if (array_width > 1 || array_height > 1)
+                        && self.workbook.tables.values().any(|table| {
+                            table.sheet_name == self.workbook.worksheets[sheet as usize].name
+                                && crate::expressions::parser::parse_range(&table.reference)
+                                    .is_ok_and(|(left, top, right, bottom)| {
+                                        column <= right
+                                            && column + array_width > left
+                                            && row <= bottom
+                                            && row + array_height > top
+                                    })
+                        })
+                    {
+                        return self.set_cells_with_result(
+                            cell_reference,
+                            cell,
+                            &CalcResult::new_error(
+                                Error::SPILL,
+                                cell_reference,
+                                "Spill overlaps an Excel table".to_string(),
+                            ),
+                        );
+                    }
                     let sheet_data = &self.workbook.worksheets[sheet as usize].sheet_data;
                     for r in row..row + array_height {
                         let row_data = sheet_data.get(&r);

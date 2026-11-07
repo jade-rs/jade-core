@@ -7,6 +7,80 @@ use jade_xlsx_reader::{read_xlsx, CellRef, CellValue};
 use zip::write::SimpleFileOptions;
 
 #[test]
+fn dynamic_arrays_cannot_spill_inside_an_otherwise_empty_table() {
+    let source = include_bytes!("../../../public/fixtures/objects-workbook.xlsx");
+    let mut book = read_xlsx(source).unwrap();
+    assert!(!book.sheets[0].tables.is_empty());
+    let reference = CellRef::parse("B2").unwrap();
+    assert!(book.sheets[0]
+        .tables
+        .iter()
+        .any(|t| t.reference.contains(reference)));
+    let mut cell = book.sheets[0]
+        .rows
+        .iter()
+        .flat_map(|r| &r.cells)
+        .find(|c| c.reference == reference)
+        .unwrap()
+        .clone();
+    cell.formula = Some("SEQUENCE(3)".into());
+    cell.value = CellValue::Empty;
+    for row in &mut book.sheets[0].rows {
+        row.cells.clear();
+    }
+    book.sheets[0]
+        .rows
+        .iter_mut()
+        .find(|r| r.index == reference.row)
+        .unwrap()
+        .cells
+        .push(cell);
+    book.sheets[0].array_formulas = vec![jade_xlsx_reader::ArrayFormula {
+        anchor: reference,
+        range: jade_xlsx_reader::CellRange {
+            start: reference,
+            end: reference,
+        },
+        kind: jade_xlsx_reader::ArrayFormulaKind::Dynamic,
+    }];
+    book.sheets[0].tables.truncate(1);
+    for (table_range, formula, expected, spills) in [
+        (
+            "A1:C5",
+            "SEQUENCE(3)",
+            CellValue::Error("#SPILL!".into()),
+            0,
+        ),
+        (
+            "C2:E4",
+            "SEQUENCE(1,2)",
+            CellValue::Error("#SPILL!".into()),
+            0,
+        ),
+        ("C2:E4", "SEQUENCE(3)", CellValue::Number(1.0), 1),
+        ("A1:C5", "SUM(SEQUENCE(3))", CellValue::Number(6.0), 0),
+    ] {
+        book.sheets[0].tables[0].reference =
+            jade_xlsx_reader::CellRange::parse(table_range).unwrap();
+        book.sheets[0]
+            .rows
+            .iter_mut()
+            .flat_map(|r| &mut r.cells)
+            .find(|c| c.reference == reference)
+            .unwrap()
+            .formula = Some(formula.into());
+        let result = evaluate(&book).unwrap();
+        assert!(result.skipped.is_empty());
+        assert_eq!(
+            computed(&result, 0, "B2"),
+            Some(&expected),
+            "{table_range}: {formula}"
+        );
+        assert_eq!(result.spills.len(), spills, "{table_range}: {formula}");
+    }
+}
+
+#[test]
 fn imported_normal_formulas_intersect_scalar_arguments_while_cse_lifts_them() {
     let xml = sheet(
         r#"<row r="1"><c r="A1" t="inlineStr"><is><t>a</t></is></c></row><row r="2"><c r="A2" t="inlineStr"><is><t>bb</t></is></c><c r="B2"><f>LEN(A1:A3)</f></c></row><row r="3"><c r="A3" t="inlineStr"><is><t>ccc</t></is></c></row><row r="5"><c r="B5"><f>SUM(LEN(A1:A3))</f></c><c r="C5"><f t="array" ref="C5">SUM(LEN(A1:A3))</f></c><c r="D5"><f>FORMULATEXT(B5)</f></c></row>"#,
