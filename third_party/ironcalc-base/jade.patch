@@ -8040,6 +8040,17 @@
      }
  }
  
+--- a/src/functions/engineering/convert.rs
++++ b/src/functions/engineering/convert.rs
+@@ -34,7 +34,7 @@
+ 
+     match to_temperature {
+         Temperature::Kelvin => from_t_kelvin,
+-        Temperature::Celsius => from_t_kelvin - 273.5,
++        Temperature::Celsius => from_t_kelvin - 273.15,
+         Temperature::Rankine => 9.0 * from_t_kelvin / 5.0,
+         Temperature::Reaumur => 4.0 * (from_t_kelvin - 273.15) / 5.0,
+         Temperature::Fahrenheit => 9.0 * from_t_kelvin / 5.0 - 459.67,
 --- a/src/functions/engineering/misc.rs
 +++ b/src/functions/engineering/misc.rs
 @@ -1,59 +1,51 @@
@@ -21477,6 +21488,17 @@
  
  #[test]
  fn fn_complex() {
+--- a/src/test/engineering/test_convert.rs
++++ b/src/test/engineering/test_convert.rs
+@@ -21,7 +21,7 @@
+     model.evaluate();
+ 
+     assert_eq!(model._get_text("A1"), "0.45359237");
+-    assert_eq!(model._get_text("A2"), "19.65");
++    assert_eq!(model._get_text("A2"), "20");
+     assert_eq!(model._get_text("A3"), "#N/A");
+     assert_eq!(model._get_text("A4"), "9.290304");
+ 
 --- a/src/test/mod.rs
 +++ b/src/test/mod.rs
 @@ -1,4 +1,5 @@

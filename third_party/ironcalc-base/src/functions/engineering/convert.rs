@@ -34,7 +34,7 @@ fn convert_temperature(
 
     match to_temperature {
         Temperature::Kelvin => from_t_kelvin,
-        Temperature::Celsius => from_t_kelvin - 273.5,
+        Temperature::Celsius => from_t_kelvin - 273.15,
         Temperature::Rankine => 9.0 * from_t_kelvin / 5.0,
         Temperature::Reaumur => 4.0 * (from_t_kelvin - 273.15) / 5.0,
         Temperature::Fahrenheit => 9.0 * from_t_kelvin / 5.0 - 459.67,
