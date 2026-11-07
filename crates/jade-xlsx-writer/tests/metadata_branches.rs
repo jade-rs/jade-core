@@ -13,7 +13,19 @@ fn branch(content: &str) -> String {
 fn write(metadata: &str, dynamic: bool) -> Result<Vec<u8>, WriteError> {
     let source = include_bytes!("../../../public/fixtures/grid-operations-workbook.xlsx");
     let part_name = read_xlsx(source).unwrap().sheets[0].part_name.clone();
-    let mut package = OpcPackage::open(source).unwrap();
+    let bytes = jade_xlsx_writer::write_xlsx(
+        source,
+        &[jade_xlsx_writer::SheetEdits {
+            part_name: part_name.clone(),
+            cells: vec![jade_xlsx_writer::CellEdit {
+                reference: CellRef::parse("J1").unwrap(),
+                value: jade_xlsx_writer::NewValue::Formula("SEQUENCE(3)".into()),
+                style_index: None,
+            }],
+        }],
+    )
+    .unwrap();
+    let mut package = OpcPackage::open(&bytes).unwrap();
     package.replace("xl/metadata.xml", metadata.as_bytes().to_vec());
     let rels = package.part_str("xl/_rels/workbook.xml.rels").unwrap().unwrap().replace("</Relationships>", r#"<Relationship Id="rId900" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/sheetMetadata" Target="metadata.xml"/></Relationships>"#);
     package.replace("xl/_rels/workbook.xml.rels", rels.into_bytes());
@@ -33,6 +45,38 @@ fn write(metadata: &str, dynamic: bool) -> Result<Vec<u8>, WriteError> {
         }],
         false,
     )
+}
+
+#[test]
+fn workbook_import_uses_the_selected_metadata_dictionary() {
+    let bytes = write(&format!("<metadata xmlns=\"{NS}\"/>"), true).unwrap();
+    let mut package = OpcPackage::open(&bytes).unwrap();
+    let metadata = package.part_str("xl/metadata.xml").unwrap().unwrap();
+    let start = metadata.find("<metadata ").unwrap();
+    let head_end = start + metadata[start..].find('>').unwrap() + 1;
+    let close = metadata.rfind("</metadata>").unwrap();
+    let content = &metadata[head_end..close];
+    let alternate = format!("{}<mc:AlternateContent xmlns:mc=\"{MC}\" xmlns:m=\"{NS}\"><mc:Choice Requires=\"m\">{content}</mc:Choice><mc:Fallback>{}</mc:Fallback></mc:AlternateContent>{}", &metadata[..head_end], content.replace("fDynamic=\"1\"", "fDynamic=\"0\""), &metadata[close..]);
+    for (xml, kind) in [
+        (
+            alternate.clone(),
+            jade_xlsx_reader::ArrayFormulaKind::Dynamic,
+        ),
+        (
+            alternate.replace("Requires=\"m\"", "Requires=\"missing\""),
+            jade_xlsx_reader::ArrayFormulaKind::Legacy,
+        ),
+    ] {
+        package.replace("xl/metadata.xml", xml.into_bytes());
+        let workbook = read_xlsx(&package.write().unwrap()).unwrap();
+        let array = workbook.sheets[0]
+            .array_formulas
+            .iter()
+            .find(|array| array.anchor == CellRef::parse("J1").unwrap())
+            .unwrap();
+        assert_eq!(array.kind, kind);
+        assert_eq!(array.range, CellRange::parse("J1:J3").unwrap());
+    }
 }
 
 #[test]
@@ -102,7 +146,7 @@ fn direct_dynamic_links_are_not_reused_without_checking_conditional_siblings() {
         let metadata = format!("<metadata xmlns=\"{NS}\" xmlns:m=\"{NS}\" xmlns:mc=\"{MC}\" xmlns:d=\"http://schemas.microsoft.com/office/spreadsheetml/2017/dynamicarray\"><metadataTypes><metadataType name=\"XLDAPR\"/>{extra}</metadataTypes><futureMetadata name=\"XLDAPR\"><bk><extLst>{extension}</extLst></bk></futureMetadata><cellMetadata><bk><rc t=\"1\" v=\"0\"/></bk></cellMetadata></metadata>");
         assert_eq!(
             jade_xlsx_reader::array_metadata::first_dynamic_array_cell_metadata(&metadata).unwrap(),
-            Some(1)
+            if extra.is_empty() { None } else { Some(1) }
         );
         assert!(matches!(
             write(&metadata, true),
