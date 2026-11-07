@@ -3,6 +3,77 @@ use jade_xlsx_headless_api::CellInput;
 use jade_xlsx_headless_editor::HeadlessWorkbook;
 
 #[test]
+fn bessel_ranges_follow_order_edits_and_saved_caches() {
+    for (function, zero_one, one_one, zero_two, one_two) in [
+        ("BESSELI", 1.266066, 0.565159, 2.279585, 1.590637),
+        ("BESSELJ", 0.765198, 0.440051, 0.223891, 0.576725),
+        ("BESSELK", 0.421024, 0.601907, 0.113894, 0.139866),
+        ("BESSELY", 0.088257, -0.781213, 0.510376, -0.107032),
+    ] {
+        let mut package = OpcPackage::open(include_bytes!(
+            "../../../public/fixtures/sample-workbook.xlsx"
+        ))
+        .unwrap();
+        package.replace("xl/worksheets/sheet1.xml",br#"<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData/></worksheet>"#.to_vec());
+        let mut book = HeadlessWorkbook::open_for_editing(&package.write().unwrap()).unwrap();
+        let name = "売上サマリ";
+        for (at, input) in [
+            ("B1", CellInput::Error("#N/A".into())),
+            ("B2", CellInput::Number(2.0)),
+            ("C1", CellInput::Number(0.0)),
+            ("D1", CellInput::Number(1.0)),
+            (
+                "F1",
+                CellInput::Formula(format!("ROUND({function}(B1:B2,C1:D1),6)")),
+            ),
+            ("J1", CellInput::Formula("ROWS(F1#)*COLUMNS(F1#)".into())),
+        ] {
+            book.set(name, at, input).unwrap();
+        }
+        assert_eq!(book.cell(name, "F1").unwrap().display, "#N/A");
+        book.set(name, "B1", CellInput::Number(1.0)).unwrap();
+        assert_eq!(
+            book.cell(name, "F1").unwrap().number,
+            Some(zero_one),
+            "{function}"
+        );
+        assert_eq!(
+            book.cell(name, "G1").unwrap().number,
+            Some(one_one),
+            "{function}"
+        );
+        book.set(name, "C1", CellInput::Number(1.0)).unwrap();
+        assert_eq!(book.cell(name, "F1").unwrap().number, Some(one_one));
+        book.undo().unwrap();
+        assert_eq!(book.cell(name, "F1").unwrap().number, Some(zero_one));
+        book.redo().unwrap();
+        assert_eq!(book.cell(name, "F1").unwrap().number, Some(one_one));
+        book.undo().unwrap();
+        book.undo().unwrap();
+        let saved = book.save_bytes().unwrap();
+        for reopened in [
+            HeadlessWorkbook::open(&saved).unwrap(),
+            HeadlessWorkbook::open_for_editing(&saved).unwrap(),
+        ] {
+            for at in ["F1", "G1"] {
+                assert_eq!(reopened.cell(name, at).unwrap().display, "#N/A");
+            }
+            assert_eq!(
+                reopened.cell(name, "F2").unwrap().number,
+                Some(zero_two),
+                "{function}"
+            );
+            assert_eq!(
+                reopened.cell(name, "G2").unwrap().number,
+                Some(one_two),
+                "{function}"
+            );
+            assert_eq!(reopened.cell(name, "J1").unwrap().number, Some(4.0));
+        }
+    }
+}
+
+#[test]
 fn engineering_radix_ranges_follow_history_and_saved_types() {
     for (function, second, corrected) in [
         ("BIN2DEC", "2", "3"),

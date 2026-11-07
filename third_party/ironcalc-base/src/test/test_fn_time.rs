@@ -669,6 +669,19 @@ fn date_and_time_broadcast_check_product_size_before_allocating_the_result() {
     for index in 0..radix_functions.len() {
         assert_eq!(model._get_text(&format!("A{}", 49 + index)), "#ERROR!");
     }
+    for (index, function) in ["BESSELI", "BESSELJ", "BESSELK", "BESSELY"]
+        .iter()
+        .enumerate()
+    {
+        model._set(
+            &format!("A{}", 58 + index),
+            &format!("={function}(SEQUENCE(1001,1,1),SEQUENCE(1,1001,1))"),
+        );
+    }
+    model.evaluate();
+    for index in 0..4 {
+        assert_eq!(model._get_text(&format!("A{}", 58 + index)), "#ERROR!");
+    }
 }
 
 #[test]

@@ -6323,7 +6323,154 @@
      fn test_is_leap_year() {
 --- a/src/functions/engineering/bessel.rs
 +++ b/src/functions/engineering/bessel.rs
-@@ -125,54 +125,62 @@
+@@ -14,165 +14,106 @@
+ 
+ impl<'a> Model<'a> {
+     pub(crate) fn fn_besseli(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
++        self.bessel_arguments(args, cell, bessel_i)
++    }
++    pub(crate) fn fn_besselj(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
++        self.bessel_arguments(args, cell, bessel_j)
++    }
++    pub(crate) fn fn_besselk(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
++        self.bessel_arguments(args, cell, bessel_k)
++    }
++    pub(crate) fn fn_bessely(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
++        self.bessel_arguments(args, cell, bessel_y)
++    }
++
++    fn bessel_arguments(
++        &mut self,
++        args: &[Node],
++        cell: CellReferenceIndex,
++        function: fn(i32, f64) -> f64,
++    ) -> CalcResult {
+         if args.len() != 2 {
+             return CalcResult::new_args_number_error(cell);
+         }
+-        let x = match self.get_number_no_bools(&args[0], cell) {
+-            Ok(f) => f,
+-            Err(s) => return s,
+-        };
+-        let n = match self.get_number_no_bools(&args[1], cell) {
+-            Ok(f) => f,
+-            Err(s) => return s,
+-        };
+-        let n = n.trunc() as i32;
+-        let result = bessel_i(n, x);
+-        if result.is_infinite() || result.is_nan() {
+-            return CalcResult::Error {
+-                error: Error::NUM,
+-                origin: cell,
+-                message: "Invalid parameter for Bessel function".to_string(),
++        self.map_scalar_arguments(args, cell, |model, values| {
++            let x = match model.cast_to_number_no_bools(values[0].clone(), cell) {
++                Ok(number) => number,
++                Err(error) => return error,
+             };
+-        }
+-        CalcResult::Number(result)
+-    }
+-    pub(crate) fn fn_besselj(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+-        if args.len() != 2 {
+-            return CalcResult::new_args_number_error(cell);
+-        }
+-        let x = match self.get_number_no_bools(&args[0], cell) {
+-            Ok(f) => f,
+-            Err(s) => return s,
+-        };
+-        let n = match self.get_number_no_bools(&args[1], cell) {
+-            Ok(f) => f,
+-            Err(s) => return s,
+-        };
+-        let n = n.trunc() as i32;
+-        if n < 0 {
+-            // In Excel this ins #NUM!
+-            return CalcResult::Error {
+-                error: Error::NUM,
+-                origin: cell,
+-                message: "Invalid parameter for Bessel function".to_string(),
++            let order = match model.cast_to_number_no_bools(values[1].clone(), cell) {
++                Ok(number) => number,
++                Err(error) => return error,
+             };
+-        }
+-        let result = bessel_j(n, x);
+-        if result.is_infinite() || result.is_nan() {
+-            return CalcResult::Error {
+-                error: Error::NUM,
+-                origin: cell,
+-                message: "Invalid parameter for Bessel function".to_string(),
+-            };
+-        }
+-        CalcResult::Number(result)
+-    }
+-
+-    pub(crate) fn fn_besselk(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+-        if args.len() != 2 {
+-            return CalcResult::new_args_number_error(cell);
+-        }
+-        let x = match self.get_number_no_bools(&args[0], cell) {
+-            Ok(f) => f,
+-            Err(s) => return s,
+-        };
+-        let n = match self.get_number_no_bools(&args[1], cell) {
+-            Ok(f) => f,
+-            Err(s) => return s,
+-        };
+-        let n = n.trunc() as i32;
+-        let result = bessel_k(n, x);
+-        if result.is_infinite() || result.is_nan() {
+-            return CalcResult::Error {
+-                error: Error::NUM,
+-                origin: cell,
+-                message: "Invalid parameter for Bessel function".to_string(),
+-            };
+-        }
+-        CalcResult::Number(result)
+-    }
+-
+-    pub(crate) fn fn_bessely(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+-        if args.len() != 2 {
+-            return CalcResult::new_args_number_error(cell);
+-        }
+-        let x = match self.get_number_no_bools(&args[0], cell) {
+-            Ok(f) => f,
+-            Err(s) => return s,
+-        };
+-        let n = match self.get_number_no_bools(&args[1], cell) {
+-            Ok(f) => f,
+-            Err(s) => return s,
+-        };
+-        let n = n.trunc() as i32;
+-        if n < 0 {
+-            // In Excel this ins #NUM!
+-            return CalcResult::Error {
+-                error: Error::NUM,
+-                origin: cell,
+-                message: "Invalid parameter for Bessel function".to_string(),
+-            };
+-        }
+-        let result = bessel_y(n, x);
+-        if result.is_infinite() || result.is_nan() {
+-            return CalcResult::Error {
+-                error: Error::NUM,
+-                origin: cell,
+-                message: "Invalid parameter for Bessel function".to_string(),
+-            };
+-        }
+-        CalcResult::Number(result)
++            if !x.is_finite() || !order.is_finite() || order.trunc() < 0.0 {
++                return CalcResult::new_error(Error::NUM, cell, "Invalid Bessel parameter".into());
++            }
++            // Retain the existing order truncation and numerical routines.
++            let result = function(order.trunc() as i32, x);
++            if result.is_finite() {
++                CalcResult::Number(result)
++            } else {
++                CalcResult::new_error(Error::NUM, cell, "Invalid Bessel result".into())
++            }
++        })
      }
  
      pub(crate) fn fn_erf(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -20882,7 +21029,7 @@
  
      // Component extraction should work with very large values
      let hour_b1 = model._get_text("B1").parse::<i32>().unwrap();
-@@ -505,10 +503,179 @@
+@@ -505,10 +503,192 @@
  }
  
  #[test]
@@ -21052,6 +21199,19 @@
 +    for index in 0..radix_functions.len() {
 +        assert_eq!(model._get_text(&format!("A{}", 49 + index)), "#ERROR!");
 +    }
++    for (index, function) in ["BESSELI", "BESSELJ", "BESSELK", "BESSELY"]
++        .iter()
++        .enumerate()
++    {
++        model._set(
++            &format!("A{}", 58 + index),
++            &format!("={function}(SEQUENCE(1001,1,1),SEQUENCE(1,1001,1))"),
++        );
++    }
++    model.evaluate();
++    for index in 0..4 {
++        assert_eq!(model._get_text(&format!("A{}", 58 + index)), "#ERROR!");
++    }
 +}
 +
 +#[test]
@@ -21063,7 +21223,7 @@
          ("A1", "=TIME(2147483647, 0, 0)"), // Max i32 hours
          ("A2", "=TIME(0, 2147483647, 0)"), // Max i32 minutes
          ("A3", "=TIME(0, 0, 2147483647)"), // Max i32 seconds
-@@ -520,14 +687,17 @@
+@@ -520,14 +700,17 @@
          ("C1", "=HOUR(1.7976931348623157e+308)"), // Near max f64
          ("C2", "=HOUR(2.2250738585072014e-308)"), // Near min positive f64
          // Multiple TIME function calls with large values

@@ -7,6 +7,31 @@ use jade_xlsx_reader::{read_xlsx, CellRef, CellValue};
 use zip::write::SimpleFileOptions;
 
 #[test]
+fn bessel_functions_broadcast_values_orders_and_errors() {
+    for (function, expected) in [
+        ("BESSELI", "{1.266066,0.565159;2.279585,1.590637}"),
+        ("BESSELJ", "{0.765198,0.440051;0.223891,0.576725}"),
+        ("BESSELK", "{0.421024,0.601907;0.113894,0.139866}"),
+        ("BESSELY", "{0.088257,-0.781213;0.510376,-0.107032}"),
+    ] {
+        let values = format!("ARRAYTOTEXT(ROUND({function}({{1;2}},{{0,1}}),6),1)");
+        let errors = format!("ARRAYTOTEXT({function}({{#N/A;#DIV/0!}},{{0,1}}),1)");
+        let invalid = format!("ARRAYTOTEXT({function}({{1,TRUE}},-1),1)");
+        let singleton = format!("TYPE({function}({{1}},0))");
+        assert_formulas(
+            &[&values, &errors, &invalid, &singleton],
+            &[
+                CellValue::Text(expected.into()),
+                CellValue::Text("{#N/A,#N/A;#DIV/0!,#DIV/0!}".into()),
+                CellValue::Text("{#NUM!,#VALUE!}".into()),
+                CellValue::Number(64.0),
+            ],
+            false,
+        );
+    }
+}
+
+#[test]
 fn engineering_radix_conversions_broadcast_inputs_and_places() {
     for (function, result) in [
         ("BIN2DEC", "2"),
