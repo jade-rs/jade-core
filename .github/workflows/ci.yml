@@ -199,6 +199,8 @@ jobs:
         run: python scripts/word-oracle/extract_windows_emf.py --verify-index tests/word-oracle/windows/index.json
       - name: Compare every registered Word version's baselines
         run: cargo test --manifest-path crates/jade-docx-native-render/Cargo.toml --locked --test word_windows_coordinates windows_word_baselines_with_bundled_standins -- --exact
+      - name: Compare Windows Word paragraph and script origins with installed Arial
+        run: cargo test --manifest-path crates/jade-docx-native-render/Cargo.toml --locked --test word_windows_coordinates windows_word_arial_edge_origins -- --exact
 
   native-macos:
     runs-on: macos-latest

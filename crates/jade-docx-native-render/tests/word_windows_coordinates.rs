@@ -105,6 +105,68 @@ fn all_glyphs(doc: &mut NativeDocument) -> Vec<Value> {
     glyphs
 }
 
+/// Arial is installed on Windows hosted runners. These Word captures need
+/// no Office installation or redistribution of Microsoft font files in CI.
+#[test]
+#[cfg(target_os = "windows")]
+fn windows_word_arial_edge_origins() {
+    set_word_layout_platform(WordLayoutPlatform::Windows);
+    assert!(system_fonts::FontLibrary::system().has("Arial"));
+    let mut names = std::collections::BTreeSet::new();
+    let mut checked = 0;
+    for (_, reference) in reference_sets() {
+        assert_eq!(reference["tolerance_pt"], 0.375);
+        for fixture in reference["fixtures"].as_array().unwrap() {
+            let name = fixture["name"].as_str().unwrap();
+            if !name.starts_with("word-windows-edge-") {
+                continue;
+            }
+            let bytes = std::fs::read(repo_path(&format!("public/fixtures/{name}.docx"))).unwrap();
+            assert_eq!(
+                fixture["docx_sha256"],
+                format!("{:x}", Sha256::digest(&bytes))
+            );
+            let faces = system_fonts::word_document_faces(&bytes, &[]);
+            let mut doc =
+                NativeDocument::open_with_font_faces(&bytes, 816.0, 1056.0, &faces).unwrap();
+            assert_eq!(fixture["page_count"], doc.page_count(), "{name}: pages");
+            let mut actual = all_glyphs(&mut doc);
+            let mut expected = fixture["glyphs"].as_array().unwrap().clone();
+            spatial_order(&mut actual);
+            spatial_order(&mut expected);
+            assert_eq!(actual.len(), expected.len(), "{name}: missing/extra glyphs");
+            for (actual, expected) in actual.iter().zip(&expected) {
+                assert_eq!(actual[0], expected[0], "{name}: page");
+                assert_eq!(actual[1], expected[1], "{name}: text/order");
+                for axis in [2, 3] {
+                    assert!(
+                        (actual[axis].as_f64().unwrap() - expected[axis].as_f64().unwrap()).abs()
+                            <= 0.375,
+                        "{name}: axis {axis}, actual {actual}, Word {expected}"
+                    );
+                }
+            }
+            names.insert(name.to_owned());
+            checked += expected.len();
+        }
+    }
+    assert_eq!(
+        names,
+        std::collections::BTreeSet::from_iter(
+            [
+                "word-windows-edge-indents",
+                "word-windows-edge-tabs",
+                "word-windows-edge-spacing",
+                "word-windows-edge-run-width",
+                "word-windows-edge-run-position",
+                "word-windows-edge-arial-script-sweep",
+            ]
+            .map(str::to_owned)
+        )
+    );
+    assert!(checked >= 5163, "do not silently remove edge-case coverage");
+}
+
 #[test]
 #[cfg(target_os = "windows")]
 fn windows_word_font_boxes_and_grid_origins() {

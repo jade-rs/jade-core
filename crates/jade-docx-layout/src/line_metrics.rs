@@ -386,6 +386,37 @@ fn word_mac_script_face(latin_ascii_stack: &str) -> Option<MacScriptFace> {
 const WINDOWS_SUPERSCRIPT_RAISE_EM: f32 = 0.35;
 const WINDOWS_SUBSCRIPT_LOWER_EM: f32 = 0.15;
 
+// Word for Windows 16.0.19127.20860, Arial, 6–30pt by half points.
+// The hinted moves are not a constant share of em (10pt: 3pt up / .5pt
+// down; 12pt: 4pt up / .5pt down). Keep this separate from Mac's traces.
+const WINDOWS_ARIAL_SCRIPT_MOVES: [[u8; 49]; 2] = [
+    [
+        5, 5, 5, 5, 6, 6, 6, 7, 6, 7, 8, 7, 8, 9, 9, 9, 10, 10, 11, 11, 11, 12, 12, 12, 13, 12, 13,
+        14, 14, 14, 15, 15, 15, 16, 16, 16, 17, 17, 17, 18, 18, 19, 19, 19, 20, 20, 20, 21, 21,
+    ],
+    [
+        1, 1, 1, 1, 2, 2, 1, 1, 1, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 3, 2, 2, 2, 3, 3, 3, 2, 2, 3, 3,
+        3, 3, 4, 4, 4, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 5, 5,
+    ],
+];
+
+fn is_windows_arial_script(latin_ascii_stack: &str) -> bool {
+    word_layout_platform() == WordLayoutPlatform::Windows
+        && latin_ascii_stack
+            .split(',')
+            .next()
+            .unwrap_or("")
+            .trim()
+            .trim_matches(['\'', '"'])
+            .eq_ignore_ascii_case("Arial")
+}
+
+/// The Windows Arial sweep keeps the same line pitch for ordinary, raised
+/// and lowered text. Explicit `w:position` still contributes to line height.
+pub fn word_ignores_script_shift_for_line_height(latin_ascii_stack: &str) -> bool {
+    word_layout_platform() == WordLayoutPlatform::Mac || is_windows_arial_script(latin_ascii_stack)
+}
+
 /// How far a superscript (`superscript`) or subscript run moves off the
 /// baseline, in points: up for a superscript, down for a subscript.
 /// `size_pt` is the run's size before [`word_shifted_script_size_pt`]
@@ -404,6 +435,16 @@ pub fn word_script_baseline_offset_pt(
     latin_ascii_stack: &str,
     superscript: bool,
 ) -> f32 {
+    let half_points = size_pt * 2.0;
+    if is_windows_arial_script(latin_ascii_stack)
+        && (12.0..=60.0).contains(&half_points)
+        && (half_points - half_points.round()).abs() < 1e-4
+    {
+        return f32::from(
+            WINDOWS_ARIAL_SCRIPT_MOVES[usize::from(!superscript)]
+                [half_points.round() as usize - 12],
+        ) / 2.0;
+    }
     match word_layout_platform() {
         WordLayoutPlatform::Mac => {
             if let Some(half_points) =
@@ -478,6 +519,11 @@ fn word_mac_clamped_script_move_half_points(
 /// face-dependent half-point size of [`word_mac_shifted_script_size_pt`] on
 /// Word for Mac.
 pub fn word_shifted_script_size_pt(size_pt: f32, latin_ascii_stack: &str) -> f32 {
+    if is_windows_arial_script(latin_ascii_stack) {
+        // Arial's 1331/2048 OS/2 script size, rounded to a half point, is
+        // shared by both Word platforms; their baseline moves differ.
+        return word_mac_shifted_script_size_pt(size_pt, latin_ascii_stack);
+    }
     match word_layout_platform() {
         WordLayoutPlatform::Mac => word_mac_shifted_script_size_pt(size_pt, latin_ascii_stack),
         _ => size_pt * 0.66,
