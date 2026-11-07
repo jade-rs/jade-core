@@ -1373,16 +1373,10 @@ fn try_execute_bmp_glyph_run_batch<P: Painter>(
         heap_positions = vec![0.0; glyphs.len()];
         &mut heap_positions[..]
     };
-    // Most replayed runs use one font and take the single-font JS path. Initialize
-    // indexes only after discovering a font change. Short multi-font runs use
-    // stack storage; longer runs keep the complete index list in a heap buffer.
-    let mut local_font_indexes = None;
-    let mut font_indexes = Vec::new();
     let mut single_font_index: Option<u16> = None;
     let mut single_font_run = true;
 
-    for (glyph_index, (glyph, x_position)) in glyphs.iter().zip(x_positions.iter_mut()).enumerate()
-    {
+    for (glyph, x_position) in glyphs.iter().zip(x_positions.iter_mut()) {
         if fonts.get(glyph.font_index as usize).is_none() {
             return Ok(false);
         }
@@ -1404,26 +1398,13 @@ fn try_execute_bmp_glyph_run_batch<P: Painter>(
             copied_text = Some(text);
         }
         match single_font_index {
-            Some(index) if index != glyph.font_index && single_font_run => {
+            Some(index) if index != glyph.font_index => {
                 single_font_run = false;
-                if glyphs.len() <= LOCAL_CAPACITY {
-                    local_font_indexes = Some([index; LOCAL_CAPACITY]);
-                } else {
-                    font_indexes.reserve(glyphs.len());
-                    font_indexes.resize(glyph_index, index);
-                }
             }
             None => single_font_index = Some(glyph.font_index),
             _ => {}
         }
         *x_position = x + glyph.x_offset;
-        if !single_font_run {
-            if let Some(indexes) = &mut local_font_indexes {
-                indexes[glyph_index] = glyph.font_index;
-            } else {
-                font_indexes.push(glyph.font_index);
-            }
-        }
     }
 
     // Every endpoint in the borrowed span was checked by glyph.text above.
@@ -1440,9 +1421,24 @@ fn try_execute_bmp_glyph_run_batch<P: Painter>(
             return Ok(false);
         }
     } else {
-        let font_indexes = local_font_indexes
-            .as_ref()
-            .map_or(font_indexes.as_slice(), |indexes| &indexes[..glyphs.len()]);
+        // Build indexes only for a validated multi-font batch, keeping buffer
+        // management out of the common single-font loop. Short runs use stack
+        // storage; longer runs retain their complete index list on the heap.
+        let mut local_font_indexes = [0; LOCAL_CAPACITY];
+        let heap_font_indexes;
+        let font_indexes = if glyphs.len() <= LOCAL_CAPACITY {
+            let indexes = &mut local_font_indexes[..glyphs.len()];
+            for (index, glyph) in indexes.iter_mut().zip(glyphs) {
+                *index = glyph.font_index;
+            }
+            &*indexes
+        } else {
+            heap_font_indexes = glyphs
+                .iter()
+                .map(|glyph| glyph.font_index)
+                .collect::<Vec<_>>();
+            &heap_font_indexes
+        };
         if !context.try_fill_glyph_run_batch_multi_font(
             text,
             x_positions,
