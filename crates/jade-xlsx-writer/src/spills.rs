@@ -44,6 +44,8 @@ pub struct SheetSpills {
 /// `withdraw_recalculation` — the values are a complete recalculation's
 /// own — the workbook stops asking for a full calculation on load, which
 /// writing cells would otherwise request.
+/// Declared dynamic arrays require a proven metadata link; unsupported
+/// existing metadata returns `WriteError::ArrayMetadata`.
 pub fn write_spills(
     original: &[u8],
     sheets: &[SheetSpills],
@@ -76,12 +78,14 @@ pub fn write_spills(
     if !marks {
         return Ok(package.write()?);
     }
-    let cm = dynamic_array_metadata(&mut package)?;
+    let cm = dynamic_array_metadata(&mut package)?.ok_or(crate::WriteError::ArrayMetadata(
+        "existing metadata cannot represent this dynamic array",
+    ))?;
     for sheet in sheets.iter().filter(|sheet| !sheet.ranges.is_empty()) {
         let Some(xml) = package.part_str(&sheet.part_name)? else {
             continue;
         };
-        let marked = mark_array_formulas(&xml, &sheet.ranges, cm)?;
+        let marked = mark_array_formulas(&xml, &sheet.ranges, Some(cm))?;
         package.replace(&sheet.part_name, marked.into_bytes());
     }
     Ok(package.write()?)

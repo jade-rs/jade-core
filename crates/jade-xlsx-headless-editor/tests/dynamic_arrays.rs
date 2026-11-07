@@ -179,3 +179,43 @@ fn typing_into_a_spill_blocks_it_until_the_cell_is_cleared() {
     book.set(SHEET, "J2", CellInput::Blank).unwrap();
     assert_eq!(column(&book, &["J1", "J2", "J3"]), ["1", "2", "3"]);
 }
+
+#[test]
+fn unrepresentable_dynamic_metadata_rejects_typing_without_changes() {
+    let mut package = jade_opc::OpcPackage::open(include_bytes!(
+        "../../../public/fixtures/grid-operations-workbook.xlsx"
+    ))
+    .unwrap();
+    let metadata = r#"<metadata xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><metadataTypes count="0"/><metadataTypes count="0"/></metadata>"#;
+    package.replace("xl/metadata.xml", metadata.as_bytes().to_vec());
+    let rels = package.part_str("xl/_rels/workbook.xml.rels").unwrap().unwrap().replace("</Relationships>", r#"<Relationship Id="rId900" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/sheetMetadata" Target="metadata.xml"/></Relationships>"#);
+    package.replace("xl/_rels/workbook.xml.rels", rels.into_bytes());
+    let mut book = HeadlessWorkbook::open_for_editing(&package.write().unwrap()).unwrap();
+    let before_bytes = book.bytes().to_vec();
+    let before_model = book.workbook().clone();
+    let result = book.set(SHEET, "J5", CellInput::Formula("SEQUENCE(3)".into()));
+    assert!(
+        matches!(
+            &result,
+            Err(jade_xlsx_headless_editor::HeadlessError::Write(
+                jade_xlsx_writer::WriteError::ArrayMetadata(_)
+            ))
+        ),
+        "{result:?}"
+    );
+    assert!(result.unwrap_err().is_invalid_input());
+    assert_eq!(book.bytes(), before_bytes);
+    assert_eq!(book.workbook(), &before_model);
+    assert!(!book.undo().unwrap());
+    book.set(SHEET, "N5", CellInput::Formula("1+1".into()))
+        .unwrap();
+    assert_eq!(shown(&book, "N5"), "2");
+    assert_eq!(
+        jade_opc::OpcPackage::open(book.bytes())
+            .unwrap()
+            .part_str("xl/metadata.xml")
+            .unwrap()
+            .unwrap(),
+        metadata
+    );
+}
