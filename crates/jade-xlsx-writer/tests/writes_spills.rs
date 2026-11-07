@@ -171,3 +171,31 @@ fn a_workbook_with_its_own_metadata_points_at_its_dynamic_array_entry() {
         1
     );
 }
+
+#[test]
+fn a_dynamic_spill_uses_the_referenced_true_flag_not_the_first_type_match() {
+    let (bytes, part) = with_sequence();
+    let mut package = OpcPackage::open(&bytes).unwrap();
+    let metadata = r#"<metadata xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:xda="http://schemas.microsoft.com/office/spreadsheetml/2017/dynamicarray"><metadataTypes count="1"><metadataType name="XLDAPR"/></metadataTypes><futureMetadata name="XLDAPR" count="2"><bk><extLst><ext uri="{BDBB8CDC-FA1E-496E-A857-3C3F30C029C3}"><xda:dynamicArrayProperties fDynamic="0"/></ext></extLst></bk><bk><extLst><ext uri="{BDBB8CDC-FA1E-496E-A857-3C3F30C029C3}"><xda:dynamicArrayProperties fDynamic="true"/></ext></extLst></bk></futureMetadata><cellMetadata count="2"><bk><rc t="1" v="0"/></bk><bk><rc t="1" v="1"/></bk></cellMetadata></metadata>"#;
+    package.replace("xl/metadata.xml", metadata.as_bytes().to_vec());
+    let rels = package.part_str("xl/_rels/workbook.xml.rels").unwrap().unwrap().replace(
+        "</Relationships>",
+        r#"<Relationship Id="rId900" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/sheetMetadata" Target="metadata.xml"/></Relationships>"#,
+    );
+    package.replace("xl/_rels/workbook.xml.rels", rels.into_bytes());
+    let written = write_spills(
+        &package.write().unwrap(),
+        &[spill(&part, "J1", "J1:J3", &[("J2", 2.0), ("J3", 3.0)])],
+        false,
+    )
+    .unwrap();
+    let package = OpcPackage::open(&written).unwrap();
+    let sheet = package.part_str(&part).unwrap().unwrap();
+    let anchor = &sheet[sheet.find(r#"r="J1""#).unwrap()..];
+    let anchor = &anchor[..anchor.find("</c>").unwrap()];
+    assert!(anchor.contains(r#"cm="2""#), "{anchor}");
+    assert_eq!(
+        package.part_str("xl/metadata.xml").unwrap().unwrap(),
+        metadata
+    );
+}

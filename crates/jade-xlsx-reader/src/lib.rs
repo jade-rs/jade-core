@@ -28,6 +28,7 @@
 //! any recalculation of formulas —
 //! rendering uses the cached values the file carries.
 
+pub mod array_metadata;
 pub mod auto_filter;
 pub mod cell_content;
 mod cell_shift;
