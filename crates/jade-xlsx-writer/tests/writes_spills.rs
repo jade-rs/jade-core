@@ -11,6 +11,27 @@ use jade_xlsx_writer::{write_xlsx, CellEdit, NewValue, SheetEdits};
 mod common;
 
 #[test]
+fn spill_marking_preserves_foreign_and_inactive_formula_sources() {
+    let xml = r#"<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:q="urn:foreign" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"><sheetData><row r="1"><q:c r="J1"><q:f>foreign cell</q:f></q:c><c r="J1"><q:f>foreign formula</q:f><mc:AlternateContent><mc:Choice Requires="q"><f>unsupported choice</f></mc:Choice><mc:Fallback><f>SEQUENCE(3)</f></mc:Fallback></mc:AlternateContent></c></row></sheetData><extLst><ext uri="keep"><c r="J1"><f>extension lookalike</f></c></ext></extLst></worksheet>"#;
+    let marked = jade_xlsx_writer::spills::mark_array_formulas(
+        xml,
+        &[ArrayRange {
+            anchor: at("J1"),
+            range: range("J1:J3"),
+        }],
+        Some(1),
+    )
+    .unwrap();
+    let expected = xml
+        .replace("<c r=\"J1\"><q:f>", "<c r=\"J1\" cm=\"1\"><q:f>")
+        .replace(
+            "<f>SEQUENCE(3)</f>",
+            "<f t=\"array\" ref=\"J1:J3\">SEQUENCE(3)</f>",
+        );
+    assert_eq!(marked, expected);
+}
+
+#[test]
 fn new_metadata_reserves_only_owned_positive_links() {
     for (cells, expected) in [
         (r#"<c r="A1" cm="4294967295"/>"#, 1),
