@@ -1198,7 +1198,7 @@ impl<'a> Model<'a> {
                             } else {
                                 let sv = match value {
                                     Some(node) => array_node_to_spill_value(node),
-                                    None => SpillValue::Error(Error::VALUE),
+                                    None => SpillValue::Error(Error::NA),
                                 };
                                 let existing_style =
                                     self.workbook.worksheets[sheet as usize].get_style(r, c);

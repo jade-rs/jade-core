@@ -226,7 +226,7 @@ fn put_back(
             if let Some(value) = held {
                 set_literal(model, sheet as u32, row, column, value);
             } else {
-                let _ = model.update_cell_with_formula(sheet as u32, row, column, text);
+                let _ = crate::set_projected_formula(model, workbook, sheet, at, text);
             }
             model.set_source_formula(
                 sheet as u32,

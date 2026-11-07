@@ -693,6 +693,52 @@ fn source_formula_text(workbook: &Workbook, sheet: usize, at: CellRef, formula: 
     }
 }
 
+fn fixed_array_size(
+    array: &jade_xlsx_reader::ArrayFormula,
+) -> std::result::Result<(i32, i32), String> {
+    let width = array
+        .range
+        .end
+        .column
+        .checked_sub(array.anchor.column)
+        .and_then(|v| v.checked_add(1));
+    let height = array
+        .range
+        .end
+        .row
+        .checked_sub(array.anchor.row)
+        .and_then(|v| v.checked_add(1));
+    let (Some(width), Some(height)) = (width, height) else {
+        return Err("Invalid CSE range".into());
+    };
+    if array.range.start != array.anchor || u64::from(width) * u64::from(height) > (1 << 20) {
+        return Err("CSE range exceeds the eager calculation budget".into());
+    }
+    Ok((width as i32, height as i32))
+}
+
+/// CSE formulas evaluate in their declared area rather than being re-inferred
+/// as dynamic arrays. Keep unbounded file declarations out of the backend's
+/// eager placeholder allocation; the caller reports them as unsupported.
+fn set_projected_formula(
+    model: &mut Model<'_>,
+    workbook: &Workbook,
+    sheet: usize,
+    at: CellRef,
+    formula: String,
+) -> std::result::Result<(), String> {
+    let position = (sheet as u32, at.row as i32 + 1, at.column as i32 + 1);
+    let fixed = workbook.sheets[sheet].array_formulas.iter().find(|array| {
+        array.anchor == at && array.kind == jade_xlsx_reader::ArrayFormulaKind::Legacy
+    });
+    if let Some(array) = fixed {
+        let (width, height) = fixed_array_size(array)?;
+        model.set_user_array_formula(position.0, position.1, position.2, width, height, &formula)
+    } else {
+        PARSED.with(|parsed| set_formula(model, &mut parsed.borrow_mut(), position, formula))
+    }
+}
+
 fn project_with_epoch<'a>(
     workbook: &Workbook,
     skipped: &HashMap<(usize, CellRef), CellValue>,
@@ -710,7 +756,7 @@ fn project_with_epoch<'a>(
         }
     });
     let mut projected = Vec::new();
-    let mut unparsed = Vec::new();
+    let mut unparsed: Vec<SkippedCell> = Vec::new();
     for (index, sheet) in workbook.sheets.iter().enumerate() {
         let engine_sheet = index as u32;
         for row in &sheet.rows {
@@ -721,10 +767,15 @@ fn project_with_epoch<'a>(
                 // engine spills it again, and a literal there would block
                 // the spill (`#SPILL!`).
                 if cell.formula.is_none()
-                    && sheet
-                        .array_formulas
-                        .iter()
-                        .any(|array| array.outputs_to(cell.reference))
+                    && sheet.array_formulas.iter().any(|array| {
+                        array.outputs_to(cell.reference)
+                            && !skipped.contains_key(&(index, array.anchor))
+                            && !unparsed
+                                .iter()
+                                .any(|cell| cell.sheet == index && cell.reference == array.anchor)
+                            && (array.kind != jade_xlsx_reader::ArrayFormulaKind::Legacy
+                                || fixed_array_size(array).is_ok())
+                    })
                 {
                     continue;
                 }
@@ -741,14 +792,8 @@ fn project_with_epoch<'a>(
                             formula
                         ))
                     );
-                    let set = PARSED.with(|parsed| {
-                        set_formula(
-                            &mut model,
-                            &mut parsed.borrow_mut(),
-                            (engine_sheet, engine_row, engine_column),
-                            text,
-                        )
-                    });
+                    let set =
+                        set_projected_formula(&mut model, workbook, index, cell.reference, text);
                     if set.is_ok() {
                         model.set_source_formula(
                             engine_sheet,
@@ -778,7 +823,9 @@ fn project_with_epoch<'a>(
                     unparsed.push(SkippedCell {
                         sheet: index,
                         reference: cell.reference,
-                        reason: "the engine could not parse the formula".to_string(),
+                        reason: set
+                            .err()
+                            .unwrap_or_else(|| "the engine could not parse the formula".into()),
                     });
                 }
                 let value = held.unwrap_or(&cell.value);
