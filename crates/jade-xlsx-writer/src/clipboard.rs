@@ -284,9 +284,11 @@ pub fn paste_snapshot(
                 && source.part_name == target.part_name
                 && range.contains(array.anchor))
     }) {
-        for cell in stored_cells(target, array.range)
-            .filter(|cell| cell.reference != array.anchor && !destination.contains(cell.reference))
-        {
+        for cell in stored_cells(target, array.range).filter(|cell| {
+            cell.formula.is_none()
+                && cell.reference != array.anchor
+                && !destination.contains(cell.reference)
+        }) {
             edits.insert(
                 cell.reference,
                 CellEdit {
@@ -430,7 +432,8 @@ pub fn paste_snapshot(
                 && !contains_range(range, array.range)
         }) {
             for cell in stored_cells(source, array.range).filter(|cell| {
-                !range.contains(cell.reference)
+                cell.formula.is_none()
+                    && !range.contains(cell.reference)
                     && !(same_sheet && destination.contains(cell.reference))
             }) {
                 clear_edits.insert(
@@ -702,8 +705,8 @@ pub fn paste_snapshot(
                 } else {
                     !(request.cut
                         && sheet.part_name == source.part_name
-                        && range.contains(array.anchor))
-                        && !(sheet.part_name == target.part_name
+                        && range.contains(array.anchor)
+                        || sheet.part_name == target.part_name
                             && destination.contains(array.anchor))
                         && (sheet.part_name == target.part_name
                             && intersects(array.range, destination)

@@ -105,7 +105,8 @@ fn dynamic_anchor_clipboard_respills_and_clears_a_cut_source_tail() {
     let output = workbook.copy_snapshot("Operations", "K2", true).unwrap();
     assert!(workbook
         .paste_snapshot(&output, "Operations", "L1", false)
-        .is_err());
+        .unwrap_err()
+        .is_invalid_input());
     assert_eq!(workbook.bytes(), before);
     let anchor = workbook.copy_snapshot("Operations", "K1", true).unwrap();
     workbook
@@ -206,6 +207,47 @@ fn clipboard_keeps_explicit_values_when_a_target_spill_is_blocked_or_replaced() 
                 assert_eq!(reopened.cell("Operations", "K3").unwrap().number, Some(3.0));
             }
         }
+    }
+}
+
+#[test]
+fn clearing_a_stale_dynamic_tail_preserves_other_explicit_formulas() {
+    for cut_anchor in [false, true] {
+        let baseline = book();
+        let mut package = OpcPackage::open(baseline.bytes()).unwrap();
+        let cm = jade_xlsx_writer::spills::dynamic_array_metadata(&mut package)
+            .unwrap()
+            .unwrap();
+        package.replace("xl/worksheets/sheet1.xml", format!(r#"<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData><row r="1"><c r="K1" cm="{cm}"><f t="array" ref="K1:K3">SEQUENCE(3)</f><v>1</v></c><c r="R1"><v>77</v></c></row><row r="2"><c r="K2"><v>2</v></c></row><row r="3"><c r="K3"><f>SUM(10,20)</f><v>30</v></c></row></sheetData></worksheet>"#).into_bytes());
+        let mut workbook = HeadlessWorkbook::open(&package.write().unwrap()).unwrap();
+        let snapshot = workbook
+            .copy_snapshot(
+                "Operations",
+                if cut_anchor { "K1" } else { "R1" },
+                cut_anchor,
+            )
+            .unwrap();
+        workbook
+            .paste_snapshot(
+                &snapshot,
+                "Operations",
+                if cut_anchor { "L1" } else { "K1" },
+                false,
+            )
+            .unwrap();
+        assert_eq!(
+            workbook
+                .cell("Operations", "K3")
+                .unwrap()
+                .formula
+                .as_deref(),
+            Some("SUM(10,20)")
+        );
+        assert_eq!(
+            workbook.cell("Operations", "K3").unwrap().number,
+            Some(30.0)
+        );
+        assert!(workbook.cell("Operations", "K2").unwrap().number.is_none());
     }
 }
 fn book() -> HeadlessWorkbook {
