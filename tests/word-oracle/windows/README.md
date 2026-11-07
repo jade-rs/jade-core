@@ -4,7 +4,7 @@ References are separated by complete Word product version and immutable capture 
 The captured application is **16.0.19127.20860**; no other Word build has been
 measured. New builds create additional directories and keep older versions' tests.
 
-The regression index covers **53 unique documents, 264 pages and 45,798 visible
+The regression index covers **68 unique documents, 348 pages and 56,460 visible
 non-whitespace characters**, combining original PDF origins and Word drawing
 origins. Each registered set checks text, order, page count and both absolute
 coordinate axes within **0.375pt**. No origin fitting or tolerance increase is used.
@@ -124,6 +124,24 @@ The clean verification engine is `9b409e13`. Original failures remain in
 `20261107T063337099Z-03342251`, with their original native coordinates and
 executable hashes. All captures preserve the actual Word-reported compatibility
 mode separately from the complete application build.
+
+Capture `20261107T071207802Z-32d1ef1a` adds **15 documents, 84 pages and 10,662
+complete origins** for auto and minimum-height rows. All PDF and EMF origins
+pass. It repeats the border/padding/alignment sweeps and 20-page continuations
+in modes 12/14/15. Windows keeps both spacing gaps and padding outside the
+declared content minimum, reserves each cell's independent top/bottom rules,
+and closes the table's trailing gutter before following body text. Mac's
+existing rules and golden files remain unchanged.
+
+The mandatory Arial gate now requires **51 documents / 215 pages / 38,361
+origins**; raw EMF reconstruction checks **50,229 origins**. The portable
+edit/export/undo gate checks exact, auto and minimum-height tables under both
+policies. The clean verification engine is `90132ee5`, with its executable
+hash and compiler version retained. Initial failures remain in
+`20261107T065217527Z-03cce62f` and `20261107T070018898Z-c53a0f60` with the
+original `9b409e13` native traces. All 2,970 initial alignment-probe Y positions
+were independently checked against clean `6bedd8c7` and are identical, showing
+that the growing-row failures predate the earlier exact-row changes.
 
 Every capture preserves original PDFs, optionally original page EMFs, raw
 references, comparisons and verification metadata. Metadata binds source,
