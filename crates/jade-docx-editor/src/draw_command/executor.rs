@@ -152,6 +152,9 @@ impl FontStateTracker {
         Self::default()
     }
 
+    // Keep repeated pointer hits in the replay loop. Outlining this helper
+    // adds a call for every checked font, outweighing the avoided parsing.
+    #[inline(always)]
     fn font_has_features(&mut self, font: &Rc<str>) -> bool {
         if let Some((previous, has_features)) = &self.last_font_features {
             if Rc::ptr_eq(previous, font) {
