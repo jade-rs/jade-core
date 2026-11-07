@@ -158,6 +158,39 @@ def verify_hash(path, expected):
         raise ValueError(f'Immutable source checksum differs: {path}')
 
 
+def visible_pdf_glyphs(path):
+    glyphs = []
+    for page_number, page in enumerate(pymupdf.open(path), 1):
+        for block in page.get_text('rawdict', flags=pymupdf.TEXTFLAGS_RAWDICT)['blocks']:
+            for line in block.get('lines', []):
+                for span in line['spans']:
+                    glyphs.extend([page_number, char['c'], *char['origin']]
+                                  for char in span['chars'] if not char['c'].isspace())
+    return glyphs
+
+
+def compare_visible_text(expected, observed):
+    def ordered(glyphs):
+        if any(not all(math.isfinite(value) for value in glyph[2:4]) for glyph in glyphs):
+            raise ValueError('Nonfinite text geometry')
+        glyphs = sorted(glyphs, key=lambda glyph: (glyph[0], glyph[3]))
+        start = 0
+        while start < len(glyphs):
+            end = start + 1
+            while end < len(glyphs) and glyphs[end][0] == glyphs[start][0] and abs(glyphs[end][3] - glyphs[start][3]) <= .25:
+                end += 1
+            glyphs[start:end] = sorted(glyphs[start:end], key=lambda glyph: glyph[2])
+            start = end
+        return glyphs
+    expected, observed = ordered(expected), ordered(observed)
+    matching = sum(word[:2] == native[:2] for word, native in zip(expected, observed))
+    within = sum(word[:2] == native[:2] and abs(word[2]-native[2]) <= TOLERANCE_PT
+                 and abs(word[3]-native[3]) <= TOLERANCE_PT for word, native in zip(expected, observed))
+    return dict(word_glyphs=len(expected), native_glyphs=len(observed), matched=matching,
+                within_0_375pt=within,
+                passed=len(expected) == len(observed) == matching == within)
+
+
 def run(index_path, executable, output_root):
     root = index_path.resolve().parent
     core = root.parents[2]
@@ -207,6 +240,20 @@ def run(index_path, executable, output_root):
                 or reference['capture_id'] != capture_id
                 or reference['word'] != capture['word']):
             raise ValueError('Word capture provenance differs from its registered reference')
+        projection = reference.get('table_glyph_projection', 'visible')
+        if projection not in ('visible', 'unclipped'):
+            raise ValueError('Unknown table glyph projection')
+        visible_fixtures = None
+        if projection == 'unclipped':
+            visible = json.loads(checked_path(folder, entry['visible_reference']).read_text(encoding='utf-8'))
+            if (visible.get('table_glyph_projection') != 'visible' or visible.get('pdf_text_flags') != pymupdf.TEXTFLAGS_RAWDICT
+                    or visible['word'] != capture['word'] or visible['capture_id'] != capture_id
+                    or visible['word_product_version'] != version or visible['tolerance_pt'] != TOLERANCE_PT):
+                raise ValueError('Visible text proof differs from Word capture')
+            visible_fixtures = {fixture['name']: fixture for fixture in visible['fixtures']}
+            if (set(visible_fixtures) != {fixture['name'] for fixture in reference['fixtures']}
+                    or len(visible_fixtures) != len(visible['fixtures'])):
+                raise ValueError('Missing or duplicate visible text proof')
         originals = {doc['name']: doc for doc in capture['documents']}
         for fixture in reference['fixtures']:
             name = fixture['name']
@@ -227,14 +274,25 @@ def run(index_path, executable, output_root):
             destination = output / capture['capture_id']
             destination.mkdir(exist_ok=True)
             native = destination / (name + '.pdf')
-            subprocess.run([str(executable.resolve()), str(docx),
-                            str(native.with_suffix('.json')), 'windows', str(native)], check=True)
+            command = [str(executable.resolve()), str(docx), str(native.with_suffix('.json')), 'windows', str(native)]
+            if projection == 'unclipped':
+                command.append('--unclipped-tables')
+            subprocess.run(command, check=True)
+            if word.read_bytes() == native.read_bytes():
+                raise ValueError('Independent native PDF required; refusing a Word self-comparison')
             pages = compare(word, native)
             if len(pages) != original['pages']:
                 raise ValueError('Native page count differs from the Word capture')
             result = dict(word_product_version=key[0], capture_id=key[1], name=name,
                           pages=pages, passed=all(p['word_uncovered_count'] ==
                           p['native_uncovered_count'] == 0 for p in pages))
+            if visible_fixtures is not None:
+                visible_fixture = visible_fixtures[name]
+                for field in ('docx_sha256', 'pdf_sha256', 'pdf_file', 'page_count'):
+                    if visible_fixture[field] != fixture[field]:
+                        raise ValueError('Visible text source differs from drawing reference')
+                result['visible_text'] = compare_visible_text(visible_fixture['glyphs'], visible_pdf_glyphs(native))
+                result['passed'] &= result['visible_text']['passed']
             results.append(result)
             (output / 'comparison.json').write_text(json.dumps(results, indent=2) + '\n', encoding='utf-8')
             print(name, result['passed'], flush=True)

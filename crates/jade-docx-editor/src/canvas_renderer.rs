@@ -34174,6 +34174,22 @@ where
     /// Rebuilds diagnostics from page one with no lazy limit or seek replay.
     /// This is deliberately expensive and should only run for release captures.
     pub fn capture_full_layout_debug(&mut self) -> Result<FullLayoutDebugSnapshot, JsValue> {
+        self.capture_full_layout_debug_with_table_projection(true)
+    }
+
+    /// Include table glyph origins hidden by an exact row's clipping region.
+    /// Word EMF text records retain these origins. This changes diagnostic
+    /// projection only; painter clipping and the default capture are unchanged.
+    pub fn capture_full_layout_debug_unclipped_tables(
+        &mut self,
+    ) -> Result<FullLayoutDebugSnapshot, JsValue> {
+        self.capture_full_layout_debug_with_table_projection(false)
+    }
+
+    fn capture_full_layout_debug_with_table_projection(
+        &mut self,
+        clip_table_glyphs: bool,
+    ) -> Result<FullLayoutDebugSnapshot, JsValue> {
         if self.last_document.is_none() {
             return Err(JsValue::from_str("Document not loaded"));
         }
@@ -34220,8 +34236,9 @@ where
                 .map(|entry| (entry.line.paragraph, entry.line.line, entry.line.page))
                 .collect::<HashSet<_>>();
             for mut line in self.layout_debug_lines() {
-                if let Some(painted) =
-                    clipped_table_lines.remove(&(line.paragraph, line.line, line.page))
+                if let Some(painted) = clipped_table_lines
+                    .remove(&(line.paragraph, line.line, line.page))
+                    .filter(|_| clip_table_glyphs)
                 {
                     // Preserve every diagnostic field and source range; only
                     // the capture's visible-glyph projection changes.
