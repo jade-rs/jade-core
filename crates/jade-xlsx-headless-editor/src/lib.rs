@@ -183,6 +183,7 @@ impl HeadlessError {
                 | HeadlessError::AutoFilter(_)
                 | HeadlessError::BadReference(_)
                 | HeadlessError::DuplicateReference(_)
+                | HeadlessError::PartialLegacyArray { .. }
                 | HeadlessError::FillShape { .. }
                 | HeadlessError::EmptyFormatChange
                 | HeadlessError::Write(
@@ -201,6 +202,7 @@ impl HeadlessError {
                         | jade_xlsx_writer::WriteError::NoSuchSheet(_)
                         | jade_xlsx_writer::WriteError::EmptyStructureChange
                         | jade_xlsx_writer::WriteError::StructureOutOfBounds { .. }
+                        | jade_xlsx_writer::WriteError::PartialLegacyArray { .. }
                         | jade_xlsx_writer::WriteError::InvalidSheetName { .. }
                         | jade_xlsx_writer::WriteError::DuplicateSheetName(_)
                         | jade_xlsx_writer::WriteError::LastVisibleSheet(_)
@@ -2872,6 +2874,16 @@ impl HeadlessWorkbook {
             count,
             inserted,
         };
+        jade_xlsx_writer::shift::guard_legacy_array_structure(
+            &self.workbook.sheets[index],
+            &change,
+        )
+        .map_err(|error| match error {
+            jade_xlsx_writer::WriteError::PartialLegacyArray { sheet, range } => {
+                HeadlessError::PartialLegacyArray { sheet, range }
+            }
+            error => HeadlessError::Write(error),
+        })?;
         let written = jade_xlsx_writer::restructure(&self.source, &self.workbook, &change)?;
         self.workbook = jade_xlsx_reader::read_xlsx(&written)?;
         let before = std::mem::replace(&mut self.source, written);
