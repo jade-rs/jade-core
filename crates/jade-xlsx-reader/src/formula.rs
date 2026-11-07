@@ -965,6 +965,12 @@ pub fn collapse_ref_errors(formula: &str) -> String {
     let mut index = 0usize;
     while index < bytes.len() {
         match bytes[index] {
+            b'[' => {
+                let end = bracket_end(formula, index);
+                output.push_str(&formula[index..end]);
+                index = end;
+                continue;
+            }
             b'"' => {
                 let end = string_end(formula, index);
                 output.push_str(&formula[index..end]);

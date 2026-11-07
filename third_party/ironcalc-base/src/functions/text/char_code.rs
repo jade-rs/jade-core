@@ -84,14 +84,19 @@ impl<'a> Model<'a> {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         }
-        let n = match self.get_number(&args[0], cell) {
-            Ok(f) => f.floor() as u32,
-            Err(e) => return e,
-        };
-        match win1252_to_char(n) {
-            Some(c) => CalcResult::String(c.to_string()),
-            None => CalcResult::new_error(Error::VALUE, cell, "Invalid character code".to_string()),
-        }
+        self.map_scalar_values(&args[0], cell, |model, value| {
+            let number = match model.cast_to_number(value, cell) {
+                Ok(number) => number.floor(),
+                Err(error) => return error,
+            };
+            if !number.is_finite() || !(1.0..=255.0).contains(&number) {
+                return CalcResult::new_error(Error::VALUE, cell, "Invalid character code".into());
+            }
+            match win1252_to_char(number as u32) {
+                Some(c) => CalcResult::String(c.to_string()),
+                None => CalcResult::new_error(Error::VALUE, cell, "Invalid character code".into()),
+            }
+        })
     }
 
     /// CODE(text) — Returns the Windows-1252 numeric code for the first character of text.
@@ -99,21 +104,23 @@ impl<'a> Model<'a> {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         }
-        let s = match self.get_string(&args[0], cell) {
-            Ok(s) => s,
-            Err(e) => return e,
-        };
-        match s.chars().next() {
-            None => CalcResult::new_error(Error::VALUE, cell, "Empty string".to_string()),
-            Some(c) => match char_to_win1252(c) {
-                Some(n) => CalcResult::Number(n as f64),
-                None => CalcResult::new_error(
-                    Error::VALUE,
-                    cell,
-                    "Character has no Windows-1252 code".to_string(),
-                ),
-            },
-        }
+        self.map_scalar_values(&args[0], cell, |model, value| {
+            let s = match model.cast_to_string(value, cell) {
+                Ok(s) => s,
+                Err(error) => return error,
+            };
+            match s.chars().next() {
+                None => CalcResult::new_error(Error::VALUE, cell, "Empty string".to_string()),
+                Some(c) => match char_to_win1252(c) {
+                    Some(n) => CalcResult::Number(n as f64),
+                    None => CalcResult::new_error(
+                        Error::VALUE,
+                        cell,
+                        "Character has no Windows-1252 code".to_string(),
+                    ),
+                },
+            }
+        })
     }
 
     /// UNICHAR(number) — Returns the Unicode character for the given code point.
@@ -121,16 +128,23 @@ impl<'a> Model<'a> {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         }
-        let n = match self.get_number(&args[0], cell) {
-            Ok(f) => f.floor() as u32,
-            Err(e) => return e,
-        };
-        match char::from_u32(n) {
-            Some(c) if n > 0 => CalcResult::String(c.to_string()),
-            _ => {
-                CalcResult::new_error(Error::VALUE, cell, "Invalid Unicode code point".to_string())
+        self.map_scalar_values(&args[0], cell, |model, value| {
+            let number = match model.cast_to_number(value, cell) {
+                Ok(number) => number.floor(),
+                Err(error) => return error,
+            };
+            if !number.is_finite() || !(1.0..=0x10ffff as f64).contains(&number) {
+                return CalcResult::new_error(
+                    Error::VALUE,
+                    cell,
+                    "Invalid Unicode code point".into(),
+                );
             }
-        }
+            match char::from_u32(number as u32) {
+                Some(c) => CalcResult::String(c.to_string()),
+                None => CalcResult::new_error(Error::NA, cell, "Partial surrogate".into()),
+            }
+        })
     }
 
     /// CLEAN(text) — Removes all non-printable characters (code points 0-31) from text.
@@ -138,25 +152,18 @@ impl<'a> Model<'a> {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         }
-        let s = match self.get_string(&args[0], cell) {
-            Ok(s) => s,
-            Err(e) => return e,
-        };
-        let cleaned: String = s.chars().filter(|&c| (c as u32) >= 32).collect();
-        CalcResult::String(cleaned)
+        self.map_scalar_values(&args[0], cell, |model, value| {
+            let text = match model.cast_to_string(value, cell) {
+                Ok(text) => text,
+                Err(error) => return error,
+            };
+            CalcResult::String(text.chars().filter(|&c| (c as u32) >= 32).collect())
+        })
     }
 
     /// ASC(text) — For non-DBCS locales, returns text unchanged.
     /// Full-width to half-width conversion is only meaningful in DBCS locales.
     pub(crate) fn fn_asc(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 1 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let s = match self.get_string(&args[0], cell) {
-            Ok(s) => s,
-            Err(e) => return e,
-        };
-        // Jade: katakana too, as a Japanese Excel converts it.
-        CalcResult::String(crate::functions::japanese::to_halfwidth(&s))
+        self.apply_text_unary(args, cell, crate::functions::japanese::to_halfwidth)
     }
 }

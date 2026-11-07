@@ -21,6 +21,37 @@ fn name(name: &str, formula: &str, scope: Option<usize>) -> DefinedName {
 }
 
 #[test]
+fn local_formula_names_keep_workbook_names_outside_their_scope_after_save() {
+    let mut book = HeadlessWorkbook::open_for_editing(&fixture()).unwrap();
+    let sheet = book.workbook().sheets[0].name.clone();
+    book.set_defined_name(&name("rate", "5", None)).unwrap();
+    for (cell, formula, expected) in [
+        ("A20", "rate+LET(rate,rate+1,rate)+rate", 16.0),
+        ("B20", "LAMBDA(rate,rate+1)(rate)+rate", 11.0),
+        ("C20", "LET(rate,2,LET(rate,rate+1,rate))+rate", 8.0),
+        ("D20", "LET(e,2,1e-3+e)", 2.001),
+    ] {
+        book.set(&sheet, cell, CellInput::Formula(formula.into()))
+            .unwrap();
+        assert_eq!(
+            book.cell(&sheet, cell).unwrap().number,
+            Some(expected),
+            "{formula}"
+        );
+    }
+    let bytes = book.save_bytes().unwrap();
+    let reopened = HeadlessWorkbook::open_for_editing(&bytes).unwrap();
+    for (cell, expected) in [("A20", 16.0), ("B20", 11.0), ("C20", 8.0), ("D20", 2.001)] {
+        assert_eq!(reopened.cell(&sheet, cell).unwrap().number, Some(expected));
+    }
+    let package = OpcPackage::open(&bytes).unwrap();
+    let xml = package
+        .required_part_str("xl/worksheets/sheet1.xml")
+        .unwrap();
+    assert!(xml.contains("rate+_xlfn.LET(_xlpm.rate,rate+1,_xlpm.rate)+rate"));
+}
+
+#[test]
 fn imported_literal_xstring_name_is_evaluated_updated_and_removed_by_logical_name() {
     let mut package = OpcPackage::open(&fixture()).unwrap();
     let xml = package.required_part_str("xl/workbook.xml").unwrap();

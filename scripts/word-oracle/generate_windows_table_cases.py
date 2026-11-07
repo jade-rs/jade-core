@@ -118,6 +118,9 @@ if __name__ == '__main__':
     for mode in [12, 14, 15]:
         mixed_spacing_border_sweep(mode)
         mixed_spacing_border_sweep(mode, (0,), '', 'collapsed-implicit-mixed-borders')
+        mixed_spacing_border_sweep(mode, (0,), probe_name='collapsed-mixed-borders')
+        mixed_spacing_border_sweep(mode, (0,), '<w:tblCellSpacing w:type="dxa"/>', 'spacing-missing-width-mixed-borders')
+        mixed_spacing_border_sweep(mode, (0,), '<w:tblCellSpacing w:w="0"/>', 'spacing-missing-type-mixed-borders')
         for kind, value in [('nil', '120'), ('auto', '120'), ('pct', '5000')]:
             name = 'percent' if kind == 'pct' else kind
             mixed_spacing_border_sweep(mode, (0,), f'<w:tblCellSpacing w:w="{value}" w:type="{kind}"/>', f'spacing-{name}-mixed-borders')

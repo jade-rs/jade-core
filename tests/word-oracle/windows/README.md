@@ -219,8 +219,8 @@ duplicate registrations); the Arial gate requires 72 documents, 245 pages and
 their original native failures and source DOCX snapshots. Its independent Word
 comparison shows `nil`/`auto`/`pct` agree with omission, whereas missing width
 or type agrees with explicit DXA zero. Negative DXA differs from both. These
-explicit-zero/missing/negative cases remain unpromoted follow-up work; historical
-failures are retained unchanged.
+explicit-zero/missing cases are superseded by the capture below. Negative DXA
+remains follow-up work; historical failures are retained unchanged.
 
 Run the same vector check from jade-core after building `word_coordinates`:
 
@@ -241,3 +241,39 @@ Omitting `-CaptureMetafiles` retains the PDF-only workflow; PDF extraction needs
 PyMuPDF. EMF extraction uses Python's standard library. Old numbering-label,
 numbering-restart and Yokohama failures remain in their original captures and
 are superseded by later passing captures, never overwritten.
+
+
+Capture `20261107T104832151Z-b2b90731` preserves nine additional documents from
+this PC's Word **16.0.19127.20860**, including file version, application build,
+Word executable hash, OS/architecture, per-document compatibility mode and UTC
+time. Original DOCX/PDF/EMF bytes and checksums remain in its own directory;
+older captures are never replaced. All 4,581 origins match both original Word
+PDFs and independently decoded EMFs. Clean native source `a95ede06` and its
+executable/compiler provenance are retained in `native-engine.json`.
+
+Windows distinguishes an explicit DXA zero (including a missing DXA width or
+omitted type) from omitted/nil/auto/pct spacing. It uses separated cell borders
+with no physical gap and reserves the final outer frame after growing rows.
+The reader preserves the raw width form without changing legacy Mac numeric
+values. Removing spacing clears that metadata and the original direct row XML,
+including widthless elements. Edit/export/undo also covers these forms under
+both platform policies. Negative DXA still needs a separate correction: the
+measured Word row heights match omission, but its interior column edges differ.
+
+The registry now has 98 distinct documents, 387 pages and 71,841 origins (plus
+two historical duplicate registrations). The required Arial gate covers 81
+documents, 254 pages and at least 53,742 origins. Raw EMFs reconstruct 65,610
+origins. The required vector border gate includes 69 documents and 225 pages.
+
+The archiver resolves relative paths before copying long fixture filenames.
+This avoids the Win32 relative-path length limit in a deep checkout while
+retaining the complete version/capture directory structure and no-overwrite
+checks. Capture-integrity tests cover this path as well as provenance, source
+checksums, tampering and accumulation across synthetic Word builds.
+
+Diagnostic capture `20261107T110106544Z-29ee12e9` additionally retains four
+unpromoted 2/3/4/5-column sweeps, including omitted/nil/explicit-zero controls
+and negative widths -20/-40/-80 twips. It records 1,124 original Word origins
+and the unchanged native results. The equal two-column document matches;
+three-, four- and five-column documents remain pending. These diagnostics are
+excluded from passing-reference counts and all required coverage floors.

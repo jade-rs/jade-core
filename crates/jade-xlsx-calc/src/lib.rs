@@ -369,9 +369,21 @@ fn looks(workbook: &Workbook) -> Option<ironcalc_base::host::Looks> {
             .iter()
             .flat_map(|row| &row.cells)
             .filter_map(|cell| cell.formula.as_deref())
-            .any(|formula| formula.to_ascii_uppercase().contains("CELL("))
+            .any(|formula| {
+                let formula = formula.to_ascii_uppercase();
+                formula.contains("CELL(") || formula.contains("FORMULATEXT")
+            })
     });
-    if !asks {
+    let protected_formulas = workbook
+        .sheets
+        .iter()
+        .any(|sheet| sheet.protection.is_some())
+        && workbook
+            .styles
+            .cell_formats
+            .iter()
+            .any(|format| format.formula_hidden);
+    if !asks && !protected_formulas {
         return None;
     }
     let styles = &workbook.styles;
@@ -394,11 +406,13 @@ fn looks(workbook: &Workbook) -> Option<ironcalc_base::host::Looks> {
                 _ => Engine::Distributed,
             },
             locked: !format.unlocked,
+            formula_hidden: format.formula_hidden,
         })
         .collect();
     /// First and last column, style, width, and whether the width is custom.
     type ColumnSpan = (i32, i32, Option<u32>, Option<f32>, bool);
     struct SheetLooks {
+        protected: bool,
         cells: HashMap<(i32, i32), u32>,
         rows: HashMap<i32, u32>,
         columns: Vec<ColumnSpan>,
@@ -408,6 +422,7 @@ fn looks(workbook: &Workbook) -> Option<ironcalc_base::host::Looks> {
         .sheets
         .iter()
         .map(|sheet| SheetLooks {
+            protected: sheet.protection.is_some(),
             cells: sheet
                 .rows
                 .iter()
@@ -463,7 +478,10 @@ fn looks(workbook: &Workbook) -> Option<ironcalc_base::host::Looks> {
                         .and_then(|span| span.2)
                 })
                 .unwrap_or(0);
-            formats.get(index as usize).cloned()
+            formats.get(index as usize).cloned().map(|mut format| {
+                format.formula_hidden &= looks.protected;
+                format
+            })
         }),
         column: Box::new(move |sheet, column| {
             let looks = widths.get(sheet as usize)?;
@@ -736,6 +754,19 @@ fn project_with_epoch<'a>(
                 }
                 let value = held.unwrap_or(&cell.value);
                 set_literal(&mut model, engine_sheet, engine_row, engine_column, value);
+                if let Some(formula) = &cell.formula {
+                    model.set_source_formula(
+                        engine_sheet,
+                        engine_row,
+                        engine_column,
+                        Some(format!(
+                            "={}",
+                            formula_text::to_display_formula(
+                                formula.strip_prefix('=').unwrap_or(formula)
+                            )
+                        )),
+                    );
+                }
             }
         }
     }
@@ -894,17 +925,34 @@ fn seed_formula_value(
 }
 
 fn set_literal(model: &mut Model<'_>, sheet: u32, row: i32, column: i32, value: &CellValue) {
+    model.set_source_formula(sheet, row, column, None);
     // Projection failures here are deliberate no-ops: an unset cell reads as
     // empty, the conservative meaning for a value the engine cannot hold.
     let _ = match value {
         CellValue::Number(number) => model.update_cell_with_number(sheet, row, column, *number),
         CellValue::Text(text) => model.update_cell_with_text(sheet, row, column, text),
         CellValue::Bool(flag) => model.update_cell_with_bool(sheet, row, column, *flag),
-        // The engine has no setter for an error; a formula that is only the
-        // error literal holds it, so cells reading it see the error, as in
-        // Excel, not an empty cell.
+        // Keep literal errors distinct from formulas for ISFORMULA and
+        // FORMULATEXT. Unknown errors retain the conservative fallback.
         CellValue::Error(error) => {
-            model.update_cell_with_formula(sheet, row, column, format!("={error}"))
+            if matches!(
+                error.as_str(),
+                "#NULL!"
+                    | "#DIV/0!"
+                    | "#VALUE!"
+                    | "#REF!"
+                    | "#NAME?"
+                    | "#NUM!"
+                    | "#N/A"
+                    | "#SPILL!"
+                    | "#CALC!"
+                    | "#ERROR!"
+                    | "#CIRC!"
+            ) {
+                model.set_user_input(sheet, row, column, error.clone())
+            } else {
+                model.update_cell_with_formula(sheet, row, column, format!("={error}"))
+            }
         }
         CellValue::Empty => Ok(()),
     };
@@ -926,14 +974,12 @@ fn read_back(
     let mut spills = Vec::new();
     for (sheet_index, reference) in projected {
         spills.extend(spill_of(model, *sheet_index, *reference)?);
-        let value = model
-            .get_cell_value_by_index(
-                *sheet_index as u32,
-                reference.row as i32 + 1,
-                reference.column as i32 + 1,
-            )
-            .map_err(CalcError::Engine)?;
-        let value = to_cell_value(value);
+        let value = read_cell_value(
+            model,
+            *sheet_index as u32,
+            reference.row as i32 + 1,
+            reference.column as i32 + 1,
+        )?;
         // An artifact the cell's own formula produced overwrites nothing
         // Excel computed only when the cache holds the same answer and the
         // file is not waiting on a full calculation that would replace it.
@@ -988,13 +1034,11 @@ fn spill_of(model: &Model<'_>, sheet: usize, anchor: CellRef) -> Result<Option<S
             if (down, across) == (0, 0) {
                 continue;
             }
-            let value = model
-                .get_cell_value_by_index(sheet as u32, row + down, column + across)
-                .map_err(CalcError::Engine)?;
+            let value = read_cell_value(model, sheet as u32, row + down, column + across)?;
             values.push(ComputedCell {
                 sheet,
                 reference: CellRef::new(anchor.column + across as u32, anchor.row + down as u32),
-                value: to_cell_value(value),
+                value,
             });
         }
     }
@@ -1100,13 +1144,26 @@ fn is_engine_artifact(value: &CellValue) -> bool {
     matches!(value, CellValue::Error(text) if text == "#NAME?" || text == "#ERROR!")
 }
 
-fn to_cell_value(value: EngineValue) -> CellValue {
+fn read_cell_value(model: &Model<'_>, sheet: u32, row: i32, column: i32) -> Result<CellValue> {
+    // The engine's value API returns both strings and errors as String.
+    // Inspect the stored type so literal error-looking text stays text.
+    let value = model
+        .get_cell_value_by_index(sheet, row, column)
+        .map_err(CalcError::Engine)?;
+    let error = model
+        .get_cell_type(sheet, row, column)
+        .map_err(CalcError::Engine)?
+        == ironcalc_base::types::CellType::ErrorValue;
+    Ok(to_cell_value(value, error))
+}
+
+fn to_cell_value(value: EngineValue, error: bool) -> CellValue {
     match value {
         EngineValue::None => CellValue::Empty,
         EngineValue::Number(number) => CellValue::Number(number),
         EngineValue::Boolean(flag) => CellValue::Bool(flag),
         EngineValue::String(text) => {
-            if is_excel_error(&text) {
+            if error && is_excel_error(&text) {
                 CellValue::Error(text)
             } else {
                 CellValue::Text(text)

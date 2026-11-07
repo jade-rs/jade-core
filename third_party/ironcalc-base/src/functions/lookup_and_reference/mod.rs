@@ -1028,7 +1028,26 @@ impl<'a> Model<'a> {
             }
             // A multi-cell reference uses its top-left cell, rather than
             // implicit intersection with the caller's row or column.
-            if let Ok(Some(f)) = self.get_english_cell_formula(left.sheet, left.row, left.column) {
+            if crate::host::cell_look(left.sheet, left.row, left.column)
+                .flatten()
+                .is_some_and(|look| look.formula_hidden)
+            {
+                return CalcResult::new_error(
+                    Error::NA,
+                    cell,
+                    "Formula is hidden by worksheet protection".into(),
+                );
+            }
+            let formula = self
+                .source_formulas
+                .get(&(left.sheet, left.row, left.column))
+                .cloned()
+                .or_else(|| {
+                    self.get_english_cell_formula(left.sheet, left.row, left.column)
+                        .ok()
+                        .flatten()
+                });
+            if let Some(f) = formula {
                 if f.encode_utf16().count() > 8192 {
                     CalcResult::new_error(Error::NA, cell, "Formula exceeds 8192 characters".into())
                 } else {
