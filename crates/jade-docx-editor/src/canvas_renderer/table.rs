@@ -17282,6 +17282,10 @@ mod tests {
 
     #[test]
     fn unequal_shared_rules_use_one_band_without_changing_uniform_row_storage() {
+        use jade_docx_layout::line_metrics::{
+            set_word_layout_platform, word_layout_platform, WordLayoutPlatform,
+        };
+        let previous = word_layout_platform();
         let mut upper = make_prepared_cell(0, 2, None, false);
         upper.border_bottom_segments = vec![
             HorizontalBorderSegment {
@@ -17308,24 +17312,49 @@ mod tests {
         ];
         lower[0].border_top.width_px = 4.0;
         lower[1].border_top.width_px = 3.0;
-        let above = HorizontalBorderBands::for_row(std::slice::from_ref(&upper), true);
-        let below = HorizontalBorderBands::for_row(&lower, true);
-        assert_eq!(
-            (above.top, above.bottom, above.content_bottom),
-            (0.0, 4.0, 4.0)
-        );
-        assert_eq!(
-            (below.top, below.bottom, below.content_bottom),
-            (4.0, 0.0, 0.0)
-        );
-        let exact = HorizontalBorderBands::for_row(std::slice::from_ref(&upper), false);
-        assert_eq!(exact.content_bottom, 0.0);
-        let uniform =
-            HorizontalBorderBands::for_row(&[make_prepared_cell(0, 1, None, false)], true);
-        assert_eq!(
-            (uniform.top, uniform.bottom, uniform.content_bottom),
-            (0.0, 0.0, 0.0)
-        );
+        for platform in [WordLayoutPlatform::Mac, WordLayoutPlatform::Windows] {
+            set_word_layout_platform(platform);
+            let windows = platform == WordLayoutPlatform::Windows;
+            let above = HorizontalBorderBands::for_row(std::slice::from_ref(&upper), true);
+            let below = HorizontalBorderBands::for_row(&lower, true);
+            assert_eq!(
+                (above.top, above.bottom, above.content_bottom),
+                (if windows { 1.0 } else { 0.0 }, 4.0, 4.0)
+            );
+            assert_eq!(
+                (below.top, below.bottom, below.content_bottom),
+                (
+                    4.0,
+                    if windows { 1.0 } else { 0.0 },
+                    if windows { 0.0 } else { 1.0 }
+                )
+            );
+            let exact = HorizontalBorderBands::for_row(&lower, false);
+            assert_eq!(
+                (
+                    exact.top,
+                    exact.bottom,
+                    exact.content_top,
+                    exact.content_bottom
+                ),
+                if windows {
+                    (0.0, 0.0, 4.0, 0.0)
+                } else {
+                    (4.0, 0.0, 0.0, 0.0)
+                }
+            );
+            let uniform =
+                HorizontalBorderBands::for_row(&[make_prepared_cell(0, 1, None, false)], true);
+            assert_eq!(
+                (uniform.top, uniform.bottom, uniform.content_bottom),
+                if windows {
+                    (1.0, 1.0, 0.0)
+                } else {
+                    (0.0, 0.0, 1.0)
+                }
+            );
+        }
+        set_word_layout_platform(previous);
         assert_eq!(std::mem::size_of::<HorizontalBorderBands>(), 32);
     }
 
