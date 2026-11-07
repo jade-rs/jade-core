@@ -120,6 +120,8 @@ use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum WriteError {
+    #[error("array metadata: {0}")]
+    ArrayMetadata(&'static str),
     #[error("pivot table: {0}")]
     Pivot(String),
     #[error("editable range: {0}")]

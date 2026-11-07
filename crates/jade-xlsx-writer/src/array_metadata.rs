@@ -102,6 +102,45 @@ fn valid_namespace(ns: &str) -> bool {
             | "http://purl.oclc.org/ooxml/spreadsheetml/main"
     )
 }
+
+/// Check whether a new metadata part can safely use its first cell record.
+pub(crate) fn unused_cell_metadata_index(
+    package: &OpcPackage,
+    workbook: &str,
+) -> Result<Option<u32>> {
+    let mut used = std::collections::BTreeSet::new();
+    if let Some(rels) = package.part_str(&jade_opc::rels_part_name(workbook))? {
+        for rel in jade_opc::parse_relationships(&rels)?.by_type_suffix("/worksheet") {
+            if rel.external {
+                continue;
+            }
+            let part = jade_opc::resolve_target(workbook, &rel.target);
+            let Some(xml) = package.part_str(&part)? else {
+                return Ok(None);
+            };
+            let tree = nodes(&xml)?;
+            if tree[0].children.len() != 1 {
+                return Ok(None);
+            }
+            let root = tree[0].children[0];
+            if tree[root].name != "worksheet" || !valid_namespace(&tree[root].namespace) {
+                return Ok(None);
+            }
+            for data in owned(&tree, root, "sheetData") {
+                for row in owned(&tree, data, "row") {
+                    for cell in owned(&tree, row, "c") {
+                        if let Some(index) =
+                            tree[cell].index("cm").and_then(|n| u32::try_from(n).ok())
+                        {
+                            used.insert(index);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    Ok((!used.contains(&1)).then_some(1))
+}
 fn valid_count(node: &Node, actual: usize) -> bool {
     node.attr("count").is_none() || node.index("count") == Some(actual)
 }
