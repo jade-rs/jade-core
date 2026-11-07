@@ -7,32 +7,31 @@ use std::hash::{Hash, Hasher};
 pub(super) fn boolean_flags(props: &RunProperties) -> u64 {
     // Two bits preserve None, explicit false and explicit true. They must
     // remain distinct while direct formatting is resolved through styles.
-    [
-        props.bold,
-        props.italic,
-        props.bold_complex,
-        props.italic_complex,
-        props.underline,
-        props.strike,
-        props.double_strike,
-        props.caps,
-        props.small_caps,
-        props.vanish,
-        props.spec_vanish,
-        props.shadow,
-        props.outline,
-        props.emboss,
-        props.imprint,
-    ]
-    .into_iter()
-    .enumerate()
-    .fold(0_u64, |bits, (index, flag)| {
-        bits | (match flag {
-            None => 0,
-            Some(false) => 1,
-            Some(true) => 2,
-        } << (index * 2))
-    })
+    // Fixed shifts avoid constructing and iterating a temporary flag array.
+    macro_rules! flag {
+        ($field:ident, $index:expr) => {
+            (match props.$field {
+                None => 0_u64,
+                Some(false) => 1,
+                Some(true) => 2,
+            } << ($index * 2))
+        };
+    }
+    flag!(bold, 0)
+        | flag!(italic, 1)
+        | flag!(bold_complex, 2)
+        | flag!(italic_complex, 3)
+        | flag!(underline, 4)
+        | flag!(strike, 5)
+        | flag!(double_strike, 6)
+        | flag!(caps, 7)
+        | flag!(small_caps, 8)
+        | flag!(vanish, 9)
+        | flag!(spec_vanish, 10)
+        | flag!(shadow, 11)
+        | flag!(outline, 12)
+        | flag!(emboss, 13)
+        | flag!(imprint, 14)
 }
 
 pub(super) fn windows_key(properties: Option<&RunProperties>, grid: Option<f64>) -> u64 {
@@ -114,6 +113,69 @@ pub(super) fn windows_key(properties: Option<&RunProperties>, grid: Option<f64>)
 #[cfg(test)]
 mod tests {
     use super::*;
+    // The reference uses base-four place values of independently generated
+    // ternary digits. Keep the exact key representation, not only uniqueness.
+    fn check_boolean_encoding(digits: [u8; 15]) {
+        let setters: [fn(&mut RunProperties, Option<bool>); 15] = [
+            |p, v| p.bold = v,
+            |p, v| p.italic = v,
+            |p, v| p.bold_complex = v,
+            |p, v| p.italic_complex = v,
+            |p, v| p.underline = v,
+            |p, v| p.strike = v,
+            |p, v| p.double_strike = v,
+            |p, v| p.caps = v,
+            |p, v| p.small_caps = v,
+            |p, v| p.vanish = v,
+            |p, v| p.spec_vanish = v,
+            |p, v| p.shadow = v,
+            |p, v| p.outline = v,
+            |p, v| p.emboss = v,
+            |p, v| p.imprint = v,
+        ];
+        let mut props = RunProperties::default();
+        let mut expected = 0_u64;
+        let mut place = 1_u64;
+        for (setter, digit) in setters.into_iter().zip(digits) {
+            setter(
+                &mut props,
+                [None, Some(false), Some(true)][usize::from(digit)],
+            );
+            expected += u64::from(digit) * place;
+            place *= 4;
+        }
+        assert_eq!(boolean_flags(&props), expected, "digits={digits:?}");
+    }
+
+    #[test]
+    fn boolean_encoding_preserves_all_single_and_paired_field_states() {
+        for digit in 0..3 {
+            check_boolean_encoding([digit; 15]);
+        }
+        for left in 0..15 {
+            for right in left..15 {
+                for a in 0..3 {
+                    for b in 0..3 {
+                        let mut digits = [0; 15];
+                        digits[left] = a;
+                        digits[right] = b;
+                        check_boolean_encoding(digits);
+                    }
+                }
+            }
+        }
+    }
+
+    proptest::proptest! {
+        #![proptest_config(proptest::test_runner::Config::with_cases(256))]
+        #[test]
+        fn boolean_encoding_matches_ternary_field_states(
+            digits in proptest::array::uniform15(0_u8..3),
+        ) {
+            check_boolean_encoding(digits);
+        }
+    }
+
     #[test]
     fn explicit_boolean_values_and_field_positions_remain_distinct() {
         let setters: [fn(&mut RunProperties, Option<bool>); 15] = [
