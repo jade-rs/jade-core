@@ -3,6 +3,58 @@ use jade_xlsx_headless_api::CellInput;
 use jade_xlsx_headless_editor::HeadlessWorkbook;
 
 #[test]
+fn complex_component_ranges_follow_edits_history_and_saved_types() {
+    for (formula, first, second) in [
+        ("IMABS(B1:B2)", "5", "13"),
+        ("IMREAL(B1:B2)", "3", "5"),
+        ("IMAGINARY(B1:B2)", "4", "12"),
+        ("IMCONJUGATE(B1:B2)", "3-4j", "5-12j"),
+        ("ROUND(IMARGUMENT(B1:B2),6)", "0.927295", "1.176005"),
+        (
+            "COMPLEX(IMREAL(B1:B2),IMAGINARY(B1:B2),\"j\")",
+            "3+4j",
+            "5+12j",
+        ),
+    ] {
+        let mut package = OpcPackage::open(include_bytes!(
+            "../../../public/fixtures/sample-workbook.xlsx"
+        ))
+        .unwrap();
+        package.replace("xl/worksheets/sheet1.xml", br#"<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData/></worksheet>"#.to_vec());
+        let mut book = HeadlessWorkbook::open_for_editing(&package.write().unwrap()).unwrap();
+        let name = "売上サマリ";
+        book.set(name, "B1", CellInput::Error("#N/A".into()))
+            .unwrap();
+        book.set(name, "B2", CellInput::Text("5+12j".into()))
+            .unwrap();
+        book.set(name, "F1", CellInput::Formula(formula.into()))
+            .unwrap();
+        book.set(name, "H1", CellInput::Formula("ROWS(F1#)".into()))
+            .unwrap();
+        assert_eq!(book.cell(name, "F1").unwrap().display, "#N/A", "{formula}");
+        book.set(name, "B1", CellInput::Text("3+4j".into()))
+            .unwrap();
+        assert_eq!(book.cell(name, "F1").unwrap().display, first, "{formula}");
+        book.undo().unwrap();
+        assert_eq!(book.cell(name, "F1").unwrap().display, "#N/A");
+        book.redo().unwrap();
+        assert_eq!(book.cell(name, "F1").unwrap().display, first);
+        book.undo().unwrap();
+        let saved = book.save_bytes().unwrap();
+        for reopened in [
+            HeadlessWorkbook::open(&saved).unwrap(),
+            HeadlessWorkbook::open_for_editing(&saved).unwrap(),
+        ] {
+            assert_eq!(reopened.cell(name, "F1").unwrap().display, "#N/A");
+            let output = reopened.cell(name, "F2").unwrap();
+            assert_eq!(output.display, second, "{formula}");
+            assert_eq!(output.number, second.parse::<f64>().ok(), "{formula}");
+            assert_eq!(reopened.cell(name, "H1").unwrap().number, Some(2.0));
+        }
+    }
+}
+
+#[test]
 fn bessel_ranges_follow_order_edits_and_saved_caches() {
     for (function, zero_one, one_one, zero_two, one_two) in [
         ("BESSELI", 1.266066, 0.565159, 2.279585, 1.590637),
