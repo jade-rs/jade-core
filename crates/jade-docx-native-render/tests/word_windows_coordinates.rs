@@ -215,33 +215,39 @@ fn unclipped_table_capture_preserves_visible_pixels_and_origins_on_both_platform
         weight: 400,
         path: &font,
     });
-    let bytes = std::fs::read(repo_path(
-        "public/fixtures/word-windows-edge-table-negative-spacing-unequal-4-compat14.docx",
-    ))
-    .unwrap();
     let previous = jade_docx_layout::line_metrics::word_layout_platform();
-    for platform in [WordLayoutPlatform::Mac, WordLayoutPlatform::Windows] {
-        set_word_layout_platform(platform);
-        let mut doc = NativeDocument::open(&bytes, 816.0, 1056.0, &faces).unwrap();
-        let before = all_glyphs(&mut doc);
-        let pixels = doc.page_pixels(0).unwrap().0.to_vec();
-        let raw = all_glyphs_with_table_projection(&mut doc, true);
-        assert!(raw.len() >= before.len());
-        if platform == WordLayoutPlatform::Windows {
+    for fixture in [
+        "table-negative-spacing-unequal-4-compat14",
+        "table-positive-spacing-bidi-border-widths-compat14",
+        "table-positive-spacing-bidi-border-widths-compat15",
+    ] {
+        let bytes = std::fs::read(repo_path(&format!(
+            "public/fixtures/word-windows-edge-{fixture}.docx"
+        )))
+        .unwrap();
+        for platform in [WordLayoutPlatform::Mac, WordLayoutPlatform::Windows] {
+            set_word_layout_platform(platform);
+            let mut doc = NativeDocument::open(&bytes, 816.0, 1056.0, &faces).unwrap();
+            let before = all_glyphs(&mut doc);
+            let pixels = doc.page_pixels(0).unwrap().0.to_vec();
+            let raw = all_glyphs_with_table_projection(&mut doc, true);
+            assert!(raw.len() >= before.len());
+            if platform == WordLayoutPlatform::Windows {
+                assert!(
+                    raw.len() > before.len(),
+                    "fixture must exercise genuinely clipped glyphs"
+                );
+            }
             assert!(
-                raw.len() > before.len(),
-                "fixture must exercise genuinely clipped glyphs"
+                pixels == doc.page_pixels(0).unwrap().0,
+                "diagnostic changed visible pixels: {platform:?}"
+            );
+            assert_eq!(
+                before,
+                all_glyphs(&mut doc),
+                "diagnostic changed visible origins: {platform:?}"
             );
         }
-        assert!(
-            pixels == doc.page_pixels(0).unwrap().0,
-            "diagnostic changed visible pixels: {platform:?}"
-        );
-        assert_eq!(
-            before,
-            all_glyphs(&mut doc),
-            "diagnostic changed visible origins: {platform:?}"
-        );
     }
     set_word_layout_platform(previous);
 }
