@@ -116,7 +116,11 @@ pub fn attach_paragraph_xml_ids(
 
     let mut slots = Vec::new();
     collect_run_slots(&xml_paragraph.children, None, doc, &mut slots);
-    let mut slots = slots.into_iter();
+    let mut complex_fields = Vec::new();
+    let mut slots = slots.into_iter().map(|slot| {
+        let source = complex_field_source(&slot, &mut complex_fields);
+        (slot, source)
+    });
 
     let mut next_run = 0;
     while next_run < paragraph.runs.len() {
@@ -127,12 +131,12 @@ pub fn attach_paragraph_xml_ids(
         // run. Skip it rather than leave this run without its `w:r`.
         let slot = {
             let run = &paragraph.runs[index];
-            slots.find(|slot| match slot {
+            slots.find(|(slot, _)| match slot {
                 RunSlot::Element(..) => true,
                 RunSlot::Bare(bare) => bare.is_modeled_by(run),
             })
         };
-        let Some(slot) = slot else {
+        let Some((slot, complex_source)) = slot else {
             break;
         };
         // The parser cuts a `w:r` holding soft line breaks into a run per
@@ -174,13 +178,24 @@ pub fn attach_paragraph_xml_ids(
         map_run(run, xml_run);
         if let Some(field) = run.field.as_mut() {
             let mut ancestor = doc.parent_id(xml_run.id);
-            field.source_field_id = None;
+            field.source_field_id = complex_source;
             while let Some(id) = ancestor {
                 let Some(element) = doc.element(id) else {
                     break;
                 };
                 if element.name == "w:fldSimple" {
-                    field.source_field_id = Some(id);
+                    // A complex field can be a result inside this wrapper,
+                    // or this simple field can be inside a complex result.
+                    // Preserve the innermost field's identity in either order.
+                    let complex_is_inside = complex_source.is_some_and(|source| {
+                        std::iter::successors(doc.parent_id(source), |&parent| {
+                            doc.parent_id(parent)
+                        })
+                        .any(|parent| parent == id)
+                    });
+                    if !complex_is_inside {
+                        field.source_field_id = Some(id);
+                    }
                     break;
                 }
                 if element.name == "w:p" {
@@ -273,6 +288,47 @@ enum RunSlot<'a> {
     Element(&'a XmlElement, Option<XmlNodeId>),
     /// Content the parser models as a run of its own with no `w:r`.
     Bare(BareRun),
+}
+
+/// Complex fields have no wrapper element. Their begin run identifies the
+/// field across its result fragments, independently of neighbouring fields
+/// with identical instructions. Track markers in XML order, even for slots
+/// that do not materialize as model runs.
+fn complex_field_source(
+    slot: &RunSlot<'_>,
+    fields: &mut Vec<(XmlNodeId, bool)>,
+) -> Option<XmlNodeId> {
+    let RunSlot::Element(run, _) = slot else {
+        return None;
+    };
+    let mut source = fields
+        .last()
+        .filter(|(_, result)| *result)
+        .map(|(id, _)| *id);
+    for marker in element_children(run).filter(|child| child.name == "w:fldChar") {
+        match marker
+            .attributes
+            .iter()
+            .find(|a| a.name == "w:fldCharType")
+            .map(|a| a.value.as_str())
+        {
+            Some("begin") => {
+                fields.push((run.id, false));
+                source = None;
+            }
+            Some("separate") => {
+                if let Some((id, result)) = fields.last_mut() {
+                    *result = true;
+                    source = Some(*id);
+                }
+            }
+            Some("end") => {
+                fields.pop();
+            }
+            _ => {}
+        }
+    }
+    source
 }
 
 enum BareRun {
@@ -742,6 +798,98 @@ mod tests {
     use super::*;
     use crate::document::Body;
     use crate::parser::DocumentParser;
+
+    #[test]
+    fn complex_result_fragments_share_only_their_own_field_identity() {
+        let field = r#"<w:r><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:instrText> DATE </w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r><w:r><w:rPr><w:vanish/></w:rPr><w:t>first</w:t></w:r><w:r><w:t>second</w:t></w:r><w:r><w:fldChar w:fldCharType="end"/></w:r>"#;
+        let source = format!(
+            r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p>{field}{field}<w:r><w:t>after</w:t></w:r></w:p></w:body></w:document>"#
+        );
+        let mut document = DocumentParser::new().parse_document_xml(&source).unwrap();
+        let xml = DocxXmlDocument::parse(&source).unwrap();
+        attach_document_xml_ids(&mut document, &xml).unwrap();
+        let paragraph = document.body.as_ref().unwrap().elements[0]
+            .as_paragraph()
+            .unwrap();
+        let identities: Vec<_> = paragraph
+            .runs
+            .iter()
+            .filter_map(|run| run.field.as_ref().map(|field| field.source_field_id))
+            .collect();
+        assert_eq!(identities.len(), 4);
+        assert!(identities.iter().all(Option::is_some));
+        assert_eq!(identities[0], identities[1]);
+        assert_eq!(identities[2], identities[3]);
+        assert_ne!(identities[0], identities[2]);
+        for identity in identities.into_iter().flatten() {
+            let begin = xml.element(identity).unwrap();
+            assert_eq!(begin.name, "w:r");
+            assert!(element_children(begin).any(|child| child.name == "w:fldChar"));
+        }
+        assert!(paragraph.runs.last().unwrap().field.is_none());
+    }
+
+    #[test]
+    fn nested_complex_fields_keep_their_own_identity_inside_a_simple_field() {
+        let field = r#"<w:r><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:instrText> DATE </w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r><w:r><w:rPr><w:vanish/></w:rPr><w:t>first</w:t></w:r><w:r><w:t>second</w:t></w:r><w:r><w:fldChar w:fldCharType="end"/></w:r>"#;
+        let source = format!(
+            r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:fldSimple w:instr=" PAGE ">{field}{field}</w:fldSimple><w:r><w:t>after</w:t></w:r></w:p></w:body></w:document>"#
+        );
+        let mut document = DocumentParser::new().parse_document_xml(&source).unwrap();
+        let xml = DocxXmlDocument::parse(&source).unwrap();
+        attach_document_xml_ids(&mut document, &xml).unwrap();
+        let paragraph = document.body.as_ref().unwrap().elements[0]
+            .as_paragraph()
+            .unwrap();
+        let identities: Vec<_> = paragraph
+            .runs
+            .iter()
+            .filter_map(|run| run.field.as_ref())
+            .filter(|field| matches!(field.kind, RunFieldKind::Date { .. }))
+            .map(|field| field.source_field_id)
+            .collect();
+        assert_eq!(identities.len(), 4);
+        assert!(identities.iter().all(Option::is_some));
+        assert_eq!(identities[0], identities[1]);
+        assert_eq!(identities[2], identities[3]);
+        assert_ne!(identities[0], identities[2]);
+        for identity in identities.into_iter().flatten() {
+            let begin = xml.element(identity).unwrap();
+            assert_eq!(begin.name, "w:r");
+            assert!(element_children(begin).any(|child| child.name == "w:fldChar"));
+        }
+        assert!(paragraph.runs.last().unwrap().field.is_none());
+    }
+
+    #[test]
+    fn simple_result_fragments_keep_their_identity_inside_a_complex_field() {
+        let field = r#"<w:fldSimple w:instr=" DATE "><w:r><w:t>first</w:t></w:r><w:r><w:t>second</w:t></w:r></w:fldSimple>"#;
+        let source = format!(
+            r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:instrText> PAGE </w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r>{field}{field}<w:r><w:fldChar w:fldCharType="end"/></w:r><w:r><w:t>after</w:t></w:r></w:p></w:body></w:document>"#
+        );
+        let mut document = DocumentParser::new().parse_document_xml(&source).unwrap();
+        let xml = DocxXmlDocument::parse(&source).unwrap();
+        attach_document_xml_ids(&mut document, &xml).unwrap();
+        let paragraph = document.body.as_ref().unwrap().elements[0]
+            .as_paragraph()
+            .unwrap();
+        let identities: Vec<_> = paragraph
+            .runs
+            .iter()
+            .filter_map(|run| run.field.as_ref())
+            .filter(|field| matches!(field.kind, RunFieldKind::Date { .. }))
+            .map(|field| field.source_field_id)
+            .collect();
+        assert_eq!(identities.len(), 4);
+        assert!(identities.iter().all(Option::is_some));
+        assert_eq!(identities[0], identities[1]);
+        assert_eq!(identities[2], identities[3]);
+        assert_ne!(identities[0], identities[2]);
+        for identity in identities.into_iter().flatten() {
+            assert_eq!(xml.element(identity).unwrap().name, "w:fldSimple");
+        }
+        assert!(paragraph.runs.last().unwrap().field.is_none());
+    }
 
     #[test]
     fn maps_paragraphs_after_math_wrappers_to_their_own_xml_nodes() {

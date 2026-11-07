@@ -5,7 +5,7 @@ use crate::chart::{
     parse_chart_xml_for_preview, validate_chart,
 };
 use crate::commands::text_edit::{
-    apply_text_edit, create_run_from_template, normalize_break_runs,
+    apply_text_edit, create_run_from_template, is_empty_field_result, normalize_break_runs,
     rebase_comment_anchors_for_edit, run_carries_content, split_runs_at_preserving_source,
     FieldChars, ZeroWidthRuns,
 };
@@ -17526,8 +17526,43 @@ impl WordDocument {
         if !self.is_body_paragraph_surface(rendered_end.paragraph) {
             return Err("index entries can only be marked in body paragraphs".to_string());
         }
-        let model_end = self.rendered_to_model_text_position(rendered_end);
+        let mut model_end = self.rendered_to_model_text_position(rendered_end);
         self.validate_text_position_boundary(model_end)?;
+        // A field result can span several runs after formatting. Anchor after
+        // its complete wrapper, including at a boundary between its fragments.
+        // Equal field instructions can belong to separate adjacent wrappers.
+        if let Some(paragraph) = self.paragraph(model_end.paragraph) {
+            let mut start = 0usize;
+            for (index, run) in paragraph.runs.iter().enumerate() {
+                let end = start + run.text.len();
+                if start <= model_end.offset && model_end.offset < end {
+                    if let Some(field) = run.field.as_ref() {
+                        let same_field = |other: &Run| {
+                            other.field.as_ref().is_some_and(|other| {
+                                other.kind == field.kind
+                                    && other.source_field_id == field.source_field_id
+                            })
+                        };
+                        // At the start of a distinct wrapper the marker already
+                        // lies between fields and must stay at that boundary.
+                        if start == model_end.offset
+                            && (index == 0 || !same_field(&paragraph.runs[index - 1]))
+                        {
+                            break;
+                        }
+                        model_end.offset = end;
+                        for fragment in paragraph.runs[index + 1..]
+                            .iter()
+                            .take_while(|run| same_field(run))
+                        {
+                            model_end.offset += fragment.text.len();
+                        }
+                    }
+                    break;
+                }
+                start = end;
+            }
+        }
 
         let mut properties = self
             .paragraph(model_end.paragraph)
@@ -29926,7 +29961,16 @@ impl WordDocument {
         // Text that is still a tracked insertion stays one, inside the
         // deletion, as Word keeps it: rejecting the deletion gives the
         // insertion back, and rejecting every change removes the text.
-        for run in middle.iter_mut().filter(|run| !zero_width.keeps(run)) {
+        //
+        // A result-less field before the range's first text (an XE entry, a
+        // computed field) sits at its edge, where an untracked deletion
+        // leaves it. Marked deleted, it was saved outside the `w:del`, and
+        // accepting the deletion took it out of the model alone.
+        let before_text = middle.iter().take_while(|run| run.text.is_empty()).count();
+        for (index, run) in middle.iter_mut().enumerate() {
+            if zero_width.keeps(run) || (index < before_text && is_empty_field_result(run)) {
+                continue;
+            }
             run.revision = Some(deleted_over(run.revision.take(), &revision_mark));
             run.node_id = None;
             run.text_node_id = None;

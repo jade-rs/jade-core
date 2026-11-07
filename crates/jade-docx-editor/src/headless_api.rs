@@ -14812,6 +14812,75 @@ mod tests {
     }
 
     #[test]
+    fn a_tracked_deletion_from_an_index_entry_leaves_the_entry() {
+        // An XE entry has no width. A tracked deletion starting at it marked
+        // it deleted with the text after it, though an untracked one leaves a
+        // field at its edge; the file kept it outside the `w:del`, and
+        // accepting the deletion took it out of the model alone.
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/note-styles-creation.docx"),
+        )
+        .expect("read fixture");
+        let mut word_doc =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+        let index_entries = |word_doc: &WordDocument| {
+            word_doc.paragraph(0).map_or(0, |paragraph| {
+                paragraph
+                    .runs
+                    .iter()
+                    .filter(|run| {
+                        matches!(
+                            run.field.as_ref().map(|field| &field.kind),
+                            Some(crate::document::RunFieldKind::NonDisplay { .. })
+                        )
+                    })
+                    .count()
+            })
+        };
+        apply_headless_commands_to_document(
+            &mut word_doc,
+            &HeadlessEditRequest {
+                commands: vec![
+                    HeadlessCommand::StartChangeTracking {
+                        author: Some("reviewer".into()),
+                        initials: None,
+                        date: None,
+                        date_utc: None,
+                    },
+                    HeadlessCommand::MarkIndexEntry {
+                        paragraph: 0,
+                        offset: 6,
+                        term: "t".into(),
+                    },
+                    HeadlessCommand::DeleteText {
+                        paragraph: 0,
+                        offset: 6,
+                        direction: HeadlessDeleteDirection::Forward,
+                        count: 4,
+                    },
+                    HeadlessCommand::AcceptRevisions {
+                        kind: None,
+                        start_paragraph: None,
+                        end_paragraph: None,
+                        revision_id: None,
+                        revision_ids: None,
+                        revision_targets: None,
+                    },
+                ],
+            },
+        )
+        .expect("edited");
+        let reloaded = executor::block_on(WordDocument::load(
+            &word_doc.export_docx().expect("export"),
+            &Options::default(),
+        ))
+        .expect("reload");
+        assert_eq!(index_entries(&reloaded), 1);
+        assert_eq!(index_entries(&word_doc), 1);
+    }
+
+    #[test]
     fn splitting_a_paragraph_keeps_a_result_less_field_on_one_side() {
         // A result-less simple field (an XE entry the editor marked, the
         // AUTONUM fields of `toc.docx`) has no width. The model's split sends
@@ -14995,6 +15064,311 @@ mod tests {
             executor::block_on(WordDocument::load(&exported, &Options::default())).expect("reload");
         assert_eq!(if_fields(&reloaded), 2);
         assert_eq!(if_fields(&word_doc), if_fields(&reloaded));
+    }
+
+    #[test]
+    fn an_index_entry_marked_inside_a_field_result_goes_after_the_field() {
+        // A field inserted while editing keeps its result as the run's text.
+        // An XE marker placed inside that text split the field around it, and
+        // the saved file had the field once and no index entry.
+        let field_kinds = |word_doc: &WordDocument| {
+            word_doc.paragraph(0).map_or_else(Vec::new, |paragraph| {
+                let mut kinds: Vec<String> = Vec::new();
+                for run in &paragraph.runs {
+                    let Some(field) = run.field.as_ref() else {
+                        continue;
+                    };
+                    let kind = format!("{:?}", field.kind);
+                    if kinds.last() != Some(&kind) {
+                        kinds.push(kind);
+                    }
+                }
+                kinds
+            })
+        };
+        let date = HeadlessCommand::InsertDateTimeField {
+            start_paragraph: 0,
+            start_offset: 11,
+            end_paragraph: 0,
+            end_offset: 16,
+            time: false,
+            format: "yyyy/MM/dd".into(),
+            cached_text: "2026/11/02".into(),
+        };
+        let mark = HeadlessCommand::MarkIndexEntry {
+            paragraph: 0,
+            offset: 12,
+            term: "t".into(),
+        };
+        let split_the_field = HeadlessCommand::ClearFormatting {
+            start_paragraph: 0,
+            start_offset: 13,
+            end_paragraph: 0,
+            end_offset: 19,
+        };
+        let mut cases = vec![vec![date.clone(), mark.clone()]];
+        for offset in 12..=21 {
+            cases.push(vec![
+                date.clone(),
+                split_the_field.clone(),
+                HeadlessCommand::MarkIndexEntry {
+                    paragraph: 0,
+                    offset,
+                    term: "boundary".into(),
+                },
+            ]);
+        }
+        for commands in cases {
+            let bytes = std::fs::read(
+                std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                    .join("../../public/fixtures/note-styles-creation.docx"),
+            )
+            .expect("read fixture");
+            let mut word_doc =
+                executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+            apply_headless_commands_to_document(
+                &mut word_doc,
+                &HeadlessEditRequest {
+                    commands: commands.clone(),
+                },
+            )
+            .expect("edited");
+            let kinds = field_kinds(&word_doc);
+            assert_eq!(kinds.len(), 2, "{commands:?}: {kinds:?}");
+            assert!(
+                kinds[1].starts_with("NonDisplay"),
+                "{commands:?}: {kinds:?}"
+            );
+            let reloaded = executor::block_on(WordDocument::load(
+                &word_doc.export_docx().expect("export"),
+                &Options::default(),
+            ))
+            .expect("reload");
+            assert_eq!(field_kinds(&reloaded), kinds, "{commands:?}");
+        }
+    }
+
+    #[test]
+    fn an_index_entry_stays_between_distinct_adjacent_date_fields() {
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/note-styles-creation.docx"),
+        )
+        .expect("read fixture");
+        let mut word_doc =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+        let date = |start_offset, end_offset| HeadlessCommand::InsertDateTimeField {
+            start_paragraph: 0,
+            start_offset,
+            end_paragraph: 0,
+            end_offset,
+            time: false,
+            format: "yyyy/MM/dd".into(),
+            cached_text: "2026/11/02".into(),
+        };
+        apply_headless_commands_to_document(
+            &mut word_doc,
+            &HeadlessEditRequest {
+                commands: vec![
+                    date(11, 16),
+                    date(21, 21),
+                    HeadlessCommand::MarkIndexEntry {
+                        paragraph: 0,
+                        offset: 12,
+                        term: "first date".into(),
+                    },
+                ],
+            },
+        )
+        .expect("edited");
+        let marker_offset = |doc: &WordDocument| {
+            let mut offset = 0;
+            for run in &doc.paragraph(0).expect("paragraph").runs {
+                if matches!(
+                    run.field.as_ref().map(|field| &field.kind),
+                    Some(jade_docx_reader::RunFieldKind::NonDisplay { .. })
+                ) {
+                    return Some(offset);
+                }
+                offset += run.text.len();
+            }
+            None
+        };
+        assert_eq!(marker_offset(&word_doc), Some(21));
+        let reloaded = executor::block_on(WordDocument::load(
+            &word_doc.export_docx().expect("export"),
+            &Options::default(),
+        ))
+        .expect("reload");
+        let kinds: Vec<_> = reloaded
+            .paragraph(0)
+            .expect("paragraph")
+            .runs
+            .iter()
+            .filter_map(|run| run.field.as_ref().map(|field| &field.kind))
+            .collect();
+        assert_eq!(kinds.len(), 3, "{kinds:?}");
+        assert!(matches!(
+            kinds[0],
+            jade_docx_reader::RunFieldKind::Date { .. }
+        ));
+        assert!(matches!(
+            kinds[1],
+            jade_docx_reader::RunFieldKind::NonDisplay { .. }
+        ));
+        assert!(matches!(
+            kinds[2],
+            jade_docx_reader::RunFieldKind::Date { .. }
+        ));
+    }
+
+    #[test]
+    fn an_index_entry_stays_between_adjacent_complex_merge_fields() {
+        let field = |result: &str| {
+            format!(
+                r#"<w:r><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:instrText xml:space="preserve"> MERGEFIELD Name </w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r><w:r><w:t>{result}</w:t></w:r><w:r><w:fldChar w:fldCharType="end"/></w:r>"#
+            )
+        };
+        // Inspect the saved XML independently of run identities and byte offsets:
+        // an XE marker must be between the complete complex field wrappers.
+        let check = |xml: &str, expected_position: usize, expected_text: &str| {
+            use quick_xml::{events::Event, Reader};
+            let markers: Vec<_> = tc_marker_positions(xml)
+                .into_iter()
+                .filter(|(instruction, _)| instruction.contains("XE "))
+                .collect();
+            assert_eq!(markers.len(), 1, "{xml}");
+            assert_eq!(markers[0].1, expected_position, "{xml}");
+            assert_eq!(xml.matches("MERGEFIELD Name").count(), 2, "{xml}");
+            let mut reader = Reader::from_str(xml);
+            let (mut depth, mut begins, mut ends) = (0usize, 0usize, 0usize);
+            let mut in_text = false;
+            let mut text = String::new();
+            loop {
+                match reader.read_event().expect("XML") {
+                    Event::Start(element) | Event::Empty(element) => {
+                        match element.name().as_ref() {
+                            b"w:fldChar" => {
+                                let field_type = element
+                                    .attributes()
+                                    .map(|attr| attr.expect("attribute"))
+                                    .find(|attr| attr.key.as_ref() == b"w:fldCharType")
+                                    .expect("field character type");
+                                match field_type.value.as_ref() {
+                                    b"begin" => {
+                                        depth += 1;
+                                        begins += 1;
+                                    }
+                                    b"end" => {
+                                        depth = depth.checked_sub(1).expect("balanced fields");
+                                        ends += 1;
+                                    }
+                                    _ => {}
+                                }
+                            }
+                            b"w:fldSimple" => {
+                                if element
+                                    .attributes()
+                                    .map(|attr| attr.expect("attribute"))
+                                    .any(|attr| {
+                                        attr.key.as_ref() == b"w:instr"
+                                            && attr.value.windows(3).any(|part| part == b"XE ")
+                                    })
+                                {
+                                    assert_eq!(
+                                        depth, 0,
+                                        "XE must stay outside complex field scopes: {xml}"
+                                    );
+                                }
+                            }
+                            b"w:t" => in_text = true,
+                            _ => {}
+                        }
+                    }
+                    Event::End(element) if element.name().as_ref() == b"w:t" => in_text = false,
+                    Event::Text(value) if in_text => {
+                        text.push_str(&value.xml10_content().expect("text"))
+                    }
+                    Event::Eof => break,
+                    _ => {}
+                }
+            }
+            assert_eq!((depth, begins, ends), (0, 2, 2), "{xml}");
+            assert_eq!(text, expected_text, "{xml}");
+        };
+        for (first, second) in [
+            ("Alice", "Bobby"),
+            ("あいうえ", "漢字かな"),
+            ("é🙂中x", "x👩‍💻é"),
+        ] {
+            let prefix = "prefix ";
+            let body = format!(
+                r#"<w:p><w:r><w:t xml:space="preserve">{prefix}</w:t></w:r>{}{}<w:r><w:t xml:space="preserve"> suffix</w:t></w:r></w:p>"#,
+                field(first),
+                field(second)
+            );
+            let expected_text = format!("{prefix}{first}{second} suffix");
+            for fragmented in [false, true] {
+                for (result, preceding) in [(first, ""), (second, first)] {
+                    for boundary in result
+                        .char_indices()
+                        .map(|(index, _)| index)
+                        .chain(std::iter::once(result.len()))
+                    {
+                        let mut doc = tc_test_document(&body);
+                        if fragmented {
+                            for (value, before) in [(first, ""), (second, first)] {
+                                let start = prefix.len() + before.len();
+                                let positions: Vec<_> =
+                                    value.char_indices().map(|(index, _)| index).collect();
+                                apply_headless_commands_to_document(
+                                    &mut doc,
+                                    &HeadlessEditRequest {
+                                        commands: vec![HeadlessCommand::SetFontSize {
+                                            start_paragraph: 0,
+                                            start_offset: start + positions[1],
+                                            end_paragraph: 0,
+                                            end_offset: start + positions[3],
+                                            font_size: 16.0,
+                                        }],
+                                    },
+                                )
+                                .expect("split complex field result formatting");
+                            }
+                        }
+                        apply_headless_commands_to_document(
+                            &mut doc,
+                            &HeadlessEditRequest {
+                                commands: vec![HeadlessCommand::MarkIndexEntry {
+                                    paragraph: 0,
+                                    offset: prefix.len() + preceding.len() + boundary,
+                                    term: "first name".into(),
+                                }],
+                            },
+                        )
+                        .expect("mark a complex field boundary");
+                        let expected_position = prefix.chars().count()
+                            + preceding.chars().count()
+                            + if boundary == 0 {
+                                0
+                            } else {
+                                result.chars().count()
+                            };
+                        check(&toc_document_xml(&doc), expected_position, &expected_text);
+                        let reloaded = executor::block_on(WordDocument::load(
+                            &doc.export_docx().expect("export"),
+                            &Options::default(),
+                        ))
+                        .expect("reload");
+                        check(
+                            &toc_document_xml(&reloaded),
+                            expected_position,
+                            &expected_text,
+                        );
+                    }
+                }
+            }
+        }
     }
 
     #[test]
