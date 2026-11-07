@@ -27,10 +27,11 @@ def alignment_sweep(compatibility_mode=15, variant=None, height_rule='exact'):
     m.write(name, ''.join(body), compatibility_mode)
 
 
-def border_sweep(compatibility_mode=15, variant=None, height_rule='exact'):
+def border_sweep(compatibility_mode=15, variant=None, height_rule='exact',
+                 sizes=(0, 4, 8, 16, 24), probe_name=None):
     body = []
     for padding in [0, 80]:
-        for size in [0, 4, 8, 16, 24]:
+        for size in sizes:
             body.append(m.para(m.run(f'Before P{padding} S{size}')))
             rows = []
             for r in range(2):
@@ -47,6 +48,8 @@ def border_sweep(compatibility_mode=15, variant=None, height_rule='exact'):
     if height_rule != 'exact':
         rule_name = 'at-least' if height_rule == 'atLeast' else height_rule
         name = f'table-{variant}-{rule_name}-borders-compat{compatibility_mode}'
+    if probe_name is not None:
+        name = f'table-{probe_name}-compat{compatibility_mode}'
     m.write(name, ''.join(body), compatibility_mode)
 
 
@@ -112,6 +115,8 @@ def mixed_spacing_border_sweep(mode):
 if __name__ == '__main__':
     for mode in [12, 14, 15]:
         mixed_spacing_border_sweep(mode)
+        border_sweep(mode, sizes=(1, 2, 3), probe_name='collapsed-hairline-borders')
+        border_sweep(mode, 'spacing', sizes=(1, 2, 3), probe_name='spacing-hairline-borders')
         alignment_sweep(mode)
         border_sweep(mode)
         alignment_sweep(mode, 'bidi')
