@@ -122,6 +122,7 @@ fn spaced_tables_preserve_origins_after_edit_export_and_undo() {
             ("table-spacing-continuation-compat14", 1),
             ("table-spacing-auto-compat14", 0),
             ("table-spacing-at-least-continuation-compat14", 1),
+            ("table-spacing-mixed-borders-compat14", 0),
         ] {
             let bytes = std::fs::read(repo_path(&format!(
                 "public/fixtures/word-windows-edge-{fixture}.docx"

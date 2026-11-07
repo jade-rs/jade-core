@@ -1,7 +1,9 @@
 //! Capture the native renderer's unaligned glyph origins in PDF points.
-//! Usage: word_coordinates document.docx output.json [mac|windows]
+//! Usage: word_coordinates document.docx output.json [mac|windows] [vector.pdf]
 use jade_docx_layout::line_metrics::{set_word_layout_platform, WordLayoutPlatform};
-use jade_docx_native_render::{system_fonts, FontFace, NativeDocument};
+use jade_docx_native_render::{
+    system_fonts, FontFace, NativeDocument, PdfExportOptions, PdfRenderingMode,
+};
 use serde_json::json;
 use std::path::PathBuf;
 
@@ -27,9 +29,9 @@ fn main() {
         .collect();
     let faces = system_fonts::word_document_faces(&bytes, &fallback);
     let mut doc = NativeDocument::open_with_font_faces(&bytes, 816.0, 1056.0, &faces).unwrap();
-    let mut lines = doc.renderer().layout_debug_lines();
     let snapshot = doc.capture_full_layout_debug().unwrap();
     assert!(snapshot.complete, "incomplete glyph capture");
+    let mut lines = snapshot.body_lines;
     lines.extend(snapshot.auxiliary_lines.into_iter().map(|entry| entry.line));
     let mut glyphs = Vec::new();
     for line in lines {
@@ -49,6 +51,15 @@ fn main() {
     }
     let result = json!({"page_count": doc.page_count(), "glyphs": glyphs, "fonts": faces.iter().map(|f| json!({"family": f.family, "path": f.path, "index": f.index, "weight": f.weight, "italic": f.italic})).collect::<Vec<_>>()});
     std::fs::write(&args[2], serde_json::to_vec_pretty(&result).unwrap()).unwrap();
+    if let Some(pdf_path) = args.get(4) {
+        let pdf = doc
+            .export_pdf_with_options(PdfExportOptions {
+                rendering: PdfRenderingMode::Vector,
+                ..Default::default()
+            })
+            .unwrap();
+        std::fs::write(pdf_path, pdf).unwrap();
+    }
     if let Some((pixels, width, height)) = doc.page_pixels(0) {
         image::save_buffer(
             PathBuf::from(&args[2]).with_extension("png"),
