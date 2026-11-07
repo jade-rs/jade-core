@@ -721,3 +721,89 @@ fn contiguous_spans_are_borrowed_and_other_orders_keep_the_exact_text() {
         }
     }
 }
+
+#[test]
+fn font_index_buffers_preserve_prefix_and_repeated_switches() {
+    let fonts = [
+        Rc::<str>::from("12pt Calibri"),
+        Rc::from("11pt 'Noto Sans JP'"),
+        Rc::from("10pt Arial"),
+    ];
+    for length in [2, 3, 31, 63, 64, 65, 127, 129, 513] {
+        let source: String = ['A', 'é', '税', '\0', '\u{0301}']
+            .into_iter()
+            .cycle()
+            .take(length)
+            .collect();
+        for first_change in [1, length / 2, length - 1] {
+            let glyphs: Vec<_> = source
+                .char_indices()
+                .enumerate()
+                .map(|(index, (start, ch))| GlyphRunStep {
+                    text_start: start as u32,
+                    text_end: (start + ch.len_utf8()) as u32,
+                    font_index: if index < first_change {
+                        0
+                    } else {
+                        ((index - first_change + 1) % fonts.len()) as u16
+                    },
+                    x_offset: index as f64 * -0.125,
+                })
+                .collect();
+            for mode in [BatchMode::Accept, BatchMode::Decline, BatchMode::Error] {
+                let painter = BatchPainter::new();
+                painter.mode.set(mode);
+                let result = draw_text_run_glyphs(
+                    &painter,
+                    &source,
+                    3.0,
+                    -2.0,
+                    &TextStyle::default(),
+                    &fonts,
+                    &glyphs,
+                    &mut FontStateTracker::new(),
+                );
+                let is_error = matches!(mode, BatchMode::Error);
+                assert_eq!(result, if is_error { Err("batch") } else { Ok(()) });
+                let calls = painter.calls.borrow();
+                assert_eq!(
+                    calls.len(),
+                    1,
+                    "length={length}, first_change={first_change}, mode={mode:?}"
+                );
+                assert_eq!(calls[0].0, source);
+                assert_eq!(
+                    calls[0].1,
+                    glyphs
+                        .iter()
+                        .map(|glyph| 3.0 + glyph.x_offset)
+                        .collect::<Vec<_>>()
+                );
+                assert_eq!(
+                    calls[0].2,
+                    glyphs
+                        .iter()
+                        .map(|glyph| glyph.font_index)
+                        .collect::<Vec<_>>()
+                );
+                let expected = if is_error {
+                    Vec::new()
+                } else {
+                    glyphs
+                        .iter()
+                        .zip(source.chars())
+                        .map(|(glyph, ch)| {
+                            (
+                                fonts[glyph.font_index as usize].to_string(),
+                                ch.to_string(),
+                                (3.0 + glyph.x_offset).to_bits(),
+                                (-2.0_f64).to_bits(),
+                            )
+                        })
+                        .collect()
+                };
+                assert_eq!(drawn_glyphs(&painter.inner), expected);
+            }
+        }
+    }
+}
