@@ -838,6 +838,18 @@
     {
       "fixture": "word-windows-edge-tabs",
       "docx_sha256": "d6831dbd8f4e78c7712e40a8d5b82347ad7855dbf7fff771d70098f058875853"
+    },
+    {
+      "fixture": "word-windows-edge-decimal-separators",
+      "docx_sha256": "5c314f14dc90fe7e8570b5d72099d98cf2b83c141945d36bbd1931931d774082"
+    },
+    {
+      "fixture": "word-windows-edge-decimal-suffix",
+      "docx_sha256": "cad15b14929126f2e6912d846664c17e4bc197f195725fc01d8b6627332d9642"
+    },
+    {
+      "fixture": "word-windows-edge-decimal-tracking",
+      "docx_sha256": "8f615cd073d3e2fba137ba84744c3fa2dda1d7909ab207cd8c87575771126d64"
     }
   ]
 }

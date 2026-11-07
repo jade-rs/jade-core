@@ -8446,6 +8446,7 @@ fn measure_tab_segment<C: LineWrapContext>(
     let mut width = 0.0;
     let windows = paragraph_style.word_platform == crate::line_metrics::WordLayoutPlatform::Windows;
     let mut decimal_prefix_width = None;
+    let mut decimal_has_digit = false;
     let mut run_index = start_run_index;
     let mut cursor_rel = start_abs_offset.saturating_sub(base_offset);
     // The actual text walk resets context after every tab. Lookahead must use
@@ -8535,10 +8536,17 @@ fn measure_tab_segment<C: LineWrapContext>(
             let (font_desc, font_desc_hash, font_desc_id) =
                 style.descriptor_key_for_grapheme(grapheme, script);
             let grapheme_start_abs = base_offset + run_start_aligned + rel_offset;
-            // Word aligns the decimal point, or the end of text without one.
-            // Retain the existing Mac path until independently measured.
-            if windows && grapheme == "." && decimal_prefix_width.is_none() {
-                decimal_prefix_width = Some(width);
+            // Windows Word stops at the first point or the first nonnumeric
+            // character after a digit (except grouping commas). Thus 12 EUR
+            // anchors before its space, and 12/34.56 before its slash, even
+            // though a point appears later. Keep this state across source runs.
+            // The Mac path retains its independently tested behavior.
+            if windows && decimal_prefix_width.is_none() {
+                let digit = grapheme.bytes().all(|byte| byte.is_ascii_digit());
+                if grapheme == "." || (decimal_has_digit && !digit && grapheme != ",") {
+                    decimal_prefix_width = Some(width);
+                }
+                decimal_has_digit |= digit;
             }
             let computed = compute_text_advance_step_with_descriptor(
                 ctx,
@@ -17335,7 +17343,21 @@ mod tests {
     fn windows_decimal_tab_anchors_the_point_across_source_runs() {
         use crate::line_metrics::WordLayoutPlatform;
         let ctx = TestContext::new(2.0);
-        for (text, windows_prefix) in [("\t12.34", 4.0), ("\t1234", 8.0), ("\tAB CD", 10.0)] {
+        for (text, windows_prefix) in [
+            ("\t12.34", 4.0),
+            ("\t1234", 8.0),
+            ("\tAB CD", 10.0),
+            ("\t12 EUR", 4.0),
+            ("\t12%", 4.0),
+            ("\t12/34.56", 4.0),
+            ("\tA12B", 6.0),
+            ("\t12,345", 12.0),
+            ("\t12,34X", 10.0),
+            ("\tABC.DEF", 6.0),
+            ("\tUSD 12", 12.0),
+            ("\tA B12", 10.0),
+            ("\t(12)", 6.0),
+        ] {
             for platform in [WordLayoutPlatform::Windows, WordLayoutPlatform::Mac] {
                 let paragraph = ParagraphStyle {
                     word_platform: platform,
