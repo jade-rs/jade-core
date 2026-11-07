@@ -1,5 +1,5 @@
-//! Direct formatting edits must match a fresh render, including
-//! transitions between inherited, explicitly disabled and explicitly enabled.
+//! Direct formatting edits must match a fresh render, including inherited
+//! flags, explicit flags, numeric metrics, and restoration of defaults.
 use super::*;
 use jade_painter::recording::{Op, RecordingPainter};
 use proptest::prelude::*;
@@ -23,6 +23,117 @@ const FLAGS: [(&str, FlagSetter); 15] = [
     ("imprint", |p, v| p.imprint = v),
 ];
 const TEXTS: [&str; 4] = ["Abc Z", "税あب e\u{301}", "A😀\0z", ""];
+
+type MetricSetter = fn(&mut RunProperties, Option<f32>);
+const METRICS: [(&str, MetricSetter, [f32; 5]); 5] = [
+    (
+        "text_position",
+        |p, v| p.text_position = v,
+        [-3.0, -1.0, 0.0, 1.0, 3.0],
+    ),
+    (
+        "char_spacing",
+        |p, v| p.char_spacing = v,
+        [-1.0, -0.0, 0.0, 0.5, 1.25],
+    ),
+    ("kerning", |p, v| p.kerning = v, [0.0, 4.0, 8.0, 12.0, 24.0]),
+    (
+        "text_scale",
+        |p, v| p.text_scale = v,
+        [50.0, 75.0, 100.0, 125.0, 150.0],
+    ),
+    (
+        "font_size",
+        |p, v| p.font_size = v,
+        [8.0, 10.0, 12.0, 16.0, 24.0],
+    ),
+];
+
+#[test]
+fn render_hash_distinguishes_metric_presence_positions_and_float_bits() {
+    let renderer = test_renderer();
+    let options = Options::default();
+    for content in [None, Some(ContentHash::new(7))] {
+        let mut paragraph = Paragraph {
+            runs: vec![build_run(None)],
+            properties: None,
+            node_id: None,
+            comment_ranges: Vec::new(),
+            comment_markers: Vec::new(),
+        };
+        let absent = renderer.compute_paragraph_render_hash(&paragraph, &options, content);
+        // Key the reference state by exact bits, including NaN payloads. These
+        // values are hashed only; invalid layout metrics are not rendered.
+        let mut states = std::collections::BTreeMap::new();
+        let mut keys = std::collections::HashMap::new();
+        {
+            let mut check = |state: [Option<u32>; METRICS.len()]| {
+                let mut props = RunProperties::default();
+                for ((_, setter, _), bits) in METRICS.into_iter().zip(state) {
+                    setter(&mut props, bits.map(f32::from_bits));
+                }
+                paragraph.runs[0].properties = Some(props);
+                let key = renderer.compute_paragraph_render_hash(&paragraph, &options, content);
+                assert_ne!(key, absent, "state={state:?}, content={content:?}");
+                if let Some(previous) = states.insert(state, key) {
+                    assert_eq!(key, previous, "revisit {state:?}, content={content:?}");
+                }
+                if let Some(previous) = keys.insert(key, state) {
+                    assert_eq!(state, previous, "aliased states, content={content:?}");
+                }
+            };
+            for bits in [
+                0,
+                0x8000_0000,
+                1,
+                0x8000_0001,
+                0x3f80_0000,
+                0xbf80_0000,
+                0x7f80_0000,
+                0xff80_0000,
+                0x7fc0_0000,
+                0x7fc0_0001,
+                0x7fa0_0001,
+                0xffc0_0001,
+            ] {
+                for present in 0..(1 << METRICS.len()) {
+                    check(std::array::from_fn(|index| {
+                        (present & (1 << index) != 0).then_some(bits)
+                    }));
+                }
+            }
+            for left in 0..METRICS.len() {
+                for right in left + 1..METRICS.len() {
+                    for (a, b) in [
+                        (0x3f80_0000, 0xc000_0000),
+                        (0, 0x8000_0000),
+                        (0x7fc0_0001, 0x7fc0_0002),
+                    ] {
+                        for (a, b) in [(a, b), (b, a)] {
+                            let mut state = [None; METRICS.len()];
+                            state[left] = Some(a);
+                            state[right] = Some(b);
+                            check(state);
+                        }
+                    }
+                }
+            }
+        }
+        for (&state, &expected) in states.iter().rev() {
+            let mut props = RunProperties::default();
+            for ((_, setter, _), bits) in METRICS.into_iter().zip(state) {
+                setter(&mut props, bits.map(f32::from_bits));
+            }
+            paragraph.runs[0].properties = Some(props);
+            assert_eq!(
+                renderer.compute_paragraph_render_hash(&paragraph, &options, content),
+                expected,
+                "revisit {state:?}, content={content:?}"
+            );
+        }
+        assert_eq!(keys.len(), 433);
+    }
+}
 
 #[test]
 fn render_hash_distinguishes_run_flag_states_and_field_pairs() {
@@ -69,14 +180,20 @@ fn render_hash_distinguishes_run_flag_states_and_field_pairs() {
 #[derive(Clone, Debug)]
 enum Edit {
     Flag(usize, Option<bool>),
+    Metric(usize, Option<f32>),
     ClearProperties,
     Text(usize),
     Repaint,
 }
 
 fn edit() -> impl Strategy<Value = Edit> {
+    let metric = (0..METRICS.len()).prop_flat_map(|index| {
+        prop::option::of(prop::sample::select(METRICS[index].2.to_vec()))
+            .prop_map(move |value| Edit::Metric(index, value))
+    });
     prop_oneof![
         8 => (0..FLAGS.len(), prop::option::of(any::<bool>())).prop_map(|(i, v)| Edit::Flag(i, v)),
+        8 => metric,
         1 => Just(Edit::ClearProperties),
         2 => (0..TEXTS.len()).prop_map(Edit::Text),
         2 => Just(Edit::Repaint),
@@ -95,20 +212,33 @@ fn renderer_with_painter() -> (CanvasRenderer<RecordingPainter>, RecordingPainte
     (renderer, painter)
 }
 
-// Compare ink with its effective drawing state, since a retained command may
-// omit redundant state setters. Keep state across paints of the warm canvas.
+// Compare device-space ink and its effective drawing state. Cache replay may
+// batch scaled text or translate a retained paragraph without changing ink.
+// Keep painter state across paints; these documents use axis-aligned transforms.
 type PaintState = std::collections::BTreeMap<&'static str, String>;
 fn ink(painter: &RecordingPainter, state: &mut PaintState) -> Vec<(Op, PaintState)> {
     let mut stack = Vec::new();
     let mut result = Vec::new();
+    let mut transform = [1.0, 1.0, 0.0, 0.0]; // sx, sy, tx, ty
+    let rounded = |value: f64| (value * 1e9).round() / 1e9;
     for op in painter.ops() {
         let setting = match &op {
             Op::Save => {
-                stack.push(state.clone());
+                stack.push((state.clone(), transform));
                 continue;
             }
             Op::Restore => {
-                *state = stack.pop().expect("balanced paint state");
+                (*state, transform) = stack.pop().expect("balanced paint state");
+                continue;
+            }
+            Op::Translate(x, y) => {
+                transform[2] += transform[0] * x;
+                transform[3] += transform[1] * y;
+                continue;
+            }
+            Op::Scale(x, y) => {
+                transform[0] *= x;
+                transform[1] *= y;
                 continue;
             }
             Op::SetFillStyle(v) => Some(("fill", v.clone())),
@@ -128,6 +258,45 @@ fn ink(painter: &RecordingPainter, state: &mut PaintState) -> Vec<(Op, PaintStat
         if let Some((key, value)) = setting {
             state.insert(key, value);
         } else {
+            let [sx, sy, tx, ty] = transform;
+            let point = |x, y| (rounded(sx * x + tx), rounded(sy * y + ty));
+            let op = match op {
+                Op::FillText(text, x, y) => {
+                    let (x, y) = point(x, y);
+                    Op::FillText(text, x, y)
+                }
+                Op::StrokeText(text, x, y) => {
+                    let (x, y) = point(x, y);
+                    Op::StrokeText(text, x, y)
+                }
+                Op::FillShapedText(text, clusters, y) => Op::FillShapedText(
+                    text,
+                    clusters
+                        .into_iter()
+                        .map(|(i, x)| (i, point(x, y).0))
+                        .collect(),
+                    point(0.0, y).1,
+                ),
+                Op::Rect(x, y, w, h) | Op::FillRect(x, y, w, h) | Op::StrokeRect(x, y, w, h) => {
+                    let (x, y) = point(x, y);
+                    let (w, h) = (rounded(sx * w), rounded(sy * h));
+                    match op {
+                        Op::Rect(..) => Op::Rect(x, y, w, h),
+                        Op::FillRect(..) => Op::FillRect(x, y, w, h),
+                        _ => Op::StrokeRect(x, y, w, h),
+                    }
+                }
+                Op::MoveTo(x, y) => {
+                    let (x, y) = point(x, y);
+                    Op::MoveTo(x, y)
+                }
+                Op::LineTo(x, y) => {
+                    let (x, y) = point(x, y);
+                    Op::LineTo(x, y)
+                }
+                Op::BeginPath | Op::ClosePath | Op::Fill | Op::Stroke | Op::Clip => op,
+                _ => panic!("unexpected ink operation in formatting history: {op:?}"),
+            };
             // Font/fill setters have no effect on path construction or clipping,
             // and stroke settings have no effect on filled text (or vice versa).
             let keys: &[&str] = match &op {
@@ -142,6 +311,12 @@ fn ink(painter: &RecordingPainter, state: &mut PaintState) -> Vec<(Op, PaintStat
                 .filter(|(key, _)| keys.contains(key))
                 .map(|(key, value)| (*key, value.clone()))
                 .collect();
+            if matches!(
+                op,
+                Op::FillText(..) | Op::StrokeText(..) | Op::FillShapedText(..)
+            ) {
+                effective.insert("text scale", format!("{:?}", [rounded(sx), rounded(sy)]));
+            }
             if !keys.is_empty() {
                 for (key, default) in [
                     ("alpha", "1.0"),
@@ -158,7 +333,46 @@ fn ink(painter: &RecordingPainter, state: &mut PaintState) -> Vec<(Op, PaintStat
         }
     }
     assert!(stack.is_empty());
+    assert_eq!(transform, [1.0, 1.0, 0.0, 0.0]);
     result
+}
+
+#[test]
+fn ink_resolves_translation_and_preserves_text_scale() {
+    use jade_painter::Painter;
+    let direct = RecordingPainter::new();
+    direct.fill_text("A", 32.0, 20.0).unwrap();
+    let replay = RecordingPainter::new();
+    replay.save();
+    replay.translate(0.0, 10.0).unwrap();
+    replay.fill_text("A", 32.0, 10.0).unwrap();
+    replay.restore();
+    assert_eq!(
+        ink(&direct, &mut PaintState::new()),
+        ink(&replay, &mut PaintState::new())
+    );
+
+    replay.clear();
+    replay.save();
+    replay.translate(0.0, 20.0).unwrap();
+    replay.scale(0.5, 1.0).unwrap();
+    replay.fill_text("A", 64.0, 0.0).unwrap();
+    replay.restore();
+    // The origin is unchanged, but the glyph's width is different.
+    assert_ne!(
+        ink(&direct, &mut PaintState::new()),
+        ink(&replay, &mut PaintState::new())
+    );
+    direct.clear();
+    direct.save();
+    direct.translate(32.0, 20.0).unwrap();
+    direct.scale(0.5, 1.0).unwrap();
+    direct.fill_text("A", 0.0, 0.0).unwrap();
+    direct.restore();
+    assert_eq!(
+        ink(&direct, &mut PaintState::new()),
+        ink(&replay, &mut PaintState::new())
+    );
 }
 
 fn check_history(edits: &[Edit], windows: bool) {
@@ -176,6 +390,7 @@ fn check_history(edits: &[Edit], windows: bool) {
     };
     let mut state = PaintState::new();
     let mut flags = [None; FLAGS.len()];
+    let mut metrics = [None; METRICS.len()];
     let mut has_properties = false;
     let mut text = 0;
     for (step, edit) in std::iter::once(&Edit::Repaint).chain(edits).enumerate() {
@@ -189,8 +404,14 @@ fn check_history(edits: &[Edit], windows: bool) {
                 has_properties = true;
                 (FLAGS[index].1)(paragraph.runs[0].properties.get_or_insert_default(), value);
             }
+            Edit::Metric(index, value) => {
+                metrics[index] = value;
+                has_properties = true;
+                (METRICS[index].1)(paragraph.runs[0].properties.get_or_insert_default(), value);
+            }
             Edit::ClearProperties => {
                 flags.fill(None);
+                metrics.fill(None);
                 has_properties = false;
                 paragraph.runs[0].properties = None;
             }
@@ -210,6 +431,9 @@ fn check_history(edits: &[Edit], windows: bool) {
             for ((_, setter), value) in FLAGS.into_iter().zip(flags) {
                 setter(&mut props, value);
             }
+            for ((_, setter, _), value) in METRICS.into_iter().zip(metrics) {
+                setter(&mut props, value);
+            }
             paragraph.runs[0].properties = Some(props);
         }
         if !matches!(edit, Edit::Repaint) {
@@ -227,7 +451,7 @@ fn check_history(edits: &[Edit], windows: bool) {
         let (mut fresh, fresh_painter) = renderer_with_painter();
         fresh.render(&expected, &options).unwrap();
         let context =
-            format!("step {step}: {edit:?}, flags={flags:?}, text={text}, windows={windows}");
+            format!("step {step}: {edit:?}, flags={flags:?}, metrics={metrics:?}, text={text}, windows={windows}");
         if step > 0 && matches!(edit, Edit::Repaint) {
             assert!(
                 warm.paragraph_render_cache_stats().hits > 0,
@@ -270,10 +494,33 @@ fn every_run_flag_survives_in_place_edits_and_restoration() {
     }
 }
 
+#[test]
+fn every_run_metric_survives_in_place_edits_and_restoration() {
+    for windows in [false, true] {
+        for text in 0..TEXTS.len() {
+            for (index, (_, _, values)) in METRICS.into_iter().enumerate() {
+                check_history(
+                    &[
+                        Edit::Text(text),
+                        Edit::Metric(index, Some(values[0])),
+                        Edit::Repaint,
+                        Edit::Metric(index, Some(values[4])),
+                        Edit::Metric(index, None),
+                        Edit::Metric(index, Some(values[0])),
+                        Edit::ClearProperties,
+                        Edit::Repaint,
+                    ],
+                    windows,
+                );
+            }
+        }
+    }
+}
+
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(64))]
     #[test]
-    fn run_flag_edits_match_fresh_render_after_every_step(
+    fn run_style_edits_match_fresh_render_after_every_step(
         edits in prop::collection::vec(edit(), 1..25), windows in any::<bool>()
     ) {
         check_history(&edits, windows);

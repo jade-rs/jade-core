@@ -11536,11 +11536,23 @@ where
                     border.color.hash(&mut hasher);
                 }
                 props.baseline.as_deref().hash(&mut hasher);
-                props.text_position.map(|v| v.to_bits()).hash(&mut hasher);
-                props.char_spacing.map(|v| v.to_bits()).hash(&mut hasher);
-                props.kerning.map(|v| v.to_bits()).hash(&mut hasher);
-                props.text_scale.map(|v| v.to_bits()).hash(&mut hasher);
-                props.font_size.map(|v| v.to_bits()).hash(&mut hasher);
+                // Encode the five Option tags once; keep field order and all
+                // float bits, including signed zero and NaN payloads.
+                let mut metric_presence = 0_u8;
+                macro_rules! hash_metric {
+                    ($field:ident, $bit:expr) => {
+                        if let Some(value) = props.$field {
+                            metric_presence |= 1 << $bit;
+                            value.to_bits().hash(&mut hasher);
+                        }
+                    };
+                }
+                hash_metric!(text_position, 0);
+                hash_metric!(char_spacing, 1);
+                hash_metric!(kerning, 2);
+                hash_metric!(text_scale, 3);
+                hash_metric!(font_size, 4);
+                metric_presence.hash(&mut hasher);
                 props.font_family.as_deref().hash(&mut hasher);
                 if let Some(fonts) = props.fonts.as_ref() {
                     fonts.ascii.as_deref().hash(&mut hasher);
