@@ -19,6 +19,7 @@ fn structural_edits_cannot_split_legacy_arrays() {
                 (true, false) => book.delete_columns(&sheet, "B", 1),
                 (true, true) => book.insert_columns(&sheet, "B", 1),
             };
+            assert!(result.as_ref().unwrap_err().is_invalid_input());
             assert!(
                 matches!(result, Err(HeadlessError::PartialLegacyArray { .. })),
                 "columns={columns}, inserted={inserted}: {result:?}"
