@@ -189,6 +189,9 @@ def run(index_path, executable, output_root):
                     for mode in (12, 14, 15))
     required.update(f'word-windows-edge-table-spacing-{kind}-mixed-borders-compat{mode}'
                     for kind in ('nil', 'auto', 'percent') for mode in (12, 14, 15))
+    required.update(f'word-windows-edge-table-{kind}-mixed-borders-compat{mode}'
+                    for kind in ('collapsed', 'spacing-missing-width', 'spacing-missing-type')
+                    for mode in (12, 14, 15))
     for entry in index['references']:
         folder = checked_path(root, entry['directory'])
         capture = json.loads((folder / 'capture.json').read_text(encoding='utf-8-sig'))
