@@ -833,9 +833,8 @@ struct HorizontalBorderBands {
 
 impl HorizontalBorderBands {
     fn for_row(cells: &[PreparedCell], reserve_bottom: bool) -> Self {
-        if !reserve_bottom
-            && jade_docx_layout::line_metrics::word_layout_platform()
-                == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+        if jade_docx_layout::line_metrics::word_layout_platform()
+            == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
             && cells.iter().any(|cell| cell.cell_spacing > f64::EPSILON)
         {
             let content_bottom = cells
@@ -2666,7 +2665,6 @@ where
                             .map(|cell| cell.top_border_extent())
                             .fold(0.0_f64, f64::max);
                         if resolve_cell_spacing_px(row, table) > f64::EPSILON
-                            && !row_grows_for_borders(row)
                             && jade_docx_layout::line_metrics::word_layout_platform()
                                 == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
                         {
@@ -2743,7 +2741,6 @@ where
                         width: right_edge - left_edge,
                         height: pending_height
                             + if last_visible_row == Some(row_index)
-                                && !row_grows_for_borders(row)
                                 && jade_docx_layout::line_metrics::word_layout_platform()
                                     == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
                             {
@@ -2783,11 +2780,12 @@ where
         if jade_docx_layout::line_metrics::word_layout_platform()
             == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
         {
-            if let Some(row) = last_visible_row_index
-                .and_then(|index| table.rows.get(index))
-                .filter(|row| !row_grows_for_borders(row))
-            {
-                self.current_y += resolve_cell_spacing_px(row, table);
+            if let Some(row) = last_visible_row_index.and_then(|index| table.rows.get(index)) {
+                let spacing = resolve_cell_spacing_px(row, table);
+                self.current_y += spacing;
+                if row_grows_for_borders(row) && spacing > f64::EPSILON {
+                    self.current_y += spacing_frame_width(row, table, TableBorderSide::Bottom);
+                }
             }
         }
         let table_end_y = self.current_y;
@@ -2878,7 +2876,6 @@ where
     ) -> Result<f64, JsValue> {
         if segment_starts_page
             && row_start
-            && !reserve_bottom
             && jade_docx_layout::line_metrics::word_layout_platform()
                 == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
         {
@@ -8896,7 +8893,8 @@ fn resolve_row_height(
         }
         (Some(explicit_height), TableRowHeightRule::AtLeast) => {
             // Horizontal rows retain vertical padding around the minimum.
-            // All directions retain the shared horizontal border band: half
+            // Separated Windows cells keep both gaps around that minimum.
+            // Other cases retain the shared horizontal border band: half
             // of each border, or on Mac the bottom border below the padding
             // (a 14.25pt minimum under a 1.5pt bottom is 23.75pt with 4pt
             // padding; the first row's top border is added with the others).
@@ -8913,6 +8911,8 @@ fn resolve_row_height(
                     };
                     let border_band = if mac {
                         cell.bottom_border_extent()
+                    } else if cell.cell_spacing > f64::EPSILON {
+                        2.0 * cell.cell_spacing + cell.bottom_border_extent()
                     } else {
                         (cell.top_border_extent() + cell.bottom_border_extent()) * 0.5
                     };
@@ -9331,6 +9331,35 @@ fn add_row_border_extents(
             .iter()
             .map(|&index| cells[index].height)
             .fold(0.0_f64, f64::max);
+        if jade_docx_layout::line_metrics::word_layout_platform()
+            == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+            && resolve_cell_spacing_px(row, table) > f64::EPSILON
+        {
+            // The minimum includes the closing cell rule. Natural content
+            // needs that rule added here; both reserve the opening cell rule
+            // and, on the first row, the separate table frame and gutter.
+            let opening = if *first_visible {
+                resolve_cell_spacing_px(row, table)
+                    + spacing_frame_width(row, table, TableBorderSide::Top)
+            } else {
+                0.0
+            };
+            let row_top = cells
+                .iter()
+                .filter(|cell| !cell.skip_render)
+                .map(PreparedCell::top_border_extent)
+                .fold(0.0_f64, f64::max);
+            *height = height.max(content + bottom) + row_top + opening;
+            for cell in cells.iter_mut() {
+                let inset = cell.top_border_extent() + opening;
+                cell.padding.top += inset;
+                cell.height += inset;
+                cell.page_top_inset = inset;
+            }
+            *first_visible = false;
+            *previous_row_grows = true;
+            return spacing_frame_width(row, table, TableBorderSide::Bottom);
+        }
         match merge_edges.and_then(|edges| {
             mac_row_height_with_vertical_merges(cells, edges, content, &content_cells)
         }) {
@@ -16989,6 +17018,10 @@ mod tests {
 
     #[test]
     fn separated_cell_rules_do_not_form_a_shared_horizontal_band() {
+        use jade_docx_layout::line_metrics::{
+            set_word_layout_platform, word_layout_platform, WordLayoutPlatform,
+        };
+        let previous = word_layout_platform();
         let mut cells = vec![
             make_prepared_cell(0, 1, None, false),
             make_prepared_cell(1, 1, None, false),
@@ -17000,11 +17033,22 @@ mod tests {
         cells[0].border_bottom.width_px = 4.0;
         cells[1].border_top.width_px = 3.0;
         cells[1].border_bottom.width_px = 3.0;
-        let bands = HorizontalBorderBands::for_row(&cells, true);
-        assert_eq!(
-            (bands.top, bands.bottom, bands.content_bottom),
-            (0.0, 0.0, 0.0)
-        );
+        for platform in [WordLayoutPlatform::Mac, WordLayoutPlatform::Windows] {
+            set_word_layout_platform(platform);
+            for reserve_bottom in [false, true] {
+                let bands = HorizontalBorderBands::for_row(&cells, reserve_bottom);
+                assert_eq!((bands.top, bands.bottom), (0.0, 0.0));
+                assert_eq!(
+                    bands.content_bottom,
+                    if platform == WordLayoutPlatform::Windows {
+                        4.0
+                    } else {
+                        0.0
+                    }
+                );
+            }
+        }
+        set_word_layout_platform(previous);
     }
 
     #[test]

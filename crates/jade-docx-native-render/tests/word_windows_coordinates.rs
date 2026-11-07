@@ -116,37 +116,51 @@ fn spaced_tables_preserve_origins_after_edit_export_and_undo() {
         weight: 400,
         path: &font,
     });
-    let bytes = std::fs::read(repo_path(
-        "public/fixtures/word-windows-edge-table-spacing-continuation-compat14.docx",
-    ))
-    .unwrap();
     for platform in [WordLayoutPlatform::Mac, WordLayoutPlatform::Windows] {
         set_word_layout_platform(platform);
-        let mut doc = NativeDocument::open(&bytes, 816.0, 1056.0, &faces).unwrap();
-        let mut before = all_glyphs(&mut doc);
-        spatial_order(&mut before);
-        // The third row continues on page two, with top/center/bottom cells.
-        let paragraph = 13;
-        assert_eq!(doc.paragraph_text(paragraph).as_deref(), Some("R3C1 alpha"));
-        let caret = doc.place_caret(paragraph, 0).unwrap();
-        let page = doc.page_and_offset(caret.document_y).0;
-        assert_eq!(page, 1);
-        doc.insert_text(paragraph, 0, "Edited ", page + 1).unwrap();
-        let mut edited = all_glyphs(&mut doc);
-        spatial_order(&mut edited);
-        assert_ne!(edited, before);
-        let exported = doc.export_docx().unwrap();
-        let mut reopened = NativeDocument::open(&exported, 816.0, 1056.0, &faces).unwrap();
-        let mut fresh = all_glyphs(&mut reopened);
-        spatial_order(&mut fresh);
-        assert_eq!(
-            edited, fresh,
-            "{platform:?}: stale layout or changed export geometry"
-        );
-        doc.undo().unwrap();
-        let mut restored = all_glyphs(&mut doc);
-        spatial_order(&mut restored);
-        assert_eq!(restored, before, "{platform:?}: undo changed geometry");
+        for (fixture, expected_page) in [
+            ("table-spacing-continuation-compat14", 1),
+            ("table-spacing-auto-compat14", 0),
+            ("table-spacing-at-least-continuation-compat14", 1),
+        ] {
+            let bytes = std::fs::read(repo_path(&format!(
+                "public/fixtures/word-windows-edge-{fixture}.docx"
+            )))
+            .unwrap();
+            let mut doc = NativeDocument::open(&bytes, 816.0, 1056.0, &faces).unwrap();
+            let mut before = all_glyphs(&mut doc);
+            spatial_order(&mut before);
+            let paragraph = 13;
+            assert_eq!(doc.paragraph_text(paragraph).as_deref(), Some("R3C1 alpha"));
+            let caret = doc.place_caret(paragraph, 0).unwrap();
+            let page = doc.page_and_offset(caret.document_y).0;
+            assert_eq!(page, expected_page, "{platform:?}/{fixture}: third row");
+            doc.insert_text(paragraph, 0, "Edited ", page + 1).unwrap();
+            let mut edited = all_glyphs(&mut doc);
+            spatial_order(&mut edited);
+            assert_ne!(edited, before);
+            let exported = doc.export_docx().unwrap();
+            let mut reopened = NativeDocument::open(&exported, 816.0, 1056.0, &faces).unwrap();
+            let mut fresh = all_glyphs(&mut reopened);
+            spatial_order(&mut fresh);
+            let context = format!("{platform:?}/{fixture}");
+            assert_equal_origins(&edited, &fresh, &format!("{context}: export"));
+            doc.undo().unwrap();
+            let mut restored = all_glyphs(&mut doc);
+            spatial_order(&mut restored);
+            assert_equal_origins(&restored, &before, &format!("{context}: undo"));
+        }
+    }
+}
+
+fn assert_equal_origins(actual: &[Value], expected: &[Value], context: &str) {
+    assert_eq!(
+        actual.len(),
+        expected.len(),
+        "{context}: missing or extra glyphs"
+    );
+    for (index, (actual, expected)) in actual.iter().zip(expected).enumerate() {
+        assert_eq!(actual, expected, "{context}: glyph {index}");
     }
 }
 
