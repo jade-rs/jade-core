@@ -2107,6 +2107,8 @@ where
                 &|field| self.resolve_run_field(field),
             )?;
 
+        adjust_windows_negative_spacing_columns(table, &mut column_widths);
+
         let order_index = self.table_counter;
         self.table_counter += 1;
         let table_index = self.table_layouts.len();
@@ -7954,6 +7956,88 @@ fn apply_preferred_column_widths(
 /// Builds the width (in pixels) for each column. Explicit grid definitions win;
 /// missing columns first use cell `tcW` preferences, then divide any remaining
 /// page width evenly when no preferred width exists.
+/// Windows Word uses the first visible row's signed DXA spacing when sizing
+/// a fixed grid, even though negative spacing still paints collapsed borders.
+/// Charge both sides of each of the n+1 gutters to the nominal grid, then
+/// restore the signed per-cell budgets and the two outside edges. This keeps
+/// the authored table extent while matching measured unequal-column positions.
+/// Mac retains its numeric spacing and column sizing policies.
+fn adjust_windows_negative_spacing_columns(table: &Table, widths: &mut [f64]) {
+    if widths.len() < 2 || resolve_table_layout_mode(table) != TableLayoutMode::Fixed {
+        return;
+    }
+    let signed = |value: Option<f32>, style: &crate::document::StyleMap, key| {
+        style
+            .get(key)
+            .and_then(|raw| raw.split_once(':'))
+            .and_then(|(kind, raw)| {
+                if kind != "dxa" {
+                    return None;
+                }
+                if raw.is_empty() {
+                    return Some(0.0);
+                }
+                raw.parse::<f32>()
+                    .ok()
+                    .filter(|value| value.is_finite())
+                    .map(|value| value / 20.0)
+            })
+            .or(value)
+    };
+    let first = table.rows.iter().find(|row| !table_row_is_hidden(row));
+    let spacing = first
+        .and_then(|row| {
+            signed(row.cell_spacing, &row.style, "-jade-cell-spacing").or_else(|| {
+                signed(
+                    row.cell_spacing_exception,
+                    &row.style,
+                    "-jade-cell-spacing-exception",
+                )
+            })
+        })
+        .or_else(|| signed(table.cell_spacing, &table.style, "-jade-cell-spacing"));
+    let Some(spacing) = spacing.filter(|spacing| spacing.is_finite() && *spacing < 0.0) else {
+        return;
+    };
+    if jade_docx_layout::line_metrics::word_layout_platform()
+        != jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+    {
+        return;
+    }
+    let spacing = points_to_px(spacing);
+    let width: f64 = widths.iter().sum();
+    if !width.is_finite() || width <= f64::EPSILON {
+        return;
+    }
+    let scale = (width - 2.0 * (widths.len() + 1) as f64 * spacing) / width;
+    let adjusted = |index: usize, width: f64| {
+        width * scale
+            + 2.0 * spacing
+            + if index == 0 || index + 1 == widths.len() {
+                spacing
+            } else {
+                0.0
+            }
+    };
+    // Malformed/extreme preferences must not invert a column rectangle.
+    if widths.iter().enumerate().any(|(index, width)| {
+        let width = adjusted(index, *width);
+        !width.is_finite() || width <= f64::EPSILON
+    }) {
+        return;
+    }
+    let last = widths.len() - 1;
+    for (index, width) in widths.iter_mut().enumerate() {
+        *width = *width * scale
+            + 2.0 * spacing
+            + if index == 0 || index == last {
+                spacing
+            } else {
+                0.0
+            };
+    }
+}
+
 fn compute_column_widths(table: &Table, column_count: usize, available_width: f64) -> Vec<f64> {
     let mut widths = vec![0.0_f64; column_count];
     let mut grid_defined = vec![false; column_count];
@@ -12373,6 +12457,8 @@ fn layout_nested_table<P: Painter<Error: PainterError>>(
         None,
         field_value_for,
     )?;
+
+    adjust_windows_negative_spacing_columns(table, &mut column_widths);
 
     let mut column_positions = Vec::with_capacity(column_count + 1);
     let mut position = 0.0;
@@ -19407,6 +19493,64 @@ mod tests {
             0.0,
         );
         assert_eq!(inside.kind, BorderKind::Single);
+    }
+
+    #[test]
+    fn signed_spacing_respects_the_first_row_and_never_resizes_mac_columns() {
+        use jade_docx_layout::line_metrics::{
+            set_word_layout_platform, word_layout_platform, WordLayoutPlatform,
+        };
+        let previous = word_layout_platform();
+        for scope in ["table", "first-direct", "first-exception", "second-direct"] {
+            for twips in [-20, -40, -80] {
+                let mut table = Table {
+                    table_layout: Some(TableLayoutMode::Fixed),
+                    rows: vec![
+                        TableRow {
+                            cells: vec![TableCell::default(); 3],
+                            ..Default::default()
+                        };
+                        2
+                    ],
+                    ..Default::default()
+                };
+                let raw = format!("dxa:{twips}");
+                match scope {
+                    "table" => {
+                        table.style.insert("-jade-cell-spacing".into(), raw);
+                        table.cell_spacing = Some(0.0);
+                    }
+                    "first-exception" => {
+                        table.rows[0]
+                            .style
+                            .insert("-jade-cell-spacing-exception".into(), raw);
+                        table.rows[0].cell_spacing_exception = Some(0.0);
+                    }
+                    _ => {
+                        let row = usize::from(scope == "second-direct");
+                        table.rows[row]
+                            .style
+                            .insert("-jade-cell-spacing".into(), raw);
+                        table.rows[row].cell_spacing = Some(0.0);
+                    }
+                }
+                let original = vec![100.0, 200.0, 300.0];
+                set_word_layout_platform(WordLayoutPlatform::Mac);
+                let mut mac = original.clone();
+                adjust_windows_negative_spacing_columns(&table, &mut mac);
+                assert_eq!(mac, original, "Mac changed for {scope}/{twips}");
+                set_word_layout_platform(WordLayoutPlatform::Windows);
+                let mut windows = original.clone();
+                adjust_windows_negative_spacing_columns(&table, &mut windows);
+                assert!((windows.iter().sum::<f64>() - original.iter().sum::<f64>()).abs() < 1e-9);
+                assert_eq!(
+                    windows == original,
+                    scope == "second-direct",
+                    "first-row scope: {scope}/{twips}"
+                );
+            }
+        }
+        set_word_layout_platform(previous);
     }
 
     #[test]

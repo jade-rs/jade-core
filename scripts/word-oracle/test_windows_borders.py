@@ -11,6 +11,30 @@ import compare_windows_borders as b
 
 
 class WindowsBorderTests(unittest.TestCase):
+    def test_actual_painted_text_rejects_shifts_missing_glyphs_and_repagination(self):
+        word = [[1,'A',72.,84.],[1,'B',80.,84.]]
+        self.assertTrue(b.compare_visible_text(word, word)['passed'])
+        for native in [[[1,'A',72.4,84.],[1,'B',80.,84.]],
+                       [[1,'A',72.,84.]],
+                       [[1,'B',72.,84.],[1,'A',80.,84.]],
+                       [[2,'A',72.,84.],[2,'B',80.,84.]]]:
+            with self.subTest(native=native):
+                self.assertFalse(b.compare_visible_text(word, native)['passed'])
+
+    def test_pdf_text_projection_retains_visible_text_and_rejects_hidden_ink(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary)/'painted.pdf'
+            doc = pymupdf.open()
+            page = doc.new_page(width=100, height=100)
+            page.insert_text((20,40), 'A', fontsize=12)
+            page.insert_text((20,90), 'B', fontsize=12)
+            stream = page.get_contents()[-1]
+            doc.update_stream(stream, b'q\n0 40 100 60 re W n\n'+doc.xref_stream(stream)+b'\nQ\n')
+            doc.save(path)
+            doc.close()
+            self.assertEqual(b.visible_pdf_glyphs(path), [[1,'A',20.,40.]])
+            self.assertFalse(b.compare_visible_text([[1,'A',20.,40.],[1,'B',20.,90.]], b.visible_pdf_glyphs(path))['passed'])
+
     def test_fragmentation_does_not_change_painted_union(self):
         whole = [(10, 20, 100, 21)]
         fragments = [(10, 20, 40, 21), (40, 20, 70, 21), (70, 20, 100, 21)]

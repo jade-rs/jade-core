@@ -35,6 +35,55 @@ fn reference_sets() -> Vec<(PathBuf, Value)> {
             reference["word_product_version"],
             entry["word_product_version"]
         );
+        let projection = reference["table_glyph_projection"]
+            .as_str()
+            .unwrap_or("visible");
+        assert!(matches!(projection, "visible" | "unclipped"));
+        if projection == "unclipped" {
+            let file = entry["visible_reference"]
+                .as_str()
+                .expect("unclipped origins require visible proof");
+            assert!(!file.contains(['/', '\\', ':']));
+            let visible: Value =
+                serde_json::from_slice(&std::fs::read(directory.join(file)).unwrap()).unwrap();
+            for key in [
+                "word_product_version",
+                "word",
+                "capture_id",
+                "captured_at_utc",
+                "tolerance_pt",
+            ] {
+                assert_eq!(
+                    visible[key], reference[key],
+                    "visible Word provenance: {key}"
+                );
+            }
+            assert_eq!(visible["table_glyph_projection"], "visible");
+            assert_eq!(visible["pdf_text_flags"], 199);
+            let names = |value: &Value| {
+                value["fixtures"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .map(|fixture| fixture["name"].as_str().unwrap().to_owned())
+                    .collect::<std::collections::BTreeSet<_>>()
+            };
+            assert_eq!(names(&visible), names(&reference), "visible Word coverage");
+            assert_eq!(
+                visible["fixtures"].as_array().unwrap().len(),
+                reference["fixtures"].as_array().unwrap().len()
+            );
+            assert_eq!(
+                visible["fixtures"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .map(|fixture| fixture["glyphs"].as_array().unwrap().len() as u64)
+                    .sum::<u64>(),
+                entry["visible_glyph_count"].as_u64().unwrap()
+            );
+            reference["_visible_reference"] = visible;
+        }
         reference["_fixture_count"] = entry["fixture_count"].clone();
         reference["_glyph_count"] = entry["glyph_count"].clone();
         reference["_baseline_line_count"] = entry["baseline_line_count"].clone();
@@ -77,8 +126,16 @@ fn spatial_order(glyphs: &mut [Value]) {
 }
 
 fn all_glyphs(doc: &mut NativeDocument) -> Vec<Value> {
+    all_glyphs_with_table_projection(doc, false)
+}
+
+fn all_glyphs_with_table_projection(doc: &mut NativeDocument, unclipped: bool) -> Vec<Value> {
     let mut glyphs = Vec::new();
-    let snapshot = doc.capture_full_layout_debug().unwrap();
+    let snapshot = if unclipped {
+        doc.capture_full_layout_debug_unclipped_tables().unwrap()
+    } else {
+        doc.capture_full_layout_debug().unwrap()
+    };
     assert!(snapshot.complete);
     let mut lines = snapshot.body_lines;
     lines.extend(snapshot.auxiliary_lines.into_iter().map(|entry| entry.line));
@@ -105,6 +162,90 @@ fn all_glyphs(doc: &mut NativeDocument) -> Vec<Value> {
     glyphs
 }
 
+// New complete-paint references additionally retain the old visible check.
+// Neither projection can silently drop a character, page or absolute origin.
+fn glyphs_for_reference(
+    doc: &mut NativeDocument,
+    reference: &Value,
+    fixture: &Value,
+) -> Vec<Value> {
+    let unclipped = reference["table_glyph_projection"].as_str() == Some("unclipped");
+    if unclipped {
+        let visible = reference["_visible_reference"]["fixtures"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|visible| visible["name"] == fixture["name"])
+            .expect("visible fixture");
+        for key in ["docx_sha256", "pdf_sha256", "pdf_file", "page_count"] {
+            assert_eq!(visible[key], fixture[key], "visible source: {key}");
+        }
+        let mut actual = all_glyphs(doc);
+        let mut expected = visible["glyphs"].as_array().unwrap().clone();
+        spatial_order(&mut actual);
+        spatial_order(&mut expected);
+        assert_eq!(visible["page_count"], doc.page_count());
+        assert_eq!(
+            actual.len(),
+            expected.len(),
+            "{}: visible missing/extra glyph",
+            fixture["name"]
+        );
+        for (actual, expected) in actual.iter().zip(&expected) {
+            assert_eq!(actual[0], expected[0], "visible page");
+            assert_eq!(actual[1], expected[1], "visible text/order");
+            for axis in [2, 3] {
+                assert!(
+                    (actual[axis].as_f64().unwrap() - expected[axis].as_f64().unwrap()).abs()
+                        <= 0.375,
+                    "{}: visible axis {axis}, actual {actual}, Word {expected}",
+                    fixture["name"]
+                );
+            }
+        }
+    }
+    all_glyphs_with_table_projection(doc, unclipped)
+}
+
+#[test]
+fn unclipped_table_capture_preserves_visible_pixels_and_origins_on_both_platforms() {
+    let font = repo_path("fonts/Noto_Sans_JP/static/NotoSansJP-Regular.ttf");
+    let faces = ["Arial", "MS Mincho", "Noto Sans JP"].map(|family| FaceSpec {
+        family,
+        weight: 400,
+        path: &font,
+    });
+    let bytes = std::fs::read(repo_path(
+        "public/fixtures/word-windows-edge-table-negative-spacing-unequal-4-compat14.docx",
+    ))
+    .unwrap();
+    let previous = jade_docx_layout::line_metrics::word_layout_platform();
+    for platform in [WordLayoutPlatform::Mac, WordLayoutPlatform::Windows] {
+        set_word_layout_platform(platform);
+        let mut doc = NativeDocument::open(&bytes, 816.0, 1056.0, &faces).unwrap();
+        let before = all_glyphs(&mut doc);
+        let pixels = doc.page_pixels(0).unwrap().0.to_vec();
+        let raw = all_glyphs_with_table_projection(&mut doc, true);
+        assert!(raw.len() >= before.len());
+        if platform == WordLayoutPlatform::Windows {
+            assert!(
+                raw.len() > before.len(),
+                "fixture must exercise genuinely clipped glyphs"
+            );
+        }
+        assert!(
+            pixels == doc.page_pixels(0).unwrap().0,
+            "diagnostic changed visible pixels: {platform:?}"
+        );
+        assert_eq!(
+            before,
+            all_glyphs(&mut doc),
+            "diagnostic changed visible origins: {platform:?}"
+        );
+    }
+    set_word_layout_platform(previous);
+}
+
 /// Opening rules and gaps must survive cache invalidation and DOCX export.
 /// Exercise both policies with portable fonts; measured Word origins are
 /// checked separately by the installed-font oracle below.
@@ -118,15 +259,49 @@ fn spaced_tables_preserve_origins_after_edit_export_and_undo() {
     });
     for platform in [WordLayoutPlatform::Mac, WordLayoutPlatform::Windows] {
         set_word_layout_platform(platform);
-        for (fixture, paragraph, expected_page) in [
-            ("table-spacing-continuation-compat14", 13, 1),
-            ("table-spacing-auto-compat14", 13, 0),
-            ("table-spacing-at-least-continuation-compat14", 13, 1),
-            ("table-spacing-mixed-borders-compat14", 13, 0),
-            ("table-collapsed-implicit-mixed-borders-compat14", 53, 0),
-            ("table-spacing-nil-mixed-borders-compat14", 53, 0),
-            ("table-collapsed-mixed-borders-compat14", 53, 0),
-            ("table-spacing-missing-width-mixed-borders-compat14", 53, 0),
+        for (fixture, paragraph, expected_page, expected_text) in [
+            ("table-spacing-continuation-compat14", 13, 1, "R3C1 alpha"),
+            ("table-spacing-auto-compat14", 13, 0, "R3C1 alpha"),
+            (
+                "table-spacing-at-least-continuation-compat14",
+                13,
+                1,
+                "R3C1 alpha",
+            ),
+            ("table-spacing-mixed-borders-compat14", 13, 0, "R3C1 alpha"),
+            (
+                "table-collapsed-implicit-mixed-borders-compat14",
+                53,
+                0,
+                "R3C1 alpha",
+            ),
+            (
+                "table-spacing-nil-mixed-borders-compat14",
+                53,
+                0,
+                "R3C1 alpha",
+            ),
+            (
+                "table-collapsed-mixed-borders-compat14",
+                53,
+                0,
+                "R3C1 alpha",
+            ),
+            (
+                "table-spacing-missing-width-mixed-borders-compat14",
+                53,
+                0,
+                "R3C1 alpha",
+            ),
+            (
+                "table-spacing-negative-mixed-borders-compat14",
+                53,
+                0,
+                "R3C1 alpha",
+            ),
+            ("table-negative-spacing-columns-3-compat14", 29, 0, "R1C1"),
+            ("table-negative-spacing-unequal-3-compat14", 29, 0, "R1C1"),
+            ("table-negative-spacing-row-scopes-compat14", 15, 0, "R1C1"),
         ] {
             let bytes = std::fs::read(repo_path(&format!(
                 "public/fixtures/word-windows-edge-{fixture}.docx"
@@ -135,7 +310,10 @@ fn spaced_tables_preserve_origins_after_edit_export_and_undo() {
             let mut doc = NativeDocument::open(&bytes, 816.0, 1056.0, &faces).unwrap();
             let mut before = all_glyphs(&mut doc);
             spatial_order(&mut before);
-            assert_eq!(doc.paragraph_text(paragraph).as_deref(), Some("R3C1 alpha"));
+            assert_eq!(
+                doc.paragraph_text(paragraph).as_deref(),
+                Some(expected_text)
+            );
             let caret = doc.place_caret(paragraph, 0).unwrap();
             let page = doc.page_and_offset(caret.document_y).0;
             assert_eq!(page, expected_page, "{platform:?}/{fixture}: third row");
@@ -193,7 +371,7 @@ fn windows_word_arial_edge_origins() {
             let mut doc =
                 NativeDocument::open_with_font_faces(&bytes, 816.0, 1056.0, &faces).unwrap();
             assert_eq!(fixture["page_count"], doc.page_count(), "{name}: pages");
-            let mut actual = all_glyphs(&mut doc);
+            let mut actual = glyphs_for_reference(&mut doc, &reference, fixture);
             let mut expected = fixture["glyphs"].as_array().unwrap().clone();
             spatial_order(&mut actual);
             spatial_order(&mut expected);
@@ -298,12 +476,23 @@ fn windows_word_arial_edge_origins() {
                 "word-windows-edge-table-spacing-missing-type-mixed-borders-compat12",
                 "word-windows-edge-table-spacing-missing-type-mixed-borders-compat14",
                 "word-windows-edge-table-spacing-missing-type-mixed-borders-compat15",
+                "word-windows-edge-table-spacing-negative-mixed-borders-compat12",
+                "word-windows-edge-table-spacing-negative-mixed-borders-compat14",
+                "word-windows-edge-table-spacing-negative-mixed-borders-compat15",
+                "word-windows-edge-table-negative-spacing-columns-2-compat14",
+                "word-windows-edge-table-negative-spacing-columns-3-compat14",
+                "word-windows-edge-table-negative-spacing-columns-4-compat14",
+                "word-windows-edge-table-negative-spacing-columns-5-compat14",
+                "word-windows-edge-table-negative-spacing-unequal-2-compat14",
+                "word-windows-edge-table-negative-spacing-unequal-3-compat14",
+                "word-windows-edge-table-negative-spacing-unequal-4-compat14",
+                "word-windows-edge-table-negative-spacing-row-scopes-compat14",
             ]
             .map(str::to_owned)
         )
     );
     assert!(
-        checked >= 53742,
+        checked >= 57442,
         "do not silently remove edge-case coverage"
     );
 }
@@ -454,7 +643,7 @@ fn windows_word_baselines_with_bundled_standins() {
             };
             assert_eq!(doc.page_count(), page_count);
             let mut expected = fixture["glyphs"].as_array().unwrap().clone();
-            let mut actual = all_glyphs(&mut doc);
+            let mut actual = glyphs_for_reference(&mut doc, &reference, fixture);
             assert_eq!(expected.len(), glyph_count);
             assert_eq!(actual.len(), expected.len());
             spatial_order(&mut expected);

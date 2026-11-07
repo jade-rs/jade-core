@@ -114,11 +114,52 @@ def mixed_spacing_border_sweep(mode, spacings=(40, 120), spacing_element=None,
     m.write(f'table-{probe_name}-compat{mode}', ''.join(body), mode)
 
 
+def negative_spacing_grid(widths, spacing='', row_scope=None):
+    border = ''.join(f'<w:{side} w:val="single" w:sz="4" w:color="000000"/>' for side in ['top', 'left', 'bottom', 'right', 'insideH', 'insideV'])
+    margins = ''.join(f'<w:{side} w:w="{value}" w:type="dxa"/>' for side, value in [('top', 80), ('left', 100), ('bottom', 80), ('right', 100)])
+    rows = []
+    negative = '<w:tblCellSpacing w:w="-40" w:type="dxa"/>'
+    for r in range(2):
+        cells = []
+        for c, width in enumerate(widths):
+            cells.append(f'<w:tc><w:tcPr><w:tcW w:w="{width}" w:type="dxa"/></w:tcPr>' + m.para(m.run(f'R{r+1}C{c+1}')) + '</w:tc>')
+        active = row_scope is not None and (row_scope.startswith('all') or (row_scope.startswith('first') and r == 0) or (row_scope.startswith('second') and r == 1))
+        exception = '<w:tblPrEx>' + negative + '</w:tblPrEx>' if active and row_scope.endswith('exception') else ''
+        direct = negative if active and row_scope.endswith('direct') else ''
+        rows.append('<w:tr>' + exception + '<w:trPr>' + direct + '<w:trHeight w:val="600" w:hRule="exact"/></w:trPr>' + ''.join(cells) + '</w:tr>')
+    return '<w:tbl><w:tblPr><w:tblW w:w="6000" w:type="dxa"/><w:tblLayout w:type="fixed"/>' + spacing + '<w:tblBorders>' + border + '</w:tblBorders><w:tblCellMar>' + margins + '</w:tblCellMar></w:tblPr><w:tblGrid>' + ''.join(f'<w:gridCol w:w="{width}"/>' for width in widths) + '</w:tblGrid>' + ''.join(rows) + '</w:tbl>'
+
+
+def negative_spacing_column_sweep(count, weights=None):
+    widths = [6000 // count] * count if weights is None else [6000 * weight // sum(weights) for weight in weights]
+    body = []
+    forms = [('omitted', ''), ('nil', '<w:tblCellSpacing w:w="0" w:type="nil"/>'), ('zero', '<w:tblCellSpacing w:w="0" w:type="dxa"/>')]
+    forms += [(str(value), f'<w:tblCellSpacing w:w="{value}" w:type="dxa"/>') for value in [-20, -40, -80]]
+    for name, spacing in forms:
+        body.append(m.para(m.run(f'Columns {count} spacing {name}')))
+        body.append(negative_spacing_grid(widths, spacing))
+    kind = 'columns' if weights is None else 'unequal'
+    m.write(f'table-negative-spacing-{kind}-{count}-compat14', ''.join(body), 14)
+
+
+def negative_spacing_row_scope_sweep():
+    body = []
+    negative = '<w:tblCellSpacing w:w="-40" w:type="dxa"/>'
+    for scope in ['omitted', 'table', 'first-direct', 'all-direct', 'first-exception', 'all-exception', 'second-direct']:
+        body.append(m.para(m.run('Scope ' + scope)))
+        table = negative_spacing_grid([2000] * 3, row_scope=scope)
+        if scope == 'table':
+            table = table.replace('<w:tblPr>', '<w:tblPr>' + negative, 1)
+        body.append(table)
+    m.write('table-negative-spacing-row-scopes-compat14', ''.join(body), 14)
+
+
 if __name__ == '__main__':
     for mode in [12, 14, 15]:
         mixed_spacing_border_sweep(mode)
         mixed_spacing_border_sweep(mode, (0,), '', 'collapsed-implicit-mixed-borders')
         mixed_spacing_border_sweep(mode, (0,), probe_name='collapsed-mixed-borders')
+        mixed_spacing_border_sweep(mode, (0,), '<w:tblCellSpacing w:w="-40" w:type="dxa"/>', 'spacing-negative-mixed-borders')
         mixed_spacing_border_sweep(mode, (0,), '<w:tblCellSpacing w:type="dxa"/>', 'spacing-missing-width-mixed-borders')
         mixed_spacing_border_sweep(mode, (0,), '<w:tblCellSpacing w:w="0"/>', 'spacing-missing-type-mixed-borders')
         for kind, value in [('nil', '120'), ('auto', '120'), ('pct', '5000')]:
@@ -140,3 +181,9 @@ if __name__ == '__main__':
             legacy_indent_sweep(mode)
             legacy_indent_sweep(mode, zero_padding=True)
             border_sweep(mode, 'zero-horizontal')
+
+    for count in [2, 3, 4, 5]:
+        negative_spacing_column_sweep(count)
+    for weights in [(1, 3), (1, 2, 3), (1, 3, 2, 4)]:
+        negative_spacing_column_sweep(len(weights), weights)
+    negative_spacing_row_scope_sweep()
