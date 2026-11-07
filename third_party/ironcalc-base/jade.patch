@@ -20601,6 +20601,15 @@
                      return Ok(());
                  }
                  Some((false, (original_width, original_height))) => {
+@@ -1031,7 +1198,7 @@
+                             } else {
+                                 let sv = match value {
+                                     Some(node) => array_node_to_spill_value(node),
+-                                    None => SpillValue::Error(Error::VALUE),
++                                    None => SpillValue::Error(Error::NA),
+                                 };
+                                 let existing_style =
+                                     self.workbook.worksheets[sheet as usize].get_style(r, c);
 @@ -1050,6 +1217,7 @@
                          }
                      }

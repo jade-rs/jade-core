@@ -3,6 +3,41 @@ use jade_xlsx_headless_api::CellInput;
 use jade_xlsx_headless_editor::HeadlessWorkbook;
 
 #[test]
+fn legacy_output_range_stays_fixed_through_growth_history_and_save() {
+    let mut package = OpcPackage::open(include_bytes!(
+        "../../../public/fixtures/sample-workbook.xlsx"
+    ))
+    .unwrap();
+    package.replace("xl/worksheets/sheet1.xml", br#"<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData><row r="1"><c r="A1"><f t="array" ref="A1:A3">_xlfn.SEQUENCE(D1)</f><v>1</v></c><c r="D1"><v>2</v></c><c r="E1"><f>FORMULATEXT(A1)</f></c></row><row r="2"><c r="A2"><v>2</v></c></row><row r="3"><c r="A3" t="e"><v>#N/A</v></c></row></sheetData></worksheet>"#.to_vec());
+    let mut book = HeadlessWorkbook::open_for_editing(&package.write().unwrap()).unwrap();
+    let name = "売上サマリ";
+    assert_eq!(book.cell(name, "A3").unwrap().display, "#N/A");
+    book.set(name, "D1", CellInput::Number(5.0)).unwrap();
+    assert_eq!(book.cell(name, "A3").unwrap().number, Some(3.0));
+    assert_eq!(book.cell(name, "A4").unwrap().display, "");
+    book.undo().unwrap();
+    assert_eq!(book.cell(name, "A3").unwrap().display, "#N/A");
+    book.redo().unwrap();
+    let saved = book.save_bytes().unwrap();
+    for reopened in [
+        HeadlessWorkbook::open(&saved).unwrap(),
+        HeadlessWorkbook::open_for_editing(&saved).unwrap(),
+    ] {
+        let array = reopened.workbook().sheets[0].array_formulas[0];
+        assert_eq!(
+            array.range,
+            jade_xlsx_reader::CellRange::parse("A1:A3").unwrap()
+        );
+        assert_eq!(array.kind, jade_xlsx_reader::ArrayFormulaKind::Legacy);
+        assert_eq!(reopened.cell(name, "A3").unwrap().number, Some(3.0));
+        assert_eq!(
+            reopened.cell(name, "E1").unwrap().display,
+            "{=SEQUENCE(D1)}"
+        );
+    }
+}
+
+#[test]
 fn legacy_array_anchor_text_keeps_braces_through_input_history_and_reopen() {
     let mut package = OpcPackage::open(include_bytes!(
         "../../../public/fixtures/sample-workbook.xlsx"
