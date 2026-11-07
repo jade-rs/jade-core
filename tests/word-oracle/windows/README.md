@@ -335,3 +335,23 @@ Word product/file version, application build, executable hash, Windows build,
 UTC timestamp, clean native-source commit/compiler/executable hash and capture
 tool commits. A later measurement is a new capture directory, never a rewrite
 of this evidence.
+
+Capture `20261107T132035593Z-34f3c733` records those two inputs again using
+clean native source `2ef8f939` and the same Word **16.0.19127.20860**. All 514
+complete, visible snapshot and actual painted PDF origins now match at the
+unchanged 0.375pt bound, with exact text/page counts and matching vector border
+geometry. AutoFit applies the signed gutter allocation after content sizing;
+legacy bidi tables with explicit zero DXA retain the leading text hang even
+though their border model is separate. Positive-gap bidi behavior is retained.
+
+Both new Mac-policy glyph arrays, page counts and decoded RGBA images exactly
+match clean `f41d7e73` on this Windows host. Source/executable hashes and host
+limitations are recorded in `mac-policy-parity-provenance.json`; real Mac Word
+goldens remain unchanged and required in CI. Edit/export/undo covers both new
+inputs under both platform policies.
+
+The registry now has 111 distinct documents / 400 pages / 76,055 complete
+origins, plus two historical duplicate registrations. Required Arial coverage
+is 94 documents / 267 pages / at least 57,956 origins. Raw EMFs reconstruct
+69,824 origins, and the required vector gate covers 82 documents / 238 pages.
+Failed capture history remains archived separately from passing references.

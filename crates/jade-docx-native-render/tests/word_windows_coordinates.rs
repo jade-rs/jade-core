@@ -499,12 +499,14 @@ fn windows_word_arial_edge_origins() {
                 "word-windows-edge-table-negative-spacing-unequal-3-compat14",
                 "word-windows-edge-table-negative-spacing-unequal-4-compat14",
                 "word-windows-edge-table-negative-spacing-row-scopes-compat14",
+                "word-windows-edge-table-negative-spacing-autofit-unequal-3-compat14",
+                "word-windows-edge-table-negative-spacing-bidi-unequal-3-compat14",
             ]
             .map(str::to_owned)
         )
     );
     assert!(
-        checked >= 57442,
+        checked >= 57956,
         "do not silently remove edge-case coverage"
     );
 }

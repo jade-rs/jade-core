@@ -229,6 +229,8 @@ def run(index_path, executable, output_root):
     required.update(f'word-windows-edge-table-negative-spacing-columns-{count}-compat14' for count in (2,3,4,5))
     required.update(f'word-windows-edge-table-negative-spacing-unequal-{count}-compat14' for count in (2,3,4))
     required.add('word-windows-edge-table-negative-spacing-row-scopes-compat14')
+    required.update(f'word-windows-edge-table-negative-spacing-{variant}-unequal-3-compat14'
+                    for variant in ('autofit', 'bidi'))
     for entry in index['references']:
         folder = checked_path(root, entry['directory'])
         capture = json.loads((folder / 'capture.json').read_text(encoding='utf-8-sig'))

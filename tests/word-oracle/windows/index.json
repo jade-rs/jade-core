@@ -154,6 +154,16 @@
       "baseline_line_count": 0,
       "visible_reference": "strict-visible.json",
       "visible_glyph_count": 3696
+    },
+    {
+      "word_product_version": "16.0.19127.20860",
+      "directory": "word-16.0.19127.20860/20261107T132035593Z-34f3c733",
+      "reference": "strict-emf.json",
+      "fixture_count": 2,
+      "glyph_count": 514,
+      "baseline_line_count": 0,
+      "visible_reference": "strict-visible.json",
+      "visible_glyph_count": 514
     }
   ]
 }
