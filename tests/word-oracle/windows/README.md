@@ -325,3 +325,13 @@ For complete and visible capture together:
 ```powershell
 ./scripts/check-word-windows.ps1 -Documents <DOCX paths> -PythonExecutable <python.exe> -NativeExecutable <word_coordinates.exe> -CaptureMetafiles -UnclippedTableGlyphs
 ```
+
+Diagnostic capture `20261107T130008739Z-08f6b53a` retains two additional
+AutoFit/bidi unequal-column probes from Word **16.0.19127.20860** before their
+fix. All 514 original Word origins, original input DOCX/PDF/EMF files and
+native snapshots/PDFs are preserved. These failed probes are unpromoted and
+excluded from passing-reference coverage. Each capture records the complete
+Word product/file version, application build, executable hash, Windows build,
+UTC timestamp, clean native-source commit/compiler/executable hash and capture
+tool commits. A later measurement is a new capture directory, never a rewrite
+of this evidence.

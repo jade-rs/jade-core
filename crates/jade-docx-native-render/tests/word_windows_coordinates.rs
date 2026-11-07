@@ -302,6 +302,18 @@ fn spaced_tables_preserve_origins_after_edit_export_and_undo() {
             ("table-negative-spacing-columns-3-compat14", 29, 0, "R1C1"),
             ("table-negative-spacing-unequal-3-compat14", 29, 0, "R1C1"),
             ("table-negative-spacing-row-scopes-compat14", 15, 0, "R1C1"),
+            (
+                "table-negative-spacing-autofit-unequal-3-compat14",
+                29,
+                0,
+                "R1C1",
+            ),
+            (
+                "table-negative-spacing-bidi-unequal-3-compat14",
+                29,
+                0,
+                "R1C1",
+            ),
         ] {
             let bytes = std::fs::read(repo_path(&format!(
                 "public/fixtures/word-windows-edge-{fixture}.docx"

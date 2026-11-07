@@ -1170,6 +1170,14 @@
     {
       "fixture": "word-windows-edge-table-spacing-negative-mixed-borders-compat15",
       "docx_sha256": "e3d7f88d4027df43ac3c21b9370669e460be8998991cc7677ae147b0ccf372a6"
+    },
+    {
+      "fixture": "word-windows-edge-table-negative-spacing-autofit-unequal-3-compat14",
+      "docx_sha256": "8b55c2e136e2cfc2d9f2870f53ad86f9cf6053d8db81641e629453e4c23385d2"
+    },
+    {
+      "fixture": "word-windows-edge-table-negative-spacing-bidi-unequal-3-compat14",
+      "docx_sha256": "aa656c0bb32c8f11d9004246135445276ed0db25c672c61355d23ba5ec83a0ff"
     }
   ]
 }
