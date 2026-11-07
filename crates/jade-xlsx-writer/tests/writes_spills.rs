@@ -11,9 +11,53 @@ use jade_xlsx_writer::{write_xlsx, CellEdit, NewValue, SheetEdits};
 mod common;
 
 #[test]
-fn foreign_links_in_unsupported_choices_do_not_block_valid_metadata_creation() {
+fn metadata_checks_opaque_wrappers_at_every_grid_level_and_nested_depth() {
+    fn alternate(content: &str) -> String {
+        format!(
+            r#"<mc:AlternateContent><mc:Choice Requires="q">{content}</mc:Choice><mc:Fallback/></mc:AlternateContent>"#
+        )
+    }
+    let cell = r#"<c r="A1" cm="1"/>"#;
+    let mut nested = cell.to_string();
+    for _ in 0..256 {
+        nested = alternate(&nested);
+    }
+    for grid in [
+        format!("<sheetData><row>{}</row></sheetData>", alternate(cell)),
+        format!(
+            "<sheetData>{}</sheetData>",
+            alternate(&format!("<row>{cell}</row>"))
+        ),
+        alternate(&format!("<sheetData><row>{cell}</row></sheetData>")),
+        format!("<sheetData><row>{nested}</row></sheetData>"),
+    ] {
+        let sheet = format!(
+            r#"<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:q="urn:future" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006">{grid}</worksheet>"#
+        );
+        let mut package = OpcPackage::open(&common::workbook_with_sheet(&sheet)).unwrap();
+        assert!(matches!(
+            jade_xlsx_writer::spills::dynamic_array_metadata(&mut package),
+            Err(jade_xlsx_writer::WriteError::ArrayMetadata(_))
+        ));
+        assert!(package.part("xl/metadata.xml").is_none());
+        assert_eq!(
+            package
+                .part_str("xl/worksheets/sheet1.xml")
+                .unwrap()
+                .unwrap(),
+            sheet
+        );
+    }
+}
+
+#[test]
+fn foreign_and_extension_links_do_not_block_valid_metadata_creation() {
     let sheet = r#"<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:q="urn:foreign" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"><sheetData><row r="1"><mc:AlternateContent><mc:Choice Requires="q"><q:c r="A1" cm="1"/></mc:Choice><mc:Fallback><c r="A1"/></mc:Fallback></mc:AlternateContent></row></sheetData></worksheet>"#;
-    let mut package = OpcPackage::open(&common::workbook_with_sheet(sheet)).unwrap();
+    let sheet = sheet.replace(
+        "</worksheet>",
+        r#"<extLst><ext uri="keep"><c r="A1" cm="1"/></ext></extLst></worksheet>"#,
+    );
+    let mut package = OpcPackage::open(&common::workbook_with_sheet(&sheet)).unwrap();
     assert_eq!(
         jade_xlsx_writer::spills::dynamic_array_metadata(&mut package).unwrap(),
         Some(1)
@@ -33,6 +77,7 @@ fn metadata_creation_and_append_preserve_links_inside_compatible_branches() {
         r#"<mc:Choice Requires="m"><c r="A1" cm="1"><f t="array" ref="A1">1</f></c></mc:Choice><mc:Fallback><c r="A1"/></mc:Fallback>"#,
         r#"<mc:Choice Requires="m"><c r="A1"/></mc:Choice><mc:Fallback><c r="A1" cm="1"><f t="array" ref="A1">1</f></c></mc:Fallback>"#,
         r#"<mc:Choice Requires="q"><q:c r="A1" cm="1"/></mc:Choice><mc:Fallback><c r="A1" cm="1"><f t="array" ref="A1">1</f></c></mc:Fallback>"#,
+        r#"<mc:Choice Requires="q"><c r="A1" cm="1"><f t="array" ref="A1">1</f></c></mc:Choice><mc:Fallback><c r="A1"/></mc:Fallback>"#,
     ] {
         let sheet = format!(
             r#"<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:m="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:q="urn:foreign" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"><sheetData><row r="1"><mc:AlternateContent>{branch}</mc:AlternateContent></row></sheetData></worksheet>"#

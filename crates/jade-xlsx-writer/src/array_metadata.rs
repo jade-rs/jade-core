@@ -131,8 +131,30 @@ pub(crate) fn unused_cell_metadata_index(
     Ok((!used.contains(&1)).then_some(1))
 }
 
-// Use the same namespace, hierarchy and supported-MCE ownership as the
-// reader, including readable alternatives that are not currently selected.
+// Metadata indexes are global to the package, so standard cell links in
+// opaque alternatives must remain reserved even when their values cannot
+// be projected. Only MCE wrappers are transparent to the standard grid path.
+fn grid_children(tree: &[Node], parent: usize, namespace: &str, name: &str) -> Vec<usize> {
+    const MC: &str = "http://schemas.openxmlformats.org/markup-compatibility/2006";
+    let mut result = Vec::new();
+    let mut pending = tree[parent].children.clone();
+    while let Some(index) = pending.pop() {
+        let node = &tree[index];
+        if node.namespace == namespace && node.name == name {
+            result.push(index);
+        } else if node.namespace == MC && node.name == "AlternateContent" {
+            for &branch in &node.children {
+                if tree[branch].namespace == MC
+                    && matches!(tree[branch].name.as_str(), "Choice" | "Fallback")
+                {
+                    pending.extend_from_slice(&tree[branch].children);
+                }
+            }
+        }
+    }
+    result
+}
+
 fn worksheet_metadata_links(xml: &str) -> Result<Option<Vec<Option<usize>>>> {
     let tree = nodes(xml)?;
     if tree[0].children.len() != 1 {
@@ -143,12 +165,14 @@ fn worksheet_metadata_links(xml: &str) -> Result<Option<Vec<Option<usize>>>> {
         return Ok(None);
     }
     let mut links = Vec::new();
-    for cell in jade_xlsx_reader::cell_content::all_compatible_cells(xml)? {
-        let Ok(index) = tree.binary_search_by_key(&cell.range.start, |node| node.start) else {
-            return Ok(None);
-        };
-        if tree[index].attr("cm").is_some() {
-            links.push(tree[index].index("cm"));
+    let namespace = &tree[root].namespace;
+    for data in grid_children(&tree, root, namespace, "sheetData") {
+        for row in grid_children(&tree, data, namespace, "row") {
+            for cell in grid_children(&tree, row, namespace, "c") {
+                if tree[cell].attr("cm").is_some() {
+                    links.push(tree[cell].index("cm"));
+                }
+            }
         }
     }
     Ok(Some(links))

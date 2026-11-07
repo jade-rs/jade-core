@@ -179,14 +179,6 @@ pub fn compatible_cells(xml: &str, references: &HashSet<CellRef>) -> Result<Vec<
     )
 }
 
-/// Cell spans in every understood Choice and Fallback, without a coordinate
-/// filter. Includes readable alternatives that are not the selected branch.
-pub fn all_compatible_cells(xml: &str) -> Result<Vec<CellSource>> {
-    Ok(project(xml, "worksheet", true, true, None, false, None)?
-        .1
-        .cells)
-}
-
 fn record_leaf(
     cell: &mut CellSource,
     span: std::ops::Range<usize>,
