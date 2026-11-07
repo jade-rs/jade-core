@@ -18,8 +18,6 @@ struct Node {
     head_end: usize,
     close: usize,
     empty: bool,
-    end: usize,
-    parent: usize,
 }
 impl Node {
     fn attr(&self, key: &str) -> Option<&str> {
@@ -73,8 +71,6 @@ fn nodes(xml: &str) -> Result<Vec<Node>> {
                     head_end,
                     close: head_end,
                     empty,
-                    end: head_end,
-                    parent: *stack.last().unwrap(),
                 });
                 nodes[*stack.last().unwrap()].children.push(index);
                 if !empty {
@@ -84,7 +80,6 @@ fn nodes(xml: &str) -> Result<Vec<Node>> {
             Event::End(_) => {
                 if let Some(index) = stack.pop().filter(|&i| i != 0) {
                     nodes[index].close = start;
-                    nodes[index].end = head_end;
                 }
             }
             Event::Eof => break,

@@ -13,8 +13,9 @@ type Choices = BTreeMap<usize, Option<usize>>;
 
 struct Projection {
     nodes: Vec<usize>,
+    depths: Vec<usize>,
     // Empty selected branches are insertion slots at a logical child boundary.
-    slots: Vec<(usize, usize)>,
+    slots: Vec<(usize, usize, usize)>,
 }
 struct View<'a> {
     tree: &'a [Node],
@@ -23,15 +24,22 @@ struct View<'a> {
 }
 impl View<'_> {
     fn children(&self, parent: usize) -> Projection {
-        let mut pending: Vec<_> = self.tree[parent].children.iter().rev().copied().collect();
+        let mut pending: Vec<_> = self.tree[parent]
+            .children
+            .iter()
+            .rev()
+            .map(|&index| (index, 0))
+            .collect();
         let mut result = Projection {
             nodes: Vec::new(),
+            depths: Vec::new(),
             slots: Vec::new(),
         };
-        while let Some(index) = pending.pop() {
+        while let Some((index, depth)) = pending.pop() {
             let node = &self.tree[index];
             if node.namespace != MC || node.name != "AlternateContent" {
                 result.nodes.push(index);
+                result.depths.push(depth);
                 continue;
             }
             self.visited.borrow_mut().insert(index);
@@ -48,9 +56,15 @@ impl View<'_> {
             });
             if let Some(branch) = selected {
                 if self.tree[branch].children.is_empty() {
-                    result.slots.push((result.nodes.len(), branch));
+                    result.slots.push((result.nodes.len(), branch, depth + 1));
                 } else {
-                    pending.extend(self.tree[branch].children.iter().rev().copied());
+                    pending.extend(
+                        self.tree[branch]
+                            .children
+                            .iter()
+                            .rev()
+                            .map(|&index| (index, depth + 1)),
+                    );
                 }
             }
         }
@@ -160,7 +174,8 @@ fn layouts(tree: &[Node], root: usize) -> Option<Vec<Layout>> {
                 .saturating_add(records.len())
                 .saturating_add(links.len())
                 .saturating_add(projection.nodes.len())
-                .saturating_add(projection.slots.len().saturating_mul(2));
+                .saturating_add(projection.depths.len())
+                .saturating_add(projection.slots.len().saturating_mul(3));
             references = references
                 .checked_add(used)
                 .filter(|&n| n <= reference_budget)?;
@@ -194,18 +209,14 @@ fn rank(node: &Node, namespace: &str) -> Option<u8> {
         _ => None,
     }
 }
-fn depth(tree: &[Node], mut index: usize) -> usize {
-    let mut result = 0;
-    while index != 0 {
-        if tree[index].namespace == MC && matches!(tree[index].name.as_str(), "Choice" | "Fallback")
-        {
-            result += 1;
-        }
-        index = tree[index].parent;
+fn element_end(xml: &str, node: &Node) -> Option<usize> {
+    if node.empty {
+        return Some(node.head_end);
     }
-    result
+    // close points at this element's end tag, which has no quoted attributes.
+    Some(node.close + xml.get(node.close..)?.find('>')? + 1)
 }
-fn location(tree: &[Node], root: usize, layout: &Layout, target: u8) -> Option<Anchor> {
+fn location(xml: &str, tree: &[Node], root: usize, layout: &Layout, target: u8) -> Option<Anchor> {
     let namespace = &tree[root].namespace;
     let preceding = layout
         .root
@@ -226,20 +237,26 @@ fn location(tree: &[Node], root: usize, layout: &Layout, target: u8) -> Option<A
         return None;
     }
     let mut candidates = Vec::new();
-    if let Some((_, &index)) = preceding {
-        candidates.push((depth(tree, index), Anchor::Position(tree[index].end)));
+    if let Some((position, &index)) = preceding {
+        candidates.push((
+            layout.root.depths[position],
+            Anchor::Position(element_end(xml, &tree[index])?),
+        ));
     }
-    if let Some((_, &index)) = following {
-        candidates.push((depth(tree, index), Anchor::Position(tree[index].start)));
+    if let Some((position, &index)) = following {
+        candidates.push((
+            layout.root.depths[position],
+            Anchor::Position(tree[index].start),
+        ));
     }
-    for &(offset, branch) in &layout.root.slots {
+    for &(offset, branch, depth) in &layout.root.slots {
         if lower <= offset && offset <= upper {
             let anchor = if tree[branch].empty {
                 Anchor::EmptyBranch(branch)
             } else {
                 Anchor::Position(tree[branch].close)
             };
-            candidates.push((depth(tree, branch), anchor));
+            candidates.push((depth, anchor));
         }
     }
     Some(
@@ -358,7 +375,7 @@ pub(super) fn append_dynamic(
                     &mut splices,
                 )?;
             } else {
-                let Some(at) = location(&tree, root, &layout, 0) else {
+                let Some(at) = location(xml, &tree, root, &layout, 0) else {
                     return Ok(None);
                 };
                 inserts.entry(at).or_default().push_str(&format!(
@@ -375,7 +392,7 @@ pub(super) fn append_dynamic(
                 &mut splices,
             )?;
         } else {
-            let Some(at) = location(&tree, root, &layout, 3) else {
+            let Some(at) = location(xml, &tree, root, &layout, 3) else {
                 return Ok(None);
             };
             inserts.entry(at).or_default().push_str(&format!(
@@ -385,7 +402,7 @@ pub(super) fn append_dynamic(
         if let Some(index) = layout.cells {
             append(xml, &tree[index], cm as usize, &cells, &mut splices)?;
         } else {
-            let Some(at) = location(&tree, root, &layout, 4) else {
+            let Some(at) = location(xml, &tree, root, &layout, 4) else {
                 return Ok(None);
             };
             inserts.entry(at).or_default().push_str(&format!(
