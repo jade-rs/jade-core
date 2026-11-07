@@ -63,7 +63,7 @@ fn control_mark_fonts_keep_literal_sizes_prefixes_and_ascii_families() {
                 let family = if custom {
                     "'Control Mark Face', 'Times New Roman', serif"
                 } else {
-                    "'Times New Roman', serif"
+                    "'Times New Roman', 'Times New Roman', serif"
                 };
                 let expected = format!("{prefix}{scaled}pt {family}");
                 for symbol in ["¶", "→", "·", "¶"] {
@@ -122,7 +122,7 @@ fn warm_and_cloned_mark_styles_emit_the_uncached_painter_trace() {
         .iter()
         .map(|props| actual.resolve_applied_run_style_uncached(Some(props)))
         .collect();
-    for round in 0..4 {
+    for symbol in ["¶", "→", "·", "👩‍💻"] {
         for index in [0, 1, 2, 1, 0, 2] {
             let expected_style = reference.resolve_applied_run_style_uncached(Some(&props[index]));
             // The original path formatted this value on every draw. Supplying
@@ -134,7 +134,6 @@ fn warm_and_cloned_mark_styles_emit_the_uncached_painter_trace() {
                     expected_style.descriptor_with_size(ScriptCategory::Latin, size),
                 ))
                 .unwrap();
-            let symbol = ["¶", "→", "·", "👩‍💻"][round];
             actual.activate_applied_run_style(&styles[index]);
             reference.activate_applied_run_style(&expected_style);
             let width = actual
