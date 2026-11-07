@@ -716,27 +716,37 @@ fn resolve_font_families_uncached(properties: Option<&RunProperties>) -> Resolve
             _ => None,
         })
         .or(latin_candidate);
-    // Noto Sans is a Latin face, not a locale-specific Noto CJK face. Word
-    // for Mac's Japanese Noto PDF uses MS Mincho for its missing CJK glyphs;
-    // treating Noto Sans JP as an interchangeable alias changes the box.
-    // Explicit Noto Sans JP/CJK requests and other languages keep their stacks.
-    let japanese = properties
-        .and_then(|props| {
-            props
-                .east_asia_language
-                .as_deref()
-                .or(props.language.as_deref())
+    // A Latin face has no CJK glyphs, so Word for Mac sets the text in MS Mincho
+    // when `w:eastAsia` names it; its line box and synthetic bold follow from
+    // that face (Word for Mac 16.114 probe, bold and regular, `ja-JP`, `en-US`
+    // and no language; Chinese and Korean text keep their stacks, unmeasured).
+    // Without `w:eastAsia` only Noto Sans is known: Word for Mac's Japanese Noto
+    // PDF uses MS Mincho for its missing CJK glyphs, and treating Noto Sans JP
+    // as an interchangeable alias changes the box. Other faces may take a theme
+    // or system face there.
+    let east_asia_language = properties.and_then(|props| {
+        props
+            .east_asia_language
+            .as_deref()
+            .or(props.language.as_deref())
+    });
+    let language_is = |tag: &str| {
+        east_asia_language.is_some_and(|language| {
+            language.eq_ignore_ascii_case(tag)
+                || language.get(..3).is_some_and(|prefix| {
+                    prefix[..2].eq_ignore_ascii_case(tag) && prefix.ends_with('-')
+                })
         })
-        .is_some_and(|language| {
-            language.eq_ignore_ascii_case("ja")
-                || language
-                    .get(..3)
-                    .is_some_and(|prefix| prefix.eq_ignore_ascii_case("ja-"))
-        });
-    let east_candidate = if japanese
-        && crate::line_metrics::word_layout_platform()
-            == crate::line_metrics::WordLayoutPlatform::Mac
-        && east_candidate.is_some_and(|family| family.trim() == "Noto Sans")
+    };
+    let east_candidate = if crate::line_metrics::word_layout_platform()
+        == crate::line_metrics::WordLayoutPlatform::Mac
+        && ((!language_is("zh")
+            && !language_is("ko")
+            && fonts_ref
+                .and_then(|fonts| fonts.preferred_east_asia())
+                .is_some_and(word_mac_face_lacks_cjk_glyphs))
+            || (language_is("ja")
+                && east_candidate.is_some_and(|family| family.trim() == "Noto Sans")))
     {
         Some("MS Mincho")
     } else {
@@ -759,6 +769,22 @@ fn resolve_font_families_uncached(properties: Option<&RunProperties>) -> Resolve
         east_asia: east_stack,
         complex: complex_stack,
     }
+}
+
+/// Faces measured to have Word for Mac draw kanji in MS Mincho when named by
+/// `w:eastAsia` (`Arial Unicode MS`, by contrast, draws its own).
+fn word_mac_face_lacks_cjk_glyphs(family: &str) -> bool {
+    matches!(
+        family.trim(),
+        "Arial"
+            | "Times New Roman"
+            | "Calibri"
+            | "Century"
+            | "Courier New"
+            | "Verdana"
+            | "Helvetica"
+            | "Noto Sans"
+    )
 }
 
 /// The OpenType features a run's Word 2010 typography asks for, as the
@@ -2070,6 +2096,66 @@ mod tests {
             "expected east Asia stack to include Noto Sans TC alias: {}",
             resolved.east_asia_stack()
         );
+    }
+
+    #[test]
+    fn mac_draws_a_named_latin_east_asia_face_in_ms_mincho() {
+        use crate::line_metrics::{set_word_layout_platform, WordLayoutPlatform};
+        let props = |east_asia: &str| RunProperties {
+            fonts: Some(RunFonts {
+                ascii: Some("Times New Roman".into()),
+                east_asia: Some(east_asia.into()),
+                ..RunFonts::default()
+            }),
+            ..RunProperties::default()
+        };
+        set_word_layout_platform(WordLayoutPlatform::Mac);
+        for face in [
+            "Arial",
+            "Times New Roman",
+            "Calibri",
+            "Century",
+            "Courier New",
+            "Verdana",
+            "Helvetica",
+            "Noto Sans",
+        ] {
+            let resolved = resolve_font_families(Some(&props(face)));
+            assert!(
+                resolved.east_asia_stack().starts_with("'MS Mincho'"),
+                "{face}: {}",
+                resolved.east_asia_stack()
+            );
+        }
+        let own_glyphs = resolve_font_families(Some(&props("Arial Unicode MS")));
+        assert!(own_glyphs
+            .east_asia_stack()
+            .starts_with("'Arial Unicode MS'"));
+        // Without `w:eastAsia` the Latin face's stack stays.
+        let latin_only = RunProperties {
+            fonts: Some(RunFonts {
+                ascii: Some("Arial".into()),
+                ..RunFonts::default()
+            }),
+            ..RunProperties::default()
+        };
+        let mac_without_east_asia = resolve_font_families(Some(&latin_only));
+        let chinese = RunProperties {
+            east_asia_language: Some("zh-CN".into()),
+            ..props("Arial")
+        };
+        let mac_chinese = resolve_font_families(Some(&chinese));
+        set_word_layout_platform(WordLayoutPlatform::Windows);
+        assert_eq!(
+            mac_without_east_asia.east_asia_stack(),
+            resolve_font_families(Some(&latin_only)).east_asia_stack()
+        );
+        assert_eq!(
+            mac_chinese.east_asia_stack(),
+            resolve_font_families(Some(&chinese)).east_asia_stack()
+        );
+        let windows = resolve_font_families(Some(&props("Arial")));
+        assert!(!windows.east_asia_stack().starts_with("'MS Mincho'"));
     }
 
     #[test]

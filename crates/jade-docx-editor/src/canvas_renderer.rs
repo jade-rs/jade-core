@@ -5973,6 +5973,22 @@ where
         })
     }
 
+    /// What a `w:beforeLines`/`w:afterLines` unit measures in the current
+    /// section, when its line grid is active.
+    fn paragraph_spacing_grid_pitch_pt(&self, paragraph: &Paragraph) -> Option<f32> {
+        // The font size only vets a tiny pitch, and walks the runs to get it.
+        paragraph
+            .properties
+            .as_ref()
+            .and_then(|props| props.spacing.as_ref())
+            .filter(|spacing| spacing.before_lines.is_some() || spacing.after_lines.is_some())?;
+        jade_docx_layout::line_metrics::doc_grid_line_unit_pitch_pt(
+            self.current_doc_grid.as_ref(),
+            Some(((self.page_height - self.margin_top - self.margin_bottom) * 72.0 / 96.0) as f32),
+            Self::estimate_paragraph_font_size(paragraph),
+        )
+    }
+
     fn paragraph_spacing_after_input(
         &self,
         paragraph: &Paragraph,
@@ -18437,8 +18453,11 @@ where
             .is_some_and(|spacing| spacing.before.is_some() || spacing.before_lines.is_some())
             && !suppress_spacing_before
         {
-            let requested_before =
-                jade_docx_layout::text_extract::spacing_before_px(paragraph, line_height_points);
+            let requested_before = jade_docx_layout::text_extract::spacing_before_px_on_grid(
+                paragraph,
+                line_height_points,
+                self.paragraph_spacing_grid_pitch_pt(paragraph),
+            );
             let flow_container = (self.current_page_number, self.column_index);
             let mut spacing_before = self.body_paragraph_spacing_before(
                 paragraph,
@@ -20109,8 +20128,11 @@ where
             .is_some_and(|spacing| spacing.after.is_some() || spacing.after_lines.is_some())
             && !paragraph_ended_with_page_break
         {
-            let spacing_after =
-                jade_docx_layout::text_extract::spacing_after_px(paragraph, line_height_points);
+            let spacing_after = jade_docx_layout::text_extract::spacing_after_px_on_grid(
+                paragraph,
+                line_height_points,
+                self.paragraph_spacing_grid_pitch_pt(paragraph),
+            );
             if !suppress_spacing_after {
                 self.apply_spacing_after_value(spacing_after)?;
             }
@@ -22107,14 +22129,56 @@ where
         {
             let bottom_limit = self.effective_body_bottom();
             let remaining = (bottom_limit - self.current_y).max(0.0);
+            // Count what the placement below keeps on this page: a line whose
+            // padding alone crosses the foot stays. Otherwise a paragraph that
+            // leaves one line for the next page is seen as leaving two, and
+            // Word's widow rule is not applied (word-mac-grid-tall-face).
+            let band_fit_height = |band: usize| {
+                let height = band_height(band);
+                let start = band_starts[band];
+                let padding_may_cross = paragraph_style.word_grid_line_sizing.is_some()
+                    || paragraph_style
+                        .word_proportional_line_sizing
+                        .is_some_and(|sizing| sizing.multiple() > 1.0);
+                let single_line =
+                    band_starts.get(band + 1).copied().unwrap_or(lines.len()) == start + 1;
+                if !padding_may_cross || !single_line {
+                    return height;
+                }
+                let Some(body) =
+                    lines[start].content_box_px_with_paragraph_mark(paragraph_mark_font_box)
+                else {
+                    return height;
+                };
+                let label_ascent = numbering_ascent.filter(|_| band == 0);
+                let (ascent, descent) =
+                    jade_docx_layout::line_metrics::line_font_box_with_numbering_ascent(
+                        body,
+                        label_ascent,
+                    );
+                let content_height = ascent + descent;
+                let extra_above = paragraph_style
+                    .word_grid_line_sizing
+                    .map_or(0.0, |grid| grid.extra_above_px(Some(content_height)));
+                (extra_above
+                    + (height - extra_above - content_height).max(0.0) * top_leading_share
+                    + content_height)
+                    .min(height)
+            };
             let lines_fit = if line_heights.is_some() {
                 let mut occupied = 0.0;
-                (0..band_count)
-                    .take_while(|&band| {
-                        occupied += band_height(band);
-                        occupied <= remaining + 1e-6
-                    })
-                    .count()
+                let mut fit = 0;
+                while fit < band_count && occupied + band_height(fit) <= remaining + 1e-6 {
+                    occupied += band_height(fit);
+                    fit += 1;
+                }
+                // Only the first band past the foot can stay by its padding,
+                // and its font box walks the line's clusters: a paragraph that
+                // fits, the usual case for every keystroke, never pays for it.
+                if fit < band_count && occupied + band_fit_height(fit) <= remaining + 1e-6 {
+                    fit += 1;
+                }
+                fit
             } else {
                 ((remaining + 1e-6) / line_height).floor() as usize
             };
@@ -22127,6 +22191,35 @@ where
                     force_break_before_line = band_starts.get(band_index).copied();
                 }
                 WidowOrphanDecision::FlowNormally => {}
+            }
+            // A paragraph longer than the rest of this page can leave its last
+            // line alone after a later page too: Word for Mac moves the line
+            // before it along (word-mac-grid-tall-face). Word for Windows has
+            // not been traced for this.
+            if force_break_before_line.is_none()
+                && lines_fit < band_count
+                && paragraph_style.word_platform
+                    == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
+                && !lines
+                    .iter()
+                    .any(|line| matches!(line.break_kind, LineBreakKind::Page))
+            {
+                let bottom_limit = self.effective_body_bottom();
+                let body_height = (bottom_limit - self.effective_body_top()).max(0.0);
+                let mut room = (bottom_limit - self.current_y).max(0.0);
+                let mut page_first_band = 0;
+                let mut occupied = 0.0;
+                for band in 0..band_count {
+                    if occupied + band_fit_height(band) > room + 1e-6 {
+                        if band + 1 == band_count && band >= page_first_band + 2 {
+                            force_break_before_line = band_starts.get(band - 1).copied();
+                        }
+                        page_first_band = band;
+                        room = body_height;
+                        occupied = 0.0;
+                    }
+                    occupied += band_height(band);
+                }
             }
         }
 
@@ -35493,7 +35586,11 @@ where
         {
             return 0.0;
         }
-        jade_docx_layout::text_extract::spacing_after_px(paragraph, line_height_points)
+        jade_docx_layout::text_extract::spacing_after_px_on_grid(
+            paragraph,
+            line_height_points,
+            self.paragraph_spacing_grid_pitch_pt(paragraph),
+        )
     }
 
     #[allow(clippy::too_many_arguments)]
