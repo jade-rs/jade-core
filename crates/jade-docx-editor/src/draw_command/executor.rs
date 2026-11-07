@@ -1335,10 +1335,14 @@ pub(crate) fn try_append_bmp_glyph(output: &mut String, text: &str) -> bool {
 
 #[inline]
 pub(crate) fn is_single_bmp_glyph(text: &str) -> bool {
-    matches!(
-        text.as_bytes(),
-        [0..=0x7f] | [0xc2..=0xdf, _] | [0xe0..=0xef, _, _]
-    )
+    is_single_bmp_glyph_bytes(text.as_bytes())
+}
+
+// For bytes sliced from a valid UTF-8 string, these shapes also establish both
+// character boundaries. This is not a validator for arbitrary byte buffers.
+#[inline]
+pub(crate) fn is_single_bmp_glyph_bytes(bytes: &[u8]) -> bool {
+    matches!(bytes, [0..=0x7f] | [0xc2..=0xdf, _] | [0xe0..=0xef, _, _])
 }
 
 fn try_execute_bmp_glyph_run_batch<P: Painter>(
@@ -1380,21 +1384,27 @@ fn try_execute_bmp_glyph_run_batch<P: Painter>(
         if fonts.get(glyph.font_index as usize).is_none() {
             return Ok(false);
         }
-        let Some(glyph_text) = glyph.text(run_text) else {
-            return Ok(false);
-        };
         if let Some(text) = &mut copied_text {
+            let Some(glyph_text) = glyph.text(run_text) else {
+                return Ok(false);
+            };
             if !try_append_bmp_glyph(text, glyph_text) {
                 return Ok(false);
             }
-        } else if !is_single_bmp_glyph(glyph_text) {
+        } else if !run_text
+            .as_bytes()
+            .get(glyph.text_start as usize..glyph.text_end as usize)
+            .is_some_and(is_single_bmp_glyph_bytes)
+        {
             return Ok(false);
         } else if glyph.text_start as usize == text_end {
             text_end = glyph.text_end as usize;
         } else {
             let mut text = String::with_capacity(text_capacity);
             text.push_str(&run_text[text_start..text_end]);
-            text.push_str(glyph_text);
+            // In a valid UTF-8 source, these byte shapes identify one complete
+            // BMP scalar, so both endpoints are character boundaries.
+            text.push_str(&run_text[glyph.text_start as usize..glyph.text_end as usize]);
             copied_text = Some(text);
         }
         match single_font_index {
@@ -1407,7 +1417,7 @@ fn try_execute_bmp_glyph_run_batch<P: Painter>(
         *x_position = x + glyph.x_offset;
     }
 
-    // Every endpoint in the borrowed span was checked by glyph.text above.
+    // Each endpoint was checked by a complete scalar's byte shape above.
     let text = copied_text
         .as_deref()
         .unwrap_or(&run_text[text_start..text_end]);
@@ -2816,7 +2826,11 @@ mod painter_backend_tests {
             output.clear();
             let text = ch.encode_utf8(&mut buffer);
             let expected = ch.len_utf16() == 1;
-            assert_eq!(is_single_bmp_glyph(text), expected, "U+{value:04X}");
+            assert_eq!(
+                is_single_bmp_glyph_bytes(text.as_bytes()),
+                expected,
+                "U+{value:04X}"
+            );
             assert_eq!(
                 try_append_bmp_glyph(&mut output, text),
                 expected,
@@ -2828,6 +2842,23 @@ mod painter_backend_tests {
 
     proptest! {
         #![proptest_config(ProptestConfig::with_cases(128))]
+
+        #[test]
+        fn bmp_byte_ranges_match_checked_utf16_slices(
+            characters in proptest::collection::vec(any::<char>(), 0..16),
+        ) {
+            let text: String = characters.iter().collect();
+            // Include out-of-bounds, reversed, empty and partial-scalar ranges.
+            for start in 0..=text.len() + 1 {
+                for end in 0..=text.len() + 1 {
+                    let expected = text.get(start..end)
+                        .is_some_and(|slice| slice.encode_utf16().count() == 1);
+                    let actual = text.as_bytes().get(start..end)
+                        .is_some_and(is_single_bmp_glyph_bytes);
+                    prop_assert_eq!(actual, expected, "text={:?}, range={:?}", text, start..end);
+                }
+            }
+        }
 
         #[test]
         fn bmp_batch_rejects_empty_and_multi_scalar_text(
