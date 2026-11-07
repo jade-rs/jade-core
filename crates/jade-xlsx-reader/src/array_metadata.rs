@@ -1,6 +1,10 @@
 //! Resolves dynamic-array cell metadata without changing the source part.
 use crate::Result;
 use quick_xml::{events::Event, name::ResolveResult, NsReader};
+use std::{
+    cell::RefCell,
+    collections::{BTreeMap, BTreeSet},
+};
 
 const DYNAMIC: &str = "http://schemas.microsoft.com/office/spreadsheetml/2017/dynamicarray";
 const EXTENSION: &str = "{BDBB8CDC-FA1E-496E-A857-3C3F30C029C3}";
@@ -30,18 +34,34 @@ fn xml_space(value: &str) -> &str {
     value.trim_matches([' ', '\t', '\r', '\n'])
 }
 
-fn children<'a>(
+struct View<'a> {
     nodes: &'a [Node],
+    choices: BTreeMap<usize, Option<usize>>,
+    visited: RefCell<BTreeSet<usize>>,
+}
+impl<'a> View<'a> {
+    fn new(nodes: &'a [Node], choices: BTreeMap<usize, Option<usize>>) -> Self {
+        Self {
+            nodes,
+            choices,
+            visited: RefCell::default(),
+        }
+    }
+}
+
+fn children<'a>(
+    view: &'a View<'a>,
     parent: usize,
     namespace: &'a str,
     name: &'a str,
 ) -> impl Iterator<Item = usize> + 'a {
-    compatible_children(nodes, parent)
+    compatible_children(view, parent)
         .into_iter()
-        .filter(move |&i| nodes[i].namespace == namespace && nodes[i].name == name)
+        .filter(move |&i| view.nodes[i].namespace == namespace && view.nodes[i].name == name)
 }
 
-fn compatible_children(nodes: &[Node], parent: usize) -> Vec<usize> {
+fn compatible_children(view: &View<'_>, parent: usize) -> Vec<usize> {
+    let nodes = view.nodes;
     let mut pending: Vec<_> = nodes[parent].children.iter().rev().copied().collect();
     let mut result = Vec::new();
     while let Some(index) = pending.pop() {
@@ -50,21 +70,25 @@ fn compatible_children(nodes: &[Node], parent: usize) -> Vec<usize> {
             result.push(index);
             continue;
         }
-        let selected = node
-            .children
-            .iter()
-            .copied()
-            .find(|&i| {
-                nodes[i].namespace == MC && nodes[i].name == "Choice" && nodes[i].supported_choice
-            })
-            .or_else(|| {
-                unique(
-                    node.children
-                        .iter()
-                        .copied()
-                        .filter(|&i| nodes[i].namespace == MC && nodes[i].name == "Fallback"),
-                )
-            });
+        view.visited.borrow_mut().insert(index);
+        let selected = view.choices.get(&index).copied().unwrap_or_else(|| {
+            node.children
+                .iter()
+                .copied()
+                .find(|&i| {
+                    nodes[i].namespace == MC
+                        && nodes[i].name == "Choice"
+                        && nodes[i].supported_choice
+                })
+                .or_else(|| {
+                    unique(
+                        node.children
+                            .iter()
+                            .copied()
+                            .filter(|&i| nodes[i].namespace == MC && nodes[i].name == "Fallback"),
+                    )
+                })
+        });
         if let Some(selected) = selected {
             pending.extend(nodes[selected].children.iter().rev().copied());
         }
@@ -89,10 +113,131 @@ pub fn first_dynamic_array_cell_metadata(xml: &str) -> Result<Option<u32>> {
         .and_then(|index| u32::try_from(index + 1).ok()))
 }
 
+#[derive(Eq, PartialEq, Ord, PartialOrd)]
+enum Signature {
+    Element(String, String, Vec<(String, String)>, Vec<usize>),
+    Alternatives(Vec<Vec<usize>>),
+}
+
+fn branches(nodes: &[Node], parent: usize) -> impl Iterator<Item = usize> + '_ {
+    nodes[parent].children.iter().copied().filter(|&i| {
+        nodes[i].namespace == MC && matches!(nodes[i].name.as_str(), "Choice" | "Fallback")
+    })
+}
+
+// Intern exact structural keys, not hashes: equivalent alternatives can be
+// collapsed without ever trusting a hash collision for metadata identity.
+fn signatures(nodes: &[Node]) -> Vec<Vec<usize>> {
+    let mut result = vec![Vec::new(); nodes.len()];
+    let mut interned = BTreeMap::new();
+    for index in (0..nodes.len()).rev() {
+        let node = &nodes[index];
+        let content = |parent: usize| {
+            nodes[parent]
+                .children
+                .iter()
+                .flat_map(|&child| result[child].iter().copied())
+                .collect::<Vec<_>>()
+        };
+        let key = if node.namespace == MC && node.name == "AlternateContent" {
+            let mut alternatives: BTreeSet<_> = branches(nodes, index).map(content).collect();
+            if !branches(nodes, index).any(|i| nodes[i].name == "Fallback") {
+                alternatives.insert(Vec::new());
+            }
+            if alternatives.len() <= 1 {
+                result[index] = alternatives.into_iter().next().unwrap_or_default();
+                continue;
+            }
+            Signature::Alternatives(alternatives.into_iter().collect())
+        } else {
+            let mut attributes = node.attributes.clone();
+            attributes.sort();
+            Signature::Element(
+                node.namespace.clone(),
+                node.name.clone(),
+                attributes,
+                content(index),
+            )
+        };
+        let next = interned.len();
+        result[index] = vec![*interned.entry(key).or_insert(next)];
+    }
+    result
+}
+
+/// A pure dynamic-array cell record whose one-based index has the same dynamic
+/// meaning in every stored Choice/Fallback layout, including opaque Choices.
+/// Composite cell records are not reusable: that would attach unrelated
+/// metadata to new cells. XML errors propagate. Ambiguity or more than 1024
+/// distinct partial layouts yields None rather than an uncertified index.
+pub fn common_dynamic_array_cell_metadata(xml: &str) -> Result<Option<u32>> {
+    let nodes = parse_nodes(xml)?;
+    let initial = View::new(&nodes, BTreeMap::new());
+    let mut candidates: Vec<_> = flags(&initial, true)
+        .iter()
+        .enumerate()
+        .filter_map(|(index, &flag)| (flag == Some(true)).then_some(index))
+        .collect();
+    if candidates.is_empty() {
+        return Ok(None);
+    }
+    if initial.visited.borrow().is_empty() {
+        return Ok(candidates
+            .first()
+            .and_then(|&index| u32::try_from(index + 1).ok()));
+    }
+    let signatures = signatures(&nodes);
+    let mut pending = vec![BTreeMap::new()];
+    for _ in 0..1024 {
+        let Some(choices) = pending.pop() else {
+            return Ok(candidates
+                .first()
+                .and_then(|&index| u32::try_from(index + 1).ok()));
+        };
+        let view = View::new(&nodes, choices);
+        let current = flags(&view, true);
+        candidates.retain(|&i| current.get(i) == Some(&Some(true)));
+        if candidates.is_empty() {
+            return Ok(None);
+        }
+        let next = view
+            .visited
+            .borrow()
+            .iter()
+            .copied()
+            .find(|index| !view.choices.contains_key(index));
+        if let Some(next) = next {
+            let mut options = BTreeMap::new();
+            for branch in branches(&nodes, next) {
+                let key: Vec<_> = nodes[branch]
+                    .children
+                    .iter()
+                    .flat_map(|&child| signatures[child].iter().copied())
+                    .collect();
+                options.entry(key).or_insert(Some(branch));
+            }
+            if !branches(&nodes, next).any(|i| nodes[i].name == "Fallback") {
+                options.insert(Vec::new(), None);
+            }
+            for branch in options.into_values() {
+                let mut choices = view.choices.clone();
+                choices.insert(next, branch);
+                pending.push(choices);
+            }
+        }
+    }
+    Ok(None)
+}
+
 /// Explicit dynamic/fixed flags indexed by Office's one-based `cm` minus one.
 /// An absent, unsupported, invalid or ambiguous record yields `None`.
 /// Compatibility content uses the first supported Choice, otherwise Fallback.
 pub fn cell_dynamic_array_flags(xml: &str) -> Result<Vec<Option<bool>>> {
+    let nodes = parse_nodes(xml)?;
+    Ok(flags(&View::new(&nodes, BTreeMap::new()), false))
+}
+
+fn parse_nodes(xml: &str) -> Result<Vec<Node>> {
     let mut reader = NsReader::from_str(xml);
     let mut nodes = vec![Node::default()];
     let mut stack = vec![0];
@@ -155,8 +300,16 @@ pub fn cell_dynamic_array_flags(xml: &str) -> Result<Vec<Option<bool>>> {
     if stack.len() != 1 {
         return Ok(Vec::new());
     }
-    let Some(root) = unique(compatible_children(&nodes, 0).into_iter()) else {
-        return Ok(Vec::new());
+    Ok(nodes)
+}
+
+fn flags(view: &View<'_>, reusable: bool) -> Vec<Option<bool>> {
+    let nodes = view.nodes;
+    if nodes.is_empty() {
+        return Vec::new();
+    }
+    let Some(root) = unique(compatible_children(view, 0).into_iter()) else {
+        return Vec::new();
     };
     let namespace = nodes[root].namespace.as_str();
     if nodes[root].name != "metadata"
@@ -166,12 +319,12 @@ pub fn cell_dynamic_array_flags(xml: &str) -> Result<Vec<Option<bool>>> {
                 | "http://purl.oclc.org/ooxml/spreadsheetml/main"
         )
     {
-        return Ok(Vec::new());
+        return Vec::new();
     }
-    let Some(types) = unique(children(&nodes, root, namespace, "metadataTypes")) else {
-        return Ok(Vec::new());
+    let Some(types) = unique(children(view, root, namespace, "metadataTypes")) else {
+        return Vec::new();
     };
-    let types: Vec<_> = children(&nodes, types, namespace, "metadataType").collect();
+    let types: Vec<_> = children(view, types, namespace, "metadataType").collect();
     let dynamic_types: Vec<_> = types
         .iter()
         .enumerate()
@@ -179,28 +332,23 @@ pub fn cell_dynamic_array_flags(xml: &str) -> Result<Vec<Option<bool>>> {
         .map(|(i, _)| i + 1)
         .collect();
     if dynamic_types.len() != 1 {
-        return Ok(Vec::new());
+        return Vec::new();
     }
     let Some(future) = unique(
-        children(&nodes, root, namespace, "futureMetadata")
+        children(view, root, namespace, "futureMetadata")
             .filter(|&i| nodes[i].attribute("name") == Some("XLDAPR")),
     ) else {
-        return Ok(Vec::new());
+        return Vec::new();
     };
-    let records: Vec<_> = children(&nodes, future, namespace, "bk")
+    let records: Vec<_> = children(view, future, namespace, "bk")
         .map(|record| {
-            let list = unique(children(&nodes, record, namespace, "extLst"))?;
-            let extension = unique(children(&nodes, list, namespace, "ext").filter(|&i| {
+            let list = unique(children(view, record, namespace, "extLst"))?;
+            let extension = unique(children(view, list, namespace, "ext").filter(|&i| {
                 nodes[i]
                     .attribute("uri")
                     .is_some_and(|uri| uri.eq_ignore_ascii_case(EXTENSION))
             }))?;
-            let properties = unique(children(
-                &nodes,
-                extension,
-                DYNAMIC,
-                "dynamicArrayProperties",
-            ))?;
+            let properties = unique(children(view, extension, DYNAMIC, "dynamicArrayProperties"))?;
             match nodes[properties].attribute("fDynamic").map(xml_space) {
                 Some("1" | "true") => Some(true),
                 Some("0" | "false") => Some(false),
@@ -208,19 +356,22 @@ pub fn cell_dynamic_array_flags(xml: &str) -> Result<Vec<Option<bool>>> {
             }
         })
         .collect();
-    let Some(cells) = unique(children(&nodes, root, namespace, "cellMetadata")) else {
-        return Ok(Vec::new());
+    let Some(cells) = unique(children(view, root, namespace, "cellMetadata")) else {
+        return Vec::new();
     };
-    Ok(children(&nodes, cells, namespace, "bk")
+    children(view, cells, namespace, "bk")
         .map(|block| {
+            if reusable && children(view, block, namespace, "rc").count() != 1 {
+                return None;
+            }
             let link = unique(
-                children(&nodes, block, namespace, "rc")
+                children(view, block, namespace, "rc")
                     .filter(|&i| nodes[i].index("t") == Some(dynamic_types[0])),
             )?;
             let record = nodes[link].index("v")?;
             records.get(record).copied().flatten()
         })
-        .collect())
+        .collect()
 }
 
 #[cfg(test)]
@@ -228,6 +379,89 @@ mod tests {
     use super::*;
 
     const XML: &str = r#"<metadata xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:d="http://schemas.microsoft.com/office/spreadsheetml/2017/dynamicarray" xmlns:foreign="urn:foreign"><metadataTypes><metadataType name="OTHER"/><metadataType name="XLDAPR"/></metadataTypes><futureMetadata name="XLDAPR"><bk><extLst><ext uri="{bdbb8cdc-fa1e-496e-a857-3c3f30c029c3}"><d:dynamicArrayProperties fDynamic="false"/></ext></extLst></bk><bk><extLst><ext uri="{bdbb8cdc-fa1e-496e-a857-3c3f30c029c3}"><d:dynamicArrayProperties fDynamic="true"/></ext></extLst></bk></futureMetadata><cellMetadata><bk><rc t="2" v="0"/></bk><bk><rc t="2" v="1"/></bk></cellMetadata></metadata>"#;
+
+    #[test]
+    fn common_dynamic_indexes_are_certified_across_all_stored_layouts() {
+        let alternate = |other: &str| {
+            let head = XML.find('>').unwrap() + 1;
+            let tail = XML.rfind("</metadata>").unwrap();
+            let other_head = other.find('>').unwrap() + 1;
+            let other_tail = other.rfind("</metadata>").unwrap();
+            format!("{}<mc:AlternateContent xmlns:mc=\"{MC}\"><mc:Choice Requires=\"d\">{}</mc:Choice><mc:Choice xmlns:u=\"urn:future\" Requires=\"u\">{}</mc:Choice><mc:Fallback>{}</mc:Fallback></mc:AlternateContent></metadata>", &XML[..head], &XML[head..tail], &other[other_head..other_tail], &XML[head..tail])
+        };
+        assert_eq!(common_dynamic_array_cell_metadata(XML).unwrap(), Some(2));
+        let reordered = XML
+            .replace(
+                "<metadataType name=\"OTHER\"/><metadataType name=\"XLDAPR\"/>",
+                "<metadataType name=\"XLDAPR\"/><metadataType name=\"OTHER\"/>",
+            )
+            .replace("t=\"2\"", "t=\"1\"");
+        assert_eq!(
+            common_dynamic_array_cell_metadata(&alternate(&reordered)).unwrap(),
+            Some(2)
+        );
+        for other in [
+            XML.replace("fDynamic=\"true\"", "fDynamic=\"false\""),
+            XML.replace(
+                "<bk><rc t=\"2\" v=\"0\"/></bk><bk><rc t=\"2\" v=\"1\"/></bk>",
+                "<bk><rc t=\"2\" v=\"1\"/></bk><bk><rc t=\"2\" v=\"0\"/></bk>",
+            ),
+            XML.replace("<bk><rc t=\"2\" v=\"1\"/></bk>", ""),
+        ] {
+            assert_eq!(
+                first_dynamic_array_cell_metadata(&alternate(&other)).unwrap(),
+                Some(2)
+            );
+            assert_eq!(
+                common_dynamic_array_cell_metadata(&alternate(&other)).unwrap(),
+                None
+            );
+        }
+        let composite = XML.replace(
+            "<rc t=\"2\" v=\"1\"/>",
+            "<rc t=\"2\" v=\"1\"/><rc t=\"1\" v=\"0\"/>",
+        );
+        assert_eq!(
+            cell_dynamic_array_flags(&composite).unwrap(),
+            [Some(false), Some(true)]
+        );
+        assert_eq!(
+            common_dynamic_array_cell_metadata(&composite).unwrap(),
+            None
+        );
+        let property = "<d:dynamicArrayProperties fDynamic=\"true\"/>";
+        let missing_fallback = format!("<mc:AlternateContent xmlns:mc=\"{MC}\"><mc:Choice Requires=\"d\">{property}</mc:Choice></mc:AlternateContent>");
+        assert_eq!(
+            common_dynamic_array_cell_metadata(&XML.replace(property, &missing_fallback)).unwrap(),
+            None
+        );
+    }
+
+    #[test]
+    fn equivalent_nested_metadata_choices_do_not_expand_exponentially() {
+        let property = "<d:dynamicArrayProperties fDynamic=\"true\"/>";
+        let mut nested = property.to_string();
+        for _ in 0..256 {
+            nested = format!("<mc:AlternateContent xmlns:mc=\"{MC}\"><mc:Choice Requires=\"d\">{nested}</mc:Choice><mc:Fallback>{property}</mc:Fallback></mc:AlternateContent>");
+        }
+        assert_eq!(
+            common_dynamic_array_cell_metadata(&XML.replace(property, &nested)).unwrap(),
+            Some(2)
+        );
+    }
+
+    #[test]
+    fn certification_does_not_guess_after_its_layout_budget_is_exhausted() {
+        let mut types = String::new();
+        for index in 0..12 {
+            types.push_str(&format!("<mc:AlternateContent xmlns:mc=\"{MC}\"><mc:Choice Requires=\"d\"><metadataType name=\"OTHER{index}A\"/></mc:Choice><mc:Fallback><metadataType name=\"OTHER{index}B\"/></mc:Fallback></mc:AlternateContent>"));
+        }
+        let xml = XML
+            .replace("<metadataType name=\"OTHER\"/>", &types)
+            .replace("t=\"2\"", "t=\"13\"");
+        assert_eq!(first_dynamic_array_cell_metadata(&xml).unwrap(), Some(2));
+        assert_eq!(common_dynamic_array_cell_metadata(&xml).unwrap(), None);
+    }
 
     #[test]
     fn metadata_choices_resolve_required_namespaces_and_keep_first_supported_order() {

@@ -48,6 +48,95 @@ fn write(metadata: &str, dynamic: bool) -> Result<Vec<u8>, WriteError> {
 }
 
 #[test]
+fn a_composite_dynamic_record_is_not_attached_to_a_new_spill() {
+    let bytes = write(&format!("<metadata xmlns=\"{NS}\"/>"), true).unwrap();
+    let package = OpcPackage::open(&bytes).unwrap();
+    let metadata = package
+        .part_str("xl/metadata.xml")
+        .unwrap()
+        .unwrap()
+        .replacen("count=\"1\"", "count=\"2\"", 1)
+        .replace(
+            "</metadataTypes>",
+            "<metadataType name=\"OTHER\"/></metadataTypes>",
+        )
+        .replace(
+            "<rc t=\"1\" v=\"0\"/>",
+            "<rc t=\"1\" v=\"0\"/><rc t=\"2\" v=\"0\"/>",
+        );
+    assert_eq!(
+        jade_xlsx_reader::array_metadata::first_dynamic_array_cell_metadata(&metadata).unwrap(),
+        Some(1)
+    );
+    let bytes = write(&metadata, true).unwrap();
+    let package = OpcPackage::open(&bytes).unwrap();
+    let updated = package.part_str("xl/metadata.xml").unwrap().unwrap();
+    assert!(updated.contains("<rc t=\"1\" v=\"0\"/><rc t=\"2\" v=\"0\"/>"));
+    let cells = updated.find("<cellMetadata").unwrap();
+    assert!(updated[cells..cells + updated[cells..].find('>').unwrap()].contains("count=\"2\""));
+    assert_eq!(
+        jade_xlsx_reader::array_metadata::common_dynamic_array_cell_metadata(&updated).unwrap(),
+        Some(2)
+    );
+    let book = read_xlsx(&bytes).unwrap();
+    let sheet = package
+        .part_str(&book.sheets[0].part_name)
+        .unwrap()
+        .unwrap();
+    assert!(sheet.contains("cm=\"2\""));
+    assert_eq!(
+        book.sheets[0].array_formulas[0].kind,
+        jade_xlsx_reader::ArrayFormulaKind::Dynamic
+    );
+}
+
+#[test]
+fn shared_dynamic_metadata_is_reused_without_rewriting_compatibility_branches() {
+    let bytes = write(&format!("<metadata xmlns=\"{NS}\"/>"), true).unwrap();
+    let package = OpcPackage::open(&bytes).unwrap();
+    let metadata = package.part_str("xl/metadata.xml").unwrap().unwrap();
+    let metadata = metadata.replacen(
+        "<metadata ",
+        &format!("<metadata xmlns:mc=\"{MC}\" xmlns:m=\"{NS}\" "),
+        1,
+    );
+    for (start, end) in [
+        ("<metadataTypes", "</metadataTypes>"),
+        ("<futureMetadata", "</futureMetadata>"),
+        ("<cellMetadata", "</cellMetadata>"),
+        ("<dynamicArrayProperties", "/>"),
+    ] {
+        let from = metadata.find(start).unwrap();
+        let to = from + metadata[from..].find(end).unwrap() + end.len();
+        let xml = format!(
+            "{}{}{}",
+            &metadata[..from],
+            branch(&metadata[from..to]),
+            &metadata[to..]
+        );
+        for xml in [
+            xml.clone(),
+            xml.replace("Requires=\"m\"", "Requires=\"unknown\""),
+        ] {
+            let updated =
+                write(&xml, true).expect("all stored alternatives retain the same dynamic link");
+            assert_eq!(
+                OpcPackage::open(&updated)
+                    .unwrap()
+                    .part_str("xl/metadata.xml")
+                    .unwrap()
+                    .as_deref(),
+                Some(xml.as_str())
+            );
+            assert_eq!(
+                read_xlsx(&updated).unwrap().sheets[0].array_formulas[0].kind,
+                jade_xlsx_reader::ArrayFormulaKind::Dynamic
+            );
+        }
+    }
+}
+
+#[test]
 fn workbook_import_uses_the_selected_metadata_dictionary() {
     let bytes = write(&format!("<metadata xmlns=\"{NS}\"/>"), true).unwrap();
     let mut package = OpcPackage::open(&bytes).unwrap();
@@ -148,10 +237,22 @@ fn direct_dynamic_links_are_not_reused_without_checking_conditional_siblings() {
             jade_xlsx_reader::array_metadata::first_dynamic_array_cell_metadata(&metadata).unwrap(),
             if extra.is_empty() { None } else { Some(1) }
         );
-        assert!(matches!(
-            write(&metadata, true),
-            Err(WriteError::ArrayMetadata(_))
-        ));
+        if extra.is_empty() {
+            assert!(matches!(
+                write(&metadata, true),
+                Err(WriteError::ArrayMetadata(_))
+            ));
+        } else {
+            let bytes = write(&metadata, true).unwrap();
+            assert_eq!(
+                OpcPackage::open(&bytes)
+                    .unwrap()
+                    .part_str("xl/metadata.xml")
+                    .unwrap()
+                    .as_deref(),
+                Some(metadata.as_str())
+            );
+        }
     }
 }
 
