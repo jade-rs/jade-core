@@ -259,15 +259,49 @@ fn spaced_tables_preserve_origins_after_edit_export_and_undo() {
     });
     for platform in [WordLayoutPlatform::Mac, WordLayoutPlatform::Windows] {
         set_word_layout_platform(platform);
-        for (fixture, paragraph, expected_page) in [
-            ("table-spacing-continuation-compat14", 13, 1),
-            ("table-spacing-auto-compat14", 13, 0),
-            ("table-spacing-at-least-continuation-compat14", 13, 1),
-            ("table-spacing-mixed-borders-compat14", 13, 0),
-            ("table-collapsed-implicit-mixed-borders-compat14", 53, 0),
-            ("table-spacing-nil-mixed-borders-compat14", 53, 0),
-            ("table-collapsed-mixed-borders-compat14", 53, 0),
-            ("table-spacing-missing-width-mixed-borders-compat14", 53, 0),
+        for (fixture, paragraph, expected_page, expected_text) in [
+            ("table-spacing-continuation-compat14", 13, 1, "R3C1 alpha"),
+            ("table-spacing-auto-compat14", 13, 0, "R3C1 alpha"),
+            (
+                "table-spacing-at-least-continuation-compat14",
+                13,
+                1,
+                "R3C1 alpha",
+            ),
+            ("table-spacing-mixed-borders-compat14", 13, 0, "R3C1 alpha"),
+            (
+                "table-collapsed-implicit-mixed-borders-compat14",
+                53,
+                0,
+                "R3C1 alpha",
+            ),
+            (
+                "table-spacing-nil-mixed-borders-compat14",
+                53,
+                0,
+                "R3C1 alpha",
+            ),
+            (
+                "table-collapsed-mixed-borders-compat14",
+                53,
+                0,
+                "R3C1 alpha",
+            ),
+            (
+                "table-spacing-missing-width-mixed-borders-compat14",
+                53,
+                0,
+                "R3C1 alpha",
+            ),
+            (
+                "table-spacing-negative-mixed-borders-compat14",
+                53,
+                0,
+                "R3C1 alpha",
+            ),
+            ("table-negative-spacing-columns-3-compat14", 29, 0, "R1C1"),
+            ("table-negative-spacing-unequal-3-compat14", 29, 0, "R1C1"),
+            ("table-negative-spacing-row-scopes-compat14", 15, 0, "R1C1"),
         ] {
             let bytes = std::fs::read(repo_path(&format!(
                 "public/fixtures/word-windows-edge-{fixture}.docx"
@@ -276,7 +310,10 @@ fn spaced_tables_preserve_origins_after_edit_export_and_undo() {
             let mut doc = NativeDocument::open(&bytes, 816.0, 1056.0, &faces).unwrap();
             let mut before = all_glyphs(&mut doc);
             spatial_order(&mut before);
-            assert_eq!(doc.paragraph_text(paragraph).as_deref(), Some("R3C1 alpha"));
+            assert_eq!(
+                doc.paragraph_text(paragraph).as_deref(),
+                Some(expected_text)
+            );
             let caret = doc.place_caret(paragraph, 0).unwrap();
             let page = doc.page_and_offset(caret.document_y).0;
             assert_eq!(page, expected_page, "{platform:?}/{fixture}: third row");
@@ -439,12 +476,23 @@ fn windows_word_arial_edge_origins() {
                 "word-windows-edge-table-spacing-missing-type-mixed-borders-compat12",
                 "word-windows-edge-table-spacing-missing-type-mixed-borders-compat14",
                 "word-windows-edge-table-spacing-missing-type-mixed-borders-compat15",
+                "word-windows-edge-table-spacing-negative-mixed-borders-compat12",
+                "word-windows-edge-table-spacing-negative-mixed-borders-compat14",
+                "word-windows-edge-table-spacing-negative-mixed-borders-compat15",
+                "word-windows-edge-table-negative-spacing-columns-2-compat14",
+                "word-windows-edge-table-negative-spacing-columns-3-compat14",
+                "word-windows-edge-table-negative-spacing-columns-4-compat14",
+                "word-windows-edge-table-negative-spacing-columns-5-compat14",
+                "word-windows-edge-table-negative-spacing-unequal-2-compat14",
+                "word-windows-edge-table-negative-spacing-unequal-3-compat14",
+                "word-windows-edge-table-negative-spacing-unequal-4-compat14",
+                "word-windows-edge-table-negative-spacing-row-scopes-compat14",
             ]
             .map(str::to_owned)
         )
     );
     assert!(
-        checked >= 53742,
+        checked >= 57442,
         "do not silently remove edge-case coverage"
     );
 }

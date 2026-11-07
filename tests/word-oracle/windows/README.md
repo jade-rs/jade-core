@@ -277,3 +277,51 @@ and negative widths -20/-40/-80 twips. It records 1,124 original Word origins
 and the unchanged native results. The equal two-column document matches;
 three-, four- and five-column documents remain pending. These diagnostics are
 excluded from passing-reference counts and all required coverage floors.
+
+Capture `20261107T123422628Z-6990d43d` supersedes the signed-spacing failures
+above. Eleven original Word inputs are byte-identical to their deterministic
+public fixtures. Word **16.0.19127.20860** was measured again with clean native
+source `f41d7e73`; executable/compiler and capture-tool commits are preserved.
+Every new origin matches original Word PDF text and raw EMF text at 0.375pt.
+
+For a fixed grid, Windows Word takes signed DXA spacing from the first visible
+row (direct, then exception, then table). Its n+1 gutter budgets resize the
+nominal columns while retaining the authored outside extent. A later row's
+negative override does not resize that grid. Equal 2/3/4/5-column sweeps,
+unequal columns, row scopes and compatibility modes 12/14/15 verify this rule.
+Mac retains its prior arithmetic. All eleven Mac-policy glyph arrays, page
+counts and decoded RGBA images match clean engine `a95ede06` exactly on this
+Windows host; the provenance is explicit about that host. Existing real Mac
+Word goldens are unchanged and remain mandatory in GitHub Actions.
+
+An exact-height narrow cell exposes four text origins hidden by its clip:
+Word's complete PDF/EMF records contain 305 glyphs, while its visible PDF
+contains 301. The default diagnostic and painting keep their existing visible
+projection. An explicit `--unclipped-tables` diagnostic also retains hidden
+origins. This capture checks all 3,700 complete origins, all 3,696 visible
+snapshot origins, and all 3,696 origins extracted from actual native vector
+PDFs. No origin is shifted or fitted, and every plane uses the same 0.375pt
+limit. PyMuPDF flags 135/199 and projection names are recorded explicitly.
+
+Both visible and complete checks are required for promotion; copied Word PDFs
+cannot stand in for native output. The strict visible reference is registered
+beside the strict EMF reference. CI reconstructs it from the original Word PDF,
+checks retained input DOCX hashes, compares both native snapshot projections,
+and checks actual native PDF text along with the existing border unions.
+Missing visible proof, glyphs, pages, moved origins and changed provenance
+fail the checks. Historical visible-only references retain their original
+interpretation and bytes.
+
+The registry now has 109 distinct documents, 398 pages and 75,541 complete
+origins (plus the two earlier duplicate registrations). Arial coverage is 92
+documents / 265 pages / at least 57,442 origins. Raw EMFs reconstruct 69,310
+origins. The required vector gate covers 80 documents / 236 pages; the eleven
+new documents additionally require actual painted-text agreement. The capture
+contains original and native PDFs, raw EMFs, both native JSON/PNG projections,
+all four comparison reports and the original hashed input DOCX snapshots.
+
+For complete and visible capture together:
+
+```powershell
+./scripts/check-word-windows.ps1 -Documents <DOCX paths> -PythonExecutable <python.exe> -NativeExecutable <word_coordinates.exe> -CaptureMetafiles -UnclippedTableGlyphs
+```
