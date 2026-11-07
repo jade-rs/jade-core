@@ -118,28 +118,40 @@ pub(crate) fn unused_cell_metadata_index(
             let Some(xml) = package.part_str(&part)? else {
                 return Ok(None);
             };
-            let tree = nodes(&xml)?;
-            if tree[0].children.len() != 1 {
+            let Some(links) = worksheet_metadata_links(&xml)? else {
                 return Ok(None);
-            }
-            let root = tree[0].children[0];
-            if tree[root].name != "worksheet" || !valid_namespace(&tree[root].namespace) {
-                return Ok(None);
-            }
-            for data in owned(&tree, root, "sheetData") {
-                for row in owned(&tree, data, "row") {
-                    for cell in owned(&tree, row, "c") {
-                        if let Some(index) =
-                            tree[cell].index("cm").and_then(|n| u32::try_from(n).ok())
-                        {
-                            used.insert(index);
-                        }
-                    }
+            };
+            for link in links {
+                if let Some(index) = link.and_then(|n| u32::try_from(n).ok()) {
+                    used.insert(index);
                 }
             }
         }
     }
     Ok((!used.contains(&1)).then_some(1))
+}
+
+// Use the same namespace, hierarchy and supported-MCE ownership as the
+// reader, including readable alternatives that are not currently selected.
+fn worksheet_metadata_links(xml: &str) -> Result<Option<Vec<Option<usize>>>> {
+    let tree = nodes(xml)?;
+    if tree[0].children.len() != 1 {
+        return Ok(None);
+    }
+    let root = tree[0].children[0];
+    if tree[root].name != "worksheet" || !valid_namespace(&tree[root].namespace) {
+        return Ok(None);
+    }
+    let mut links = Vec::new();
+    for cell in jade_xlsx_reader::cell_content::all_compatible_cells(xml)? {
+        let Ok(index) = tree.binary_search_by_key(&cell.range.start, |node| node.start) else {
+            return Ok(None);
+        };
+        if tree[index].attr("cm").is_some() {
+            links.push(tree[index].index("cm"));
+        }
+    }
+    Ok(Some(links))
 }
 fn valid_count(node: &Node, actual: usize) -> bool {
     node.attr("count").is_none() || node.index("count") == Some(actual)
@@ -275,26 +287,14 @@ pub(crate) fn append_dynamic(
         let Some(sheet) = package.part_str(&part)? else {
             return Ok(None);
         };
-        let grid = nodes(&sheet)?;
-        if grid[0].children.len() != 1 {
+        let Some(links) = worksheet_metadata_links(&sheet)? else {
             return Ok(None);
-        }
-        let sheet_root = grid[0].children[0];
-        if grid[sheet_root].name != "worksheet" || !valid_namespace(&grid[sheet_root].namespace) {
+        };
+        if links
+            .into_iter()
+            .any(|index| index.is_none_or(|v| v == 0 || v > blocks.len()))
+        {
             return Ok(None);
-        }
-        for data in owned(&grid, sheet_root, "sheetData") {
-            for row in owned(&grid, data, "row") {
-                for cell in owned(&grid, row, "c") {
-                    if grid[cell].attr("cm").is_some()
-                        && grid[cell]
-                            .index("cm")
-                            .is_none_or(|v| v == 0 || v > blocks.len())
-                    {
-                        return Ok(None);
-                    }
-                }
-            }
         }
     }
     let Some(cm) = blocks

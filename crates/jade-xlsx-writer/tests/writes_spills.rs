@@ -11,6 +11,58 @@ use jade_xlsx_writer::{write_xlsx, CellEdit, NewValue, SheetEdits};
 mod common;
 
 #[test]
+fn foreign_links_in_unsupported_choices_do_not_block_valid_metadata_creation() {
+    let sheet = r#"<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:q="urn:foreign" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"><sheetData><row r="1"><mc:AlternateContent><mc:Choice Requires="q"><q:c r="A1" cm="1"/></mc:Choice><mc:Fallback><c r="A1"/></mc:Fallback></mc:AlternateContent></row></sheetData></worksheet>"#;
+    let mut package = OpcPackage::open(&common::workbook_with_sheet(sheet)).unwrap();
+    assert_eq!(
+        jade_xlsx_writer::spills::dynamic_array_metadata(&mut package).unwrap(),
+        Some(1)
+    );
+    assert_eq!(
+        package
+            .part_str("xl/worksheets/sheet1.xml")
+            .unwrap()
+            .unwrap(),
+        sheet
+    );
+}
+
+#[test]
+fn metadata_creation_and_append_preserve_links_inside_compatible_branches() {
+    for branch in [
+        r#"<mc:Choice Requires="m"><c r="A1" cm="1"><f t="array" ref="A1">1</f></c></mc:Choice><mc:Fallback><c r="A1"/></mc:Fallback>"#,
+        r#"<mc:Choice Requires="m"><c r="A1"/></mc:Choice><mc:Fallback><c r="A1" cm="1"><f t="array" ref="A1">1</f></c></mc:Fallback>"#,
+        r#"<mc:Choice Requires="q"><q:c r="A1" cm="1"/></mc:Choice><mc:Fallback><c r="A1" cm="1"><f t="array" ref="A1">1</f></c></mc:Fallback>"#,
+    ] {
+        let sheet = format!(
+            r#"<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:m="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:q="urn:foreign" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"><sheetData><row r="1"><mc:AlternateContent>{branch}</mc:AlternateContent></row></sheetData></worksheet>"#
+        );
+        let mut package = OpcPackage::open(&common::workbook_with_sheet(&sheet)).unwrap();
+        assert!(
+            matches!(
+                jade_xlsx_writer::spills::dynamic_array_metadata(&mut package),
+                Err(jade_xlsx_writer::WriteError::ArrayMetadata(_))
+            ),
+            "{branch}"
+        );
+        assert!(package.part("xl/metadata.xml").is_none());
+        let (mut package, part) = existing_metadata(
+            r#"<metadata xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"/>"#,
+        );
+        package.replace(&part, sheet.into_bytes());
+        assert_eq!(
+            jade_xlsx_writer::spills::dynamic_array_metadata(&mut package).unwrap(),
+            None,
+            "{branch}"
+        );
+        assert_eq!(
+            package.part_str("xl/metadata.xml").unwrap().unwrap(),
+            r#"<metadata xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"/>"#
+        );
+    }
+}
+
+#[test]
 fn new_metadata_reserves_only_owned_positive_links() {
     for (cells, expected) in [
         (r#"<c r="A1" cm="4294967295"/>"#, 1),
