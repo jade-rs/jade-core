@@ -2,24 +2,6 @@ use crate::functions::Function;
 
 use super::Node;
 
-#[cfg(target_arch = "wasm32")]
-use regex_lite as regex;
-
-use regex::Regex;
-use std::sync::OnceLock;
-
-static RANGE_REFERENCE_REGEX: OnceLock<Regex> = OnceLock::new();
-
-#[allow(clippy::expect_used)]
-fn get_re() -> &'static Regex {
-    RANGE_REFERENCE_REGEX
-        .get_or_init(|| Regex::new(r":[A-Z]*[0-9]*$").expect("Regex is known to be valid"))
-}
-
-fn is_range_reference(s: &str) -> bool {
-    get_re().is_match(s)
-}
-
 /*
 
 # NOTES on the Implicit Intersection operator: @
@@ -144,13 +126,12 @@ pub fn add_implicit_intersection(node: &mut Node, add: bool) {
 
         Node::DefinedNameKind(v) => {
             if add {
-                // Not all defined names deserve the II operator
-                // For instance =Sheet1!A1 doesn't need to be intersected
-                if is_range_reference(&v.2) {
-                    *node = Node::ImplicitIntersection {
-                        automatic: true,
-                        child: Box::new(Node::DefinedNameKind(v.to_owned())),
-                    }
+                // A definition may return a range through OFFSET, INDIRECT
+                // or another name. Its source spelling does not establish
+                // its shape. Intersection leaves scalar definitions intact.
+                *node = Node::ImplicitIntersection {
+                    automatic: true,
+                    child: Box::new(Node::DefinedNameKind(v.to_owned())),
                 }
             }
         }
