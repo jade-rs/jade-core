@@ -466,12 +466,23 @@ impl DataTable {
     }
 }
 
+/// Identity established by an array anchor's cell-metadata link.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ArrayFormulaKind {
+    Legacy,
+    Dynamic,
+    #[default]
+    Unknown,
+}
+
 /// An array formula: its anchor holds the formula, and the rest of `range`
-/// holds what it returned.
+/// holds what it returned. Unknown identity is retained for unreadable links.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ArrayFormula {
     pub anchor: CellRef,
     pub range: CellRange,
+    #[serde(default)]
+    pub kind: ArrayFormulaKind,
 }
 
 impl ArrayFormula {

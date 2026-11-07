@@ -9,6 +9,46 @@ use jade_xlsx_reader::{read_xlsx, CellRef, CellValue};
 use zip::write::SimpleFileOptions;
 
 #[test]
+fn legacy_fixed_array_bounds_survive_trial_input_growth_and_restoration() {
+    let book = read_xlsx(&package(r#"<row r="1"><c r="A1"><f t="array" ref="A1:A3">_xlfn.SEQUENCE(C1)</f><v>1</v></c><c r="C1"><v>2</v></c></row><row r="2"><c r="A2"><v>2</v></c></row><row r="3"><c r="A3" t="e"><v>#N/A</v></c></row>"#)).unwrap();
+    let mut probe = what_if(&book, "UTC", &BTreeMap::new()).unwrap();
+    let output = [(0, CellRef::new(0, 2)), (0, CellRef::new(0, 3))];
+    let original = vec![CellValue::Error("#N/A".into()), CellValue::Empty];
+    assert_eq!(probe.probe(&book, &[], &output).unwrap(), original);
+    assert_eq!(
+        probe
+            .probe(
+                &book,
+                &[(0, CellRef::new(2, 0), CellValue::Number(5.0))],
+                &output
+            )
+            .unwrap(),
+        vec![CellValue::Number(3.0), CellValue::Empty]
+    );
+    assert_eq!(probe.probe(&book, &[], &output).unwrap(), original);
+}
+
+#[test]
+fn legacy_cse_formula_identity_survives_trial_replacement() {
+    let book=read_xlsx(&package(r#"<row r="1"><c r="A1"><f t="array" ref="A1">SUM(1, 2)</f><v>3</v></c><c r="B1"><f>FORMULATEXT(A1)</f></c></row>"#)).unwrap();
+    let mut probe = what_if(&book, "UTC", &BTreeMap::new()).unwrap();
+    let output = [(0, CellRef::new(1, 0))];
+    let text = vec![CellValue::Text("{=SUM(1, 2)}".into())];
+    assert_eq!(probe.probe(&book, &[], &output).unwrap(), text);
+    assert_eq!(
+        probe
+            .probe(
+                &book,
+                &[(0, CellRef::new(0, 0), CellValue::Number(10.0))],
+                &output
+            )
+            .unwrap(),
+        vec![CellValue::Error("#N/A".into())]
+    );
+    assert_eq!(probe.probe(&book, &[], &output).unwrap(), text);
+}
+
+#[test]
 fn parsed_source_formula_text_is_the_same_before_and_after_trial_replacement() {
     let book=read_xlsx(&package(r#"<row r="1"><c r="A1"><f>SUM(1, 2)</f><v>3</v></c><c r="B1"><f>FORMULATEXT(A1)</f></c></row>"#)).unwrap();
     let mut probe = what_if(&book, "UTC", &BTreeMap::new()).unwrap();
