@@ -20221,15 +20221,21 @@
  pub use model::FmtSettings;
 --- a/src/model.rs
 +++ b/src/model.rs
-@@ -1,6 +1,6 @@
+@@ -1,9 +1,11 @@
  #![deny(missing_docs)]
  
 -use std::collections::HashMap;
 +use std::collections::{HashMap, HashSet};
  use std::vec::Vec;
  
- use crate::expressions::parser::static_analysis::run_static_analysis_on_node;
-@@ -37,7 +37,14 @@
+-use crate::expressions::parser::static_analysis::run_static_analysis_on_node;
++use crate::expressions::parser::static_analysis::{
++    add_implicit_intersection, run_static_analysis_on_node,
++};
+ use crate::{
+     calc_result::{CalcResult, Range},
+     cell::CellValue,
+@@ -37,7 +39,14 @@
  use crate::{cf_types::CfCellResult, tz::Tz};
  
  #[cfg(any(test, feature = "mock_time"))]
@@ -20245,7 +20251,7 @@
  
  /// Number of milliseconds since January 1, 1970
  /// Used by time and date functions. It takes the value from the environment:
-@@ -47,7 +54,7 @@
+@@ -47,7 +56,7 @@
  #[cfg(not(any(test, feature = "mock_time")))]
  #[cfg(not(target_arch = "wasm32"))]
  #[allow(clippy::expect_used)]
@@ -20254,7 +20260,7 @@
      use std::time::{SystemTime, UNIX_EPOCH};
      SystemTime::now()
          .duration_since(UNIX_EPOCH)
-@@ -62,7 +69,7 @@
+@@ -62,7 +71,7 @@
  /// * Or mocked for tests
  #[cfg(not(any(test, feature = "mock_time")))]
  #[cfg(target_arch = "wasm32")]
@@ -20263,7 +20269,7 @@
      use js_sys::Date;
      Date::now() as i64
  }
-@@ -110,6 +117,8 @@
+@@ -110,6 +119,8 @@
      RangeReference(Range),
      /// `=LAMBDA(params..., body)`
      LambdaDefinition(Vec<NamedVariable>, Node),
@@ -20272,7 +20278,7 @@
      /// `=SomethingElse`
      InvalidDefinedNameFormula,
  }
-@@ -175,6 +184,20 @@
+@@ -175,6 +186,20 @@
      Range((u32, i32, i32, i32, i32)),
  }
  
@@ -20293,7 +20299,7 @@
  /// A dynamical IronCalc model.
  ///
  /// Its is composed of a `Workbook`. Everything else are dynamical quantities:
-@@ -188,14 +211,28 @@
+@@ -188,14 +213,28 @@
  /// * A dictionary with the shared strings and their indices.
  ///   This is an optimization for large files (~1 million rows)
  pub struct Model<'a> {
@@ -20322,7 +20328,7 @@
      /// An instance of the parser
      pub(crate) parser: Parser<'a>,
      /// The list of cells with formulas that are evaluated or being evaluated
-@@ -223,6 +260,11 @@
+@@ -223,6 +262,11 @@
      /// Evaluated CF results per cell, keyed by (sheet_index, row, column).
      /// Rebuilt from scratch on every call to evaluate_conditional_formatting().
      pub(crate) cf_cache: HashMap<(u32, i32, i32), Vec<CfCellResult>>,
@@ -20334,7 +20340,7 @@
  }
  
  // FIXME: Maybe this should be the same as CellReference
-@@ -237,6 +279,113 @@
+@@ -237,6 +281,113 @@
  }
  
  impl<'a> Model<'a> {
@@ -20448,7 +20454,7 @@
      pub(crate) fn get_next_variable_id(&mut self) -> usize {
          let id = self.last_variable_id;
          self.last_variable_id += 1;
-@@ -260,7 +409,35 @@
+@@ -260,7 +411,35 @@
          node: &Node,
          cell: CellReferenceIndex,
      ) -> CalcResult {
@@ -20484,7 +20490,7 @@
              Node::ReferenceKind {
                  sheet_name: _,
                  sheet_index,
-@@ -332,17 +509,38 @@
+@@ -332,17 +511,38 @@
                      },
                  }
              }
@@ -20531,7 +20537,7 @@
              _ => self.evaluate_node_in_context(node, cell),
          }
      }
-@@ -547,6 +745,15 @@
+@@ -547,6 +747,15 @@
      }
  
      pub(crate) fn evaluate_node_in_context(
@@ -20547,7 +20553,7 @@
          &mut self,
          node: &Node,
          cell: CellReferenceIndex,
-@@ -664,7 +871,21 @@
+@@ -664,7 +873,21 @@
              OpPowerKind { left, right } => {
                  self.handle_arithmetic(left, right, cell, &|f1, f2| Ok(f1.powf(f2)))
              }
@@ -20570,7 +20576,7 @@
              NamedFunctionKind { name, args, id } => {
                  let lambda_result = if let Some(var_id) = id {
                      // Bound by LET — look up the variable, which should be a Lambda.
-@@ -721,6 +942,21 @@
+@@ -721,6 +944,21 @@
                              self.lambdas.insert(lambda_id, (param_names, body));
                              CalcResult::Lambda(lambda_id)
                          }
@@ -20592,7 +20598,7 @@
                          ParsedDefinedName::InvalidDefinedNameFormula => CalcResult::new_error(
                              Error::NAME,
                              cell,
-@@ -756,18 +992,16 @@
+@@ -756,18 +994,16 @@
                  format!("Variable name \"{name}\" not found."),
              ),
              CompareKind { kind, left, right } => self.handle_comparison(left, right, cell, kind),
@@ -20620,7 +20626,7 @@
              ErrorKind(kind) => CalcResult::new_error(kind.clone(), cell, "".to_string()),
              ParseErrorKind {
                  formula, message, ..
-@@ -781,12 +1015,31 @@
+@@ -781,12 +1017,31 @@
                  CalcResult::Range { left, right } => {
                      if left != right {
                          return CalcResult::new_error(
@@ -20654,7 +20660,7 @@
                      let sheet = left.sheet;
                      let row = left.row;
                      let column = left.column;
-@@ -816,8 +1069,9 @@
+@@ -816,8 +1071,9 @@
                          ),
                      }
                  }
@@ -20665,7 +20671,7 @@
                      cell,
                      format!("Error with Spill Range Operator in cell {cell:?}"),
                  ),
-@@ -825,19 +1079,7 @@
+@@ -825,19 +1081,7 @@
              ImplicitIntersection {
                  automatic: _,
                  child,
@@ -20686,7 +20692,7 @@
              LambdaDefKind { parameters, body } => {
                  let id = self.get_next_lambda_id();
                  self.lambdas.insert(id, (parameters.clone(), *body.clone()));
-@@ -847,6 +1089,36 @@
+@@ -847,6 +1091,36 @@
                  let lambda_result = self.evaluate_node_in_context(lambda, cell);
                  self.call_lambda(lambda_result, args, cell)
              }
@@ -20723,7 +20729,7 @@
          }
      }
  
-@@ -892,6 +1164,7 @@
+@@ -892,6 +1166,7 @@
          result: &CalcResult,
      ) -> Result<(), String> {
          let CellReferenceIndex { sheet, column, row } = cell_reference;
@@ -20731,7 +20737,7 @@
          let original_range = match cell {
              Cell::ArrayFormula {
                  r,
-@@ -1002,6 +1275,7 @@
+@@ -1002,6 +1277,7 @@
                              worksheet.update_cell(r, c, cell)?;
                          }
                      }
@@ -20739,7 +20745,7 @@
                      return Ok(());
                  }
                  Some((false, (original_width, original_height))) => {
-@@ -1031,7 +1305,7 @@
+@@ -1031,7 +1307,7 @@
                              } else {
                                  let sv = match value {
                                      Some(node) => array_node_to_spill_value(node),
@@ -20748,7 +20754,7 @@
                                  };
                                  let existing_style =
                                      self.workbook.worksheets[sheet as usize].get_style(r, c);
-@@ -1050,6 +1324,7 @@
+@@ -1050,6 +1326,7 @@
                          }
                      }
                      // All cells (anchor + spills) have been written above.
@@ -20756,7 +20762,7 @@
                      return Ok(());
                  }
                  None => {
-@@ -1234,7 +1509,10 @@
+@@ -1234,7 +1511,10 @@
      /// Sets the workbook theme.
      pub fn set_theme(&mut self, theme: crate::types::Theme) {
          self.workbook.theme = theme;
@@ -20767,7 +20773,7 @@
      }
  
      /// Returns the Theme
-@@ -1407,6 +1685,20 @@
+@@ -1407,6 +1687,20 @@
      // Evaluates a cell and returns the value in the cell
      // FIXME: CalcResult cannot be Array or Range, should we have a different type?
      pub(crate) fn evaluate_cell(&mut self, cell_reference: CellReferenceIndex) -> CalcResult {
@@ -20788,7 +20794,7 @@
          let original_cell = match self.fetch_cell(cell_reference) {
              Some(c) => c.clone(),
              None => return CalcResult::EmptyCell,
-@@ -1442,6 +1734,22 @@
+@@ -1442,6 +1736,22 @@
                  if let Some(state) = self.cells.get(&key) {
                      match state {
                          CellState::Evaluating => {
@@ -20811,7 +20817,7 @@
                              return CalcResult::new_error(
                                  Error::CIRC,
                                  cell_reference,
-@@ -1535,6 +1843,7 @@
+@@ -1535,6 +1845,7 @@
                  } else {
                      result
                  };
@@ -20819,7 +20825,7 @@
  
                  if let Err(e) = self.set_cells_with_result(cell_reference, &original_cell, &result)
                  {
-@@ -1702,10 +2011,20 @@
+@@ -1702,10 +2013,20 @@
          }
  
          let mut model = Model {
@@ -20840,7 +20846,7 @@
              parser,
              cells,
              language,
-@@ -2250,6 +2569,77 @@
+@@ -2250,6 +2571,139 @@
              Ok(())
          } else {
              Err(format!("\"{formula}\" is not a valid formula"))
@@ -20858,12 +20864,74 @@
 +        column: i32,
 +        formula: String,
 +    ) -> Result<(String, bool), String> {
++        self.update_cell_with_formula_shared_in_mode(sheet, row, column, formula, false)
++    }
++
++    /// Imports an ordinary persisted Excel formula using implicit intersection
++    /// at scalar argument boundaries. Array/CSE formulas use the regular AE
++    /// setter. The returned internal shared text retains the inserted operators
++    /// so a parsed cache cannot alias formulas with different evaluation modes.
++    pub fn update_cell_with_intersected_formula_shared(
++        &mut self,
++        sheet: u32,
++        row: i32,
++        column: i32,
++        formula: String,
++    ) -> Result<(String, bool), String> {
++        self.update_cell_with_formula_shared_in_mode(sheet, row, column, formula, true)
++    }
++
++    /// Whether an entered AE formula needs array persistence to keep the
++    /// semantics of scalar arguments or its output from changing under IIE.
++    /// This inspects syntax with the model's sheets/tables/names, not values.
++    pub fn formula_requires_array_evaluation(
++        &mut self,
++        sheet: u32,
++        row: i32,
++        column: i32,
++        formula: &str,
++    ) -> Result<bool, String> {
++        let context = CellReferenceRC {
++            sheet: self.workbook.worksheet(sheet)?.get_name(),
++            row,
++            column,
++        };
++        let formula = self.formula_without_prefix(formula).unwrap_or(formula);
++        let node = self.parser.parse(formula, &context);
++        let mut intersected = node.clone();
++        add_implicit_intersection(&mut intersected, true);
++        if !matches!(
++            run_static_analysis_on_node(&intersected),
++            StaticResult::Scalar
++        ) {
++            intersected = Node::ImplicitIntersection {
++                automatic: true,
++                child: Box::new(intersected),
++            };
++        }
++        Ok(to_rc_format(&node) != to_rc_format(&intersected))
++    }
++
++    fn update_cell_with_formula_shared_in_mode(
++        &mut self,
++        sheet: u32,
++        row: i32,
++        column: i32,
++        formula: String,
++        intersect: bool,
++    ) -> Result<(String, bool), String> {
 +        let style_index = self.formula_style_index(sheet, row, column)?;
 +        let Some(new_formula) = self.formula_without_prefix(&formula) else {
 +            return Err(format!("\"{formula}\" is not a valid formula"));
 +        };
-+        let (index, dynamic) =
-+            self.set_cell_with_formula_reporting(sheet, row, column, new_formula, style_index)?;
++        let (index, dynamic) = self.set_cell_with_formula_reporting_in_mode(
++            sheet,
++            row,
++            column,
++            new_formula,
++            style_index,
++            intersect,
++        )?;
 +        let shared = self.workbook.worksheet(sheet)?.shared_formulas[index as usize].clone();
 +        Ok((shared, dynamic))
 +    }
@@ -20918,7 +20986,7 @@
          }
      }
  
-@@ -2560,6 +2950,20 @@
+@@ -2560,6 +3014,32 @@
          formula: &str,
          style: i32,
      ) -> Result<i32, String> {
@@ -20936,10 +21004,39 @@
 +        formula: &str,
 +        style: i32,
 +    ) -> Result<(i32, bool), String> {
++        self.set_cell_with_formula_reporting_in_mode(sheet, row, column, formula, style, false)
++    }
++
++    fn set_cell_with_formula_reporting_in_mode(
++        &mut self,
++        sheet: u32,
++        row: i32,
++        column: i32,
++        formula: &str,
++        style: i32,
++        intersect: bool,
++    ) -> Result<(i32, bool), String> {
          let worksheet = self.workbook.worksheet_mut(sheet)?;
          let cell_reference = CellReferenceRC {
              sheet: worksheet.get_name(),
-@@ -2582,7 +2986,9 @@
+@@ -2577,12 +3057,26 @@
+                 _ => parsed_formula = new_parsed_formula,
+             }
+         }
++        if intersect {
++            add_implicit_intersection(&mut parsed_formula, true);
++            if !matches!(
++                run_static_analysis_on_node(&parsed_formula),
++                StaticResult::Scalar
++            ) {
++                parsed_formula = Node::ImplicitIntersection {
++                    automatic: true,
++                    child: Box::new(parsed_formula),
++                };
++            }
++        }
+         let static_result = run_static_analysis_on_node(&parsed_formula);
+         let is_dynamic = !matches!(static_result, StaticResult::Scalar);
  
          let s = to_rc_format(&parsed_formula);
          let mut formula_index: i32 = -1;
@@ -20950,7 +21047,7 @@
              formula_index = index as i32;
          }
          if formula_index == -1 {
-@@ -2595,7 +3001,7 @@
+@@ -2595,7 +3089,7 @@
          } else {
              worksheet.set_cell_with_formula(row, column, formula_index, style)?;
          }
@@ -20959,7 +21056,7 @@
      }
  
      // FIXME
-@@ -2631,7 +3037,9 @@
+@@ -2631,7 +3125,9 @@
  
          let s = to_rc_format(&parsed_formula);
          let mut formula_index: i32 = -1;
@@ -20970,7 +21067,7 @@
              formula_index = index as i32;
          }
          if formula_index == -1 {
-@@ -2640,6 +3048,16 @@
+@@ -2640,6 +3136,16 @@
              formula_index = (shared_formulas.len() as i32) - 1;
          }
          worksheet.set_cell_with_array_formula(row, column, formula_index, style, width, height)?;
@@ -20987,7 +21084,7 @@
          Ok(formula_index)
      }
  
-@@ -3036,7 +3454,11 @@
+@@ -3036,7 +3542,11 @@
          while retry && restart_count < max_restarts {
              retry = false;
              self.cells.clear();
@@ -20999,7 +21096,7 @@
              self.clear_variable_stack();
              self.clear_lambdas();
  
-@@ -3068,15 +3490,136 @@
+@@ -3068,15 +3578,136 @@
  
          // Phase 2: evaluate everything else; spill cells are already Evaluated and skipped.
          // Fallback when max restarts is exceeded (circular spill dependency).
@@ -21137,7 +21234,7 @@
      }
  
      /// Removes the content of every cell in the range but leaves the style.
-@@ -3496,7 +4039,14 @@
+@@ -3496,7 +4127,14 @@
      /// Returns whether a row is hidden
      #[inline]
      pub fn is_row_hidden(&self, sheet: u32, row: i32) -> Result<bool, String> {
@@ -21153,7 +21250,7 @@
      }
  
      /// Returns the height of a row
-@@ -3511,6 +4061,14 @@
+@@ -3511,6 +4149,14 @@
          self.workbook
              .worksheet_mut(sheet)?
              .set_row_height(column, height)
@@ -21168,7 +21265,7 @@
      }
  
      /// Adds a new defined name.
-@@ -3524,7 +4082,10 @@
+@@ -3524,7 +4170,10 @@
          let sheet_id = self.is_valid_defined_name(name, scope, formula)?;
          // Defined-name formulas are stored internally in English so they keep
          // working when the user switches language/locale.
@@ -21180,7 +21277,7 @@
          let internal_formula = self.user_formula_to_internal(formula, &context)?;
          self.workbook.defined_names.push(DefinedName {
              name: name.to_string(),
-@@ -3577,7 +4138,7 @@
+@@ -3577,7 +4226,7 @@
              }
          }
  
@@ -21189,7 +21286,7 @@
          let is_reference =
              common::ParsedReference::parse_reference_formula(None, formula, self.locale, |name| {
                  self.get_sheet_index_by_name(name)
-@@ -3585,7 +4146,7 @@
+@@ -3585,7 +4234,7 @@
              .is_ok();
  
          if !is_reference {
@@ -21198,7 +21295,7 @@
              // Defined-name formulas may carry a leading '='; strip it before parsing.
              use crate::expressions::types::CellReferenceRC;
              let formula_body = formula.strip_prefix('=').unwrap_or(formula);
-@@ -3606,7 +4167,7 @@
+@@ -3606,7 +4255,7 @@
              if let Node::ParseErrorKind { .. } = node {
                  node = self.parse_internal_formula(formula_body, &dummy_ref);
              }
@@ -21207,7 +21304,7 @@
                  return Err("Formula: Invalid defined name formula".to_string());
              }
          }
-@@ -3899,6 +4460,105 @@
+@@ -3899,6 +4548,105 @@
      }
  }
  

@@ -3,7 +3,9 @@
 use std::collections::{HashMap, HashSet};
 use std::vec::Vec;
 
-use crate::expressions::parser::static_analysis::run_static_analysis_on_node;
+use crate::expressions::parser::static_analysis::{
+    add_implicit_intersection, run_static_analysis_on_node,
+};
 use crate::{
     calc_result::{CalcResult, Range},
     cell::CellValue,
@@ -2583,12 +2585,74 @@ impl<'a> Model<'a> {
         column: i32,
         formula: String,
     ) -> Result<(String, bool), String> {
+        self.update_cell_with_formula_shared_in_mode(sheet, row, column, formula, false)
+    }
+
+    /// Imports an ordinary persisted Excel formula using implicit intersection
+    /// at scalar argument boundaries. Array/CSE formulas use the regular AE
+    /// setter. The returned internal shared text retains the inserted operators
+    /// so a parsed cache cannot alias formulas with different evaluation modes.
+    pub fn update_cell_with_intersected_formula_shared(
+        &mut self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+        formula: String,
+    ) -> Result<(String, bool), String> {
+        self.update_cell_with_formula_shared_in_mode(sheet, row, column, formula, true)
+    }
+
+    /// Whether an entered AE formula needs array persistence to keep the
+    /// semantics of scalar arguments or its output from changing under IIE.
+    /// This inspects syntax with the model's sheets/tables/names, not values.
+    pub fn formula_requires_array_evaluation(
+        &mut self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+        formula: &str,
+    ) -> Result<bool, String> {
+        let context = CellReferenceRC {
+            sheet: self.workbook.worksheet(sheet)?.get_name(),
+            row,
+            column,
+        };
+        let formula = self.formula_without_prefix(formula).unwrap_or(formula);
+        let node = self.parser.parse(formula, &context);
+        let mut intersected = node.clone();
+        add_implicit_intersection(&mut intersected, true);
+        if !matches!(
+            run_static_analysis_on_node(&intersected),
+            StaticResult::Scalar
+        ) {
+            intersected = Node::ImplicitIntersection {
+                automatic: true,
+                child: Box::new(intersected),
+            };
+        }
+        Ok(to_rc_format(&node) != to_rc_format(&intersected))
+    }
+
+    fn update_cell_with_formula_shared_in_mode(
+        &mut self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+        formula: String,
+        intersect: bool,
+    ) -> Result<(String, bool), String> {
         let style_index = self.formula_style_index(sheet, row, column)?;
         let Some(new_formula) = self.formula_without_prefix(&formula) else {
             return Err(format!("\"{formula}\" is not a valid formula"));
         };
-        let (index, dynamic) =
-            self.set_cell_with_formula_reporting(sheet, row, column, new_formula, style_index)?;
+        let (index, dynamic) = self.set_cell_with_formula_reporting_in_mode(
+            sheet,
+            row,
+            column,
+            new_formula,
+            style_index,
+            intersect,
+        )?;
         let shared = self.workbook.worksheet(sheet)?.shared_formulas[index as usize].clone();
         Ok((shared, dynamic))
     }
@@ -2964,6 +3028,18 @@ impl<'a> Model<'a> {
         formula: &str,
         style: i32,
     ) -> Result<(i32, bool), String> {
+        self.set_cell_with_formula_reporting_in_mode(sheet, row, column, formula, style, false)
+    }
+
+    fn set_cell_with_formula_reporting_in_mode(
+        &mut self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+        formula: &str,
+        style: i32,
+        intersect: bool,
+    ) -> Result<(i32, bool), String> {
         let worksheet = self.workbook.worksheet_mut(sheet)?;
         let cell_reference = CellReferenceRC {
             sheet: worksheet.get_name(),
@@ -2979,6 +3055,18 @@ impl<'a> Model<'a> {
             match new_parsed_formula {
                 Node::ParseErrorKind { .. } => {}
                 _ => parsed_formula = new_parsed_formula,
+            }
+        }
+        if intersect {
+            add_implicit_intersection(&mut parsed_formula, true);
+            if !matches!(
+                run_static_analysis_on_node(&parsed_formula),
+                StaticResult::Scalar
+            ) {
+                parsed_formula = Node::ImplicitIntersection {
+                    automatic: true,
+                    child: Box::new(parsed_formula),
+                };
             }
         }
         let static_result = run_static_analysis_on_node(&parsed_formula);
