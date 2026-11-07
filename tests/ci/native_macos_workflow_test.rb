@@ -133,6 +133,23 @@ class NativeMacosWorkflowTest < Minitest::Test
     end
   end
 
+  def test_windows_vector_border_comparison_is_required
+    job = @workflow.fetch("jobs").fetch("windows-word-baselines")
+    {
+      "Install pinned vector border verifier" => "requirements-borders.txt",
+      "Verify border displacement and missing-paint rejection cases" => "test_windows_borders.py",
+      "Build vector drawing probe" => "--locked --example word_coordinates",
+      "Compare Windows table borders with every registered Word version" => "compare_windows_borders.py --index tests/word-oracle/windows/index.json"
+    }.each do |name, command|
+      step = job.fetch("steps").find { |item| item["name"] == name }
+      refute_nil step, "missing #{name}"
+      refute step.key?("if")
+      refute step.fetch("continue-on-error", false)
+      assert_includes step.fetch("run"), command
+      refute_includes step.fetch("run"), "--skip"
+    end
+  end
+
   private
 
   def run_command(step_name)

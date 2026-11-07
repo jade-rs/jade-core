@@ -88,8 +88,30 @@ def spacing_continuation_sweep(compatibility_mode, height_rule='exact'):
     m.write(f'table-spacing-{rule_name}continuation-compat{compatibility_mode}', ''.join(body), compatibility_mode)
 
 
+def mixed_spacing_border_sweep(mode):
+    body = []
+    for spacing in [40, 120]:
+        for rule in ['exact', 'auto', 'atLeast']:
+            body.append(m.para(m.run(f'Before G{spacing} {rule}')))
+            borders = ''.join(f'<w:{side} w:val="single" w:sz="4" w:color="000000"/>' for side in ['top', 'left', 'bottom', 'right', 'insideH', 'insideV'])
+            margins = ''.join(f'<w:{side} w:w="80" w:type="dxa"/>' for side in ['top', 'left', 'bottom', 'right'])
+            rows = []
+            for row in range(3):
+                cells = []
+                for col, (valign, top, bottom) in enumerate([('top', 24, 0), ('center', 0, 24), ('bottom', 8, 16)]):
+                    overrides = ''.join(f'<w:{side} w:val="' + ('nil' if size == 0 else 'single') + f'" w:sz="{size}" w:color="000000"/>' for side, size in [('top', top), ('bottom', bottom)])
+                    content = m.para(m.run(f'R{row+1}C{col+1} alpha')) + m.para(m.run('Beta 123'))
+                    cells.append(f'<w:tc><w:tcPr><w:tcW w:w="2000" w:type="dxa"/><w:tcBorders>{overrides}</w:tcBorders><w:vAlign w:val="{valign}"/></w:tcPr>{content}</w:tc>')
+                height = '' if rule == 'auto' else f'<w:trHeight w:val="1200" w:hRule="{rule}"/>'
+                rows.append(f'<w:tr><w:trPr>{height}</w:trPr>' + ''.join(cells) + '</w:tr>')
+            body.append(f'<w:tbl><w:tblPr><w:tblW w:w="6000" w:type="dxa"/><w:tblCellSpacing w:w="{spacing}" w:type="dxa"/><w:tblLayout w:type="fixed"/><w:tblBorders>{borders}</w:tblBorders><w:tblCellMar>{margins}</w:tblCellMar></w:tblPr><w:tblGrid>' + '<w:gridCol w:w="2000"/>' * 3 + '</w:tblGrid>' + ''.join(rows) + '</w:tbl>')
+            body.append(m.para(m.run(f'After G{spacing} {rule}')))
+    m.write(f'table-spacing-mixed-borders-compat{mode}', ''.join(body), mode)
+
+
 if __name__ == '__main__':
     for mode in [12, 14, 15]:
+        mixed_spacing_border_sweep(mode)
         alignment_sweep(mode)
         border_sweep(mode)
         alignment_sweep(mode, 'bidi')

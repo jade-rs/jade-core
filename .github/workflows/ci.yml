@@ -200,12 +200,27 @@ jobs:
         run: python -m unittest discover -s scripts/word-oracle -p test_windows_emf.py
       - name: Reconstruct registered origins from original Word drawing files
         run: python scripts/word-oracle/extract_windows_emf.py --verify-index tests/word-oracle/windows/index.json
+      - name: Install pinned vector border verifier
+        run: python -m pip install -r scripts/word-oracle/requirements-borders.txt
+      - name: Verify border displacement and missing-paint rejection cases
+        run: python -m unittest discover -s scripts/word-oracle -p test_windows_borders.py
+      - name: Build vector drawing probe
+        run: cargo build --manifest-path crates/jade-docx-native-render/Cargo.toml --locked --example word_coordinates
+      - name: Compare Windows table borders with every registered Word version
+        run: python scripts/word-oracle/compare_windows_borders.py --index tests/word-oracle/windows/index.json --native-executable target/windows-word-baselines/debug/examples/word_coordinates.exe --output-directory target/windows-word-baselines/word-border-comparisons
       - name: Compare every registered Word version's baselines
         run: cargo test --manifest-path crates/jade-docx-native-render/Cargo.toml --locked --test word_windows_coordinates windows_word_baselines_with_bundled_standins -- --exact
       - name: Compare Windows Word paragraph and script origins with installed Arial
         run: cargo test --manifest-path crates/jade-docx-native-render/Cargo.toml --locked --test word_windows_coordinates windows_word_arial_edge_origins -- --exact
       - name: Preserve spaced table geometry through editing and export
         run: cargo test --manifest-path crates/jade-docx-native-render/Cargo.toml --locked --test word_windows_coordinates spaced_tables_preserve_origins_after_edit_export_and_undo -- --exact
+      - name: Upload Windows border differences
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: windows-word-border-differences
+          path: target/windows-word-baselines/word-border-comparisons
+          if-no-files-found: ignore
 
   windows-native-editing:
     name: Windows native editing and font reuse

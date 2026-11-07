@@ -150,6 +150,36 @@ source cleanliness. Historical failures remain intact; only explicitly selected
 fully passing fixtures enter `index.json`. Promotion refuses overwritten,
 incomplete, mixed-version, changed or mismatching evidence.
 
+Capture `20261107T083736578Z-61ba1645` adds three mixed-border documents
+(modes 12/14/15), nine pages and 3,108 complete origins. Each row mixes
+3pt/nil, nil/3pt and 1pt/2pt top/bottom borders, top/centre/bottom alignment,
+exact/auto/minimum heights and 2pt/6pt cell spacing. All original PDF and EMF
+origins pass with the clean `00f7aeed` engine. Its complete compiler version
+and executable SHA-256 are recorded in `native-engine.json`. The original
+failing `90132ee5` traces remain in `20261107T071814687Z-db7c1984`.
+
+The Arial gate requires 54 documents, 224 pages and 41,469 origins. The
+registry retains 71 distinct documents, 357 pages and 59,568 origins, plus
+the historical registrations of two subsequently recaptured documents.
+
+The required Windows CI job also compares monochrome separated-table rule
+geometry against the versioned original Word PDFs. It checks all 27 spacing
+documents (165 pages), including thick rules and page continuations. It
+compares the union of painted vector rectangles in both directions within
+0.375pt on each axis, with no fitting, scaling or allowed failures. Missing
+rules, extra paint, unsupported black geometry, changed source hashes,
+missing mandatory cases and page differences fail the job. Gray editor guides
+are excluded from this monochrome check. The pinned PyMuPDF extractor and
+its displacement, occlusion, clipping and rejection tests run in that job.
+Mac golden data and coordinate thresholds remain unchanged.
+
+Run the same vector check from jade-core after building `word_coordinates`:
+
+```powershell
+python -m pip install -r scripts/word-oracle/requirements-borders.txt
+python scripts/word-oracle/compare_windows_borders.py --index tests/word-oracle/windows/index.json --native-executable <word_coordinates.exe> --output-directory <diagnostic-directory>
+```
+
 Run from jade-office:
 
 ```powershell

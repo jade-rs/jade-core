@@ -1006,6 +1006,18 @@
     {
       "fixture": "word-windows-edge-table-spacing-auto-compat15",
       "docx_sha256": "8169f3b77975786b2286804e1e616c28f48919fa2e18aed631549087d513687f"
+    },
+    {
+      "fixture": "word-windows-edge-table-spacing-mixed-borders-compat12",
+      "docx_sha256": "a08305d3e180cfe3c46cfdd8a1f22c0d9f8505709aa0d12e231d6772dad7712c"
+    },
+    {
+      "fixture": "word-windows-edge-table-spacing-mixed-borders-compat14",
+      "docx_sha256": "5ff1747902aa07f34e1d4ee7450cb28ee043845e2b6f35c08a2573e11b336530"
+    },
+    {
+      "fixture": "word-windows-edge-table-spacing-mixed-borders-compat15",
+      "docx_sha256": "ef54cebf1ed5735db95b1cd9d077a22cfda735b71b512c79600b74116aaea565"
     }
   ]
 }
