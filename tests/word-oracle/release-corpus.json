@@ -609,6 +609,14 @@
       "schema_repair_source_sha256": "eb417a0f7dc283af99425b43a28a356f90ed2ba5a53112e93508b763996b6ba7"
     },
     {
+      "fixture": "word-mac-probe-grid-line-unit",
+      "docx_sha256": "abf8769d8b96a6576338abacd7c6c76723d46709bfad500454bfcdd4227a2978"
+    },
+    {
+      "fixture": "word-mac-probe-grid-line-unit-table",
+      "docx_sha256": "0874c0863f297399909abbb0ae3185eef735fe2a468e666707e1397f2f540b2f"
+    },
+    {
       "fixture": "word-mac-probe-indent",
       "docx_sha256": "73b9dab957089873b302ecff98217e60a58fe8c540a66267ebd3f46d4b27e673"
     },
@@ -623,6 +631,14 @@
     {
       "fixture": "word-mac-probe-kern-default",
       "docx_sha256": "2fa243ccb412f37ba27f8e47dad49e46302e902fa380437cfb36831027a91dfb"
+    },
+    {
+      "fixture": "word-mac-probe-kinsoku-widow",
+      "docx_sha256": "ecd0ab76dc1be4d1eaad6141433bbc63a173e624aad14bacaefffee6a8c6007b"
+    },
+    {
+      "fixture": "word-mac-probe-latin-east-asia-face",
+      "docx_sha256": "fb23825b205b5acba3acaee23de2766bf1e89c13da4fbf9dc43714b31ed4fc31"
     },
     {
       "fixture": "word-mac-probe-line-pitch",
