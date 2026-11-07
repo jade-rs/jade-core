@@ -21,6 +21,7 @@
 //! execute_commands(&commands, canvas_context)?;
 //! ```
 
+pub(crate) mod control_mark_font;
 pub mod executor;
 
 use crate::document::FontHint;
