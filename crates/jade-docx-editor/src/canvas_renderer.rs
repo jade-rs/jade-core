@@ -23,8 +23,8 @@ use jade_docx_layout::font_resolver::{
 };
 use jade_docx_layout::layout_cache::{
     compute_paragraph_hash, CaretRect, ContentHash, DirtyRect, DirtyRegionTracker,
-    ParagraphHashableProps, ParagraphLayoutCache, ParagraphLayoutCacheStats, ParagraphLayoutResult,
-    SelectionOverlay, SelectionRect, TextMeasureCache, TextMeasurer,
+    ParagraphLayoutCache, ParagraphLayoutCacheStats, ParagraphLayoutResult, SelectionOverlay,
+    SelectionRect, TextMeasureCache, TextMeasurer,
 };
 #[cfg(test)]
 use jade_docx_layout::line_metrics::resolve_line_height_points;
@@ -276,6 +276,7 @@ mod numbering_snapshot;
 mod opentype_features_tests;
 mod page_layers;
 mod paragraph_font_cache;
+mod paragraph_hash;
 mod paragraph_join;
 #[cfg(test)]
 mod preset_shape_tests;
@@ -11448,30 +11449,13 @@ where
 
         // Paragraph properties (same subset as incremental layout)
         {
-            let props = paragraph.properties.as_ref().map(|p| {
-                let spacing = p.spacing.as_ref();
-                let indent = p.indent.as_ref();
-                let numbering = p.numbering.as_ref();
-
-                ParagraphHashableProps::new(
-                    p.alignment.as_deref(),
-                    spacing.and_then(|s| s.before),
-                    spacing.and_then(|s| s.after),
-                    spacing.and_then(|s| s.line),
-                    indent.and_then(|i| i.physical_left(p.bidi.unwrap_or(false))),
-                    indent.and_then(|i| i.physical_right(p.bidi.unwrap_or(false))),
-                    indent.and_then(|i| i.first_line),
-                    indent.and_then(|i| i.hanging),
-                    indent.and_then(|i| i.physical_left_chars(p.bidi.unwrap_or(false))),
-                    indent.and_then(|i| i.physical_right_chars(p.bidi.unwrap_or(false))),
-                    p.style.as_deref(),
-                    numbering.and_then(|n| n.id.as_deref()),
-                    numbering.and_then(|n| n.level),
-                )
-            });
+            let props = paragraph
+                .properties
+                .as_ref()
+                .map(paragraph_hash::BorrowedParagraphHashableProps::from);
             props.hash(&mut hasher);
             // `w:firstLineChars`/`w:hangingChars` are not part of
-            // ParagraphHashableProps::new's arity; fold them in here so edits
+            // the legacy hashable subset; fold them in here so edits
             // to the character-unit special indent invalidate cached layout.
             paragraph
                 .properties
