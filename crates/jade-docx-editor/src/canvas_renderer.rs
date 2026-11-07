@@ -44053,7 +44053,7 @@ mod tests {
     }
 
     #[test]
-    fn control_marks_cached_repaint_matches_fresh_after_format_and_option_changes() {
+    fn control_marks_repaint_matches_fresh_after_format_and_option_changes() {
         use jade_painter::recording::Op;
         let marks = |ops: Vec<Op>| {
             let mut state = (String::new(), String::new());
@@ -44094,11 +44094,11 @@ mod tests {
             .properties = Some(properties);
         let (mut renderer, painter) = recording_renderer();
         let mut options = Options::default();
-        for step in 0..4 {
-            options.show_formatting_marks = step != 2;
+        for step in 0..5 {
+            options.show_formatting_marks = matches!(step, 0 | 1 | 4);
             options.set_dark_mode(step % 2 != 0);
             options.set_formatting_mark_kinds(crate::FormattingMarkKinds {
-                spaces: true,
+                spaces: step != 3,
                 ..Default::default()
             });
             if step == 1 {
@@ -44116,11 +44116,14 @@ mod tests {
             let (mut fresh, fresh_painter) = recording_renderer();
             fresh.render(&document, &options).unwrap();
             let expected = marks(fresh_painter.ops());
-            assert!(!expected.is_empty());
+            assert_eq!(expected.is_empty(), step == 3);
             assert!(expected
                 .iter()
                 .all(|(_, _, _, (_, color))| color == CONTROL_MARK_COLOR));
-            assert_eq!(expected.iter().any(|(symbol, ..)| symbol == "↵"), step != 2);
+            assert_eq!(
+                expected.iter().any(|(symbol, ..)| symbol == "↵"),
+                matches!(step, 0 | 1 | 4)
+            );
             painter.clear();
             renderer.render(&document, &options).unwrap();
             assert_eq!(marks(painter.ops()), expected, "updated render step={step}");
@@ -44128,9 +44131,13 @@ mod tests {
             renderer.reset_paragraph_render_cache_stats();
             renderer.mark_full_repaint();
             renderer.render(&document, &options).unwrap();
-            assert!(
+            // Formatting marks deliberately bypass the paragraph paint cache.
+            // Hiding all marks must exercise replay; showing them again must
+            // rebuild the marks instead of replaying the hidden-mark commands.
+            assert_eq!(
                 renderer.paragraph_render_cache_stats().hits > 0,
-                "must exercise cached replay"
+                step == 3,
+                "paragraph replay policy step={step}"
             );
             assert_eq!(marks(painter.ops()), expected, "cached replay step={step}");
         }
