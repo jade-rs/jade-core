@@ -76,7 +76,7 @@ use serde::{Deserialize, Serialize};
 use serde_wasm_bindgen::to_value;
 use std::{
     borrow::Cow,
-    cell::{Cell, RefCell},
+    cell::{Cell, OnceCell, RefCell},
     collections::{BTreeMap, HashMap, HashSet},
     hash::{Hash, Hasher},
     rc::Rc,
@@ -258,6 +258,8 @@ mod art_borders;
 mod border_styles;
 #[cfg(test)]
 mod compat_tests;
+#[cfg(test)]
+mod control_mark_font_tests;
 mod float_lookahead;
 #[cfg(test)]
 mod font_state_tests;
@@ -31569,6 +31571,7 @@ where
             font_style_prefix: font_style,
             families,
             descriptors,
+            control_mark_font: OnceCell::new(),
             font_hint,
             resolved,
         }
@@ -33572,13 +33575,9 @@ where
         context.save();
         context.set_fill_style_str(CONTROL_MARK_COLOR);
 
-        let scaled_font_size_pt =
-            (style.font_size_pt as f64 * CONTROL_MARK_FONT_SCALE).max(1.0) as f32;
         let scaled_letter_spacing = style.letter_spacing_px * CONTROL_MARK_FONT_SCALE;
         let scaled_baseline_shift = style.baseline_shift_px * CONTROL_MARK_FONT_SCALE;
-        let font_descriptor =
-            style.descriptor_with_size(ScriptCategory::Latin, scaled_font_size_pt);
-        context.set_font(&font_descriptor);
+        context.set_font(style.control_mark_descriptor());
 
         let reduction_points = style.font_size_pt * ((1.0 - CONTROL_MARK_FONT_SCALE) * 0.5) as f32;
         let baseline_lift = points_to_px(reduction_points);
@@ -37892,6 +37891,9 @@ struct AppliedRunStyle {
     font_style_prefix: String,
     families: ResolvedFontFamilies,
     descriptors: FontDescriptorSet,
+    /// Font inputs are fixed when this cached style is constructed. Resolve the
+    /// mark descriptor only if it is drawn; clones share the resulting string.
+    control_mark_font: OnceCell<Rc<str>>,
     font_hint: Option<FontHint>,
     /// Pre-computed `ResolvedRunStyle` to avoid re-creating it per segment.
     resolved: Rc<ResolvedRunStyle>,
@@ -37919,6 +37921,13 @@ impl AppliedRunStyle {
     fn descriptor_with_size(&self, script: ScriptCategory, size_pt: f32) -> String {
         let family = self.families.for_script(script);
         format!("{}{:0.2}pt {}", self.font_style_prefix, size_pt, family)
+    }
+
+    fn control_mark_descriptor(&self) -> &str {
+        self.control_mark_font.get_or_init(|| {
+            let size = (f64::from(self.font_size_pt) * CONTROL_MARK_FONT_SCALE).max(1.0) as f32;
+            Rc::from(self.descriptor_with_size(ScriptCategory::Latin, size))
+        })
     }
 }
 
@@ -47345,6 +47354,7 @@ mod tests {
             font_style_prefix,
             families,
             descriptors,
+            control_mark_font: OnceCell::new(),
             font_hint: None,
             resolved,
         }
