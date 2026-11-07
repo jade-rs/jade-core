@@ -8,9 +8,9 @@ use quick_xml::Reader;
 
 use crate::error::Result;
 use crate::model::{
-    ArrayFormula, Cell, CellRange, CellRef, CellValue, ColumnSpan, DataTable, FreezePane,
-    HeaderFooter, PageBreak, PageMargins, PageOrientation, PageSetup, Row, Sheet, SheetVisibility,
-    MAX_COLUMN_COUNT,
+    ArrayFormula, ArrayFormulaKind, Cell, CellRange, CellRef, CellValue, ColumnSpan, DataTable,
+    FreezePane, HeaderFooter, PageBreak, PageMargins, PageOrientation, PageSetup, Row, Sheet,
+    SheetVisibility, MAX_COLUMN_COUNT,
 };
 use jade_opc::{local_name, Relationships};
 
@@ -65,7 +65,7 @@ pub fn parse_sheet_with_relationships(
     shared_strings: &[String],
     relationships: &Relationships,
 ) -> Result<Sheet> {
-    parse_sheet_noting_order(name, part_name, xml, shared_strings, relationships)
+    parse_sheet_noting_order(name, part_name, xml, shared_strings, relationships, None)
         .map(|(sheet, _)| sheet)
 }
 
@@ -77,6 +77,7 @@ pub(crate) fn parse_sheet_noting_order(
     xml: &str,
     shared_strings: &[String],
     relationships: &Relationships,
+    array_flags: Option<&[Option<bool>]>,
 ) -> Result<(Sheet, bool)> {
     let (grid, in_order) = crate::cell_content::worksheet_noting_order(xml)?;
     let mut protection_seen = false;
@@ -131,6 +132,7 @@ pub(crate) fn parse_sheet_noting_order(
 
     let mut row: Option<Row> = None;
     let mut cell: Option<Cell> = None;
+    let mut array_kind = ArrayFormulaKind::Unknown;
     let mut cell_type = CellType::Number;
     let mut raw_value: Option<String> = None;
     let mut in_value = false;
@@ -310,6 +312,20 @@ pub(crate) fn parse_sheet_noting_order(
                         }
                     }
                     b"c" => {
+                        array_kind = match attribute_value(element, b"cm")? {
+                            None => ArrayFormulaKind::Legacy,
+                            Some(index) => match index
+                                .trim_matches([' ', '\t', '\r', '\n'])
+                                .parse::<usize>()
+                                .ok()
+                                .and_then(|index| index.checked_sub(1))
+                                .and_then(|index| array_flags?.get(index).copied().flatten())
+                            {
+                                Some(true) => ArrayFormulaKind::Dynamic,
+                                Some(false) => ArrayFormulaKind::Legacy,
+                                None => ArrayFormulaKind::Unknown,
+                            },
+                        };
                         let reference = match attribute_value(element, b"r")? {
                             Some(value) => CellRef::parse(&value)?,
                             // A cell may omit `r`, in which case it sits in the
@@ -358,7 +374,11 @@ pub(crate) fn parse_sheet_noting_order(
                                 attribute_value(element, b"ref")?
                                     .and_then(|range| CellRange::parse(&range).ok()),
                             ) {
-                                sheet.array_formulas.push(ArrayFormula { anchor, range });
+                                sheet.array_formulas.push(ArrayFormula {
+                                    anchor,
+                                    range,
+                                    kind: array_kind,
+                                });
                             }
                         }
                         if kind.as_deref() == Some("dataTable") {
@@ -1045,6 +1065,54 @@ fn decoded_reference(reference: &quick_xml::events::BytesRef<'_>) -> Option<Stri
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn array_identity_requires_a_resolved_dynamic_flag() {
+        use super::*;
+        for (attribute, flags, expected) in [
+            ("", None, ArrayFormulaKind::Legacy),
+            ("cm=\"1\"", None, ArrayFormulaKind::Unknown),
+            (
+                "cm=\"1\"",
+                Some(&[Some(true)][..]),
+                ArrayFormulaKind::Dynamic,
+            ),
+            (
+                "cm=\"1\"",
+                Some(&[Some(false)][..]),
+                ArrayFormulaKind::Legacy,
+            ),
+            ("cm=\"1\"", Some(&[None][..]), ArrayFormulaKind::Unknown),
+            (
+                "cm=\"0\"",
+                Some(&[Some(true)][..]),
+                ArrayFormulaKind::Unknown,
+            ),
+            (
+                "cm=\"2\"",
+                Some(&[Some(true)][..]),
+                ArrayFormulaKind::Unknown,
+            ),
+            (
+                "cm=\"bad\"",
+                Some(&[Some(true)][..]),
+                ArrayFormulaKind::Unknown,
+            ),
+        ] {
+            let xml = format!(
+                r#"<worksheet><sheetData><row r="1"><c r="A1" {attribute}><f t="array" ref="A1:A2">SEQUENCE(2)</f><v>1</v></c></row></sheetData></worksheet>"#
+            );
+            let (sheet, _) = parse_sheet_noting_order(
+                "Sheet1",
+                "xl/worksheets/sheet1.xml",
+                &xml,
+                &[],
+                &Relationships::default(),
+                flags,
+            )
+            .unwrap();
+            assert_eq!(sheet.array_formulas[0].kind, expected, "{attribute}");
+        }
+    }
     use super::translate_formula as translate_shared_formula;
     use crate::CellRef;
 

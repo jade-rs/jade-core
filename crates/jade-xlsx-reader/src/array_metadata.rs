@@ -50,6 +50,15 @@ fn unique(mut indexes: impl Iterator<Item = usize>) -> Option<usize> {
 /// record index is zero-based. Unsupported or ambiguous links are not evidence
 /// of a dynamic array. XML errors are reported; unrelated metadata is ignored.
 pub fn first_dynamic_array_cell_metadata(xml: &str) -> Result<Option<u32>> {
+    Ok(cell_dynamic_array_flags(xml)?
+        .iter()
+        .position(|flag| *flag == Some(true))
+        .and_then(|index| u32::try_from(index + 1).ok()))
+}
+
+/// Explicit dynamic/fixed flags indexed by Office's one-based `cm` minus one.
+/// An absent, unsupported, invalid or ambiguous record yields `None`.
+pub fn cell_dynamic_array_flags(xml: &str) -> Result<Vec<Option<bool>>> {
     let mut reader = NsReader::from_str(xml);
     let mut nodes = vec![Node::default()];
     let mut stack = vec![0];
@@ -97,10 +106,10 @@ pub fn first_dynamic_array_cell_metadata(xml: &str) -> Result<Option<u32>> {
         }
     }
     if stack.len() != 1 {
-        return Ok(None);
+        return Ok(Vec::new());
     }
     let Some(root) = unique(nodes[0].children.iter().copied()) else {
-        return Ok(None);
+        return Ok(Vec::new());
     };
     let namespace = nodes[root].namespace.as_str();
     if nodes[root].name != "metadata"
@@ -110,10 +119,10 @@ pub fn first_dynamic_array_cell_metadata(xml: &str) -> Result<Option<u32>> {
                 | "http://purl.oclc.org/ooxml/spreadsheetml/main"
         )
     {
-        return Ok(None);
+        return Ok(Vec::new());
     }
     let Some(types) = unique(children(&nodes, root, namespace, "metadataTypes")) else {
-        return Ok(None);
+        return Ok(Vec::new());
     };
     let types: Vec<_> = children(&nodes, types, namespace, "metadataType").collect();
     let dynamic_types: Vec<_> = types
@@ -123,13 +132,13 @@ pub fn first_dynamic_array_cell_metadata(xml: &str) -> Result<Option<u32>> {
         .map(|(i, _)| i + 1)
         .collect();
     if dynamic_types.len() != 1 {
-        return Ok(None);
+        return Ok(Vec::new());
     }
     let Some(future) = unique(
         children(&nodes, root, namespace, "futureMetadata")
             .filter(|&i| nodes[i].attribute("name") == Some("XLDAPR")),
     ) else {
-        return Ok(None);
+        return Ok(Vec::new());
     };
     let records: Vec<_> = children(&nodes, future, namespace, "bk")
         .map(|record| {
@@ -145,28 +154,26 @@ pub fn first_dynamic_array_cell_metadata(xml: &str) -> Result<Option<u32>> {
                 DYNAMIC,
                 "dynamicArrayProperties",
             ))?;
-            Some(matches!(
-                nodes[properties].attribute("fDynamic").map(xml_space),
-                Some("1" | "true")
-            ))
+            match nodes[properties].attribute("fDynamic").map(xml_space) {
+                Some("1" | "true") => Some(true),
+                Some("0" | "false") => Some(false),
+                _ => None,
+            }
         })
         .collect();
     let Some(cells) = unique(children(&nodes, root, namespace, "cellMetadata")) else {
-        return Ok(None);
+        return Ok(Vec::new());
     };
-    for (index, block) in children(&nodes, cells, namespace, "bk").enumerate() {
-        let links: Vec<_> = children(&nodes, block, namespace, "rc")
-            .filter(|&i| nodes[i].index("t") == Some(dynamic_types[0]))
-            .collect();
-        if links.len() != 1 {
-            continue;
-        }
-        let record = nodes[links[0]].index("v");
-        if record.and_then(|i| records.get(i)) == Some(&Some(true)) {
-            return Ok(u32::try_from(index + 1).ok());
-        }
-    }
-    Ok(None)
+    Ok(children(&nodes, cells, namespace, "bk")
+        .map(|block| {
+            let link = unique(
+                children(&nodes, block, namespace, "rc")
+                    .filter(|&i| nodes[i].index("t") == Some(dynamic_types[0])),
+            )?;
+            let record = nodes[link].index("v")?;
+            records.get(record).copied().flatten()
+        })
+        .collect())
 }
 
 #[cfg(test)]
@@ -177,6 +184,19 @@ mod tests {
 
     #[test]
     fn resolves_type_and_record_indexes_with_namespace_aliases() {
+        assert_eq!(
+            cell_dynamic_array_flags(XML).unwrap(),
+            [Some(false), Some(true)]
+        );
+        assert_eq!(
+            cell_dynamic_array_flags(&XML.replace("fDynamic=\"false\"", "")).unwrap(),
+            [None, Some(true)]
+        );
+        assert_eq!(
+            cell_dynamic_array_flags(&XML.replace("fDynamic=\"false\"", "fDynamic=\"invalid\""))
+                .unwrap(),
+            [None, Some(true)]
+        );
         for xml in [
             XML.to_string(),
             XML.replace(

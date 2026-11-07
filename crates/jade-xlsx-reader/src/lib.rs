@@ -69,13 +69,13 @@ pub use formula::{
 };
 pub use jade_opc::OpcPackage;
 pub use model::{
-    builtin_number_format, Alignment, ArrayFormula, Border, BorderEdge, CalculationMode, Cell,
-    CellComment, CellFormat, CellRange, CellRef, CellValue, Color, ColumnSpan, CustomPath,
-    DataTable, DataValidation, DateSystem, DefinedName, DrawingColor, Fill, Font, FreezePane,
-    GradientFill, HeaderFooter, HorizontalAlignment, Hyperlink, Iteration, Outline, PageBreak,
-    PageMargins, PageOrientation, PageSetup, PathCommand, Row, Shape, ShapeKind, ShapePaint,
-    ShapeStyle, Sheet, SheetProtection, SheetVisibility, StyleTable, Table, TableColumn,
-    TableStyleDefinition, TableStyleElement, VerticalAlignment, Workbook, EMU_PER_PX,
+    builtin_number_format, Alignment, ArrayFormula, ArrayFormulaKind, Border, BorderEdge,
+    CalculationMode, Cell, CellComment, CellFormat, CellRange, CellRef, CellValue, Color,
+    ColumnSpan, CustomPath, DataTable, DataValidation, DateSystem, DefinedName, DrawingColor, Fill,
+    Font, FreezePane, GradientFill, HeaderFooter, HorizontalAlignment, Hyperlink, Iteration,
+    Outline, PageBreak, PageMargins, PageOrientation, PageSetup, PathCommand, Row, Shape,
+    ShapeKind, ShapePaint, ShapeStyle, Sheet, SheetProtection, SheetVisibility, StyleTable, Table,
+    TableColumn, TableStyleDefinition, TableStyleElement, VerticalAlignment, Workbook, EMU_PER_PX,
 };
 pub use sheet::{translate_formula, transpose_formula};
 pub use workbook_part::{SheetEntry, WorkbookPart};
@@ -163,6 +163,17 @@ fn read_package_noting_order(package: &OpcPackage) -> Result<(Workbook, Vec<Stri
     };
 
     let mut shared_furigana = false;
+    // Optional metadata must not make the ordinary grid unreadable. Broken or
+    // unsupported links leave array identity unknown rather than guessing CSE.
+    let array_flags = match workbook_rels.target_by_type_suffix("/sheetMetadata") {
+        Some(target) => {
+            match package.part_str(&jade_opc::resolve_target(&workbook_part, target))? {
+                Some(xml) => array_metadata::cell_dynamic_array_flags(&xml).unwrap_or_default(),
+                None => Vec::new(),
+            }
+        }
+        None => Vec::new(),
+    };
     let mut shared_runs = Vec::new();
     let shared_strings = match workbook_rels.target_by_type_suffix(SHARED_STRINGS) {
         Some(target) => {
@@ -233,6 +244,7 @@ fn read_package_noting_order(package: &OpcPackage) -> Result<(Workbook, Vec<Stri
             &xml,
             &shared_strings,
             &relationships,
+            Some(&array_flags),
         )?;
         if ordered {
             in_order.push(target.clone());
@@ -272,6 +284,7 @@ fn read_package_noting_order(package: &OpcPackage) -> Result<(Workbook, Vec<Stri
                     &xml,
                     &shared_strings,
                     &relationships,
+                    Some(&array_flags),
                 )?;
                 if ordered {
                     in_order.push(part.clone());

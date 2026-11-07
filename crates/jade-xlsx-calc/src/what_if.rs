@@ -232,12 +232,7 @@ fn put_back(
                 sheet as u32,
                 row,
                 column,
-                Some(format!(
-                    "={}",
-                    crate::formula_text::to_display_formula(
-                        formula.strip_prefix('=').unwrap_or(&formula)
-                    )
-                )),
+                Some(crate::source_formula_text(workbook, sheet, at, &formula)),
             );
         }
         None => set_literal(

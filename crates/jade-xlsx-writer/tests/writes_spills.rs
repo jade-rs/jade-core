@@ -79,6 +79,7 @@ fn a_typed_spill_is_saved_as_a_dynamic_array() {
         [ArrayFormula {
             anchor: at("J1"),
             range: range("J1:J3"),
+            kind: jade_xlsx_reader::ArrayFormulaKind::Dynamic,
         }]
     );
     assert_eq!(value(&written, "J2"), CellValue::Number(2.0));
