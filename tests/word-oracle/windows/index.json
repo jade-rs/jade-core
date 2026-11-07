@@ -96,6 +96,14 @@
       "fixture_count": 6,
       "glyph_count": 3086,
       "baseline_line_count": 0
+    },
+    {
+      "word_product_version": "16.0.19127.20860",
+      "directory": "word-16.0.19127.20860/20261107T064640987Z-1b8aa884",
+      "reference": "strict-emf.json",
+      "fixture_count": 16,
+      "glyph_count": 11414,
+      "baseline_line_count": 0
     }
   ]
 }

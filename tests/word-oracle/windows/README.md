@@ -4,7 +4,7 @@ References are separated by complete Word product version and immutable capture 
 The captured application is **16.0.19127.20860**; no other Word build has been
 measured. New builds create additional directories and keep older versions' tests.
 
-The regression index covers **37 unique documents, 178 pages and 34,384 visible
+The regression index covers **53 unique documents, 264 pages and 45,798 visible
 non-whitespace characters**, combining original PDF origins and Word drawing
 origins. Each registered set checks text, order, page count and both absolute
 coordinate axes within **0.375pt**. No origin fitting or tolerance increase is used.
@@ -91,9 +91,10 @@ adds omitted, explicit-zero, positive and negative table indentation with
 asymmetric horizontal cell margins. Windows distinguishes omitted indentation
 from an explicit zero for leading placement, ignores indentation for centered
 and trailing placement, and reserves the bottom border after an exact last row.
-The horizontal adjustment is limited to ordinary contiguous inline body tables
-with positive leading padding. Mac, other document modes and unmeasured
-bidi/cell-spacing/floating contexts retain their existing placement.
+Those initial horizontal adjustments were limited to ordinary contiguous inline
+body tables with positive leading padding. The later captures below extend
+coverage to bidi tables, zero padding and cell spacing. Mac and unmeasured
+floating contexts retain their existing placement.
 
 The mandatory installed-Arial gate now checks **16,285 full X/Y origins in
 20 documents (45 pages)**. Metadata also records Word's file version, OS
@@ -101,6 +102,28 @@ architecture and each document's actual Word-reported compatibility mode.
 The clean verification engine is `6bedd8c7`; earlier failed captures remain
 separate. The failed indentation capture explicitly records an uncommitted
 prototype and is diagnostic only, with its original native coordinates retained.
+
+Capture `20261107T064640987Z-1b8aa884` adds **16 documents, 86 pages and 11,414
+complete drawing origins**. All PDF origins also pass. These cover bidi visual
+order in modes 12/14/15; zero horizontal padding and legacy indentation;
+2/6pt cell spacing; 0/0.5/1/2/3pt borders; 0/4pt vertical padding; and exact
+rows with top/center/bottom content continuing onto the next page. The Windows
+rules reserve each independent cell perimeter, distinguish the opening gutter
+from continued-row spacing, and keep the outer frame and following paragraphs
+in the flow budget. Mac's layout rules and reference bytes are unchanged.
+
+The mandatory installed-Arial gate now checks **27,699 full X/Y origins in
+36 documents (131 pages)**. Every registered drawing origin is reconstructed
+from its original EMF in CI. A separate required Windows step checks that both
+Windows and Mac policies retain every origin through editing, DOCX export and
+undo; the full native Mac job also runs that portable test. It uses a complete
+layout snapshot rather than a lazy viewport's partial line cache.
+
+The clean verification engine is `9b409e13`. Original failures remain in
+`20261107T053527509Z-bfe577cf`, `20261107T063103416Z-f69ea7c6` and
+`20261107T063337099Z-03342251`, with their original native coordinates and
+executable hashes. All captures preserve the actual Word-reported compatibility
+mode separately from the complete application build.
 
 Every capture preserves original PDFs, optionally original page EMFs, raw
 references, comparisons and verification metadata. Metadata binds source,

@@ -78,9 +78,9 @@ fn spatial_order(glyphs: &mut [Value]) {
 
 fn all_glyphs(doc: &mut NativeDocument) -> Vec<Value> {
     let mut glyphs = Vec::new();
-    let mut lines = doc.renderer().layout_debug_lines();
     let snapshot = doc.capture_full_layout_debug().unwrap();
     assert!(snapshot.complete);
+    let mut lines = snapshot.body_lines;
     lines.extend(snapshot.auxiliary_lines.into_iter().map(|entry| entry.line));
     for line in lines {
         for fragment in line.fragments {
@@ -103,6 +103,51 @@ fn all_glyphs(doc: &mut NativeDocument) -> Vec<Value> {
         }
     }
     glyphs
+}
+
+/// Opening rules and gaps must survive cache invalidation and DOCX export.
+/// Exercise both policies with portable fonts; measured Word origins are
+/// checked separately by the installed-font oracle below.
+#[test]
+fn spaced_tables_preserve_origins_after_edit_export_and_undo() {
+    let font = repo_path("fonts/Noto_Sans_JP/static/NotoSansJP-Regular.ttf");
+    let faces = ["Arial", "MS Mincho", "Noto Sans JP"].map(|family| FaceSpec {
+        family,
+        weight: 400,
+        path: &font,
+    });
+    let bytes = std::fs::read(repo_path(
+        "public/fixtures/word-windows-edge-table-spacing-continuation-compat14.docx",
+    ))
+    .unwrap();
+    for platform in [WordLayoutPlatform::Mac, WordLayoutPlatform::Windows] {
+        set_word_layout_platform(platform);
+        let mut doc = NativeDocument::open(&bytes, 816.0, 1056.0, &faces).unwrap();
+        let mut before = all_glyphs(&mut doc);
+        spatial_order(&mut before);
+        // The third row continues on page two, with top/center/bottom cells.
+        let paragraph = 13;
+        assert_eq!(doc.paragraph_text(paragraph).as_deref(), Some("R3C1 alpha"));
+        let caret = doc.place_caret(paragraph, 0).unwrap();
+        let page = doc.page_and_offset(caret.document_y).0;
+        assert_eq!(page, 1);
+        doc.insert_text(paragraph, 0, "Edited ", page + 1).unwrap();
+        let mut edited = all_glyphs(&mut doc);
+        spatial_order(&mut edited);
+        assert_ne!(edited, before);
+        let exported = doc.export_docx().unwrap();
+        let mut reopened = NativeDocument::open(&exported, 816.0, 1056.0, &faces).unwrap();
+        let mut fresh = all_glyphs(&mut reopened);
+        spatial_order(&mut fresh);
+        assert_eq!(
+            edited, fresh,
+            "{platform:?}: stale layout or changed export geometry"
+        );
+        doc.undo().unwrap();
+        let mut restored = all_glyphs(&mut doc);
+        spatial_order(&mut restored);
+        assert_eq!(restored, before, "{platform:?}: undo changed geometry");
+    }
 }
 
 /// Arial is installed on Windows hosted runners. These Word captures need
@@ -174,12 +219,28 @@ fn windows_word_arial_edge_origins() {
                 "word-windows-edge-table-borders-compat14",
                 "word-windows-edge-table-indents-compat12",
                 "word-windows-edge-table-indents-compat14",
+                "word-windows-edge-table-bidi-compat12",
+                "word-windows-edge-table-bidi-compat14",
+                "word-windows-edge-table-bidi-compat15",
+                "word-windows-edge-table-spacing-compat12",
+                "word-windows-edge-table-spacing-compat14",
+                "word-windows-edge-table-spacing-compat15",
+                "word-windows-edge-table-spacing-borders-compat12",
+                "word-windows-edge-table-spacing-borders-compat14",
+                "word-windows-edge-table-spacing-borders-compat15",
+                "word-windows-edge-table-spacing-continuation-compat12",
+                "word-windows-edge-table-spacing-continuation-compat14",
+                "word-windows-edge-table-spacing-continuation-compat15",
+                "word-windows-edge-table-zero-horizontal-borders-compat12",
+                "word-windows-edge-table-zero-horizontal-borders-compat14",
+                "word-windows-edge-table-zero-padding-compat12",
+                "word-windows-edge-table-zero-padding-compat14",
             ]
             .map(str::to_owned)
         )
     );
     assert!(
-        checked >= 16285,
+        checked >= 27699,
         "do not silently remove edge-case coverage"
     );
 }

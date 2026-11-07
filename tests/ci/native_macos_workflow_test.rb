@@ -97,6 +97,16 @@ class NativeMacosWorkflowTest < Minitest::Test
     assert_includes origins.fetch("run"), "--exact"
     refute_includes origins.fetch("run"), "--skip"
     refute_includes origins.fetch("run"), "--ignored"
+    editing = job.fetch("steps").find do |item|
+      item["name"] == "Preserve spaced table geometry through editing and export"
+    end
+    refute_nil editing
+    refute editing.key?("if")
+    refute editing.fetch("continue-on-error", false)
+    assert_includes editing.fetch("run"), "--locked --test word_windows_coordinates spaced_tables_preserve_origins_after_edit_export_and_undo"
+    assert_includes editing.fetch("run"), "--exact"
+    refute_includes editing.fetch("run"), "--skip"
+    refute_includes editing.fetch("run"), "--ignored"
   end
 
   def test_windows_editing_and_font_reuse_cannot_silently_stop_running
