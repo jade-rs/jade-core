@@ -1,0 +1,90 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261107T110106544Z-29ee12e9",
+  "captured_at_utc": "2026-11-07T11:01:06.5897145Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20860",
+    "file_version": "16.0.19127.20860",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "9bafe09d0c458006744b9edce767a328ba2da1bb5d9a460e5830c47bf6d7f1d1"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-edge-table-negative-spacing-columns-2-compat14",
+      "source": "..\\negative-column-inputs\\public\\fixtures\\word-windows-edge-table-negative-spacing-columns-2-compat14.docx",
+      "sha256": "37bcf2fd5b23fe0bf575848103503f01b382203d6822c1a84005f782b3fe4900",
+      "pdf": "word-windows-edge-table-negative-spacing-columns-2-compat14.pdf",
+      "pdf_sha256": "f3a63c2847e728f4a4bbee276f896cc99e223b6fc5e4b03d73b4d6f10071092a",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-negative-spacing-columns-2-compat14.page-001.emf",
+          "sha256": "61c0fc16b1036cf3cc32c440f6f32c6a1e69bb399edf1dbe2c1c6a164c0171fb",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-negative-spacing-columns-3-compat14",
+      "source": "..\\negative-column-inputs\\public\\fixtures\\word-windows-edge-table-negative-spacing-columns-3-compat14.docx",
+      "sha256": "e35ed97ba985216d4476fa168b010318bdac0e324e5c74f12bd57a6ce00fb32a",
+      "pdf": "word-windows-edge-table-negative-spacing-columns-3-compat14.pdf",
+      "pdf_sha256": "a1eb20b12c618ffa7405f9eb91d1bbc2ff329e7a8d84c942906eb4334b8e3767",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-negative-spacing-columns-3-compat14.page-001.emf",
+          "sha256": "6e018bbc1595a341817017ffccaf5219410d29fd4955c21b52c2ba2f9d109d20",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-negative-spacing-columns-4-compat14",
+      "source": "..\\negative-column-inputs\\public\\fixtures\\word-windows-edge-table-negative-spacing-columns-4-compat14.docx",
+      "sha256": "ea4a8323c7578e20ac66e31667c8d4a6d8ce100aeac26fac9e1f8bcb9b69afe5",
+      "pdf": "word-windows-edge-table-negative-spacing-columns-4-compat14.pdf",
+      "pdf_sha256": "cbe362b17e6402d42e4621fa567a67b461a0764bb741d62d8aef8936bb457d28",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-negative-spacing-columns-4-compat14.page-001.emf",
+          "sha256": "2bbe7ecd3ef1507b269831f280e26430658b2450f4a197b18ddd7fa1cc266eab",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-negative-spacing-columns-5-compat14",
+      "source": "..\\negative-column-inputs\\public\\fixtures\\word-windows-edge-table-negative-spacing-columns-5-compat14.docx",
+      "sha256": "23c3f84c0e5e72966f3565ce6c00437d3fa1ad13bcde1c0380d19374c7e1f063",
+      "pdf": "word-windows-edge-table-negative-spacing-columns-5-compat14.pdf",
+      "pdf_sha256": "30ee466f2b7dd503c3a9282d675e4c12873f732c5c63b90c804d4db5017e6372",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-negative-spacing-columns-5-compat14.page-001.emf",
+          "sha256": "52ab72035919a33bf2a3fbc9edd45bf0175052c3b26d3c283b49f8f04c5b15f5",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    }
+  ]
+}

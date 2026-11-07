@@ -125,6 +125,8 @@ fn spaced_tables_preserve_origins_after_edit_export_and_undo() {
             ("table-spacing-mixed-borders-compat14", 13, 0),
             ("table-collapsed-implicit-mixed-borders-compat14", 53, 0),
             ("table-spacing-nil-mixed-borders-compat14", 53, 0),
+            ("table-collapsed-mixed-borders-compat14", 53, 0),
+            ("table-spacing-missing-width-mixed-borders-compat14", 53, 0),
         ] {
             let bytes = std::fs::read(repo_path(&format!(
                 "public/fixtures/word-windows-edge-{fixture}.docx"
@@ -287,12 +289,21 @@ fn windows_word_arial_edge_origins() {
                 "word-windows-edge-table-spacing-percent-mixed-borders-compat12",
                 "word-windows-edge-table-spacing-percent-mixed-borders-compat14",
                 "word-windows-edge-table-spacing-percent-mixed-borders-compat15",
+                "word-windows-edge-table-collapsed-mixed-borders-compat12",
+                "word-windows-edge-table-collapsed-mixed-borders-compat14",
+                "word-windows-edge-table-collapsed-mixed-borders-compat15",
+                "word-windows-edge-table-spacing-missing-width-mixed-borders-compat12",
+                "word-windows-edge-table-spacing-missing-width-mixed-borders-compat14",
+                "word-windows-edge-table-spacing-missing-width-mixed-borders-compat15",
+                "word-windows-edge-table-spacing-missing-type-mixed-borders-compat12",
+                "word-windows-edge-table-spacing-missing-type-mixed-borders-compat14",
+                "word-windows-edge-table-spacing-missing-type-mixed-borders-compat15",
             ]
             .map(str::to_owned)
         )
     );
     assert!(
-        checked >= 49161,
+        checked >= 53742,
         "do not silently remove edge-case coverage"
     );
 }
