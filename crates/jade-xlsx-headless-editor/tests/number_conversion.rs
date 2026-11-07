@@ -3,6 +3,49 @@ use jade_xlsx_headless_api::CellInput;
 use jade_xlsx_headless_editor::HeadlessWorkbook;
 
 #[test]
+fn variadic_complex_aggregates_follow_reference_edits_and_saved_text() {
+    for (function, initial, changed) in [("IMSUM", "6+2i", "7+2i"), ("IMPRODUCT", "6+12i", "8+16i")]
+    {
+        let mut package = OpcPackage::open(include_bytes!(
+            "../../../public/fixtures/sample-workbook.xlsx"
+        ))
+        .unwrap();
+        package.replace("xl/worksheets/sheet1.xml", br#"<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData/></worksheet>"#.to_vec());
+        let mut book = HeadlessWorkbook::open_for_editing(&package.write().unwrap()).unwrap();
+        let name = "売上サマリ";
+        book.set(name, "B1", CellInput::Text("1+2i".into()))
+            .unwrap();
+        book.set(name, "B2", CellInput::Number(2.0)).unwrap();
+        book.set(name, "B3", CellInput::Number(3.0)).unwrap();
+        book.set(
+            name,
+            "F1",
+            CellInput::Formula(format!("{function}(B1,B2,B3)")),
+        )
+        .unwrap();
+        book.set(name, "G1", CellInput::Formula(format!("{function}(B1)")))
+            .unwrap();
+        assert_eq!(book.cell(name, "F1").unwrap().display, initial);
+        assert_eq!(book.cell(name, "G1").unwrap().display, "1+2i");
+        book.set(name, "B3", CellInput::Number(4.0)).unwrap();
+        assert_eq!(book.cell(name, "F1").unwrap().display, changed);
+        book.undo().unwrap();
+        assert_eq!(book.cell(name, "F1").unwrap().display, initial);
+        book.redo().unwrap();
+        assert_eq!(book.cell(name, "F1").unwrap().display, changed);
+        let saved = book.save_bytes().unwrap();
+        for reopened in [
+            HeadlessWorkbook::open(&saved).unwrap(),
+            HeadlessWorkbook::open_for_editing(&saved).unwrap(),
+        ] {
+            assert_eq!(reopened.cell(name, "F1").unwrap().display, changed);
+            assert_eq!(reopened.cell(name, "F1").unwrap().number, None);
+            assert_eq!(reopened.cell(name, "G1").unwrap().display, "1+2i");
+        }
+    }
+}
+
+#[test]
 fn complex_transcendental_ranges_follow_history_and_saved_text_types() {
     for (formula, input, expected) in [
         ("IMCOS(B1:B2)", "0", 1.0),
