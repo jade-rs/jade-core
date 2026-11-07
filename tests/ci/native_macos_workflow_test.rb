@@ -99,6 +99,25 @@ class NativeMacosWorkflowTest < Minitest::Test
     refute_includes origins.fetch("run"), "--ignored"
   end
 
+  def test_windows_editing_and_font_reuse_cannot_silently_stop_running
+    steps = @workflow.fetch("jobs").fetch("windows-word-baselines").fetch("steps")
+    {
+      "Verify Windows font reuse and rendering" => %w[windows_font_reuse font_styles opentype_features],
+      "Verify Windows native editing histories" => %w[native_document tables typing_differential]
+    }.each do |name, suites|
+      step = steps.find { |item| item["name"] == name }
+      refute_nil step, "missing #{name}"
+      refute step.key?("if")
+      refute step.fetch("continue-on-error", false)
+      command = step.fetch("run")
+      assert_includes command, "--locked"
+      assert_includes command, "--test-threads=1"
+      suites.each { |suite| assert_includes command, "--test #{suite}" }
+      refute_includes command, "--skip"
+      refute_includes command, "--ignored"
+    end
+  end
+
   private
 
   def run_command(step_name)
