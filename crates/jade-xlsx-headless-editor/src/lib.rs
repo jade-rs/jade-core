@@ -55,13 +55,17 @@ fn spilled_value(value: &CellValue) -> NewValue {
 
 fn formula_cache_state(cell: &Cell, needs_recalculation: bool) -> Option<FormulaState> {
     cell.formula.as_ref()?;
-    Some(if matches!(cell.value, CellValue::Empty) {
+    Some(formula_value_state(&cell.value, needs_recalculation))
+}
+
+fn formula_value_state(value: &CellValue, needs_recalculation: bool) -> FormulaState {
+    if matches!(value, CellValue::Empty) {
         FormulaState::Uncalculated
     } else if needs_recalculation {
         FormulaState::Stale
     } else {
         FormulaState::Cached
-    })
+    }
 }
 
 use std::collections::{BTreeMap, HashSet};
@@ -122,6 +126,8 @@ pub enum HeadlessError {
     BadReference(String),
     #[error("duplicate cell reference `{0}` in one batch")]
     DuplicateReference(String),
+    #[error("cannot change part of legacy array `{sheet}!{range}`")]
+    PartialLegacyArray { sheet: String, range: String },
     /// A format change that names nothing to change.
     #[error("the format change names nothing to change")]
     EmptyFormatChange,
@@ -1363,6 +1369,43 @@ impl HeadlessWorkbook {
         self.write_edits_with_parts(edits, styles, Vec::new())
     }
 
+    /// A CSE array is one value-editing unit. Count only explicit writes in
+    /// the batch, so a tiny edit cannot expand a huge declared file range.
+    /// Formatting-only edits may change individual cells.
+    fn guard_legacy_array_edits(&self, edits: &[(usize, CellEdit)]) -> Result<()> {
+        let writes: HashSet<_> = edits
+            .iter()
+            .filter(|(_, edit)| !matches!(edit.value, NewValue::Unchanged))
+            .map(|(index, edit)| (*index, edit.reference))
+            .collect();
+        for (index, sheet) in self.workbook.sheets.iter().enumerate() {
+            for array in sheet
+                .array_formulas
+                .iter()
+                .filter(|array| array.kind == jade_xlsx_reader::ArrayFormulaKind::Legacy)
+            {
+                let range = array.range;
+                let count = writes
+                    .iter()
+                    .filter(|(at, cell)| {
+                        *at == index
+                            && (range.start.column..=range.end.column).contains(&cell.column)
+                            && (range.start.row..=range.end.row).contains(&cell.row)
+                    })
+                    .count() as u64;
+                let area = (u64::from(range.end.column) - u64::from(range.start.column) + 1)
+                    * (u64::from(range.end.row) - u64::from(range.start.row) + 1);
+                if count != 0 && count != area {
+                    return Err(HeadlessError::PartialLegacyArray {
+                        sheet: sheet.name.clone(),
+                        range: format_range(range),
+                    });
+                }
+            }
+        }
+        Ok(())
+    }
+
     /// Edits that write into an array formula's spill block it, as typing
     /// over a spilled cell does in Excel: the rest of the spill is cleared and
     /// the anchor's range shrinks to the anchor, so the next recalculation
@@ -1470,6 +1513,7 @@ impl HeadlessWorkbook {
         extra_parts: Vec<(String, String)>,
         base: Option<&[u8]>,
     ) -> Result<()> {
+        self.guard_legacy_array_edits(&edits)?;
         let (edits, blocked) = self.block_spills(edits);
         for (index, edit) in &edits {
             if !matches!(edit.value, NewValue::Unchanged) {
@@ -3052,6 +3096,12 @@ impl HeadlessWorkbook {
         // is cleared, and the anchor's range follows.
         for (index, sheet) in self.workbook.sheets.iter().enumerate() {
             for array in &sheet.array_formulas {
+                // Legacy outputs have fixed bounds, including when their
+                // calculation is held. Never resize them or enumerate a huge
+                // unsupported range merely because no dynamic spill returned.
+                if array.kind == jade_xlsx_reader::ArrayFormulaKind::Legacy {
+                    continue;
+                }
                 let now = spills
                     .iter()
                     .find(|spill| spill.sheet == index && spill.anchor == array.anchor)
@@ -3131,7 +3181,14 @@ impl HeadlessWorkbook {
 
     pub fn formula_state(&self, sheet_index: usize, reference: CellRef) -> Option<FormulaState> {
         let sheet = self.workbook.sheets.get(sheet_index)?;
-        formula_cache_state(sheet.cell_at(reference)?, self.calculation_is_stale())
+        sheet.formula_source_at(reference)?;
+        Some(formula_value_state(
+            sheet
+                .cell_at(reference)
+                .map(|cell| &cell.value)
+                .unwrap_or(&CellValue::Empty),
+            self.calculation_is_stale(),
+        ))
     }
 
     fn calculation_is_stale(&self) -> bool {
@@ -3565,6 +3622,9 @@ impl HeadlessWorkbook {
         );
         let format = self.workbook.styles.cell_format(style_index);
         let value = cell.map(|cell| &cell.value).unwrap_or(&CellValue::Empty);
+        let formula = sheet
+            .formula_source_at(reference)
+            .map(|(_, source)| formula_text::to_display_formula(source));
         let conditional_style = jade_xlsx_layout::conditional_format::ConditionalStyles::new(
             sheet,
             &self.workbook.styles,
@@ -3603,13 +3663,10 @@ impl HeadlessWorkbook {
             )
             .text,
             // As Excel shows it, without the file's `_xlfn.` prefixes.
-            formula: cell.and_then(|cell| {
-                cell.formula
-                    .as_deref()
-                    .map(jade_xlsx_calc::formula_text::to_display_formula)
-            }),
-            formula_state: cell
-                .and_then(|cell| formula_cache_state(cell, self.calculation_is_stale())),
+            formula_state: formula
+                .as_ref()
+                .map(|_| formula_value_state(value, self.calculation_is_stale())),
+            formula,
             number_format,
             hyperlink: sheet.hyperlink_at(reference).map(|link| HyperlinkView {
                 target: link.target.clone(),

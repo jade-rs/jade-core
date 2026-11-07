@@ -7,6 +7,45 @@ use jade_xlsx_reader::{read_xlsx, CellRef, CellValue};
 use zip::write::SimpleFileOptions;
 
 #[test]
+fn legacy_array_followers_keep_formula_identity_without_relative_translation() {
+    let xml = sheet(
+        r#"<row r="1"><c r="A1"><f t="array" ref="A1:A3">SEQUENCE(B1, 1)</f><v>1</v></c><c r="B1"><v>3</v></c><c r="C1"><f>FORMULATEXT(A2)</f></c><c r="D1"><f>ISFORMULA(A3)</f></c><c r="F1"><f>SEQUENCE(3,1)</f></c><c r="G1"><f>FORMULATEXT(F2)</f></c><c r="H1"><f>ISFORMULA(F3)</f></c></row><row r="2"><c r="A2"><v>2</v></c></row><row r="3"><c r="A3"><v>3</v></c></row>"#,
+    );
+    let result = evaluate(&read_xlsx(&workbook(&xml, None, false)).unwrap()).unwrap();
+    assert!(result.skipped.is_empty());
+    assert_eq!(
+        computed(&result, 0, "C1"),
+        Some(&CellValue::Text("{=SEQUENCE(B1, 1)}".into()))
+    );
+    assert_eq!(computed(&result, 0, "D1"), Some(&CellValue::Bool(true)));
+    assert_eq!(
+        computed(&result, 0, "G1"),
+        Some(&CellValue::Error("#N/A".into()))
+    );
+    assert_eq!(computed(&result, 0, "H1"), Some(&CellValue::Bool(false)));
+}
+
+#[test]
+fn held_and_huge_legacy_members_keep_sparse_formula_identity() {
+    for (range, formula, member) in [
+        ("A1:A3", "FUTUREFUNC( 1 )", "A2"),
+        ("A1:B1048576", "SUM(1, 2)", "B1048576"),
+    ] {
+        let xml = sheet(&format!(
+            r#"<row r="1"><c r="A1"><f t="array" ref="{range}">{formula}</f><v>7</v></c><c r="C1"><f>FORMULATEXT({member})</f></c><c r="D1"><f>ISFORMULA({member})</f></c></row><row r="2"><c r="A2"><v>8</v></c></row>"#
+        ));
+        let result = evaluate(&read_xlsx(&workbook(&xml, None, false)).unwrap()).unwrap();
+        assert!(!result.skipped.is_empty());
+        assert_eq!(
+            computed(&result, 0, "C1"),
+            Some(&CellValue::Text(format!("{{={formula}}}")))
+        );
+        assert_eq!(computed(&result, 0, "D1"), Some(&CellValue::Bool(true)));
+        assert!(result.spills.is_empty());
+    }
+}
+
+#[test]
 fn legacy_cse_truncates_larger_results_and_repeats_scalar_results() {
     let xml = sheet(
         r#"<row r="1"><c r="A1"><f t="array" ref="A1:A2">{1;2;3}</f><v>1</v></c><c r="B1"><f t="array" ref="B1:B3">7</f><v>7</v></c><c r="C1"><f>A3+B3</f></c></row><row r="2"><c r="A2"><v>2</v></c><c r="B2"><v>7</v></c></row><row r="3"><c r="A3"><v>99</v></c><c r="B3"><v>7</v></c></row>"#,
