@@ -729,7 +729,10 @@ fn font_index_buffers_preserve_prefix_and_repeated_switches() {
         Rc::from("11pt 'Noto Sans JP'"),
         Rc::from("10pt Arial"),
     ];
-    for length in [2, 3, 31, 63, 64, 65, 127, 129, 513] {
+    for (length, first_font) in [2, 3, 31, 63, 64, 65, 127, 129, 513]
+        .into_iter()
+        .flat_map(|length| (0..fonts.len()).map(move |first_font| (length, first_font)))
+    {
         let source: String = ['A', 'é', '税', '\0', '\u{0301}']
             .into_iter()
             .cycle()
@@ -743,9 +746,9 @@ fn font_index_buffers_preserve_prefix_and_repeated_switches() {
                     text_start: start as u32,
                     text_end: (start + ch.len_utf8()) as u32,
                     font_index: if index < first_change {
-                        0
+                        first_font as u16
                     } else {
-                        ((index - first_change + 1) % fonts.len()) as u16
+                        ((first_font + index - first_change + 1) % fonts.len()) as u16
                     },
                     x_offset: index as f64 * -0.125,
                 })
@@ -769,7 +772,7 @@ fn font_index_buffers_preserve_prefix_and_repeated_switches() {
                 assert_eq!(
                     calls.len(),
                     1,
-                    "length={length}, first_change={first_change}, mode={mode:?}"
+                    "length={length}, first_font={first_font}, first_change={first_change}, mode={mode:?}"
                 );
                 assert_eq!(calls[0].0, source);
                 assert_eq!(
