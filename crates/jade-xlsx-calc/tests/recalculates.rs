@@ -7,6 +7,37 @@ use jade_xlsx_reader::{read_xlsx, CellRef, CellValue};
 use zip::write::SimpleFileOptions;
 
 #[test]
+fn decimal_broadcasts_text_radices_and_accepts_wide_integers() {
+    assert_formulas(
+        &[
+            r#"DECIMAL("FFFFFFFFFFFFFFFF",16)/2^64"#,
+            r#"DECIMAL("18446744073709551615",10)/2^64"#,
+            r#"DECIMAL(REPT("F",255),16)/2^1020"#,
+            r#"DECIMAL(REPT("Z",255),36)"#,
+            r#"DECIMAL(REPT("0",256),2)"#,
+            r#"ARRAYTOTEXT(DECIMAL({"10";"ff"},{2,16}),1)"#,
+            r#"ARRAYTOTEXT(DECIMAL({"10";#N/A},{2,#DIV/0!}),1)"#,
+            r#"TYPE(DECIMAL({"10"},2))"#,
+            r#"DECIMAL("-FF",16)"#,
+            r#"DECIMAL("ff",16.9)"#,
+        ],
+        &[
+            CellValue::Number(1.0),
+            CellValue::Number(1.0),
+            CellValue::Number(1.0),
+            CellValue::Error("#NUM!".into()),
+            CellValue::Error("#NUM!".into()),
+            CellValue::Text("{2,16;#VALUE!,255}".into()),
+            CellValue::Text("{2,#DIV/0!;#N/A,#N/A}".into()),
+            CellValue::Number(64.0),
+            CellValue::Number(-255.0),
+            CellValue::Number(255.0),
+        ],
+        false,
+    );
+}
+
+#[test]
 fn base_broadcasts_radices_padding_and_enforces_documented_bounds() {
     assert_formulas(
         &[

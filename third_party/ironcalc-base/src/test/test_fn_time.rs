@@ -652,6 +652,9 @@ fn date_and_time_broadcast_check_product_size_before_allocating_the_result() {
     model._set("A47", "=BASE(SEQUENCE(1001,1,1),SEQUENCE(1,1001,2))");
     model.evaluate();
     assert_eq!(model._get_text("A47"), "#ERROR!");
+    model._set("A48", "=DECIMAL(SEQUENCE(1001,1,1),SEQUENCE(1,1001,2))");
+    model.evaluate();
+    assert_eq!(model._get_text("A48"), "#ERROR!");
 }
 
 #[test]

@@ -3,6 +3,57 @@ use jade_xlsx_headless_api::CellInput;
 use jade_xlsx_headless_editor::HeadlessWorkbook;
 
 #[test]
+fn decimal_ranges_follow_radix_edits_and_saved_caches() {
+    let mut package = OpcPackage::open(include_bytes!(
+        "../../../public/fixtures/sample-workbook.xlsx"
+    ))
+    .unwrap();
+    package.replace("xl/worksheets/sheet1.xml",br#"<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData/></worksheet>"#.to_vec());
+    let mut book = HeadlessWorkbook::open_for_editing(&package.write().unwrap()).unwrap();
+    let name = "売上サマリ";
+    for (at, input) in [
+        ("B1", CellInput::Text("10".into())),
+        ("B2", CellInput::Text("FFFFFFFFFFFFFFFF".into())),
+        ("C1", CellInput::Number(1.0)),
+        ("D1", CellInput::Number(16.0)),
+        ("F1", CellInput::Formula("DECIMAL(B1:B2,C1:D1)".into())),
+        ("J1", CellInput::Formula("ROWS(F1#)*COLUMNS(F1#)".into())),
+    ] {
+        book.set(name, at, input).unwrap();
+    }
+    assert_eq!(book.cell(name, "F1").unwrap().display, "#NUM!");
+    assert_eq!(
+        book.cell(name, "G2").unwrap().number,
+        Some(2.0_f64.powi(64))
+    );
+    book.set(name, "C1", CellInput::Number(16.0)).unwrap();
+    assert_eq!(book.cell(name, "F1").unwrap().number, Some(16.0));
+    book.set(name, "B1", CellInput::Text("FF".into())).unwrap();
+    assert_eq!(book.cell(name, "F1").unwrap().number, Some(255.0));
+    book.undo().unwrap();
+    assert_eq!(book.cell(name, "F1").unwrap().number, Some(16.0));
+    book.redo().unwrap();
+    assert_eq!(book.cell(name, "F1").unwrap().number, Some(255.0));
+    book.undo().unwrap();
+    book.undo().unwrap();
+    let saved = book.save_bytes().unwrap();
+    for reopened in [
+        HeadlessWorkbook::open(&saved).unwrap(),
+        HeadlessWorkbook::open_for_editing(&saved).unwrap(),
+    ] {
+        for at in ["F1", "F2"] {
+            assert_eq!(reopened.cell(name, at).unwrap().display, "#NUM!");
+        }
+        assert_eq!(reopened.cell(name, "G1").unwrap().number, Some(16.0));
+        assert_eq!(
+            reopened.cell(name, "G2").unwrap().number,
+            Some(2.0_f64.powi(64))
+        );
+        assert_eq!(reopened.cell(name, "J1").unwrap().number, Some(4.0));
+    }
+}
+
+#[test]
 fn base_ranges_follow_padding_edits_and_saved_caches() {
     let mut package = OpcPackage::open(include_bytes!(
         "../../../public/fixtures/sample-workbook.xlsx"
