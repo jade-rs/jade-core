@@ -130,7 +130,7 @@ def negative_spacing_grid(widths, spacing='', row_scope=None):
     return '<w:tbl><w:tblPr><w:tblW w:w="6000" w:type="dxa"/><w:tblLayout w:type="fixed"/>' + spacing + '<w:tblBorders>' + border + '</w:tblBorders><w:tblCellMar>' + margins + '</w:tblCellMar></w:tblPr><w:tblGrid>' + ''.join(f'<w:gridCol w:w="{width}"/>' for width in widths) + '</w:tblGrid>' + ''.join(rows) + '</w:tbl>'
 
 
-def negative_spacing_column_sweep(count, weights=None, variant=None):
+def negative_spacing_column_sweep(count, weights=None, variant=None, compatibility_mode=14):
     widths = [6000 // count] * count if weights is None else [6000 * weight // sum(weights) for weight in weights]
     body = []
     forms = [('omitted', ''), ('nil', '<w:tblCellSpacing w:w="0" w:type="nil"/>'), ('zero', '<w:tblCellSpacing w:w="0" w:type="dxa"/>')]
@@ -140,14 +140,14 @@ def negative_spacing_column_sweep(count, weights=None, variant=None):
         body.append(negative_spacing_grid(widths, spacing))
     kind = 'columns' if weights is None else 'unequal'
     content = ''.join(body)
-    if variant == 'autofit':
-        content = content.replace('<w:tblLayout w:type="fixed"/>', '<w:tblLayout w:type="autofit"/>')
-    elif variant == 'bidi':
-        content = content.replace('<w:tblPr>', '<w:tblPr><w:bidiVisual/>')
-    elif variant is not None:
+    if variant not in (None, 'autofit', 'bidi', 'autofit-bidi'):
         raise ValueError(f'Unknown negative-spacing variant: {variant}')
+    if variant is not None and 'autofit' in variant:
+        content = content.replace('<w:tblLayout w:type="fixed"/>', '<w:tblLayout w:type="autofit"/>')
+    if variant is not None and 'bidi' in variant:
+        content = content.replace('<w:tblPr>', '<w:tblPr><w:bidiVisual/>')
     prefix = '' if variant is None else variant + '-'
-    m.write(f'table-negative-spacing-{prefix}{kind}-{count}-compat14', content, 14)
+    m.write(f'table-negative-spacing-{prefix}{kind}-{count}-compat{compatibility_mode}', content, compatibility_mode)
 
 
 def negative_spacing_row_scope_sweep():
@@ -160,6 +160,64 @@ def negative_spacing_row_scope_sweep():
             table = table.replace('<w:tblPr>', '<w:tblPr>' + negative, 1)
         body.append(table)
     m.write('table-negative-spacing-row-scopes-compat14', ''.join(body), 14)
+
+
+def signed_spacing_bidi_alignment_sweep(mode):
+    body = []
+    for align in ('center', 'right'):
+        for value in (0, 120, -40, -80):
+            body.append(m.para(m.run(f'Bidi AutoFit {align} spacing {value}')))
+            table = negative_spacing_grid([1000, 2000, 3000], f'<w:tblCellSpacing w:w="{value}" w:type="dxa"/>')
+            table = table.replace('<w:tblPr>', f'<w:tblPr><w:bidiVisual/><w:jc w:val="{align}"/>')
+            body.append(table.replace('<w:tblLayout w:type="fixed"/>', '<w:tblLayout w:type="autofit"/>'))
+    m.write(f'table-negative-spacing-autofit-bidi-alignment-compat{mode}', ''.join(body), mode)
+
+
+def positive_spacing_sizing_sweep(layout, bidi, short, mode=14):
+    body = []
+    for value in (0, 40, 80, 120):
+        body.append(m.para(m.run(f'Sizing {layout} {"bidi" if bidi else "ltr"} spacing {value}')))
+        table = negative_spacing_grid([1000, 2000, 3000], f'<w:tblCellSpacing w:w="{value}" w:type="dxa"/>')
+        if layout == 'autofit':
+            table = table.replace('w:type="fixed"', 'w:type="autofit"')
+        if bidi:
+            table = table.replace('<w:tblPr>', '<w:tblPr><w:bidiVisual/>')
+        if short:
+            for r in (1, 2):
+                for c in (1, 2, 3):
+                    table = table.replace(f'R{r}C{c}', chr(64+c))
+        body.append(table)
+    suffix = '-short' if short else ''
+    m.write(f'table-positive-spacing-sizing-{layout}-{"bidi" if bidi else "ltr"}{suffix}-compat{mode}', ''.join(body), mode)
+
+
+def zero_spacing_border_width_sweep(mode, bidi):
+    body = []
+    for align in ('default', 'center', 'right'):
+        for size in (0, 4, 8, 24):
+            for form in ('omitted', 'zero'):
+                body.append(m.para(m.run(f'Border {size} {align} spacing {form}')))
+                table = negative_spacing_grid([1000, 2000, 3000], '' if form == 'omitted' else '<w:tblCellSpacing w:w="0" w:type="dxa"/>')
+                table = table.replace('w:val="single" w:sz="4"', f'w:val="{"nil" if size == 0 else "single"}" w:sz="{size}"')
+                extra = '<w:bidiVisual/>' if bidi else ''
+                if align != 'default':
+                    extra += f'<w:jc w:val="{align}"/>'
+                body.append(table.replace('<w:tblPr>', '<w:tblPr>'+extra))
+    m.write(f'table-zero-spacing-{"bidi" if bidi else "ltr"}-border-widths-compat{mode}', ''.join(body), mode)
+
+
+def positive_spacing_bidi_border_width_sweep(mode):
+    body = []
+    for align in ('default', 'center', 'right'):
+        for size in (0, 4, 8, 24):
+            body.append(m.para(m.run(f'Border {size} {align} spacing 120')))
+            table = negative_spacing_grid([1000, 2000, 3000], '<w:tblCellSpacing w:w="120" w:type="dxa"/>')
+            table = table.replace('w:val="single" w:sz="4"', f'w:val="{"nil" if size == 0 else "single"}" w:sz="{size}"')
+            extra = '<w:bidiVisual/>'
+            if align != 'default':
+                extra += f'<w:jc w:val="{align}"/>'
+            body.append(table.replace('<w:tblPr>', '<w:tblPr>'+extra))
+    m.write(f'table-positive-spacing-bidi-border-widths-compat{mode}', ''.join(body), mode)
 
 
 if __name__ == '__main__':
@@ -197,3 +255,17 @@ if __name__ == '__main__':
     negative_spacing_row_scope_sweep()
     for variant in ['autofit', 'bidi']:
         negative_spacing_column_sweep(3, (1, 2, 3), variant)
+
+    for mode in (12, 14, 15):
+        for variant in ('autofit', 'bidi', 'autofit-bidi'):
+            if mode != 14 or variant == 'autofit-bidi':
+                negative_spacing_column_sweep(3, (1, 2, 3), variant, mode)
+        signed_spacing_bidi_alignment_sweep(mode)
+    for layout, bidi in [('fixed', True), ('autofit', True), ('autofit', False)]:
+        for short in (False, True):
+            positive_spacing_sizing_sweep(layout, bidi, short)
+    positive_spacing_sizing_sweep('autofit', True, False, 15)
+    for mode in (14, 15):
+        for bidi in (False, True):
+            zero_spacing_border_width_sweep(mode, bidi)
+        positive_spacing_bidi_border_width_sweep(mode)

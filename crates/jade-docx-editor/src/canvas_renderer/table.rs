@@ -199,6 +199,14 @@ struct ClipGuard<'a, P: Painter> {
 }
 
 impl<'a, P: Painter> ClipGuard<'a, P> {
+    fn empty(painter: &'a P) -> Self {
+        painter.save();
+        painter.begin_path();
+        painter.rect(0.0, 0.0, 0.0, 0.0);
+        painter.clip();
+        Self { painter }
+    }
+
     fn new(painter: &'a P, x: f64, y: f64, width: f64, height: f64) -> Option<Self> {
         if width <= 0.0 || height <= 0.0 {
             return None;
@@ -2764,7 +2772,19 @@ where
                             continued_row_opening_rule =
                                 spacing_frame_width(row, table, TableBorderSide::Top);
                         } else {
-                            self.current_y += opening_rule;
+                            let already_reserved =
+                                if jade_docx_layout::line_metrics::word_layout_platform()
+                                    == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+                                {
+                                    pending_cells
+                                        .iter()
+                                        .filter(|cell| !cell.skip_render)
+                                        .map(|cell| cell.page_top_inset)
+                                        .fold(0.0_f64, f64::max)
+                                } else {
+                                    0.0
+                                };
+                            self.current_y += (opening_rule - already_reserved).max(0.0);
                         }
                     }
                 }
@@ -3408,13 +3428,24 @@ where
         let pad_left = padding.left;
         let pad_horizontal = padding.horizontal();
         let draw_enabled = self.should_draw_current_page_for_render();
+        let clip_content = jade_docx_layout::line_metrics::word_layout_platform()
+            == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+            && cell.has_separate_borders()
+            && cell_ink_projection_is_horizontal(cell.text_direction);
+        let (clip_top, clip_height) = if clip_content {
+            let top = (y_top + cell.cell_spacing + padding.top).min(y_top + row_height);
+            let bottom = y_top + row_height - cell.cell_spacing - padding.bottom - bottom_band;
+            (top, (bottom - top).max(0.0))
+        } else {
+            (y_top, row_height)
+        };
         let projection_clip =
             if self.auxiliary_story_capture_mode == AuxiliaryStoryCaptureMode::Full {
                 let local = (cell_width > 0.0
                     && row_height > 0.0
                     && y_top.is_finite()
                     && row_height.is_finite())
-                .then_some((y_top, y_top + row_height));
+                .then_some((clip_top, clip_top + clip_height));
                 intersect_vertical_clips(local, ancestor_clip)
             } else {
                 None
@@ -3425,7 +3456,11 @@ where
         // the borrow is not of `self`.
         let clip_painter = self.host.painter();
         let _clip_guard = if draw_enabled {
-            ClipGuard::new(&clip_painter, x_start, y_top, cell_width, row_height)
+            if clip_content && clip_height <= 0.0 {
+                Some(ClipGuard::empty(&clip_painter))
+            } else {
+                ClipGuard::new(&clip_painter, x_start, clip_top, cell_width, clip_height)
+            }
         } else {
             None
         };
@@ -7292,6 +7327,45 @@ fn leading_cell_border_half_px(table: &Table, include_spacing: bool) -> f64 {
     visible_border_width(&border) * 0.5
 }
 
+fn trailing_cell_border_half_px(table: &Table) -> f64 {
+    let row_count = table
+        .rows
+        .iter()
+        .filter(|row| !table_row_is_hidden(row))
+        .count();
+    let Some(row) = table.rows.iter().find(|row| !table_row_is_hidden(row)) else {
+        return 0.0;
+    };
+    if row.grid_after.unwrap_or(0) > 0 {
+        return 0.0;
+    }
+    let Some(cell) = row.cells.last() else {
+        return 0.0;
+    };
+    let format = table.table_style_cell_format(table_style_cell_position(
+        row,
+        0,
+        row_count,
+        row.cells.len() - 1,
+    ));
+    let spans = cell.span.unwrap_or(1) as usize >= compute_column_count(table);
+    let (name, side, left, right) = if table.bidi_visual {
+        ("left", TableBorderSide::Left, true, spans)
+    } else {
+        ("right", TableBorderSide::Right, spans, true)
+    };
+    visible_border_width(&resolve_cell_border_side(
+        cell,
+        row,
+        table,
+        &format,
+        name,
+        side,
+        [true, row_count == 1, left, right],
+        resolve_cell_spacing_px(row, table),
+    )) * 0.5
+}
+
 /// Windows Word modes 12 and 14 distinguish omitted indentation from an
 /// explicit zero: only the latter hangs the leading cell margin. Center/right
 /// placement ignores indentation; right placement adds the leading cell inset.
@@ -7346,6 +7420,53 @@ fn compute_inline_body_table_x_inner(
         .style
         .get("table-indent-width-type")
         .is_some_and(|kind| matches!(kind.as_str(), "auto" | "pct"));
+    let alignment = table.style.get("text-align").map(|value| value.trim());
+    let centered = alignment.is_some_and(|value| {
+        value.eq_ignore_ascii_case("center") || value.eq_ignore_ascii_case("centre")
+    });
+    let trailing = alignment.is_some_and(|value| {
+        value.eq_ignore_ascii_case("right") || value.eq_ignore_ascii_case("end")
+    });
+    let unindented = !ignored_indent && !table.style.contains_key("margin-left");
+    if unindented && compatibility_mode.is_some_and(|mode| mode >= 15) {
+        if table.bidi_visual {
+            if separated {
+                let row = first_row.expect("separate borders require a row");
+                let frame = spacing_frame_width(row, table, TableBorderSide::Right);
+                return x - if centered {
+                    frame * 0.5
+                } else if trailing {
+                    0.0
+                } else {
+                    frame
+                };
+            }
+            return x - leading_cell_border_half_px(table, true);
+        }
+        if !separated && trailing {
+            return x - trailing_cell_border_half_px(table);
+        }
+    }
+    if unindented
+        && table.bidi_visual
+        && separated
+        && compatibility_mode.is_some_and(|mode| matches!(mode, 12 | 14))
+    {
+        let row = first_row.expect("separate borders require a row");
+        let frame = spacing_frame_width(row, table, TableBorderSide::Right);
+        if positive_spacing {
+            return if centered {
+                x
+            } else if trailing {
+                x + resolve_cell_spacing_px(row, table) - 2.0 * trailing_cell_border_half_px(table)
+            } else {
+                x - leading_text_inset
+            };
+        }
+        if trailing {
+            return x - frame;
+        }
+    }
     if !ignored_indent
         && !table.bidi_visual
         && separated
@@ -8043,6 +8164,190 @@ fn adjust_windows_negative_spacing_columns(table: &Table, widths: &mut [f64]) {
     }
 }
 
+/// Windows distributes positive gutters through the width left after padding,
+/// rules and (for AutoFit) unbreakable words. The row painter subsequently
+/// scales nominal columns into slots, so convert the measured slots back into
+/// a nominal grid without changing the table's authored outside width.
+struct WindowsPositiveSpacingGrid {
+    spacing: f64,
+    chrome: Vec<f64>,
+    borders: Vec<f64>,
+    leading: f64,
+    trailing: f64,
+    frame_left: f64,
+    frame_right: f64,
+}
+
+impl WindowsPositiveSpacingGrid {
+    fn resolve(table: &Table, columns: usize, default_padding_x: f64) -> Option<Self> {
+        if jade_docx_layout::line_metrics::word_layout_platform()
+            != jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+            || columns < 2
+        {
+            return None;
+        }
+        let first = table.rows.iter().find(|row| !table_row_is_hidden(row))?;
+        let spacing = resolve_cell_spacing_px(first, table);
+        if spacing <= f64::EPSILON {
+            return None;
+        }
+        let row_count = table
+            .rows
+            .iter()
+            .filter(|row| !table_row_is_hidden(row))
+            .count();
+        let mut metrics: Vec<(f64, f64, f64)> = Vec::new();
+        for (row_index, row) in table
+            .rows
+            .iter()
+            .filter(|row| !table_row_is_hidden(row))
+            .enumerate()
+        {
+            // These captures establish regular grids. Preserve mixed-row,
+            // omitted-column and merged-cell sizing until separately measured.
+            if row.cells.len() != columns
+                || row.grid_before.unwrap_or(0) != 0
+                || row.grid_after.unwrap_or(0) != 0
+                || (resolve_cell_spacing_px(row, table) - spacing).abs() > 1e-6
+                || row
+                    .cells
+                    .iter()
+                    .any(|cell| cell.span.unwrap_or(1) != 1 || cell.vertical_merge.is_some())
+            {
+                return None;
+            }
+            let row_metrics: Vec<_> = row
+                .cells
+                .iter()
+                .enumerate()
+                .map(|(index, cell)| {
+                    let padding = resolve_cell_padding(
+                        cell.margins.as_ref(),
+                        row.cell_margins.as_ref(),
+                        table.effective_cell_margins(),
+                        table.bidi_visual,
+                        default_padding_x,
+                        0.0,
+                    );
+                    let format = table.table_style_cell_format(table_style_cell_position(
+                        row, row_index, row_count, index,
+                    ));
+                    let physical_edges = [
+                        row_index == 0,
+                        row_index + 1 == row_count,
+                        if table.bidi_visual {
+                            index + 1 == columns
+                        } else {
+                            index == 0
+                        },
+                        if table.bidi_visual {
+                            index == 0
+                        } else {
+                            index + 1 == columns
+                        },
+                    ];
+                    let left = visible_border_width(&resolve_cell_border_side(
+                        cell,
+                        row,
+                        table,
+                        &format,
+                        "left",
+                        TableBorderSide::Left,
+                        physical_edges,
+                        spacing,
+                    ));
+                    let right = visible_border_width(&resolve_cell_border_side(
+                        cell,
+                        row,
+                        table,
+                        &format,
+                        "right",
+                        TableBorderSide::Right,
+                        physical_edges,
+                        spacing,
+                    ));
+                    (padding.horizontal(), left, right)
+                })
+                .collect();
+            if metrics.is_empty() {
+                metrics = row_metrics;
+            } else if metrics.iter().zip(&row_metrics).any(|(a, b)| {
+                (a.0 - b.0).abs() > 1e-6 || (a.1 - b.1).abs() > 1e-6 || (a.2 - b.2).abs() > 1e-6
+            }) {
+                return None;
+            }
+        }
+        let (leading, trailing) = if table.bidi_visual {
+            (metrics[0].2, metrics[columns - 1].1)
+        } else {
+            (metrics[0].1, metrics[columns - 1].2)
+        };
+        Some(Self {
+            spacing,
+            chrome: metrics
+                .iter()
+                .map(|(padding, left, right)| padding + left + right)
+                .collect(),
+            borders: metrics
+                .iter()
+                .map(|(_, left, right)| left + right)
+                .collect(),
+            leading,
+            trailing,
+            frame_left: spacing_frame_width(first, table, TableBorderSide::Left),
+            frame_right: spacing_frame_width(first, table, TableBorderSide::Right),
+        })
+    }
+
+    fn adjust(&self, widths: &mut [f64], unbreakable: Option<&[f64]>) {
+        let width: f64 = widths.iter().sum();
+        if !width.is_finite() || width <= f64::EPSILON || widths.len() != self.chrome.len() {
+            return;
+        }
+        let slot_scale = spacing_slot_scale(
+            width,
+            self.spacing,
+            self.leading,
+            self.trailing,
+            self.frame_left,
+            self.frame_right,
+        );
+        let floors: Vec<_> = self
+            .chrome
+            .iter()
+            .enumerate()
+            .map(|(index, chrome)| {
+                unbreakable
+                    .and_then(|words| words.get(index))
+                    .map_or(*chrome, |word| {
+                        chrome.max(word - self.spacing + self.borders[index])
+                    })
+            })
+            .collect();
+        if slot_scale <= f64::EPSILON
+            || floors
+                .iter()
+                .zip(widths.iter())
+                .any(|(floor, width)| !floor.is_finite() || *width <= *floor)
+        {
+            return;
+        }
+        let capacity: f64 = widths
+            .iter()
+            .zip(&floors)
+            .map(|(width, floor)| width - floor)
+            .sum();
+        let gutter = width * (1.0 - slot_scale) + 2.0 * widths.len() as f64 * self.spacing;
+        if gutter <= f64::EPSILON || capacity <= gutter {
+            return;
+        }
+        let share = (capacity - gutter) / capacity;
+        for (width, floor) in widths.iter_mut().zip(floors) {
+            *width = (floor + (*width - floor) * share + 2.0 * self.spacing) / slot_scale;
+        }
+    }
+}
+
 fn compute_column_widths(table: &Table, column_count: usize, available_width: f64) -> Vec<f64> {
     let mut widths = vec![0.0_f64; column_count];
     let mut grid_defined = vec![false; column_count];
@@ -8194,16 +8499,19 @@ fn apply_table_layout_width_for_table_with_content<C: LineWrapContext>(
     if matches!(mode, TableLayoutMode::Fixed) {
         // Fixed layout deliberately ignores cell contents. Avoid a full-table
         // measurement pass that cannot affect the declared grid.
-        return Ok((
-            apply_table_layout_width_with_content_constraints(
-                column_widths,
-                available_width,
-                mode,
-                &[],
-                &[],
-            ),
-            NaturalParagraphLayoutCache::default(),
-        ));
+        let table_width = apply_table_layout_width_with_content_constraints(
+            column_widths,
+            available_width,
+            mode,
+            &[],
+            &[],
+        );
+        if let Some(grid) =
+            WindowsPositiveSpacingGrid::resolve(table, column_widths.len(), default_padding_x)
+        {
+            grid.adjust(column_widths, None);
+        }
+        return Ok((table_width, NaturalParagraphLayoutCache::default()));
     }
     let cache_signature = cache.and_then(|_| {
         table_autofit_cache_signature(
@@ -8294,6 +8602,11 @@ fn apply_table_layout_width_for_table_with_content<C: LineWrapContext>(
         &content_widths.minimums,
         &content_widths.preferred,
     );
+    if let Some(grid) =
+        WindowsPositiveSpacingGrid::resolve(table, column_widths.len(), default_padding_x)
+    {
+        grid.adjust(column_widths, Some(&content_widths.unbreakable));
+    }
     Ok((table_width, content_widths.natural_paragraph_layouts))
 }
 
@@ -11983,7 +12296,11 @@ fn prepare_row_layout<P: Painter<Error: PainterError>>(
         let border_inset = if separated {
             let windows = jade_docx_layout::line_metrics::word_layout_platform()
                 == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows;
-            let factor = if windows { 1.0 } else { 0.5 };
+            let factor = if windows && cell_spacing > f64::EPSILON {
+                1.0
+            } else {
+                0.5
+            };
             let left = visible_border_width(&border_left) * factor;
             let right = visible_border_width(&border_right) * factor;
             padding.left += left;
@@ -19501,6 +19818,58 @@ mod tests {
     }
 
     #[test]
+    fn windows_positive_gutters_reserve_chrome_and_unbreakable_words() {
+        let grid = WindowsPositiveSpacingGrid {
+            spacing: 8.0,
+            chrome: vec![44.0 / 3.0; 3],
+            borders: vec![4.0 / 3.0; 3],
+            leading: 2.0 / 3.0,
+            trailing: 2.0 / 3.0,
+            frame_left: 2.0 / 3.0,
+            frame_right: 2.0 / 3.0,
+        };
+        let original = vec![200.0 / 3.0, 400.0 / 3.0, 200.0];
+        let mut fixed = original.clone();
+        grid.adjust(&mut fixed, None);
+        let mut auto = original.clone();
+        // Captured R1C1 width, padding and gutter, before border reservation.
+        grid.adjust(&mut auto, Some(&[62.24; 3]));
+        for widths in [&fixed, &auto] {
+            assert!((widths.iter().sum::<f64>() - 400.0).abs() < 1e-9);
+        }
+        // Physical first-cell widths measured in Word, including both gutters.
+        assert!((fixed[0] * 0.96 * 0.75 - 55.08).abs() < 0.1);
+        assert!((auto[0] * 0.96 * 0.75 - 59.76).abs() < 0.1);
+        assert!(auto[0] > fixed[0]);
+        let mut narrow = vec![10.0, 20.0, 30.0];
+        grid.adjust(&mut narrow, None);
+        assert_eq!(narrow, vec![10.0, 20.0, 30.0]);
+    }
+
+    #[test]
+    fn positive_spacing_grid_preserves_mac_and_unmeasured_merged_tables() {
+        use jade_docx_layout::line_metrics::{
+            set_word_layout_platform, word_layout_platform, WordLayoutPlatform,
+        };
+        let previous = word_layout_platform();
+        let mut table = Table {
+            cell_spacing: Some(8.0),
+            rows: vec![TableRow {
+                cells: vec![TableCell::default(); 3],
+                ..Default::default()
+            }],
+            ..Default::default()
+        };
+        set_word_layout_platform(WordLayoutPlatform::Mac);
+        assert!(WindowsPositiveSpacingGrid::resolve(&table, 3, 5.0).is_none());
+        set_word_layout_platform(WordLayoutPlatform::Windows);
+        assert!(WindowsPositiveSpacingGrid::resolve(&table, 3, 5.0).is_some());
+        table.rows[0].cells[0].span = Some(2);
+        assert!(WindowsPositiveSpacingGrid::resolve(&table, 3, 5.0).is_none());
+        set_word_layout_platform(previous);
+    }
+
+    #[test]
     fn signed_spacing_respects_the_first_row_and_never_resizes_mac_columns() {
         use jade_docx_layout::line_metrics::{
             set_word_layout_platform, word_layout_platform, WordLayoutPlatform,
@@ -22126,6 +22495,24 @@ mod tests {
                 Op::Clip,
                 Op::FillRect(0.0, 0.0, 1.0, 1.0),
                 Op::Restore,
+            ]
+        );
+    }
+
+    #[test]
+    fn a_zero_height_content_frame_clips_and_restores_the_painter() {
+        let painter = RecordingPainter::new();
+        {
+            let _guard = ClipGuard::empty(&painter);
+        }
+        assert_eq!(
+            painter.ops(),
+            vec![
+                Op::Save,
+                Op::BeginPath,
+                Op::Rect(0.0, 0.0, 0.0, 0.0),
+                Op::Clip,
+                Op::Restore
             ]
         );
     }
