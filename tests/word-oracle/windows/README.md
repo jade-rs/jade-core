@@ -4,7 +4,7 @@ References are separated by complete Word product version and immutable capture 
 The captured application is **16.0.19127.20860**; no other Word build has been
 measured. New builds create additional directories and keep older versions' tests.
 
-The regression index covers **31 unique documents, 166 pages and 31,298 visible
+The regression index covers **37 unique documents, 178 pages and 34,384 visible
 non-whitespace characters**, combining original PDF origins and Word drawing
 origins. Each registered set checks text, order, page count and both absolute
 coordinate axes within **0.375pt**. No origin fitting or tolerance increase is used.
@@ -81,8 +81,26 @@ Generate the follow-up packages with
 anchors decimal tabs on the first point or first nonnumeric character after
 a digit (allowing grouping commas), and modern tables reserve their border
 frame and the bottom border below exact rows. Mac's existing policies remain
-unchanged; legacy Windows table modes retain their previous policy until
-separately measured.
+unchanged. The later legacy-mode captures below establish the Windows body
+table policies independently.
+
+Capture `20261107T050204006Z-600bbfab` adds six documents, 12 pages and
+3,086 complete glyph origins for document compatibility modes 12 and 14.
+All drawing and PDF origins pass. It repeats the alignment/border sweeps and
+adds omitted, explicit-zero, positive and negative table indentation with
+asymmetric horizontal cell margins. Windows distinguishes omitted indentation
+from an explicit zero for leading placement, ignores indentation for centered
+and trailing placement, and reserves the bottom border after an exact last row.
+The horizontal adjustment is limited to ordinary contiguous inline body tables
+with positive leading padding. Mac, other document modes and unmeasured
+bidi/cell-spacing/floating contexts retain their existing placement.
+
+The mandatory installed-Arial gate now checks **16,285 full X/Y origins in
+20 documents (45 pages)**. Metadata also records Word's file version, OS
+architecture and each document's actual Word-reported compatibility mode.
+The clean verification engine is `6bedd8c7`; earlier failed captures remain
+separate. The failed indentation capture explicitly records an uncommitted
+prototype and is diagnostic only, with its original native coordinates retained.
 
 Every capture preserves original PDFs, optionally original page EMFs, raw
 references, comparisons and verification metadata. Metadata binds source,

@@ -168,12 +168,18 @@ fn windows_word_arial_edge_origins() {
                 "word-windows-edge-decimal-separators",
                 "word-windows-edge-table-alignment",
                 "word-windows-edge-table-borders",
+                "word-windows-edge-table-alignment-compat12",
+                "word-windows-edge-table-alignment-compat14",
+                "word-windows-edge-table-borders-compat12",
+                "word-windows-edge-table-borders-compat14",
+                "word-windows-edge-table-indents-compat12",
+                "word-windows-edge-table-indents-compat14",
             ]
             .map(str::to_owned)
         )
     );
     assert!(
-        checked >= 13199,
+        checked >= 16285,
         "do not silently remove edge-case coverage"
     );
 }
