@@ -685,6 +685,16 @@ fn date_and_time_broadcast_check_product_size_before_allocating_the_result() {
     model._set("A62", "=COMPLEX(SEQUENCE(1001,1,1),SEQUENCE(1,1001,1))");
     model.evaluate();
     assert_eq!(model._get_text("A62"), "#ERROR!");
+    for (index, function) in ["IMDIV", "IMSUB", "IMPOWER"].iter().enumerate() {
+        model._set(
+            &format!("A{}", 63 + index),
+            &format!("={function}(SEQUENCE(1001,1,1),SEQUENCE(1,1001,1))"),
+        );
+    }
+    model.evaluate();
+    for index in 0..3 {
+        assert_eq!(model._get_text(&format!("A{}", 63 + index)), "#ERROR!");
+    }
 }
 
 #[test]

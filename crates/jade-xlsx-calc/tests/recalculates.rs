@@ -7,6 +7,59 @@ use jade_xlsx_reader::{read_xlsx, CellRef, CellValue};
 use zip::write::SimpleFileOptions;
 
 #[test]
+fn complex_transcendentals_and_binary_operations_broadcast() {
+    for (function, input, expected) in [
+        ("IMCOS", 0, "1"),
+        ("IMCOSH", 0, "1"),
+        ("IMCOT", 1, "0.642093"),
+        ("IMCSC", 1, "1.188395"),
+        ("IMCSCH", 1, "0.850918"),
+        ("IMEXP", 0, "1"),
+        ("IMLN", 1, "0"),
+        ("IMLOG10", 10, "1"),
+        ("IMLOG2", 2, "1"),
+        ("IMSEC", 0, "1"),
+        ("IMSECH", 0, "1"),
+        ("IMSIN", 0, "0"),
+        ("IMSINH", 0, "0"),
+        ("IMSQRT", 4, "2"),
+        ("IMTAN", 0, "0"),
+    ] {
+        let values = format!("ARRAYTOTEXT(ROUND(IMREAL({function}({{#N/A;{input}}})),6),1)");
+        let text_type = format!("TYPE(INDEX({function}({{#N/A;{input}}}),2,1))");
+        let singleton = format!("TYPE({function}({{{input}}}))");
+        let invalid = format!(r#"ARRAYTOTEXT({function}({{"invalid",#DIV/0!}}),1)"#);
+        assert_formulas(
+            &[&values, &text_type, &singleton, &invalid],
+            &[
+                CellValue::Text(format!("{{#N/A;{expected}}}")),
+                CellValue::Number(2.0),
+                CellValue::Number(64.0),
+                CellValue::Text("{#NUM!,#DIV/0!}".into()),
+            ],
+            false,
+        );
+    }
+    assert_formulas(
+        &[
+            r#"ARRAYTOTEXT(IMDIV({"2+4i";#N/A},{1,2}),1)"#,
+            r#"ARRAYTOTEXT(IMSUB({"2+4i";#N/A},{1,2}),1)"#,
+            r#"ARRAYTOTEXT(IMPOWER({2;#N/A},{2,3}),1)"#,
+            r#"ARRAYTOTEXT(IMDIV({"i","j"},"i"),1)"#,
+            r#"ARRAYTOTEXT(IMPOWER(2,{TRUE,#N/A}),1)"#,
+        ],
+        &[
+            CellValue::Text(r#"{"2+4i","1+2i";#N/A,#N/A}"#.into()),
+            CellValue::Text(r#"{"1+4i","4i";#N/A,#N/A}"#.into()),
+            CellValue::Text(r#"{"4","8";#N/A,#N/A}"#.into()),
+            CellValue::Text(r#"{"1",#VALUE!}"#.into()),
+            CellValue::Text("{#VALUE!,#N/A}".into()),
+        ],
+        false,
+    );
+}
+
+#[test]
 fn complex_components_broadcast_typed_results_and_source_errors() {
     for (function, expected) in [
         ("IMABS", "5"),
