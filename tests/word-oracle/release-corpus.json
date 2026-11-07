@@ -1090,6 +1090,42 @@
     {
       "fixture": "word-windows-edge-table-spacing-percent-mixed-borders-compat15",
       "docx_sha256": "fe2d4ed56f53811218bfc36f0d3a770b52299318c97e1c77c3dcb4b106d9d249"
+    },
+    {
+      "fixture": "word-windows-edge-table-collapsed-mixed-borders-compat12",
+      "docx_sha256": "c6251634fd0b4cdccc8a8a87ac9129d8b29ae0d461caae6d8ed04dc2fbcf19d9"
+    },
+    {
+      "fixture": "word-windows-edge-table-collapsed-mixed-borders-compat14",
+      "docx_sha256": "74f8e29ded31c8c692bfdea93b0803da6c4caf4bd592601f198a20e15dd694e4"
+    },
+    {
+      "fixture": "word-windows-edge-table-collapsed-mixed-borders-compat15",
+      "docx_sha256": "67c0dbfc640db7522aec14e3f9ece35ee989a297870e718b1472261e3813e277"
+    },
+    {
+      "fixture": "word-windows-edge-table-spacing-missing-type-mixed-borders-compat12",
+      "docx_sha256": "08e1d23c4cb418f55c917d0e2b3594b378539c9b4d9028c16fd91e5c436d442a"
+    },
+    {
+      "fixture": "word-windows-edge-table-spacing-missing-type-mixed-borders-compat14",
+      "docx_sha256": "8d2fdec6174ed5dbb579b89ef699da75e3027adef188bd1b6366dc13c4dd58b1"
+    },
+    {
+      "fixture": "word-windows-edge-table-spacing-missing-type-mixed-borders-compat15",
+      "docx_sha256": "57b3359ee7d2a475b53f8daa187a724bdb06c74de024b5840800af6741e66897"
+    },
+    {
+      "fixture": "word-windows-edge-table-spacing-missing-width-mixed-borders-compat12",
+      "docx_sha256": "837a33ea781d65247cd70a4eac7a5a32513498270709001d58baa475bd00b187"
+    },
+    {
+      "fixture": "word-windows-edge-table-spacing-missing-width-mixed-borders-compat14",
+      "docx_sha256": "61c3898fbb0c94ec3c841127df22a74340e40b01d8af2d9878c5b3d730d314dc"
+    },
+    {
+      "fixture": "word-windows-edge-table-spacing-missing-width-mixed-borders-compat15",
+      "docx_sha256": "be50289c236ba073a4d2c45e7060fa83e4ae806a68f2452fd168a345b9e54184"
     }
   ]
 }
