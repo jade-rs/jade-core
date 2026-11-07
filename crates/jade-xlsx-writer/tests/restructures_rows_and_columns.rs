@@ -17,6 +17,95 @@ const SHEET: &str = "xl/worksheets/sheet1.xml";
 const NAME: &str = "売上サマリ";
 
 #[test]
+fn implicit_cells_in_alternatives_shift_from_their_logical_coordinates() {
+    let xml = r#"<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:m="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"><sheetData><row><c><v>1</v></c><mc:AlternateContent><mc:Choice Requires="m"><c><f>A1+1</f><v>2</v></c></mc:Choice><mc:Fallback><c><f>A1+2</f><v>3</v></c></mc:Fallback></mc:AlternateContent><c><v>4</v></c></row></sheetData></worksheet>"#;
+    let workbook = read_xlsx(&workbook_with_sheet(xml)).unwrap();
+    let updated = jade_xlsx_writer::shift::shift_sheet(
+        xml,
+        &workbook.sheets[0],
+        true,
+        &change("Sheet1", Axis::Rows, 0, 1, true),
+    )
+    .unwrap();
+    assert_eq!(
+        updated.matches("<c r=\"B2\">").count(),
+        2,
+        "alternatives must share B2: {updated}"
+    );
+    assert!(updated.contains("<c r=\"C2\"><v>4</v></c>"));
+}
+
+#[test]
+fn shifting_the_grid_preserves_foreign_cells_and_formula_payloads() {
+    let payload = "<u:c r=\"Z9\"><u:f>A1+99</u:f></u:c>";
+    let foreign_formula = "<u:f>A1+88</u:f>";
+    let xml = format!("<worksheet xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\" xmlns:u=\"urn:foreign\"><sheetData><row r=\"1\"><c r=\"A1\"><v>1</v></c>{payload}<c r=\"B1\">{foreign_formula}<f>A1+1</f><v>2</v></c></row></sheetData></worksheet>");
+    let bytes = workbook_with_sheet(&xml);
+    let workbook = read_xlsx(&bytes).unwrap();
+    for axis in [Axis::Rows, Axis::Columns] {
+        let change = change("Sheet1", axis, 0, 1, true);
+        let updated =
+            jade_xlsx_writer::shift::shift_sheet(&xml, &workbook.sheets[0], true, &change).unwrap();
+        assert!(
+            updated.contains(payload),
+            "foreign cell payload changed: {updated}"
+        );
+        assert!(
+            updated.contains(foreign_formula),
+            "foreign formula payload changed: {updated}"
+        );
+        assert!(updated.contains(if axis == Axis::Rows {
+            "<f>A2+1</f>"
+        } else {
+            "<f>B1+1</f>"
+        }));
+    }
+    let mut book = HeadlessWorkbook::open_for_editing(&bytes).unwrap();
+    let before = book.bytes().to_vec();
+    book.insert_rows("Sheet1", 1, 1).unwrap();
+    assert_eq!(book.cell("Sheet1", "B2").unwrap().display, "2");
+    assert!(part(book.bytes(), SHEET).contains(payload));
+    book.undo().unwrap();
+    assert_eq!(book.bytes(), before);
+    book.redo().unwrap();
+    let saved = book.save_bytes().unwrap();
+    assert!(part(&saved, SHEET).contains(payload));
+    assert!(part(&saved, SHEET).contains(foreign_formula));
+    let reopened = HeadlessWorkbook::open_for_editing(&saved).unwrap();
+    assert_eq!(reopened.cell("Sheet1", "B2").unwrap().display, "2");
+}
+
+#[test]
+fn grid_shifts_keep_opaque_branches_and_move_understood_processed_cells() {
+    let opaque = "<mc:Choice Requires=\"u\"><c r=\"Z9\"><f>A1+99</f></c></mc:Choice>";
+    let payload = "<extLst><ext><c r=\"Y9\"><f>A1+88</f></c></ext></extLst>";
+    let xml = format!("<worksheet xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\" xmlns:m=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\" xmlns:mc=\"http://schemas.openxmlformats.org/markup-compatibility/2006\" xmlns:u=\"urn:future\" mc:Ignorable=\"u\" mc:ProcessContent=\"u:wrap\"><sheetData><row r=\"1\"><c r=\"A1\"><v>1</v></c><mc:AlternateContent>{opaque}<mc:Choice Requires=\"m\"><u:wrap><c r=\"B1\"><f>A1+1</f><v>2</v></c></u:wrap></mc:Choice><mc:Fallback><c r=\"C1\"><f>A1+2</f><v>3</v></c></mc:Fallback></mc:AlternateContent>{payload}</row></sheetData></worksheet>");
+    let bytes = workbook_with_sheet(&xml);
+    let workbook = read_xlsx(&bytes).unwrap();
+    for wrapper in ["wrap", "row", "c", "f", "sheetData"] {
+        let xml = xml.replace("u:wrap", &format!("u:{wrapper}"));
+        for changed in [false, true] {
+            let updated = jade_xlsx_writer::shift::shift_sheet(
+                &xml,
+                &workbook.sheets[0],
+                changed,
+                &change("Sheet1", Axis::Rows, 0, 1, true),
+            )
+            .unwrap();
+            assert!(updated.contains(opaque));
+            assert!(updated.contains(payload));
+            assert!(updated.contains("<f>A2+1</f>"));
+            assert!(updated.contains("<f>A2+2</f>"));
+            assert!(updated.contains(&format!("<u:{wrapper}>")));
+            if changed {
+                assert!(updated.contains("<c r=\"B2\">"));
+                assert!(updated.contains("<c r=\"C2\">"));
+            }
+        }
+    }
+}
+
+#[test]
 fn direct_writer_calls_cannot_split_legacy_array_declarations() {
     for reference in ["A1:C3", "A1:XFD1048576"] {
         let xml = format!(

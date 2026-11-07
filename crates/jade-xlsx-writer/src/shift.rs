@@ -165,6 +165,7 @@ pub fn shift_sheet(
     if changed {
         guard_legacy_array_structure(sheet, change)?;
     }
+    let grid = jade_xlsx_reader::cell_content::compatible_worksheet_source(xml)?;
     let mut reader = Reader::from_str(xml);
     reader.config_mut().trim_text(false);
     let mut buf = Vec::new();
@@ -217,6 +218,14 @@ pub fn shift_sheet(
                     }
                     Ok(reader.buffer_position() as usize)
                 };
+                if matches!(local(&name), b"sheetData" | b"row" | b"c" | b"f")
+                    && !grid.owns_start(start)
+                {
+                    if !grid.processes_content_at(start) {
+                        whole_end(&mut reader)?;
+                    }
+                    continue;
+                }
                 if matches!(local(&name), b"protectedRanges" | b"protectedRange") {
                     let end = whole_end(&mut reader)?;
                     if let Some(text) = protected_ranges.remove(&start) {
@@ -285,11 +294,7 @@ pub fn shift_sheet(
                         }
                     }
                     b"row" if in_sheet_data => {
-                        let index = attribute(element, b"r")?
-                            .and_then(|value| value.parse::<u32>().ok())
-                            .filter(|value| *value > 0)
-                            .map(|value| value - 1)
-                            .unwrap_or(next_row_index);
+                        let index = grid.row_index_at(start).unwrap_or(next_row_index);
                         next_row_index = index.saturating_add(1);
                         if changed && change.axis == Axis::Rows {
                             match change.map_index(index) {
@@ -336,11 +341,9 @@ pub fn shift_sheet(
                     }
                     b"c" if row.is_some() => {
                         let (row_index, mapped_row, next_column) = row.expect("a row");
-                        let reference = match attribute(element, b"r")? {
-                            Some(value) => CellRef::parse(&value)
-                                .unwrap_or_else(|_| CellRef::new(next_column, row_index)),
-                            None => CellRef::new(next_column, row_index),
-                        };
+                        let reference = grid
+                            .cell_reference_at(start)
+                            .unwrap_or(CellRef::new(next_column, row_index));
                         row = Some((row_index, mapped_row, reference.column.saturating_add(1)));
                         if changed {
                             let mapped = match change.axis {
@@ -683,6 +686,11 @@ pub fn shift_sheet(
                     _ => {}
                 }
             }
+            Event::End(ref element)
+                if matches!(
+                    local(element.name().as_ref()),
+                    b"sheetData" | b"row" | b"c" | b"f"
+                ) && !grid.owns_end(start) => {}
             Event::End(ref element) => match local(element.name().as_ref()) {
                 b"sheetData" => in_sheet_data = false,
                 b"row" => row = None,

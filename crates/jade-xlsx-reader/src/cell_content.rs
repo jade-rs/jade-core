@@ -14,6 +14,9 @@ pub struct WorksheetSource {
     starts: Vec<usize>,
     ends: Vec<usize>,
     cells: Vec<CellSource>,
+    row_indexes: Vec<(usize, u32)>,
+    cell_references: Vec<(usize, CellRef)>,
+    processed_starts: Vec<usize>,
     drawing_links: [Vec<Option<String>>; 2],
     /// Every row after the one before it and every cell after the one
     /// before it in its row, with no compatibility branches to reorder.
@@ -47,6 +50,25 @@ impl WorksheetSource {
     }
     pub fn owns_end(&self, offset: usize) -> bool {
         self.ends.binary_search(&offset).is_ok()
+    }
+    /// Zero-based row index at an owned start tag in the compatible structure view.
+    pub fn row_index_at(&self, offset: usize) -> Option<u32> {
+        self.row_indexes
+            .binary_search_by_key(&offset, |&(at, _)| at)
+            .ok()
+            .map(|i| self.row_indexes[i].1)
+    }
+    /// Logical cell reference at an owned start tag in the compatible structure view.
+    pub fn cell_reference_at(&self, offset: usize) -> Option<CellRef> {
+        self.cell_references
+            .binary_search_by_key(&offset, |&(at, _)| at)
+            .ok()
+            .map(|i| self.cell_references[i].1)
+    }
+    /// An ignored wrapper with ProcessContent in the compatible structure view.
+    /// Its tag stays opaque while its owned descendants are processed.
+    pub fn processes_content_at(&self, offset: usize) -> bool {
+        self.processed_starts.binary_search(&offset).is_ok()
     }
 }
 
@@ -131,6 +153,13 @@ pub(crate) fn shared_strings(xml: &str) -> Result<String> {
 /// as cell values, rich runs and phonetic readings.
 pub fn worksheet_source(xml: &str) -> Result<WorksheetSource> {
     Ok(project(xml, "worksheet", true, false, None, false, None)?.1)
+}
+/// Structure offsets in every understood Choice and Fallback, without
+/// allocating cell/cache records. Opaque alternatives and extension payloads
+/// retain their original bytes when a structural writer walks these offsets.
+pub fn compatible_worksheet_source(xml: &str) -> Result<WorksheetSource> {
+    let references = HashSet::new();
+    Ok(project(xml, "worksheet", true, true, Some(&references), false, None)?.1)
 }
 /// [`worksheet_source`] read only through the first row after `last_row`:
 /// enough for a writer placing cells no further down, in a sheet already
@@ -361,6 +390,7 @@ fn project(
     let mut writer = Writer::new(Vec::new());
     let mut source = WorksheetSource::default();
     let mut frames: Vec<Frame> = Vec::new();
+    let structure_only = record_structure && all_known && references.is_some_and(HashSet::is_empty);
     let mut scope = crate::process_content::Scope::for_xml(xml);
     let mut path: Vec<Cow<'static, str>> = Vec::new();
     let mut namespace = None::<Vec<u8>>;
@@ -424,6 +454,9 @@ fn project(
                 let ns = kept_ns.as_deref().unwrap_or_default();
                 if process_content {
                     source.ordered = false;
+                    if structure_only {
+                        source.processed_starts.push(start);
+                    }
                     if !empty {
                         frames.push(Frame::ProcessContent);
                     }
@@ -573,6 +606,9 @@ fn project(
                         .unwrap_or(coordinates.0);
                     coordinates.0 = coordinates.1.saturating_add(1);
                     coordinates.2 = 0;
+                    if structure_only {
+                        source.row_indexes.push((start, coordinates.1));
+                    }
                     if last_row.is_some_and(|last| coordinates.1 <= last) {
                         source.ordered = false;
                     }
@@ -585,6 +621,9 @@ fn project(
                         .and_then(|v| CellRef::parse(v).ok())
                         .unwrap_or(CellRef::new(coordinates.2, coordinates.1));
                     coordinates.2 = cell.column.saturating_add(1);
+                    if structure_only {
+                        source.cell_references.push((start, cell));
+                    }
                     if last_column.is_some_and(|last| cell.column <= last) {
                         source.ordered = false;
                     }
@@ -664,8 +703,10 @@ fn project(
                 } else {
                     None
                 };
+                // An empty reference set asks for all understood structure
+                // spans while suppressing the larger per-cell/cache records.
                 let record = record_structure
-                    && !all_known
+                    && (!all_known || structure_only)
                     && matches!(
                         name.as_ref(),
                         "worksheet"
@@ -820,6 +861,25 @@ fn project(
 mod process_content_tests {
     use super::*;
     const HEAD: &str = r#"<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" xmlns:u="urn:future" mc:Ignorable="u" mc:ProcessContent="u:wrap">"#;
+
+    #[test]
+    fn compatible_structure_spans_cover_understood_branches_without_cell_records() {
+        let xml = format!("{}<sheetData><row r=\"1\"><mc:AlternateContent><mc:Choice Requires=\"m\"><c r=\"A1\"><f>1+1</f></c></mc:Choice><mc:Choice Requires=\"u\"><c r=\"B1\"><f>2+2</f></c></mc:Choice><mc:Fallback><u:wrap><c r=\"C1\"><f>3+3</f></c></u:wrap></mc:Fallback></mc:AlternateContent><u:c r=\"D1\"><f>4+4</f></u:c></row></sheetData></worksheet>", HEAD.replace("<worksheet ", "<worksheet xmlns:m=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\" "));
+        let source = compatible_worksheet_source(&xml).unwrap();
+        assert!(source.cells.is_empty());
+        assert!(source.processes_content_at(xml.find("<u:wrap>").unwrap()));
+        assert_eq!(source.row_index_at(xml.find("<row ").unwrap()), Some(0));
+        assert_eq!(
+            source.cell_reference_at(xml.find("<c r=\"C1\"").unwrap()),
+            Some(CellRef::parse("C1").unwrap())
+        );
+        for (formula, owned) in [("1+1", true), ("2+2", false), ("3+3", true), ("4+4", false)] {
+            let text = format!("<f>{formula}</f>");
+            let start = xml.find(&text).unwrap();
+            assert_eq!(source.owns_start(start), owned);
+            assert_eq!(source.owns_end(start + text.find("</f>").unwrap()), owned);
+        }
+    }
 
     #[test]
     fn processed_grid_wrappers_supply_values_and_original_cell_formula_offsets() {
