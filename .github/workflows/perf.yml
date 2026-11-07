@@ -133,6 +133,29 @@ jobs:
           BASE_SHA: ${{ steps.comparison.outputs.base_sha || github.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
 
+      # Keep the frozen 18-case gate unchanged. This diagnostic pair
+      # exercises positive float answers, absent from the standard fixtures.
+      - name: Profile a wrapping shape near the end of a long document
+        run: |
+          python3 head/scripts/perf/float_wrap_fixture.py \
+            head/public/fixtures/yokohama.docx head/public/fixtures/floating-square-wrap.docx \
+            perf/float-wrap/fixtures/yokohama-float-wrap-late.docx
+          export PERF_FIXTURE_DIR="$PWD/perf/float-wrap/fixtures"
+          head/scripts/perf/run-callgrind.sh head/target/perf-ci/jade-docx-perf \
+            perf/float-wrap/head yokohama-float-wrap-late.docx
+          if [ "${{ steps.base.outcome }}" = "success" ]; then
+            head/scripts/perf/run-callgrind.sh base/target/perf-ci/jade-docx-perf \
+              perf/float-wrap/base yokohama-float-wrap-late.docx
+          fi
+          python3 head/scripts/perf/compare.py perf/float-wrap/base perf/float-wrap/head \
+            --base-label "base ${BASE_SHA::8}" --head-label "head ${HEAD_SHA::8}" > perf/float-wrap/summary.md
+          cat perf/float-wrap/summary.md >> perf/summary.md
+          cat perf/float-wrap/summary.md >> "$GITHUB_STEP_SUMMARY"
+        env:
+          PERF_SCENARIOS: keystroke keystroke-marks
+          BASE_SHA: ${{ steps.comparison.outputs.base_sha || github.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+
       - name: Upload callgrind outputs
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2

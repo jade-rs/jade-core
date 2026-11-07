@@ -18,7 +18,10 @@
 
 use futures::executor::block_on;
 use jade_docx_editor::canvas_renderer::CanvasRenderer;
-use jade_docx_editor::headless_api::apply_headless_commands_to_document;
+use jade_docx_editor::commands::{CommandExecutor, HistoryRenderFootprint};
+use jade_docx_editor::headless_api::{
+    apply_headless_commands_to_document, apply_headless_commands_with_executor_to_document,
+};
 use jade_docx_editor::render_host::{CanvasRenderHost, ImageCropMapping};
 use jade_docx_editor::word_document::WordDocument;
 use jade_docx_editor::Options;
@@ -300,10 +303,11 @@ pub fn run(scenario: &str, fixture: &Path) -> Result<(), String> {
             let mut renderer = renderer()?;
             render_cold(&mut renderer, &model, options)?;
             let paragraph = keystroke_paragraph(&renderer).ok_or("no paragraph on page 1")?;
+            let mut executor = CommandExecutor::new();
             let mut result = Ok(());
             perf_measured_region(&mut || {
                 for _ in 0..keystrokes() {
-                    result = type_one(&mut renderer, &mut model, paragraph, options);
+                    result = type_one(&mut renderer, &mut model, paragraph, options, &mut executor);
                     if result.is_err() {
                         return;
                     }
@@ -351,12 +355,35 @@ fn type_one(
     model: &mut WordDocument,
     paragraph: usize,
     options: &Options,
+    executor: &mut CommandExecutor,
 ) -> Result<(), String> {
     const VISIBLE_END_PAGE_1IDX: usize = 1;
+    let revision = executor.history_revision();
+    let text_edit_cache = renderer.local_text_edit_cache();
     // As `canvas_view` does before every edit: with the renderer still
     // holding the document, the edit would deep-clone it to mutate it.
     renderer.drop_document_cache();
-    insert_text(model, paragraph)?;
+    apply_headless_commands_with_executor_to_document(
+        model,
+        executor,
+        None,
+        &HeadlessEditRequest {
+            commands: vec![HeadlessCommand::InsertText {
+                paragraph,
+                offset: 0,
+                text: "あ".to_string(),
+            }],
+        },
+    )
+    .map_err(|err| format!("insert text: {err:?}"))?;
+    // Browser/native typing can reuse feature facts only after the newly
+    // recorded command proves it changed exactly this existing paragraph.
+    if executor.history_revision() != revision
+        && executor.next_undo_render_footprint()
+            == Some(HistoryRenderFootprint::SingleParagraph { index: paragraph })
+    {
+        renderer.restore_local_text_edit_cache(text_edit_cache, model, paragraph);
+    }
     let edited = model.document.as_ref().ok_or("no main document")?.clone();
     renderer.prefer_visible_window_seek_once();
     renderer.set_incremental_dirty_from(paragraph);
@@ -393,12 +420,28 @@ mod tests {
             );
 
             let paragraph = keystroke_paragraph(&renderer).unwrap();
-            type_one(&mut renderer, &mut model, paragraph, &options).unwrap();
-            assert_eq!(
-                painter.take_paragraph_mark_count() > 0,
-                marks_visible,
-                "{scenario}: bounded input repaint must draw the requested marks"
-            );
+            let mut executor = CommandExecutor::new();
+            for _ in 0..3 {
+                let revision = executor.history_revision();
+                type_one(
+                    &mut renderer,
+                    &mut model,
+                    paragraph,
+                    &options,
+                    &mut executor,
+                )
+                .unwrap();
+                assert_ne!(executor.history_revision(), revision);
+                assert_eq!(
+                    executor.next_undo_render_footprint(),
+                    Some(HistoryRenderFootprint::SingleParagraph { index: paragraph })
+                );
+                assert_eq!(
+                    painter.take_paragraph_mark_count() > 0,
+                    marks_visible,
+                    "{scenario}: bounded input repaint must draw the requested marks"
+                );
+            }
         }
     }
 }
