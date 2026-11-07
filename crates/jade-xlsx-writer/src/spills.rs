@@ -161,7 +161,8 @@ pub fn mark_array_formulas(xml: &str, ranges: &[ArrayRange], cm: Option<u32>) ->
 /// The 1-based cell-metadata index that marks a dynamic array: the
 /// workbook's own `XLDAPR` entry, or a metadata part added with one. A
 /// existing metadata part can gain new records without renumbering its old
-/// entries. Unsupported ambiguous/dangling metadata gives `None`.
+/// entries. Unsupported ambiguous/dangling metadata gives `None`. Conditional
+/// layouts without a certified common record return an ArrayMetadata error.
 pub fn dynamic_array_metadata(package: &mut OpcPackage) -> Result<Option<u32>> {
     let workbook = crate::workbook_part_name(package)?;
     let rels_name = jade_opc::rels_part_name(&workbook);
@@ -210,12 +211,16 @@ pub fn dynamic_array_metadata(package: &mut OpcPackage) -> Result<Option<u32>> {
 
 /// Resolves the referenced dynamic-array flag, not merely its metadata type.
 fn dynamic_array_index(xml: &str) -> Result<Option<u32>> {
+    let common = jade_xlsx_reader::array_metadata::common_dynamic_array_cell_metadata(xml)?;
+    if common.is_some() {
+        return Ok(common);
+    }
     if crate::array_metadata::conditional_indexes(xml)? {
         return Err(crate::WriteError::ArrayMetadata(
-            "conditional metadata indexes cannot yet be safely reused or extended",
+            "conditional metadata has no certified common dynamic index and cannot yet be extended",
         ));
     }
-    Ok(jade_xlsx_reader::array_metadata::first_dynamic_array_cell_metadata(xml)?)
+    Ok(None)
 }
 
 /// The metadata part Excel writes for a workbook whose only cell metadata

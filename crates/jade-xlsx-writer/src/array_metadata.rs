@@ -103,8 +103,8 @@ fn valid_namespace(ns: &str) -> bool {
     )
 }
 
-/// Index-bearing metadata is not yet projected across compatibility branches.
-/// Reject those layouts before either reusing a direct link or appending records.
+/// Appending index-bearing metadata across compatibility branches is not yet
+/// supported. A certified common link can be reused without appending records.
 /// Extension payloads and foreign lookalikes do not participate in these indexes.
 pub(crate) fn conditional_indexes(xml: &str) -> Result<bool> {
     let tree = nodes(xml)?;
