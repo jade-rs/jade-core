@@ -114,6 +114,69 @@ pub(super) fn windows_key(properties: Option<&RunProperties>, grid: Option<f64>)
 #[cfg(test)]
 mod tests {
     use super::*;
+    // The reference uses base-four place values of independently generated
+    // ternary digits. Keep the exact key representation, not only uniqueness.
+    fn check_boolean_encoding(digits: [u8; 15]) {
+        let setters: [fn(&mut RunProperties, Option<bool>); 15] = [
+            |p, v| p.bold = v,
+            |p, v| p.italic = v,
+            |p, v| p.bold_complex = v,
+            |p, v| p.italic_complex = v,
+            |p, v| p.underline = v,
+            |p, v| p.strike = v,
+            |p, v| p.double_strike = v,
+            |p, v| p.caps = v,
+            |p, v| p.small_caps = v,
+            |p, v| p.vanish = v,
+            |p, v| p.spec_vanish = v,
+            |p, v| p.shadow = v,
+            |p, v| p.outline = v,
+            |p, v| p.emboss = v,
+            |p, v| p.imprint = v,
+        ];
+        let mut props = RunProperties::default();
+        let mut expected = 0_u64;
+        let mut place = 1_u64;
+        for (setter, digit) in setters.into_iter().zip(digits) {
+            setter(
+                &mut props,
+                [None, Some(false), Some(true)][usize::from(digit)],
+            );
+            expected += u64::from(digit) * place;
+            place *= 4;
+        }
+        assert_eq!(boolean_flags(&props), expected, "digits={digits:?}");
+    }
+
+    #[test]
+    fn boolean_encoding_preserves_all_single_and_paired_field_states() {
+        for digit in 0..3 {
+            check_boolean_encoding([digit; 15]);
+        }
+        for left in 0..15 {
+            for right in left..15 {
+                for a in 0..3 {
+                    for b in 0..3 {
+                        let mut digits = [0; 15];
+                        digits[left] = a;
+                        digits[right] = b;
+                        check_boolean_encoding(digits);
+                    }
+                }
+            }
+        }
+    }
+
+    proptest::proptest! {
+        #![proptest_config(proptest::test_runner::Config::with_cases(256))]
+        #[test]
+        fn boolean_encoding_matches_ternary_field_states(
+            digits in proptest::array::uniform15(0_u8..3),
+        ) {
+            check_boolean_encoding(digits);
+        }
+    }
+
     #[test]
     fn explicit_boolean_values_and_field_positions_remain_distinct() {
         let setters: [fn(&mut RunProperties, Option<bool>); 15] = [
