@@ -75,6 +75,14 @@ pub fn paste_snapshot(
         start: request.target,
         end,
     };
+    if request.cut {
+        guard_legacy_arrays(source, range, None)?;
+    }
+    guard_legacy_arrays(
+        target,
+        destination,
+        (request.cut && source.part_name == target.part_name).then_some(range),
+    )?;
     crate::pivots::guard_values(&target_book, &target.part_name, destination)?;
     if request.cut {
         crate::pivots::guard_cut_source(&OpcPackage::open(snapshot)?, &source_book, source, range)?;
@@ -583,7 +591,91 @@ pub fn paste_snapshot(
         .collect::<Vec<_>>();
     written = crate::tables::after_cell_entries(&target_book, &written, &entries)?;
     written = crate::tables::follow_total_cells(&target_book, &written, &sheets)?;
+    if !target_book
+        .sheets
+        .iter()
+        .chain(std::iter::once(source))
+        .any(|sheet| {
+            sheet
+                .array_formulas
+                .iter()
+                .any(|array| array.kind == jade_xlsx_reader::ArrayFormulaKind::Legacy)
+        })
+    {
+        return Ok((written, destination));
+    }
+    // Cell writes serialize formula text/caches, not the CSE attributes.
+    // Reapply declared ranges after all cell rewrites, also for unrelated
+    // CSE anchors whose references followed a cut. No member expansion.
+    let mut package = OpcPackage::open(&written)?;
+    for sheet in &target_book.sheets {
+        let mut arrays = sheet
+            .array_formulas
+            .iter()
+            .filter(|array| array.kind == jade_xlsx_reader::ArrayFormulaKind::Legacy)
+            .filter(|array| {
+                !(sheet.part_name == target.part_name && intersects(array.range, destination)
+                    || request.cut
+                        && sheet.part_name == source.part_name
+                        && intersects(array.range, range))
+            })
+            .map(|array| crate::spills::ArrayRange {
+                anchor: array.anchor,
+                range: array.range,
+            })
+            .collect::<Vec<_>>();
+        if sheet.part_name == target.part_name {
+            for array in source.array_formulas.iter().filter(|array| {
+                array.kind == jade_xlsx_reader::ArrayFormulaKind::Legacy
+                    && contains_range(range, array.range)
+            }) {
+                let moved = crate::spills::ArrayRange {
+                    anchor: at_target(array.anchor),
+                    range: CellRange {
+                        start: at_target(array.range.start),
+                        end: at_target(array.range.end),
+                    },
+                };
+                if target
+                    .tables
+                    .iter()
+                    .any(|table| intersects(table.reference, moved.range))
+                {
+                    return Err(WriteError::Clipboard(
+                        "legacy array formulas cannot be pasted into an Excel table".into(),
+                    ));
+                }
+                arrays.push(moved);
+            }
+        }
+        if !arrays.is_empty() {
+            let xml = package
+                .part_str(&sheet.part_name)?
+                .ok_or_else(|| WriteError::MissingPart(sheet.part_name.clone()))?;
+            let xml = crate::spills::mark_array_formulas(&xml, &arrays, None)?;
+            package.replace(&sheet.part_name, xml.into_bytes());
+        }
+    }
+    written = package.write()?;
     Ok((written, destination))
+}
+
+fn contains_range(outer: CellRange, inner: CellRange) -> bool {
+    outer.contains(inner.start) && outer.contains(inner.end)
+}
+
+fn guard_legacy_arrays(sheet: &Sheet, affected: CellRange, moved: Option<CellRange>) -> Result<()> {
+    if sheet.array_formulas.iter().any(|array| {
+        array.kind == jade_xlsx_reader::ArrayFormulaKind::Legacy
+            && intersects(array.range, affected)
+            && !contains_range(affected, array.range)
+            && !moved.is_some_and(|range| contains_range(range, array.range))
+    }) {
+        return Err(WriteError::Clipboard(
+            "cannot change part of a legacy array formula".into(),
+        ));
+    }
+    Ok(())
 }
 
 fn copied_value(cell: &Cell, to: CellRef, request: &PasteRequest<'_>) -> NewValue {
