@@ -103,6 +103,53 @@ fn valid_namespace(ns: &str) -> bool {
     )
 }
 
+/// Index-bearing metadata is not yet projected across compatibility branches.
+/// Reject those layouts before either reusing a direct link or appending records.
+/// Extension payloads and foreign lookalikes do not participate in these indexes.
+pub(crate) fn conditional_indexes(xml: &str) -> Result<bool> {
+    let tree = nodes(xml)?;
+    let mut pending = tree[0].children.clone();
+    while let Some(parent) = pending.pop() {
+        let node = &tree[parent];
+        if !valid_namespace(&node.namespace) {
+            continue;
+        }
+        for &child in &node.children {
+            let next = &tree[child];
+            if next.namespace == "http://schemas.openxmlformats.org/markup-compatibility/2006"
+                && next.name == "AlternateContent"
+            {
+                return Ok(true);
+            }
+            if next.namespace == node.namespace
+                && matches!(
+                    (node.name.as_str(), next.name.as_str()),
+                    (
+                        "metadata",
+                        "metadataTypes" | "cellMetadata" | "valueMetadata"
+                    ) | ("metadataTypes", "metadataType")
+                        | ("cellMetadata" | "valueMetadata", "bk")
+                        | ("bk", "rc" | "extLst")
+                        | ("futureMetadata", "bk")
+                )
+                || node.name == "metadata"
+                    && next.namespace == node.namespace
+                    && next.name == "futureMetadata"
+                    && next.attr("name") == Some("XLDAPR")
+                || node.name == "extLst"
+                    && next.namespace == node.namespace
+                    && next.name == "ext"
+                    && next.attr("uri").is_some_and(|uri| {
+                        uri.eq_ignore_ascii_case("{BDBB8CDC-FA1E-496E-A857-3C3F30C029C3}")
+                    })
+            {
+                pending.push(child);
+            }
+        }
+    }
+    Ok(false)
+}
+
 /// Check whether a new metadata part can safely use its first cell record.
 pub(crate) fn unused_cell_metadata_index(
     package: &OpcPackage,
