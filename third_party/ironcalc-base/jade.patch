@@ -13732,7 +13732,11 @@
 -}
 --- a/src/functions/text/common.rs
 +++ b/src/functions/text/common.rs
-@@ -2,27 +2,197 @@
+@@ -1,28 +1,201 @@
++#[cfg(target_arch = "wasm32")]
++use regex_lite as regex;
++
+ use crate::{
      arithmetic::bcast_idx,
      calc_result::CalcResult,
      cast::{array_node_to_string, calc_result_to_array_node},
@@ -13935,7 +13939,7 @@
  }
  
  impl TextArg {
-@@ -36,7 +206,7 @@
+@@ -36,7 +209,7 @@
  
      /// Returns the element at (`i`, `j`), broadcasting scalars and length-1 dimensions.
      /// A `None` result means the dimensions are incompatible at that position.
@@ -13944,7 +13948,7 @@
          match self {
              TextArg::Scalar(n) => Some(n),
              TextArg::Array(a) => bcast_idx(a.len(), i)
-@@ -47,27 +217,41 @@
+@@ -47,27 +220,41 @@
  }
  
  /// Coerces a single array element to a number for the start/length arguments of
@@ -13997,7 +14001,7 @@
      if num < 0.0 {
          return Err(Error::VALUE);
      }
-@@ -76,13 +260,17 @@
+@@ -76,13 +263,17 @@
  }
  
  /// Computes a single RIGHT result from one element of each argument.
@@ -14017,7 +14021,7 @@
      if num < 0.0 {
          return Err(Error::VALUE);
      }
-@@ -96,14 +284,15 @@
+@@ -96,14 +287,15 @@
      text: Option<&ArrayNode>,
      start: Option<&ArrayNode>,
      length: Option<&ArrayNode>,
@@ -14035,7 +14039,7 @@
      if start < 1.0 {
          return Err(Error::VALUE);
      }
-@@ -129,10 +318,10 @@
+@@ -129,10 +321,10 @@
  /// Broadcasts `compute` over the (possibly array) `operands`. When every operand
  /// is a scalar the result is a single value; otherwise it is an array whose shape
  /// is the element-wise maximum of the operand shapes.
@@ -14048,7 +14052,7 @@
  ) -> CalcResult {
      let mut rows = 1;
      let mut cols = 1;
-@@ -141,9 +330,12 @@
+@@ -141,9 +333,12 @@
          rows = rows.max(r);
          cols = cols.max(c);
      }
@@ -14062,7 +14066,7 @@
          return match compute(0, 0) {
              Ok(ArrayNode::String(s)) => CalcResult::String(s),
              Ok(ArrayNode::Number(n)) => CalcResult::Number(n),
-@@ -181,177 +373,74 @@
+@@ -181,177 +376,74 @@
  /// * A question mark matches any single character.
  /// * An asterisk matches any sequence of characters.
  /// * If you want to find an actual question mark or asterisk, type a tilde (~) before the character.
@@ -14297,7 +14301,7 @@
      /// FIND(find_text, within_text, [start_num])
      ///  * FIND and FINDB are case sensitive and don't allow wildcard characters.
      ///  * If find_text is "" (empty text), FIND matches the first character in the search string (that is, the character numbered start_num or 1).
-@@ -361,114 +450,91 @@
+@@ -361,114 +453,91 @@
      ///  * If start_num is greater than the length of within_text, FIND and FINDB return the #VALUE! error value.
      ///    NB: FINDB is not implemented. It is the same as FIND function unless locale is a DBCS (Double Byte Character Set)
      pub(crate) fn fn_find(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -14487,7 +14491,7 @@
                  CalcResult::Number(v) => format!("{v}"),
                  CalcResult::String(v) => v,
                  CalcResult::Boolean(b) => {
-@@ -479,16 +545,8 @@
+@@ -479,16 +548,8 @@
                      }
                  }
                  error @ CalcResult::Error { .. } => return error,
@@ -14505,7 +14509,7 @@
                      return CalcResult::Error {
                          error: Error::NIMPL,
                          origin: cell,
-@@ -496,56 +554,29 @@
+@@ -496,56 +557,29 @@
                      }
                  }
              };
@@ -14582,7 +14586,7 @@
      pub(crate) fn fn_lower(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
          self.apply_text_unary(args, cell, |s| s.to_lowercase())
      }
-@@ -563,78 +594,39 @@
+@@ -563,78 +597,39 @@
          if args.len() != 1 {
              return CalcResult::new_args_number_error(cell);
          }
@@ -14693,7 +14697,7 @@
      pub(crate) fn fn_upper(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
          self.apply_text_unary(args, cell, |s| s.to_uppercase())
      }
-@@ -642,10 +634,29 @@
+@@ -642,10 +637,29 @@
      /// Evaluates a LEFT/RIGHT/MID argument into a scalar value or a 2-D array of
      /// values. References to a single cell collapse to a scalar; multi-cell ranges
      /// and array literals/spills become arrays that the result is broadcast over.
@@ -14725,7 +14729,7 @@
                  Ok(TextArg::Array(self.evaluate_range(left, right)))
              }
              CalcResult::Array(a) => Ok(TextArg::Array(a)),
-@@ -675,7 +686,7 @@
+@@ -675,7 +689,7 @@
              TextArg::Scalar(ArrayNode::Number(1.0))
          };
          broadcast_text(cell, &[&text, &num], |i, j| {
@@ -14734,7 +14738,7 @@
          })
      }
  
-@@ -696,7 +707,7 @@
+@@ -696,7 +710,7 @@
              TextArg::Scalar(ArrayNode::Number(1.0))
          };
          broadcast_text(cell, &[&text, &num], |i, j| {
@@ -14743,7 +14747,7 @@
          })
      }
  
-@@ -717,7 +728,7 @@
+@@ -717,7 +731,7 @@
              Err(e) => return e,
          };
          broadcast_text(cell, &[&text, &start, &length], |i, j| {
@@ -14752,7 +14756,7 @@
          })
      }
  
-@@ -726,36 +737,47 @@
+@@ -726,36 +740,47 @@
          if args.len() != 2 {
              return CalcResult::new_args_number_error(cell);
          }
@@ -14825,7 +14829,7 @@
      }
  
      // TEXTAFTER(text, delimiter, [instance_num], [match_mode], [match_end], [if_not_found])
-@@ -969,13 +991,111 @@
+@@ -969,13 +994,111 @@
          }
      }
  
@@ -14942,7 +14946,7 @@
              Ok(s) => s,
              Err(error) => return error,
          };
-@@ -983,205 +1103,152 @@
+@@ -983,205 +1106,152 @@
              Ok(b) => b,
              Err(error) => return error,
          };
@@ -15272,7 +15276,7 @@
                  CalcResult::Error {
                      error: Error::VALUE,
                      origin: cell,
-@@ -1195,48 +1262,62 @@
+@@ -1195,48 +1265,62 @@
                  message: "Invalid number".to_string(),
              },
              error @ CalcResult::Error { .. } => error,
