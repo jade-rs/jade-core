@@ -1560,28 +1560,38 @@ impl<'a> Model<'a> {
         if args.len() != 2 {
             return CalcResult::new_args_number_error(cell);
         }
-        let fractional_dollar = match self.get_number_no_bools(&args[0], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let fraction = match self.get_number_no_bools(&args[1], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        if fraction < 0.0 {
-            return CalcResult::new_error(Error::NUM, cell, "fraction should be >= 1".to_string());
-        }
-        // `fraction` is truncated to an integer; if that is 0 it is a DIV/0.
-        let a_base = fraction.trunc();
-        if a_base < 1.0 {
-            return CalcResult::new_error(Error::DIV, cell, "fraction should be >= 1".to_string());
-        }
-        // See LibreOffice/ExcelFinancialFunctions: the fractional part is scaled
-        // by 10^ceil(log10(a_base)) and divided by the fraction base.
-        let dollar = fractional_dollar.trunc();
-        let remainder = fractional_dollar - dollar;
-        let digits = 10f64.powf(a_base.log10().ceil());
-        CalcResult::Number(remainder * digits / a_base + dollar)
+        self.map_scalar_arguments(args, cell, |model, values| {
+            let fractional_dollar = match model.cast_to_number_no_bools(values[0].clone(), cell) {
+                Ok(f) => f,
+                Err(s) => return s,
+            };
+            let fraction = match model.cast_to_number_no_bools(values[1].clone(), cell) {
+                Ok(f) => f,
+                Err(s) => return s,
+            };
+            if fraction < 0.0 {
+                return CalcResult::new_error(
+                    Error::NUM,
+                    cell,
+                    "fraction should be >= 1".to_string(),
+                );
+            }
+            // `fraction` is truncated to an integer; if that is 0 it is a DIV/0.
+            let a_base = fraction.trunc();
+            if a_base < 1.0 {
+                return CalcResult::new_error(
+                    Error::DIV,
+                    cell,
+                    "fraction should be >= 1".to_string(),
+                );
+            }
+            // See LibreOffice/ExcelFinancialFunctions: the fractional part is scaled
+            // by 10^ceil(log10(a_base)) and divided by the fraction base.
+            let dollar = fractional_dollar.trunc();
+            let remainder = fractional_dollar - dollar;
+            let digits = 10f64.powf(a_base.log10().ceil());
+            CalcResult::Number(remainder * digits / a_base + dollar)
+        })
     }
 
     // DOLLARFR(decimal_dollar, fraction)
@@ -1589,28 +1599,38 @@ impl<'a> Model<'a> {
         if args.len() != 2 {
             return CalcResult::new_args_number_error(cell);
         }
-        let decimal_dollar = match self.get_number_no_bools(&args[0], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let fraction = match self.get_number_no_bools(&args[1], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        if fraction < 0.0 {
-            return CalcResult::new_error(Error::NUM, cell, "fraction should be >= 1".to_string());
-        }
-        // `fraction` is truncated to an integer; if that is 0 it is a DIV/0.
-        let a_base = fraction.trunc();
-        if a_base < 1.0 {
-            return CalcResult::new_error(Error::DIV, cell, "fraction should be >= 1".to_string());
-        }
-        // Inverse of DOLLARDE: the decimal remainder is expressed in fractional
-        // units (a_base) and scaled down by 10^ceil(log10(a_base)).
-        let dollar = decimal_dollar.trunc();
-        let remainder = decimal_dollar - dollar;
-        let digits = 10f64.powf(a_base.log10().ceil());
-        CalcResult::Number(remainder * a_base / digits.abs() + dollar)
+        self.map_scalar_arguments(args, cell, |model, values| {
+            let decimal_dollar = match model.cast_to_number_no_bools(values[0].clone(), cell) {
+                Ok(f) => f,
+                Err(s) => return s,
+            };
+            let fraction = match model.cast_to_number_no_bools(values[1].clone(), cell) {
+                Ok(f) => f,
+                Err(s) => return s,
+            };
+            if fraction < 0.0 {
+                return CalcResult::new_error(
+                    Error::NUM,
+                    cell,
+                    "fraction should be >= 1".to_string(),
+                );
+            }
+            // `fraction` is truncated to an integer; if that is 0 it is a DIV/0.
+            let a_base = fraction.trunc();
+            if a_base < 1.0 {
+                return CalcResult::new_error(
+                    Error::DIV,
+                    cell,
+                    "fraction should be >= 1".to_string(),
+                );
+            }
+            // Inverse of DOLLARDE: the decimal remainder is expressed in fractional
+            // units (a_base) and scaled down by 10^ceil(log10(a_base)).
+            let dollar = decimal_dollar.trunc();
+            let remainder = decimal_dollar - dollar;
+            let digits = 10f64.powf(a_base.log10().ceil());
+            CalcResult::Number(remainder * a_base / digits.abs() + dollar)
+        })
     }
 
     // CUMIPMT(rate, nper, pv, start_period, end_period, type)

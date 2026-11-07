@@ -701,6 +701,16 @@ fn date_and_time_broadcast_check_product_size_before_allocating_the_result() {
     );
     model.evaluate();
     assert_eq!(model._get_text("A66"), "#ERROR!");
+    for (index, function) in ["DOLLARDE", "DOLLARFR"].iter().enumerate() {
+        model._set(
+            &format!("A{}", 67 + index),
+            &format!("={function}(SEQUENCE(1001,1,1),SEQUENCE(1,1001,1))"),
+        );
+    }
+    model.evaluate();
+    for index in 0..2 {
+        assert_eq!(model._get_text(&format!("A{}", 67 + index)), "#ERROR!");
+    }
 }
 
 #[test]

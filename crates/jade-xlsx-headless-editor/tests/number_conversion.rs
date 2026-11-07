@@ -3,6 +3,58 @@ use jade_xlsx_headless_api::CellInput;
 use jade_xlsx_headless_editor::HeadlessWorkbook;
 
 #[test]
+fn dollar_conversion_ranges_follow_denominator_edits_and_saved_matrices() {
+    for (function, value, corrected, first, next, lower) in [
+        ("DOLLARDE", 1.02, 1.04, 1.125, 1.25, 1.0625),
+        ("DOLLARFR", 1.125, 1.25, 1.02, 1.04, 1.04),
+    ] {
+        let mut package = OpcPackage::open(include_bytes!(
+            "../../../public/fixtures/sample-workbook.xlsx"
+        ))
+        .unwrap();
+        package.replace("xl/worksheets/sheet1.xml", br#"<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData/></worksheet>"#.to_vec());
+        let mut book = HeadlessWorkbook::open_for_editing(&package.write().unwrap()).unwrap();
+        let name = "売上サマリ";
+        for (at, input) in [
+            ("B1", CellInput::Error("#N/A".into())),
+            ("B2", CellInput::Number(value)),
+            ("C1", CellInput::Number(16.0)),
+            ("D1", CellInput::Number(32.0)),
+            (
+                "F1",
+                CellInput::Formula(format!("ROUND({function}(B1:B2,C1:D1),8)")),
+            ),
+            ("J1", CellInput::Formula("ROWS(F1#)*COLUMNS(F1#)".into())),
+        ] {
+            book.set(name, at, input).unwrap();
+        }
+        assert_eq!(book.cell(name, "F1").unwrap().display, "#N/A");
+        assert_eq!(book.cell(name, "F2").unwrap().number, Some(first));
+        book.set(name, "B1", CellInput::Number(corrected)).unwrap();
+        assert_eq!(book.cell(name, "F1").unwrap().number, Some(next));
+        book.set(name, "C1", CellInput::Number(0.0)).unwrap();
+        assert_eq!(book.cell(name, "F1").unwrap().display, "#DIV/0!");
+        book.undo().unwrap();
+        assert_eq!(book.cell(name, "F1").unwrap().number, Some(next));
+        book.redo().unwrap();
+        assert_eq!(book.cell(name, "F1").unwrap().display, "#DIV/0!");
+        book.undo().unwrap();
+        book.undo().unwrap();
+        let saved = book.save_bytes().unwrap();
+        for reopened in [
+            HeadlessWorkbook::open(&saved).unwrap(),
+            HeadlessWorkbook::open_for_editing(&saved).unwrap(),
+        ] {
+            assert_eq!(reopened.cell(name, "F1").unwrap().display, "#N/A");
+            assert_eq!(reopened.cell(name, "G1").unwrap().display, "#N/A");
+            assert_eq!(reopened.cell(name, "F2").unwrap().number, Some(first));
+            assert_eq!(reopened.cell(name, "G2").unwrap().number, Some(lower));
+            assert_eq!(reopened.cell(name, "J1").unwrap().number, Some(4.0));
+        }
+    }
+}
+
+#[test]
 fn convert_range_values_and_unit_axes_keep_spills_through_history_and_save() {
     let mut package = OpcPackage::open(include_bytes!(
         "../../../public/fixtures/sample-workbook.xlsx"
