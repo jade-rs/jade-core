@@ -424,6 +424,14 @@ impl<'a> Model<'a> {
         cell: CellReferenceIndex,
     ) -> Result<f64, CalcResult> {
         let result = self.evaluate_node_in_context(node, cell);
+        self.cast_to_number_no_bools(result, cell)
+    }
+
+    pub(crate) fn cast_to_number_no_bools(
+        &mut self,
+        result: CalcResult,
+        cell: CellReferenceIndex,
+    ) -> Result<f64, CalcResult> {
         if matches!(result, CalcResult::Boolean(_)) {
             return Err(CalcResult::new_error(
                 Error::VALUE,

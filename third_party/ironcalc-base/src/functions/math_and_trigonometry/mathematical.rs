@@ -8,6 +8,56 @@ use crate::{
 };
 use std::f64::consts::PI;
 
+// Parse up to 255 base-36 digits exactly, then round once to binary64.
+// This avoids imposing i64 limits or accumulating per-digit float rounding.
+fn decimal_integer(text: &str, radix: u32) -> Result<f64, Error> {
+    if !(2..=36).contains(&radix) || text.chars().count() > 255 {
+        return Err(Error::NUM);
+    }
+    // Preserve the existing signed-text parsing policy pending native captures.
+    let (negative, digits) = if let Some(digits) = text.strip_prefix('-') {
+        (true, digits)
+    } else {
+        (false, text.strip_prefix('+').unwrap_or(text))
+    };
+    if digits.is_empty() {
+        return Err(Error::VALUE);
+    }
+    let mut limbs = vec![0_u32];
+    for digit in digits.chars() {
+        let mut carry = u64::from(digit.to_digit(radix).ok_or(Error::VALUE)?);
+        for limb in &mut limbs {
+            let value = u64::from(*limb) * u64::from(radix) + carry;
+            *limb = value as u32;
+            carry = value >> 32;
+        }
+        if carry != 0 {
+            limbs.push(carry as u32);
+        }
+    }
+    let bits = (limbs.len() - 1) * 32 + (32 - limbs[limbs.len() - 1].leading_zeros()) as usize;
+    if bits > 1024 {
+        return Err(Error::NUM);
+    }
+    let bit = |index: usize| (limbs[index / 32] >> (index % 32)) & 1 != 0;
+    let discarded = bits.saturating_sub(53);
+    let mut mantissa = (discarded..bits)
+        .rev()
+        .fold(0_u64, |value, index| (value << 1) | u64::from(bit(index)));
+    if discarded > 0 && bit(discarded - 1) && ((0..discarded - 1).any(bit) || mantissa & 1 != 0) {
+        mantissa += 1;
+    }
+    let number = mantissa as f64 * 2.0_f64.powi(discarded as i32);
+    if !number.is_finite() {
+        return Err(Error::NUM);
+    }
+    Ok(if negative && number != 0.0 {
+        -number
+    } else {
+        number
+    })
+}
+
 impl<'a> Model<'a> {
     pub(crate) fn fn_min(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let mut result = f64::NAN;
@@ -179,29 +229,25 @@ impl<'a> Model<'a> {
         if args.len() != 2 {
             return CalcResult::new_args_number_error(cell);
         }
-        let text = match self.get_string(&args[0], cell) {
-            Ok(s) => s,
-            Err(s) => return s,
-        };
-        let radix = match self.get_number(&args[1], cell) {
-            Ok(f) => f.trunc() as i32,
-            Err(s) => return s,
-        };
-        if !(2..=36).contains(&radix) {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "Radix must be between 2 and 36".to_string(),
+        self.map_scalar_arguments(args, cell, |model, values| {
+            let text = match model.cast_to_string(values[0].clone(), cell) {
+                Ok(text) => text,
+                Err(error) => return error,
             };
-        }
-        match i64::from_str_radix(&text, radix as u32) {
-            Ok(n) => CalcResult::Number(n as f64),
-            Err(_) => CalcResult::Error {
-                error: Error::VALUE,
-                origin: cell,
-                message: format!("'{}' is not a valid number in base {}", text, radix),
-            },
-        }
+            let radix = match model.cast_to_number(values[1].clone(), cell) {
+                Ok(radix) if radix.is_finite() && (2.0..=36.0).contains(&radix.trunc()) => {
+                    radix.trunc() as u32
+                }
+                Ok(_) => {
+                    return CalcResult::new_error(Error::NUM, cell, "Invalid DECIMAL radix".into())
+                }
+                Err(error) => return error,
+            };
+            match decimal_integer(&text, radix) {
+                Ok(number) => CalcResult::Number(number),
+                Err(error) => CalcResult::new_error(error, cell, "Invalid DECIMAL text".into()),
+            }
+        })
     }
 
     /// SUM(number1, [number2], ...)
@@ -1301,5 +1347,83 @@ impl<'a> Model<'a> {
 
     pub(crate) fn fn_combina(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.combination_arguments(args, cell, true)
+    }
+}
+
+#[cfg(test)]
+mod decimal_tests {
+    use super::*;
+
+    #[test]
+    fn decimal_accepts_unsigned_values_beyond_i64() {
+        let mut model = crate::test::util::new_empty_model();
+        let cell = CellReferenceIndex {
+            sheet: 0,
+            row: 1,
+            column: 1,
+        };
+        let result = model.fn_decimal(
+            &[
+                Node::StringKind("FFFFFFFFFFFFFFFF".into()),
+                Node::NumberKind(16.0),
+            ],
+            cell,
+        );
+        assert!(matches!(result, CalcResult::Number(number) if number == 2.0_f64.powi(64)));
+    }
+    #[test]
+    fn decimal_integer_rounds_exactly_across_all_radices() {
+        let mut values = vec![
+            0,
+            1,
+            (1_u128 << 53) - 1,
+            (1_u128 << 53) + 1,
+            (1_u128 << 53) + 3,
+            u64::MAX as u128,
+            (1_u128 << 127) - 1,
+            u128::MAX,
+        ];
+        let mut state = 0x123456789abcdef_u128;
+        for _ in 0..128 {
+            state = state.wrapping_mul(6364136223846793005).wrapping_add(1);
+            values.push(state);
+        }
+        for radix in 2..=36_u32 {
+            for &value in &values {
+                let mut number = value;
+                let mut digits = Vec::new();
+                loop {
+                    let digit = (number % u128::from(radix)) as u32;
+                    digits.push(char::from_digit(digit, radix).unwrap_or('0'));
+                    number /= u128::from(radix);
+                    if number == 0 {
+                        break;
+                    }
+                }
+                let text: String = digits.into_iter().rev().collect();
+                let actual = decimal_integer(&text, radix);
+                assert!(
+                    matches!(actual, Ok(number) if number.to_bits()==(value as f64).to_bits()),
+                    "base={radix}, text={text}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn decimal_integer_checks_length_overflow_and_wide_values() {
+        assert_eq!(
+            decimal_integer(&format!("1{}", "0".repeat(64)), 16),
+            Ok(2.0_f64.powi(256))
+        );
+        assert_eq!(
+            decimal_integer(&"F".repeat(255), 16),
+            Ok(2.0_f64.powi(1020))
+        );
+        assert_eq!(decimal_integer(&"Z".repeat(255), 36), Err(Error::NUM));
+        assert_eq!(decimal_integer(&"0".repeat(256), 2), Err(Error::NUM));
+        assert_eq!(decimal_integer("-FF", 16), Ok(-255.0));
+        assert_eq!(decimal_integer("G", 16), Err(Error::VALUE));
+        assert_eq!(decimal_integer("", 16), Err(Error::VALUE));
     }
 }

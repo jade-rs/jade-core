@@ -7,6 +7,106 @@ use jade_xlsx_reader::{read_xlsx, CellRef, CellValue};
 use zip::write::SimpleFileOptions;
 
 #[test]
+fn bessel_functions_broadcast_values_orders_and_errors() {
+    for (function, expected) in [
+        ("BESSELI", "{1.266066,0.565159;2.279585,1.590637}"),
+        ("BESSELJ", "{0.765198,0.440051;0.223891,0.576725}"),
+        ("BESSELK", "{0.421024,0.601907;0.113894,0.139866}"),
+        ("BESSELY", "{0.088257,-0.781213;0.510376,-0.107032}"),
+    ] {
+        let values = format!("ARRAYTOTEXT(ROUND({function}({{1;2}},{{0,1}}),6),1)");
+        let errors = format!("ARRAYTOTEXT({function}({{#N/A;#DIV/0!}},{{0,1}}),1)");
+        let invalid = format!("ARRAYTOTEXT({function}({{1,TRUE}},-1),1)");
+        let singleton = format!("TYPE({function}({{1}},0))");
+        assert_formulas(
+            &[&values, &errors, &invalid, &singleton],
+            &[
+                CellValue::Text(expected.into()),
+                CellValue::Text("{#N/A,#N/A;#DIV/0!,#DIV/0!}".into()),
+                CellValue::Text("{#NUM!,#VALUE!}".into()),
+                CellValue::Number(64.0),
+            ],
+            false,
+        );
+    }
+}
+
+#[test]
+fn engineering_radix_conversions_broadcast_inputs_and_places() {
+    for (function, result) in [
+        ("BIN2DEC", "2"),
+        ("BIN2HEX", r#""2""#),
+        ("BIN2OCT", r#""2""#),
+        ("DEC2BIN", r#""1010""#),
+        ("DEC2HEX", r#""A""#),
+        ("DEC2OCT", r#""12""#),
+        ("HEX2BIN", r#""10000""#),
+        ("HEX2DEC", "16"),
+        ("HEX2OCT", r#""20""#),
+        ("OCT2BIN", r#""1000""#),
+        ("OCT2DEC", "8"),
+        ("OCT2HEX", r#""8""#),
+    ] {
+        let formula = format!(r#"ARRAYTOTEXT({function}({{#N/A;"10"}}),1)"#);
+        let singleton = format!(r#"TYPE({function}({{"10"}}))"#);
+        assert_formulas(
+            &[&formula, &singleton],
+            &[
+                CellValue::Text(format!("{{#N/A;{result}}}")),
+                CellValue::Number(64.0),
+            ],
+            false,
+        );
+    }
+    assert_formulas(
+        &[
+            "ARRAYTOTEXT(BIN2HEX({10;11},{1,3}),1)",
+            "ARRAYTOTEXT(DEC2BIN({2;3},{1,3}),1)",
+            r#"ARRAYTOTEXT(HEX2OCT({"10";"11"},{1,3}),1)"#,
+            r#"ARRAYTOTEXT(OCT2HEX({"10";"11"},{1,3}),1)"#,
+        ],
+        &[
+            CellValue::Text(r#"{"2","002";"3","003"}"#.into()),
+            CellValue::Text(r#"{#NUM!,"010";#NUM!,"011"}"#.into()),
+            CellValue::Text(r#"{#NUM!,"020";#NUM!,"021"}"#.into()),
+            CellValue::Text(r#"{"8","008";"9","009"}"#.into()),
+        ],
+        false,
+    );
+}
+
+#[test]
+fn decimal_broadcasts_text_radices_and_accepts_wide_integers() {
+    assert_formulas(
+        &[
+            r#"DECIMAL("FFFFFFFFFFFFFFFF",16)/2^64"#,
+            r#"DECIMAL("18446744073709551615",10)/2^64"#,
+            r#"DECIMAL(REPT("F",255),16)/2^1020"#,
+            r#"DECIMAL(REPT("Z",255),36)"#,
+            r#"DECIMAL(REPT("0",256),2)"#,
+            r#"ARRAYTOTEXT(DECIMAL({"10";"ff"},{2,16}),1)"#,
+            r#"ARRAYTOTEXT(DECIMAL({"10";#N/A},{2,#DIV/0!}),1)"#,
+            r#"TYPE(DECIMAL({"10"},2))"#,
+            r#"DECIMAL("-FF",16)"#,
+            r#"DECIMAL("ff",16.9)"#,
+        ],
+        &[
+            CellValue::Number(1.0),
+            CellValue::Number(1.0),
+            CellValue::Number(1.0),
+            CellValue::Error("#NUM!".into()),
+            CellValue::Error("#NUM!".into()),
+            CellValue::Text("{2,16;#VALUE!,255}".into()),
+            CellValue::Text("{2,#DIV/0!;#N/A,#N/A}".into()),
+            CellValue::Number(64.0),
+            CellValue::Number(-255.0),
+            CellValue::Number(255.0),
+        ],
+        false,
+    );
+}
+
+#[test]
 fn base_broadcasts_radices_padding_and_enforces_documented_bounds() {
     assert_formulas(
         &[

@@ -3,6 +3,198 @@ use jade_xlsx_headless_api::CellInput;
 use jade_xlsx_headless_editor::HeadlessWorkbook;
 
 #[test]
+fn bessel_ranges_follow_order_edits_and_saved_caches() {
+    for (function, zero_one, one_one, zero_two, one_two) in [
+        ("BESSELI", 1.266066, 0.565159, 2.279585, 1.590637),
+        ("BESSELJ", 0.765198, 0.440051, 0.223891, 0.576725),
+        ("BESSELK", 0.421024, 0.601907, 0.113894, 0.139866),
+        ("BESSELY", 0.088257, -0.781213, 0.510376, -0.107032),
+    ] {
+        let mut package = OpcPackage::open(include_bytes!(
+            "../../../public/fixtures/sample-workbook.xlsx"
+        ))
+        .unwrap();
+        package.replace("xl/worksheets/sheet1.xml",br#"<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData/></worksheet>"#.to_vec());
+        let mut book = HeadlessWorkbook::open_for_editing(&package.write().unwrap()).unwrap();
+        let name = "売上サマリ";
+        for (at, input) in [
+            ("B1", CellInput::Error("#N/A".into())),
+            ("B2", CellInput::Number(2.0)),
+            ("C1", CellInput::Number(0.0)),
+            ("D1", CellInput::Number(1.0)),
+            (
+                "F1",
+                CellInput::Formula(format!("ROUND({function}(B1:B2,C1:D1),6)")),
+            ),
+            ("J1", CellInput::Formula("ROWS(F1#)*COLUMNS(F1#)".into())),
+        ] {
+            book.set(name, at, input).unwrap();
+        }
+        assert_eq!(book.cell(name, "F1").unwrap().display, "#N/A");
+        book.set(name, "B1", CellInput::Number(1.0)).unwrap();
+        assert_eq!(
+            book.cell(name, "F1").unwrap().number,
+            Some(zero_one),
+            "{function}"
+        );
+        assert_eq!(
+            book.cell(name, "G1").unwrap().number,
+            Some(one_one),
+            "{function}"
+        );
+        book.set(name, "C1", CellInput::Number(1.0)).unwrap();
+        assert_eq!(book.cell(name, "F1").unwrap().number, Some(one_one));
+        book.undo().unwrap();
+        assert_eq!(book.cell(name, "F1").unwrap().number, Some(zero_one));
+        book.redo().unwrap();
+        assert_eq!(book.cell(name, "F1").unwrap().number, Some(one_one));
+        book.undo().unwrap();
+        book.undo().unwrap();
+        let saved = book.save_bytes().unwrap();
+        for reopened in [
+            HeadlessWorkbook::open(&saved).unwrap(),
+            HeadlessWorkbook::open_for_editing(&saved).unwrap(),
+        ] {
+            for at in ["F1", "G1"] {
+                assert_eq!(reopened.cell(name, at).unwrap().display, "#N/A");
+            }
+            assert_eq!(
+                reopened.cell(name, "F2").unwrap().number,
+                Some(zero_two),
+                "{function}"
+            );
+            assert_eq!(
+                reopened.cell(name, "G2").unwrap().number,
+                Some(one_two),
+                "{function}"
+            );
+            assert_eq!(reopened.cell(name, "J1").unwrap().number, Some(4.0));
+        }
+    }
+}
+
+#[test]
+fn engineering_radix_ranges_follow_history_and_saved_types() {
+    for (function, second, corrected) in [
+        ("BIN2DEC", "2", "3"),
+        ("BIN2HEX", "2", "3"),
+        ("BIN2OCT", "2", "3"),
+        ("DEC2BIN", "1010", "1011"),
+        ("DEC2HEX", "A", "B"),
+        ("DEC2OCT", "12", "13"),
+        ("HEX2BIN", "10000", "10001"),
+        ("HEX2DEC", "16", "17"),
+        ("HEX2OCT", "20", "21"),
+        ("OCT2BIN", "1000", "1001"),
+        ("OCT2DEC", "8", "9"),
+        ("OCT2HEX", "8", "9"),
+    ] {
+        let mut package = OpcPackage::open(include_bytes!(
+            "../../../public/fixtures/sample-workbook.xlsx"
+        ))
+        .unwrap();
+        package.replace("xl/worksheets/sheet1.xml",br#"<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData/></worksheet>"#.to_vec());
+        let mut book = HeadlessWorkbook::open_for_editing(&package.write().unwrap()).unwrap();
+        let name = "売上サマリ";
+        book.set(name, "B1", CellInput::Error("#N/A".into()))
+            .unwrap();
+        book.set(name, "B2", CellInput::Text("10".into())).unwrap();
+        book.set(name, "F1", CellInput::Formula(format!("{function}(B1:B2)")))
+            .unwrap();
+        book.set(name, "D1", CellInput::Formula("ROWS(F1#)".into()))
+            .unwrap();
+        assert_eq!(book.cell(name, "F1").unwrap().display, "#N/A", "{function}");
+        assert_eq!(book.cell(name, "F2").unwrap().display, second, "{function}");
+        book.set(name, "B1", CellInput::Text("11".into())).unwrap();
+        assert_eq!(
+            book.cell(name, "F1").unwrap().display,
+            corrected,
+            "{function}"
+        );
+        book.undo().unwrap();
+        assert_eq!(book.cell(name, "F1").unwrap().display, "#N/A", "{function}");
+        book.redo().unwrap();
+        assert_eq!(
+            book.cell(name, "F1").unwrap().display,
+            corrected,
+            "{function}"
+        );
+        book.undo().unwrap();
+        let saved = book.save_bytes().unwrap();
+        for reopened in [
+            HeadlessWorkbook::open(&saved).unwrap(),
+            HeadlessWorkbook::open_for_editing(&saved).unwrap(),
+        ] {
+            assert_eq!(
+                reopened.cell(name, "F1").unwrap().display,
+                "#N/A",
+                "{function}"
+            );
+            let value = reopened.cell(name, "F2").unwrap();
+            assert_eq!(value.display, second, "{function}");
+            let expected = if function.ends_with("2DEC") {
+                Some(second.parse::<f64>().unwrap())
+            } else {
+                None
+            };
+            assert_eq!(value.number, expected, "{function}");
+            assert_eq!(reopened.cell(name, "D1").unwrap().number, Some(2.0));
+        }
+    }
+}
+
+#[test]
+fn decimal_ranges_follow_radix_edits_and_saved_caches() {
+    let mut package = OpcPackage::open(include_bytes!(
+        "../../../public/fixtures/sample-workbook.xlsx"
+    ))
+    .unwrap();
+    package.replace("xl/worksheets/sheet1.xml",br#"<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData/></worksheet>"#.to_vec());
+    let mut book = HeadlessWorkbook::open_for_editing(&package.write().unwrap()).unwrap();
+    let name = "売上サマリ";
+    for (at, input) in [
+        ("B1", CellInput::Text("10".into())),
+        ("B2", CellInput::Text("FFFFFFFFFFFFFFFF".into())),
+        ("C1", CellInput::Number(1.0)),
+        ("D1", CellInput::Number(16.0)),
+        ("F1", CellInput::Formula("DECIMAL(B1:B2,C1:D1)".into())),
+        ("J1", CellInput::Formula("ROWS(F1#)*COLUMNS(F1#)".into())),
+    ] {
+        book.set(name, at, input).unwrap();
+    }
+    assert_eq!(book.cell(name, "F1").unwrap().display, "#NUM!");
+    assert_eq!(
+        book.cell(name, "G2").unwrap().number,
+        Some(2.0_f64.powi(64))
+    );
+    book.set(name, "C1", CellInput::Number(16.0)).unwrap();
+    assert_eq!(book.cell(name, "F1").unwrap().number, Some(16.0));
+    book.set(name, "B1", CellInput::Text("FF".into())).unwrap();
+    assert_eq!(book.cell(name, "F1").unwrap().number, Some(255.0));
+    book.undo().unwrap();
+    assert_eq!(book.cell(name, "F1").unwrap().number, Some(16.0));
+    book.redo().unwrap();
+    assert_eq!(book.cell(name, "F1").unwrap().number, Some(255.0));
+    book.undo().unwrap();
+    book.undo().unwrap();
+    let saved = book.save_bytes().unwrap();
+    for reopened in [
+        HeadlessWorkbook::open(&saved).unwrap(),
+        HeadlessWorkbook::open_for_editing(&saved).unwrap(),
+    ] {
+        for at in ["F1", "F2"] {
+            assert_eq!(reopened.cell(name, at).unwrap().display, "#NUM!");
+        }
+        assert_eq!(reopened.cell(name, "G1").unwrap().number, Some(16.0));
+        assert_eq!(
+            reopened.cell(name, "G2").unwrap().number,
+            Some(2.0_f64.powi(64))
+        );
+        assert_eq!(reopened.cell(name, "J1").unwrap().number, Some(4.0));
+    }
+}
+
+#[test]
 fn base_ranges_follow_padding_edits_and_saved_caches() {
     let mut package = OpcPackage::open(include_bytes!(
         "../../../public/fixtures/sample-workbook.xlsx"

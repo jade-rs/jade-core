@@ -634,6 +634,21 @@
      pub(crate) fn cast_number(&self, s: &str) -> Option<f64> {
          match s.trim().parse::<f64>() {
              Ok(f) => Some(f),
+@@ -284,6 +424,14 @@
+         cell: CellReferenceIndex,
+     ) -> Result<f64, CalcResult> {
+         let result = self.evaluate_node_in_context(node, cell);
++        self.cast_to_number_no_bools(result, cell)
++    }
++
++    pub(crate) fn cast_to_number_no_bools(
++        &mut self,
++        result: CalcResult,
++        cell: CellReferenceIndex,
++    ) -> Result<f64, CalcResult> {
+         if matches!(result, CalcResult::Boolean(_)) {
+             return Err(CalcResult::new_error(
+                 Error::VALUE,
 --- /dev/null
 +++ b/src/clock.rs
 @@ -0,0 +1,45 @@
@@ -6308,7 +6323,154 @@
      fn test_is_leap_year() {
 --- a/src/functions/engineering/bessel.rs
 +++ b/src/functions/engineering/bessel.rs
-@@ -125,54 +125,62 @@
+@@ -14,165 +14,106 @@
+ 
+ impl<'a> Model<'a> {
+     pub(crate) fn fn_besseli(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
++        self.bessel_arguments(args, cell, bessel_i)
++    }
++    pub(crate) fn fn_besselj(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
++        self.bessel_arguments(args, cell, bessel_j)
++    }
++    pub(crate) fn fn_besselk(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
++        self.bessel_arguments(args, cell, bessel_k)
++    }
++    pub(crate) fn fn_bessely(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
++        self.bessel_arguments(args, cell, bessel_y)
++    }
++
++    fn bessel_arguments(
++        &mut self,
++        args: &[Node],
++        cell: CellReferenceIndex,
++        function: fn(i32, f64) -> f64,
++    ) -> CalcResult {
+         if args.len() != 2 {
+             return CalcResult::new_args_number_error(cell);
+         }
+-        let x = match self.get_number_no_bools(&args[0], cell) {
+-            Ok(f) => f,
+-            Err(s) => return s,
+-        };
+-        let n = match self.get_number_no_bools(&args[1], cell) {
+-            Ok(f) => f,
+-            Err(s) => return s,
+-        };
+-        let n = n.trunc() as i32;
+-        let result = bessel_i(n, x);
+-        if result.is_infinite() || result.is_nan() {
+-            return CalcResult::Error {
+-                error: Error::NUM,
+-                origin: cell,
+-                message: "Invalid parameter for Bessel function".to_string(),
++        self.map_scalar_arguments(args, cell, |model, values| {
++            let x = match model.cast_to_number_no_bools(values[0].clone(), cell) {
++                Ok(number) => number,
++                Err(error) => return error,
+             };
+-        }
+-        CalcResult::Number(result)
+-    }
+-    pub(crate) fn fn_besselj(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+-        if args.len() != 2 {
+-            return CalcResult::new_args_number_error(cell);
+-        }
+-        let x = match self.get_number_no_bools(&args[0], cell) {
+-            Ok(f) => f,
+-            Err(s) => return s,
+-        };
+-        let n = match self.get_number_no_bools(&args[1], cell) {
+-            Ok(f) => f,
+-            Err(s) => return s,
+-        };
+-        let n = n.trunc() as i32;
+-        if n < 0 {
+-            // In Excel this ins #NUM!
+-            return CalcResult::Error {
+-                error: Error::NUM,
+-                origin: cell,
+-                message: "Invalid parameter for Bessel function".to_string(),
++            let order = match model.cast_to_number_no_bools(values[1].clone(), cell) {
++                Ok(number) => number,
++                Err(error) => return error,
+             };
+-        }
+-        let result = bessel_j(n, x);
+-        if result.is_infinite() || result.is_nan() {
+-            return CalcResult::Error {
+-                error: Error::NUM,
+-                origin: cell,
+-                message: "Invalid parameter for Bessel function".to_string(),
+-            };
+-        }
+-        CalcResult::Number(result)
+-    }
+-
+-    pub(crate) fn fn_besselk(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+-        if args.len() != 2 {
+-            return CalcResult::new_args_number_error(cell);
+-        }
+-        let x = match self.get_number_no_bools(&args[0], cell) {
+-            Ok(f) => f,
+-            Err(s) => return s,
+-        };
+-        let n = match self.get_number_no_bools(&args[1], cell) {
+-            Ok(f) => f,
+-            Err(s) => return s,
+-        };
+-        let n = n.trunc() as i32;
+-        let result = bessel_k(n, x);
+-        if result.is_infinite() || result.is_nan() {
+-            return CalcResult::Error {
+-                error: Error::NUM,
+-                origin: cell,
+-                message: "Invalid parameter for Bessel function".to_string(),
+-            };
+-        }
+-        CalcResult::Number(result)
+-    }
+-
+-    pub(crate) fn fn_bessely(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+-        if args.len() != 2 {
+-            return CalcResult::new_args_number_error(cell);
+-        }
+-        let x = match self.get_number_no_bools(&args[0], cell) {
+-            Ok(f) => f,
+-            Err(s) => return s,
+-        };
+-        let n = match self.get_number_no_bools(&args[1], cell) {
+-            Ok(f) => f,
+-            Err(s) => return s,
+-        };
+-        let n = n.trunc() as i32;
+-        if n < 0 {
+-            // In Excel this ins #NUM!
+-            return CalcResult::Error {
+-                error: Error::NUM,
+-                origin: cell,
+-                message: "Invalid parameter for Bessel function".to_string(),
+-            };
+-        }
+-        let result = bessel_y(n, x);
+-        if result.is_infinite() || result.is_nan() {
+-            return CalcResult::Error {
+-                error: Error::NUM,
+-                origin: cell,
+-                message: "Invalid parameter for Bessel function".to_string(),
+-            };
+-        }
+-        CalcResult::Number(result)
++            if !x.is_finite() || !order.is_finite() || order.trunc() < 0.0 {
++                return CalcResult::new_error(Error::NUM, cell, "Invalid Bessel parameter".into());
++            }
++            // Retain the existing order truncation and numerical routines.
++            let result = function(order.trunc() as i32, x);
++            if result.is_finite() {
++                CalcResult::Number(result)
++            } else {
++                CalcResult::new_error(Error::NUM, cell, "Invalid Bessel result".into())
++            }
++        })
      }
  
      pub(crate) fn fn_erf(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -6828,6 +6990,1029 @@
 +            let right = to_precision(numbers[1], 16);
 +            let matches = if step { left >= right } else { left == right };
 +            CalcResult::Number(if matches { 1.0 } else { 0.0 })
++        })
+     }
+ }
+--- a/src/functions/engineering/number_basis.rs
++++ b/src/functions/engineering/number_basis.rs
+@@ -37,14 +37,16 @@
+         if args.len() != 1 {
+             return CalcResult::new_args_number_error(cell);
+         }
+-        let value = match self.get_number_no_bools(&args[0], cell) {
+-            Ok(f) => f,
+-            Err(s) => return s,
+-        };
+-        match from_binary_to_decimal(value) {
+-            Ok(n) => CalcResult::Number(n as f64),
+-            Err(message) => CalcResult::new_error(Error::NUM, cell, message),
+-        }
++        self.map_scalar_arguments(args, cell, |model, values| {
++            let value = match model.cast_to_number_no_bools(values[0].clone(), cell) {
++                Ok(f) => f,
++                Err(s) => return s,
++            };
++            match from_binary_to_decimal(value) {
++                Ok(n) => CalcResult::Number(n as f64),
++                Err(message) => CalcResult::new_error(Error::NUM, cell, message),
++            }
++        })
+     }
+ 
+     // BIN2HEX(number, [places])
+@@ -52,205 +54,243 @@
+         if !(1..=2).contains(&args.len()) {
+             return CalcResult::new_args_number_error(cell);
+         }
+-        let value = match self.get_number_no_bools(&args[0], cell) {
+-            Ok(f) => f,
+-            Err(s) => return s,
+-        };
+-        let places = if args.len() == 2 {
+-            match self.get_number_no_bools(&args[1], cell) {
+-                Ok(f) => Some(f.trunc() as i32),
+-                Err(s) => return s,
+-            }
+-        } else {
+-            None
+-        };
+-        if let Some(p) = places {
+-            if p <= 0 || p > 10 {
+-                return CalcResult::new_error(Error::NUM, cell, "Not enough places".to_string());
+-            }
+-        }
+-        let value = match from_binary_to_decimal(value) {
+-            Ok(n) => n,
+-            Err(message) => return CalcResult::new_error(Error::NUM, cell, message),
+-        };
+-        if value < 0 {
+-            CalcResult::String(format!("{:0width$X}", HEX_MAX + value, width = 9))
+-        } else {
++        self.map_scalar_arguments(args, cell, |model, values| {
++            let value = match model.cast_to_number_no_bools(values[0].clone(), cell) {
++                Ok(f) => f,
++                Err(s) => return s,
++            };
++            let places = if args.len() == 2 {
++                match model.cast_to_number_no_bools(values[1].clone(), cell) {
++                    Ok(f) => Some(f.trunc() as i32),
++                    Err(s) => return s,
++                }
++            } else {
++                None
++            };
++            if let Some(p) = places {
++                if p <= 0 || p > 10 {
++                    return CalcResult::new_error(
++                        Error::NUM,
++                        cell,
++                        "Not enough places".to_string(),
++                    );
++                }
++            }
++            let value = match from_binary_to_decimal(value) {
++                Ok(n) => n,
++                Err(message) => return CalcResult::new_error(Error::NUM, cell, message),
++            };
++            if value < 0 {
++                CalcResult::String(format!("{:0width$X}", HEX_MAX + value, width = 9))
++            } else {
++                let result = format!("{value:X}");
++                if let Some(places) = places {
++                    if places < result.len() as i32 {
++                        return CalcResult::new_error(
++                            Error::NUM,
++                            cell,
++                            "Not enough places".to_string(),
++                        );
++                    }
++                    return CalcResult::String(format!(
++                        "{:0width$X}",
++                        value,
++                        width = places as usize
++                    ));
++                }
++                CalcResult::String(result)
++            }
++        })
++    }
++
++    // BIN2OCT(number, [places])
++    pub(crate) fn fn_bin2oct(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
++        if !(1..=2).contains(&args.len()) {
++            return CalcResult::new_args_number_error(cell);
++        }
++        self.map_scalar_arguments(args, cell, |model, values| {
++            let value = match model.cast_to_number_no_bools(values[0].clone(), cell) {
++                Ok(f) => f,
++                Err(s) => return s,
++            };
++            let places = if args.len() == 2 {
++                match model.cast_to_number_no_bools(values[1].clone(), cell) {
++                    Ok(f) => Some(f.trunc() as i32),
++                    Err(s) => return s,
++                }
++            } else {
++                None
++            };
++            let value = match from_binary_to_decimal(value) {
++                Ok(n) => n,
++                Err(message) => return CalcResult::new_error(Error::NUM, cell, message),
++            };
++            if let Some(p) = places {
++                if p <= 0 || p > 10 {
++                    return CalcResult::new_error(
++                        Error::NUM,
++                        cell,
++                        "Not enough places".to_string(),
++                    );
++                }
++            }
++            if value < 0 {
++                CalcResult::String(format!("{:0width$o}", OCT_MAX + value, width = 9))
++            } else {
++                let result = format!("{value:o}");
++                if let Some(places) = places {
++                    if places < result.len() as i32 {
++                        return CalcResult::new_error(
++                            Error::NUM,
++                            cell,
++                            "Not enough places".to_string(),
++                        );
++                    }
++                    return CalcResult::String(format!(
++                        "{:0width$o}",
++                        value,
++                        width = places as usize
++                    ));
++                }
++                CalcResult::String(result)
++            }
++        })
++    }
++
++    pub(crate) fn fn_dec2bin(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
++        if !(1..=2).contains(&args.len()) {
++            return CalcResult::new_args_number_error(cell);
++        }
++        self.map_scalar_arguments(args, cell, |model, values| {
++            let value_raw = match model.cast_to_number_no_bools(values[0].clone(), cell) {
++                Ok(f) => f,
++                Err(s) => return s,
++            };
++            let places = if args.len() == 2 {
++                match model.cast_to_number_no_bools(values[1].clone(), cell) {
++                    Ok(f) => Some(f.trunc() as i32),
++                    Err(s) => return s,
++                }
++            } else {
++                None
++            };
++            if let Some(p) = places {
++                if p <= 0 || p > 10 {
++                    return CalcResult::new_error(
++                        Error::NUM,
++                        cell,
++                        "Not enough places".to_string(),
++                    );
++                }
++            }
++            let mut value = value_raw.trunc() as i64;
++            if !(-512..=511).contains(&value) {
++                return CalcResult::new_error(Error::NUM, cell, "Out of bounds".to_string());
++            }
++            if value < 0 {
++                value += 1024;
++            }
++            let result = format!("{value:b}");
++            if let Some(places) = places {
++                if value_raw > 0.0 && places < result.len() as i32 {
++                    return CalcResult::new_error(Error::NUM, cell, "Out of bounds".to_string());
++                }
++                let result = format!("{:0width$b}", value, width = places as usize);
++                return CalcResult::String(result);
++            }
++            CalcResult::String(result)
++        })
++    }
++
++    pub(crate) fn fn_dec2hex(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
++        if !(1..=2).contains(&args.len()) {
++            return CalcResult::new_args_number_error(cell);
++        }
++        self.map_scalar_arguments(args, cell, |model, values| {
++            let value_raw = match model.cast_to_number_no_bools(values[0].clone(), cell) {
++                Ok(f) => f.trunc(),
++                Err(s) => return s,
++            };
++            let places = if args.len() == 2 {
++                match model.cast_to_number_no_bools(values[1].clone(), cell) {
++                    Ok(f) => Some(f.trunc() as i32),
++                    Err(s) => return s,
++                }
++            } else {
++                None
++            };
++            if let Some(p) = places {
++                if p <= 0 || p > 10 {
++                    return CalcResult::new_error(
++                        Error::NUM,
++                        cell,
++                        "Not enough places".to_string(),
++                    );
++                }
++            }
++            let mut value = value_raw.trunc() as i64;
++            if !(-HEX_MAX_HALF..=HEX_MAX_HALF - 1).contains(&value) {
++                return CalcResult::new_error(Error::NUM, cell, "Out of bounds".to_string());
++            }
++            if value < 0 {
++                value += HEX_MAX;
++            }
+             let result = format!("{value:X}");
+             if let Some(places) = places {
+-                if places < result.len() as i32 {
+-                    return CalcResult::new_error(
+-                        Error::NUM,
+-                        cell,
+-                        "Not enough places".to_string(),
+-                    );
+-                }
+-                return CalcResult::String(format!("{:0width$X}", value, width = places as usize));
++                if value_raw > 0.0 && places < result.len() as i32 {
++                    return CalcResult::new_error(Error::NUM, cell, "Out of bounds".to_string());
++                }
++                let result = format!("{:0width$X}", value, width = places as usize);
++                return CalcResult::String(result);
+             }
+             CalcResult::String(result)
+-        }
+-    }
+-
+-    // BIN2OCT(number, [places])
+-    pub(crate) fn fn_bin2oct(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+-        if !(1..=2).contains(&args.len()) {
+-            return CalcResult::new_args_number_error(cell);
+-        }
+-        let value = match self.get_number_no_bools(&args[0], cell) {
+-            Ok(f) => f,
+-            Err(s) => return s,
+-        };
+-        let places = if args.len() == 2 {
+-            match self.get_number_no_bools(&args[1], cell) {
+-                Ok(f) => Some(f.trunc() as i32),
+-                Err(s) => return s,
+-            }
+-        } else {
+-            None
+-        };
+-        let value = match from_binary_to_decimal(value) {
+-            Ok(n) => n,
+-            Err(message) => return CalcResult::new_error(Error::NUM, cell, message),
+-        };
+-        if let Some(p) = places {
+-            if p <= 0 || p > 10 {
+-                return CalcResult::new_error(Error::NUM, cell, "Not enough places".to_string());
+-            }
+-        }
+-        if value < 0 {
+-            CalcResult::String(format!("{:0width$o}", OCT_MAX + value, width = 9))
+-        } else {
++        })
++    }
++
++    pub(crate) fn fn_dec2oct(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
++        if !(1..=2).contains(&args.len()) {
++            return CalcResult::new_args_number_error(cell);
++        }
++        self.map_scalar_arguments(args, cell, |model, values| {
++            let value_raw = match model.cast_to_number_no_bools(values[0].clone(), cell) {
++                Ok(f) => f,
++                Err(s) => return s,
++            };
++            let places = if args.len() == 2 {
++                match model.cast_to_number_no_bools(values[1].clone(), cell) {
++                    Ok(f) => Some(f.trunc() as i32),
++                    Err(s) => return s,
++                }
++            } else {
++                None
++            };
++            if let Some(p) = places {
++                if p <= 0 || p > 10 {
++                    return CalcResult::new_error(
++                        Error::NUM,
++                        cell,
++                        "Not enough places".to_string(),
++                    );
++                }
++            }
++            let mut value = value_raw.trunc() as i64;
++
++            if !(-OCT_MAX_HALF..=OCT_MAX_HALF - 1).contains(&value) {
++                return CalcResult::new_error(Error::NUM, cell, "Out of bounds".to_string());
++            }
++            if value < 0 {
++                value += OCT_MAX;
++            }
+             let result = format!("{value:o}");
+             if let Some(places) = places {
+-                if places < result.len() as i32 {
+-                    return CalcResult::new_error(
+-                        Error::NUM,
+-                        cell,
+-                        "Not enough places".to_string(),
+-                    );
+-                }
+-                return CalcResult::String(format!("{:0width$o}", value, width = places as usize));
++                if value_raw > 0.0 && places < result.len() as i32 {
++                    return CalcResult::new_error(Error::NUM, cell, "Out of bounds".to_string());
++                }
++                let result = format!("{:0width$o}", value, width = places as usize);
++                return CalcResult::String(result);
+             }
+             CalcResult::String(result)
+-        }
+-    }
+-
+-    pub(crate) fn fn_dec2bin(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+-        if !(1..=2).contains(&args.len()) {
+-            return CalcResult::new_args_number_error(cell);
+-        }
+-        let value_raw = match self.get_number_no_bools(&args[0], cell) {
+-            Ok(f) => f,
+-            Err(s) => return s,
+-        };
+-        let places = if args.len() == 2 {
+-            match self.get_number_no_bools(&args[1], cell) {
+-                Ok(f) => Some(f.trunc() as i32),
+-                Err(s) => return s,
+-            }
+-        } else {
+-            None
+-        };
+-        if let Some(p) = places {
+-            if p <= 0 || p > 10 {
+-                return CalcResult::new_error(Error::NUM, cell, "Not enough places".to_string());
+-            }
+-        }
+-        let mut value = value_raw.trunc() as i64;
+-        if !(-512..=511).contains(&value) {
+-            return CalcResult::new_error(Error::NUM, cell, "Out of bounds".to_string());
+-        }
+-        if value < 0 {
+-            value += 1024;
+-        }
+-        let result = format!("{value:b}");
+-        if let Some(places) = places {
+-            if value_raw > 0.0 && places < result.len() as i32 {
+-                return CalcResult::new_error(Error::NUM, cell, "Out of bounds".to_string());
+-            }
+-            let result = format!("{:0width$b}", value, width = places as usize);
+-            return CalcResult::String(result);
+-        }
+-        CalcResult::String(result)
+-    }
+-
+-    pub(crate) fn fn_dec2hex(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+-        if !(1..=2).contains(&args.len()) {
+-            return CalcResult::new_args_number_error(cell);
+-        }
+-        let value_raw = match self.get_number_no_bools(&args[0], cell) {
+-            Ok(f) => f.trunc(),
+-            Err(s) => return s,
+-        };
+-        let places = if args.len() == 2 {
+-            match self.get_number_no_bools(&args[1], cell) {
+-                Ok(f) => Some(f.trunc() as i32),
+-                Err(s) => return s,
+-            }
+-        } else {
+-            None
+-        };
+-        if let Some(p) = places {
+-            if p <= 0 || p > 10 {
+-                return CalcResult::new_error(Error::NUM, cell, "Not enough places".to_string());
+-            }
+-        }
+-        let mut value = value_raw.trunc() as i64;
+-        if !(-HEX_MAX_HALF..=HEX_MAX_HALF - 1).contains(&value) {
+-            return CalcResult::new_error(Error::NUM, cell, "Out of bounds".to_string());
+-        }
+-        if value < 0 {
+-            value += HEX_MAX;
+-        }
+-        let result = format!("{value:X}");
+-        if let Some(places) = places {
+-            if value_raw > 0.0 && places < result.len() as i32 {
+-                return CalcResult::new_error(Error::NUM, cell, "Out of bounds".to_string());
+-            }
+-            let result = format!("{:0width$X}", value, width = places as usize);
+-            return CalcResult::String(result);
+-        }
+-        CalcResult::String(result)
+-    }
+-
+-    pub(crate) fn fn_dec2oct(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+-        if !(1..=2).contains(&args.len()) {
+-            return CalcResult::new_args_number_error(cell);
+-        }
+-        let value_raw = match self.get_number_no_bools(&args[0], cell) {
+-            Ok(f) => f,
+-            Err(s) => return s,
+-        };
+-        let places = if args.len() == 2 {
+-            match self.get_number_no_bools(&args[1], cell) {
+-                Ok(f) => Some(f.trunc() as i32),
+-                Err(s) => return s,
+-            }
+-        } else {
+-            None
+-        };
+-        if let Some(p) = places {
+-            if p <= 0 || p > 10 {
+-                return CalcResult::new_error(Error::NUM, cell, "Not enough places".to_string());
+-            }
+-        }
+-        let mut value = value_raw.trunc() as i64;
+-
+-        if !(-OCT_MAX_HALF..=OCT_MAX_HALF - 1).contains(&value) {
+-            return CalcResult::new_error(Error::NUM, cell, "Out of bounds".to_string());
+-        }
+-        if value < 0 {
+-            value += OCT_MAX;
+-        }
+-        let result = format!("{value:o}");
+-        if let Some(places) = places {
+-            if value_raw > 0.0 && places < result.len() as i32 {
+-                return CalcResult::new_error(Error::NUM, cell, "Out of bounds".to_string());
+-            }
+-            let result = format!("{:0width$o}", value, width = places as usize);
+-            return CalcResult::String(result);
+-        }
+-        CalcResult::String(result)
++        })
+     }
+ 
+     // HEX2BIN(number, [places])
+@@ -258,58 +298,64 @@
+         if !(1..=2).contains(&args.len()) {
+             return CalcResult::new_args_number_error(cell);
+         }
+-        let value = match self.get_string(&args[0], cell) {
+-            Ok(s) => s,
+-            Err(s) => return s,
+-        };
+-        let places = if args.len() == 2 {
+-            match self.get_number_no_bools(&args[1], cell) {
+-                Ok(f) => Some(f.trunc() as i32),
+-                Err(s) => return s,
+-            }
+-        } else {
+-            None
+-        };
+-        if value.len() > 10 {
+-            return CalcResult::new_error(Error::NUM, cell, "Value too large".to_string());
+-        }
+-        if let Some(p) = places {
+-            if p <= 0 || p > 10 {
+-                return CalcResult::new_error(Error::NUM, cell, "Not enough places".to_string());
+-            }
+-        }
+-        let mut value = match i64::from_str_radix(&value, 16) {
+-            Ok(f) => f,
+-            Err(_) => {
+-                return CalcResult::new_error(
+-                    Error::NUM,
+-                    cell,
+-                    "Error parsing hex number".to_string(),
+-                );
+-            }
+-        };
+-        if value < 0 {
+-            return CalcResult::new_error(Error::NUM, cell, "Negative value".to_string());
+-        }
+-
+-        if value >= HEX_MAX_HALF {
+-            value -= HEX_MAX;
+-        }
+-        if !(-512..=511).contains(&value) {
+-            return CalcResult::new_error(Error::NUM, cell, "Out of bounds".to_string());
+-        }
+-        if value < 0 {
+-            value += 1024;
+-        }
+-        let result = format!("{value:b}");
+-        if let Some(places) = places {
+-            if places <= 0 || (value > 0 && places < result.len() as i32) {
++        self.map_scalar_arguments(args, cell, |model, values| {
++            let value = match model.cast_to_string(values[0].clone(), cell) {
++                Ok(s) => s,
++                Err(s) => return s,
++            };
++            let places = if args.len() == 2 {
++                match model.cast_to_number_no_bools(values[1].clone(), cell) {
++                    Ok(f) => Some(f.trunc() as i32),
++                    Err(s) => return s,
++                }
++            } else {
++                None
++            };
++            if value.len() > 10 {
++                return CalcResult::new_error(Error::NUM, cell, "Value too large".to_string());
++            }
++            if let Some(p) = places {
++                if p <= 0 || p > 10 {
++                    return CalcResult::new_error(
++                        Error::NUM,
++                        cell,
++                        "Not enough places".to_string(),
++                    );
++                }
++            }
++            let mut value = match i64::from_str_radix(&value, 16) {
++                Ok(f) => f,
++                Err(_) => {
++                    return CalcResult::new_error(
++                        Error::NUM,
++                        cell,
++                        "Error parsing hex number".to_string(),
++                    );
++                }
++            };
++            if value < 0 {
++                return CalcResult::new_error(Error::NUM, cell, "Negative value".to_string());
++            }
++
++            if value >= HEX_MAX_HALF {
++                value -= HEX_MAX;
++            }
++            if !(-512..=511).contains(&value) {
+                 return CalcResult::new_error(Error::NUM, cell, "Out of bounds".to_string());
+             }
+-            let result = format!("{:0width$b}", value, width = places as usize);
+-            return CalcResult::String(result);
+-        }
+-        CalcResult::String(result)
++            if value < 0 {
++                value += 1024;
++            }
++            let result = format!("{value:b}");
++            if let Some(places) = places {
++                if places <= 0 || (value > 0 && places < result.len() as i32) {
++                    return CalcResult::new_error(Error::NUM, cell, "Out of bounds".to_string());
++                }
++                let result = format!("{:0width$b}", value, width = places as usize);
++                return CalcResult::String(result);
++            }
++            CalcResult::String(result)
++        })
+     }
+ 
+     // HEX2DEC(number)
+@@ -317,229 +363,251 @@
+         if !(1..=2).contains(&args.len()) {
+             return CalcResult::new_args_number_error(cell);
+         }
+-        let value = match self.get_string(&args[0], cell) {
+-            Ok(s) => s,
+-            Err(s) => return s,
+-        };
+-        if value.len() > 10 {
+-            return CalcResult::new_error(Error::NUM, cell, "Value too large".to_string());
+-        }
+-        let mut value = match i64::from_str_radix(&value, 16) {
+-            Ok(f) => f,
+-            Err(_) => {
+-                return CalcResult::new_error(
+-                    Error::NUM,
+-                    cell,
+-                    "Error parsing hex number".to_string(),
+-                );
+-            }
+-        };
+-        if value < 0 {
+-            return CalcResult::new_error(Error::NUM, cell, "Negative value".to_string());
+-        }
+-
+-        if value >= HEX_MAX_HALF {
+-            value -= HEX_MAX;
+-        }
+-        CalcResult::Number(value as f64)
++        self.map_scalar_arguments(args, cell, |model, values| {
++            let value = match model.cast_to_string(values[0].clone(), cell) {
++                Ok(s) => s,
++                Err(s) => return s,
++            };
++            if value.len() > 10 {
++                return CalcResult::new_error(Error::NUM, cell, "Value too large".to_string());
++            }
++            let mut value = match i64::from_str_radix(&value, 16) {
++                Ok(f) => f,
++                Err(_) => {
++                    return CalcResult::new_error(
++                        Error::NUM,
++                        cell,
++                        "Error parsing hex number".to_string(),
++                    );
++                }
++            };
++            if value < 0 {
++                return CalcResult::new_error(Error::NUM, cell, "Negative value".to_string());
++            }
++
++            if value >= HEX_MAX_HALF {
++                value -= HEX_MAX;
++            }
++            CalcResult::Number(value as f64)
++        })
+     }
+ 
+     pub(crate) fn fn_hex2oct(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+         if !(1..=2).contains(&args.len()) {
+             return CalcResult::new_args_number_error(cell);
+         }
+-        let value = match self.get_string(&args[0], cell) {
+-            Ok(s) => s,
+-            Err(s) => return s,
+-        };
+-        let places = if args.len() == 2 {
+-            match self.get_number_no_bools(&args[1], cell) {
+-                Ok(f) => Some(f.trunc() as i32),
+-                Err(s) => return s,
+-            }
+-        } else {
+-            None
+-        };
+-        if let Some(p) = places {
+-            if p <= 0 || p > 10 {
+-                return CalcResult::new_error(Error::NUM, cell, "Not enough places".to_string());
+-            }
+-        }
+-        if value.len() > 10 {
+-            return CalcResult::new_error(Error::NUM, cell, "Value too large".to_string());
+-        }
+-        let mut value = match i64::from_str_radix(&value, 16) {
+-            Ok(f) => f,
+-            Err(_) => {
+-                return CalcResult::new_error(
+-                    Error::NUM,
+-                    cell,
+-                    "Error parsing hex number".to_string(),
+-                );
+-            }
+-        };
+-        if value < 0 {
+-            return CalcResult::new_error(Error::NUM, cell, "Negative value".to_string());
+-        }
+-
+-        if value > HEX_MAX_HALF {
+-            value -= HEX_MAX;
+-        }
+-        if !(-OCT_MAX_HALF..=OCT_MAX_HALF - 1).contains(&value) {
+-            return CalcResult::new_error(Error::NUM, cell, "Out of bounds".to_string());
+-        }
+-        if value < 0 {
+-            value += OCT_MAX;
+-        }
+-        let result = format!("{value:o}");
+-        if let Some(places) = places {
+-            if places <= 0 || (value > 0 && places < result.len() as i32) {
++        self.map_scalar_arguments(args, cell, |model, values| {
++            let value = match model.cast_to_string(values[0].clone(), cell) {
++                Ok(s) => s,
++                Err(s) => return s,
++            };
++            let places = if args.len() == 2 {
++                match model.cast_to_number_no_bools(values[1].clone(), cell) {
++                    Ok(f) => Some(f.trunc() as i32),
++                    Err(s) => return s,
++                }
++            } else {
++                None
++            };
++            if let Some(p) = places {
++                if p <= 0 || p > 10 {
++                    return CalcResult::new_error(
++                        Error::NUM,
++                        cell,
++                        "Not enough places".to_string(),
++                    );
++                }
++            }
++            if value.len() > 10 {
++                return CalcResult::new_error(Error::NUM, cell, "Value too large".to_string());
++            }
++            let mut value = match i64::from_str_radix(&value, 16) {
++                Ok(f) => f,
++                Err(_) => {
++                    return CalcResult::new_error(
++                        Error::NUM,
++                        cell,
++                        "Error parsing hex number".to_string(),
++                    );
++                }
++            };
++            if value < 0 {
++                return CalcResult::new_error(Error::NUM, cell, "Negative value".to_string());
++            }
++
++            if value > HEX_MAX_HALF {
++                value -= HEX_MAX;
++            }
++            if !(-OCT_MAX_HALF..=OCT_MAX_HALF - 1).contains(&value) {
+                 return CalcResult::new_error(Error::NUM, cell, "Out of bounds".to_string());
+             }
+-            let result = format!("{:0width$o}", value, width = places as usize);
+-            return CalcResult::String(result);
+-        }
+-        CalcResult::String(result)
++            if value < 0 {
++                value += OCT_MAX;
++            }
++            let result = format!("{value:o}");
++            if let Some(places) = places {
++                if places <= 0 || (value > 0 && places < result.len() as i32) {
++                    return CalcResult::new_error(Error::NUM, cell, "Out of bounds".to_string());
++                }
++                let result = format!("{:0width$o}", value, width = places as usize);
++                return CalcResult::String(result);
++            }
++            CalcResult::String(result)
++        })
+     }
+ 
+     pub(crate) fn fn_oct2bin(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+         if !(1..=2).contains(&args.len()) {
+             return CalcResult::new_args_number_error(cell);
+         }
+-        let value = match self.get_string(&args[0], cell) {
+-            Ok(s) => s,
+-            Err(s) => return s,
+-        };
+-        let places = if args.len() == 2 {
+-            match self.get_number_no_bools(&args[1], cell) {
+-                Ok(f) => Some(f.trunc() as i32),
+-                Err(s) => return s,
+-            }
+-        } else {
+-            None
+-        };
+-        if let Some(p) = places {
+-            if p <= 0 || p > 10 {
+-                return CalcResult::new_error(Error::NUM, cell, "Not enough places".to_string());
+-            }
+-        }
+-        let mut value = match i64::from_str_radix(&value, 8) {
+-            Ok(f) => f,
+-            Err(_) => {
+-                return CalcResult::new_error(
+-                    Error::NUM,
+-                    cell,
+-                    "Error parsing hex number".to_string(),
+-                );
+-            }
+-        };
+-        if value < 0 {
+-            return CalcResult::new_error(Error::NUM, cell, "Negative value".to_string());
+-        }
+-
+-        if value >= OCT_MAX_HALF {
+-            value -= OCT_MAX;
+-        }
+-        if !(-512..=511).contains(&value) {
+-            return CalcResult::new_error(Error::NUM, cell, "Out of bounds".to_string());
+-        }
+-        if value < 0 {
+-            value += 1024;
+-        }
+-        let result = format!("{value:b}");
+-        if let Some(places) = places {
+-            if value < 512 && places < result.len() as i32 {
++        self.map_scalar_arguments(args, cell, |model, values| {
++            let value = match model.cast_to_string(values[0].clone(), cell) {
++                Ok(s) => s,
++                Err(s) => return s,
++            };
++            let places = if args.len() == 2 {
++                match model.cast_to_number_no_bools(values[1].clone(), cell) {
++                    Ok(f) => Some(f.trunc() as i32),
++                    Err(s) => return s,
++                }
++            } else {
++                None
++            };
++            if let Some(p) = places {
++                if p <= 0 || p > 10 {
++                    return CalcResult::new_error(
++                        Error::NUM,
++                        cell,
++                        "Not enough places".to_string(),
++                    );
++                }
++            }
++            let mut value = match i64::from_str_radix(&value, 8) {
++                Ok(f) => f,
++                Err(_) => {
++                    return CalcResult::new_error(
++                        Error::NUM,
++                        cell,
++                        "Error parsing hex number".to_string(),
++                    );
++                }
++            };
++            if value < 0 {
++                return CalcResult::new_error(Error::NUM, cell, "Negative value".to_string());
++            }
++
++            if value >= OCT_MAX_HALF {
++                value -= OCT_MAX;
++            }
++            if !(-512..=511).contains(&value) {
+                 return CalcResult::new_error(Error::NUM, cell, "Out of bounds".to_string());
+             }
+-            let result = format!("{:0width$b}", value, width = places as usize);
+-            return CalcResult::String(result);
+-        }
+-        CalcResult::String(result)
++            if value < 0 {
++                value += 1024;
++            }
++            let result = format!("{value:b}");
++            if let Some(places) = places {
++                if value < 512 && places < result.len() as i32 {
++                    return CalcResult::new_error(Error::NUM, cell, "Out of bounds".to_string());
++                }
++                let result = format!("{:0width$b}", value, width = places as usize);
++                return CalcResult::String(result);
++            }
++            CalcResult::String(result)
++        })
+     }
+ 
+     pub(crate) fn fn_oct2dec(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+         if !(1..=2).contains(&args.len()) {
+             return CalcResult::new_args_number_error(cell);
+         }
+-        let value = match self.get_string(&args[0], cell) {
+-            Ok(s) => s,
+-            Err(s) => return s,
+-        };
+-        let mut value = match i64::from_str_radix(&value, 8) {
+-            Ok(f) => f,
+-            Err(_) => {
+-                return CalcResult::new_error(
+-                    Error::NUM,
+-                    cell,
+-                    "Error parsing hex number".to_string(),
+-                );
+-            }
+-        };
+-        if value < 0 {
+-            return CalcResult::new_error(Error::NUM, cell, "Negative value".to_string());
+-        }
+-
+-        if value >= OCT_MAX_HALF {
+-            value -= OCT_MAX
+-        }
+-        CalcResult::Number(value as f64)
++        self.map_scalar_arguments(args, cell, |model, values| {
++            let value = match model.cast_to_string(values[0].clone(), cell) {
++                Ok(s) => s,
++                Err(s) => return s,
++            };
++            let mut value = match i64::from_str_radix(&value, 8) {
++                Ok(f) => f,
++                Err(_) => {
++                    return CalcResult::new_error(
++                        Error::NUM,
++                        cell,
++                        "Error parsing hex number".to_string(),
++                    );
++                }
++            };
++            if value < 0 {
++                return CalcResult::new_error(Error::NUM, cell, "Negative value".to_string());
++            }
++
++            if value >= OCT_MAX_HALF {
++                value -= OCT_MAX
++            }
++            CalcResult::Number(value as f64)
++        })
+     }
+ 
+     pub(crate) fn fn_oct2hex(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+         if !(1..=2).contains(&args.len()) {
+             return CalcResult::new_args_number_error(cell);
+         }
+-        let value = match self.get_string(&args[0], cell) {
+-            Ok(s) => s,
+-            Err(s) => return s,
+-        };
+-        let places = if args.len() == 2 {
+-            match self.get_number_no_bools(&args[1], cell) {
+-                Ok(f) => Some(f.trunc() as i32),
+-                Err(s) => return s,
+-            }
+-        } else {
+-            None
+-        };
+-        // There is not a default value for places
+-        // But if there is a value it needs to be positive and less than 11
+-        if let Some(p) = places {
+-            if p <= 0 || p > 10 {
+-                return CalcResult::new_error(Error::NUM, cell, "Not enough places".to_string());
+-            }
+-        }
+-        let mut value = match i64::from_str_radix(&value, 8) {
+-            Ok(f) => f,
+-            Err(_) => {
+-                return CalcResult::new_error(
+-                    Error::NUM,
+-                    cell,
+-                    "Error parsing hex number".to_string(),
+-                );
+-            }
+-        };
+-        if value < 0 {
+-            return CalcResult::new_error(Error::NUM, cell, "Negative value".to_string());
+-        }
+-
+-        if value >= OCT_MAX_HALF {
+-            value -= OCT_MAX;
+-        }
+-
+-        if !(-HEX_MAX_HALF..=HEX_MAX_HALF - 1).contains(&value) {
+-            return CalcResult::new_error(Error::NUM, cell, "Out of bounds".to_string());
+-        }
+-        if value < 0 {
+-            value += HEX_MAX;
+-        }
+-        let result = format!("{value:X}");
+-        if let Some(places) = places {
+-            if value < HEX_MAX_HALF && places < result.len() as i32 {
++        self.map_scalar_arguments(args, cell, |model, values| {
++            let value = match model.cast_to_string(values[0].clone(), cell) {
++                Ok(s) => s,
++                Err(s) => return s,
++            };
++            let places = if args.len() == 2 {
++                match model.cast_to_number_no_bools(values[1].clone(), cell) {
++                    Ok(f) => Some(f.trunc() as i32),
++                    Err(s) => return s,
++                }
++            } else {
++                None
++            };
++            // There is not a default value for places
++            // But if there is a value it needs to be positive and less than 11
++            if let Some(p) = places {
++                if p <= 0 || p > 10 {
++                    return CalcResult::new_error(
++                        Error::NUM,
++                        cell,
++                        "Not enough places".to_string(),
++                    );
++                }
++            }
++            let mut value = match i64::from_str_radix(&value, 8) {
++                Ok(f) => f,
++                Err(_) => {
++                    return CalcResult::new_error(
++                        Error::NUM,
++                        cell,
++                        "Error parsing hex number".to_string(),
++                    );
++                }
++            };
++            if value < 0 {
++                return CalcResult::new_error(Error::NUM, cell, "Negative value".to_string());
++            }
++
++            if value >= OCT_MAX_HALF {
++                value -= OCT_MAX;
++            }
++
++            if !(-HEX_MAX_HALF..=HEX_MAX_HALF - 1).contains(&value) {
+                 return CalcResult::new_error(Error::NUM, cell, "Out of bounds".to_string());
+             }
+-            let result = format!("{:0width$X}", value, width = places as usize);
+-            return CalcResult::String(result);
+-        }
+-        CalcResult::String(result)
++            if value < 0 {
++                value += HEX_MAX;
++            }
++            let result = format!("{value:X}");
++            if let Some(places) = places {
++                if value < HEX_MAX_HALF && places < result.len() as i32 {
++                    return CalcResult::new_error(Error::NUM, cell, "Out of bounds".to_string());
++                }
++                let result = format!("{:0width$X}", value, width = places as usize);
++                return CalcResult::String(result);
++            }
++            CalcResult::String(result)
 +        })
      }
  }
@@ -8567,7 +9752,7 @@
              format!("rows * columns exceeds matrix size limit of {}", MAX_SIZE),
 --- a/src/functions/math_and_trigonometry/mathematical.rs
 +++ b/src/functions/math_and_trigonometry/mathematical.rs
-@@ -1,8 +1,7 @@
+@@ -1,13 +1,62 @@
 -use crate::cast::NumberOrArray;
  use crate::constants::{EXCEL_PRECISION, LAST_COLUMN, LAST_ROW};
  use crate::expressions::parser::ArrayNode;
@@ -8577,7 +9762,62 @@
  use crate::single_number_fn;
  use crate::{
      calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
-@@ -131,86 +130,49 @@
+ };
+ use std::f64::consts::PI;
++
++// Parse up to 255 base-36 digits exactly, then round once to binary64.
++// This avoids imposing i64 limits or accumulating per-digit float rounding.
++fn decimal_integer(text: &str, radix: u32) -> Result<f64, Error> {
++    if !(2..=36).contains(&radix) || text.chars().count() > 255 {
++        return Err(Error::NUM);
++    }
++    // Preserve the existing signed-text parsing policy pending native captures.
++    let (negative, digits) = if let Some(digits) = text.strip_prefix('-') {
++        (true, digits)
++    } else {
++        (false, text.strip_prefix('+').unwrap_or(text))
++    };
++    if digits.is_empty() {
++        return Err(Error::VALUE);
++    }
++    let mut limbs = vec![0_u32];
++    for digit in digits.chars() {
++        let mut carry = u64::from(digit.to_digit(radix).ok_or(Error::VALUE)?);
++        for limb in &mut limbs {
++            let value = u64::from(*limb) * u64::from(radix) + carry;
++            *limb = value as u32;
++            carry = value >> 32;
++        }
++        if carry != 0 {
++            limbs.push(carry as u32);
++        }
++    }
++    let bits = (limbs.len() - 1) * 32 + (32 - limbs[limbs.len() - 1].leading_zeros()) as usize;
++    if bits > 1024 {
++        return Err(Error::NUM);
++    }
++    let bit = |index: usize| (limbs[index / 32] >> (index % 32)) & 1 != 0;
++    let discarded = bits.saturating_sub(53);
++    let mut mantissa = (discarded..bits)
++        .rev()
++        .fold(0_u64, |value, index| (value << 1) | u64::from(bit(index)));
++    if discarded > 0 && bit(discarded - 1) && ((0..discarded - 1).any(bit) || mantissa & 1 != 0) {
++        mantissa += 1;
++    }
++    let number = mantissa as f64 * 2.0_f64.powi(discarded as i32);
++    if !number.is_finite() {
++        return Err(Error::NUM);
++    }
++    Ok(if negative && number != 0.0 {
++        -number
++    } else {
++        number
++    })
++}
+ 
+ impl<'a> Model<'a> {
+     pub(crate) fn fn_min(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+@@ -131,115 +180,74 @@
      }
  
      pub(crate) fn fn_base(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -8706,7 +9946,55 @@
      }
  
      pub(crate) fn fn_decimal(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-@@ -621,78 +583,50 @@
+         if args.len() != 2 {
+             return CalcResult::new_args_number_error(cell);
+         }
+-        let text = match self.get_string(&args[0], cell) {
+-            Ok(s) => s,
+-            Err(s) => return s,
+-        };
+-        let radix = match self.get_number(&args[1], cell) {
+-            Ok(f) => f.trunc() as i32,
+-            Err(s) => return s,
+-        };
+-        if !(2..=36).contains(&radix) {
+-            return CalcResult::Error {
+-                error: Error::NUM,
+-                origin: cell,
+-                message: "Radix must be between 2 and 36".to_string(),
+-            };
+-        }
+-        match i64::from_str_radix(&text, radix as u32) {
+-            Ok(n) => CalcResult::Number(n as f64),
+-            Err(_) => CalcResult::Error {
+-                error: Error::VALUE,
+-                origin: cell,
+-                message: format!("'{}' is not a valid number in base {}", text, radix),
+-            },
+-        }
++        self.map_scalar_arguments(args, cell, |model, values| {
++            let text = match model.cast_to_string(values[0].clone(), cell) {
++                Ok(text) => text,
++                Err(error) => return error,
++            };
++            let radix = match model.cast_to_number(values[1].clone(), cell) {
++                Ok(radix) if radix.is_finite() && (2.0..=36.0).contains(&radix.trunc()) => {
++                    radix.trunc() as u32
++                }
++                Ok(_) => {
++                    return CalcResult::new_error(Error::NUM, cell, "Invalid DECIMAL radix".into())
++                }
++                Err(error) => return error,
++            };
++            match decimal_integer(&text, radix) {
++                Ok(number) => CalcResult::Number(number),
++                Err(error) => CalcResult::new_error(error, cell, "Invalid DECIMAL text".into()),
++            }
++        })
+     }
+ 
+     /// SUM(number1, [number2], ...)
+@@ -621,78 +629,50 @@
      }
  
      pub(crate) fn fn_round(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -8828,7 +10116,7 @@
      }
  
      // (number, divisor)
-@@ -700,112 +634,119 @@
+@@ -700,112 +680,119 @@
          if args.len() != 2 {
              return CalcResult::new_args_number_error(cell);
          }
@@ -9042,7 +10330,7 @@
      }
  
      pub(crate) fn fn_ceiling_math(
-@@ -813,44 +754,7 @@
+@@ -813,44 +800,7 @@
          args: &[Node],
          cell: CellReferenceIndex,
      ) -> CalcResult {
@@ -9088,7 +10376,7 @@
      }
  
      pub(crate) fn fn_ceiling_precise(
-@@ -858,76 +762,15 @@
+@@ -858,76 +808,15 @@
          args: &[Node],
          cell: CellReferenceIndex,
      ) -> CalcResult {
@@ -9167,7 +10455,7 @@
      }
  
      pub(crate) fn fn_floor_precise(
-@@ -935,30 +778,48 @@
+@@ -935,30 +824,48 @@
          args: &[Node],
          cell: CellReferenceIndex,
      ) -> CalcResult {
@@ -9240,7 +10528,7 @@
      }
  
      pub(crate) fn fn_mround(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-@@ -967,84 +828,83 @@
+@@ -967,84 +874,83 @@
              return CalcResult::new_args_number_error(cell);
          }
  
@@ -9396,7 +10684,7 @@
      }
  
      single_number_fn!(fn_log10, |f| if f <= 0.0 {
-@@ -1122,35 +982,51 @@
+@@ -1122,35 +1028,51 @@
      single_number_fn!(fn_sec, |f| Ok(1.0 / f64::cos(f)));
      single_number_fn!(fn_sech, |f| Ok(1.0 / f64::cosh(f)));
      single_number_fn!(fn_exp, |f: f64| Ok(f64::exp(f)));
@@ -9477,7 +10765,7 @@
      single_number_fn!(fn_sign, |f| {
          if f == 0.0 {
              Ok(0.0)
-@@ -1180,22 +1056,29 @@
+@@ -1180,22 +1102,29 @@
          if args.len() != 2 {
              return CalcResult::new_args_number_error(cell);
          }
@@ -9523,7 +10811,7 @@
      }
  
      pub(crate) fn fn_log(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-@@ -1203,116 +1086,198 @@
+@@ -1203,116 +1132,198 @@
          if !(1..=2).contains(&n_args) {
              return CalcResult::new_args_number_error(cell);
          }
@@ -9818,7 +11106,7 @@
      }
  
      // PERCENTOF(part, total) — returns SUM(part) / SUM(total) as a decimal fraction.
-@@ -1335,30 +1300,6 @@
+@@ -1335,30 +1346,84 @@
      }
  
      pub(crate) fn fn_combina(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -9828,7 +11116,22 @@
 -        let n = match self.get_number(&args[0], cell) {
 -            Ok(f) => f.floor(),
 -            Err(s) => return s,
--        };
++        self.combination_arguments(args, cell, true)
++    }
++}
++
++#[cfg(test)]
++mod decimal_tests {
++    use super::*;
++
++    #[test]
++    fn decimal_accepts_unsigned_values_beyond_i64() {
++        let mut model = crate::test::util::new_empty_model();
++        let cell = CellReferenceIndex {
++            sheet: 0,
++            row: 1,
++            column: 1,
+         };
 -        let k = match self.get_number(&args[1], cell) {
 -            Ok(f) => f.floor(),
 -            Err(s) => return s,
@@ -9847,7 +11150,69 @@
 -            result *= (n + t) / (t + 1.0);
 -        }
 -        CalcResult::Number(result)
-+        self.combination_arguments(args, cell, true)
++        let result = model.fn_decimal(
++            &[
++                Node::StringKind("FFFFFFFFFFFFFFFF".into()),
++                Node::NumberKind(16.0),
++            ],
++            cell,
++        );
++        assert!(matches!(result, CalcResult::Number(number) if number == 2.0_f64.powi(64)));
++    }
++    #[test]
++    fn decimal_integer_rounds_exactly_across_all_radices() {
++        let mut values = vec![
++            0,
++            1,
++            (1_u128 << 53) - 1,
++            (1_u128 << 53) + 1,
++            (1_u128 << 53) + 3,
++            u64::MAX as u128,
++            (1_u128 << 127) - 1,
++            u128::MAX,
++        ];
++        let mut state = 0x123456789abcdef_u128;
++        for _ in 0..128 {
++            state = state.wrapping_mul(6364136223846793005).wrapping_add(1);
++            values.push(state);
++        }
++        for radix in 2..=36_u32 {
++            for &value in &values {
++                let mut number = value;
++                let mut digits = Vec::new();
++                loop {
++                    let digit = (number % u128::from(radix)) as u32;
++                    digits.push(char::from_digit(digit, radix).unwrap_or('0'));
++                    number /= u128::from(radix);
++                    if number == 0 {
++                        break;
++                    }
++                }
++                let text: String = digits.into_iter().rev().collect();
++                let actual = decimal_integer(&text, radix);
++                assert!(
++                    matches!(actual, Ok(number) if number.to_bits()==(value as f64).to_bits()),
++                    "base={radix}, text={text}"
++                );
++            }
++        }
++    }
++
++    #[test]
++    fn decimal_integer_checks_length_overflow_and_wide_values() {
++        assert_eq!(
++            decimal_integer(&format!("1{}", "0".repeat(64)), 16),
++            Ok(2.0_f64.powi(256))
++        );
++        assert_eq!(
++            decimal_integer(&"F".repeat(255), 16),
++            Ok(2.0_f64.powi(1020))
++        );
++        assert_eq!(decimal_integer(&"Z".repeat(255), 36), Err(Error::NUM));
++        assert_eq!(decimal_integer(&"0".repeat(256), 2), Err(Error::NUM));
++        assert_eq!(decimal_integer("-FF", 16), Ok(-255.0));
++        assert_eq!(decimal_integer("G", 16), Err(Error::VALUE));
++        assert_eq!(decimal_integer("", 16), Err(Error::VALUE));
      }
  }
 --- a/src/functions/mod.rs
@@ -19664,7 +21029,7 @@
  
      // Component extraction should work with very large values
      let hour_b1 = model._get_text("B1").parse::<i32>().unwrap();
-@@ -505,10 +503,162 @@
+@@ -505,10 +503,192 @@
  }
  
  #[test]
@@ -19817,6 +21182,36 @@
 +    model._set("A47", "=BASE(SEQUENCE(1001,1,1),SEQUENCE(1,1001,2))");
 +    model.evaluate();
 +    assert_eq!(model._get_text("A47"), "#ERROR!");
++    model._set("A48", "=DECIMAL(SEQUENCE(1001,1,1),SEQUENCE(1,1001,2))");
++    model.evaluate();
++    assert_eq!(model._get_text("A48"), "#ERROR!");
++    let radix_functions = [
++        "BIN2HEX", "BIN2OCT", "DEC2BIN", "DEC2HEX", "DEC2OCT", "HEX2BIN", "HEX2OCT", "OCT2BIN",
++        "OCT2HEX",
++    ];
++    for (index, function) in radix_functions.iter().enumerate() {
++        model._set(
++            &format!("A{}", 49 + index),
++            &format!("={function}(SEQUENCE(1001,1,1),SEQUENCE(1,1001,1))"),
++        );
++    }
++    model.evaluate();
++    for index in 0..radix_functions.len() {
++        assert_eq!(model._get_text(&format!("A{}", 49 + index)), "#ERROR!");
++    }
++    for (index, function) in ["BESSELI", "BESSELJ", "BESSELK", "BESSELY"]
++        .iter()
++        .enumerate()
++    {
++        model._set(
++            &format!("A{}", 58 + index),
++            &format!("={function}(SEQUENCE(1001,1,1),SEQUENCE(1,1001,1))"),
++        );
++    }
++    model.evaluate();
++    for index in 0..4 {
++        assert_eq!(model._get_text(&format!("A{}", 58 + index)), "#ERROR!");
++    }
 +}
 +
 +#[test]
@@ -19828,7 +21223,7 @@
          ("A1", "=TIME(2147483647, 0, 0)"), // Max i32 hours
          ("A2", "=TIME(0, 2147483647, 0)"), // Max i32 minutes
          ("A3", "=TIME(0, 0, 2147483647)"), // Max i32 seconds
-@@ -520,14 +670,17 @@
+@@ -520,14 +700,17 @@
          ("C1", "=HOUR(1.7976931348623157e+308)"), // Near max f64
          ("C2", "=HOUR(2.2250738585072014e-308)"), // Near min positive f64
          // Multiple TIME function calls with large values
