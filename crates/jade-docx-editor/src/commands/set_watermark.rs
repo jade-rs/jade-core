@@ -1,21 +1,32 @@
 use super::{Command, CommandContext, CommandError, CommandResult, HistoryRenderFootprint};
-use crate::word_document::WordDocumentSnapshot;
+use crate::word_document::{WatermarkSpec, WordDocumentSnapshot};
 use jade_docx_layout::selection::SelectionRange;
 
 /// Replaces or clears the Word-compatible VML text watermark in every
 /// referenced header variant. A package snapshot makes the multi-part edit,
 /// selection, and undo/redo history atomic.
 pub struct SetWatermarkCommand {
-    text: Option<String>,
+    spec: Option<WatermarkSpec>,
     snapshot: Option<WordDocumentSnapshot>,
     previous_selection: Option<SelectionRange>,
     changed: bool,
 }
 
 impl SetWatermarkCommand {
+    /// A watermark of Word's default look (silver, semitransparent,
+    /// diagonal, size automatic), or `None` to take it away.
     pub fn new(text: Option<String>) -> Self {
-        Self {
+        Self::with_spec(text.map(|text| WatermarkSpec {
             text,
+            style: Default::default(),
+        }))
+    }
+
+    /// A watermark with its look (ユーザー設定の透かし), or `None` to take it
+    /// away.
+    pub fn with_spec(spec: Option<WatermarkSpec>) -> Self {
+        Self {
+            spec,
             snapshot: None,
             previous_selection: None,
             changed: false,
@@ -34,7 +45,7 @@ impl Command for SetWatermarkCommand {
             .snapshot_including_package()
             .ok_or(CommandError::DocumentUnavailable)?;
         let previous_selection = *ctx.selection;
-        match ctx.document.set_watermark_text(self.text.as_deref()) {
+        match ctx.document.set_watermark(self.spec.clone()) {
             Ok(changed) => {
                 self.snapshot = Some(snapshot);
                 self.previous_selection = previous_selection;
@@ -292,6 +303,245 @@ mod tests {
             .expect("cleared default header");
         assert!(default_cleared.contains("KEEP HEADER"));
         assert!(default_cleared.contains("<x:keep x:value=\"yes\"/>"));
+    }
+
+    /// ユーザー設定の透かし: the font, size, color, 半透明 and レイアウト are
+    /// written into the VML as Word writes them and read back on open.
+    #[test]
+    fn a_styled_watermark_round_trips_its_look() {
+        use jade_docx_reader::document::WatermarkStyle;
+        let mut document = load_fixture();
+        let style = WatermarkStyle {
+            font: Some("游ゴシック".to_string()),
+            size_pt: Some(72.0),
+            fit_shape: None,
+            color: "#ff0000".to_string(),
+            semitransparent: false,
+            horizontal: true,
+            width_pt: None,
+            height_pt: None,
+        };
+        let mut selection = Some(SelectionRange::collapsed(TextPosition::new(0, 0)));
+        let mut context = CommandContext::new(&mut document, &mut selection);
+        let mut commands = CommandExecutor::new();
+        commands
+            .execute(
+                Box::new(SetWatermarkCommand::with_spec(Some(WatermarkSpec {
+                    text: "至急".to_string(),
+                    style,
+                }))),
+                &mut context,
+            )
+            .expect("set styled watermark");
+        let bytes = document.export_docx().expect("export");
+        let headers = header_xmls(&bytes);
+        let xml = &headers[0].1;
+        assert!(
+            xml.contains("font-family:&quot;游ゴシック&quot;;font-size:72pt"),
+            "{xml}"
+        );
+        assert!(xml.contains("fillcolor=\"#FF0000\""), "{xml}");
+        assert!(
+            !xml.contains("rotation:315"),
+            "horizontal has no rotation: {xml}"
+        );
+        assert!(
+            !xml.contains("<v:fill "),
+            "opaque has no fill opacity: {xml}"
+        );
+        assert!(xml.contains("width:144pt;height:72pt"), "{xml}");
+
+        let reopened =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("reopen");
+        let parsed = reopened.document.as_deref().expect("document");
+        assert_eq!(parsed.watermark_text.as_deref(), Some("至急"));
+        let read = parsed.watermark_style.clone().expect("style");
+        assert_eq!(read.font.as_deref(), Some("游ゴシック"));
+        assert_eq!(read.size_pt, Some(72.0));
+        assert_eq!(read.color, "#FF0000");
+        assert!(!read.semitransparent && read.horizontal);
+        assert_eq!((read.width_pt, read.height_pt), (Some(144.0), Some(72.0)));
+
+        // Word's default look: silver, semitransparent, diagonal, automatic.
+        let mut document = reopened;
+        assert!(document
+            .set_watermark_text(Some("社外秘"))
+            .expect("default"));
+        let bytes = document.export_docx().expect("export default");
+        let xml = header_xmls(&bytes).remove(0).1;
+        assert!(xml.contains("fillcolor=\"silver\""), "{xml}");
+        assert!(xml.contains("rotation:315"), "{xml}");
+        assert!(xml.contains("<v:fill opacity=\".5\"/>"), "{xml}");
+        assert!(xml.contains("font-size:1pt"), "{xml}");
+        let style = document
+            .document
+            .as_deref()
+            .and_then(|document| document.watermark_style.clone())
+            .expect("default style");
+        assert!(style.semitransparent && !style.horizontal && style.size_pt.is_none());
+        // 自動 diagonal: the rotated box fits the body's shorter side.
+        let (width, height) = (style.width_pt.unwrap(), style.height_pt.unwrap());
+        assert!((width / height - 3.0).abs() < 0.01, "{width} x {height}");
+        // Applying the same look again is a no-op.
+        assert!(!document.set_watermark_text(Some("社外秘")).expect("same"));
+    }
+
+    #[test]
+    fn explicit_small_watermark_sizes_survive_save_and_reopen() {
+        use jade_docx_reader::document::WatermarkStyle;
+        for size in [1.0_f32, 1.005, 1.01, 1.02, 72.12345, 1638.0] {
+            let mut document = load_fixture();
+            document
+                .set_watermark(Some(WatermarkSpec {
+                    text: "CONFIDENTIAL".to_string(),
+                    style: WatermarkStyle {
+                        size_pt: Some(size),
+                        ..WatermarkStyle::default()
+                    },
+                }))
+                .expect("set explicit watermark size");
+            let bytes = document.export_docx().expect("export");
+            let reopened = executor::block_on(WordDocument::load(&bytes, &Options::default()))
+                .expect("reopen");
+            let style = reopened
+                .document
+                .as_deref()
+                .expect("document")
+                .watermark_style
+                .as_ref()
+                .expect("watermark style");
+            assert_eq!(
+                style.size_pt,
+                Some(size),
+                "explicit size {size} must survive"
+            );
+        }
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig { cases: 64, ..ProptestConfig::default() })]
+
+        #[test]
+        fn explicit_watermark_font_sizes_round_trip_without_quantization(size in 1.0_f32..=1638.0_f32) {
+            use jade_docx_reader::document::WatermarkStyle;
+            let mut document = load_fixture();
+            document.set_watermark(Some(WatermarkSpec {
+                text: "CONFIDENTIAL".to_string(),
+                style: WatermarkStyle { size_pt: Some(size), ..Default::default() },
+            })).expect("set explicit size");
+            let bytes = document.export_docx().expect("export");
+            let reopened = executor::block_on(WordDocument::load(&bytes, &Options::default()))
+                .expect("reopen");
+            let read = reopened.document.as_deref().expect("document")
+                .watermark_style.as_ref().expect("watermark style");
+            prop_assert_eq!(read.size_pt, Some(size));
+        }
+    }
+
+    #[test]
+    fn watermark_delta_smaller_than_a_hundredth_is_applied() {
+        use jade_docx_reader::document::WatermarkStyle;
+        let mut document = load_fixture();
+        for size in [1.0_f32, 1.005] {
+            let spec = WatermarkSpec {
+                text: "CONFIDENTIAL".to_string(),
+                style: WatermarkStyle {
+                    size_pt: Some(size),
+                    ..Default::default()
+                },
+            };
+            assert!(document
+                .set_watermark(Some(spec.clone()))
+                .expect("change size"));
+            assert!(!document.set_watermark(Some(spec)).expect("same size"));
+            let bytes = document.export_docx().expect("export");
+            let reopened = executor::block_on(WordDocument::load(&bytes, &Options::default()))
+                .expect("reopen");
+            assert_eq!(
+                reopened
+                    .document
+                    .as_deref()
+                    .unwrap()
+                    .watermark_style
+                    .as_ref()
+                    .unwrap()
+                    .size_pt,
+                Some(size)
+            );
+        }
+    }
+
+    #[test]
+    fn watermark_delta_in_fitshape_is_applied() {
+        use jade_docx_reader::document::WatermarkStyle;
+        let mut document = load_fixture();
+        for fit_shape in [false, true, false] {
+            let spec = WatermarkSpec {
+                text: "CONFIDENTIAL".to_string(),
+                style: WatermarkStyle {
+                    size_pt: Some(72.0),
+                    fit_shape: Some(fit_shape),
+                    ..Default::default()
+                },
+            };
+            assert!(document
+                .set_watermark(Some(spec.clone()))
+                .expect("change fitting"));
+            assert!(!document.set_watermark(Some(spec)).expect("same fitting"));
+            let bytes = document.export_docx().expect("export");
+            let reopened = executor::block_on(WordDocument::load(&bytes, &Options::default()))
+                .expect("reopen");
+            assert_eq!(
+                reopened
+                    .document
+                    .as_deref()
+                    .unwrap()
+                    .watermark_style
+                    .as_ref()
+                    .unwrap()
+                    .fit_shape,
+                Some(fit_shape)
+            );
+        }
+    }
+
+    #[test]
+    fn fixed_watermark_without_a_size_uses_the_serialized_font_default() {
+        use jade_docx_reader::document::WatermarkStyle;
+        let mut document = load_fixture();
+        let spec = WatermarkSpec {
+            text: "CONFIDENTIAL".to_string(),
+            style: WatermarkStyle {
+                fit_shape: Some(false),
+                ..Default::default()
+            },
+        };
+        assert!(document
+            .set_watermark(Some(spec.clone()))
+            .expect("set fixed watermark"));
+        assert!(!document
+            .set_watermark(Some(spec))
+            .expect("same fixed watermark"));
+        let bytes = document.export_docx().expect("export");
+        let reopened =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("reopen");
+        let expected = document
+            .document
+            .as_deref()
+            .unwrap()
+            .watermark_style
+            .as_ref()
+            .unwrap();
+        let read = reopened
+            .document
+            .as_deref()
+            .unwrap()
+            .watermark_style
+            .as_ref()
+            .unwrap();
+        assert_eq!(expected.size_pt, Some(1.0));
+        assert_eq!(read.size_pt, expected.size_pt);
+        assert_eq!(read.fit_shape, Some(false));
     }
 
     #[test]

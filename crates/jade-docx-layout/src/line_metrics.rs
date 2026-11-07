@@ -69,11 +69,12 @@ impl WordGridLineSizing {
         Some(((single_px * self.multiple / pitch_px).ceil().max(1.0)) * pitch_px)
     }
 }
-/// Each auto-spaced Mac line uses its own known font box. Unknown faces,
-/// exact/at-least spacing and snapped grids retain their other sizing paths.
+/// Each auto/minimum-spaced Mac line uses its own known font box. Unknown
+/// faces, exact spacing and snapped grids retain their other sizing paths.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct WordProportionalLineSizing {
     multiple: f64,
+    minimum_pt: Option<f64>,
 }
 
 impl WordProportionalLineSizing {
@@ -86,15 +87,23 @@ impl WordProportionalLineSizing {
         if word_layout_platform() != WordLayoutPlatform::Mac || snap || !all_faces_known {
             return None;
         }
-        let multiple = f64::from(proportional_line_multiple(spacing)?);
-        (multiple.is_finite() && multiple > 0.0).then_some(Self { multiple })
+        let minimum_pt = word_minimum_line_height_pt(spacing).map(f64::from);
+        let multiple = if minimum_pt.is_some() {
+            1.0
+        } else {
+            f64::from(proportional_line_multiple(spacing)?)
+        };
+        (multiple.is_finite() && multiple > 0.0).then_some(Self {
+            multiple,
+            minimum_pt,
+        })
     }
 
     pub fn line_height_px(self, single_px: Option<f64>, fallback_px: f64) -> f64 {
         single_px
             .filter(|px| px.is_finite() && *px > 0.0)
             .map_or(fallback_px, |single| {
-                (single * self.multiple).max(96.0 / 72.0)
+                (single * self.multiple).max(self.minimum_pt.unwrap_or(1.0) * 96.0 / 72.0)
             })
     }
 }
@@ -220,31 +229,9 @@ pub fn resolve_body_paragraph_spacing_before(
     }
 }
 
-/// Which Word the layout reproduces where Word for Mac and Word for Windows
-/// lay the same document out differently.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub enum WordLayoutPlatform {
-    /// Word for Windows: the reference for the Word COM traces.
-    #[default]
-    Windows,
-    /// Word for Mac.
-    Mac,
-}
-
-thread_local! {
-    static WORD_LAYOUT_PLATFORM: std::cell::Cell<WordLayoutPlatform> =
-        const { std::cell::Cell::new(WordLayoutPlatform::Windows) };
-}
-
-/// Sets which Word this thread's layout reproduces. Hosts call it once,
-/// before the first document is laid out: cached layouts are not invalidated.
-pub fn set_word_layout_platform(platform: WordLayoutPlatform) {
-    WORD_LAYOUT_PLATFORM.with(|cell| cell.set(platform));
-}
-
-pub fn word_layout_platform() -> WordLayoutPlatform {
-    WORD_LAYOUT_PLATFORM.with(std::cell::Cell::get)
-}
+pub use jade_docx_reader::word_platform::{
+    set_word_layout_platform, word_layout_platform, WordLayoutPlatform,
+};
 
 /// An auto-spacing gap (autoSpaceDE/DN), in px, as the target Word places it.
 /// Word for Windows lays the gap out in whole 96 dpi pixels: its COM traces
@@ -550,12 +537,9 @@ pub const WORD_MAC_NUMBERING_SUFFIX_SPACE_STACK: &str = "Arial, 'Liberation Sans
 /// label's descriptor with its family replaced by Arial. Word for Mac 16.114
 /// makes that space 0.278 em of the label size (Arial's and Century's space)
 /// whatever face the label, the paragraph mark, the paragraph style, the
-/// following run or the document defaults name. `None` on Word for Windows,
-/// whose traces were fitted with the label's high-ANSI face.
+/// following run or the document defaults name. Windows 16.0.19127's indent
+/// probe confirms the same width when the paragraph mark names MS Mincho.
 pub fn word_numbering_suffix_space_descriptor(label_descriptor: &str) -> Option<String> {
-    if word_layout_platform() != WordLayoutPlatform::Mac {
-        return None;
-    }
     let mut offset = 0;
     for token in label_descriptor.split_inclusive(char::is_whitespace) {
         offset += token.len();
@@ -606,6 +590,36 @@ pub fn word_compressed_punctuation_east_asian_advance_scale() -> f64 {
         WordLayoutPlatform::Windows => crate::constants::EAST_ASIA_FE_ADVANCE_SCALE,
         WordLayoutPlatform::Mac => 1.0,
     }
+}
+
+/// Windows Word 16.0.19127 EMF origins in contract.docx leave a quarter em
+/// on both sides of balanced Times New Roman letters next to Japanese text.
+/// Without balancing, the trailing gap uses half the face's OS/2 average width.
+/// Other faces retain their measured policy until their origins are captured.
+pub(crate) fn word_windows_latin_auto_space_metrics(
+    font_descriptor: &str,
+    balanced: bool,
+) -> Option<WordAutoSpace> {
+    let (size_pt, family) = split_font_descriptor(font_descriptor)?;
+    let family = family.split(',').next()?.trim().trim_matches(['\'', '"']);
+    if family != "Times New Roman" || !size_pt.is_finite() || size_pt <= 0.0 {
+        return None;
+    }
+    let trailing_share = if balanced {
+        1.0
+    } else {
+        let units = match font_descriptor_style(font_descriptor) {
+            (true, true) => 844.0,
+            (true, false) => 874.0,
+            (false, true) => 823.0,
+            (false, false) => 821.0,
+        };
+        2.0 * units / 2048.0
+    };
+    Some(WordAutoSpace {
+        em_px: f64::from(size_pt) * 96.0 / 72.0,
+        trailing_share,
+    })
 }
 
 /// [`WordAutoSpace`] for a glyph drawn with `font_descriptor` in Word for Mac,
@@ -740,7 +754,8 @@ pub fn word_fixed_ascii_advance_px(font_descriptor: &str) -> Option<f64> {
         | WordAsciiMetrics::NotoSans(_)
         | WordAsciiMetrics::Calibri(_, _)
         | WordAsciiMetrics::Aptos(_, _)
-        | WordAsciiMetrics::Bookman(_) => None,
+        | WordAsciiMetrics::Bookman(_)
+        | WordAsciiMetrics::TimesNewRoman(_, _, _) => None,
     }
 }
 
@@ -758,6 +773,7 @@ pub(crate) enum WordAsciiMetrics {
     Calibri(f64, bool),
     Aptos(f64, bool),
     Bookman(f64),
+    TimesNewRoman(f64, bool, bool),
 }
 
 // Numeric hmtx facts only: 52 regular / 55 bold ASCII mappings in 42 / 11
@@ -1288,6 +1304,22 @@ impl WordAsciiMetrics {
                 };
                 (units != 0).then_some(unit_px * f64::from(units))
             }
+            Self::TimesNewRoman(unit_px, bold, italic) => {
+                // Windows hmtx facts validated against both Word boundary
+                // sweeps. Unobserved glyphs retain host font measurement.
+                let units = match (ascii, bold, italic) {
+                    (b'a', false, false) => 909.0,
+                    (b'a', _, _) => 1024.0,
+                    (b's', _, _) => 797.0,
+                    (b'd', true, false) => 1139.0,
+                    (b'd', _, _) => 1024.0,
+                    (b'Y', true, true) => 1251.0,
+                    (b'Y', false, true) => 1139.0,
+                    (b'Y', _, false) => 1479.0,
+                    _ => return None,
+                };
+                Some(unit_px * units)
+            }
             Self::Bookman(unit_px) => {
                 // Fourteen source-matched hmtx mappings in Word Mac's math
                 // PDF. Other characters and style variants keep host widths.
@@ -1720,17 +1752,23 @@ pub(crate) fn word_mac_legacy_space_kerning_px(
 }
 
 pub(crate) fn word_ascii_metrics(font_descriptor: &str) -> Option<WordAsciiMetrics> {
+    word_ascii_metrics_for_platform(font_descriptor, word_layout_platform())
+}
+
+pub(crate) fn word_ascii_metrics_for_platform(
+    font_descriptor: &str,
+    platform: WordLayoutPlatform,
+) -> Option<WordAsciiMetrics> {
     #[cfg(test)]
     WORD_FIXED_ASCII_DESCRIPTOR_LOOKUPS.with(|count| count.set(count.get() + 1));
     WORD_FIXED_ASCII_ADVANCE.with(|cell| {
         let mut cached = cell.borrow_mut();
-        let platform = word_layout_platform();
         if let Some((descriptor, cached_platform, advance)) = cached.as_ref() {
             if descriptor == font_descriptor && *cached_platform == platform {
                 return *advance;
             }
         }
-        let advance = parse_word_ascii_metrics(font_descriptor);
+        let advance = parse_word_ascii_metrics(font_descriptor, platform);
         if let Some((descriptor, cached_platform, cached_advance)) = cached.as_mut() {
             descriptor.clear();
             descriptor.push_str(font_descriptor);
@@ -1743,7 +1781,10 @@ pub(crate) fn word_ascii_metrics(font_descriptor: &str) -> Option<WordAsciiMetri
     })
 }
 
-fn parse_word_ascii_metrics(font_descriptor: &str) -> Option<WordAsciiMetrics> {
+fn parse_word_ascii_metrics(
+    font_descriptor: &str,
+    platform: WordLayoutPlatform,
+) -> Option<WordAsciiMetrics> {
     #[cfg(test)]
     WORD_FIXED_ASCII_DESCRIPTOR_PARSES.with(|count| count.set(count.get() + 1));
     let (size_pt, family) = split_font_descriptor(font_descriptor)?;
@@ -1763,12 +1804,17 @@ fn parse_word_ascii_metrics(font_descriptor: &str) -> Option<WordAsciiMetrics> {
         | "MS ゴシック"
         | "MS Gothic"
         | "ＭＳゴシック" => Some(WordAsciiMetrics::Fixed(
-            em_px * if bold { 0.52 } else { 0.5 },
+            em_px
+                * if bold && platform == WordLayoutPlatform::Mac {
+                    0.52
+                } else {
+                    0.5
+                },
         )),
         "游明朝" | "Yu Mincho" | "YuMincho" | "YuMincho-Regular" => Some(if bold {
             WordAsciiMetrics::YuMinchoBold(
                 em_px / 2048.0,
-                !italic && word_layout_platform() == WordLayoutPlatform::Mac,
+                !italic && platform == WordLayoutPlatform::Mac,
             )
         } else {
             WordAsciiMetrics::YuMincho(em_px / 2048.0)
@@ -1776,15 +1822,16 @@ fn parse_word_ascii_metrics(font_descriptor: &str) -> Option<WordAsciiMetrics> {
         "游ゴシック Light" | "Yu Gothic Light" | "YuGothic-Light" if !bold && !italic => {
             Some(WordAsciiMetrics::YuGothicLight(em_px / 2048.0))
         }
+        "Times New Roman" if platform == WordLayoutPlatform::Windows => Some(
+            WordAsciiMetrics::TimesNewRoman(em_px / 2048.0, bold, italic),
+        ),
         "Century" if !bold && !italic => Some(WordAsciiMetrics::Century(em_px / 2048.0)),
         "Bookman Old Style" if !bold && !italic => Some(WordAsciiMetrics::Bookman(em_px / 2048.0)),
         "Calibri" if !italic => Some(WordAsciiMetrics::Calibri(em_px / 2048.0, bold)),
-        "Aptos" if !bold && !italic && word_layout_platform() == WordLayoutPlatform::Mac => {
+        "Aptos" if !bold && !italic && platform == WordLayoutPlatform::Mac => {
             Some(WordAsciiMetrics::Aptos(em_px / 2048.0, false))
         }
-        "Aptos Display"
-            if !bold && !italic && word_layout_platform() == WordLayoutPlatform::Mac =>
-        {
+        "Aptos Display" if !bold && !italic && platform == WordLayoutPlatform::Mac => {
             Some(WordAsciiMetrics::Aptos(em_px / 2048.0, true))
         }
         "Noto Sans" if !bold && !italic => Some(WordAsciiMetrics::NotoSans(em_px / 2048.0)),
@@ -1895,6 +1942,43 @@ thread_local! {
 
 /// Full-em CJK faces whose default wide glyphs retain fixed advance in Word.
 /// Proportional faces and unknown descriptors keep their host shaping path.
+pub(crate) fn cached_word_fixed_east_asian_em_px(descriptor: &str) -> Option<f64> {
+    thread_local! { static LAST: std::cell::RefCell<Option<(String, Option<f64>)>> = const { std::cell::RefCell::new(None) }; }
+    thread_local! { static FACES: std::cell::RefCell<rustc_hash::FxHashMap<String, Option<f64>>> = Default::default(); }
+    LAST.with(|last| {
+        let mut last = last.borrow_mut();
+        if let Some((key, value)) = last.as_ref() {
+            if key == descriptor {
+                return *value;
+            }
+        }
+        let value = FACES.with(|faces| {
+            let mut faces = faces.borrow_mut();
+            if let Some(value) = faces.get(descriptor) {
+                return *value;
+            }
+            let value = word_fixed_east_asian_em_px(descriptor);
+            if faces.len() >= 128 {
+                faces.clear();
+            }
+            // Do not retain arbitrarily large public descriptors.
+            if descriptor.len() <= 1024 {
+                faces.insert(descriptor.to_owned(), value);
+            }
+            value
+        });
+        match last.as_mut() {
+            Some((key, cached)) => {
+                key.clear();
+                key.push_str(descriptor);
+                *cached = value;
+            }
+            None => *last = Some((descriptor.to_owned(), value)),
+        }
+        value
+    })
+}
+
 pub(crate) fn word_fixed_east_asian_em_px(font_descriptor: &str) -> Option<f64> {
     #[cfg(test)]
     WORD_FIXED_CJK_DESCRIPTOR_PARSES.with(|count| count.set(count.get() + 1));
@@ -1996,12 +2080,41 @@ fn synthetic_bold_descriptor_needs_style_scan(font_descriptor: &str) -> bool {
     !(first.is_ascii() && first.ends_with("pt"))
 }
 
+pub(crate) fn word_windows_cjk_synthetic_bold_extra_advance_px(font_descriptor: &str) -> f64 {
+    if !synthetic_bold_descriptor_needs_style_scan(font_descriptor)
+        || !font_descriptor_style(font_descriptor).0
+    {
+        return 0.0;
+    }
+    let Some((size_pt, family)) = split_font_descriptor(font_descriptor) else {
+        return 0.0;
+    };
+    let family = family
+        .split(',')
+        .next()
+        .unwrap_or_default()
+        .trim()
+        .trim_matches(['\'', '"']);
+    // Windows Word 16.0.19127's MS Mincho synthetic bold CJK advances:
+    // the paired Latin/CJK sweeps at 9, 10.5, 12, 20 and 40pt retain the
+    // full CJK cell plus 1/200 em. Real Latin bold and half cells are separate.
+    if matches!(family, "MS Mincho" | "ＭＳ 明朝" | "MS 明朝" | "ＭＳ明朝")
+        && size_pt.is_finite()
+        && size_pt > 0.0
+    {
+        f64::from(size_pt) * 96.0 / 72.0 / 200.0
+    } else {
+        0.0
+    }
+}
+
 /// Extra advance, in px, that Word for Mac gives a glyph it emboldens itself:
 /// 1/50 em for a bold run in a face without a bold style (Yu Mincho, MS
 /// Mincho, MS Gothic, and Century, which Word for Mac ships without one).
 /// Word for Mac 16.113 sets bold 10.5pt `第1条（目的）` in either face at a
-/// 10.71pt pitch and the 16pt title at 16.32pt; Word for Windows keeps 10.5pt
-/// (`wrong-num` Word COM trace), so this is 0 there.
+/// 10.71pt pitch and the 16pt title at 16.32pt. Windows CJK uses the
+/// separate, smaller observed advance above; half cells retain their own policy.
+#[inline]
 pub fn word_synthetic_bold_extra_advance_px(font_descriptor: &str) -> f64 {
     if word_layout_platform() != WordLayoutPlatform::Mac {
         return 0.0;
@@ -2119,6 +2232,38 @@ pub fn word_east_asian_font_vertical_units(family: &str) -> Option<(f32, f32, f3
         | "Yu Mincho Light"
         | "游明朝 Demibold"
         | "Yu Mincho Demibold"
+            if word_layout_platform() == WordLayoutPlatform::Windows =>
+        {
+            // Windows Word 16.0.19127: Yu Mincho's OS/2 usWin box,
+            // not the Mac hhea box. 10.5/12/20pt probes, with and without
+            // useFELayout, give 1.673em single spacing and 1.188em ascent.
+            Some((2038.0, 598.0, 2048.0))
+        }
+        // Windows YuGoth*.ttc uses its OS/2 usWin box, like Yu Mincho.
+        // Word 16.0.19127 long-line probes at 9/10/10.5/11/12/20pt
+        // reproduce the baseline and successive line pitch from these units.
+        "游ゴシック" | "Yu Gothic" | "YuGothic"
+            if word_layout_platform() == WordLayoutPlatform::Windows =>
+        {
+            Some((2017.0, 619.0, 2048.0))
+        }
+        "游ゴシック Light" | "Yu Gothic Light" | "YuGothic-Light"
+            if word_layout_platform() == WordLayoutPlatform::Windows =>
+        {
+            Some((2026.0, 610.0, 2048.0))
+        }
+        "游ゴシック Medium" | "Yu Gothic Medium"
+            if word_layout_platform() == WordLayoutPlatform::Windows =>
+        {
+            Some((2028.0, 608.0, 2048.0))
+        }
+        "游明朝"
+        | "Yu Mincho"
+        | "YuMincho"
+        | "游明朝 Light"
+        | "Yu Mincho Light"
+        | "游明朝 Demibold"
+        | "Yu Mincho Demibold"
         | "游ゴシック"
         | "Yu Gothic"
         | "YuGothic"
@@ -2186,12 +2331,12 @@ pub fn word_east_asian_font_vertical_metrics_px(font_descriptor: &str) -> Option
 
 /// A list label contributes above the baseline; the body's descent remains.
 /// Meiryo's source-matched Mac contract subsets supply hhea 2171/-901 at
-/// 2048 units/em. Keep this label observation separate from body line sizing.
+/// 2048 units/em. Windows Meiryo has the same hhea and OS/2 usWin box;
+/// its Word EMF label also raises the first body baseline. Keep this label
+/// observation separate from body line sizing.
 pub fn word_numbering_font_ascent_px(font_descriptor: &str) -> Option<f64> {
     let (size_pt, family) = split_font_descriptor(font_descriptor)?;
-    if word_layout_platform() == WordLayoutPlatform::Mac
-        && matches!(family.trim_matches(['\'', '"']), "Meiryo" | "メイリオ")
-    {
+    if matches!(family.trim_matches(['\'', '"']), "Meiryo" | "メイリオ") {
         let half_leading = word_east_asian_font_half_leading_units(2171.0, 901.0);
         return Some(f64::from(size_pt) * 96.0 / 72.0 * f64::from(2171.0 + half_leading) / 2048.0);
     }
@@ -2227,10 +2372,13 @@ pub fn word_east_asian_font_line_box_applies(
 /// Word for Mac 16.113 always does: with `w:useFELayout` removed (and
 /// compatibility mode 15) an 11pt MS Mincho line is still 14.24pt, and
 /// `yokohama_page6` (10.5pt MS Mincho, no `useFELayout`) prints 13.65pt
-/// lines. Word for Windows only does with `w:useFELayout`: without it
-/// `yokohama_page6` only reaches its Word page 3 content at 13.8pt lines.
-pub fn word_sizes_east_asian_lines_from_faces(document_uses_east_asian_layout: bool) -> bool {
-    document_uses_east_asian_layout || word_layout_platform() == WordLayoutPlatform::Mac
+/// lines. Windows Word 16.0.19127 also uses the known face's box without
+/// `w:useFELayout` (controlled Arial/TNR/MS Mincho/Yu Mincho probes).
+pub fn word_sizes_east_asian_lines_from_faces(_document_uses_east_asian_layout: bool) -> bool {
+    // Word for Windows 16.0.19127 uses the same known-face path even without
+    // useFELayout: Arial, Times New Roman, MS Mincho and Yu Mincho probes
+    // at 10.5/12/20pt keep their first baseline and single-line advances.
+    true
 }
 
 /// The single line height, in em, Word gives a line set in a Latin face it
@@ -2294,6 +2442,7 @@ pub fn word_font_vertical_metrics_px(font_descriptor: &str) -> Option<(f64, f64)
 /// run names, so its line is taller than the run's own face makes it
 /// (`toc-caption-edge-cases`: a 10.5pt Arial caption with 🧭 is 2.1pt taller
 /// at 1.15 lines). `None` off Mac and for other clusters.
+#[inline]
 pub fn word_mac_emoji_vertical_metrics_px(
     grapheme: &str,
     font_descriptor: &str,
@@ -2311,6 +2460,7 @@ pub fn word_mac_emoji_vertical_metrics_px(
 /// run's size, Apple Color Emoji's 800-unit advance, where the host measures
 /// its own emoji face wider (`toc-caption-edge-cases`: 🧭 at 10.5pt advances
 /// 10.5pt). `None` off Mac and for other clusters.
+#[inline]
 pub fn word_mac_emoji_advance_px(grapheme: &str, font_descriptor: &str) -> Option<f64> {
     if word_layout_platform() != WordLayoutPlatform::Mac || !is_emoji_presentation_cluster(grapheme)
     {
@@ -2634,14 +2784,17 @@ pub fn word_tallest_single_line_height_pt(
 /// through the East Asian font line box (`word_font_line_box`, see
 /// [`apply_word_east_asian_font_line_height`]) or a multiple of its tallest
 /// face's single line (see [`apply_word_font_proportional_line_height`]).
-/// Exact, at-least and grid-snapped lines outside the East Asian box need not
+/// Exact and grid-snapped lines outside the East Asian box need not
 /// measure their runs' faces.
 pub fn word_font_lines_affect_line_height(
     word_font_line_box: bool,
     spacing: Option<&Spacing>,
     snap_to_grid: bool,
 ) -> bool {
-    word_font_line_box || (!snap_to_grid && proportional_line_multiple(spacing).is_some())
+    word_font_line_box
+        || (!snap_to_grid
+            && (proportional_line_multiple(spacing).is_some()
+                || word_minimum_line_height_pt(spacing).is_some()))
 }
 
 /// Word's line height for an auto-spaced line whose faces all have known
@@ -2649,9 +2802,9 @@ pub fn word_font_lines_affect_line_height(
 /// run's single line ([`word_tallest_single_line_height_pt`]). Word for Mac
 /// 16.113 advances 1.15, 1.5 and 2.0 multiples of every face's own single
 /// line (Calibri 10.5pt at 2.0 → 25.64pt, MS Mincho 12pt at 1.5 → 23.35pt),
-/// not of the font size, and puts the extra below the text. Exact, at-least
-/// and grid-snapped lines, and lines with an unknown face, keep
-/// `line_height_pt`.
+/// not of the font size, and puts the extra below the text. Minimum spacing
+/// floors this font box at the authored value. Exact and grid-snapped lines,
+/// and lines with an unknown face, keep `line_height_pt`.
 pub fn apply_word_font_proportional_line_height(
     line_height_pt: f32,
     spacing: Option<&Spacing>,
@@ -2663,6 +2816,9 @@ pub fn apply_word_font_proportional_line_height(
     };
     if snap_to_grid {
         return line_height_pt;
+    }
+    if let Some(minimum) = word_minimum_line_height_pt(spacing) {
+        return single.max(minimum).max(1.0);
     }
     let Some(multiple) = proportional_line_multiple(spacing) else {
         return line_height_pt;
@@ -2689,6 +2845,19 @@ fn proportional_line_multiple(spacing: Option<&Spacing>) -> Option<f32> {
         Some("auto") | None => Some(line.max(0.0)),
         _ => None,
     }
+}
+
+/// Word for Mac sizes an unsnapped atLeast line from its fonts and only then
+/// applies w:line as a lower bound. Keep the existing Windows policy until
+/// its font metrics are independently verified.
+fn word_minimum_line_height_pt(spacing: Option<&Spacing>) -> Option<f32> {
+    if word_layout_platform() != WordLayoutPlatform::Mac {
+        return None;
+    }
+    spacing
+        .filter(|spacing| spacing.line_rule.as_deref() == Some("atLeast"))
+        .and_then(|spacing| spacing.line)
+        .filter(|line| line.is_finite() && *line > 0.0)
 }
 
 /// Word's line height, in points, for an empty paragraph whose mark is set in
@@ -2734,20 +2903,51 @@ pub fn run_font_slots(run: &Run, east_asian_document: bool) -> (bool, bool) {
 /// `(Latin, East Asian)`: a visible character outside or inside the East Asian
 /// slot ([`text_uses_east_asian_font`]). Stops once both are found.
 pub fn text_font_slots(text: &str) -> (bool, bool) {
+    // Repaints and tracked-change passes revisit the same run text. Cache the
+    // pure classification by content, so edits cannot reuse stale slot flags.
+    // Short strings are cheaper to classify directly; bound retained text.
+    if !(16..=1024).contains(&text.len()) {
+        return text_font_slots_uncached(text);
+    }
+    thread_local! {
+        static SLOTS: std::cell::RefCell<rustc_hash::FxHashMap<String, (bool, bool)>> = Default::default();
+    }
+    SLOTS.with(|slots| {
+        let mut slots = slots.borrow_mut();
+        if let Some(value) = slots.get(text) {
+            return *value;
+        }
+        let value = text_font_slots_uncached(text);
+        if slots.len() >= 256 {
+            slots.clear();
+        }
+        slots.insert(text.to_owned(), value);
+        value
+    })
+}
+
+fn text_font_slots_uncached(text: &str) -> (bool, bool) {
     let mut buffer = [0_u8; 4];
     let (mut latin, mut east_asian) = (false, false);
     for ch in text.chars() {
-        if ch.is_whitespace() || ch.is_control() {
-            continue;
-        }
-        let in_east_asian_slot = !ch.is_ascii()
-            && (matches!(ch as u32, 0x3040..=0x30FF | 0x4E00..=0x9FFF)
-                || crate::line_wrap::classify_script(ch.encode_utf8(&mut buffer))
-                    == crate::line_wrap::ScriptCategory::EastAsia);
-        if in_east_asian_slot {
-            east_asian = true;
-        } else {
-            latin = true;
+        match ch {
+            '\u{3040}'..='\u{30ff}' | '\u{4e00}'..='\u{9fff}' => east_asian = true,
+            '\u{3000}' => continue,
+            ch if ch.is_ascii() => {
+                latin |= !ch.is_ascii_whitespace() && !ch.is_ascii_control();
+            }
+            ch => {
+                if ch.is_whitespace() || ch.is_control() {
+                    continue;
+                }
+                if crate::line_wrap::classify_script(ch.encode_utf8(&mut buffer))
+                    == crate::line_wrap::ScriptCategory::EastAsia
+                {
+                    east_asian = true;
+                } else {
+                    latin = true;
+                }
+            }
         }
         if latin && east_asian {
             break;
@@ -2758,6 +2958,36 @@ pub fn text_font_slots(text: &str) -> (bool, bool) {
 
 /// Splits a CSS font shorthand into its point size and first family.
 fn split_font_descriptor(font_descriptor: &str) -> Option<(f32, &str)> {
+    // Metric lookups share a small set of descriptors, often alternating
+    // between Latin and East Asian slots. Retain byte ranges, not borrowed
+    // family strings, so the result always borrows from the caller's input.
+    type Parsed = Option<(f32, usize, usize)>;
+    thread_local! {
+        static DESCRIPTORS: std::cell::RefCell<rustc_hash::FxHashMap<String, Parsed>> = Default::default();
+    }
+    if font_descriptor.len() > 1024 {
+        return split_font_descriptor_uncached(font_descriptor);
+    }
+    DESCRIPTORS.with(|descriptors| {
+        let mut descriptors = descriptors.borrow_mut();
+        let parsed = if let Some(parsed) = descriptors.get(font_descriptor) {
+            *parsed
+        } else {
+            let parsed = split_font_descriptor_uncached(font_descriptor).map(|(size, family)| {
+                let start = family.as_ptr() as usize - font_descriptor.as_ptr() as usize;
+                (size, start, family.len())
+            });
+            if descriptors.len() >= 128 {
+                descriptors.clear();
+            }
+            descriptors.insert(font_descriptor.to_owned(), parsed);
+            parsed
+        };
+        parsed.map(|(size, start, len)| (size, &font_descriptor[start..start + len]))
+    })
+}
+
+fn split_font_descriptor_uncached(font_descriptor: &str) -> Option<(f32, &str)> {
     let mut rest = font_descriptor.trim_start();
     loop {
         let token_end = rest.find(char::is_whitespace)?;
@@ -2795,6 +3025,7 @@ pub fn word_east_asian_font_metrics_apply_on_grid(
 ) -> bool {
     word_sizes_east_asian_lines_from_faces(document_uses_east_asian_layout)
         && (proportional_line_multiple(spacing).is_some()
+            || word_minimum_line_height_pt(spacing).is_some()
             || (grid_centres_text
                 && spacing.is_some_and(|spacing| spacing.line_rule.as_deref() == Some("atLeast"))))
 }
@@ -2804,12 +3035,10 @@ pub fn word_east_asian_font_metrics_apply_on_grid(
 /// Mincho baseline 12.83pt below the top of an 18pt grid line (half of
 /// 18 − 13.61 plus its 10.58pt ascent), a Yu Mincho one 12.59pt, and 16pt text
 /// that needs two grid lines 23.87pt below the top of the 36pt pair. Word for
-/// Windows has not been traced for this (jlsi/jade#437), so its lines keep
-/// their leading below the text.
+/// Windows 16.0.19127 also centres the box and rounds tall lines up to whole
+/// grid pitches (10.5/12/20pt Arial/TNR/MS Mincho/Yu Mincho probes).
 pub fn word_grid_line_centres_text(snap_to_grid: bool, doc_grid: Option<&DocGrid>) -> bool {
-    word_layout_platform() == WordLayoutPlatform::Mac
-        && snap_to_grid
-        && doc_grid_has_active_line_grid(doc_grid)
+    snap_to_grid && doc_grid_has_active_line_grid(doc_grid)
 }
 
 /// Raises an auto single line height to Word's East Asian font line box when
@@ -2872,6 +3101,14 @@ fn effective_doc_grid_line_pitch_pt(
     base_font_size: f32,
 ) -> Option<f32> {
     let raw_pitch = doc_grid.and_then(|g| g.line_pitch)?;
+    // A large Windows run consumes multiple authored grid pitches; it does
+    // not replace a valid pitch with a body-height-derived estimate.
+    if word_layout_platform() == WordLayoutPlatform::Windows
+        && raw_pitch.is_finite()
+        && raw_pitch >= 8.0
+    {
+        return Some(raw_pitch);
+    }
     let min_credible = (base_font_size * 1.12).max(8.0);
     if raw_pitch >= min_credible {
         return Some(raw_pitch);
@@ -3092,6 +3329,77 @@ pub fn resolve_line_height_points_with_default_multiplier(
 #[cfg(test)]
 mod tests {
     #[test]
+    fn descriptor_cache_matches_parser_after_replacement_and_eviction() {
+        let descriptors = [
+            "italic 700 10.5pt 'ＭＳ 明朝', serif",
+            "  12pt\tArial, sans-serif ",
+            "9.25pt \"Yu Mincho\", serif",
+            "not a descriptor",
+            "10pt ",
+        ];
+        for _ in 0..2 {
+            for descriptor in descriptors {
+                let owned = descriptor.to_owned();
+                assert_eq!(
+                    split_font_descriptor(&owned),
+                    split_font_descriptor_uncached(&owned)
+                );
+            }
+        }
+        for index in 0..256 {
+            let descriptor = format!("{}pt 'Family {index}', serif", index + 1);
+            assert_eq!(
+                split_font_descriptor(&descriptor),
+                split_font_descriptor_uncached(&descriptor)
+            );
+        }
+        for descriptor in descriptors {
+            assert_eq!(
+                split_font_descriptor(descriptor),
+                split_font_descriptor_uncached(descriptor)
+            );
+        }
+    }
+
+    #[test]
+    fn cached_font_slots_match_edited_and_evicted_text() {
+        let mut text = "Repeated Latin characters".to_owned();
+        for suffix in ["", "漢字", "\t\n", "é", "あいう", ""] {
+            text.push_str(suffix);
+            for _ in 0..2 {
+                assert_eq!(text_font_slots(&text), text_font_slots_uncached(&text));
+            }
+        }
+        for index in 0..512 {
+            let text = format!("テキストを分類する {index}");
+            assert_eq!(text_font_slots(&text), text_font_slots_uncached(&text));
+        }
+        assert_eq!(text_font_slots(&text), text_font_slots_uncached(&text));
+    }
+
+    #[test]
+    fn fast_font_slot_classification_matches_unicode_rules() {
+        let mut buffer = [0; 4];
+        for value in 0..=0x10ffff {
+            let Some(ch) = char::from_u32(value) else {
+                continue;
+            };
+            let text = ch.encode_utf8(&mut buffer);
+            let expected = if ch.is_whitespace() || ch.is_control() {
+                (false, false)
+            } else if !ch.is_ascii()
+                && (matches!(value, 0x3040..=0x30ff | 0x4e00..=0x9fff)
+                    || crate::line_wrap::classify_script(text)
+                        == crate::line_wrap::ScriptCategory::EastAsia)
+            {
+                (false, true)
+            } else {
+                (true, false)
+            };
+            assert_eq!(text_font_slots(text), expected, "U+{value:04X}");
+        }
+    }
+    #[test]
     fn word_run_faces_latin_line_height_matches_the_face_line_height() {
         for descriptor in [
             "12.00pt 'Times New Roman', serif",
@@ -3286,12 +3594,62 @@ mod tests {
         assert_eq!(word_numbering_suffix_space_descriptor("Courier"), None);
         set_word_layout_platform(WordLayoutPlatform::Windows);
         assert_eq!(
-            word_numbering_suffix_space_descriptor("10.50pt 'Courier New', monospace"),
-            None
+            word_numbering_suffix_space_descriptor("10.50pt 'Courier New', monospace").as_deref(),
+            Some("10.50pt Arial, 'Liberation Sans', sans-serif")
         );
     }
 
     use super::*;
+
+    #[test]
+    fn unsnapped_at_least_respects_word_font_line_box() {
+        set_word_layout_platform(WordLayoutPlatform::Mac);
+        let spacing = Spacing {
+            line: Some(12.0),
+            line_rule: Some("atLeast".into()),
+            ..Spacing::default()
+        };
+        // Word's Yu Mincho 12pt body advances 17.2pt with a 12pt minimum.
+        let single = word_east_asian_font_line_height_pt("12.00pt 'Yu Mincho'");
+        let actual = apply_word_font_proportional_line_height(12.0, Some(&spacing), false, single);
+        assert!((actual - 17.197266).abs() < 0.001, "{actual}");
+        assert!(word_font_lines_affect_line_height(
+            false,
+            Some(&spacing),
+            false
+        ));
+        assert!(word_east_asian_font_metrics_apply(Some(&spacing), false));
+        let sizing = WordProportionalLineSizing::new(Some(&spacing), false, true)
+            .expect("minimum spacing must size each physical line from its fonts");
+        let px = |pt: f64| pt * 96.0 / 72.0;
+        assert!(
+            (sizing.line_height_px(Some(px(17.197266)), px(24.0)) - px(17.197266)).abs() < 1e-5
+        );
+        assert_eq!(sizing.line_height_px(Some(px(10.0)), px(24.0)), px(12.0));
+        assert_eq!(sizing.line_height_px(Some(px(30.0)), px(24.0)), px(30.0));
+        assert_eq!(sizing.line_height_px(None, px(24.0)), px(24.0));
+        let larger_minimum = Spacing {
+            line: Some(24.0),
+            ..spacing.clone()
+        };
+        assert_eq!(
+            apply_word_font_proportional_line_height(24.0, Some(&larger_minimum), false, single),
+            24.0
+        );
+        let exact = Spacing {
+            line_rule: Some("exact".into()),
+            ..spacing.clone()
+        };
+        assert_eq!(
+            apply_word_font_proportional_line_height(12.0, Some(&exact), false, single),
+            12.0
+        );
+        assert!(WordProportionalLineSizing::new(Some(&exact), false, true).is_none());
+        assert!(WordProportionalLineSizing::new(Some(&spacing), true, true).is_none());
+        assert!(WordProportionalLineSizing::new(Some(&spacing), false, false).is_none());
+        set_word_layout_platform(WordLayoutPlatform::Windows);
+        assert!(WordProportionalLineSizing::new(Some(&spacing), false, true).is_none());
+    }
 
     #[test]
     fn table_cell_doc_grid_drops_only_the_line_pitch_without_adjust_line_height() {
@@ -3549,7 +3907,7 @@ mod tests {
         );
         assert!(WordGridLineSizing::new(None, false, Some(&grid), Some(650.0), 11.0).is_none());
         set_word_layout_platform(WordLayoutPlatform::Windows);
-        assert!(WordGridLineSizing::new(None, true, Some(&grid), Some(650.0), 11.0).is_none());
+        assert!(WordGridLineSizing::new(None, true, Some(&grid), Some(650.0), 11.0).is_some());
     }
 
     /// Word for Mac 16.114 atLeast probe (18pt `lines` grid, 10.5pt MS
@@ -4101,6 +4459,7 @@ mod tests {
 
     #[test]
     fn word_run_line_takes_the_faces_its_characters_use() {
+        set_word_layout_platform(WordLayoutPlatform::Mac);
         let latin = "11.00pt Calibri";
         let east_asia = "11.00pt '游明朝'";
         let height =
@@ -4115,7 +4474,7 @@ mod tests {
         assert!((yu - 15.7655).abs() < 0.01, "{yu}");
         assert_eq!(run("あいう", latin, false), Err(()));
         assert_eq!(height(run("あいAbc", latin, true)), Some(yu));
-        assert_eq!(run("Abc", "11.00pt 'Noto Sans'", true), Err(()));
+        assert_eq!(run("Abc", "11.00pt 'Unknown Font'", true), Err(()));
         // Latin text set in an East Asian face takes that face's box.
         assert_eq!(height(run("Abc", east_asia, true)), Some(yu));
         assert_eq!(run("Abc", east_asia, false), Err(()));
@@ -4247,7 +4606,7 @@ mod tests {
 
     #[test]
     fn word_for_mac_sizes_east_asian_lines_without_fe_layout() {
-        assert!(!word_sizes_east_asian_lines_from_faces(false));
+        assert!(word_sizes_east_asian_lines_from_faces(false));
         assert!(word_sizes_east_asian_lines_from_faces(true));
         set_word_layout_platform(WordLayoutPlatform::Mac);
         let mac = word_sizes_east_asian_lines_from_faces(false);
@@ -4727,10 +5086,10 @@ mod tests {
             ("10.50pt 'MS Mincho', serif", Some(7.0)),
             ("11.00pt 'Times New Roman', serif", None),
             ("12.00pt 'MS Mincho', serif", Some(8.0)),
-            ("bold italic 10.50pt 'ＭＳ 明朝', serif", Some(7.28)),
+            ("bold italic 10.50pt 'ＭＳ 明朝', serif", Some(7.0)),
             ("10.50pt 'MS PMincho', serif", None),
             ("10.50pt 'MS Gothic', serif", Some(7.0)),
-            ("bold 12.00pt 'ＭＳ ゴシック', serif", Some(8.32)),
+            ("bold 12.00pt 'ＭＳ ゴシック', serif", Some(8.0)),
             ("10.50pt 'MS PGothic', serif", None),
             ("10.50pt 'MS Mincho', serif", Some(7.0)),
         ] {
@@ -4747,6 +5106,7 @@ mod tests {
 
     #[test]
     fn word_east_asian_font_line_height_follows_the_requested_face() {
+        set_word_layout_platform(WordLayoutPlatform::Mac);
         // Word for Mac 16.113, 30 single-spaced lines: Yu Mincho 10.5pt
         // advances 15.0455pt a line, MS Mincho 12pt 15.5669pt and 10.5pt
         // 13.6138pt (each ±0.01pt after 0.24pt quantization).
@@ -4788,7 +5148,7 @@ mod tests {
             true
         ));
         assert!(!word_east_asian_font_line_box_applies(None, true, true));
-        assert!(!word_east_asian_font_line_box_applies(None, false, false));
+        assert!(word_east_asian_font_line_box_applies(None, false, false));
         assert_eq!(
             apply_word_east_asian_font_line_height(13.65, true, Some(15.04)),
             15.04

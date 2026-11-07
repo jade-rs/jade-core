@@ -73,6 +73,10 @@ struct ActiveField {
     // materialized when the element closes without adding visible content.
     paragraph_run_start: Option<usize>,
     sequence_result_run: Option<usize>,
+    // Whether a run has already carried this field's result. Its closing
+    // `fldChar` run is then only a boundary, even when a nested field's run
+    // sits between the two.
+    has_result_run: bool,
 }
 
 #[derive(Clone)]
@@ -343,7 +347,10 @@ impl DocumentParser {
         let mut current_run_field_text = String::new();
         let mut current_run_sequence_result = None;
         let mut current_run_has_field_end = false;
+        let mut current_run_field_has_result = false;
         let mut active_fields: Vec<ActiveField> = Vec::new();
+        // Inside `w:background`, whose VML holds the page's fill effect.
+        let mut in_page_background = false;
         // Nested fields that depend on a forward bookmark cannot be evaluated
         // when their closing tag is encountered. Keep their semantic kind and
         // cached fallback until every bookmark in the document is available.
@@ -1063,6 +1070,9 @@ impl DocumentParser {
                             current_run_sequence_result = current_field
                                 .as_ref()
                                 .and_then(|(_, ctx)| ctx.sequence_result_run);
+                            current_run_field_has_result = current_field
+                                .as_ref()
+                                .is_some_and(|(_, ctx)| ctx.has_result_run);
                             current_run_is_instruction_operand =
                                 current_field.is_some_and(|(_, ctx)| ctx.is_instruction_operand);
                             current_run_field_text.clear();
@@ -1897,12 +1907,15 @@ impl DocumentParser {
                             }
                         }
                         b"w:background" => {
-                            // `<w:document>` child: page background color. Any
-                            // child shape (`w:drawing`) flows through the
-                            // catch-all and is ignored (color only, MVP).
+                            // `<w:document>` child: page background color, and
+                            // in its VML (`v:background/v:fill`) a fill effect.
                             if let Some(color) = Self::parse_document_background(e.attributes()) {
                                 document.background_color = Some(color);
                             }
+                            in_page_background = true;
+                        }
+                        b"v:background" | b"v:fill" if in_page_background => {
+                            Self::parse_page_background_fill(e, &mut document);
                         }
                         _ => {}
                     }
@@ -1936,6 +1949,9 @@ impl DocumentParser {
                         if let Some(color) = Self::parse_document_background(e.attributes()) {
                             document.background_color = Some(color);
                         }
+                    }
+                    b"v:background" | b"v:fill" if in_page_background => {
+                        Self::parse_page_background_fill(e, &mut document);
                     }
                     b"w:p" => {
                         let props = Self::parse_para_id(e.attributes()).map(|para_id| {
@@ -2425,15 +2441,27 @@ impl DocumentParser {
                         }
                     }
                     b"w:ptab" => {
-                        // Absolute position tab (ECMA-376 Part 1 §17.3.3.16).
-                        // We do not resolve the absolute alignment/leader yet, but
-                        // dropping it loses the tab entirely; emit a regular tab
-                        // so the gap is preserved instead of vanishing.
+                        // Absolute position tab (ECMA-376 Part 1 §17.3.3.16): a
+                        // tab character of the text, laid out from its own
+                        // alignment, base and leader (`positional_tabs`).
                         if Self::keeps_field_result_in_run_text(
                             current_run_field.as_ref(),
                             current_run_is_instruction_operand,
                         ) {
                             if let Some(ref mut run) = current_run {
+                                let ordinal = current_paragraph.as_ref().map_or(0, |paragraph| {
+                                    paragraph
+                                        .runs
+                                        .iter()
+                                        .map(|run| run.text.matches('\t').count())
+                                        .sum()
+                                }) + run.text.matches('\t').count();
+                                if let Some(props) = current_paragraph_props.as_mut() {
+                                    props
+                                        .positional_tabs
+                                        .get_or_insert_with(Vec::new)
+                                        .push(Self::positional_tab(ordinal, e));
+                                }
                                 run.text.push('\t');
                                 paragraph_text_len += 1;
                             }
@@ -3393,6 +3421,7 @@ impl DocumentParser {
                     _ => {}
                 },
                 Ok(Event::End(ref e)) => match e.name().as_ref() {
+                    b"w:background" => in_page_background = false,
                     b"w:t" | b"w:delText" => {
                         in_text = false;
                         let text_to_push = Self::line_feeds_as_spaces(if current_text_preserve {
@@ -3514,13 +3543,15 @@ impl DocumentParser {
                                     let duplicates_previous_result = current_run_has_field_end
                                         && run.text.is_empty()
                                         && cached_text.is_none()
-                                        && paragraph.runs.last().is_some_and(|previous| {
-                                            previous
-                                                .field
-                                                .as_ref()
-                                                .is_some_and(|field| field.kind == kind)
-                                        });
+                                        && current_run_field_has_result;
                                     if !duplicates_previous_result {
+                                        if let Some(field) = active_fields
+                                            .iter_mut()
+                                            .rev()
+                                            .find(|field| field.kind.as_ref() == Some(&kind))
+                                        {
+                                            field.has_result_run = true;
+                                        }
                                         // A HYPERLINK field carries interaction
                                         // metadata in its instruction rather than a
                                         // surrounding `w:hyperlink` element. Attach
@@ -7621,6 +7652,17 @@ impl DocumentParser {
         Ok(Some(image))
     }
 
+    /// A `w:ptab`'s alignment, base and leader, read from the tag's raw
+    /// attribute text. Its values are plain tokens, and keeping this off
+    /// quick-xml's attribute iterator leaves that iterator inlined into the
+    /// XML tree's attribute reader, which every element goes through.
+    #[cold]
+    #[inline(never)]
+    fn positional_tab(ordinal: usize, element: &BytesStart<'_>) -> PositionalTab {
+        let raw = String::from_utf8_lossy(element.attributes_raw());
+        PositionalTab::from_attributes(ordinal, raw_attribute_pairs(&raw))
+    }
+
     fn apply_ole_object_attributes(image: &mut RunImage, element: &BytesStart<'_>) {
         for attribute in element.attributes().flatten() {
             let value = String::from_utf8_lossy(&attribute.value).into_owned();
@@ -8498,6 +8540,59 @@ impl DocumentParser {
         None
     }
 
+    /// `v:background` (its `fillcolor`) and its `v:fill` under
+    /// `w:background`: the page's fill effect.
+    fn parse_page_background_fill(element: &BytesStart<'_>, document: &mut Document) {
+        let vml_color = |value: &str| {
+            let hex = value.trim().trim_start_matches('#');
+            let hex = hex.split_whitespace().next().unwrap_or("");
+            match hex.to_ascii_lowercase().as_str() {
+                "black" => Some("#000000".to_string()),
+                "white" => Some("#FFFFFF".to_string()),
+                _ if hex.len() == 6 && hex.chars().all(|c| c.is_ascii_hexdigit()) => {
+                    Some(format!("#{}", hex.to_ascii_uppercase()))
+                }
+                _ if hex.len() == 3 && hex.chars().all(|c| c.is_ascii_hexdigit()) => Some(format!(
+                    "#{}",
+                    hex.chars()
+                        .flat_map(|c| [c, c])
+                        .collect::<String>()
+                        .to_ascii_uppercase()
+                )),
+                _ => None,
+            }
+        };
+        let background = element.name().as_ref() == b"v:background";
+        let fill = document
+            .background_fill
+            .get_or_insert_with(Default::default);
+        for attr in element.attributes().flatten() {
+            let value = attr
+                .normalized_value(quick_xml::XmlVersion::Implicit1_0)
+                .map(|value| value.into_owned())
+                .unwrap_or_default();
+            match (background, attr.key.as_ref()) {
+                (true, b"fillcolor") => fill.color = vml_color(&value),
+                (false, b"type") => fill.kind = value.trim().to_string(),
+                (false, b"color2") => fill.color2 = vml_color(&value),
+                (false, b"angle") => fill.angle = value.trim().parse().unwrap_or(0.0),
+                (false, b"focus") => {
+                    fill.focus = value.trim().trim_end_matches('%').parse().unwrap_or(0.0)
+                }
+                (false, b"r:id") => fill.relationship_id = Some(value),
+                (false, b"o:title") => fill.title = Some(value).filter(|title| !title.is_empty()),
+                _ => {}
+            }
+        }
+        // A `v:background` without a fill effect is the plain colour.
+        if !background && fill.kind.is_empty() {
+            fill.kind = "solid".to_string();
+        }
+        if !background && fill.kind == "solid" {
+            document.background_fill = None;
+        }
+    }
+
     fn parse_document_background(attributes: Attributes<'_>) -> Option<String> {
         for attr in attributes.flatten() {
             if attr.key.as_ref() == b"w:color" {
@@ -9171,6 +9266,7 @@ impl DocumentParser {
                     word_mac_body_result: None,
                     paragraph_run_start: None,
                     sequence_result_run: None,
+                    has_result_run: false,
                 });
             }
             Some("separate") => {
@@ -9282,6 +9378,7 @@ impl DocumentParser {
                         word_mac_body_result: None,
                         paragraph_run_start: Some(paragraph_run_start),
                         sequence_result_run: None,
+                        has_result_run: false,
                     });
                 } else if field_instruction_is_toc(&instr) {
                     toc_fields.push(parse_toc_switches(&instr));
@@ -11212,6 +11309,22 @@ type NoteProperties = (
     Option<crate::document::EndnotePosition>,
     Option<bool>,
 );
+
+/// `name="value"` (or single-quoted) pairs of a start tag's raw attribute
+/// text, values left as written.
+fn raw_attribute_pairs(raw: &str) -> impl Iterator<Item = (&str, &str)> {
+    let mut rest = raw;
+    std::iter::from_fn(move || {
+        let eq = rest.find('=')?;
+        let name = rest[..eq].trim();
+        let after = rest[eq + 1..].trim_start();
+        let quote = after.chars().next().filter(|c| *c == '"' || *c == '\'')?;
+        let body = &after[1..];
+        let end = body.find(quote)?;
+        rest = &body[end + 1..];
+        Some((name, &body[..end]))
+    })
+}
 
 #[cfg(test)]
 mod tests {
@@ -14648,6 +14761,43 @@ mod tests {
     }
 
     #[test]
+    fn raw_attribute_pairs_read_either_quote_and_spacing() {
+        let pairs: Vec<_> =
+            raw_attribute_pairs(r#" w:alignment="right"  w:relativeTo = 'indent' w:leader="dot""#)
+                .collect();
+        assert_eq!(
+            pairs,
+            [
+                ("w:alignment", "right"),
+                ("w:relativeTo", "indent"),
+                ("w:leader", "dot")
+            ]
+        );
+    }
+
+    #[test]
+    fn a_positional_tab_alone_keeps_the_paragraph_properties() {
+        // A paragraph with no w:pPr whose only property is its ptab: the
+        // properties are not dropped as empty.
+        let document = parse_document_from_body(
+            r#"<w:p><w:r><w:t>Chapter</w:t><w:ptab w:relativeTo="margin" w:alignment="right" w:leader="dot"/><w:t>12</w:t></w:r></w:p>"#,
+        );
+        let body = document.body.expect("body");
+        let BodyElement::Paragraph(paragraph) = &body.elements[0] else {
+            panic!("expected paragraph");
+        };
+        let tabs = &paragraph
+            .properties
+            .as_ref()
+            .expect("properties")
+            .positional_tabs
+            .as_ref()
+            .expect("positional tabs");
+        assert_eq!(tabs.len(), 1);
+        assert_eq!(tabs[0].alignment, PositionalTabAlignment::Right);
+    }
+
+    #[test]
     fn parses_positional_tab_as_tab_character() {
         // `<w:ptab/>` (§17.3.3.16) is an absolute-position tab. Dropping it loses
         // the gap; emit a regular tab so the text isn't run together.
@@ -14667,6 +14817,22 @@ mod tests {
             _ => panic!("expected paragraph"),
         };
         assert_eq!(paragraph.runs[0].text, "left\tright");
+        let tabs = paragraph
+            .properties
+            .as_ref()
+            .unwrap()
+            .positional_tabs
+            .as_ref()
+            .unwrap();
+        assert_eq!(
+            tabs,
+            &vec![PositionalTab {
+                ordinal: 0,
+                alignment: PositionalTabAlignment::Right,
+                relative_to_indent: false,
+                leader: Some("dot".to_string()),
+            }]
+        );
     }
 
     #[test]
@@ -20186,6 +20352,41 @@ mod tests {
             Some("after field")
         );
         assert!(paragraph.runs.last().is_some_and(|run| run.field.is_none()));
+    }
+
+    #[test]
+    fn a_field_nested_in_a_result_does_not_turn_the_outer_end_into_a_second_result() {
+        // The outer field's result is already "2"; its closing run follows the
+        // nested PAGE rather than that result, but it is the same boundary.
+        let body = r#"
+            <w:bookmarkStart w:id="1" w:name="target"/>
+            <w:p>
+              <w:r><w:fldChar w:fldCharType="begin"/></w:r>
+              <w:r><w:instrText> PAGEREF target \h </w:instrText></w:r>
+              <w:r><w:fldChar w:fldCharType="separate"/></w:r>
+              <w:r><w:t>2</w:t></w:r>
+              <w:fldSimple w:instr=" PAGE "><w:r><w:t>1</w:t></w:r></w:fldSimple>
+              <w:r><w:fldChar w:fldCharType="end"/></w:r>
+              <w:r><w:t>after</w:t></w:r>
+            </w:p>
+            <w:bookmarkEnd w:id="1"/>
+        "#;
+        let doc = parse_document_from_body(body);
+        let paragraph = doc
+            .body
+            .as_ref()
+            .and_then(|b| b.elements.first())
+            .and_then(BodyElement::as_paragraph)
+            .expect("paragraph");
+        let fields: Vec<_> = paragraph
+            .runs
+            .iter()
+            .filter_map(|run| run.field.as_ref())
+            .collect();
+
+        assert_eq!(fields.len(), 2, "{fields:?}");
+        assert!(matches!(fields[0].kind, RunFieldKind::PageRef { .. }));
+        assert_eq!(fields[1].kind, RunFieldKind::PageNumber);
     }
 
     #[test]

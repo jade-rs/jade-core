@@ -3,7 +3,8 @@
 //! ページ罫線と網かけの設定, and three 段落 switches — 同じスタイルの場合は段落間
 //! にスペースを追加しない (`w:contextualSpacing`), 行番号を表示しない
 //! (`w:suppressLineNumbers`) and 段落の自動ハイフネーションを行わない
-//! (`w:suppressAutoHyphens`).
+//! (`w:suppressAutoHyphens`) — and インデント's 見開きページのインデント設定
+//! (`w:mirrorIndents`).
 //!
 //! Each is written as Word writes direct formatting: a switch the paragraph's
 //! style already has is not repeated, and one the style turns on is turned off
@@ -32,6 +33,8 @@ pub struct ParagraphOptions {
     /// The whole border box; an empty one takes the borders off.
     pub borders: Option<ParagraphBorders>,
     pub shading: Option<Option<Shading>>,
+    /// 見開きページのインデント設定: left and right become inside and outside.
+    pub mirror_indents: Option<bool>,
 }
 
 impl ParagraphOptions {
@@ -379,6 +382,9 @@ impl Command for SetParagraphOptionsCommand {
                 if let Some(value) = options.suppress_auto_hyphens {
                     props.suppress_auto_hyphens = Some(value);
                 }
+                if let Some(value) = options.mirror_indents {
+                    props.mirror_indents = Some(value);
+                }
                 if let Some(borders) = options.borders.as_ref() {
                     props.borders = (!borders.is_empty()).then(|| borders.clone());
                 }
@@ -404,6 +410,11 @@ impl Command for SetParagraphOptionsCommand {
                     "w:suppressAutoHyphens",
                     options.suppress_auto_hyphens,
                     style.suppress_auto_hyphens,
+                ),
+                (
+                    "w:mirrorIndents",
+                    options.mirror_indents,
+                    style.mirror_indents,
                 ),
             ] {
                 if let Some(value) = value {
@@ -560,6 +571,7 @@ mod tests {
                         color: None,
                         fill: Some("FFF2CC".into()),
                     })),
+                    mirror_indents: Some(true),
                 }],
             },
         )
@@ -578,6 +590,10 @@ mod tests {
         assert!(xml.contains(r#"<w:contextualSpacing w:val="0"/>"#), "{xml}");
         assert!(xml.contains("<w:suppressLineNumbers/>"), "{xml}");
         assert!(xml.contains("<w:suppressAutoHyphens/>"), "{xml}");
+        // 見開きページのインデント設定, after the indents as the schema has it.
+        let ind = xml.find("<w:ind ").unwrap_or(0);
+        let mirror = xml.find("<w:mirrorIndents/>").expect("w:mirrorIndents");
+        assert!(ind < mirror, "{xml}");
         assert!(xml.contains(r#"w:val="dashSmallGap""#), "{xml}");
         assert!(xml.contains(r#"w:val="pct20""#), "{xml}");
 
@@ -587,6 +603,7 @@ mod tests {
         let first = props(&reopened, 0);
         assert_eq!(first.contextual_spacing, Some(false));
         assert_eq!(first.suppress_line_numbers, Some(true));
+        assert_eq!(first.mirror_indents, Some(true));
         assert_eq!(first.suppress_auto_hyphens, Some(true));
         let borders = first.borders.unwrap();
         assert_eq!(borders.top.unwrap().val.as_deref(), Some("double"));
@@ -614,6 +631,7 @@ mod tests {
                     suppress_auto_hyphens: None,
                     borders: Some(HeadlessParagraphBorderBox::default()),
                     shading: Some(None),
+                    mirror_indents: None,
                 }],
             },
         )

@@ -129,3 +129,43 @@ fn precision_as_displayed_keeps_large_finite_formula_values_on_save() {
         Some(1e300)
     );
 }
+
+#[test]
+fn automatic_except_for_data_tables_leaves_them_for_calculate_now() {
+    use jade_xlsx_reader::{CalculationMode, CellRange, CellRef};
+    let mut book = HeadlessWorkbook::open(ORIGINAL).unwrap();
+    // A one-way table on J1:K3: rates down J2:J3 tried in H1, K1 the formula.
+    book.set("Operations", "H1", CellInput::Number(1.0))
+        .unwrap();
+    book.set("Operations", "J2", CellInput::Number(3.0))
+        .unwrap();
+    book.set("Operations", "J3", CellInput::Number(4.0))
+        .unwrap();
+    book.set("Operations", "K1", CellInput::Formula("=H1*10".into()))
+        .unwrap();
+    book.set_data_table(
+        "Operations",
+        CellRange::parse("J1:K3").unwrap(),
+        None,
+        Some(CellRef::parse("H1").unwrap()),
+    )
+    .unwrap();
+    assert_eq!(value(&book, "K2"), "30");
+
+    // Automatic: the table follows its formula at once.
+    book.set("Operations", "K1", CellInput::Formula("=H1*100".into()))
+        .unwrap();
+    assert_eq!(value(&book, "K2"), "300");
+
+    // Automatic except for Data Tables: other formulas follow, the table
+    // waits for Calculate Now.
+    book.set_calculation_properties(CalculationMode::AutoNoTable, true)
+        .unwrap();
+    book.set("Operations", "K1", CellInput::Formula("=H1*1000".into()))
+        .unwrap();
+    assert_eq!(value(&book, "K1"), "1000");
+    assert_eq!(value(&book, "K2"), "300");
+    book.recalculate().unwrap();
+    assert_eq!(value(&book, "K2"), "3000");
+    assert_eq!(value(&book, "K3"), "4000");
+}

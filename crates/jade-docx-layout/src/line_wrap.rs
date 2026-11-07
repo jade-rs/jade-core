@@ -263,6 +263,10 @@ pub struct ParagraphStyle {
     pub hyphenation: Option<ParagraphHyphenation>,
     /// `ADVANCE` fields' horizontal moves, by layout-text offset, in order.
     pub advances: Vec<crate::advance_field::ParagraphAdvance>,
+    /// Absolute position tabs (`w:ptab`): the tab characters, by their
+    /// order among the paragraph's tabs, that align to a margin or indent
+    /// position rather than to the next tab stop.
+    pub positional_tabs: Option<Box<[PositionalTabStop]>>,
 }
 
 /// Word's automatic hyphenation as one paragraph applies it.
@@ -334,8 +338,47 @@ impl Default for ParagraphStyle {
             float_line_segments: Vec::new(),
             hyphenation: None,
             advances: Vec::new(),
+            positional_tabs: None,
         }
     }
+}
+
+/// An absolute position tab (ECMA-376 Part 1 §17.3.3.16) as the wrapper
+/// lays it out.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct PositionalTabStop {
+    /// Which of the paragraph's tab characters it is (0-based).
+    pub ordinal: usize,
+    /// Left, center or right.
+    pub alignment: TabAlignment,
+    pub leader: TabLeader,
+    /// Measured between the paragraph's indents rather than the margins.
+    pub relative_to_indent: bool,
+}
+
+/// Where an absolute position tab aligns the text after it: the left edge,
+/// the middle or the right edge of the text margins (or of the paragraph's
+/// indents), as Word places a header's centre and right parts.
+fn positional_tab_target(
+    stop: &PositionalTabStop,
+    paragraph_style: &ParagraphStyle,
+    base_x: f64,
+    column_right_edge: f64,
+) -> (f64, TabAlignment, TabLeader) {
+    let (left, right) = if stop.relative_to_indent {
+        (base_x, column_right_edge - paragraph_style.right_indent)
+    } else {
+        (
+            base_x + paragraph_style.tab_origin_offset,
+            column_right_edge,
+        )
+    };
+    let target = match stop.alignment {
+        TabAlignment::Center => (left + right) / 2.0,
+        TabAlignment::Right => right,
+        _ => left,
+    };
+    (target, stop.alignment, stop.leader)
 }
 
 impl ParagraphStyle {
@@ -1015,12 +1058,36 @@ pub struct SnapToCharsCacheKey {
     char_space_px_bits: u64,
 }
 
+/// Whether `grapheme` takes whole `snapToChars` cells: any character but
+/// spaces and controls — though the ideographic space (U+3000), which leaves
+/// a square empty at the head of a manuscript paragraph, takes its cell too.
+fn snaps_to_char_cells(grapheme: &str) -> bool {
+    grapheme.contains('\u{3000}')
+        || !grapheme
+            .chars()
+            .all(|ch| ch.is_whitespace() || ch.is_control())
+}
+
+/// Where a grapheme sits in the `snapToChars` cells it takes: the space the
+/// cells leave around its advance, before and after it. A `snapToChars`
+/// grid (`w:docGrid`, ECMA-376 Part 1 §17.6.5) gives each character a whole
+/// number of character pitches, and Word centres the character in them,
+/// East Asian or not: it is what puts each character of 原稿用紙 in the
+/// middle of its square, which sits in the middle of its pitch.
 pub fn snap_to_chars_cell_span_adjustment(
     grapheme: &str,
-    script: ScriptCategory,
     core_advance: f64,
     cell_width: f64,
 ) -> (f64, f64) {
+    if !snaps_to_char_cells(grapheme) {
+        return (0.0, 0.0);
+    }
+    centre_in_char_cells(core_advance, cell_width)
+}
+
+/// The space before and after an advance of `core_advance` centred in the
+/// whole `cell_width` cells it needs.
+fn centre_in_char_cells(core_advance: f64, cell_width: f64) -> (f64, f64) {
     if !core_advance.is_finite()
         || !cell_width.is_finite()
         || core_advance <= 0.0
@@ -1028,13 +1095,6 @@ pub fn snap_to_chars_cell_span_adjustment(
     {
         return (0.0, 0.0);
     }
-    if grapheme
-        .chars()
-        .all(|ch| ch.is_whitespace() || ch.is_control())
-    {
-        return (0.0, 0.0);
-    }
-
     let span_cells = (core_advance / cell_width).ceil().max(1.0);
     let snapped_advance = span_cells * cell_width;
     let slack = (snapped_advance - core_advance).max(0.0);
@@ -1042,12 +1102,8 @@ pub fn snap_to_chars_cell_span_adjustment(
         return (0.0, 0.0);
     }
 
-    if script == ScriptCategory::EastAsia {
-        (0.0, slack)
-    } else {
-        let leading = slack * 0.5;
-        (leading, slack - leading)
-    }
+    let leading = slack * 0.5;
+    (leading, slack - leading)
 }
 
 #[inline]
@@ -1114,12 +1170,21 @@ pub fn compute_grapheme_advance(context: GraphemeAdvanceContext<'_>) -> Grapheme
     let requested_ascii_width = if uses_requested_ascii_width(&context) {
         context
             .font_descriptor
-            .and_then(crate::line_metrics::word_ascii_metrics)
+            .and_then(|descriptor| {
+                crate::line_metrics::word_ascii_metrics_for_platform(
+                    descriptor,
+                    context
+                        .paragraph_style
+                        .map_or_else(crate::line_metrics::word_layout_platform, |p| {
+                            p.word_platform
+                        }),
+                )
+            })
             .and_then(|metrics| metrics.advance_px(context.grapheme.as_bytes()[0]))
     } else {
         None
     };
-    compute_grapheme_advance_with_ascii_width(context, requested_ascii_width)
+    compute_grapheme_advance_with_ascii_width(context, requested_ascii_width, None)
 }
 
 fn uses_requested_ascii_width(context: &GraphemeAdvanceContext<'_>) -> bool {
@@ -1127,12 +1192,28 @@ fn uses_requested_ascii_width(context: &GraphemeAdvanceContext<'_>) -> bool {
         && context.script == ScriptCategory::Latin
         && context.grapheme.len() == 1
         && (b' '..=b'~').contains(&context.grapheme.as_bytes()[0])
-        && context
+        && (context
             .paragraph_style
-            .map_or_else(crate::line_metrics::word_layout_platform, |style| {
-                style.word_platform
+            .map_or_else(crate::line_metrics::word_layout_platform, |p| {
+                p.word_platform
             })
             == crate::line_metrics::WordLayoutPlatform::Mac
+            || context
+                .font_descriptor
+                .and_then(crate::line_metrics::cached_word_fixed_east_asian_em_px)
+                .is_some()
+            || (context
+                .paragraph_style
+                .is_none_or(|p| p.oracle_advance_px_by_text_offset.is_none())
+                && context.font_descriptor.is_some_and(|descriptor| {
+                    matches!(
+                        crate::line_metrics::word_ascii_metrics_for_platform(
+                            descriptor,
+                            crate::line_metrics::WordLayoutPlatform::Windows
+                        ),
+                        Some(crate::line_metrics::WordAsciiMetrics::TimesNewRoman(..))
+                    )
+                })))
 }
 
 fn compute_resolved_grapheme_advance(
@@ -1142,12 +1223,37 @@ fn compute_resolved_grapheme_advance(
 ) -> GraphemeAdvance {
     let requested_ascii_width = if requested_ascii_width_override.is_some() {
         requested_ascii_width_override
-    } else if uses_requested_ascii_width(&context) {
-        style.ascii_advance_px(context.grapheme.as_bytes()[0])
+    } else if !context.measured_width_is_oracle
+        && context.script == ScriptCategory::Latin
+        && context.grapheme.len() == 1
+        && (b' '..=b'~').contains(&context.grapheme.as_bytes()[0])
+    {
+        if context
+            .paragraph_style
+            .map_or_else(crate::line_metrics::word_layout_platform, |p| {
+                p.word_platform
+            })
+            == crate::line_metrics::WordLayoutPlatform::Mac
+        {
+            style.ascii_advance_px(context.grapheme.as_bytes()[0])
+        } else if context
+            .paragraph_style
+            .is_some_and(|p| p.oracle_advance_px_by_text_offset.is_some())
+            && matches!(
+                style.ascii_metrics_for_descriptor(&style.font_descriptor_latin_ascii),
+                Some(crate::line_metrics::WordAsciiMetrics::TimesNewRoman(..))
+            )
+        {
+            // Legacy traces omit terminal advances. Keep their established
+            // host fallback for unmapped glyphs instead of mixing versions.
+            None
+        } else {
+            style.windows_requested_ascii_advance_px(context.grapheme.as_bytes()[0])
+        }
     } else {
         None
     };
-    compute_grapheme_advance_with_ascii_width(context, requested_ascii_width)
+    compute_grapheme_advance_with_ascii_width(context, requested_ascii_width, Some(style))
 }
 
 #[inline]
@@ -1220,6 +1326,7 @@ fn balanced_space_width_px(
 fn compute_grapheme_advance_with_ascii_width(
     context: GraphemeAdvanceContext<'_>,
     requested_ascii_width: Option<f64>,
+    resolved_style: Option<&ResolvedRunStyle>,
 ) -> GraphemeAdvance {
     let GraphemeAdvanceContext {
         paragraph_style,
@@ -1246,9 +1353,10 @@ fn compute_grapheme_advance_with_ascii_width(
     // Check the character before parsing a descriptor on this hot path.
     let observed_unicode_width = if matches!(grapheme, "…" | "—" | "○")
         && !measured_width_is_oracle
-        && paragraph_style.map_or_else(crate::line_metrics::word_layout_platform, |style| {
-            style.word_platform
-        }) == crate::line_metrics::WordLayoutPlatform::Mac
+        && (grapheme == "…"
+            || paragraph_style.map_or_else(crate::line_metrics::word_layout_platform, |style| {
+                style.word_platform
+            }) == crate::line_metrics::WordLayoutPlatform::Mac)
     {
         font_descriptor.and_then(|descriptor| {
             crate::line_metrics::word_observed_unicode_advance_px(descriptor, grapheme)
@@ -1269,7 +1377,22 @@ fn compute_grapheme_advance_with_ascii_width(
             text_scale_x,
         )
     };
+    // Windows Word's fixed Japanese faces retain full cells. The old
+    // heuristic 1% expansion / 18% punctuation reduction changes both the
+    // pair positions and wrap points in the live Windows Word PDF probes.
+    let windows_fixed_cjk = script == ScriptCategory::EastAsia
+        && paragraph_style
+            .is_some_and(|p| p.word_platform == crate::line_metrics::WordLayoutPlatform::Windows)
+        && font_descriptor.is_some_and(|descriptor| {
+            resolved_style
+                .map_or_else(
+                    || crate::line_metrics::cached_word_fixed_east_asian_em_px(descriptor),
+                    |style| style.fixed_cjk_em_px(descriptor),
+                )
+                .is_some()
+        });
     let glyph_width = if !measured_width_is_oracle
+        && !windows_fixed_cjk
         && script == ScriptCategory::EastAsia
         && paragraph_style.is_some_and(|style| style.east_asian_advance_scale > 1.0)
     {
@@ -1280,7 +1403,7 @@ fn compute_grapheme_advance_with_ascii_width(
     } else {
         glyph_width
     };
-    let punctuation_adjustment = if measured_width_is_oracle {
+    let punctuation_adjustment = if measured_width_is_oracle || windows_fixed_cjk {
         0.0
     } else {
         paragraph_style
@@ -1311,12 +1434,15 @@ fn compute_grapheme_advance_with_ascii_width(
     // half-cell: a full-width character consumes two tracking intervals.
     // numbering-restart's 11pt glyph + 3pt grid - 2×1pt tracking has a 12pt
     // pitch. ASCII still consumes one interval; terminal glyphs already have
-    // zero extra_spacing. Cell snapping and non-grid/Windows paths retain
-    // their ordinary between-character tracking.
+    // zero extra_spacing. Cell snapping and non-grid paths retain
+    // their ordinary between-character tracking. Windows fixed faces use
+    // the same two tracking intervals inside a full grid cell.
     let extra_spacing = if extra_spacing != 0.0
         && full_grid_cell
         && paragraph_style.is_some_and(|style| {
-            style.word_platform == crate::line_metrics::WordLayoutPlatform::Mac
+            (style.word_platform == crate::line_metrics::WordLayoutPlatform::Mac
+                || windows_fixed_cjk
+                || (grapheme == "…" && observed_unicode_width.is_some()))
                 && style.east_asian_rules.use_east_asian_layout
                 && !style.doc_grid_snap_to_chars
                 && style.doc_grid_char_space_px.is_some()
@@ -1326,7 +1452,18 @@ fn compute_grapheme_advance_with_ascii_width(
         extra_spacing
     };
     let core_advance = (adjusted_glyph_width + extra_spacing + grid_spacing).max(0.0);
-    let balance_extra = if measured_width_is_oracle {
+    let balance_extra = if measured_width_is_oracle
+        || (script == ScriptCategory::Latin
+            && !grapheme.bytes().all(|b| b.is_ascii_alphabetic())
+            && paragraph_style.is_some_and(|p| {
+                p.word_platform == crate::line_metrics::WordLayoutPlatform::Windows
+                    && p.east_asian_rules.balance_single_byte_double_byte_width
+            })
+            && (requested_ascii_width.is_some()
+                || font_descriptor
+                    .and_then(crate::line_metrics::word_latin_font_line_height_pt)
+                    .is_some()))
+    {
         0.0
     } else {
         paragraph_style
@@ -1370,7 +1507,7 @@ fn compute_grapheme_advance_with_ascii_width(
     } else {
         paragraph_style
             .map(|style| {
-                implicit_numeric_east_asian_gap_width(
+                implicit_numeric_east_asian_gap_width_with_style(
                     style,
                     ImplicitNumericGapContext {
                         grapheme,
@@ -1382,6 +1519,7 @@ fn compute_grapheme_advance_with_ascii_width(
                         font_descriptor,
                         prev_auto_space,
                     },
+                    resolved_style,
                 )
             })
             .unwrap_or(0.0)
@@ -1414,9 +1552,7 @@ fn compute_grapheme_advance_with_ascii_width(
     let implicit_latin_trailing_gap = widen(implicit_latin_trailing_gap);
     let implicit_numeric_gap = widen(implicit_numeric_gap);
     let (snap_leading, snap_trailing) = snap_cell_width
-        .map(|cell_width| {
-            snap_to_chars_cell_span_adjustment(grapheme, script, core_advance, cell_width)
-        })
+        .map(|cell_width| snap_to_chars_cell_span_adjustment(grapheme, core_advance, cell_width))
         .unwrap_or((0.0, 0.0));
     let glyph_box_width =
         core_advance + snap_trailing + balance_extra + implicit_latin_trailing_gap;
@@ -1567,6 +1703,37 @@ pub fn implicit_latin_east_asian_gap_width(
         return (0.0, 0.0);
     }
 
+    if let Some(metrics) = font_descriptor
+        .filter(|_| {
+            paragraph_style.word_platform == crate::line_metrics::WordLayoutPlatform::Windows
+        })
+        .and_then(|descriptor| {
+            crate::line_metrics::word_windows_latin_auto_space_metrics(
+                descriptor,
+                paragraph_style
+                    .east_asian_rules
+                    .balance_single_byte_double_byte_width,
+            )
+        })
+    {
+        return (
+            if prev_is_east_asia {
+                metrics.leading_gap_px()
+            } else {
+                0.0
+            },
+            if next_is_east_asia {
+                metrics.trailing_gap_px(
+                    paragraph_style
+                        .east_asian_rules
+                        .balance_single_byte_double_byte_width,
+                )
+            } else {
+                0.0
+            },
+        );
+    }
+
     let face_metrics = (paragraph_style.word_platform
         == crate::line_metrics::WordLayoutPlatform::Mac)
         .then(|| {
@@ -1635,6 +1802,14 @@ pub fn implicit_numeric_east_asian_gap_width(
     paragraph_style: &ParagraphStyle,
     context: ImplicitNumericGapContext<'_>,
 ) -> f64 {
+    implicit_numeric_east_asian_gap_width_with_style(paragraph_style, context, None)
+}
+
+fn implicit_numeric_east_asian_gap_width_with_style(
+    paragraph_style: &ParagraphStyle,
+    context: ImplicitNumericGapContext<'_>,
+    resolved_style: Option<&ResolvedRunStyle>,
+) -> f64 {
     let ImplicitNumericGapContext {
         grapheme,
         script,
@@ -1645,31 +1820,20 @@ pub fn implicit_numeric_east_asian_gap_width(
         font_descriptor,
         prev_auto_space,
     } = context;
-    if !paragraph_style.enable_line_break_rules {
-        return 0.0;
-    }
-    if paragraph_style
-        .east_asian_rules
-        .balance_single_byte_double_byte_width
-        && paragraph_style.east_asian_rules.auto_space_dn != Some(true)
-        && crate::line_metrics::word_balance_suppresses_numeric_auto_space(
-            paragraph_style.word_platform,
-        )
-        || paragraph_style.east_asian_rules.auto_space_dn == Some(false)
-    {
-        return 0.0;
-    }
-    if !is_ascii_digit_grapheme(grapheme) {
-        let prev_is_digit = prev_grapheme.is_some_and(is_ascii_digit_grapheme);
-        let current_is_east_asia = script == ScriptCategory::EastAsia;
-        if !(prev_is_digit && current_is_east_asia) {
-            return 0.0;
-        }
-    }
-
+    let fixed_em_px = || {
+        font_descriptor.and_then(|descriptor| {
+            resolved_style.map_or_else(
+                || crate::line_metrics::cached_word_fixed_east_asian_em_px(descriptor),
+                |style| style.observed_cjk_em_px(descriptor),
+            )
+        })
+    };
     // Each boundary needs only one side classified, so classify lazily: this
     // runs for every grapheme of East Asian text.
     let current_is_digit = is_ascii_digit_grapheme(grapheme);
+    if !current_is_digit && script != ScriptCategory::EastAsia {
+        return 0.0;
+    }
     let boundary_weight = if current_is_digit {
         if !prev_grapheme.is_some_and(is_auto_space_east_asian_text) {
             return 0.0;
@@ -1692,6 +1856,37 @@ pub fn implicit_numeric_east_asian_gap_width(
     };
     if boundary_weight <= f64::EPSILON {
         return 0.0;
+    }
+
+    if !paragraph_style.enable_line_break_rules
+        && (paragraph_style.word_platform == crate::line_metrics::WordLayoutPlatform::Mac
+            || fixed_em_px().is_none())
+    {
+        return 0.0;
+    }
+    if paragraph_style
+        .east_asian_rules
+        .balance_single_byte_double_byte_width
+        && paragraph_style.east_asian_rules.auto_space_dn != Some(true)
+        && crate::line_metrics::word_balance_suppresses_numeric_auto_space(
+            paragraph_style.word_platform,
+        )
+        && font_descriptor.is_none_or(|descriptor| {
+            resolved_style
+                .map_or_else(
+                    || crate::line_metrics::word_ascii_metrics(descriptor),
+                    |style| style.ascii_metrics_for_descriptor(descriptor),
+                )
+                .is_none()
+        })
+        || paragraph_style.east_asian_rules.auto_space_dn == Some(false)
+    {
+        return 0.0;
+    }
+    if paragraph_style.word_platform == crate::line_metrics::WordLayoutPlatform::Windows {
+        if let Some(em) = fixed_em_px() {
+            return em * 0.25;
+        }
     }
 
     // Faces with known metrics: 1/4 em before the digit, the digit face's
@@ -2480,12 +2675,9 @@ fn pair_has_fixed_cjk_advances(
     style: &ResolvedRunStyle,
     state: &TextAdvanceState,
     measured_width: f64,
-    paragraph_style: Option<&ParagraphStyle>,
+    _paragraph_style: Option<&ParagraphStyle>,
 ) -> bool {
     if script != ScriptCategory::EastAsia
-        || paragraph_style.map_or_else(crate::line_metrics::word_layout_platform, |p| {
-            p.word_platform
-        }) != crate::line_metrics::WordLayoutPlatform::Mac
         || !is_fixed_fullwidth_cjk_scalar(grapheme)
         || !state
             .prev_grapheme
@@ -2516,7 +2708,7 @@ fn pair_has_fixed_cjk_advances(
             .is_some_and(|width| (width - em).abs() <= tolerance)
 }
 
-fn mac_fixed_punctuation_pair_adjustment(
+fn fixed_punctuation_pair_adjustment(
     grapheme: &str,
     script: ScriptCategory,
     font_descriptor: &str,
@@ -2525,12 +2717,11 @@ fn mac_fixed_punctuation_pair_adjustment(
     measured_width: f64,
     paragraph_style: Option<&ParagraphStyle>,
 ) -> Option<f64> {
-    let paragraph_style = paragraph_style?;
+    paragraph_style?;
     // Word for Mac 16.114 shares the blank of a kerned pair whatever
     // `characterSpacingControl` says (probe pairs-kerned and its
     // doNotCompress twin are identical).
     if script != ScriptCategory::EastAsia
-        || paragraph_style.word_platform != crate::line_metrics::WordLayoutPlatform::Mac
         || state.prev_font_descriptor_hash != Some(font_descriptor_hash)
     {
         return None;
@@ -2592,6 +2783,13 @@ fn compute_text_advance_step_with_descriptor<'a, C: LineWrapContext>(
     // space takes its advance from `word_ascii_metrics` before this.)
     let synthetic_bold_extra = if measured_width_is_oracle || is_whitespace_text(grapheme) {
         0.0
+    } else if script == ScriptCategory::EastAsia
+        && paragraph_style.is_some_and(|p| {
+            p.word_platform == crate::line_metrics::WordLayoutPlatform::Windows
+                && p.oracle_advance_px_by_text_offset.is_none()
+        })
+    {
+        style.windows_cjk_bold_extra_px(font_descriptor)
     } else {
         crate::line_metrics::word_synthetic_bold_extra_advance_px(font_descriptor)
     };
@@ -2605,16 +2803,42 @@ fn compute_text_advance_step_with_descriptor<'a, C: LineWrapContext>(
             .and_then(|cell| style.monospace_em_px(font_descriptor).map(|em| em * cell))
             .or_else(|| crate::line_metrics::word_mac_emoji_advance_px(grapheme, font_descriptor))
     };
+    // Requested Windows font facts already own these advances below. Do not
+    // measure the substitute face first only to discard its width afterward.
+    let requested_ascii_measure = if !measured_width_is_oracle
+        && monospace_width.is_none()
+        && script == ScriptCategory::Latin
+        && grapheme.len() == 1
+        && (b' '..=b'~').contains(&grapheme.as_bytes()[0])
+        && paragraph_style.is_some_and(|p| {
+            p.word_platform == crate::line_metrics::WordLayoutPlatform::Windows
+                && p.oracle_advance_px_by_text_offset.is_none()
+        }) {
+        style
+            .ascii_metrics_for_descriptor(font_descriptor)
+            .filter(|metrics| {
+                matches!(
+                    metrics,
+                    crate::line_metrics::WordAsciiMetrics::TimesNewRoman(..)
+                )
+            })
+            .and_then(|metrics| metrics.advance_px(grapheme.as_bytes()[0]))
+    } else {
+        None
+    };
     let measured_glyph_width = match (oracle_measured_glyph_width, monospace_width) {
         (Some(width), _) => width,
         (None, Some(width)) => width + synthetic_bold_extra,
         (None, None) => {
-            ctx.measure_text_with_font_key(
-                grapheme,
-                font_descriptor,
-                font_descriptor_hash,
-                font_descriptor_id,
-            )? + synthetic_bold_extra
+            (match requested_ascii_measure {
+                Some(width) => width,
+                None => ctx.measure_text_with_font_key(
+                    grapheme,
+                    font_descriptor,
+                    font_descriptor_hash,
+                    font_descriptor_id,
+                )?,
+            }) + synthetic_bold_extra
         }
     };
     let extra_spacing = if !measured_width_is_oracle
@@ -2628,7 +2852,7 @@ fn compute_text_advance_step_with_descriptor<'a, C: LineWrapContext>(
     let punctuation_adjustment = if measured_width_is_oracle || !style.enable_pair_kerning {
         None
     } else {
-        mac_fixed_punctuation_pair_adjustment(
+        fixed_punctuation_pair_adjustment(
             grapheme,
             script,
             font_descriptor,
@@ -2732,7 +2956,8 @@ fn compute_text_advance_step_with_descriptor<'a, C: LineWrapContext>(
                     next_grapheme,
                     font_descriptor,
                 )
-            }),
+            })
+            .or(requested_ascii_measure),
     );
     // When the resolved font slot is genuinely Default, Word for Windows keeps
     // numeric text in the ANSI classification and does not add the East-Asian
@@ -2743,6 +2968,9 @@ fn compute_text_advance_step_with_descriptor<'a, C: LineWrapContext>(
     // Mac keeps it either way.
     if style.font_hint == Some(FontHint::Default)
         && advance.implicit_numeric_gap > 0.0
+        && style
+            .monospace_em_px(&style.font_descriptor_latin_ascii)
+            .is_none()
         && paragraph_style.is_none_or(|style| {
             crate::line_metrics::word_default_hint_suppresses_numeric_auto_space(
                 style.word_platform,
@@ -3302,6 +3530,7 @@ impl WrappedLine {
         }
         let visible = self.clusters.iter().any(|cluster| !cluster.is_whitespace);
         let mut extent: Option<(f64, f64)> = None;
+        let mut previous_box = None;
         for cluster in &self.clusters {
             if visible && cluster.is_whitespace {
                 continue;
@@ -3315,9 +3544,16 @@ impl WrappedLine {
                 let layout = cluster.layout.as_ref()?;
                 (layout.font_ascent?, layout.font_descent?)
             };
+            // Repeated glyph boxes need no more validation or maxima. Keep
+            // the actual previous pair: a mixed-font extent can combine one
+            // face's ascent with another's descent and match neither face.
+            if previous_box == Some((a, d)) {
+                continue;
+            }
             if !a.is_finite() || !d.is_finite() || a < 0.0 || d < 0.0 {
                 return None;
             }
+            previous_box = Some((a, d));
             extent =
                 Some(extent.map_or((a, d), |(ascent, descent)| (ascent.max(a), descent.max(d))));
         }
@@ -4351,6 +4587,34 @@ pub fn layout_text_vertically<C: LineWrapContext>(
     available_height: Option<f64>,
     line_height: f64,
 ) -> Result<VerticalWrappedLayout, C::Error> {
+    layout_text_vertically_on_grid(
+        ctx,
+        text,
+        run_styles,
+        prefer_horizontal_latin,
+        base_offset,
+        available_height,
+        line_height,
+        None,
+    )
+}
+
+/// [`layout_text_vertically`] on a `snapToChars` grid when
+/// `snap_char_space_px` is set (the grid's `w:charSpace`): each character
+/// takes whole character pitches down the column — the East Asian em plus
+/// the extra space — and sits in the middle of them, its cluster's
+/// `leading_advance` holding the space above it.
+#[allow(clippy::too_many_arguments)]
+fn layout_text_vertically_on_grid<C: LineWrapContext>(
+    ctx: &C,
+    text: &str,
+    run_styles: &[RunStyle],
+    prefer_horizontal_latin: bool,
+    base_offset: usize,
+    available_height: Option<f64>,
+    line_height: f64,
+    snap_char_space_px: Option<f64>,
+) -> Result<VerticalWrappedLayout, C::Error> {
     let joined_runs = join_equal_runs_inside_graphemes(text, run_styles);
     let run_styles = joined_runs.as_ref();
     fn push_vertical_line(
@@ -4444,6 +4708,42 @@ pub fn layout_text_vertically<C: LineWrapContext>(
         Ok(())
     }
 
+    /// Widens the line just pushed to whole `cell`s and centres its glyph
+    /// in them.
+    fn snap_last_line_to_cells(
+        lines: &mut [WrappedLine],
+        cell: Option<f64>,
+        style: &ResolvedRunStyle,
+    ) {
+        let (Some(cell), Some(line)) = (cell, lines.last_mut()) else {
+            return;
+        };
+        let Some(cluster) = line.clusters.last_mut() else {
+            return;
+        };
+        if !snaps_to_char_cells(&cluster.text) {
+            return;
+        }
+        let (leading, trailing) = centre_in_char_cells(cluster.width, cell);
+        if leading + trailing <= f64::EPSILON {
+            return;
+        }
+        let script = classify_script(&cluster.text);
+        cluster.layout = Some(InlineClusterLayout {
+            character_border_edges: 0,
+            script,
+            font_slot: style.font_slot_for_grapheme(&cluster.text, script),
+            leading_advance: leading,
+            glyph_box_width: cluster.width + trailing,
+            measured_glyph_width: cluster.width,
+            adjusted_glyph_width: cluster.width,
+            font_descriptor_hash: 0,
+            font_ascent: None,
+            font_descent: None,
+        });
+        cluster.width += leading + trailing;
+    }
+
     let mut lines = Vec::new();
     let mut max_line_width: f64 = 0.0;
     let mut pending_ascii: Option<PendingAsciiLine> = None;
@@ -4464,6 +4764,20 @@ pub fn layout_text_vertically<C: LineWrapContext>(
         }
 
         let style = ctx.resolve_run_style(run_style.properties.as_deref())?;
+        // The run's character pitch on a `snapToChars` grid, as across a
+        // horizontal line ([`resolve_snap_to_chars_cell_width`]).
+        let cell = match snap_char_space_px {
+            Some(char_space) => {
+                let (descriptor, _, _) =
+                    style.descriptor_key_for_grapheme("あ", ScriptCategory::EastAsia);
+                let em = match crate::line_metrics::word_monospace_em_px(descriptor) {
+                    Some(em) => em,
+                    None => ctx.measure_text("あ", descriptor)?,
+                };
+                Some((em * EAST_ASIA_ADVANCE_SCALE * style.text_scale_x + char_space).max(1.0))
+            }
+            None => None,
+        };
         // 縦中横 (`w:eastAsianLayout w:vert`, ECMA-376 Part 1 §17.3.2.10):
         // the run is one upright horizontal group taking one character's
         // height in the column. Runs of the same group (one `w:id`) join it.
@@ -4516,6 +4830,7 @@ pub fn layout_text_vertically<C: LineWrapContext>(
                     hyperlink: &run_style.hyperlink,
                 },
             );
+            snap_last_line_to_cells(&mut lines, cell, &style);
             continue;
         }
         for (rel_offset, grapheme) in crate::graphemes::grapheme_indices(run_text) {
@@ -4609,6 +4924,7 @@ pub fn layout_text_vertically<C: LineWrapContext>(
                     hyperlink: &run_style.hyperlink,
                 },
             );
+            snap_last_line_to_cells(&mut lines, cell, &style);
         }
     }
 
@@ -4678,9 +4994,7 @@ pub fn layout_section_text_vertically<C: LineWrapContext>(
     available_height: Option<f64>,
     line_height: f64,
 ) -> Result<VerticalWrappedLayout, C::Error> {
-    let joined_runs = join_equal_runs_inside_graphemes(text, run_styles);
-    let run_styles = joined_runs.as_ref();
-    let mut layout = layout_text_vertically(
+    layout_section_text_vertically_on_grid(
         ctx,
         text,
         run_styles,
@@ -4688,6 +5002,36 @@ pub fn layout_section_text_vertically<C: LineWrapContext>(
         base_offset,
         available_height,
         line_height,
+        None,
+    )
+}
+
+/// [`layout_section_text_vertically`] on a `snapToChars` grid whose
+/// `w:charSpace` is `snap_char_space_px`: 縦書き manuscript paper, one
+/// character centred in each square down the column. A snapped glyph's
+/// `leading_advance` is the space above it in its cells.
+#[allow(clippy::too_many_arguments)]
+pub fn layout_section_text_vertically_on_grid<C: LineWrapContext>(
+    ctx: &C,
+    text: &str,
+    run_styles: &[RunStyle],
+    prefer_horizontal_latin: bool,
+    base_offset: usize,
+    available_height: Option<f64>,
+    line_height: f64,
+    snap_char_space_px: Option<f64>,
+) -> Result<VerticalWrappedLayout, C::Error> {
+    let joined_runs = join_equal_runs_inside_graphemes(text, run_styles);
+    let run_styles = joined_runs.as_ref();
+    let mut layout = layout_text_vertically_on_grid(
+        ctx,
+        text,
+        run_styles,
+        prefer_horizontal_latin,
+        base_offset,
+        available_height,
+        line_height,
+        snap_char_space_px,
     )?;
     let mut run_index = 0;
     let mut resolved_index = None;
@@ -4715,14 +5059,25 @@ pub fn layout_section_text_vertically<C: LineWrapContext>(
             if let Some((ascent, descent)) =
                 crate::line_metrics::word_vertical_glyph_metrics_px(descriptor)
             {
+                // A glyph snapped to grid cells keeps its place in them.
+                let (leading, glyph_box_width, glyph_width) = cluster.layout.as_ref().map_or(
+                    (0.0, cluster.width, cluster.width),
+                    |snapped| {
+                        (
+                            snapped.leading_advance,
+                            snapped.glyph_box_width,
+                            snapped.adjusted_glyph_width,
+                        )
+                    },
+                );
                 cluster.layout = Some(InlineClusterLayout {
                     character_border_edges: 0,
                     script,
                     font_slot: style.font_slot_for_grapheme(&cluster.text, script),
-                    leading_advance: 0.0,
-                    glyph_box_width: cluster.width,
-                    measured_glyph_width: cluster.width,
-                    adjusted_glyph_width: cluster.width,
+                    leading_advance: leading,
+                    glyph_box_width,
+                    measured_glyph_width: glyph_width,
+                    adjusted_glyph_width: glyph_width,
                     font_descriptor_hash: hash,
                     font_ascent: Some(ascent),
                     font_descent: Some(descent),
@@ -5527,6 +5882,31 @@ pub trait LineWrapContext {
     ) -> Result<Option<(f64, f64)>, Self::Error> {
         Ok(None)
     }
+}
+
+/// The wrapper's terms for a paragraph's `w:ptab`s; `None` without any.
+pub fn resolve_positional_tabs(
+    tabs: Option<&Vec<jade_docx_reader::document::PositionalTab>>,
+) -> Option<Box<[PositionalTabStop]>> {
+    use jade_docx_reader::document::PositionalTabAlignment;
+    let tabs = tabs.filter(|tabs| !tabs.is_empty())?;
+    let stops = tabs
+        .iter()
+        .map(|tab| PositionalTabStop {
+            ordinal: tab.ordinal,
+            alignment: match tab.alignment {
+                PositionalTabAlignment::Left => TabAlignment::Left,
+                PositionalTabAlignment::Center => TabAlignment::Center,
+                PositionalTabAlignment::Right => TabAlignment::Right,
+            },
+            leader: tab
+                .leader
+                .as_deref()
+                .map_or(TabLeader::None, tab_leader_from_str),
+            relative_to_indent: tab.relative_to_indent,
+        })
+        .collect();
+    Some(stops)
 }
 
 /// Normalizes raw `TabStop` entries into `ParagraphTabStop` structures.
@@ -6631,8 +7011,25 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
                     paragraph_style,
                 );
                 let cursor_x = line_origin + tab_stop_cursor_width;
-                let (target_x, alignment, mut leader_kind) =
-                    find_next_tab_stop(paragraph_style, base_x, cursor_x);
+                // An absolute position tab goes to its own position, whatever
+                // the tab stops say.
+                let positional = paragraph_style
+                    .positional_tabs
+                    .as_deref()
+                    .and_then(|stops| {
+                        let local = grapheme_start_abs.saturating_sub(base_offset);
+                        let ordinal = text
+                            .get(..local)
+                            .map_or(0, |before| before.matches('\t').count());
+                        stops.iter().find(|stop| stop.ordinal == ordinal).copied()
+                    });
+                let tab_target = |cursor_x: f64| match &positional {
+                    Some(stop) => {
+                        positional_tab_target(stop, paragraph_style, base_x, column_right_edge)
+                    }
+                    None => find_next_tab_stop(paragraph_style, base_x, cursor_x),
+                };
+                let (target_x, alignment, mut leader_kind) = tab_target(cursor_x);
 
                 let mut previous_width = current_width;
                 let mut desired_width = tab_segment_start_width(
@@ -6661,7 +7058,7 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
                     let next_line_origin =
                         paragraph_style.line_base_x(base_x, next_line_index) + next_line_indent;
                     let (next_target_x, next_alignment, next_leader_kind) =
-                        find_next_tab_stop(paragraph_style, base_x, next_line_origin);
+                        tab_target(next_line_origin);
                     let next_desired_width = tab_segment_start_width(
                         next_target_x,
                         next_line_origin,
@@ -15809,6 +16206,7 @@ mod tests {
             start: 0,
             end: text.len(),
             properties: Some(Rc::new(RunProperties {
+                font_family: Some("Recording Test".into()),
                 fit_text: Some(RunFitText {
                     val: 300,
                     id: Some(50),
@@ -15852,6 +16250,7 @@ mod tests {
                 start,
                 end,
                 properties: Some(Rc::new(RunProperties {
+                    font_family: Some("Recording Test".into()),
                     fit_text: Some(RunFitText {
                         val: 300,
                         id: Some(id),
@@ -17715,6 +18114,35 @@ mod tests {
     }
 
     #[test]
+    fn windows_times_new_roman_boundary_gaps_match_word_drawing_origins() {
+        use crate::line_metrics::{set_word_layout_platform, WordLayoutPlatform};
+        for platform in [WordLayoutPlatform::Windows, WordLayoutPlatform::Mac] {
+            set_word_layout_platform(platform);
+            let paragraph = ParagraphStyle {
+                enable_line_break_rules: true,
+                word_platform: platform,
+                ..ParagraphStyle::default()
+            };
+            for size in [10.5, 12.0] {
+                let descriptor = format!("{size:.2}pt 'Times New Roman'");
+                let (leading, trailing) = implicit_latin_east_asian_gap_width(
+                    &paragraph,
+                    "a",
+                    ScriptCategory::Latin,
+                    6.0,
+                    Some("第"),
+                    Some("項"),
+                    Some(&descriptor),
+                );
+                let quarter_em = size / 3.0;
+                assert!((leading - quarter_em).abs() < 1e-9);
+                let expected_trailing = quarter_em * 2.0 * 821.0 / 2048.0;
+                assert!((trailing - expected_trailing).abs() < 1e-9);
+            }
+        }
+    }
+
+    #[test]
     fn implicit_latin_gap_defaults_to_enabled_when_auto_space_de_missing() {
         // Exact gap arithmetic (Word for Mac); Windows rounds it to pixels.
         crate::line_metrics::set_word_layout_platform(crate::line_metrics::WordLayoutPlatform::Mac);
@@ -18320,7 +18748,7 @@ mod tests {
                 false,
                 "10.50pt 'Yu Mincho', serif",
                 1.0,
-                false,
+                true,
             ),
             (
                 WordLayoutPlatform::Mac,
@@ -18373,7 +18801,7 @@ mod tests {
                 });
                 let expected = if use_word_metrics && font_units > 0.0 {
                     14.0 * (font_units / 2048.0
-                        + if descriptor.starts_with("bold ") {
+                        + if descriptor.starts_with("bold ") && grapheme != " " {
                             0.02
                         } else {
                             0.0
@@ -18474,7 +18902,7 @@ mod tests {
                 false,
                 "10.50pt 'MS Mincho', serif",
                 1.0,
-                8.25,
+                7.0,
             ),
             (
                 WordLayoutPlatform::Mac,
@@ -18981,6 +19409,36 @@ mod tests {
             },
         );
         assert_eq!(extra, 0.0);
+    }
+
+    #[test]
+    fn windows_fixed_face_numeric_gaps_keep_fractional_pdf_positions_without_fe_layout() {
+        let mut paragraph = ParagraphStyle {
+            word_platform: crate::line_metrics::WordLayoutPlatform::Windows,
+            enable_line_break_rules: false,
+            ..ParagraphStyle::default()
+        };
+        paragraph
+            .east_asian_rules
+            .balance_single_byte_double_byte_width = true;
+        let gap = |paragraph: &ParagraphStyle| {
+            implicit_numeric_east_asian_gap_width(
+                paragraph,
+                ImplicitNumericGapContext {
+                    grapheme: "2",
+                    script: ScriptCategory::Latin,
+                    glyph_width: 7.0,
+                    prev_prev_grapheme: None,
+                    prev_grapheme: Some("和"),
+                    prev_glyph_width: Some(14.0),
+                    font_descriptor: Some("10.50pt 'MS Mincho'"),
+                    prev_auto_space: None,
+                },
+            )
+        };
+        assert_eq!(gap(&paragraph), 3.5);
+        paragraph.east_asian_rules.auto_space_dn = Some(false);
+        assert_eq!(gap(&paragraph), 0.0);
     }
 
     #[test]
@@ -22325,7 +22783,7 @@ mod tests {
             ..style.clone()
         };
         assert!(
-            (advance(&windows, "11pt 'MS Mincho'", false, 1.0, -1.0).total_advance * 0.75 - 8.5)
+            (advance(&windows, "11pt 'MS Mincho'", false, 1.0, -1.0).total_advance * 0.75 - 12.0)
                 .abs()
                 < 1e-9
         );

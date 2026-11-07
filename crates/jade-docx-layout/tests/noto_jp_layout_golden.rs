@@ -2,6 +2,7 @@ use futures::executor::block_on;
 use jade_docx_layout::font_measurer::{
     FontdueLineWrapContext, FontdueMeasurer, RegisteredFontStyle,
 };
+use jade_docx_layout::line_metrics::{set_word_layout_platform, WordLayoutPlatform};
 use jade_docx_layout::text_extract::layout_docx_lines_from_bytes;
 use std::fs;
 use std::path::PathBuf;
@@ -88,6 +89,7 @@ fn bundled_noto_context_with_yokohama_aliases() -> FontdueLineWrapContext {
 
 #[test]
 fn noto_jp_yokohama_page1_first_line_tops_stay_stable() {
+    set_word_layout_platform(WordLayoutPlatform::Windows);
     let bytes = fs::read(fixture_path("noto-jp-yokohama_page6.docx"))
         .expect("failed to read noto-jp-yokohama_page6 fixture");
     let context = bundled_noto_context();
@@ -107,67 +109,71 @@ fn noto_jp_yokohama_page1_first_line_tops_stay_stable() {
         })
         .collect::<Vec<_>>();
     // The fixture starts with one blank paragraph, so the first visible content
-    // begins at paragraph 2 in `jade-docx-layout`.
+    // begins at paragraph 2 in `jade-docx-layout`. Its blank line consumes
+    // height on Windows. This is an engine geometry golden for the bundled
+    // Noto fallback; the independent Word PDF oracles verify actual origins.
     let expected = vec![
-        (2, "○横浜市市税条例".to_string(), 132.333),
-        (3, "昭和25年8月11日".to_string(), 158.899),
-        (4, "条例第34号".to_string(), 185.466),
+        (2, "○横浜市市税条例".to_string(), 158.899),
+        (3, "昭和25年8月11日".to_string(), 185.466),
+        (4, "条例第34号".to_string(), 212.032),
         (
             5,
             "注　昭和60年3月から改正経過を注記した。".to_string(),
-            212.032,
+            238.598,
         ),
         (
             6,
             "市会の議決を経て、横浜市市税条例を次のように定める。".to_string(),
-            238.598,
+            265.164,
         ),
-        (7, "横浜市市税条例".to_string(), 265.164),
-        (8, "目次".to_string(), 291.730),
-        (9, "第1章　総則(第1条―第20条)".to_string(), 318.296),
-        (10, "第2章　普通税".to_string(), 344.862),
-        (11, "第1節　市民税(第21条―第40条の10)".to_string(), 371.428),
-        (12, "第2節　固定資産税(第41条―第70条)".to_string(), 397.995),
+        (7, "横浜市市税条例".to_string(), 291.730),
+        (8, "目次".to_string(), 318.296),
+        (9, "第1章　総則(第1条―第20条)".to_string(), 344.862),
+        (10, "第2章　普通税".to_string(), 371.428),
+        (11, "第1節　市民税(第21条―第40条の10)".to_string(), 397.995),
+        (12, "第2節　固定資産税(第41条―第70条)".to_string(), 424.561),
         (
             13,
             "第3節　軽自動車税(第71条―第81条の2)".to_string(),
-            424.561,
+            451.127,
         ),
         (
             14,
             "第4節　市たばこ税(第81条の3―第92条)".to_string(),
-            451.127,
+            477.693,
         ),
-        (15, "第5節　削除".to_string(), 477.693),
+        (15, "第5節　削除".to_string(), 504.259),
         (
             16,
             "第6節　特別土地保有税(第104条の2―第120条)".to_string(),
-            504.259,
+            530.825,
         ),
-        (17, "第3章　目的税".to_string(), 530.825),
-        (18, "第1節　入湯税(第121条―第128条)".to_string(), 557.391),
+        (17, "第3章　目的税".to_string(), 557.391),
+        (18, "第1節　入湯税(第121条―第128条)".to_string(), 583.957),
         (
             19,
             "第2節　事業所税(第129条―第129条の13)".to_string(),
-            583.957,
+            610.524,
         ),
         (
             20,
             "第3節　都市計画税(第130条―第135条)".to_string(),
-            610.524,
+            637.090,
         ),
-        (21, "附則".to_string(), 637.090),
-        (22, "第1章　総則".to_string(), 663.656),
-        (23, "(課税の根拠)".to_string(), 690.222),
+        (21, "附則".to_string(), 663.656),
+        (22, "第1章　総則".to_string(), 690.222),
+        (23, "(課税の根拠)".to_string(), 716.788),
         (
             24,
-            "第1条　市税及びその賦課徴収については、地方税法(昭和25年法律第226号。以下".to_string(),
-            716.788,
+            "第1条　市税及びその賦課徴収については、地方税法(昭和25年法律第226号。以下「法」"
+                .to_string(),
+            743.354,
         ),
         (25, "(用語の意義)".to_string(), 796.486),
         (
             26,
-            "第2条　この条例における次の各号に掲げる用語の意義は、それぞれ当該各号に定".to_string(),
+            "第2条　この条例における次の各号に掲げる用語の意義は、それぞれ当該各号に定めるところ"
+                .to_string(),
             823.052,
         ),
         (
@@ -182,6 +188,7 @@ fn noto_jp_yokohama_page1_first_line_tops_stay_stable() {
 
 #[test]
 fn yokohama_page6_page3_reaches_item1_reason_paragraph() {
+    set_word_layout_platform(WordLayoutPlatform::Windows);
     let bytes =
         fs::read(fixture_path("yokohama_page6.docx")).expect("failed to read yokohama_page6");
     let context = bundled_noto_context_with_yokohama_aliases();
@@ -202,38 +209,42 @@ fn yokohama_page6_page3_reaches_item1_reason_paragraph() {
 }
 
 #[test]
-fn yokohama_page6_page5_reaches_kanka_reason_paragraph() {
+fn yokohama_page6_page4_reaches_kanka_reason_paragraph() {
+    set_word_layout_platform(WordLayoutPlatform::Windows);
     let bytes =
         fs::read(fixture_path("yokohama_page6.docx")).expect("failed to read yokohama_page6");
     let context = bundled_noto_context_with_yokohama_aliases();
     let layout =
         block_on(layout_docx_lines_from_bytes(&bytes, &context)).expect("failed to layout fixture");
 
-    let page_five = layout
+    // Windows Word 16.0.19127.20860 places this heading and its reason
+    // paragraph on page 4 (the versioned yokohama_page6 PDF). The earlier
+    // substitute-width golden put it on page 5.
+    let page_four = layout
         .get_lines()
-        .filter(|line| line.page == 5)
+        .filter(|line| line.page == 4)
         .collect::<Vec<_>>();
 
     assert!(
-        page_five.iter().any(|line| {
-            line.text.starts_with(
-                "3　法第15条の6の2第2項に規定する条例で定める事項は、次に掲げる事項とする",
-            )
-        }),
-        "page 5 should include the article 15-6-2 item-3 heading",
+        page_four
+            .iter()
+            .any(|line| { line.text.starts_with("3　法第15条の6の2第2項",) }),
+        "page 4 should include the article 15-6-2 item-3 heading",
     );
     assert!(
-        page_five.iter().any(|line| {
+        page_four.iter().any(|line| {
             line.text.starts_with(
                 "(1)　申請による換価の猶予を受けた期間内に当該申請による換価の猶予を受け",
             )
         }),
-        "page 5 should reach the item-1 reason paragraph under article 15-6-2",
+        "page 4 should reach the item-1 reason paragraph under article 15-6-2",
     );
+    let page_text = page_four
+        .iter()
+        .map(|line| line.text.as_str())
+        .collect::<String>();
     assert!(
-        page_five.iter().any(|line| line
-            .text
-            .contains("た金額を納付し、又は納入することができないやむを得ない理由")),
-        "page 5 should include the continuation of the item-1 reason paragraph",
+        page_text.contains("た金額を納付し、又は納入することができないやむを得ない理由"),
+        "page 4 should include the continuation of the item-1 reason paragraph",
     );
 }

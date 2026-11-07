@@ -3,10 +3,12 @@ use jade_pptx_reader::Transform;
 use quick_xml::{events::Event, name::ResolveResult, NsReader};
 use std::ops::Range;
 
+pub(crate) mod animation;
 pub(crate) mod crop;
 pub(crate) mod diagrams;
 mod formatting;
 pub(crate) mod grouping;
+pub(crate) mod media;
 mod objects;
 pub(crate) mod picture_ranges;
 pub(crate) mod pictures;
@@ -20,10 +22,13 @@ pub(crate) use objects::{
 };
 mod paragraphs;
 pub(crate) use paragraphs::format_paragraphs;
+pub(crate) mod ink;
 pub(crate) mod layouts;
 mod notes;
+pub(crate) mod page_masters;
+pub(crate) mod presenting;
 mod slides;
-pub(crate) use notes::{notes_snapshot, replace_notes_range, set_notes};
+pub(crate) use notes::{edit_notes_body, notes_snapshot, replace_notes_range, set_notes};
 mod text;
 pub(crate) use formatting::format_text_range;
 pub(crate) use slides::{copy_objects, edit_slides, SlideEdit};

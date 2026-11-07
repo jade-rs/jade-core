@@ -312,6 +312,26 @@ impl PlacedShape {
             PlacedGeometry::Line => {
                 segment_distance(x, y, (0.0, 0.0), (r.width, r.height)) <= tolerance.max(0.5)
             }
+            // Ink is hit on its strokes, as PowerPoint selects it.
+            PlacedGeometry::Ink(ink) => {
+                let (sx, sy) = (
+                    r.width / ink.width.max(f64::EPSILON),
+                    r.height / ink.height.max(f64::EPSILON),
+                );
+                ink.traces.iter().any(|trace| {
+                    let reach = tolerance.max(trace.brush.width_px / 2.0).max(2.0);
+                    let scaled = |p: &(f64, f64)| (p.0 * sx, p.1 * sy);
+                    match trace.points.as_slice() {
+                        [only] => {
+                            let p = scaled(only);
+                            segment_distance(x, y, p, p) <= reach
+                        }
+                        points => points.windows(2).any(|pair| {
+                            segment_distance(x, y, scaled(&pair[0]), scaled(&pair[1])) <= reach
+                        }),
+                    }
+                })
+            }
             PlacedGeometry::Polygon(points) => {
                 let (winding, edge) = polygon_winding(points, x, y, r.width, r.height, tolerance);
                 winding != 0 || edge

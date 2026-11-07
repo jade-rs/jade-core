@@ -1354,6 +1354,7 @@ dependencies = [
  "jade-docx-merge",
  "jade-docx-reader",
  "jade-docx-writer",
+ "jade-ink",
  "jade-opc",
  "jade-painter",
  "jade-pptx-layout",
@@ -1374,6 +1375,7 @@ dependencies = [
  "thiserror 2.0.20",
  "unicode-script",
  "unicode-segmentation",
+ "uuid",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
@@ -1459,6 +1461,7 @@ name = "jade-docx-reader"
 version = "0.1.0"
 dependencies = [
  "encoding_rs",
+ "jade-ink",
  "jade-opc",
  "quick-xml 0.41.0",
  "serde",
@@ -1474,6 +1477,16 @@ dependencies = [
  "memchr",
  "thiserror 2.0.20",
  "zip",
+]
+
+[[package]]
+name = "jade-ink"
+version = "0.1.0"
+dependencies = [
+ "jade-painter",
+ "png 0.17.16",
+ "quick-xml 0.41.0",
+ "serde",
 ]
 
 [[package]]
@@ -1519,6 +1532,7 @@ dependencies = [
 name = "jade-pptx-reader"
 version = "0.1.0"
 dependencies = [
+ "jade-ink",
  "jade-opc",
  "jade-smartart",
  "quick-xml 0.39.4",

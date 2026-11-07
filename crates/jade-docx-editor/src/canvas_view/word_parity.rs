@@ -58,6 +58,8 @@ struct ParagraphOptionsJs {
     shading: Option<HeadlessParagraphShading>,
     #[serde(default)]
     clear_shading: bool,
+    #[serde(default)]
+    mirror_indents: Option<bool>,
 }
 
 /// The 段落 dialog's 改ページと改行 options.
@@ -675,6 +677,7 @@ impl OffscreenDocumentView {
                 suppress_auto_hyphens: options.suppress_auto_hyphens,
                 borders: options.borders,
                 shading,
+                mirror_indents: options.mirror_indents,
             }
         })
     }

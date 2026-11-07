@@ -9,7 +9,7 @@ pub mod field_datetime;
 pub mod field_format;
 pub mod field_runs;
 pub mod font_table;
-pub mod inkml;
+pub use jade_ink::inkml;
 pub mod numbering;
 pub mod package_limits;
 pub mod parser;
@@ -17,6 +17,7 @@ pub mod settings;
 pub mod styles;
 pub mod theme;
 pub mod word_namespaces;
+pub mod word_platform;
 
 pub use comments::CommentsPart;
 pub use common::{OpenXmlPackage, Relationship, RelationshipTypes};

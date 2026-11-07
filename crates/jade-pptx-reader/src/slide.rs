@@ -82,6 +82,8 @@ pub enum ShapeItem {
     Group(GroupShape),
     Table(Table),
     Chart(Chart),
+    /// Ink (`p:contentPart` over an InkML part).
+    Ink(crate::media::Ink),
 }
 
 /// `<a:xfrm>` — where a shape sits and how it is turned.
@@ -405,6 +407,9 @@ pub struct Picture {
     /// The SVG part it resolves to, filled in by `read_deck`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub svg_part: Option<String>,
+    /// Video or audio, when the picture is its poster frame or icon.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub media: Option<crate::media::Media>,
 }
 
 /// `<a:outerShdw>`: a soft copy of the shape's silhouette behind it.
@@ -987,10 +992,21 @@ fn parse_shape_children(parent: &XmlElement, out: &mut Vec<ShapeItem>) {
             // Markup compatibility: the Fallback is what every reader can
             // draw; the Choice needs a feature this one does not declare.
             "AlternateContent" => {
-                if let Some(fallback) = child.child("Fallback") {
+                // Ink: the Choice is a content part every PowerPoint since
+                // 2010 draws, and the Fallback (when there is one) only a
+                // picture of it.
+                let ink = child
+                    .children
+                    .iter()
+                    .filter(|choice| choice.name == "Choice")
+                    .find_map(|choice| choice.child("contentPart"));
+                if let Some(part) = ink {
+                    out.push(ShapeItem::Ink(crate::media::parse_content_part(part)));
+                } else if let Some(fallback) = child.child("Fallback") {
                     parse_shape_children(fallback, out);
                 }
             }
+            "contentPart" => out.push(ShapeItem::Ink(crate::media::parse_content_part(child))),
             _ => {}
         }
     }
@@ -1148,6 +1164,10 @@ fn parse_pic(pic: &XmlElement) -> Picture {
             .unwrap_or_default(),
         svg_rel_id: pic.child("blipFill").and_then(crate::blip::svg_rel_id),
         svg_part: None,
+        media: pic
+            .child("nvPicPr")
+            .and_then(|nv| nv.child("nvPr"))
+            .and_then(crate::media::parse_media),
     }
 }
 
@@ -1580,7 +1600,7 @@ fn extent_of(element: Option<&XmlElement>) -> (i64, i64) {
     (cx, cy)
 }
 
-fn parse_transform(xfrm: &XmlElement) -> Transform {
+pub(crate) fn parse_transform(xfrm: &XmlElement) -> Transform {
     Transform {
         offset_emu: point_of(xfrm.child("off")),
         extent_emu: extent_of(xfrm.child("ext")),
@@ -2101,7 +2121,7 @@ fn parse_text_body(tx_body: &XmlElement) -> TextBody {
 }
 
 /// Reads the `<a:lvlNpPr>` children of any list-style container.
-fn parse_list_style(container: &XmlElement) -> ListStyle {
+pub(crate) fn parse_list_style(container: &XmlElement) -> ListStyle {
     let mut levels: Vec<Option<LevelStyle>> = Vec::new();
     for child in &container.children {
         let Some(level) = child

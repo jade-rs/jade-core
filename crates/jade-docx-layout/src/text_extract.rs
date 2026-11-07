@@ -568,7 +568,10 @@ fn apply_document_settings(document: &mut Document, settings: &DocumentSettings)
     document.hyphenation = settings.hyphenation;
     document.book_fold_printing = settings.book_fold_printing;
     document.print_two_on_one = settings.print_two_on_one;
-    if settings.character_spacing_control.as_deref() == Some("doNotCompress") {
+    if crate::line_metrics::word_layout_platform()
+        == crate::line_metrics::WordLayoutPlatform::Windows
+        || settings.character_spacing_control.as_deref() == Some("doNotCompress")
+    {
         document.snap_to_grid_default = settings.snap_to_grid_default;
         document.east_asian_line_breaking = settings.to_line_breaking_settings();
     }
@@ -670,6 +673,23 @@ fn paragraph_doc_grid(document: &Document) -> Option<&jade_docx_reader::DocGrid>
         .default_section
         .as_ref()
         .and_then(|section| section.doc_grid.as_ref())
+}
+
+fn paragraph_keeps_next(
+    paragraph: &jade_docx_reader::Paragraph,
+    styles: Option<&StylesPart>,
+) -> bool {
+    let properties = paragraph.properties.as_ref();
+    properties
+        .and_then(|p| p.keep_next)
+        .or_else(|| {
+            let styles = styles?;
+            let id = properties
+                .and_then(|p| p.style.as_deref())
+                .or_else(|| styles.default_paragraph_style_id())?;
+            styles.resolve_paragraph_properties(id)?.keep_next
+        })
+        .unwrap_or(false)
 }
 
 fn paragraph_allows_style_font_size_defaults(
@@ -1123,6 +1143,8 @@ fn build_paragraph_input<C: LineWrapContext>(
             paragraph_style.continuation_available_adjustment = points_to_px(10.5);
         }
         paragraph_style.tab_stops = resolve_tab_stops(&props.tabs);
+        paragraph_style.positional_tabs =
+            crate::line_wrap::resolve_positional_tabs(props.positional_tabs.as_ref());
         let defaults =
             EastAsianLineBreakingRules::from_settings(&document.east_asian_line_breaking);
         paragraph_style.east_asian_rules =
@@ -2142,7 +2164,10 @@ fn layout_document_lines_with_styles_and_oracle<C: LineWrapContext>(
                 false,
             )?
             else {
-                if !lines.is_empty() {
+                if !lines.is_empty()
+                    || crate::line_metrics::word_layout_platform()
+                        == crate::line_metrics::WordLayoutPlatform::Windows
+                {
                     let input = build_empty_paragraph_input(
                         &layout_context,
                         paragraph,
@@ -2376,6 +2401,97 @@ fn layout_document_lines_with_styles_and_oracle<C: LineWrapContext>(
                     |heights| heights[start..].iter().sum(),
                 )
             };
+            // A heading's keepNext also binds an empty following paragraph.
+            // Per-line grid sizing can make the heading itself fit at the
+            // foot of a page while leaving that paragraph behind.
+            if crate::line_metrics::word_layout_platform()
+                == crate::line_metrics::WordLayoutPlatform::Windows
+                && paragraph_keeps_next(paragraph, styles)
+                && !input.text.contains(PAGE_BREAK_CHAR)
+            {
+                let mut required = height_from(0);
+                let mut previous_after = input.spacing_after_px;
+                for (offset, next_element) in body.elements[element_index + 1..].iter().enumerate()
+                {
+                    if document
+                        .sections
+                        .iter()
+                        .any(|s| s.start == element_index + 1 + offset)
+                    {
+                        break;
+                    }
+                    let Some(next) = next_element.as_paragraph() else {
+                        break;
+                    };
+                    let next_input = build_paragraph_input(
+                        &layout_context,
+                        paragraph_index + offset + 1,
+                        next,
+                        column_layout.left(0),
+                        column_layout.right(0),
+                        section_content_height_pt,
+                        false,
+                    )?;
+                    let next_input = match next_input {
+                        Some(input) => input,
+                        None => build_empty_paragraph_input(
+                            &layout_context,
+                            next,
+                            section_content_height_pt,
+                        )?,
+                    };
+                    if next_input.text.contains(PAGE_BREAK_CHAR) {
+                        break;
+                    }
+                    required += previous_after.max(next_input.spacing_before_px);
+                    let next_lines = wrap_text_into_lines(
+                        context,
+                        &next_input.text,
+                        &next_input.run_styles,
+                        next_input.base_x,
+                        &next_input.paragraph_style,
+                        next_input.paragraph_index,
+                        next_input.column_right_edge,
+                    )?;
+                    let heights = crate::line_wrap::WrappedLine::line_heights_px(
+                        &next_lines,
+                        &next_input.paragraph_style,
+                        next_input.line_height_px,
+                    );
+                    let keep = paragraph_keeps_next(next, styles);
+                    let count = if keep {
+                        next_lines.len()
+                    } else if next_input.widow_control_enabled {
+                        next_lines.len().min(2)
+                    } else {
+                        next_lines.len().min(1)
+                    };
+                    required += if next_lines.is_empty() {
+                        next_input.line_height_px
+                    } else {
+                        heights
+                            .as_ref()
+                            .map_or(count as f64 * next_input.line_height_px, |heights| {
+                                heights[..count].iter().sum()
+                            })
+                    };
+                    previous_after = next_input.spacing_after_px;
+                    if !keep || required > content_bottom_y - content_top_y {
+                        break;
+                    }
+                }
+                if required <= content_bottom_y - content_top_y {
+                    ensure_vertical_space_in_columns(
+                        &mut current_y,
+                        &mut current_page_0,
+                        &mut current_column,
+                        column_layout.len(),
+                        required,
+                        content_top_y,
+                        content_bottom_y,
+                    );
+                }
+            }
             if input.widow_control_enabled && wrapped.len() > 1 {
                 let remaining = (content_bottom_y - current_y).max(0.0);
                 let lines_fit = line_heights.as_ref().map_or_else(
@@ -2637,7 +2753,10 @@ pub fn layout_docx_lines_from_package_with_oracle_advances<C: LineWrapContext>(
         document.hyphenation = settings.hyphenation;
         document.book_fold_printing = settings.book_fold_printing;
         document.print_two_on_one = settings.print_two_on_one;
-        if needs_style_defaults {
+        if needs_style_defaults
+            || crate::line_metrics::word_layout_platform()
+                == crate::line_metrics::WordLayoutPlatform::Windows
+        {
             // Word oracle comparisons need selected document-level compatibility
             // settings. The contract trace
             // (`target/contract-rich-word-trace.json`, compared in
@@ -2649,13 +2768,21 @@ pub fn layout_docx_lines_from_package_with_oracle_advances<C: LineWrapContext>(
             // showed that applying those flags with the current Noto substitute
             // metrics moves the existing golden farther from Word, so that needs a
             // separate metric-calibration slice. As with style defaults above, we
-            // only apply these settings when visible paragraphs lack explicit East
+            // only apply these settings on Mac when visible paragraphs lack explicit East
             // Asian fonting; all-explicit-font documents such as
-            // `noto-jp-yokohama_page6.docx` keep the established Noto oracle path.
+            // `noto-jp-yokohama_page6.docx` keep the established Mac Noto oracle path.
+            // Windows now has requested-face cells and line boxes: retain its
+            // actual FE/grid settings even when every run names its font.
             apply_document_settings(&mut document, &settings);
         }
     }
-    let styles = if needs_style_defaults {
+    // Explicit East Asian faces still inherit omitted sizes from docDefaults.
+    // Windows face-based line metrics otherwise size a 10.5pt MS Mincho
+    // document with the resolver's 12pt fallback and add spurious pages.
+    let styles = if needs_style_defaults
+        || crate::line_metrics::word_layout_platform()
+            == crate::line_metrics::WordLayoutPlatform::Windows
+    {
         package
             .get("word/styles.xml")
             .map(|styles_xml| StylesPart::from_xml(&String::from_utf8_lossy(styles_xml)))
@@ -3106,6 +3233,73 @@ mod tests {
             node_id: None,
             comment_ranges: Vec::new(),
             comment_markers: Vec::new(),
+        }
+    }
+
+    #[test]
+    fn keep_next_heading_reserves_the_following_empty_paragraph() {
+        let document = DocumentParser::new().parse_document_xml(r#"
+          <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>
+            <w:p><w:pPr><w:spacing w:line="1400" w:lineRule="exact"/></w:pPr><w:r><w:t>filler</w:t></w:r></w:p>
+            <w:p><w:pPr><w:keepNext/><w:spacing w:line="400" w:lineRule="exact"/></w:pPr><w:r><w:t>heading</w:t></w:r></w:p>
+            <w:p><w:pPr><w:spacing w:line="400" w:lineRule="exact"/></w:pPr></w:p>
+            <w:p><w:r><w:t>body</w:t></w:r></w:p>
+            <w:sectPr><w:pgSz w:w="6000" w:h="2400"/><w:pgMar w:top="200" w:bottom="200" w:left="200" w:right="200"/></w:sectPr>
+          </w:body></w:document>"#).unwrap();
+        let context = FixedWidthContext::new(5.0);
+        let layout = layout_document_lines(&document, &context).unwrap();
+        let heading = layout
+            .get_lines()
+            .find(|line| line.text == "heading")
+            .unwrap();
+        assert_eq!(
+            heading.page, 2,
+            "the heading fits alone, but its following blank does not"
+        );
+        let mut unbound = document;
+        unbound.body.as_mut().unwrap().elements[1]
+            .as_paragraph_mut()
+            .unwrap()
+            .properties
+            .as_mut()
+            .unwrap()
+            .keep_next = Some(false);
+        let layout = layout_document_lines(&unbound, &context).unwrap();
+        assert_eq!(
+            layout
+                .get_lines()
+                .find(|line| line.text == "heading")
+                .unwrap()
+                .page,
+            1
+        );
+    }
+
+    #[test]
+    fn windows_leading_empty_paragraph_consumes_space_without_changing_mac() {
+        use crate::line_metrics::{set_word_layout_platform, WordLayoutPlatform};
+        let document = DocumentParser::new().parse_document_xml(r#"
+          <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>
+            <w:p><w:pPr><w:spacing w:line="400" w:lineRule="exact"/></w:pPr></w:p>
+            <w:p><w:pPr><w:spacing w:line="1400" w:lineRule="exact"/></w:pPr><w:r><w:t>filler</w:t></w:r></w:p>
+            <w:p><w:pPr><w:spacing w:line="400" w:lineRule="exact"/></w:pPr><w:r><w:t>body</w:t></w:r></w:p>
+            <w:sectPr><w:pgSz w:w="6000" w:h="2400"/><w:pgMar w:top="200" w:bottom="200" w:left="200" w:right="200"/></w:sectPr>
+          </w:body></w:document>"#).unwrap();
+        let context = FixedWidthContext::new(5.0);
+        for (platform, expected_page) in [
+            (WordLayoutPlatform::Mac, 1),
+            (WordLayoutPlatform::Windows, 2),
+        ] {
+            set_word_layout_platform(platform);
+            let layout = layout_document_lines(&document, &context).unwrap();
+            assert_eq!(
+                layout
+                    .get_lines()
+                    .find(|line| line.text == "body")
+                    .unwrap()
+                    .page,
+                expected_page
+            );
         }
     }
 
@@ -5261,7 +5455,17 @@ mod tests {
     }
 
     #[test]
-    fn word_oracle_docx_settings_do_not_enable_fe_layout_for_compress_punctuation() {
+    fn compress_punctuation_settings_enable_windows_fe_and_preserve_mac_policy() {
+        use crate::line_metrics::{
+            set_word_layout_platform, word_layout_platform, WordLayoutPlatform,
+        };
+        struct Restore(WordLayoutPlatform);
+        impl Drop for Restore {
+            fn drop(&mut self) {
+                set_word_layout_platform(self.0);
+            }
+        }
+        let _restore = Restore(word_layout_platform());
         let settings = DocumentSettings::from_xml(
             r#"<w:settings xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
                 <w:characterSpacingControl w:val="compressPunctuation"/>
@@ -5271,16 +5475,26 @@ mod tests {
               </w:settings>"#,
         )
         .expect("settings should parse");
-        let mut document = Document::default();
-
-        apply_document_settings(&mut document, &settings);
-
-        assert!(!document.snap_to_grid_default);
-        assert!(!document.east_asian_line_breaking.use_east_asian_layout);
-        assert_eq!(
-            document.east_asian_line_breaking.character_spacing_control,
-            None
-        );
+        for (platform, enabled) in [
+            (WordLayoutPlatform::Mac, false),
+            (WordLayoutPlatform::Windows, true),
+        ] {
+            set_word_layout_platform(platform);
+            let mut document = Document::default();
+            apply_document_settings(&mut document, &settings);
+            assert_eq!(document.snap_to_grid_default, enabled);
+            assert_eq!(
+                document.east_asian_line_breaking.use_east_asian_layout,
+                enabled
+            );
+            assert_eq!(
+                document
+                    .east_asian_line_breaking
+                    .character_spacing_control
+                    .as_deref(),
+                enabled.then_some("compressPunctuation")
+            );
+        }
     }
 
     #[test]

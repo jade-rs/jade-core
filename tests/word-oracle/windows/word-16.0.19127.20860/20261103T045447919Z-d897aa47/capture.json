@@ -1,0 +1,24 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261103T045447919Z-d897aa47",
+  "captured_at_utc": "2026-11-03T04:54:47.9410525Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20860",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "9bafe09d0c458006744b9edce767a328ba2da1bb5d9a460e5830c47bf6d7f1d1"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "documents": [
+    {
+      "name": "yokohama_page1",
+      "source": "jade-core\\public\\fixtures\\yokohama_page1.docx",
+      "sha256": "02a6ffec5671a28106245a24288b5cb7922570ae17984e903307e9eefb9ea4ff",
+      "pdf": "yokohama_page1.pdf",
+      "pdf_sha256": "4d65ae45deb9b3f758a87a8c6e43a6d5bf56c4de5ccf105d6cbb34007af7a55c",
+      "pages": 1
+    }
+  ]
+}

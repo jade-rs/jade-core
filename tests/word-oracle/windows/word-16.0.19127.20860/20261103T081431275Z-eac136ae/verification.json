@@ -1,0 +1,22 @@
+{
+  "engine_commit": "157e23a938b3e48adf58b7b3e445acf9f8b4ef2f",
+  "word_product_version": "16.0.19127.20860",
+  "capture_id": "20261103T081431275Z-eac136ae",
+  "reference_kind": "emf",
+  "engine_source_worktree_dirty": false,
+  "strict_fixtures": [
+    "yokohama_page1",
+    "yokohama_page6",
+    "numbering-restart",
+    "word-windows-yu-gothic-lines"
+  ],
+  "matching_fixtures": [
+    "numbering-restart",
+    "word-windows-yu-gothic-lines",
+    "yokohama_page1",
+    "yokohama_page6"
+  ],
+  "pending_fixtures": [
+    "contract"
+  ]
+}

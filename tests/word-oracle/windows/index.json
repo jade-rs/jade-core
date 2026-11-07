@@ -1,0 +1,69 @@
+{
+  "schema": 1,
+  "references": [
+    {
+      "word_product_version": "16.0.19127.20860",
+      "directory": "word-16.0.19127.20860/20261101T130521628Z-902306ab",
+      "reference": "strict.json",
+      "fixture_count": 7,
+      "glyph_count": 5106,
+      "baseline_line_count": 144
+    },
+    {
+      "word_product_version": "16.0.19127.20860",
+      "directory": "word-16.0.19127.20860/20261101T130814344Z-9cdb6d39",
+      "reference": "strict.json",
+      "fixture_count": 2,
+      "glyph_count": 1020,
+      "baseline_line_count": 0
+    },
+    {
+      "word_product_version": "16.0.19127.20860",
+      "directory": "word-16.0.19127.20860/20261101T131350045Z-23ed098c",
+      "reference": "strict.json",
+      "fixture_count": 1,
+      "glyph_count": 105,
+      "baseline_line_count": 0
+    },
+    {
+      "word_product_version": "16.0.19127.20860",
+      "directory": "word-16.0.19127.20860/20261103T061428054Z-5f5076bb",
+      "reference": "strict.json",
+      "fixture_count": 1,
+      "glyph_count": 563,
+      "baseline_line_count": 0
+    },
+    {
+      "word_product_version": "16.0.19127.20860",
+      "directory": "word-16.0.19127.20860/20261103T072439513Z-7e74b1ab",
+      "reference": "strict.json",
+      "fixture_count": 1,
+      "glyph_count": 2160,
+      "baseline_line_count": 0
+    },
+    {
+      "word_product_version": "16.0.19127.20860",
+      "directory": "word-16.0.19127.20860/20261103T081431275Z-eac136ae",
+      "reference": "strict-emf.json",
+      "fixture_count": 4,
+      "glyph_count": 9001,
+      "baseline_line_count": 0
+    },
+    {
+      "word_product_version": "16.0.19127.20860",
+      "directory": "word-16.0.19127.20860/20261103T082355941Z-8b9726d7",
+      "reference": "strict-emf.json",
+      "fixture_count": 1,
+      "glyph_count": 1907,
+      "baseline_line_count": 0
+    },
+    {
+      "word_product_version": "16.0.19127.20860",
+      "directory": "word-16.0.19127.20860/20261103T091751013Z-0867a36b",
+      "reference": "strict-emf.json",
+      "fixture_count": 2,
+      "glyph_count": 960,
+      "baseline_line_count": 0
+    }
+  ]
+}

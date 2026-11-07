@@ -1,0 +1,24 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261101T131350045Z-23ed098c",
+  "captured_at_utc": "2026-11-01T13:13:50.0649049Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20860",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "9bafe09d0c458006744b9edce767a328ba2da1bb5d9a460e5830c47bf6d7f1d1"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "documents": [
+    {
+      "name": "word-mac-probe-numbering-label",
+      "source": "jade-core\\public\\fixtures\\word-mac-probe-numbering-label.docx",
+      "sha256": "092e1785ebcd50c0ddb085f1e7b6f20a0e4895b617ac2f6623c72b02e5110ba8",
+      "pdf": "word-mac-probe-numbering-label.pdf",
+      "pdf_sha256": "15842989f1fa4475f2fa074ba28e877074a885f766908e4b1bce81ade16d8490",
+      "pages": 1
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "engine_commit": "13f35565ef99d2156218029b89ed27d6e5faaac0",
+  "word_product_version": "16.0.19127.20860",
+  "capture_id": "20261103T053947818Z-1e31ad42",
+  "engine_source_worktree_dirty": false,
+  "strict_fixtures": [],
+  "matching_fixtures": [],
+  "pending_fixtures": [
+    "contract",
+    "numbering-restart",
+    "yokohama_page1",
+    "yokohama_page6"
+  ]
+}

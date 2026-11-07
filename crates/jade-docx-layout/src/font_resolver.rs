@@ -983,8 +983,8 @@ pub enum ResolvedFontSlot {
 
 #[derive(Clone, Debug)]
 struct CachedAsciiMetrics {
-    descriptor: Rc<str>,
-    metrics: Option<crate::line_metrics::WordAsciiMetrics>,
+    descriptors: [Rc<str>; 4],
+    metrics: [Option<crate::line_metrics::WordAsciiMetrics>; 4],
 }
 
 #[derive(Clone, Debug)]
@@ -992,6 +992,14 @@ struct CachedMonospaceMetrics {
     // Retain allocations so identity remains safe after public slot replacement.
     descriptors: [Rc<str>; 4],
     em_px: [Option<f64>; 4],
+}
+
+#[derive(Clone, Debug)]
+struct CachedCjkMetrics {
+    descriptors: [Rc<str>; 4],
+    observed_em_px: [Option<f64>; 4],
+    compatible_em_px: [Option<f64>; 4],
+    windows_bold_extra_px: std::cell::OnceCell<[f64; 4]>,
 }
 
 /// Runtime style metadata exposed to `LineWrapContext`.
@@ -1024,8 +1032,9 @@ pub struct ResolvedRunStyle {
     /// ([`jade_painter::font_features::has_features`]), worked out once here
     /// rather than for every stretch of text drawn in the style.
     pub has_font_features: bool,
-    fixed_ascii_metrics: std::cell::OnceCell<CachedAsciiMetrics>,
-    monospace_metrics: std::cell::OnceCell<Box<CachedMonospaceMetrics>>,
+    fixed_ascii_metrics: std::cell::OnceCell<Rc<CachedAsciiMetrics>>,
+    monospace_metrics: std::cell::OnceCell<Rc<CachedMonospaceMetrics>>,
+    fixed_cjk_metrics: std::cell::OnceCell<Rc<CachedCjkMetrics>>,
     fixed_east_asia_descriptor: Option<Rc<str>>,
     fixed_east_asia_em_px: f64,
 }
@@ -1117,6 +1126,7 @@ impl ResolvedRunStyle {
             has_font_features,
             fixed_ascii_metrics: std::cell::OnceCell::new(),
             monospace_metrics: std::cell::OnceCell::new(),
+            fixed_cjk_metrics: std::cell::OnceCell::new(),
             fixed_east_asia_descriptor,
             fixed_east_asia_em_px,
         }
@@ -1136,7 +1146,7 @@ impl ResolvedRunStyle {
             let em_px = descriptors
                 .each_ref()
                 .map(|descriptor| crate::line_metrics::word_monospace_em_px(descriptor));
-            Box::new(CachedMonospaceMetrics { descriptors, em_px })
+            Rc::new(CachedMonospaceMetrics { descriptors, em_px })
         });
         for (key, em) in cached.descriptors.iter().zip(&cached.em_px) {
             if std::ptr::eq(key.as_ref(), descriptor) {
@@ -1146,6 +1156,79 @@ impl ResolvedRunStyle {
         // Public slots may have changed after initialization. Their new
         // allocations must never inherit the previous descriptor's metrics.
         crate::line_metrics::word_monospace_em_px(descriptor)
+    }
+
+    /// Cache known and unknown CJK slots. A negative lookup must not return
+    /// to a thread-local descriptor cache for every glyph in proportional text.
+    #[inline]
+    pub(crate) fn fixed_cjk_em_px(&self, descriptor: &str) -> Option<f64> {
+        self.cached_cjk_em_px(descriptor, true)
+    }
+
+    #[inline]
+    pub(crate) fn observed_cjk_em_px(&self, descriptor: &str) -> Option<f64> {
+        self.cached_cjk_em_px(descriptor, false)
+    }
+
+    #[inline]
+    fn cjk_metrics(&self) -> &CachedCjkMetrics {
+        self.fixed_cjk_metrics.get_or_init(|| {
+            let descriptors = [
+                Rc::clone(&self.font_descriptor_east_asia),
+                Rc::clone(&self.font_descriptor_latin_ascii),
+                Rc::clone(&self.font_descriptor_latin_hansi),
+                Rc::clone(&self.font_descriptor_complex),
+            ];
+            let observed_em_px = descriptors
+                .each_ref()
+                .map(|descriptor| crate::line_metrics::word_fixed_east_asian_em_px(descriptor));
+            let compatible_em_px = std::array::from_fn(|index| {
+                self.monospace_em_px(&descriptors[index])
+                    .or(observed_em_px[index])
+            });
+            Rc::new(CachedCjkMetrics {
+                descriptors,
+                observed_em_px,
+                compatible_em_px,
+                windows_bold_extra_px: std::cell::OnceCell::new(),
+            })
+        })
+    }
+
+    #[inline(always)]
+    pub(crate) fn windows_cjk_bold_extra_px(&self, descriptor: &str) -> f64 {
+        let cached = self.cjk_metrics();
+        let extras = cached.windows_bold_extra_px.get_or_init(|| {
+            cached.descriptors.each_ref().map(|descriptor| {
+                crate::line_metrics::word_windows_cjk_synthetic_bold_extra_advance_px(descriptor)
+            })
+        });
+        for (key, extra) in cached.descriptors.iter().zip(extras) {
+            if std::ptr::eq(key.as_ref(), descriptor) {
+                return *extra;
+            }
+        }
+        // Public slot replacement must not reuse facts for the old allocation.
+        crate::line_metrics::word_windows_cjk_synthetic_bold_extra_advance_px(descriptor)
+    }
+
+    #[inline]
+    fn cached_cjk_em_px(&self, descriptor: &str, include_aliases: bool) -> Option<f64> {
+        let cached = self.cjk_metrics();
+        let values = if include_aliases {
+            &cached.compatible_em_px
+        } else {
+            &cached.observed_em_px
+        };
+        for (key, em) in cached.descriptors.iter().zip(values) {
+            if std::ptr::eq(key.as_ref(), descriptor) {
+                return *em;
+            }
+        }
+        include_aliases
+            .then(|| crate::line_metrics::word_monospace_em_px(descriptor))
+            .flatten()
+            .or_else(|| crate::line_metrics::word_fixed_east_asian_em_px(descriptor))
     }
 
     #[inline]
@@ -1169,7 +1252,30 @@ impl ResolvedRunStyle {
     /// style clones. Public descriptor replacement still resolves fresh metrics.
     #[inline]
     pub(crate) fn ascii_advance_px(&self, ascii: u8) -> Option<f64> {
+        // Mac paragraphs can run on a Windows-default thread. The TNR facts
+        // added for Windows must not change the existing Mac host fallback.
         self.ascii_metrics()
+            .filter(|metrics| {
+                !matches!(
+                    metrics,
+                    crate::line_metrics::WordAsciiMetrics::TimesNewRoman(..)
+                )
+            })
+            .and_then(|metrics| metrics.advance_px(ascii))
+    }
+
+    pub(crate) fn windows_requested_ascii_advance_px(&self, ascii: u8) -> Option<f64> {
+        use crate::line_metrics::WordAsciiMetrics;
+        self.ascii_metrics()
+            .filter(|metrics| {
+                matches!(
+                    metrics,
+                    WordAsciiMetrics::Fixed(..)
+                        | WordAsciiMetrics::YuMincho(..)
+                        | WordAsciiMetrics::YuMinchoBold(..)
+                        | WordAsciiMetrics::TimesNewRoman(..)
+                )
+            })
             .and_then(|metrics| metrics.advance_px(ascii))
     }
 
@@ -1181,15 +1287,42 @@ impl ResolvedRunStyle {
 
     #[inline]
     fn ascii_metrics(&self) -> Option<crate::line_metrics::WordAsciiMetrics> {
-        let metrics = self.fixed_ascii_metrics.get_or_init(|| CachedAsciiMetrics {
-            descriptor: Rc::clone(&self.font_descriptor_latin_ascii),
-            metrics: crate::line_metrics::word_ascii_metrics(&self.font_descriptor_latin_ascii),
+        self.ascii_metrics_for_descriptor(&self.font_descriptor_latin_ascii)
+    }
+
+    #[inline]
+    pub(crate) fn ascii_metrics_for_descriptor(
+        &self,
+        descriptor: &str,
+    ) -> Option<crate::line_metrics::WordAsciiMetrics> {
+        let cached = self.fixed_ascii_metrics.get_or_init(|| {
+            let descriptors = [
+                Rc::clone(&self.font_descriptor_latin_ascii),
+                Rc::clone(&self.font_descriptor_east_asia),
+                Rc::clone(&self.font_descriptor_latin_hansi),
+                Rc::clone(&self.font_descriptor_complex),
+            ];
+            let mut metrics = [None; 4];
+            for index in 0..descriptors.len() {
+                metrics[index] = if let Some(previous) =
+                    (0..index).find(|&previous| descriptors[previous] == descriptors[index])
+                {
+                    metrics[previous]
+                } else {
+                    crate::line_metrics::word_ascii_metrics(&descriptors[index])
+                };
+            }
+            Rc::new(CachedAsciiMetrics {
+                descriptors,
+                metrics,
+            })
         });
-        if Rc::ptr_eq(&metrics.descriptor, &self.font_descriptor_latin_ascii) {
-            metrics.metrics
-        } else {
-            crate::line_metrics::word_ascii_metrics(&self.font_descriptor_latin_ascii)
+        for (key, metrics) in cached.descriptors.iter().zip(&cached.metrics) {
+            if std::ptr::eq(key.as_ref(), descriptor) {
+                return *metrics;
+            }
         }
+        crate::line_metrics::word_ascii_metrics(descriptor)
     }
 
     /// Attaches ids allocated by the measurement cache shared by the renderer.
@@ -1306,6 +1439,109 @@ pub fn apply_hint_to_script(
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn numeric_boundaries_reuse_all_slot_metrics_across_style_clones() {
+        use crate::line_metrics::WORD_FIXED_ASCII_DESCRIPTOR_LOOKUPS;
+        let style = ResolvedRunStyle::new(
+            "11pt 'MS Mincho'",
+            "11pt 'MS Mincho'",
+            "12pt 'MS Gothic'",
+            "11pt 'MS Mincho'",
+            0.0,
+            1.0,
+            false,
+            None,
+        );
+        WORD_FIXED_ASCII_DESCRIPTOR_LOOKUPS.with(|count| count.set(0));
+        for _ in 0..1000 {
+            assert!(style
+                .ascii_metrics_for_descriptor(&style.font_descriptor_latin_ascii)
+                .is_some());
+            assert!(style
+                .ascii_metrics_for_descriptor(&style.font_descriptor_east_asia)
+                .is_some());
+        }
+        let clone = style.clone();
+        assert!(clone
+            .ascii_metrics_for_descriptor(&clone.font_descriptor_east_asia)
+            .is_some());
+        assert_eq!(
+            WORD_FIXED_ASCII_DESCRIPTOR_LOOKUPS.with(|count| count.get()),
+            2
+        );
+    }
+    #[test]
+    fn windows_cjk_bold_cache_tracks_clones_and_replaced_slots() {
+        let mut style = ResolvedRunStyle::new(
+            "12pt Arial",
+            "italic bold 10.5pt 'MS Mincho'",
+            "bold 12pt 'MS Mincho'",
+            "bold 20pt 'Yu Mincho'",
+            0.0,
+            1.0,
+            false,
+            None,
+        );
+        assert_eq!(
+            style.windows_cjk_bold_extra_px(&style.font_descriptor_east_asia),
+            0.08
+        );
+        let original = style.clone();
+        for replacement in [
+            "12pt 'MS Mincho'",
+            "bold 40pt 'MS Mincho'",
+            "bold 12pt 'Yu Mincho'",
+        ] {
+            style.font_descriptor_east_asia = Rc::from(replacement);
+            for current in [&style, &original] {
+                for descriptor in [
+                    &current.font_descriptor_latin_ascii,
+                    &current.font_descriptor_latin_hansi,
+                    &current.font_descriptor_east_asia,
+                    &current.font_descriptor_complex,
+                ] {
+                    assert_eq!(
+                        current.windows_cjk_bold_extra_px(descriptor),
+                        crate::line_metrics::word_windows_cjk_synthetic_bold_extra_advance_px(
+                            descriptor
+                        )
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn fixed_cjk_slot_cache_preserves_negative_results_and_slot_replacement() {
+        let mut style = ResolvedRunStyle::new(
+            "12pt Arial",
+            "12pt Arial",
+            "12pt 'Yu Gothic'",
+            "12pt Arial",
+            0.0,
+            1.0,
+            false,
+            None,
+        );
+        assert_eq!(
+            style.fixed_cjk_em_px(&style.font_descriptor_east_asia),
+            None
+        );
+        assert_eq!(
+            style.fixed_cjk_em_px(&style.font_descriptor_east_asia),
+            None
+        );
+        style.font_descriptor_east_asia = Rc::from("10.5pt 'MS Mincho'");
+        assert_eq!(
+            style.fixed_cjk_em_px(&style.font_descriptor_east_asia),
+            Some(14.0)
+        );
+        style.font_descriptor_east_asia = Rc::from("20pt 'Yu Mincho'");
+        assert_eq!(
+            style.fixed_cjk_em_px(&style.font_descriptor_east_asia),
+            Some(80.0 / 3.0)
+        );
+    }
     use super::*;
     use jade_docx_reader::document::RunFonts;
     use std::hint::black_box;

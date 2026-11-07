@@ -8035,10 +8035,13 @@ fn table_autofit_cache_signature(
     line_height_for: &dyn Fn(&Paragraph) -> f64,
     field_value_for: &dyn Fn(&RunField) -> Option<String>,
 ) -> Option<TableAutofitCacheSignature> {
-    let mut bytes = serde_json::to_vec(table).ok()?;
+    // A table's key runs to kilobytes: start there rather than growing from
+    // serde_json's 128 bytes on every paint.
+    let mut bytes = Vec::with_capacity(4096);
+    serde_json::to_writer(&mut bytes, table).ok()?;
     // `resolved_style` is intentionally skipped by the document serializer but
     // affects table and first-row typography, so retain it in the cache key.
-    bytes.extend_from_slice(format!("{:?}", table.resolved_style).as_bytes());
+    std::io::Write::write_fmt(&mut bytes, format_args!("{:?}", table.resolved_style)).ok()?;
     bytes.extend_from_slice(&available_width.to_bits().to_le_bytes());
     bytes.extend_from_slice(&default_padding_x.to_bits().to_le_bytes());
     for width in column_widths {
@@ -12702,6 +12705,9 @@ fn layout_paragraph_with_table_context<P: Painter<Error: PainterError>>(
     )
 }
 
+/// A vertical section paragraph's columns. `snap_char_space_px` is the
+/// `w:charSpace` of a `snapToChars` grid, whose characters each take whole
+/// character pitches down the column, centred in them.
 pub(super) fn layout_vertical_paragraph_with_wrap_context<C: LineWrapContext>(
     context: &C,
     text: &str,
@@ -12709,8 +12715,9 @@ pub(super) fn layout_vertical_paragraph_with_wrap_context<C: LineWrapContext>(
     direction: TextDirection,
     available_height: Option<f64>,
     line_height: f64,
+    snap_char_space_px: Option<f64>,
 ) -> Result<CellParagraph, C::Error> {
-    let mut paragraph = layout_vertical_paragraph_with_run_styles_context(
+    let mut paragraph = layout_vertical_paragraph_on_grid(
         context,
         text,
         direction,
@@ -12718,6 +12725,7 @@ pub(super) fn layout_vertical_paragraph_with_wrap_context<C: LineWrapContext>(
         line_height,
         run_styles,
         true,
+        snap_char_space_px,
     )?;
     // Section text uses this table-like layout adapter too. Keep its resolved
     // run properties for painting, instead of falling back to TABLE_FONT.
@@ -12763,20 +12771,52 @@ fn layout_vertical_paragraph_with_run_styles_context<C: LineWrapContext>(
     run_styles: &[RunStyle],
     upright_section: bool,
 ) -> Result<CellParagraph, C::Error> {
-    let layout = if upright_section {
-        jade_docx_layout::line_wrap::layout_section_text_vertically
-    } else {
-        jade_docx_layout::line_wrap::layout_text_vertically
-    };
-    let wrapped = layout(
+    layout_vertical_paragraph_on_grid(
         context,
         text,
-        run_styles,
-        direction_prefers_horizontal_latin(direction),
-        0,
+        direction,
         available_height,
         line_height,
-    )?;
+        run_styles,
+        upright_section,
+        None,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn layout_vertical_paragraph_on_grid<C: LineWrapContext>(
+    context: &C,
+    text: &str,
+    direction: TextDirection,
+    available_height: Option<f64>,
+    line_height: f64,
+    run_styles: &[RunStyle],
+    upright_section: bool,
+    snap_char_space_px: Option<f64>,
+) -> Result<CellParagraph, C::Error> {
+    let prefer_horizontal_latin = direction_prefers_horizontal_latin(direction);
+    let wrapped = if upright_section {
+        jade_docx_layout::line_wrap::layout_section_text_vertically_on_grid(
+            context,
+            text,
+            run_styles,
+            prefer_horizontal_latin,
+            0,
+            available_height,
+            line_height,
+            snap_char_space_px,
+        )?
+    } else {
+        jade_docx_layout::line_wrap::layout_text_vertically(
+            context,
+            text,
+            run_styles,
+            prefer_horizontal_latin,
+            0,
+            available_height,
+            line_height,
+        )?
+    };
     let lines = wrapped
         .lines
         .iter()
@@ -12785,6 +12825,23 @@ fn layout_vertical_paragraph_with_run_styles_context<C: LineWrapContext>(
             if upright_section {
                 line.word_baseline_offset =
                     jade_docx_layout::line_wrap::wrapped_line_max_font_ascent(wrapped_line);
+                // A glyph centred in its grid cells: its baseline drops by
+                // the space above it, and it is centred across the column by
+                // its own width, not the cells it takes down it.
+                let snapped = wrapped_line
+                    .clusters
+                    .first()
+                    .and_then(|cluster| cluster.layout.as_ref())
+                    .filter(|layout| snap_char_space_px.is_some() && layout.leading_advance > 0.0);
+                if let Some(layout) = snapped {
+                    line.word_baseline_offset = line
+                        .word_baseline_offset
+                        .map(|ascent| ascent + layout.leading_advance);
+                    for glyph in &mut line.glyphs {
+                        glyph.x = 0.0;
+                        glyph.width = layout.adjusted_glyph_width;
+                    }
+                }
             }
             line
         })
@@ -13559,6 +13616,21 @@ mod tests {
             }
         }
 
+        fn with_recording_font(mut self) -> Self {
+            let descriptor = TABLE_FONT.replace("Times New Roman", "Recording Test");
+            self.style = Rc::new(ResolvedRunStyle::new(
+                descriptor.clone(),
+                descriptor.clone(),
+                descriptor.clone(),
+                descriptor,
+                0.0,
+                1.0,
+                false,
+                None,
+            ));
+            self
+        }
+
         fn measure_calls(&self) -> u64 {
             self.measure_calls.get()
         }
@@ -13637,7 +13709,7 @@ mod tests {
             ..Default::default()
         };
         autofit_content_widths(
-            &OverhangingWrapContext(FixedWidthWrapContext::new()),
+            &OverhangingWrapContext(FixedWidthWrapContext::new().with_recording_font()),
             &table,
             &[100.0],
             0.0,
@@ -13915,7 +13987,7 @@ mod tests {
             hyphenation: Default::default(),
             styles_part: None,
         };
-        let context = FixedWidthWrapContext::new();
+        let context = FixedWidthWrapContext::new().with_recording_font();
         let text = "ab cd ef gh";
         for (alignment, expected_first_line) in [("both", "ab cd ef "), ("left", "ab cd ")] {
             let paragraph = Paragraph {

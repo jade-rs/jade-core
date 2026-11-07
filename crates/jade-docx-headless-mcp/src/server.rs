@@ -1370,6 +1370,13 @@ enum ArgType {
     Object,
     /// One table border edge: `{ style, width, color }`, or null.
     BorderEdge,
+    /// A text frame (`w:framePr`): `{ width, height, height_rule, x,
+    /// x_align, h_anchor, y, y_align, v_anchor, wrap, h_space, v_space }`,
+    /// or null.
+    ParagraphFrame,
+    /// A page fill effect: `{ kind, color, color2, angle, focus,
+    /// image_base64, title }`.
+    PageFill,
     /// `HeadlessCommand` objects — a `oneOf` over [`COMMANDS`].
     CommandList,
     /// `HeadlessQuery` objects — a `oneOf` over [`QUERIES`].
@@ -1565,6 +1572,43 @@ impl ArgType {
                 }
             }),
             ArgType::Object => json!({ "type": "object" }),
+            ArgType::ParagraphFrame => {
+                let length =
+                    |description: &str| json!({ "type": "number", "description": description });
+                let choice = |values: &[&str], description: &str| json!({ "type": "string", "enum": values, "description": description });
+                json!({
+                    "type": ["object", "null"],
+                    "properties": {
+                        "width": length("Width in points; left out is auto."),
+                        "height": length("Height in points, read by height_rule."),
+                        "height_rule": choice(&["auto", "atLeast", "exact"], "How height is read."),
+                        "x": length("Horizontal distance from h_anchor in points."),
+                        "x_align": choice(&["left", "center", "right", "inside", "outside"], "Horizontal alignment; wins over x."),
+                        "h_anchor": choice(&["text", "margin", "page"], "Horizontal base: column, margin or page."),
+                        "y": length("Vertical distance from v_anchor in points."),
+                        "y_align": choice(&["inline", "top", "center", "bottom", "inside", "outside"], "Vertical alignment; wins over y."),
+                        "v_anchor": choice(&["text", "margin", "page"], "Vertical base: text (moves with the paragraph), margin or page."),
+                        "wrap": choice(&["auto", "notBeside", "around", "tight", "through", "none"], "Text wrapping round the frame."),
+                        "h_space": length("Distance from text left and right, in points."),
+                        "v_space": length("Distance from text above and below, in points.")
+                    },
+                    "additionalProperties": false
+                })
+            }
+            ArgType::PageFill => json!({
+                "type": "object",
+                "properties": {
+                    "kind": { "type": "string", "enum": ["gradient", "texture", "pattern", "picture"], "description": "Word's 塗りつぶし効果 tab." },
+                    "color": { "type": "string", "description": "A gradient's first colour or a pattern's foreground, #RRGGBB; also the page colour." },
+                    "color2": { "type": "string", "description": "A gradient's second colour or a pattern's background, #RRGGBB." },
+                    "angle": { "type": "number", "description": "A gradient's angle in degrees: 0 top to bottom, -90 left to right, 45 and -45 the diagonals." },
+                    "focus": { "type": "number", "description": "A gradient's focus in percent: 0, 100 (reversed), 50 and -50 (mirrored)." },
+                    "image_base64": { "type": "string", "description": "The texture tile, the pattern's bits (dark on light) or the picture: PNG or JPEG, base64." },
+                    "title": { "type": "string", "description": "The fill's name, as Word's o:title." }
+                },
+                "required": ["kind"],
+                "additionalProperties": false
+            }),
             ArgType::BorderEdge => json!({
                 "type": ["object", "null"],
                 "properties": {
@@ -1749,6 +1793,17 @@ const fn paragraphs(
 /// Every `HeadlessCommand` variant `apply_commands` accepts.
 const COMMANDS: &[Variant] = &[
     // -- text -------------------------------------------------------------
+    variant(
+        "insert_positional_tab",
+        "Word's Insert Alignment Tab: an absolute position tab (w:ptab) at a byte offset, which aligns the text after it to the left, center or right of the margins or of the paragraph's indents, ignoring the tab stops. One undo step.",
+        &[
+            req("paragraph", ArgType::Index, "Zero-based paragraph index."),
+            req("offset", ArgType::Index, "Byte offset inside the paragraph."),
+            req("alignment", ArgType::Choice(&["left", "center", "right"]), "How the text after the tab is aligned."),
+            opt("relative_to", ArgType::Choice(&["margin", "indent"]), "Measure from the margins (default) or from the paragraph's indents."),
+            opt("leader", ArgType::Choice(&["none", "dot", "hyphen", "underscore", "middleDot"]), "The leader drawn up to the tab's position."),
+        ],
+    ),
     variant(
         "insert_text",
         "Insert text at a byte offset inside a paragraph.",
@@ -2238,6 +2293,14 @@ const COMMANDS: &[Variant] = &[
             opt("keep_lines", ArgType::Flag, "Keep the paragraph's lines on one page."),
             opt("page_break_before", ArgType::Flag, "Start the paragraph on a new page."),
             opt("widow_control", ArgType::Flag, "Never leave a single line of the paragraph alone at the top or bottom of a page."),
+        ],
+    ),
+    paragraphs(
+        "set_paragraph_outline_level",
+        "The paragraph dialog's outline level and collapsed-by-default, as direct formatting on the range: level 0-8 is Level 1-9 and 9 is body text (the level the paragraph style already gives removes the direct w:outlineLvl); collapsed writes or removes Word 2013's w15:collapsed. Omitted options stay as they are. One undo step.",
+        &[
+            opt("level", ArgType::Index, "0-8 for outline Level 1-9, 9 for body text."),
+            opt("collapsed", ArgType::Flag, "Collapse the heading by default when the document opens."),
         ],
     ),
     paragraphs(
@@ -3163,7 +3226,7 @@ const COMMANDS: &[Variant] = &[
     ),
     variant(
         "set_table_cell_borders",
-        "Set one cell's own borders, which win over the table's defaults — the way a total row gets a double rule above it. A cell has only its four edges.",
+        "Set one cell's own borders, which win over the table's defaults — the way a total row gets a double rule above it. A cell has its four edges and two diagonals.",
         &[
             req(
                 "table_order_index",
@@ -3180,6 +3243,16 @@ const COMMANDS: &[Variant] = &[
             opt("bottom", ArgType::BorderEdge, "Bottom edge."),
             opt("left", ArgType::BorderEdge, "Left edge."),
             opt("right", ArgType::BorderEdge, "Right edge."),
+            opt(
+                "tl2br",
+                ArgType::BorderEdge,
+                "Diagonal from the top-left corner to the bottom-right; style none removes it.",
+            ),
+            opt(
+                "tr2bl",
+                ArgType::BorderEdge,
+                "Diagonal from the top-right corner to the bottom-left; style none removes it.",
+            ),
         ],
     ),
     variant(
@@ -3271,6 +3344,65 @@ const COMMANDS: &[Variant] = &[
                 "alignment",
                 ArgType::Choice(&["top", "center", "bottom"]),
                 "Vertical alignment of the cell's content.",
+            ),
+        ],
+    ),
+    variant(
+        "set_table_cell_fit_text",
+        "Squeeze or spread a cell's text to the cell's width (Word's 文字列をセル幅に合わせる).",
+        &[
+            req(
+                "table_order_index",
+                ArgType::Index,
+                "Zero-based index of the table in document order.",
+            ),
+            req("row", ArgType::Index, "Zero-based row index."),
+            req(
+                "column",
+                ArgType::Index,
+                "Zero-based logical-grid column; a merged cell answers to any column it spans.",
+            ),
+            req(
+                "fit",
+                ArgType::Flag,
+                "True fits the text to the cell's width; false lets it run as usual.",
+            ),
+        ],
+    ),
+    variant(
+        "set_table_direction",
+        "Lay a table's columns out from the right (Word's 表の方向: 右から左) or from the left.",
+        &[
+            req(
+                "table_order_index",
+                ArgType::Index,
+                "Zero-based index of the table in document order.",
+            ),
+            req(
+                "right_to_left",
+                ArgType::Flag,
+                "True puts the first column at the right edge; false at the left.",
+            ),
+        ],
+    ),
+    variant(
+        "set_table_alt_text",
+        "Set a table's alternative text (Word's 代替テキスト): the title and description screen readers announce.",
+        &[
+            req(
+                "table_order_index",
+                ArgType::Index,
+                "Zero-based index of the table in document order.",
+            ),
+            opt(
+                "title",
+                ArgType::Text,
+                "タイトル; omit to leave it, empty to remove it.",
+            ),
+            opt(
+                "description",
+                ArgType::Text,
+                "説明; omit to leave it, empty to remove it.",
             ),
         ],
     ),
@@ -3637,6 +3769,26 @@ const COMMANDS: &[Variant] = &[
         ],
     ),
     variant(
+        "set_paragraph_frame",
+        "Put body paragraphs in a Word text frame (w:framePr: wrap, size, position and base, distance from text), or remove it with frame null.",
+        &[
+            req("start_paragraph", ArgType::Index, "First paragraph of the range."),
+            req("end_paragraph", ArgType::Index, "Last paragraph of the range (inclusive)."),
+            opt("frame", ArgType::ParagraphFrame, "The frame, lengths in points; null removes it."),
+        ],
+    ),
+    variant(
+        "sort_paragraphs",
+        "Sort adjacent body paragraphs by their text (Word's Sort with the Paragraphs key), optionally keeping the first as a header.",
+        &[
+            req("start_paragraph", ArgType::Index, "First paragraph of the range."),
+            req("end_paragraph", ArgType::Index, "Last paragraph of the range (inclusive)."),
+            opt("kind", ArgType::Choice(&["text", "number", "date"]), "How to compare: text (default), number or date."),
+            opt("descending", ArgType::Flag, "Sort Z to A / largest first."),
+            opt("header", ArgType::Flag, "The first paragraph is a header row and stays first."),
+        ],
+    ),
+    variant(
         "insert_table_formula",
         "Insert a formula field into a table cell (Word's Formula, e.g. =SUM(ABOVE)), with its result computed.",
         &[
@@ -3663,6 +3815,7 @@ const COMMANDS: &[Variant] = &[
             opt("suppress_auto_hyphens", ArgType::Flag, "Don't hyphenate."),
             opt("borders", ArgType::ParagraphBorderBox, "Replaces the whole border box."),
             opt("shading", ArgType::NullableParagraphShading, "The shading, or null to take it off."),
+            opt("mirror_indents", ArgType::Flag, "Mirror indents: left and right become inside and outside on facing pages."),
         ],
     ),
     // -- characters and Japanese typography -------------------------------
@@ -3917,6 +4070,41 @@ const COMMANDS: &[Variant] = &[
                 ArgType::NullableText,
                 "Watermark text; required by the command when clear is false.",
             ),
+            opt("font", ArgType::NullableText, "Font family of the text."),
+            opt(
+                "size",
+                ArgType::NullableNumber,
+                "Font size in points; omitted is automatic (fills the page).",
+            ),
+            opt(
+                "color",
+                ArgType::NullableText,
+                "Fill color as #RRGGBB; omitted is silver.",
+            ),
+            opt(
+                "semitransparent",
+                ArgType::Flag,
+                "Draw the text half transparent (default true).",
+            ),
+            opt(
+                "layout",
+                ArgType::Choice(&["diagonal", "horizontal"]),
+                "Diagonal (default) or horizontal.",
+            ),
+        ],
+    ),
+    variant(
+        "set_manuscript_grid",
+        "Draw or remove Word's manuscript-paper grid (原稿用紙) in every header over the body box; set the page, margins and snapToChars grid with set_section_layout first.",
+        &[
+            opt(
+                "style",
+                ArgType::Choice(&["squares", "lines", "frame"]),
+                "Squares, underlines or a ruled frame; omitted removes the grid.",
+            ),
+            req("chars", ArgType::Index, "Characters per line."),
+            req("lines", ArgType::Index, "Lines per page."),
+            req("color", ArgType::Text, "Rule color as #RRGGBB."),
         ],
     ),
     variant(
@@ -3935,6 +4123,15 @@ const COMMANDS: &[Variant] = &[
             "color",
             ArgType::NullableText,
             "Background color as #RRGGBB; null clears it.",
+        )],
+    ),
+    variant(
+        "set_page_fill",
+        "Put a fill effect behind every page (Word's ページの色 › 塗りつぶし効果): a gradient, a tiled texture or pattern, or a picture.",
+        &[opt(
+            "fill",
+            ArgType::PageFill,
+            "The effect; omit to take it off and keep the page colour.",
         )],
     ),
     // -- heading-relative insertion ----------------------------------------
@@ -5959,6 +6156,21 @@ mod tests {
             ArgType::CellList => json!([{ "row": 0, "column": 0, "column_span": 1 }]),
             ArgType::SortKeyList => json!([{ "column": 0, "kind": "number", "descending": true }]),
             ArgType::BorderEdge => json!({ "style": "single", "width": 0.5, "color": "#000000" }),
+            ArgType::ParagraphFrame => json!({
+                "width": 144.0,
+                "wrap": "around",
+                "h_anchor": "margin",
+                "x_align": "right",
+                "v_anchor": "text",
+                "y": 0.0
+            }),
+            ArgType::PageFill => json!({
+                "kind": "gradient",
+                "color": "#FFFFFF",
+                "color2": "#0070C0",
+                "angle": -90.0,
+                "focus": 50.0
+            }),
             ArgType::Object
             | ArgType::CommandList
             | ArgType::QueryList

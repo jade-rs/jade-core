@@ -7,6 +7,9 @@ license = "MIT"
 [dependencies]
 jade-painter = { path = "../jade-painter" }
 jade-pptx-layout = { path = "../jade-pptx-layout" }
+jade-pptx-reader = { path = "../jade-pptx-reader" }
+unicode-segmentation = "1.10"
+jade-ink = { path = "../jade-ink" }
 
 [dev-dependencies]
-jade-pptx-reader = { path = "../jade-pptx-reader" }
+serde_json = "1"

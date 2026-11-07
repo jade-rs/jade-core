@@ -76,6 +76,7 @@ pub mod sheet_view;
 pub mod sheets;
 pub mod shift;
 pub mod sort;
+pub mod sparklines;
 pub mod spills;
 pub mod styles;
 pub mod table;

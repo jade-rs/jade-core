@@ -95,6 +95,18 @@ pub enum PlacedGeometry {
     /// A preset evaluated from its ECMA-376 definition: each DrawingML path
     /// keeps its own fill mode and stroke, and open subpaths stay open.
     Paths(Vec<PlacedPath>),
+    /// Ink: strokes drawn over the rect, stretched from the box they were
+    /// laid in.
+    Ink(PlacedInk),
+}
+
+/// Ink strokes and the box they were laid in (px): the rect is that box
+/// moved and sized, and the strokes stretch with it.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct PlacedInk {
+    pub traces: Vec<jade_pptx_reader::InkTrace>,
+    pub width: f64,
+    pub height: f64,
 }
 
 /// One DrawingML `<a:path>`, flattened, in normalized shape coordinates.
@@ -1011,8 +1023,52 @@ fn place_items(
             ShapeItem::Chart(chart) => {
                 out.extend(place_chart(chart, &space, context, origin));
             }
+            ShapeItem::Ink(ink) => {
+                if let Some(placed) = place_ink(ink, &space, origin) {
+                    out.push(placed);
+                }
+            }
         }
     }
+}
+
+/// Ink places as its strokes over its box.
+fn place_ink(
+    ink: &jade_pptx_reader::Ink,
+    space: &GroupSpace,
+    origin: PlacedOrigin,
+) -> Option<PlacedShape> {
+    let transform = ink.transform.as_ref()?;
+    let rect = placed_rect(transform, space);
+    Some(PlacedShape {
+        text_region: None,
+        local_rect: None,
+        group_transforms: Vec::new(),
+        group_ids: Vec::new(),
+        name: ink.name.clone(),
+        rect,
+        rotation_rad: rotation_rad(transform),
+        flip_h: transform.flip_h,
+        flip_v: transform.flip_v,
+        geometry: PlacedGeometry::Ink(PlacedInk {
+            traces: ink.traces.clone(),
+            width: jade_pptx_reader::emu_to_px(transform.extent_emu.0),
+            height: jade_pptx_reader::emu_to_px(transform.extent_emu.1),
+        }),
+        fill: None,
+        gradient: None,
+        outline: None,
+        image_part: None,
+        source_rect: None,
+        lines: Vec::new(),
+        origin,
+        source_id: ink.id,
+        text_rotation_deg: 0.0,
+        shadow: None,
+        image_alpha: None,
+        pattern: None,
+        effects: PlacedEffects::default(),
+    })
 }
 
 /// The frame colour a chart draws with until charts draw as charts.

@@ -519,6 +519,7 @@ fn paragraph_options(
                     .transpose()
             })
             .transpose()?,
+        mirror_indents: None,
     })
 }
 
@@ -1956,6 +1957,43 @@ pub fn apply_headless_commands_with_executor_to_document(
                     )
                     .map_err(|source| HeadlessApiApplyError::Command { index, source })?;
             }
+            HeadlessCommand::InsertPositionalTab {
+                paragraph,
+                offset,
+                alignment,
+                relative_to,
+                leader,
+            } => {
+                use crate::commands::insert_positional_tab::InsertPositionalTabCommand;
+                use crate::document::{PositionalTab, PositionalTabAlignment};
+                validate_text_offset(word_doc, index, *paragraph, *offset)?;
+                let alignment = match alignment.as_str() {
+                    "left" => PositionalTabAlignment::Left,
+                    "center" => PositionalTabAlignment::Center,
+                    "right" => PositionalTabAlignment::Right,
+                    other => {
+                        return Err(HeadlessApiApplyError::Command {
+                            index,
+                            source: CommandError::Custom(format!(
+                                "a positional tab aligns left, center or right, not {other}"
+                            )),
+                        })
+                    }
+                };
+                let tab = PositionalTab {
+                    ordinal: 0,
+                    alignment,
+                    relative_to_indent: relative_to.as_deref() == Some("indent"),
+                    leader: leader.clone().filter(|leader| leader != "none"),
+                };
+                let mut ctx = CommandContext::new(word_doc, &mut selection);
+                command_executor
+                    .execute(
+                        Box::new(InsertPositionalTabCommand::new(*paragraph, *offset, tab)),
+                        &mut ctx,
+                    )
+                    .map_err(|source| HeadlessApiApplyError::Command { index, source })?;
+            }
             HeadlessCommand::ClearFormatting {
                 start_paragraph,
                 start_offset,
@@ -2612,6 +2650,33 @@ pub fn apply_headless_commands_with_executor_to_document(
                     )
                     .map_err(|source| HeadlessApiApplyError::Command { index, source })?;
             }
+            HeadlessCommand::SetParagraphFrame {
+                start_paragraph,
+                end_paragraph,
+                frame,
+            } => {
+                let frame = frame
+                    .as_ref()
+                    .map(crate::commands::set_paragraph_frame::frame_from_headless)
+                    .transpose()
+                    .map_err(|message| HeadlessApiApplyError::Command {
+                        index,
+                        source: CommandError::Custom(message),
+                    })?;
+                let mut ctx = CommandContext::new(word_doc, &mut selection);
+                command_executor
+                    .execute(
+                        Box::new(
+                            crate::commands::set_paragraph_frame::SetParagraphFrameCommand::new(
+                                *start_paragraph,
+                                *end_paragraph,
+                                frame,
+                            ),
+                        ),
+                        &mut ctx,
+                    )
+                    .map_err(|source| HeadlessApiApplyError::Command { index, source })?;
+            }
             HeadlessCommand::SetParagraphOptions {
                 start_paragraph,
                 end_paragraph,
@@ -2621,8 +2686,9 @@ pub fn apply_headless_commands_with_executor_to_document(
                 suppress_auto_hyphens,
                 borders,
                 shading,
+                mirror_indents,
             } => {
-                let options = paragraph_options(
+                let mut options = paragraph_options(
                     tabs.as_deref(),
                     *contextual_spacing,
                     *suppress_line_numbers,
@@ -2631,6 +2697,7 @@ pub fn apply_headless_commands_with_executor_to_document(
                     shading.as_ref(),
                 )
                 .map_err(|source| HeadlessApiApplyError::Command { index, source })?;
+                options.mirror_indents = *mirror_indents;
                 let mut ctx = CommandContext::new(word_doc, &mut selection);
                 command_executor
                     .execute(
@@ -2753,6 +2820,26 @@ pub fn apply_headless_commands_with_executor_to_document(
                                 page_break_before: *page_break_before,
                                 widow_control: *widow_control,
                             },
+                        )),
+                        &mut ctx,
+                    )
+                    .map_err(|source| HeadlessApiApplyError::Command { index, source })?;
+            }
+            HeadlessCommand::SetParagraphOutlineLevel {
+                start_paragraph,
+                end_paragraph,
+                level,
+                collapsed,
+            } => {
+                use crate::commands::set_paragraph_outline_level::SetParagraphOutlineLevelCommand;
+                let mut ctx = CommandContext::new(word_doc, &mut selection);
+                command_executor
+                    .execute(
+                        Box::new(SetParagraphOutlineLevelCommand::new(
+                            *start_paragraph,
+                            *end_paragraph,
+                            *level,
+                            *collapsed,
                         )),
                         &mut ctx,
                     )
@@ -3345,13 +3432,26 @@ pub fn apply_headless_commands_with_executor_to_document(
                     )
                     .map_err(|source| HeadlessApiApplyError::Command { index, source })?;
             }
-            HeadlessCommand::SetWatermark { clear, text } => {
+            HeadlessCommand::SetWatermark {
+                clear,
+                text,
+                font,
+                size,
+                color,
+                semitransparent,
+                layout,
+            } => {
+                let styled = font.is_some()
+                    || size.is_some()
+                    || color.is_some()
+                    || semitransparent.is_some()
+                    || layout.is_some();
                 let text = if *clear {
-                    if text.is_some() {
+                    if text.is_some() || styled {
                         return Err(HeadlessApiApplyError::Command {
                             index,
                             source: CommandError::Custom(
-                                "set_watermark clear=true cannot include text".into(),
+                                "set_watermark clear=true cannot include text or a look".into(),
                             ),
                         });
                     }
@@ -3364,9 +3464,37 @@ pub fn apply_headless_commands_with_executor_to_document(
                         ),
                     })?)
                 };
+                let horizontal = match layout.as_deref() {
+                    None | Some("diagonal") => false,
+                    Some("horizontal") => true,
+                    Some(other) => {
+                        return Err(HeadlessApiApplyError::Command {
+                            index,
+                            source: CommandError::Custom(format!(
+                                "set_watermark layout must be diagonal or horizontal, not {other}"
+                            )),
+                        })
+                    }
+                };
+                let spec = text.map(|text| {
+                    let defaults = jade_docx_reader::document::WatermarkStyle::default();
+                    crate::word_document::WatermarkSpec {
+                        text,
+                        style: jade_docx_reader::document::WatermarkStyle {
+                            font: font.clone(),
+                            size_pt: *size,
+                            fit_shape: None,
+                            color: color.clone().unwrap_or(defaults.color),
+                            semitransparent: semitransparent.unwrap_or(true),
+                            horizontal,
+                            width_pt: None,
+                            height_pt: None,
+                        },
+                    }
+                });
                 let mut ctx = CommandContext::new(word_doc, &mut selection);
                 command_executor
-                    .execute(Box::new(SetWatermarkCommand::new(text)), &mut ctx)
+                    .execute(Box::new(SetWatermarkCommand::with_spec(spec)), &mut ctx)
                     .map_err(|source| HeadlessApiApplyError::Command { index, source })?;
             }
             HeadlessCommand::SetDocumentTheme { theme } => {
@@ -3386,6 +3514,18 @@ pub fn apply_headless_commands_with_executor_to_document(
                         &mut ctx,
                     )
                     .map_err(|source| HeadlessApiApplyError::Command { index, source })?;
+            }
+            HeadlessCommand::SetPageFill { fill } => {
+                let fill = fill.clone();
+                execute_snapshot_edit(
+                    word_doc,
+                    command_executor,
+                    &mut selection,
+                    index,
+                    "set_page_fill",
+                    EditScope::Document,
+                    move |doc| doc.set_page_fill(fill.as_ref()),
+                )?;
             }
             HeadlessCommand::InsertAfterHeading {
                 heading,
@@ -3811,6 +3951,45 @@ pub fn apply_headless_commands_with_executor_to_document(
                         Box::new(SnapshotEditCommand::new(
                             "set_section_layout",
                             move |document| document.set_section_layout(&sections, &patch),
+                        )),
+                        &mut ctx,
+                    )
+                    .map_err(|source| HeadlessApiApplyError::Command { index, source })?;
+            }
+            HeadlessCommand::SetManuscriptGrid {
+                style,
+                chars,
+                lines,
+                color,
+            } => {
+                use jade_docx_reader::document::{ManuscriptGrid, ManuscriptStyle};
+                let grid = match style.as_deref() {
+                    None => None,
+                    Some(style) => Some(ManuscriptGrid {
+                        style: match style {
+                            "squares" => ManuscriptStyle::Squares,
+                            "lines" => ManuscriptStyle::Lines,
+                            "frame" => ManuscriptStyle::Frame,
+                            other => {
+                                return Err(HeadlessApiApplyError::Command {
+                                    index,
+                                    source: CommandError::Custom(format!(
+                                    "manuscript style must be squares, lines or frame, not {other}"
+                                )),
+                                })
+                            }
+                        },
+                        chars: *chars,
+                        lines: *lines,
+                        color: color.clone(),
+                    }),
+                };
+                let mut ctx = CommandContext::new(word_doc, &mut selection);
+                command_executor
+                    .execute(
+                        Box::new(SnapshotEditCommand::new(
+                            "set_manuscript_grid",
+                            move |document| document.set_manuscript_grid(grid.clone()).map(|_| ()),
                         )),
                         &mut ctx,
                     )
@@ -4366,6 +4545,7 @@ pub fn apply_headless_commands_with_executor_to_document(
                     right: right.as_ref().map(border_edge_spec),
                     inside_h: inside_h.as_ref().map(border_edge_spec),
                     inside_v: inside_v.as_ref().map(border_edge_spec),
+                    ..TableBorderSpec::default()
                 };
                 execute_snapshot_edit(
                     word_doc,
@@ -4385,6 +4565,8 @@ pub fn apply_headless_commands_with_executor_to_document(
                 bottom,
                 left,
                 right,
+                tl2br,
+                tr2bl,
             } => {
                 let (table_order_index, row, column) = (*table_order_index, *row, *column);
                 let spec = TableBorderSpec {
@@ -4392,6 +4574,8 @@ pub fn apply_headless_commands_with_executor_to_document(
                     bottom: bottom.as_ref().map(border_edge_spec),
                     left: left.as_ref().map(border_edge_spec),
                     right: right.as_ref().map(border_edge_spec),
+                    tl2br: tl2br.as_ref().map(border_edge_spec),
+                    tr2bl: tr2bl.as_ref().map(border_edge_spec),
                     ..TableBorderSpec::default()
                 };
                 execute_snapshot_edit(
@@ -4527,6 +4711,62 @@ pub fn apply_headless_commands_with_executor_to_document(
                             row,
                             column,
                             &alignment,
+                        )
+                    },
+                )?;
+            }
+            HeadlessCommand::SetTableCellFitText {
+                table_order_index,
+                row,
+                column,
+                fit,
+            } => {
+                let (table_order_index, row, column, fit) =
+                    (*table_order_index, *row, *column, *fit);
+                execute_snapshot_edit(
+                    word_doc,
+                    command_executor,
+                    &mut selection,
+                    index,
+                    "set_table_cell_fit_text",
+                    EditScope::Document,
+                    move |doc| doc.set_table_cell_fit_text(table_order_index, row, column, fit),
+                )?;
+            }
+            HeadlessCommand::SetTableDirection {
+                table_order_index,
+                right_to_left,
+            } => {
+                let (table_order_index, right_to_left) = (*table_order_index, *right_to_left);
+                execute_snapshot_edit(
+                    word_doc,
+                    command_executor,
+                    &mut selection,
+                    index,
+                    "set_table_direction",
+                    EditScope::Document,
+                    move |doc| doc.set_table_direction(table_order_index, right_to_left),
+                )?;
+            }
+            HeadlessCommand::SetTableAltText {
+                table_order_index,
+                title,
+                description,
+            } => {
+                let table_order_index = *table_order_index;
+                let (title, description) = (title.clone(), description.clone());
+                execute_snapshot_edit(
+                    word_doc,
+                    command_executor,
+                    &mut selection,
+                    index,
+                    "set_table_alt_text",
+                    EditScope::Document,
+                    move |doc| {
+                        doc.set_table_alt_text(
+                            table_order_index,
+                            title.as_deref(),
+                            description.as_deref(),
                         )
                     },
                 )?;
@@ -5081,6 +5321,36 @@ pub fn apply_headless_commands_with_executor_to_document(
                     "sort_table",
                     EditScope::Document,
                     move |doc| doc.sort_table(table_order_index, &keys, header_rows),
+                )?;
+            }
+            HeadlessCommand::SortParagraphs {
+                start_paragraph,
+                end_paragraph,
+                kind,
+                descending,
+                header,
+            } => {
+                let (start, end, descending, header) =
+                    (*start_paragraph, *end_paragraph, *descending, *header);
+                let kind = match kind {
+                    jade_docx_headless_api::HeadlessTableSortKind::Text => {
+                        crate::word_document::TableSortKind::Text
+                    }
+                    jade_docx_headless_api::HeadlessTableSortKind::Number => {
+                        crate::word_document::TableSortKind::Number
+                    }
+                    jade_docx_headless_api::HeadlessTableSortKind::Date => {
+                        crate::word_document::TableSortKind::Date
+                    }
+                };
+                execute_snapshot_edit(
+                    word_doc,
+                    command_executor,
+                    &mut selection,
+                    index,
+                    "sort_paragraphs",
+                    EditScope::Document,
+                    move |doc| doc.sort_paragraphs(start, end, kind, descending, header),
                 )?;
             }
             HeadlessCommand::InsertTableFormula {
@@ -10056,10 +10326,20 @@ mod tests {
             HeadlessCommand::SetWatermark {
                 clear: true,
                 text: Some("draft".to_string()),
+                font: None,
+                size: None,
+                color: None,
+                semitransparent: None,
+                layout: None,
             },
             HeadlessCommand::SetWatermark {
                 clear: false,
                 text: None,
+                font: None,
+                size: None,
+                color: None,
+                semitransparent: None,
+                layout: None,
             },
         ] {
             let mut word_doc = sample_document("body");
@@ -14318,12 +14598,19 @@ mod tests {
             Some("游明朝")
         );
         assert_eq!(run.and_then(|props| props.font_size), Some(10.5));
+        let normal_alignment = if jade_docx_reader::word_platform::word_layout_platform()
+            == jade_docx_reader::word_platform::WordLayoutPlatform::Windows
+        {
+            "left"
+        } else {
+            "both"
+        };
         assert_eq!(
             paragraph
                 .properties
                 .as_ref()
                 .and_then(|props| props.alignment.as_deref()),
-            Some("both")
+            Some(normal_alignment)
         );
         let exported = word_doc.export_docx().expect("export");
         let mut archive =
@@ -14812,6 +15099,75 @@ mod tests {
     }
 
     #[test]
+    fn a_tracked_deletion_from_an_index_entry_leaves_the_entry() {
+        // An XE entry has no width. A tracked deletion starting at it marked
+        // it deleted with the text after it, though an untracked one leaves a
+        // field at its edge; the file kept it outside the `w:del`, and
+        // accepting the deletion took it out of the model alone.
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/note-styles-creation.docx"),
+        )
+        .expect("read fixture");
+        let mut word_doc =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+        let index_entries = |word_doc: &WordDocument| {
+            word_doc.paragraph(0).map_or(0, |paragraph| {
+                paragraph
+                    .runs
+                    .iter()
+                    .filter(|run| {
+                        matches!(
+                            run.field.as_ref().map(|field| &field.kind),
+                            Some(crate::document::RunFieldKind::NonDisplay { .. })
+                        )
+                    })
+                    .count()
+            })
+        };
+        apply_headless_commands_to_document(
+            &mut word_doc,
+            &HeadlessEditRequest {
+                commands: vec![
+                    HeadlessCommand::StartChangeTracking {
+                        author: Some("reviewer".into()),
+                        initials: None,
+                        date: None,
+                        date_utc: None,
+                    },
+                    HeadlessCommand::MarkIndexEntry {
+                        paragraph: 0,
+                        offset: 6,
+                        term: "t".into(),
+                    },
+                    HeadlessCommand::DeleteText {
+                        paragraph: 0,
+                        offset: 6,
+                        direction: HeadlessDeleteDirection::Forward,
+                        count: 4,
+                    },
+                    HeadlessCommand::AcceptRevisions {
+                        kind: None,
+                        start_paragraph: None,
+                        end_paragraph: None,
+                        revision_id: None,
+                        revision_ids: None,
+                        revision_targets: None,
+                    },
+                ],
+            },
+        )
+        .expect("edited");
+        let reloaded = executor::block_on(WordDocument::load(
+            &word_doc.export_docx().expect("export"),
+            &Options::default(),
+        ))
+        .expect("reload");
+        assert_eq!(index_entries(&reloaded), 1);
+        assert_eq!(index_entries(&word_doc), 1);
+    }
+
+    #[test]
     fn splitting_a_paragraph_keeps_a_result_less_field_on_one_side() {
         // A result-less simple field (an XE entry the editor marked, the
         // AUTONUM fields of `toc.docx`) has no width. The model's split sends
@@ -14903,6 +15259,50 @@ mod tests {
     }
 
     #[test]
+    fn an_index_entry_marked_in_an_empty_paragraph_gets_the_document_defaults() {
+        // The XE marker's run takes its formatting from a run beside it. In
+        // an empty paragraph there is none, and it had no font or size until
+        // the document was reopened, when the load filled in the defaults.
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/blank.docx"),
+        )
+        .expect("read fixture");
+        let mut word_doc =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+        apply_headless_commands_to_document(
+            &mut word_doc,
+            &HeadlessEditRequest {
+                commands: vec![HeadlessCommand::MarkIndexEntry {
+                    paragraph: 0,
+                    offset: 0,
+                    term: "t".into(),
+                }],
+            },
+        )
+        .expect("marked");
+        let reloaded = executor::block_on(WordDocument::load(
+            &word_doc.export_docx().expect("export"),
+            &Options::default(),
+        ))
+        .expect("reload");
+        let marker = |word_doc: &WordDocument| {
+            let run = word_doc
+                .paragraph(0)
+                .and_then(|paragraph| paragraph.runs.iter().find(|run| run.field.is_some()))
+                .cloned()
+                .expect("index entry run");
+            let properties = run.properties.unwrap_or_default();
+            (
+                properties.font_size,
+                properties.fonts.and_then(|fonts| fonts.east_asia),
+            )
+        };
+        assert!(marker(&reloaded).0.is_some());
+        assert_eq!(marker(&word_doc), marker(&reloaded));
+    }
+
+    #[test]
     fn a_selection_from_a_computed_field_into_the_next_paragraph_keeps_it_whole() {
         // The IF field's result is computed, so it has no width: a selection
         // from just before it to the next paragraph leaves the field at its
@@ -14951,6 +15351,311 @@ mod tests {
             executor::block_on(WordDocument::load(&exported, &Options::default())).expect("reload");
         assert_eq!(if_fields(&reloaded), 2);
         assert_eq!(if_fields(&word_doc), if_fields(&reloaded));
+    }
+
+    #[test]
+    fn an_index_entry_marked_inside_a_field_result_goes_after_the_field() {
+        // A field inserted while editing keeps its result as the run's text.
+        // An XE marker placed inside that text split the field around it, and
+        // the saved file had the field once and no index entry.
+        let field_kinds = |word_doc: &WordDocument| {
+            word_doc.paragraph(0).map_or_else(Vec::new, |paragraph| {
+                let mut kinds: Vec<String> = Vec::new();
+                for run in &paragraph.runs {
+                    let Some(field) = run.field.as_ref() else {
+                        continue;
+                    };
+                    let kind = format!("{:?}", field.kind);
+                    if kinds.last() != Some(&kind) {
+                        kinds.push(kind);
+                    }
+                }
+                kinds
+            })
+        };
+        let date = HeadlessCommand::InsertDateTimeField {
+            start_paragraph: 0,
+            start_offset: 11,
+            end_paragraph: 0,
+            end_offset: 16,
+            time: false,
+            format: "yyyy/MM/dd".into(),
+            cached_text: "2026/11/02".into(),
+        };
+        let mark = HeadlessCommand::MarkIndexEntry {
+            paragraph: 0,
+            offset: 12,
+            term: "t".into(),
+        };
+        let split_the_field = HeadlessCommand::ClearFormatting {
+            start_paragraph: 0,
+            start_offset: 13,
+            end_paragraph: 0,
+            end_offset: 19,
+        };
+        let mut cases = vec![vec![date.clone(), mark.clone()]];
+        for offset in 12..=21 {
+            cases.push(vec![
+                date.clone(),
+                split_the_field.clone(),
+                HeadlessCommand::MarkIndexEntry {
+                    paragraph: 0,
+                    offset,
+                    term: "boundary".into(),
+                },
+            ]);
+        }
+        for commands in cases {
+            let bytes = std::fs::read(
+                std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                    .join("../../public/fixtures/note-styles-creation.docx"),
+            )
+            .expect("read fixture");
+            let mut word_doc =
+                executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+            apply_headless_commands_to_document(
+                &mut word_doc,
+                &HeadlessEditRequest {
+                    commands: commands.clone(),
+                },
+            )
+            .expect("edited");
+            let kinds = field_kinds(&word_doc);
+            assert_eq!(kinds.len(), 2, "{commands:?}: {kinds:?}");
+            assert!(
+                kinds[1].starts_with("NonDisplay"),
+                "{commands:?}: {kinds:?}"
+            );
+            let reloaded = executor::block_on(WordDocument::load(
+                &word_doc.export_docx().expect("export"),
+                &Options::default(),
+            ))
+            .expect("reload");
+            assert_eq!(field_kinds(&reloaded), kinds, "{commands:?}");
+        }
+    }
+
+    #[test]
+    fn an_index_entry_stays_between_distinct_adjacent_date_fields() {
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/note-styles-creation.docx"),
+        )
+        .expect("read fixture");
+        let mut word_doc =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+        let date = |start_offset, end_offset| HeadlessCommand::InsertDateTimeField {
+            start_paragraph: 0,
+            start_offset,
+            end_paragraph: 0,
+            end_offset,
+            time: false,
+            format: "yyyy/MM/dd".into(),
+            cached_text: "2026/11/02".into(),
+        };
+        apply_headless_commands_to_document(
+            &mut word_doc,
+            &HeadlessEditRequest {
+                commands: vec![
+                    date(11, 16),
+                    date(21, 21),
+                    HeadlessCommand::MarkIndexEntry {
+                        paragraph: 0,
+                        offset: 12,
+                        term: "first date".into(),
+                    },
+                ],
+            },
+        )
+        .expect("edited");
+        let marker_offset = |doc: &WordDocument| {
+            let mut offset = 0;
+            for run in &doc.paragraph(0).expect("paragraph").runs {
+                if matches!(
+                    run.field.as_ref().map(|field| &field.kind),
+                    Some(jade_docx_reader::RunFieldKind::NonDisplay { .. })
+                ) {
+                    return Some(offset);
+                }
+                offset += run.text.len();
+            }
+            None
+        };
+        assert_eq!(marker_offset(&word_doc), Some(21));
+        let reloaded = executor::block_on(WordDocument::load(
+            &word_doc.export_docx().expect("export"),
+            &Options::default(),
+        ))
+        .expect("reload");
+        let kinds: Vec<_> = reloaded
+            .paragraph(0)
+            .expect("paragraph")
+            .runs
+            .iter()
+            .filter_map(|run| run.field.as_ref().map(|field| &field.kind))
+            .collect();
+        assert_eq!(kinds.len(), 3, "{kinds:?}");
+        assert!(matches!(
+            kinds[0],
+            jade_docx_reader::RunFieldKind::Date { .. }
+        ));
+        assert!(matches!(
+            kinds[1],
+            jade_docx_reader::RunFieldKind::NonDisplay { .. }
+        ));
+        assert!(matches!(
+            kinds[2],
+            jade_docx_reader::RunFieldKind::Date { .. }
+        ));
+    }
+
+    #[test]
+    fn an_index_entry_stays_between_adjacent_complex_merge_fields() {
+        let field = |result: &str| {
+            format!(
+                r#"<w:r><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:instrText xml:space="preserve"> MERGEFIELD Name </w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r><w:r><w:t>{result}</w:t></w:r><w:r><w:fldChar w:fldCharType="end"/></w:r>"#
+            )
+        };
+        // Inspect the saved XML independently of run identities and byte offsets:
+        // an XE marker must be between the complete complex field wrappers.
+        let check = |xml: &str, expected_position: usize, expected_text: &str| {
+            use quick_xml::{events::Event, Reader};
+            let markers: Vec<_> = tc_marker_positions(xml)
+                .into_iter()
+                .filter(|(instruction, _)| instruction.contains("XE "))
+                .collect();
+            assert_eq!(markers.len(), 1, "{xml}");
+            assert_eq!(markers[0].1, expected_position, "{xml}");
+            assert_eq!(xml.matches("MERGEFIELD Name").count(), 2, "{xml}");
+            let mut reader = Reader::from_str(xml);
+            let (mut depth, mut begins, mut ends) = (0usize, 0usize, 0usize);
+            let mut in_text = false;
+            let mut text = String::new();
+            loop {
+                match reader.read_event().expect("XML") {
+                    Event::Start(element) | Event::Empty(element) => {
+                        match element.name().as_ref() {
+                            b"w:fldChar" => {
+                                let field_type = element
+                                    .attributes()
+                                    .map(|attr| attr.expect("attribute"))
+                                    .find(|attr| attr.key.as_ref() == b"w:fldCharType")
+                                    .expect("field character type");
+                                match field_type.value.as_ref() {
+                                    b"begin" => {
+                                        depth += 1;
+                                        begins += 1;
+                                    }
+                                    b"end" => {
+                                        depth = depth.checked_sub(1).expect("balanced fields");
+                                        ends += 1;
+                                    }
+                                    _ => {}
+                                }
+                            }
+                            b"w:fldSimple" => {
+                                if element
+                                    .attributes()
+                                    .map(|attr| attr.expect("attribute"))
+                                    .any(|attr| {
+                                        attr.key.as_ref() == b"w:instr"
+                                            && attr.value.windows(3).any(|part| part == b"XE ")
+                                    })
+                                {
+                                    assert_eq!(
+                                        depth, 0,
+                                        "XE must stay outside complex field scopes: {xml}"
+                                    );
+                                }
+                            }
+                            b"w:t" => in_text = true,
+                            _ => {}
+                        }
+                    }
+                    Event::End(element) if element.name().as_ref() == b"w:t" => in_text = false,
+                    Event::Text(value) if in_text => {
+                        text.push_str(&value.xml10_content().expect("text"))
+                    }
+                    Event::Eof => break,
+                    _ => {}
+                }
+            }
+            assert_eq!((depth, begins, ends), (0, 2, 2), "{xml}");
+            assert_eq!(text, expected_text, "{xml}");
+        };
+        for (first, second) in [
+            ("Alice", "Bobby"),
+            ("あいうえ", "漢字かな"),
+            ("é🙂中x", "x👩‍💻é"),
+        ] {
+            let prefix = "prefix ";
+            let body = format!(
+                r#"<w:p><w:r><w:t xml:space="preserve">{prefix}</w:t></w:r>{}{}<w:r><w:t xml:space="preserve"> suffix</w:t></w:r></w:p>"#,
+                field(first),
+                field(second)
+            );
+            let expected_text = format!("{prefix}{first}{second} suffix");
+            for fragmented in [false, true] {
+                for (result, preceding) in [(first, ""), (second, first)] {
+                    for boundary in result
+                        .char_indices()
+                        .map(|(index, _)| index)
+                        .chain(std::iter::once(result.len()))
+                    {
+                        let mut doc = tc_test_document(&body);
+                        if fragmented {
+                            for (value, before) in [(first, ""), (second, first)] {
+                                let start = prefix.len() + before.len();
+                                let positions: Vec<_> =
+                                    value.char_indices().map(|(index, _)| index).collect();
+                                apply_headless_commands_to_document(
+                                    &mut doc,
+                                    &HeadlessEditRequest {
+                                        commands: vec![HeadlessCommand::SetFontSize {
+                                            start_paragraph: 0,
+                                            start_offset: start + positions[1],
+                                            end_paragraph: 0,
+                                            end_offset: start + positions[3],
+                                            font_size: 16.0,
+                                        }],
+                                    },
+                                )
+                                .expect("split complex field result formatting");
+                            }
+                        }
+                        apply_headless_commands_to_document(
+                            &mut doc,
+                            &HeadlessEditRequest {
+                                commands: vec![HeadlessCommand::MarkIndexEntry {
+                                    paragraph: 0,
+                                    offset: prefix.len() + preceding.len() + boundary,
+                                    term: "first name".into(),
+                                }],
+                            },
+                        )
+                        .expect("mark a complex field boundary");
+                        let expected_position = prefix.chars().count()
+                            + preceding.chars().count()
+                            + if boundary == 0 {
+                                0
+                            } else {
+                                result.chars().count()
+                            };
+                        check(&toc_document_xml(&doc), expected_position, &expected_text);
+                        let reloaded = executor::block_on(WordDocument::load(
+                            &doc.export_docx().expect("export"),
+                            &Options::default(),
+                        ))
+                        .expect("reload");
+                        check(
+                            &toc_document_xml(&reloaded),
+                            expected_position,
+                            &expected_text,
+                        );
+                    }
+                }
+            }
+        }
     }
 
     #[test]
@@ -16885,7 +17590,17 @@ mod tests {
             &Options::default(),
         ))
         .expect("reload");
-        assert_eq!(alignments(&word_doc), vec![Some("both".to_string()); 3]);
+        let normal_alignment = if jade_docx_reader::word_platform::word_layout_platform()
+            == jade_docx_reader::word_platform::WordLayoutPlatform::Windows
+        {
+            "left"
+        } else {
+            "both"
+        };
+        assert_eq!(
+            alignments(&word_doc),
+            vec![Some(normal_alignment.to_string()); 3]
+        );
         assert_eq!(alignments(&reloaded), alignments(&word_doc));
     }
 

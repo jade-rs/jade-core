@@ -1,0 +1,14 @@
+{
+  "engine_commit": "2252ba4fe613b2e29b6246ec2c78df03ebe39e18",
+  "word_product_version": "16.0.19127.20860",
+  "capture_id": "20261103T082355941Z-8b9726d7",
+  "reference_kind": "emf",
+  "engine_source_worktree_dirty": false,
+  "strict_fixtures": [
+    "contract"
+  ],
+  "matching_fixtures": [
+    "contract"
+  ],
+  "pending_fixtures": []
+}

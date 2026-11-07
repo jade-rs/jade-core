@@ -290,10 +290,12 @@ mod tests {
                 prop_assert_eq!(paragraph_text(&reopened, index), expected.text.clone());
                 let properties = paragraph.properties.as_ref().expect("paragraph properties");
                 // The package has no styles part, so a paragraph that sets
-                // no alignment takes Word's built-in Normal: justified.
+                // no alignment takes the platform's built-in Normal.
+                let normal_alignment = if jade_docx_reader::word_platform::word_layout_platform()
+                    == jade_docx_reader::word_platform::WordLayoutPlatform::Windows { "left" } else { "both" };
                 prop_assert_eq!(
                     properties.alignment.as_deref(),
-                    expected.alignment.as_deref().or(Some("both")),
+                    expected.alignment.as_deref().or(Some(normal_alignment)),
                 );
                 prop_assert_eq!(properties.spacing.as_ref().and_then(|spacing| spacing.before), expected.space_before);
                 prop_assert_eq!(properties.spacing.as_ref().and_then(|spacing| spacing.after), expected.space_after);
