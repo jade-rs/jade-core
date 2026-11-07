@@ -30440,15 +30440,6 @@ where
             return Ok(None);
         }
 
-        let mut fragment = SelectionFragmentLayout {
-            baseline_shift_px: style.baseline_shift_px,
-            start: segment.start,
-            end: segment.end,
-            x: 0.0,
-            width: 0.0,
-            glyphs: Rc::from([]),
-        };
-
         let mut cursor = 0.0_f64;
         let mut glyph_steps =
             BumpVec::with_capacity_in(if VISUALS { segment_clusters.len() } else { 0 }, arena);
@@ -30553,10 +30544,17 @@ where
 
         // When visuals are requested, every slot is written exactly once. Early returns
         // drop the MaybeUninit slice without observing a partially initialized value.
-        if let Some(glyphs) = glyphs {
-            fragment.glyphs = unsafe { glyphs.assume_init() };
-        }
-        fragment.width = cursor;
+        let fragment = SelectionFragmentLayout {
+            baseline_shift_px: style.baseline_shift_px,
+            start: segment.start,
+            end: segment.end,
+            x: 0.0,
+            width: cursor,
+            glyphs: match glyphs {
+                Some(glyphs) => unsafe { glyphs.assume_init() },
+                None => Rc::from([]),
+            },
+        };
         if !min_top_offset.is_finite() {
             min_top_offset = style.baseline_shift_px - fallback_ascent;
         }
@@ -30657,15 +30655,6 @@ where
         next_grapheme_after_segment: Option<&str>,
         ink_bounds: FragmentInkBounds,
     ) -> Result<PlannedSegmentLayout<'arena>, JsValue> {
-        let mut fragment = SelectionFragmentLayout {
-            baseline_shift_px: style.baseline_shift_px,
-            start: segment.start,
-            end: segment.end,
-            x: 0.0,
-            width: 0.0,
-            glyphs: Rc::from([]),
-        };
-
         let mut cursor = 0.0_f64;
         let mut glyph_steps = BumpVec::new_in(arena);
         let mut glyphs = Vec::new();
@@ -30758,10 +30747,14 @@ where
             },
         )?;
 
-        if VISUALS {
-            fragment.glyphs = glyphs.into();
-        }
-        fragment.width = cursor;
+        let fragment = SelectionFragmentLayout {
+            baseline_shift_px: style.baseline_shift_px,
+            start: segment.start,
+            end: segment.end,
+            x: 0.0,
+            width: cursor,
+            glyphs: glyphs.into(),
+        };
 
         if !min_top_offset.is_finite() {
             min_top_offset = style.baseline_shift_px - fallback_ascent;
