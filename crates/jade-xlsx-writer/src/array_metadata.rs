@@ -5,6 +5,7 @@ use crate::{
 };
 use jade_opc::OpcPackage;
 use quick_xml::{events::Event, name::ResolveResult, NsReader, Reader};
+mod conditional;
 
 #[derive(Default)]
 struct Node {
@@ -103,8 +104,7 @@ fn valid_namespace(ns: &str) -> bool {
     )
 }
 
-/// Appending index-bearing metadata across compatibility branches is not yet
-/// supported. A certified common link can be reused without appending records.
+/// Detect index-bearing compatibility markup requiring a branch-aware append.
 /// Extension payloads and foreign lookalikes do not participate in these indexes.
 pub(crate) fn conditional_indexes(xml: &str) -> Result<bool> {
     let tree = nodes(xml)?;
@@ -264,6 +264,9 @@ pub(crate) fn append_dynamic(
     package: &OpcPackage,
     workbook: &str,
 ) -> Result<Option<(String, u32)>> {
+    if conditional_indexes(xml)? {
+        return conditional::append_dynamic(xml, package, workbook);
+    }
     let tree = nodes(xml)?;
     if tree[0].children.len() != 1 {
         return Ok(None);
