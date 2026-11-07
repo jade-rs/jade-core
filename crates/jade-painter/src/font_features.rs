@@ -39,9 +39,10 @@ pub fn has_features(descriptor: &str) -> bool {
     if descriptor.starts_with(PREFIX) {
         return true;
     }
-    // Searching for one character avoids setting up a substring search for
-    // the common case, where a descriptor has no feature token or colon.
-    let Some(colon) = descriptor.find(':') else {
+    // Search bytes so colon-free descriptors avoid substring-search setup
+    // and can use memchr's vectorized search on native targets. An ASCII
+    // colon always starts at a valid UTF-8 boundary.
+    let Some(colon) = memchr::memchr(b':', descriptor.as_bytes()) else {
         return false;
     };
     if colon >= 2
@@ -212,6 +213,28 @@ mod tests {
         }
 
         visit(&mut String::new(), 4);
+    }
+
+    #[test]
+    fn feature_detection_matches_tokenizer_for_long_descriptors() {
+        for length in 0..=256 {
+            let family = "a".repeat(length);
+            for boundary in [" ", "\u{85}", "\u{2003}", "\u{3000}", "x", "🦀"] {
+                for descriptor in [
+                    format!("{family}{boundary}ot:liga 12pt serif"),
+                    format!("{family}:{boundary}ot:liga 12pt serif"),
+                    format!("{family}:ot:liga 12pt serif"),
+                    format!("{family} 12pt serif"),
+                    format!("{family}:{boundary}ot 12pt serif"),
+                ] {
+                    assert_eq!(
+                        has_features(&descriptor),
+                        features_token(&descriptor).is_some(),
+                        "{descriptor:?}"
+                    );
+                }
+            }
+        }
     }
 
     #[test]
