@@ -100,7 +100,12 @@ class NativeMacosWorkflowTest < Minitest::Test
   end
 
   def test_windows_editing_and_font_reuse_cannot_silently_stop_running
-    steps = @workflow.fetch("jobs").fetch("windows-word-baselines").fetch("steps")
+    job = @workflow.fetch("jobs").fetch("windows-native-editing")
+    assert_equal "windows-latest", job.fetch("runs-on")
+    refute job.key?("if")
+    refute job.key?("needs")
+    refute job.fetch("continue-on-error", false)
+    steps = job.fetch("steps")
     {
       "Verify Windows font reuse and rendering" => %w[windows_font_reuse font_styles opentype_features],
       "Verify Windows native editing histories" => %w[native_document tables typing_differential]
