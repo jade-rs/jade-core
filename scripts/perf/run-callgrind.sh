@@ -12,8 +12,8 @@ bin=$1
 out=$2
 shift 2
 fixtures=("$@")
-scenarios=(load layout repaint keystroke keystroke-marks export)
-fixture_dir="$(cd "$(dirname "$0")/../.." && pwd)/public/fixtures"
+read -r -a scenarios <<< "${PERF_SCENARIOS:-load layout repaint keystroke keystroke-marks export}"
+fixture_dir="${PERF_FIXTURE_DIR:-$(cd "$(dirname "$0")/../.." && pwd)/public/fixtures}"
 
 mkdir -p "$out"
 jobs=()
