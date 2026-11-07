@@ -529,7 +529,7 @@ fn batch_outcomes_preserve_the_next_draw_after_replacing_source_text() {
             }
             assert_eq!(drawn_glyphs(&painter.inner), expected);
             source.clear();
-            source.push_str("é");
+            source.push('é');
             assert_eq!(source.as_ptr(), source_ptr);
             painter.mode.set(BatchMode::Accept);
             draw_text_run_glyphs(
