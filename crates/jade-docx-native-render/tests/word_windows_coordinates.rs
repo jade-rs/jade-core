@@ -166,12 +166,14 @@ fn windows_word_arial_edge_origins() {
                 "word-windows-edge-decimal-tracking",
                 "word-windows-edge-decimal-suffix",
                 "word-windows-edge-decimal-separators",
+                "word-windows-edge-table-alignment",
+                "word-windows-edge-table-borders",
             ]
             .map(str::to_owned)
         )
     );
     assert!(
-        checked >= 12256,
+        checked >= 13199,
         "do not silently remove edge-case coverage"
     );
 }
