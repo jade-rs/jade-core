@@ -175,12 +175,26 @@ pub fn dynamic_array_metadata(package: &mut OpcPackage) -> Result<Option<u32>> {
         }
         return Ok(None);
     }
-    let part = jade_opc::resolve_target(&workbook, "metadata.xml");
+    let Some(index) = crate::array_metadata::unused_cell_metadata_index(package, &workbook)? else {
+        return Err(crate::WriteError::ArrayMetadata(
+            "cannot create metadata without reinterpreting existing unresolved cell links",
+        ));
+    };
+    let mut target = "metadata.xml".to_string();
+    let mut suffix = 0u64;
+    while package
+        .part(&jade_opc::resolve_target(&workbook, &target))
+        .is_some()
+    {
+        suffix += 1;
+        target = format!("metadata{suffix}.xml");
+    }
+    let part = jade_opc::resolve_target(&workbook, &target);
     package.replace(&part, METADATA.as_bytes().to_vec());
-    let (rels, _) = add_relationship(rels.as_deref(), SHEET_METADATA, "metadata.xml")?;
+    let (rels, _) = add_relationship(rels.as_deref(), SHEET_METADATA, &target)?;
     package.replace(&rels_name, rels.into_bytes());
     ensure_override(package, &part, METADATA_CONTENT_TYPE)?;
-    Ok(Some(1))
+    Ok(Some(index))
 }
 
 /// Resolves the referenced dynamic-array flag, not merely its metadata type.
