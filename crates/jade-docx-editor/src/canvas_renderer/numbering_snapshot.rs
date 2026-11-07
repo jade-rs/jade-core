@@ -1,4 +1,4 @@
-use jade_docx_reader::numbering::{AbstractNum, NumberingLevel, NumberingPart};
+use jade_docx_reader::numbering::{AbstractNum, NumberingInstance, NumberingLevel, NumberingPart};
 use std::collections::HashMap;
 use std::hash::Hash;
 
@@ -14,7 +14,7 @@ pub(super) fn refresh(cached: &mut NumberingPart, incoming: &NumberingPart) {
     refresh_map(
         &mut cached.numbering_instances,
         numbering_instances,
-        Clone::clone_from,
+        refresh_instance,
     );
     refresh_map(
         &mut cached.picture_bullets,
@@ -93,4 +93,17 @@ fn refresh_large_optional<T: Clone>(cached: &mut Option<T>, incoming: &Option<T>
         (None, None) => {}
         _ => cached.clone_from(incoming),
     }
+}
+
+fn refresh_instance(cached: &mut NumberingInstance, incoming: &NumberingInstance) {
+    // The derived clone_from replaces the instance, allocating new strings.
+    // Refresh each field to reuse storage while retaining the override order.
+    let NumberingInstance {
+        id,
+        abstract_num_id,
+        overrides,
+    } = incoming;
+    cached.id.clone_from(id);
+    cached.abstract_num_id.clone_from(abstract_num_id);
+    cached.overrides.clone_from(overrides);
 }
