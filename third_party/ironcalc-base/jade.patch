@@ -20737,7 +20737,7 @@
          let original_range = match cell {
              Cell::ArrayFormula {
                  r,
-@@ -943,6 +1218,28 @@
+@@ -943,6 +1218,53 @@
                      }
                      // Check that the full spill area (based on actual result dimensions) is clear.
                      // The stored range may be (1,1) on first evaluation, so we must re-check here.
@@ -20763,10 +20763,35 @@
 +                            ),
 +                        );
 +                    }
++                    if (array_width > 1 || array_height > 1)
++                        && self.workbook.worksheets[sheet as usize]
++                            .merge_cells
++                            .iter()
++                            .any(|range| {
++                                crate::expressions::parser::parse_range(range).is_ok_and(
++                                    |(left, top, right, bottom)| {
++                                        column <= right
++                                            && column + array_width > left
++                                            && row <= bottom
++                                            && row + array_height > top
++                                    },
++                                )
++                            })
++                    {
++                        return self.set_cells_with_result(
++                            cell_reference,
++                            cell,
++                            &CalcResult::new_error(
++                                Error::SPILL,
++                                cell_reference,
++                                "Spill overlaps merged cells".to_string(),
++                            ),
++                        );
++                    }
                      let sheet_data = &self.workbook.worksheets[sheet as usize].sheet_data;
                      for r in row..row + array_height {
                          let row_data = sheet_data.get(&r);
-@@ -1002,6 +1299,7 @@
+@@ -1002,6 +1324,7 @@
                              worksheet.update_cell(r, c, cell)?;
                          }
                      }
@@ -20774,7 +20799,7 @@
                      return Ok(());
                  }
                  Some((false, (original_width, original_height))) => {
-@@ -1031,7 +1329,7 @@
+@@ -1031,7 +1354,7 @@
                              } else {
                                  let sv = match value {
                                      Some(node) => array_node_to_spill_value(node),
@@ -20783,7 +20808,7 @@
                                  };
                                  let existing_style =
                                      self.workbook.worksheets[sheet as usize].get_style(r, c);
-@@ -1050,6 +1348,7 @@
+@@ -1050,6 +1373,7 @@
                          }
                      }
                      // All cells (anchor + spills) have been written above.
@@ -20791,7 +20816,7 @@
                      return Ok(());
                  }
                  None => {
-@@ -1234,7 +1533,10 @@
+@@ -1234,7 +1558,10 @@
      /// Sets the workbook theme.
      pub fn set_theme(&mut self, theme: crate::types::Theme) {
          self.workbook.theme = theme;
@@ -20802,7 +20827,7 @@
      }
  
      /// Returns the Theme
-@@ -1407,6 +1709,20 @@
+@@ -1407,6 +1734,20 @@
      // Evaluates a cell and returns the value in the cell
      // FIXME: CalcResult cannot be Array or Range, should we have a different type?
      pub(crate) fn evaluate_cell(&mut self, cell_reference: CellReferenceIndex) -> CalcResult {
@@ -20823,7 +20848,7 @@
          let original_cell = match self.fetch_cell(cell_reference) {
              Some(c) => c.clone(),
              None => return CalcResult::EmptyCell,
-@@ -1442,6 +1758,22 @@
+@@ -1442,6 +1783,22 @@
                  if let Some(state) = self.cells.get(&key) {
                      match state {
                          CellState::Evaluating => {
@@ -20846,7 +20871,7 @@
                              return CalcResult::new_error(
                                  Error::CIRC,
                                  cell_reference,
-@@ -1535,6 +1867,7 @@
+@@ -1535,6 +1892,7 @@
                  } else {
                      result
                  };
@@ -20854,7 +20879,7 @@
  
                  if let Err(e) = self.set_cells_with_result(cell_reference, &original_cell, &result)
                  {
-@@ -1702,10 +2035,20 @@
+@@ -1702,10 +2060,20 @@
          }
  
          let mut model = Model {
@@ -20875,7 +20900,7 @@
              parser,
              cells,
              language,
-@@ -2250,6 +2593,139 @@
+@@ -2250,6 +2618,139 @@
              Ok(())
          } else {
              Err(format!("\"{formula}\" is not a valid formula"))
@@ -21015,7 +21040,7 @@
          }
      }
  
-@@ -2560,6 +3036,32 @@
+@@ -2560,6 +3061,32 @@
          formula: &str,
          style: i32,
      ) -> Result<i32, String> {
@@ -21048,7 +21073,7 @@
          let worksheet = self.workbook.worksheet_mut(sheet)?;
          let cell_reference = CellReferenceRC {
              sheet: worksheet.get_name(),
-@@ -2577,12 +3079,26 @@
+@@ -2577,12 +3104,26 @@
                  _ => parsed_formula = new_parsed_formula,
              }
          }
@@ -21076,7 +21101,7 @@
              formula_index = index as i32;
          }
          if formula_index == -1 {
-@@ -2595,7 +3111,7 @@
+@@ -2595,7 +3136,7 @@
          } else {
              worksheet.set_cell_with_formula(row, column, formula_index, style)?;
          }
@@ -21085,7 +21110,7 @@
      }
  
      // FIXME
-@@ -2631,7 +3147,9 @@
+@@ -2631,7 +3172,9 @@
  
          let s = to_rc_format(&parsed_formula);
          let mut formula_index: i32 = -1;
@@ -21096,7 +21121,7 @@
              formula_index = index as i32;
          }
          if formula_index == -1 {
-@@ -2640,6 +3158,16 @@
+@@ -2640,6 +3183,16 @@
              formula_index = (shared_formulas.len() as i32) - 1;
          }
          worksheet.set_cell_with_array_formula(row, column, formula_index, style, width, height)?;
@@ -21113,7 +21138,7 @@
          Ok(formula_index)
      }
  
-@@ -3036,7 +3564,11 @@
+@@ -3036,7 +3589,11 @@
          while retry && restart_count < max_restarts {
              retry = false;
              self.cells.clear();
@@ -21125,7 +21150,7 @@
              self.clear_variable_stack();
              self.clear_lambdas();
  
-@@ -3068,15 +3600,136 @@
+@@ -3068,15 +3625,136 @@
  
          // Phase 2: evaluate everything else; spill cells are already Evaluated and skipped.
          // Fallback when max restarts is exceeded (circular spill dependency).
@@ -21263,7 +21288,7 @@
      }
  
      /// Removes the content of every cell in the range but leaves the style.
-@@ -3496,7 +4149,14 @@
+@@ -3496,7 +4174,14 @@
      /// Returns whether a row is hidden
      #[inline]
      pub fn is_row_hidden(&self, sheet: u32, row: i32) -> Result<bool, String> {
@@ -21279,7 +21304,7 @@
      }
  
      /// Returns the height of a row
-@@ -3511,6 +4171,14 @@
+@@ -3511,6 +4196,14 @@
          self.workbook
              .worksheet_mut(sheet)?
              .set_row_height(column, height)
@@ -21294,7 +21319,7 @@
      }
  
      /// Adds a new defined name.
-@@ -3524,7 +4192,10 @@
+@@ -3524,7 +4217,10 @@
          let sheet_id = self.is_valid_defined_name(name, scope, formula)?;
          // Defined-name formulas are stored internally in English so they keep
          // working when the user switches language/locale.
@@ -21306,7 +21331,7 @@
          let internal_formula = self.user_formula_to_internal(formula, &context)?;
          self.workbook.defined_names.push(DefinedName {
              name: name.to_string(),
-@@ -3577,7 +4248,7 @@
+@@ -3577,7 +4273,7 @@
              }
          }
  
@@ -21315,7 +21340,7 @@
          let is_reference =
              common::ParsedReference::parse_reference_formula(None, formula, self.locale, |name| {
                  self.get_sheet_index_by_name(name)
-@@ -3585,7 +4256,7 @@
+@@ -3585,7 +4281,7 @@
              .is_ok();
  
          if !is_reference {
@@ -21324,7 +21349,7 @@
              // Defined-name formulas may carry a leading '='; strip it before parsing.
              use crate::expressions::types::CellReferenceRC;
              let formula_body = formula.strip_prefix('=').unwrap_or(formula);
-@@ -3606,7 +4277,7 @@
+@@ -3606,7 +4302,7 @@
              if let Node::ParseErrorKind { .. } = node {
                  node = self.parse_internal_formula(formula_body, &dummy_ref);
              }
@@ -21333,7 +21358,7 @@
                  return Err("Formula: Invalid defined name formula".to_string());
              }
          }
-@@ -3899,6 +4570,105 @@
+@@ -3899,6 +4595,105 @@
      }
  }
  

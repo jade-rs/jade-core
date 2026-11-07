@@ -7,6 +7,33 @@ use jade_xlsx_reader::{read_xlsx, CellRef, CellValue};
 use zip::write::SimpleFileOptions;
 
 #[test]
+fn dynamic_spills_respect_blank_merged_ranges_without_expanding_them() {
+    let xml = sheet(r#"<row r="2"><c r="B2"><f>SEQUENCE(3)</f></c></row>"#);
+    let mut book = read_xlsx(&workbook(&xml, None, false)).unwrap();
+    for (merged, blocked) in [
+        ("B3:C3", true),
+        ("B2:C2", true),
+        ("B3:XFD1048576", true),
+        ("C2:D4", false),
+    ] {
+        book.sheets[0].merges = vec![jade_xlsx_reader::CellRange::parse(merged).unwrap()];
+        let result = evaluate(&book).unwrap();
+        assert!(result.skipped.is_empty());
+        let expected = if blocked {
+            CellValue::Error("#SPILL!".into())
+        } else {
+            CellValue::Number(1.0)
+        };
+        assert_eq!(computed(&result, 0, "B2"), Some(&expected), "{merged}");
+        assert_eq!(result.spills.is_empty(), blocked, "{merged}");
+    }
+    book.sheets[0].merges.clear();
+    let result = evaluate(&book).unwrap();
+    assert_eq!(computed(&result, 0, "B2"), Some(&CellValue::Number(1.0)));
+    assert_eq!(result.spills.len(), 1);
+}
+
+#[test]
 fn dynamic_arrays_cannot_spill_inside_an_otherwise_empty_table() {
     let source = include_bytes!("../../../public/fixtures/objects-workbook.xlsx");
     let mut book = read_xlsx(source).unwrap();

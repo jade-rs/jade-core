@@ -1240,6 +1240,31 @@ impl<'a> Model<'a> {
                             ),
                         );
                     }
+                    if (array_width > 1 || array_height > 1)
+                        && self.workbook.worksheets[sheet as usize]
+                            .merge_cells
+                            .iter()
+                            .any(|range| {
+                                crate::expressions::parser::parse_range(range).is_ok_and(
+                                    |(left, top, right, bottom)| {
+                                        column <= right
+                                            && column + array_width > left
+                                            && row <= bottom
+                                            && row + array_height > top
+                                    },
+                                )
+                            })
+                    {
+                        return self.set_cells_with_result(
+                            cell_reference,
+                            cell,
+                            &CalcResult::new_error(
+                                Error::SPILL,
+                                cell_reference,
+                                "Spill overlaps merged cells".to_string(),
+                            ),
+                        );
+                    }
                     let sheet_data = &self.workbook.worksheets[sheet as usize].sheet_data;
                     for r in row..row + array_height {
                         let row_data = sheet_data.get(&r);

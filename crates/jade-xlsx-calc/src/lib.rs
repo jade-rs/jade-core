@@ -961,6 +961,11 @@ fn project_structure<'a>(workbook: &Workbook, time_zone: &'a str) -> Result<Mode
         } else {
             model.add_sheet(&sheet.name).map_err(CalcError::Engine)?;
         }
+        model.workbook.worksheets[index].merge_cells = sheet
+            .merges
+            .iter()
+            .filter_map(|range| engine_range(*range))
+            .collect();
     }
 
     model.set_pivot_regions(pivot::regions(workbook));
@@ -988,11 +993,7 @@ fn project_structure<'a>(workbook: &Workbook, time_zone: &'a str) -> Result<Mode
     Ok(model)
 }
 
-/// A table as the engine holds it: its range in A1 form and its columns.
-fn engine_table(
-    sheet: &str,
-    table: &jade_xlsx_reader::Table,
-) -> Option<ironcalc_base::types::Table> {
+fn engine_range(range: jade_xlsx_reader::CellRange) -> Option<String> {
     use ironcalc_base::expressions::utils::number_to_column;
     let corner = |reference: CellRef| {
         Some(format!(
@@ -1001,15 +1002,19 @@ fn engine_table(
             reference.row + 1
         ))
     };
+    Some(format!("{}:{}", corner(range.start)?, corner(range.end)?))
+}
+
+/// A table as the engine holds it: its range in A1 form and its columns.
+fn engine_table(
+    sheet: &str,
+    table: &jade_xlsx_reader::Table,
+) -> Option<ironcalc_base::types::Table> {
     Some(ironcalc_base::types::Table {
         name: table.name.clone(),
         display_name: table.display_name.clone(),
         sheet_name: sheet.to_string(),
-        reference: format!(
-            "{}:{}",
-            corner(table.reference.start)?,
-            corner(table.reference.end)?
-        ),
+        reference: engine_range(table.reference)?,
         totals_row_count: table.totals_row_count,
         header_row_count: table.header_row_count,
         header_row_dxf_id: None,
