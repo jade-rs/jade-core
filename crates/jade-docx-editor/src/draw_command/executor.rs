@@ -134,9 +134,11 @@ pub struct FontStateTracker {
     segment_buf: String,
     /// Reusable buffer for pair kerning measurement.
     pair_buf: String,
-    /// One immutable descriptor's feature fact, independent of canvas state.
-    /// Owning the Rc prevents an allocation address from being reused as a hit.
+    /// The two most recent immutable descriptors' feature facts, independent
+    /// of canvas state. Mixed-script runs commonly alternate two fonts.
+    /// Owning the Rcs prevents an allocation address from being reused as a hit.
     last_font_features: Option<(Rc<str>, bool)>,
+    previous_font_features: Option<(Rc<str>, bool)>,
     #[cfg(test)]
     feature_checks: usize,
 }
@@ -156,12 +158,24 @@ impl FontStateTracker {
                 return *has_features;
             }
         }
+        if let Some((previous, has_features)) = &self.previous_font_features {
+            if Rc::ptr_eq(previous, font) {
+                let has_features = *has_features;
+                std::mem::swap(
+                    &mut self.last_font_features,
+                    &mut self.previous_font_features,
+                );
+                return has_features;
+            }
+        }
         #[cfg(test)]
         {
             self.feature_checks += 1;
         }
         let has_features = jade_painter::font_features::has_features(font);
-        self.last_font_features = Some((Rc::clone(font), has_features));
+        self.previous_font_features = self
+            .last_font_features
+            .replace((Rc::clone(font), has_features));
         has_features
     }
 
@@ -2481,7 +2495,7 @@ mod tests {
     }
 
     #[test]
-    fn font_feature_facts_retain_only_the_last_descriptor() {
+    fn font_feature_facts_retain_two_descriptors_and_evict_the_least_recent() {
         let mut tracker = FontStateTracker::new();
         let old: Rc<str> = Rc::from("ot:liga 10pt Calibri");
         let old_weak = Rc::downgrade(&old);
@@ -2491,11 +2505,24 @@ mod tests {
         assert!(old_weak.upgrade().is_some());
         let replacement: Rc<str> = Rc::from("10pt Calibri");
         assert!(!tracker.font_has_features(&replacement));
-        assert!(old_weak.upgrade().is_none());
         let replacement_weak = Rc::downgrade(&replacement);
         drop(replacement);
-        drop(tracker);
+        let old = old_weak.upgrade().expect("second descriptor remains owned");
+        assert!(tracker.font_has_features(&old));
+        drop(old);
+        let third: Rc<str> = Rc::from("ot:onum 12pt Arial");
+        assert!(tracker.font_has_features(&third));
+        let third_weak = Rc::downgrade(&third);
+        drop(third);
         assert!(replacement_weak.upgrade().is_none());
+        assert!(old_weak.upgrade().is_some());
+        let cloned = tracker.clone();
+        drop(tracker);
+        assert!(old_weak.upgrade().is_some());
+        assert!(third_weak.upgrade().is_some());
+        drop(cloned);
+        assert!(old_weak.upgrade().is_none());
+        assert!(third_weak.upgrade().is_none());
     }
 
     #[test]
@@ -2798,6 +2825,86 @@ mod painter_backend_tests {
                 _ => None,
             }).collect();
             prop_assert_eq!(actual, expected);
+        }
+    }
+
+    #[test]
+    fn replay_reuses_mixed_font_feature_facts_without_changing_shaping() {
+        for first_featured in [false, true] {
+            for second_featured in [false, true] {
+                let fonts: Vec<Rc<str>> = vec![
+                    Rc::from(if first_featured {
+                        "ot:liga 10.50pt Calibri"
+                    } else {
+                        "10.50pt Calibri"
+                    }),
+                    Rc::from(if second_featured {
+                        "ot:onum 10.50pt 'Noto Sans JP'"
+                    } else {
+                        "10.50pt 'Noto Sans JP'"
+                    }),
+                ];
+                let painter = RecordingPainter::new();
+                let reference = RecordingPainter::new();
+                let mut tracker = FontStateTracker::new();
+                for font in &fonts {
+                    tracker.font_has_features(font);
+                }
+                let glyphs = [
+                    GlyphRunStep {
+                        text_start: 0,
+                        text_end: 1,
+                        font_index: 0,
+                        x_offset: 0.0,
+                    },
+                    GlyphRunStep {
+                        text_start: 1,
+                        text_end: 4,
+                        font_index: 1,
+                        x_offset: 7.0,
+                    },
+                ];
+                for line in 0..32 {
+                    tracker.invalidate();
+                    let mut ordered_fonts = fonts.clone();
+                    if line % 2 != 0 {
+                        ordered_fonts.reverse();
+                    }
+                    let mut fresh_tracker = FontStateTracker::new();
+                    for (target, state) in
+                        [(&painter, &mut tracker), (&reference, &mut fresh_tracker)]
+                    {
+                        draw_text_run_glyphs(
+                            target,
+                            "A日",
+                            8.0,
+                            line as f64 * 16.0,
+                            &style(),
+                            &ordered_fonts,
+                            &glyphs,
+                            state,
+                        )
+                        .unwrap();
+                    }
+                }
+                assert_eq!(painter.ops(), reference.ops());
+                assert_eq!(tracker.feature_checks, 2);
+                assert_eq!(
+                    painter.count(|op| matches!(op, Op::FillShapedText(..))),
+                    32 * (usize::from(first_featured) + usize::from(second_featured))
+                );
+                let visible_characters: usize = painter
+                    .ops()
+                    .iter()
+                    .map(|op| match op {
+                        Op::FillText(text, ..) | Op::FillShapedText(text, ..) => {
+                            text.chars().count()
+                        }
+                        _ => 0,
+                    })
+                    .sum();
+                assert_eq!(visible_characters, 64);
+            }
         }
     }
 
