@@ -87,6 +87,16 @@ class NativeMacosWorkflowTest < Minitest::Test
     refute step.fetch("continue-on-error", false)
     assert_includes step.fetch("run"), "--locked --test word_windows_coordinates windows_word_baselines_with_bundled_standins"
     assert_includes step.fetch("run"), "--exact"
+    origins = job.fetch("steps").find do |item|
+      item["name"] == "Compare Windows Word paragraph and script origins with installed Arial"
+    end
+    refute_nil origins
+    refute origins.key?("if")
+    refute origins.fetch("continue-on-error", false)
+    assert_includes origins.fetch("run"), "--locked --test word_windows_coordinates windows_word_arial_edge_origins"
+    assert_includes origins.fetch("run"), "--exact"
+    refute_includes origins.fetch("run"), "--skip"
+    refute_includes origins.fetch("run"), "--ignored"
   end
 
   private

@@ -20107,18 +20107,27 @@ where
         let suppress_spacing_after = self.contextual_suppresses_spacing_after(body_element_index);
         if spacing_ref
             .is_some_and(|spacing| spacing.after.is_some() || spacing.after_lines.is_some())
-            && !suppress_spacing_after
             && !paragraph_ended_with_page_break
         {
             let spacing_after =
                 jade_docx_layout::text_extract::spacing_after_px(paragraph, line_height_points);
-            self.apply_spacing_after_value(spacing_after)?;
-            self.trailing_spacing_after = Some((
-                self.current_page_number,
-                self.column_index,
-                self.current_y,
-                spacing_after,
-            ));
+            if !suppress_spacing_after {
+                self.apply_spacing_after_value(spacing_after)?;
+            }
+            // Windows still collapses the next before against this specified
+            // after, even when contextualSpacing suppresses its drawing.
+            // Keep Mac's existing suppression and cache behavior unchanged.
+            if !suppress_spacing_after
+                || paragraph_style.word_platform
+                    == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+            {
+                self.trailing_spacing_after = Some((
+                    self.current_page_number,
+                    self.column_index,
+                    self.current_y,
+                    spacing_after,
+                ));
+            }
         }
 
         for object in floating_paint_objects
@@ -22591,7 +22600,12 @@ where
                 // the same face and size give the same line pitch, in MS
                 // Mincho and Calibri too, whose raised top passes the
                 // unshifted run's. `w:position` still moves the line.
-                let script_shift = if mac_line_ignores_script_shift {
+                let script_shift = if mac_line_ignores_script_shift
+                    || (prepared.style.script_shift_px != 0.0
+                        && jade_docx_layout::line_metrics::word_ignores_script_shift_for_line_height(
+                            prepared.style.families.latin_ascii_stack(),
+                        ))
+                {
                     prepared.style.script_shift_px
                 } else {
                     0.0
@@ -23250,7 +23264,7 @@ where
                 right_limit,
                 current_column_right,
                 paragraph_style.right_indent,
-                line_width,
+                wrapped_line.alignment_width_px(line_width, paragraph_style.word_platform),
                 justify,
             );
             line_layout.start_x = line_start_x;
@@ -31421,10 +31435,12 @@ where
                         let families = resolve_font_families(properties);
                         let stack = families.latin_ascii_stack();
                         baseline_shift_px = -points_to_px(
-                            jade_docx_layout::line_metrics::word_script_baseline_offset_pt(
+                            jade_docx_layout::line_metrics::word_script_baseline_offset_for_style_pt(
                                 font_size_pt,
                                 stack,
                                 true,
+                                props.bold.unwrap_or(false),
+                                props.italic.unwrap_or(false),
                             ),
                         );
                         font_size_pt = jade_docx_layout::line_metrics::word_shifted_script_size_pt(
@@ -31439,10 +31455,12 @@ where
                         let families = resolve_font_families(properties);
                         let stack = families.latin_ascii_stack();
                         baseline_shift_px = points_to_px(
-                            jade_docx_layout::line_metrics::word_script_baseline_offset_pt(
+                            jade_docx_layout::line_metrics::word_script_baseline_offset_for_style_pt(
                                 font_size_pt,
                                 stack,
                                 false,
+                                props.bold.unwrap_or(false),
+                                props.italic.unwrap_or(false),
                             ),
                         );
                         font_size_pt = jade_docx_layout::line_metrics::word_shifted_script_size_pt(

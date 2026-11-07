@@ -4,7 +4,7 @@ References are separated by complete Word product version and immutable capture 
 The captured application is **16.0.19127.20860**; no other Word build has been
 measured. New builds create additional directories and keep older versions' tests.
 
-The regression index covers **17 unique documents, 133 pages and 18,099 visible
+The regression index covers **26 unique documents, 158 pages and 28,995 visible
 non-whitespace characters**, combining original PDF origins and Word drawing
 origins. Each registered set checks text, order, page count and both absolute
 coordinate axes within **0.375pt**. No origin fitting or tolerance increase is used.
@@ -43,6 +43,27 @@ checks 21 numbering/grid boundary origins and 144 controlled baseline lines.
 The Yu Gothic fixture covers Regular, Light, Medium and Bold at six sizes and
 omits styles to catch accidental import of Mac's implicit justification.
 No Microsoft font binaries are redistributed.
+
+The independent installed-Arial Windows gate compares another **10,896 full
+X/Y origins in nine documents (25 pages)**. It covers first-line/hanging
+indents with left/center/right/justified paragraphs, left/center/right/decimal
+tabs, contextual and collapsed paragraph spacing, raised/lowered runs,
+superscript/subscript, and character spacing/scaling. Four Arial faces
+(Regular/Bold/Italic/Bold Italic) are swept from 6 to 30pt by half points.
+These traces establish Windows-only trailing-space alignment, decimal-tab
+anchors, contextual-after collapse, and face-specific hinted script moves
+and line sizing. Mac's coordinate data and layout policy are unchanged.
+
+The passing captures are `20261107T031617995Z-72ef5045` (six documents) and
+`20261107T032041007Z-ab4e783b` (three additional Arial faces), under
+`word-16.0.19127.20860/`. Initial failures remain in the other November 7
+capture directories. Each capture keeps the full Word product version,
+Word executable SHA-256, OS description, original DOCX/PDF/EMF hashes,
+timestamp/capture ID and engine verification commit. A new Word build or
+repeated measurement creates a separate directory rather than replacing data.
+Recreate the DOCX packages deterministically with
+`python scripts/word-oracle/generate_windows_edge_cases.py`; never resave
+these originals in Word.
 
 Every capture preserves original PDFs, optionally original page EMFs, raw
 references, comparisons and verification metadata. Metadata binds source,
