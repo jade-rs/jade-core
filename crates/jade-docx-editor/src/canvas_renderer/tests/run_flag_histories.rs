@@ -591,6 +591,57 @@ fn ink_resolves_emphasis_arcs_and_preserves_dash_state() {
     );
 }
 
+// Retained paragraphs can add/subtract their offsets in a different order.
+// Allow subnanopixel rounding only for float coordinates; preserve discrete
+// values, text, keys, array order, and structure exactly.
+fn layout_difference(actual: &serde_json::Value, expected: &serde_json::Value) -> Option<String> {
+    use serde_json::Value;
+    match (actual, expected) {
+        (Value::Number(a), Value::Number(b)) if a.is_f64() && b.is_f64() => {
+            ((a.as_f64().unwrap() - b.as_f64().unwrap()).abs() > 1e-9)
+                .then(|| format!("coordinate {a} != {b}"))
+        }
+        (Value::Array(a), Value::Array(b)) if a.len() == b.len() => {
+            a.iter().zip(b).enumerate().find_map(|(index, (a, b))| {
+                layout_difference(a, b).map(|diff| format!("[{index}].{diff}"))
+            })
+        }
+        (Value::Object(a), Value::Object(b)) if a.len() == b.len() => {
+            for (key, a) in a {
+                let Some(b) = b.get(key) else {
+                    return Some(format!("missing key {key}"));
+                };
+                if let Some(diff) = layout_difference(a, b) {
+                    return Some(format!("{key}.{diff}"));
+                }
+            }
+            None
+        }
+        _ => (actual != expected).then(|| format!("{actual} != {expected}")),
+    }
+}
+
+#[test]
+fn layout_comparison_preserves_geometry_text_and_structure() {
+    use serde_json::json;
+    let expected = json!([{"baseline": 65.09505208333333, "text": "UNCHANGED", "end": 9}]);
+    let mut actual = expected.clone();
+    actual[0]["baseline"] = json!(65.09505208333334);
+    assert_eq!(layout_difference(&actual, &expected), None);
+    actual[0]["baseline"] = json!(65.09505209333333);
+    assert!(layout_difference(&actual, &expected).is_some());
+    actual = expected.clone();
+    actual[0]["text"] = json!("CHANGED");
+    assert!(layout_difference(&actual, &expected).is_some());
+    actual = expected.clone();
+    actual[0]["end"] = json!(8);
+    assert!(layout_difference(&actual, &expected).is_some());
+    actual = expected.clone();
+    actual[0].as_object_mut().unwrap().remove("text");
+    assert!(layout_difference(&actual, &expected).is_some());
+    assert!(layout_difference(&json!([]), &expected).is_some());
+}
+
 fn check_history(edits: &[Edit], windows: bool) {
     use jade_docx_layout::line_metrics::{set_word_layout_platform, WordLayoutPlatform};
     let _restore = RestoreWordPlatform::mac();
@@ -701,9 +752,11 @@ fn check_history(edits: &[Edit], windows: bool) {
                 "{context}: expected cache replay"
             );
         }
+        let warm_layout = serde_json::to_value(warm.layout_debug_lines()).unwrap();
+        let fresh_layout = serde_json::to_value(fresh.layout_debug_lines()).unwrap();
         assert_eq!(
-            serde_json::to_value(warm.layout_debug_lines()).unwrap(),
-            serde_json::to_value(fresh.layout_debug_lines()).unwrap(),
+            layout_difference(&warm_layout, &fresh_layout),
+            None,
             "{context}"
         );
         assert_eq!(
@@ -799,6 +852,29 @@ fn every_run_text_field_survives_in_place_edits_and_restoration() {
                         Edit::Repaint,
                         Edit::RunText(index, Some(0)),
                         Edit::ClearFonts,
+                        Edit::Repaint,
+                        Edit::ClearProperties,
+                        Edit::Repaint,
+                    ],
+                    windows,
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn hidden_runs_after_font_edits_match_fresh_layout() {
+    for windows in [false, true] {
+        for font in 0..RUN_TEXT[4].2.len() {
+            for size in METRICS[4].2 {
+                check_history(
+                    &[
+                        Edit::Metric(4, Some(size)),
+                        Edit::RunText(4, Some(font)),
+                        Edit::Flag(9, Some(true)),
+                        Edit::Repaint,
+                        Edit::Flag(9, Some(false)),
                         Edit::Repaint,
                         Edit::ClearProperties,
                         Edit::Repaint,
