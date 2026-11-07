@@ -430,12 +430,10 @@ fn test_time_function_extreme_values() {
         ("D3", "=SECOND(0.999999999999)"),
     ]);
 
-    // Large fractional inputs should be floored and normalized
-    let result_a1 = model._get_text("A1").parse::<f64>().unwrap();
-    assert!(
-        (0.0..1.0).contains(&result_a1),
-        "Result should be valid time fraction"
-    );
+    // Fractional values still must fit the documented component range.
+    assert_eq!(model._get_text("A1"), "#NUM!");
+    assert_eq!(model._get_text("A2"), "#NUM!");
+    assert_eq!(model._get_text("A3"), "0");
 
     // Component extraction should work with very large values
     let hour_b1 = model._get_text("B1").parse::<i32>().unwrap();
@@ -505,10 +503,162 @@ fn test_timevalue_malformed_but_parseable() {
 }
 
 #[test]
+fn date_and_time_broadcast_check_product_size_before_allocating_the_result() {
+    let mut model = test_time_expressions(&[
+        ("A1", "=TIME(SEQUENCE(1001,1,0),SEQUENCE(1,1001,0),0)"),
+        ("A2", "=DATE(2024+SEQUENCE(1001,1,0),SEQUENCE(1,1001),1)"),
+        (
+            "A3",
+            "=EDATE(DATE(2024,1,1)+SEQUENCE(1001,1,0),SEQUENCE(1,1001,0))",
+        ),
+        (
+            "A4",
+            "=EOMONTH(DATE(2024,1,1)+SEQUENCE(1001,1,0),SEQUENCE(1,1001,0))",
+        ),
+        ("A5", "=DAYS(SEQUENCE(1001,1,0),SEQUENCE(1,1001,0))"),
+        ("A6", "=WEEKNUM(SEQUENCE(1001,1,1),SEQUENCE(1,1001,1))"),
+        ("A7", "=WEEKDAY(SEQUENCE(1001,1,1),SEQUENCE(1,1001,1))"),
+        ("A8", "=DAYS360(SEQUENCE(1001,1,1),SEQUENCE(1,1001,1))"),
+        (
+            "A9",
+            "=DATEDIF(SEQUENCE(1001,1,1),SEQUENCE(1,1001,1),\"D\")",
+        ),
+        ("A10", "=YEARFRAC(SEQUENCE(1001,1,1),SEQUENCE(1,1001,1),0)"),
+        ("A11", "=ROUND(SEQUENCE(1001,1,1),SEQUENCE(1,1001,1))"),
+        ("A12", "=ROUNDUP(SEQUENCE(1001,1,1),SEQUENCE(1,1001,1))"),
+        ("A13", "=ROUNDDOWN(SEQUENCE(1001,1,1),SEQUENCE(1,1001,1))"),
+        ("A14", "=TRUNC(SEQUENCE(1001,1,1),SEQUENCE(1,1001,1))"),
+        ("A15", "=MOD(SEQUENCE(1001,1,1),SEQUENCE(1,1001,1))"),
+        ("A16", "=QUOTIENT(SEQUENCE(1001,1,1),SEQUENCE(1,1001,1))"),
+        ("A17", "=MROUND(SEQUENCE(1001,1,1),SEQUENCE(1,1001,1))"),
+        ("A18", "=FLOOR(SEQUENCE(1001,1,1),SEQUENCE(1,1001,1))"),
+        ("A19", "=CEILING(SEQUENCE(1001,1,1),SEQUENCE(1,1001,1))"),
+        (
+            "A20",
+            "=CEILING.MATH(SEQUENCE(1001,1,1),SEQUENCE(1,1001,1))",
+        ),
+        ("A21", "=FLOOR.MATH(SEQUENCE(1001,1,1),SEQUENCE(1,1001,1))"),
+        (
+            "A22",
+            "=CEILING.PRECISE(SEQUENCE(1001,1,1),SEQUENCE(1,1001,1))",
+        ),
+        (
+            "A23",
+            "=FLOOR.PRECISE(SEQUENCE(1001,1,1),SEQUENCE(1,1001,1))",
+        ),
+        ("A24", "=ISO.CEILING(SEQUENCE(1001,1,1),SEQUENCE(1,1001,1))"),
+        ("A25", "=POWER(SEQUENCE(1001,1,1),SEQUENCE(1,1001,1))"),
+        ("A26", "=LOG(SEQUENCE(1001,1,1),SEQUENCE(1,1001,1))"),
+        ("A27", "=COMBIN(SEQUENCE(1001,1,1),SEQUENCE(1,1001,1))"),
+        ("A28", "=COMBINA(SEQUENCE(1001,1,1),SEQUENCE(1,1001,1))"),
+        ("A29", "=ATAN2(SEQUENCE(1001,1,1),SEQUENCE(1,1001,1))"),
+        ("A30", "=PERMUT(SEQUENCE(1001,1,1),SEQUENCE(1,1001,1))"),
+        (
+            "A31",
+            "=PERMUTATIONA(SEQUENCE(1001,1,1),SEQUENCE(1,1001,1))",
+        ),
+        (
+            "A32",
+            "=RANK.EQ(SEQUENCE(1001,1,1),{1,2},SEQUENCE(1,1001,1))",
+        ),
+        (
+            "A33",
+            "=RANK.AVG(SEQUENCE(1001,1,1),{1,2},SEQUENCE(1,1001,1))",
+        ),
+        ("A34", "=WORKDAY(SEQUENCE(1001,1,45000),SEQUENCE(1,1001,1))"),
+        (
+            "A35",
+            "=WORKDAY.INTL(SEQUENCE(1001,1,45000),1,SEQUENCE(1,1001,1))",
+        ),
+    ]);
+    // The operands fit individually; their broadcast product exceeds the
+    // engine's existing one-million-element resource policy.
+    assert_eq!(model._get_text("A1"), "#ERROR!");
+    assert_eq!(model._get_text("A2"), "#ERROR!");
+    assert_eq!(model._get_text("A3"), "#ERROR!");
+    assert_eq!(model._get_text("A4"), "#ERROR!");
+    assert_eq!(model._get_text("A5"), "#ERROR!");
+    assert_eq!(model._get_text("A6"), "#ERROR!");
+    assert_eq!(model._get_text("A7"), "#ERROR!");
+    assert_eq!(model._get_text("A8"), "#ERROR!");
+    assert_eq!(model._get_text("A9"), "#ERROR!");
+    assert_eq!(model._get_text("A10"), "#ERROR!");
+    assert_eq!(model._get_text("A11"), "#ERROR!");
+    assert_eq!(model._get_text("A12"), "#ERROR!");
+    assert_eq!(model._get_text("A13"), "#ERROR!");
+    assert_eq!(model._get_text("A14"), "#ERROR!");
+    assert_eq!(model._get_text("A15"), "#ERROR!");
+    assert_eq!(model._get_text("A16"), "#ERROR!");
+    assert_eq!(model._get_text("A17"), "#ERROR!");
+    assert_eq!(model._get_text("A18"), "#ERROR!");
+    assert_eq!(model._get_text("A19"), "#ERROR!");
+    assert_eq!(model._get_text("A20"), "#ERROR!");
+    assert_eq!(model._get_text("A21"), "#ERROR!");
+    assert_eq!(model._get_text("A22"), "#ERROR!");
+    assert_eq!(model._get_text("A23"), "#ERROR!");
+    assert_eq!(model._get_text("A24"), "#ERROR!");
+    assert_eq!(model._get_text("A25"), "#ERROR!");
+    assert_eq!(model._get_text("A26"), "#ERROR!");
+    assert_eq!(model._get_text("A27"), "#ERROR!");
+    assert_eq!(model._get_text("A28"), "#ERROR!");
+    assert_eq!(model._get_text("A29"), "#ERROR!");
+    assert_eq!(model._get_text("A30"), "#ERROR!");
+    assert_eq!(model._get_text("A31"), "#ERROR!");
+    assert_eq!(model._get_text("A32"), "#ERROR!");
+    assert_eq!(model._get_text("A33"), "#ERROR!");
+    assert_eq!(model._get_text("A34"), "#ERROR!");
+    assert_eq!(model._get_text("A35"), "#ERROR!");
+    model._set(
+        "A36",
+        "=NETWORKDAYS(SEQUENCE(1001,1,45000),SEQUENCE(1,1001,45000))",
+    );
+    model._set(
+        "A37",
+        "=NETWORKDAYS.INTL(SEQUENCE(1001,1,45000),45000,SEQUENCE(1,1001,1))",
+    );
+    model.evaluate();
+    assert_eq!(model._get_text("A36"), "#ERROR!");
+    assert_eq!(model._get_text("A37"), "#ERROR!");
+    model._set(
+        "A38",
+        "=STANDARDIZE(SEQUENCE(1001,1,1),SEQUENCE(1,1001,1),1)",
+    );
+    model.evaluate();
+    assert_eq!(model._get_text("A38"), "#ERROR!");
+    model._set("A39", "=ERF(SEQUENCE(1001,1,1),SEQUENCE(1,1001,1))");
+    model.evaluate();
+    assert_eq!(model._get_text("A39"), "#ERROR!");
+    model._set("A40", "=DELTA(SEQUENCE(1001,1,1),SEQUENCE(1,1001,1))");
+    model._set("A41", "=GESTEP(SEQUENCE(1001,1,1),SEQUENCE(1,1001,1))");
+    model.evaluate();
+    assert_eq!(model._get_text("A40"), "#ERROR!");
+    assert_eq!(model._get_text("A41"), "#ERROR!");
+    for (at, function) in [
+        ("A42", "BITAND"),
+        ("A43", "BITOR"),
+        ("A44", "BITXOR"),
+        ("A45", "BITLSHIFT"),
+        ("A46", "BITRSHIFT"),
+    ] {
+        model._set(
+            at,
+            &format!("={function}(SEQUENCE(1001,1,1),SEQUENCE(1,1001,1))"),
+        );
+    }
+    model.evaluate();
+    for at in ["A42", "A43", "A44", "A45", "A46"] {
+        assert_eq!(model._get_text(at), "#ERROR!");
+    }
+    model._set("A47", "=BASE(SEQUENCE(1001,1,1),SEQUENCE(1,1001,2))");
+    model.evaluate();
+    assert_eq!(model._get_text("A47"), "#ERROR!");
+}
+
+#[test]
 fn test_performance_stress_with_extreme_values() {
     // Test performance/stress cases with extreme values
     let model = test_time_expressions(&[
-        // Very large numbers that should still work
+        // TIME components above Excel's documented 32767 limit are invalid.
         ("A1", "=TIME(2147483647, 0, 0)"), // Max i32 hours
         ("A2", "=TIME(0, 2147483647, 0)"), // Max i32 minutes
         ("A3", "=TIME(0, 0, 2147483647)"), // Max i32 seconds
@@ -520,14 +670,17 @@ fn test_performance_stress_with_extreme_values() {
         ("C1", "=HOUR(1.7976931348623157e+308)"), // Near max f64
         ("C2", "=HOUR(2.2250738585072014e-308)"), // Near min positive f64
         // Multiple TIME function calls with large values
-        ("D1", "=TIME(1000000, 1000000, 1000000)"), // Large normalized values
-        ("D2", "=HOUR(D1)"),                        // Extract from large TIME result
+        ("D1", "=TIME(32767, 32767, 32767)"), // Maximum valid components
+        ("D2", "=HOUR(D1)"),                  // Extract from large TIME result
         ("D3", "=MINUTE(D1)"),
         ("D4", "=SECOND(D1)"),
     ]);
 
-    // All results should be valid (not errors) even with extreme inputs
-    for cell in ["A1", "A2", "A3", "B1", "B2", "B3", "D1", "D2", "D3", "D4"] {
+    for cell in ["A1", "A2", "A3"] {
+        assert_eq!(model._get_text(cell), "#NUM!");
+    }
+    // Valid TIME limits and the existing component-extraction cases remain numeric.
+    for cell in ["B1", "B2", "B3", "D1", "D2", "D3", "D4"] {
         let result = model._get_text(cell);
         assert!(
             result != *"#ERROR!" && result != *"#NUM!" && result != *"#VALUE!",

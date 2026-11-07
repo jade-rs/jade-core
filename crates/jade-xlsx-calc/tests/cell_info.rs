@@ -40,6 +40,111 @@ fn workbook() -> Vec<u8> {
 }
 
 #[test]
+fn formulatext_respects_hidden_formulas_only_while_the_source_sheet_is_protected() {
+    let mut book = read_xlsx(&workbook()).unwrap();
+    book.sheets[0].rows.retain(|row| row.index < 2);
+    for (reference, formula) in [
+        ("A1", "1+2"),
+        ("B1", "2+3"),
+        ("A2", "FORMULATEXT(A1)"),
+        ("B2", "FORMULATEXT(B1)"),
+        ("C2", "ISFORMULA(A1)"),
+        ("D2", "FORMULATEXT(A1:B1)"),
+        ("E2", "FORMULATEXT (A1)"),
+    ] {
+        let reference = CellRef::parse(reference).unwrap();
+        let cell = book.sheets[0]
+            .rows
+            .iter_mut()
+            .flat_map(|row| &mut row.cells)
+            .find(|cell| cell.reference == reference)
+            .unwrap();
+        cell.formula = Some(formula.into());
+    }
+    for (protected, hidden) in [(false, true), (true, true), (true, false), (false, true)] {
+        book.sheets[0].protection = protected.then(Default::default);
+        book.styles.cell_formats[1].formula_hidden = hidden;
+        let result = evaluate(&book).unwrap();
+        assert!(result.skipped.is_empty());
+        for reference in ["A2", "D2", "E2"] {
+            let expected = if protected && hidden {
+                CellValue::Error("#N/A".into())
+            } else {
+                CellValue::Text("=1+2".into())
+            };
+            let at = CellRef::parse(reference).unwrap();
+            assert_eq!(
+                result
+                    .cells
+                    .iter()
+                    .find(|cell| cell.reference == at)
+                    .map(|cell| &cell.value),
+                Some(&expected),
+                "{reference}, protected={protected}, hidden={hidden}"
+            );
+        }
+        for (reference, expected) in [
+            ("B2", CellValue::Text("=2+3".into())),
+            ("C2", CellValue::Bool(true)),
+        ] {
+            let at = CellRef::parse(reference).unwrap();
+            assert_eq!(
+                result
+                    .cells
+                    .iter()
+                    .find(|cell| cell.reference == at)
+                    .map(|cell| &cell.value),
+                Some(&expected)
+            );
+        }
+    }
+}
+
+#[test]
+fn named_formula_queries_cannot_bypass_hidden_formula_protection() {
+    let mut book = read_xlsx(&workbook()).unwrap();
+    book.sheets[0].rows.retain(|row| row.index < 2);
+    for cell in book.sheets[0]
+        .rows
+        .iter_mut()
+        .flat_map(|row| &mut row.cells)
+    {
+        cell.formula = match cell.reference {
+            at if at == CellRef::parse("A1").unwrap() => Some("1+2".into()),
+            at if at == CellRef::parse("E2").unwrap() => Some("HiddenQuery".into()),
+            _ => None,
+        };
+    }
+    book.styles.cell_formats[1].formula_hidden = true;
+    book.defined_names
+        .push(jade_xlsx_reader::model::DefinedName {
+            name: "HiddenQuery".into(),
+            formula: "FORMULATEXT(Sheet1!$A$1)".into(),
+            local_sheet_index: None,
+            hidden: false,
+        });
+    for protected in [false, true, false] {
+        book.sheets[0].protection = protected.then(Default::default);
+        let result = evaluate(&book).unwrap();
+        assert!(result.skipped.is_empty());
+        let at = CellRef::parse("E2").unwrap();
+        let expected = if protected {
+            CellValue::Error("#N/A".into())
+        } else {
+            CellValue::Text("=1+2".into())
+        };
+        assert_eq!(
+            result
+                .cells
+                .iter()
+                .find(|cell| cell.reference == at)
+                .map(|cell| &cell.value),
+            Some(&expected)
+        );
+    }
+}
+
+#[test]
 fn cell_reads_formats_and_widths_from_the_file() {
     let workbook = read_xlsx(&workbook()).expect("read");
     let document = Document {

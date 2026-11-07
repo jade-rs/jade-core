@@ -143,6 +143,7 @@ pub(crate) fn parse_sheet_noting_order(
     let mut shared_formula_cells: HashMap<CellRef, u32> = HashMap::new();
     let mut shared_formula_masters: HashMap<u32, (CellRef, String)> = HashMap::new();
     let mut inline_text = String::new();
+    let mut inline_text_start = 0;
     // Which `<headerFooter>` child is being read, and its text so far.
     let mut header_footer_slot: Option<&'static str> = None;
     let mut header_footer_text = String::new();
@@ -398,7 +399,10 @@ pub(crate) fn parse_sheet_noting_order(
                         }
                     }
                     b"rPh" if !empty && cell.is_some() => in_phonetic_guide = true,
-                    b"t" if !empty && cell.is_some() && !in_phonetic_guide => in_inline_text = true,
+                    b"t" if !empty && cell.is_some() && !in_phonetic_guide => {
+                        in_inline_text = true;
+                        inline_text_start = inline_text.len();
+                    }
                     b"mergeCell" => {
                         if let Some(value) = attribute_value(element, b"ref")? {
                             sheet.merges.push(CellRange::parse(&value)?);
@@ -455,7 +459,13 @@ pub(crate) fn parse_sheet_noting_order(
             Event::End(ref element) => match local_name(element.name().as_ref()) {
                 b"v" => in_value = false,
                 b"f" => in_formula = false,
-                b"t" => in_inline_text = false,
+                b"t" => {
+                    if in_inline_text {
+                        let text = inline_text.split_off(inline_text_start);
+                        inline_text.push_str(&crate::xstring::decode_xstring(&text));
+                    }
+                    in_inline_text = false;
+                }
                 b"rPh" => in_phonetic_guide = false,
                 b"rowBreaks" => in_row_breaks = false,
                 b"colBreaks" => in_column_breaks = false,
@@ -889,7 +899,7 @@ fn resolve_value(
             if inline_text.is_empty() {
                 CellValue::Empty
             } else {
-                CellValue::Text(crate::xstring::decode_xstring(inline_text))
+                CellValue::Text(inline_text.to_string())
             }
         }
         CellType::SharedString => match raw.and_then(|value| value.trim().parse::<usize>().ok()) {
@@ -1037,6 +1047,29 @@ fn decoded_reference(reference: &quick_xml::events::BytesRef<'_>) -> Option<Stri
 mod tests {
     use super::translate_formula as translate_shared_formula;
     use crate::CellRef;
+
+    #[test]
+    fn rich_text_escapes_are_decoded_before_joining_runs() {
+        let runs = "<r><t>_x00</t></r><r><t>41_</t></r><r><t>_x0042_</t></r><r><t>_x005F_x0043_</t></r><r><t>_x00<![CDATA[44]]>_</t></r>";
+        let xml = format!("<sst xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\"><si>{runs}</si></sst>");
+        let strings = crate::shared_strings::parse_shared_strings(&xml).unwrap();
+        assert_eq!(strings, ["_x0041_B_x0043_D"]);
+        let rich = crate::rich_text::parse_shared_runs(&xml).unwrap();
+        let joined: String = rich[0]
+            .as_ref()
+            .unwrap()
+            .iter()
+            .map(|run| run.text.as_str())
+            .collect();
+        assert_eq!(joined, strings[0]);
+
+        let xml = format!("<worksheet xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\"><sheetData><row r=\"1\"><c r=\"A1\" t=\"inlineStr\"><is>{runs}</is></c></row></sheetData></worksheet>");
+        let sheet = super::parse_sheet("Sheet1", "xl/worksheets/sheet1.xml", &xml, &[]).unwrap();
+        assert_eq!(
+            sheet.rows[0].cells[0].value,
+            crate::CellValue::Text(strings[0].clone())
+        );
+    }
 
     #[test]
     fn shared_formula_translation_respects_formula_tokens() {

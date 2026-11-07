@@ -19,6 +19,7 @@ pub fn parse_shared_strings(xml: &str) -> Result<Vec<String>> {
     let mut strings = Vec::new();
     let mut current: Option<String> = None;
     let mut in_text = false;
+    let mut text_start = 0;
     let mut phonetic_depth = 0usize;
     let mut buf = Vec::new();
     loop {
@@ -26,7 +27,10 @@ pub fn parse_shared_strings(xml: &str) -> Result<Vec<String>> {
             Event::Start(ref element) => match local_name(element.name().as_ref()) {
                 b"si" => current = Some(String::new()),
                 b"rPh" => phonetic_depth += 1,
-                b"t" if phonetic_depth == 0 => in_text = true,
+                b"t" if phonetic_depth == 0 => {
+                    in_text = true;
+                    text_start = current.as_ref().map_or(0, String::len);
+                }
                 _ => {}
             },
             Event::Text(ref text) if in_text => {
@@ -49,11 +53,19 @@ pub fn parse_shared_strings(xml: &str) -> Result<Vec<String>> {
             Event::End(ref element) => match local_name(element.name().as_ref()) {
                 b"si" => {
                     if let Some(value) = current.take() {
-                        strings.push(crate::xstring::decode_xstring(&value));
+                        strings.push(value);
                     }
                 }
                 b"rPh" => phonetic_depth = phonetic_depth.saturating_sub(1),
-                b"t" => in_text = false,
+                b"t" => {
+                    if in_text {
+                        if let Some(value) = current.as_mut() {
+                            let text = value.split_off(text_start);
+                            value.push_str(&crate::xstring::decode_xstring(&text));
+                        }
+                    }
+                    in_text = false;
+                }
                 _ => {}
             },
             Event::Eof => break,

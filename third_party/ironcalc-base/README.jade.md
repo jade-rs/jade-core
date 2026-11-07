@@ -12,6 +12,18 @@ against the official 0.8.3 `.crate` archive (SHA-256
 the local differences against that source. When upgrading, review this patch,
 refresh the provenance files and run upstream and Jade compatibility tests.
 
+From the outer jade-office repository, regenerate and verify the patch with
+`python scripts/xlsx/replay_engine_patch.py --archive <ironcalc_base-0.8.3.crate> --update`.
+Run the same command without `--update` to verify the saved patch independently.
+The official archive hash and all upstream inventory hashes are checked first.
+The `patch` executable must be on PATH (Git for Windows provides it under
+`usr/bin`). UTF-8 source CRLF is normalized to LF for portable patch generation
+and replay comparison; final-newline differences remain significant and binary
+files remain unchanged. The 2026-11-07 replay checks 500 source/build files
+against the current implementation and 480 upstream inventory entries.
+Portability regressions run with
+`python -m unittest discover -s scripts/xlsx -p test_replay_engine_patch.py`.
+
 The 2026-10-23 XLSX parity changes extend defined names from references and
 LAMBDAs to constants and expressions. Local formulas parse in their sheet's
 context; recursive names terminate with a circular-reference error. Name
@@ -57,7 +69,7 @@ supported predicates explicitly; mixed-hiding Excel reference captures remain
 incomplete.
 
 Run `cargo test --manifest-path third_party/ironcalc-base/Cargo.toml --locked --lib`
-from the repository root. The upstream suite has eight existing ignored tests;
+from the repository root. The current suite has four existing ignored tests;
 Jade's date-system scope tests are not ignored. Run the XLSX compatibility and
 schema gates for engine integration in Rust, browser WASM and public React APIs.
 Excel reference captures remain necessary for complete formula parity,

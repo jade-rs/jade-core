@@ -1285,6 +1285,7 @@ impl HeadlessWorkbook {
                         CellInput::Number(number) => NewValue::Number(*number),
                         CellInput::Text(text) => NewValue::Text(text.clone()),
                         CellInput::Bool(flag) => NewValue::Bool(*flag),
+                        CellInput::Error(error) => NewValue::Error(error.clone()),
                         // Stored as Excel stores it: `_xlfn.` before the
                         // newer functions, `_xlpm.` on LET/LAMBDA names.
                         CellInput::Formula(formula) => {
