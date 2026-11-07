@@ -761,6 +761,30 @@ fn every_run_metric_survives_in_place_edits_and_restoration() {
 }
 
 #[test]
+fn highlighted_decorations_replay_after_formatting_edits() {
+    for windows in [false, true] {
+        for flag in [4, 5, 6] {
+            for highlight in 0..RUN_TEXT[10].2.len() {
+                check_history(
+                    &[
+                        Edit::RunText(10, Some(highlight)),
+                        Edit::Flag(flag, Some(true)),
+                        Edit::Repaint,
+                        Edit::Text(1),
+                        Edit::Repaint,
+                        Edit::RunText(10, None),
+                        Edit::Repaint,
+                        Edit::ClearProperties,
+                        Edit::Repaint,
+                    ],
+                    windows,
+                );
+            }
+        }
+    }
+}
+
+#[test]
 fn every_run_text_field_survives_in_place_edits_and_restoration() {
     for windows in [false, true] {
         for text in 0..TEXTS.len() {

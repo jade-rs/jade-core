@@ -66,10 +66,11 @@ pub enum Op {
 #[derive(Clone, Default)]
 pub struct RecordingPainter {
     ops: Rc<RefCell<Vec<Op>>>,
-    /// Last value passed to [`Painter::set_fill_style_str`], so
+    /// Current fill, including save/restore, so
     /// [`Painter::use_fill_style_for_stroke`] can resolve to a concrete colour
     /// and tests can assert what a decoration was actually drawn in.
     last_fill: Rc<RefCell<String>>,
+    saved_fills: Rc<RefCell<Vec<String>>>,
     /// Width returned by [`Painter::measure_text_width`], per character of the
     /// measured string. Real metrics are not this backend's job.
     width_per_char: f64,
@@ -80,6 +81,7 @@ impl RecordingPainter {
         Self {
             ops: Rc::new(RefCell::new(Vec::new())),
             last_fill: Rc::new(RefCell::new(String::new())),
+            saved_fills: Rc::new(RefCell::new(Vec::new())),
             width_per_char: 0.0,
         }
     }
@@ -90,6 +92,7 @@ impl RecordingPainter {
         Self {
             ops: Rc::new(RefCell::new(Vec::new())),
             last_fill: Rc::new(RefCell::new(String::new())),
+            saved_fills: Rc::new(RefCell::new(Vec::new())),
             width_per_char,
         }
     }
@@ -129,10 +132,16 @@ impl Painter for RecordingPainter {
     }
 
     fn save(&self) {
+        self.saved_fills
+            .borrow_mut()
+            .push(self.last_fill.borrow().clone());
         self.push(Op::Save);
     }
 
     fn restore(&self) {
+        if let Some(fill) = self.saved_fills.borrow_mut().pop() {
+            *self.last_fill.borrow_mut() = fill;
+        }
         self.push(Op::Restore);
     }
 
@@ -372,6 +381,39 @@ impl Painter for RecordingPainter {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn stroke_color_tracks_restored_fill_across_clones_and_log_clears() {
+        let painter = RecordingPainter::new();
+        let shared = painter.clone();
+        painter.set_fill_style_str("red");
+        painter.save();
+        painter.set_fill_style_str("yellow");
+        painter.save();
+        painter.set_fill_style_str("blue");
+        shared.use_fill_style_for_stroke();
+        assert_eq!(
+            painter.ops().last(),
+            Some(&Op::SetStrokeStyle("blue".into()))
+        );
+        shared.restore();
+        painter.clear();
+        painter.use_fill_style_for_stroke();
+        shared.restore();
+        painter.use_fill_style_for_stroke();
+        painter.restore(); // Restoring an empty stack leaves the state unchanged.
+        painter.use_fill_style_for_stroke();
+        assert_eq!(
+            painter.ops(),
+            vec![
+                Op::SetStrokeStyle("yellow".into()),
+                Op::Restore,
+                Op::SetStrokeStyle("red".into()),
+                Op::Restore,
+                Op::SetStrokeStyle("red".into()),
+            ]
+        );
+    }
 
     #[test]
     fn recorded_metrics_carry_the_advance_and_nothing_it_cannot_know() {
