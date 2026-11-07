@@ -33510,12 +33510,15 @@ where
                 let Some(segment) = segment_lookup.get(glyph.start) else {
                     continue;
                 };
-                let Some(symbol) = whitespace_mark_symbol(
-                    &segment.text,
-                    glyph.start - segment.start,
-                    self.mark_kinds,
-                ) else {
-                    continue;
+                let ch = segment
+                    .text
+                    .get(glyph.start - segment.start..)
+                    .and_then(|rest| rest.chars().next());
+                let symbol = match ch {
+                    Some(' ') | Some('\u{00A0}') if self.mark_kinds.spaces => "\u{00B7}",
+                    Some('\u{3000}') if self.mark_kinds.spaces => "\u{25A1}",
+                    Some('\u{00AD}') if self.mark_kinds.optional_hyphens => "\u{00AC}",
+                    _ => continue,
                 };
                 marks.push((
                     symbol,
@@ -38432,21 +38435,6 @@ impl<'slice, 'segment> WhitespaceSegmentLookup<'slice, 'segment> {
             .get(index)
             .filter(|segment| matches(segment))
             .copied()
-    }
-}
-
-/// Only these four scalars produce marks here. Their UTF-8 prefixes also
-/// establish a character boundary, so other glyphs need no scalar decoding.
-fn whitespace_mark_symbol(
-    text: &str,
-    offset: usize,
-    kinds: crate::FormattingMarkKinds,
-) -> Option<&'static str> {
-    match text.as_bytes().get(offset..)? {
-        [b' ', ..] | [0xc2, 0xa0, ..] if kinds.spaces => Some("\u{00b7}"),
-        [0xe3, 0x80, 0x80, ..] if kinds.spaces => Some("\u{25a1}"),
-        [0xc2, 0xad, ..] if kinds.optional_hyphens => Some("\u{00ac}"),
-        _ => None,
     }
 }
 
