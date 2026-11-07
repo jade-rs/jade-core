@@ -8168,6 +8168,7 @@ fn adjust_windows_negative_spacing_columns(table: &Table, widths: &mut [f64]) {
 /// rules and (for AutoFit) unbreakable words. The row painter subsequently
 /// scales nominal columns into slots, so convert the measured slots back into
 /// a nominal grid without changing the table's authored outside width.
+#[derive(Debug)]
 struct WindowsPositiveSpacingGrid {
     spacing: f64,
     chrome: Vec<f64>,
@@ -8602,9 +8603,7 @@ fn apply_table_layout_width_for_table_with_content<C: LineWrapContext>(
         &content_widths.minimums,
         &content_widths.preferred,
     );
-    if let Some(grid) =
-        WindowsPositiveSpacingGrid::resolve(table, column_widths.len(), default_padding_x)
-    {
+    if let Some(grid) = &content_widths.positive_spacing_grid {
         grid.adjust(column_widths, Some(&content_widths.unbreakable));
     }
     Ok((table_width, content_widths.natural_paragraph_layouts))
@@ -8780,6 +8779,9 @@ fn no_wrap_absolute_minimum_widths(table: &Table, column_widths: &[f64]) -> Vec<
 
 #[derive(Clone, Debug)]
 struct AutofitContentWidths {
+    /// Reuse resolved gutter chrome with the same table/style/platform key.
+    /// Resolving every cell border again during repaint is measurable work.
+    positive_spacing_grid: Option<Rc<WindowsPositiveSpacingGrid>>,
     /// Hard shrink floors. Only no-wrap content belongs here because ordinary
     /// text may wrap when the page is narrower than its preferred width.
     minimums: Vec<f64>,
@@ -8913,6 +8915,11 @@ fn table_autofit_cache_signature(
     // A table's key runs to kilobytes: start there rather than growing from
     // serde_json's 128 bytes on every paint.
     let mut bytes = Vec::with_capacity(4096);
+    // Cached gutter metrics are Windows-specific; switching policy must miss.
+    bytes.push(u8::from(
+        jade_docx_layout::line_metrics::word_layout_platform()
+            == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows,
+    ));
     serde_json::to_writer(&mut bytes, table).ok()?;
     // `resolved_style` is intentionally skipped by the document serializer but
     // affects table and first-row typography, so retain it in the cache key.
@@ -9127,6 +9134,12 @@ fn autofit_content_widths<C: LineWrapContext>(
         }
     }
     Ok(AutofitContentWidths {
+        positive_spacing_grid: WindowsPositiveSpacingGrid::resolve(
+            table,
+            column_widths.len(),
+            default_padding_x,
+        )
+        .map(Rc::new),
         minimums,
         unbreakable: unbreakable_widths.clone(),
         preferred,
@@ -15723,6 +15736,7 @@ mod tests {
             table_autofit_cache_signature(&table, &widths, 240.0, 8.0, &|_| 16.0, &|_| None)
                 .expect("serializable table cache key");
         let measured = AutofitContentWidths {
+            positive_spacing_grid: None,
             minimums: vec![0.0],
             preferred: vec![50.0],
             unbreakable: vec![0.0],
@@ -19866,6 +19880,66 @@ mod tests {
         assert!(WindowsPositiveSpacingGrid::resolve(&table, 3, 5.0).is_some());
         table.rows[0].cells[0].span = Some(2);
         assert!(WindowsPositiveSpacingGrid::resolve(&table, 3, 5.0).is_none());
+        set_word_layout_platform(previous);
+    }
+
+    #[test]
+    fn positive_gutter_cache_reuses_metrics_and_invalidates_edits_and_platform() {
+        use jade_docx_layout::line_metrics::{
+            set_word_layout_platform, word_layout_platform, WordLayoutPlatform,
+        };
+        let previous = word_layout_platform();
+        set_word_layout_platform(WordLayoutPlatform::Windows);
+        let mut table = Table {
+            cell_spacing: Some(8.0),
+            rows: vec![TableRow {
+                cells: vec![text_cell("R1C1"); 3],
+                ..Default::default()
+            }],
+            ..Default::default()
+        };
+        let widths = [100.0, 200.0, 300.0];
+        let signature = |table: &Table| {
+            table_autofit_cache_signature(table, &widths, 600.0, 5.0, &|_| 16.0, &|_| None).unwrap()
+        };
+        let key = signature(&table);
+        let measured = autofit_content_widths(
+            &FixedWidthWrapContext::new(),
+            &table,
+            &widths,
+            5.0,
+            &|_| 16.0,
+            &|_| None,
+        )
+        .unwrap();
+        let original = measured.positive_spacing_grid.clone().unwrap();
+        let mut cache = TableAutofitCache::default();
+        cache.insert(key.clone(), measured);
+        let hit = cache.get(&key).unwrap();
+        assert!(Rc::ptr_eq(
+            &original,
+            hit.positive_spacing_grid.as_ref().unwrap()
+        ));
+        table.cell_spacing = Some(4.0);
+        assert!(cache.get(&signature(&table)).is_none());
+        table.cell_spacing = Some(8.0);
+        table.rows[0].cells[0]
+            .style
+            .insert("border-left-width".into(), "3pt".into());
+        assert!(cache.get(&signature(&table)).is_none());
+        table.rows[0].cells[0].style.clear();
+        set_word_layout_platform(WordLayoutPlatform::Mac);
+        assert!(cache.get(&signature(&table)).is_none());
+        let mac = autofit_content_widths(
+            &FixedWidthWrapContext::new(),
+            &table,
+            &widths,
+            5.0,
+            &|_| 16.0,
+            &|_| None,
+        )
+        .unwrap();
+        assert!(mac.positive_spacing_grid.is_none());
         set_word_layout_platform(previous);
     }
 
