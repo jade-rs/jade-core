@@ -655,6 +655,20 @@ fn date_and_time_broadcast_check_product_size_before_allocating_the_result() {
     model._set("A48", "=DECIMAL(SEQUENCE(1001,1,1),SEQUENCE(1,1001,2))");
     model.evaluate();
     assert_eq!(model._get_text("A48"), "#ERROR!");
+    let radix_functions = [
+        "BIN2HEX", "BIN2OCT", "DEC2BIN", "DEC2HEX", "DEC2OCT", "HEX2BIN", "HEX2OCT", "OCT2BIN",
+        "OCT2HEX",
+    ];
+    for (index, function) in radix_functions.iter().enumerate() {
+        model._set(
+            &format!("A{}", 49 + index),
+            &format!("={function}(SEQUENCE(1001,1,1),SEQUENCE(1,1001,1))"),
+        );
+    }
+    model.evaluate();
+    for index in 0..radix_functions.len() {
+        assert_eq!(model._get_text(&format!("A{}", 49 + index)), "#ERROR!");
+    }
 }
 
 #[test]

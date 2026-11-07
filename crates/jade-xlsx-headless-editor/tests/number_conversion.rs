@@ -3,6 +3,76 @@ use jade_xlsx_headless_api::CellInput;
 use jade_xlsx_headless_editor::HeadlessWorkbook;
 
 #[test]
+fn engineering_radix_ranges_follow_history_and_saved_types() {
+    for (function, second, corrected) in [
+        ("BIN2DEC", "2", "3"),
+        ("BIN2HEX", "2", "3"),
+        ("BIN2OCT", "2", "3"),
+        ("DEC2BIN", "1010", "1011"),
+        ("DEC2HEX", "A", "B"),
+        ("DEC2OCT", "12", "13"),
+        ("HEX2BIN", "10000", "10001"),
+        ("HEX2DEC", "16", "17"),
+        ("HEX2OCT", "20", "21"),
+        ("OCT2BIN", "1000", "1001"),
+        ("OCT2DEC", "8", "9"),
+        ("OCT2HEX", "8", "9"),
+    ] {
+        let mut package = OpcPackage::open(include_bytes!(
+            "../../../public/fixtures/sample-workbook.xlsx"
+        ))
+        .unwrap();
+        package.replace("xl/worksheets/sheet1.xml",br#"<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData/></worksheet>"#.to_vec());
+        let mut book = HeadlessWorkbook::open_for_editing(&package.write().unwrap()).unwrap();
+        let name = "売上サマリ";
+        book.set(name, "B1", CellInput::Error("#N/A".into()))
+            .unwrap();
+        book.set(name, "B2", CellInput::Text("10".into())).unwrap();
+        book.set(name, "F1", CellInput::Formula(format!("{function}(B1:B2)")))
+            .unwrap();
+        book.set(name, "D1", CellInput::Formula("ROWS(F1#)".into()))
+            .unwrap();
+        assert_eq!(book.cell(name, "F1").unwrap().display, "#N/A", "{function}");
+        assert_eq!(book.cell(name, "F2").unwrap().display, second, "{function}");
+        book.set(name, "B1", CellInput::Text("11".into())).unwrap();
+        assert_eq!(
+            book.cell(name, "F1").unwrap().display,
+            corrected,
+            "{function}"
+        );
+        book.undo().unwrap();
+        assert_eq!(book.cell(name, "F1").unwrap().display, "#N/A", "{function}");
+        book.redo().unwrap();
+        assert_eq!(
+            book.cell(name, "F1").unwrap().display,
+            corrected,
+            "{function}"
+        );
+        book.undo().unwrap();
+        let saved = book.save_bytes().unwrap();
+        for reopened in [
+            HeadlessWorkbook::open(&saved).unwrap(),
+            HeadlessWorkbook::open_for_editing(&saved).unwrap(),
+        ] {
+            assert_eq!(
+                reopened.cell(name, "F1").unwrap().display,
+                "#N/A",
+                "{function}"
+            );
+            let value = reopened.cell(name, "F2").unwrap();
+            assert_eq!(value.display, second, "{function}");
+            let expected = if function.ends_with("2DEC") {
+                Some(second.parse::<f64>().unwrap())
+            } else {
+                None
+            };
+            assert_eq!(value.number, expected, "{function}");
+            assert_eq!(reopened.cell(name, "D1").unwrap().number, Some(2.0));
+        }
+    }
+}
+
+#[test]
 fn decimal_ranges_follow_radix_edits_and_saved_caches() {
     let mut package = OpcPackage::open(include_bytes!(
         "../../../public/fixtures/sample-workbook.xlsx"

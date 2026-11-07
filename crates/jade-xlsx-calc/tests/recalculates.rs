@@ -7,6 +7,50 @@ use jade_xlsx_reader::{read_xlsx, CellRef, CellValue};
 use zip::write::SimpleFileOptions;
 
 #[test]
+fn engineering_radix_conversions_broadcast_inputs_and_places() {
+    for (function, result) in [
+        ("BIN2DEC", "2"),
+        ("BIN2HEX", r#""2""#),
+        ("BIN2OCT", r#""2""#),
+        ("DEC2BIN", r#""1010""#),
+        ("DEC2HEX", r#""A""#),
+        ("DEC2OCT", r#""12""#),
+        ("HEX2BIN", r#""10000""#),
+        ("HEX2DEC", "16"),
+        ("HEX2OCT", r#""20""#),
+        ("OCT2BIN", r#""1000""#),
+        ("OCT2DEC", "8"),
+        ("OCT2HEX", r#""8""#),
+    ] {
+        let formula = format!(r#"ARRAYTOTEXT({function}({{#N/A;"10"}}),1)"#);
+        let singleton = format!(r#"TYPE({function}({{"10"}}))"#);
+        assert_formulas(
+            &[&formula, &singleton],
+            &[
+                CellValue::Text(format!("{{#N/A;{result}}}")),
+                CellValue::Number(64.0),
+            ],
+            false,
+        );
+    }
+    assert_formulas(
+        &[
+            "ARRAYTOTEXT(BIN2HEX({10;11},{1,3}),1)",
+            "ARRAYTOTEXT(DEC2BIN({2;3},{1,3}),1)",
+            r#"ARRAYTOTEXT(HEX2OCT({"10";"11"},{1,3}),1)"#,
+            r#"ARRAYTOTEXT(OCT2HEX({"10";"11"},{1,3}),1)"#,
+        ],
+        &[
+            CellValue::Text(r#"{"2","002";"3","003"}"#.into()),
+            CellValue::Text(r#"{#NUM!,"010";#NUM!,"011"}"#.into()),
+            CellValue::Text(r#"{#NUM!,"020";#NUM!,"021"}"#.into()),
+            CellValue::Text(r#"{"8","008";"9","009"}"#.into()),
+        ],
+        false,
+    );
+}
+
+#[test]
 fn decimal_broadcasts_text_radices_and_accepts_wide_integers() {
     assert_formulas(
         &[
