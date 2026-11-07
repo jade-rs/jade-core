@@ -183,6 +183,7 @@ impl HeadlessError {
                 | HeadlessError::AutoFilter(_)
                 | HeadlessError::BadReference(_)
                 | HeadlessError::DuplicateReference(_)
+                | HeadlessError::PartialLegacyArray { .. }
                 | HeadlessError::FillShape { .. }
                 | HeadlessError::EmptyFormatChange
                 | HeadlessError::Write(
@@ -201,6 +202,7 @@ impl HeadlessError {
                         | jade_xlsx_writer::WriteError::NoSuchSheet(_)
                         | jade_xlsx_writer::WriteError::EmptyStructureChange
                         | jade_xlsx_writer::WriteError::StructureOutOfBounds { .. }
+                        | jade_xlsx_writer::WriteError::PartialLegacyArray { .. }
                         | jade_xlsx_writer::WriteError::InvalidSheetName { .. }
                         | jade_xlsx_writer::WriteError::DuplicateSheetName(_)
                         | jade_xlsx_writer::WriteError::LastVisibleSheet(_)
@@ -2827,33 +2829,16 @@ impl HeadlessWorkbook {
             count,
             inserted,
         };
-        // Structural edits must move or remove a whole CSE area. Check its
-        // declared bounds, including unstored members of held/large arrays.
-        // Leave zero-count validation to the writer as before.
-        if count != 0 {
-            for array in self.workbook.sheets[index]
-                .array_formulas
-                .iter()
-                .filter(|array| array.kind == jade_xlsx_reader::ArrayFormulaKind::Legacy)
-            {
-                let (start, end) = match axis {
-                    Axis::Rows => (array.range.start.row, array.range.end.row),
-                    Axis::Columns => (array.range.start.column, array.range.end.column),
-                };
-                let splits = if inserted {
-                    (start < at && at <= end) || (at <= start && change.map_index(end).is_none())
-                } else {
-                    let last = at.saturating_add(count - 1);
-                    at <= end && start <= last && !(at <= start && end <= last)
-                };
-                if splits {
-                    return Err(HeadlessError::PartialLegacyArray {
-                        sheet: change.sheet.clone(),
-                        range: format_range(array.range),
-                    });
-                }
+        jade_xlsx_writer::shift::guard_legacy_array_structure(
+            &self.workbook.sheets[index],
+            &change,
+        )
+        .map_err(|error| match error {
+            jade_xlsx_writer::WriteError::PartialLegacyArray { sheet, range } => {
+                HeadlessError::PartialLegacyArray { sheet, range }
             }
-        }
+            error => HeadlessError::Write(error),
+        })?;
         let written = jade_xlsx_writer::restructure(&self.source, &self.workbook, &change)?;
         self.workbook = jade_xlsx_reader::read_xlsx(&written)?;
         let before = std::mem::replace(&mut self.source, written);

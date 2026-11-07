@@ -16,6 +16,63 @@ use std::path::PathBuf;
 const SHEET: &str = "xl/worksheets/sheet1.xml";
 const NAME: &str = "売上サマリ";
 
+#[test]
+fn direct_writer_calls_cannot_split_legacy_array_declarations() {
+    for reference in ["A1:C3", "A1:XFD1048576"] {
+        let xml = format!(
+            r#"<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData><row r="1"><c r="A1"><f t="array" ref="{reference}">{{1;2;3}}</f><v>1</v></c></row></sheetData></worksheet>"#
+        );
+        let bytes = workbook_with_sheet(&xml);
+        let workbook = read_xlsx(&bytes).unwrap();
+        for axis in [Axis::Rows, Axis::Columns] {
+            for inserted in [false, true] {
+                let change = change("Sheet1", axis, 1, 1, inserted);
+                assert!(
+                    restructure(&bytes, &workbook, &change).is_err(),
+                    "direct package writer accepted {reference}: {change:?}"
+                );
+                assert!(
+                    jade_xlsx_writer::shift::shift_sheet(&xml, &workbook.sheets[0], true, &change)
+                        .is_err(),
+                    "direct sheet writer accepted {reference}: {change:?}"
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn direct_writers_move_or_delete_whole_arrays_and_only_guard_legacy_kind() {
+    let xml = r#"<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData><row r="1"><c r="A1"><f t="array" ref="A1:C3">{1;2;3}</f><v>1</v></c></row></sheetData></worksheet>"#;
+    let bytes = workbook_with_sheet(xml);
+    let mut workbook = read_xlsx(&bytes).unwrap();
+    for axis in [Axis::Rows, Axis::Columns] {
+        let moved = if axis == Axis::Rows { "A2:C4" } else { "B1:D3" };
+        let insertion = change("Sheet1", axis, 0, 1, true);
+        let written = restructure(&bytes, &workbook, &insertion).unwrap();
+        assert_eq!(
+            read_xlsx(&written).unwrap().sheets[0].array_formulas[0].range,
+            jade_xlsx_reader::CellRange::parse(moved).unwrap()
+        );
+        let deletion = change("Sheet1", axis, 0, 3, false);
+        let written = restructure(&bytes, &workbook, &deletion).unwrap();
+        assert!(read_xlsx(&written).unwrap().sheets[0]
+            .array_formulas
+            .is_empty());
+    }
+    for kind in [
+        jade_xlsx_reader::ArrayFormulaKind::Dynamic,
+        jade_xlsx_reader::ArrayFormulaKind::Unknown,
+    ] {
+        workbook.sheets[0].array_formulas[0].kind = kind;
+        assert!(jade_xlsx_writer::shift::guard_legacy_array_structure(
+            &workbook.sheets[0],
+            &change("Sheet1", Axis::Rows, 1, 1, true)
+        )
+        .is_ok());
+    }
+}
+
 fn fixture() -> Vec<u8> {
     let path = PathBuf::from(concat!(
         env!("CARGO_MANIFEST_DIR"),

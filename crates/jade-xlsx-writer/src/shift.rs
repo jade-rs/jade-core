@@ -58,6 +58,12 @@ pub fn restructure(
         return Err(WriteError::NoSuchSheet(change.sheet.clone()));
     }
 
+    for sheet in &workbook.sheets {
+        if sheet.name.eq_ignore_ascii_case(&change.sheet) {
+            guard_legacy_array_structure(sheet, change)?;
+        }
+    }
+
     let mut package = OpcPackage::open(original)?;
     crate::pivots::after_structure(&mut package, workbook, change)?;
     if change.inserted {
@@ -114,6 +120,39 @@ pub fn restructure(
     Ok(package.write()?)
 }
 
+/// Refuses a structural edit that splits a legacy CSE area or moves an
+/// unstored member beyond the worksheet edge. Whole areas may move or be
+/// deleted. Only declared bounds are inspected, without expanding members.
+pub fn guard_legacy_array_structure(sheet: &Sheet, change: &StructureChange) -> Result<()> {
+    if change.count == 0 {
+        return Ok(());
+    }
+    for array in sheet
+        .array_formulas
+        .iter()
+        .filter(|array| array.kind == jade_xlsx_reader::ArrayFormulaKind::Legacy)
+    {
+        let (start, end) = match change.axis {
+            Axis::Rows => (array.range.start.row, array.range.end.row),
+            Axis::Columns => (array.range.start.column, array.range.end.column),
+        };
+        let splits = if change.inserted {
+            (start < change.at && change.at <= end)
+                || (change.at <= start && change.map_index(end).is_none())
+        } else {
+            let last = change.at.saturating_add(change.count - 1);
+            change.at <= end && start <= last && !(change.at <= start && end <= last)
+        };
+        if splits {
+            return Err(WriteError::PartialLegacyArray {
+                sheet: sheet.name.clone(),
+                range: range_text(array.range),
+            });
+        }
+    }
+    Ok(())
+}
+
 /// A worksheet part with `change` applied. `changed` says whether this is
 /// the sheet whose grid moves; on any other sheet only formulas that point
 /// at it are rewritten.
@@ -123,6 +162,9 @@ pub fn shift_sheet(
     changed: bool,
     change: &StructureChange,
 ) -> Result<String> {
+    if changed {
+        guard_legacy_array_structure(sheet, change)?;
+    }
     let mut reader = Reader::from_str(xml);
     reader.config_mut().trim_text(false);
     let mut buf = Vec::new();
