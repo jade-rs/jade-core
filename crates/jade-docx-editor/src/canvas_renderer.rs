@@ -53365,8 +53365,20 @@ mod tests {
         let model = futures::executor::block_on(WordDocument::load(&bytes, &Options::default()))
             .expect("load");
         assert_eq!(
-            painted_document_text(model.document.as_ref().unwrap()),
+            painted_document_text_with_options(
+                model.document.as_ref().unwrap(),
+                &Options {
+                    show_formatting_marks: false,
+                    ..Options::default()
+                },
+            ),
             "第１１条"
+        );
+        assert_eq!(
+            test_renderer()
+                .text_box_paragraph_layout(model.paragraph(0).unwrap())
+                .0,
+            "第１１条",
         );
     }
 
