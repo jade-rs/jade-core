@@ -1286,6 +1286,14 @@ pub(crate) fn try_append_bmp_glyph(output: &mut String, text: &str) -> bool {
     true
 }
 
+#[inline]
+fn is_single_bmp_glyph(text: &str) -> bool {
+    matches!(
+        text.as_bytes(),
+        [0..=0x7f] | [0xc2..=0xdf, _] | [0xe0..=0xef, _, _]
+    )
+}
+
 fn try_execute_bmp_glyph_run_batch<P: Painter>(
     context: &P,
     run_text: &str,
@@ -1302,7 +1310,11 @@ fn try_execute_bmp_glyph_run_batch<P: Painter>(
     let text_capacity = run_text
         .len()
         .clamp(glyphs.len(), glyphs.len().saturating_mul(3));
-    let mut text = String::with_capacity(text_capacity);
+    // Cached runs normally reference consecutive characters. Borrow that source
+    // span until a gap, repetition or reordering requires a concatenated copy.
+    let text_start = glyphs.first().map_or(0, |glyph| glyph.text_start as usize);
+    let mut text_end = text_start;
+    let mut copied_text: Option<String> = None;
     let mut x_positions = Vec::with_capacity(glyphs.len());
     // Most replayed runs use one font and take the single-font JS path. Allocate
     // indexes only after discovering a font change that requires the multi-font path.
@@ -1317,8 +1329,19 @@ fn try_execute_bmp_glyph_run_batch<P: Painter>(
         let Some(glyph_text) = glyph.text(run_text) else {
             return Ok(false);
         };
-        if !try_append_bmp_glyph(&mut text, glyph_text) {
+        if let Some(text) = &mut copied_text {
+            if !try_append_bmp_glyph(text, glyph_text) {
+                return Ok(false);
+            }
+        } else if !is_single_bmp_glyph(glyph_text) {
             return Ok(false);
+        } else if glyph.text_start as usize == text_end {
+            text_end = glyph.text_end as usize;
+        } else {
+            let mut text = String::with_capacity(text_capacity);
+            text.push_str(&run_text[text_start..text_end]);
+            text.push_str(glyph_text);
+            copied_text = Some(text);
         }
         match single_font_index {
             Some(index) if index != glyph.font_index && single_font_run => {
@@ -1335,18 +1358,22 @@ fn try_execute_bmp_glyph_run_batch<P: Painter>(
         }
     }
 
+    // Every endpoint in the borrowed span was checked by glyph.text above.
+    let text = copied_text
+        .as_deref()
+        .unwrap_or(&run_text[text_start..text_end]);
     if single_font_run {
         let Some(font_descriptor) = single_font_index.and_then(|index| fonts.get(index as usize))
         else {
             return Ok(false);
         };
         font_state.set_font_rc_if_changed(context, font_descriptor);
-        if !context.try_fill_glyph_run_batch(&text, &x_positions, y)? {
+        if !context.try_fill_glyph_run_batch(text, &x_positions, y)? {
             return Ok(false);
         }
     } else {
         if !context.try_fill_glyph_run_batch_multi_font(
-            &text,
+            text,
             &x_positions,
             &font_indexes,
             fonts,
@@ -2458,6 +2485,10 @@ mod tests {
 }
 
 #[cfg(test)]
+#[path = "bmp_batch_histories.rs"]
+mod bmp_batch_histories;
+
+#[cfg(test)]
 mod painter_backend_tests {
     use super::*;
     use crate::draw_command::{GlyphRunStep, TextStyle};
@@ -2563,6 +2594,7 @@ mod painter_backend_tests {
             output.clear();
             let text = ch.encode_utf8(&mut buffer);
             let expected = ch.len_utf16() == 1;
+            assert_eq!(is_single_bmp_glyph(text), expected, "U+{value:04X}");
             assert_eq!(
                 try_append_bmp_glyph(&mut output, text),
                 expected,
