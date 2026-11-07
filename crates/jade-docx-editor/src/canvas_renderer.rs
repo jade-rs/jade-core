@@ -31938,15 +31938,11 @@ where
         scratch.clear_for_len(glyph_steps.len());
 
         for step in glyph_steps {
-            let mut chars = step.text(segment_text).chars();
-            let Some(ch) = chars.next() else {
-                return Ok(false);
-            };
-            if chars.next().is_some() || ch.len_utf16() != 1 {
+            let glyph_text = step.text(segment_text);
+            if !crate::draw_command::executor::try_append_bmp_glyph(&mut scratch.text, glyph_text) {
                 return Ok(false);
             }
             scratch.observe_font_slot(resolved_style, step.font_slot);
-            scratch.text.push(ch);
             scratch.x_positions.push(x + step.x_offset);
         }
 

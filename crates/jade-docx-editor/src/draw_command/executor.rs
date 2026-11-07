@@ -1273,6 +1273,19 @@ pub(crate) fn try_fill_featured_text<P: Painter>(
     Ok(true)
 }
 
+/// `text` is already valid UTF-8. A single BMP scalar therefore has one of
+/// these byte shapes; no decoding and re-encoding is needed to copy the glyph.
+#[inline]
+pub(crate) fn try_append_bmp_glyph(output: &mut String, text: &str) -> bool {
+    match text.as_bytes() {
+        [0..=0x7f] => output.push_str(&text[..1]),
+        [0xc2..=0xdf, _] => output.push_str(&text[..2]),
+        [0xe0..=0xef, _, _] => output.push_str(&text[..3]),
+        _ => return false,
+    }
+    true
+}
+
 fn try_execute_bmp_glyph_run_batch<P: Painter>(
     context: &P,
     run_text: &str,
@@ -1304,11 +1317,7 @@ fn try_execute_bmp_glyph_run_batch<P: Painter>(
         let Some(glyph_text) = glyph.text(run_text) else {
             return Ok(false);
         };
-        let mut chars = glyph_text.chars();
-        let Some(ch) = chars.next() else {
-            return Ok(false);
-        };
-        if chars.next().is_some() || ch.len_utf16() != 1 {
+        if !try_append_bmp_glyph(&mut text, glyph_text) {
             return Ok(false);
         }
         match single_font_index {
@@ -1320,7 +1329,6 @@ fn try_execute_bmp_glyph_run_batch<P: Painter>(
             None => single_font_index = Some(glyph.font_index),
             _ => {}
         }
-        text.push(ch);
         x_positions.push(x + glyph.x_offset);
         if !single_font_run {
             font_indexes.push(glyph.font_index);
@@ -2540,8 +2548,39 @@ mod painter_backend_tests {
         );
     }
 
+    #[test]
+    fn bmp_batch_accepts_exactly_one_utf16_unit_for_every_unicode_scalar() {
+        let mut buffer = [0; 4];
+        let mut output = String::new();
+        for value in 0..=0x10ffff {
+            let Some(ch) = char::from_u32(value) else {
+                continue;
+            };
+            output.clear();
+            let text = ch.encode_utf8(&mut buffer);
+            let expected = ch.len_utf16() == 1;
+            assert_eq!(
+                try_append_bmp_glyph(&mut output, text),
+                expected,
+                "U+{value:04X}"
+            );
+            assert_eq!(output, if expected { text } else { "" }, "U+{value:04X}");
+        }
+    }
+
     proptest! {
         #![proptest_config(ProptestConfig::with_cases(128))]
+
+        #[test]
+        fn bmp_batch_rejects_empty_and_multi_scalar_text(
+            characters in proptest::collection::vec(any::<char>(), 0..12),
+        ) {
+            let text: String = characters.iter().collect();
+            let mut output = String::from("prefix");
+            let expected = text.encode_utf16().count() == 1;
+            prop_assert_eq!(try_append_bmp_glyph(&mut output, &text), expected);
+            prop_assert_eq!(output, if expected { format!("prefix{text}") } else { String::from("prefix") });
+        }
 
         #[test]
         fn glyph_run_fallback_preserves_unicode_ranges_and_positions(
