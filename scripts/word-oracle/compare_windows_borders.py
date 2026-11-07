@@ -175,6 +175,16 @@ def run(index_path, executable, output_root):
                      '-at-least', '-at-least-borders', '-at-least-continuation',
                      '-mixed-borders')
     }
+    required.update('word-windows-edge-' + name for name in (
+        'table-alignment', 'table-alignment-compat12', 'table-alignment-compat14',
+        'table-borders', 'table-borders-compat12', 'table-borders-compat14',
+        'table-bidi-compat12', 'table-bidi-compat14', 'table-bidi-compat15',
+        'table-indents-compat12', 'table-indents-compat14',
+        'table-zero-horizontal-borders-compat12', 'table-zero-horizontal-borders-compat14',
+        'table-zero-padding-compat12', 'table-zero-padding-compat14',
+    ))
+    required.update(f'word-windows-edge-table-{model}-hairline-borders-compat{mode}'
+                    for model in ('collapsed', 'spacing') for mode in (12, 14, 15))
     for entry in index['references']:
         folder = checked_path(root, entry['directory'])
         capture = json.loads((folder / 'capture.json').read_text(encoding='utf-8-sig'))

@@ -2120,7 +2120,7 @@ where
             self.current_y += mt;
         }
 
-        let table_x = compute_floating_body_table_x(
+        let floating_table_x = compute_floating_body_table_x(
             self.margin_left,
             available_width,
             self.page_width,
@@ -2128,8 +2128,8 @@ where
             table,
             self.current_page_number,
             self.document_east_asian_rules.compatibility_mode,
-        )
-        .unwrap_or_else(|| {
+        );
+        let table_x = floating_table_x.unwrap_or_else(|| {
             compute_inline_body_table_x(
                 self.margin_left,
                 available_width,
@@ -2142,6 +2142,31 @@ where
                 self.document_east_asian_rules.compatibility_mode,
             )
         });
+        // A zero legacy cell margin can move the text frame by half a rule.
+        // Word keeps the painted grid at the original border position.
+        let border_x_offset = if floating_table_x.is_none()
+            && jade_docx_layout::line_metrics::word_layout_platform()
+                == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+            && self
+                .document_east_asian_rules
+                .compatibility_mode
+                .is_some_and(|mode| matches!(mode, 12 | 14))
+        {
+            compute_inline_body_table_x_inner(
+                self.margin_left,
+                available_width,
+                table_width,
+                table,
+                pre_2013_table_text_inset_px(
+                    table,
+                    self.document_east_asian_rules.compatibility_mode,
+                ),
+                self.document_east_asian_rules.compatibility_mode,
+                false,
+            ) - table_x
+        } else {
+            0.0
+        };
         let left_edge = table_x;
         let right_edge = table_x + table_width;
 
@@ -2587,6 +2612,7 @@ where
                                 indices_preassigned,
                                 table.bidi_visual,
                                 table_spacing_background(row, table),
+                                border_x_offset,
                                 if resolve_cell_spacing_px(row, table) > f64::EPSILON {
                                     spacing_frame_width(row, table, TableBorderSide::Top)
                                 } else {
@@ -2780,6 +2806,7 @@ where
                     indices_preassigned,
                     table.bidi_visual,
                     table_spacing_background(row, table),
+                    border_x_offset,
                     if resolve_cell_spacing_px(row, table) > f64::EPSILON {
                         spacing_frame_width(row, table, TableBorderSide::Top)
                     } else {
@@ -2949,6 +2976,7 @@ where
         indices_preassigned: bool,
         bidi_visual: bool,
         spacing_background: Option<&str>,
+        border_x_offset: f64,
         spacing_frame_top: f64,
         spacing_closing_inset: f64,
         slot_scale: f64,
@@ -3215,7 +3243,7 @@ where
                 } else {
                     self.draw_cell_border_rect(
                         context,
-                        draw_rect.x,
+                        draw_rect.x + border_x_offset,
                         draw_rect.y,
                         draw_rect.width,
                         draw_rect.height
@@ -6378,21 +6406,30 @@ where
             (x, y, width, height)
         };
 
-        let (horizontal_x, horizontal_width) = if cell.cell_spacing > f64::EPSILON
-            && jade_docx_layout::line_metrics::word_layout_platform()
-                == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
-        {
-            let left = visible_border_width(&cell.border_left) * 0.5;
-            let right = visible_border_width(&cell.border_right) * 0.5;
-            (x - left, width + left + right)
-        } else {
-            (x, width)
-        };
+        let windows = jade_docx_layout::line_metrics::word_layout_platform()
+            == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows;
+        // Uniform Windows collapsed rules start at the stored row boundary;
+        // their centre line lies half a rule below it. Include the closing
+        // band in the vertical sides and join horizontal rules at the corners.
+        let collapsed_band =
+            windows && cell.cell_spacing <= f64::EPSILON && bands.top == 0.0 && bands.bottom == 0.0;
+        let (horizontal_x, horizontal_width) =
+            if windows && (cell.cell_spacing > f64::EPSILON || collapsed_band) {
+                let left = visible_border_width(&cell.border_left) * 0.5;
+                let right = visible_border_width(&cell.border_right) * 0.5;
+                (x - left, width + left + right)
+            } else {
+                (x, width)
+            };
         context.save();
         self.draw_horizontal_cell_border(
             context,
             horizontal_x,
-            y,
+            y + if collapsed_band {
+                cell.top_border_extent() * 0.5
+            } else {
+                0.0
+            },
             horizontal_width,
             &cell.border_top,
             &cell.border_top_segments,
@@ -6408,14 +6445,24 @@ where
             x + width,
             y,
             x + width,
-            y + height,
+            y + height
+                + if collapsed_band {
+                    cell.bottom_border_extent()
+                } else {
+                    0.0
+                },
             &cell.border_right,
             super::border_styles::BorderSide::Right,
         )?;
         self.draw_horizontal_cell_border(
             context,
             horizontal_x,
-            y + height,
+            y + height
+                + if collapsed_band {
+                    cell.bottom_border_extent() * 0.5
+                } else {
+                    0.0
+                },
             horizontal_width,
             &cell.border_bottom,
             &cell.border_bottom_segments,
@@ -6427,7 +6474,12 @@ where
             x,
             y,
             x,
-            y + height,
+            y + height
+                + if collapsed_band {
+                    cell.bottom_border_extent()
+                } else {
+                    0.0
+                },
             &cell.border_left,
             super::border_styles::BorderSide::Left,
         )?;
@@ -7220,6 +7272,26 @@ fn compute_inline_body_table_x(
     leading_text_inset: f64,
     compatibility_mode: Option<u32>,
 ) -> f64 {
+    compute_inline_body_table_x_inner(
+        base_left,
+        available_width,
+        table_width,
+        table,
+        leading_text_inset,
+        compatibility_mode,
+        true,
+    )
+}
+
+fn compute_inline_body_table_x_inner(
+    base_left: f64,
+    available_width: f64,
+    table_width: f64,
+    table: &Table,
+    leading_text_inset: f64,
+    compatibility_mode: Option<u32>,
+    reserve_border_bias: bool,
+) -> f64 {
     let x = compute_table_x(
         base_left,
         available_width,
@@ -7278,7 +7350,7 @@ fn compute_inline_body_table_x(
         .get("margin-left")
         .and_then(|value| parse_length_to_px(value))
         .unwrap_or(0.0);
-    let border_bias = if spacing > f64::EPSILON {
+    let border_bias = if spacing > f64::EPSILON || !reserve_border_bias {
         0.0
     } else {
         (modern_leading_border_half_px(table, true) - leading_text_inset).max(0.0)

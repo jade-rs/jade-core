@@ -1018,6 +1018,30 @@
     {
       "fixture": "word-windows-edge-table-spacing-mixed-borders-compat15",
       "docx_sha256": "ef54cebf1ed5735db95b1cd9d077a22cfda735b71b512c79600b74116aaea565"
+    },
+    {
+      "fixture": "word-windows-edge-table-collapsed-hairline-borders-compat12",
+      "docx_sha256": "87a041582ec0252e4da0c0f9170ee191344986a60bbd366f9f709ac976d753e9"
+    },
+    {
+      "fixture": "word-windows-edge-table-collapsed-hairline-borders-compat14",
+      "docx_sha256": "14fdb806e79f30b732b7a96a131539eaab3d8f937a4280c75645e41710a8dc7d"
+    },
+    {
+      "fixture": "word-windows-edge-table-collapsed-hairline-borders-compat15",
+      "docx_sha256": "85547fa30d57a75dda9fbe10bf802a5129d576216e4d6d300b0d38197495ce70"
+    },
+    {
+      "fixture": "word-windows-edge-table-spacing-hairline-borders-compat12",
+      "docx_sha256": "2a6ab8a9dfd3308fcf9901abcf76c8fde47711c2008de2c86269a6100b8063bb"
+    },
+    {
+      "fixture": "word-windows-edge-table-spacing-hairline-borders-compat14",
+      "docx_sha256": "a9a6ff981853da2b1fbe5a6ca9812a2d8c592bd4dcfc33db2c7ed3c2c8534e58"
+    },
+    {
+      "fixture": "word-windows-edge-table-spacing-hairline-borders-compat15",
+      "docx_sha256": "7b7020d50e9c5d0eb5ddbe512a1f513bc0c464a7fdae2c848808471ef0afd346"
     }
   ]
 }

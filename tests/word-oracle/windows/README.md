@@ -173,6 +173,28 @@ are excluded from this monochrome check. The pinned PyMuPDF extractor and
 its displacement, occlusion, clipping and rejection tests run in that job.
 Mac golden data and coordinate thresholds remain unchanged.
 
+Capture `20261107T090143788Z-8bbdd321` records twelve inputs with clean engine
+`2b8815ed`. Six passing hairline cases (0.125/0.25/0.375pt, with and without
+cell spacing, modes 12/14/15) add nine pages and 1,584 registered origins.
+The other six inputs distinguish omitted spacing from an explicit zero and
+retain their mixed-border failures for further work; they are not promoted.
+All twelve original DOCX inputs are retained under `inputs/` and hashed in
+`inputs.json`, even when their working sources are temporary probes. Full Word
+build, actual compatibility mode, PDFs, EMFs, initial native traces and compiler
+provenance remain alongside them. The capture/archive tools are identified by
+their separate repository commit. Original `00f7aeed` traces remain unchanged
+in `20261107T084840499Z-068a65aa`.
+
+The vector gate now includes all 15 existing collapsed-table cases and the six
+new hairline cases: 48 documents and 204 pages. Windows paints uniform
+collapsed horizontal rules inside their measured bands, completes the closing
+verticals and corners, and keeps zero-margin legacy grids at their original
+border position while preserving text origins. All original glyph origins are
+unchanged by these paint corrections. Mac keeps its previous painting rules.
+The registry has 77 distinct documents, 366 pages and 61,152 origins, plus the
+two historical duplicate registrations. The mandatory Arial subset has 60
+documents, 233 pages and 43,053 origins; raw EMFs reconstruct 54,921 origins.
+
 Run the same vector check from jade-core after building `word_coordinates`:
 
 ```powershell
