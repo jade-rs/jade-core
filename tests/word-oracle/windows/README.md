@@ -4,7 +4,7 @@ References are separated by complete Word product version and immutable capture 
 The captured application is **16.0.19127.20860**; no other Word build has been
 measured. New builds create additional directories and keep older versions' tests.
 
-The regression index covers **26 unique documents, 158 pages and 28,995 visible
+The regression index covers **31 unique documents, 166 pages and 31,298 visible
 non-whitespace characters**, combining original PDF origins and Word drawing
 origins. Each registered set checks text, order, page count and both absolute
 coordinate axes within **0.375pt**. No origin fitting or tolerance increase is used.
@@ -44,7 +44,7 @@ The Yu Gothic fixture covers Regular, Light, Medium and Bold at six sizes and
 omits styles to catch accidental import of Mac's implicit justification.
 No Microsoft font binaries are redistributed.
 
-The independent installed-Arial Windows gate compares another **10,896 full
+The first installed-Arial expansion added **10,896 full
 X/Y origins in nine documents (25 pages)**. It covers first-line/hanging
 indents with left/center/right/justified paragraphs, left/center/right/decimal
 tabs, contextual and collapsed paragraph spacing, raised/lowered runs,
@@ -64,6 +64,25 @@ repeated measurement creates a separate directory rather than replacing data.
 Recreate the DOCX packages deterministically with
 `python scripts/word-oracle/generate_windows_edge_cases.py`; never resave
 these originals in Word.
+
+Capture `20261107T035930893Z-61ca197b` adds five more documents, eight pages
+and 2,303 complete drawing origins. Decimal tabs cover numeric suffixes,
+currency/percent text, grouping commas, separators, split source runs and
+negative/positive character spacing. Tables cover left/center/right alignment,
+top/center/bottom cell content, exact row heights, 0–3pt borders, 0/4pt vertical
+padding, following paragraphs and page breaks. Every new PDF origin also
+passes the existing absolute tolerance. The installed-Arial gate now checks
+**13,199 full X/Y origins in 14 documents (33 pages)**. The original failures
+remain in the other capture directories.
+
+Generate the follow-up packages with
+`python scripts/word-oracle/generate_windows_decimal_cases.py` and
+`python scripts/word-oracle/generate_windows_table_cases.py`. Windows now
+anchors decimal tabs on the first point or first nonnumeric character after
+a digit (allowing grouping commas), and modern tables reserve their border
+frame and the bottom border below exact rows. Mac's existing policies remain
+unchanged; legacy Windows table modes retain their previous policy until
+separately measured.
 
 Every capture preserves original PDFs, optionally original page EMFs, raw
 references, comparisons and verification metadata. Metadata binds source,

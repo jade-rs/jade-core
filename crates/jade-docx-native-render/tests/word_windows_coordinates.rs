@@ -163,12 +163,17 @@ fn windows_word_arial_edge_origins() {
                 "word-windows-edge-arial-script-sweep-bold",
                 "word-windows-edge-arial-script-sweep-italic",
                 "word-windows-edge-arial-script-sweep-bold-italic",
+                "word-windows-edge-decimal-tracking",
+                "word-windows-edge-decimal-suffix",
+                "word-windows-edge-decimal-separators",
+                "word-windows-edge-table-alignment",
+                "word-windows-edge-table-borders",
             ]
             .map(str::to_owned)
         )
     );
     assert!(
-        checked >= 10896,
+        checked >= 13199,
         "do not silently remove edge-case coverage"
     );
 }

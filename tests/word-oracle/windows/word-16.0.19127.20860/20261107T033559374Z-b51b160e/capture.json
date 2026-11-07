@@ -1,0 +1,33 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261107T033559374Z-b51b160e",
+  "captured_at_utc": "2026-11-07T03:35:59.4726523Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20860",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "9bafe09d0c458006744b9edce767a328ba2da1bb5d9a460e5830c47bf6d7f1d1"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "documents": [
+    {
+      "name": "word-windows-edge-decimal-separators",
+      "source": "tmp\\edge-next-root\\public\\fixtures\\word-windows-edge-decimal-separators.docx",
+      "sha256": "5c314f14dc90fe7e8570b5d72099d98cf2b83c141945d36bbd1931931d774082",
+      "pdf": "word-windows-edge-decimal-separators.pdf",
+      "pdf_sha256": "40423708116250ff30e0d3060bb4a39975a39abca7a7b51dbfd17e57d93fee6d",
+      "pages": 1,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-decimal-separators.page-001.emf",
+          "sha256": "fc803679b5fda9b28e5f31baf412234d8435526bbb941de69db3f2aada106f95",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    }
+  ]
+}

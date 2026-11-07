@@ -1,0 +1,40 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261107T034149860Z-3aedc6fa",
+  "captured_at_utc": "2026-11-07T03:41:49.8826765Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20860",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "9bafe09d0c458006744b9edce767a328ba2da1bb5d9a460e5830c47bf6d7f1d1"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "documents": [
+    {
+      "name": "word-windows-edge-table-alignment",
+      "source": "tmp\\edge-next-root\\public\\fixtures\\word-windows-edge-table-alignment.docx",
+      "sha256": "ee4f028f127c47ae923e428f6ae4df081a8226b65612b802f07b5fb3854307d7",
+      "pdf": "word-windows-edge-table-alignment.pdf",
+      "pdf_sha256": "94b68491a86f4bf654c5bf93b4850577586ae763cf1f0b63b0dbe1c75727f491",
+      "pages": 2,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-alignment.page-001.emf",
+          "sha256": "45b4e3eb67f9b29f13950c59124d49e3c181f6ccc13949efe0d44008f30e6c83",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 2,
+          "file": "word-windows-edge-table-alignment.page-002.emf",
+          "sha256": "41c14bf4667c2c7409e95fb64c13160aa9f76118f53aeaa27cc423286d809488",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    }
+  ]
+}

@@ -2738,16 +2738,14 @@ where
             Some(mb) => {
                 self.current_y += mb;
             }
-            // The last row already ends below its bottom border, unless its
-            // height is exact: Word for Mac hangs that border below an exact
-            // row (`table-diagonal-borders`: text resumes 0.5pt below two
-            // 60pt exact rows).
+            // Word hangs the bottom border below an exact last row: Mac's
+            // table-diagonal-borders and Windows' mode-15 table border sweep.
             None if last_row_bottom_border > 0.0 => {
-                if jade_docx_layout::line_metrics::word_layout_platform()
-                    == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
-                    && last_visible_row_index
-                        .and_then(|index| table.rows.get(index))
-                        .is_some_and(|row| !row_grows_for_borders(row))
+                if word_exact_row_hangs_bottom_border(
+                    self.document_east_asian_rules.compatibility_mode,
+                ) && last_visible_row_index
+                    .and_then(|index| table.rows.get(index))
+                    .is_some_and(|row| !row_grows_for_borders(row))
                 {
                     self.current_y += last_row_bottom_border;
                 }
@@ -8866,9 +8864,13 @@ fn horizontal_border_extent(
 }
 
 fn word_modern_nested_border_frame_enabled(compatibility_mode: Option<u32>) -> bool {
+    compatibility_mode.is_some_and(|mode| mode >= 15)
+}
+
+fn word_exact_row_hangs_bottom_border(compatibility_mode: Option<u32>) -> bool {
     jade_docx_layout::line_metrics::word_layout_platform()
         == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
-        && compatibility_mode.is_some_and(|mode| mode >= 15)
+        || compatibility_mode.is_some_and(|mode| mode >= 15)
 }
 
 /// Word's saved modern nested grids reserve the parent's two half-strokes
