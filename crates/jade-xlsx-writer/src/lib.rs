@@ -33,6 +33,7 @@
 //! stale cached value until the engine lands, which is why the headless API
 //! reports the formula alongside it.
 
+mod array_metadata;
 pub mod auto_filter;
 mod calc;
 pub mod cell_shift;

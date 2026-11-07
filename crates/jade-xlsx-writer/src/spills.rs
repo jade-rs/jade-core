@@ -149,8 +149,8 @@ pub fn mark_array_formulas(xml: &str, ranges: &[ArrayRange], cm: Option<u32>) ->
 
 /// The 1-based cell-metadata index that marks a dynamic array: the
 /// workbook's own `XLDAPR` entry, or a metadata part added with one. A
-/// metadata part without one gives `None`, and the formula is written as a
-/// fixed-size array.
+/// existing metadata part can gain new records without renumbering its old
+/// entries. Unsupported ambiguous/dangling metadata gives `None`.
 pub fn dynamic_array_metadata(package: &mut OpcPackage) -> Result<Option<u32>> {
     let workbook = crate::workbook_part_name(package)?;
     let rels_name = jade_opc::rels_part_name(&workbook);
@@ -162,10 +162,18 @@ pub fn dynamic_array_metadata(package: &mut OpcPackage) -> Result<Option<u32>> {
         None => None,
     };
     if let Some(part) = existing {
-        return Ok(match package.part_str(&part)? {
-            Some(xml) => dynamic_array_index(&xml)?,
-            None => None,
-        });
+        let Some(xml) = package.part_str(&part)? else {
+            return Ok(None);
+        };
+        if let Some(index) = dynamic_array_index(&xml)? {
+            return Ok(Some(index));
+        }
+        if let Some((xml, index)) = crate::array_metadata::append_dynamic(&xml, package, &workbook)?
+        {
+            package.replace(&part, xml.into_bytes());
+            return Ok(Some(index));
+        }
+        return Ok(None);
     }
     let part = jade_opc::resolve_target(&workbook, "metadata.xml");
     package.replace(&part, METADATA.as_bytes().to_vec());
