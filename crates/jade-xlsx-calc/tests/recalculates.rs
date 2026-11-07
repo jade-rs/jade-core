@@ -7,6 +7,37 @@ use jade_xlsx_reader::{read_xlsx, CellRef, CellValue};
 use zip::write::SimpleFileOptions;
 
 #[test]
+fn dollar_conversions_broadcast_values_denominators_and_errors() {
+    assert_formulas(
+        &[
+            "ARRAYTOTEXT(ROUND(DOLLARDE({1.02;1.04},{16,32}),8),1)",
+            "ARRAYTOTEXT(ROUND(DOLLARFR({1.125;1.25},{16,32}),8),1)",
+            "ARRAYTOTEXT(DOLLARDE(1.02,{-1,0,0.9}),1)",
+            "ARRAYTOTEXT(DOLLARFR(1.125,{-1,0,0.9}),1)",
+            "ARRAYTOTEXT(DOLLARDE({#N/A;1.02},{16,#DIV/0!}),1)",
+            "ARRAYTOTEXT(DOLLARFR({#N/A;1.125},{16,#DIV/0!}),1)",
+            "ARRAYTOTEXT(DOLLARDE({TRUE,1.02},16),1)",
+            "ARRAYTOTEXT(DOLLARFR({TRUE,1.125},16),1)",
+            "TYPE(DOLLARDE({1.02},16))",
+            "TYPE(DOLLARFR({1.125},16))",
+        ],
+        &[
+            CellValue::Text("{1.125,1.0625;1.25,1.125}".into()),
+            CellValue::Text("{1.02,1.04;1.04,1.08}".into()),
+            CellValue::Text("{#NUM!,#DIV/0!,#DIV/0!}".into()),
+            CellValue::Text("{#NUM!,#DIV/0!,#DIV/0!}".into()),
+            CellValue::Text("{#N/A,#N/A;1.125,#DIV/0!}".into()),
+            CellValue::Text("{#N/A,#N/A;1.02,#DIV/0!}".into()),
+            CellValue::Text("{#VALUE!,1.125}".into()),
+            CellValue::Text("{#VALUE!,1.02}".into()),
+            CellValue::Number(64.0),
+            CellValue::Number(64.0),
+        ],
+        false,
+    );
+}
+
+#[test]
 fn convert_broadcasts_values_and_unit_axes_with_per_element_errors() {
     assert_formulas(
         &[
