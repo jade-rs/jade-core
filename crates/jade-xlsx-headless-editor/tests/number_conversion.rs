@@ -3,6 +3,135 @@ use jade_xlsx_headless_api::CellInput;
 use jade_xlsx_headless_editor::HeadlessWorkbook;
 
 #[test]
+fn financial_scalar_ranges_follow_parameter_edits_history_and_saved_errors() {
+    for (formula, input, corrected, left, right, first, next, lower, error) in [
+        (
+            "SLN(B1:B2,10,C1:D1)",
+            100.0,
+            190.0,
+            3.0,
+            6.0,
+            30.0,
+            60.0,
+            15.0,
+            "#DIV/0!",
+        ),
+        (
+            "SYD(B1:B2,10,3,C1:D1)",
+            100.0,
+            190.0,
+            1.0,
+            2.0,
+            45.0,
+            90.0,
+            30.0,
+            "#NUM!",
+        ),
+        (
+            "EFFECT(B1:B2,C1:D1)",
+            0.1,
+            0.2,
+            1.0,
+            2.0,
+            0.1,
+            0.2,
+            0.1025,
+            "#NUM!",
+        ),
+        (
+            "NOMINAL(B1:B2,C1:D1)",
+            0.21,
+            0.44,
+            1.0,
+            2.0,
+            0.21,
+            0.44,
+            0.2,
+            "#NUM!",
+        ),
+        (
+            "RRI(B1:B2,C1:D1,400)",
+            1.0,
+            2.0,
+            100.0,
+            200.0,
+            3.0,
+            1.0,
+            1.0,
+            "#NUM!",
+        ),
+        (
+            "PDURATION(B1:B2,100,C1:D1)",
+            1.0,
+            3.0,
+            400.0,
+            1600.0,
+            2.0,
+            1.0,
+            4.0,
+            "#NUM!",
+        ),
+    ] {
+        let mut package = OpcPackage::open(include_bytes!(
+            "../../../public/fixtures/sample-workbook.xlsx"
+        ))
+        .unwrap();
+        package.replace("xl/worksheets/sheet1.xml", br#"<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData/></worksheet>"#.to_vec());
+        let mut book = HeadlessWorkbook::open_for_editing(&package.write().unwrap()).unwrap();
+        let name = "売上サマリ";
+        for (at, value) in [
+            ("B1", CellInput::Error("#N/A".into())),
+            ("B2", CellInput::Number(input)),
+            ("C1", CellInput::Number(left)),
+            ("D1", CellInput::Number(right)),
+            ("F1", CellInput::Formula(format!("ROUND({formula},8)"))),
+            ("J1", CellInput::Formula("ROWS(F1#)*COLUMNS(F1#)".into())),
+        ] {
+            book.set(name, at, value).unwrap();
+        }
+        assert_eq!(book.cell(name, "F1").unwrap().display, "#N/A", "{formula}");
+        assert_eq!(
+            book.cell(name, "F2").unwrap().number,
+            Some(first),
+            "{formula}"
+        );
+        book.set(name, "B1", CellInput::Number(corrected)).unwrap();
+        assert_eq!(
+            book.cell(name, "F1").unwrap().number,
+            Some(next),
+            "{formula}"
+        );
+        book.set(name, "C1", CellInput::Number(0.0)).unwrap();
+        assert_eq!(book.cell(name, "F1").unwrap().display, error, "{formula}");
+        book.undo().unwrap();
+        assert_eq!(book.cell(name, "F1").unwrap().number, Some(next));
+        book.redo().unwrap();
+        assert_eq!(book.cell(name, "F1").unwrap().display, error);
+        book.undo().unwrap();
+        book.undo().unwrap();
+        let saved = book.save_bytes().unwrap();
+        for reopened in [
+            HeadlessWorkbook::open(&saved).unwrap(),
+            HeadlessWorkbook::open_for_editing(&saved).unwrap(),
+        ] {
+            assert_eq!(reopened.cell(name, "F1").unwrap().display, "#N/A");
+            assert_eq!(reopened.cell(name, "G1").unwrap().display, "#N/A");
+            assert_eq!(
+                reopened.cell(name, "F2").unwrap().number,
+                Some(first),
+                "{formula}"
+            );
+            assert_eq!(
+                reopened.cell(name, "G2").unwrap().number,
+                Some(lower),
+                "{formula}"
+            );
+            assert_eq!(reopened.cell(name, "J1").unwrap().number, Some(4.0));
+        }
+    }
+}
+
+#[test]
 fn dollar_conversion_ranges_follow_denominator_edits_and_saved_matrices() {
     for (function, value, corrected, first, next, lower) in [
         ("DOLLARDE", 1.02, 1.04, 1.125, 1.25, 1.0625),

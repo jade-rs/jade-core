@@ -7,6 +7,78 @@ use jade_xlsx_reader::{read_xlsx, CellRef, CellValue};
 use zip::write::SimpleFileOptions;
 
 #[test]
+fn financial_scalar_functions_broadcast_values_and_domain_errors() {
+    for (values, expected, errors, invalid, singleton) in [
+        (
+            "SLN({100;190},10,{3,6})",
+            "{30,15;60,30}",
+            "SLN({#N/A;100},10,{0,3})",
+            "{#N/A,#N/A;#DIV/0!,30}",
+            "SLN({100},10,3)",
+        ),
+        (
+            "SYD({100;190},10,3,{1,2})",
+            "{45,30;90,60}",
+            "SYD({#N/A;100},10,3,{0,1})",
+            "{#N/A,#N/A;#NUM!,45}",
+            "SYD({100},10,3,1)",
+        ),
+        (
+            "EFFECT({0.1;0.2},{1,2})",
+            "{0.1,0.1025;0.2,0.21}",
+            "EFFECT({#N/A;0.1},{0,2})",
+            "{#N/A,#N/A;#NUM!,0.1025}",
+            "EFFECT({0.1},2)",
+        ),
+        (
+            "NOMINAL({0.21;0.44},{1,2})",
+            "{0.21,0.2;0.44,0.4}",
+            "NOMINAL({#N/A;0.21},{0,2})",
+            "{#N/A,#N/A;#NUM!,0.2}",
+            "NOMINAL({0.21},2)",
+        ),
+        (
+            "RRI({1;2},100,{400,1600})",
+            "{3,15;1,3}",
+            "RRI({#N/A;2},{0,100},400)",
+            "{#N/A,#N/A;#NUM!,1}",
+            "RRI({2},100,400)",
+        ),
+        (
+            "PDURATION({1;3},100,{400,1600})",
+            "{2,4;1,2}",
+            "PDURATION({#N/A;1},100,{0,400})",
+            "{#N/A,#N/A;#NUM!,2}",
+            "PDURATION({1},100,400)",
+        ),
+    ] {
+        let values = format!("ARRAYTOTEXT(ROUND({values},8),1)");
+        let errors = format!("ARRAYTOTEXT(ROUND({errors},8),1)");
+        let singleton = format!("TYPE({singleton})");
+        assert_formulas(
+            &[&values, &errors, &singleton],
+            &[
+                CellValue::Text(expected.into()),
+                CellValue::Text(invalid.into()),
+                CellValue::Number(64.0),
+            ],
+            false,
+        );
+    }
+    assert_formulas(
+        &[
+            "ARRAYTOTEXT(ROUND(EFFECT({TRUE,0.1},2.9),8),1)",
+            "ARRAYTOTEXT(ROUND(NOMINAL({TRUE,0.21},2.9),8),1)",
+        ],
+        &[
+            CellValue::Text("{#VALUE!,0.1025}".into()),
+            CellValue::Text("{#VALUE!,0.2}".into()),
+        ],
+        false,
+    );
+}
+
+#[test]
 fn dollar_conversions_broadcast_values_denominators_and_errors() {
     assert_formulas(
         &[
