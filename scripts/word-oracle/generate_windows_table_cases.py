@@ -91,9 +91,10 @@ def spacing_continuation_sweep(compatibility_mode, height_rule='exact'):
     m.write(f'table-spacing-{rule_name}continuation-compat{compatibility_mode}', ''.join(body), compatibility_mode)
 
 
-def mixed_spacing_border_sweep(mode):
+def mixed_spacing_border_sweep(mode, spacings=(40, 120), spacing_element=None,
+                               probe_name='spacing-mixed-borders'):
     body = []
-    for spacing in [40, 120]:
+    for spacing in spacings:
         for rule in ['exact', 'auto', 'atLeast']:
             body.append(m.para(m.run(f'Before G{spacing} {rule}')))
             borders = ''.join(f'<w:{side} w:val="single" w:sz="4" w:color="000000"/>' for side in ['top', 'left', 'bottom', 'right', 'insideH', 'insideV'])
@@ -107,14 +108,19 @@ def mixed_spacing_border_sweep(mode):
                     cells.append(f'<w:tc><w:tcPr><w:tcW w:w="2000" w:type="dxa"/><w:tcBorders>{overrides}</w:tcBorders><w:vAlign w:val="{valign}"/></w:tcPr>{content}</w:tc>')
                 height = '' if rule == 'auto' else f'<w:trHeight w:val="1200" w:hRule="{rule}"/>'
                 rows.append(f'<w:tr><w:trPr>{height}</w:trPr>' + ''.join(cells) + '</w:tr>')
-            body.append(f'<w:tbl><w:tblPr><w:tblW w:w="6000" w:type="dxa"/><w:tblCellSpacing w:w="{spacing}" w:type="dxa"/><w:tblLayout w:type="fixed"/><w:tblBorders>{borders}</w:tblBorders><w:tblCellMar>{margins}</w:tblCellMar></w:tblPr><w:tblGrid>' + '<w:gridCol w:w="2000"/>' * 3 + '</w:tblGrid>' + ''.join(rows) + '</w:tbl>')
+            element = f'<w:tblCellSpacing w:w="{spacing}" w:type="dxa"/>' if spacing_element is None else spacing_element
+            body.append(f'<w:tbl><w:tblPr><w:tblW w:w="6000" w:type="dxa"/>{element}<w:tblLayout w:type="fixed"/><w:tblBorders>{borders}</w:tblBorders><w:tblCellMar>{margins}</w:tblCellMar></w:tblPr><w:tblGrid>' + '<w:gridCol w:w="2000"/>' * 3 + '</w:tblGrid>' + ''.join(rows) + '</w:tbl>')
             body.append(m.para(m.run(f'After G{spacing} {rule}')))
-    m.write(f'table-spacing-mixed-borders-compat{mode}', ''.join(body), mode)
+    m.write(f'table-{probe_name}-compat{mode}', ''.join(body), mode)
 
 
 if __name__ == '__main__':
     for mode in [12, 14, 15]:
         mixed_spacing_border_sweep(mode)
+        mixed_spacing_border_sweep(mode, (0,), '', 'collapsed-implicit-mixed-borders')
+        for kind, value in [('nil', '120'), ('auto', '120'), ('pct', '5000')]:
+            name = 'percent' if kind == 'pct' else kind
+            mixed_spacing_border_sweep(mode, (0,), f'<w:tblCellSpacing w:w="{value}" w:type="{kind}"/>', f'spacing-{name}-mixed-borders')
         border_sweep(mode, sizes=(1, 2, 3), probe_name='collapsed-hairline-borders')
         border_sweep(mode, 'spacing', sizes=(1, 2, 3), probe_name='spacing-hairline-borders')
         alignment_sweep(mode)

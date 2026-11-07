@@ -1,0 +1,8 @@
+{
+  "schema": 1,
+  "native_source_commit": "4ef1ae56f394e612e2201415fe9ce32f7f37f79c",
+  "native_source_worktree_dirty": false,
+  "native_executable_sha256": "507964a8fbdbc7e3f2278f850a777a3b4bac6471a571453cde97147207965b50",
+  "compiler": "rustc 1.99.1 (58cf8f9c3 2026-10-13)\nbinary: rustc\ncommit-hash: 58cf8f9c35b355199727627d07ae34a4e2846d67\ncommit-date: 2026-10-13\nhost: x86_64-pc-windows-msvc\nrelease: 1.99.1\nLLVM version: 23.1.1",
+  "capture_tools_commit": "577f051a7082804f1f9cf085417d36c2fc9c62d9"
+}

@@ -772,6 +772,9 @@ struct PreparedCell {
     /// (`w:vAlign`): 0.0 = top (Word default), 0.5 = center, 1.0 = bottom.
     vertical_align_share: f64,
     skip_render: bool,
+    /// Windows collapsed grids paint a shared vertical from its right cell.
+    right_border_shared: bool,
+    closes_table: bool,
     logical_paragraph_count: usize,
     /// Model paragraphs suppressed only from visual layout by `w:hideMark`.
     /// They still reserve selection indices so later cells stay aligned with
@@ -814,6 +817,8 @@ impl PreparedCell {
             text_direction: self.text_direction,
             vertical_align_share: self.vertical_align_share,
             skip_render: self.skip_render,
+            right_border_shared: self.right_border_shared,
+            closes_table: self.closes_table,
             logical_paragraph_count: self.logical_paragraph_count,
             hidden_end_marker_paragraph_count: self.hidden_end_marker_paragraph_count,
             page_top_inset: self.page_top_inset,
@@ -834,8 +839,8 @@ struct HorizontalBorderBands {
 
 impl HorizontalBorderBands {
     fn for_row(cells: &[PreparedCell], reserve_bottom: bool) -> Self {
-        if jade_docx_layout::line_metrics::word_layout_platform()
-            == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+        let platform = jade_docx_layout::line_metrics::word_layout_platform();
+        if platform == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
             && cells.iter().any(|cell| cell.cell_spacing > f64::EPSILON)
         {
             let content_top = cells
@@ -888,18 +893,25 @@ impl HorizontalBorderBands {
             (maximum, replaced || maximum - minimum > f64::EPSILON)
         };
         let band = |(width, nonuniform): (f64, bool)| if nonuniform { width } else { 0.0 };
-        let top = band(extent(true));
+        let (top_width, top_nonuniform) = extent(true);
+        let top = band((top_width, top_nonuniform));
         let (bottom_width, bottom_nonuniform) = extent(false);
         let bottom = band((bottom_width, bottom_nonuniform));
+        if platform == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows {
+            return Self {
+                top: if reserve_bottom { top_width } else { 0.0 },
+                bottom: if reserve_bottom { bottom_width } else { 0.0 },
+                content_top: if reserve_bottom { 0.0 } else { top },
+                content_bottom: if reserve_bottom { bottom } else { 0.0 },
+            };
+        }
         // Word for Mac aligns a cell's content within the row above the
         // border the row reserves below it, even when every cell draws the
         // same rule there: a centred line does not sink by half of a 0.5pt
         // rule (`scroll-offset-repro`).
         let content_bottom = if !reserve_bottom {
             0.0
-        } else if jade_docx_layout::line_metrics::word_layout_platform()
-            == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
-        {
+        } else if platform == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac {
             bottom_width
         } else {
             bottom
@@ -6408,19 +6420,32 @@ where
 
         let windows = jade_docx_layout::line_metrics::word_layout_platform()
             == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows;
-        // Uniform Windows collapsed rules start at the stored row boundary;
+        // Windows collapsed rules start at the stored row boundary;
         // their centre line lies half a rule below it. Include the closing
         // band in the vertical sides and join horizontal rules at the corners.
         let collapsed_band =
             windows && cell.cell_spacing <= f64::EPSILON && bands.top == 0.0 && bands.bottom == 0.0;
-        let (horizontal_x, horizontal_width) =
-            if windows && (cell.cell_spacing > f64::EPSILON || collapsed_band) {
-                let left = visible_border_width(&cell.border_left) * 0.5;
-                let right = visible_border_width(&cell.border_right) * 0.5;
-                (x - left, width + left + right)
+        let windows_collapsed = windows && cell.cell_spacing <= f64::EPSILON;
+        let shared_right = windows_collapsed && cell.right_border_shared;
+        let vertical_bottom = y
+            + height
+            + if collapsed_band {
+                cell.bottom_border_extent()
+            } else if windows_collapsed && cell.closes_table {
+                cell.bottom_border_extent() - bands.bottom
             } else {
-                (x, width)
+                0.0
             };
+        let (horizontal_x, horizontal_width) = if windows {
+            let left = visible_border_width(&cell.border_left) * 0.5;
+            let right = visible_border_width(&cell.border_right) * 0.5;
+            (
+                x - left,
+                width + left + if shared_right { -right } else { right },
+            )
+        } else {
+            (x, width)
+        };
         context.save();
         self.draw_horizontal_cell_border(
             context,
@@ -6433,27 +6458,28 @@ where
             horizontal_width,
             &cell.border_top,
             &cell.border_top_segments,
-            (bands.top > 0.0).then_some(if cell.page_top_inset > 0.0 {
-                y
+            if collapsed_band {
+                Some(y)
             } else {
-                y - bands.top
-            }),
+                (bands.top > 0.0).then_some(if cell.page_top_inset > 0.0 {
+                    y
+                } else {
+                    y - bands.top
+                })
+            },
             super::border_styles::BorderSide::Top,
         )?;
-        self.draw_border_side(
-            context,
-            x + width,
-            y,
-            x + width,
-            y + height
-                + if collapsed_band {
-                    cell.bottom_border_extent()
-                } else {
-                    0.0
-                },
-            &cell.border_right,
-            super::border_styles::BorderSide::Right,
-        )?;
+        if !shared_right {
+            self.draw_border_side(
+                context,
+                x + width,
+                y,
+                x + width,
+                vertical_bottom,
+                &cell.border_right,
+                super::border_styles::BorderSide::Right,
+            )?;
+        }
         self.draw_horizontal_cell_border(
             context,
             horizontal_x,
@@ -6466,7 +6492,11 @@ where
             horizontal_width,
             &cell.border_bottom,
             &cell.border_bottom_segments,
-            (bands.bottom > 0.0).then_some(y + height - bands.bottom),
+            if collapsed_band {
+                Some(y + height)
+            } else {
+                (bands.bottom > 0.0).then_some(y + height - bands.bottom)
+            },
             super::border_styles::BorderSide::Bottom,
         )?;
         self.draw_border_side(
@@ -6474,12 +6504,7 @@ where
             x,
             y,
             x,
-            y + height
-                + if collapsed_band {
-                    cell.bottom_border_extent()
-                } else {
-                    0.0
-                },
+            vertical_bottom,
             &cell.border_left,
             super::border_styles::BorderSide::Left,
         )?;
@@ -9534,6 +9559,15 @@ fn add_row_border_extents(
     merge_edges: Option<&[Option<bool>]>,
 ) -> f64 {
     let grows = row_grows_for_borders(row);
+    let windows_collapsed_minimum = row.height_rule == Some(TableRowHeightRule::AtLeast)
+        && jade_docx_layout::line_metrics::word_layout_platform()
+            == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+        && resolve_cell_spacing_px(row, table) <= f64::EPSILON;
+    if windows_collapsed_minimum {
+        // Shared-edge conflicts are resolved after the initial row minimum.
+        // The winning rules must size that minimum before its opening band.
+        *height = height.max(resolve_row_height(0.0, 0.0, row, cells));
+    }
     let mut bottom = cells
         .iter()
         .filter(|cell| !cell.skip_render)
@@ -9644,7 +9678,14 @@ fn add_row_border_extents(
             {
                 *height = (*height + top).max(content + top + bottom);
             }
-            None => *height = height.max(content + top + bottom),
+            None => {
+                *height = if windows_collapsed_minimum {
+                    *height + top
+                } else {
+                    *height
+                }
+                .max(content + top + bottom);
+            }
         }
         if top > 0.0 {
             for cell in cells.iter_mut() {
@@ -10056,6 +10097,9 @@ fn split_prepared_row_for_available_height(
         return None;
     }
 
+    for cell in &mut head_cells {
+        cell.closes_table = false;
+    }
     Some(SplitPreparedRow {
         head_cells,
         head_height,
@@ -12213,6 +12257,8 @@ fn prepare_row_layout<P: Painter<Error: PainterError>>(
             text_direction: cell.text_direction,
             vertical_align_share: cell_vertical_align_share(cell.vertical_align.as_deref()),
             skip_render,
+            right_border_shared: false,
+            closes_table: is_bottom_row,
             logical_paragraph_count,
             hidden_end_marker_paragraph_count,
             page_top_inset: 0.0,
@@ -12224,6 +12270,29 @@ fn prepare_row_layout<P: Painter<Error: PainterError>>(
 
     if !config.word_modern_border_insets {
         resolve_row_shared_vertical_border_conflicts(&mut layouts, table.bidi_visual, cell_spacing);
+    }
+    if cell_spacing <= f64::EPSILON
+        && jade_docx_layout::line_metrics::word_layout_platform()
+            == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+    {
+        let mut cells = layouts.iter_mut();
+        if let Some(mut previous) = cells.next() {
+            for current in cells {
+                if !previous.skip_render
+                    && !current.skip_render
+                    && previous.column_index.saturating_add(previous.span) == current.column_index
+                {
+                    if table.bidi_visual {
+                        if current.border_right == previous.border_left {
+                            current.right_border_shared = true;
+                        }
+                    } else if previous.border_right == current.border_left {
+                        previous.right_border_shared = true;
+                    }
+                }
+                previous = current;
+            }
+        }
     }
     Ok(layouts)
 }
@@ -17213,6 +17282,10 @@ mod tests {
 
     #[test]
     fn unequal_shared_rules_use_one_band_without_changing_uniform_row_storage() {
+        use jade_docx_layout::line_metrics::{
+            set_word_layout_platform, word_layout_platform, WordLayoutPlatform,
+        };
+        let previous = word_layout_platform();
         let mut upper = make_prepared_cell(0, 2, None, false);
         upper.border_bottom_segments = vec![
             HorizontalBorderSegment {
@@ -17239,24 +17312,49 @@ mod tests {
         ];
         lower[0].border_top.width_px = 4.0;
         lower[1].border_top.width_px = 3.0;
-        let above = HorizontalBorderBands::for_row(std::slice::from_ref(&upper), true);
-        let below = HorizontalBorderBands::for_row(&lower, true);
-        assert_eq!(
-            (above.top, above.bottom, above.content_bottom),
-            (0.0, 4.0, 4.0)
-        );
-        assert_eq!(
-            (below.top, below.bottom, below.content_bottom),
-            (4.0, 0.0, 0.0)
-        );
-        let exact = HorizontalBorderBands::for_row(std::slice::from_ref(&upper), false);
-        assert_eq!(exact.content_bottom, 0.0);
-        let uniform =
-            HorizontalBorderBands::for_row(&[make_prepared_cell(0, 1, None, false)], true);
-        assert_eq!(
-            (uniform.top, uniform.bottom, uniform.content_bottom),
-            (0.0, 0.0, 0.0)
-        );
+        for platform in [WordLayoutPlatform::Mac, WordLayoutPlatform::Windows] {
+            set_word_layout_platform(platform);
+            let windows = platform == WordLayoutPlatform::Windows;
+            let above = HorizontalBorderBands::for_row(std::slice::from_ref(&upper), true);
+            let below = HorizontalBorderBands::for_row(&lower, true);
+            assert_eq!(
+                (above.top, above.bottom, above.content_bottom),
+                (if windows { 1.0 } else { 0.0 }, 4.0, 4.0)
+            );
+            assert_eq!(
+                (below.top, below.bottom, below.content_bottom),
+                (
+                    4.0,
+                    if windows { 1.0 } else { 0.0 },
+                    if windows { 0.0 } else { 1.0 }
+                )
+            );
+            let exact = HorizontalBorderBands::for_row(&lower, false);
+            assert_eq!(
+                (
+                    exact.top,
+                    exact.bottom,
+                    exact.content_top,
+                    exact.content_bottom
+                ),
+                if windows {
+                    (0.0, 0.0, 4.0, 0.0)
+                } else {
+                    (4.0, 0.0, 0.0, 0.0)
+                }
+            );
+            let uniform =
+                HorizontalBorderBands::for_row(&[make_prepared_cell(0, 1, None, false)], true);
+            assert_eq!(
+                (uniform.top, uniform.bottom, uniform.content_bottom),
+                if windows {
+                    (1.0, 1.0, 0.0)
+                } else {
+                    (0.0, 0.0, 1.0)
+                }
+            );
+        }
+        set_word_layout_platform(previous);
         assert_eq!(std::mem::size_of::<HorizontalBorderBands>(), 32);
     }
 
@@ -17362,6 +17460,8 @@ mod tests {
             text_direction: None,
             vertical_align_share: 0.0,
             skip_render,
+            right_border_shared: false,
+            closes_table: false,
             logical_paragraph_count: 0,
             hidden_end_marker_paragraph_count: 0,
             page_top_inset: 0.0,

@@ -195,6 +195,33 @@ The registry has 77 distinct documents, 366 pages and 61,152 origins, plus the
 two historical duplicate registrations. The mandatory Arial subset has 60
 documents, 233 pages and 43,053 origins; raw EMFs reconstruct 54,921 origins.
 
+Capture `20261107T100425881Z-90da1943` adds twelve nonuniform collapsed-grid
+documents, twelve pages and 6,108 complete origins, all matching both original
+Word PDFs and EMFs. These distinguish omitted spacing and `nil`/`auto`/`pct`
+forms in modes 12/14/15 while mixing exact, automatic and minimum row heights.
+The source is clean engine `4ef1ae56`, with executable/compiler and capture-tool
+commits retained. Every original DOCX is copied and hashed with the capture.
+
+Windows recomputes minimum heights from resolved shared-edge winners before
+reserving the opening band. Exact rows align content below their widest top
+rule; growing rows retain their shared closing band. The physical right cell
+paints an equal shared vertical once, so unequal bottom rules meet without
+overlap. Only the final fragment closes the table; intermediate rows retain
+continuous verticals. Mac keeps its earlier height/content/painting policies.
+Edit/export/undo checks now also exercise the minimum-height mixed grid and
+the `nil` form under both platform policies.
+
+The required vector gate has 60 documents and 216 pages. The registry retains
+89 distinct documents, 378 pages and 67,260 origins (plus two historical
+duplicate registrations); the Arial gate requires 72 documents, 245 pages and
+49,161 origins. Raw EMFs reconstruct 61,029 origins. Diagnostic capture
+`20261107T091326151Z-fd041683` preserves all eighteen original width-type probes,
+their original native failures and source DOCX snapshots. Its independent Word
+comparison shows `nil`/`auto`/`pct` agree with omission, whereas missing width
+or type agrees with explicit DXA zero. Negative DXA differs from both. These
+explicit-zero/missing/negative cases remain unpromoted follow-up work; historical
+failures are retained unchanged.
+
 Run the same vector check from jade-core after building `word_coordinates`:
 
 ```powershell

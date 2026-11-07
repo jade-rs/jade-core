@@ -1,0 +1,342 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261107T091326151Z-fd041683",
+  "captured_at_utc": "2026-11-07T09:13:26.1721857Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20860",
+    "file_version": "16.0.19127.20860",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "9bafe09d0c458006744b9edce767a328ba2da1bb5d9a460e5830c47bf6d7f1d1"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-edge-table-spacing-auto-mixed-borders-compat12",
+      "source": "..\\zero-spacing-type-inputs\\public\\fixtures\\word-windows-edge-table-spacing-auto-mixed-borders-compat12.docx",
+      "sha256": "f5422e652059f14b3f858bf5a87aa34ff98037e155947f53541843379b2e790a",
+      "pdf": "word-windows-edge-table-spacing-auto-mixed-borders-compat12.pdf",
+      "pdf_sha256": "e3e6dcdb591b206127f6ebd3beb1ccd7685b9e652c3063c3327992c0cb0c0239",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-spacing-auto-mixed-borders-compat12.page-001.emf",
+          "sha256": "39969c6bb3f18c3103a6e4b8d0c09a97512dd53173428eb80ae7b64e67a56e03",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-spacing-auto-mixed-borders-compat14",
+      "source": "..\\zero-spacing-type-inputs\\public\\fixtures\\word-windows-edge-table-spacing-auto-mixed-borders-compat14.docx",
+      "sha256": "1a1c09f2e29b31a2467a4b2c4a6f9357dd42907a48a67b064920c2bf2d6bc784",
+      "pdf": "word-windows-edge-table-spacing-auto-mixed-borders-compat14.pdf",
+      "pdf_sha256": "4421cb00a966f49e9daf77c5f96f53431eb91ed0b296883e7b8b862ed8006980",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-spacing-auto-mixed-borders-compat14.page-001.emf",
+          "sha256": "43807a15c10c6664bdd5aaa3d221c0dd397d3b19efe3be07f5528e3bcbb204de",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-spacing-auto-mixed-borders-compat15",
+      "source": "..\\zero-spacing-type-inputs\\public\\fixtures\\word-windows-edge-table-spacing-auto-mixed-borders-compat15.docx",
+      "sha256": "3f68333a2eb055146c1e47a75d75cd3320ec85085f60f9dec972066ff970bd03",
+      "pdf": "word-windows-edge-table-spacing-auto-mixed-borders-compat15.pdf",
+      "pdf_sha256": "55c2b9f389ed84c202c6dcafcab6bb24baff31e636631bb28fae859532340882",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-spacing-auto-mixed-borders-compat15.page-001.emf",
+          "sha256": "8571ce69f92f718eeff44d22c0fdf2e75ca27b4784c60681f9d070db2a6af619",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-spacing-missing-type-mixed-borders-compat12",
+      "source": "..\\zero-spacing-type-inputs\\public\\fixtures\\word-windows-edge-table-spacing-missing-type-mixed-borders-compat12.docx",
+      "sha256": "08e1d23c4cb418f55c917d0e2b3594b378539c9b4d9028c16fd91e5c436d442a",
+      "pdf": "word-windows-edge-table-spacing-missing-type-mixed-borders-compat12.pdf",
+      "pdf_sha256": "7e72068aafeef3f354ef46ed1f0a9c9f531a606da1d32c2b00ea12ee14d23a26",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-spacing-missing-type-mixed-borders-compat12.page-001.emf",
+          "sha256": "4873dc29987e3810cc16d71944c8cdf1b301b8281c9394c83c12ec2198c33446",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-spacing-missing-type-mixed-borders-compat14",
+      "source": "..\\zero-spacing-type-inputs\\public\\fixtures\\word-windows-edge-table-spacing-missing-type-mixed-borders-compat14.docx",
+      "sha256": "8d2fdec6174ed5dbb579b89ef699da75e3027adef188bd1b6366dc13c4dd58b1",
+      "pdf": "word-windows-edge-table-spacing-missing-type-mixed-borders-compat14.pdf",
+      "pdf_sha256": "abb8014efb668ed5f20f48151dece5ad675f16ec696c440b7eb0474a4ac18e95",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-spacing-missing-type-mixed-borders-compat14.page-001.emf",
+          "sha256": "9598688d42c2e4994b0349d982abaef367f13d1c325e22c065bf7e263b474833",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-spacing-missing-type-mixed-borders-compat15",
+      "source": "..\\zero-spacing-type-inputs\\public\\fixtures\\word-windows-edge-table-spacing-missing-type-mixed-borders-compat15.docx",
+      "sha256": "57b3359ee7d2a475b53f8daa187a724bdb06c74de024b5840800af6741e66897",
+      "pdf": "word-windows-edge-table-spacing-missing-type-mixed-borders-compat15.pdf",
+      "pdf_sha256": "35dced3fe609e1cada1dbbd69a7bf5a60684522c819c08b70b7c48a575fcf7ce",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-spacing-missing-type-mixed-borders-compat15.page-001.emf",
+          "sha256": "85f27a4e76d0a60ca091fad816fa51cc5238a0f5bf7ccfe22628741684807d25",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-spacing-missing-width-mixed-borders-compat12",
+      "source": "..\\zero-spacing-type-inputs\\public\\fixtures\\word-windows-edge-table-spacing-missing-width-mixed-borders-compat12.docx",
+      "sha256": "837a33ea781d65247cd70a4eac7a5a32513498270709001d58baa475bd00b187",
+      "pdf": "word-windows-edge-table-spacing-missing-width-mixed-borders-compat12.pdf",
+      "pdf_sha256": "2e085aaac99ac39f2b5c856ecbe030a73ef8405b1e2f28b850bf84d760ed76f7",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-spacing-missing-width-mixed-borders-compat12.page-001.emf",
+          "sha256": "cb5facfd1adbad79676334b8ccd47bac5fac3a70b96327a6c0e1fcc00dd6dfb7",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-spacing-missing-width-mixed-borders-compat14",
+      "source": "..\\zero-spacing-type-inputs\\public\\fixtures\\word-windows-edge-table-spacing-missing-width-mixed-borders-compat14.docx",
+      "sha256": "61c3898fbb0c94ec3c841127df22a74340e40b01d8af2d9878c5b3d730d314dc",
+      "pdf": "word-windows-edge-table-spacing-missing-width-mixed-borders-compat14.pdf",
+      "pdf_sha256": "7f1cee5e9e31b847ed0bcd7f22347472097cd489f6c1ebe7a3f09824e20fa9e0",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-spacing-missing-width-mixed-borders-compat14.page-001.emf",
+          "sha256": "a7857e4efc94dc30b159ea7d508735d3537c1b179aac911581e0ec2dc81c96e9",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-spacing-missing-width-mixed-borders-compat15",
+      "source": "..\\zero-spacing-type-inputs\\public\\fixtures\\word-windows-edge-table-spacing-missing-width-mixed-borders-compat15.docx",
+      "sha256": "be50289c236ba073a4d2c45e7060fa83e4ae806a68f2452fd168a345b9e54184",
+      "pdf": "word-windows-edge-table-spacing-missing-width-mixed-borders-compat15.pdf",
+      "pdf_sha256": "5e3a816ab4e12ec9a4e2fc1aa735d234c51030981f7ce9feaec3e6413eae048c",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-spacing-missing-width-mixed-borders-compat15.page-001.emf",
+          "sha256": "2758d18e72b13e83e83fb493ab22748a1144ba9e0c978ad603175e60ff6f10a9",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-spacing-negative-mixed-borders-compat12",
+      "source": "..\\zero-spacing-type-inputs\\public\\fixtures\\word-windows-edge-table-spacing-negative-mixed-borders-compat12.docx",
+      "sha256": "db79c5dfcc922b3ea5bf4ed243dcba9f1db8c7205aa9187594741f9e7cd50369",
+      "pdf": "word-windows-edge-table-spacing-negative-mixed-borders-compat12.pdf",
+      "pdf_sha256": "902e827547983c9fc1e09eff82758e474239067075b7b72ca5c800a920049a37",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-spacing-negative-mixed-borders-compat12.page-001.emf",
+          "sha256": "cc04c72ab5f1e6ccec07c535a918b6589b742fdcb47f6fbaf57e9346fa0546b1",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-spacing-negative-mixed-borders-compat14",
+      "source": "..\\zero-spacing-type-inputs\\public\\fixtures\\word-windows-edge-table-spacing-negative-mixed-borders-compat14.docx",
+      "sha256": "a8674127ec0066fb7827f7470aa61cc470ecba4bf0078755647a280df5d304c6",
+      "pdf": "word-windows-edge-table-spacing-negative-mixed-borders-compat14.pdf",
+      "pdf_sha256": "161631058d4c7b9be9737418b6923f094b61de3acaa3d24bb28dd2bb719775a9",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-spacing-negative-mixed-borders-compat14.page-001.emf",
+          "sha256": "36f896b7ca808c95101d15caa66333c0ae18b31470e726a9f8ac7c2f44365985",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-spacing-negative-mixed-borders-compat15",
+      "source": "..\\zero-spacing-type-inputs\\public\\fixtures\\word-windows-edge-table-spacing-negative-mixed-borders-compat15.docx",
+      "sha256": "e3d7f88d4027df43ac3c21b9370669e460be8998991cc7677ae147b0ccf372a6",
+      "pdf": "word-windows-edge-table-spacing-negative-mixed-borders-compat15.pdf",
+      "pdf_sha256": "bca639733f2439fcbda8c73c493cfdd4dfce14264d92dcdac97d95644df4912c",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-spacing-negative-mixed-borders-compat15.page-001.emf",
+          "sha256": "be526828916b978007533e6e194d8e364fef2637d1296067a4c117632a71b3a2",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-spacing-nil-mixed-borders-compat12",
+      "source": "..\\zero-spacing-type-inputs\\public\\fixtures\\word-windows-edge-table-spacing-nil-mixed-borders-compat12.docx",
+      "sha256": "85731f191f84424ac7b920cc5db3a2b0d1d6e9b70a7265a2e80dbc81e92536a9",
+      "pdf": "word-windows-edge-table-spacing-nil-mixed-borders-compat12.pdf",
+      "pdf_sha256": "bcf25b3a8b39a033f6944176ca0194cf0c275c22758648a22d1465ecb60d4709",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-spacing-nil-mixed-borders-compat12.page-001.emf",
+          "sha256": "1dbb4958d0f5d5ad62413f49508ec130a8b5c94e0fedf6d86dc67864e29cbf7a",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-spacing-nil-mixed-borders-compat14",
+      "source": "..\\zero-spacing-type-inputs\\public\\fixtures\\word-windows-edge-table-spacing-nil-mixed-borders-compat14.docx",
+      "sha256": "dbd9d720ee49fe215bff76de35dad104b07c1fa3ad9f7847f43d2eb89001da48",
+      "pdf": "word-windows-edge-table-spacing-nil-mixed-borders-compat14.pdf",
+      "pdf_sha256": "891ecc8ce86c7b48eec0d826a2fff0a483a8d0b4ad87e555f382c416593bc4bf",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-spacing-nil-mixed-borders-compat14.page-001.emf",
+          "sha256": "d1cf4c98de68f338242375301a79efdee379cdf7879041e9da1f2367e83d478a",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-spacing-nil-mixed-borders-compat15",
+      "source": "..\\zero-spacing-type-inputs\\public\\fixtures\\word-windows-edge-table-spacing-nil-mixed-borders-compat15.docx",
+      "sha256": "6cc84a3cdad1e78171e0f820d9dbbd9fd520d962d76163ae75a6e2f36e769d84",
+      "pdf": "word-windows-edge-table-spacing-nil-mixed-borders-compat15.pdf",
+      "pdf_sha256": "0455efb06bbb1f823423b1a8dd7744181df60d1a13de9c6fd50c6e75f434e0b1",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-spacing-nil-mixed-borders-compat15.page-001.emf",
+          "sha256": "beea1e96c32150249f718d480fb2e29ca2520f09554cb2daa43c5182fc7fd808",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-spacing-percent-mixed-borders-compat12",
+      "source": "..\\zero-spacing-type-inputs\\public\\fixtures\\word-windows-edge-table-spacing-percent-mixed-borders-compat12.docx",
+      "sha256": "9c80645d747acf6e264f84c120f8e7aa52a78be61cccf1b4b866fdf9e7e46050",
+      "pdf": "word-windows-edge-table-spacing-percent-mixed-borders-compat12.pdf",
+      "pdf_sha256": "3bd9ee825ba936e2e7c8b9689e8b95a03490b5c905fe69ff03a658fa05002bf9",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-spacing-percent-mixed-borders-compat12.page-001.emf",
+          "sha256": "d61be3f3647eb5bcf1ba931d708cd0d9345612c46cbbef37c8cfc884f1e524a3",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-spacing-percent-mixed-borders-compat14",
+      "source": "..\\zero-spacing-type-inputs\\public\\fixtures\\word-windows-edge-table-spacing-percent-mixed-borders-compat14.docx",
+      "sha256": "ae30e8c2e696cc7b68fd8df1386b41c28cca3cbb9712452353844b70c7c72ebe",
+      "pdf": "word-windows-edge-table-spacing-percent-mixed-borders-compat14.pdf",
+      "pdf_sha256": "6e8505b477cb191e7ab249c02dd61a79545b1f68477d68e867501dc6589fd42e",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-spacing-percent-mixed-borders-compat14.page-001.emf",
+          "sha256": "8f46127cbd1a8dc08f5083305b0652d48b863e9b61ad1dd943b1e113658a10fe",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-spacing-percent-mixed-borders-compat15",
+      "source": "..\\zero-spacing-type-inputs\\public\\fixtures\\word-windows-edge-table-spacing-percent-mixed-borders-compat15.docx",
+      "sha256": "fe2d4ed56f53811218bfc36f0d3a770b52299318c97e1c77c3dcb4b106d9d249",
+      "pdf": "word-windows-edge-table-spacing-percent-mixed-borders-compat15.pdf",
+      "pdf_sha256": "32b4904a9b977e40db06c3e5ba7966236c34813d067a2d795e965165a8d3808a",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-spacing-percent-mixed-borders-compat15.page-001.emf",
+          "sha256": "eeeb5ed0101e8e0e294d3db880cc657cd1bbe4c2b74a1f340054c1b41acd1a71",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    }
+  ]
+}
