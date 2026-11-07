@@ -7,6 +7,39 @@ use jade_xlsx_reader::{read_xlsx, CellRef, CellValue};
 use zip::write::SimpleFileOptions;
 
 #[test]
+fn imported_normal_formulas_intersect_scalar_arguments_while_cse_lifts_them() {
+    let xml = sheet(
+        r#"<row r="1"><c r="A1" t="inlineStr"><is><t>a</t></is></c></row><row r="2"><c r="A2" t="inlineStr"><is><t>bb</t></is></c><c r="B2"><f>LEN(A1:A3)</f></c></row><row r="3"><c r="A3" t="inlineStr"><is><t>ccc</t></is></c></row><row r="5"><c r="B5"><f>SUM(LEN(A1:A3))</f></c><c r="C5"><f t="array" ref="C5">SUM(LEN(A1:A3))</f></c><c r="D5"><f>FORMULATEXT(B5)</f></c></row>"#,
+    );
+    let result = evaluate(&read_xlsx(&ordinary_workbook(&xml, None, false)).unwrap()).unwrap();
+    assert!(result.skipped.is_empty());
+    assert_eq!(computed(&result, 0, "C5"), Some(&CellValue::Number(6.0)));
+    assert_eq!(
+        computed(&result, 0, "D5"),
+        Some(&CellValue::Text("=SUM(LEN(A1:A3))".into()))
+    );
+    assert_eq!(
+        computed(&result, 0, "B5"),
+        Some(&CellValue::Error("#VALUE!".into()))
+    );
+    assert_eq!(computed(&result, 0, "B2"), Some(&CellValue::Number(2.0)));
+    // Alternate the same positions/source through both dialects on this
+    // thread, exercising the reusable parsed cache as well as fresh models.
+    let ordinary = read_xlsx(&ordinary_workbook(&xml, None, false)).unwrap();
+    let modern = read_xlsx(&workbook(&xml, None, false)).unwrap();
+    for _ in 0..2 {
+        assert_eq!(
+            computed(&evaluate(&modern).unwrap(), 0, "B5"),
+            Some(&CellValue::Number(6.0))
+        );
+        assert_eq!(
+            computed(&evaluate(&ordinary).unwrap(), 0, "B5"),
+            Some(&CellValue::Error("#VALUE!".into()))
+        );
+    }
+}
+
+#[test]
 fn legacy_array_followers_keep_formula_identity_without_relative_translation() {
     let xml = sheet(
         r#"<row r="1"><c r="A1"><f t="array" ref="A1:A3">SEQUENCE(B1, 1)</f><v>1</v></c><c r="B1"><v>3</v></c><c r="C1"><f>FORMULATEXT(A2)</f></c><c r="D1"><f>ISFORMULA(A3)</f></c><c r="F1"><f>SEQUENCE(3,1)</f></c><c r="G1"><f>FORMULATEXT(F2)</f></c><c r="H1"><f>ISFORMULA(F3)</f></c></row><row r="2"><c r="A2"><v>2</v></c></row><row r="3"><c r="A3"><v>3</v></c></row>"#,
@@ -4472,6 +4505,21 @@ fn unknown_saved_filter_ranges_preserve_full_subtotal_caches_but_calculate_hidde
 }
 
 fn workbook(sheet1: &str, sheet2: Option<&str>, date_1904: bool) -> Vec<u8> {
+    workbook_with_evaluation(sheet1, sheet2, date_1904, true)
+}
+
+fn ordinary_workbook(sheet1: &str, sheet2: Option<&str>, date_1904: bool) -> Vec<u8> {
+    workbook_with_evaluation(sheet1, sheet2, date_1904, false)
+}
+
+// These function/spill fixtures author modern AE formulas. Persist that
+// contract explicitly; imported ordinary formulas use ordinary_workbook.
+fn workbook_with_evaluation(
+    sheet1: &str,
+    sheet2: Option<&str>,
+    date_1904: bool,
+    arrays: bool,
+) -> Vec<u8> {
     let workbook_pr = if date_1904 {
         r#"<workbookPr date1904="1"/>"#
     } else {
@@ -4493,6 +4541,9 @@ fn workbook(sheet1: &str, sheet2: Option<&str>, date_1904: bool) -> Vec<u8> {
     if sheet2.is_some() {
         rels.push_str(r#"<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet2.xml"/>"#);
     }
+    if arrays {
+        rels.push_str(r#"<Relationship Id="rIdMetadata" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/sheetMetadata" Target="metadata.xml"/>"#);
+    }
     rels.push_str("</Relationships>");
 
     let root_rels = r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -4508,10 +4559,27 @@ fn workbook(sheet1: &str, sheet2: Option<&str>, date_1904: bool) -> Vec<u8> {
             ("_rels/.rels", root_rels.to_string()),
             ("xl/workbook.xml", workbook_xml),
             ("xl/_rels/workbook.xml.rels", rels),
-            ("xl/worksheets/sheet1.xml", sheet1.to_string()),
+            (
+                "xl/worksheets/sheet1.xml",
+                if arrays {
+                    array_formulas(sheet1)
+                } else {
+                    sheet1.to_string()
+                },
+            ),
         ];
         if let Some(second) = sheet2 {
-            parts.push(("xl/worksheets/sheet2.xml", second.to_string()));
+            parts.push((
+                "xl/worksheets/sheet2.xml",
+                if arrays {
+                    array_formulas(second)
+                } else {
+                    second.to_string()
+                },
+            ));
+        }
+        if arrays {
+            parts.push(("xl/metadata.xml", r#"<metadata xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><metadataTypes count="1"><metadataType name="XLDAPR"/></metadataTypes><futureMetadata name="XLDAPR" count="1"><bk><extLst><ext uri="{BDBB8CDC-FA1E-496E-A857-3C3F30C029C3}"><dynamicArrayProperties xmlns="http://schemas.microsoft.com/office/spreadsheetml/2017/dynamicarray" fDynamic="1"/></ext></extLst></bk></futureMetadata><cellMetadata count="1"><bk><rc t="1" v="0"/></bk></cellMetadata></metadata>"#.into()));
         }
         for (name, contents) in parts {
             writer.start_file(name, options).expect("start part");
@@ -4520,6 +4588,42 @@ fn workbook(sheet1: &str, sheet2: Option<&str>, date_1904: bool) -> Vec<u8> {
         writer.finish().expect("finish archive");
     }
     buffer
+}
+
+// Fixture XML is authored here with unprefixed <c>/<f> tags. Keep existing
+// explicit array declarations intact while marking ordinary authored AE cells.
+fn array_formulas(xml: &str) -> String {
+    let mut output = String::new();
+    let mut remaining = xml;
+    while let Some(start) = remaining.find("<c ") {
+        output.push_str(&remaining[..start]);
+        remaining = &remaining[start..];
+        let head_end = remaining.find('>').unwrap() + 1;
+        if remaining[..head_end].ends_with("/>") {
+            output.push_str(&remaining[..head_end]);
+            remaining = &remaining[head_end..];
+            continue;
+        }
+        let end = remaining.find("</c>").unwrap() + 4;
+        let cell = &remaining[..end];
+        if cell.contains("<f>") {
+            let reference = cell.find("r=\"").unwrap() + 3;
+            let reference = &cell[reference..];
+            let reference = &reference[..reference.find('"').unwrap()];
+            output.push_str(&cell[..head_end - 1]);
+            output.push_str(" cm=\"1\">");
+            output.push_str(&cell[head_end..].replacen(
+                "<f>",
+                &format!("<f t=\"array\" ref=\"{reference}\">"),
+                1,
+            ));
+        } else {
+            output.push_str(cell);
+        }
+        remaining = &remaining[end..];
+    }
+    output.push_str(remaining);
+    output
 }
 
 fn sheet(rows: &str) -> String {
@@ -5115,7 +5219,9 @@ fn a_dynamic_array_from_excel_keeps_its_spill() {
         false,
     );
     let workbook = read_xlsx(&bytes).expect("read");
-    assert_eq!(workbook.sheets[0].array_formulas.len(), 1);
+    // The authored AE fixture also declares its scalar SUM as a one-cell
+    // array; only A1 has an actual multi-cell spill.
+    assert_eq!(workbook.sheets[0].array_formulas.len(), 2);
     let outcome = evaluate(&workbook).expect("evaluate");
     // Not #SPILL!: the spilled values are the formula's own, not a wall.
     assert_eq!(computed(&outcome, 0, "A1"), Some(&CellValue::Number(1.0)));

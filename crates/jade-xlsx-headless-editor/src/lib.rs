@@ -1628,6 +1628,51 @@ impl HeadlessWorkbook {
         }
         written = jade_xlsx_writer::tables::after_cell_entries(&self.workbook, &written, &sheets)?;
         written = jade_xlsx_writer::tables::follow_total_cells(&self.workbook, &written, &sheets)?;
+        let entered = sheets
+            .iter()
+            .flat_map(|edits| {
+                let index = self
+                    .workbook
+                    .sheets
+                    .iter()
+                    .position(|s| s.part_name == edits.part_name);
+                edits
+                    .cells
+                    .iter()
+                    .filter_map(move |edit| match (&edit.value, index) {
+                        (NewValue::Formula(formula), Some(index)) => {
+                            Some((index, edit.reference, formula.clone()))
+                        }
+                        _ => None,
+                    })
+            })
+            .collect::<Vec<_>>();
+        if !entered.is_empty() {
+            let projected = jade_xlsx_reader::read_xlsx(&written)?;
+            let mut marks = BTreeMap::<usize, Vec<jade_xlsx_writer::spills::ArrayRange>>::new();
+            for (index, at) in
+                jade_xlsx_calc::formulas_requiring_array_evaluation(&projected, &entered)?
+            {
+                marks
+                    .entry(index)
+                    .or_default()
+                    .push(jade_xlsx_writer::spills::ArrayRange {
+                        anchor: at,
+                        range: CellRange { start: at, end: at },
+                    });
+            }
+            if !marks.is_empty() {
+                let marks = marks
+                    .into_iter()
+                    .map(|(index, ranges)| jade_xlsx_writer::spills::SheetSpills {
+                        part_name: projected.sheets[index].part_name.clone(),
+                        values: Vec::new(),
+                        ranges,
+                    })
+                    .collect::<Vec<_>>();
+                written = jade_xlsx_writer::spills::write_spills(&written, &marks, false)?;
+            }
+        }
         self.workbook = if plain {
             let mut workbook = std::mem::take(&mut self.workbook);
             for edits in &sheets {

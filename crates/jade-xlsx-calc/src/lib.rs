@@ -615,7 +615,14 @@ struct ParsedFormulas {
     /// What the parses depend on besides the text and the cell: the sheets,
     /// tables and names. Another set of them empties the cache.
     context: u64,
-    cells: HashMap<(u32, i32, i32), (String, String, bool)>,
+    cells: HashMap<(u32, i32, i32), ParsedFormula>,
+}
+
+struct ParsedFormula {
+    text: String,
+    shared: String,
+    dynamic: bool,
+    intersect: bool,
 }
 
 thread_local! {
@@ -656,22 +663,39 @@ fn set_formula(
     cache: &mut ParsedFormulas,
     (sheet, row, column): (u32, i32, i32),
     formula: String,
+    intersect: bool,
 ) -> std::result::Result<(), String> {
-    if let Some((text, shared, dynamic)) = cache.cells.get(&(sheet, row, column)) {
-        if *text == formula
-            && model.update_cell_with_shared_formula(sheet, row, column, shared, *dynamic)?
+    if let Some(parsed) = cache.cells.get(&(sheet, row, column)) {
+        if parsed.text == formula
+            && parsed.intersect == intersect
+            && model.update_cell_with_shared_formula(
+                sheet,
+                row,
+                column,
+                &parsed.shared,
+                parsed.dynamic,
+            )?
         {
             return Ok(());
         }
     }
-    let (shared, dynamic) =
-        model.update_cell_with_formula_shared(sheet, row, column, formula.clone())?;
+    let (shared, dynamic) = if intersect {
+        model.update_cell_with_intersected_formula_shared(sheet, row, column, formula.clone())?
+    } else {
+        model.update_cell_with_formula_shared(sheet, row, column, formula.clone())?
+    };
     if cache.cells.len() >= PARSED_FORMULA_LIMIT {
         cache.cells.clear();
     }
-    cache
-        .cells
-        .insert((sheet, row, column), (formula, shared, dynamic));
+    cache.cells.insert(
+        (sheet, row, column),
+        ParsedFormula {
+            text: formula,
+            shared,
+            dynamic,
+            intersect,
+        },
+    );
     Ok(())
 }
 
@@ -717,9 +741,51 @@ fn fixed_array_size(
     Ok((width as i32, height as i32))
 }
 
+/// Newly entered AE formulas whose meaning changes under ordinary persisted
+/// formula evaluation. Scalar-result aggregates can need this too; an actual
+/// multi-cell spill is not the only reason to save an array declaration.
+pub fn formulas_requiring_array_evaluation(
+    workbook: &Workbook,
+    formulas: &[(usize, CellRef, String)],
+) -> Result<Vec<(usize, CellRef)>> {
+    if formulas.is_empty() {
+        return Ok(Vec::new());
+    }
+    let mut model = project_structure(workbook, "UTC")?;
+    let mut arrays = Vec::new();
+    for (sheet, at, formula) in formulas {
+        if workbook.sheets.get(*sheet).is_none()
+            || at.row >= jade_xlsx_reader::model::MAX_ROW_COUNT
+            || at.column >= jade_xlsx_reader::model::MAX_COLUMN_COUNT
+        {
+            return Err(CalcError::Engine("Invalid formula entry position".into()));
+        }
+        let text = format!(
+            "={}",
+            jade_xlsx_reader::collapse_ref_errors(&table_formula(
+                workbook,
+                *sheet,
+                Some(*at),
+                formula.strip_prefix('=').unwrap_or(formula)
+            ))
+        );
+        if model
+            .formula_requires_array_evaluation(
+                *sheet as u32,
+                at.row as i32 + 1,
+                at.column as i32 + 1,
+                &text,
+            )
+            .map_err(CalcError::Engine)?
+        {
+            arrays.push((*sheet, *at));
+        }
+    }
+    Ok(arrays)
+}
+
 /// CSE formulas evaluate in their declared area rather than being re-inferred
-/// as dynamic arrays. Keep unbounded file declarations out of the backend's
-/// eager placeholder allocation; the caller reports them as unsupported.
+/// as dynamic arrays. Keep unbounded declarations out of eager allocation.
 fn set_projected_formula(
     model: &mut Model<'_>,
     workbook: &Workbook,
@@ -735,7 +801,19 @@ fn set_projected_formula(
         let (width, height) = fixed_array_size(array)?;
         model.set_user_array_formula(position.0, position.1, position.2, width, height, &formula)
     } else {
-        PARSED.with(|parsed| set_formula(model, &mut parsed.borrow_mut(), position, formula))
+        let intersect = !workbook.sheets[sheet]
+            .array_formulas
+            .iter()
+            .any(|array| array.anchor == at);
+        PARSED.with(|parsed| {
+            set_formula(
+                model,
+                &mut parsed.borrow_mut(),
+                position,
+                formula,
+                intersect,
+            )
+        })
     }
 }
 
