@@ -2086,7 +2086,7 @@ where
             self.document_east_asian_rules.compatibility_mode,
         )
         .unwrap_or_else(|| {
-            compute_table_x(
+            compute_inline_body_table_x(
                 self.margin_left,
                 available_width,
                 table_width,
@@ -2095,6 +2095,7 @@ where
                     table,
                     self.document_east_asian_rules.compatibility_mode,
                 ) - modern_leading_border_half_px(table, layout_config.word_modern_border_insets),
+                self.document_east_asian_rules.compatibility_mode,
             )
         });
         let left_edge = table_x;
@@ -2739,7 +2740,7 @@ where
                 self.current_y += mb;
             }
             // Word hangs the bottom border below an exact last row: Mac's
-            // table-diagonal-borders and Windows' mode-15 table border sweep.
+            // table-diagonal-borders and Windows' mode-12/14/15 border sweeps.
             None if last_row_bottom_border > 0.0 => {
                 if word_exact_row_hangs_bottom_border(
                     self.document_east_asian_rules.compatibility_mode,
@@ -6940,6 +6941,57 @@ fn modern_leading_border_half_px(table: &Table, enabled: bool) -> f64 {
     visible_border_width(&border) * 0.5
 }
 
+/// Windows Word modes 12 and 14 distinguish omitted indentation from an
+/// explicit zero: only the latter hangs the leading cell margin. Center/right
+/// placement ignores indentation; right placement adds the leading cell inset.
+/// Mac retains its existing text-edge rule.
+fn compute_inline_body_table_x(
+    base_left: f64,
+    available_width: f64,
+    table_width: f64,
+    table: &Table,
+    leading_text_inset: f64,
+    compatibility_mode: Option<u32>,
+) -> f64 {
+    let x = compute_table_x(
+        base_left,
+        available_width,
+        table_width,
+        table,
+        leading_text_inset,
+    );
+    if jade_docx_layout::line_metrics::word_layout_platform()
+        != jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+        || !compatibility_mode.is_some_and(|mode| matches!(mode, 12 | 14))
+        || leading_text_inset <= 0.0
+        || table.bidi_visual
+        || table.cell_spacing.is_some_and(|spacing| spacing != 0.0)
+        || table
+            .style
+            .get("margin-left")
+            .is_some_and(|value| value.trim().eq_ignore_ascii_case("auto"))
+    {
+        return x;
+    }
+    let indent = table
+        .style
+        .get("margin-left")
+        .and_then(|value| parse_length_to_px(value))
+        .unwrap_or(0.0);
+    match table.style.get("text-align").map(|value| value.trim()) {
+        Some(value)
+            if value.eq_ignore_ascii_case("center") || value.eq_ignore_ascii_case("centre") =>
+        {
+            x - indent
+        }
+        Some(value) if value.eq_ignore_ascii_case("right") || value.eq_ignore_ascii_case("end") => {
+            x - indent + leading_text_inset
+        }
+        _ if !table.style.contains_key("margin-left") => x + leading_text_inset,
+        _ => x,
+    }
+}
+
 fn compute_table_x(
     base_left: f64,
     available_width: f64,
@@ -8870,6 +8922,9 @@ fn word_modern_nested_border_frame_enabled(compatibility_mode: Option<u32>) -> b
 fn word_exact_row_hangs_bottom_border(compatibility_mode: Option<u32>) -> bool {
     jade_docx_layout::line_metrics::word_layout_platform()
         == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
+        || (jade_docx_layout::line_metrics::word_layout_platform()
+            == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+            && compatibility_mode.is_some_and(|mode| matches!(mode, 12 | 14)))
         || compatibility_mode.is_some_and(|mode| mode >= 15)
 }
 
@@ -19345,6 +19400,58 @@ mod tests {
             .insert("text-align".to_string(), "right".to_string());
         let right = compute_table_x(100.0, 400.0, 240.0, &table, 0.0);
         assert!((right - (100.0 + points_to_px(24.0) + 160.0)).abs() < 0.01);
+    }
+
+    #[test]
+    fn windows_legacy_inline_offsets_preserve_mac_and_unmeasured_contexts() {
+        use jade_docx_layout::line_metrics::{
+            set_word_layout_platform, word_layout_platform, WordLayoutPlatform,
+        };
+        let previous = word_layout_platform();
+        let mut table = Table {
+            rows: vec![TableRow {
+                cells: vec![TableCell::default()],
+                ..Default::default()
+            }],
+            ..Default::default()
+        };
+        for platform in [WordLayoutPlatform::Mac, WordLayoutPlatform::Windows] {
+            set_word_layout_platform(platform);
+            for mode in [None, Some(11), Some(12), Some(14), Some(15)] {
+                table.style.clear();
+                let legacy_windows =
+                    platform == WordLayoutPlatform::Windows && matches!(mode, Some(12 | 14));
+                let x = compute_inline_body_table_x(100.0, 400.0, 240.0, &table, 8.0, mode);
+                assert_eq!(x, if legacy_windows { 100.0 } else { 92.0 });
+                table.style.insert("margin-left".into(), "0pt".into());
+                assert_eq!(
+                    compute_inline_body_table_x(100.0, 400.0, 240.0, &table, 8.0, mode),
+                    92.0
+                );
+                table.style.insert("margin-left".into(), "18pt".into());
+                table.style.insert("text-align".into(), "right".into());
+                let base = compute_table_x(100.0, 400.0, 240.0, &table, 8.0);
+                assert_eq!(
+                    compute_inline_body_table_x(100.0, 400.0, 240.0, &table, 8.0, mode),
+                    if legacy_windows { 268.0 } else { base }
+                );
+                // Captures establish ordinary, contiguous inline body tables.
+                // Other contexts retain their policy until separately measured.
+                table.cell_spacing = Some(2.0);
+                assert_eq!(
+                    compute_inline_body_table_x(100.0, 400.0, 240.0, &table, 8.0, mode),
+                    base
+                );
+                table.cell_spacing = None;
+                table.bidi_visual = true;
+                assert_eq!(
+                    compute_inline_body_table_x(100.0, 400.0, 240.0, &table, 8.0, mode),
+                    compute_table_x(100.0, 400.0, 240.0, &table, 8.0)
+                );
+                table.bidi_visual = false;
+            }
+        }
+        set_word_layout_platform(previous);
     }
 
     #[test]
