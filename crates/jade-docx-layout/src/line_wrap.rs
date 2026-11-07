@@ -8444,7 +8444,13 @@ fn measure_tab_segment<C: LineWrapContext>(
     snap_to_chars_cell_width_cache: &mut FxHashMap<SnapToCharsCacheKey, f64>,
 ) -> Result<(f64, Option<f64>), C::Error> {
     let mut width = 0.0;
-    let windows = paragraph_style.word_platform == crate::line_metrics::WordLayoutPlatform::Windows;
+    // Nondecimal tab lookahead needs only the total advance. Avoid numeric
+    // scanning in those common paths (including implicit default tabs).
+    let windows = paragraph_style.word_platform == crate::line_metrics::WordLayoutPlatform::Windows
+        && paragraph_style
+            .tab_stops
+            .iter()
+            .any(|stop| stop.alignment == TabAlignment::Decimal);
     let mut decimal_prefix_width = None;
     let mut decimal_has_digit = false;
     let mut run_index = start_run_index;
