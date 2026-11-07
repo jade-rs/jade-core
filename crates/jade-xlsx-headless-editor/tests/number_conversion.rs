@@ -3,6 +3,58 @@ use jade_xlsx_headless_api::CellInput;
 use jade_xlsx_headless_editor::HeadlessWorkbook;
 
 #[test]
+fn convert_range_values_and_unit_axes_keep_spills_through_history_and_save() {
+    let mut package = OpcPackage::open(include_bytes!(
+        "../../../public/fixtures/sample-workbook.xlsx"
+    ))
+    .unwrap();
+    package.replace("xl/worksheets/sheet1.xml", br#"<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData/></worksheet>"#.to_vec());
+    let mut book = HeadlessWorkbook::open_for_editing(&package.write().unwrap()).unwrap();
+    let name = "売上サマリ";
+    for (at, value) in [
+        ("B1", CellInput::Error("#N/A".into())),
+        ("B2", CellInput::Number(32.0)),
+        ("C1", CellInput::Text("F".into())),
+        ("D1", CellInput::Text("C".into())),
+        ("E1", CellInput::Text("K".into())),
+        (
+            "F1",
+            CellInput::Formula("ROUND(CONVERT(B1:B2,C1,D1:E1),6)".into()),
+        ),
+        ("J1", CellInput::Formula("ROWS(F1#)*COLUMNS(F1#)".into())),
+    ] {
+        book.set(name, at, value).unwrap();
+    }
+    assert_eq!(book.cell(name, "F1").unwrap().display, "#N/A");
+    assert_eq!(book.cell(name, "F2").unwrap().number, Some(0.0));
+    assert_eq!(book.cell(name, "G2").unwrap().number, Some(273.15));
+    book.set(name, "B1", CellInput::Number(68.0)).unwrap();
+    assert_eq!(book.cell(name, "F1").unwrap().number, Some(20.0));
+    assert_eq!(book.cell(name, "G1").unwrap().number, Some(293.15));
+    book.set(name, "D1", CellInput::Text("invalid".into()))
+        .unwrap();
+    assert_eq!(book.cell(name, "F1").unwrap().display, "#N/A");
+    assert_eq!(book.cell(name, "G1").unwrap().number, Some(293.15));
+    book.undo().unwrap();
+    assert_eq!(book.cell(name, "F1").unwrap().number, Some(20.0));
+    book.redo().unwrap();
+    assert_eq!(book.cell(name, "F1").unwrap().display, "#N/A");
+    book.undo().unwrap();
+    book.undo().unwrap();
+    let saved = book.save_bytes().unwrap();
+    for reopened in [
+        HeadlessWorkbook::open(&saved).unwrap(),
+        HeadlessWorkbook::open_for_editing(&saved).unwrap(),
+    ] {
+        assert_eq!(reopened.cell(name, "F1").unwrap().display, "#N/A");
+        assert_eq!(reopened.cell(name, "G1").unwrap().display, "#N/A");
+        assert_eq!(reopened.cell(name, "F2").unwrap().number, Some(0.0));
+        assert_eq!(reopened.cell(name, "G2").unwrap().number, Some(273.15));
+        assert_eq!(reopened.cell(name, "J1").unwrap().number, Some(4.0));
+    }
+}
+
+#[test]
 fn celsius_conversion_follows_temperature_and_unit_edits_through_save() {
     let mut package = OpcPackage::open(include_bytes!(
         "../../../public/fixtures/sample-workbook.xlsx"

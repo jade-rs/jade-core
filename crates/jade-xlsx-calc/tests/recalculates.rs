@@ -7,6 +7,33 @@ use jade_xlsx_reader::{read_xlsx, CellRef, CellValue};
 use zip::write::SimpleFileOptions;
 
 #[test]
+fn convert_broadcasts_values_and_unit_axes_with_per_element_errors() {
+    assert_formulas(
+        &[
+            r#"ARRAYTOTEXT(CONVERT({1;2},"m",{"cm","km"}),1)"#,
+            r#"ARRAYTOTEXT(CONVERT(1,{"m";"g"},{"cm","kg"}),1)"#,
+            r#"ARRAYTOTEXT(ROUND(CONVERT({68;32},"F",{"C","K"}),2),1)"#,
+            r#"ARRAYTOTEXT(CONVERT({1;#N/A},"m",{"cm",#DIV/0!}),1)"#,
+            r#"ARRAYTOTEXT(CONVERT({1,2},"m",{"M","日本語"}),1)"#,
+            r#"TYPE(CONVERT({1},"m","cm"))"#,
+            r#"ARRAYTOTEXT(CONVERT({1;2},"kibyte",{"byte","bit"}),1)"#,
+            r#"ARRAYTOTEXT(CONVERT({1;2},"kiB",{"byte","bit"}),1)"#,
+        ],
+        &[
+            CellValue::Text("{100,0.001;200,0.002}".into()),
+            CellValue::Text("{100,#N/A;#N/A,0.001}".into()),
+            CellValue::Text("{20,293.15;0,273.15}".into()),
+            CellValue::Text("{100,#DIV/0!;#N/A,#N/A}".into()),
+            CellValue::Text("{#N/A,#N/A}".into()),
+            CellValue::Number(64.0),
+            CellValue::Text("{1024,8192;2048,16384}".into()),
+            CellValue::Text("{#N/A,#N/A;#N/A,#N/A}".into()),
+        ],
+        false,
+    );
+}
+
+#[test]
 fn convert_celsius_uses_the_kelvin_offset_in_both_directions() {
     assert_formulas(
         &[

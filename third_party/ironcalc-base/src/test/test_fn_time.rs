@@ -695,6 +695,12 @@ fn date_and_time_broadcast_check_product_size_before_allocating_the_result() {
     for index in 0..3 {
         assert_eq!(model._get_text(&format!("A{}", 63 + index)), "#ERROR!");
     }
+    model._set(
+        "A66",
+        "=CONVERT(SEQUENCE(1001,1,1),\"m\",IF(SEQUENCE(1,1001,1),\"cm\"))",
+    );
+    model.evaluate();
+    assert_eq!(model._get_text("A66"), "#ERROR!");
 }
 
 #[test]
