@@ -2827,6 +2827,33 @@ impl HeadlessWorkbook {
             count,
             inserted,
         };
+        // Structural edits must move or remove a whole CSE area. Check its
+        // declared bounds, including unstored members of held/large arrays.
+        // Leave zero-count validation to the writer as before.
+        if count != 0 {
+            for array in self.workbook.sheets[index]
+                .array_formulas
+                .iter()
+                .filter(|array| array.kind == jade_xlsx_reader::ArrayFormulaKind::Legacy)
+            {
+                let (start, end) = match axis {
+                    Axis::Rows => (array.range.start.row, array.range.end.row),
+                    Axis::Columns => (array.range.start.column, array.range.end.column),
+                };
+                let splits = if inserted {
+                    (start < at && at <= end) || (at <= start && change.map_index(end).is_none())
+                } else {
+                    let last = at.saturating_add(count - 1);
+                    at <= end && start <= last && !(at <= start && end <= last)
+                };
+                if splits {
+                    return Err(HeadlessError::PartialLegacyArray {
+                        sheet: change.sheet.clone(),
+                        range: format_range(array.range),
+                    });
+                }
+            }
+        }
         let written = jade_xlsx_writer::restructure(&self.source, &self.workbook, &change)?;
         self.workbook = jade_xlsx_reader::read_xlsx(&written)?;
         let before = std::mem::replace(&mut self.source, written);
