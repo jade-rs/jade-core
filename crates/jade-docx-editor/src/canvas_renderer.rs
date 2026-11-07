@@ -19218,9 +19218,11 @@ where
                 pending_note_separator = None;
                 let segment_start = current_pos;
                 let suppress_line_height = run.suppresses_line_height_contribution();
-                let mut effective_props = resolved_run_properties.as_deref().cloned();
+                // Keep the cached identity for ordinary text; isolate any
+                // property changes made for rendering decorations.
+                let mut effective_props = resolved_run_properties;
                 if run.hyperlink.is_some() {
-                    let props = effective_props.get_or_insert_with(RunProperties::default);
+                    let props = Rc::make_mut(effective_props.get_or_insert_with(Rc::default));
                     if props.underline.is_none() {
                         props.underline = Some(true);
                     }
@@ -19234,7 +19236,7 @@ where
                         .as_ref()
                         .filter(|mark| revision_view.marks_up(mark))
                     {
-                        let props = effective_props.get_or_insert_with(RunProperties::default);
+                        let props = Rc::make_mut(effective_props.get_or_insert_with(Rc::default));
                         let (default_color, struck) = match mark.kind {
                             RevisionKind::Inserted => (REVISION_INSERTED_COLOR, false),
                             RevisionKind::Deleted => (REVISION_DELETED_COLOR, true),
@@ -19270,8 +19272,7 @@ where
                 if let Some(RunFieldKind::EqEnclosed { enclosure, .. }) =
                     run.field.as_ref().map(|field| field.kind.base_kind())
                 {
-                    effective_props
-                        .get_or_insert_with(RunProperties::default)
+                    Rc::make_mut(effective_props.get_or_insert_with(Rc::default))
                         .text_effects
                         .get_or_insert_with(Default::default)
                         .enclosure = Some(Rc::from(enclosure.as_str()));
@@ -19282,9 +19283,8 @@ where
                     .as_ref()
                     .and_then(|field| field.kind.eq_ruby_annotation())
                 {
-                    effective_props
-                        .get_or_insert_with(RunProperties::default)
-                        .ruby = Some(Box::new(ruby));
+                    Rc::make_mut(effective_props.get_or_insert_with(Rc::default)).ruby =
+                        Some(Box::new(ruby));
                 }
                 // w:smallCaps: split into sub-runs so lowercase-origin characters
                 // render as smaller capitals while uppercase/digits/punctuation
@@ -19293,7 +19293,7 @@ where
                 // set, since smallCaps then sees no lowercase characters.
                 if small_caps_enabled {
                     let base_size = self
-                        .resolve_applied_run_style_uncached(effective_props.as_ref())
+                        .resolve_applied_run_style_uncached(effective_props.as_deref())
                         .font_size_pt;
                     for (chunk_text, scaled) in Self::split_small_caps_segments(&segment) {
                         if chunk_text.is_empty() {
@@ -19308,13 +19308,13 @@ where
 
                         let mut chunk_props = effective_props.clone();
                         if scaled {
-                            let props = chunk_props.get_or_insert_with(RunProperties::default);
+                            let props = Rc::make_mut(chunk_props.get_or_insert_with(Rc::default));
                             props.font_size = Some(base_size * SMALL_CAPS_SCALE);
                         }
                         run_styles.push(RunStyle {
                             start: start_pos,
                             end: current_pos,
-                            properties: chunk_props.map(Rc::new),
+                            properties: chunk_props,
                             revision: run.revision.clone(),
                             hyperlink: run.hyperlink.clone(),
                             inline_object: None,
@@ -19322,7 +19322,7 @@ where
                     }
                 } else if let Some(chunks) = self.combined_character_chunks(
                     &segment,
-                    effective_props.as_ref(),
+                    effective_props.as_deref(),
                     &paragraph_style,
                 )? {
                     // 組み文字 / 割注: two half-size lines stacked in one
@@ -19354,7 +19354,7 @@ where
                     run_styles.push(RunStyle {
                         start: start_pos,
                         end: current_pos,
-                        properties: effective_props.map(Rc::new),
+                        properties: effective_props,
                         revision: run.revision.clone(),
                         hyperlink: run.hyperlink.clone(),
                         inline_object: None,
@@ -37155,7 +37155,7 @@ where
 
     fn apply_eq_distributed_text_scale(
         &self,
-        properties: &mut Option<RunProperties>,
+        properties: &mut Option<Rc<RunProperties>>,
         display_text: &str,
         guide_text: &str,
         paragraph_style: Option<&ParagraphStyle>,
@@ -37170,7 +37170,7 @@ where
             return Ok(());
         }
 
-        let style = self.resolve_applied_run_style_uncached(properties.as_ref());
+        let style = self.resolve_applied_run_style_uncached(properties.as_deref());
         let display_width =
             self.measure_text_with_spacing(display_text, &style, paragraph_style)?;
         let guide_width = self.measure_text_with_spacing(guide_text, &style, paragraph_style)?;
@@ -37185,9 +37185,7 @@ where
             return Ok(());
         };
 
-        properties
-            .get_or_insert_with(RunProperties::default)
-            .text_scale = Some(scale_percent);
+        Rc::make_mut(properties.get_or_insert_with(Rc::default)).text_scale = Some(scale_percent);
         Ok(())
     }
 
@@ -45090,6 +45088,214 @@ mod tests {
         );
     }
 
+    /// Rendering-only decorations must not become the cached source for a
+    /// neighboring run, a later paint, or a direct formatting edit.
+    #[test]
+    fn render_decorations_leave_shared_effective_properties_unchanged() {
+        use jade_docx_reader::document::{EastAsianLayout, RunHyperlink};
+        use jade_painter::recording::Op;
+
+        for case in 0..15 {
+            let mut run = build_run(Some(RunProperties {
+                font_size: Some(12.0),
+                ..RunProperties::default()
+            }));
+            run.text = "Abc Z".into();
+            match case {
+                0 => {}
+                1 | 2 => {
+                    run.hyperlink = Some(RunHyperlink {
+                        anchor: Some("target".into()),
+                        ..Default::default()
+                    });
+                    if case == 2 {
+                        let props = run.properties.as_mut().unwrap();
+                        props.color = Some("#123456".into());
+                        props.underline = Some(false);
+                    }
+                }
+                3..=6 => {
+                    run.revision = build_revision_run(match case {
+                        3 => RevisionKind::Inserted,
+                        4 => RevisionKind::Deleted,
+                        5 => RevisionKind::MovedFrom,
+                        _ => RevisionKind::MovedTo,
+                    })
+                    .revision;
+                }
+                7 | 8 => {
+                    let props = run.properties.as_mut().unwrap();
+                    props.small_caps = Some(true);
+                    props.caps = (case == 8).then_some(true);
+                }
+                9..=13 => {
+                    run.field = Some(RunField {
+                        kind: match case {
+                            9 | 10 => RunFieldKind::EqDistributed {
+                                text: "Abc Z".into(),
+                                guide: if case == 9 { "longer guide" } else { "\t" }.into(),
+                            },
+                            11 => RunFieldKind::EqEnclosed {
+                                text: "秘".into(),
+                                enclosure: "○".into(),
+                            },
+                            12 => RunFieldKind::EqRuby {
+                                text: "漢字".into(),
+                                guide: "かんじ".into(),
+                                align: Some("center".into()),
+                                size_half_points: Some(12),
+                                raise_points: 12,
+                            },
+                            _ => RunFieldKind::EqEnclosed {
+                                text: "秘".into(),
+                                enclosure: "○".into(),
+                            }
+                            .with_lock(true),
+                        },
+                        word_mac_body_result: None,
+                        cached_text: None,
+                        source_field_id: None,
+                        resolved_value: None,
+                    });
+                }
+                _ => {
+                    run.properties.as_mut().unwrap().east_asian_layout =
+                        Some(Box::new(EastAsianLayout {
+                            combine: true,
+                            ..Default::default()
+                        }));
+                }
+            }
+
+            let painter = jade_painter::recording::RecordingPainter::with_width_per_char(8.0);
+            let mut renderer = CanvasRenderer::with_host(
+                Box::new(NonCanvasHost {
+                    painter: painter.clone(),
+                }),
+                true,
+            )
+            .unwrap();
+            let mut document = doc_with_paragraph_texts(&[""]);
+            let BodyElement::Paragraph(paragraph) =
+                &mut document.body.as_mut().unwrap().elements[0]
+            else {
+                unreachable!()
+            };
+            let mut neighbor = build_run(run.properties.clone());
+            neighbor.text = " NEXT".into();
+            paragraph.runs = vec![run, neighbor];
+            let original =
+                renderer.effective_run_properties(paragraph, paragraph.runs[0].properties.as_ref());
+            let shared = renderer
+                .effective_run_properties_rc(paragraph, paragraph.runs[0].properties.as_ref());
+            let options = Options {
+                render_changes: true,
+                show_formatting_marks: false,
+                ..Default::default()
+            };
+            // A changed neighboring run forces layout again while the first
+            // run keeps the same shared source and applied-style identity.
+            for suffix in [" NEXT", " EDITED", " NEXT"] {
+                let BodyElement::Paragraph(paragraph) =
+                    &mut document.body.as_mut().unwrap().elements[0]
+                else {
+                    unreachable!()
+                };
+                paragraph.runs[1].text = suffix.into();
+                painter.clear();
+                renderer.render(&document, &options).unwrap();
+                assert_eq!(shared.as_deref(), original.as_ref(), "case {case}");
+                let BodyElement::Paragraph(paragraph) =
+                    &document.body.as_ref().unwrap().elements[0]
+                else {
+                    unreachable!()
+                };
+                assert_eq!(
+                    renderer
+                        .effective_run_properties_rc(
+                            paragraph,
+                            paragraph.runs[0].properties.as_ref()
+                        )
+                        .as_deref(),
+                    original.as_ref(),
+                    "case {case}: decorated properties escaped into resolution"
+                );
+                assert!(painter.count(|op| matches!(op, Op::FillText(..))) > 0);
+
+                let fresh_painter =
+                    jade_painter::recording::RecordingPainter::with_width_per_char(8.0);
+                let mut fresh = CanvasRenderer::with_host(
+                    Box::new(NonCanvasHost {
+                        painter: fresh_painter.clone(),
+                    }),
+                    true,
+                )
+                .unwrap();
+                fresh.render(&document, &options).unwrap();
+                assert_eq!(
+                    serde_json::to_value(renderer.layout_debug_lines()).unwrap(),
+                    serde_json::to_value(fresh.layout_debug_lines()).unwrap(),
+                    "case {case}: warm layout differs from a fresh render"
+                );
+                let glyphs = |painter: &jade_painter::recording::RecordingPainter| {
+                    painter
+                        .ops()
+                        .into_iter()
+                        .filter(|op| matches!(op, Op::FillText(..) | Op::StrokeText(..)))
+                        .collect::<Vec<_>>()
+                };
+                assert_eq!(glyphs(&painter), glyphs(&fresh_painter), "case {case}");
+            }
+        }
+    }
+
+    #[test]
+    fn small_caps_render_keeps_full_sized_chunks_and_plain_neighbors() {
+        use jade_painter::recording::Op;
+        let (mut renderer, painter) = recording_renderer();
+        let mut document = doc_with_paragraph_texts(&[""]);
+        let BodyElement::Paragraph(paragraph) = &mut document.body.as_mut().unwrap().elements[0]
+        else {
+            unreachable!()
+        };
+        let mut small = build_run(Some(RunProperties {
+            font_size: Some(12.0),
+            small_caps: Some(true),
+            ..Default::default()
+        }));
+        small.text = "Abc Z".into();
+        let mut plain = build_run(Some(RunProperties {
+            font_size: Some(12.0),
+            ..Default::default()
+        }));
+        plain.text = "q".into();
+        paragraph.runs = vec![small, plain];
+        renderer
+            .render(&document, &options_for_seek_tests())
+            .unwrap();
+        let mut font = String::new();
+        let mut painted = Vec::new();
+        for op in painter.ops() {
+            match op {
+                Op::SetFont(value) => font = value,
+                Op::FillText(text, _, _) if !text.trim().is_empty() => {
+                    painted.push((text, font.split_whitespace().next().unwrap().to_string()));
+                }
+                _ => {}
+            }
+        }
+        assert_eq!(
+            painted,
+            vec![
+                ("A".into(), "12.00pt".into()),
+                ("B".into(), "9.00pt".into()),
+                ("C".into(), "9.00pt".into()),
+                ("Z".into(), "12.00pt".into()),
+                ("q".into(), "12.00pt".into()),
+            ]
+        );
+    }
+
     #[test]
     fn text_box_runs_inherit_paragraph_and_document_font_properties() {
         let (mut renderer, _) = recording_renderer();
@@ -48975,6 +49181,37 @@ mod tests {
         // visible document. Bypass the common cache fallback just like SET and
         // ASK, while retaining the cache in the model for round-trip fidelity.
         assert_eq!(renderer.resolve_run_field(&field), None);
+    }
+
+    #[test]
+    fn eq_distributed_scaling_preserves_shared_source_and_noop_identity() {
+        let painter = jade_painter::recording::RecordingPainter::with_width_per_char(8.0);
+        let renderer =
+            CanvasRenderer::with_host(Box::new(NonCanvasHost { painter }), true).unwrap();
+        let source = Rc::new(RunProperties {
+            text_scale: Some(80.0),
+            ..Default::default()
+        });
+        let mut scaled = Some(Rc::clone(&source));
+        renderer
+            .apply_eq_distributed_text_scale(&mut scaled, "ab", "abcd", None)
+            .unwrap();
+        assert_eq!(source.text_scale, Some(80.0));
+        assert!(scaled.as_ref().unwrap().text_scale.unwrap() > 80.0);
+        assert!(!Rc::ptr_eq(&source, scaled.as_ref().unwrap()));
+
+        for (text, guide) in [("", "abc"), ("ab", ""), ("a\tb", "abc"), ("ab", "a\nb")] {
+            let mut unchanged = Some(Rc::clone(&source));
+            renderer
+                .apply_eq_distributed_text_scale(&mut unchanged, text, guide, None)
+                .unwrap();
+            assert!(Rc::ptr_eq(&source, unchanged.as_ref().unwrap()));
+            let mut absent = None;
+            renderer
+                .apply_eq_distributed_text_scale(&mut absent, text, guide, None)
+                .unwrap();
+            assert!(absent.is_none());
+        }
     }
 
     #[test]
