@@ -265,12 +265,15 @@ fn windows_word_arial_edge_origins() {
                 "word-windows-edge-table-spacing-at-least-continuation-compat12",
                 "word-windows-edge-table-spacing-at-least-continuation-compat14",
                 "word-windows-edge-table-spacing-at-least-continuation-compat15",
+                "word-windows-edge-table-spacing-mixed-borders-compat12",
+                "word-windows-edge-table-spacing-mixed-borders-compat14",
+                "word-windows-edge-table-spacing-mixed-borders-compat15",
             ]
             .map(str::to_owned)
         )
     );
     assert!(
-        checked >= 38361,
+        checked >= 41469,
         "do not silently remove edge-case coverage"
     );
 }
