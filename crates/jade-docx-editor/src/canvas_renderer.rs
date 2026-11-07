@@ -38673,6 +38673,7 @@ mod tests {
     mod decoration_histories;
     mod numbering_snapshot_histories;
     mod numbering_width_histories;
+    mod paragraph_render_hash_tests;
     mod revision_snapshot_histories;
 
     // Vary topology and coordinates independently of the snapshot implementation.
