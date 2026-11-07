@@ -833,6 +833,22 @@ struct HorizontalBorderBands {
 
 impl HorizontalBorderBands {
     fn for_row(cells: &[PreparedCell], reserve_bottom: bool) -> Self {
+        if !reserve_bottom
+            && jade_docx_layout::line_metrics::word_layout_platform()
+                == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+            && cells.iter().any(|cell| cell.cell_spacing > f64::EPSILON)
+        {
+            let content_bottom = cells
+                .iter()
+                .filter(|cell| !cell.skip_render)
+                .map(PreparedCell::bottom_border_extent)
+                .fold(0.0_f64, f64::max);
+            return Self {
+                top: 0.0,
+                bottom: 0.0,
+                content_bottom,
+            };
+        }
         // The widest rule along the edge, and whether its cells disagree.
         let extent = |top: bool| {
             let mut minimum = f64::INFINITY;
@@ -1012,6 +1028,16 @@ fn spaced_cell_border_rect(
         };
     }
     let rect = spaced_cell_rect(x, y, width, height, cell.cell_spacing);
+    if jade_docx_layout::line_metrics::word_layout_platform()
+        == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+    {
+        return CellBorderRect {
+            x: rect.x,
+            y,
+            width: rect.width,
+            height,
+        };
+    }
     let left = visible_border_width(&cell.border_left) * 0.5;
     let right = visible_border_width(&cell.border_right) * 0.5;
     CellBorderRect {
@@ -2604,6 +2630,7 @@ where
                 };
                 let mut segment_starts_page = !self.pageless_mode
                     && (self.current_y - self.margin_top).abs() <= ROW_SPLIT_EPSILON;
+                let mut continued_row_opening_rule = 0.0;
                 if self.ensure_table_row_space(required_height)? {
                     self.configure_table_context();
                     segment_starts_page = true;
@@ -2633,11 +2660,20 @@ where
                     } else if row_start && first_visible_row != Some(row_index) {
                         // A fresh page has no preceding row to reserve its
                         // opening rule. Repeated headers already provide it.
-                        self.current_y += pending_cells
+                        let opening_rule = pending_cells
                             .iter()
                             .filter(|cell| !cell.skip_render)
                             .map(|cell| cell.top_border_extent())
                             .fold(0.0_f64, f64::max);
+                        if resolve_cell_spacing_px(row, table) > f64::EPSILON
+                            && !row_grows_for_borders(row)
+                            && jade_docx_layout::line_metrics::word_layout_platform()
+                                == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+                        {
+                            continued_row_opening_rule = opening_rule;
+                        } else {
+                            self.current_y += opening_rule;
+                        }
                     }
                 }
                 // The whole row lands on the current page (after any advance
@@ -2668,6 +2704,7 @@ where
                         )?;
                     }
                 }
+                pending_height += continued_row_opening_rule;
                 let mut render_cells = pending_cells;
                 let slot_scale =
                     prepared_spacing_slot_scale(row, table, &render_cells, table_width);
@@ -2704,7 +2741,16 @@ where
                         x: left_edge,
                         y: self.current_y,
                         width: right_edge - left_edge,
-                        height: pending_height,
+                        height: pending_height
+                            + if last_visible_row == Some(row_index)
+                                && !row_grows_for_borders(row)
+                                && jade_docx_layout::line_metrics::word_layout_platform()
+                                    == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+                            {
+                                resolve_cell_spacing_px(row, table)
+                            } else {
+                                0.0
+                            },
                         draw_top: row_start && first_visible_row == Some(row_index),
                         draw_bottom: last_visible_row == Some(row_index),
                     },
@@ -2734,6 +2780,16 @@ where
             }
         }
 
+        if jade_docx_layout::line_metrics::word_layout_platform()
+            == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+        {
+            if let Some(row) = last_visible_row_index
+                .and_then(|index| table.rows.get(index))
+                .filter(|row| !row_grows_for_borders(row))
+            {
+                self.current_y += resolve_cell_spacing_px(row, table);
+            }
+        }
         let table_end_y = self.current_y;
         match margin_bottom {
             Some(mb) => {
@@ -2820,6 +2876,22 @@ where
         slot_scale: f64,
         reserve_bottom: bool,
     ) -> Result<f64, JsValue> {
+        if segment_starts_page
+            && row_start
+            && !reserve_bottom
+            && jade_docx_layout::line_metrics::word_layout_platform()
+                == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+        {
+            for cell in row_layout.iter_mut().filter(|cell| {
+                cell.cell_spacing > f64::EPSILON
+                    && cell.page_top_inset <= cell.top_border_extent() + f64::EPSILON
+            }) {
+                let inset = 2.0 * cell.top_border_extent();
+                cell.padding.top += inset - cell.page_top_inset;
+                cell.height += inset - cell.page_top_inset;
+                cell.page_top_inset = inset;
+            }
+        }
         let bands = HorizontalBorderBands::for_row(row_layout, reserve_bottom);
         let y_top = self.current_y;
         let absolute_top = self.page_offset_y + y_top;
@@ -6899,6 +6971,10 @@ fn modern_leading_border_half_px(table: &Table, enabled: bool) -> f64 {
     if !enabled {
         return 0.0;
     }
+    leading_cell_border_half_px(table, false)
+}
+
+fn leading_cell_border_half_px(table: &Table, include_spacing: bool) -> f64 {
     let visible_row_count = table
         .rows
         .iter()
@@ -6908,7 +6984,7 @@ fn modern_leading_border_half_px(table: &Table, enabled: bool) -> f64 {
         return 0.0;
     };
     let cell_spacing = resolve_cell_spacing_px(row, table);
-    if row.grid_before.unwrap_or(0) > 0 || cell_spacing > f64::EPSILON {
+    if row.grid_before.unwrap_or(0) > 0 || (!include_spacing && cell_spacing > f64::EPSILON) {
         return 0.0;
     }
     let Some(cell) = row.cells.first() else {
@@ -6960,12 +7036,45 @@ fn compute_inline_body_table_x(
         table,
         leading_text_inset,
     );
-    if jade_docx_layout::line_metrics::word_layout_platform()
-        != jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
-        || !compatibility_mode.is_some_and(|mode| matches!(mode, 12 | 14))
-        || leading_text_inset <= 0.0
-        || table.bidi_visual
-        || table.cell_spacing.is_some_and(|spacing| spacing != 0.0)
+    let windows = jade_docx_layout::line_metrics::word_layout_platform()
+        == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows;
+    if !windows {
+        return x;
+    }
+    let first_row = table.rows.iter().find(|row| !table_row_is_hidden(row));
+    let spacing = first_row.map_or(0.0, |row| resolve_cell_spacing_px(row, table));
+    let ignored_indent = table
+        .style
+        .get("table-indent-width-type")
+        .is_some_and(|kind| matches!(kind.as_str(), "auto" | "pct"));
+    if !ignored_indent
+        && !table.bidi_visual
+        && spacing > f64::EPSILON
+        && !table.style.contains_key("margin-left")
+        && compatibility_mode.is_some_and(|mode| mode >= 15)
+    {
+        let row = first_row.expect("spacing requires a row");
+        return match table.style.get("text-align").map(|value| value.trim()) {
+            Some(value)
+                if value.eq_ignore_ascii_case("center") || value.eq_ignore_ascii_case("centre") =>
+            {
+                x
+            }
+            Some(value)
+                if value.eq_ignore_ascii_case("right") || value.eq_ignore_ascii_case("end") =>
+            {
+                x - spacing_frame_width(row, table, TableBorderSide::Right) * 0.5
+            }
+            _ => x + spacing_frame_width(row, table, TableBorderSide::Left) * 0.5,
+        };
+    }
+    if !compatibility_mode.is_some_and(|mode| matches!(mode, 12 | 14))
+        || leading_text_inset < 0.0
+        || (table.bidi_visual
+            && (leading_text_inset == 0.0 || table.style.contains_key("margin-left")))
+        || ignored_indent
+        || (spacing > f64::EPSILON
+            && (table.bidi_visual || table.style.contains_key("margin-left")))
         || table
             .style
             .get("margin-left")
@@ -6978,16 +7087,38 @@ fn compute_inline_body_table_x(
         .get("margin-left")
         .and_then(|value| parse_length_to_px(value))
         .unwrap_or(0.0);
+    let border_bias = if spacing > f64::EPSILON {
+        0.0
+    } else {
+        (modern_leading_border_half_px(table, true) - leading_text_inset).max(0.0)
+    };
+    let spaced_leading_border = if spacing > f64::EPSILON {
+        2.0 * leading_cell_border_half_px(table, true)
+    } else {
+        0.0
+    };
+    let directed_indent = if table.bidi_visual { -indent } else { indent };
     match table.style.get("text-align").map(|value| value.trim()) {
         Some(value)
             if value.eq_ignore_ascii_case("center") || value.eq_ignore_ascii_case("centre") =>
         {
-            x - indent
+            x - directed_indent + border_bias
         }
         Some(value) if value.eq_ignore_ascii_case("right") || value.eq_ignore_ascii_case("end") => {
-            x - indent + leading_text_inset
+            x - directed_indent
+                + if table.bidi_visual {
+                    0.0
+                } else {
+                    leading_text_inset + border_bias + spaced_leading_border
+                }
         }
-        _ if !table.style.contains_key("margin-left") => x + leading_text_inset,
+        _ if !table.style.contains_key("margin-left") => {
+            x + if table.bidi_visual {
+                -leading_text_inset
+            } else {
+                leading_text_inset + border_bias
+            }
+        }
         _ => x,
     }
 }
@@ -9002,6 +9133,7 @@ fn add_border_extents(
             continue;
         };
         last_visible = add_row_border_extents(
+            table,
             row,
             cells,
             height,
@@ -9124,7 +9256,9 @@ fn row_grows_for_borders(row: &TableRow) -> bool {
 
 /// `row_spans` (from [`compute_vertical_merge_row_spans`]) keeps a
 /// `w:vMerge` owner spanning more rows from sizing this one.
+#[allow(clippy::too_many_arguments)]
 fn add_row_border_extents(
+    table: &Table,
     row: &TableRow,
     cells: &mut [PreparedCell],
     height: &mut f64,
@@ -9148,6 +9282,34 @@ fn add_row_border_extents(
     } else {
         0.0
     };
+    if !grows
+        && jade_docx_layout::line_metrics::word_layout_platform()
+            == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+        && resolve_cell_spacing_px(row, table) > f64::EPSILON
+    {
+        let spacing = resolve_cell_spacing_px(row, table);
+        let row_top = cells
+            .iter()
+            .filter(|cell| !cell.skip_render)
+            .map(PreparedCell::top_border_extent)
+            .fold(0.0_f64, f64::max);
+        let outer_top = spacing_frame_width(row, table, TableBorderSide::Top);
+        *height += spacing + if *first_visible { outer_top } else { row_top };
+        for cell in cells.iter_mut() {
+            let inset = cell.top_border_extent()
+                + if *first_visible {
+                    spacing + outer_top
+                } else {
+                    0.0
+                };
+            cell.padding.top += inset;
+            cell.height += inset;
+            cell.page_top_inset = inset;
+        }
+        *first_visible = false;
+        *previous_row_grows = false;
+        return spacing_frame_width(row, table, TableBorderSide::Bottom);
+    }
     if grows {
         // The declared minimum already budgets the shared border band;
         // only larger measured content grows it here.
@@ -11031,6 +11193,21 @@ fn refresh_prepared_row_text<P: Painter<Error: PainterError>>(
         cells,
     );
     if matches!(row.height_rule, Some(TableRowHeightRule::Exact)) && row.height.is_some() {
+        if jade_docx_layout::line_metrics::word_layout_platform()
+            == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+            && resolve_cell_spacing_px(row, table) > f64::EPSILON
+        {
+            let top = if visible_row_index == 0 {
+                spacing_frame_width(row, table, TableBorderSide::Top)
+            } else {
+                cells
+                    .iter()
+                    .filter(|cell| !cell.skip_render)
+                    .map(PreparedCell::top_border_extent)
+                    .fold(0.0_f64, f64::max)
+            };
+            return Ok(height + resolve_cell_spacing_px(row, table) + top);
+        }
         return Ok(height);
     }
     Ok(height.max(bordered_content))
@@ -11320,11 +11497,18 @@ fn prepare_row_layout<P: Painter<Error: PainterError>>(
         );
 
         let border_inset = if cell_spacing > f64::EPSILON {
-            let left = visible_border_width(&border_left) * 0.5;
-            let right = visible_border_width(&border_right) * 0.5;
+            let windows = jade_docx_layout::line_metrics::word_layout_platform()
+                == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows;
+            let factor = if windows { 1.0 } else { 0.5 };
+            let left = visible_border_width(&border_left) * factor;
+            let right = visible_border_width(&border_right) * factor;
             padding.left += left;
             padding.right += right;
-            left + right
+            if windows {
+                0.0
+            } else {
+                left + right
+            }
         } else {
             0.0
         };
@@ -11855,6 +12039,7 @@ fn layout_nested_table<P: Painter<Error: PainterError>>(
         if !upper.hidden {
             let previous_height = upper.height;
             add_row_border_extents(
+                table,
                 &table.rows[boundary],
                 &mut upper.cells,
                 &mut upper.height,
@@ -11869,6 +12054,7 @@ fn layout_nested_table<P: Painter<Error: PainterError>>(
     if let Some(last) = rows.last_mut().filter(|row| !row.hidden) {
         let previous_height = last.height;
         add_row_border_extents(
+            table,
             &table.rows[last.source_index],
             &mut last.cells,
             &mut last.height,
@@ -16693,6 +16879,7 @@ mod tests {
         };
         let mut height = 40.0;
         add_row_border_extents(
+            &Table::default(),
             &exact,
             &mut exact_cells,
             &mut height,

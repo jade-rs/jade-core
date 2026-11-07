@@ -204,6 +204,8 @@ jobs:
         run: cargo test --manifest-path crates/jade-docx-native-render/Cargo.toml --locked --test word_windows_coordinates windows_word_baselines_with_bundled_standins -- --exact
       - name: Compare Windows Word paragraph and script origins with installed Arial
         run: cargo test --manifest-path crates/jade-docx-native-render/Cargo.toml --locked --test word_windows_coordinates windows_word_arial_edge_origins -- --exact
+      - name: Preserve spaced table geometry through editing and export
+        run: cargo test --manifest-path crates/jade-docx-native-render/Cargo.toml --locked --test word_windows_coordinates spaced_tables_preserve_origins_after_edit_export_and_undo -- --exact
 
   windows-native-editing:
     name: Windows native editing and font reuse
