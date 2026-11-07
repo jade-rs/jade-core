@@ -210,6 +210,11 @@ pub fn dynamic_array_metadata(package: &mut OpcPackage) -> Result<Option<u32>> {
 
 /// Resolves the referenced dynamic-array flag, not merely its metadata type.
 fn dynamic_array_index(xml: &str) -> Result<Option<u32>> {
+    if crate::array_metadata::conditional_indexes(xml)? {
+        return Err(crate::WriteError::ArrayMetadata(
+            "conditional metadata indexes cannot yet be safely reused or extended",
+        ));
+    }
     Ok(jade_xlsx_reader::array_metadata::first_dynamic_array_cell_metadata(xml)?)
 }
 
