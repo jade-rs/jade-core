@@ -7,6 +7,44 @@ use jade_xlsx_reader::{read_xlsx, CellRef, CellValue};
 use zip::write::SimpleFileOptions;
 
 #[test]
+fn complex_components_broadcast_typed_results_and_source_errors() {
+    for (function, expected) in [
+        ("IMABS", "5"),
+        ("IMREAL", "3"),
+        ("IMAGINARY", "4"),
+        ("IMCONJUGATE", r#""3-4j""#),
+    ] {
+        let formula = format!(r#"ARRAYTOTEXT({function}({{#N/A;"3+4j"}}),1)"#);
+        let singleton = format!(r#"TYPE({function}({{"3+4j"}}))"#);
+        let invalid = format!(r#"ARRAYTOTEXT({function}({{"invalid",#DIV/0!}}),1)"#);
+        assert_formulas(
+            &[&formula, &singleton, &invalid],
+            &[
+                CellValue::Text(format!("{{#N/A;{expected}}}")),
+                CellValue::Number(64.0),
+                CellValue::Text("{#NUM!,#DIV/0!}".into()),
+            ],
+            false,
+        );
+    }
+    assert_formulas(
+        &[
+            r#"ARRAYTOTEXT(COMPLEX({3;#N/A},{4,-4},"j"),1)"#,
+            r#"ARRAYTOTEXT(COMPLEX(3,4,{"i","j","I"}),1)"#,
+            r#"ARRAYTOTEXT(ROUND(IMARGUMENT({"i","-i",0,#N/A}),6),1)"#,
+            "TYPE(COMPLEX({3},4))",
+        ],
+        &[
+            CellValue::Text(r#"{"3+4j","3-4j";#N/A,#N/A}"#.into()),
+            CellValue::Text(r#"{"3+4i","3+4j",#VALUE!}"#.into()),
+            CellValue::Text("{1.570796,-1.570796,#DIV/0!,#N/A}".into()),
+            CellValue::Number(64.0),
+        ],
+        false,
+    );
+}
+
+#[test]
 fn bessel_functions_broadcast_values_orders_and_errors() {
     for (function, expected) in [
         ("BESSELI", "{1.266066,0.565159;2.279585,1.590637}"),
