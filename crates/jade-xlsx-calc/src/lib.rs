@@ -846,6 +846,20 @@ fn project_with_epoch<'a>(
             }
         }
     }
+    for (index, sheet) in workbook.sheets.iter().enumerate() {
+        for array in sheet.array_formulas.iter().filter(|array| {
+            array.kind == jade_xlsx_reader::ArrayFormulaKind::Legacy
+                && array.range.start == array.anchor
+        }) {
+            model.register_source_array_formula(
+                index as u32,
+                array.anchor.row as i32 + 1,
+                array.anchor.column as i32 + 1,
+                array.range.end.row as i32 + 1,
+                array.range.end.column as i32 + 1,
+            );
+        }
+    }
     if trace {
         model.trace_value_reads(1_000_000);
     }
