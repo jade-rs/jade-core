@@ -11,6 +11,18 @@ fn condition() {
 }
 
 #[test]
+fn condition_not_equal() {
+    for (format, expected) in [("[<>0]", 0.0), ("[<>-1.5E2]", -150.0)] {
+        let mut lexer = Lexer::new(format);
+        assert!(matches!(
+            lexer.next_token(),
+            Token::Condition(Compare::NotEqual, value) if value == expected
+        ));
+        assert!(matches!(lexer.next_token(), Token::EOF));
+    }
+}
+
+#[test]
 fn condition_negative() {
     let mut lexer = Lexer::new("[>-100]");
     let token = lexer.next_token();

@@ -722,6 +722,8 @@ impl<'a> Model<'a> {
         let cells = HashMap::new();
 
         let mut model = Model {
+            source_formulas: std::collections::HashMap::new(),
+            evaluated_arrays: std::collections::HashSet::new(),
             calculation: Default::default(),
             circular: false,
             pivot_regions: Vec::new(),

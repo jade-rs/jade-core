@@ -44,6 +44,77 @@ fn package(rows: &str) -> Vec<u8> {
 }
 
 #[test]
+fn probes_keep_error_looking_text_distinct_from_error_values() {
+    let book = read_xlsx(&package(r##"<row r="1"><c r="A1"><v>1</v></c><c r="B1" t="str"><f>IF(A1=1,"#N/A",NA())</f><v>#N/A</v></c><c r="C1" t="str"><f>VALUETOTEXT(B1,1)</f><v>#N/A</v></c></row>"##)).unwrap();
+    let mut probe = what_if(&book, "UTC", &BTreeMap::new()).unwrap();
+    let outputs = [(0, CellRef::new(1, 0)), (0, CellRef::new(2, 0))];
+    let original = vec![
+        CellValue::Text("#N/A".into()),
+        CellValue::Text("\"#N/A\"".into()),
+    ];
+    assert_eq!(probe.probe(&book, &[], &outputs).unwrap(), original);
+    assert_eq!(
+        probe
+            .probe(
+                &book,
+                &[(0, CellRef::new(0, 0), CellValue::Number(0.0))],
+                &outputs
+            )
+            .unwrap(),
+        vec![
+            CellValue::Error("#N/A".into()),
+            CellValue::Text("#N/A".into())
+        ]
+    );
+    assert_eq!(probe.probe(&book, &[], &outputs).unwrap(), original);
+}
+
+#[test]
+fn held_formula_metadata_and_cached_values_restore_after_trial_constants() {
+    let book = read_xlsx(&package(r#"<row r="1"><c r="A1"><f>FUTUREFUNC()</f><v>7</v></c><c r="B1"><f>ISFORMULA(A1)</f><v>0</v></c><c r="C1"><f>FORMULATEXT(A1)</f><v>0</v></c><c r="D1"><f>A1+1</f><v>0</v></c></row>"#)).unwrap();
+    let mut probe = what_if(&book, "UTC", &BTreeMap::new()).unwrap();
+    let outputs = [
+        (0, CellRef::new(1, 0)),
+        (0, CellRef::new(2, 0)),
+        (0, CellRef::new(3, 0)),
+    ];
+    let original = vec![
+        CellValue::Bool(true),
+        CellValue::Text("=FUTUREFUNC()".into()),
+        CellValue::Number(8.0),
+    ];
+    assert_eq!(probe.probe(&book, &[], &outputs).unwrap(), original);
+    assert_eq!(
+        probe
+            .probe(
+                &book,
+                &[(0, CellRef::new(0, 0), CellValue::Number(2.0))],
+                &outputs
+            )
+            .unwrap(),
+        vec![
+            CellValue::Bool(false),
+            CellValue::Error("#N/A".into()),
+            CellValue::Number(3.0)
+        ]
+    );
+    assert_eq!(probe.probe(&book, &[], &outputs).unwrap(), original);
+    probe
+        .probe(
+            &book,
+            &[(0, CellRef::new(0, 0), CellValue::Number(2.0))],
+            &outputs,
+        )
+        .unwrap();
+    assert_eq!(
+        probe
+            .formula_holds(&book, 0, CellRef::new(3, 0), "D1=8", &[CellRef::new(3, 0)])
+            .unwrap(),
+        Some(vec![true])
+    );
+}
+
+#[test]
 fn a_probe_evaluates_with_trial_values_and_then_puts_them_back() {
     let book = read_xlsx(&package(
         r#"<row r="1"><c r="A1"><v>2</v></c><c r="B1"><v>3</v></c><c r="C1"><f>A1*B1</f><v>6</v></c></row>"#,

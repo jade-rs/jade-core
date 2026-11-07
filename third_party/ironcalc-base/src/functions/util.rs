@@ -140,6 +140,10 @@ pub(crate) fn from_wildcard_to_regex(
     wildcard: &str,
     exact: bool,
 ) -> Result<regex::Regex, regex::Error> {
+    regex::Regex::new(&wildcard_regex_pattern(wildcard, exact))
+}
+
+pub(crate) fn wildcard_regex_pattern(wildcard: &str, exact: bool) -> String {
     // 1. Escape all
     let reg = &regex::escape(wildcard);
 
@@ -162,11 +166,10 @@ pub(crate) fn from_wildcard_to_regex(
     // 8. Put back the '\\~\\~'  as '\\~'
     let reg = &reg.replace("??", "\\~");
 
-    // And we have a valid Perl regex! (As Kim Kardashian said before me: "I know, right?")
     if exact {
-        return regex::Regex::new(&format!("^{reg}$"));
+        return format!("^{reg}$");
     }
-    regex::Regex::new(reg)
+    reg.to_string()
 }
 
 // NUMBERS ///

@@ -1,6 +1,6 @@
 #![deny(missing_docs)]
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::vec::Vec;
 
 use crate::expressions::parser::static_analysis::run_static_analysis_on_node;
@@ -197,6 +197,10 @@ pub(crate) enum CellOrRange {
 /// * A dictionary with the shared strings and their indices.
 ///   This is an optimization for large files (~1 million rows)
 pub struct Model<'a> {
+    pub(crate) source_formulas: HashMap<(u32, i32, i32), String>,
+    // Anchors that produced actual arrays in this evaluation, including 1x1
+    // arrays whose first element is an error. Failed spills are not included.
+    pub(crate) evaluated_arrays: HashSet<(u32, i32, i32)>,
     pub(crate) read_trace: Option<crate::dependencies::ReadTrace>,
     /// A Rust internal representation of an Excel workbook
     pub workbook: Workbook,
@@ -259,6 +263,22 @@ pub struct CellIndex {
 }
 
 impl<'a> Model<'a> {
+    /// Sets original formula text for information functions when a host holds
+    /// the calculated value as a literal. Pass None when replacing that cell.
+    pub fn set_source_formula(
+        &mut self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+        formula: Option<String>,
+    ) {
+        let key = (sheet, row, column);
+        if let Some(formula) = formula {
+            self.source_formulas.insert(key, formula);
+        } else {
+            self.source_formulas.remove(&key);
+        }
+    }
     pub(crate) fn get_next_variable_id(&mut self) -> usize {
         let id = self.last_variable_id;
         self.last_variable_id += 1;
@@ -865,18 +885,16 @@ impl<'a> Model<'a> {
                 format!("Variable name \"{name}\" not found."),
             ),
             CompareKind { kind, left, right } => self.handle_comparison(left, right, cell, kind),
-            UnaryKind { kind, right } => {
-                let r = match self.get_number(right, cell) {
-                    Ok(f) => f,
-                    Err(s) => {
-                        return s;
-                    }
+            UnaryKind { kind, right } => self.map_scalar_values(right, cell, |model, value| {
+                let number = match model.cast_to_number(value, cell) {
+                    Ok(number) => number,
+                    Err(error) => return error,
                 };
-                match kind {
-                    OpUnary::Minus => CalcResult::Number(-r),
-                    OpUnary::Percentage => CalcResult::Number(r / 100.0),
-                }
-            }
+                CalcResult::Number(match kind {
+                    OpUnary::Minus => -number,
+                    OpUnary::Percentage => number / 100.0,
+                })
+            }),
             ErrorKind(kind) => CalcResult::new_error(kind.clone(), cell, "".to_string()),
             ParseErrorKind {
                 formula, message, ..
@@ -897,9 +915,23 @@ impl<'a> Model<'a> {
                     }
                     // The anchor may occur later in evaluation order or have
                     // changed its spill shape. Evaluate it before querying
-                    // the range, propagating errors (including cycle guards).
+                    // the range. An element error at a successful array's
+                    // anchor does not invalidate its range; failed formulas
+                    // and cycle guards still propagate their errors.
                     if let error @ CalcResult::Error { .. } = self.evaluate_cell(left) {
-                        return error;
+                        if matches!(
+                            &error,
+                            CalcResult::Error {
+                                error: Error::CIRC,
+                                ..
+                            }
+                        ) || !self.evaluated_arrays.contains(&(
+                            left.sheet,
+                            left.row,
+                            left.column,
+                        )) {
+                            return error;
+                        }
                     }
                     let sheet = left.sheet;
                     let row = left.row;
@@ -1025,6 +1057,7 @@ impl<'a> Model<'a> {
         result: &CalcResult,
     ) -> Result<(), String> {
         let CellReferenceIndex { sheet, column, row } = cell_reference;
+        self.evaluated_arrays.remove(&(sheet, row, column));
         let original_range = match cell {
             Cell::ArrayFormula {
                 r,
@@ -1135,6 +1168,7 @@ impl<'a> Model<'a> {
                             worksheet.update_cell(r, c, cell)?;
                         }
                     }
+                    self.evaluated_arrays.insert((sheet, row, column));
                     return Ok(());
                 }
                 Some((false, (original_width, original_height))) => {
@@ -1183,6 +1217,7 @@ impl<'a> Model<'a> {
                         }
                     }
                     // All cells (anchor + spills) have been written above.
+                    self.evaluated_arrays.insert((sheet, row, column));
                     return Ok(());
                 }
                 None => {
@@ -1869,6 +1904,8 @@ impl<'a> Model<'a> {
         }
 
         let mut model = Model {
+            source_formulas: HashMap::new(),
+            evaluated_arrays: HashSet::new(),
             calculation: Default::default(),
             circular: false,
             read_trace: None,
@@ -3298,6 +3335,7 @@ impl<'a> Model<'a> {
         while retry && restart_count < max_restarts {
             retry = false;
             self.cells.clear();
+            self.evaluated_arrays.clear();
             self.support.clear();
             if let Some(trace) = self.read_trace.as_mut() {
                 trace.reset();
@@ -3362,6 +3400,7 @@ impl<'a> Model<'a> {
                 .map(|cell| self.formula_value(cell))
                 .collect();
             self.cells.clear();
+            self.evaluated_arrays.clear();
             self.support.clear();
             if let Some(trace) = self.read_trace.as_mut() {
                 trace.reset();

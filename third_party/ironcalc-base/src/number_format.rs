@@ -102,6 +102,110 @@ pub fn get_new_num_fmt_index(num_fmts: &[NumFmt]) -> i32 {
     index
 }
 
+/// Round positive finite values using 15 significant decimal digits and ties
+/// away from zero, without scaling beyond the floating-point finite range.
+pub(crate) fn format_decimal_abs(value: f64, decimals: i32) -> String {
+    let scientific = format!("{value:.14e}");
+    let (coefficient, exponent) = scientific.split_once('e').unwrap_or(("0", "0"));
+    let exponent: i32 = exponent.parse().unwrap_or(0);
+    let digits: Vec<u8> = coefficient.bytes().filter(|c| *c != b'.').collect();
+    let keep = exponent + 1 + decimals;
+    let mut scaled = if keep > 0 {
+        (0..keep as usize)
+            .map(|i| digits.get(i).copied().unwrap_or(b'0'))
+            .collect::<Vec<_>>()
+    } else {
+        vec![b'0']
+    };
+    let round_up = keep >= 0 && digits.get(keep as usize).is_some_and(|d| *d >= b'5');
+    if round_up {
+        let mut carry = true;
+        for digit in scaled.iter_mut().rev() {
+            if *digit == b'9' {
+                *digit = b'0';
+            } else {
+                *digit += 1;
+                carry = false;
+                break;
+            }
+        }
+        if carry {
+            scaled.insert(0, b'1');
+        }
+    }
+    let mut scaled: String = scaled.into_iter().map(char::from).collect();
+    if decimals > 0 {
+        let places = decimals as usize;
+        if scaled.len() <= places {
+            scaled = format!("{}{}", "0".repeat(places + 1 - scaled.len()), scaled);
+        }
+        scaled.insert(scaled.len() - places, '.');
+    } else if decimals < 0 && scaled.bytes().any(|digit| digit != b'0') {
+        scaled.push_str(&"0".repeat((-decimals) as usize));
+    }
+    scaled
+}
+
+#[derive(Clone, Copy)]
+pub(crate) enum DecimalRounding {
+    Nearest,
+    AwayFromZero,
+    TowardZero,
+}
+
+/// Round decimal digits without multiplying by a potentially infinite scale.
+pub(crate) fn round_decimal(value: f64, decimals: f64, mode: DecimalRounding) -> Option<f64> {
+    if !value.is_finite() || !decimals.is_finite() {
+        return None;
+    }
+    if value == 0.0 {
+        return Some(0.0);
+    }
+    let scientific = format!("{:.14e}", value.abs());
+    let (coefficient, exponent) = scientific.split_once('e')?;
+    let exponent: i32 = exponent.parse().ok()?;
+    let digits: Vec<u8> = coefficient.bytes().filter(|digit| *digit != b'.').collect();
+    let decimals = decimals.trunc();
+    let keep = f64::from(exponent) + 1.0 + decimals;
+    if keep >= digits.len() as f64 {
+        return scientific
+            .parse::<f64>()
+            .ok()
+            .filter(|n| n.is_finite())
+            .map(|n| n.copysign(value));
+    }
+    let (mut integer, increment) = if keep <= 0.0 {
+        (
+            0_u64,
+            match mode {
+                DecimalRounding::Nearest => keep == 0.0 && digits[0] >= b'5',
+                DecimalRounding::AwayFromZero => true,
+                DecimalRounding::TowardZero => false,
+            },
+        )
+    } else {
+        let keep = keep as usize;
+        let integer = digits[..keep]
+            .iter()
+            .fold(0_u64, |n, digit| n * 10 + u64::from(digit - b'0'));
+        let increment = match mode {
+            DecimalRounding::Nearest => digits[keep] >= b'5',
+            DecimalRounding::AwayFromZero => digits[keep..].iter().any(|digit| *digit != b'0'),
+            DecimalRounding::TowardZero => false,
+        };
+        (integer, increment)
+    };
+    integer += u64::from(increment);
+    if integer == 0 {
+        return Some(0.0);
+    }
+    format!("{integer}e{}", -decimals)
+        .parse::<f64>()
+        .ok()
+        .filter(|n| n.is_finite())
+        .map(|n| n.copysign(value))
+}
+
 pub fn to_precision(value: f64, precision: usize) -> f64 {
     if value.is_infinite() || value.is_nan() {
         return value;
