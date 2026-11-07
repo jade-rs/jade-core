@@ -91,6 +91,7 @@ pub fn write_spills(
 /// the cell when given. An anchor without a formula, or with a shared one,
 /// is left as it is.
 pub fn mark_array_formulas(xml: &str, ranges: &[ArrayRange], cm: Option<u32>) -> Result<String> {
+    let owned = jade_xlsx_reader::cell_content::worksheet_source(xml)?;
     let mut reader = Reader::from_str(xml);
     reader.config_mut().trim_text(false);
     let mut buf = Vec::new();
@@ -102,7 +103,9 @@ pub fn mark_array_formulas(xml: &str, ranges: &[ArrayRange], cm: Option<u32>) ->
         let event = reader.read_event_into(&mut buf)?;
         let end = reader.buffer_position() as usize;
         match event {
-            Event::Start(ref element) if local(element.name().as_ref()) == b"c" => {
+            Event::Start(ref element)
+                if owned.owns_start(start) && local(element.name().as_ref()) == b"c" =>
+            {
                 let reference = attribute(element, b"r")?;
                 open = ranges
                     .iter()
@@ -119,7 +122,7 @@ pub fn mark_array_formulas(xml: &str, ranges: &[ArrayRange], cm: Option<u32>) ->
                     .transpose()?;
             }
             Event::Start(ref element) | Event::Empty(ref element)
-                if local(element.name().as_ref()) == b"f" =>
+                if owned.owns_start(start) && local(element.name().as_ref()) == b"f" =>
             {
                 if let Some((range, head)) = open.take() {
                     let shared = attribute(element, b"t")?.as_deref() == Some("shared");
@@ -138,7 +141,11 @@ pub fn mark_array_formulas(xml: &str, ranges: &[ArrayRange], cm: Option<u32>) ->
                     }
                 }
             }
-            Event::End(ref element) if local(element.name().as_ref()) == b"c" => open = None,
+            Event::End(ref element)
+                if owned.owns_end(start) && local(element.name().as_ref()) == b"c" =>
+            {
+                open = None
+            }
             Event::Eof => break,
             _ => {}
         }
@@ -213,7 +220,7 @@ mod tests {
 
     #[test]
     fn an_anchor_gains_its_range_and_metadata_link() {
-        let xml = r#"<sheetData><row r="1"><c r="A1" s="2"><f>SEQUENCE(3)</f><v>1</v></c><c r="B1"><f>A1</f></c></row></sheetData>"#;
+        let xml = r#"<worksheet><sheetData><row r="1"><c r="A1" s="2"><f>SEQUENCE(3)</f><v>1</v></c><c r="B1"><f>A1</f></c></row></sheetData></worksheet>"#;
         let marked = mark_array_formulas(
             xml,
             &[ArrayRange {
@@ -225,7 +232,7 @@ mod tests {
         .unwrap();
         assert_eq!(
             marked,
-            r#"<sheetData><row r="1"><c r="A1" s="2" cm="1"><f t="array" ref="A1:A3">SEQUENCE(3)</f><v>1</v></c><c r="B1"><f>A1</f></c></row></sheetData>"#
+            r#"<worksheet><sheetData><row r="1"><c r="A1" s="2" cm="1"><f t="array" ref="A1:A3">SEQUENCE(3)</f><v>1</v></c><c r="B1"><f>A1</f></c></row></sheetData></worksheet>"#
         );
     }
 }
