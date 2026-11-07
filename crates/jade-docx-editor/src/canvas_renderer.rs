@@ -11872,6 +11872,7 @@ where
                     }
                 };
                 field_tag.hash(&mut hasher);
+                field.source_field_id.hash(&mut hasher);
                 field.cached_text.hash(&mut hasher);
                 field.resolved_value.hash(&mut hasher);
                 // DATE/TIME resolve against the clock snapshot; fold it in so a
@@ -19426,7 +19427,11 @@ where
                 // resolved value replaces that saved result; it must not be
                 // appended or the field would render twice.
                 if let Some(value) = self.resolve_run_field(field) {
-                    if !continues_field(&paragraph.runs, previous_visible_run, run_index) {
+                    if !self.continues_resolved_field(
+                        &paragraph.runs,
+                        previous_visible_run,
+                        run_index,
+                    ) {
                         segment.push_str(&value);
                     }
                 } else if !run.text.is_empty() {
@@ -28552,7 +28557,11 @@ where
                 .and_then(|field| self.resolve_run_field(field))
             {
                 Some(value) => {
-                    if !continues_field(&paragraph.runs, run_index.checked_sub(1), run_index) {
+                    if !self.continues_resolved_field(
+                        &paragraph.runs,
+                        run_index.checked_sub(1),
+                        run_index,
+                    ) {
                         text.push_str(&value);
                     }
                 }
@@ -36057,7 +36066,7 @@ where
                     offset = offset.saturating_add(
                         self.resolve_run_field(field)
                             .map(|value| {
-                                if continues_field(
+                                if self.continues_resolved_field(
                                     &paragraph.runs,
                                     run_index.checked_sub(1),
                                     run_index,
@@ -38522,7 +38531,31 @@ where
         context.measure_text_width(text).unwrap_or(0.0)
     }
 
+    fn continues_resolved_field(
+        &self,
+        runs: &[Run],
+        previous_index: Option<usize>,
+        index: usize,
+    ) -> bool {
+        // Only a freshly evaluated value represents the entire field. Saved
+        // results belong to individual runs and must retain every fragment,
+        // even when adjacent fragments contain the same text.
+        continues_field(runs, previous_index, index)
+            && runs[index].field.as_ref().is_some_and(|field| {
+                self.resolve_run_field_with_cached_result(field, false)
+                    .is_some()
+            })
+    }
+
     fn resolve_run_field(&self, field: &RunField) -> Option<String> {
+        self.resolve_run_field_with_cached_result(field, true)
+    }
+
+    fn resolve_run_field_with_cached_result(
+        &self,
+        field: &RunField,
+        include_cached: bool,
+    ) -> Option<String> {
         match &field.kind {
             RunFieldKind::Locked { kind } => {
                 if matches!(
@@ -38535,7 +38568,7 @@ where
                 } else if kind.keeps_result_in_run_text() {
                     None
                 } else {
-                    Some(field.cached_text.clone().unwrap_or_default())
+                    include_cached.then(|| field.cached_text.clone().unwrap_or_default())
                 }
             }
             RunFieldKind::Formatted { kind, instruction } => {
@@ -38574,7 +38607,9 @@ where
                         .unwrap_or_default(),
                 )
             }
-            RunFieldKind::StyleRef { .. } => field.cached_text.clone(),
+            RunFieldKind::StyleRef { .. } => {
+                include_cached.then(|| field.cached_text.clone()).flatten()
+            }
             // Word for Mac re-evaluates these when it lays out a header or
             // footer, but prints a body, table or text box field's saved
             // result: `document-property-fields`, `document-variable-fields`
@@ -38588,7 +38623,7 @@ where
                         == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
                     && field.cached_text.is_some() =>
             {
-                field.cached_text.clone()
+                include_cached.then(|| field.cached_text.clone()).flatten()
             }
             // A body IF is evaluated, but with a nested COMPARE or IF at its
             // saved result (`RunField::word_mac_body_result`).
@@ -38636,7 +38671,7 @@ where
                     .get(name)
                     .and_then(|&paragraph| self.cached_paragraph_start_page(paragraph))
                     .map(|page| page.to_string())
-                    .or_else(|| field.cached_text.clone())
+                    .or_else(|| include_cached.then(|| field.cached_text.clone()).flatten())
             }
             RunFieldKind::NoteRef {
                 name,
@@ -38644,7 +38679,7 @@ where
                 ..
             } => {
                 if *relative_position {
-                    field.cached_text.clone()
+                    include_cached.then(|| field.cached_text.clone()).flatten()
                 } else {
                     self.bookmark_note_targets
                         .get(name)
@@ -38676,17 +38711,21 @@ where
             RunFieldKind::EqDistributed { text, .. }
             | RunFieldKind::EqRuby { text, .. }
             | RunFieldKind::EqEnclosed { text, .. } => Some(text.clone()),
-            RunFieldKind::Hyperlink { .. } => field.cached_text.clone(),
+            RunFieldKind::Hyperlink { .. } => {
+                include_cached.then(|| field.cached_text.clone()).flatten()
+            }
             // Jade intentionally does not invent a value for an unsupported
             // instruction. Word's last saved result remains the safest visual
             // representation until a dedicated evaluator is implemented.
-            RunFieldKind::Unsupported { .. } => field.cached_text.clone(),
+            RunFieldKind::Unsupported { .. } => {
+                include_cached.then(|| field.cached_text.clone()).flatten()
+            }
             // Non-displaying fields have no visible result. Return
             // directly so the common cached-result fallback below cannot leak
             // a stale producer-authored result into the document.
             RunFieldKind::NonDisplay { .. } => return None,
         }
-        .or_else(|| field.cached_text.clone())
+        .or_else(|| include_cached.then(|| field.cached_text.clone()).flatten())
     }
 
     /// A combined-characters run (`w:eastAsianLayout w:combine`, ECMA-376
@@ -53314,6 +53353,21 @@ mod tests {
         ))
         .expect("reload");
         assert_eq!(count(reloaded.document.as_ref().unwrap()), 1, "reloaded");
+    }
+
+    #[test]
+    fn unresolved_complex_field_retains_all_saved_result_fragments() {
+        // An unresolved numbered REF has no whole-field replacement. Its
+        // saved text is split across result runs, including equal fragments.
+        let bytes = docx_with_document_xml(
+            r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:instrText> REF missing \n </w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r><w:r><w:t>第</w:t></w:r><w:r><w:t>１</w:t></w:r><w:r><w:t>１</w:t></w:r><w:r><w:t>条</w:t></w:r><w:r><w:fldChar w:fldCharType="end"/></w:r></w:p></w:body></w:document>"#,
+        );
+        let model = futures::executor::block_on(WordDocument::load(&bytes, &Options::default()))
+            .expect("load");
+        assert_eq!(
+            painted_document_text(model.document.as_ref().unwrap()),
+            "第１１条"
+        );
     }
 
     #[test]
