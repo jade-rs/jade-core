@@ -17,6 +17,7 @@ struct Node {
     attributes: Vec<(String, String)>,
     children: Vec<usize>,
     supported_choice: bool,
+    process_content: bool,
 }
 impl Node {
     fn attribute(&self, name: &str) -> Option<&str> {
@@ -66,6 +67,10 @@ fn compatible_children(view: &View<'_>, parent: usize) -> Vec<usize> {
     let mut result = Vec::new();
     while let Some(index) = pending.pop() {
         let node = &nodes[index];
+        if node.process_content {
+            pending.extend(node.children.iter().rev().copied());
+            continue;
+        }
         if node.namespace != MC || node.name != "AlternateContent" {
             result.push(index);
             continue;
@@ -139,6 +144,10 @@ fn signatures(nodes: &[Node]) -> Vec<Vec<usize>> {
                 .flat_map(|&child| result[child].iter().copied())
                 .collect::<Vec<_>>()
         };
+        if node.process_content {
+            result[index] = content(index);
+            continue;
+        }
         let key = if node.namespace == MC && node.name == "AlternateContent" {
             let mut alternatives: BTreeSet<_> = branches(nodes, index).map(content).collect();
             if !branches(nodes, index).any(|i| nodes[i].name == "Fallback") {
@@ -241,11 +250,13 @@ fn parse_nodes(xml: &str) -> Result<Vec<Node>> {
     let mut reader = NsReader::from_str(xml);
     let mut nodes = vec![Node::default()];
     let mut stack = vec![0];
+    let mut scope = crate::process_content::Scope::for_xml(xml);
     loop {
         let event = reader.read_event()?;
         let opened = matches!(&event, Event::Start(_));
         match event {
             Event::Start(element) | Event::Empty(element) => {
+                scope.push(&reader, &element)?;
                 let namespace = match reader.resolver().resolve_element(element.name()).0 {
                     ResolveResult::Bound(namespace) => {
                         String::from_utf8_lossy(namespace.as_ref()).into_owned()
@@ -254,6 +265,14 @@ fn parse_nodes(xml: &str) -> Result<Vec<Node>> {
                     ResolveResult::Unknown(_) => "!unresolved".into(),
                 };
                 let mut attributes = Vec::new();
+                let process_content = !matches!(
+                    namespace.as_str(),
+                    "" | MC
+                        | DYNAMIC
+                        | "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+                        | "http://purl.oclc.org/ooxml/spreadsheetml/main"
+                ) && scope
+                    .processes(namespace.as_bytes(), element.local_name().as_ref());
                 for attribute in element.attributes() {
                     let attribute = attribute?;
                     if !attribute.key.as_ref().contains(&b':') {
@@ -284,13 +303,17 @@ fn parse_nodes(xml: &str) -> Result<Vec<Node>> {
                     attributes,
                     children: Vec::new(),
                     supported_choice,
+                    process_content,
                 });
                 nodes[*stack.last().unwrap()].children.push(index);
                 if opened {
                     stack.push(index);
+                } else {
+                    scope.pop();
                 }
             }
             Event::End(_) => {
+                scope.pop();
                 stack.pop();
             }
             Event::Eof => break,
@@ -377,6 +400,21 @@ fn flags(view: &View<'_>, reusable: bool) -> Vec<Option<bool>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn resolves_metadata_in_processed_ignorable_wrappers() {
+        let declared = XML.replacen("<metadata ", &format!("<metadata xmlns:mc=\"{MC}\" xmlns:u=\"urn:future\" mc:Ignorable=\"u\" mc:ProcessContent=\"u:wrap\" "), 1);
+        for name in ["metadataTypes", "cellMetadata", "bk", "extLst"] {
+            let xml = declared
+                .replace(&format!("<{name}>"), &format!("<u:wrap><{name}>"))
+                .replace(&format!("</{name}>"), &format!("</{name}></u:wrap>"));
+            assert_eq!(
+                cell_dynamic_array_flags(&xml).unwrap(),
+                [Some(false), Some(true)]
+            );
+            assert_eq!(common_dynamic_array_cell_metadata(&xml).unwrap(), Some(2));
+        }
+    }
 
     const XML: &str = r#"<metadata xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:d="http://schemas.microsoft.com/office/spreadsheetml/2017/dynamicarray" xmlns:foreign="urn:foreign"><metadataTypes><metadataType name="OTHER"/><metadataType name="XLDAPR"/></metadataTypes><futureMetadata name="XLDAPR"><bk><extLst><ext uri="{bdbb8cdc-fa1e-496e-a857-3c3f30c029c3}"><d:dynamicArrayProperties fDynamic="false"/></ext></extLst></bk><bk><extLst><ext uri="{bdbb8cdc-fa1e-496e-a857-3c3f30c029c3}"><d:dynamicArrayProperties fDynamic="true"/></ext></extLst></bk></futureMetadata><cellMetadata><bk><rc t="2" v="0"/></bk><bk><rc t="2" v="1"/></bk></cellMetadata></metadata>"#;
 

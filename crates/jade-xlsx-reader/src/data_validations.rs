@@ -343,6 +343,16 @@ pub fn validation_choice_supported(xml: &str) -> Result<bool> {
         }
     }
 }
+pub(crate) fn supported_namespace(namespace: &[u8]) -> bool {
+    matches!(
+        namespace,
+        LIST_NAMESPACE
+            | X14_NAMESPACE
+            | XM_NAMESPACE
+            | b"http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+            | b"http://purl.oclc.org/ooxml/spreadsheetml/main"
+    )
+}
 pub(crate) fn choice_supported(reader: &NsReader<&[u8]>, e: &BytesStart<'_>) -> Result<bool> {
     let Some(required) = attribute(e, b"Requires")? else {
         return Ok(false);
@@ -354,11 +364,7 @@ pub(crate) fn choice_supported(reader: &NsReader<&[u8]>, e: &BytesStart<'_>) -> 
         let (ns, _) = reader
             .resolver()
             .resolve_element(quick_xml::name::QName(name.as_bytes()));
-        if !matches!(ns,ResolveResult::Bound(n) if matches!(n.as_ref(),
-            LIST_NAMESPACE|X14_NAMESPACE|XM_NAMESPACE|
-            b"http://schemas.openxmlformats.org/spreadsheetml/2006/main"|
-            b"http://purl.oclc.org/ooxml/spreadsheetml/main"))
-        {
+        if !matches!(ns,ResolveResult::Bound(n) if supported_namespace(n.as_ref())) {
             return Ok(false);
         }
     }

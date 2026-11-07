@@ -14,6 +14,33 @@ fn write(metadata: &str, dynamic: bool) -> Result<Vec<u8>, WriteError> {
     write_with_cm(metadata, dynamic, None)
 }
 
+#[test]
+fn processed_metadata_dictionaries_append_without_duplicate_containers() {
+    let content = "<metadataTypes count=\"1\"><metadataType name=\"OTHER\"/></metadataTypes><futureMetadata name=\"OTHER\" count=\"1\"><bk/></futureMetadata><cellMetadata count=\"1\"><bk><rc t=\"1\" v=\"0\"/></bk></cellMetadata>";
+    for content in [content.to_string(), String::new()] {
+        let wrapper = if content.is_empty() {
+            "<u:wrap keep=\"yes\"/>".to_string()
+        } else {
+            format!("<u:wrap keep=\"yes\">{content}</u:wrap>")
+        };
+        let metadata = format!("<metadata xmlns=\"{NS}\" xmlns:mc=\"{MC}\" xmlns:u=\"urn:future\" mc:Ignorable=\"u\" mc:ProcessContent=\"u:wrap\">{wrapper}</metadata>");
+        let bytes = write(&metadata, true).unwrap();
+        let package = OpcPackage::open(&bytes).unwrap();
+        let updated = package.part_str("xl/metadata.xml").unwrap().unwrap();
+        assert!(updated.contains("<u:wrap keep=\"yes\">"));
+        assert_eq!(updated.matches("<metadataTypes ").count(), 1);
+        assert_eq!(updated.matches("<cellMetadata ").count(), 1);
+        assert_eq!(
+            jade_xlsx_reader::array_metadata::common_dynamic_array_cell_metadata(&updated).unwrap(),
+            Some(if content.is_empty() { 1 } else { 2 })
+        );
+        assert_eq!(
+            read_xlsx(&bytes).unwrap().sheets[0].array_formulas[0].kind,
+            jade_xlsx_reader::ArrayFormulaKind::Dynamic
+        );
+    }
+}
+
 fn write_with_cm(metadata: &str, dynamic: bool, cm: Option<u32>) -> Result<Vec<u8>, WriteError> {
     let source = include_bytes!("../../../public/fixtures/grid-operations-workbook.xlsx");
     let part_name = read_xlsx(source).unwrap().sheets[0].part_name.clone();

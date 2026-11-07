@@ -37,6 +37,14 @@ impl View<'_> {
         };
         while let Some((index, depth)) = pending.pop() {
             let node = &self.tree[index];
+            if node.process_content {
+                if node.children.is_empty() {
+                    result.slots.push((result.nodes.len(), index, depth + 1));
+                } else {
+                    pending.extend(node.children.iter().rev().map(|&child| (child, depth + 1)));
+                }
+                continue;
+            }
             if node.namespace != MC || node.name != "AlternateContent" {
                 result.nodes.push(index);
                 result.depths.push(depth);
