@@ -61,12 +61,13 @@ def main():
             for scale in [80, 100, 150]:
                 paragraphs.append(para(run('ABCDE abcde 01234', f'<w:sz w:val="{size}"/><w:spacing w:val="{spacing}"/><w:w w:val="{scale}"/>')))
     write('run-width', ''.join(paragraphs))
-    paragraphs = []
-    for half_points in range(12, 61):
-        props = f'<w:sz w:val="{half_points}"/>'
-        for effect in ['', '<w:vertAlign w:val="superscript"/>', '<w:vertAlign w:val="subscript"/>']:
-            paragraphs.append(para(run('Base ', props) + run('Shift', props + effect) + run(' Tail', props)))
-    write('arial-script-sweep', ''.join(paragraphs))
+    for suffix, face in [('', ''), ('-bold', '<w:b/>'), ('-italic', '<w:i/>'), ('-bold-italic', '<w:b/><w:i/>')]:
+        paragraphs = []
+        for half_points in range(12, 61):
+            props = f'<w:sz w:val="{half_points}"/>{face}'
+            for effect in ['', '<w:vertAlign w:val="superscript"/>', '<w:vertAlign w:val="subscript"/>']:
+                paragraphs.append(para(run('Base ', props) + run('Shift', props + effect) + run(' Tail', props)))
+        write('arial-script-sweep' + suffix, ''.join(paragraphs))
 
 
 if __name__ == '__main__':

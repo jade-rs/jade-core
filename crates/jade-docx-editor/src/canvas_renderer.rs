@@ -31435,10 +31435,12 @@ where
                         let families = resolve_font_families(properties);
                         let stack = families.latin_ascii_stack();
                         baseline_shift_px = -points_to_px(
-                            jade_docx_layout::line_metrics::word_script_baseline_offset_pt(
+                            jade_docx_layout::line_metrics::word_script_baseline_offset_for_style_pt(
                                 font_size_pt,
                                 stack,
                                 true,
+                                props.bold.unwrap_or(false),
+                                props.italic.unwrap_or(false),
                             ),
                         );
                         font_size_pt = jade_docx_layout::line_metrics::word_shifted_script_size_pt(
@@ -31453,10 +31455,12 @@ where
                         let families = resolve_font_families(properties);
                         let stack = families.latin_ascii_stack();
                         baseline_shift_px = points_to_px(
-                            jade_docx_layout::line_metrics::word_script_baseline_offset_pt(
+                            jade_docx_layout::line_metrics::word_script_baseline_offset_for_style_pt(
                                 font_size_pt,
                                 stack,
                                 false,
+                                props.bold.unwrap_or(false),
+                                props.italic.unwrap_or(false),
                             ),
                         );
                         font_size_pt = jade_docx_layout::line_metrics::word_shifted_script_size_pt(

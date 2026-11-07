@@ -160,11 +160,17 @@ fn windows_word_arial_edge_origins() {
                 "word-windows-edge-run-width",
                 "word-windows-edge-run-position",
                 "word-windows-edge-arial-script-sweep",
+                "word-windows-edge-arial-script-sweep-bold",
+                "word-windows-edge-arial-script-sweep-italic",
+                "word-windows-edge-arial-script-sweep-bold-italic",
             ]
             .map(str::to_owned)
         )
     );
-    assert!(checked >= 5163, "do not silently remove edge-case coverage");
+    assert!(
+        checked >= 10896,
+        "do not silently remove edge-case coverage"
+    );
 }
 
 #[test]
