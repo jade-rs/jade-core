@@ -120,6 +120,8 @@ use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum WriteError {
+    #[error("array metadata: {0}")]
+    ArrayMetadata(&'static str),
     #[error("pivot table: {0}")]
     Pivot(String),
     #[error("editable range: {0}")]
@@ -168,6 +170,8 @@ pub enum WriteError {
     InsertionWouldDiscardCells,
     #[error("rows or columns {at}+{count} are outside the sheet")]
     StructureOutOfBounds { at: u32, count: u32 },
+    #[error("cannot change part of the legacy array `{sheet}`!{range}")]
+    PartialLegacyArray { sheet: String, range: String },
     /// A `cellXfs`, font or fill index the styles part does not have.
     #[error("the styles part has no entry at index {index}")]
     NoSuchStyle { index: u32 },

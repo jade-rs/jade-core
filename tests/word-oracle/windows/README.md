@@ -355,3 +355,40 @@ origins, plus two historical duplicate registrations. Required Arial coverage
 is 94 documents / 267 pages / at least 57,956 origins. Raw EMFs reconstruct
 69,824 origins, and the required vector gate covers 82 documents / 238 pages.
 Failed capture history remains archived separately from passing references.
+
+
+The spacing/compatibility sweep adds 23 reproducible inputs: unequal AutoFit
+and bidi grids in compatibility modes 12/14/15; centered/right-aligned signed
+gutters; positive gutters with short and unbreakable text; and omitted/zero/
+positive spacing with 0, 0.5, 1 and 3pt borders. Four pre-fix capture IDs
+(`20261107T155642878Z-03b88d80`, `20261107T161153795Z-80e52f6f`,
+`20261107T162653229Z-eabfe3d0`, `20261107T163433985Z-21b271c1`) retain
+all measured failures, original inputs, Word PDFs/EMFs and native output.
+They remain unpromoted. The actual measured Word product version is still
+**16.0.19127.20860**; compatibility modes are document settings, not separately
+installed Word versions.
+
+Windows sizing now distributes positive gutters after reserving padding,
+borders and AutoFit unbreakable words. Windows-only placement accounts for
+physical trailing borders in RTL tables. Continued collapsed rows avoid
+reserving the same opening rule twice, and separated horizontal cells clip
+paint to the measured content frame. Mac branches and original Word goldens
+are preserved. Required tests retain the 0.375pt absolute XY tolerance and
+check complete origins, visible snapshots, actual native PDF paint and vector
+border unions. Diagnostic complete capture must preserve visible pixels and
+origins on both platform policies, including thick-border positive gutters.
+
+Passing capture `20261107T171554485Z-a81ce639` measures all 23 again with
+clean native source `2068e7d1` and Word **16.0.19127.20860**. All 10,069
+complete origins and 10,063 visible origins match in 40 pages at the unchanged
+0.375pt bound, including actual native PDF paint. Each input is byte-identical
+to the retained pre-fix capture. All 23 Mac-policy glyph arrays, page counts
+and decoded RGBA images exactly equal clean `2ef8f939` on this Windows host;
+`mac-policy-parity-provenance.json` records both engine hashes and this host
+limitation. The real macOS coordinate CI and original Mac goldens remain
+mandatory and unchanged.
+
+Registered coverage is now 134 distinct documents / 440 pages / 86,124 complete
+origins, plus two historical duplicate registrations. Required Arial coverage
+is 117 documents / 307 pages / at least 68,025 origins. Raw EMFs reconstruct
+79,893 origins, and the required vector gate covers 105 documents / 278 pages.

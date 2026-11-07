@@ -1409,7 +1409,32 @@
              "{}:{}",
 --- a/src/expressions/parser/static_analysis.rs
 +++ b/src/expressions/parser/static_analysis.rs
-@@ -72,6 +72,7 @@
+@@ -1,24 +1,6 @@
+ use crate::functions::Function;
+ 
+ use super::Node;
+-
+-#[cfg(target_arch = "wasm32")]
+-use regex_lite as regex;
+-
+-use regex::Regex;
+-use std::sync::OnceLock;
+-
+-static RANGE_REFERENCE_REGEX: OnceLock<Regex> = OnceLock::new();
+-
+-#[allow(clippy::expect_used)]
+-fn get_re() -> &'static Regex {
+-    RANGE_REFERENCE_REGEX
+-        .get_or_init(|| Regex::new(r":[A-Z]*[0-9]*$").expect("Regex is known to be valid"))
+-}
+-
+-fn is_range_reference(s: &str) -> bool {
+-    get_re().is_match(s)
+-}
+ 
+ /*
+ 
+@@ -72,6 +54,7 @@
          | Node::ParseErrorKind { .. }
          | Node::WrongReferenceKind { .. }
          | Node::WrongRangeKind { .. }
@@ -1417,7 +1442,27 @@
          | Node::NamedFunctionKind { .. }
          | Node::ArrayKind(_)
          | Node::ReferenceKind { .. }
-@@ -229,6 +230,7 @@
+@@ -143,13 +126,12 @@
+ 
+         Node::DefinedNameKind(v) => {
+             if add {
+-                // Not all defined names deserve the II operator
+-                // For instance =Sheet1!A1 doesn't need to be intersected
+-                if is_range_reference(&v.2) {
+-                    *node = Node::ImplicitIntersection {
+-                        automatic: true,
+-                        child: Box::new(Node::DefinedNameKind(v.to_owned())),
+-                    }
++                // A definition may return a range through OFFSET, INDIRECT
++                // or another name. Its source spelling does not establish
++                // its shape. Intersection leaves scalar definitions intact.
++                *node = Node::ImplicitIntersection {
++                    automatic: true,
++                    child: Box::new(Node::DefinedNameKind(v.to_owned())),
+                 }
+             }
+         }
+@@ -229,6 +211,7 @@
          | Node::ParseErrorKind { .. }
          | Node::WrongReferenceKind { .. }
          | Node::WrongRangeKind { .. }
@@ -1425,7 +1470,7 @@
          | Node::NamedFunctionKind { .. }
          | Node::ArrayKind(_)
          | Node::ReferenceKind { .. }
-@@ -366,6 +368,8 @@
+@@ -366,6 +349,8 @@
              // TODO: We could do a bit better here
              StaticResult::Unknown
          }
@@ -1434,7 +1479,7 @@
          Node::ReferenceKind { .. } => StaticResult::Scalar,
  
          // binary operations
-@@ -833,7 +837,6 @@
+@@ -833,7 +818,6 @@
  fn args_signature_textjoin(arg_count: usize) -> Vec<Signature> {
      if arg_count >= 3 {
          let mut result = vec![Signature::Vector; arg_count];
@@ -1442,7 +1487,7 @@
          result[1] = Signature::Scalar;
          result
      } else {
-@@ -847,6 +850,18 @@
+@@ -847,6 +831,18 @@
      }
      let mut result = vec![Signature::Vector; arg_count];
      result[0] = Signature::Scalar;
@@ -1461,7 +1506,7 @@
      result
  }
  
-@@ -981,6 +996,17 @@
+@@ -981,6 +977,17 @@
  // Sets signature::Error to all arguments if the number of arguments is incorrect.
  fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signature> {
      match kind {
@@ -1479,7 +1524,7 @@
          Function::And => vec![Signature::Vector; arg_count],
          Function::False => args_signature_no_args(arg_count),
          Function::If => args_signature_scalars(arg_count, 2, 1),
-@@ -1145,8 +1171,8 @@
+@@ -1145,8 +1152,8 @@
          Function::Days360 => args_signature_scalars(arg_count, 2, 1),
          Function::Weekday => args_signature_scalars(arg_count, 1, 1),
          Function::Weeknum => args_signature_scalars(arg_count, 1, 1),
@@ -1490,7 +1535,7 @@
          Function::Yearfrac => args_signature_scalars(arg_count, 2, 1),
          Function::Isoweeknum => args_signature_scalars(arg_count, 1, 0),
          Function::Accrint => args_signature_scalars(arg_count, 6, 2),
-@@ -1245,7 +1271,7 @@
+@@ -1245,7 +1252,7 @@
          Function::Imlog10 => args_signature_scalars(arg_count, 1, 0),
          Function::Imlog2 => args_signature_scalars(arg_count, 1, 0),
          Function::Impower => args_signature_scalars(arg_count, 2, 0),
@@ -1499,7 +1544,7 @@
          Function::Imreal => args_signature_scalars(arg_count, 1, 0),
          Function::Imsec => args_signature_scalars(arg_count, 1, 0),
          Function::Imsech => args_signature_scalars(arg_count, 1, 0),
-@@ -1253,15 +1279,24 @@
+@@ -1253,15 +1260,24 @@
          Function::Imsinh => args_signature_scalars(arg_count, 1, 0),
          Function::Imsqrt => args_signature_scalars(arg_count, 1, 0),
          Function::Imsub => args_signature_scalars(arg_count, 2, 0),
@@ -1526,7 +1571,7 @@
          Function::Unicode => args_signature_scalars(arg_count, 1, 0),
          Function::Unichar => args_signature_scalars(arg_count, 1, 0),
          Function::Char => args_signature_scalars(arg_count, 1, 0),
-@@ -1631,6 +1666,12 @@
+@@ -1631,6 +1647,12 @@
  // Returns the type of the result (Scalar, Array or Range) depending on the arguments
  fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
      match kind {
@@ -1539,7 +1584,7 @@
          Function::And => StaticResult::Scalar,
          Function::False => StaticResult::Scalar,
          Function::If => scalar_arguments(args),
-@@ -1677,20 +1718,20 @@
+@@ -1677,20 +1699,20 @@
          Function::Sumifs => not_implemented(args),
          Function::Tan => scalar_arguments(args),
          Function::Tanh => scalar_arguments(args),
@@ -1571,7 +1616,7 @@
          Function::Na => StaticResult::Scalar,
          Function::Sheet => StaticResult::Scalar,
          Function::Type => not_implemented(args),
-@@ -1735,19 +1776,19 @@
+@@ -1735,19 +1757,19 @@
          Function::Randarray => StaticResult::Unknown,
          Function::Textsplit => StaticResult::Unknown,
          Function::Concat => not_implemented(args),
@@ -1598,7 +1643,7 @@
          Function::Regexextract => {
              if args.len() == 3 {
                  StaticResult::Unknown
-@@ -1757,34 +1798,34 @@
+@@ -1757,34 +1779,34 @@
          }
          Function::Regexreplace => not_implemented(args),
          Function::Regextest => not_implemented(args),
@@ -1648,7 +1693,7 @@
          Function::Average => not_implemented(args),
          Function::Averagea => not_implemented(args),
          Function::Avedev => not_implemented(args),
-@@ -1799,26 +1840,26 @@
+@@ -1799,26 +1821,26 @@
          Function::Minifs => not_implemented(args),
          // DATE broadcasts element-wise: an array/range argument yields an array.
          Function::Date => scalar_arguments(args),
@@ -1689,7 +1734,7 @@
          Function::Isoweeknum => scalar_arguments(args),
          Function::Accrint => scalar_arguments(args),
          Function::Accrintm => scalar_arguments(args),
-@@ -1834,25 +1875,25 @@
+@@ -1834,25 +1856,25 @@
          Function::Cumprinc => not_implemented(args),
          Function::Db => not_implemented(args),
          Function::Ddb => not_implemented(args),
@@ -1723,7 +1768,7 @@
          Function::Tbilleq => not_implemented(args),
          Function::Tbillprice => not_implemented(args),
          Function::Tbillyield => not_implemented(args),
-@@ -1926,17 +1967,26 @@
+@@ -1926,17 +1948,26 @@
          Function::Imsub => scalar_arguments(args),
          Function::Imsum => scalar_arguments(args),
          Function::Imtan => scalar_arguments(args),
@@ -1755,7 +1800,7 @@
          Function::Acot => scalar_arguments(args),
          Function::Acoth => scalar_arguments(args),
          Function::Cot => scalar_arguments(args),
-@@ -2018,8 +2068,8 @@
+@@ -2018,8 +2049,8 @@
          Function::FInv => StaticResult::Scalar,
          Function::FInvRT => StaticResult::Scalar,
          Function::FTest => StaticResult::Scalar,
@@ -1766,7 +1811,7 @@
          Function::Gamma => StaticResult::Scalar,
          Function::GammaDist => StaticResult::Scalar,
          Function::GammaInv => StaticResult::Scalar,
-@@ -2034,9 +2084,9 @@
+@@ -2034,9 +2065,9 @@
          Function::NormSdist => StaticResult::Scalar,
          Function::NormSInv => StaticResult::Scalar,
          Function::Pearson => StaticResult::Scalar,
@@ -1778,7 +1823,7 @@
          Function::Stdev => StaticResult::Scalar,
          Function::StDevP => StaticResult::Scalar,
          Function::StDevS => StaticResult::Scalar,
-@@ -2079,11 +2129,15 @@
+@@ -2079,11 +2110,15 @@
          Function::NormDistCompat => StaticResult::Scalar,
          Function::NormInvCompat => StaticResult::Scalar,
          Function::NormSInvCompat => StaticResult::Scalar,
@@ -1798,7 +1843,7 @@
          Function::StDevPCompat => StaticResult::Scalar,
          Function::TInvCompat => StaticResult::Scalar,
          Function::TTestCompat => StaticResult::Scalar,
-@@ -2114,27 +2168,25 @@
+@@ -2114,27 +2149,25 @@
          Function::Trend => StaticResult::Unknown,
          // Scalar-returning functions
          Function::ModeSingl => StaticResult::Scalar,

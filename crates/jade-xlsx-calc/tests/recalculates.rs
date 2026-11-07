@@ -108,6 +108,39 @@ fn dynamic_arrays_cannot_spill_inside_an_otherwise_empty_table() {
 }
 
 #[test]
+fn ordinary_scalar_arguments_intersect_ranges_returned_by_defined_formulas() {
+    for definition in ["OFFSET('売上'!$A$1,0,0,3,1)", "INDIRECT(\"'売上'!A1:A3\")"] {
+        let xml = sheet(
+            r#"<row r="1"><c r="A1" t="inlineStr"><is><t>a</t></is></c></row><row r="2"><c r="A2" t="inlineStr"><is><t>bb</t></is></c><c r="B2"><f>LEN(NamedSource)</f></c></row><row r="3"><c r="A3" t="inlineStr"><is><t>ccc</t></is></c></row><row r="5"><c r="B5"><f>SUM(LEN(NamedSource))</f></c><c r="C5"><f t="array" ref="C5">SUM(LEN(NamedSource))</f></c></row>"#,
+        );
+        let mut book = read_xlsx(&ordinary_workbook(&xml, None, false)).unwrap();
+        book.defined_names.push(jade_xlsx_reader::DefinedName {
+            name: "NamedSource".into(),
+            formula: definition.into(),
+            local_sheet_index: None,
+            hidden: false,
+        });
+        let result = evaluate(&book).unwrap();
+        assert!(result.skipped.is_empty());
+        assert_eq!(
+            computed(&result, 0, "B2"),
+            Some(&CellValue::Number(2.0)),
+            "{definition}"
+        );
+        assert_eq!(
+            computed(&result, 0, "B5"),
+            Some(&CellValue::Error("#VALUE!".into())),
+            "{definition}"
+        );
+        assert_eq!(
+            computed(&result, 0, "C5"),
+            Some(&CellValue::Number(6.0)),
+            "{definition}"
+        );
+    }
+}
+
+#[test]
 fn imported_normal_formulas_intersect_scalar_arguments_while_cse_lifts_them() {
     let xml = sheet(
         r#"<row r="1"><c r="A1" t="inlineStr"><is><t>a</t></is></c></row><row r="2"><c r="A2" t="inlineStr"><is><t>bb</t></is></c><c r="B2"><f>LEN(A1:A3)</f></c></row><row r="3"><c r="A3" t="inlineStr"><is><t>ccc</t></is></c></row><row r="5"><c r="B5"><f>SUM(LEN(A1:A3))</f></c><c r="C5"><f t="array" ref="C5">SUM(LEN(A1:A3))</f></c><c r="D5"><f>FORMULATEXT(B5)</f></c></row>"#,

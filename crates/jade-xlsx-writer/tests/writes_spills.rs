@@ -8,6 +8,115 @@ use jade_xlsx_reader::{read_xlsx, ArrayFormula, CellRange, CellRef, CellValue};
 use jade_xlsx_writer::spills::{write_spills, ArrayRange, SheetSpills};
 use jade_xlsx_writer::{write_xlsx, CellEdit, NewValue, SheetEdits};
 
+mod common;
+
+#[test]
+fn spill_marking_preserves_foreign_and_inactive_formula_sources() {
+    let xml = r#"<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:q="urn:foreign" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"><sheetData><row r="1"><q:c r="J1"><q:f>foreign cell</q:f></q:c><c r="J1"><q:f>foreign formula</q:f><mc:AlternateContent><mc:Choice Requires="q"><f>unsupported choice</f></mc:Choice><mc:Fallback><f>SEQUENCE(3)</f></mc:Fallback></mc:AlternateContent></c></row></sheetData><extLst><ext uri="keep"><c r="J1"><f>extension lookalike</f></c></ext></extLst></worksheet>"#;
+    let marked = jade_xlsx_writer::spills::mark_array_formulas(
+        xml,
+        &[ArrayRange {
+            anchor: at("J1"),
+            range: range("J1:J3"),
+        }],
+        Some(1),
+    )
+    .unwrap();
+    let expected = xml
+        .replace("<c r=\"J1\"><q:f>", "<c r=\"J1\" cm=\"1\"><q:f>")
+        .replace(
+            "<f>SEQUENCE(3)</f>",
+            "<f t=\"array\" ref=\"J1:J3\">SEQUENCE(3)</f>",
+        );
+    assert_eq!(marked, expected);
+}
+
+#[test]
+fn new_metadata_reserves_only_owned_positive_links() {
+    for (cells, expected) in [
+        (r#"<c r="A1" cm="4294967295"/>"#, 1),
+        (r#"<c r="A1" cm="1"/><c r="B1" cm="2"/>"#, 0),
+        (r#"<c r="A1" cm="1"/><c r="B1" cm="3"/>"#, 0),
+        (r#"<c r="A1" cm="0"/><c r="B1" cm="invalid"/>"#, 1),
+        (r#"<f:c r="A1" cm="1"/><c r="B1" f:cm="1"/>"#, 1),
+    ] {
+        let sheet = format!(
+            r#"<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:f="urn:foreign"><f:sheetData><f:row><f:c r="C1" cm="1"/></f:row></f:sheetData><sheetData><row r="1">{cells}</row></sheetData></worksheet>"#
+        );
+        let mut package = OpcPackage::open(&common::workbook_with_sheet(&sheet)).unwrap();
+        if expected == 0 {
+            let before = package.part_names().to_vec();
+            let rels = package
+                .part_str("xl/_rels/workbook.xml.rels")
+                .unwrap()
+                .unwrap();
+            assert!(matches!(
+                jade_xlsx_writer::spills::dynamic_array_metadata(&mut package),
+                Err(jade_xlsx_writer::WriteError::ArrayMetadata(_))
+            ));
+            assert_eq!(package.part_names(), before);
+            assert_eq!(
+                package
+                    .part_str("xl/_rels/workbook.xml.rels")
+                    .unwrap()
+                    .unwrap(),
+                rels
+            );
+            continue;
+        }
+        assert_eq!(
+            jade_xlsx_writer::spills::dynamic_array_metadata(&mut package).unwrap(),
+            Some(expected),
+            "{cells}"
+        );
+        let metadata = package.part_str("xl/metadata.xml").unwrap().unwrap();
+        let flags = jade_xlsx_reader::array_metadata::cell_dynamic_array_flags(&metadata).unwrap();
+        assert_eq!(flags.len(), expected as usize);
+        assert!(flags[..flags.len() - 1].iter().all(Option::is_none));
+        assert_eq!(flags.last(), Some(&Some(true)));
+    }
+}
+
+#[test]
+fn creating_metadata_preserves_dangling_links_and_orphan_parts() {
+    let sheet = r#"<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData><row r="1"><c r="A1" cm="2"><f t="array" ref="A1">1</f><v>1</v></c><c r="B1" cm="4294967295"><f t="array" ref="B1">2</f><v>2</v></c><c r="J1"><f>SEQUENCE(3)</f></c></row></sheetData></worksheet>"#;
+    let mut package = OpcPackage::open(&common::workbook_with_sheet(sheet)).unwrap();
+    let orphan = b"unrelated orphan metadata bytes";
+    package.replace("xl/metadata.xml", orphan.to_vec());
+    package.replace("xl/metadata1.xml", b"another orphan".to_vec());
+    assert_eq!(
+        jade_xlsx_writer::spills::dynamic_array_metadata(&mut package).unwrap(),
+        Some(1)
+    );
+    assert_eq!(package.part("xl/metadata.xml").unwrap(), orphan);
+    assert_eq!(package.part("xl/metadata1.xml").unwrap(), b"another orphan");
+    let metadata = package.part_str("xl/metadata2.xml").unwrap().unwrap();
+    assert!(metadata.len() < 2000);
+    assert_eq!(
+        jade_xlsx_reader::array_metadata::cell_dynamic_array_flags(&metadata).unwrap(),
+        [Some(true)]
+    );
+    assert_eq!(
+        jade_xlsx_writer::spills::dynamic_array_metadata(&mut package).unwrap(),
+        Some(1)
+    );
+    let written = write_spills(
+        &package.write().unwrap(),
+        &[spill("xl/worksheets/sheet1.xml", "J1", "J1:J3", &[])],
+        false,
+    )
+    .unwrap();
+    let workbook = read_xlsx(&written).unwrap();
+    let arrays = &workbook.sheets[0].array_formulas;
+    assert!(arrays
+        .iter()
+        .filter(|a| a.anchor == at("A1") || a.anchor == at("B1"))
+        .all(|a| a.kind == jade_xlsx_reader::ArrayFormulaKind::Unknown));
+    assert!(arrays
+        .iter()
+        .any(|a| a.anchor == at("J1") && a.kind == jade_xlsx_reader::ArrayFormulaKind::Dynamic));
+}
+
 fn at(reference: &str) -> CellRef {
     CellRef::parse(reference).unwrap()
 }

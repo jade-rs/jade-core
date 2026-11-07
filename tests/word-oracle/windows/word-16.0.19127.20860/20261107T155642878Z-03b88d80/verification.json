@@ -1,0 +1,23 @@
+{
+  "engine_commit": "2ef8f939509680fb21cc01213de0319a331bcb27",
+  "word_product_version": "16.0.19127.20860",
+  "capture_id": "20261107T155642878Z-03b88d80",
+  "reference_kind": "emf",
+  "engine_source_worktree_dirty": false,
+  "strict_fixtures": [],
+  "matching_fixtures": [
+    "word-windows-edge-table-negative-spacing-autofit-bidi-unequal-3-compat12",
+    "word-windows-edge-table-negative-spacing-autofit-bidi-unequal-3-compat14",
+    "word-windows-edge-table-negative-spacing-autofit-unequal-3-compat12",
+    "word-windows-edge-table-negative-spacing-autofit-unequal-3-compat15",
+    "word-windows-edge-table-negative-spacing-bidi-unequal-3-compat12"
+  ],
+  "pending_fixtures": [
+    "word-windows-edge-table-negative-spacing-autofit-bidi-alignment-compat12",
+    "word-windows-edge-table-negative-spacing-autofit-bidi-alignment-compat14",
+    "word-windows-edge-table-negative-spacing-autofit-bidi-alignment-compat15",
+    "word-windows-edge-table-negative-spacing-autofit-bidi-unequal-3-compat15",
+    "word-windows-edge-table-negative-spacing-bidi-unequal-3-compat15"
+  ],
+  "table_glyph_projection": "unclipped"
+}
