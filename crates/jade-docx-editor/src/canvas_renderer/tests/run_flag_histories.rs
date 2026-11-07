@@ -148,6 +148,7 @@ fn render_hash_distinguishes_run_text_presence_positions_and_empty_fonts() {
             comment_ranges: Vec::new(),
             comment_markers: Vec::new(),
         };
+        let mut value_keys = std::collections::HashSet::new();
         for value in ["", "same", "\0", "税😀e\u{301}"] {
             let mut keys = std::collections::HashSet::new();
             let mut check = |props, state: String| {
@@ -157,6 +158,7 @@ fn render_hash_distinguishes_run_text_presence_positions_and_empty_fonts() {
                     keys.insert(key),
                     "{state}, value={value:?}, content={content:?}"
                 );
+                key
             };
             check(None, "absent properties".into());
             check(Some(RunProperties::default()), "absent fonts".into());
@@ -168,7 +170,13 @@ fn render_hash_distinguishes_run_text_presence_positions_and_empty_fonts() {
                 for (index, (_, setter, _)) in RUN_TEXT.iter().enumerate() {
                     setter(&mut props, (presence & (1 << index) != 0).then_some(value));
                 }
-                check(Some(props), format!("presence={presence:#x}"));
+                let key = check(Some(props), format!("presence={presence:#x}"));
+                if presence != 0 {
+                    assert!(
+                        value_keys.insert(key),
+                        "distinct value lost: presence={presence:#x}, value={value:?}"
+                    );
+                }
             }
             for hint in [FontHint::EastAsia, FontHint::Complex] {
                 let props = RunProperties {
@@ -182,6 +190,7 @@ fn render_hash_distinguishes_run_text_presence_positions_and_empty_fonts() {
             }
             assert_eq!(keys.len(), 4100);
         }
+        assert_eq!(value_keys.len(), 4 * 4095);
     }
 }
 
