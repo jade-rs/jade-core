@@ -1,5 +1,8 @@
 use super::*;
 
+#[cfg(test)]
+mod topology_tests;
+
 /// Source topology only. Explicit breaks and section boundaries retain priority.
 pub(super) fn group_end(
     elements: &[BodyElement],
@@ -9,6 +12,16 @@ pub(super) fn group_end(
     let mut index = start;
     loop {
         let paragraph = elements.get(index)?.as_paragraph()?;
+        let keep_next = paragraph
+            .properties
+            .as_ref()
+            .and_then(|props| props.keep_next)
+            .unwrap_or(false);
+        // An unlinked first paragraph cannot start a group, regardless of
+        // explicit breaks in its text.
+        if index == start && !keep_next {
+            return None;
+        }
         if paragraph
             .runs
             .iter()
@@ -16,12 +29,7 @@ pub(super) fn group_end(
         {
             return if index > start { Some(index - 1) } else { None };
         }
-        if !paragraph
-            .properties
-            .as_ref()
-            .and_then(|props| props.keep_next)
-            .unwrap_or(false)
-        {
+        if !keep_next {
             return (index > start).then_some(index);
         }
         let next = index + 1;
