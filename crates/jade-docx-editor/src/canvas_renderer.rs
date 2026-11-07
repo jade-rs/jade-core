@@ -281,6 +281,8 @@ mod paragraph_font_cache;
 mod paragraph_hash;
 mod paragraph_join;
 #[cfg(test)]
+mod planned_batch_tests;
+#[cfg(test)]
 mod preset_shape_tests;
 #[cfg(test)]
 mod recording_host;
@@ -1493,7 +1495,6 @@ impl TextBatchScratch {
         self.text.clear();
         self.x_positions.clear();
         self.font_indexes.clear();
-        self.text.reserve(len);
         self.x_positions.reserve(len);
         self.first_font_slot = None;
         self.single_font_run = true;
@@ -31940,10 +31941,36 @@ where
         let mut scratch = self.text_batch_scratch.borrow_mut();
         scratch.clear_for_len(glyph_steps.len());
 
+        // Layout normally references consecutive glyphs in the segment. Keep
+        // that source span borrowed until a gap, repetition or visual reorder
+        // requires the scratch string to preserve the requested glyph order.
+        let text_start = glyph_steps
+            .first()
+            .map_or(0, |step| step.text_start as usize);
+        let mut text_end = text_start;
+        let mut copied_text = false;
+
         for step in glyph_steps {
             let glyph_text = step.text(segment_text);
-            if !crate::draw_command::executor::try_append_bmp_glyph(&mut scratch.text, glyph_text) {
+            if copied_text {
+                if !crate::draw_command::executor::try_append_bmp_glyph(
+                    &mut scratch.text,
+                    glyph_text,
+                ) {
+                    return Ok(false);
+                }
+            } else if !crate::draw_command::executor::is_single_bmp_glyph(glyph_text) {
                 return Ok(false);
+            } else if step.text_start as usize == text_end {
+                text_end = step.text_end as usize;
+            } else {
+                let capacity = segment_text
+                    .len()
+                    .clamp(glyph_steps.len(), glyph_steps.len().saturating_mul(3));
+                scratch.text.reserve(capacity);
+                scratch.text.push_str(&segment_text[text_start..text_end]);
+                scratch.text.push_str(glyph_text);
+                copied_text = true;
             }
             scratch.observe_font_slot(resolved_style, step.font_slot);
             scratch.x_positions.push(x + step.x_offset);
@@ -31955,7 +31982,12 @@ where
             };
             let font_descriptor = resolved_style.descriptor_for_slot(font_slot);
             self.set_font_if_changed_rc(context, font_descriptor);
-            if !context.try_fill_glyph_run_batch(&scratch.text, &scratch.x_positions, y)? {
+            let text = if copied_text {
+                scratch.text.as_str()
+            } else {
+                &segment_text[text_start..text_end]
+            };
+            if !context.try_fill_glyph_run_batch(text, &scratch.x_positions, y)? {
                 return Ok(false);
             }
         } else {
@@ -31964,8 +31996,13 @@ where
                 let font_index = scratch.font_index(resolved_style, step.font_slot);
                 scratch.font_indexes.push(font_index);
             }
+            let text = if copied_text {
+                scratch.text.as_str()
+            } else {
+                &segment_text[text_start..text_end]
+            };
             if !context.try_fill_glyph_run_batch_multi_font(
-                &scratch.text,
+                text,
                 &scratch.x_positions,
                 &scratch.font_indexes,
                 &scratch.fonts,

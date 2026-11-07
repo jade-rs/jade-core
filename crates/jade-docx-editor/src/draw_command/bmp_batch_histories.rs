@@ -7,7 +7,7 @@ use proptest::prelude::*;
 use std::cell::{Cell, RefCell};
 
 #[derive(Clone, Copy, Debug)]
-enum BatchMode {
+pub(crate) enum BatchMode {
     Accept,
     Decline,
     Error,
@@ -15,14 +15,14 @@ enum BatchMode {
 
 type BatchCall = (String, Vec<f64>, Vec<u16>, usize);
 
-struct BatchPainter {
-    inner: RecordingPainter,
-    mode: Cell<BatchMode>,
-    calls: RefCell<Vec<BatchCall>>,
+pub(crate) struct BatchPainter {
+    pub(crate) inner: RecordingPainter,
+    pub(crate) mode: Cell<BatchMode>,
+    pub(crate) calls: RefCell<Vec<BatchCall>>,
 }
 
 impl BatchPainter {
-    fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self {
             inner: RecordingPainter::new(),
             mode: Cell::new(BatchMode::Accept),

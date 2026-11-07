@@ -1334,7 +1334,7 @@ pub(crate) fn try_append_bmp_glyph(output: &mut String, text: &str) -> bool {
 }
 
 #[inline]
-fn is_single_bmp_glyph(text: &str) -> bool {
+pub(crate) fn is_single_bmp_glyph(text: &str) -> bool {
     matches!(
         text.as_bytes(),
         [0..=0x7f] | [0xc2..=0xdf, _] | [0xe0..=0xef, _, _]
@@ -2698,7 +2698,7 @@ mod tests {
 
 #[cfg(test)]
 #[path = "bmp_batch_histories.rs"]
-mod bmp_batch_histories;
+pub(crate) mod bmp_batch_histories;
 
 #[cfg(test)]
 mod painter_backend_tests {
