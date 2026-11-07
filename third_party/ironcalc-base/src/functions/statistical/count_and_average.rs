@@ -866,208 +866,103 @@ impl<'a> Model<'a> {
     }
 
     pub(crate) fn fn_large(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 2 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let values = match self.evaluate_node_in_context(&args[0], cell) {
-            CalcResult::Array(array) => match self.values_from_array(array) {
-                Ok(v) => v,
-                Err(e) => {
-                    return CalcResult::Error {
-                        error: Error::VALUE,
-                        origin: cell,
-                        message: format!("Unsupported array argument: {}", e),
-                    }
-                }
-            },
-            CalcResult::Range { left, right } => match self.values_from_range(left, right) {
-                Ok(v) => v,
-                Err(e) => return e,
-            },
-            CalcResult::Boolean(value) => {
-                if !matches!(args[0], Node::ReferenceKind { .. }) {
-                    vec![Some(if value { 1.0 } else { 0.0 })]
-                } else {
-                    return CalcResult::Error {
-                        error: Error::NUM,
-                        origin: cell,
-                        message: "Unsupported argument type".to_string(),
-                    };
-                }
-            }
-            CalcResult::Number(value) => {
-                if !matches!(args[0], Node::ReferenceKind { .. }) {
-                    vec![Some(value)]
-                } else {
-                    return CalcResult::Error {
-                        error: Error::NUM,
-                        origin: cell,
-                        message: "Unsupported argument type".to_string(),
-                    };
-                }
-            }
-            CalcResult::String(value) => {
-                if !matches!(args[0], Node::ReferenceKind { .. }) {
-                    if let Some(parsed) = self.cast_number(&value) {
-                        vec![Some(parsed)]
-                    } else {
-                        return CalcResult::Error {
-                            error: Error::VALUE,
-                            origin: cell,
-                            message: "Unsupported argument type".to_string(),
-                        };
-                    }
-                } else {
-                    return CalcResult::Error {
-                        error: Error::NUM,
-                        origin: cell,
-                        message: "Unsupported argument type".to_string(),
-                    };
-                }
-            }
-            _ => {
-                return CalcResult::Error {
-                    error: Error::NIMPL,
-                    origin: cell,
-                    message: "Unsupported argument type".to_string(),
-                }
-            }
-        };
-        let k = match self.get_number_no_bools(&args[1], cell) {
-            Ok(f) => f.trunc(),
-            Err(s) => return s,
-        };
-        if k < 1.0 {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "K must be >= 1".to_string(),
-            };
-        }
-        let mut numeric_values: Vec<f64> = values.into_iter().flatten().collect();
-        if numeric_values.is_empty() {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "No numeric values for LARGE".to_string(),
-            };
-        }
-        numeric_values.sort_by(|a, b| b.partial_cmp(a).unwrap_or(Ordering::Equal));
-        let k_usize = k as usize;
-        if k_usize > numeric_values.len() {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "K is larger than the number of data points".to_string(),
-            };
-        }
-        CalcResult::Number(numeric_values[k_usize - 1])
+        self.order_statistic(args, cell, true)
     }
 
     pub(crate) fn fn_small(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.order_statistic(args, cell, false)
+    }
+
+    fn order_statistic(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+        largest: bool,
+    ) -> CalcResult {
         if args.len() != 2 {
             return CalcResult::new_args_number_error(cell);
         }
-
-        let values = match self.evaluate_node_in_context(&args[0], cell) {
-            CalcResult::Array(array) => match self.values_from_array(array) {
-                Ok(v) => v,
-                Err(e) => {
-                    return CalcResult::Error {
-                        error: Error::VALUE,
-                        origin: cell,
-                        message: format!("Unsupported array argument: {}", e),
-                    }
-                }
-            },
-            CalcResult::Range { left, right } => match self.values_from_range(left, right) {
-                Ok(v) => v,
-                Err(e) => return e,
-            },
-            CalcResult::Boolean(value) => {
-                if !matches!(args[0], Node::ReferenceKind { .. }) {
-                    vec![Some(if value { 1.0 } else { 0.0 })]
+        let data = match self.evaluate_node_in_context(&args[0], cell) {
+            CalcResult::Array(array) => self
+                .values_from_array(array)
+                .map_err(|error| CalcResult::new_error(error, cell, "Error in data array".into())),
+            CalcResult::Range { left, right } => {
+                if left.sheet != right.sheet {
+                    Err(CalcResult::new_error(
+                        Error::VALUE,
+                        cell,
+                        "Ranges are in different sheets".into(),
+                    ))
                 } else {
-                    return CalcResult::Error {
-                        error: Error::NUM,
-                        origin: cell,
-                        message: "Unsupported argument type".to_string(),
-                    };
+                    self.values_from_range(left, right)
                 }
             }
-            CalcResult::Number(value) => {
-                if !matches!(args[0], Node::ReferenceKind { .. }) {
-                    vec![Some(value)]
-                } else {
-                    return CalcResult::Error {
-                        error: Error::NUM,
-                        origin: cell,
-                        message: "Unsupported argument type".to_string(),
-                    };
-                }
-            }
+            CalcResult::Number(number) => Ok(vec![Some(number)]),
+            CalcResult::Boolean(value) => Ok(if matches!(args[0], Node::ReferenceKind { .. }) {
+                vec![]
+            } else {
+                vec![Some(if value { 1.0 } else { 0.0 })]
+            }),
             CalcResult::String(value) => {
-                if !matches!(args[0], Node::ReferenceKind { .. }) {
-                    if let Some(parsed) = self.cast_number(&value) {
-                        vec![Some(parsed)]
-                    } else {
-                        return CalcResult::Error {
-                            error: Error::VALUE,
-                            origin: cell,
-                            message: "Unsupported argument type".to_string(),
-                        };
-                    }
+                if matches!(args[0], Node::ReferenceKind { .. }) {
+                    Ok(vec![])
                 } else {
-                    return CalcResult::Error {
-                        error: Error::NUM,
-                        origin: cell,
-                        message: "Unsupported argument type".to_string(),
-                    };
+                    self.cast_number(&value)
+                        .map(|number| vec![Some(number)])
+                        .ok_or_else(|| {
+                            CalcResult::new_error(Error::VALUE, cell, "Invalid data value".into())
+                        })
                 }
             }
-            _ => {
-                return CalcResult::Error {
-                    error: Error::NIMPL,
-                    origin: cell,
-                    message: "Unsupported argument type".to_string(),
-                }
+            error @ CalcResult::Error { .. } => Err(error),
+            CalcResult::EmptyCell | CalcResult::EmptyArg => Ok(vec![]),
+            _ => Err(CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "Unsupported data argument".into(),
+            )),
+        }
+        .and_then(|values| {
+            let mut values: Vec<f64> = values.into_iter().flatten().collect();
+            if values.iter().any(|number| !number.is_finite()) {
+                return Err(CalcResult::new_error(
+                    Error::NUM,
+                    cell,
+                    "Invalid data number".into(),
+                ));
             }
-        };
-
-        let k = match self.get_number_no_bools(&args[1], cell) {
-            Ok(f) => f.trunc(),
-            Err(s) => return s,
-        };
-
-        if k < 1.0 {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "K must be >= 1".to_string(),
-            };
+            values.sort_by(f64::total_cmp);
+            Ok(values)
+        });
+        if let Err(
+            error @ CalcResult::Error {
+                error: Error::CIRC, ..
+            },
+        ) = &data
+        {
+            return error.clone();
         }
-
-        let mut numeric_values: Vec<f64> = values.into_iter().flatten().collect();
-        if numeric_values.is_empty() {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "No numeric values for SMALL".to_string(),
+        self.map_scalar_values(&args[1], cell, |model, value| {
+            let values = match &data {
+                Ok(values) => values,
+                Err(error) => return error.clone(),
             };
-        }
-
-        // For SMALL, sort ascending
-        numeric_values.sort_by(|a, b| a.partial_cmp(b).unwrap_or(Ordering::Equal));
-
-        let k_usize = k as usize;
-        if k_usize > numeric_values.len() {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "K is larger than the number of data points".to_string(),
+            if matches!(value, CalcResult::Boolean(_)) {
+                return CalcResult::new_error(Error::VALUE, cell, "Expecting numeric rank".into());
+            }
+            let rank = match model.cast_to_number(value, cell) {
+                Ok(number) => number.trunc(),
+                Err(error) => return error,
             };
-        }
-
-        CalcResult::Number(numeric_values[k_usize - 1])
+            if !rank.is_finite() || rank < 1.0 || rank > values.len() as f64 {
+                return CalcResult::new_error(Error::NUM, cell, "Rank outside data bounds".into());
+            }
+            let index = if largest {
+                values.len() - rank as usize
+            } else {
+                rank as usize - 1
+            };
+            CalcResult::Number(values[index])
+        })
     }
 }

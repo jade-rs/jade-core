@@ -125,54 +125,62 @@ impl<'a> Model<'a> {
     }
 
     pub(crate) fn fn_erf(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if !(1..=2).contains(&args.len()) {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let x = match self.get_number_no_bools(&args[0], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        if args.len() == 2 {
-            let y = match self.get_number_no_bools(&args[1], cell) {
-                Ok(f) => f,
-                Err(s) => return s,
-            };
-            CalcResult::Number(erf(y) - erf(x))
-        } else {
-            CalcResult::Number(erf(x))
-        }
+        self.error_function_arguments(args, cell, false, true)
     }
 
     pub(crate) fn fn_erfprecise(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 1 {
-            return CalcResult::new_args_number_error(cell);
-        };
-        let x = match self.get_number_no_bools(&args[0], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        CalcResult::Number(erf(x))
+        self.error_function_arguments(args, cell, false, false)
     }
 
     pub(crate) fn fn_erfc(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 1 {
-            return CalcResult::new_args_number_error(cell);
-        };
-        let x = match self.get_number_no_bools(&args[0], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        CalcResult::Number(erfc(x))
+        self.error_function_arguments(args, cell, true, false)
     }
 
     pub(crate) fn fn_erfcprecise(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 1 {
+        self.error_function_arguments(args, cell, true, false)
+    }
+
+    fn error_function_arguments(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+        complement: bool,
+        allow_upper: bool,
+    ) -> CalcResult {
+        if args.is_empty() || args.len() > if allow_upper { 2 } else { 1 } {
             return CalcResult::new_args_number_error(cell);
-        };
-        let x = match self.get_number_no_bools(&args[0], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        CalcResult::Number(erfc(x))
+        }
+        self.map_scalar_arguments(args, cell, |model, values| {
+            let mut numbers = [0.0; 2];
+            for (number, value) in numbers.iter_mut().zip(values) {
+                // Preserve the existing no-Boolean coercion for all variants.
+                if matches!(value, CalcResult::Boolean(_)) {
+                    return CalcResult::new_error(Error::VALUE, cell, "Expecting number".into());
+                }
+                *number = match model.cast_to_number(value.clone(), cell) {
+                    Ok(number) => number,
+                    Err(error) => return error,
+                };
+                if !number.is_finite() {
+                    return CalcResult::new_error(
+                        Error::NUM,
+                        cell,
+                        "Invalid error-function parameter".into(),
+                    );
+                }
+            }
+            let result = if complement {
+                erfc(numbers[0])
+            } else if values.len() == 2 {
+                erf(numbers[1]) - erf(numbers[0])
+            } else {
+                erf(numbers[0])
+            };
+            if result.is_finite() {
+                CalcResult::Number(result)
+            } else {
+                CalcResult::new_error(Error::NUM, cell, "Invalid error-function result".into())
+            }
+        })
     }
 }

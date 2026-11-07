@@ -4,64 +4,85 @@ use crate::{
 };
 
 impl<'a> Model<'a> {
-    // PERMUT(number, number_chosen) = n! / (n-k)! = n*(n-1)*...*(n-k+1)
     pub(crate) fn fn_permut(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 2 {
-            return CalcResult::new_args_number_error(cell);
-        }
-
-        let n = match self.get_number(&args[0], cell) {
-            Ok(v) => v.floor() as i64,
-            Err(e) => return e,
-        };
-
-        let k = match self.get_number(&args[1], cell) {
-            Ok(v) => v.floor() as i64,
-            Err(e) => return e,
-        };
-
-        if n < 0 || k < 0 || k > n {
-            return CalcResult::new_error(
-                Error::NUM,
-                cell,
-                "PERMUT: requires 0 ≤ k ≤ n".to_string(),
-            );
-        }
-
-        // n * (n-1) * ... * (n-k+1)
-        let result = ((n - k + 1)..=n).map(|i| i as f64).product::<f64>();
-        CalcResult::Number(result)
+        self.permutation_arguments(args, cell, false)
     }
 
-    // PERMUTATIONA(number, number_chosen) = n^k (permutations with repetition)
     pub(crate) fn fn_permutationa(
         &mut self,
         args: &[Node],
         cell: CellReferenceIndex,
     ) -> CalcResult {
+        self.permutation_arguments(args, cell, true)
+    }
+
+    fn permutation_arguments(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+        repetitions: bool,
+    ) -> CalcResult {
         if args.len() != 2 {
             return CalcResult::new_args_number_error(cell);
         }
-
-        let n = match self.get_number(&args[0], cell) {
-            Ok(v) => v.floor() as i64,
-            Err(e) => return e,
-        };
-
-        let k = match self.get_number(&args[1], cell) {
-            Ok(v) => v.floor() as i64,
-            Err(e) => return e,
-        };
-
-        if n < 0 || k < 0 {
-            return CalcResult::new_error(
-                Error::NUM,
-                cell,
-                "PERMUTATIONA: requires n ≥ 0 and k ≥ 0".to_string(),
-            );
-        }
-
-        let result = (n as f64).powf(k as f64);
-        CalcResult::Number(result)
+        self.map_scalar_arguments(args, cell, |model, values| {
+            let n = match model.cast_to_number(values[0].clone(), cell) {
+                Ok(number) => number.floor(),
+                Err(error) => return error,
+            };
+            let k = match model.cast_to_number(values[1].clone(), cell) {
+                Ok(number) => number.floor(),
+                Err(error) => return error,
+            };
+            let invalid = || {
+                CalcResult::new_error(
+                    Error::NUM,
+                    cell,
+                    "Invalid or overflowing permutation".into(),
+                )
+            };
+            if !n.is_finite()
+                || !k.is_finite()
+                || n < 0.0
+                || k < 0.0
+                || (!repetitions && (n == 0.0 || k > n))
+                || (repetitions && n == 0.0 && k > 0.0)
+            {
+                return invalid();
+            }
+            let result = if repetitions {
+                n.powf(k)
+            } else {
+                // n!/(n-k)! >= k!, and 171! exceeds the finite numeric range.
+                if k > 170.0 {
+                    return invalid();
+                }
+                let mut result = 1.0;
+                let mut exact = if n <= 9_007_199_254_740_992.0 {
+                    Some(1_u128)
+                } else {
+                    None
+                };
+                for index in 0..k as usize {
+                    let next =
+                        exact.and_then(|previous| previous.checked_mul(n as u128 - index as u128));
+                    result = if let Some(integer) = next {
+                        integer as f64
+                    } else {
+                        result * (n - index as f64)
+                    };
+                    exact = next;
+                    if !result.is_finite() {
+                        return invalid();
+                    }
+                }
+                result
+            };
+            if result.is_finite() {
+                CalcResult::Number(result)
+            } else {
+                invalid()
+            }
+        })
     }
 }

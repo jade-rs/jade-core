@@ -28,11 +28,40 @@ pub(crate) fn text_before(
     None
 }
 
-pub(crate) fn substitute(text: &str, old_text: &str, new_text: &str, instance_num: i32) -> String {
-    if let Some((left, right)) = match_text(text, old_text, instance_num, Case::Sensitive) {
-        return format!("{}{}{}", &text[..left], new_text, &text[right..]);
+pub(crate) fn substitute(
+    text: &str,
+    old_text: &str,
+    new_text: &str,
+    instance: Option<f64>,
+) -> Result<String, crate::expressions::token::Error> {
+    use crate::expressions::token::Error;
+    let mut result = String::new();
+    let mut units = 0usize;
+    let mut append = |part: &str| -> Result<(), Error> {
+        units = units.saturating_add(part.encode_utf16().count());
+        if units > 32767 {
+            return Err(Error::VALUE);
+        }
+        result.push_str(part);
+        Ok(())
     };
-    text.to_string()
+    let mut cursor = 0;
+    if !old_text.is_empty() {
+        // Occurrences do not overlap, for both all-instance and nth-instance
+        // replacement. Appending in bounded pieces avoids expansion blowups.
+        for (index, (start, matched)) in text.match_indices(old_text).enumerate() {
+            if instance.is_none_or(|n| n == (index + 1) as f64) {
+                append(&text[cursor..start])?;
+                append(new_text)?;
+                cursor = start + matched.len();
+                if instance.is_some() {
+                    break;
+                }
+            }
+        }
+    }
+    append(&text[cursor..])?;
+    Ok(result)
 }
 
 fn match_text(
