@@ -165,28 +165,64 @@ pub(crate) fn unused_cell_metadata_index(
             let Some(xml) = package.part_str(&part)? else {
                 return Ok(None);
             };
-            let tree = nodes(&xml)?;
-            if tree[0].children.len() != 1 {
+            let Some(links) = worksheet_metadata_links(&xml)? else {
                 return Ok(None);
-            }
-            let root = tree[0].children[0];
-            if tree[root].name != "worksheet" || !valid_namespace(&tree[root].namespace) {
-                return Ok(None);
-            }
-            for data in owned(&tree, root, "sheetData") {
-                for row in owned(&tree, data, "row") {
-                    for cell in owned(&tree, row, "c") {
-                        if let Some(index) =
-                            tree[cell].index("cm").and_then(|n| u32::try_from(n).ok())
-                        {
-                            used.insert(index);
-                        }
-                    }
+            };
+            for link in links {
+                if let Some(index) = link.and_then(|n| u32::try_from(n).ok()) {
+                    used.insert(index);
                 }
             }
         }
     }
     Ok((!used.contains(&1)).then_some(1))
+}
+
+// Metadata indexes are global to the package, so standard cell links in
+// opaque alternatives must remain reserved even when their values cannot
+// be projected. Only MCE wrappers are transparent to the standard grid path.
+fn grid_children(tree: &[Node], parent: usize, namespace: &str, name: &str) -> Vec<usize> {
+    const MC: &str = "http://schemas.openxmlformats.org/markup-compatibility/2006";
+    let mut result = Vec::new();
+    let mut pending = tree[parent].children.clone();
+    while let Some(index) = pending.pop() {
+        let node = &tree[index];
+        if node.namespace == namespace && node.name == name {
+            result.push(index);
+        } else if node.namespace == MC && node.name == "AlternateContent" {
+            for &branch in &node.children {
+                if tree[branch].namespace == MC
+                    && matches!(tree[branch].name.as_str(), "Choice" | "Fallback")
+                {
+                    pending.extend_from_slice(&tree[branch].children);
+                }
+            }
+        }
+    }
+    result
+}
+
+fn worksheet_metadata_links(xml: &str) -> Result<Option<Vec<Option<usize>>>> {
+    let tree = nodes(xml)?;
+    if tree[0].children.len() != 1 {
+        return Ok(None);
+    }
+    let root = tree[0].children[0];
+    if tree[root].name != "worksheet" || !valid_namespace(&tree[root].namespace) {
+        return Ok(None);
+    }
+    let mut links = Vec::new();
+    let namespace = &tree[root].namespace;
+    for data in grid_children(&tree, root, namespace, "sheetData") {
+        for row in grid_children(&tree, data, namespace, "row") {
+            for cell in grid_children(&tree, row, namespace, "c") {
+                if tree[cell].attr("cm").is_some() {
+                    links.push(tree[cell].index("cm"));
+                }
+            }
+        }
+    }
+    Ok(Some(links))
 }
 fn valid_count(node: &Node, actual: usize) -> bool {
     node.attr("count").is_none() || node.index("count") == Some(actual)
@@ -322,26 +358,14 @@ pub(crate) fn append_dynamic(
         let Some(sheet) = package.part_str(&part)? else {
             return Ok(None);
         };
-        let grid = nodes(&sheet)?;
-        if grid[0].children.len() != 1 {
+        let Some(links) = worksheet_metadata_links(&sheet)? else {
             return Ok(None);
-        }
-        let sheet_root = grid[0].children[0];
-        if grid[sheet_root].name != "worksheet" || !valid_namespace(&grid[sheet_root].namespace) {
+        };
+        if links
+            .into_iter()
+            .any(|index| index.is_none_or(|v| v == 0 || v > blocks.len()))
+        {
             return Ok(None);
-        }
-        for data in owned(&grid, sheet_root, "sheetData") {
-            for row in owned(&grid, data, "row") {
-                for cell in owned(&grid, row, "c") {
-                    if grid[cell].attr("cm").is_some()
-                        && grid[cell]
-                            .index("cm")
-                            .is_none_or(|v| v == 0 || v > blocks.len())
-                    {
-                        return Ok(None);
-                    }
-                }
-            }
         }
     }
     let Some(cm) = blocks

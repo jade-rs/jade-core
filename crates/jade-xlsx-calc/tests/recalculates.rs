@@ -7,6 +7,107 @@ use jade_xlsx_reader::{read_xlsx, CellRef, CellValue};
 use zip::write::SimpleFileOptions;
 
 #[test]
+fn dynamic_spills_respect_blank_merged_ranges_without_expanding_them() {
+    let xml = sheet(r#"<row r="2"><c r="B2"><f>SEQUENCE(3)</f></c></row>"#);
+    let mut book = read_xlsx(&workbook(&xml, None, false)).unwrap();
+    for (merged, blocked) in [
+        ("B3:C3", true),
+        ("B2:C2", true),
+        ("B3:XFD1048576", true),
+        ("C2:D4", false),
+    ] {
+        book.sheets[0].merges = vec![jade_xlsx_reader::CellRange::parse(merged).unwrap()];
+        let result = evaluate(&book).unwrap();
+        assert!(result.skipped.is_empty());
+        let expected = if blocked {
+            CellValue::Error("#SPILL!".into())
+        } else {
+            CellValue::Number(1.0)
+        };
+        assert_eq!(computed(&result, 0, "B2"), Some(&expected), "{merged}");
+        assert_eq!(result.spills.is_empty(), blocked, "{merged}");
+    }
+    book.sheets[0].merges.clear();
+    let result = evaluate(&book).unwrap();
+    assert_eq!(computed(&result, 0, "B2"), Some(&CellValue::Number(1.0)));
+    assert_eq!(result.spills.len(), 1);
+}
+
+#[test]
+fn dynamic_arrays_cannot_spill_inside_an_otherwise_empty_table() {
+    let source = include_bytes!("../../../public/fixtures/objects-workbook.xlsx");
+    let mut book = read_xlsx(source).unwrap();
+    assert!(!book.sheets[0].tables.is_empty());
+    let reference = CellRef::parse("B2").unwrap();
+    assert!(book.sheets[0]
+        .tables
+        .iter()
+        .any(|t| t.reference.contains(reference)));
+    let mut cell = book.sheets[0]
+        .rows
+        .iter()
+        .flat_map(|r| &r.cells)
+        .find(|c| c.reference == reference)
+        .unwrap()
+        .clone();
+    cell.formula = Some("SEQUENCE(3)".into());
+    cell.value = CellValue::Empty;
+    for row in &mut book.sheets[0].rows {
+        row.cells.clear();
+    }
+    book.sheets[0]
+        .rows
+        .iter_mut()
+        .find(|r| r.index == reference.row)
+        .unwrap()
+        .cells
+        .push(cell);
+    book.sheets[0].array_formulas = vec![jade_xlsx_reader::ArrayFormula {
+        anchor: reference,
+        range: jade_xlsx_reader::CellRange {
+            start: reference,
+            end: reference,
+        },
+        kind: jade_xlsx_reader::ArrayFormulaKind::Dynamic,
+    }];
+    book.sheets[0].tables.truncate(1);
+    for (table_range, formula, expected, spills) in [
+        (
+            "A1:C5",
+            "SEQUENCE(3)",
+            CellValue::Error("#SPILL!".into()),
+            0,
+        ),
+        (
+            "C2:E4",
+            "SEQUENCE(1,2)",
+            CellValue::Error("#SPILL!".into()),
+            0,
+        ),
+        ("C2:E4", "SEQUENCE(3)", CellValue::Number(1.0), 1),
+        ("A1:C5", "SUM(SEQUENCE(3))", CellValue::Number(6.0), 0),
+    ] {
+        book.sheets[0].tables[0].reference =
+            jade_xlsx_reader::CellRange::parse(table_range).unwrap();
+        book.sheets[0]
+            .rows
+            .iter_mut()
+            .flat_map(|r| &mut r.cells)
+            .find(|c| c.reference == reference)
+            .unwrap()
+            .formula = Some(formula.into());
+        let result = evaluate(&book).unwrap();
+        assert!(result.skipped.is_empty());
+        assert_eq!(
+            computed(&result, 0, "B2"),
+            Some(&expected),
+            "{table_range}: {formula}"
+        );
+        assert_eq!(result.spills.len(), spills, "{table_range}: {formula}");
+    }
+}
+
+#[test]
 fn ordinary_scalar_arguments_intersect_ranges_returned_by_defined_formulas() {
     for definition in ["OFFSET('売上'!$A$1,0,0,3,1)", "INDIRECT(\"'売上'!A1:A3\")"] {
         let xml = sheet(

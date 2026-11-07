@@ -10,6 +10,24 @@ use jade_xlsx_reader::{CellRange, CellRef};
 const SHEET: &str = "Operations";
 
 #[test]
+fn removing_a_merge_unblocks_a_dynamic_spill_in_one_history_step() {
+    let mut book = book();
+    book.merge_cells(SHEET, "J2:K2").unwrap();
+    book.set(SHEET, "J1", CellInput::Formula("SEQUENCE(3)".into()))
+        .unwrap();
+    assert_eq!(column(&book, &["J1", "J2", "J3"]), ["#SPILL!", "", ""]);
+    book.unmerge_cells(SHEET, "J2:K2").unwrap();
+    assert_eq!(column(&book, &["J1", "J2", "J3"]), ["1", "2", "3"]);
+    let saved = HeadlessWorkbook::open_for_editing(book.bytes()).unwrap();
+    assert_eq!(column(&saved, &["J1", "J2", "J3"]), ["1", "2", "3"]);
+    book.undo().unwrap();
+    assert_eq!(column(&book, &["J1", "J2", "J3"]), ["#SPILL!", "", ""]);
+    assert!(book.workbook().sheets[0].merges.contains(&range("J2:K2")));
+    book.redo().unwrap();
+    assert_eq!(column(&book, &["J1", "J2", "J3"]), ["1", "2", "3"]);
+}
+
+#[test]
 fn entered_scalar_aggregate_keeps_array_evaluation_beside_imported_normal_formulas() {
     let mut package = jade_opc::OpcPackage::open(include_bytes!(
         "../../../public/fixtures/grid-operations-workbook.xlsx"
