@@ -580,44 +580,72 @@ fn apply_document_settings(document: &mut Document, settings: &DocumentSettings)
 /// Resolve paragraph-before spacing in pixels using the shared line height.
 // Word's nominal line-unit conversion is distinct from font-sized text
 // advance (Application.LinesToPoints). The original Mac contract's 33/79
-// afterLines/after pair measures 3.95pt, rather than 0.33 × 13.65pt.
+// afterLines/after pair measures 3.95pt, rather than 0.33 × 13.65pt. With an
+// active line grid one unit is the grid pitch instead: Word for Mac 16.114
+// spaces `w:afterLines="50"` by 9pt on an 18pt grid, 7.5pt on 15pt and 12pt on
+// 24pt, for `lines`, `linesAndChars` and `snapToChars`, in table cells and
+// with `w:snapToGrid w:val="0"` alike; omitted, `default` and no grid give 6pt.
 // Keep the Windows sizing policy until its physical spacing is verified.
-fn paragraph_spacing_line_unit_pt(line_height_points: f32) -> f32 {
+fn paragraph_spacing_line_unit_pt(line_height_points: f32, grid_pitch_pt: Option<f32>) -> f32 {
     if crate::line_metrics::word_layout_platform() == crate::line_metrics::WordLayoutPlatform::Mac {
-        12.0
+        grid_pitch_pt.unwrap_or(12.0)
     } else {
         line_height_points
     }
 }
 
 pub fn spacing_before_px(paragraph: &jade_docx_reader::Paragraph, line_height_points: f32) -> f64 {
+    spacing_before_px_on_grid(paragraph, line_height_points, None)
+}
+
+/// [`spacing_before_px`] in a section with an active line grid of
+/// `grid_pitch_pt` ([`crate::line_metrics::doc_grid_line_unit_pitch_pt`]).
+pub fn spacing_before_px_on_grid(
+    paragraph: &jade_docx_reader::Paragraph,
+    line_height_points: f32,
+    grid_pitch_pt: Option<f32>,
+) -> f64 {
     paragraph
         .properties
         .as_ref()
         .and_then(|props| props.spacing.as_ref())
         .and_then(paragraph_spacing_before)
         .map_or(0.0, |amount| {
-            paragraph_spacing_px(amount, line_height_points)
+            paragraph_spacing_px(amount, line_height_points, grid_pitch_pt)
         })
 }
 
 /// Resolve paragraph-after spacing using the platform's shared line-unit rule.
 pub fn spacing_after_px(paragraph: &jade_docx_reader::Paragraph, line_height_points: f32) -> f64 {
+    spacing_after_px_on_grid(paragraph, line_height_points, None)
+}
+
+/// [`spacing_after_px`] in a section with an active line grid of
+/// `grid_pitch_pt` ([`crate::line_metrics::doc_grid_line_unit_pitch_pt`]).
+pub fn spacing_after_px_on_grid(
+    paragraph: &jade_docx_reader::Paragraph,
+    line_height_points: f32,
+    grid_pitch_pt: Option<f32>,
+) -> f64 {
     paragraph
         .properties
         .as_ref()
         .and_then(|props| props.spacing.as_ref())
         .and_then(paragraph_spacing_after)
         .map_or(0.0, |amount| {
-            paragraph_spacing_px(amount, line_height_points)
+            paragraph_spacing_px(amount, line_height_points, grid_pitch_pt)
         })
 }
 
-fn paragraph_spacing_px(amount: ParagraphSpacingAmount, line_height_points: f32) -> f64 {
+fn paragraph_spacing_px(
+    amount: ParagraphSpacingAmount,
+    line_height_points: f32,
+    grid_pitch_pt: Option<f32>,
+) -> f64 {
     match amount {
         ParagraphSpacingAmount::Points(points) => points_to_px(points),
         ParagraphSpacingAmount::Lines(lines) => {
-            points_to_px(paragraph_spacing_line_unit_pt(line_height_points) * lines)
+            points_to_px(paragraph_spacing_line_unit_pt(line_height_points, grid_pitch_pt) * lines)
         }
     }
 }
@@ -3557,6 +3585,39 @@ mod tests {
         }
         set_word_layout_platform(WordLayoutPlatform::Windows);
         assert!((spacing_after_px(&paragraph, 20.0) * 0.75 - 6.6).abs() < 1e-5);
+    }
+
+    #[test]
+    fn mac_paragraph_spacing_line_units_follow_an_active_grid_pitch() {
+        use crate::line_metrics::{set_word_layout_platform, WordLayoutPlatform};
+        set_word_layout_platform(WordLayoutPlatform::Mac);
+        let paragraph = jade_docx_reader::Paragraph {
+            properties: Some(jade_docx_reader::ParagraphProperties {
+                spacing: Some(jade_docx_reader::Spacing {
+                    before: Some(4.0),
+                    after: Some(4.5),
+                    before_lines: Some(0.44),
+                    after_lines: Some(0.5),
+                    ..Default::default()
+                }),
+                ..Default::default()
+            }),
+            runs: Vec::new(),
+            node_id: None,
+            comment_ranges: Vec::new(),
+            comment_markers: Vec::new(),
+        };
+        // Word for Mac 16.114 grid-line-unit probe: `w:afterLines="50"` is half
+        // the pitch, and without an active grid half of the 12pt nominal line.
+        for (pitch, after) in [(Some(18.0), 9.0), (Some(15.0), 7.5), (None, 6.0)] {
+            let actual = spacing_after_px_on_grid(&paragraph, 20.9, pitch) * 0.75;
+            assert!((actual - after).abs() < 1e-5, "{pitch:?}: {actual}");
+        }
+        let before = spacing_before_px_on_grid(&paragraph, 20.9, Some(18.0)) * 0.75;
+        assert!((before - 7.92).abs() < 1e-5, "{before}");
+        set_word_layout_platform(WordLayoutPlatform::Windows);
+        let windows = spacing_after_px_on_grid(&paragraph, 20.0, Some(18.0)) * 0.75;
+        assert!((windows - 10.0).abs() < 1e-5, "{windows}");
     }
 
     #[test]

@@ -1197,6 +1197,9 @@ struct LayoutConfig {
     /// `CanvasRenderer::register_table_row_notes`).
     note_markers: NoteMarkers,
     doc_grid: Option<DocGrid>,
+    /// What a `w:beforeLines`/`w:afterLines` unit measures: the section's line
+    /// grid pitch, which reaches cells even when `doc_grid` drops it for lines.
+    spacing_grid_pitch_pt: Option<f32>,
     styles_part: Option<Rc<StylesPart>>,
     document_snap_to_grid_default: bool,
     /// The document's `w:useFELayout`.
@@ -2074,6 +2077,17 @@ where
             render_original: options.render_original,
             note_markers,
             doc_grid: table_doc_grid,
+            spacing_grid_pitch_pt: jade_docx_layout::line_metrics::doc_grid_line_unit_pitch_pt(
+                self.current_doc_grid.as_ref(),
+                Some(
+                    ((self.page_height - self.margin_top - self.margin_bottom) * 72.0 / 96.0)
+                        as f32,
+                ),
+                self.styles_part
+                    .as_ref()
+                    .and_then(|styles| styles.doc_default_font_size())
+                    .unwrap_or(10.5),
+            ),
             styles_part: self.styles_part.clone(),
             document_snap_to_grid_default: self.document_snap_to_grid_default,
             document_uses_east_asian_layout: self.document_east_asian_rules.use_east_asian_layout,
@@ -12088,17 +12102,19 @@ fn prepare_row_layout<P: Painter<Error: PainterError>>(
                         let before = if !horizontal || suppress_before.contains(&block_index) {
                             0.0
                         } else {
-                            jade_docx_layout::text_extract::spacing_before_px(
+                            jade_docx_layout::text_extract::spacing_before_px_on_grid(
                                 paragraph,
                                 line_height_points,
+                                config.spacing_grid_pitch_pt,
                             )
                         };
                         let after = if !horizontal || suppress_after.contains(&block_index) {
                             0.0
                         } else {
-                            jade_docx_layout::text_extract::spacing_after_px(
+                            jade_docx_layout::text_extract::spacing_after_px_on_grid(
                                 paragraph,
                                 line_height_points,
+                                config.spacing_grid_pitch_pt,
                             )
                         };
                         // Adjacent paragraph margins collapse to their maximum;
@@ -14478,6 +14494,7 @@ mod tests {
                 render_original: false,
                 note_markers: NoteMarkers::default(),
                 doc_grid: None,
+                spacing_grid_pitch_pt: None,
                 document_snap_to_grid_default: false,
                 document_uses_east_asian_layout: false,
                 word_modern_border_insets: false,
@@ -14587,6 +14604,7 @@ mod tests {
             render_original: false,
             note_markers: NoteMarkers::default(),
             doc_grid: None,
+            spacing_grid_pitch_pt: None,
             document_snap_to_grid_default: false,
             document_uses_east_asian_layout: false,
             word_modern_border_insets: false,
@@ -15930,6 +15948,7 @@ mod tests {
             render_original: false,
             note_markers: NoteMarkers::default(),
             doc_grid: None,
+            spacing_grid_pitch_pt: None,
             document_snap_to_grid_default: false,
             document_uses_east_asian_layout: false,
             word_modern_border_insets: false,
@@ -17028,6 +17047,7 @@ mod tests {
             render_original: false,
             note_markers: NoteMarkers::default(),
             doc_grid: None,
+            spacing_grid_pitch_pt: None,
             document_snap_to_grid_default: false,
             document_uses_east_asian_layout: false,
             word_modern_border_insets: false,
@@ -18601,6 +18621,7 @@ mod tests {
             render_original: false,
             note_markers: NoteMarkers::default(),
             doc_grid: None,
+            spacing_grid_pitch_pt: None,
             document_snap_to_grid_default: false,
             document_uses_east_asian_layout: false,
             word_modern_border_insets: false,
@@ -19521,6 +19542,7 @@ mod tests {
             render_original: false,
             note_markers: NoteMarkers::default(),
             doc_grid: None,
+            spacing_grid_pitch_pt: None,
             document_snap_to_grid_default: false,
             document_uses_east_asian_layout: false,
             word_modern_border_insets: true,
@@ -19641,6 +19663,7 @@ mod tests {
             render_original: false,
             note_markers: NoteMarkers::default(),
             doc_grid: None,
+            spacing_grid_pitch_pt: None,
             document_snap_to_grid_default: false,
             document_uses_east_asian_layout: false,
             word_modern_border_insets: false,
@@ -19768,6 +19791,7 @@ mod tests {
             render_original: false,
             note_markers: NoteMarkers::default(),
             doc_grid: None,
+            spacing_grid_pitch_pt: None,
             document_snap_to_grid_default: false,
             document_uses_east_asian_layout: false,
             word_modern_border_insets: false,
@@ -20930,6 +20954,7 @@ mod tests {
             render_original: false,
             note_markers: NoteMarkers::default(),
             doc_grid: None,
+            spacing_grid_pitch_pt: None,
             styles_part: None,
             document_snap_to_grid_default: false,
         };

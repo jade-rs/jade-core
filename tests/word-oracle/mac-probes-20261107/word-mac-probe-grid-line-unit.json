@@ -1,0 +1,1241 @@
+{
+ "source": "Word for Mac: Save As > PDF",
+ "word_version": "16.114.3",
+ "word_build": "16.114.26102720",
+ "os": "macOS 27.0.1",
+ "docx_sha256": "abf8769d8b96a6576338abacd7c6c76723d46709bfad500454bfcdd4227a2978",
+ "pdf_sha256": "5137d2fbae48a81c4e846b92e48e0ba142ba6d2322ac90229f9891c854aee6aa",
+ "page_count": 6,
+ "pages": [
+  {
+   "page": 1,
+   "width_pt": 595.2,
+   "height_pt": 841.92,
+   "rows": [
+    {
+     "baseline_pt": 108.96,
+     "characters": [
+      {
+       "text": "基",
+       "x_pt": 84.96,
+       "advance_pt": 10.56,
+       "baseline_pt": 108.96,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "準",
+       "x_pt": 95.46,
+       "advance_pt": 10.56,
+       "baseline_pt": 108.96,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "基準"
+    },
+    {
+     "baseline_pt": 120.96,
+     "characters": [
+      {
+       "text": "試",
+       "x_pt": 84.96,
+       "advance_pt": 10.56,
+       "baseline_pt": 120.96,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "験",
+       "x_pt": 95.46,
+       "advance_pt": 10.56,
+       "baseline_pt": 120.96,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "試験"
+    },
+    {
+     "baseline_pt": 141.84,
+     "characters": [
+      {
+       "text": "基",
+       "x_pt": 84.96,
+       "advance_pt": 10.56,
+       "baseline_pt": 141.84,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "準",
+       "x_pt": 95.46,
+       "advance_pt": 10.56,
+       "baseline_pt": 141.84,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "基準"
+    },
+    {
+     "baseline_pt": 153.84,
+     "characters": [
+      {
+       "text": "試",
+       "x_pt": 84.96,
+       "advance_pt": 10.56,
+       "baseline_pt": 153.84,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "験",
+       "x_pt": 95.46,
+       "advance_pt": 10.56,
+       "baseline_pt": 153.84,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "試験"
+    },
+    {
+     "baseline_pt": 173.76,
+     "characters": [
+      {
+       "text": "基",
+       "x_pt": 84.96,
+       "advance_pt": 10.56,
+       "baseline_pt": 173.76,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "準",
+       "x_pt": 95.46,
+       "advance_pt": 10.56,
+       "baseline_pt": 173.76,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "基準"
+    },
+    {
+     "baseline_pt": 194.64,
+     "characters": [
+      {
+       "text": "試",
+       "x_pt": 84.96,
+       "advance_pt": 10.56,
+       "baseline_pt": 194.64,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "験",
+       "x_pt": 95.46,
+       "advance_pt": 10.56,
+       "baseline_pt": 194.64,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "試験"
+    },
+    {
+     "baseline_pt": 206.64,
+     "characters": [
+      {
+       "text": "基",
+       "x_pt": 84.96,
+       "advance_pt": 10.56,
+       "baseline_pt": 206.64,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "準",
+       "x_pt": 95.46,
+       "advance_pt": 10.56,
+       "baseline_pt": 206.64,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "基準"
+    },
+    {
+     "baseline_pt": 218.64,
+     "characters": [
+      {
+       "text": "試",
+       "x_pt": 84.96,
+       "advance_pt": 10.56,
+       "baseline_pt": 218.64,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "験",
+       "x_pt": 95.46,
+       "advance_pt": 10.56,
+       "baseline_pt": 218.64,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "試験"
+    },
+    {
+     "baseline_pt": 239.76,
+     "characters": [
+      {
+       "text": "基",
+       "x_pt": 84.96,
+       "advance_pt": 10.56,
+       "baseline_pt": 239.76,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "準",
+       "x_pt": 95.46,
+       "advance_pt": 10.56,
+       "baseline_pt": 239.76,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "基準"
+    }
+   ]
+  },
+  {
+   "page": 2,
+   "width_pt": 595.2,
+   "height_pt": 841.92,
+   "rows": [
+    {
+     "baseline_pt": 108.96,
+     "characters": [
+      {
+       "text": "基",
+       "x_pt": 84.96,
+       "advance_pt": 10.56,
+       "baseline_pt": 108.96,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "準",
+       "x_pt": 95.46,
+       "advance_pt": 10.56,
+       "baseline_pt": 108.96,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "基準"
+    },
+    {
+     "baseline_pt": 120.96,
+     "characters": [
+      {
+       "text": "試",
+       "x_pt": 84.96,
+       "advance_pt": 10.56,
+       "baseline_pt": 120.96,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "験",
+       "x_pt": 95.46,
+       "advance_pt": 10.56,
+       "baseline_pt": 120.96,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "試験"
+    },
+    {
+     "baseline_pt": 140.4,
+     "characters": [
+      {
+       "text": "基",
+       "x_pt": 84.96,
+       "advance_pt": 10.56,
+       "baseline_pt": 140.4,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "準",
+       "x_pt": 95.46,
+       "advance_pt": 10.56,
+       "baseline_pt": 140.4,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "基準"
+    },
+    {
+     "baseline_pt": 152.4,
+     "characters": [
+      {
+       "text": "試",
+       "x_pt": 84.96,
+       "advance_pt": 10.56,
+       "baseline_pt": 152.4,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "験",
+       "x_pt": 95.46,
+       "advance_pt": 10.56,
+       "baseline_pt": 152.4,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "試験"
+    },
+    {
+     "baseline_pt": 170.88,
+     "characters": [
+      {
+       "text": "基",
+       "x_pt": 84.96,
+       "advance_pt": 10.56,
+       "baseline_pt": 170.88,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "準",
+       "x_pt": 95.46,
+       "advance_pt": 10.56,
+       "baseline_pt": 170.88,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "基準"
+    },
+    {
+     "baseline_pt": 190.32,
+     "characters": [
+      {
+       "text": "試",
+       "x_pt": 84.96,
+       "advance_pt": 10.56,
+       "baseline_pt": 190.32,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "験",
+       "x_pt": 95.46,
+       "advance_pt": 10.56,
+       "baseline_pt": 190.32,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "試験"
+    },
+    {
+     "baseline_pt": 202.56,
+     "characters": [
+      {
+       "text": "基",
+       "x_pt": 84.96,
+       "advance_pt": 10.56,
+       "baseline_pt": 202.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "準",
+       "x_pt": 95.46,
+       "advance_pt": 10.56,
+       "baseline_pt": 202.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "基準"
+    },
+    {
+     "baseline_pt": 214.56,
+     "characters": [
+      {
+       "text": "試",
+       "x_pt": 84.96,
+       "advance_pt": 10.56,
+       "baseline_pt": 214.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "験",
+       "x_pt": 95.46,
+       "advance_pt": 10.56,
+       "baseline_pt": 214.56,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "試験"
+    },
+    {
+     "baseline_pt": 234.0,
+     "characters": [
+      {
+       "text": "基",
+       "x_pt": 84.96,
+       "advance_pt": 10.56,
+       "baseline_pt": 234.0,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "準",
+       "x_pt": 95.46,
+       "advance_pt": 10.56,
+       "baseline_pt": 234.0,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "基準"
+    }
+   ]
+  },
+  {
+   "page": 3,
+   "width_pt": 595.2,
+   "height_pt": 841.92,
+   "rows": [
+    {
+     "baseline_pt": 108.96,
+     "characters": [
+      {
+       "text": "基",
+       "x_pt": 84.96,
+       "advance_pt": 10.56,
+       "baseline_pt": 108.96,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "準",
+       "x_pt": 95.46,
+       "advance_pt": 10.56,
+       "baseline_pt": 108.96,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "基準"
+    },
+    {
+     "baseline_pt": 120.96,
+     "characters": [
+      {
+       "text": "試",
+       "x_pt": 84.96,
+       "advance_pt": 10.56,
+       "baseline_pt": 120.96,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "験",
+       "x_pt": 95.46,
+       "advance_pt": 10.56,
+       "baseline_pt": 120.96,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "試験"
+    },
+    {
+     "baseline_pt": 141.84,
+     "characters": [
+      {
+       "text": "基",
+       "x_pt": 84.96,
+       "advance_pt": 10.56,
+       "baseline_pt": 141.84,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "準",
+       "x_pt": 95.46,
+       "advance_pt": 10.56,
+       "baseline_pt": 141.84,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "基準"
+    },
+    {
+     "baseline_pt": 153.84,
+     "characters": [
+      {
+       "text": "試",
+       "x_pt": 84.96,
+       "advance_pt": 10.56,
+       "baseline_pt": 153.84,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "験",
+       "x_pt": 95.46,
+       "advance_pt": 10.56,
+       "baseline_pt": 153.84,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "試験"
+    },
+    {
+     "baseline_pt": 173.76,
+     "characters": [
+      {
+       "text": "基",
+       "x_pt": 84.96,
+       "advance_pt": 10.56,
+       "baseline_pt": 173.76,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "準",
+       "x_pt": 95.46,
+       "advance_pt": 10.56,
+       "baseline_pt": 173.76,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "基準"
+    },
+    {
+     "baseline_pt": 194.64,
+     "characters": [
+      {
+       "text": "試",
+       "x_pt": 84.96,
+       "advance_pt": 10.56,
+       "baseline_pt": 194.64,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "験",
+       "x_pt": 95.46,
+       "advance_pt": 10.56,
+       "baseline_pt": 194.64,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "試験"
+    },
+    {
+     "baseline_pt": 206.64,
+     "characters": [
+      {
+       "text": "基",
+       "x_pt": 84.96,
+       "advance_pt": 10.56,
+       "baseline_pt": 206.64,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "準",
+       "x_pt": 95.46,
+       "advance_pt": 10.56,
+       "baseline_pt": 206.64,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "基準"
+    },
+    {
+     "baseline_pt": 218.64,
+     "characters": [
+      {
+       "text": "試",
+       "x_pt": 84.96,
+       "advance_pt": 10.56,
+       "baseline_pt": 218.64,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "験",
+       "x_pt": 95.46,
+       "advance_pt": 10.56,
+       "baseline_pt": 218.64,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "試験"
+    },
+    {
+     "baseline_pt": 239.76,
+     "characters": [
+      {
+       "text": "基",
+       "x_pt": 84.96,
+       "advance_pt": 10.56,
+       "baseline_pt": 239.76,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "準",
+       "x_pt": 95.46,
+       "advance_pt": 10.56,
+       "baseline_pt": 239.76,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "基準"
+    }
+   ]
+  },
+  {
+   "page": 4,
+   "width_pt": 595.2,
+   "height_pt": 841.92,
+   "rows": [
+    {
+     "baseline_pt": 108.96,
+     "characters": [
+      {
+       "text": "基",
+       "x_pt": 84.96,
+       "advance_pt": 10.56,
+       "baseline_pt": 108.96,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "準",
+       "x_pt": 95.46,
+       "advance_pt": 10.56,
+       "baseline_pt": 108.96,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "基準"
+    },
+    {
+     "baseline_pt": 120.96,
+     "characters": [
+      {
+       "text": "試",
+       "x_pt": 84.96,
+       "advance_pt": 10.56,
+       "baseline_pt": 120.96,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "験",
+       "x_pt": 95.46,
+       "advance_pt": 10.56,
+       "baseline_pt": 120.96,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "試験"
+    },
+    {
+     "baseline_pt": 138.96,
+     "characters": [
+      {
+       "text": "基",
+       "x_pt": 84.96,
+       "advance_pt": 10.56,
+       "baseline_pt": 138.96,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "準",
+       "x_pt": 95.46,
+       "advance_pt": 10.56,
+       "baseline_pt": 138.96,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "基準"
+    },
+    {
+     "baseline_pt": 150.96,
+     "characters": [
+      {
+       "text": "試",
+       "x_pt": 84.96,
+       "advance_pt": 10.56,
+       "baseline_pt": 150.96,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "験",
+       "x_pt": 95.46,
+       "advance_pt": 10.56,
+       "baseline_pt": 150.96,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "試験"
+    },
+    {
+     "baseline_pt": 168.0,
+     "characters": [
+      {
+       "text": "基",
+       "x_pt": 84.96,
+       "advance_pt": 10.56,
+       "baseline_pt": 168.0,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "準",
+       "x_pt": 95.46,
+       "advance_pt": 10.56,
+       "baseline_pt": 168.0,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "基準"
+    },
+    {
+     "baseline_pt": 186.0,
+     "characters": [
+      {
+       "text": "試",
+       "x_pt": 84.96,
+       "advance_pt": 10.56,
+       "baseline_pt": 186.0,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "験",
+       "x_pt": 95.46,
+       "advance_pt": 10.56,
+       "baseline_pt": 186.0,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "試験"
+    },
+    {
+     "baseline_pt": 198.0,
+     "characters": [
+      {
+       "text": "基",
+       "x_pt": 84.96,
+       "advance_pt": 10.56,
+       "baseline_pt": 198.0,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "準",
+       "x_pt": 95.46,
+       "advance_pt": 10.56,
+       "baseline_pt": 198.0,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "基準"
+    },
+    {
+     "baseline_pt": 210.0,
+     "characters": [
+      {
+       "text": "試",
+       "x_pt": 84.96,
+       "advance_pt": 10.56,
+       "baseline_pt": 210.0,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "験",
+       "x_pt": 95.46,
+       "advance_pt": 10.56,
+       "baseline_pt": 210.0,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "試験"
+    },
+    {
+     "baseline_pt": 228.0,
+     "characters": [
+      {
+       "text": "基",
+       "x_pt": 84.96,
+       "advance_pt": 10.56,
+       "baseline_pt": 228.0,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "準",
+       "x_pt": 95.46,
+       "advance_pt": 10.56,
+       "baseline_pt": 228.0,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "基準"
+    }
+   ]
+  },
+  {
+   "page": 5,
+   "width_pt": 595.2,
+   "height_pt": 841.92,
+   "rows": [
+    {
+     "baseline_pt": 108.96,
+     "characters": [
+      {
+       "text": "基",
+       "x_pt": 84.96,
+       "advance_pt": 10.56,
+       "baseline_pt": 108.96,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "準",
+       "x_pt": 95.46,
+       "advance_pt": 10.56,
+       "baseline_pt": 108.96,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "基準"
+    },
+    {
+     "baseline_pt": 120.96,
+     "characters": [
+      {
+       "text": "試",
+       "x_pt": 84.96,
+       "advance_pt": 10.56,
+       "baseline_pt": 120.96,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "験",
+       "x_pt": 95.46,
+       "advance_pt": 10.56,
+       "baseline_pt": 120.96,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "試験"
+    },
+    {
+     "baseline_pt": 138.96,
+     "characters": [
+      {
+       "text": "基",
+       "x_pt": 84.96,
+       "advance_pt": 10.56,
+       "baseline_pt": 138.96,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "準",
+       "x_pt": 95.46,
+       "advance_pt": 10.56,
+       "baseline_pt": 138.96,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "基準"
+    },
+    {
+     "baseline_pt": 150.96,
+     "characters": [
+      {
+       "text": "試",
+       "x_pt": 84.96,
+       "advance_pt": 10.56,
+       "baseline_pt": 150.96,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "験",
+       "x_pt": 95.46,
+       "advance_pt": 10.56,
+       "baseline_pt": 150.96,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "試験"
+    },
+    {
+     "baseline_pt": 168.0,
+     "characters": [
+      {
+       "text": "基",
+       "x_pt": 84.96,
+       "advance_pt": 10.56,
+       "baseline_pt": 168.0,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "準",
+       "x_pt": 95.46,
+       "advance_pt": 10.56,
+       "baseline_pt": 168.0,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "基準"
+    },
+    {
+     "baseline_pt": 186.0,
+     "characters": [
+      {
+       "text": "試",
+       "x_pt": 84.96,
+       "advance_pt": 10.56,
+       "baseline_pt": 186.0,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "験",
+       "x_pt": 95.46,
+       "advance_pt": 10.56,
+       "baseline_pt": 186.0,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "試験"
+    },
+    {
+     "baseline_pt": 198.0,
+     "characters": [
+      {
+       "text": "基",
+       "x_pt": 84.96,
+       "advance_pt": 10.56,
+       "baseline_pt": 198.0,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "準",
+       "x_pt": 95.46,
+       "advance_pt": 10.56,
+       "baseline_pt": 198.0,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "基準"
+    },
+    {
+     "baseline_pt": 210.0,
+     "characters": [
+      {
+       "text": "試",
+       "x_pt": 84.96,
+       "advance_pt": 10.56,
+       "baseline_pt": 210.0,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "験",
+       "x_pt": 95.46,
+       "advance_pt": 10.56,
+       "baseline_pt": 210.0,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "試験"
+    },
+    {
+     "baseline_pt": 228.0,
+     "characters": [
+      {
+       "text": "基",
+       "x_pt": 84.96,
+       "advance_pt": 10.56,
+       "baseline_pt": 228.0,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "準",
+       "x_pt": 95.46,
+       "advance_pt": 10.56,
+       "baseline_pt": 228.0,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "基準"
+    }
+   ]
+  },
+  {
+   "page": 6,
+   "width_pt": 595.2,
+   "height_pt": 841.92,
+   "rows": [
+    {
+     "baseline_pt": 108.96,
+     "characters": [
+      {
+       "text": "基",
+       "x_pt": 84.96,
+       "advance_pt": 10.56,
+       "baseline_pt": 108.96,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "準",
+       "x_pt": 95.46,
+       "advance_pt": 10.56,
+       "baseline_pt": 108.96,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "基準"
+    },
+    {
+     "baseline_pt": 120.96,
+     "characters": [
+      {
+       "text": "試",
+       "x_pt": 84.96,
+       "advance_pt": 10.56,
+       "baseline_pt": 120.96,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "験",
+       "x_pt": 95.46,
+       "advance_pt": 10.56,
+       "baseline_pt": 120.96,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "試験"
+    },
+    {
+     "baseline_pt": 138.96,
+     "characters": [
+      {
+       "text": "基",
+       "x_pt": 84.96,
+       "advance_pt": 10.56,
+       "baseline_pt": 138.96,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "準",
+       "x_pt": 95.46,
+       "advance_pt": 10.56,
+       "baseline_pt": 138.96,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "基準"
+    },
+    {
+     "baseline_pt": 150.96,
+     "characters": [
+      {
+       "text": "試",
+       "x_pt": 84.96,
+       "advance_pt": 10.56,
+       "baseline_pt": 150.96,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "験",
+       "x_pt": 95.46,
+       "advance_pt": 10.56,
+       "baseline_pt": 150.96,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "試験"
+    },
+    {
+     "baseline_pt": 168.0,
+     "characters": [
+      {
+       "text": "基",
+       "x_pt": 84.96,
+       "advance_pt": 10.56,
+       "baseline_pt": 168.0,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "準",
+       "x_pt": 95.46,
+       "advance_pt": 10.56,
+       "baseline_pt": 168.0,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "基準"
+    },
+    {
+     "baseline_pt": 186.0,
+     "characters": [
+      {
+       "text": "試",
+       "x_pt": 84.96,
+       "advance_pt": 10.56,
+       "baseline_pt": 186.0,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "験",
+       "x_pt": 95.46,
+       "advance_pt": 10.56,
+       "baseline_pt": 186.0,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "試験"
+    },
+    {
+     "baseline_pt": 198.0,
+     "characters": [
+      {
+       "text": "基",
+       "x_pt": 84.96,
+       "advance_pt": 10.56,
+       "baseline_pt": 198.0,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "準",
+       "x_pt": 95.46,
+       "advance_pt": 10.56,
+       "baseline_pt": 198.0,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "基準"
+    },
+    {
+     "baseline_pt": 210.0,
+     "characters": [
+      {
+       "text": "試",
+       "x_pt": 84.96,
+       "advance_pt": 10.56,
+       "baseline_pt": 210.0,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "験",
+       "x_pt": 95.46,
+       "advance_pt": 10.56,
+       "baseline_pt": 210.0,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "試験"
+    },
+    {
+     "baseline_pt": 228.0,
+     "characters": [
+      {
+       "text": "基",
+       "x_pt": 84.96,
+       "advance_pt": 10.56,
+       "baseline_pt": 228.0,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      },
+      {
+       "text": "準",
+       "x_pt": 95.46,
+       "advance_pt": 10.56,
+       "baseline_pt": 228.0,
+       "font": "MS-Mincho",
+       "size_pt": 10.56
+      }
+     ],
+     "text": "基準"
+    }
+   ]
+  }
+ ]
+}

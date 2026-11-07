@@ -395,6 +395,189 @@ fn word_layout(reference: &Value) -> Value {
     spatial_order(&json!({"page_count": reference["page_count"], "glyphs": glyphs}))
 }
 
+/// Word for Mac 16.114 probes for the rules `word-mac-grid-tall-face` needs
+/// (`tests/word-oracle/mac-probes-20261107/README.md`). They are held to Word
+/// directly rather than to a snapshot of jade.
+#[test]
+fn mac_grid_tall_face_probes_match_word() {
+    for name in [
+        "word-mac-probe-grid-line-unit",
+        "word-mac-probe-latin-east-asia-face",
+        "word-mac-probe-kinsoku-widow",
+    ] {
+        let bytes = std::fs::read(repo_path(&format!("public/fixtures/{name}.docx"))).unwrap();
+        let reference: Value = serde_json::from_slice(
+            &std::fs::read(repo_path(&format!(
+                "tests/word-oracle/mac-probes-20261107/{name}.json"
+            )))
+            .unwrap(),
+        )
+        .unwrap();
+        assert_word_source_hash(name, &reference["docx_sha256"], &sha256(&bytes));
+        compare(
+            &word_layout(&reference),
+            &spatial_order(&capture(&bytes)),
+            WORD_TOLERANCE_PT,
+        )
+        .unwrap_or_else(|error| panic!("{name}: {error}"));
+    }
+}
+
+/// A cell's `w:afterLines` follows the section's grid even though its lines do
+/// not: the baseline gaps within the cell, 22.56 and 19.68pt in Word, hold it.
+/// Where the table's first baseline falls is a separate matter.
+#[test]
+fn mac_table_cell_line_units_follow_the_section_grid() {
+    let name = "word-mac-probe-grid-line-unit-table";
+    let bytes = std::fs::read(repo_path(&format!("public/fixtures/{name}.docx"))).unwrap();
+    let reference: Value = serde_json::from_slice(
+        &std::fs::read(repo_path(&format!(
+            "tests/word-oracle/mac-probes-20261107/{name}.json"
+        )))
+        .unwrap(),
+    )
+    .unwrap();
+    assert_word_source_hash(name, &reference["docx_sha256"], &sha256(&bytes));
+    let word: Vec<f64> = reference["pages"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .flat_map(|page| page["rows"].as_array().unwrap())
+        .map(|row| row["baseline_pt"].as_f64().unwrap())
+        .collect();
+    let (_, jade) = rows_of_every_story(&mut open_with_bundled_faces(&bytes));
+    assert_eq!(jade.len(), word.len());
+    assert_eq!(jade.len(), 6);
+    for (expected, actual) in word.chunks(3).zip(jade.chunks(3)) {
+        for pair in [0, 1] {
+            let expected_gap = expected[pair + 1] - expected[pair];
+            let actual_gap = actual[pair + 1].1 - actual[pair].1;
+            assert!(
+                (actual_gap - expected_gap).abs() <= WORD_TOLERANCE_PT,
+                "gap {pair}: {expected_gap} -> {actual_gap}"
+            );
+        }
+    }
+}
+
+/// The rows of every story on a page, as `word-pdf-glyph-reference.py` groups a
+/// Word PDF's glyphs: `(page, baseline, text)` in page and baseline order.
+fn rows_of_every_story(document: &mut NativeDocument) -> (usize, Vec<(usize, f64, String)>) {
+    type GlyphsOnBaseline = (usize, f64, Vec<(f64, String)>);
+    let snapshot = document.capture_full_layout_debug().unwrap();
+    assert!(snapshot.complete);
+    let mut glyphs = Vec::new();
+    let auxiliary = snapshot.auxiliary_lines.iter().map(|e| (e.page, &e.line));
+    for (page, line) in snapshot
+        .body_lines
+        .iter()
+        .map(|line| (line.page, line))
+        .chain(auxiliary)
+    {
+        for fragment in &line.fragments {
+            for glyph in &fragment.glyphs {
+                if !glyph.text.trim().is_empty() {
+                    let x = (fragment.x + glyph.x - 2.0 * line.report_x_offset) * 0.75;
+                    glyphs.push((page + 1, fragment.baseline * 0.75, x, glyph.text.clone()));
+                }
+            }
+        }
+    }
+    glyphs.sort_by(|a, b| {
+        a.0.cmp(&b.0)
+            .then(a.1.total_cmp(&b.1))
+            .then(a.2.total_cmp(&b.2))
+    });
+    let mut rows: Vec<GlyphsOnBaseline> = Vec::new();
+    for (page, baseline, x, text) in glyphs {
+        match rows.last_mut() {
+            Some(row) if row.0 == page && (baseline - row.1).abs() < 1.0 => row.2.push((x, text)),
+            _ => rows.push((page, baseline, vec![(x, text)])),
+        }
+    }
+    let rows = rows
+        .into_iter()
+        .map(|(page, baseline, mut glyphs)| {
+            glyphs.sort_by(|a, b| a.0.total_cmp(&b.0));
+            let text = glyphs.into_iter().map(|(_, text)| text).collect();
+            (page, baseline, text)
+        })
+        .collect();
+    (snapshot.page_count, rows)
+}
+
+/// A 265-page statute in bold 12pt Arial Unicode MS on an 18pt line grid: its
+/// page count, what starts each page and every row must stay Word's. The
+/// expected values are the Word for Mac PDF's, in the reference's provenance
+/// fields; `README.md` next to it says how to capture them again.
+#[test]
+fn mac_grid_tall_face_document_paginates_like_word() {
+    const DIRECTORY: &str = "tests/word-oracle/mac-probes-20261107";
+    let bytes = std::fs::read(repo_path(&format!(
+        "{DIRECTORY}/word-mac-grid-tall-face.docx"
+    )))
+    .unwrap();
+    let reference: Value = serde_json::from_slice(
+        &std::fs::read(repo_path(&format!(
+            "{DIRECTORY}/word-mac-grid-tall-face.pages.json"
+        )))
+        .unwrap(),
+    )
+    .unwrap();
+    assert_eq!(reference["docx_sha256"], sha256(&bytes));
+    let word: Vec<(usize, f64, &str)> = reference["pages"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .flat_map(|page| {
+            let number = page["page"].as_u64().unwrap() as usize;
+            page["rows"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(move |row| (number, row[0].as_f64().unwrap(), row[1].as_str().unwrap()))
+        })
+        .collect();
+    assert_eq!(word.len(), 4692, "the reference lost rows");
+
+    let mut document = open_with_bundled_faces(&bytes);
+    let (page_count, jade) = rows_of_every_story(&mut document);
+    assert_eq!(page_count as u64, reference["page_count"].as_u64().unwrap());
+    let first_row_differences: Vec<String> = (1..=page_count)
+        .filter_map(|page| {
+            let expected = word.iter().find(|row| row.0 == page).map(|row| row.2);
+            let actual = jade
+                .iter()
+                .find(|row| row.0 == page)
+                .map(|row| row.2.as_str());
+            (expected != actual).then(|| format!("page {page}: {expected:?} -> {actual:?}"))
+        })
+        .collect();
+    assert!(
+        first_row_differences.is_empty(),
+        "{} pages start differently, first: {:?}",
+        first_row_differences.len(),
+        first_row_differences.first()
+    );
+    assert_eq!(jade.len(), word.len());
+    for (actual, expected) in jade.iter().zip(&word) {
+        assert_eq!(
+            (actual.0, actual.2.as_str()),
+            (expected.0, expected.2),
+            "row at baseline {}",
+            expected.1
+        );
+        assert!(
+            (actual.1 - expected.1).abs() <= WORD_TOLERANCE_PT,
+            "page {} `{}` baseline {} -> {}",
+            expected.0,
+            expected.2,
+            expected.1,
+            actual.1
+        );
+    }
+}
+
 #[test]
 fn mac_probe_coordinates() {
     let mut paths = Vec::new();
