@@ -7,6 +7,93 @@ fn book() -> HeadlessWorkbook {
 }
 
 #[test]
+fn structural_edits_cannot_split_legacy_arrays() {
+    for columns in [false, true] {
+        for inserted in [false, true] {
+            let mut book = book_with_range("A1:C3");
+            let sheet = book.workbook().sheets[0].name.clone();
+            let before = book.bytes().to_vec();
+            let result = match (columns, inserted) {
+                (false, false) => book.delete_rows(&sheet, 2, 1),
+                (false, true) => book.insert_rows(&sheet, 2, 1),
+                (true, false) => book.delete_columns(&sheet, "B", 1),
+                (true, true) => book.insert_columns(&sheet, "B", 1),
+            };
+            assert!(
+                matches!(result, Err(HeadlessError::PartialLegacyArray { .. })),
+                "columns={columns}, inserted={inserted}: {result:?}"
+            );
+            assert_eq!(book.bytes(), before);
+            assert_eq!(
+                book.workbook().sheets[0].array_formulas[0].range,
+                jade_xlsx_reader::CellRange::parse("A1:C3").unwrap()
+            );
+        }
+    }
+}
+
+#[test]
+fn structural_edits_move_or_remove_whole_legacy_arrays_with_history() {
+    for columns in [false, true] {
+        let mut book = book_with_range("A1:C3");
+        let sheet = book.workbook().sheets[0].name.clone();
+        if columns {
+            book.insert_columns(&sheet, "A", 1).unwrap();
+        } else {
+            book.insert_rows(&sheet, 1, 1).unwrap();
+        }
+        let moved = if columns { "B1:D3" } else { "A2:C4" };
+        let range = jade_xlsx_reader::CellRange::parse(moved).unwrap();
+        assert_eq!(book.workbook().sheets[0].array_formulas[0].range, range);
+        let saved = book.save_bytes().unwrap();
+        let reopened = HeadlessWorkbook::open_for_editing(&saved).unwrap();
+        assert_eq!(reopened.workbook().sheets[0].array_formulas[0].range, range);
+        book.undo().unwrap();
+        assert_eq!(
+            book.workbook().sheets[0].array_formulas[0].range,
+            jade_xlsx_reader::CellRange::parse("A1:C3").unwrap()
+        );
+        book.redo().unwrap();
+        assert_eq!(book.workbook().sheets[0].array_formulas[0].range, range);
+        if columns {
+            book.delete_columns(&sheet, "B", 3).unwrap();
+        } else {
+            book.delete_rows(&sheet, 2, 3).unwrap();
+        }
+        assert!(book.workbook().sheets[0].array_formulas.is_empty());
+        book.undo().unwrap();
+        assert_eq!(book.workbook().sheets[0].array_formulas[0].range, range);
+        book.redo().unwrap();
+        let saved = book.save_bytes().unwrap();
+        assert!(HeadlessWorkbook::open_for_editing(&saved)
+            .unwrap()
+            .workbook()
+            .sheets[0]
+            .array_formulas
+            .is_empty());
+    }
+}
+
+#[test]
+fn structural_edits_check_unstored_legacy_bounds_without_expansion() {
+    let mut book = book_with_range("A1:XFD1048576");
+    let sheet = book.workbook().sheets[0].name.clone();
+    let before = book.bytes().to_vec();
+    for result in [
+        book.insert_rows(&sheet, 1, 1),
+        book.insert_columns(&sheet, "A", 1),
+        book.delete_rows(&sheet, 1048576, 1),
+        book.delete_columns(&sheet, "XFD", 1),
+    ] {
+        assert!(matches!(
+            result,
+            Err(HeadlessError::PartialLegacyArray { .. })
+        ));
+    }
+    assert_eq!(book.bytes(), before);
+}
+
+#[test]
 fn legacy_members_expose_formula_source_without_replacing_their_values() {
     let mut book = book();
     let sheet = book.workbook().sheets[0].name.clone();
