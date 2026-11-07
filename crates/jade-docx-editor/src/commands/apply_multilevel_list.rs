@@ -102,6 +102,11 @@ impl Command for ApplyMultilevelListCommand {
             }
             .map_err(CommandError::Custom)?;
             for paragraph_index in start..=end {
+                // A block equation in the range has no paragraph to format; it
+                // is skipped, as `ParagraphRangeUndo::begin` skips it.
+                if ctx.document.is_math_surface(paragraph_index) {
+                    continue;
+                }
                 let paragraph = ctx
                     .document
                     .paragraph_mut(paragraph_index)

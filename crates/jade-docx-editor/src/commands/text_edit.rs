@@ -259,6 +259,9 @@ impl DeletedFields {
         let mut open_fields: Vec<(usize, usize)> = Vec::new();
         for (index, &(run, position)) in runs.iter().enumerate() {
             let Some(chars) = zero_width.field_chars(run) else {
+                // The result of a field the model computes is a run with no
+                // text, between that field's code runs.
+                inside[index] = !open_fields.is_empty();
                 continue;
             };
             inside[index] = !open_fields.is_empty() || chars != FieldChars::default();
@@ -366,10 +369,12 @@ fn insert_beside_ruby_base(
     insert: &str,
     zero_width: &ZeroWidthRuns,
 ) -> bool {
-    let target = match insertion_point(runs, position) {
+    let target = match insertion_point(runs, position, zero_width) {
         Some(InsertionPoint::Run { index, .. }) => index,
         // `insert_into_runs` already gives this text a run of its own.
-        Some(InsertionPoint::BeforeField { .. }) => return false,
+        Some(InsertionPoint::BeforeField { .. } | InsertionPoint::AfterField { .. }) => {
+            return false
+        }
         None => match runs.len().checked_sub(1) {
             Some(last) => last,
             None => return false,
@@ -446,10 +451,17 @@ enum InsertionPoint {
     /// Into a run of its own at `index`, where the marker runs of a field
     /// with a computed or hidden result start.
     BeforeField { index: usize },
+    /// Into a run of its own right after run `index`, the end of a field
+    /// whose computed result it holds as text.
+    AfterField { index: usize },
 }
 
 /// `None` means past every run.
-fn insertion_point(runs: &[Run], position: usize) -> Option<InsertionPoint> {
+fn insertion_point(
+    runs: &[Run],
+    position: usize,
+    zero_width: &ZeroWidthRuns,
+) -> Option<InsertionPoint> {
     let mut cumulative = 0usize;
     // First zero-width run at the caret. A field's fldChar/instrText marker
     // runs start here, ahead of the run that carries its result.
@@ -458,7 +470,39 @@ fn insertion_point(runs: &[Run], position: usize) -> Option<InsertionPoint> {
         let len = run.text.len();
         let run_end = cumulative + len;
 
+        // A computed field inserted here holds its result as the run's text.
+        // Typed at its end, the text joined that result and was lost on save,
+        // where only the field is written: it goes after the field instead,
+        // where Word puts it. Not between two pieces of one field's result.
+        if position == run_end && len > 0 && position > cumulative {
+            if let Some(field) = run
+                .field
+                .as_ref()
+                .filter(|field| !field.kind.keeps_result_in_run_text())
+            {
+                let continues = runs.get(index + 1).is_some_and(|next| {
+                    next.field.as_ref().is_some_and(|next| {
+                        next.source_field_id.is_some()
+                            && next.source_field_id == field.source_field_id
+                    })
+                });
+                if !continues {
+                    return Some(InsertionPoint::AfterField { index });
+                }
+            }
+        }
         if position < run_end || (position == run_end && len > 0) {
+            return Some(InsertionPoint::Run {
+                index,
+                start: cumulative,
+            });
+        }
+
+        // Deleting all text can leave an empty text run at the old text's
+        // position among note references and other structural runs. Reuse it
+        // so the next keystroke stays on the same side of those objects.
+        if position == cumulative && len == 0 && !run_carries_content(run) && !zero_width.keeps(run)
+        {
             return Some(InsertionPoint::Run {
                 index,
                 start: cumulative,
@@ -502,11 +546,16 @@ fn insert_into_runs(
         return;
     }
 
-    if let Some(point) = insertion_point(runs, position) {
+    if let Some(point) = insertion_point(runs, position, zero_width) {
         let (index, run_start) = match point {
             InsertionPoint::Run { index, start } => (index, start),
             InsertionPoint::BeforeField { index } => {
                 runs.insert(index, create_run_from_template(template, insert));
+                return;
+            }
+            InsertionPoint::AfterField { index } => {
+                let run = create_run_from_template(Some(&runs[index]), insert);
+                runs.insert(index + 1, run);
                 return;
             }
         };
@@ -623,7 +672,7 @@ pub fn apply_text_edit(
     let inserts_into_existing_text = start == end
         && !insert.is_empty()
         && matches!(
-            insertion_point(runs, start),
+            insertion_point(runs, start, zero_width),
             Some(InsertionPoint::Run { index, .. }) if !runs[index].text.is_empty()
         );
     // Caret insertion into existing text retains its run's formatting. Other
@@ -643,7 +692,7 @@ pub fn apply_text_edit(
     // silently changing (for example) italic replacement text to bold.
     let replacement_needs_own_style = start < end
         && !insert.is_empty()
-        && match (template.as_ref(), insertion_point(runs, start)) {
+        && match (template.as_ref(), insertion_point(runs, start, zero_width)) {
             (Some(selected), Some(InsertionPoint::Run { index, .. })) => {
                 ruby_of(selected).is_none()
                     && (selected.properties != runs[index].properties
@@ -670,7 +719,9 @@ pub fn apply_text_edit(
     // With no run left but the zero-width ones kept for their XML, the text
     // goes where the removed text was among them, as a run of its own.
     let only_zero_width = |runs: &[Run]| runs.iter().all(|run| zero_width.keeps(run));
-    if runs.iter().all(|run| zero_width.protects_field_code(run)) {
+    if runs.iter().all(|run| zero_width.protects_field_code(run))
+        || (start < end && only_zero_width(runs))
+    {
         if let Some(template_run) = template.as_ref() {
             runs.insert(
                 removed_at.min(runs.len()),
@@ -834,6 +885,14 @@ pub fn append_rebased_tail_comment_anchors(
 /// lives here rather than being spelled out at each call site.
 pub(crate) fn run_carries_content(run: &Run) -> bool {
     run.field.is_some() || run_carries_content_besides_field(run)
+}
+
+/// Whether `run` is a field's result and nothing else, with no text of its
+/// own: a computed field's (REF, IF) as loaded, whose shown value the renderer
+/// works out. It has no width in the paragraph's offsets, as the field's code
+/// runs have none.
+pub(crate) fn is_empty_field_result(run: &Run) -> bool {
+    run.field.is_some() && !run_carries_content_besides_field(run)
 }
 
 /// [`run_carries_content`], except that a field result emptied of its text
@@ -1536,6 +1595,32 @@ mod tests {
         runs.iter()
             .map(|run| run.node_id.map(|id| id.raw()))
             .collect()
+    }
+
+    #[test]
+    fn typing_after_deleting_body_text_stays_before_the_note_reference() {
+        for endnote in [false, true] {
+            let id = XmlNodeId::new(42);
+            let mut kept = ZeroWidthRuns::default();
+            kept.insert(id, FieldChars::default());
+            let mut reference = text_run("");
+            reference.node_id = Some(id);
+            if endnote {
+                reference.endnote_reference_ids.push("9".into());
+            } else {
+                reference.footnote_reference_ids.push("7".into());
+            }
+            let mut runs = vec![text_run("body 日本語"), reference];
+            let end = runs[0].text.len();
+            apply_text_edit(&mut runs, 0, end, "", &kept);
+            apply_text_edit(&mut runs, 0, 0, "日", &kept);
+            assert_eq!(runs.len(), 2, "endnote={endnote}");
+            assert_eq!(runs[0].text, "日", "endnote={endnote}");
+            assert!(runs[0].footnote_reference_ids.is_empty());
+            assert!(runs[0].endnote_reference_ids.is_empty());
+            assert_eq!(runs[1].node_id, Some(id));
+            assert!(runs[1].text.is_empty());
+        }
     }
 
     #[test]

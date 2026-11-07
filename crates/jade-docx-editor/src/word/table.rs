@@ -1118,6 +1118,8 @@ impl BordersDialog {
                             bottom: edge(bottom),
                             left: edge(left),
                             right: edge(right),
+                            tl2br: None,
+                            tr2bl: None,
                         });
                     }
                 }
@@ -2138,7 +2140,7 @@ pub trait WordTables: WordSession {
                             .iter()
                             .filter_map(BodyElement::as_paragraph)
                             .flat_map(|paragraph| {
-                                paragraph.runs.iter().map(|run| run.text.as_str())
+                                paragraph.runs.iter().map(|run| run.cached_display_text())
                             })
                             .collect::<String>()
                     })
@@ -2168,7 +2170,11 @@ pub trait WordTables: WordSession {
                         .iter()
                         .filter_map(BodyElement::as_paragraph)
                         .flat_map(|paragraph| paragraph.runs.iter())
-                        .any(|run| run.text.chars().any(|ch| ch.is_ascii_digit()))
+                        .any(|run| {
+                            run.cached_display_text()
+                                .chars()
+                                .any(|ch| ch.is_ascii_digit())
+                        })
                 });
         if number_above || cell.column == 0 {
             "=SUM(ABOVE)".to_string()
@@ -2479,6 +2485,8 @@ fn strip_untouched(command: HeadlessCommand, touched: [bool; 6]) -> HeadlessComm
             bottom,
             left,
             right,
+            tl2br,
+            tr2bl,
         } => HeadlessCommand::SetTableCellBorders {
             table_order_index,
             row,
@@ -2488,6 +2496,8 @@ fn strip_untouched(command: HeadlessCommand, touched: [bool; 6]) -> HeadlessComm
             bottom: bottom.filter(|_| touched[1] || touched[4]),
             left: left.filter(|_| touched[2] || touched[5]),
             right: right.filter(|_| touched[3] || touched[5]),
+            tl2br,
+            tr2bl,
         },
         other => other,
     }

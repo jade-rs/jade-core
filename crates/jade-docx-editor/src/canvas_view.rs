@@ -29,7 +29,7 @@ use crate::commands::format_image::{FormatImageCommand, ImageFormatSpec, ImageLa
 use crate::commands::format_text_box::{FormatTextBoxCommand, TextBoxFormatSpec};
 use crate::commands::hyperlink::{InsertHyperlinkCommand, RemoveHyperlinkCommand};
 use crate::commands::insert_chart::InsertChartCommand;
-use crate::commands::insert_citation::{AddCitationSourceCommand, InsertCitationCommand};
+use crate::commands::insert_citation::AddCitationSourceCommand;
 use crate::commands::insert_endnote::InsertEndnoteCommand;
 use crate::commands::insert_field::InsertFieldCommand;
 use crate::commands::insert_footnote::InsertFootnoteCommand;
@@ -61,6 +61,7 @@ use crate::headless_api::{
 };
 use crate::render_host::{BoxedRenderHost, OffscreenRenderHost};
 use crate::styles::{merge_paragraph_properties_override, merge_run_properties_override};
+use crate::word::references::citations::{insert_bibliography_command, insert_citation_command};
 use crate::word_document::{
     ChartInsertSpec, CitationSourceInfo, CrossReferenceKind, CrossReferenceTarget,
     DocumentProtectionInfo, FloatingObjectKind, FloatingObjectTarget, FloatingObjectTransform,
@@ -196,6 +197,10 @@ struct CanvasDocumentState {
     /// The equation being edited in place, its caret inside the structure.
     equation_editor: Option<crate::word::equation::EquationEditor>,
     word_doc: Option<WordDocument>,
+    crdt: Option<crate::crdt_live::LiveDocument>,
+    crdt_actor: String,
+    crdt_checkpoint: Option<WordDocument>,
+    crdt_projection_error: Option<String>,
     paged_images: Vec<JsValue>,
     /// True when this view was initialized via lazy rendering (render-lazy / page-boundary lazy layout).
     /// In this mode, edit operations should avoid transferring ImageBitmaps eagerly; the host can
@@ -632,6 +637,9 @@ impl CanvasDocumentState {
     }
 
     fn history_flags(&self) -> (bool, bool) {
+        if let Some(live) = &self.crdt {
+            return (live.inner.can_undo(), live.inner.can_redo());
+        }
         (
             self.command_executor.can_undo() || !self.hf_undo_stack.is_empty(),
             self.command_executor.can_redo() || !self.hf_redo_stack.is_empty(),
@@ -6836,6 +6844,20 @@ impl OffscreenDocumentView {
             }
         }
 
+        // Only ordinary insertion can carry absence facts across this edit.
+        // Formatting/autoformat batches, replacements and structural edits keep
+        // fresh scans; the recorded command below must also prove its scope.
+        let text_edit_cache = (!editing_text_box
+            && selection_before.is_collapsed()
+            && commands.len() == 1
+            && !text.contains(['\r', '\n']))
+        .then(|| {
+            (
+                self.renderer.borrow().local_text_edit_cache(),
+                self.state.borrow().command_executor.history_revision(),
+            )
+        });
+
         // Drop the renderer's document cache before mutating.
         // This allows Rc::make_mut to avoid cloning when ref_count becomes 1.
         let _document_cache = self.drop_renderer_document_cache();
@@ -7042,7 +7064,17 @@ impl OffscreenDocumentView {
                     } else {
                         None
                     };
+                    if let Some((cache, revision_before)) = text_edit_cache {
+                        renderer.restore_local_text_edit_cache_after_command(
+                            cache,
+                            word_doc,
+                            edited_paragraph_index,
+                            &state_ref.command_executor,
+                            revision_before,
+                        );
+                    }
                     // Use _rc variant to avoid cloning the document (Rc is already shared).
+                    renderer.prepare_wrap_cache_capacity(word_doc);
                     renderer.render_with_numbering_rc(
                         Rc::clone(document),
                         &options,
@@ -7085,16 +7117,16 @@ impl OffscreenDocumentView {
             self.wait_for_pending_images().await?;
 
             // Keep state (e.g. table resize metadata) updated and clear dirty markers.
-            let (metadata, dirty_regions_js) = {
+            let dirty_regions_js = {
                 let renderer_mut = self.renderer.borrow_mut();
                 renderer_mut.coalesce_dirty_regions();
                 let dirty_regions = renderer_mut.dirty_regions();
                 let dirty_regions_js = Self::dirty_regions_to_js(&dirty_regions);
-                let meta = renderer_mut.table_resize_metadata();
+                renderer_mut
+                    .copy_table_resize_metadata_into(&mut self.state.borrow_mut().table_resize);
                 renderer_mut.clear_dirty_regions();
-                (meta, dirty_regions_js)
+                dirty_regions_js
             };
-            self.state.borrow_mut().table_resize = metadata;
             dirty_regions_js
         };
         let (preview_mode, history_flags) = {
@@ -7187,7 +7219,11 @@ impl OffscreenDocumentView {
         Ok(result.into())
     }
 
-    async fn preview_composition_text_async(&self, text: String) -> Result<JsValue, JsValue> {
+    async fn preview_composition_text_async(
+        &self,
+        text: String,
+        decoration_resolver: Option<js_sys::Function>,
+    ) -> Result<JsValue, JsValue> {
         if self.state.borrow().preview_mode || self.state.borrow().editing_mode != EditingMode::Body
         {
             return Ok(JsValue::NULL);
@@ -7345,6 +7381,31 @@ impl OffscreenDocumentView {
             )
         };
 
+        // The provider can read the actual preview model after all document
+        // borrows have ended. Seed ink before the edit render, rather than
+        // drawing once without it and replaying the same page a second time.
+        // Provider failures are recoverable: finish the normal preview and let
+        // the caller apply decoration results through its existing repaint path.
+        let decorations_applied = decoration_resolver.as_ref().is_some_and(|resolve| {
+            let attempt = (|| -> Result<(), JsValue> {
+                let json = resolve
+                    .call0(&JsValue::UNDEFINED)?
+                    .as_string()
+                    .ok_or_else(|| JsValue::from_str("Decoration provider must return JSON"))?;
+                let changed = self.cache_decoration_results(&json, true)?;
+                if !changed.is_empty() {
+                    let mut renderer = self.renderer.borrow_mut();
+                    let outcome =
+                        renderer.invalidate_and_mark_dirty_rects_for_decoration_texts(&changed);
+                    if outcome.invalidated_paragraphs > 0 && !outcome.all_rects_resolved {
+                        renderer.mark_full_repaint();
+                    }
+                }
+                Ok(())
+            })();
+            attempt.is_ok()
+        });
+
         let lazy_mode = self.state.borrow().lazy_mode;
         {
             let mut renderer = self.renderer.borrow_mut();
@@ -7396,6 +7457,7 @@ impl OffscreenDocumentView {
                 if let Some(snapshot) = auxiliary_story_base {
                     renderer.restore_auxiliary_story_base(document, snapshot);
                 }
+                renderer.prepare_wrap_cache_capacity(word_doc);
                 renderer.render_with_numbering_rc(
                     Rc::clone(document),
                     &options,
@@ -7428,16 +7490,16 @@ impl OffscreenDocumentView {
         // priority, so the composing glyph still appears without edit debounce.
         let (snapshots, dirty_regions_js) = if lazy_mode {
             self.wait_for_pending_images().await?;
-            let (metadata, dirty_regions_js) = {
+            let dirty_regions_js = {
                 let renderer_mut = self.renderer.borrow_mut();
                 renderer_mut.coalesce_dirty_regions();
                 let dirty_regions = renderer_mut.dirty_regions();
                 let dirty_regions_js = Self::dirty_regions_to_js(&dirty_regions);
-                let metadata = renderer_mut.table_resize_metadata();
+                renderer_mut
+                    .copy_table_resize_metadata_into(&mut self.state.borrow_mut().table_resize);
                 renderer_mut.clear_dirty_regions();
-                (metadata, dirty_regions_js)
+                dirty_regions_js
             };
-            self.state.borrow_mut().table_resize = metadata;
             (None, dirty_regions_js)
         } else {
             self.capture_pages_after_render_with_dirty().await?
@@ -7505,6 +7567,13 @@ impl OffscreenDocumentView {
             &JsValue::from_str("debugMutationKind"),
             &JsValue::from_str("composition-preview"),
         )?;
+        if decoration_resolver.is_some() {
+            Reflect::set(
+                &result,
+                &JsValue::from_str("compositionDecorationsApplied"),
+                &JsValue::from_bool(decorations_applied),
+            )?;
+        }
         Ok(result.into())
     }
 
@@ -7874,16 +7943,16 @@ impl OffscreenDocumentView {
         // otherwise, they can accumulate and slow down later edits/undos.
         let (snapshots, dirty_regions) = if lazy_mode {
             self.wait_for_pending_images().await?;
-            let (metadata, dirty_regions_js) = {
+            let dirty_regions_js = {
                 let renderer_mut = self.renderer.borrow_mut();
                 renderer_mut.coalesce_dirty_regions();
                 let dirty_regions = renderer_mut.dirty_regions();
                 let dirty_regions_js = Self::dirty_regions_to_js(&dirty_regions);
-                let meta = renderer_mut.table_resize_metadata();
+                renderer_mut
+                    .copy_table_resize_metadata_into(&mut self.state.borrow_mut().table_resize);
                 renderer_mut.clear_dirty_regions();
-                (meta, dirty_regions_js)
+                dirty_regions_js
             };
-            self.state.borrow_mut().table_resize = metadata;
             (None, dirty_regions_js)
         } else {
             let mut renderer = self.renderer.borrow_mut();
@@ -8927,6 +8996,10 @@ impl OffscreenDocumentView {
             word_autocorrect: None,
             equation_editor: None,
             word_doc: None,
+            crdt: None,
+            crdt_actor: String::new(),
+            crdt_checkpoint: None,
+            crdt_projection_error: None,
             paged_images: Vec::new(),
             lazy_mode: false,
             preview_mode: opts.preview_mode(),
@@ -9016,6 +9089,9 @@ impl OffscreenDocumentView {
     pub fn undo(&self) -> js_sys::Promise {
         let view = self.clone();
         future_to_promise(async move {
+            if view.state.borrow().crdt.is_some() {
+                return view.crdt_history(false).await;
+            }
             let ended = JsFuture::from(view.end_style_preview()).await?;
             if !view.history_flags().0 && ended.is_object() {
                 return Ok(ended);
@@ -9138,6 +9214,9 @@ impl OffscreenDocumentView {
     pub fn redo(&self) -> js_sys::Promise {
         let view = self.clone();
         future_to_promise(async move {
+            if view.state.borrow().crdt.is_some() {
+                return view.crdt_history(true).await;
+            }
             let ended = JsFuture::from(view.end_style_preview()).await?;
             if !view.history_flags().1 && ended.is_object() {
                 return Ok(ended);
@@ -9876,7 +9955,29 @@ impl OffscreenDocumentView {
     #[wasm_bindgen(js_name = previewCompositionText)]
     pub fn preview_composition_text(&self, text: String) -> js_sys::Promise {
         let view = self.clone();
-        future_to_promise(async move { view.preview_composition_text_async(text).await })
+        future_to_promise(async move { view.preview_composition_text_async(text, None).await })
+    }
+
+    /// Like previewCompositionText, with a synchronous, read-only decoration
+    /// provider called after mutation and before painting. The provider may read
+    /// paragraph_text/selection_range and returns the applyDecorationResults JSON
+    /// format. It must not edit the view or return a Promise.
+    ///
+    /// A thrown error, non-string result or invalid JSON leaves the normal edit
+    /// rendering enabled and reports compositionDecorationsApplied=false. The
+    /// caller must then use its ordinary decoration repaint fallback. Valid
+    /// results are installed atomically before painting and report true.
+    #[wasm_bindgen(js_name = previewCompositionTextWithDecorations)]
+    pub fn preview_composition_text_with_decorations(
+        &self,
+        text: String,
+        resolve: js_sys::Function,
+    ) -> js_sys::Promise {
+        let view = self.clone();
+        future_to_promise(async move {
+            view.preview_composition_text_async(text, Some(resolve))
+                .await
+        })
     }
 
     #[wasm_bindgen]
@@ -10322,16 +10423,16 @@ impl OffscreenDocumentView {
         } else {
             // See insert_text_async: avoid accumulating in-flight async image draws.
             self.wait_for_pending_images().await?;
-            let (metadata, dirty_regions_js) = {
+            let dirty_regions_js = {
                 let renderer_mut = self.renderer.borrow_mut();
                 renderer_mut.coalesce_dirty_regions();
                 let dirty_regions = renderer_mut.dirty_regions();
                 let dirty_regions_js = Self::dirty_regions_to_js(&dirty_regions);
-                let meta = renderer_mut.table_resize_metadata();
+                renderer_mut
+                    .copy_table_resize_metadata_into(&mut self.state.borrow_mut().table_resize);
                 renderer_mut.clear_dirty_regions();
-                (meta, dirty_regions_js)
+                dirty_regions_js
             };
-            self.state.borrow_mut().table_resize = metadata;
             dirty_regions_js
         };
         let (preview_mode, history_flags) = {
@@ -12728,6 +12829,8 @@ impl OffscreenDocumentView {
                     bottom: spec.bottom.clone(),
                     left: spec.left.clone(),
                     right: spec.right.clone(),
+                    tl2br: None,
+                    tr2bl: None,
                 })
                 .collect()
         })
@@ -13901,20 +14004,17 @@ impl OffscreenDocumentView {
     /// Replaces the exact current selection with an in-text citation.
     #[wasm_bindgen(js_name = insertCitation)]
     pub fn insert_citation(&self, tag: String) -> Result<JsValue, JsValue> {
-        self.apply_inline_style(
-            |_| {},
-            move |range| Box::new(InsertCitationCommand::new(range, tag.clone())),
-        )
+        self.apply_document_command(move |range| Box::new(insert_citation_command(range, tag)))
     }
 
     /// Inserts the visible bibliography after the current body paragraph.
     #[wasm_bindgen(js_name = insertBibliography)]
     pub fn insert_bibliography(&self, heading: String) -> Result<JsValue, JsValue> {
-        self.apply_paragraph_style_headless(move |start, _end| {
-            HeadlessCommand::InsertBibliography {
-                after_paragraph: start,
+        self.apply_document_command(move |range| {
+            Box::new(insert_bibliography_command(
+                range.normalized().1.paragraph,
                 heading,
-            }
+            ))
         })
     }
 
@@ -14106,7 +14206,14 @@ impl OffscreenDocumentView {
                 .or(state.selection)
                 .unwrap_or_else(|| SelectionRange::collapsed(TextPosition::default()))
         };
-        self.state.borrow_mut().command_executor.begin_group();
+        let mut state = self.state.borrow_mut();
+        if let Some(live) = state.crdt.as_mut() {
+            live.inner
+                .begin_group()
+                .map_err(|e| JsValue::from_str(&e))?;
+        }
+        state.command_executor.begin_group();
+        drop(state);
         let result = (|| {
             let caret = if selection.is_collapsed() {
                 selection.focus
@@ -14133,7 +14240,12 @@ impl OffscreenDocumentView {
         })();
         // A failed batch has already been rolled back by the inner group;
         // closing the outer one records the paste as a single history entry.
-        self.state.borrow_mut().command_executor.end_group();
+        let mut state = self.state.borrow_mut();
+        if let Some(live) = state.crdt.as_mut() {
+            live.inner.end_group();
+        }
+        state.command_executor.end_group();
+        drop(state);
         if result.is_err() {
             self.rerender_document()?;
         }
@@ -15061,6 +15173,7 @@ impl OffscreenDocumentView {
                         None
                     };
                     // Use _rc variant to avoid cloning the document.
+                    renderer.prepare_wrap_cache_capacity(word_doc);
                     renderer.render_with_numbering_rc(
                         Rc::clone(document),
                         &options,
@@ -16311,7 +16424,7 @@ impl OffscreenDocumentView {
                 let paragraph = paragraph.as_ref();
                 let mut text = String::new();
                 for run in &paragraph.runs {
-                    text.push_str(&run.text);
+                    text.push_str(run.cached_display_text());
                 }
                 return Some(text);
             }
@@ -16334,11 +16447,16 @@ impl OffscreenDocumentView {
         let state = self.state.borrow();
         let doc = state.word_doc.as_ref()?;
         let paragraph = doc.paragraph(doc.surface_index_for_body(index)?)?;
-        let mut text = String::new();
-        for run in &paragraph.runs {
-            text.push_str(&run.text);
-        }
-        Some(text)
+        Some(paragraph.runs.iter().map(|run| run.text.as_str()).collect())
+    }
+
+    /// Body text for extraction, including cached computed fields. Search and
+    /// editing keep using `paragraph_text` and its model character offsets.
+    #[wasm_bindgen]
+    pub fn paragraph_display_text(&self, index: usize) -> Option<String> {
+        let state = self.state.borrow();
+        let doc = state.word_doc.as_ref()?;
+        doc.body_paragraph_text(index)
     }
 
     /// Cached text counts for the status bar. This avoids copying every
@@ -17779,39 +17897,28 @@ impl OffscreenDocumentView {
         json: &str,
         defer_snapshots: bool,
     ) -> Result<JsValue, JsValue> {
-        #[derive(serde::Deserialize)]
-        struct ResultEntry {
-            text: String,
-            #[serde(rename = "rangesJson")]
-            ranges_json: String,
+        let changed_texts = self.cache_decoration_results(json, false)?;
+        if changed_texts.is_empty() {
+            return Ok(JsValue::NULL);
         }
-        let parsed: Vec<ResultEntry> = serde_json::from_str(json)
-            .map_err(|err| JsValue::from_str(&format!("invalid results JSON: {err}")))?;
+        self.rerender_decoration_texts_with_policy(&changed_texts, defer_snapshots)
+    }
 
-        let mut any_changed = false;
+    fn cache_decoration_results(&self, json: &str, strict: bool) -> Result<Vec<String>, JsValue> {
+        let entries = crate::decoration_results::parse_results(json, strict)
+            .map_err(|err| JsValue::from_str(&err))?;
         let mut changed_texts: Vec<String> = Vec::new();
         {
             let renderer = self.renderer.borrow();
-            for entry in parsed {
-                let ranges: Vec<crate::plugins::DecoratedRange> =
-                    if entry.ranges_json.is_empty() || entry.ranges_json == "[]" {
-                        Vec::new()
-                    } else {
-                        serde_json::from_str(&entry.ranges_json).unwrap_or_default()
-                    };
-                let text_for_invalidation = entry.text.clone();
-                if renderer.apply_decoration_result(entry.text, ranges) {
-                    any_changed = true;
+            for (text, ranges) in entries {
+                let text_for_invalidation = text.clone();
+                if renderer.apply_decoration_result(text, ranges) {
                     changed_texts.push(text_for_invalidation);
                 }
             }
         }
 
-        if !any_changed {
-            return Ok(JsValue::NULL);
-        }
-
-        self.rerender_decoration_texts_with_policy(&changed_texts, defer_snapshots)
+        Ok(changed_texts)
     }
 
     fn rerender_decoration_texts(&self, changed_texts: &[String]) -> Result<JsValue, JsValue> {
@@ -17830,7 +17937,13 @@ impl OffscreenDocumentView {
         let (snapshots, dirty_regions) = {
             let mut renderer_mut = self.renderer.borrow_mut();
             renderer_mut.prepare_decoration_repaint(changed_texts);
-            renderer_mut.rerender_with_cached_state()?;
+            let previous_limit = renderer_mut.layout_page_limit();
+            let repaint_limit = renderer_mut.decoration_repaint_page_limit();
+            renderer_mut.set_layout_page_limit(repaint_limit);
+            let result = renderer_mut.rerender_with_cached_state();
+            // The limit belongs only to this pixel repaint, including on error.
+            renderer_mut.set_layout_page_limit(previous_limit);
+            result?;
             self.capture_paged_images_with_policy(&mut renderer_mut, defer_snapshots)?
         };
 
@@ -18961,11 +19074,21 @@ impl OffscreenDocumentView {
             HeadlessCommand::SetWatermark {
                 clear: true,
                 text: None,
+                font: None,
+                size: None,
+                color: None,
+                semitransparent: None,
+                layout: None,
             }
         } else if let Some(text) = value.as_string() {
             HeadlessCommand::SetWatermark {
                 clear: false,
                 text: Some(text),
+                font: None,
+                size: None,
+                color: None,
+                semitransparent: None,
+                layout: None,
             }
         } else {
             return Err(JsValue::from_str("watermark must be a string or null"));
@@ -20696,6 +20819,8 @@ impl OffscreenDocumentView {
         renderer.set_layout_page_limit(None);
     }
 }
+
+include!("crdt_live_view.rs");
 
 #[cfg(test)]
 mod tests {

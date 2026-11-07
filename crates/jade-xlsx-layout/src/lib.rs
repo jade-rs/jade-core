@@ -170,6 +170,10 @@ pub struct PlacedCell {
     /// cell drawn in one font.
     #[serde(default)]
     pub runs: Vec<PlacedRun>,
+    /// Excel's error checking flags the cell — a number stored as text, or
+    /// a formula that gives an error — with a green corner triangle.
+    #[serde(default)]
+    pub error_flag: bool,
 }
 
 /// A run of a rich text cell: a byte range of the cell's text and its font.
@@ -357,6 +361,13 @@ pub struct SheetLayout {
     #[serde(default)]
     pub sparklines: Vec<sparkline::PlacedSparkline>,
     pub show_grid_lines: bool,
+    /// The row numbers and column letters shown round the cells; a sheet
+    /// can hide them (`showRowColHeaders="0"`).
+    #[serde(default = "shows_headers")]
+    pub show_headers: bool,
+    /// The sheet's own gridline colour, as CSS; `None` for the painter's.
+    #[serde(default)]
+    pub grid_line_color: Option<String>,
     pub content_width: f64,
     /// Character-unit conversion used to create these axes.
     #[serde(default = "default_digit_width")]
@@ -383,6 +394,11 @@ pub struct ViewportRegions {
     pub corner: Rect,
     pub frozen_width: f64,
     pub frozen_height: f64,
+}
+
+/// Headings show unless the sheet hides them.
+fn shows_headers() -> bool {
+    true
 }
 
 fn default_digit_width() -> f64 {
@@ -501,6 +517,7 @@ impl SheetLayout {
                     icon: None,
                     text_inset_px: 0.0,
                     runs: Vec::new(),
+                    error_flag: false,
                 });
             }
         }
@@ -729,10 +746,19 @@ impl SheetLayout {
 
     /// The size of the row and column header bands for this sheet.
     pub fn header_metrics(&self) -> HeaderMetrics {
-        HeaderMetrics::for_rows(self.rows.len() as u32).with_outline(
+        let metrics = HeaderMetrics::for_rows(self.rows.len() as u32).with_outline(
             self.outline_levels(jade_xlsx_reader::Axis::Rows),
             self.outline_levels(jade_xlsx_reader::Axis::Columns),
-        )
+        );
+        if self.show_headers {
+            return metrics;
+        }
+        // Hidden headings leave only the outline gutters, when grouped.
+        HeaderMetrics {
+            row_width: metrics.outline_width,
+            column_height: metrics.outline_height,
+            ..metrics
+        }
     }
 
     /// The cells that overlap `viewport`.
@@ -1164,7 +1190,17 @@ fn layout_sheet_on_axes(
                 .as_deref()
                 .or_else(|| format.and_then(|format| styles.number_format_code(format)));
             let mut alignment = format.map(|format| format.alignment).unwrap_or_default();
-            alignment.horizontal = resolve_horizontal(alignment.horizontal, &cell.value);
+            // Show Formulas: a formula shows as typed, as text does, left.
+            let shown_formula = sheet
+                .show_formulas
+                .then_some(cell.formula.as_deref())
+                .flatten()
+                .map(formula_as_typed);
+            alignment.horizontal = if shown_formula.is_some() {
+                resolve_horizontal(alignment.horizontal, &CellValue::Text(String::new()))
+            } else {
+                resolve_horizontal(alignment.horizontal, &cell.value)
+            };
             // Justified and distributed text wraps in Excel whether or not
             // Wrap Text is ticked; layout and painting see it as wrapped.
             if matches!(
@@ -1188,10 +1224,28 @@ fn layout_sheet_on_axes(
                 (Some(_), HorizontalAlignment::Left) => icon_size_px(&font, f64::INFINITY) + 1.0,
                 _ => 0.0,
             };
-            let formatted =
-                number_format::format_value(&cell.value, number_format_code, options.date_system);
+            let formatted = match &shown_formula {
+                Some(formula) => number_format::format_value(
+                    &CellValue::Text(formula.clone()),
+                    Some("@"),
+                    options.date_system,
+                ),
+                None => number_format::format_value(
+                    &cell.value,
+                    number_format_code,
+                    options.date_system,
+                ),
+            };
             let fill_at = formatted.fill;
-            let text = formatted.text;
+            // A sheet that hides zeros shows a cell worth zero as empty.
+            let hidden_zero = !sheet.show_zeros
+                && shown_formula.is_none()
+                && matches!(cell.value, CellValue::Number(number) if number == 0.0);
+            let text = if hidden_zero {
+                String::new()
+            } else {
+                formatted.text
+            };
             // Without wrap text Excel keeps the cell on one line and shows
             // its line breaks as nothing.
             let one_line = if alignment.wrap_text || !text.contains(['\n', '\r']) {
@@ -1219,7 +1273,7 @@ fn layout_sheet_on_axes(
                 filter_button::text_reserve(&filter_definitions, cell.reference, merge, &columns);
             let text_width = span_width(&columns, cell.reference, merge.as_ref()) - filter_reserve;
             let overflow = if filter_reserve == 0.0
-                && matches!(cell.value, CellValue::Text(_))
+                && (matches!(cell.value, CellValue::Text(_)) || shown_formula.is_some())
                 && merge.is_none()
                 && !alignment.wrap_text
                 && !alignment.shrink_to_fit
@@ -1369,6 +1423,7 @@ fn layout_sheet_on_axes(
                 data_bar,
                 icon,
                 overflow,
+                error_flag: error_check_flags(sheet, cell),
             });
         }
     }
@@ -1433,6 +1488,7 @@ fn layout_sheet_on_axes(
             data_bar: None,
             icon: None,
             overflow: None,
+            error_flag: false,
         });
     }
 
@@ -1568,6 +1624,7 @@ fn layout_sheet_on_axes(
             alignment: cell.alignment,
             text_inset_px: cell.text_inset_px,
             runs: cell.runs,
+            error_flag: cell.error_flag,
         })
     }));
 
@@ -1641,6 +1698,11 @@ fn layout_sheet_on_axes(
         pivots: styled_pivots,
         sparklines,
         show_grid_lines: sheet.show_grid_lines,
+        show_headers: sheet.show_headers,
+        grid_line_color: sheet
+            .grid_color
+            .filter(|index| *index < 64)
+            .map(|index| color::to_css(Color::Indexed(index), "#d4d4d4")),
         content_width,
         max_digit_width_px: options.max_digit_width_px,
         content_height,
@@ -1717,6 +1779,8 @@ pub fn relayout_rows(
         merges: sheet.merges.clone(),
         hyperlinks: Vec::new(),
         comments: Vec::new(),
+        data_tables: Vec::new(),
+        scenarios: None,
         data_validations: sheet.data_validations.clone(),
         conditional_formats: Vec::new(),
         default_column_width_chars: sheet.default_column_width_chars,
@@ -1724,6 +1788,13 @@ pub fn relayout_rows(
         default_row_custom_height: sheet.default_row_custom_height,
         default_rows_hidden: sheet.default_rows_hidden,
         show_grid_lines: sheet.show_grid_lines,
+        show_formulas: sheet.show_formulas,
+        show_zeros: sheet.show_zeros,
+        page_break_preview: sheet.page_break_preview,
+        tab_selected: sheet.tab_selected,
+        show_headers: sheet.show_headers,
+        grid_color: sheet.grid_color,
+        zoom_percent: sheet.zoom_percent,
         freeze_pane: sheet.freeze_pane.clone(),
         tables: Vec::new(),
         header_footer: None,
@@ -1734,6 +1805,9 @@ pub fn relayout_rows(
         array_formulas: sheet.array_formulas.clone(),
         tab_color: None,
         sparkline_groups: Vec::new(),
+        // The rows' error flags honour the sheet's Ignore Error, as a full
+        // layout does.
+        ignored_errors: sheet.ignored_errors.clone(),
         protection: sheet.protection,
         outline: sheet.outline.clone(),
     };
@@ -1838,6 +1912,15 @@ fn splice_rows(
         cells.splice(run, new);
     }
     true
+}
+
+/// A stored formula as Excel shows it with Show Formulas on: with its `=`,
+/// and without the file's `_xlfn.` and `_xlws.` prefixes.
+fn formula_as_typed(formula: &str) -> String {
+    format!(
+        "={}",
+        formula.replace("_xlfn._xlws.", "").replace("_xlfn.", "")
+    )
 }
 
 fn resolve_font(font: Option<&Font>, fallback: &ResolvedFont) -> ResolvedFont {
@@ -2029,6 +2112,30 @@ struct PreparedCell {
     data_bar: Option<visual_format::ResolvedDataBar>,
     icon: Option<visual_format::ResolvedIcon>,
     overflow: Option<(f64, f64)>,
+    error_flag: bool,
+}
+
+/// Whether Excel's background error checking flags a cell, by its default
+/// rules: a formula that gives an error, or a number stored as text (text
+/// that reads as a number) — unless the sheet's `ignoredErrors` turn that
+/// check off for the cell.
+fn error_check_flags(sheet: &Sheet, cell: &jade_xlsx_reader::Cell) -> bool {
+    let ignored = |check: fn(&jade_xlsx_reader::ignored_errors::IgnoredError) -> bool| {
+        sheet
+            .ignored_errors
+            .iter()
+            .any(|entry| check(entry) && entry.covers(cell.reference))
+    };
+    match &cell.value {
+        CellValue::Error(_) => cell.formula.is_some() && !ignored(|entry| entry.eval_error),
+        CellValue::Text(text) => {
+            let text = text.trim();
+            text.chars().any(|c| c.is_ascii_digit())
+                && text.replace(',', "").parse::<f64>().is_ok()
+                && !ignored(|entry| entry.number_stored_as_text)
+        }
+        _ => false,
+    }
 }
 
 /// An icon set's icons are 16 px for 11 pt text and grow with the font, but
@@ -2238,7 +2345,9 @@ fn format_color_to_color(color: number_format::FormatColor) -> Color {
         FormatColor::Red => [0xFF, 0xFF, 0x00, 0x00],
         FormatColor::White => [0xFF, 0xFF, 0xFF, 0xFF],
         FormatColor::Yellow => [0xFF, 0xFF, 0xFF, 0x00],
-        FormatColor::Indexed(index) => return Color::Indexed(index),
+        // `[Color1]` is the palette's eighth entry: the first eight repeat
+        // the basic colours a format names.
+        FormatColor::Indexed(index) => return Color::Indexed(index.saturating_add(7)),
     };
     Color::Argb(rgb)
 }

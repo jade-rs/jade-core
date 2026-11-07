@@ -152,6 +152,11 @@ impl Command for SetParagraphStyleCommand {
         };
 
         for paragraph_index in start..=end {
+            // A block equation in the range has no paragraph to format; it
+            // is skipped, as `ParagraphRangeUndo::begin` skips it.
+            if ctx.document.is_math_surface(paragraph_index) {
+                continue;
+            }
             let (previous_props, previous_run_props) = {
                 let paragraph = ctx
                     .document
@@ -227,9 +232,17 @@ impl Command for SetParagraphStyleCommand {
                 if let (Some(old), Some(new)) =
                     (previous_style_props.as_ref(), inherited_props.as_ref())
                 {
-                    rebase_paragraph_style_properties(props, old, new, |tag| {
-                        declared.iter().any(|declared| declared == tag)
-                    });
+                    rebase_paragraph_style_properties(
+                        props,
+                        old,
+                        new,
+                        |tag| declared.iter().any(|declared| declared == tag),
+                        |tag, attribute| {
+                            declared_attributes
+                                .iter()
+                                .any(|(element, name)| element == tag && name == attribute)
+                        },
+                    );
                 }
                 if let Some((old, new)) = numbering_change {
                     let key = |numbering: Option<&Numbering>| {
@@ -239,32 +252,35 @@ impl Command for SetParagraphStyleCommand {
                         props.numbering = new;
                     }
                 }
+                let before = props.clone();
                 if let Some(style_props) = style_paragraph_props.as_ref() {
-                    let before = props.clone();
                     merge_paragraph_properties_override(props, style_props);
-                    // What a partly declared `w:spacing` or `w:ind` does not
-                    // declare comes from the new style alone; the merge above
-                    // only overrides, and would keep the old style's value
-                    // wherever the new one is silent.
-                    if let Some(new) = inherited_props.as_ref() {
-                        if declared.iter().any(|tag| tag == "w:spacing") {
-                            props.spacing = new.spacing.clone();
-                        }
-                        if declared.iter().any(|tag| tag == "w:ind") {
-                            props.indent = new.indent.clone();
-                        }
-                    }
-                    keep_declared_paragraph_properties(
-                        props,
-                        &before,
-                        |tag| declared.iter().any(|declared| declared == tag),
-                        |tag, attribute| {
-                            declared_attributes
-                                .iter()
-                                .any(|(declared, name)| declared == tag && name == attribute)
-                        },
-                    );
                 }
+                // What a partly declared `w:spacing` or `w:ind` does not
+                // declare comes from the new style alone; the merge above
+                // only overrides, and would keep the old style's value
+                // wherever the new one is silent. Also when the new style
+                // gives no paragraph formatting at all (a Normal with no
+                // `w:pPr`): skipped then, a heading's space before stayed
+                // with a paragraph set back to Normal, on screen only.
+                if let Some(new) = inherited_props.as_ref() {
+                    if declared.iter().any(|tag| tag == "w:spacing") {
+                        props.spacing = new.spacing.clone();
+                    }
+                    if declared.iter().any(|tag| tag == "w:ind") {
+                        props.indent = new.indent.clone();
+                    }
+                }
+                keep_declared_paragraph_properties(
+                    props,
+                    &before,
+                    |tag| declared.iter().any(|declared| declared == tag),
+                    |tag, attribute| {
+                        declared_attributes
+                            .iter()
+                            .any(|(declared, name)| declared == tag && name == attribute)
+                    },
+                );
                 if let Some(run_style_props) = style_run_props.as_ref() {
                     for (run, character) in paragraph.runs.iter_mut().zip(&character_style_props) {
                         match run.properties.as_mut() {

@@ -44,6 +44,13 @@ fn tall_sheet(rows: u32) -> Sheet {
         default_row_custom_height: false,
         default_rows_hidden: false,
         show_grid_lines: true,
+        show_formulas: false,
+        show_zeros: true,
+        page_break_preview: false,
+        tab_selected: false,
+        show_headers: true,
+        grid_color: None,
+        zoom_percent: None,
         freeze_pane: None,
         tables: Vec::new(),
         header_footer: None,
@@ -52,10 +59,13 @@ fn tall_sheet(rows: u32) -> Sheet {
         page_setup: Default::default(),
         shapes: Vec::new(),
         array_formulas: Vec::new(),
+        data_tables: Vec::new(),
+        scenarios: None,
         phonetic_readings: Default::default(),
         rich_text: Default::default(),
         tab_color: None,
         sparkline_groups: Vec::new(),
+        ignored_errors: Vec::new(),
         outline: Default::default(),
         protection: None,
     }
@@ -198,4 +208,29 @@ fn rendering_the_whole_sheet_is_the_full_viewport() {
     );
 
     assert_eq!(whole.ops(), viewport.ops());
+}
+
+#[test]
+fn a_cell_error_checking_flags_gets_the_green_corner() {
+    let mut sheet = tall_sheet(2);
+    sheet.rows[0].cells[0].value = CellValue::Text("00123".into());
+    let layout = layout_sheet(&sheet, &StyleTable::default(), &LayoutOptions::default());
+    assert!(layout.cell(CellRef::new(0, 0)).expect("A1").error_flag);
+    let viewport = Rect {
+        x: 0.0,
+        y: 0.0,
+        width: 400.0,
+        height: 200.0,
+    };
+    let painter = paint(&layout, viewport);
+    assert!(painter.ops().contains(&Op::SetFillStyle("#00a000".into())));
+    // A number is not flagged.
+    let plain = layout_sheet(
+        &tall_sheet(2),
+        &StyleTable::default(),
+        &LayoutOptions::default(),
+    );
+    assert!(!paint(&plain, viewport)
+        .ops()
+        .contains(&Op::SetFillStyle("#00a000".into())));
 }

@@ -45,6 +45,128 @@ pub struct ChartSeries {
     /// `c:smooth`: the line is drawn as a curve through its points.
     #[serde(default)]
     pub smooth: bool,
+    /// The series' line: none, its width and dash.
+    #[serde(default)]
+    pub line: LineFormat,
+    /// A fill other than one colour: none, a gradient or a pattern.
+    #[serde(default)]
+    pub fill: Option<AreaFill>,
+}
+/// A fill that is not a single colour (`a:noFill`, `a:gradFill`,
+/// `a:pattFill`), or one that is, for an area of the chart.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum AreaFill {
+    None,
+    Solid(ChartColor),
+    /// Stops at positions in thousandths of a percent, and the angle in
+    /// 60000ths of a degree.
+    Gradient(Vec<(u32, ChartColor)>, u32),
+    /// A preset (`pct50`, `ltHorz`…), its foreground and background.
+    Pattern(String, ChartColor, ChartColor),
+}
+/// `c:dTable`: the chart's data under its plot.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub struct DataTable {
+    pub horizontal_borders: bool,
+    pub vertical_borders: bool,
+    pub outline: bool,
+    /// Legend keys beside the series' names.
+    pub keys: bool,
+}
+fn color_of(node: Option<&Node>) -> ChartColor {
+    let Some(node) = node.and_then(|n| n.children.iter().find(|n| n.drawing)) else {
+        return ChartColor::default();
+    };
+    let val = node.attrs.get("val");
+    ChartColor {
+        rgb: (node.name == "srgbClr")
+            .then(|| {
+                let v = val?;
+                if v.len() != 6 || !v.is_ascii() {
+                    return None;
+                }
+                Some([
+                    u8::from_str_radix(&v[0..2], 16).ok()?,
+                    u8::from_str_radix(&v[2..4], 16).ok()?,
+                    u8::from_str_radix(&v[4..6], 16).ok()?,
+                ])
+            })
+            .flatten(),
+        scheme: (node.name == "schemeClr").then(|| val.cloned()).flatten(),
+    }
+}
+/// The fill of `spPr`, when it says one; `solid` keeps a single colour too.
+fn area_fill(properties: Option<&Node>, solid: bool) -> Option<AreaFill> {
+    let properties = properties?;
+    if properties.dchild("noFill").is_some() {
+        return Some(AreaFill::None);
+    }
+    if let Some(gradient) = properties.dchild("gradFill") {
+        let stops = gradient
+            .dchild("gsLst")
+            .map(|list| {
+                list.children
+                    .iter()
+                    .filter(|n| n.drawing && n.name == "gs")
+                    .map(|stop| {
+                        (
+                            stop.attrs
+                                .get("pos")
+                                .and_then(|v| v.parse().ok())
+                                .unwrap_or(0),
+                            color_of(Some(stop)),
+                        )
+                    })
+                    .collect()
+            })
+            .unwrap_or_default();
+        let angle = gradient
+            .dchild("lin")
+            .and_then(|lin| lin.attrs.get("ang"))
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(5_400_000);
+        return Some(AreaFill::Gradient(stops, angle));
+    }
+    if let Some(pattern) = properties.dchild("pattFill") {
+        return Some(AreaFill::Pattern(
+            pattern
+                .attrs
+                .get("prst")
+                .cloned()
+                .unwrap_or_else(|| "pct5".into()),
+            color_of(pattern.dchild("fgClr")),
+            color_of(pattern.dchild("bgClr")),
+        ));
+    }
+    if solid {
+        if let Some(fill) = properties.dchild("solidFill") {
+            return Some(AreaFill::Solid(color_of(Some(fill))));
+        }
+    }
+    None
+}
+/// A line's look (`a:ln`).
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub struct LineFormat {
+    /// `a:noFill`: no line at all.
+    pub none: bool,
+    /// `w`, in EMU.
+    pub width: Option<u32>,
+    /// `a:prstDash`: `solid`, `dash`, `sysDot`, `lgDashDot`…
+    pub dash: Option<String>,
+}
+fn line_format(properties: Option<&Node>) -> LineFormat {
+    let Some(line) = properties.and_then(|n| n.dchild("ln")) else {
+        return LineFormat::default();
+    };
+    LineFormat {
+        none: line.dchild("noFill").is_some(),
+        width: line.attrs.get("w").and_then(|w| w.parse().ok()),
+        dash: line
+            .dchild("prstDash")
+            .and_then(|n| n.attrs.get("val"))
+            .cloned(),
+    }
 }
 /// What a data label shows and where (`c:dLbls`).
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
@@ -125,6 +247,13 @@ pub struct ChartAxis {
     /// `crosses`: `autoZero`, `min` or `max`.
     #[serde(default)]
     pub crosses: Option<String>,
+    /// `crossesAt`: the value of this axis the other crosses at.
+    #[serde(default)]
+    pub crosses_at: Option<String>,
+    #[serde(default)]
+    pub minor_gridlines: bool,
+    #[serde(default)]
+    pub minor_unit: Option<String>,
 }
 /// One plot of a chart, after the first: a combination chart has several,
 /// a line over columns, often on a secondary axis.
@@ -186,6 +315,18 @@ pub struct Chart {
     pub secondary_value_axis: Option<ChartAxis>,
     #[serde(default)]
     pub secondary_category_axis: Option<ChartAxis>,
+    /// `c:dTable`.
+    #[serde(default)]
+    pub data_table: Option<DataTable>,
+    /// The chart area's fill (`chartSpace/spPr`).
+    #[serde(default)]
+    pub chart_fill: Option<AreaFill>,
+    /// The plot area's fill.
+    #[serde(default)]
+    pub plot_fill: Option<AreaFill>,
+    /// `c:style`: the chart style, 1 to 48.
+    #[serde(default)]
+    pub style: Option<u32>,
 }
 impl Default for Chart {
     fn default() -> Self {
@@ -226,6 +367,10 @@ impl Default for Chart {
             extra_plots: Vec::new(),
             secondary_value_axis: None,
             secondary_category_axis: None,
+            data_table: None,
+            chart_fill: None,
+            plot_fill: None,
+            style: None,
         }
     }
 }
@@ -385,9 +530,6 @@ fn color(properties: Option<&Node>, issues: &mut Vec<String>) -> ChartColor {
     let Some(properties) = properties else {
         return ChartColor::default();
     };
-    if properties.dchild("gradFill").is_some() || properties.dchild("pattFill").is_some() {
-        issues.push("chart gradient/pattern fill".into());
-    }
     let fill = properties
         .dchild("solidFill")
         .or_else(|| properties.dchild("ln").and_then(|n| n.dchild("solidFill")));
@@ -452,6 +594,9 @@ fn axis(node: Option<&Node>) -> ChartAxis {
         major_time_unit: node.val("majorTimeUnit").map(str::to_string),
         position: node.val("axPos").map(str::to_string),
         crosses: node.val("crosses").map(str::to_string),
+        crosses_at: node.val("crossesAt").map(str::to_string),
+        minor_gridlines: node.child("minorGridlines").is_some(),
+        minor_unit: node.val("minorUnit").map(str::to_string),
     }
 }
 fn data_labels(node: Option<&Node>) -> Option<DataLabels> {
@@ -569,6 +714,8 @@ fn parse_series(
         smooth: ser
             .child("smooth")
             .is_some_and(|n| n.attrs.get("val").is_none_or(|v| v != "0" && v != "false")),
+        line: line_format(ser.child("spPr")),
+        fill: area_fill(ser.child("spPr"), false),
     };
     for point in ser.children.iter().filter(|n| n.main && n.name == "dPt") {
         if let Some(index) = point.val("idx").and_then(|v| v.parse::<usize>().ok()) {
@@ -639,7 +786,44 @@ fn parse_plot(kind: &Node, issues: &mut Vec<String>) -> ChartPlot {
     }
 }
 
+/// How many parsed charts [`parse_chart`] keeps.
+const PARSED_CHARTS: usize = 64;
+
+thread_local! {
+    /// The charts parsed most recently, with the XML each came from, newest
+    /// last. A cell edit reads the workbook again, and every chart it did not
+    /// rewrite is the same XML as before; parsing them all again was most of
+    /// what reading a workbook of charts cost.
+    static PARSED: std::cell::RefCell<std::collections::VecDeque<(String, Chart)>> =
+        const { std::cell::RefCell::new(std::collections::VecDeque::new()) };
+}
+
+/// A chart part's chart, as [`parse_chart_xml`] reads it, from the charts
+/// parsed recently when the same XML was.
 pub fn parse_chart(xml: &str) -> Result<Chart> {
+    let known = PARSED.with(|parsed| {
+        parsed
+            .borrow()
+            .iter()
+            .find(|(source, _)| source == xml)
+            .map(|(_, chart)| chart.clone())
+    });
+    if let Some(chart) = known {
+        return Ok(chart);
+    }
+    let chart = parse_chart_xml(xml)?;
+    PARSED.with(|parsed| {
+        let mut parsed = parsed.borrow_mut();
+        if parsed.len() == PARSED_CHARTS {
+            parsed.pop_front();
+        }
+        parsed.push_back((xml.to_string(), chart.clone()));
+    });
+    Ok(chart)
+}
+
+/// A chart part's chart, parsed from its XML.
+pub fn parse_chart_xml(xml: &str) -> Result<Chart> {
     let tree = parse_tree(xml)?;
     let space = tree
         .children
@@ -691,6 +875,31 @@ pub fn parse_chart(xml: &str) -> Result<Chart> {
         .child("legend")
         .map(|n| n.val("legendPos").unwrap_or("r").to_string());
     chart.blank_mode = root.val("dispBlanksAs").unwrap_or("gap").into();
+    let space_node = space.unwrap();
+    chart.chart_fill = area_fill(space_node.child("spPr"), true);
+    chart.plot_fill = plot.and_then(|plot| area_fill(plot.child("spPr"), true));
+    chart.data_table = plot
+        .and_then(|plot| plot.child("dTable"))
+        .map(|table| DataTable {
+            horizontal_borders: table.enabled("showHorzBorder", false),
+            vertical_borders: table.enabled("showVertBorder", false),
+            outline: table.enabled("showOutline", false),
+            keys: table.enabled("showKeys", false),
+        });
+    chart.style = space_node
+        .val("style")
+        .or_else(|| {
+            // Excel 2010's style, in `mc:AlternateContent`'s fallback.
+            let mut found = Vec::new();
+            space_node.descendants("style", &mut found);
+            found
+                .first()
+                .and_then(|n| n.attrs.get("val").map(String::as_str))
+        })
+        .and_then(|v| v.parse::<u32>().ok())
+        // Excel 2010's `c14:style` counts from 101.
+        .map(|v| if v > 100 { v - 100 } else { v })
+        .filter(|v| (1..=48).contains(v));
     chart.visible_only = root.enabled("plotVisOnly", true);
     let first = parse_plot(kind, &mut chart.unsupported_properties);
     chart.horizontal = first.horizontal;
@@ -888,6 +1097,27 @@ pub(crate) fn apply_theme(chart: &mut Chart, theme: &crate::theme::ThemePalette)
         }
         for bars in &mut series.error_bars {
             apply(&mut bars.color)
+        }
+        if let Some(fill) = &mut series.fill {
+            apply_fill(fill, &apply);
+        }
+    }
+    for fill in [&mut chart.chart_fill, &mut chart.plot_fill]
+        .into_iter()
+        .flatten()
+    {
+        apply_fill(fill, &apply);
+    }
+}
+
+fn apply_fill(fill: &mut AreaFill, apply: &impl Fn(&mut ChartColor)) {
+    match fill {
+        AreaFill::None => {}
+        AreaFill::Solid(color) => apply(color),
+        AreaFill::Gradient(stops, _) => stops.iter_mut().for_each(|(_, color)| apply(color)),
+        AreaFill::Pattern(_, fg, bg) => {
+            apply(fg);
+            apply(bg);
         }
     }
 }

@@ -24,6 +24,12 @@ pub struct CellRef {
     pub row: u32,
 }
 
+/// Excel shows zeros, and the row and column headings, unless a sheet's
+/// view says not to.
+fn shows_zeros() -> bool {
+    true
+}
+
 impl CellRef {
     pub fn new(column: u32, row: u32) -> Self {
         Self { column, row }
@@ -235,6 +241,34 @@ pub struct Sheet {
     pub default_rows_hidden: bool,
     /// `sheetView/@showGridLines`; Excel defaults it to on.
     pub show_grid_lines: bool,
+    /// `sheetView/@showFormulas`: cells show their formulas, not what they
+    /// work out to (Formulas ▸ Show Formulas, ⌃`).
+    #[serde(default)]
+    pub show_formulas: bool,
+    /// `sheetView/@showZeros`: cells worth zero show `0`; off, they show
+    /// nothing (Excel's "Show a zero in cells that have zero value").
+    #[serde(default = "shows_zeros")]
+    pub show_zeros: bool,
+    /// `sheetView/@view="pageBreakPreview"`: the sheet opens in Page Break
+    /// Preview.
+    #[serde(default)]
+    pub page_break_preview: bool,
+    /// `sheetView/@tabSelected`: the sheet's tab selected — the active
+    /// sheet's, and with it any grouped with it.
+    #[serde(default)]
+    pub tab_selected: bool,
+    /// `sheetView/@showRowColHeaders`: the row numbers and column letters
+    /// shown; off on dashboards and forms. Excel shows them by default.
+    #[serde(default = "shows_zeros")]
+    pub show_headers: bool,
+    /// `sheetView/@colorId` when `defaultGridColor="0"`: the gridlines'
+    /// colour, by its place in the indexed palette; `None` for Excel's own.
+    #[serde(default)]
+    pub grid_color: Option<u32>,
+    /// `sheetView/@zoomScale`: the percentage the sheet was last shown at,
+    /// 10 to 400; `None` for Excel's 100.
+    #[serde(default)]
+    pub zoom_percent: Option<u32>,
     /// Fixed rows and columns from the sheet's frozen `<pane>`, if any.
     #[serde(default)]
     pub freeze_pane: Option<FreezePane>,
@@ -263,6 +297,13 @@ pub struct Sheet {
     /// output, which the file stores as plain values.
     #[serde(default)]
     pub array_formulas: Vec<ArrayFormula>,
+    /// The What-If data tables: the cells each fills are plain values in
+    /// the file, its `TABLE` on the first.
+    #[serde(default)]
+    pub data_tables: Vec<DataTable>,
+    /// The What-If scenarios the Scenario Manager keeps on the sheet.
+    #[serde(default)]
+    pub scenarios: Option<crate::scenarios::Scenarios>,
     /// The furigana Excel saved with text cells (`<rPh>`), as the reading
     /// PHONETIC returns: 山田太郎 with ヤマダ and タロウ reads ヤマダタロウ.
     #[serde(default)]
@@ -277,6 +318,9 @@ pub struct Sheet {
     /// Sparklines (`x14:sparklineGroups`).
     #[serde(default)]
     pub sparkline_groups: Vec<crate::sparkline::SparklineGroup>,
+    /// `<ignoredErrors>`: cells whose error checks were turned off.
+    #[serde(default)]
+    pub ignored_errors: Vec<crate::ignored_errors::IgnoredError>,
     /// The sheet's protection (`<sheetProtection sheet="1">`), when it is
     /// protected: what it still allows.
     #[serde(default)]
@@ -386,6 +430,38 @@ impl Default for SheetProtection {
             pivot_tables: false,
             scenarios: false,
             objects: false,
+        }
+    }
+}
+
+/// A What-If data table (`<f t="dataTable" ref dt2D dtr r1 r2>` on its
+/// first result cell): each cell of `range` is a formula beside it worked
+/// out with an input cell given the value at the head of its row or
+/// column — what Excel shows as `{=TABLE(row,column)}`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DataTable {
+    /// The result cells, the input values and formulas round them.
+    pub range: CellRange,
+    /// `dt2D`: values along the top and down the side, one formula in the
+    /// corner.
+    pub two_way: bool,
+    /// `dtr`: a one-way table's values run along its top row (the row input
+    /// cell takes them) rather than down its left column.
+    pub row: bool,
+    /// `r1`: the row input cell of a two-way table, else the one input cell.
+    pub first: Option<CellRef>,
+    /// `r2`: a two-way table's column input cell.
+    pub second: Option<CellRef>,
+}
+
+impl DataTable {
+    /// The cell taking the values along the top, and the one taking those
+    /// down the side — `TABLE`'s two arguments.
+    pub fn inputs(&self) -> (Option<CellRef>, Option<CellRef>) {
+        match (self.two_way, self.row) {
+            (true, _) => (self.first, self.second),
+            (false, true) => (self.first, None),
+            (false, false) => (None, self.first),
         }
     }
 }
@@ -540,6 +616,18 @@ pub struct PageSetup {
     pub title_rows: Option<(u32, u32)>,
     /// The columns repeated at the left of every page (`Sheet1!$A:$A`).
     pub title_columns: Option<(u32, u32)>,
+    /// `printOptions/@horizontalCentered`: Center on page horizontally.
+    #[serde(default)]
+    pub center_horizontally: bool,
+    /// `printOptions/@verticalCentered`: Center on page vertically.
+    #[serde(default)]
+    pub center_vertically: bool,
+    /// `printOptions/@gridLines`: print the gridlines.
+    #[serde(default)]
+    pub print_grid_lines: bool,
+    /// `printOptions/@headings`: print the row and column headings.
+    #[serde(default)]
+    pub print_headings: bool,
 }
 
 impl PageSetup {
@@ -679,11 +767,48 @@ pub enum ShapePaint {
     Gradient(Vec<DrawingColor>),
 }
 
+/// One path of a shape's custom geometry (`custGeom/pathLst/path`), as a
+/// freeform or a shape Excel cannot name is drawn.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub struct CustomPath {
+    /// The path's own coordinate space (`@w`, `@h`), scaled to the shape's
+    /// box; 0 when the file gives none, the points' extent then standing in.
+    pub width: i64,
+    pub height: i64,
+    /// `@fill` is not `none`: the path is filled as well as outlined.
+    pub filled: bool,
+    pub commands: Vec<PathCommand>,
+}
+
+/// A step of a [`CustomPath`], in its coordinate space.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum PathCommand {
+    Move(i64, i64),
+    Line(i64, i64),
+    /// Two control points and the end.
+    Cubic([(i64, i64); 3]),
+    /// The control point and the end.
+    Quad([(i64, i64); 2]),
+    /// `arcTo`: an elliptical arc from the current point, of radii
+    /// `width_radius` × `height_radius`, starting at `start` and turning
+    /// through `swing` (60000ths of a degree, clockwise).
+    Arc {
+        width_radius: i64,
+        height_radius: i64,
+        start: i64,
+        swing: i64,
+    },
+    Close,
+}
+
 /// A shape's look from its `spPr`, `xdr:style` and text body.
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub struct ShapeStyle {
-    /// `prstGeom/@prst`: `rect`, `roundRect`, `ellipse`, `rightArrow`...
+    /// `prstGeom/@prst`: `rect`, `roundRect`, `ellipse`, `rightArrow`...;
+    /// `custom` for custom geometry, its paths in `custom_paths`.
     pub geometry: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub custom_paths: Vec<CustomPath>,
     /// `avLst` guides as (name, value).
     pub adjustments: Vec<(String, i64)>,
     pub fill: ShapePaint,
@@ -1345,10 +1470,37 @@ pub struct Workbook {
     pub calculation_mode: CalculationMode,
     #[serde(default = "default_calculate_on_save")]
     pub calculate_on_save: bool,
+    /// `calcPr/@iterate`, `@iterateCount` and `@iterateDelta`.
+    #[serde(default)]
+    pub iteration: Iteration,
+    /// `calcPr/@fullPrecision`; `false` is Excel's precision as displayed.
+    #[serde(default = "default_calculate_on_save")]
+    pub full_precision: bool,
 }
 
 fn default_calculate_on_save() -> bool {
     true
+}
+
+/// Excel's iterative calculation: whether a circular reference is
+/// calculated round again instead of being an error, at most `count` times,
+/// stopping once no value changes by more than `delta`.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct Iteration {
+    pub enabled: bool,
+    pub count: u32,
+    pub delta: f64,
+}
+
+impl Default for Iteration {
+    /// Excel's defaults: off, 100 iterations, a maximum change of 0.001.
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            count: 100,
+            delta: 0.001,
+        }
+    }
 }
 
 impl Default for Workbook {
@@ -1364,6 +1516,8 @@ impl Default for Workbook {
             full_calculation_on_load: false,
             calculation_mode: CalculationMode::default(),
             calculate_on_save: true,
+            iteration: Iteration::default(),
+            full_precision: true,
         }
     }
 }
@@ -1414,5 +1568,50 @@ pub struct DefinedName {
 impl Workbook {
     pub fn sheet_by_name(&self, name: &str) -> Option<&Sheet> {
         self.sheets.iter().find(|sheet| sheet.name == name)
+    }
+
+    /// The list `sheet`'s last filter was applied to, from its
+    /// `_xlnm._FilterDatabase` name: what an Advanced Filter in place
+    /// leaves, a sheet in filter mode with no AutoFilter.
+    pub fn filter_database(&self, sheet: &Sheet) -> Option<CellRange> {
+        let index = self
+            .sheets
+            .iter()
+            .position(|found| found.name == sheet.name)?;
+        let name = self.defined_names.iter().find(|defined| {
+            defined.local_sheet_index == Some(index)
+                && defined.name.eq_ignore_ascii_case("_xlnm._FilterDatabase")
+        })?;
+        let formula = name.formula.trim_start_matches('=');
+        let (on, range) = formula.rsplit_once('!')?;
+        let on = on.trim_matches('\'').replace("''", "'");
+        if on != sheet.name {
+            return None;
+        }
+        CellRange::parse(&range.replace('$', "")).ok()
+    }
+
+    /// [`Sheet::filtered_row_ranges`], with the records of an Advanced
+    /// Filter applied in place: a sheet in filter mode with no AutoFilter
+    /// criteria filters its `_xlnm._FilterDatabase` list's records.
+    pub fn filtered_row_ranges(&self, sheet: &Sheet) -> (Vec<(u32, u32)>, bool) {
+        let (ranges, unknown) = sheet.filtered_row_ranges();
+        let criteria = sheet
+            .auto_filter
+            .as_ref()
+            .is_some_and(|filter| filter.has_criteria())
+            || sheet
+                .tables
+                .iter()
+                .any(|table| table.filter.as_ref().is_some_and(|f| f.has_criteria()));
+        if sheet.filter_mode != Some(true) || criteria || !ranges.is_empty() {
+            return (ranges, unknown);
+        }
+        match self.filter_database(sheet) {
+            Some(list) if list.end.row > list.start.row => {
+                (vec![(list.start.row + 1, list.end.row)], false)
+            }
+            _ => (ranges, unknown),
+        }
     }
 }

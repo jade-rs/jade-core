@@ -1,6 +1,6 @@
 //! Unadjusted Mac layout coordinates using bundled faces, plus opt-in Office-font probes.
 mod common;
-use common::repo_path;
+use common::{assert_word_source_hash, repo_path};
 use jade_docx_layout::line_metrics::{set_word_layout_platform, WordLayoutPlatform};
 use jade_docx_native_render::{FaceSpec, FontFace, NativeDocument};
 use serde_json::{json, Value};
@@ -83,6 +83,86 @@ fn sha256(bytes: &[u8]) -> String {
 }
 
 #[test]
+fn mac_noto_circle_title_matches_original_word_coordinates() {
+    let evidence: Value = serde_json::from_slice(
+        &std::fs::read(repo_path("tests/word-oracle/mac-noto-circle-advance.json")).unwrap(),
+    )
+    .unwrap();
+    let fixture = "noto-yokohama_page6";
+    let bytes = std::fs::read(repo_path(&format!("public/fixtures/{fixture}.docx"))).unwrap();
+    assert_word_source_hash(fixture, &evidence["docx_sha256"], &sha256(&bytes));
+    for (extension, hash) in [("json", "reference_sha256"), ("pdf", "pdf_sha256")] {
+        let path = if extension == "pdf" {
+            format!("tests/word-oracle/mac-glyph-corpus-20261019/pdf/{fixture}.pdf")
+        } else {
+            format!("tests/word-oracle/mac-glyph-corpus-20261019/{fixture}.json")
+        };
+        assert_eq!(
+            evidence[hash],
+            sha256(&std::fs::read(repo_path(&path)).unwrap())
+        );
+    }
+    let reference: Value = serde_json::from_slice(
+        &std::fs::read(repo_path(&format!(
+            "tests/word-oracle/mac-glyph-corpus-20261019/{fixture}.json"
+        )))
+        .unwrap(),
+    )
+    .unwrap();
+    let title = "○横浜市市税条例";
+    let rows: Vec<_> = reference["pages"][0]["rows"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|row| row["text"] == title)
+        .collect();
+    assert_eq!(rows.len(), 1);
+    let expected_glyphs: Vec<_> = rows[0]["characters"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|g| {
+            json!([
+                1,
+                g["text"],
+                g["x_pt"],
+                g.get("baseline_pt").unwrap_or(&rows[0]["baseline_pt"])
+            ])
+        })
+        .collect();
+    assert_eq!(expected_glyphs.len(), 8);
+    let doc = open_with_bundled_faces(&bytes);
+    let lines: Vec<_> = doc
+        .renderer()
+        .layout_debug_lines()
+        .into_iter()
+        .filter(|l| l.text == title)
+        .collect();
+    assert_eq!(lines.len(), 1);
+    let line = &lines[0];
+    let actual_glyphs: Vec<_> = line
+        .fragments
+        .iter()
+        .flat_map(|f| {
+            f.glyphs.iter().map(|g| {
+                json!([
+                    line.page + 1,
+                    g.text,
+                    (f.x + g.x - 2.0 * line.report_x_offset) * 0.75,
+                    f.baseline * 0.75
+                ])
+            })
+        })
+        .collect();
+    compare(
+        &json!({"page_count": reference["page_count"], "glyphs": expected_glyphs}),
+        &json!({"page_count": doc.page_count(), "glyphs": actual_glyphs}),
+        WORD_TOLERANCE_PT,
+    )
+    .unwrap_or_else(|error| panic!("original Word Noto circle title: {error}"));
+}
+
+#[test]
 fn mac_missing_first_footer_stays_blank() {
     let bytes = std::fs::read(repo_path("public/fixtures/header-footer-sections.docx")).unwrap();
     let reference: Value = serde_json::from_slice(
@@ -92,7 +172,11 @@ fn mac_missing_first_footer_stays_blank() {
         .unwrap(),
     )
     .unwrap();
-    assert_eq!(reference["docx_sha256"], sha256(&bytes));
+    assert_word_source_hash(
+        "header-footer-sections",
+        &reference["docx_sha256"],
+        &sha256(&bytes),
+    );
     let word_pages = reference["pages"].as_array().unwrap();
     let word_has_footer = |page: usize| {
         word_pages[page]["rows"]
@@ -133,6 +217,102 @@ fn mac_missing_first_footer_stays_blank() {
     );
     assert_eq!(story_text(0, "header"), "TITLE PAGE HEADER");
     assert_eq!(story_text(1, "header"), "SECTION TWO HEADER");
+}
+
+/// Both headers and the inherited footer must retain the frozen Word origins.
+/// Use the outer physical page: a header's inner layout page is story-local.
+#[test]
+fn mac_header_footer_sections_match_original_word_coordinates() {
+    let bytes = std::fs::read(repo_path("public/fixtures/header-footer-sections.docx")).unwrap();
+    let reference: Value = serde_json::from_slice(
+        &std::fs::read(repo_path(
+            "tests/word-oracle/mac-glyph-corpus-20261019/header-footer-sections.json",
+        ))
+        .unwrap(),
+    )
+    .unwrap();
+    assert_word_source_hash(
+        "header-footer-sections",
+        &reference["docx_sha256"],
+        &sha256(&bytes),
+    );
+    let mut doc = open_with_bundled_faces(&bytes);
+    let snapshot = doc.capture_full_layout_debug().unwrap();
+    assert!(snapshot.complete);
+    assert_eq!(snapshot.page_count, 2);
+    let mut actual = Vec::new();
+    for entry in &snapshot.auxiliary_lines {
+        for fragment in &entry.line.fragments {
+            for glyph in &fragment.glyphs {
+                actual.push(json!([
+                    entry.page + 1,
+                    glyph.text,
+                    (fragment.x + glyph.x - 2.0 * entry.line.report_x_offset) * 0.75,
+                    fragment.baseline * 0.75,
+                ]));
+            }
+        }
+    }
+    for line in &snapshot.body_lines {
+        for fragment in &line.fragments {
+            for glyph in &fragment.glyphs {
+                actual.push(json!([
+                    line.page + 1,
+                    glyph.text,
+                    (fragment.x + glyph.x - 2.0 * line.report_x_offset) * 0.75,
+                    fragment.baseline * 0.75,
+                ]));
+            }
+        }
+    }
+    // Compare the entire document so the header fix cannot displace body text.
+    let expected = word_layout(&reference);
+    assert_eq!(expected["glyphs"].as_array().unwrap().len(), 163);
+    let actual = spatial_order(&json!({"page_count": snapshot.page_count, "glyphs": actual}));
+    assert_eq!(actual["glyphs"].as_array().unwrap().len(), 163);
+    compare(&expected, &actual, WORD_TOLERANCE_PT).unwrap();
+
+    let evidence: Value = serde_json::from_str(include_str!(
+        "../../../tests/word-oracle/mac-bold-header-footer-origins.json"
+    ))
+    .unwrap();
+    assert_eq!(evidence["docx_sha256"], reference["docx_sha256"]);
+    assert_eq!(evidence["pdf_sha256"], reference["pdf_sha256"]);
+    assert_eq!(
+        evidence["pdf_sha256"],
+        sha256(
+            &std::fs::read(repo_path(
+                "tests/word-oracle/mac-glyph-corpus-20261019/pdf/header-footer-sections.pdf",
+            ))
+            .unwrap()
+        )
+    );
+    let mut checked = 0;
+    for row in evidence["rows"].as_array().unwrap() {
+        let page = row["page"].as_u64().unwrap() as usize - 1;
+        let header = snapshot
+            .auxiliary_lines
+            .iter()
+            .find(|entry| entry.page == page && entry.story == row["story"].as_str().unwrap())
+            .unwrap();
+        let glyphs: Vec<_> = header
+            .line
+            .fragments
+            .iter()
+            .flat_map(|fragment| fragment.glyphs.iter().map(move |glyph| (fragment, glyph)))
+            .collect();
+        let characters = row["characters"].as_array().unwrap();
+        assert_eq!(glyphs.len(), characters.len());
+        for ((fragment, glyph), word) in glyphs.iter().zip(characters) {
+            assert_eq!(glyph.text, word["text"].as_str().unwrap());
+            let x = (fragment.x + glyph.x) * 0.75;
+            let baseline = fragment.baseline * 0.75;
+            assert!((x - word["x_pt"].as_f64().unwrap()).abs() <= WORD_TOLERANCE_PT);
+            assert!((baseline - word["baseline_pt"].as_f64().unwrap()).abs() <= WORD_TOLERANCE_PT);
+            checked += 1;
+        }
+    }
+    assert_eq!(checked, 48, "include all five actual PDF spaces");
 }
 
 fn compare(expected: &Value, actual: &Value, tolerance: f64) -> Result<(), String> {
@@ -255,11 +435,7 @@ fn mac_probe_coordinates() {
         let bytes = std::fs::read(repo_path(&format!("public/fixtures/{name}.docx"))).unwrap();
         let reference_bytes = std::fs::read(&path).unwrap();
         let reference: Value = serde_json::from_slice(&reference_bytes).unwrap();
-        assert_eq!(
-            reference["docx_sha256"],
-            sha256(&bytes),
-            "{name}: recapture Word reference after changing fixture"
-        );
+        assert_word_source_hash(name, &reference["docx_sha256"], &sha256(&bytes));
         let layout = capture(&bytes);
         assert!(
             !layout["glyphs"].as_array().unwrap().is_empty(),
@@ -322,12 +498,15 @@ fn mac_probe_coordinates() {
     );
     for (name, actual) in actual_fixtures {
         let expected = &expected_fixtures[name];
-        for key in ["docx_sha256", "word_reference_sha256"] {
-            assert_eq!(
-                expected[key], actual[key],
-                "{name}: {key} changed: review and remeasure"
-            );
-        }
+        assert_word_source_hash(
+            name,
+            &expected["docx_sha256"],
+            actual["docx_sha256"].as_str().unwrap(),
+        );
+        assert_eq!(
+            expected["word_reference_sha256"], actual["word_reference_sha256"],
+            "{name}: Word reference changed: review and remeasure"
+        );
         if let Err(error) = compare(
             &expected["layout"],
             &actual["layout"],
@@ -457,15 +636,93 @@ fn floating_tables_match_word_with_office_arial() {
             .unwrap(),
         )
         .unwrap();
-        assert_eq!(
-            reference["docx_sha256"],
-            sha256(&bytes),
-            "changed source {name}"
-        );
+        assert_word_source_hash(name, &reference["docx_sha256"], &sha256(&bytes));
         let doc = NativeDocument::open(&bytes, 816.0, 1056.0, &faces).unwrap();
         compare(
             &word_layout(&reference),
             &spatial_order(&capture_coordinates(&doc)),
+            WORD_TOLERANCE_PT,
+        )
+        .unwrap_or_else(|error| panic!("{name}: {error}"));
+    }
+}
+
+/// A present styles part can still omit the document's run defaults.
+#[test]
+#[ignore = "requires JADE_OFFICE_YU_MINCHO pointing to the captured Office font"]
+fn omitted_run_defaults_match_word_with_office_yu_mincho() {
+    set_word_layout_platform(WordLayoutPlatform::Mac);
+    let font = std::env::var("JADE_OFFICE_YU_MINCHO").expect("set JADE_OFFICE_YU_MINCHO");
+    assert_eq!(
+        sha256(&std::fs::read(&font).unwrap()),
+        "926c1f98c3c603656222e0122c6bdabe17817d1c284a69abd4c337276dde9233"
+    );
+    let path = std::path::Path::new(&font);
+    let faces = ["Yu Mincho", "游明朝"].map(|family| FaceSpec {
+        family,
+        weight: 400,
+        path,
+    });
+    // `tabs` already matched Word before the fallback: preserve that control
+    // as well as fixing the document whose styles omit all run defaults.
+    for (name, source_sha, reference_sha) in [
+        (
+            "note-styles-creation",
+            "edcbc843e8b1e22877ed8fba38c84343b1bcc5fa0b613f21268598b90ab1ea6d",
+            "096b4778beba8d6e7f54b1ac0d604ed31984d5653e5e591191bd60479b86b090",
+        ),
+        (
+            "tabs",
+            "4b2ab628789bfb0502aa779951fe4f94358a782b5e8f1fdf9b2e8d90deb358de",
+            "7d5c33c18011b760035067b2e0a679d72ae22f2c25e35aa86b3cf91e6dd86e09",
+        ),
+    ] {
+        let source = std::fs::read(repo_path(&format!("public/fixtures/{name}.docx"))).unwrap();
+        assert_eq!(sha256(&source), source_sha, "{name}");
+        let reference = std::fs::read(repo_path(&format!(
+            "tests/word-oracle/mac-glyph-corpus-20261019/{name}.json"
+        )))
+        .unwrap();
+        assert_eq!(sha256(&reference), reference_sha, "{name}");
+        let reference: Value = serde_json::from_slice(&reference).unwrap();
+        let mut doc = NativeDocument::open(&source, 816.0, 1056.0, &faces).unwrap();
+        doc.set_revision_display(false, false, Default::default())
+            .unwrap();
+        doc.set_formatting_marks(false).unwrap();
+        // Full capture includes painted tab leaders as well as body glyphs.
+        let snapshot = doc.capture_full_layout_debug().unwrap();
+        assert!(snapshot.complete, "{name}: incomplete layout capture");
+        assert!(snapshot.known_uncaptured_stories.is_empty(), "{name}");
+        let mut glyphs = Vec::new();
+        for (page, line) in snapshot
+            .body_lines
+            .into_iter()
+            .map(|line| (line.page, line))
+            .chain(
+                snapshot
+                    .auxiliary_lines
+                    .into_iter()
+                    .map(|entry| (entry.page, entry.line)),
+            )
+        {
+            for fragment in line.fragments {
+                for glyph in fragment.glyphs {
+                    if glyph.text.is_empty() || glyph.text.chars().all(char::is_control) {
+                        continue;
+                    }
+                    glyphs.push(json!([
+                        page + 1,
+                        glyph.text,
+                        (fragment.x + glyph.x - 2.0 * line.report_x_offset) * 0.75,
+                        fragment.baseline * 0.75
+                    ]));
+                }
+            }
+        }
+        let coordinates = json!({"page_count": snapshot.page_count, "glyphs": glyphs});
+        compare(
+            &word_layout(&reference),
+            &spatial_order(&coordinates),
             WORD_TOLERANCE_PT,
         )
         .unwrap_or_else(|error| panic!("{name}: {error}"));
@@ -510,11 +767,7 @@ fn object_spaces_match_word_with_office_yu_mincho() {
             .unwrap(),
         )
         .unwrap();
-        assert_eq!(
-            reference["docx_sha256"],
-            sha256(&bytes),
-            "changed source {name}"
-        );
+        assert_word_source_hash(name, &reference["docx_sha256"], &sha256(&bytes));
         let doc = NativeDocument::open(&bytes, 816.0, 1056.0, &faces).unwrap();
         compare(
             &word_layout(&reference),
@@ -549,7 +802,7 @@ fn nested_autofit_word_matches_word_with_office_yu_mincho() {
         .unwrap(),
     )
     .unwrap();
-    assert_eq!(reference["docx_sha256"], sha256(&bytes));
+    assert_word_source_hash("table-nested", &reference["docx_sha256"], &sha256(&bytes));
     let doc = NativeDocument::open(&bytes, 816.0, 1056.0, &faces).unwrap();
     compare(
         &word_layout(&reference),
@@ -590,7 +843,7 @@ fn wide_table_wraps_like_word_with_office_ms_pgothic() {
         .unwrap(),
     )
     .unwrap();
-    assert_eq!(reference["docx_sha256"], sha256(&bytes));
+    assert_word_source_hash("yokohama_table", &reference["docx_sha256"], &sha256(&bytes));
     let doc = NativeDocument::open_with_font_faces(&bytes, 816.0, 1056.0, &faces).unwrap();
     compare(
         &word_layout(&reference),
@@ -621,11 +874,7 @@ fn mac_numbering_and_ruby_coordinates() {
         )))
         .unwrap();
         let reference: Value = serde_json::from_slice(&reference_bytes).unwrap();
-        assert_eq!(
-            reference["docx_sha256"],
-            sha256(&bytes),
-            "{name}: source/reference mismatch"
-        );
+        assert_word_source_hash(name, &reference["docx_sha256"], &sha256(&bytes));
         let mut doc = open_with_bundled_faces(&bytes);
         let before = capture_coordinates(&doc);
         let snapshot = doc.capture_full_layout_debug().unwrap();
@@ -720,7 +969,12 @@ fn mac_numbering_and_ruby_coordinates() {
     );
     for (name, actual) in actual_fixtures {
         let expected = &expected_fixtures[name];
-        for key in ["docx_sha256", "word_reference_sha256", "story"] {
+        assert_word_source_hash(
+            name,
+            &expected["docx_sha256"],
+            actual["docx_sha256"].as_str().unwrap(),
+        );
+        for key in ["word_reference_sha256", "story"] {
             assert_eq!(expected[key], actual[key], "{name}: {key} changed");
         }
         compare(
@@ -730,4 +984,44 @@ fn mac_numbering_and_ruby_coordinates() {
         )
         .unwrap_or_else(|error| panic!("{name}: {error}"));
     }
+}
+
+#[test]
+fn schema_repair_hashes_do_not_allow_unrelated_or_reversed_changes() {
+    use common::word_source_hash_matches;
+    let manifest: Value = serde_json::from_str(include_str!(
+        "../../../tests/word-oracle/release-corpus.json"
+    ))
+    .unwrap();
+    let row = manifest["fixtures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|row| row["schema_repair_source_sha256"].is_string())
+        .unwrap();
+    let name = row["fixture"].as_str().unwrap();
+    let old = row["schema_repair_source_sha256"].as_str().unwrap();
+    let new = row["docx_sha256"].as_str().unwrap();
+    assert!(word_source_hash_matches(name, old, new));
+    assert!(word_source_hash_matches(name, new, new));
+    assert!(!word_source_hash_matches(name, new, old));
+    assert!(!word_source_hash_matches("unknown", old, new));
+    assert!(!word_source_hash_matches(name, old, &"0".repeat(64)));
+    assert!(!word_source_hash_matches(name, "", ""));
+}
+
+#[test]
+fn schema_repair_preserves_malformed_table_order_mac_layout() {
+    let original = include_bytes!("fixtures/word-mac-probe-floating-order-malformed.docx");
+    let repaired = std::fs::read(repo_path(
+        "public/fixtures/word-mac-probe-floating-order.docx",
+    ))
+    .unwrap();
+    assert!(common::word_source_hash_matches(
+        "word-mac-probe-floating-order",
+        &sha256(original),
+        &sha256(&repaired),
+    ));
+    compare(&capture(original), &capture(&repaired), 0.01)
+        .unwrap_or_else(|error| panic!("schema repair changed captured Mac layout: {error}"));
 }

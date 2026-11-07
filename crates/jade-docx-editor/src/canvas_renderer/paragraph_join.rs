@@ -469,8 +469,7 @@ mod tests {
         assert_eq!(world.len(), 1, "{paragraphs:?}");
         assert_eq!(hello[0].0, world[0].0, "one line: {paragraphs:?}");
         assert!(next[0].0 > hello[0].0, "{paragraphs:?}");
-        // 10px a character: `orld` continues right after `Hello`, in its own
-        // offsets.
+        // `orld` continues right after `Hello`, in its own offsets.
         let hello_end = hello[0].1.last().expect("Hello fragment").3;
         let world_fragment = world[0].1.first().expect("orld fragment");
         assert_eq!((world_fragment.0, world_fragment.2), (0, hello_end));
@@ -486,12 +485,25 @@ mod tests {
         let selection = &renderer.selection;
         let line = &selection.paragraphs()[0].lines[0];
         let y = line.absolute_top + line.height / 2.0;
+        let click_at = |paragraph: usize, offset: usize| {
+            selection.paragraphs()[paragraph].lines[0]
+                .fragments
+                .iter()
+                .find_map(|fragment| {
+                    fragment
+                        .glyphs
+                        .iter()
+                        .find(|glyph| glyph.start == offset)
+                        .map(|glyph| fragment.x + glyph.x + glyph.width * 0.2)
+                })
+                .expect("target glyph")
+        };
         assert_eq!(
-            selection.hit_test(hello_end as f64 + 12.0, y),
+            selection.hit_test(click_at(3, 1), y),
             Some(TextPosition::new(3, 1))
         );
         assert_eq!(
-            selection.hit_test(world_fragment.2 as f64 - 12.0, y),
+            selection.hit_test(click_at(0, 4), y),
             Some(TextPosition::new(0, 4))
         );
     }

@@ -1,0 +1,48 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261103T053947818Z-1e31ad42",
+  "captured_at_utc": "2026-11-03T05:39:47.8360534Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20860",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "9bafe09d0c458006744b9edce767a328ba2da1bb5d9a460e5830c47bf6d7f1d1"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "documents": [
+    {
+      "name": "yokohama_page1",
+      "source": "jade-core\\public\\fixtures\\yokohama_page1.docx",
+      "sha256": "02a6ffec5671a28106245a24288b5cb7922570ae17984e903307e9eefb9ea4ff",
+      "pdf": "yokohama_page1.pdf",
+      "pdf_sha256": "083ab5cee7769a6b4833f61a5adf0a96ea9e21eb69a4b4fa973dc59928298ff7",
+      "pages": 1
+    },
+    {
+      "name": "numbering-restart",
+      "source": "jade-core\\public\\fixtures\\numbering-restart.docx",
+      "sha256": "b0fc380009a6942f9fac6862748495b21136a6c84c149d50a13f02daab0e9a20",
+      "pdf": "numbering-restart.pdf",
+      "pdf_sha256": "a4d7debbd51b61710d3d89976e38e8f4634f4b2fdc5ae4eced5b9878b3c3c3cc",
+      "pages": 2
+    },
+    {
+      "name": "contract",
+      "source": "jade-core\\public\\fixtures\\contract.docx",
+      "sha256": "682d4f785f8d1b283ded73ddceedce377fcc840e15130a2a87fa90ee9a078467",
+      "pdf": "contract.pdf",
+      "pdf_sha256": "249db11810efc49503a807b64d04da1a2ea2e354e4a2169f60bb759d72a250fc",
+      "pages": 3
+    },
+    {
+      "name": "yokohama_page6",
+      "source": "jade-core\\public\\fixtures\\yokohama_page6.docx",
+      "sha256": "c7a20d83cb5f9dfe42d22b480071026b0e074fc07e25abbe38b398b1c0790081",
+      "pdf": "yokohama_page6.pdf",
+      "pdf_sha256": "1f6a7300c665558beed598a1311574d70ee96134ca473526d46b1a228f3b8966",
+      "pages": 5
+    }
+  ]
+}

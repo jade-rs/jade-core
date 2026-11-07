@@ -97,20 +97,12 @@ fn paragraph_plain_text(paragraph: &Paragraph) -> String {
     paragraph.runs.iter().map(|run| run.text.as_str()).collect()
 }
 
-/// What a paragraph shows: a field read from a file keeps its result beside
-/// the run rather than in it.
+/// Saved display results, excluding non-displaying fields such as SET and ASK.
 fn paragraph_display_text(paragraph: &Paragraph) -> String {
     paragraph
         .runs
         .iter()
-        .map(|run| match run.field.as_ref() {
-            Some(field) if run.text.is_empty() => field
-                .resolved_value
-                .clone()
-                .or_else(|| field.cached_text.clone())
-                .unwrap_or_default(),
-            _ => run.text.clone(),
-        })
+        .map(Run::cached_display_text)
         .collect()
 }
 
@@ -441,10 +433,10 @@ impl WordDocument {
             }
         }
         let first_body = self
-            .body_index_for_surface(first)
+            .top_level_element_index(first)
             .ok_or("the first paragraph has no body position")?;
         let last_body = self
-            .body_index_for_surface(last)
+            .top_level_element_index(last)
             .ok_or("the last paragraph has no body position")?;
         {
             let body = self
@@ -484,7 +476,7 @@ impl WordDocument {
         // last mark. Split one off the end when the text runs to the end.
         if last_body + 1 >= body_len {
             let surface = self
-                .surface_index_for_body(last_body)
+                .surface_of_top_level_element(last_body)
                 .ok_or("the last paragraph has no surface")?;
             let length = self
                 .paragraph(surface)
@@ -499,7 +491,7 @@ impl WordDocument {
         let mut pieces_per_paragraph = Vec::new();
         for body_index in (first_body..=last_body).rev() {
             let surface = self
-                .surface_index_for_body(body_index)
+                .surface_of_top_level_element(body_index)
                 .ok_or("a paragraph has no surface")?;
             let text = self
                 .paragraph(surface)
@@ -707,6 +699,12 @@ impl WordDocument {
             }
             (table.node_id, rows)
         };
+        // What the table's style gave its cells' paragraphs. A load resolved it
+        // into them; out of the table, what they took from it alone is theirs
+        // no more (below).
+        let table_style = self.styles_part.as_ref().and_then(|styles| {
+            Self::table_style_paragraph_defaults(self.table_by_order(table_order_index)?, styles)
+        });
 
         // XML: the cell paragraphs go where the table was.
         if let (Some(mut raw), Some(table_id)) = (self.raw_document.take(), table_id) {
@@ -769,6 +767,15 @@ impl WordDocument {
             Self::rebuild_section_ranges(document);
         }
         self.rebuild_paragraph_surfaces();
+        // The table style's paragraph formatting goes with the table: a
+        // converted paragraph kept its cell spacing on screen while the
+        // reopened file gave it its own style's.
+        if let Some(table_style) = table_style.as_ref() {
+            let moved: usize = counts.iter().flatten().sum();
+            for body in body_index..body_index + moved {
+                self.release_table_style_paragraph_properties(body, table_style);
+            }
+        }
 
         // Each row's cells become one paragraph, last row first so the body
         // positions before it hold.
@@ -793,14 +800,88 @@ impl WordDocument {
         Ok(())
     }
 
+    /// The index in the body's elements of the top-level body paragraph at
+    /// `surface`. [`Self::body_index_for_surface`] counts table cells'
+    /// paragraphs as well: taken for an element index, it pointed past the
+    /// paragraphs once a table came before them, and converting text after a
+    /// table was refused as holding one.
+    fn top_level_element_index(&self, surface: usize) -> Option<usize> {
+        match self.paragraph_surfaces.get(surface)? {
+            ParagraphSurface::Body { path } => match path.as_slice() {
+                [PathEntry::Element(index)] => Some(*index),
+                _ => None,
+            },
+            _ => None,
+        }
+    }
+
+    /// The surface of the paragraph that is body element `element`.
+    fn surface_of_top_level_element(&self, element: usize) -> Option<usize> {
+        self.paragraph_surfaces.iter().position(|surface| {
+            matches!(surface, ParagraphSurface::Body { path }
+                if path.as_slice() == [PathEntry::Element(element)])
+        })
+    }
+
+    /// Gives the body paragraph at `body_index`, moved out of a table whose
+    /// style gave its cells `table_style`, what its own style gives where the
+    /// table's had, short of what its `w:pPr` declares.
+    fn release_table_style_paragraph_properties(
+        &mut self,
+        body_index: usize,
+        table_style: &ParagraphProperties,
+    ) {
+        let Some(index) = self.surface_of_top_level_element(body_index) else {
+            return;
+        };
+        let style = self
+            .paragraph(index)
+            .and_then(|paragraph| paragraph.properties.as_ref())
+            .and_then(|props| props.style.as_deref())
+            .map(str::to_string);
+        let Some(new) = self.inherited_paragraph_properties(index, style.as_deref()) else {
+            return;
+        };
+        let Some(styles) = self.styles_part.as_ref() else {
+            return;
+        };
+        let mut old = style
+            .as_deref()
+            .or_else(|| styles.default_paragraph_style_id())
+            .and_then(|style| styles.resolve_paragraph_properties(style))
+            .unwrap_or_default();
+        Self::fill_missing_paragraph_props(&mut old, table_style);
+        if let Some(defaults) = styles.doc_default_paragraph_properties() {
+            Self::fill_missing_paragraph_props(&mut old, defaults);
+        }
+        let declared = self.paragraph_declared_property_tags(index);
+        let attributes = self.paragraph_declared_property_attributes(index);
+        if let Some(props) = self
+            .paragraph_mut(index)
+            .and_then(|paragraph| paragraph.properties.as_mut())
+        {
+            rebase_paragraph_style_properties(
+                props,
+                &old,
+                &new,
+                |tag| declared.iter().any(|declared| declared == tag),
+                |tag, attribute| {
+                    attributes
+                        .iter()
+                        .any(|(element, name)| element == tag && name == attribute)
+                },
+            );
+        }
+    }
+
     /// Appends `text` to the body paragraph at `body_index` and joins the next
     /// one onto it.
     fn join_body_paragraphs_with(&mut self, body_index: usize, text: &str) -> Result<(), String> {
         let surface = self
-            .surface_index_for_body(body_index)
+            .surface_of_top_level_element(body_index)
             .ok_or("a paragraph to join has no surface")?;
         let next = self
-            .surface_index_for_body(body_index + 1)
+            .surface_of_top_level_element(body_index + 1)
             .ok_or("the paragraph after it has no surface")?;
         let length = self
             .paragraph(surface)
@@ -894,6 +975,81 @@ impl WordDocument {
         }
         self.rewrite_table_xml_from_model(table_order_index)?;
         self.rebuild_paragraph_surfaces();
+        Ok(())
+    }
+
+    /// 並べ替え outside a table: body paragraphs `start..=end` reordered by
+    /// their text (Word's 段落 key), the first left in place when `header` is
+    /// set (見出し行). Paragraphs that compare equal keep their order.
+    pub fn sort_paragraphs(
+        &mut self,
+        start: usize,
+        end: usize,
+        kind: TableSortKind,
+        descending: bool,
+        header: bool,
+    ) -> Result<(), String> {
+        if start > end {
+            return Err("the paragraphs to sort are out of order".to_string());
+        }
+        let first = if header { start + 1 } else { start };
+        // Each paragraph's body element and sort value.
+        let mut entries: Vec<(usize, SortValue)> = Vec::new();
+        for surface in first..=end {
+            let element = match self.paragraph_surfaces.get(surface) {
+                Some(ParagraphSurface::Body { path }) => match path.as_slice() {
+                    [PathEntry::Element(element)] => *element,
+                    _ => return Err("only paragraphs outside tables can be sorted".to_string()),
+                },
+                _ => return Err("only body paragraphs can be sorted".to_string()),
+            };
+            let paragraph = self
+                .paragraph(surface)
+                .ok_or_else(|| format!("paragraph {surface} was not found"))?;
+            if surface != end
+                && paragraph
+                    .properties
+                    .as_ref()
+                    .is_some_and(|props| props.section.is_some())
+            {
+                return Err("a section break is among the paragraphs".to_string());
+            }
+            entries.push((
+                element,
+                SortValue::of(&paragraph_plain_text(paragraph), kind),
+            ));
+        }
+        if entries.len() < 2 {
+            return Ok(());
+        }
+        if entries.windows(2).any(|pair| pair[1].0 != pair[0].0 + 1) {
+            return Err("only adjacent paragraphs can be sorted".to_string());
+        }
+        let base = entries[0].0;
+        let mut order: Vec<usize> = (0..entries.len()).collect();
+        order.sort_by(|&a, &b| {
+            let order = entries[a].1.compare(&entries[b].1);
+            if descending {
+                order.reverse()
+            } else {
+                order
+            }
+        });
+        // Move each paragraph into its slot, front to back; `current` tracks
+        // where the not-yet-placed ones sit now.
+        let mut current: Vec<usize> = (0..entries.len()).collect();
+        for (slot, &original) in order.iter().enumerate() {
+            let from = current[original];
+            if from != slot {
+                self.move_body_elements(base + from, base + from, base + slot)?;
+                for position in current.iter_mut() {
+                    if *position >= slot && *position < from {
+                        *position += 1;
+                    }
+                }
+                current[original] = slot;
+            }
+        }
         Ok(())
     }
 
@@ -2570,6 +2726,92 @@ mod tests {
             cell_texts(&document, 0),
             vec![vec!["2023年12月5日"], vec!["2024-01-31"], vec!["2024/3/1"]]
         );
+    }
+
+    #[test]
+    fn paragraphs_sort_by_their_text_below_a_header_and_undo() {
+        let p =
+            |text: &str| format!("<w:p><w:r><w:t xml:space=\"preserve\">{text}</w:t></w:r></w:p>");
+        let body = ["見出し", "みかん", "Banana", "", "apple", "after"]
+            .map(p)
+            .concat();
+        let mut document = load(&package(&body, None));
+        let before = document.export_docx().unwrap();
+        let mut executor = CommandExecutor::new();
+        let sort =
+            |document: &mut WordDocument, executor: &mut CommandExecutor, kind, descending| {
+                apply_headless_commands_with_executor_to_document(
+                    document,
+                    executor,
+                    None,
+                    &HeadlessEditRequest {
+                        commands: vec![HeadlessCommand::SortParagraphs {
+                            start_paragraph: 0,
+                            end_paragraph: 4,
+                            kind,
+                            descending,
+                            header: true,
+                        }],
+                    },
+                )
+                .expect("sorts");
+            };
+        sort(
+            &mut document,
+            &mut executor,
+            HeadlessTableSortKind::Text,
+            false,
+        );
+        assert_eq!(
+            texts(&document),
+            vec!["見出し", "", "apple", "Banana", "みかん", "after"]
+        );
+        assert_eq!(
+            texts(&load(&document.export_docx().unwrap())),
+            texts(&document)
+        );
+        let mut selection = None;
+        executor
+            .undo(&mut CommandContext::new(&mut document, &mut selection))
+            .expect("undo");
+        assert_eq!(
+            part(&document.export_docx().unwrap(), "word/document.xml"),
+            part(&before, "word/document.xml")
+        );
+
+        // Numbers, largest first; no header.
+        let body = ["10 個", "2 個", "33", "x"].map(p).concat();
+        let mut document = load(&package(&body, None));
+        apply(
+            &mut document,
+            HeadlessCommand::SortParagraphs {
+                start_paragraph: 0,
+                end_paragraph: 3,
+                kind: HeadlessTableSortKind::Number,
+                descending: true,
+                header: false,
+            },
+        );
+        assert_eq!(texts(&document), vec!["33", "10 個", "2 個", "x"]);
+    }
+
+    #[test]
+    fn paragraphs_in_a_table_are_not_sorted_as_paragraphs() {
+        let body = format!("<w:p/>{}<w:p/>", table(&[&["b"], &["a"]]));
+        let mut document = load(&package(&body, None));
+        let result = apply_headless_commands_to_document(
+            &mut document,
+            &HeadlessEditRequest {
+                commands: vec![HeadlessCommand::SortParagraphs {
+                    start_paragraph: 0,
+                    end_paragraph: 2,
+                    kind: HeadlessTableSortKind::Text,
+                    descending: false,
+                    header: false,
+                }],
+            },
+        );
+        assert!(result.is_err());
     }
 
     #[test]

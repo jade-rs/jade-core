@@ -19,6 +19,7 @@ type ParseResult<T> = Result<T, Box<dyn std::error::Error>>;
 struct StyleParseState {
     in_supported_style: bool,
     in_paragraph_style: bool,
+    in_custom_style: bool,
     in_character_style: bool,
     /// Inside a `w:style w:type="table"`, whose own `w:pPr` cell paragraphs
     /// inherit.
@@ -107,6 +108,32 @@ impl StylesPart {
     /// spec's Times New Roman 10 pt fallback measured every line wider.
     pub fn word_default() -> Self {
         Self::from_xml(WORD_DEFAULT_STYLES_XML).expect("built-in styles parse")
+    }
+
+    /// Windows Word 16.0.19127 leaves unstyled paragraphs left aligned.
+    /// Keep the Mac Normal defaults separate: importing its justification
+    /// stretches wrapped CJK lines in packages that have no styles part.
+    pub fn word_default_windows() -> Self {
+        let mut styles = Self::word_default();
+        for style in styles
+            .paragraph_styles
+            .values_mut()
+            .filter(|style| style.is_default)
+        {
+            if let Some(properties) = style.paragraph_properties.as_mut() {
+                properties.alignment = Some("left".into());
+            }
+        }
+        styles
+    }
+
+    /// Apply Word's built-in run defaults when a present styles part omits
+    /// `rPrDefault`. This is a load-time fallback, not authored formatting:
+    /// explicit (even empty) defaults and all paragraph styles stay intact.
+    pub fn inherit_missing_word_run_defaults(&mut self) {
+        if self.doc_default_run_properties.is_none() {
+            self.doc_default_run_properties = Self::word_default().doc_default_run_properties;
+        }
     }
 
     pub fn from_xml(xml: &str) -> ParseResult<Self> {
@@ -839,6 +866,10 @@ impl StylesPart {
                     Some("paragraph") | Some("character") | Some("table")
                 );
                 state.in_paragraph_style = matches!(style_type.as_deref(), Some("paragraph"));
+                state.in_custom_style = attr_value(element, b"w:customStyle")
+                    .as_deref()
+                    .map(parse_on_off_value)
+                    .unwrap_or(false);
                 state.in_character_style = matches!(style_type.as_deref(), Some("character"));
                 state.in_table_style = matches!(style_type.as_deref(), Some("table"));
                 state.in_table_style_conditional = false;
@@ -923,6 +954,10 @@ impl StylesPart {
                 }
                 state.in_tabs = false;
                 state.in_style_run_properties = false;
+            }
+            b"w:rPrDefault" if state.in_doc_defaults => {
+                self.doc_default_run_properties
+                    .get_or_insert_with(RunProperties::default);
             }
             b"w:rPr" => {
                 if state.in_supported_style
@@ -1567,10 +1602,15 @@ impl StylesPart {
                 if let Some(style) = current_style.take() {
                     if !style.style_id.is_empty() {
                         if state.in_paragraph_style {
-                            if style
-                                .name
-                                .as_deref()
-                                .is_some_and(|name| name.eq_ignore_ascii_case("Normal"))
+                            // A user-defined style may share Normal's display
+                            // name without redefining the built-in Normal.
+                            // In particular, its widow control must not leak
+                            // into unstyled paragraphs through this merge.
+                            if !state.in_custom_style
+                                && style
+                                    .name
+                                    .as_deref()
+                                    .is_some_and(|name| name.eq_ignore_ascii_case("Normal"))
                             {
                                 self.normal_named_paragraph_styles
                                     .push(style.style_id.clone());
@@ -2839,6 +2879,80 @@ fn parse_tab_definition(element: &BytesStart) -> Option<TabStop> {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn windows_unstyled_normal_does_not_inherit_mac_justification() {
+        let mac = StylesPart::word_default();
+        let windows = StylesPart::word_default_windows();
+        assert_eq!(
+            mac.resolve_paragraph_properties("a")
+                .unwrap()
+                .alignment
+                .as_deref(),
+            Some("both")
+        );
+        assert_eq!(
+            windows
+                .resolve_paragraph_properties("a")
+                .unwrap()
+                .alignment
+                .as_deref(),
+            Some("left")
+        );
+        assert_eq!(
+            mac.resolve_run_properties("a"),
+            windows.resolve_run_properties("a")
+        );
+    }
+
+    #[test]
+    fn missing_word_run_defaults_do_not_replace_style_or_direct_formatting() {
+        let mut styles = StylesPart::from_xml(
+            r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:rPr><w:sz w:val="28"/></w:rPr></w:style></w:styles>"#,
+        )
+        .unwrap();
+        assert!(styles.doc_default_run_properties().is_none());
+        styles.inherit_missing_word_run_defaults();
+        assert_eq!(styles.doc_default_font_size(), Some(10.5));
+        assert!(styles.doc_default_paragraph_properties().is_none());
+        let effective = styles.resolve_effective_run_properties(None, None).unwrap();
+        assert_eq!(effective.font_size, Some(14.0));
+        assert_eq!(effective.fonts.unwrap().ascii.as_deref(), Some("游明朝"));
+        let direct = RunProperties {
+            font_size: Some(18.0),
+            ..Default::default()
+        };
+        assert_eq!(
+            styles
+                .resolve_effective_run_properties(None, Some(&direct))
+                .unwrap()
+                .font_size,
+            Some(18.0)
+        );
+        let before = styles.doc_default_run_properties().cloned();
+        styles.inherit_missing_word_run_defaults();
+        assert_eq!(styles.doc_default_run_properties(), before.as_ref());
+    }
+
+    #[test]
+    fn missing_word_run_defaults_preserve_explicit_partial_and_empty_defaults() {
+        for defaults in [
+            "<w:rPrDefault/>",
+            "<w:rPrDefault></w:rPrDefault>",
+            "<w:rPrDefault><w:rPr/></w:rPrDefault>",
+            "<w:rPrDefault><w:rPr><w:sz w:val=\"24\"/></w:rPr></w:rPrDefault>",
+        ] {
+            let xml = format!("<w:styles xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\"><w:docDefaults>{defaults}</w:docDefaults></w:styles>");
+            let mut styles = StylesPart::from_xml(&xml).unwrap();
+            let before = styles.doc_default_run_properties().cloned();
+            assert!(before.is_some(), "{defaults}");
+            styles.inherit_missing_word_run_defaults();
+            assert_eq!(
+                styles.doc_default_run_properties(),
+                before.as_ref(),
+                "{defaults}"
+            );
+        }
+    }
 
     #[test]
     fn a_paragraph_style_the_document_lacks_resolves_as_the_default() {
@@ -4222,6 +4336,44 @@ mod tests {
         let part = styles(style("Normal.0", false, 21), style("Normal", true, 24));
         assert_eq!(size_of(&part, "Normal"), Some(12.0));
         assert_eq!(size_of(&part, "Normal.0"), Some(12.0));
+    }
+
+    #[test]
+    fn custom_normal_does_not_replace_builtin_normal_pagination() {
+        let xml = r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:style w:type="paragraph" w:default="1" w:styleId="a">
+            <w:name w:val="Normal"/><w:pPr><w:widowControl w:val="0"/></w:pPr>
+          </w:style>
+          <w:style w:type="paragraph" w:customStyle="1" w:styleId="Normal">
+            <w:name w:val="Normal"/><w:basedOn w:val="a"/>
+            <w:pPr><w:widowControl/></w:pPr>
+          </w:style>
+        </w:styles>"#;
+        let part = StylesPart::from_xml(xml).expect("parse styles");
+        assert_eq!(part.default_paragraph_style_id(), Some("a"));
+        assert_eq!(
+            part.resolve_paragraph_properties("a")
+                .unwrap()
+                .widow_control,
+            Some(false)
+        );
+        assert_eq!(
+            part.resolve_paragraph_properties("Normal")
+                .unwrap()
+                .widow_control,
+            Some(true)
+        );
+        // An explicitly false flag still permits the built-in duplicate rule.
+        let builtin =
+            StylesPart::from_xml(&xml.replace("w:customStyle=\"1\"", "w:customStyle=\"0\""))
+                .unwrap();
+        assert_eq!(
+            builtin
+                .resolve_paragraph_properties("a")
+                .unwrap()
+                .widow_control,
+            Some(true)
+        );
     }
 
     #[test]

@@ -99,6 +99,7 @@ impl DocumentParser {
             && props.indent.as_ref().is_none_or(Self::indent_is_empty)
             && props.spacing.as_ref().is_none_or(Self::spacing_is_empty)
             && props.tabs.is_empty()
+            && props.positional_tabs.as_ref().is_none_or(Vec::is_empty)
             && props.shading.as_ref().is_none_or(|s| s.is_empty())
             && props.borders.as_ref().is_none_or(|b| b.is_empty())
             && props.contextual_spacing.is_none()
@@ -852,7 +853,7 @@ impl DocumentParser {
         row.cells = normalized;
     }
 
-    fn legacy_merge_blocks_have_content(blocks: &[BodyElement]) -> bool {
+    pub(crate) fn legacy_merge_blocks_have_content(blocks: &[BodyElement]) -> bool {
         // Multiple paragraphs are meaningful even when currently empty: they
         // represent explicit paragraph breaks retained by the old merge.
         blocks.len() > 1

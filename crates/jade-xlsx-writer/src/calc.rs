@@ -152,6 +152,28 @@ pub fn withdraw_full_recalculation(xml: &str) -> String {
     update_properties(xml, &[("fullCalcOnLoad", "0")], false).unwrap_or_else(|_| xml.to_string())
 }
 
+/// Iterative calculation and precision as displayed, written as Excel
+/// writes them: `iterate`, `iterateCount`, `iterateDelta` and
+/// `fullPrecision` on `calcPr`.
+pub fn set_options(
+    xml: &str,
+    iteration: jade_xlsx_reader::Iteration,
+    full_precision: bool,
+) -> Result<String> {
+    let count = iteration.count.to_string();
+    let delta = iteration.delta.to_string();
+    update_properties(
+        xml,
+        &[
+            ("iterate", if iteration.enabled { "1" } else { "0" }),
+            ("iterateCount", count.as_str()),
+            ("iterateDelta", delta.as_str()),
+            ("fullPrecision", if full_precision { "1" } else { "0" }),
+        ],
+        true,
+    )
+}
+
 pub fn set_properties(
     xml: &str,
     mode: jade_xlsx_reader::CalculationMode,

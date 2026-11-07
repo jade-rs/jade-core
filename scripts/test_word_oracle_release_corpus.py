@@ -31,6 +31,10 @@ class WordOracleReleaseCorpusTests(unittest.TestCase):
         for name, digest in observed.items():
             with self.subTest(fixture=name):
                 self.assertEqual(pinned[name], digest, "DOCX input bytes changed")
+        for row in rows:
+            if "schema_repair_source_sha256" in row:
+                self.assertRegex(row["schema_repair_source_sha256"], r"^[0-9a-f]{64}$")
+                self.assertNotEqual(row["schema_repair_source_sha256"], row["docx_sha256"])
 
 
 if __name__ == "__main__":

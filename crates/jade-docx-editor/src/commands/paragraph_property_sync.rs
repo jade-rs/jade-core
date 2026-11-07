@@ -155,22 +155,76 @@ pub(crate) fn sync_paragraph_drop_cap_xml(
     });
 }
 
+/// Writes paragraph `paragraph_index`'s `w:framePr` for a text frame, or
+/// removes it.
+pub(crate) fn sync_paragraph_frame_xml(
+    word_doc: &mut WordDocument,
+    paragraph_index: usize,
+    frame: Option<&crate::document::ParagraphFrame>,
+) {
+    sync_paragraph_properties_xml(word_doc, paragraph_index, |raw, paragraph_properties| {
+        remove_paragraph_property_child(paragraph_properties, "w:framePr");
+        let Some(frame) = frame else {
+            return;
+        };
+        let child = raw.create_element(
+            "w:framePr",
+            crate::commands::set_paragraph_frame::frame_attributes(frame)
+                .into_iter()
+                .map(|(name, value)| XmlAttribute {
+                    name: name.to_string(),
+                    value,
+                })
+                .collect(),
+            Vec::new(),
+        );
+        insert_paragraph_property_child(paragraph_properties, child);
+    });
+}
+
+/// Direct attributes named by an edit, rather than every materialized style value.
+#[derive(Clone, Copy)]
+pub(crate) struct IndentXmlChange {
+    pub left: bool,
+    pub right: bool,
+    pub special: bool,
+    pub bidi: bool,
+}
+
+impl IndentXmlChange {
+    fn includes(self, name: &str) -> bool {
+        match name {
+            "w:left" | "w:leftChars" => self.left,
+            "w:right" | "w:rightChars" => self.right,
+            "w:start" | "w:startChars" => {
+                if self.bidi {
+                    self.right
+                } else {
+                    self.left
+                }
+            }
+            "w:end" | "w:endChars" => {
+                if self.bidi {
+                    self.left
+                } else {
+                    self.right
+                }
+            }
+            "w:firstLine" | "w:firstLineChars" | "w:hanging" | "w:hangingChars" => self.special,
+            _ => false,
+        }
+    }
+}
+
 pub(crate) fn sync_paragraph_indent_xml(
     word_doc: &mut WordDocument,
     paragraph_index: usize,
     indent: Option<&Indent>,
-    replace_logical_start: bool,
-    replace_logical_end: bool,
+    change: IndentXmlChange,
 ) {
     let indent = indent.cloned();
     sync_paragraph_properties_xml(word_doc, paragraph_index, |raw, paragraph_properties| {
-        set_paragraph_indent_xml(
-            raw,
-            paragraph_properties,
-            indent.as_ref(),
-            replace_logical_start,
-            replace_logical_end,
-        );
+        set_paragraph_indent_xml_inner(raw, paragraph_properties, indent.as_ref(), Some(change));
     });
 }
 
@@ -225,6 +279,23 @@ pub(crate) fn sync_paragraph_toggle_xml(
         };
         let child = raw.create_element(tag, attributes, Vec::new());
         insert_paragraph_property_child(paragraph_properties, child);
+    });
+}
+
+/// Puts `child` in the paragraph's `w:pPr` in its `CT_PPrBase` place,
+/// replacing one of the same name, or takes that one away (`None`).
+pub(crate) fn sync_paragraph_child_xml(
+    word_doc: &mut WordDocument,
+    paragraph_index: usize,
+    tag: &'static str,
+    attributes: Option<Vec<XmlAttribute>>,
+) {
+    sync_paragraph_properties_xml(word_doc, paragraph_index, |raw, paragraph_properties| {
+        remove_paragraph_property_child(paragraph_properties, tag);
+        if let Some(attributes) = attributes.clone() {
+            let child = raw.create_element(tag, attributes, Vec::new());
+            insert_paragraph_property_child(paragraph_properties, child);
+        }
     });
 }
 
@@ -495,9 +566,19 @@ fn paragraph_property_rank(name: &str) -> u8 {
         "w:spacing" => 6,
         "w:ind" => 7,
         "w:contextualSpacing" | "w:mirrorIndents" | "w:suppressOverlap" => 8,
-        "w:jc" | "w:textDirection" | "w:textAlignment" | "w:textboxTightWrap" | "w:outlineLvl"
-        | "w:divId" | "w:cnfStyle" | "w:rPr" | "w:sectPr" | "w:pPrChange" => 9,
-        _ => 10,
+        "w:jc" => 9,
+        "w:textDirection" => 10,
+        "w:textAlignment" => 11,
+        "w:textboxTightWrap" => 12,
+        "w:outlineLvl" => 13,
+        "w:divId" => 14,
+        "w:cnfStyle" => 15,
+        // Word 2013's 既定で折りたたみ, after the base properties.
+        "w15:collapsed" => 16,
+        "w:rPr" => 17,
+        "w:sectPr" => 18,
+        "w:pPrChange" => 19,
+        _ => 20,
     }
 }
 
@@ -678,6 +759,15 @@ pub(crate) fn set_paragraph_indent_xml(
     _replace_logical_start: bool,
     _replace_logical_end: bool,
 ) {
+    set_paragraph_indent_xml_inner(raw, paragraph_properties, indent, None);
+}
+
+fn set_paragraph_indent_xml_inner(
+    raw: &mut DocxXmlDocument,
+    paragraph_properties: &mut XmlElement,
+    indent: Option<&Indent>,
+    change: Option<IndentXmlChange>,
+) {
     let Some(indent) = indent else {
         remove_paragraph_property_child(paragraph_properties, "w:ind");
         return;
@@ -757,7 +847,11 @@ pub(crate) fn set_paragraph_indent_xml(
         });
     }
 
-    if attrs.is_empty() {
+    if let Some(change) = change {
+        attrs.retain(|attribute| change.includes(&attribute.name));
+    }
+
+    if attrs.is_empty() && change.is_none() {
         remove_paragraph_property_child(paragraph_properties, "w:ind");
         return;
     }
@@ -766,6 +860,9 @@ pub(crate) fn set_paragraph_indent_xml(
         if let XmlNode::Element(child_element) = child {
             if child_element.name == "w:ind" {
                 child_element.attributes.retain(|attr| {
+                    if let Some(change) = change {
+                        return !change.includes(&attr.name);
+                    }
                     attr.name != "w:left"
                         && attr.name != "w:right"
                         && attr.name != "w:start"
@@ -780,11 +877,17 @@ pub(crate) fn set_paragraph_indent_xml(
                         && attr.name != "w:hangingChars"
                 });
                 child_element.attributes.extend(attrs);
+                if child_element.attributes.is_empty() && child_element.children.is_empty() {
+                    remove_paragraph_property_child(paragraph_properties, "w:ind");
+                }
                 return;
             }
         }
     }
 
+    if attrs.is_empty() {
+        return;
+    }
     let child = raw.create_element("w:ind", attrs, Vec::new());
     paragraph_properties
         .children

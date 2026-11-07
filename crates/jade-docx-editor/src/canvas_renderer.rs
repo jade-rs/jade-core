@@ -268,16 +268,19 @@ pub(crate) mod ink_preview;
 #[cfg(test)]
 mod ink_tests;
 mod keep_next;
+mod line_height_cache;
 #[cfg(test)]
 mod note_tests;
 #[cfg(test)]
 mod opentype_features_tests;
 mod page_layers;
+mod paragraph_font_cache;
 mod paragraph_join;
 #[cfg(test)]
 mod preset_shape_tests;
 #[cfg(test)]
 mod recording_host;
+mod run_style_key;
 #[cfg(test)]
 mod section_tests;
 mod structure;
@@ -484,6 +487,9 @@ impl Default for CommentDecorationColors {
 const CROP_MARK_LENGTH_PX: f64 = 12.0;
 const CROP_MARK_STROKE_WIDTH: f64 = 1.0;
 const CROP_MARK_COLOR: &str = "#888888";
+/// 文字列の範囲: Word's dotted grey line round the text area.
+const TEXT_BOUNDARY_COLOR: &str = "#A6A6A6";
+const TEXT_BOUNDARY_DASH: [f64; 2] = [1.0, 2.0];
 /// Color of the vertical rule drawn between columns when `w:cols w:sep` is on.
 const COLUMN_SEPARATOR_COLOR: &str = "#000000";
 /// Stroke width (in CSS px) of the inter-column separator rule.
@@ -979,6 +985,23 @@ fn shape_group_contains_text(group: &RunShapeGroup) -> bool {
 /// What each body run shows while field codes are on: the field (by its
 /// first run) and its `{ CODE }`.
 pub type FieldCodeDisplay = HashMap<XmlNodeId, (XmlNodeId, Rc<str>)>;
+
+/// フィールドの網かけ (Word 環境設定 › 表示): which fields' text is drawn on
+/// Word's grey. A view setting — never part of the document or a PDF.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub enum FieldShading {
+    /// 表示しない.
+    #[default]
+    Never,
+    /// 常に表示する.
+    Always,
+    /// 選択時に表示する: the runs of the fields the selection is in (see
+    /// `fields::field_shading_runs`).
+    Runs(Rc<HashSet<XmlNodeId>>),
+}
+
+/// Word's field shading grey.
+const FIELD_SHADING_FILL: &str = "D9D9D9";
 
 /// Host clock snapshot used to resolve `DATE`/`TIME` fields. All fields use the
 /// host's local timezone; `weekday` is 0 = Sunday .. 6 = Saturday.
@@ -1566,7 +1589,7 @@ impl TextBatchScratch {
     }
 }
 
-#[derive(Clone, Debug, Default, Serialize)]
+#[derive(Debug, Default, Serialize)]
 pub struct TableLayoutInfo {
     pub index: usize,
     pub order: usize,
@@ -1575,6 +1598,26 @@ pub struct TableLayoutInfo {
     pub column_widths: Vec<f64>,
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub row_heights: Vec<f64>,
+}
+
+impl Clone for TableLayoutInfo {
+    fn clone(&self) -> Self {
+        Self {
+            index: self.index,
+            order: self.order,
+            node_id: self.node_id,
+            column_widths: self.column_widths.clone(),
+            row_heights: self.row_heights.clone(),
+        }
+    }
+
+    fn clone_from(&mut self, source: &Self) {
+        self.index = source.index;
+        self.order = source.order;
+        self.node_id = source.node_id;
+        self.column_widths.clone_from(&source.column_widths);
+        self.row_heights.clone_from(&source.row_heights);
+    }
 }
 
 #[derive(Clone, Copy, Debug, Default, Serialize)]
@@ -2203,6 +2246,91 @@ fn parse_font_descriptor_size_pt(font_descriptor: &str) -> Option<f64> {
         }
         parse_unit_token(token, "px").map(|px| px * 72.0 / 96.0)
     })
+}
+
+/// What a shading (`w:shd`) paints: the background colour, and the lines a
+/// stripe or cross pattern draws over it (ECMA-376 Part 1 §17.18.78).
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct ShadingPaint {
+    pub fill: Option<Rc<str>>,
+    pub pattern: Option<(jade_docx_reader::document::ShadingPattern, Rc<str>)>,
+}
+
+impl ShadingPaint {
+    /// `None` when the shading paints nothing. `keep_fill` drops a
+    /// background (dark mode's white page).
+    pub(crate) fn of(
+        shading: &jade_docx_reader::document::Shading,
+        keep_fill: impl Fn(&str) -> bool,
+    ) -> Option<Self> {
+        let fill = shading
+            .resolved_background_color()
+            .filter(|color| keep_fill(color))
+            .map(|color| Rc::from(color.as_str()));
+        let pattern = shading
+            .pattern()
+            .map(|pattern| (pattern, Rc::from(shading.pattern_color().as_str())));
+        (fill.is_some() || pattern.is_some()).then_some(Self { fill, pattern })
+    }
+
+    /// The commands that paint it over a rectangle: the fill, then the
+    /// pattern's lines cut to the rectangle.
+    pub(crate) fn commands(&self, (x, y, width, height): (f64, f64, f64, f64)) -> Vec<DrawCommand> {
+        let mut commands = Vec::new();
+        if width <= 0.0 || height <= 0.0 {
+            return commands;
+        }
+        if let Some(fill) = &self.fill {
+            commands.push(DrawCommand::FillRect {
+                x,
+                y,
+                width,
+                height,
+                color: Rc::clone(fill),
+            });
+        }
+        if let Some((pattern, color)) = &self.pattern {
+            let (rows, columns, diagonals) = pattern.lines_in(x, y, width, height);
+            for (top, band) in rows {
+                commands.push(DrawCommand::FillRect {
+                    x,
+                    y: top,
+                    width,
+                    height: band,
+                    color: Rc::clone(color),
+                });
+            }
+            for (left, band) in columns {
+                commands.push(DrawCommand::FillRect {
+                    x: left,
+                    y,
+                    width: band,
+                    height,
+                    color: Rc::clone(color),
+                });
+            }
+            if !diagonals.is_empty() {
+                // A diagonal as wide across as a stripe is high.
+                let line_width = pattern.line_width_px() / std::f64::consts::SQRT_2;
+                commands.push(DrawCommand::Save);
+                commands.push(DrawCommand::ClipRect {
+                    x,
+                    y,
+                    width,
+                    height,
+                });
+                for (from, to) in diagonals {
+                    commands.push(DrawCommand::StrokePolyline {
+                        points: Rc::from(vec![from, to]),
+                        line_width,
+                        color: Rc::clone(color),
+                    });
+                }
+                commands.push(DrawCommand::Restore);
+            }
+        }
+        commands
+    }
 }
 
 /// Computes the width of a paragraph-shading band for a single line.
@@ -3542,6 +3670,8 @@ where
     /// document is unchanged; dropping/restoring it or replacing auxiliary
     /// stories invalidates this result. Never retain a raw document address.
     last_document_comment_anchors: Option<bool>,
+    /// Deleted-run scan for the exact immutable `last_document` snapshot.
+    last_document_deleted_runs: Option<bool>,
     /// A positive witness, not a cached answer: recheck this current body block
     /// before falling back to the complete scan. Safe across edits, document
     /// replacement and cache drops; it retains neither a document nor an address.
@@ -3650,10 +3780,20 @@ where
     /// `#RRGGBB`. Filled behind every page before content. `None` = default
     /// white/transparent page, leaving non-background documents unchanged.
     page_background_color: Option<String>,
+    /// 塗りつぶし効果 over the page colour.
+    page_background_fill: Option<jade_docx_reader::document::PageBackgroundFill>,
     /// Word-compatible text watermark (`v:textpath/@string`) rendered behind
     /// body content on every page. The raw VML remains in the header part for
     /// DOCX round-tripping; this is the canvas projection of that state.
     watermark_text: Option<String>,
+    /// The watermark's look: font, size, color, transparency, layout and the
+    /// shape box its text is stretched to fill.
+    watermark_style: Option<jade_docx_reader::document::WatermarkStyle>,
+    /// 原稿用紙設定's grid, drawn behind the text on every page.
+    manuscript_grid: Option<jade_docx_reader::document::ManuscriptGrid>,
+    /// The document's default font size, which a character grid's
+    /// `w:charSpace` widens into its character pitch.
+    default_font_size_pt: Option<f32>,
     /// Numeral format (`w:pgNumType/@w:fmt`, lowercased) applied to `PAGE`
     /// fields. `None` = decimal. ECMA-376 Part 1 §17.6.12. MVP: the default
     /// section's value is applied document-wide.
@@ -3736,6 +3876,8 @@ where
     /// place of its field — `(field, code)`, the field named by its first
     /// run. A field's runs show its code once.
     field_code_display: Option<Rc<FieldCodeDisplay>>,
+    /// フィールドの網かけ.
+    field_shading: FieldShading,
     header_drawn: bool,
     footer_drawn: bool,
     editing_mode: crate::canvas_view::EditingMode,
@@ -3890,6 +4032,9 @@ where
     current_doc_grid: Option<DocGrid>,
     current_doc_grid_char_spacing_px: Option<f64>,
     current_text_direction: Option<TextDirection>,
+    /// In a vertical section (縦書き), the page and the x the next column is
+    /// put to the left of: paragraphs follow one another right to left.
+    vertical_flow: Option<(usize, f64)>,
     dark_mode_text: bool,
     /// The formatting marks shown by kind in the current render.
     mark_kinds: crate::FormattingMarkKinds,
@@ -3971,6 +4116,7 @@ where
     font_line_box_height_cache: RefCell<FxHashMap<String, f64>>,
     /// Cache for paragraph wrap results to avoid redundant measure_text calls.
     paragraph_wrap_cache: Rc<RefCell<ParagraphWrapCache>>,
+    line_height_plan_cache: RefCell<line_height_cache::LineHeightPlanCache>,
     /// Content-addressed intrinsic/autofit results shared by consecutive table
     /// renders. Final row placement still runs every pass against current page
     /// geometry; only deterministic text measurements are retained.
@@ -3995,6 +4141,8 @@ where
     last_render_prefix_skips: u64,
     /// Cache for resolved run styles keyed by run properties + doc-grid spacing.
     applied_run_style_cache: RefCell<FxHashMap<u64, Rc<AppliedRunStyle>>>,
+    /// Windows font-line summaries, validated against owned run inputs.
+    paragraph_font_cache: RefCell<paragraph_font_cache::ParagraphFontCache>,
     /// See [`CanvasRenderer::effective_run_properties_rc`].
     effective_run_properties_cache: RefCell<FxHashMap<u64, Vec<EffectiveRunPropertiesEntry>>>,
     /// Fast path for shared run properties produced by `jade-docx-layout`. The cache
@@ -4930,7 +5078,7 @@ where
     }
 
     fn is_seek_compatible_options(&self, options: &Options) -> bool {
-        !(self.document_has_comments && options.render_comments)
+        !(options.render_changes || self.document_has_comments && options.render_comments)
             && self.is_forward_window_seek_compatible_options(options)
     }
 
@@ -4962,7 +5110,21 @@ where
         // highlights and visible comment annotations without prefix replay.
         // Keep ordinary/mid-page seeks and paragraph render-cache replay gated:
         // their cached commands do not contain comment decoration or metadata.
-        !options.render_changes && !notes_enabled && !options.pageless() && !self.mirror_margins
+        // Revision ink is also emitted by the fresh paragraph draw. With no
+        // numbering definitions there is no deleted-list offset state to reconstruct
+        // from the skipped prefix. Definitions alone are harmless when the
+        // immutable document contains no deleted runs. Otherwise numbered markup
+        // still needs a full walk: snapshots omit deleted_numbering_offsets.
+        (!options.render_changes
+            || self.last_document_deleted_runs == Some(false)
+            || self.last_numbering_part.as_ref().is_none_or(|part| {
+                part.abstract_nums.is_empty()
+                    && part.numbering_instances.is_empty()
+                    && part.picture_bullets.is_empty()
+            }))
+            && !notes_enabled
+            && !options.pageless()
+            && !self.mirror_margins
     }
 
     fn record_page_start_seek_snapshot(
@@ -7510,17 +7672,15 @@ where
                     });
                     let counter = NumberingCounter::default();
                     let saved_line_bottoms = self.measured_note_line_bottoms.take();
-                    self.measured_note_line_bottoms =
-                        (jade_docx_layout::line_metrics::word_layout_platform()
-                            == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac)
-                            .then(|| document.footnotes.get(&key.0))
-                            .flatten()
-                            .filter(|note| {
-                                note.body
-                                    .iter()
-                                    .all(|element| element.as_paragraph().is_some())
-                            })
-                            .map(|note| MeasuredNoteLineBottoms::new(note.body.len()));
+                    self.measured_note_line_bottoms = document
+                        .footnotes
+                        .get(&key.0)
+                        .filter(|note| {
+                            note.body
+                                .iter()
+                                .all(|element| element.as_paragraph().is_some())
+                        })
+                        .map(|note| MeasuredNoteLineBottoms::new(note.body.len()));
                     let height = self.measure_note_ids_height(
                         &document,
                         &options,
@@ -7596,12 +7756,35 @@ where
     /// it, keeping `allowance` (the line or row being placed) above it.
     fn reserve_footnote_area(&mut self, allowance: f64) -> Result<NoteAreaReserve, JsValue> {
         let full = self.measure_footnote_area()?;
+        let mut min_note_line = points_to_px(MIN_NOTE_LINE_PT as f32);
+        if jade_docx_layout::line_metrics::word_layout_platform()
+            == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+        {
+            let start = self
+                .footnote_carry
+                .map(|carry| carry.order_index)
+                .unwrap_or(self.rendered_footnote_count)
+                .min(self.footnote_order.len());
+            for id in &self.footnote_order[start..] {
+                if self.is_unplaced_footnote(id) {
+                    continue;
+                }
+                let number = self.footnote_display_map.get(id).copied().unwrap_or(0);
+                if let Some(first) = self
+                    .footnote_height_cache
+                    .get(&(id.clone(), number, None))
+                    .and_then(|plan| plan.line_bottoms.as_slice().first())
+                {
+                    min_note_line = min_note_line.max(*first);
+                }
+            }
+        }
         let decision = reserve_note_area(
             full,
             self.footnote_reserve_px,
             self.unreserved_body_bottom() - self.current_y,
             allowance,
-            points_to_px(MIN_NOTE_LINE_PT as f32),
+            min_note_line,
             points_to_px(FOOTNOTE_SEPARATOR_HEIGHT_PT),
             self.at_page_body_top(),
         );
@@ -8141,6 +8324,61 @@ where
         next
     }
 
+    fn blocks_contain_deleted_runs(elements: &[BodyElement]) -> bool {
+        elements.iter().any(|element| match element {
+            BodyElement::Paragraph(paragraph) => paragraph.runs.iter().any(|run| {
+                run.revision.as_ref().is_some_and(|mark| {
+                    matches!(mark.kind, RevisionKind::Deleted | RevisionKind::MovedFrom)
+                }) || run
+                    .text_box
+                    .as_ref()
+                    .is_some_and(|text_box| Self::blocks_contain_deleted_runs(&text_box.blocks))
+            }),
+            BodyElement::Table(table) => table.rows.iter().any(|row| {
+                row.cells
+                    .iter()
+                    .any(|cell| Self::blocks_contain_deleted_runs(&cell.blocks))
+            }),
+            BodyElement::Math(_) => false,
+        })
+    }
+
+    fn document_contains_deleted_runs(&self, document: &Document) -> bool {
+        document
+            .body
+            .as_ref()
+            .is_some_and(|body| Self::blocks_contain_deleted_runs(&body.elements))
+            || document
+                .footnotes
+                .values()
+                .chain(document.endnotes.values())
+                .any(|note| Self::blocks_contain_deleted_runs(&note.body))
+            || [
+                self.header_body.as_ref(),
+                self.footer_body.as_ref(),
+                self.header_body_first.as_ref(),
+                self.footer_body_first.as_ref(),
+                self.header_body_even.as_ref(),
+                self.footer_body_even.as_ref(),
+            ]
+            .into_iter()
+            .flatten()
+            .any(|body| Self::blocks_contain_deleted_runs(&body.elements))
+            || self.section_header_footers.iter().any(|section| {
+                [
+                    section.header_body.as_ref(),
+                    section.footer_body.as_ref(),
+                    section.header_body_first.as_ref(),
+                    section.footer_body_first.as_ref(),
+                    section.header_body_even.as_ref(),
+                    section.footer_body_even.as_ref(),
+                ]
+                .into_iter()
+                .flatten()
+                .any(|body| Self::blocks_contain_deleted_runs(&body.elements))
+            })
+    }
+
     fn paragraph_contains_comment_anchors(paragraph: &Paragraph) -> bool {
         !paragraph.comment_ranges.is_empty()
             || !paragraph.comment_markers.is_empty()
@@ -8461,6 +8699,7 @@ where
             document_has_notes: false,
             document_has_comments: false,
             last_document_comment_anchors: None,
+            last_document_deleted_runs: None,
             comment_anchor_body_witness: std::cell::Cell::new(None),
             #[cfg(test)]
             comment_anchor_document_scans: std::cell::Cell::new(0),
@@ -8506,7 +8745,11 @@ where
             page_borders: None,
             section_page_borders: Vec::new(),
             page_background_color: None,
+            page_background_fill: None,
             watermark_text: None,
+            watermark_style: None,
+            manuscript_grid: None,
+            default_font_size_pt: None,
             page_number_format: None,
             page_number_start: None,
             section_page_numbering: Vec::new(),
@@ -8536,6 +8779,7 @@ where
             bookmark_note_targets: HashMap::new(),
             current_datetime: None,
             field_code_display: None,
+            field_shading: FieldShading::Never,
             header_drawn: false,
             footer_drawn: false,
             editing_mode: crate::canvas_view::EditingMode::Body,
@@ -8616,6 +8860,7 @@ where
             current_doc_grid: None,
             current_doc_grid_char_spacing_px: None,
             current_text_direction: None,
+            vertical_flow: None,
             dark_mode_text: false,
             mark_kinds: crate::FormattingMarkKinds::default(),
             view_geometry: None,
@@ -8651,6 +8896,7 @@ where
             trailing_overhang_cache: RefCell::new(FxHashMap::default()),
             font_line_box_height_cache: RefCell::new(FxHashMap::default()),
             paragraph_wrap_cache: Rc::new(RefCell::new(ParagraphWrapCache::default())),
+            line_height_plan_cache: RefCell::default(),
             table_autofit_cache: RefCell::new(table::TableAutofitCache::default()),
             table_autofit_cache_enabled: true,
             table_text_measure_cache: Rc::new(RefCell::new(TextMeasureCache::default())),
@@ -8659,6 +8905,7 @@ where
             last_render_body_element_count: 0,
             last_render_prefix_skips: 0,
             applied_run_style_cache: RefCell::new(FxHashMap::default()),
+            paragraph_font_cache: RefCell::new(Default::default()),
             effective_run_properties_cache: RefCell::new(FxHashMap::default()),
             applied_run_style_identity_cache: RefCell::new(FxHashMap::default()),
             word_run_faces_cache: RefCell::new(FxHashMap::default()),
@@ -9170,6 +9417,21 @@ where
         self.prefer_visible_window_seek_once();
     }
 
+    /// Decoration-only repaint preserves authoritative pagination. Stop after
+    /// the visible window; offscreen dirty pixels are refreshed on demand.
+    pub(crate) fn decoration_repaint_page_limit(&self) -> Option<usize> {
+        if self.pageless_mode {
+            return self.layout_page_limit;
+        }
+        match self.visible_page_range.as_ref() {
+            Some(range) => Some(
+                self.layout_page_limit
+                    .map_or(*range.end(), |limit| limit.min(*range.end())),
+            ),
+            None => self.layout_page_limit,
+        }
+    }
+
     /// Sets a hard layout limit in pages (1-indexed, inclusive).
     /// Pass `None` to disable layout truncation (default).
     pub fn set_layout_page_limit(&mut self, limit: Option<usize>) {
@@ -9430,6 +9692,7 @@ where
     pub fn clear_text_measure_cache(&mut self) {
         // Wrapped table lines also retain measured advances and font ascents.
         self.clear_paragraph_wrap_cache();
+        self.paragraph_font_cache.borrow_mut().clear();
         self.text_measure_cache.borrow_mut().clear();
         self.font_vertical_metrics_cache.borrow_mut().clear();
         self.trailing_overhang_cache.borrow_mut().clear();
@@ -9677,6 +9940,7 @@ where
     #[allow(dead_code)]
     pub fn clear_paragraph_wrap_cache(&mut self) {
         self.paragraph_wrap_cache.borrow_mut().clear();
+        self.line_height_plan_cache.borrow_mut().clear();
     }
 
     /// Invalidates paragraph wrap cache from a specific paragraph index onwards.
@@ -10531,7 +10795,9 @@ where
                         context.fill_rect(0.0, clip_top, self.page_width, clip_height);
                     }
                 }
+                self.draw_page_fill()?;
                 self.draw_watermark()?;
+                self.draw_manuscript_grid();
                 self.invalidate_context_state_tracking();
                 self.band_redraw_clip_active = true;
                 return Ok(());
@@ -10556,11 +10822,120 @@ where
                 context.fill_rect(0.0, 0.0, self.page_width, self.page_height);
             }
         }
+        self.draw_page_fill()?;
         self.draw_watermark()?;
+        self.draw_manuscript_grid();
         if !self.hides_page_chrome() {
             self.draw_page_borders(page);
         }
         self.draw_column_separators();
+        Ok(())
+    }
+
+    /// 塗りつぶし効果 behind the page's content: a gradient in narrow bands
+    /// along its angle, a texture or pattern tiled from the top left, a
+    /// picture stretched over the page.
+    fn draw_page_fill(&self) -> Result<(), JsValue> {
+        if self.pageless_mode {
+            return Ok(());
+        }
+        let Some(fill) = self.page_background_fill.as_ref() else {
+            return Ok(());
+        };
+        let (width, height) = (self.page_width, self.page_height);
+        if width <= 0.0 || height <= 0.0 {
+            return Ok(());
+        }
+        let context = self.host.painter();
+        match (fill.kind.as_str(), fill.data_uri.as_deref()) {
+            ("gradient" | "gradientRadial", _) => {
+                let channels = |color: Option<&str>, fallback: [f64; 3]| {
+                    let Some(hex) = color.map(|color| color.trim_start_matches('#')) else {
+                        return fallback;
+                    };
+                    let channel = |at: usize| {
+                        hex.get(at..at + 2)
+                            .and_then(|pair| u8::from_str_radix(pair, 16).ok())
+                    };
+                    match (channel(0), channel(2), channel(4)) {
+                        (Some(r), Some(g), Some(b)) => [r as f64, g as f64, b as f64],
+                        _ => fallback,
+                    }
+                };
+                let first = channels(
+                    fill.color
+                        .as_deref()
+                        .or(self.page_background_color.as_deref()),
+                    [255.0; 3],
+                );
+                let second = channels(fill.color2.as_deref(), [255.0; 3]);
+                // Along the axis: from the first colour to the second, or
+                // back, or out from the middle as the focus says.
+                let at = |t: f64| {
+                    let mirrored = 1.0 - (2.0 * t - 1.0).abs();
+                    let (from, to, u) = match fill.focus.round() as i64 {
+                        100 => (second, first, t),
+                        50 => (first, second, mirrored),
+                        -50 => (second, first, mirrored),
+                        _ => (first, second, t),
+                    };
+                    let mix = |i: usize| (from[i] + (to[i] - from[i]) * u).round() as u8;
+                    format!("#{:02X}{:02X}{:02X}", mix(0), mix(1), mix(2))
+                };
+                const BANDS: usize = 256;
+                // The bands run the page's extent along the axis, each wide
+                // enough to cover the page across it.
+                let radians = fill.angle.to_radians();
+                let extent = width * radians.sin().abs() + height * radians.cos().abs();
+                let reach = (width * width + height * height).sqrt();
+                let band = extent / BANDS as f64;
+                context.save();
+                let drawn: Result<(), JsValue> = (|| {
+                    context.begin_path();
+                    context.rect(0.0, 0.0, width, height);
+                    context.clip();
+                    context
+                        .translate(width / 2.0, height / 2.0)
+                        .map_err(PainterError::into_js_value)?;
+                    context
+                        .rotate(radians)
+                        .map_err(PainterError::into_js_value)?;
+                    for index in 0..BANDS {
+                        context.set_fill_style_str(&at((index as f64 + 0.5) / BANDS as f64));
+                        context.fill_rect(
+                            -reach / 2.0,
+                            -extent / 2.0 + band * index as f64,
+                            reach,
+                            band + 0.75,
+                        );
+                    }
+                    Ok(())
+                })();
+                context.restore();
+                drawn?;
+            }
+            ("tile" | "pattern", Some(uri)) => {
+                let (tile_width, tile_height) = fill.tile_size.unwrap_or((64.0, 64.0));
+                if tile_width < 1.0 || tile_height < 1.0 {
+                    return Ok(());
+                }
+                let mut y = 0.0;
+                while y < height {
+                    let mut x = 0.0;
+                    while x < width {
+                        self.host
+                            .draw_image_data_uri(uri, x, y, tile_width, tile_height, None);
+                        x += tile_width;
+                    }
+                    y += tile_height;
+                }
+            }
+            ("frame", Some(uri)) => {
+                self.host
+                    .draw_image_data_uri(uri, 0.0, 0.0, width, height, None);
+            }
+            _ => {}
+        }
         Ok(())
     }
 
@@ -10579,31 +10954,143 @@ where
             return Ok(());
         }
 
+        let style = self.watermark_style.clone().unwrap_or_default();
         let context = self.host.painter();
         let painter = self.host.painter();
-        let target_width = self.page_width * 0.76;
-        let mut font_size = (self.page_width * 0.12).clamp(48.0, 116.0);
+        // Word centres the shape on the margin box
+        // (`mso-position-*-relative:margin`).
+        let body_right = self.page_width - self.margin_right;
+        let body_bottom = self.page_height - self.margin_bottom;
+        let (center_x, center_y) = if body_right > self.margin_left && body_bottom > self.margin_top
+        {
+            (
+                (self.margin_left + body_right) / 2.0,
+                (self.margin_top + body_bottom) / 2.0,
+            )
+        } else {
+            (self.page_width / 2.0, self.page_height / 2.0)
+        };
+        let family = match style.font.as_deref() {
+            Some(font) => format!("\"{}\", sans-serif", font.replace('"', "")),
+            None => "sans-serif".to_string(),
+        };
         context.save();
         let draw_result = (|| {
-            context.set_font(&format!("700 {font_size:.2}px sans-serif"));
-            let mut measured_width = painter.measure_text_width(text)?;
-            if measured_width > target_width && measured_width > 0.0 {
-                font_size *= target_width / measured_width;
-                context.set_font(&format!("700 {font_size:.2}px sans-serif"));
-                measured_width = painter.measure_text_width(text)?;
-            }
-            context.set_global_alpha(if self.dark_mode_text { 0.23 } else { 0.18 });
-            context.set_fill_style_str(if self.dark_mode_text {
-                "#B8BEC9"
+            let shape_box = style
+                .width_pt
+                .zip(style.height_pt)
+                .filter(|(width, height)| {
+                    style.fit_shape.unwrap_or(true) && *width > 0.0 && *height > 0.0
+                });
+            let (font_size, measured_width, stretch) = match shape_box {
+                // `fitshape`: the text path is scaled to fill the shape box.
+                Some((width, height)) => {
+                    let font_size = points_to_px(height);
+                    context.set_font(&format!("{font_size:.2}px {family}"));
+                    let measured_width = painter.measure_text_width(text)?;
+                    let stretch = if measured_width > 0.0 {
+                        points_to_px(width) / measured_width
+                    } else {
+                        1.0
+                    };
+                    (font_size, measured_width, stretch)
+                }
+                None => {
+                    let target_width = self.page_width * 0.76;
+                    let mut font_size = match style.size_pt {
+                        Some(size) => points_to_px(size),
+                        None => (self.page_width * 0.12).clamp(48.0, 116.0),
+                    };
+                    context.set_font(&format!("{font_size}px {family}"));
+                    let mut measured_width = painter.measure_text_width(text)?;
+                    if style.size_pt.is_none()
+                        && measured_width > target_width
+                        && measured_width > 0.0
+                    {
+                        font_size *= target_width / measured_width;
+                        context.set_font(&format!("{font_size:.2}px {family}"));
+                        measured_width = painter.measure_text_width(text)?;
+                    }
+                    (font_size, measured_width, 1.0)
+                }
+            };
+            if self.dark_mode_text {
+                context.set_global_alpha(0.23);
+                context.set_fill_style_str("#B8BEC9");
             } else {
-                "#808080"
-            });
-            context.translate(self.page_width / 2.0, self.page_height / 2.0)?;
-            context.rotate(-std::f64::consts::FRAC_PI_4)?;
+                context.set_global_alpha(if style.semitransparent { 0.5 } else { 1.0 });
+                context.set_fill_style_str(&style.color);
+            }
+            context.translate(center_x, center_y)?;
+            if !style.horizontal {
+                context.rotate(-std::f64::consts::FRAC_PI_4)?;
+            }
+            if (stretch - 1.0).abs() > 1e-3 {
+                context.scale(stretch, 1.0)?;
+            }
             context.fill_text(text, -measured_width / 2.0, font_size * 0.34)
         })();
         context.restore();
         draw_result.map_err(PainterError::into_js_value)
+    }
+
+    /// Draws 原稿用紙設定's grid over the body box — the same strokes the
+    /// header drawing is saved with
+    /// ([`crate::word_document::manuscript::manuscript_strokes`]). Like the
+    /// watermark it is redrawn whole on a band repaint, clipped to the band.
+    fn draw_manuscript_grid(&self) {
+        use crate::word_document::manuscript::{
+            manuscript_is_vertical, manuscript_strokes, ManuscriptStroke,
+        };
+        if self.pageless_mode {
+            return;
+        }
+        let Some(grid) = self.manuscript_grid.as_ref() else {
+            return;
+        };
+        let (left, top) = (self.margin_left, self.margin_top);
+        let width = self.page_width - self.margin_left - self.margin_right;
+        let height = self.page_height - self.margin_top - self.margin_bottom;
+        if width <= 0.0 || height <= 0.0 {
+            return;
+        }
+        let vertical = manuscript_is_vertical(self.current_text_direction);
+        // The cells the text is laid in: a character pitch is the default
+        // font size (Word's 10pt without one) widened by the grid's
+        // `w:charSpace`, as 文字数と行数 writes it.
+        let pitches = self.current_doc_grid.as_ref().and_then(|doc_grid| {
+            let base = self.default_font_size_pt.unwrap_or(10.0);
+            Some((
+                points_to_px(base + doc_grid.char_space?) as f32,
+                points_to_px(doc_grid.line_pitch?) as f32,
+            ))
+        });
+        let context = self.host.painter();
+        context.save();
+        context.set_stroke_style_str(&grid.color);
+        context.set_line_width(points_to_px(0.5).max(0.75));
+        for stroke in manuscript_strokes(grid, vertical, width as f32, height as f32, pitches) {
+            match stroke {
+                ManuscriptStroke::Rect {
+                    x,
+                    y,
+                    width,
+                    height,
+                } => context.stroke_rect(
+                    left + f64::from(x),
+                    top + f64::from(y),
+                    f64::from(width),
+                    f64::from(height),
+                ),
+                ManuscriptStroke::Line { from, to } => {
+                    context.begin_path();
+                    context.move_to(left + f64::from(from.0), top + f64::from(from.1));
+                    context.line_to(left + f64::from(to.0), top + f64::from(to.1));
+                    context.stroke();
+                }
+            }
+        }
+        context.restore();
     }
 
     /// Draws vertical separator rules between columns (`w:cols w:sep="true"`,
@@ -10788,6 +11275,7 @@ where
             props.shading.hash(&mut hasher);
             props.borders.hash(&mut hasher);
             props.drop_cap.hash(&mut hasher);
+            props.positional_tabs.hash(&mut hasher);
             for tab in &props.tabs {
                 tab.kind.hash(&mut hasher);
                 tab.position.map(f32::to_bits).hash(&mut hasher);
@@ -11063,6 +11551,7 @@ where
                 props.shading.hash(&mut hasher);
                 props.borders.hash(&mut hasher);
                 props.drop_cap.hash(&mut hasher);
+                props.positional_tabs.hash(&mut hasher);
                 for tab in &props.tabs {
                     tab.kind.hash(&mut hasher);
                     tab.position.map(f32::to_bits).hash(&mut hasher);
@@ -12544,6 +13033,7 @@ where
         // member through them (`set_incremental_dirty_from`).
         self.last_document = None;
         self.last_document_comment_anchors = None;
+        self.last_document_deleted_runs = None;
         self.invalidate_paragraph_content_hash_cache();
     }
 
@@ -12588,6 +13078,28 @@ where
         }
     }
 
+    /// Carry negative feature facts across a newly recorded local command.
+    /// The caller must submit only one text command, with no auxiliary-story
+    /// edits between capture and restore. A stale undo entry is not proof that
+    /// the current request changed this paragraph.
+    pub(crate) fn restore_local_text_edit_cache_after_command(
+        &mut self,
+        cache: LocalTextEditCache,
+        model: &WordDocument,
+        paragraph: usize,
+        executor: &crate::commands::CommandExecutor,
+        revision_before: u64,
+    ) {
+        if executor.history_revision() != revision_before
+            && executor.next_undo_render_footprint()
+                == Some(crate::commands::HistoryRenderFootprint::SingleParagraph {
+                    index: paragraph,
+                })
+        {
+            self.restore_local_text_edit_cache(cache, model, paragraph);
+        }
+    }
+
     /// Whether the renderer holds a document to re-render from.
     ///
     /// `rerender_with_cached_state` silently does nothing without one, so a
@@ -12603,6 +13115,7 @@ where
     /// failure, so this is normally the document the renderer last laid out.
     pub fn restore_document_cache(&mut self, document: Rc<Document>) {
         self.last_document_comment_anchors = None;
+        self.last_document_deleted_runs = None;
         self.last_document = Some(document);
     }
 
@@ -13559,6 +14072,28 @@ where
         self.render_with_numbering(document, options, None, None, None, None)
     }
 
+    /// Size the cache from the model's maintained body index before an edit
+    /// render. Copy-on-write snapshots change Rc identity on ordinary keystrokes;
+    /// recounting their entire body would defeat a bounded visible-page seek.
+    pub(crate) fn prepare_wrap_cache_capacity(&mut self, model: &WordDocument) {
+        let Some(document) = model.document.as_ref() else {
+            return;
+        };
+        // A uniquely owned Rc may also be edited in place, so update capacity
+        // even when its address is unchanged (for example after a split).
+        self.grow_paragraph_wrap_cache(model.body_paragraph_count());
+        self.wrap_cache_sized_doc = Some(Rc::as_ptr(document) as usize);
+    }
+
+    fn grow_paragraph_wrap_cache(&mut self, paragraph_count: usize) {
+        let desired = paragraph_count
+            .saturating_add(paragraph_count / 8 + 64) // headroom for headers/footers/notes
+            .clamp(WRAP_CACHE_FLOOR_CAPACITY, WRAP_CACHE_MAX_CAPACITY);
+        self.paragraph_wrap_cache
+            .borrow_mut()
+            .ensure_capacity(desired);
+    }
+
     /// Renders a document while taking the optional numbering part into
     /// account. Each call resets the internal numbering counters.
     ///
@@ -13745,7 +14280,20 @@ where
         // Get a reference to the document for use throughout the function.
         // The Rc is stored at the end for caching.
         let document: &Document = &document_rc;
-        self.document_has_notes = !document.footnotes.is_empty() || !document.endnotes.is_empty();
+        // Word stores separator definitions even in documents without note
+        // references. They do not participate in note layout and must not
+        // disable visible-window seek or local redraw while typing. Keep
+        // unknown note types conservative, including notes with empty bodies.
+        self.document_has_notes = document
+            .footnotes
+            .values()
+            .chain(document.endnotes.values())
+            .any(|note| {
+                !matches!(
+                    note.note_type.as_deref(),
+                    Some("separator" | "continuationSeparator" | "continuationNotice")
+                )
+            });
         let cached_comment_anchors = self
             .last_document
             .as_ref()
@@ -13764,6 +14312,19 @@ where
             cached_comment_anchors
         };
         self.document_has_comments = self.last_document_comment_anchors.unwrap_or(false);
+        let cached_deleted_runs = self
+            .last_document
+            .as_ref()
+            .filter(|cached| Rc::ptr_eq(cached, &document_rc))
+            .and(self.last_document_deleted_runs);
+        self.last_document_deleted_runs = if options.render_changes {
+            Some(
+                cached_deleted_runs
+                    .unwrap_or_else(|| self.document_contains_deleted_runs(document)),
+            )
+        } else {
+            cached_deleted_runs
+        };
         self.last_render_body_element_count = 0;
         self.last_render_prefix_skips = 0;
         // Edit-pixel-reuse: reset the one-shot signal at every render entry so a
@@ -13788,7 +14349,8 @@ where
 
         // Size the paragraph wrap cache to the document so a large document can
         // keep its whole working set cached while scrolling (no eviction-driven
-        // re-wraps). Only recount when the document changes; capacity only grows.
+        // re-wraps). Edit callers prepare capacity from WordDocument's O(1)
+        // index. Callers without that model keep the recursive fallback.
         let doc_identity = Rc::as_ptr(&document_rc) as usize;
         if self.wrap_cache_sized_doc != Some(doc_identity) {
             let paragraph_count = document
@@ -13796,12 +14358,7 @@ where
                 .as_ref()
                 .map(|body| self::table::count_body_paragraphs(&body.elements))
                 .unwrap_or(0);
-            let desired = paragraph_count
-                .saturating_add(paragraph_count / 8 + 64) // headroom for headers/footers/notes
-                .clamp(WRAP_CACHE_FLOOR_CAPACITY, WRAP_CACHE_MAX_CAPACITY);
-            self.paragraph_wrap_cache
-                .borrow_mut()
-                .ensure_capacity(desired);
+            self.grow_paragraph_wrap_cache(paragraph_count);
             self.wrap_cache_sized_doc = Some(doc_identity);
         }
 
@@ -13884,12 +14441,14 @@ where
         };
         // Incremental selection registration clears cell mappings. A confirmed
         // seek must restore the skipped prefix's cells as well as its tables.
-        let previous_cells = if preserve_pixel_pagination {
+        // Move the registry rather than cloning every cell (including each
+        // paragraph list) on every IME update. A stable edit reuses this same
+        // allocation when restoring the authoritative offscreen cell geometry.
+        let mut previous_cells = if preserve_pixel_pagination {
             Vec::new()
         } else {
-            self.selection.cell_layouts().to_vec()
+            self.selection.take_cell_layouts()
         };
-        let stable_edit_cells = preserve_stable_edit_pagination.then(|| previous_cells.clone());
         // A stable text edit exits after its changed paragraph. Preserve the
         // untouched selection tail across begin_render_incremental's clear;
         // otherwise navigation and paragraph introspection lose those entries.
@@ -14055,6 +14614,7 @@ where
             ),
         ) {
             // The same run properties now resolve to other descriptors.
+            self.paragraph_font_cache.borrow_mut().clear();
             self.applied_run_style_cache.borrow_mut().clear();
             self.applied_run_style_identity_cache.borrow_mut().clear();
             self.clear_paragraph_wrap_cache();
@@ -14205,14 +14765,26 @@ where
             self.table_handles = handles;
             self.table_row_handles = row_handles;
             self.table_counter = keep;
-            for cell in previous_cells.into_iter().filter(|cell| {
+            let is_skipped_prefix_cell = |cell: &CellLayout| {
                 cell.table_id < keep
                     && cell
                         .paragraphs
                         .iter()
                         .all(|index| *index < seek.paragraph_index)
-            }) {
-                self.selection.record_table_cell_fragment(cell);
+            };
+            if preserve_stable_edit_pagination {
+                // Keep the complete snapshot for stable convergence. Only
+                // cells in the actually skipped prefix need a replay copy.
+                for cell in previous_cells
+                    .iter()
+                    .filter(|cell| is_skipped_prefix_cell(cell))
+                {
+                    self.selection.record_table_cell_fragment(cell.clone());
+                }
+            } else {
+                for cell in previous_cells.drain(..).filter(is_skipped_prefix_cell) {
+                    self.selection.record_table_cell_fragment(cell);
+                }
             }
         }
         if options.debug {
@@ -14319,6 +14891,7 @@ where
                 self.column_layout = seek.column_layout.clone();
                 self.column_index = seek.column_index;
                 self.current_text_direction = seek.current_text_direction;
+                self.vertical_flow = None;
                 self.current_doc_grid = seek.current_doc_grid.clone();
                 self.current_doc_grid_char_spacing_px = seek.current_doc_grid_char_spacing_px;
 
@@ -14403,6 +14976,7 @@ where
                 self.column_index = 0;
                 self.current_text_direction =
                     Self::resolve_section_text_direction(initial_section, document);
+                self.vertical_flow = None;
             }
 
             self.record_page_section(self.current_page_number);
@@ -14773,8 +15347,8 @@ where
                 self.hyperlink_regions.extend(suffix);
                 self.invalidate_hyperlink_regions_js_cache();
             }
-            if let Some(cells) = stable_edit_cells {
-                self.selection.restore_cell_layouts(cells);
+            if preserve_stable_edit_pagination {
+                self.selection.restore_cell_layouts(previous_cells);
             }
         }
         if preserve_pixel_pagination
@@ -15461,18 +16035,12 @@ where
             Some(((self.page_height - self.margin_top - self.margin_bottom) * 72.0 / 96.0) as f32),
         );
         let spacing = math.properties.as_ref().and_then(|p| p.spacing.as_ref());
-        let before = spacing.map_or(0.0, |s| {
-            s.before.map(points_to_px).unwrap_or_else(|| {
-                s.before_lines
-                    .map_or(0.0, |n| line_box.height * f64::from(n))
-            })
-        });
-        let after = spacing.map_or(0.0, |s| {
-            s.after.map(points_to_px).unwrap_or_else(|| {
-                s.after_lines
-                    .map_or(0.0, |n| line_box.height * f64::from(n))
-            })
-        });
+        let before = spacing
+            .and_then(jade_docx_layout::text_extract::paragraph_spacing_before)
+            .map_or(0.0, |amount| amount.px_with_line_unit(line_box.height));
+        let after = spacing
+            .and_then(jade_docx_layout::text_extract::paragraph_spacing_after)
+            .map_or(0.0, |amount| amount.px_with_line_unit(line_box.height));
         let preceding_after = self
             .trailing_spacing_after
             .take()
@@ -15741,9 +16309,13 @@ where
 
         // Document page background color (`<w:background>`, §17.2.1).
         self.page_background_color = document.background_color.clone();
+        self.page_background_fill = document.background_fill.clone();
 
         // Word stores text watermarks as a VML text path in the page header.
         self.watermark_text = document.watermark_text.clone();
+        self.watermark_style = document.watermark_style.clone();
+        self.manuscript_grid = document.manuscript_grid.clone();
+        self.default_font_size_pt = document.default_font_size;
 
         // Resolve `w:pgNumType` (numeral format + start offset) for PAGE fields
         // from the default section. MVP: a single document-wide value.
@@ -15984,11 +16556,11 @@ where
         if self.pageless_mode {
             return;
         }
-        if self
-            .last_options
-            .as_ref()
-            .is_some_and(|options| !options.show_crop_marks)
-        {
+        let (crop_marks, text_boundaries) =
+            self.last_options.as_ref().map_or((true, false), |options| {
+                (options.show_crop_marks, options.show_text_boundaries)
+            });
+        if !crop_marks && !text_boundaries {
             return;
         }
         if !self.should_draw_page_for_current_render(page) {
@@ -15998,6 +16570,26 @@ where
         let content_width = self.page_width - self.margin_left - self.margin_right;
         let content_height = self.page_height - self.margin_top - self.margin_bottom;
         if content_width <= 0.0 || content_height <= 0.0 {
+            return;
+        }
+        if text_boundaries {
+            let context = self.host.painter();
+            context.save();
+            context.set_stroke_style_str(TEXT_BOUNDARY_COLOR);
+            context.set_line_width(CROP_MARK_STROKE_WIDTH);
+            context.set_line_dash(&TEXT_BOUNDARY_DASH);
+            context.begin_path();
+            context.rect(
+                self.margin_left,
+                self.margin_top,
+                content_width,
+                content_height,
+            );
+            context.stroke();
+            context.set_line_dash(&[]);
+            context.restore();
+        }
+        if !crop_marks {
             return;
         }
 
@@ -17837,6 +18429,9 @@ where
             paragraph_style.first_line_indent = 0.0;
         }
         if let Some(props) = &paragraph.properties {
+            paragraph_style.positional_tabs = jade_docx_layout::line_wrap::resolve_positional_tabs(
+                props.positional_tabs.as_ref(),
+            );
             if !props.tabs.is_empty() {
                 paragraph_style.tab_stops = resolve_tab_stops(&props.tabs);
                 #[cfg(all(debug_assertions, target_arch = "wasm32"))]
@@ -18296,6 +18891,7 @@ where
         let track_footnote_placement = self.tracks_footnote_placement();
 
         let mut shown_field_codes: Vec<XmlNodeId> = Vec::new();
+        let mut previous_visible_run_index = None;
         let mut advance_raise_pt = 0.0_f32;
         for (run_index, run) in paragraph.runs.iter().enumerate() {
             if let Some(from) = format_change_from.take() {
@@ -18378,6 +18974,29 @@ where
                 } else {
                     resolved_run_properties
                 };
+            // フィールドの網かけ: a field's text on Word's grey, under any
+            // highlight or shading of its own.
+            let resolved_run_properties = if self.field_shaded(run, field_code.is_some()) {
+                let mut properties = resolved_run_properties
+                    .as_deref()
+                    .cloned()
+                    .unwrap_or_default();
+                if properties.highlight.is_none()
+                    && properties
+                        .shading
+                        .as_ref()
+                        .is_none_or(jade_docx_reader::document::Shading::is_empty)
+                {
+                    properties.shading = Some(jade_docx_reader::document::Shading {
+                        val: Some("clear".to_string()),
+                        color: Some("auto".to_string()),
+                        fill: Some(FIELD_SHADING_FILL.to_string()),
+                    });
+                }
+                Some(Rc::new(properties))
+            } else {
+                resolved_run_properties
+            };
             // Text after an ADVANCE \u or \d sits that much higher or lower.
             let resolved_run_properties = if advance_raise_pt.abs() > f32::EPSILON {
                 let mut properties = resolved_run_properties
@@ -18415,6 +19034,11 @@ where
                 }
                 continue;
             }
+
+            // A hidden first result run has not drawn the field's value. Compare
+            // against the previous visible run, including across hidden runs.
+            let previous_visible_run = previous_visible_run_index;
+            previous_visible_run_index = Some(run_index);
 
             // An EQ field is drawn as its switches lay out (`\f` a fraction,
             // `\r` a radical …), in place of its saved result.
@@ -18586,7 +19210,9 @@ where
                 // resolved value replaces that saved result; it must not be
                 // appended or the field would render twice.
                 if let Some(value) = self.resolve_run_field(field) {
-                    segment.push_str(&value);
+                    if !continues_field(&paragraph.runs, previous_visible_run, run_index) {
+                        segment.push_str(&value);
+                    }
                 } else if !run.text.is_empty() {
                     segment.push_str(&run.text);
                 }
@@ -19283,9 +19909,11 @@ where
                         .properties
                         .as_ref()
                         .and_then(|p| p.shading.as_ref())
-                        .and_then(|s| s.resolved_background_color())
-                        .filter(|c| !(self.dark_mode_text && is_default_page_background_shading(c)))
-                        .map(|c| Rc::from(c.as_str())),
+                        .and_then(|shading| {
+                            ShadingPaint::of(shading, |c| {
+                                !(self.dark_mode_text && is_default_page_background_shading(c))
+                            })
+                        }),
                     paragraph_box_borders
                         .and_then(|borders| {
                             resolve_paragraph_box_borders(
@@ -19378,6 +20006,22 @@ where
                 self.current_y += skipped_float_height;
             }
             self.ensure_space(required_height)?;
+            // In a vertical section (縦書き) the empty line is a column of its
+            // own, to the left of the paragraph before it.
+            let vertical_column = match self.current_text_direction {
+                Some(
+                    direction @ (TextDirection::TbRl
+                    | TextDirection::TbRlV
+                    | TextDirection::BtLr
+                    | TextDirection::BtLrV
+                    | TextDirection::TbLrV),
+                ) if !self.measuring_keep_next => {
+                    let (x, _) = self.place_vertical_columns(direction, line_height, 1)?;
+                    self.current_y = self.effective_body_top() + self.current_page_valign_offset();
+                    Some(x)
+                }
+                _ => None,
+            };
             let top = self.current_y;
             let (min_top_offset, content_height) = self.empty_paragraph_content_metrics(
                 pending_numbering.as_ref(),
@@ -19388,7 +20032,9 @@ where
                 Some(share) => line_height * share + min_top_offset,
                 None => (line_height - content_height).max(0.0) * top_leading_share,
             };
-            self.current_y += line_height;
+            if vertical_column.is_none() {
+                self.current_y += line_height;
+            }
             let baseline = top + top_leading - min_top_offset;
             let absolute_top = self.page_offset_y + top;
             let content_top = baseline + min_top_offset;
@@ -19404,6 +20050,7 @@ where
                 0.0,
                 false,
             );
+            let line_start_x = vertical_column.unwrap_or(line_start_x);
 
             let mut line_layout = SelectionLineLayout {
                 top,
@@ -19411,7 +20058,7 @@ where
                 height: line_height,
                 baseline,
                 start_x: line_start_x,
-                cursor_end_x: line_start_x,
+                cursor_end_x: vertical_column.map_or(line_start_x, |x| x + line_height),
                 allowed_trailing_overflow_width: 0.0,
                 content_top,
                 absolute_content_top: self.page_offset_y + content_top,
@@ -19421,7 +20068,7 @@ where
                 tab_leaders: Rc::from([]),
                 tab_stops: Rc::from([]),
                 column_index: self.column_index,
-                vertical: false,
+                vertical: vertical_column.is_some(),
                 vertical_reversed: false,
             };
 
@@ -20593,12 +21240,26 @@ where
         );
         if let Some(blank_run) = Self::paragraph_blank_line_run_properties(paragraph) {
             let effective = self.effective_run_properties_rc(paragraph, blank_run);
-            let style = self.resolve_applied_run_style_cached(effective.as_deref());
+            let style = self.resolve_applied_run_style_cached_rc(effective.as_ref());
             return Ok((
                 None,
                 self.word_run_faces(&style.resolved, east_asian_faces_size_lines)
                     .latin_line_height_pt(),
             ));
+        }
+        // Blank paragraphs above keep their original mark/first-run policy.
+        // Preserve the entire Mac computation, including diagnostic contexts.
+        let cache_context = (jade_docx_layout::line_metrics::word_layout_platform()
+            == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows)
+            .then_some(paragraph_font_cache::Context {
+                east_asian: self.document_east_asian_rules.use_east_asian_layout,
+                underline: self.document_east_asian_rules.space_for_underline,
+                char_spacing: self.current_doc_grid_char_spacing_px.map(f64::to_bits),
+            });
+        if let Some(context) = cache_context {
+            if let Some(lines) = self.paragraph_font_cache.borrow().get(paragraph, context) {
+                return Ok(lines);
+            }
         }
         let mut east_asian_line: Option<f32> = None;
         let mut runs = Vec::with_capacity(paragraph.runs.len());
@@ -20621,7 +21282,7 @@ where
                 _ => {
                     let effective =
                         self.effective_run_properties_rc(paragraph, run.properties.as_ref());
-                    let style = self.resolve_applied_run_style_cached(effective.as_deref());
+                    let style = self.resolve_applied_run_style_cached_rc(effective.as_ref());
                     let border_extent = word_run_border_extent_pt(effective.as_deref());
                     let underline_depth = if space_for_underline {
                         jade_docx_layout::line_metrics::word_space_for_underline_depth_pt(
@@ -20654,7 +21315,13 @@ where
                 underline_depth,
             ));
         }
-        Ok((east_asian_line, word_tallest_single_line_height_pt(runs)))
+        let lines = (east_asian_line, word_tallest_single_line_height_pt(runs));
+        if let Some(context) = cache_context {
+            self.paragraph_font_cache
+                .borrow_mut()
+                .insert(paragraph, context, lines);
+        }
+        Ok(lines)
     }
 
     /// [`WordRunFaces`] of `resolved`'s font descriptors, parsed once per
@@ -20973,6 +21640,57 @@ where
             .is_none_or(|options| options.revision_view().marks_up(mark))
     }
 
+    /// Paints a shading over a rectangle — its fill and its pattern — and
+    /// records it for cache replay.
+    fn paint_shading(
+        &self,
+        shading: &ShadingPaint,
+        rect: (f64, f64, f64, f64),
+        commands_out: &mut Option<&mut Vec<DrawCommand>>,
+    ) {
+        // A plain fill, as nearly all shading is: draw it directly, without
+        // building and replaying a command list.
+        if shading.pattern.is_none() {
+            let Some(fill) = shading.fill.as_ref() else {
+                return;
+            };
+            let (x, y, width, height) = rect;
+            if width <= 0.0 || height <= 0.0 {
+                return;
+            }
+            if self.should_draw_current_page_for_render() {
+                let context = self.host.painter();
+                context.save();
+                context.set_fill_style_str(fill);
+                context.fill_rect(x, y, width, height);
+                context.restore();
+                self.reset_fill_style_state();
+            }
+            if let Some(buf) = commands_out.as_deref_mut() {
+                buf.push(DrawCommand::FillRect {
+                    x,
+                    y,
+                    width,
+                    height,
+                    color: Rc::clone(fill),
+                });
+            }
+            return;
+        }
+        let commands = shading.commands(rect);
+        if commands.is_empty() {
+            return;
+        }
+        if self.should_draw_current_page_for_render() {
+            let _ =
+                crate::draw_command::executor::execute_commands(&self.host.painter(), &commands);
+            self.invalidate_context_state_tracking();
+        }
+        if let Some(buf) = commands_out.as_deref_mut() {
+            buf.extend(commands);
+        }
+    }
+
     /// Fills a single thin border rectangle for a paragraph border edge,
     /// painting immediately (when the current page is being drawn) and pushing
     /// a `DrawCommand::FillRect` so the border survives cache replay. No-ops on
@@ -21234,7 +21952,7 @@ where
         top_leading_share: f64,
         exact_line_baseline_share: Option<f64>,
         pending_numbering: Option<&PendingNumberingRender>,
-        paragraph_shading_color: Option<Rc<str>>,
+        paragraph_shading: Option<ShadingPaint>,
         paragraph_borders: Option<Rc<ResolvedParagraphBorders>>,
         commands_out: Option<&mut Vec<DrawCommand>>,
         selection_lines_out: Option<&mut Vec<SelectionLineLayout>>,
@@ -21331,22 +22049,13 @@ where
                     || paragraph_style.word_proportional_line_sizing.is_some()
             })
             .and_then(|numbering| self.numbering_first_line_ascent(numbering));
-        let line_heights = if numbering_ascent.is_some() {
-            WrappedLine::line_heights_px_with_numbering_ascent(
-                &lines,
-                paragraph_style,
-                line_height,
-                paragraph_mark_font_box,
-                numbering_ascent,
-            )
-        } else {
-            WrappedLine::line_heights_px_with_paragraph_mark(
-                &lines,
-                paragraph_style,
-                line_height,
-                paragraph_mark_font_box,
-            )
-        };
+        let line_heights = self.line_height_plan_cache.borrow_mut().heights(
+            &lines,
+            paragraph_style,
+            line_height,
+            paragraph_mark_font_box,
+            numbering_ascent,
+        );
         let band_height = |band: usize| {
             let start = band_starts[band];
             let end = band_starts.get(band + 1).copied().unwrap_or(lines.len());
@@ -21588,9 +22297,46 @@ where
         // auto-space boundaries widen first, then the gaps between East Asian
         // characters share the rest. Returns the width placed.
         let distribute_justification_to_east_asian_gaps =
-            |prepared_segments: &mut [PreparedSegment<'_, '_>], extra_total: f64| -> f64 {
+            |prepared_segments: &mut [PreparedSegment<'_, '_>],
+             wrapped_line: &WrappedLine,
+             extra_total: f64|
+             -> f64 {
                 if extra_total <= 0.0 {
                     return 0.0;
+                }
+                // Ragged lines that hang a full mark use the measured line
+                // plan. Justified/tabbed lines retain their squeeze allocation.
+                if paragraph_style.word_platform
+                    == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
+                    && !is_justified_alignment(&paragraph_style.alignment)
+                    && wrapped_line.tab_stops.is_empty()
+                {
+                    let plan = wrapped_line.mac_east_asian_justification_advances_px(extra_total);
+                    let mut distributed = 0.0;
+                    for prepared in prepared_segments.iter_mut() {
+                        let mut accumulated = 0.0;
+                        let glyphs = Rc::make_mut(&mut prepared.fragment.glyphs);
+                        for (index, step) in prepared.glyph_steps.iter_mut().enumerate() {
+                            step.x_offset += accumulated;
+                            let end = prepared.segment.start + step.text_end as usize;
+                            let extra = wrapped_line
+                                .clusters
+                                .binary_search_by_key(&end, |cluster| cluster.end)
+                                .ok()
+                                .and_then(|index| plan.get(index))
+                                .copied()
+                                .unwrap_or(0.0);
+                            if let Some(glyph) = glyphs.get_mut(index) {
+                                glyph.x += accumulated;
+                                glyph.width += extra;
+                            }
+                            accumulated += extra;
+                        }
+                        prepared.fragment.width += accumulated;
+                        prepared.width += accumulated;
+                        distributed += accumulated;
+                    }
+                    return distributed;
                 }
                 let mut gap_owners = Vec::new();
                 let mut gaps = Vec::new();
@@ -22274,28 +23020,16 @@ where
             // (before highlights, selection, and glyphs). The band spans the
             // paragraph content box (left indent → right indent) and is the
             // same width on every line, matching Word's paragraph shading.
-            if let Some(bg) = paragraph_shading_color.as_deref() {
+            if let Some(shading) = paragraph_shading.as_ref() {
                 let band_x = paragraph_base_x;
                 if let Some(band_w) =
                     paragraph_shading_band_width(paragraph_base_x, default_right_limit)
                 {
-                    if self.should_draw_current_page_for_render() {
-                        let context = self.host.painter();
-                        context.save();
-                        context.set_fill_style_str(bg);
-                        context.fill_rect(band_x, top, band_w, line_box_height);
-                        context.restore();
-                        self.reset_fill_style_state();
-                    }
-                    if let Some(buf) = commands_out.as_deref_mut() {
-                        buf.push(DrawCommand::FillRect {
-                            x: band_x,
-                            y: top,
-                            width: band_w,
-                            height: line_box_height,
-                            color: Rc::from(bg),
-                        });
-                    }
+                    self.paint_shading(
+                        shading,
+                        (band_x, top, band_w, line_box_height),
+                        &mut commands_out,
+                    );
                 }
             }
 
@@ -22670,48 +23404,11 @@ where
                 });
             } else {
                 let available_for_line = available_for_line.max(1.0);
-                // A line whose final punctuation hangs past the right edge is
-                // justified to that edge in Word even when the paragraph is
-                // left-aligned (`…上限とする。` in `system-dev-contract.docx`).
-                let hanging_punctuation_width = wrapped_line
-                    .clusters
-                    .last()
-                    .filter(|cluster| {
-                        !cluster.is_whitespace
-                            && cluster.can_hang_line_end
-                            && paragraph_style.allows_hanging_punctuation_at(break_kind)
-                            && line_width > available_for_line + 0.5
-                            && !matches!(
-                                paragraph_style.alignment.trim(),
-                                "center" | "right" | "end"
-                            )
-                    })
-                    .map(|cluster| {
-                        // On Mac a line with a tab gave the mark's width to the
-                        // tab first (`shrink_tab_for_final_mark`). Word justifies
-                        // the line as if the mark hung whole with the tab still
-                        // open, then closes the tab: the mark stops the closed
-                        // width short of the edge (trust page 22: 4.05pt, the
-                        // auto-space gaps 0.70pt wider).
-                        let closed: f64 = wrapped_line
-                            .tab_stops
-                            .iter()
-                            .map(|stop| stop.closed_for_final_mark)
-                            .sum();
-                        if paragraph_style.word_platform
-                            == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
-                            && !wrapped_line.tab_stops.is_empty()
-                        {
-                            if closed > f64::EPSILON {
-                                (cluster.width - closed).max(0.0)
-                            } else {
-                                cluster.width.min(line_width - available_for_line)
-                            }
-                        } else {
-                            cluster.width
-                        }
-                    })
-                    .unwrap_or(0.0);
+                let hanging_punctuation_width = wrapped_line.hanging_punctuation_width_px(
+                    paragraph_style,
+                    line_width,
+                    available_for_line,
+                );
                 // A final mark that hung its blank half past the edge
                 // (`compress_mac_punctuation_on_completed_line`) leaves the
                 // line justified to the edge, the paragraph's last line too.
@@ -22758,6 +23455,7 @@ where
                     if justify_line && paragraph_style.enable_line_break_rules {
                         distribute_justification_to_east_asian_gaps(
                             prepared_segments.as_mut_slice(),
+                            wrapped_line,
                             (extra_total - distributed_space_extra).max(0.0),
                         )
                     } else {
@@ -27236,13 +27934,21 @@ where
     fn text_box_paragraph_layout(&self, paragraph: &Paragraph) -> (String, Vec<RunStyle>) {
         let mut text = String::new();
         let mut run_styles = Vec::with_capacity(paragraph.runs.len());
-        for run in &paragraph.runs {
+        for (run_index, run) in paragraph.runs.iter().enumerate() {
             let start = text.len();
-            text.push_str(&run.text);
-            if let Some(field) = run.field.as_ref() {
-                if let Some(value) = self.resolve_run_field(field) {
-                    text.push_str(&value);
+            // As in the body: a resolved value replaces the saved result,
+            // once per field.
+            match run
+                .field
+                .as_ref()
+                .and_then(|field| self.resolve_run_field(field))
+            {
+                Some(value) => {
+                    if !continues_field(&paragraph.runs, run_index.checked_sub(1), run_index) {
+                        text.push_str(&value);
+                    }
                 }
+                None => text.push_str(&run.text),
             }
             if text.len() > start {
                 run_styles.push(RunStyle {
@@ -27347,16 +28053,14 @@ where
         if format.style.word_platform != jade_docx_layout::line_metrics::WordLayoutPlatform::Mac {
             return 0.0;
         }
-        format.spacing.map_or(0.0, |spacing| {
-            let (points, lines) = if before {
-                (spacing.before, spacing.before_lines)
+        format
+            .spacing
+            .and_then(if before {
+                jade_docx_layout::text_extract::paragraph_spacing_before
             } else {
-                (spacing.after, spacing.after_lines)
-            };
-            points
-                .map(points_to_px)
-                .unwrap_or_else(|| lines.map_or(0.0, |n| line_pitch * f64::from(n)))
-        })
+                jade_docx_layout::text_extract::paragraph_spacing_after
+            })
+            .map_or(0.0, |amount| amount.px_with_line_unit(line_pitch))
     }
 
     /// Measures the text body before applying center/bottom anchoring. This is
@@ -29410,15 +30114,18 @@ where
         pending_numbering: Option<&PendingNumberingRender>,
         commands_out: &mut Option<&mut Vec<DrawCommand>>,
     ) -> Result<(), JsValue> {
+        // A vertical page's columns run from the body's top to its bottom.
+        let column_top = self.effective_body_top() + self.current_page_valign_offset();
+        let column_length = (self.effective_body_bottom() - column_top).max(line_height);
         if text.is_empty() {
+            // An empty paragraph still takes a column, as an empty line does.
+            if !self.measuring_keep_next {
+                self.place_vertical_columns(direction, line_height, 1)?;
+            }
             return Ok(());
         }
 
-        const COLUMN_EPS: f64 = 1e-6;
-        let mut column_origin_x = self.current_column_x();
-        let column_offset = base_x - column_origin_x;
-        let mut column_right = column_origin_x + self.current_column_width();
-
+        let column_right = self.current_column_x() + self.current_column_width();
         let available_width = (column_right - base_x).max(1.0);
         let paragraph_layout = match direction {
             TextDirection::TbRl
@@ -29430,8 +30137,11 @@ where
                 text,
                 run_styles,
                 direction,
-                None,
+                Some(column_length),
                 line_height,
+                paragraph_style
+                    .doc_grid_snap_to_chars
+                    .then(|| paragraph_style.doc_grid_char_space_px.unwrap_or(0.0)),
             )?,
             _ => {
                 let canvas = self.host.painter();
@@ -29455,62 +30165,99 @@ where
             text
         )));
 
-        let required_height = paragraph_layout.height().max(line_height);
-        self.ensure_space(required_height)?;
-        if self.column_layout.count() > 1 {
-            let new_origin = self.current_column_x();
-            if (new_origin - column_origin_x).abs() > COLUMN_EPS {
-                column_origin_x = new_origin;
-                column_right = column_origin_x + self.current_column_width();
-            }
-        } else {
-            column_origin_x = self.current_column_x();
-            column_right = column_origin_x + self.current_column_width();
-        }
-
-        let effective_base_x = column_origin_x + column_offset;
-        let cell_width = (column_right - effective_base_x).max(1.0);
-        if cell_width <= 0.0 {
+        if self.measuring_keep_next {
             return Ok(());
         }
-
-        if let Some(numbering) = pending_numbering {
-            let baseline = self.current_y + line_height;
-            self.draw_pending_numbering_marker(
-                numbering,
-                baseline,
-                line_height,
-                Some(paragraph_style),
-                commands_out,
-            )?;
-        }
-
         let align = Self::paragraph_table_align(paragraph_style, direction);
-        let consumed = match direction {
-            TextDirection::TbRl
-            | TextDirection::TbRlV
-            | TextDirection::BtLr
-            | TextDirection::BtLrV
-            | TextDirection::TbLrV => self.render_vertical_paragraph(
-                &paragraph_layout,
+        let pitch = paragraph_layout.vertical_column_pitch(line_height);
+        let total = paragraph_layout.vertical_columns().max(1);
+        let mut drawn = 0;
+        let mut numbering = pending_numbering;
+        while drawn < total {
+            // As many of the paragraph's columns as the page still has room
+            // for; the rest go on the next page.
+            let (x, count) = self.place_vertical_columns(direction, pitch, total - drawn)?;
+            if let Some(numbering) = numbering.take() {
+                let baseline = column_top + line_height;
+                self.draw_pending_numbering_marker(
+                    numbering,
+                    baseline,
+                    line_height,
+                    Some(paragraph_style),
+                    commands_out,
+                )?;
+            }
+            let part = paragraph_layout.with_vertical_columns(drawn..drawn + count);
+            let top = self.effective_body_top() + self.current_page_valign_offset();
+            self.render_vertical_paragraph(
+                &part,
                 paragraph_index,
                 direction,
                 align,
-                effective_base_x,
-                self.current_y,
-                cell_width,
+                x,
+                top,
+                pitch * count as f64,
                 0.0,
                 line_height,
                 base_offset,
                 &[],
                 true,
-            )?,
-            _ => return Ok(()),
-        };
-
-        self.current_y += consumed;
+            )?;
+            drawn += count;
+        }
+        self.current_y = column_top;
         self.last_line_baseline = self.current_y;
         Ok(())
+    }
+
+    /// Takes up to `wanted` columns `pitch` wide from what is left of the
+    /// current vertical page — right to left in 縦書き (`tbRl`), left to
+    /// right when the text runs bottom to top — breaking to a new page when
+    /// not even one fits. Returns the left x of the columns taken and how
+    /// many they are.
+    fn place_vertical_columns(
+        &mut self,
+        direction: TextDirection,
+        pitch: f64,
+        wanted: usize,
+    ) -> Result<(f64, usize), JsValue> {
+        const EPS: f64 = 0.01;
+        let right_to_left = matches!(direction, TextDirection::TbRl | TextDirection::TbRlV);
+        loop {
+            let left = self.current_column_x();
+            let right = left + self.current_column_width();
+            let edge = match self.vertical_flow {
+                Some((page, x)) if page == self.current_page_number => x,
+                _ if right_to_left => right,
+                _ => left,
+            };
+            let room = if right_to_left {
+                edge - left
+            } else {
+                right - edge
+            };
+            let fits = ((room + EPS) / pitch).floor().max(0.0) as usize;
+            // A page with nothing on it takes a column however narrow it is.
+            let fresh = (edge - if right_to_left { right } else { left }).abs() < EPS;
+            let count = if fits == 0 && fresh {
+                1
+            } else {
+                fits.min(wanted)
+            };
+            if count == 0 {
+                self.force_page_break()?;
+                self.vertical_flow = None;
+                continue;
+            }
+            let width = pitch * count as f64;
+            let (x, next) = if right_to_left {
+                (edge - width, edge - width)
+            } else {
+                (edge, edge + width)
+            };
+            self.vertical_flow = Some((self.current_page_number, next));
+            return Ok((x, count));
+        }
     }
 
     fn paragraph_table_align(style: &ParagraphStyle, direction: TextDirection) -> TableTextAlign {
@@ -30883,6 +31630,11 @@ where
         properties: Option<&RunProperties>,
         doc_grid_char_spacing_px: Option<f64>,
     ) -> u64 {
+        if jade_docx_layout::line_metrics::word_layout_platform()
+            == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+        {
+            return run_style_key::windows_key(properties, doc_grid_char_spacing_px);
+        }
         let mut hasher = FxHasher::default();
         doc_grid_char_spacing_px.map(f64::to_bits).hash(&mut hasher);
         if let Some(props) = properties {
@@ -31700,11 +32452,9 @@ where
     }
 
     fn numbering_first_line_ascent(&self, numbering: &PendingNumberingRender) -> Option<f64> {
-        if jade_docx_layout::line_metrics::word_layout_platform()
-            != jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
-        {
-            return None;
-        }
+        // Windows Word 16.0.19127.20860 also raises the first line for a
+        // larger numbering label (word-mac-probe-numbering-label, row 3).
+        // Unknown label metrics still retain the existing fallback.
         let style = self.resolve_applied_run_style_cached(numbering.display_props.as_ref());
         let mut ascent: Option<f64> = None;
         let mut previous_descriptor = None;
@@ -33768,7 +34518,7 @@ where
             };
             let mut offset = 0usize;
             let mut links = Vec::new();
-            for run in &paragraph.runs {
+            for (run_index, run) in paragraph.runs.iter().enumerate() {
                 let start = offset;
                 // Field result text is stored outside `run.text`: complex and
                 // simple fields keep Word's displayed value in `cached_text`
@@ -33778,7 +34528,17 @@ where
                 if let Some(field) = run.field.as_ref() {
                     offset = offset.saturating_add(
                         self.resolve_run_field(field)
-                            .map(|value| value.len())
+                            .map(|value| {
+                                if continues_field(
+                                    &paragraph.runs,
+                                    run_index.checked_sub(1),
+                                    run_index,
+                                ) {
+                                    0
+                                } else {
+                                    value.len()
+                                }
+                            })
                             .unwrap_or(run.text.len()),
                     );
                 } else {
@@ -34152,6 +34912,14 @@ where
             handles: self.table_handles.clone(),
             row_handles: self.table_row_handles.clone(),
         }
+    }
+
+    /// Refresh an owned snapshot while reusing storage from previous edits.
+    /// Values are still copied, so later renderer updates cannot change it.
+    pub(crate) fn copy_table_resize_metadata_into(&self, target: &mut TableResizeMetadata) {
+        target.tables.clone_from(&self.table_layouts);
+        target.handles.clone_from(&self.table_handles);
+        target.row_handles.clone_from(&self.table_row_handles);
     }
 
     pub fn drain_pending_image_promises(&self) -> Option<Promise> {
@@ -35056,6 +35824,7 @@ where
         footer_body_even: Option<Body>,
     ) {
         self.last_document_comment_anchors = None;
+        self.last_document_deleted_runs = None;
         self.header_body = header_body;
         self.footer_body = footer_body;
         self.header_body_first = header_body_first;
@@ -35076,6 +35845,7 @@ where
     /// to fall back to the document-wide fields.
     pub fn set_section_header_footers(&mut self, sections: Vec<SectionHeaderFooters>) {
         self.last_document_comment_anchors = None;
+        self.last_document_deleted_runs = None;
         self.section_header_footers = sections;
     }
 
@@ -36333,7 +37103,7 @@ where
             // instruction. Word's last saved result remains the safest visual
             // representation until a dedicated evaluator is implemented.
             RunFieldKind::Unsupported { .. } => field.cached_text.clone(),
-            // PRIVATE/ADDIN carry opaque storage, not visible content. Return
+            // Non-displaying fields have no visible result. Return
             // directly so the common cached-result fallback below cannot leak
             // a stale producer-authored result into the document.
             RunFieldKind::NonDisplay { .. } => return None,
@@ -36440,6 +37210,32 @@ where
         self.field_code_display = display.map(Rc::new);
         self.clear_paragraph_render_cache();
         self.invalidate_layout_from(0);
+    }
+
+    /// Draws fields' text on Word's grey as `shading` says. Paint and layout
+    /// caches are dropped when it changes, as the runs' fills do.
+    pub fn set_field_shading(&mut self, shading: FieldShading) {
+        if shading == self.field_shading {
+            return;
+        }
+        self.field_shading = shading;
+        self.clear_paragraph_render_cache();
+        self.invalidate_layout_from(0);
+    }
+
+    /// Whether a body run of a field is drawn on the field shading grey.
+    fn field_shaded(&self, run: &Run, shows_code: bool) -> bool {
+        if self.rendering_header_footer_story || self.rendering_note_story {
+            return false;
+        }
+        if run.field.is_none() && !shows_code {
+            return false;
+        }
+        match &self.field_shading {
+            FieldShading::Never => false,
+            FieldShading::Always => true,
+            FieldShading::Runs(runs) => run.node_id.is_some_and(|id| runs.contains(&id)),
+        }
     }
 
     /// The field code a body run shows instead of its content.
@@ -37875,9 +38671,178 @@ fn select_header_footer_variant<'a, T: ?Sized>(
     )
 }
 
+/// Whether run `index` holds more of the same identified field as the prior
+/// relevant run. Missing XML identities do not establish a shared field. Word
+/// saves a result formatted two ways as two runs, and an edit splits one
+/// (around a comment's reference, or formatting part of it); each run
+/// carries the field. A value the renderer works out is the whole result, so
+/// it is drawn for the field's first run only: drawn for each, a date showed
+/// two or three times.
+fn continues_field(runs: &[Run], previous_index: Option<usize>, index: usize) -> bool {
+    let Some(previous) = previous_index
+        .and_then(|previous| runs.get(previous))
+        .and_then(|run| run.field.as_ref())
+    else {
+        return false;
+    };
+    runs.get(index)
+        .and_then(|run| run.field.as_ref())
+        .is_some_and(|field| {
+            field.source_field_id.is_some()
+                && field.kind == previous.kind
+                && field.source_field_id == previous.source_field_id
+        })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    mod decoration_histories;
+    mod revision_snapshot_histories;
+
+    // Vary topology and coordinates independently of the snapshot implementation.
+    fn set_resize_metadata_source(
+        renderer: &mut CanvasRenderer,
+        count: usize,
+        columns: usize,
+        rows: usize,
+        phase: u16,
+    ) {
+        renderer.table_layouts = (0..count)
+            .map(|i| TableLayoutInfo {
+                index: i + usize::from(phase),
+                order: count - i,
+                node_id: phase
+                    .is_multiple_of(2)
+                    .then_some(i as u32 + u32::from(phase)),
+                column_widths: (0..columns)
+                    .map(|c| (i + c) as f64 + f64::from(phase) + 0.25)
+                    .collect(),
+                row_heights: (0..rows)
+                    .map(|r| (i + r) as f64 + f64::from(phase) + 0.5)
+                    .collect(),
+            })
+            .collect();
+        renderer.table_handles = (0..count * columns)
+            .map(|i| TableResizeHandle {
+                table_index: i / columns,
+                column_index: i % columns,
+                x: i as f64 + f64::from(phase),
+                top: i as f64 + 1.25,
+                bottom: i as f64 + 23.5,
+                kind: if i % 2 == 0 {
+                    TableResizeHandleKind::BetweenColumns
+                } else {
+                    TableResizeHandleKind::TableRightEdge
+                },
+                reverse_delta: i % 3 == 0,
+            })
+            .collect();
+        renderer.table_row_handles = (0..count * rows)
+            .map(|i| TableRowResizeHandle {
+                table_index: i / rows,
+                row_index: i % rows,
+                y: i as f64 + f64::from(phase),
+                left: i as f64 + 2.25,
+                right: i as f64 + 73.5,
+                kind: if i % 2 == 0 {
+                    TableRowResizeHandleKind::BetweenRows
+                } else {
+                    TableRowResizeHandleKind::TableBottomEdge
+                },
+            })
+            .collect();
+    }
+
+    fn resize_metadata_source_json(renderer: &CanvasRenderer) -> serde_json::Value {
+        // Serialize the original fields directly, without using either clone path.
+        let mut value = serde_json::json!({
+            "tables": renderer.table_layouts,
+            "handles": renderer.table_handles,
+        });
+        if !renderer.table_row_handles.is_empty() {
+            value["row_handles"] = serde_json::to_value(&renderer.table_row_handles).unwrap();
+        }
+        value
+    }
+
+    #[test]
+    fn table_resize_metadata_reuses_outer_and_nested_storage() {
+        let mut renderer = test_renderer();
+        set_resize_metadata_source(&mut renderer, 3, 4, 5, 2);
+        let mut target = renderer.table_resize_metadata();
+        let tables = target.tables.as_ptr();
+        let handles = target.handles.as_ptr();
+        let row_handles = target.row_handles.as_ptr();
+        let columns = target.tables[0].column_widths.as_ptr();
+        let rows = target.tables[0].row_heights.as_ptr();
+        for (count, column_count, row_count, phase) in [
+            (3, 4, 5, 7),
+            (2, 3, 4, 11),
+            (2, 0, 0, 12),
+            (2, 4, 5, 13),
+            (0, 0, 0, 14),
+        ] {
+            set_resize_metadata_source(&mut renderer, count, column_count, row_count, phase);
+            renderer.copy_table_resize_metadata_into(&mut target);
+            assert_eq!(target.tables.as_ptr(), tables);
+            assert_eq!(target.handles.as_ptr(), handles);
+            assert_eq!(target.row_handles.as_ptr(), row_handles);
+            if count > 0 {
+                assert_eq!(target.tables[0].column_widths.as_ptr(), columns);
+                assert_eq!(target.tables[0].row_heights.as_ptr(), rows);
+            }
+            assert_eq!(
+                serde_json::to_value(&target).unwrap(),
+                resize_metadata_source_json(&renderer)
+            );
+        }
+    }
+
+    proptest::proptest! {
+        #![proptest_config(proptest::test_runner::Config::with_cases(96))]
+        #[test]
+        fn table_resize_metadata_transitions_preserve_values_and_snapshot_isolation(
+            steps in proptest::collection::vec((0usize..9, 0usize..9, 0usize..9, proptest::num::u16::ANY), 1..33),
+        ) {
+            let mut renderer = test_renderer();
+            let mut target = TableResizeMetadata::default();
+            for (count, columns, rows, phase) in steps {
+                set_resize_metadata_source(&mut renderer, count, columns, rows, phase);
+                let expected = resize_metadata_source_json(&renderer);
+                renderer.copy_table_resize_metadata_into(&mut target);
+                proptest::prop_assert_eq!(serde_json::to_value(&target).unwrap(), expected.clone());
+                proptest::prop_assert_eq!(serde_json::to_value(renderer.table_resize_metadata()).unwrap(), expected.clone());
+                // An owned snapshot must outlive changes to every renderer vector.
+                renderer.table_layouts.clear();
+                renderer.table_handles.clear();
+                renderer.table_row_handles.clear();
+                proptest::prop_assert_eq!(serde_json::to_value(&target).unwrap(), expected);
+            }
+        }
+    }
+
+    #[test]
+    fn table_layout_clone_from_reuses_nested_storage() {
+        let source = TableLayoutInfo {
+            index: 3,
+            order: 7,
+            node_id: Some(42),
+            column_widths: vec![72.0, 144.0],
+            row_heights: vec![18.0, 24.0],
+        };
+        let mut target = source.clone();
+        let columns = target.column_widths.as_ptr();
+        let rows = target.row_heights.as_ptr();
+        target.clone_from(&source);
+        assert_eq!(target.column_widths.as_ptr(), columns);
+        assert_eq!(target.row_heights.as_ptr(), rows);
+        assert_eq!(
+            serde_json::to_value(&target).unwrap(),
+            serde_json::to_value(&source).unwrap()
+        );
+    }
 
     /// コメントの `w:date` は Word と同じ形（ローカルの壁時計に `Z` を付け、秒まで）で書く。
     ///
@@ -39513,6 +40478,119 @@ mod tests {
     }
 
     #[test]
+    fn recorded_text_command_reuses_absence_scans_only_for_its_paragraph() {
+        use crate::commands::CommandExecutor;
+        use crate::headless_api::apply_headless_commands_with_executor_to_document;
+        use jade_docx_headless_api::{HeadlessCommand, HeadlessEditRequest};
+
+        // A stale history entry must not authorize reuse after no new command;
+        // paragraph splits and a different paragraph must keep fresh scans too.
+        for kind in 0..4 {
+            let (mut renderer, _) = recording_renderer();
+            let mut model =
+                WordDocument::from_document(doc_with_paragraph_texts(&vec!["plain"; 3000]));
+            let options = Options::default();
+            renderer
+                .render_with_numbering_rc(
+                    Rc::clone(model.document.as_ref().unwrap()),
+                    &options,
+                    None,
+                    None,
+                    None,
+                    None,
+                )
+                .unwrap();
+            let scans = renderer.comment_anchor_document_scans.get();
+            let mut executor = CommandExecutor::new();
+            let range = SelectionRange::collapsed(TextPosition::new(0, 0));
+            let mut selection = Some(range);
+            let cache = renderer.local_text_edit_cache();
+            renderer.drop_document_cache();
+            assert_eq!(Rc::strong_count(model.document.as_ref().unwrap()), 1);
+            assert_eq!(Rc::weak_count(model.document.as_ref().unwrap()), 0);
+            let revision = executor.history_revision();
+            let command = if kind == 2 {
+                HeadlessCommand::InsertParagraphBreak {
+                    paragraph: 0,
+                    offset: 0,
+                    count: 1,
+                }
+            } else {
+                HeadlessCommand::ReplaceRange {
+                    start_paragraph: 0,
+                    start_offset: 0,
+                    end_paragraph: 0,
+                    end_offset: 0,
+                    text: "あ".to_string(),
+                }
+            };
+            selection = apply_headless_commands_with_executor_to_document(
+                &mut model,
+                &mut executor,
+                selection,
+                &HeadlessEditRequest {
+                    commands: vec![command],
+                },
+            )
+            .unwrap();
+            assert!(selection.is_some());
+            let before = if kind == 1 {
+                executor.history_revision()
+            } else {
+                revision
+            };
+            renderer.restore_local_text_edit_cache_after_command(
+                cache,
+                &model,
+                usize::from(kind == 3),
+                &executor,
+                before,
+            );
+            renderer
+                .render_bounded_to_page_with_parts(
+                    Rc::clone(model.document.as_ref().unwrap()),
+                    &options,
+                    None,
+                    None,
+                    None,
+                    1,
+                )
+                .unwrap();
+            let expected_new_scans = usize::from(kind != 0);
+            assert_eq!(
+                renderer.comment_anchor_document_scans.get(),
+                scans + expected_new_scans,
+                "kind={kind}"
+            );
+            assert_eq!(
+                renderer.horizontal_float_wrap_cache.scans, expected_new_scans,
+                "kind={kind}"
+            );
+            assert!(renderer
+                .layout_debug_lines()
+                .iter()
+                .any(|line| !line.text.is_empty()));
+            let actual = serde_json::to_value(renderer.layout_debug_lines()).unwrap();
+            let (mut fresh, _) = recording_renderer();
+            fresh
+                .render_bounded_to_page_with_parts(
+                    Rc::clone(model.document.as_ref().unwrap()),
+                    &options,
+                    None,
+                    None,
+                    None,
+                    1,
+                )
+                .unwrap();
+            assert_eq!(
+                actual,
+                serde_json::to_value(fresh.layout_debug_lines()).unwrap(),
+                "kind={kind}"
+            );
+        }
+    }
+
+    #[test]
     fn local_text_edit_cache_detects_new_anchors_and_floating_wrap() {
         for kind in 0..4 {
             let (mut renderer, _) = recording_renderer();
@@ -40782,6 +41860,68 @@ mod tests {
         assert!(renderer.last_layout_complete());
         assert_eq!(renderer.selection.paragraphs().len(), layouts);
         assert_eq!(later_caret(&renderer), before);
+    }
+
+    #[test]
+    fn stable_edit_reuses_offscreen_cell_registry_allocation_and_hit_targets() {
+        let texts = vec!["body paragraph"; 160];
+        let mut document = doc_with_paragraph_texts(&texts);
+        let table = table_measure_document().body.unwrap().elements.remove(0);
+        document.body.as_mut().unwrap().elements.insert(120, table);
+        let mut renderer = CanvasRenderer::with_host(
+            Box::new(PageCountingHost {
+                inner: NonCanvasHost {
+                    painter: jade_painter::recording::RecordingPainter::new(),
+                },
+                extra_pages: 0,
+                cursor: 0,
+            }),
+            false,
+        )
+        .unwrap();
+        renderer.set_layout_page_limit(None);
+        renderer
+            .render_with_numbering_rc(
+                Rc::new(document.clone()),
+                &Options::default(),
+                None,
+                None,
+                None,
+                None,
+            )
+            .unwrap();
+        assert!(renderer.last_layout_complete());
+        let pages = renderer.host.page_count();
+        assert!(pages >= 3);
+        let cells = renderer.selection.cell_layouts();
+        assert_eq!(cells.len(), 4);
+        assert!(cells[0].top > renderer.page_height);
+        let allocation = cells.as_ptr();
+        let before = serde_json::to_value(cells).unwrap();
+        let hits: Vec<_> = cells
+            .iter()
+            .map(|cell| {
+                let x = (cell.left + cell.right) * 0.5;
+                let y = (cell.top + cell.bottom) * 0.5;
+                (x, y, renderer.selection.cell_at_point(x, y))
+            })
+            .collect();
+        assert!(hits.iter().all(|(_, _, hit)| hit.is_some()));
+
+        rerender_with_centred_first_paragraph(&mut renderer, &document, |renderer, height| {
+            renderer.arm_fast_replay_for_complete_layout_edit(0, height);
+        });
+        assert!(renderer.last_fast_replay_stable());
+        assert!(renderer.last_layout_complete());
+        assert_eq!(renderer.host.page_count(), pages);
+        assert_eq!(renderer.selection.cell_layouts().as_ptr(), allocation);
+        assert_eq!(
+            serde_json::to_value(renderer.selection.cell_layouts()).unwrap(),
+            before
+        );
+        for (x, y, hit) in hits {
+            assert_eq!(renderer.selection.cell_at_point(x, y), hit);
+        }
     }
 
     #[test]
@@ -42225,7 +43365,15 @@ mod tests {
                     .body
                     .and_then(|body| body.elements.into_iter().next())
                     .and_then(|element| match element {
-                        BodyElement::Paragraph(paragraph) => Some(*paragraph),
+                        BodyElement::Paragraph(mut paragraph) => {
+                            for run in &mut paragraph.runs {
+                                run.properties = Some(RunProperties {
+                                    font_family: Some("Recording Test".into()),
+                                    ..Default::default()
+                                });
+                            }
+                            Some(*paragraph)
+                        }
                         _ => None,
                     })
                     .expect("one paragraph"),
@@ -42250,6 +43398,85 @@ mod tests {
             }),
             ..Document::default()
         }
+    }
+
+    /// 網かけ's stripe and cross patterns are drawn as Word draws them: the
+    /// fill behind, then the lines in the pattern's colour on a grid fixed
+    /// to the page — bands for 横縞 / 縦縞, diagonals for 斜線 and 斜め格子.
+    #[test]
+    fn paragraph_shading_patterns_draw_their_lines() {
+        use jade_painter::recording::Op;
+
+        let shaded = |value: &str| {
+            let mut document = doc_with_paragraph_texts(&["Striped paragraph"]);
+            if let Some(BodyElement::Paragraph(paragraph)) = document
+                .body
+                .as_mut()
+                .and_then(|body| body.elements.first_mut())
+            {
+                paragraph
+                    .properties
+                    .get_or_insert_with(Default::default)
+                    .shading = Some(jade_docx_reader::document::Shading {
+                    val: Some(value.to_ascii_lowercase()),
+                    color: Some("#C00000".to_string()),
+                    fill: Some("#FFFF00".to_string()),
+                });
+            }
+            let (mut renderer, painter) = recording_renderer();
+            renderer
+                .render(&document, &Options::default())
+                .expect("render");
+            painter.ops()
+        };
+        // The fills set in each colour, then what each drew.
+        let drawn = |ops: &[Op], color: &str| {
+            let mut current = String::new();
+            let mut rects = Vec::new();
+            let mut lines = 0;
+            for op in ops {
+                match op {
+                    Op::SetFillStyle(style) => current = style.clone(),
+                    Op::FillRect(x, y, w, h) if current.eq_ignore_ascii_case(color) => {
+                        rects.push((*x, *y, *w, *h))
+                    }
+                    Op::SetStrokeStyle(style) if style.eq_ignore_ascii_case(color) => lines += 1,
+                    _ => {}
+                }
+            }
+            (rects, lines)
+        };
+
+        let stripes = shaded("horzStripe");
+        let (fill, _) = drawn(&stripes, "#FFFF00");
+        assert!(!fill.is_empty(), "the fill is behind the stripes");
+        let (bands, _) = drawn(&stripes, "#C00000");
+        assert!(bands.len() > 2, "{bands:?}");
+        assert!(bands
+            .iter()
+            .all(|band| band.3 <= 2.0 + 1e-9 && band.2 > 50.0));
+        // On the page's grid, 4 px apart.
+        let whole: Vec<_> = bands
+            .iter()
+            .filter(|band| (band.3 - 2.0).abs() < 1e-9)
+            .collect();
+        assert!(whole
+            .windows(2)
+            .all(|pair| (pair[1].1 - pair[0].1 - 4.0).abs() < 1e-9));
+        assert!(whole.iter().all(|band| (band.1 / 4.0).fract().abs() < 1e-9));
+
+        let columns = shaded("thinVertStripe");
+        let (bands, _) = drawn(&columns, "#C00000");
+        assert!(bands.len() > 2 && bands.iter().all(|band| band.2 <= 1.0 + 1e-9));
+
+        let trellis = shaded("diagCross");
+        let (_, lines) = drawn(&trellis, "#C00000");
+        assert!(lines > 4, "the diagonals are stroked: {lines}");
+
+        // A percentage stays one blended colour.
+        let tint = shaded("pct50");
+        let (bands, lines) = drawn(&tint, "#C00000");
+        assert!(bands.is_empty() && lines == 0);
     }
 
     /// Re-renders the table from scratch (as an edit above it would), returning
@@ -42512,6 +43739,86 @@ mod tests {
             assert!((lines[0].start_x - drawn_x).abs() < 1e-9);
             assert!((lines[0].fragments[0].x - drawn_x).abs() < 1e-9);
         }
+    }
+
+    #[test]
+    fn math_block_spacing_follows_word_line_unit_precedence() {
+        // Word: nonzero line units override points; zero line units leave
+        // the points in force.
+        for (spacing, before_lines, after_lines, before_pt, after_pt) in [
+            (
+                r#"w:before="40" w:beforeLines="100" w:after="40" w:afterLines="100""#,
+                1.0,
+                1.0,
+                0.0,
+                0.0,
+            ),
+            (
+                r#"w:before="240" w:beforeLines="0" w:after="240" w:afterLines="0""#,
+                0.0,
+                0.0,
+                12.0,
+                12.0,
+            ),
+        ] {
+            let xml = format!(
+                r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><w:body><w:p><w:pPr><w:spacing {spacing}/></w:pPr><m:oMathPara><m:oMath><m:r><m:t>x</m:t></m:r></m:oMath></m:oMathPara></w:p></w:body></w:document>"#
+            );
+            let document = jade_docx_reader::DocumentParser::new()
+                .parse_document_xml(&xml)
+                .unwrap();
+            let BodyElement::Math(math) = &document.body.unwrap().elements[0] else {
+                panic!("math block missing");
+            };
+            let (mut renderer, _) = recording_renderer();
+            let top = renderer.current_y;
+            renderer.render_math_block(math).unwrap();
+            let line = &renderer.layout_debug_lines()[0];
+            let before = line.height * before_lines + points_to_px(before_pt);
+            let after = line.height * after_lines + points_to_px(after_pt);
+            assert!((line.top - top - before).abs() < 1e-9, "{spacing}");
+            assert!(
+                (renderer.current_y - top - before - line.height - after).abs() < 1e-9,
+                "{spacing}"
+            );
+        }
+    }
+
+    #[test]
+    fn mac_text_box_spacing_follows_word_line_unit_precedence() {
+        fn spacing_px(spacing: &Spacing, before: bool) -> f64 {
+            let format = TextBoxParagraphFormat {
+                style: ParagraphStyle {
+                    word_platform: jade_docx_layout::line_metrics::WordLayoutPlatform::Mac,
+                    ..ParagraphStyle::default()
+                },
+                indent_left_px: 0.0,
+                marker: None,
+                spacing: Some(spacing),
+                preceding_spacing_after_px: 0.0,
+            };
+            CanvasRenderer::<jade_painter::recording::RecordingPainter>::text_box_paragraph_spacing_px(
+                &format, 20.0, before,
+            )
+        }
+        let lines_win = Spacing {
+            before: Some(2.0),
+            after: Some(2.0),
+            before_lines: Some(1.0),
+            after_lines: Some(1.0),
+            ..Spacing::default()
+        };
+        assert_eq!(spacing_px(&lines_win, true), 20.0);
+        assert_eq!(spacing_px(&lines_win, false), 20.0);
+        let zero_lines = Spacing {
+            before: Some(12.0),
+            after: Some(12.0),
+            before_lines: Some(0.0),
+            after_lines: Some(0.0),
+            ..Spacing::default()
+        };
+        assert_eq!(spacing_px(&zero_lines, true), 16.0);
+        assert_eq!(spacing_px(&zero_lines, false), 16.0);
     }
 
     /// A pageless renderer painting into a shared [`RecordingPainter`], for
@@ -43858,20 +45165,14 @@ mod tests {
         use jade_painter::recording::{Op, RecordingPainter};
         let renderer = renderer_measuring(&[("a", 10.0), ("b", 10.0), ("c", 10.0)]);
         let painter = RecordingPainter::new();
+        let style = renderer.resolve_applied_run_style_cached(Some(&RunProperties {
+            font_family: Some("Recording Test".into()),
+            ..Default::default()
+        }));
 
         let (width, _) = renderer
             .draw_text_with_spacing(
-                &painter,
-                "abc",
-                5.0,
-                50.0,
-                0.0,
-                &test_applied_style(1.0),
-                None,
-                None,
-                None,
-                None,
-                None,
+                &painter, "abc", 5.0, 50.0, 0.0, &style, None, None, None, None, None,
             )
             .expect("recording backend is infallible");
 
@@ -46922,6 +48223,234 @@ mod tests {
         );
     }
 
+    /// The text a render of `document` paints, in drawing order, with the
+    /// clock the date fields read set to 2026/05/30.
+    fn painted_document_text(document: &Document) -> String {
+        painted_document_text_with_options(document, &Options::default())
+    }
+
+    fn painted_document_text_with_options(document: &Document, options: &Options) -> String {
+        use jade_painter::recording::Op;
+        let (mut renderer, painter) = recording_renderer();
+        renderer.set_current_datetime(Some(FieldDateTime {
+            year: 2026,
+            month: 5,
+            day: 30,
+            hour: 9,
+            minute: 5,
+            second: 0,
+            weekday: 6,
+        }));
+        renderer.render(document, options).unwrap();
+        painter
+            .ops()
+            .into_iter()
+            .filter_map(|op| match op {
+                Op::FillText(text, _, _) => Some(text),
+                _ => None,
+            })
+            .collect()
+    }
+
+    fn docx_with_document_xml(document_xml: &str) -> Vec<u8> {
+        use std::io::Write;
+        let mut cursor = std::io::Cursor::new(Vec::new());
+        {
+            let mut zip = zip::ZipWriter::new(&mut cursor);
+            let options = zip::write::SimpleFileOptions::default();
+            for (name, part) in [
+                (
+                    "[Content_Types].xml",
+                    r#"<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="xml" ContentType="application/xml"/><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>"#,
+                ),
+                (
+                    "_rels/.rels",
+                    r#"<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>"#,
+                ),
+                ("word/document.xml", document_xml),
+            ] {
+                zip.start_file(name, options).unwrap();
+                zip.write_all(part.as_bytes()).unwrap();
+            }
+            zip.finish().unwrap();
+        }
+        cursor.into_inner()
+    }
+
+    #[test]
+    fn a_field_whose_result_spans_runs_is_drawn_once() {
+        // A field's result can be held by several runs: Word saves a result
+        // formatted in two ways as two `w:r`s, and a comment anchored inside
+        // a result splits it around the comment's reference. Each run carries
+        // the field, and each drew the field's whole value: the date showed
+        // two or three times.
+        use crate::headless_api::apply_headless_commands_to_document;
+        use jade_docx_headless_api::{HeadlessCommand, HeadlessEditRequest};
+        let date = "2026/05/30";
+        let count = |document: &Document| painted_document_text(document).matches(date).count();
+
+        let saved = docx_with_document_xml(
+            r#"<?xml version="1.0" encoding="UTF-8"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:t xml:space="preserve">Dated </w:t></w:r><w:fldSimple w:instr=" DATE \@ &quot;yyyy/MM/dd&quot; "><w:r><w:t>2026/</w:t></w:r><w:r><w:rPr><w:b/></w:rPr><w:t>11/02</w:t></w:r></w:fldSimple></w:p></w:body></w:document>"#,
+        );
+        let model = futures::executor::block_on(WordDocument::load(&saved, &Options::default()))
+            .expect("load");
+        assert_eq!(count(model.document.as_ref().unwrap()), 1, "two saved runs");
+
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../public/fixtures/word-mac-probe-kern-default.docx"),
+        )
+        .expect("read fixture");
+        let mut model =
+            futures::executor::block_on(WordDocument::load(&bytes, &Options::default()))
+                .expect("load");
+        apply_headless_commands_to_document(
+            &mut model,
+            &HeadlessEditRequest {
+                commands: vec![
+                    HeadlessCommand::InsertDateTimeField {
+                        start_paragraph: 4,
+                        start_offset: 14,
+                        end_paragraph: 4,
+                        end_offset: 38,
+                        time: false,
+                        format: "yyyy/MM/dd".into(),
+                        cached_text: "2026/11/02".into(),
+                    },
+                    HeadlessCommand::AddComment {
+                        start_paragraph: 2,
+                        start_offset: Some(19),
+                        end_paragraph: 4,
+                        end_offset: Some(22),
+                        text: "c".into(),
+                        author: Some("reviewer".into()),
+                        initials: None,
+                        date: None,
+                    },
+                ],
+            },
+        )
+        .expect("edited");
+        assert_eq!(
+            count(model.document.as_ref().unwrap()),
+            1,
+            "commented inside"
+        );
+        let reloaded = futures::executor::block_on(WordDocument::load(
+            &model.export_docx().expect("export"),
+            &Options::default(),
+        ))
+        .expect("reload");
+        assert_eq!(count(reloaded.document.as_ref().unwrap()), 1, "reloaded");
+    }
+
+    #[test]
+    fn adjacent_fields_without_source_ids_remain_distinct() {
+        let field = r#"<w:fldSimple w:instr=" DATE \@ &quot;yyyy/MM/dd&quot; "><w:r><w:t>saved</w:t></w:r></w:fldSimple>"#;
+        let bytes = docx_with_document_xml(&format!(
+            r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p>{field}{field}</w:p></w:body></w:document>"#,
+        ));
+        let model = futures::executor::block_on(WordDocument::load(&bytes, &Options::default()))
+            .expect("load");
+        let mut document = model.document.as_ref().unwrap().as_ref().clone();
+        assert_eq!(
+            painted_document_text(&document)
+                .matches("2026/05/30")
+                .count(),
+            2
+        );
+        let BodyElement::Paragraph(paragraph) = &mut document.body.as_mut().unwrap().elements[0]
+        else {
+            panic!("paragraph");
+        };
+        // In-memory documents may have fields without backing XML. Lack of
+        // an identity is not evidence that adjacent fields are the same one.
+        for run in &mut paragraph.runs {
+            run.field.as_mut().unwrap().source_field_id = None;
+        }
+        assert_eq!(
+            painted_document_text(&document)
+                .matches("2026/05/30")
+                .count(),
+            2
+        );
+    }
+
+    #[test]
+    fn a_split_date_field_survives_its_hidden_deleted_first_run() {
+        let bytes = docx_with_document_xml(
+            r#"<?xml version="1.0" encoding="UTF-8"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:fldSimple w:instr=" DATE \@ &quot;yyyy/MM/dd&quot; "><w:del w:id="1" w:author="reviewer" w:date="2026-11-03T00:00:00Z"><w:r><w:delText>2026/</w:delText></w:r></w:del><w:r><w:t>11/02</w:t></w:r></w:fldSimple></w:p></w:body></w:document>"#,
+        );
+        let model = futures::executor::block_on(WordDocument::load(&bytes, &Options::default()))
+            .expect("load");
+        let paragraph = model.paragraph(0).expect("paragraph");
+        assert_eq!(paragraph.runs.len(), 2);
+        assert!(run_is_hidden_revision(&paragraph.runs[0], false, false));
+        assert!(!run_is_hidden_revision(&paragraph.runs[1], false, false));
+        assert_eq!(
+            paragraph.runs[0].field.as_ref().unwrap().source_field_id,
+            paragraph.runs[1].field.as_ref().unwrap().source_field_id,
+        );
+        assert_eq!(
+            painted_document_text(model.document.as_ref().unwrap())
+                .matches("2026/05/30")
+                .count(),
+            1,
+            "the surviving result must render when its preceding result run is hidden",
+        );
+    }
+
+    #[test]
+    fn split_date_fields_follow_visible_runs_in_each_revision_view() {
+        let plain = "<w:r><w:t>part</w:t></w:r>";
+        let deleted =
+            r#"<w:del w:id="1" w:author="reviewer"><w:r><w:delText>part</w:delText></w:r></w:del>"#;
+        let inserted = r#"<w:ins w:id="2" w:author="reviewer"><w:r><w:t>part</w:t></w:r></w:ins>"#;
+        let hidden = "<w:r><w:rPr><w:vanish/></w:rPr><w:t>part</w:t></w:r>";
+        for (name, result, original, markup) in [
+            ("deleted first", format!("{deleted}{plain}"), false, false),
+            ("inserted first", format!("{inserted}{plain}"), true, false),
+            ("hidden first", format!("{hidden}{plain}"), false, false),
+            (
+                "deleted middle",
+                format!("{plain}{deleted}{plain}"),
+                false,
+                false,
+            ),
+            ("shown deletion", format!("{deleted}{plain}"), false, true),
+        ] {
+            for complex in [false, true] {
+                let field = if complex {
+                    format!(
+                        r#"<w:r><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:instrText> DATE \@ "yyyy/MM/dd" </w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r>{result}<w:r><w:fldChar w:fldCharType="end"/></w:r>"#,
+                    )
+                } else {
+                    format!(
+                        r#"<w:fldSimple w:instr=" DATE \@ &quot;yyyy/MM/dd&quot; ">{result}</w:fldSimple>"#
+                    )
+                };
+                let bytes = docx_with_document_xml(&format!(
+                    r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p>{field}</w:p></w:body></w:document>"#,
+                ));
+                let model =
+                    futures::executor::block_on(WordDocument::load(&bytes, &Options::default()))
+                        .expect("load");
+                let options = Options {
+                    render_original: original,
+                    render_changes: markup,
+                    ..Options::default()
+                };
+                assert_eq!(
+                    painted_document_text_with_options(model.document.as_ref().unwrap(), &options)
+                        .matches("2026/05/30")
+                        .count(),
+                    1,
+                    "{name}, complex={complex}",
+                );
+            }
+        }
+    }
+
     #[test]
     fn resolve_run_field_mergefield_does_not_duplicate_editable_result_text() {
         let renderer = test_renderer();
@@ -47097,7 +48626,7 @@ mod tests {
             resolved_value: None,
         };
 
-        // PRIVATE/ADDIN data belongs to the field container rather than the
+        // PRIVATE data belongs to the field container rather than the
         // visible document. Bypass the common cache fallback just like SET and
         // ASK, while retaining the cache in the model for round-trip fidelity.
         assert_eq!(renderer.resolve_run_field(&field), None);
@@ -48882,6 +50411,197 @@ mod tests {
                 .and_then(|props| props.color.as_deref()),
             Some("#ff0000")
         );
+    }
+
+    #[test]
+    fn windows_paragraph_font_cache_matches_fresh_after_public_edits() {
+        use jade_docx_layout::line_metrics::{set_word_layout_platform, WordLayoutPlatform};
+        set_word_layout_platform(WordLayoutPlatform::Windows);
+        let (mut renderer, _) = recording_renderer();
+        renderer.document_east_asian_rules.use_east_asian_layout = true;
+        let mut paragraph = Paragraph {
+            runs: vec![text_box_run(
+                "漢a",
+                Some(RunProperties {
+                    font_family: Some("MS Mincho".into()),
+                    font_size: Some(12.0),
+                    ..Default::default()
+                }),
+            )],
+            properties: None,
+            node_id: Some(XmlNodeId::new(17)),
+            comment_ranges: Vec::new(),
+            comment_markers: Vec::new(),
+        };
+        let compare = |renderer: &CanvasRenderer<jade_painter::recording::RecordingPainter>,
+                       paragraph: &Paragraph| {
+            let cached = renderer.paragraph_word_font_lines_pt(paragraph).unwrap();
+            renderer.paragraph_font_cache.borrow_mut().clear();
+            let fresh = renderer.paragraph_word_font_lines_pt(paragraph).unwrap();
+            assert_eq!(cached, fresh);
+            assert_eq!(
+                renderer.paragraph_word_font_lines_pt(paragraph).unwrap(),
+                fresh
+            );
+            fresh
+        };
+        let original = compare(&renderer, &paragraph);
+        let base = paragraph.runs[0].properties.clone().unwrap();
+        for size in [9.0, 12.0, 40.0] {
+            for baseline in [None, Some("superscript"), Some("subscript")] {
+                let mut props = base.clone();
+                props.font_size = Some(size);
+                props.baseline = baseline.map(Rc::from);
+                props.bold = Some(true);
+                props.italic = Some(true);
+                props.underline = Some(true);
+                props.underline_kind = Some(Rc::from("double"));
+                props.border = Some(BorderEdge {
+                    val: Some("single".into()),
+                    size_eighths: Some(8),
+                    space: Some(2),
+                    ..Default::default()
+                });
+                paragraph.runs[0].properties = Some(props);
+                compare(&renderer, &paragraph);
+                paragraph.runs[0].properties.as_mut().unwrap().color = Some("FF0000".into());
+                compare(&renderer, &paragraph);
+            }
+        }
+        paragraph.runs[0].properties = Some(base);
+        paragraph.runs[0].properties.as_mut().unwrap().font_size = Some(40.0);
+        let larger = compare(&renderer, &paragraph);
+        assert_ne!(original, larger);
+        paragraph.runs[0].text = "a".into();
+        compare(&renderer, &paragraph);
+        paragraph.runs.push(text_box_run(
+            "漢",
+            Some(RunProperties {
+                font_family: Some("Yu Gothic".into()),
+                font_size: Some(24.0),
+                ..Default::default()
+            }),
+        ));
+        compare(&renderer, &paragraph);
+        paragraph.runs[1].text.clear();
+        paragraph.runs[1].note_separator = Some(NoteSeparatorKind::Separator);
+        compare(&renderer, &paragraph);
+        renderer.document_east_asian_rules.use_east_asian_layout = false;
+        compare(&renderer, &paragraph);
+        renderer.document_east_asian_rules.space_for_underline = true;
+        paragraph.runs[0].properties.as_mut().unwrap().underline = Some(true);
+        compare(&renderer, &paragraph);
+        renderer.current_doc_grid_char_spacing_px = Some(1.0);
+        compare(&renderer, &paragraph);
+        paragraph.runs.truncate(1);
+        paragraph.runs[0].properties = None;
+        paragraph.properties = Some(ParagraphProperties {
+            style: Some(Rc::from("Caption")),
+            ..Default::default()
+        });
+        for size in [20, 40] {
+            let xml = format!(
+                r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+                <w:style w:type="paragraph" w:styleId="Caption"><w:rPr>
+                <w:rFonts w:ascii="MS Mincho" w:eastAsia="MS Mincho"/><w:sz w:val="{size}"/>
+                </w:rPr></w:style></w:styles>"#
+            );
+            renderer.set_style_context(Some(Rc::new(StylesPart::from_xml(&xml).unwrap())), None);
+            compare(&renderer, &paragraph);
+        }
+        paragraph.properties.as_mut().unwrap().style = None;
+        compare(&renderer, &paragraph);
+        // A copied paragraph can retain its XML ID; content validation still applies.
+        let mut replacement = paragraph.clone();
+        replacement.runs[0].properties = Some(RunProperties {
+            font_family: Some("MS Mincho".into()),
+            font_size: Some(9.0),
+            ..Default::default()
+        });
+        compare(&renderer, &replacement);
+        replacement.runs[0].text = " \t".into();
+        compare(&renderer, &replacement);
+        set_word_layout_platform(WordLayoutPlatform::Mac);
+        compare(&renderer, &paragraph);
+    }
+
+    #[test]
+    #[ignore]
+    fn benchmark_paragraph_word_font_lines_shared_styles() {
+        use jade_docx_layout::line_metrics::{set_word_layout_platform, WordLayoutPlatform};
+        const ITERS: usize = 40;
+        set_word_layout_platform(WordLayoutPlatform::Mac);
+        for (name, bytes) in [
+            (
+                "contract",
+                include_bytes!("../../../public/fixtures/contract.docx").as_slice(),
+            ),
+            (
+                "nda",
+                include_bytes!("../../../public/fixtures/nda.docx").as_slice(),
+            ),
+            (
+                "yokohama",
+                include_bytes!("../../../public/fixtures/yokohama.docx").as_slice(),
+            ),
+        ] {
+            let model = futures::executor::block_on(WordDocument::load(bytes, &Options::default()))
+                .unwrap();
+            let mut renderer = test_renderer();
+            renderer.set_style_context(
+                model.styles_part.clone().map(Rc::new),
+                model.loaded_theme_part().map(Rc::new),
+            );
+            let paragraphs: Vec<_> = model
+                .document
+                .as_ref()
+                .unwrap()
+                .body
+                .as_ref()
+                .unwrap()
+                .elements
+                .iter()
+                .filter_map(|element| {
+                    if let BodyElement::Paragraph(paragraph) = element {
+                        Some(paragraph.as_ref())
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+            assert!(!paragraphs.is_empty());
+            let measure = || {
+                paragraphs
+                    .iter()
+                    .map(|paragraph| renderer.paragraph_word_font_lines_pt(paragraph).unwrap())
+                    .collect::<Vec<_>>()
+            };
+            let expected = measure();
+            let mut hasher = FxHasher::default();
+            expected
+                .iter()
+                .map(|(east_asian, single)| {
+                    (east_asian.map(f32::to_bits), single.map(f32::to_bits))
+                })
+                .collect::<Vec<_>>()
+                .hash(&mut hasher);
+            let mut samples = Vec::new();
+            for _ in 0..5 {
+                let start = Instant::now();
+                for _ in 0..ITERS {
+                    black_box(measure());
+                }
+                samples.push(start.elapsed().as_micros());
+                assert_eq!(
+                    measure(),
+                    expected,
+                    "cached font-line geometry must remain stable"
+                );
+            }
+            samples.sort_unstable();
+            println!("paragraph-font-lines fixture={name} paragraphs={} iterations={ITERS} median_us={} geometry_hash={:016x}", paragraphs.len(), samples[2], hasher.finish());
+        }
+        set_word_layout_platform(WordLayoutPlatform::Windows);
     }
 
     #[test]
@@ -51635,6 +53355,66 @@ mod tests {
     }
 
     #[test]
+    fn separator_only_notes_keep_lazy_edit_fast_paths() {
+        for endnotes in [false, true] {
+            let mut document = doc_with_paragraph_texts(&["body"]);
+            let notes = if endnotes {
+                &mut document.endnotes
+            } else {
+                &mut document.footnotes
+            };
+            for (id, kind) in [
+                ("-1", "separator"),
+                ("0", "continuationSeparator"),
+                ("1", "continuationNotice"),
+            ] {
+                notes.insert(
+                    id.into(),
+                    crate::document::Note {
+                        id: id.into(),
+                        note_type: Some(kind.into()),
+                        body: doc_with_paragraph_texts(&["separator definition"])
+                            .body
+                            .unwrap()
+                            .elements,
+                    },
+                );
+            }
+            let (mut renderer, _) = recording_renderer();
+            let mut options = options_for_seek_tests();
+            options.render_footnotes = true;
+            options.render_endnotes = true;
+            renderer.render(&document, &options).unwrap();
+            assert!(
+                !renderer.document_has_notes,
+                "separator definitions do not lay out notes"
+            );
+            assert!(renderer.is_forward_window_seek_compatible_options(&options));
+            // A real note, including an empty or unknown-type note, must still
+            // retain the conservative note-layout guards.
+            for note_type in [None, Some("normal"), Some("unknown")] {
+                let mut with_note = document.clone();
+                let notes = if endnotes {
+                    &mut with_note.endnotes
+                } else {
+                    &mut with_note.footnotes
+                };
+                notes.insert(
+                    "2".into(),
+                    crate::document::Note {
+                        id: "2".into(),
+                        note_type: note_type.map(str::to_owned),
+                        ..Default::default()
+                    },
+                );
+                renderer.render(&with_note, &options).unwrap();
+                assert!(renderer.document_has_notes);
+                assert!(!renderer.is_forward_window_seek_compatible_options(&options));
+            }
+        }
+    }
+
+    #[test]
     fn unchecked_cache_replay_is_disabled_when_notes_enabled() {
         let mut renderer = test_renderer();
         renderer.document_has_notes = true;
@@ -51727,6 +53507,22 @@ mod tests {
                 position: if spanning { text.len() } else { 9 },
             });
         }
+        // Word-generated packages retain these definitions even when the
+        // body has no actual notes. Include them in the bounded-work and
+        // independent full-render comparisons for anchored-comment edits.
+        for notes in [&mut document.footnotes, &mut document.endnotes] {
+            notes.insert(
+                "-1".into(),
+                crate::document::Note {
+                    id: "-1".into(),
+                    note_type: Some("separator".into()),
+                    body: doc_with_paragraph_texts(&["separator definition"])
+                        .body
+                        .unwrap()
+                        .elements,
+                },
+            );
+        }
         let comments = HashMap::from([(
             "1".into(),
             DocumentComment {
@@ -51738,6 +53534,8 @@ mod tests {
         )]);
         let mut options = options_for_seek_tests();
         options.render_comments = true;
+        options.render_footnotes = true;
+        options.render_endnotes = true;
         options.show_crop_marks = false;
         let (host, pages) = PerPageRecordingHost::new(100);
         let mut renderer = CanvasRenderer::with_host(Box::new(host), false).unwrap();
@@ -52884,6 +54682,108 @@ mod tests {
     }
 
     #[test]
+    fn indexed_wrap_cache_capacity_preserves_bounds_and_never_shrinks() {
+        let mut renderer = test_renderer();
+        for (paragraphs, expected_capacity) in [
+            (0, 8192),
+            (8192, 9280),
+            (9000, 10189),
+            (1, 10189),
+            (40000, 32768),
+            (0, 32768),
+        ] {
+            let word_doc =
+                WordDocument::from_document(doc_with_paragraph_texts(&vec!["a"; paragraphs]));
+            renderer.prepare_wrap_cache_capacity(&word_doc);
+            assert_eq!(
+                renderer.paragraph_wrap_cache.borrow().stats().capacity,
+                expected_capacity,
+                "paragraphs: {paragraphs}"
+            );
+            assert_eq!(
+                renderer.wrap_cache_sized_doc,
+                Some(Rc::as_ptr(word_doc.document.as_ref().unwrap()) as usize)
+            );
+        }
+    }
+
+    #[test]
+    fn indexed_wrap_cache_capacity_tracks_in_place_structural_edits() {
+        let mut renderer = test_renderer();
+        let mut word_doc = WordDocument::from_document(doc_with_paragraph_texts(&vec!["a"; 8192]));
+        renderer.prepare_wrap_cache_capacity(&word_doc);
+        assert_eq!(
+            renderer.paragraph_wrap_cache.borrow().stats().capacity,
+            9280
+        );
+        let identity = renderer.wrap_cache_sized_doc;
+        assert!(word_doc.split_paragraph_at(0, 0));
+        assert_eq!(
+            Some(Rc::as_ptr(word_doc.document.as_ref().unwrap()) as usize),
+            identity,
+            "a uniquely owned snapshot can change without a new Rc address"
+        );
+        renderer.prepare_wrap_cache_capacity(&word_doc);
+        assert_eq!(
+            renderer.paragraph_wrap_cache.borrow().stats().capacity,
+            9281
+        );
+    }
+
+    #[test]
+    fn indexed_wrap_cache_capacity_matches_fallback_across_snapshot_edits() {
+        let mut document = note_test_document();
+        document.body.as_mut().unwrap().elements.extend(
+            doc_with_paragraph_texts(&vec!["a"; 8192])
+                .body
+                .unwrap()
+                .elements,
+        );
+        let mut word_doc = WordDocument::from_document(document);
+        let (prepared_host, prepared_pages) = PerPageRecordingHost::new(4);
+        let (fallback_host, fallback_pages) = PerPageRecordingHost::new(4);
+        let mut prepared = CanvasRenderer::with_host(Box::new(prepared_host), false).unwrap();
+        let mut fallback = CanvasRenderer::with_host(Box::new(fallback_host), false).unwrap();
+        for renderer in [&mut prepared, &mut fallback] {
+            renderer.set_layout_page_limit(Some(1));
+        }
+        let options = options_for_seek_tests();
+        for expected_capacity in [9283, 9284] {
+            prepared.prepare_wrap_cache_capacity(&word_doc);
+            for renderer in [&mut prepared, &mut fallback] {
+                renderer
+                    .render_with_numbering_rc(
+                        Rc::clone(word_doc.document.as_ref().unwrap()),
+                        &options,
+                        None,
+                        None,
+                        None,
+                        None,
+                    )
+                    .unwrap();
+                assert_eq!(
+                    renderer.paragraph_wrap_cache.borrow().stats().capacity,
+                    expected_capacity
+                );
+            }
+            assert_eq!(prepared.page_count(), fallback.page_count());
+            assert_eq!(
+                prepared.last_layout_complete(),
+                fallback.last_layout_complete()
+            );
+            assert_eq!(
+                prepared.last_render_body_element_count,
+                fallback.last_render_body_element_count
+            );
+            assert!(!prepared_pages[0].ops().is_empty());
+            assert_eq!(prepared_pages[0].ops(), fallback_pages[0].ops());
+            let old = Rc::clone(word_doc.document.as_ref().unwrap());
+            assert!(word_doc.split_paragraph_at(0, 0));
+            assert!(!Rc::ptr_eq(&old, word_doc.document.as_ref().unwrap()));
+        }
+    }
+
+    #[test]
     fn paragraph_wrap_cache_ensure_capacity_grows_only() {
         let mut cache = ParagraphWrapCache::new(512);
         cache.ensure_capacity(4000);
@@ -52956,6 +54856,23 @@ mod tests {
         assert!(renderer
             .try_prepare_visible_window_page_seek(&options)
             .is_none());
+    }
+
+    #[test]
+    fn decoration_repaint_limit_covers_visible_pages_without_expanding_the_host_limit() {
+        let mut renderer = test_renderer();
+        renderer.pageless_mode = false;
+        renderer.set_layout_page_limit(None);
+        assert_eq!(renderer.decoration_repaint_page_limit(), None);
+        renderer.set_visible_page_range(Some(2..=4));
+        assert_eq!(renderer.decoration_repaint_page_limit(), Some(4));
+        renderer.set_layout_page_limit(Some(80));
+        assert_eq!(renderer.decoration_repaint_page_limit(), Some(4));
+        renderer.set_layout_page_limit(Some(3));
+        assert_eq!(renderer.decoration_repaint_page_limit(), Some(3));
+        renderer.pageless_mode = true;
+        assert_eq!(renderer.decoration_repaint_page_limit(), Some(3));
+        assert_eq!(renderer.layout_page_limit(), Some(3));
     }
 
     #[test]
@@ -53495,6 +55412,20 @@ mod tests {
     }
 
     fn check_anchored_comment_layout_extensions(chunks: &[usize], spanning: bool, kind: u8) {
+        check_review_layout_extensions(chunks, spanning, kind, false);
+    }
+
+    fn check_review_layout_extensions(chunks: &[usize], spanning: bool, kind: u8, markup: bool) {
+        check_review_layout_extensions_with_numbering(chunks, spanning, kind, markup, false);
+    }
+
+    fn check_review_layout_extensions_with_numbering(
+        chunks: &[usize],
+        spanning: bool,
+        kind: u8,
+        markup: bool,
+        numbered: bool,
+    ) {
         use jade_painter::recording::Op;
         let text = if spanning {
             "commented words ".repeat(300)
@@ -53518,6 +55449,38 @@ mod tests {
                 page_break_before: Some(!spanning && index > 0 && index % 3 == 0),
                 ..Default::default()
             });
+            if markup {
+                for (kind, text) in [
+                    (RevisionKind::Inserted, " inserted "),
+                    (RevisionKind::Deleted, " deleted "),
+                    (RevisionKind::MovedFrom, " moved from "),
+                    (RevisionKind::MovedTo, " moved to "),
+                ] {
+                    // The numbered forward-seek path is eligible only while
+                    // no deleted/moved-from runs affect counter advancement.
+                    if numbered && matches!(kind, RevisionKind::Deleted | RevisionKind::MovedFrom) {
+                        continue;
+                    }
+                    let mut run = build_revision_run(kind);
+                    run.text = text.into();
+                    run.revision.as_mut().unwrap().author = Some("reviewer".into());
+                    paragraph.runs.push(run);
+                }
+                let props = paragraph.properties.as_mut().unwrap();
+                props.has_format_change = true;
+                props.format_change_author = Some(Rc::from("reviewer"));
+                if index % 5 == 0 {
+                    props.mark_revision = build_revision_run(RevisionKind::Deleted)
+                        .revision
+                        .map(Box::new);
+                }
+            }
+            if numbered {
+                paragraph.properties.as_mut().unwrap().numbering = Some(Numbering {
+                    id: Some("1".into()),
+                    level: Some(0),
+                });
+            }
             match kind {
                 0 => paragraph.comment_ranges.push(CommentRange {
                     id: "1".into(),
@@ -53543,7 +55506,14 @@ mod tests {
         )]);
         let mut options = options_for_seek_tests();
         options.render_comments = true;
+        options.render_changes = markup;
+        options.show_formatting_marks = markup;
         options.show_crop_marks = false;
+        let numbering = if numbered {
+            Some(markup_seek_numbering())
+        } else {
+            markup.then(NumberingPart::new)
+        };
         let (host, pages) = PerPageRecordingHost::new(100);
         let mut renderer = CanvasRenderer::with_host(Box::new(host), false).unwrap();
         renderer.set_visible_page_range(Some(2..=2));
@@ -53552,7 +55522,7 @@ mod tests {
             .render_with_numbering_rc(
                 Rc::clone(&document),
                 &options,
-                None,
+                numbering.as_ref(),
                 None,
                 None,
                 Some(&comments),
@@ -53604,7 +55574,7 @@ mod tests {
                 .render_layout_with_numbering_rc(
                     Rc::clone(&document),
                     &options,
-                    None,
+                    numbering.as_ref(),
                     None,
                     None,
                     metadata,
@@ -53634,7 +55604,7 @@ mod tests {
                 .render_layout_with_numbering_rc(
                     Rc::clone(&document),
                     &options,
-                    None,
+                    numbering.as_ref(),
                     None,
                     None,
                     metadata,
@@ -53661,7 +55631,7 @@ mod tests {
                 .render_with_numbering_rc(
                     Rc::clone(&document),
                     &options,
-                    None,
+                    numbering.as_ref(),
                     None,
                     None,
                     metadata,
@@ -53672,7 +55642,7 @@ mod tests {
                 .render_with_numbering_rc(
                     Rc::clone(&document),
                     &options,
-                    None,
+                    numbering.as_ref(),
                     None,
                     None,
                     metadata,
@@ -53716,6 +55686,100 @@ mod tests {
     }
 
     #[test]
+    fn markup_layout_extensions_match_full_render_without_numbering() {
+        check_review_layout_extensions(&[2, 2, 4, 2], false, 0, true);
+        check_review_layout_extensions(&[2, 2, 2], true, 1, true);
+    }
+
+    #[test]
+    fn numbered_markup_layout_extensions_match_full_render() {
+        check_review_layout_extensions_with_numbering(&[2, 2, 4, 2], false, 0, true, true);
+        check_review_layout_extensions_with_numbering(&[2, 2, 2], true, 1, true, true);
+    }
+
+    proptest::proptest! {
+        #![proptest_config(proptest::test_runner::Config::with_cases(32))]
+        #[test]
+        fn numbered_markup_chunk_histories_match_full_render(
+            chunks in proptest::collection::vec(1usize..4, 2..6),
+            kind in 0u8..3,
+        ) {
+            check_review_layout_extensions_with_numbering(&chunks, false, kind, true, true);
+        }
+    }
+
+    #[test]
+    fn markup_only_allows_forward_seek_without_numbering() {
+        let mut renderer = test_renderer();
+        let mut options = options_for_seek_tests();
+        options.render_changes = true;
+        assert!(renderer.is_forward_window_seek_compatible_options(&options));
+        assert!(!renderer.is_seek_compatible_options(&options));
+        // WordDocument::load installs an empty part even without numbering.xml.
+        renderer.last_numbering_part = Some(Rc::new(NumberingPart::new()));
+        assert!(renderer.is_forward_window_seek_compatible_options(&options));
+        assert!(!renderer.is_seek_compatible_options(&options));
+        renderer.last_numbering_part = Some(Rc::new(markup_seek_numbering()));
+        assert!(!renderer.is_forward_window_seek_compatible_options(&options));
+        assert!(!renderer.is_seek_compatible_options(&options));
+        renderer.last_document_deleted_runs = Some(false);
+        assert!(renderer.is_forward_window_seek_compatible_options(&options));
+        assert!(!renderer.is_seek_compatible_options(&options));
+        renderer.last_document_deleted_runs = Some(true);
+        assert!(!renderer.is_forward_window_seek_compatible_options(&options));
+    }
+
+    #[test]
+    fn markup_seek_rechecks_deleted_runs_after_document_replacement() {
+        let (host, _) = PerPageRecordingHost::new(2);
+        let mut renderer = CanvasRenderer::with_host(Box::new(host), false).unwrap();
+        let mut options = options_for_seek_tests();
+        options.render_changes = true;
+        let numbering = markup_seek_numbering();
+        let plain = Rc::new(doc_with_paragraph_texts(&["plain"]));
+        renderer
+            .render_with_numbering_rc(
+                Rc::clone(&plain),
+                &options,
+                Some(&numbering),
+                None,
+                None,
+                None,
+            )
+            .unwrap();
+        assert_eq!(renderer.last_document_deleted_runs, Some(false));
+        assert!(renderer.is_forward_window_seek_compatible_options(&options));
+        let mut deleted = (*plain).clone();
+        if let BodyElement::Paragraph(p) = &mut deleted.body.as_mut().unwrap().elements[0] {
+            p.runs[0].revision = build_revision_run(RevisionKind::Deleted).revision;
+        }
+        renderer
+            .render_with_numbering_rc(
+                Rc::new(deleted),
+                &options,
+                Some(&numbering),
+                None,
+                None,
+                None,
+            )
+            .unwrap();
+        assert_eq!(renderer.last_document_deleted_runs, Some(true));
+        assert!(!renderer.is_forward_window_seek_compatible_options(&options));
+        renderer.drop_document_cache();
+        assert_eq!(renderer.last_document_deleted_runs, None);
+        renderer.restore_document_cache(Rc::clone(&plain));
+        assert_eq!(renderer.last_document_deleted_runs, None);
+        renderer
+            .render_with_numbering_rc(plain, &options, Some(&numbering), None, None, None)
+            .unwrap();
+        assert!(renderer.is_forward_window_seek_compatible_options(&options));
+    }
+
+    fn markup_seek_numbering() -> NumberingPart {
+        NumberingPart::from_xml(r#"<w:numbering xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:abstractNum w:abstractNumId="0"><w:lvl w:ilvl="0"><w:start w:val="1"/><w:numFmt w:val="decimal"/><w:lvlText w:val="%1."/></w:lvl></w:abstractNum><w:num w:numId="1"><w:abstractNumId w:val="0"/></w:num></w:numbering>"#).unwrap()
+    }
+
+    #[test]
     fn anchored_comment_layout_extension_keeps_unsafe_mode_fallbacks() {
         for mode in 0..5 {
             let mut renderer = test_renderer();
@@ -53732,7 +55796,10 @@ mod tests {
                     renderer.document_has_notes = true;
                     options.render_endnotes = true;
                 }
-                2 => options.render_changes = true,
+                2 => {
+                    options.render_changes = true;
+                    renderer.last_numbering_part = Some(Rc::new(markup_seek_numbering()));
+                }
                 3 => renderer.mirror_margins = true,
                 _ => renderer.current_text_direction = Some(TextDirection::TbRl),
             }
@@ -54676,6 +56743,136 @@ mod tests {
         assert!(painted[0].1.contains("17.00pt"), "{painted:?}");
         assert!(painted[1].1.contains("23.00pt"), "{painted:?}");
         assert!(painted[1].1.contains("bold"), "{painted:?}");
+    }
+
+    fn vertical_document(paragraphs: &[&str]) -> Document {
+        Document {
+            body: Some(Body {
+                elements: paragraphs
+                    .iter()
+                    .map(|text| {
+                        BodyElement::from_paragraph(Paragraph {
+                            runs: vec![text_box_run(text, None)],
+                            properties: None,
+                            node_id: None,
+                            comment_ranges: Vec::new(),
+                            comment_markers: Vec::new(),
+                        })
+                    })
+                    .collect(),
+            }),
+            default_section: Some(SectionProperties {
+                text_direction: Some(TextDirection::TbRl),
+                ..Default::default()
+            }),
+            ..Default::default()
+        }
+    }
+
+    /// Where each of `wanted` is painted, in paint order.
+    fn painted_at(ops: &[jade_painter::recording::Op], wanted: &[&str]) -> Vec<(String, f64, f64)> {
+        use jade_painter::recording::Op;
+        ops.iter()
+            .filter_map(|op| match op {
+                Op::FillText(text, x, y) if wanted.contains(&text.as_str()) => {
+                    Some((text.clone(), *x, *y))
+                }
+                _ => None,
+            })
+            .collect()
+    }
+
+    #[test]
+    fn vertical_section_paragraphs_follow_one_another_right_to_left() {
+        let (mut renderer, painter) = recording_renderer();
+        renderer
+            .render(
+                &vertical_document(&["あい", "か", "さ"]),
+                &options_for_seek_tests(),
+            )
+            .unwrap();
+        let painted = painted_at(&painter.ops(), &["あ", "か", "さ"]);
+        assert_eq!(painted.len(), 3, "{painted:?}");
+        // Each paragraph starts a column of its own, left of the one before,
+        // at the top of the same page.
+        assert!(
+            painted[0].1 > painted[1].1 && painted[1].1 > painted[2].1,
+            "{painted:?}"
+        );
+        assert!((painted[0].2 - painted[1].2).abs() < 0.5, "{painted:?}");
+        assert!((painted[1].2 - painted[2].2).abs() < 0.5, "{painted:?}");
+        assert_eq!(renderer.current_page_number, 1);
+    }
+
+    #[test]
+    fn vertical_section_empty_paragraph_takes_a_column() {
+        let (mut renderer, painter) = recording_renderer();
+        renderer
+            .render(
+                &vertical_document(&["あ", "", "か"]),
+                &options_for_seek_tests(),
+            )
+            .unwrap();
+        let painted = painted_at(&painter.ops(), &["あ", "か"]);
+        let (mut without, plain) = recording_renderer();
+        without
+            .render(&vertical_document(&["あ", "か"]), &options_for_seek_tests())
+            .unwrap();
+        let tight = painted_at(&plain.ops(), &["あ", "か"]);
+        assert!(
+            painted[0].1 - painted[1].1 > (tight[0].1 - tight[1].1) * 1.5,
+            "{painted:?} vs {tight:?}"
+        );
+    }
+
+    #[test]
+    fn vertical_section_breaks_to_a_new_page_when_its_columns_run_out() {
+        let (mut renderer, painter) = recording_renderer();
+        let paragraphs = vec!["あ"; 80];
+        renderer
+            .render(&vertical_document(&paragraphs), &options_for_seek_tests())
+            .unwrap();
+        let painted = painted_at(&painter.ops(), &["あ"]);
+        assert_eq!(painted.len(), 80);
+        // The first column of the second page is back at the right.
+        let first_right = painted[0].1;
+        let wrapped = painted
+            .windows(2)
+            .position(|pair| pair[1].1 > pair[0].1)
+            .expect("a column goes back to the right on a new page");
+        assert!(
+            (painted[wrapped + 1].1 - first_right).abs() < 0.5,
+            "{painted:?}"
+        );
+    }
+
+    #[test]
+    fn vertical_section_draws_punctuation_in_its_vertical_form() {
+        use jade_painter::recording::Op;
+        let (mut renderer, painter) = recording_renderer();
+        renderer
+            .render(&vertical_document(&["「あ。」"]), &options_for_seek_tests())
+            .unwrap();
+        let ops = painter.ops();
+        let mut font = String::new();
+        let mut shaped = Vec::new();
+        for op in &ops {
+            match op {
+                Op::SetFont(value) => font = value.clone(),
+                Op::FillShapedText(text, ..) => shaped.push((text.clone(), font.clone())),
+                _ => {}
+            }
+        }
+        // The font's own vertical alternates, as Word draws them.
+        for mark in ["「", "。", "」"] {
+            assert!(
+                shaped
+                    .iter()
+                    .any(|(text, font)| text == mark && font.starts_with("ot:vert ")),
+                "{mark}: {shaped:?}"
+            );
+        }
+        assert!(!shaped.iter().any(|(text, _)| text == "あ"), "{shaped:?}");
     }
 
     #[test]
@@ -57246,6 +59443,88 @@ mod tests {
                 assert_eq!(widths[0], widths[1], "{story}, draw={draw}");
             }
         }
+    }
+
+    #[test]
+    fn watermark_fixed_font_size_is_independent_of_its_shape_box() {
+        use jade_painter::recording::{Op, RecordingPainter};
+        for size in [1.0_f32, 1.005, 72.0] {
+            let painter = RecordingPainter::with_width_per_char(10.0);
+            let mut renderer = CanvasRenderer::with_host(
+                Box::new(NonCanvasHost {
+                    painter: painter.clone(),
+                }),
+                false,
+            )
+            .expect("recording renderer");
+            renderer.watermark_text = Some("TEST".to_string());
+            renderer.watermark_style = Some(jade_docx_reader::document::WatermarkStyle {
+                size_pt: Some(size),
+                fit_shape: Some(false),
+                horizontal: true,
+                width_pt: Some(200.0),
+                height_pt: Some(80.0),
+                ..Default::default()
+            });
+            painter.clear();
+            renderer.draw_watermark().expect("draw fixed watermark");
+            let ops = painter.ops();
+            let font = ops
+                .iter()
+                .find_map(|op| match op {
+                    Op::SetFont(font) => Some(font),
+                    _ => None,
+                })
+                .expect("font");
+            let actual: f64 = font.split("px").next().unwrap().parse().expect("CSS size");
+            assert!(
+                (actual - f64::from(size) * 96.0 / 72.0).abs() < 1e-9,
+                "{font}"
+            );
+            assert!(!ops.iter().any(|op| matches!(op, Op::Scale(..))), "{ops:?}");
+            assert_eq!(
+                ops.iter()
+                    .filter(|op| matches!(op, Op::FillText(text, ..) if text == "TEST"))
+                    .count(),
+                1
+            );
+            assert_eq!(ops.first(), Some(&Op::Save));
+            assert_eq!(ops.last(), Some(&Op::Restore));
+        }
+    }
+
+    #[test]
+    fn watermark_fitshape_keeps_stretching_to_the_imported_shape_box() {
+        use jade_painter::recording::{Op, RecordingPainter};
+        let painter = RecordingPainter::with_width_per_char(10.0);
+        let mut renderer = CanvasRenderer::with_host(
+            Box::new(NonCanvasHost {
+                painter: painter.clone(),
+            }),
+            false,
+        )
+        .expect("recording renderer");
+        renderer.watermark_text = Some("TEST".to_string());
+        renderer.watermark_style = Some(jade_docx_reader::document::WatermarkStyle {
+            size_pt: Some(72.0),
+            fit_shape: Some(true),
+            horizontal: true,
+            width_pt: Some(200.0),
+            height_pt: Some(80.0),
+            ..Default::default()
+        });
+        painter.clear();
+        renderer.draw_watermark().expect("draw fitted watermark");
+        let ops = painter.ops();
+        assert!(ops.iter().any(|op| matches!(op, Op::Scale(x, y) if (*x * 40.0 - 200.0 * 96.0 / 72.0).abs() < 1e-9 && *y == 1.0)), "{ops:?}");
+        assert_eq!(
+            ops.iter()
+                .filter(|op| matches!(op, Op::FillText(text, ..) if text == "TEST"))
+                .count(),
+            1
+        );
+        assert_eq!(ops.first(), Some(&Op::Save));
+        assert_eq!(ops.last(), Some(&Op::Restore));
     }
 
     #[test]
@@ -65314,7 +67593,7 @@ mod tests {
     }
 
     #[test]
-    fn known_word_auto_line_box_avoids_substitute_metrics_but_syncs_painter() {
+    fn known_word_auto_and_minimum_line_boxes_avoid_substitute_metrics_but_sync_painter() {
         use jade_docx_layout::line_metrics::{set_word_layout_platform, WordLayoutPlatform};
         use jade_painter::recording::Op;
         set_word_layout_platform(WordLayoutPlatform::Mac);
@@ -65323,6 +67602,7 @@ mod tests {
             ("Aptos", 12.0, 2500.0, 2048.0),
             ("Aptos Display", 20.0, 2500.0, 2048.0),
             ("MS Mincho", 12.0, 332.0, 256.0),
+            ("Yu Mincho", 12.0, 2935.0, 2048.0),
             ("Yu Gothic Light", 11.0, 2935.0, 2048.0),
         ] {
             let (renderer, painter) = recording_renderer();
@@ -65373,8 +67653,8 @@ mod tests {
             assert!(sizing.is_none());
             assert!(!renderer.font_line_box_height_cache.borrow().is_empty());
 
-            // A minimum line may still consume the host box; knowing the face
-            // alone must not suppress that fallback outside auto sizing.
+            // Minimum spacing uses the same known Word box as auto spacing,
+            // floored by the authored minimum instead of a line multiplier.
             paragraph.runs[0].properties.as_mut().unwrap().font_family = Some(face.into());
             let spacing = paragraph
                 .properties
@@ -65384,8 +67664,33 @@ mod tests {
                 .as_mut()
                 .unwrap();
             spacing.line_rule = Some("atLeast".into());
-            spacing.line = Some(25.0);
+            spacing.line = Some(12.0);
             renderer.font_line_box_height_cache.borrow_mut().clear();
+            let (minimum_height, sizing) = renderer
+                .resolve_paragraph_line_height_plan(&paragraph)
+                .unwrap();
+            assert!((minimum_height - (size * single_units / units_per_em).max(12.0)).abs() < 1e-4);
+            assert!(sizing.is_some());
+            assert!(renderer.font_line_box_height_cache.borrow().is_empty());
+
+            paragraph
+                .properties
+                .as_mut()
+                .unwrap()
+                .spacing
+                .as_mut()
+                .unwrap()
+                .line = Some(25.0);
+            let (minimum_height, sizing) = renderer
+                .resolve_paragraph_line_height_plan(&paragraph)
+                .unwrap();
+            assert!((minimum_height - (size * single_units / units_per_em).max(25.0)).abs() < 1e-4);
+            assert!(sizing.is_some());
+            assert!(renderer.font_line_box_height_cache.borrow().is_empty());
+
+            // Unknown faces still measure the host line box for minimum spacing.
+            paragraph.runs[0].properties.as_mut().unwrap().font_family =
+                Some("Unknown Layout Face".into());
             let (minimum_height, sizing) = renderer
                 .resolve_paragraph_line_height_plan(&paragraph)
                 .unwrap();
@@ -65454,7 +67759,13 @@ mod tests {
     /// paragraphs must resolve their line height exactly like body paragraphs.
     #[test]
     fn table_cell_paragraphs_share_the_body_line_height_resolution() {
-        let renderer = test_renderer();
+        let renderer = CanvasRenderer::with_host(
+            Box::new(NonCanvasHost {
+                painter: jade_painter::recording::RecordingPainter::new(),
+            }),
+            false,
+        )
+        .expect("recording renderer");
         // The test host has no canvas, so size the second paragraph through
         // its paragraph mark instead of a visible run: the mark takes part in
         // line-height resolution without touching the painter.

@@ -5,7 +5,7 @@ use crate::chart::{
     parse_chart_xml_for_preview, validate_chart,
 };
 use crate::commands::text_edit::{
-    apply_text_edit, create_run_from_template, normalize_break_runs,
+    apply_text_edit, create_run_from_template, is_empty_field_result, normalize_break_runs,
     rebase_comment_anchors_for_edit, run_carries_content, split_runs_at_preserving_source,
     FieldChars, ZeroWidthRuns,
 };
@@ -29,9 +29,9 @@ use crate::document::{
     TocEntry, TocOptions, WrapMode, WrapPolygon, WrapPolygonPoint, PAGE_BREAK_CHAR,
 };
 use crate::docx_xml::{
-    attach_block_xml_ids, attach_document_xml_ids, attach_text_box_xml_ids, clear_block_xml_ids,
-    is_ruby_run, is_transparent_run_container, DocxXmlDocument, DocxXmlError, XmlAttribute,
-    XmlElement, XmlNode, XmlNodeId,
+    attach_block_xml_ids, attach_document_xml_ids, attach_paragraph_xml_ids,
+    attach_text_box_xml_ids, clear_block_xml_ids, is_ruby_run, is_transparent_run_container,
+    DocxXmlDocument, DocxXmlError, XmlAttribute, XmlElement, XmlNode, XmlNodeId,
 };
 use crate::field_datetime::{format_word_date, parse_core_property_datetime};
 use crate::number_format::format_note_marker;
@@ -277,6 +277,7 @@ pub(crate) fn rebase_paragraph_style_properties(
     old: &ParagraphProperties,
     new: &ParagraphProperties,
     declared: impl Fn(&str) -> bool,
+    declared_attribute: impl Fn(&str, &str) -> bool,
 ) {
     macro_rules! rebase {
         ($($field:ident => $tag:literal),* $(,)?) => {
@@ -290,8 +291,6 @@ pub(crate) fn rebase_paragraph_style_properties(
     rebase!(
         alignment => "w:jc",
         bidi => "w:bidi",
-        spacing => "w:spacing",
-        indent => "w:ind",
         tabs => "w:tabs",
         adjust_right_indent => "w:adjustRightInd",
         snap_to_grid => "w:snapToGrid",
@@ -307,6 +306,36 @@ pub(crate) fn rebase_paragraph_style_properties(
         shading => "w:shd",
         borders => "w:pBdr",
         contextual_spacing => "w:contextualSpacing",
+    );
+
+    // A direct compound element overrides only the attributes it declares.
+    // Rebase inherited groups together so point/character and point/line
+    // alternatives cannot leave stale twins behind.
+    macro_rules! rebase_groups {
+        ($field:ident, $tag:literal, $($($member:ident),+ => [$($attribute:literal),+]);+ $(;)?) => {{
+            let mut value = props.$field.clone().unwrap_or_default();
+            let prior = old.$field.clone().unwrap_or_default();
+            let next = new.$field.clone().unwrap_or_default();
+            $(
+                if !($(declared_attribute($tag, $attribute))||+)
+                    && $(value.$member == prior.$member)&&+
+                {
+                    $(value.$member = next.$member.clone();)+
+                }
+            )+
+            props.$field = (value != Default::default()).then_some(value);
+        }};
+    }
+    rebase_groups!(spacing, "w:spacing",
+        before, before_lines, before_auto => ["w:before", "w:beforeLines", "w:beforeAutospacing"];
+        after, after_lines, after_auto => ["w:after", "w:afterLines", "w:afterAutospacing"];
+        line => ["w:line"];
+        line_rule => ["w:line", "w:lineRule"];
+    );
+    rebase_groups!(indent, "w:ind",
+        left, start, left_chars, start_chars => ["w:left", "w:start", "w:leftChars", "w:startChars"];
+        right, end, right_chars, end_chars => ["w:right", "w:end", "w:rightChars", "w:endChars"];
+        first_line, hanging, first_line_chars, hanging_chars => ["w:firstLine", "w:hanging", "w:firstLineChars", "w:hangingChars"];
     );
 }
 
@@ -367,11 +396,17 @@ pub(crate) fn keep_declared_paragraph_properties(
     if declared("w:spacing") {
         let mut spacing = props.spacing.clone().unwrap_or_default();
         let direct = before.spacing.clone().unwrap_or_default();
+        // Each side is kept whole, as a load fills it: a declared
+        // `w:afterLines` beside the new style's `w:after` left both, and
+        // parts of the layout that read points first spaced the paragraph
+        // by the style's points instead of the lines it declares.
         keep_attributes!(spacing, direct, "w:spacing",
-            before => ["w:before"],
-            after => ["w:after"],
-            before_lines => ["w:beforeLines"],
-            after_lines => ["w:afterLines"],
+            before => ["w:before", "w:beforeLines", "w:beforeAutospacing"],
+            before_lines => ["w:before", "w:beforeLines", "w:beforeAutospacing"],
+            before_auto => ["w:before", "w:beforeLines", "w:beforeAutospacing"],
+            after => ["w:after", "w:afterLines", "w:afterAutospacing"],
+            after_lines => ["w:after", "w:afterLines", "w:afterAutospacing"],
+            after_auto => ["w:after", "w:afterLines", "w:afterAutospacing"],
             line => ["w:line"],
             // The reader gives a `w:line` without a rule the rule "auto".
             line_rule => ["w:line", "w:lineRule"],
@@ -381,19 +416,22 @@ pub(crate) fn keep_declared_paragraph_properties(
     if declared("w:ind") {
         let mut indent = props.indent.clone().unwrap_or_default();
         let direct = before.indent.clone().unwrap_or_default();
+        // Loading inherits each indentation group as a whole. A direct
+        // character value must not acquire a point twin from the new style;
+        // zero character values make that stale twin affect layout as well.
         keep_attributes!(indent, direct, "w:ind",
-            left => ["w:left"],
-            right => ["w:right"],
-            start => ["w:start"],
-            end => ["w:end"],
-            first_line => ["w:firstLine"],
-            hanging => ["w:hanging"],
-            left_chars => ["w:leftChars"],
-            right_chars => ["w:rightChars"],
-            start_chars => ["w:startChars"],
-            end_chars => ["w:endChars"],
-            first_line_chars => ["w:firstLineChars"],
-            hanging_chars => ["w:hangingChars"],
+            left => ["w:left", "w:start", "w:leftChars", "w:startChars"],
+            start => ["w:left", "w:start", "w:leftChars", "w:startChars"],
+            left_chars => ["w:left", "w:start", "w:leftChars", "w:startChars"],
+            start_chars => ["w:left", "w:start", "w:leftChars", "w:startChars"],
+            right => ["w:right", "w:end", "w:rightChars", "w:endChars"],
+            end => ["w:right", "w:end", "w:rightChars", "w:endChars"],
+            right_chars => ["w:right", "w:end", "w:rightChars", "w:endChars"],
+            end_chars => ["w:right", "w:end", "w:rightChars", "w:endChars"],
+            first_line => ["w:firstLine", "w:hanging", "w:firstLineChars", "w:hangingChars"],
+            hanging => ["w:firstLine", "w:hanging", "w:firstLineChars", "w:hangingChars"],
+            first_line_chars => ["w:firstLine", "w:hanging", "w:firstLineChars", "w:hangingChars"],
+            hanging_chars => ["w:firstLine", "w:hanging", "w:firstLineChars", "w:hangingChars"],
         );
         props.indent = (indent != Indent::default()).then_some(indent);
     }
@@ -773,6 +811,10 @@ pub enum BorderSide {
     Right,
     InsideH,
     InsideV,
+    /// A cell's 斜め罫線 (右下がり), `w:tl2br`.
+    Tl2br,
+    /// A cell's 斜め罫線 (右上がり), `w:tr2bl`.
+    Tr2bl,
 }
 
 impl BorderSide {
@@ -785,6 +827,8 @@ impl BorderSide {
             BorderSide::Right => "right",
             BorderSide::InsideH => "inside-h",
             BorderSide::InsideV => "inside-v",
+            BorderSide::Tl2br => "tl2br",
+            BorderSide::Tr2bl => "tr2bl",
         }
     }
 }
@@ -796,11 +840,17 @@ mod review_tools;
 pub use protection::{
     hash_password, EditableRange, EditingKind, EditingRestriction, PasswordHash, WriteProtection,
 };
+#[path = "word_document/ole_objects.rs"]
+pub mod ole_objects;
 #[path = "word_document/signature_lines.rs"]
 mod signature_lines;
 #[path = "word_document/table_revisions.rs"]
 mod table_revisions;
 pub use table_revisions::RowRevision;
+#[path = "word_document/page_fill.rs"]
+mod page_fill;
+#[path = "word_document/table_options.rs"]
+mod table_options;
 #[path = "word_document/table_tools.rs"]
 mod table_tools;
 
@@ -809,6 +859,9 @@ mod references;
 
 #[path = "word_document/hyphenation.rs"]
 mod hyphenation;
+
+#[path = "word_document/manuscript.rs"]
+pub mod manuscript;
 
 #[path = "word_document/format_state.rs"]
 pub mod format_state;
@@ -839,6 +892,10 @@ pub struct TableBorderSpec {
     pub right: Option<BorderEdgeSpec>,
     pub inside_h: Option<BorderEdgeSpec>,
     pub inside_v: Option<BorderEdgeSpec>,
+    /// A cell's diagonal from its top-left corner (斜め罫線 右下がり).
+    pub tl2br: Option<BorderEdgeSpec>,
+    /// A cell's diagonal from its top-right corner (斜め罫線 右上がり).
+    pub tr2bl: Option<BorderEdgeSpec>,
 }
 
 fn table_style_preset_fill(preset: &str, row: usize) -> Result<&'static str, String> {
@@ -898,6 +955,8 @@ impl TableBorderSpec {
             (BorderSide::Right, self.right.as_ref()),
             (BorderSide::InsideH, self.inside_h.as_ref()),
             (BorderSide::InsideV, self.inside_v.as_ref()),
+            (BorderSide::Tl2br, self.tl2br.as_ref()),
+            (BorderSide::Tr2bl, self.tr2bl.as_ref()),
         ];
         let mut validated = Vec::new();
         for (side, edge) in edges {
@@ -1067,7 +1126,10 @@ impl PageBorderSpec {
                 BorderSide::Bottom => borders.bottom = Some(edge),
                 BorderSide::Left => borders.left = Some(edge),
                 BorderSide::Right => borders.right = Some(edge),
-                BorderSide::InsideH | BorderSide::InsideV => unreachable!("page edges are outer"),
+                BorderSide::InsideH
+                | BorderSide::InsideV
+                | BorderSide::Tl2br
+                | BorderSide::Tr2bl => unreachable!("page edges are outer"),
             }
         }
         if !visible {
@@ -1250,7 +1312,7 @@ fn paragraph_text_metrics(paragraph: &Paragraph) -> DocumentTextMetrics {
     let text = paragraph
         .runs
         .iter()
-        .map(|run| run.text.as_str())
+        .map(Run::cached_display_text)
         .collect::<String>();
     let mut metrics = DocumentTextMetrics::default();
     let mut word_state = WordState::Outside;
@@ -1594,6 +1656,17 @@ pub struct CitationSourceInfo {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub url: Option<String>,
 }
+
+/// Source types supported by the citation editor and catalog validation.
+pub const CITATION_SOURCE_TYPES: [&str; 7] = [
+    "Book",
+    "JournalArticle",
+    "ArticleInAPeriodical",
+    "ConferenceProceedings",
+    "Report",
+    "InternetSite",
+    "Misc",
+];
 
 /// Word's editing-restriction metadata from `word/settings.xml`.
 ///
@@ -2669,7 +2742,17 @@ impl WordDocument {
             // editing a header/footer use the same defaults as the body.
             // The package is not given a styles part until an edit writes one.
             if !styles_read {
-                document.styles_part = Some(StylesPart::word_default());
+                document.styles_part = Some(
+                    if jade_docx_reader::word_platform::word_layout_platform()
+                        == jade_docx_reader::word_platform::WordLayoutPlatform::Windows
+                    {
+                        StylesPart::word_default_windows()
+                    } else {
+                        StylesPart::word_default()
+                    },
+                );
+            } else if let Some(styles) = document.styles_part.as_mut() {
+                styles.inherit_missing_word_run_defaults();
             }
 
             // Header/footer stories use the same style-numbering inheritance
@@ -2773,8 +2856,11 @@ impl WordDocument {
             parsed_doc.hyphenation = doc_settings.hyphenation;
             parsed_doc.book_fold_printing = doc_settings.book_fold_printing;
             parsed_doc.print_two_on_one = doc_settings.print_two_on_one;
-            parsed_doc.watermark_text =
-                Self::watermark_text_from_loaded_headers(&document, &parsed_doc, &doc_part);
+            let watermark = Self::watermark_from_loaded_headers(&document, &parsed_doc, &doc_part);
+            parsed_doc.watermark_style = watermark.as_ref().map(|(_, style)| style.clone());
+            parsed_doc.watermark_text = watermark.map(|(text, _)| text);
+            parsed_doc.manuscript_grid =
+                Self::manuscript_from_loaded_headers(&document, &parsed_doc, &doc_part);
             document.even_and_odd_headers = doc_settings.even_and_odd_headers;
 
             // Before the styles fill paragraphs in: the paragraph a textless
@@ -3825,12 +3911,7 @@ impl WordDocument {
                     );
                 }
                 BodyElement::Table(table) => {
-                    let table_style = table
-                        .style_name
-                        .as_deref()
-                        .and_then(|style_id| styles.resolve_table_style_id(style_id))
-                        .or_else(|| styles.default_table_style_id())
-                        .and_then(|style_id| styles.resolve_table_paragraph_properties(style_id));
+                    let table_style = Self::table_style_paragraph_defaults(table, styles);
                     for row in &mut table.rows {
                         for cell in &mut row.cells {
                             Self::apply_style_paragraph_defaults_to_blocks(
@@ -3843,6 +3924,39 @@ impl WordDocument {
                 }
                 BodyElement::Math(_) => {}
             }
+        }
+    }
+
+    /// The paragraph properties `table`'s style (or the package's default
+    /// table style) gives its cells.
+    fn table_style_paragraph_defaults(
+        table: &Table,
+        styles: &StylesPart,
+    ) -> Option<ParagraphProperties> {
+        table
+            .style_name
+            .as_deref()
+            .and_then(|style_id| styles.resolve_table_style_id(style_id))
+            .or_else(|| styles.default_table_style_id())
+            .and_then(|style_id| styles.resolve_table_paragraph_properties(style_id))
+    }
+
+    /// Fills into `cells`, new cells of a table whose style gives its cells
+    /// `table_style` (see [`Self::table_style_paragraph_defaults`]), what a
+    /// load fills into the cells it reads: their paragraphs' style defaults
+    /// under the table's style, and their runs' fonts. Nothing else bakes
+    /// them into cells made after the load: a new row's paragraphs lost
+    /// Normal's justification and the table style's spacing until the
+    /// document was reopened.
+    fn fill_new_cell_defaults(
+        table_style: Option<&ParagraphProperties>,
+        cells: &mut [TableCell],
+        styles: &StylesPart,
+    ) {
+        for cell in cells {
+            Self::apply_style_paragraph_defaults_to_blocks(&mut cell.blocks, styles, table_style);
+            Self::apply_table_styles_to_elements(&mut cell.blocks, styles);
+            Self::apply_run_font_defaults_to_elements(&mut cell.blocks, styles);
         }
     }
 
@@ -4043,16 +4157,39 @@ impl WordDocument {
         let Some(styles) = self.styles_part.take() else {
             return;
         };
-        let run_fonts = |paragraph: &Paragraph| {
-            paragraph
-                .runs
-                .iter()
-                .map(|run| {
+        // The fonts of every run the defaults reach: the paragraph's own and
+        // those in its text boxes. Compared on the paragraph's runs alone, a
+        // text box run the defaults gave a theme font (`minorEastAsia`) was
+        // never resolved to its face, and its East Asian text had none.
+        fn collect_run_fonts(paragraph: &Paragraph, out: &mut Vec<Option<RunFonts>>) {
+            for run in &paragraph.runs {
+                out.push(
                     run.properties
                         .as_ref()
-                        .and_then(|props| props.fonts.clone())
-                })
-                .collect::<Vec<_>>()
+                        .and_then(|props| props.fonts.clone()),
+                );
+                if let Some(text_box) = run.text_box.as_ref() {
+                    collect_block_run_fonts(&text_box.blocks, out);
+                }
+            }
+        }
+        fn collect_block_run_fonts(blocks: &[BodyElement], out: &mut Vec<Option<RunFonts>>) {
+            for block in blocks {
+                match block {
+                    BodyElement::Paragraph(paragraph) => collect_run_fonts(paragraph, out),
+                    BodyElement::Table(table) => {
+                        for cell in table.rows.iter().flat_map(|row| row.cells.iter()) {
+                            collect_block_run_fonts(&cell.blocks, out);
+                        }
+                    }
+                    BodyElement::Math(_) => {}
+                }
+            }
+        }
+        let run_fonts = |paragraph: &Paragraph| {
+            let mut fonts = Vec::new();
+            collect_run_fonts(paragraph, &mut fonts);
+            fonts
         };
         let filled = self
             .paragraph_mut(paragraph_index)
@@ -4072,6 +4209,21 @@ impl WordDocument {
         }
         if let Some(theme) = self.loaded_theme_part() {
             self.apply_theme_fonts_at(paragraph_index, &theme);
+        }
+    }
+
+    /// Fills into `paragraph`, made by an edit, what a load fills into the
+    /// paragraphs it reads: its style's paragraph defaults, its runs' fonts
+    /// and the theme's names for them. Without it a generated paragraph (a
+    /// table of contents' entry) showed no style spacing and the renderer's
+    /// fallback font until the document was reopened.
+    fn fill_load_defaults(&self, paragraph: &mut Paragraph) {
+        if let Some(styles) = self.styles_part.as_ref() {
+            Self::apply_style_paragraph_defaults_to_paragraph(paragraph, styles, None);
+            Self::apply_run_font_defaults_to_paragraph(paragraph, styles);
+        }
+        if let Some(theme) = self.loaded_theme_part() {
+            Self::apply_theme_to_paragraph(paragraph, &theme);
         }
     }
 
@@ -5417,14 +5569,49 @@ impl WordDocument {
             return;
         }
 
+        // Where each run's `w:r` sits among the first box's runs, before
+        // this sync. A copy was written from the same runs, so its run at
+        // that place is the run's own. Paired by order instead, a run with
+        // no `w:r` (text typed into a box whose text was all deleted) took
+        // the next run's: in the VML fallback the text went into a nested
+        // box's run, and the nested box was written a second time.
+        let primary_positions: Vec<Option<usize>> = {
+            let primary_runs: HashMap<XmlNodeId, usize> = raw
+                .element(content_ids[0])
+                .and_then(|content| Self::locate_text_box_paragraph_element(content, path))
+                .map(Self::collect_text_box_run_bindings)
+                .unwrap_or_default()
+                .into_iter()
+                .filter_map(|(run_id, _)| run_id)
+                .enumerate()
+                .map(|(position, id)| (id, position))
+                .collect();
+            paragraph
+                .runs
+                .iter()
+                .map(|run| {
+                    let id = run.node_id?;
+                    primary_runs.get(&id).copied()
+                })
+                .collect()
+        };
         let mut primary_bindings: Option<Vec<(Option<XmlNodeId>, Option<XmlNodeId>)>> = None;
         for (index, content_id) in content_ids.iter().copied().enumerate() {
             let override_bindings = if index == 0 {
                 None
             } else {
                 raw.element(content_id).and_then(|content| {
-                    Self::locate_text_box_paragraph_element(content, path)
-                        .map(Self::collect_text_box_run_bindings)
+                    Self::locate_text_box_paragraph_element(content, path).map(|element| {
+                        let elements = Self::collect_text_box_run_bindings(element);
+                        primary_positions
+                            .iter()
+                            .map(|position| {
+                                position
+                                    .and_then(|position| elements.get(position).copied())
+                                    .unwrap_or((None, None))
+                            })
+                            .collect::<Vec<_>>()
+                    })
                 })
             };
 
@@ -6399,6 +6586,19 @@ impl WordDocument {
         self.body_surface_indices.len()
     }
 
+    /// Plain-text snapshot of a body paragraph, including saved field results.
+    /// The index follows body paragraphs, excluding header and footer surfaces.
+    pub fn body_paragraph_text(&self, index: usize) -> Option<String> {
+        let paragraph = self.paragraph(self.surface_index_for_body(index)?)?;
+        Some(
+            paragraph
+                .runs
+                .iter()
+                .map(Run::cached_display_text)
+                .collect(),
+        )
+    }
+
     /// Returns Word-compatible text counts without serializing the complete
     /// document through wasm. After the first call, a normal keystroke only
     /// recounts the edited body paragraph.
@@ -6949,6 +7149,7 @@ impl WordDocument {
                 );
             }
         }
+        Self::resolve_page_fill(document, doc_part, package);
     }
 
     fn resolve_equation3_objects(
@@ -8025,7 +8226,7 @@ impl WordDocument {
                             // a later REF is responsible for displaying it.
                         }
                         crate::document::RunFieldKind::NonDisplay { .. } => {
-                            // PRIVATE/ADDIN contain opaque storage rather than
+                            // Non-displaying fields contain storage rather than
                             // a display value. Mark the field handled without
                             // copying either its cache or incidental run text.
                             emitted_field_text = true;
@@ -9305,16 +9506,43 @@ impl WordDocument {
     /// Existing header text, tables, fields, drawings, and extension nodes are
     /// preserved. Returns `false` for an exact normalized no-op.
     pub fn set_watermark_text(&mut self, text: Option<&str>) -> Result<bool, String> {
+        self.set_watermark(text.map(|text| WatermarkSpec {
+            text: text.to_string(),
+            style: jade_docx_reader::document::WatermarkStyle::default(),
+        }))
+    }
+
+    /// [`Self::set_watermark_text`] with the look ユーザー設定の透かし sets:
+    /// font, size (`None` = 自動), color, 半透明にする and 対角線上 / 水平.
+    /// The shape box is worked out here, as Word does, so the text fills the
+    /// page body at 自動 and has its size's extent otherwise.
+    pub fn set_watermark(&mut self, spec: Option<WatermarkSpec>) -> Result<bool, String> {
         if self.document.is_none() || self.raw_document.is_none() {
             return Err("document is unavailable".to_string());
         }
-        let normalized = Self::normalize_watermark_text(text)?;
-        let previous = self
-            .document
-            .as_deref()
-            .and_then(|document| document.watermark_text.clone());
-        if previous == normalized && self.referenced_header_watermarks_match(normalized.as_deref())
-        {
+        let normalized = match spec {
+            Some(spec) => {
+                let text = Self::normalize_watermark_text(Some(&spec.text))?
+                    .ok_or_else(|| "watermark text must not be empty".to_string())?;
+                let style = self.resolve_watermark_style(&text, spec.style)?;
+                Some((text, style))
+            }
+            None => None,
+        };
+        let previous = self.document.as_deref().and_then(|document| {
+            document
+                .watermark_text
+                .clone()
+                .map(|text| (text, document.watermark_style.clone().unwrap_or_default()))
+        });
+        let same = match (&previous, &normalized) {
+            (None, None) => true,
+            (Some((a, a_style)), Some((b, b_style))) => {
+                a == b && watermark_looks_alike(a_style, b_style)
+            }
+            _ => false,
+        };
+        if same && self.referenced_header_watermarks_match(normalized.as_ref()) {
             return Ok(false);
         }
 
@@ -9333,14 +9561,79 @@ impl WordDocument {
                 .and_then(|document| pick_hf_reference(document, HeaderFooterRole::Header, variant))
                 .is_some();
             if present {
-                self.sync_watermark_to_header_variant(variant, normalized.as_deref())?;
+                self.sync_watermark_to_header_variant(variant, normalized.as_ref())?;
             }
         }
 
         if let Some(document) = self.document_mut() {
-            document.watermark_text = normalized;
+            match normalized {
+                Some((text, style)) => {
+                    document.watermark_text = Some(text);
+                    document.watermark_style = Some(style);
+                }
+                None => {
+                    document.watermark_text = None;
+                    document.watermark_style = None;
+                }
+            }
         }
         Ok(true)
+    }
+
+    /// Checks the look and gives it the shape box Word would: at 自動 the
+    /// text fills the body (diagonally, its rotated box inside it), at a
+    /// size its own extent.
+    fn resolve_watermark_style(
+        &self,
+        text: &str,
+        mut style: jade_docx_reader::document::WatermarkStyle,
+    ) -> Result<jade_docx_reader::document::WatermarkStyle, String> {
+        if let Some(size) = style.size_pt {
+            if !size.is_finite() || !(1.0..=1638.0).contains(&size) {
+                return Err("watermark size must be between 1 and 1638 points".to_string());
+            }
+        }
+        style.fit_shape = Some(style.fit_shape.unwrap_or(style.size_pt.is_none()));
+        if style.fit_shape == Some(false) && style.size_pt.is_none() {
+            // The generated text path uses 1pt when no size was supplied.
+            // Keep the in-memory style identical to the fixed size on disk.
+            style.size_pt = Some(1.0);
+        }
+        style.color = normalize_watermark_color(&style.color)
+            .ok_or_else(|| format!("watermark color must be #RRGGBB, not {}", style.color))?;
+        if let Some(font) = style.font.as_deref() {
+            let font = font.trim();
+            if font.is_empty() || font.contains(['"', ';']) {
+                return Err("watermark font must be a font name".to_string());
+            }
+            style.font = Some(font.to_string());
+        }
+        let em_width = watermark_text_em_width(text).max(0.5);
+        let (width, height) = match style.size_pt {
+            Some(size) => (em_width * size, size),
+            None => {
+                let page = self.section_page_settings(None).unwrap_or_default();
+                let body_width = page.width.unwrap_or(595.3)
+                    - page.margin_left.unwrap_or(85.05)
+                    - page.margin_right.unwrap_or(85.05);
+                let body_height = page.height.unwrap_or(841.9)
+                    - page.margin_top.unwrap_or(99.25)
+                    - page.margin_bottom.unwrap_or(85.05);
+                let (body_width, body_height) = (body_width.max(72.0), body_height.max(72.0));
+                if style.horizontal {
+                    let width = body_width.min(body_height * em_width);
+                    (width, width / em_width)
+                } else {
+                    // The 45° box (w + h)/√2 square fits the body's shorter side.
+                    let side = body_width.min(body_height);
+                    let width = side * std::f32::consts::SQRT_2 / (1.0 + 1.0 / em_width);
+                    (width, width / em_width)
+                }
+            }
+        };
+        style.width_pt = Some((width * 100.0).round() / 100.0);
+        style.height_pt = Some((height * 100.0).round() / 100.0);
+        Ok(style)
     }
 
     fn normalize_watermark_text(text: Option<&str>) -> Result<Option<String>, String> {
@@ -9367,7 +9660,10 @@ impl WordDocument {
         Ok(Some(text.to_string()))
     }
 
-    fn referenced_header_watermarks_match(&mut self, expected: Option<&str>) -> bool {
+    fn referenced_header_watermarks_match(
+        &mut self,
+        expected: Option<&(String, jade_docx_reader::document::WatermarkStyle)>,
+    ) -> bool {
         for variant in [
             HeaderFooterVariant::Default,
             HeaderFooterVariant::First,
@@ -9389,18 +9685,26 @@ impl WordDocument {
             let Some(content) = self.read_xml_part_content(&path) else {
                 return false;
             };
-            if Self::watermark_text_from_xml(&content).as_deref() != expected {
+            let found = Self::watermark_from_xml(&content);
+            let alike = match (found.as_ref(), expected) {
+                (None, None) => true,
+                (Some((a, a_style)), Some((b, b_style))) => {
+                    a == b && watermark_looks_alike(a_style, b_style)
+                }
+                _ => false,
+            };
+            if !alike {
                 return false;
             }
         }
         true
     }
 
-    fn watermark_text_from_loaded_headers(
+    fn watermark_from_loaded_headers(
         document: &WordDocument,
         parsed_document: &Document,
         document_part: &DocumentPart,
-    ) -> Option<String> {
+    ) -> Option<(String, jade_docx_reader::document::WatermarkStyle)> {
         for variant in [
             HeaderFooterVariant::Default,
             HeaderFooterVariant::First,
@@ -9433,16 +9737,42 @@ impl WordDocument {
             else {
                 continue;
             };
-            if let Some(text) = Self::watermark_text_from_xml(content) {
-                return Some(text);
+            if let Some(watermark) = Self::watermark_from_xml(content) {
+                return Some(watermark);
             }
         }
         None
     }
 
-    fn watermark_text_from_xml(xml: &str) -> Option<String> {
+    /// The watermark text and the look of the shape that carries it.
+    fn watermark_from_xml(
+        xml: &str,
+    ) -> Option<(String, jade_docx_reader::document::WatermarkStyle)> {
         let document = DocxXmlDocument::parse(xml).ok()?;
-        Self::watermark_text_from_element(document.root())
+        let text = Self::watermark_text_from_element(document.root())?;
+        let style = Self::watermark_shape(document.root())
+            .map(|shape| watermark_style_from_shape(document.root(), shape))
+            .unwrap_or_default();
+        Some((text, style))
+    }
+
+    /// The `v:shape` whose text path is the watermark.
+    fn watermark_shape(element: &XmlElement) -> Option<&XmlElement> {
+        if element.name.rsplit(':').next() == Some("shape")
+            && element.children.iter().any(|child| {
+                matches!(child, XmlNode::Element(child)
+                if child.name.rsplit(':').next() == Some("textpath")
+                    && child.attributes.iter().any(|attribute| {
+                        attribute.name.rsplit(':').next() == Some("string")
+                    }))
+            })
+        {
+            return Some(element);
+        }
+        element.children.iter().find_map(|child| match child {
+            XmlNode::Element(child) => Self::watermark_shape(child),
+            _ => None,
+        })
     }
 
     fn watermark_text_from_element(element: &XmlElement) -> Option<String> {
@@ -9507,8 +9837,9 @@ impl WordDocument {
     fn sync_watermark_to_header_variant(
         &mut self,
         variant: HeaderFooterVariant,
-        text: Option<&str>,
+        watermark: Option<&(String, jade_docx_reader::document::WatermarkStyle)>,
     ) -> Result<(), String> {
+        let text = watermark.map(|(text, _)| text.as_str());
         let part_path =
             self.resolve_header_footer_part_path_for(HeaderFooterRole::Header, variant)?;
         let existing = self
@@ -9566,7 +9897,10 @@ impl WordDocument {
                     .map_err(|error| error.to_string())?;
                 id
             };
-            let watermark_run = Self::build_watermark_run(&mut xml, text);
+            let style = watermark
+                .map(|(_, style)| style.clone())
+                .unwrap_or_default();
+            let watermark_run = Self::build_watermark_run(&mut xml, text, &style);
             let insert_at = xml
                 .element(paragraph_id)
                 .map(|paragraph| {
@@ -9588,7 +9922,11 @@ impl WordDocument {
         self.refresh_header_footer_lines_for(HeaderFooterRole::Header, variant, &part_path)
     }
 
-    fn build_watermark_run(xml: &mut DocxXmlDocument, text: &str) -> XmlElement {
+    fn build_watermark_run(
+        xml: &mut DocxXmlDocument,
+        text: &str,
+        style: &jade_docx_reader::document::WatermarkStyle,
+    ) -> XmlElement {
         fn attr(name: &str, value: &str) -> XmlAttribute {
             XmlAttribute {
                 name: name.to_string(),
@@ -9668,15 +10006,48 @@ impl WordDocument {
                 XmlNode::Element(lock),
             ],
         );
-        let fill = xml.create_element("v:fill", vec![attr("opacity", ".5")], Vec::new());
+        let font = style.font.as_deref().unwrap_or("DengXian");
+        let size = style
+            .size_pt
+            .map(|size| format!("{size}pt"))
+            .unwrap_or_else(|| "1pt".to_string());
         let text_path = xml.create_element(
             "v:textpath",
             vec![
-                attr("style", "font-family:\"DengXian\";font-size:1pt"),
+                attr("style", &format!("font-family:\"{font}\";font-size:{size}")),
                 attr("string", text),
+                attr(
+                    "fitshape",
+                    if style.fit_shape.unwrap_or(true) {
+                        "t"
+                    } else {
+                        "f"
+                    },
+                ),
             ],
             Vec::new(),
         );
+        let mut shape_children = Vec::new();
+        if style.semitransparent {
+            shape_children.push(XmlNode::Element(xml.create_element(
+                "v:fill",
+                vec![attr("opacity", ".5")],
+                Vec::new(),
+            )));
+        }
+        shape_children.push(XmlNode::Element(text_path));
+        let width = trim_watermark_number(style.width_pt.unwrap_or(412.4));
+        let height = trim_watermark_number(style.height_pt.unwrap_or(247.45));
+        let rotation = if style.horizontal {
+            ""
+        } else {
+            "rotation:315;"
+        };
+        let fill_color = if style.color.eq_ignore_ascii_case("#C0C0C0") {
+            "silver".to_string()
+        } else {
+            style.color.clone()
+        };
         let shape = xml.create_element(
             "v:shape",
             vec![
@@ -9685,13 +10056,13 @@ impl WordDocument {
                 attr("type", "#_x0000_t136"),
                 attr(
                     "style",
-                    "position:absolute;left:0;text-align:left;margin-left:0;margin-top:0;width:412.4pt;height:247.45pt;rotation:315;z-index:-251656192;mso-position-horizontal:center;mso-position-horizontal-relative:margin;mso-position-vertical:center;mso-position-vertical-relative:margin",
+                    &format!("position:absolute;left:0;text-align:left;margin-left:0;margin-top:0;width:{width}pt;height:{height}pt;{rotation}z-index:-251656192;mso-position-horizontal:center;mso-position-horizontal-relative:margin;mso-position-vertical:center;mso-position-vertical-relative:margin"),
                 ),
                 attr("o:allowincell", "f"),
-                attr("fillcolor", "silver"),
+                attr("fillcolor", &fill_color),
                 attr("stroked", "f"),
             ],
-            vec![XmlNode::Element(fill), XmlNode::Element(text_path)],
+            shape_children,
         );
         let pict = xml.create_element(
             "w:pict",
@@ -10396,6 +10767,17 @@ impl WordDocument {
             result?;
         }
 
+        // The paragraph between the halves takes its style's defaults, as a
+        // load fills them: left without, it showed unjustified and unspaced
+        // until the document was reopened.
+        let mut paragraph = Paragraph {
+            runs: Vec::new(),
+            properties: None,
+            node_id: paragraph_node_id,
+            comment_ranges: Vec::new(),
+            comment_markers: Vec::new(),
+        };
+        self.fill_load_defaults(&mut paragraph);
         let break_body_index = {
             let document = self
                 .document_mut()
@@ -10404,13 +10786,7 @@ impl WordDocument {
                 .body
                 .as_mut()
                 .ok_or_else(|| "document body is unavailable".to_string())?;
-            let paragraph = BodyElement::from_paragraph(Paragraph {
-                runs: Vec::new(),
-                properties: None,
-                node_id: paragraph_node_id,
-                comment_ranges: Vec::new(),
-                comment_markers: Vec::new(),
-            });
+            let paragraph = BodyElement::from_paragraph(paragraph);
             let break_body_index = if split {
                 let tail = match body.elements.get_mut(body_index) {
                     Some(BodyElement::Table(table)) => {
@@ -12438,7 +12814,10 @@ impl WordDocument {
             if paragraph_changed {
                 touched_paragraphs.push(paragraph_index);
                 if restyled_runs.is_empty() {
-                    self.sync_paragraph_text(paragraph_index);
+                    // A decision takes runs out or keeps them: a text box
+                    // beside them keeps its XML. Rewritten from the model, a
+                    // VML-only box gained a DrawingML copy without its fields.
+                    self.sync_paragraph_text_preserving_drawings(paragraph_index);
                 } else {
                     // The decided runs' `w:rPr` is written again from the model.
                     self.sync_paragraph_run_properties(paragraph_index, &restyled_runs);
@@ -13123,7 +13502,12 @@ impl WordDocument {
         let part_path = self.resolve_existing_notes_part_path(kind)?;
         self.replace_note_body_in_part(&part_path, note_id, text, kind)?;
 
-        let body = Self::plain_note_body(text, kind);
+        let mut body = Self::plain_note_body(text, kind);
+        for element in &mut body {
+            if let BodyElement::Paragraph(paragraph) = element {
+                self.fill_load_defaults(paragraph);
+            }
+        }
         let note = self
             .document_mut()
             .and_then(|document| match kind {
@@ -16478,23 +16862,58 @@ impl WordDocument {
         text
     }
 
-    fn xml_descendant<'a>(element: &'a XmlElement, local_name: &str) -> Option<&'a XmlElement> {
+    fn is_bibliography_element(
+        element: &XmlElement,
+        local_name: &str,
+        ancestors: &[&XmlElement],
+    ) -> bool {
+        if Self::xml_local_name(&element.name) != local_name {
+            return false;
+        }
+        let declaration = element.name.split_once(':').map_or_else(
+            || "xmlns".to_string(),
+            |(prefix, _)| format!("xmlns:{prefix}"),
+        );
+        std::iter::once(element)
+            .chain(ancestors.iter().rev().copied())
+            .find_map(|scope| {
+                scope
+                    .attributes
+                    .iter()
+                    .find(|attribute| attribute.name == declaration)
+            })
+            .is_some_and(|attribute| attribute.value == BIBLIOGRAPHY_NAMESPACE)
+    }
+
+    fn xml_descendant<'a>(
+        element: &'a XmlElement,
+        local_name: &str,
+        ancestors: &mut Vec<&'a XmlElement>,
+    ) -> Option<&'a XmlElement> {
+        ancestors.push(element);
         for child in &element.children {
             let XmlNode::Element(child) = child else {
                 continue;
             };
-            if Self::xml_local_name(&child.name) == local_name {
+            if Self::is_bibliography_element(child, local_name, ancestors) {
+                ancestors.pop();
                 return Some(child);
             }
-            if let Some(found) = Self::xml_descendant(child, local_name) {
+            if let Some(found) = Self::xml_descendant(child, local_name, ancestors) {
+                ancestors.pop();
                 return Some(found);
             }
         }
+        ancestors.pop();
         None
     }
 
-    fn xml_descendant_text(element: &XmlElement, local_name: &str) -> Option<String> {
-        Self::xml_descendant(element, local_name)
+    fn xml_descendant_text<'a>(
+        element: &'a XmlElement,
+        local_name: &str,
+        ancestors: &[&'a XmlElement],
+    ) -> Option<String> {
+        Self::xml_descendant(element, local_name, &mut ancestors.to_vec())
             .map(Self::xml_element_text)
             .map(|value| value.trim().to_string())
             .filter(|value| !value.is_empty())
@@ -16547,10 +16966,7 @@ impl WordDocument {
             let Ok(parsed) = DocxXmlDocument::parse(&xml) else {
                 return false;
             };
-            Self::xml_local_name(&parsed.root().name) == "Sources"
-                && parsed.root().attributes.iter().any(|attribute| {
-                    attribute.name == "xmlns" || attribute.name.starts_with("xmlns:")
-                } && attribute.value == BIBLIOGRAPHY_NAMESPACE)
+            Self::is_bibliography_element(parsed.root(), "Sources", &[])
         })
     }
 
@@ -16563,42 +16979,64 @@ impl WordDocument {
         let Some(xml) = self.read_xml_part_content(&path) else {
             return Vec::new();
         };
-        let Ok(parsed) = DocxXmlDocument::parse(&xml) else {
+        Self::parse_citation_sources_xml(&xml, "Misc")
+    }
+
+    /// Shared by package catalogs and Word's standalone Sources.xml master list.
+    pub(crate) fn parse_citation_sources_xml(
+        xml: &str,
+        default_source_type: &str,
+    ) -> Vec<CitationSourceInfo> {
+        let Ok(parsed) = DocxXmlDocument::parse(xml) else {
             return Vec::new();
         };
+        if !Self::is_bibliography_element(parsed.root(), "Sources", &[]) {
+            return Vec::new();
+        }
         parsed
             .root()
             .children
             .iter()
             .filter_map(|child| match child {
-                XmlNode::Element(source) if Self::xml_local_name(&source.name) == "Source" => {
+                XmlNode::Element(source)
+                    if Self::is_bibliography_element(source, "Source", &[parsed.root()]) =>
+                {
                     Some(source)
                 }
                 _ => None,
             })
             .filter_map(|source| {
-                let tag = Self::xml_descendant_text(source, "Tag")?;
-                let source_type = Self::xml_descendant_text(source, "SourceType")
-                    .unwrap_or_else(|| "Misc".to_string());
-                let author = Self::xml_descendant_text(source, "Corporate").unwrap_or_else(|| {
-                    let last = Self::xml_descendant_text(source, "Last").unwrap_or_default();
-                    let first = Self::xml_descendant_text(source, "First").unwrap_or_default();
-                    [last, first]
-                        .into_iter()
-                        .filter(|part| !part.is_empty())
-                        .collect::<Vec<_>>()
-                        .join(", ")
-                });
+                let tag = Self::xml_descendant_text(source, "Tag", &[parsed.root()])?;
+                let source_type = Self::xml_descendant_text(source, "SourceType", &[parsed.root()])
+                    .unwrap_or_else(|| default_source_type.to_string());
+                let author = Self::xml_descendant_text(source, "Corporate", &[parsed.root()])
+                    .unwrap_or_else(|| {
+                        let last = Self::xml_descendant_text(source, "Last", &[parsed.root()])
+                            .unwrap_or_default();
+                        let first = Self::xml_descendant_text(source, "First", &[parsed.root()])
+                            .unwrap_or_default();
+                        [last, first]
+                            .into_iter()
+                            .filter(|part| !part.is_empty())
+                            .collect::<Vec<_>>()
+                            .join(", ")
+                    });
                 Some(CitationSourceInfo {
                     tag,
                     source_type,
                     author,
-                    title: Self::xml_descendant_text(source, "Title").unwrap_or_default(),
-                    year: Self::xml_descendant_text(source, "Year").unwrap_or_default(),
-                    publisher: Self::xml_descendant_text(source, "Publisher")
-                        .or_else(|| Self::xml_descendant_text(source, "JournalName"))
-                        .or_else(|| Self::xml_descendant_text(source, "InternetSiteTitle")),
-                    url: Self::xml_descendant_text(source, "URL"),
+                    title: Self::xml_descendant_text(source, "Title", &[parsed.root()])
+                        .unwrap_or_default(),
+                    year: Self::xml_descendant_text(source, "Year", &[parsed.root()])
+                        .unwrap_or_default(),
+                    publisher: Self::xml_descendant_text(source, "Publisher", &[parsed.root()])
+                        .or_else(|| {
+                            Self::xml_descendant_text(source, "JournalName", &[parsed.root()])
+                        })
+                        .or_else(|| {
+                            Self::xml_descendant_text(source, "InternetSiteTitle", &[parsed.root()])
+                        }),
+                    url: Self::xml_descendant_text(source, "URL", &[parsed.root()]),
                 })
             })
             .collect()
@@ -16634,9 +17072,7 @@ impl WordDocument {
         if source.title.is_empty() {
             return Err("citation source title must not be empty".to_string());
         }
-        const SOURCE_TYPES: [&str; 5] =
-            ["Book", "JournalArticle", "InternetSite", "Report", "Misc"];
-        if !SOURCE_TYPES.contains(&source.source_type.as_str()) {
+        if !CITATION_SOURCE_TYPES.contains(&source.source_type.as_str()) {
             return Err(format!(
                 "unsupported citation source type: {}",
                 source.source_type
@@ -16659,9 +17095,9 @@ impl WordDocument {
                     "citation source {name} must be at most {maximum} characters"
                 ));
             }
-            if value.chars().any(char::is_control) {
+            if !value.chars().all(Self::is_printable_xml_character) {
                 return Err(format!(
-                    "citation source {name} must not contain control characters"
+                    "citation source {name} must contain only printable XML characters"
                 ));
             }
         }
@@ -16770,13 +17206,41 @@ impl WordDocument {
             let root_name = parsed.root().name.clone();
             let prefix = root_name.strip_suffix(":Sources").unwrap_or_default();
             let close = format!("</{root_name}>");
-            let insert_at = original
-                .rfind(&close)
-                .ok_or_else(|| "bibliography source root is not closed".to_string())?;
-            let mut updated = String::with_capacity(original.len() + 512);
-            updated.push_str(&original[..insert_at]);
-            updated.push_str(&Self::bibliography_source_entry_xml(&source, prefix));
-            updated.push_str(&original[insert_at..]);
+            let entry = Self::bibliography_source_entry_xml(&source, prefix);
+            let mut reader = quick_xml::Reader::from_str(&original);
+            let mut depth = 0;
+            let mut updated = String::with_capacity(original.len() + entry.len() + close.len());
+            loop {
+                let start = reader.buffer_position() as usize;
+                match reader.read_event().map_err(|error| error.to_string())? {
+                    quick_xml::events::Event::Start(_) => depth += 1,
+                    quick_xml::events::Event::Empty(_) if depth == 0 => {
+                        // Word commonly stores an unused catalog as <b:Sources/>.
+                        // Expand only its closing delimiter, preserving every attribute
+                        // and any declarations, comments or processing instructions.
+                        let end = reader.buffer_position() as usize;
+                        updated.push_str(&original[..end - 2]);
+                        updated.push('>');
+                        updated.push_str(&entry);
+                        updated.push_str(&close);
+                        updated.push_str(&original[end..]);
+                        break;
+                    }
+                    quick_xml::events::Event::End(_) => {
+                        depth -= 1;
+                        if depth == 0 {
+                            updated.push_str(&original[..start]);
+                            updated.push_str(&entry);
+                            updated.push_str(&original[start..]);
+                            break;
+                        }
+                    }
+                    quick_xml::events::Event::Eof => {
+                        return Err("bibliography source root is not closed".to_string());
+                    }
+                    _ => {}
+                }
+            }
             self.upsert_xml_part_content(&path, updated);
             return Ok(());
         }
@@ -16850,7 +17314,7 @@ impl WordDocument {
         let heading = heading.trim();
         if heading.is_empty()
             || heading.chars().count() > 256
-            || heading.chars().any(char::is_control)
+            || !heading.chars().all(Self::is_printable_xml_character)
         {
             return Err(
                 "bibliography heading must contain 1 to 256 printable characters".to_string(),
@@ -17114,6 +17578,9 @@ impl WordDocument {
             comment_ranges: Vec::new(),
             comment_markers: Vec::new(),
         };
+        // What the caption does not set (its line spacing, its runs' fonts)
+        // comes from its style, as a load fills it.
+        self.fill_load_defaults(&mut paragraph);
 
         if let Some(mut raw) = self.raw_document.take() {
             let raw_result: Result<Option<XmlNodeId>, String> = (|| {
@@ -17265,8 +17732,43 @@ impl WordDocument {
         if !self.is_body_paragraph_surface(rendered_end.paragraph) {
             return Err("index entries can only be marked in body paragraphs".to_string());
         }
-        let model_end = self.rendered_to_model_text_position(rendered_end);
+        let mut model_end = self.rendered_to_model_text_position(rendered_end);
         self.validate_text_position_boundary(model_end)?;
+        // A field result can span several runs after formatting. Anchor after
+        // its complete wrapper, including at a boundary between its fragments.
+        // Equal field instructions can belong to separate adjacent wrappers.
+        if let Some(paragraph) = self.paragraph(model_end.paragraph) {
+            let mut start = 0usize;
+            for (index, run) in paragraph.runs.iter().enumerate() {
+                let end = start + run.text.len();
+                if start <= model_end.offset && model_end.offset < end {
+                    if let Some(field) = run.field.as_ref() {
+                        let same_field = |other: &Run| {
+                            other.field.as_ref().is_some_and(|other| {
+                                other.kind == field.kind
+                                    && other.source_field_id == field.source_field_id
+                            })
+                        };
+                        // At the start of a distinct wrapper the marker already
+                        // lies between fields and must stay at that boundary.
+                        if start == model_end.offset
+                            && (index == 0 || !same_field(&paragraph.runs[index - 1]))
+                        {
+                            break;
+                        }
+                        model_end.offset = end;
+                        for fragment in paragraph.runs[index + 1..]
+                            .iter()
+                            .take_while(|run| same_field(run))
+                        {
+                            model_end.offset += fragment.text.len();
+                        }
+                    }
+                    break;
+                }
+                start = end;
+            }
+        }
 
         let mut properties = self
             .paragraph(model_end.paragraph)
@@ -17330,6 +17832,9 @@ impl WordDocument {
                 run.revision_node_id = None;
             }
         }
+        // In a paragraph with no run to take formatting from, the marker's
+        // run had none: no font or size until the document was reopened.
+        self.apply_run_font_defaults_at(model_end.paragraph);
         self.sync_paragraph_text_preserving_drawings(model_end.paragraph);
         Ok(SelectionRange::collapsed(rendered_end))
     }
@@ -18322,6 +18827,30 @@ impl WordDocument {
         }
         if end_offset > end_len {
             return Err("comment end offset is outside of paragraph bounds".to_string());
+        }
+        // Both ends are anchored in their paragraph's XML. Checked before the
+        // start paragraph is split: found out after, the failed comment left
+        // that paragraph synced and the text boxes in it read from stale
+        // surfaces, so a text box paragraph showed empty.
+        for (index, end) in [(start_paragraph, "start"), (end_paragraph, "end")] {
+            if self.paragraph(index).and_then(|p| p.node_id).is_none() {
+                return Err(format!("comment {end} paragraph has no xml node id"));
+            }
+        }
+        // Word anchors a comment in one story. Ended in a text box (or a note)
+        // while begun in the body, its range end went into the box's XML and
+        // its reference run into the box's paragraph.
+        let story = |index: usize| match self.paragraph_story(index) {
+            Some(ParagraphStory::Body { .. }) => Some((0, None, None)),
+            Some(ParagraphStory::TextBox { host, text_box, .. }) => {
+                Some((1, Some((host, text_box)), None))
+            }
+            Some(ParagraphStory::Footnote { note_id, .. }) => Some((2, None, Some(note_id))),
+            Some(ParagraphStory::Endnote { note_id, .. }) => Some((3, None, Some(note_id))),
+            None => None,
+        };
+        if story(start_paragraph) != story(end_paragraph) {
+            return Err("a comment cannot span more than one story".to_string());
         }
 
         // --- Split runs in the start paragraph; the anchor run is the first run
@@ -20771,21 +21300,25 @@ impl WordDocument {
             normalized_widths[index] = Some(whole_twips(width));
         }
 
-        let mut table = Self::new_empty_table(rows, columns, &normalized_widths);
-        // The document's defaults are baked into runs when a file is read, and
-        // nothing bakes them into runs made afterwards. Without this, text typed
-        // into a cell of a table inserted here is drawn in the renderer's
-        // fallback font — a different size from the same document reopened, and
-        // a different width to wrap at.
-        if let Some(styles) = self.styles_part.clone() {
-            for row in &mut table.rows {
-                for cell in &mut row.cells {
-                    Self::apply_run_font_defaults_to_elements(&mut cell.blocks, &styles);
-                }
-            }
-        }
-
-        table
+        let table = Self::new_empty_table(rows, columns, &normalized_widths);
+        // The document's defaults are baked into paragraphs and runs when a
+        // file is read, and nothing bakes them into ones made afterwards.
+        // Without this, text typed into a cell of a table inserted here is
+        // drawn in the renderer's fallback font — a different size from the
+        // same document reopened, and a different width to wrap at — and the
+        // cells' paragraphs lost what their styles give them (Normal's
+        // justification, the table style's spacing) until it was reopened.
+        let Some(styles) = self.styles_part.clone() else {
+            return table;
+        };
+        let mut elements = [BodyElement::from_table(table)];
+        Self::apply_style_paragraph_defaults_to_elements(&mut elements, &styles);
+        Self::apply_table_styles_to_elements(&mut elements, &styles);
+        Self::apply_run_font_defaults_to_elements(&mut elements, &styles);
+        let [BodyElement::Table(table)] = elements else {
+            unreachable!("the table was put in")
+        };
+        *table
     }
 
     /// Inserts `table` as a top-level body element at `body_insert_index`, in
@@ -21066,6 +21599,7 @@ impl WordDocument {
         }
         let options = crate::document::parse_toc_switches(&block.instruction);
         let leader = self.toc_leader(&block);
+        Self::validate_toc_input(&options, &leader)?;
         self.replace_field_block_content(&block, |document, start, location, tab_twips| {
             document.generate_and_insert_toc_at(
                 start,
@@ -21091,6 +21625,7 @@ impl WordDocument {
             .into_iter()
             .nth(index)
             .ok_or_else(|| "no table of contents found to replace".to_string())?;
+        Self::validate_toc_input(options, leader)?;
         self.replace_field_block_content(&block, |document, start, location, tab_twips| {
             document.generate_and_insert_toc_at(
                 start,
@@ -21190,6 +21725,7 @@ impl WordDocument {
         original_instruction: Option<&str>,
         tab_twips: Option<i64>,
     ) -> Result<usize, String> {
+        Self::validate_toc_input(options, leader)?;
         let mut entries = self
             .document
             .as_ref()
@@ -21378,10 +21914,11 @@ impl WordDocument {
             ));
         }
         xml.push_str("</w:body></w:document>");
+        let model_paragraphs = self.read_generated_paragraphs(&xml)?;
 
         // Parse the fragment and lift the generated <w:p> nodes.
         let raw_paragraphs = Self::parse_body_paragraph_nodes(&xml)?;
-        if raw_paragraphs.len() != entry_count {
+        if raw_paragraphs.len() != entry_count || model_paragraphs.len() != entry_count {
             return Err("failed to build table-of-contents XML".to_string());
         }
 
@@ -21414,15 +21951,7 @@ impl WordDocument {
         // Insert into the raw XML body and copy the assigned <w:p> ids back onto
         // the model paragraphs so later edits map correctly.
         let inserted_ids = self.insert_toc_xml_at(body_insert_index, raw_paragraphs, location)?;
-        if let Some(body) = self.document_mut().and_then(|doc| doc.body.as_mut()) {
-            for (offset, node_id) in inserted_ids.into_iter().enumerate() {
-                if let Some(BodyElement::Paragraph(paragraph)) =
-                    body.elements.get_mut(body_insert_index + offset)
-                {
-                    paragraph.node_id = node_id;
-                }
-            }
-        }
+        self.bind_inserted_toc_paragraphs(body_insert_index, inserted_ids);
 
         if let Some(document) = self.document_mut() {
             Self::rebuild_section_ranges(document);
@@ -21446,13 +21975,6 @@ impl WordDocument {
     ) -> Result<usize, String> {
         // Word JP's "No table of contents entries found." placeholder.
         let placeholder = "目次項目が見つかりません。";
-        let model_paragraph = Paragraph {
-            runs: vec![blank_run(placeholder)],
-            properties: None,
-            node_id: None,
-            comment_ranges: Vec::new(),
-            comment_markers: Vec::new(),
-        };
         let xml = format!(
             "<w:document xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\"><w:body>\
              <w:p>\
@@ -21469,9 +21991,10 @@ impl WordDocument {
 
         // Parse the fragment and lift the generated <w:p> node.
         let raw_paragraphs = Self::parse_body_paragraph_nodes(&xml)?;
-        if raw_paragraphs.len() != 1 {
+        let model_paragraph = self.read_generated_paragraphs(&xml)?.pop();
+        let (Some(model_paragraph), 1) = (model_paragraph, raw_paragraphs.len()) else {
             return Err("failed to build table-of-contents placeholder XML".to_string());
-        }
+        };
 
         // Insert into the model body.
         {
@@ -21497,21 +22020,39 @@ impl WordDocument {
 
         // Insert into the raw XML body and copy the assigned <w:p> id back.
         let inserted_ids = self.insert_toc_xml_at(body_insert_index, raw_paragraphs, location)?;
-        if let Some(node_id) = inserted_ids.into_iter().next() {
-            if let Some(body) = self.document_mut().and_then(|doc| doc.body.as_mut()) {
-                if let Some(BodyElement::Paragraph(paragraph)) =
-                    body.elements.get_mut(body_insert_index)
-                {
-                    paragraph.node_id = node_id;
-                }
-            }
-        }
+        self.bind_inserted_toc_paragraphs(body_insert_index, inserted_ids);
 
         if let Some(document) = self.document_mut() {
             Self::rebuild_section_ranges(document);
         }
         self.rebuild_paragraph_surfaces();
         Ok(0)
+    }
+
+    /// Bind only the inserted subtrees. A paragraph ID alone leaves its
+    /// field marker/result runs unbound; the next edit then rebuilds those
+    /// runs and can drop the enclosing TOC's markers.
+    fn bind_inserted_toc_paragraphs(
+        &mut self,
+        body_insert_index: usize,
+        inserted_ids: Vec<Option<XmlNodeId>>,
+    ) {
+        let (Some(raw), Some(body)) = (
+            self.raw_document.as_ref(),
+            self.document
+                .as_mut()
+                .and_then(|document| Rc::make_mut(document).body.as_mut()),
+        ) else {
+            return;
+        };
+        for (offset, id) in inserted_ids.into_iter().enumerate() {
+            if let (Some(BodyElement::Paragraph(paragraph)), Some(xml)) = (
+                body.elements.get_mut(body_insert_index + offset),
+                id.and_then(|id| raw.element(id)),
+            ) {
+                attach_paragraph_xml_ids(paragraph, xml, raw);
+            }
+        }
     }
 
     /// Visits the `fldChar`/`instrText` markers within a paragraph element in
@@ -21710,6 +22251,32 @@ impl WordDocument {
     /// Parses a `<w:document><w:body>…</w:body></w:document>` fragment and
     /// returns its `<w:p>` child nodes (with placeholder ids; `insert_node`
     /// reassigns them).
+    /// The paragraphs of `xml`, a `w:document` the editor generated, as a
+    /// load reads them, with what a load fills in. A model built beside the
+    /// XML had no runs for a complex field's markers, which a load gives
+    /// zero-width runs of their own: the next remapping of the document's
+    /// ids (a table edit's) bound a table of contents' page number to its
+    /// field's begin marker, and an edit there saved a field with no end.
+    fn read_generated_paragraphs(&self, xml: &str) -> Result<Vec<Paragraph>, String> {
+        let parsed = DocumentParser::new()
+            .parse_document_xml(xml)
+            .map_err(|error| error.to_string())?;
+        let mut paragraphs: Vec<Paragraph> = parsed
+            .body
+            .map(|body| body.elements)
+            .unwrap_or_default()
+            .into_iter()
+            .filter_map(|element| match element {
+                BodyElement::Paragraph(paragraph) => Some(*paragraph),
+                _ => None,
+            })
+            .collect();
+        for paragraph in &mut paragraphs {
+            self.fill_load_defaults(paragraph);
+        }
+        Ok(paragraphs)
+    }
+
     fn parse_body_paragraph_nodes(xml: &str) -> Result<Vec<XmlNode>, String> {
         let parsed = DocxXmlDocument::parse(xml).map_err(|err| err.to_string())?;
         let body = parsed
@@ -22425,6 +22992,7 @@ impl WordDocument {
                 right: Some(border.clone()),
                 inside_h: Some(border.clone()),
                 inside_v: Some(border),
+                ..TableBorderSpec::default()
             },
         )
     }
@@ -22469,6 +23037,12 @@ impl WordDocument {
         spec: &TableBorderSpec,
     ) -> Result<(), String> {
         let edges = spec.validated_edges()?;
+        if edges
+            .iter()
+            .any(|(side, _)| matches!(side, BorderSide::Tl2br | BorderSide::Tr2bl))
+        {
+            return Err("tl2br / tr2bl are cell borders; a table has none of its own".to_string());
+        }
         let table_id = {
             let table = self
                 .table_mut_by_order(table_order_index)
@@ -22486,6 +23060,7 @@ impl WordDocument {
                     }
                     BorderSide::InsideH => &mut borders.inside_h,
                     BorderSide::InsideV => &mut borders.inside_v,
+                    BorderSide::Tl2br | BorderSide::Tr2bl => continue,
                 };
                 *slot = Some(value.to_border_edge());
             }
@@ -22522,6 +23097,14 @@ impl WordDocument {
             let cell = self.table_cell_mut_at(table_order_index, row, column)?;
             for (side, value) in &edges {
                 let name = side.style_prefix();
+                let diagonal = matches!(side, BorderSide::Tl2br | BorderSide::Tr2bl);
+                if diagonal && matches!(value.style.as_deref(), Some("none" | "nil")) {
+                    // No diagonal is no `w:tl2br` / `w:tr2bl` at all.
+                    for part in ["style", "width", "color"] {
+                        cell.style.remove(&format!("border-{name}-{part}"));
+                    }
+                    continue;
+                }
                 match value.style.as_deref() {
                     Some(style) => {
                         cell.style
@@ -22561,7 +23144,142 @@ impl WordDocument {
             };
             *slot = Some(value.to_border_edge());
         }
-        self.sync_borders_xml(cell_id, "w:tcPr", "w:tcBorders", &resolved)
+        self.sync_borders_xml(cell_id, "w:tcPr", "w:tcBorders", &resolved)?;
+        let diagonals = self.cell_diagonals_from_style(table_order_index, row, column)?;
+        self.sync_cell_diagonals_xml(cell_id, diagonals)
+    }
+
+    /// A cell's diagonals (`w:tl2br`, `w:tr2bl`) as its style keys hold them.
+    fn cell_diagonals_from_style(
+        &self,
+        table_order_index: usize,
+        row: usize,
+        column: usize,
+    ) -> Result<[Option<BorderEdge>; 2], String> {
+        let table = self
+            .table_by_order(table_order_index)
+            .ok_or_else(|| format!("table {table_order_index} was not found"))?;
+        let target_row = table
+            .rows
+            .get(row)
+            .ok_or_else(|| format!("row {row} is out of range"))?;
+        let cell_index = Self::row_cell_boundaries(target_row)
+            .into_iter()
+            .find(|boundary| column >= boundary.start && column < boundary.end)
+            .map(|boundary| boundary.cell_index)
+            .ok_or_else(|| format!("column {column} is out of range in row {row}"))?;
+        let cell = target_row
+            .cells
+            .get(cell_index)
+            .ok_or_else(|| format!("cell ({row}, {column}) was not found"))?;
+        let edge = |name: &str| {
+            let style = cell.style.get(&format!("border-{name}-style"))?;
+            if matches!(style.as_str(), "none" | "nil") {
+                return None;
+            }
+            let width_pt = cell
+                .style
+                .get(&format!("border-{name}-width"))
+                .and_then(|value| {
+                    let value = value.trim();
+                    match value.strip_suffix("pt") {
+                        Some(points) => points.trim().parse::<f32>().ok(),
+                        // The parser keeps `w:sz`, eighths of a point.
+                        None => value.parse::<f32>().ok().map(|eighths| eighths / 8.0),
+                    }
+                });
+            Some(BorderEdge {
+                val: Some(style.clone()),
+                size_eighths: width_pt.map(|pt| (pt * 8.0).round().max(0.0) as u32),
+                space: None,
+                color: cell
+                    .style
+                    .get(&format!("border-{name}-color"))
+                    .filter(|color| !color.eq_ignore_ascii_case("auto"))
+                    .map(|color| {
+                        format!("#{}", color.trim_start_matches('#').to_ascii_uppercase())
+                    }),
+            })
+        };
+        Ok([edge("tl2br"), edge("tr2bl")])
+    }
+
+    /// Writes a cell's diagonals at the end of its `w:tcBorders`, where the
+    /// schema puts them (after `w:insideV`), or takes them out.
+    fn sync_cell_diagonals_xml(
+        &mut self,
+        node_id: Option<XmlNodeId>,
+        diagonals: [Option<BorderEdge>; 2],
+    ) -> Result<(), String> {
+        let Some(node_id) = node_id else {
+            return Ok(());
+        };
+        let Some(raw) = self.raw_document.as_mut() else {
+            return Ok(());
+        };
+        let properties_id = Self::ensure_properties_element(raw, node_id, "w:tcPr")?;
+        let mut elements = Vec::new();
+        for (name, edge) in ["w:tl2br", "w:tr2bl"].into_iter().zip(diagonals.iter()) {
+            let Some(edge) = edge else { continue };
+            let mut attributes = vec![XmlAttribute {
+                name: "w:val".to_string(),
+                value: edge.val.clone().unwrap_or_else(|| "single".to_string()),
+            }];
+            if let Some(size) = edge.size_eighths {
+                attributes.push(XmlAttribute {
+                    name: "w:sz".to_string(),
+                    value: size.to_string(),
+                });
+            }
+            attributes.push(XmlAttribute {
+                name: "w:space".to_string(),
+                value: "0".to_string(),
+            });
+            attributes.push(XmlAttribute {
+                name: "w:color".to_string(),
+                value: edge
+                    .color
+                    .clone()
+                    .map(|color| color.trim_start_matches('#').to_ascii_uppercase())
+                    .unwrap_or_else(|| "auto".to_string()),
+            });
+            elements.push(XmlNode::Element(raw.create_element(
+                name,
+                attributes,
+                Vec::new(),
+            )));
+        }
+        let has_borders = raw.element(properties_id).is_some_and(|properties| {
+            properties.children.iter().any(
+                |node| matches!(node, XmlNode::Element(element) if element.name == "w:tcBorders"),
+            )
+        });
+        if !has_borders {
+            if elements.is_empty() {
+                return Ok(());
+            }
+            let borders = raw.create_element("w:tcBorders", Vec::new(), Vec::new());
+            let properties = raw
+                .element_mut(properties_id)
+                .ok_or_else(|| "failed to locate w:tcPr".to_string())?;
+            properties.children.push(XmlNode::Element(borders));
+        }
+        let properties = raw
+            .element_mut(properties_id)
+            .ok_or_else(|| "failed to locate w:tcPr".to_string())?;
+        if let Some(XmlNode::Element(borders)) = properties
+            .children
+            .iter_mut()
+            .find(|node| matches!(node, XmlNode::Element(element) if element.name == "w:tcBorders"))
+        {
+            borders.children.retain(|node| {
+                !matches!(node, XmlNode::Element(element)
+                    if element.name == "w:tl2br" || element.name == "w:tr2bl")
+            });
+            borders.children.extend(elements);
+        }
+        raw.rebuild_index_for_subtree(node_id);
+        Ok(())
     }
 
     /// Word table properties: authored height in points, independent of the
@@ -23515,6 +24233,7 @@ impl WordDocument {
         row_index: usize,
         template_row: Option<usize>,
     ) -> Result<(), String> {
+        let styles = self.styles_part.clone();
         let mut templates = Vec::new();
         let template_exceptions = template_row.and_then(|index| {
             let row_id = self
@@ -23631,6 +24350,10 @@ impl WordDocument {
                 row.grid_after = template.grid_after;
                 row.width_before = template.width_before.clone();
                 row.width_after = template.width_after.clone();
+            }
+            if let Some(styles) = styles.as_ref() {
+                let table_style = Self::table_style_paragraph_defaults(table, styles);
+                Self::fill_new_cell_defaults(table_style.as_ref(), &mut row.cells, styles);
             }
             table.rows.insert(insert_at, row);
             Self::normalize_vertical_merges(table);
@@ -24007,11 +24730,15 @@ impl WordDocument {
         if width.is_some_and(|value| !value.is_finite() || value < 0.0) {
             return Err("column width must be a finite non-negative number".to_string());
         }
+        let styles = self.styles_part.clone();
         let mut templates = Vec::new();
         {
             let table = self
                 .table_mut_by_order(table_order_index)
                 .ok_or_else(|| format!("table {table_order_index} was not found"))?;
+            let table_style = styles
+                .as_ref()
+                .and_then(|styles| Self::table_style_paragraph_defaults(table, styles));
             let column_count = Self::resolved_table_column_count(table);
             if column_index > column_count {
                 return Err(format!(
@@ -24091,6 +24818,13 @@ impl WordDocument {
                 // The grid supplies the width; a copied `w:tcW` would restate
                 // the template's.
                 cell.style.remove("width");
+                if let Some(styles) = styles.as_ref() {
+                    Self::fill_new_cell_defaults(
+                        table_style.as_ref(),
+                        std::slice::from_mut(&mut cell),
+                        styles,
+                    );
+                }
                 row.cells.insert(insert_cell_index, cell);
             }
             Self::refresh_omitted_row_widths(table);
@@ -24274,10 +25008,14 @@ impl WordDocument {
         table_order_index: usize,
         column_index: usize,
     ) -> Result<(), String> {
+        let styles = self.styles_part.clone();
         {
             let table = self
                 .table_mut_by_order(table_order_index)
                 .ok_or_else(|| format!("table {table_order_index} was not found"))?;
+            let table_style = styles
+                .as_ref()
+                .and_then(|styles| Self::table_style_paragraph_defaults(table, styles));
             let column_count = Self::resolved_table_column_count(table);
             if column_count <= 1 {
                 return Err("delete_table_column requires at least 2 columns".to_string());
@@ -24339,7 +25077,15 @@ impl WordDocument {
                         let new_grid_before = grid_before - 1;
                         row.grid_before = (new_grid_before > 0).then_some(new_grid_before as u32);
                     }
-                    row.cells.push(Self::new_empty_table_cell());
+                    let mut cell = Self::new_empty_table_cell();
+                    if let Some(styles) = styles.as_ref() {
+                        Self::fill_new_cell_defaults(
+                            table_style.as_ref(),
+                            std::slice::from_mut(&mut cell),
+                            styles,
+                        );
+                    }
+                    row.cells.push(cell);
                 }
             }
             Self::refresh_omitted_row_widths(table);
@@ -25235,10 +25981,10 @@ impl WordDocument {
             let grid_col = raw.create_element("w:gridCol", attributes, Vec::new());
             grid_children.push(XmlNode::Element(grid_col));
         }
-        if !grid_children.is_empty() {
-            let tbl_grid = raw.create_element("w:tblGrid", Vec::new(), grid_children);
-            table_children.push(XmlNode::Element(tbl_grid));
-        }
+        // CT_Tbl requires tblGrid even when widths come only from the cells
+        // and the authored grid has no gridCol children.
+        let tbl_grid = raw.create_element("w:tblGrid", Vec::new(), grid_children);
+        table_children.push(XmlNode::Element(tbl_grid));
 
         for row in table.rows.iter_mut() {
             // Always materialise trPr, even when the model currently has no
@@ -26048,16 +26794,18 @@ impl WordDocument {
         // first/even variant is materialized after the watermark was authored,
         // seed that header immediately so enabling the variant cannot make the
         // watermark disappear on those pages.
-        let watermark_text = self
-            .document
-            .as_deref()
-            .and_then(|document| document.watermark_text.clone());
-        if let Some(text) = watermark_text.as_deref() {
+        let watermark = self.document.as_deref().and_then(|document| {
+            document
+                .watermark_text
+                .clone()
+                .map(|text| (text, document.watermark_style.clone().unwrap_or_default()))
+        });
+        if let Some(watermark) = watermark.as_ref() {
             if different_first_page {
-                self.sync_watermark_to_header_variant(HeaderFooterVariant::First, Some(text))?;
+                self.sync_watermark_to_header_variant(HeaderFooterVariant::First, Some(watermark))?;
             }
             if different_odd_even_pages {
-                self.sync_watermark_to_header_variant(HeaderFooterVariant::Even, Some(text))?;
+                self.sync_watermark_to_header_variant(HeaderFooterVariant::Even, Some(watermark))?;
             }
         }
 
@@ -29572,7 +30320,16 @@ impl WordDocument {
         // Text that is still a tracked insertion stays one, inside the
         // deletion, as Word keeps it: rejecting the deletion gives the
         // insertion back, and rejecting every change removes the text.
-        for run in middle.iter_mut().filter(|run| !zero_width.keeps(run)) {
+        //
+        // A result-less field before the range's first text (an XE entry, a
+        // computed field) sits at its edge, where an untracked deletion
+        // leaves it. Marked deleted, it was saved outside the `w:del`, and
+        // accepting the deletion took it out of the model alone.
+        let before_text = middle.iter().take_while(|run| run.text.is_empty()).count();
+        for (index, run) in middle.iter_mut().enumerate() {
+            if zero_width.keeps(run) || (index < before_text && is_empty_field_result(run)) {
+                continue;
+            }
             run.revision = Some(deleted_over(run.revision.take(), &revision_mark));
             run.node_id = None;
             run.text_node_id = None;
@@ -32010,7 +32767,34 @@ impl WordDocument {
                 },
                 _ => None,
             };
-            if let Some((is_comment, is_end_anchor, element)) = anchor {
+            // A result-less simple field (a TC or XE entry, an AUTONUM)
+            // marks a place in the text: it goes to the side that place falls
+            // on. Put in both, a split paragraph listed its TOC entry twice.
+            // At the split, a field the model has a run for goes with the
+            // text after it, as that run does in the model's split: kept
+            // before it, the field stayed in the first paragraph's XML while
+            // the model moved it, and the file had it twice. A TC entry has
+            // no run, and stays with the heading it ends.
+            let zero_width_field = match child {
+                XmlNode::Element(element) if Self::is_zero_width_field_container(element) => {
+                    let modeled = element
+                        .attributes
+                        .iter()
+                        .find(|attribute| attribute.name == "w:instr")
+                        .is_some_and(|instr| {
+                            DocumentParser::parse_field_instruction(&instr.value).is_some()
+                        });
+                    Some(modeled)
+                }
+                _ => None,
+            };
+            if let Some(modeled) = zero_width_field {
+                if position < offset || (position == offset && !modeled) {
+                    head.push(child.clone());
+                } else {
+                    tail.push(child.clone());
+                }
+            } else if let Some((is_comment, is_end_anchor, element)) = anchor {
                 let key = (is_comment, anchor_id(element));
                 // An end at the split stays with the text before it, unless
                 // its start went to the tail: a collapsed range (Word's
@@ -32065,6 +32849,19 @@ impl WordDocument {
         paragraph_index: usize,
         restyled_runs: &[XmlNodeId],
     ) {
+        // TC fields have no inline model run. Formatting splits text runs but
+        // does not move text, so retain their source offsets and neighboring
+        // range markers across the sync.
+        let tc_paragraph_id = matches!(
+            self.paragraph_surfaces.get(paragraph_index),
+            Some(ParagraphSurface::Body { .. })
+        )
+        .then(|| self.paragraph(paragraph_index).and_then(|p| p.node_id))
+        .flatten();
+        let tc_fields = tc_paragraph_id
+            .and_then(|id| self.raw_document.as_ref()?.element(id))
+            .map(|paragraph| Self::tc_field_offsets(&paragraph.children))
+            .unwrap_or_default();
         if !restyled_runs.is_empty() {
             let paragraph_id = self
                 .paragraph(paragraph_index)
@@ -32097,6 +32894,100 @@ impl WordDocument {
             }
         }
         self.sync_paragraph_text_with_options(paragraph_index, true);
+        if !tc_fields.is_empty() {
+            if let Some(paragraph_id) = tc_paragraph_id {
+                if let Some(raw) = self.raw_document.as_mut() {
+                    if let Some(paragraph) = raw.element_mut(paragraph_id) {
+                        Self::restore_tc_field_offsets(&mut paragraph.children, &tc_fields);
+                    }
+                    raw.rebuild_index_for_subtree(paragraph_id);
+                }
+            }
+        }
+    }
+
+    /// Direct, result-less TC fields are structural markers rather than runs.
+    /// Keep range-marker neighbors with them; otherwise a bookmark end can
+    /// move before a newly split fragment while its TC moves back after it.
+    /// Only formatting calls this: a text edit must instead move its anchors.
+    fn tc_field_offsets(children: &[XmlNode]) -> Vec<(XmlNodeId, usize, Option<XmlNodeId>)> {
+        let is_tc = |node: &XmlNode| {
+            matches!(node, XmlNode::Element(element)
+                if Self::is_zero_width_field_container(element)
+                    && element.attributes.iter().any(|attr|
+                        attr.name == "w:instr"
+                            && attr.value.split_whitespace().next()
+                                .is_some_and(|name| name.eq_ignore_ascii_case("TC"))))
+        };
+        if !children.iter().any(is_tc) {
+            return Vec::new();
+        }
+        let mut offset = 0;
+        let mut fields = Vec::new();
+        for (index, child) in children.iter().enumerate() {
+            if is_tc(child)
+                || matches!(child, XmlNode::Element(element)
+                    if matches!(element.name.as_str(),
+                        "w:bookmarkStart" | "w:bookmarkEnd" |
+                        "w:commentRangeStart" | "w:commentRangeEnd" |
+                        "w:permStart" | "w:permEnd" | "w:proofErr"))
+            {
+                if let XmlNode::Element(element) = child {
+                    let following_marker = children[index + 1..]
+                        .iter()
+                        .take_while(|node| Self::display_len_for_node(node) == 0)
+                        .find_map(|node| match node {
+                            XmlNode::Element(element) => Some(element.id),
+                            _ => None,
+                        });
+                    fields.push((element.id, offset, following_marker));
+                }
+            }
+            offset += Self::display_len_for_node(child);
+        }
+        fields
+    }
+
+    fn restore_tc_field_offsets(
+        children: &mut Vec<XmlNode>,
+        fields: &[(XmlNodeId, usize, Option<XmlNodeId>)],
+    ) {
+        // Restore following TC fields first, so a marker at the same offset
+        // remains a stable anchor for the TC immediately before it.
+        for &(id, wanted, following_marker) in fields.iter().rev() {
+            let Some(index) = children
+                .iter()
+                .position(|node| matches!(node, XmlNode::Element(element) if element.id == id))
+            else {
+                continue;
+            };
+            let actual: usize = children[..index]
+                .iter()
+                .map(Self::display_len_for_node)
+                .sum();
+            if actual == wanted {
+                continue;
+            }
+            let field = children.remove(index);
+            let mut offset = 0;
+            let mut target = None;
+            for (index, child) in children.iter().enumerate() {
+                let length = Self::display_len_for_node(child);
+                let is_following_marker = matches!(child, XmlNode::Element(element)
+                    if Some(element.id) == following_marker);
+                if offset == wanted && (is_following_marker || length > 0) {
+                    target = Some(index);
+                    break;
+                }
+                offset += length;
+            }
+            if offset == wanted && target.is_none() {
+                target = Some(children.len());
+            }
+            // Formatting keeps every text boundary that held a TC field. If
+            // another kind of edit removed one, do not guess a new position.
+            children.insert(target.unwrap_or(index), field);
+        }
     }
 
     fn remove_run_properties_element(
@@ -32320,6 +33211,25 @@ impl WordDocument {
         restored
     }
 
+    /// The XML element of each run of `paragraph` (paragraph `index`), and,
+    /// for a note's paragraph, the note part that holds them: the body's XML
+    /// does not. Looked up there, a property a footnote's run declares read
+    /// as its old style's, and a style set on the note took the run's italic.
+    fn run_xml_ids(
+        &self,
+        index: usize,
+        paragraph: &Paragraph,
+    ) -> (Option<DocxXmlDocument>, Vec<Option<XmlNodeId>>) {
+        match self.note_paragraph_xml(index) {
+            Some((_, raw, id)) => {
+                let bound = formatting_revisions::bind_note_paragraph(paragraph, &raw, id);
+                let ids = bound.runs.iter().map(|run| run.node_id).collect();
+                (Some(raw), ids)
+            }
+            None => (None, paragraph.runs.iter().map(|run| run.node_id).collect()),
+        }
+    }
+
     /// Gives the runs at `runs` of `paragraph_index`, which were styled by
     /// `previous_style` (the paragraph's style before a style change, or the
     /// style of the paragraph they were joined from), the formatting the
@@ -32356,7 +33266,8 @@ impl WordDocument {
         if style.or(default_style) == previous_style.or(default_style) {
             return;
         }
-        let raw = self.raw_document.as_ref();
+        let (note_raw, run_ids) = self.run_xml_ids(paragraph_index, paragraph);
+        let raw = note_raw.as_ref().or(self.raw_document.as_ref());
         let mut restyled = Vec::new();
         for (index, run) in paragraph.runs.iter().enumerate() {
             if !runs.contains(&index) {
@@ -32379,7 +33290,7 @@ impl WordDocument {
                 Self::apply_theme_fonts_to_run_props(&mut old, theme);
                 Self::apply_theme_fonts_to_run_props(&mut new, theme);
             }
-            let declared = declared_property_tags(raw, run.node_id, "w:r", "w:rPr");
+            let declared = declared_property_tags(raw, run_ids[index], "w:r", "w:rPr");
             let mut props = props.clone();
             rebase_run_style_properties(&mut props, &old, &new, |tag| declared.contains(&tag));
             release_inherited_fonts(&mut props, |tag| declared.contains(&tag));
@@ -32426,7 +33337,8 @@ impl WordDocument {
             .properties
             .as_ref()
             .and_then(|props| props.style.as_deref());
-        let raw = self.raw_document.as_ref();
+        let (note_raw, run_ids) = self.run_xml_ids(paragraph_index, paragraph);
+        let raw = note_raw.as_ref().or(self.raw_document.as_ref());
         let mut restyled = Vec::new();
         for (index, previous) in changes {
             let Some(run) = paragraph.runs.get(*index) else {
@@ -32455,7 +33367,7 @@ impl WordDocument {
                 Self::apply_theme_fonts_to_run_props(&mut old, theme);
                 Self::apply_theme_fonts_to_run_props(&mut new, theme);
             }
-            let declared = declared_property_tags(raw, run.node_id, "w:r", "w:rPr");
+            let declared = declared_property_tags(raw, run_ids[*index], "w:r", "w:rPr");
             let mut props = props.clone();
             rebase_run_style_properties(&mut props, &old, &new, |tag| declared.contains(&tag));
             release_inherited_fonts(&mut props, |tag| declared.contains(&tag));
@@ -32483,7 +33395,7 @@ impl WordDocument {
     fn reparse_styles_part(&mut self, serialized: &str) -> bool {
         let theme = self.loaded_theme_part();
         let _theme_colors = jade_docx_reader::theme::ThemeColorScope::enter(theme.as_ref());
-        match self.styles_part.as_mut() {
+        let parsed = match self.styles_part.as_mut() {
             Some(styles) => styles.parse(serialized).is_ok(),
             None => match StylesPart::from_xml(serialized) {
                 Ok(styles) => {
@@ -32492,7 +33404,19 @@ impl WordDocument {
                 }
                 Err(_) => false,
             },
+        };
+        // What numbering.xml links to a style (a level's `w:pStyle`) a load
+        // merges into it. Reparsed without it — adding the note styles
+        // does — a heading whose `w:numPr` names no level lost its level,
+        // and its paragraphs their numbers on screen.
+        if parsed {
+            if let (Some(styles), Some(numbering)) =
+                (self.styles_part.as_mut(), self.numbering_part.as_ref())
+            {
+                styles.merge_numbering_from_part(numbering);
+            }
         }
+        parsed
     }
 
     /// What `paragraph_index` takes from its styles alone: the paragraph style
@@ -32637,7 +33561,9 @@ impl WordDocument {
     }
 
     /// The `(tag, attribute)` pairs of `paragraph_index`'s `w:pPr` children:
-    /// which parts of `w:spacing` or `w:ind` the paragraph declares itself.
+    /// which parts of `w:spacing` or `w:ind` override inherited distances.
+    /// A false auto-spacing flag alone leaves its distance inherited, as
+    /// the reader does; treating its presence as a distance kept the old style.
     pub(crate) fn paragraph_declared_property_attributes(
         &self,
         paragraph_index: usize,
@@ -32656,6 +33582,14 @@ impl WordDocument {
                 element
                     .attributes
                     .iter()
+                    .filter(|attribute| {
+                        element.name != "w:spacing"
+                            || !matches!(
+                                attribute.name.as_str(),
+                                "w:beforeAutospacing" | "w:afterAutospacing"
+                            )
+                            || matches!(attribute.value.as_str(), "1" | "true" | "on")
+                    })
                     .map(|attribute| (element.name.clone(), attribute.name.clone()))
             })
             .collect()
@@ -33116,6 +34050,24 @@ impl WordDocument {
         self.upsert_xml_part_content(&part_path, serialized);
         Ok(())
     }
+    /// Takes the first element named `name` out of `element`'s subtree.
+    fn take_descendant(element: &mut XmlElement, name: &str) -> Option<XmlElement> {
+        let at = element
+            .children
+            .iter()
+            .position(|node| matches!(node, XmlNode::Element(child) if child.name == name));
+        if let Some(at) = at {
+            let XmlNode::Element(found) = element.children.remove(at) else {
+                unreachable!("matched an element");
+            };
+            return Some(found);
+        }
+        element.children.iter_mut().find_map(|node| match node {
+            XmlNode::Element(child) => Self::take_descendant(child, name),
+            _ => None,
+        })
+    }
+
     /// `in_field_instruction` says the run sits in a complex field's
     /// instruction (see `runs_in_field_instructions`).
     fn update_run_element(
@@ -33130,6 +34082,8 @@ impl WordDocument {
         // A text box's previous `w:drawing`, and the `mc:AlternateContent`
         // block it came out of, to be rebuilt in place.
         let mut existing_text_box_drawing: Option<XmlElement> = None;
+        let mut rebuilt_text_box_offset = 0;
+        let mut rebuilt_text_box_child_index = 0;
         let mut text_box_alternate_content: Option<(XmlElement, usize, usize)> = None;
         // The same for a picture, group, chart or SmartArt: patched in place
         // (see `patch_image_drawing_element`) rather than rebuilt.
@@ -33137,6 +34091,10 @@ impl WordDocument {
         let mut image_alternate_content: Option<(XmlElement, usize, usize)> = None;
         let mut preserved_text_box_drawing = false;
         let mut preserved_image_drawing = false;
+        // A box saved only as VML, rebuilt as DrawingML: its `w:txbxContent`,
+        // taken out of the `w:pict` the rebuilt drawing replaces.
+        let mut vml_text_box_content: Option<XmlElement> = None;
+        let mut vml_text_box_replaced = false;
         let mut break_templates = Vec::new();
         let mut page_break_templates = Vec::new();
         let mut tab_templates = Vec::new();
@@ -33153,6 +34111,10 @@ impl WordDocument {
             && run.text_box.is_none()
             && run.math.is_none();
         let old_children = std::mem::take(&mut run_element.children);
+        let has_text_box_drawing = old_children.iter().any(|child| {
+            matches!(child, XmlNode::Element(element)
+                if element.name == "w:drawing" || element.name == "mc:AlternateContent")
+        });
         for child in old_children {
             match child {
                 XmlNode::Element(element)
@@ -33269,6 +34231,8 @@ impl WordDocument {
                     } else if existing_text_box_drawing.is_none() {
                         // A text box's drawing is rebuilt around its existing
                         // graphic (see `create_text_box_drawing_element`).
+                        rebuilt_text_box_offset = logical_offset;
+                        rebuilt_text_box_child_index = preserved_inline_children.len();
                         existing_text_box_drawing = Some(element);
                     }
                 }
@@ -33302,6 +34266,8 @@ impl WordDocument {
                         if let XmlNode::Element(choice) = &mut element.children[choice_index] {
                             if let XmlNode::Element(drawing) = choice.children.remove(drawing_index)
                             {
+                                rebuilt_text_box_offset = logical_offset;
+                                rebuilt_text_box_child_index = preserved_inline_children.len();
                                 existing_text_box_drawing = Some(drawing);
                             }
                             text_box_alternate_content =
@@ -33355,6 +34321,32 @@ impl WordDocument {
                         consumed_text: None,
                     });
                 }
+                XmlNode::Element(mut element)
+                    if !preserve_drawings
+                        && element.name == "w:pict"
+                        && run.text_box.is_some()
+                        && !has_text_box_drawing
+                        && !vml_text_box_replaced =>
+                {
+                    // The box is rebuilt as a `w:drawing` from the model. Kept
+                    // beside it, the `w:pict` saved the box twice; and the
+                    // rebuilt text, written from the model, lost what it does
+                    // not hold (a field's codes). Its content moves over whole.
+                    if let Some(content) = Self::take_descendant(&mut element, "w:txbxContent") {
+                        vml_text_box_replaced = true;
+                        vml_text_box_content = Some(content);
+                        rebuilt_text_box_offset = logical_offset;
+                        rebuilt_text_box_child_index = preserved_inline_children.len();
+                    } else {
+                        // A run may carry an unrelated VML shape before its
+                        // text box. Only consume the pict that owns the box.
+                        preserved_inline_children.push(PreservedRunChild {
+                            offset: logical_offset,
+                            node: XmlNode::Element(element),
+                            consumed_text: None,
+                        });
+                    }
+                }
                 XmlNode::Element(element)
                     if preserve_drawings && element.name == "w:object" && run.image.is_some() =>
                 {
@@ -33388,40 +34380,59 @@ impl WordDocument {
                     .as_deref()
                     .is_some_and(|text| !text.is_empty())
             });
+        // A mixed run rebuilds its text below. Its replacement box must be
+        // carried through that path at the original logical text offset too,
+        // including on later edits after a VML box has become DrawingML.
+        let rebuilt_text_box = if let Some(text_box) = run
+            .text_box
+            .as_ref()
+            .filter(|_| !preserved_text_box_drawing)
+        {
+            let drawing = Self::create_text_box_drawing_element(
+                doc,
+                text_box,
+                existing_text_box_drawing.take(),
+                vml_text_box_content.take(),
+            );
+            Some(match text_box_alternate_content.take() {
+                Some((mut alternate, choice_index, drawing_index)) => {
+                    if let XmlNode::Element(choice) = &mut alternate.children[choice_index] {
+                        let at = drawing_index.min(choice.children.len());
+                        choice.children.insert(at, XmlNode::Element(drawing));
+                    }
+                    // The VML fallback described the box before this edit
+                    // and would be read back in preference to the rebuilt
+                    // choice (the reader takes whichever comes last), so a
+                    // moved or re-wrapped box would reopen at its old
+                    // frame. Word 2010 and later read the choice only.
+                    alternate.children.retain(|child| {
+                            !matches!(child, XmlNode::Element(element) if element.name == "mc:Fallback")
+                        });
+                    XmlNode::Element(alternate)
+                }
+                None => XmlNode::Element(drawing),
+            })
+        } else {
+            None
+        };
+        if let Some(node) = rebuilt_text_box {
+            // Keep the original position among zero-width children as well as
+            // its text offset. Appending after a later-offset sibling makes
+            // the text builder emit the replacement box too late.
+            preserved_inline_children.insert(
+                rebuilt_text_box_child_index,
+                PreservedRunChild {
+                    offset: rebuilt_text_box_offset,
+                    node,
+                    consumed_text: None,
+                },
+            );
+        }
         if !has_serialized_text {
             if let Some(rpr) = run_properties_element {
                 run_element.children.push(XmlNode::Element(rpr));
             }
             run_element.children.extend(reference_nodes);
-            if let Some(text_box) = run
-                .text_box
-                .as_ref()
-                .filter(|_| !preserved_text_box_drawing)
-            {
-                let drawing = Self::create_text_box_drawing_element(
-                    doc,
-                    text_box,
-                    existing_text_box_drawing.take(),
-                );
-                match text_box_alternate_content.take() {
-                    Some((mut alternate, choice_index, drawing_index)) => {
-                        if let XmlNode::Element(choice) = &mut alternate.children[choice_index] {
-                            let at = drawing_index.min(choice.children.len());
-                            choice.children.insert(at, XmlNode::Element(drawing));
-                        }
-                        // The VML fallback described the box before this edit
-                        // and would be read back in preference to the rebuilt
-                        // choice (the reader takes whichever comes last), so a
-                        // moved or re-wrapped box would reopen at its old
-                        // frame. Word 2010 and later read the choice only.
-                        alternate.children.retain(|child| {
-                            !matches!(child, XmlNode::Element(element) if element.name == "mc:Fallback")
-                        });
-                        run_element.children.push(XmlNode::Element(alternate));
-                    }
-                    None => run_element.children.push(XmlNode::Element(drawing)),
-                }
-            }
             if let Some(image) = run.image.as_ref().filter(|_| !preserved_image_drawing) {
                 let drawing =
                     Self::create_image_drawing_element(doc, image, existing_image_drawing.take());
@@ -33484,7 +34495,7 @@ impl WordDocument {
 
         if let Some(text_box) = run.text_box.as_ref() {
             children.push(XmlNode::Element(Self::create_text_box_drawing_element(
-                doc, text_box, None,
+                doc, text_box, None, None,
             )));
         }
         if let Some(image) = run.image.as_ref() {
@@ -33503,6 +34514,21 @@ impl WordDocument {
 
         let run_element = doc.create_element("w:r", Vec::new(), children);
         Some((run_element, text_id))
+    }
+
+    fn create_paragraph_run_element(
+        doc: &mut DocxXmlDocument,
+        run: &Run,
+        preserve_empty_text: bool,
+    ) -> Option<(XmlElement, Option<XmlNodeId>)> {
+        Self::create_run_element(doc, run).or_else(|| {
+            if !preserve_empty_text || crate::commands::text_edit::run_carries_content(run) {
+                return None;
+            }
+            let (text, text_id) = Self::create_text_element(doc, "", "w:t");
+            let element = doc.create_element("w:r", Vec::new(), vec![XmlNode::Element(text)]);
+            Some((element, Some(text_id)))
+        })
     }
 
     /// Writes the `w:drawing` of a picture, chart, group or SmartArt from the
@@ -34270,10 +35296,13 @@ impl WordDocument {
     /// made on the canvas is what the package says. Rebuilding everything
     /// used to pin every text box to `wp:wrapTopAndBottom` at a page offset
     /// with zero distances, whatever the model held.
+    /// `content` is the box's `w:txbxContent` to keep, when it is not built
+    /// from the model.
     fn create_text_box_drawing_element(
         doc: &mut DocxXmlDocument,
         text_box: &RunTextBox,
         existing: Option<XmlElement>,
+        content: Option<XmlElement>,
     ) -> XmlElement {
         const EMU_PER_PX: f64 = 9525.0;
 
@@ -34334,7 +35363,9 @@ impl WordDocument {
                 );
                 graphic
             }
-            None => Self::create_text_box_graphic_element(doc, text_box, width_emu, height_emu),
+            None => Self::create_text_box_graphic_element_with_content(
+                doc, text_box, width_emu, height_emu, content,
+            ),
         };
         let doc_pr = reused_doc_pr.unwrap_or_else(|| {
             // Document-allocated so multiple shapes never share an id.
@@ -34508,11 +35539,26 @@ impl WordDocument {
     }
 
     /// The `a:graphic` subtree of a text box or shape built from scratch.
+    #[cfg(test)]
     fn create_text_box_graphic_element(
         doc: &mut DocxXmlDocument,
         text_box: &RunTextBox,
         width_emu: i64,
         height_emu: i64,
+    ) -> XmlElement {
+        Self::create_text_box_graphic_element_with_content(
+            doc, text_box, width_emu, height_emu, None,
+        )
+    }
+
+    /// [`Self::create_text_box_graphic_element`] around `content`, the box's
+    /// `w:txbxContent`, when there is one to keep.
+    fn create_text_box_graphic_element_with_content(
+        doc: &mut DocxXmlDocument,
+        text_box: &RunTextBox,
+        width_emu: i64,
+        height_emu: i64,
+        content: Option<XmlElement>,
     ) -> XmlElement {
         fn attr(name: &str, value: impl ToString) -> XmlAttribute {
             XmlAttribute {
@@ -34540,6 +35586,12 @@ impl WordDocument {
 
         let wps_txbx = if text_box.shape.is_line() {
             None
+        } else if let Some(content) = content {
+            Some(doc.create_element_preserving_child_ids(
+                "wps:txbx",
+                Vec::new(),
+                vec![XmlNode::Element(content)],
+            ))
         } else {
             let mut txbx_children = Vec::new();
             Self::append_text_box_content_elements(doc, &text_box.blocks, &mut txbx_children);
@@ -34729,7 +35781,11 @@ impl WordDocument {
             wsp_children.push(XmlNode::Element(wps_txbx));
         }
         wsp_children.push(XmlNode::Element(body_pr));
-        let wsp = doc.create_element(
+        // Every child was made by this document, and a kept `w:txbxContent`
+        // is bound to the model: new ids for it left the box's paragraphs
+        // pointing at nothing, and the next edit there rebuilt the box from
+        // the model, losing the field codes the move had kept.
+        let wsp = doc.create_element_preserving_child_ids(
             "wps:wsp",
             vec![attr(
                 "xmlns:wps",
@@ -34737,7 +35793,7 @@ impl WordDocument {
             )],
             wsp_children,
         );
-        let graphic_data = doc.create_element(
+        let graphic_data = doc.create_element_preserving_child_ids(
             "a:graphicData",
             vec![attr(
                 "uri",
@@ -34745,7 +35801,7 @@ impl WordDocument {
             )],
             vec![XmlNode::Element(wsp)],
         );
-        doc.create_element(
+        doc.create_element_preserving_child_ids(
             "a:graphic",
             vec![attr(
                 "xmlns:a",
@@ -35581,8 +36637,9 @@ impl WordDocument {
                 }
             }
 
-            if let Some(fit_text) = props.fit_text.as_ref() {
-                Self::upsert_run_fit_text_child(doc, &mut element, fit_text);
+            match props.fit_text.as_ref() {
+                Some(fit_text) => Self::upsert_run_fit_text_child(doc, &mut element, fit_text),
+                None => Self::remove_run_property_child(&mut element, "w:fitText"),
             }
 
             let fonts = if direct.known {
@@ -36661,6 +37718,14 @@ impl WordDocument {
     ) -> Vec<XmlNode> {
         use std::collections::VecDeque;
 
+        // A deletion can leave only a note reference and an empty text run.
+        // Keep that run in XML at its original side of the reference: otherwise
+        // the next input loses its insertion point, moving the note marker.
+        let preserve_empty_text = runs.iter().all(|run| run.text.is_empty())
+            && runs.iter().any(|run| {
+                !run.footnote_reference_ids.is_empty() || !run.endnote_reference_ids.is_empty()
+            });
+
         enum ChildToken {
             NonRun(XmlNode),
             RunElement(XmlElement),
@@ -36742,8 +37807,45 @@ impl WordDocument {
 
         let mut new_children = Vec::new();
 
+        fn is_unbound_plain_run(run: &Run) -> bool {
+            run.node_id.is_none()
+                && !run.text.is_empty()
+                && run.field.is_none()
+                && run.hyperlink.is_none()
+                && run.text_box.is_none()
+                && run.image.is_none()
+                && run.math.is_none()
+        }
+
+        fn source_run_piece_len(element: &XmlElement) -> usize {
+            element
+                .children
+                .iter()
+                .filter_map(|node| match node {
+                    XmlNode::Element(child) => Some(child),
+                    _ => None,
+                })
+                .map(|child| match child.name.as_str() {
+                    // The parser represents each break as a character in the
+                    // run pieces, even though it has no text child in OOXML.
+                    "w:br" | "w:cr" => 1,
+                    _ => WordDocument::display_len_for_element(child),
+                })
+                .sum()
+        }
+
+        // What is left of the text of the last run written to its own `w:r`,
+        // in characters. Unbound plain runs that fit in it are pieces of
+        // that run cut by an edit (formatting part of it), not new text.
+        let mut piece_budget = 0usize;
         let mut run_index = 0usize;
         while run_index < runs.len() {
+            let is_piece = piece_budget > 0
+                && is_unbound_plain_run(&runs[run_index])
+                && runs[run_index].text.chars().count() <= piece_budget;
+            if !is_piece {
+                piece_budget = 0;
+            }
             loop {
                 // Text edits can delete every logical run before an anchor.
                 // Discard source run elements that no remaining model run owns
@@ -36767,6 +37869,12 @@ impl WordDocument {
                     break;
                 }
                 if !matches!(tokens.front(), Some(ChildToken::NonRun(_))) {
+                    break;
+                }
+                // What came after the run's `w:r` (a field or marker at the
+                // end of its text) stays after all its pieces. Written before
+                // the next piece, a split moved it to the cut.
+                if is_piece {
                     break;
                 }
                 // Inline equations and result-less simple fields are model
@@ -36852,6 +37960,26 @@ impl WordDocument {
                     }
                     _ => false,
                 };
+                // A run whose element is not in the paragraph any more is a
+                // new run. Undoing a deletion puts the run back with the id
+                // of the `w:r` the deletion removed. Taken as bound, it
+                // wrote a hyperlink after it ahead of itself, and the link's
+                // runs, no longer queued, were written again as plain text.
+                if stale_or_future_run_container {
+                    let stale = runs[run_index].node_id.is_some_and(|id| {
+                        !tokens.iter().any(|token| match token {
+                            ChildToken::RunElement(element) => element.id == id,
+                            ChildToken::NonRun(XmlNode::Element(element)) => {
+                                element.id == id || Self::element_contains_run_id(element, id)
+                            }
+                            ChildToken::NonRun(_) => false,
+                        })
+                    });
+                    if stale {
+                        runs[run_index].node_id = None;
+                        runs[run_index].text_node_id = None;
+                    }
+                }
                 if stale_or_future_run_container && runs[run_index].node_id.is_none() {
                     break;
                 }
@@ -36990,13 +38118,29 @@ impl WordDocument {
                                     run_index += 1;
                                     continue;
                                 }
+                                // A run before one still in a simple field's
+                                // result sits inside that result (a shape put in
+                                // a HYPERLINK field's text, or a piece cut from
+                                // the result there): it goes in. A link is split
+                                // around such a run instead (below), but a field
+                                // split in two would be two fields. Ended here,
+                                // the field was written with that later run
+                                // still in it, and the run was written again
+                                // after it, doubling its text.
+                                let inside = container.name == "w:fldSimple"
+                                    && runs[run_index + 1..].iter().any(|later| {
+                                        later.node_id.is_some_and(|id| {
+                                            Self::element_contains_run_id(&container, id)
+                                        })
+                                    });
                                 // Do not absorb a plain run into a hyperlink wrapper.
                                 // `split_runs_at` nulls `node_id` on every trailing
                                 // run (even untouched ones after the edited run), so
                                 // without this guard the run following a hyperlink
                                 // would be pulled inside the `<w:hyperlink>` element,
                                 // turning non-link text into clickable link text.
-                                if container.name == "w:hyperlink"
+                                if !inside
+                                    && container.name == "w:hyperlink"
                                     && runs[run_index].hyperlink.is_none()
                                 {
                                     break;
@@ -37006,15 +38150,65 @@ impl WordDocument {
                                 // wrapper identity. A newly inserted field, even
                                 // with the same instruction, must stay a sibling
                                 // rather than becoming the previous field's result.
-                                if container.name == "w:fldSimple"
+                                if !inside
+                                    && container.name == "w:fldSimple"
                                     && !runs[run_index].field.as_ref().is_some_and(|field| {
                                         field.source_field_id == Some(container.id)
                                     })
                                 {
                                     break;
                                 }
+                                // An equation has no `w:r`: it is the
+                                // container's `m:oMath` after the previous
+                                // run, or, put there by an edit, a new one.
+                                // Writing it as a run wrote nothing, and an
+                                // equation typed into a field's result was
+                                // lost on save.
+                                if let Some(math) = runs[run_index].math.as_ref() {
+                                    let equation = match Self::equation_after_in_container(
+                                        doc,
+                                        &container,
+                                        previous_run_id,
+                                        &math.raw_omml,
+                                    ) {
+                                        Some(existing) => Some(existing),
+                                        None => Self::import_authored_omml_element(
+                                            doc,
+                                            &math.raw_omml,
+                                            "m:oMath",
+                                        )
+                                        .ok()
+                                        .map(|equation| {
+                                            let id = equation.id;
+                                            let node = XmlNode::Element(equation);
+                                            match previous_run_id {
+                                                Some(previous) => {
+                                                    Self::insert_after_run_in_container(
+                                                        &mut container,
+                                                        previous,
+                                                        node,
+                                                    )
+                                                }
+                                                None => container.children.insert(0, node),
+                                            }
+                                            id
+                                        }),
+                                    };
+                                    runs[run_index].text_node_id = None;
+                                    runs[run_index].revision_node_id = None;
+                                    if equation.is_some() {
+                                        previous_run_id = equation;
+                                        updated += 1;
+                                    }
+                                    run_index += 1;
+                                    continue;
+                                }
                                 let Some((run_element, text_id)) =
-                                    Self::create_run_element(doc, &runs[run_index])
+                                    Self::create_paragraph_run_element(
+                                        doc,
+                                        &runs[run_index],
+                                        preserve_empty_text,
+                                    )
                                 else {
                                     runs[run_index].text_node_id = None;
                                     runs[run_index].revision_node_id = None;
@@ -37190,9 +38384,11 @@ impl WordDocument {
                         && runs[run_index].node_id.is_none()
                         && runs[run_index].field == field
                     {
-                        let Some((run_element, text_id)) =
-                            Self::create_run_element(doc, &runs[run_index])
-                        else {
+                        let Some((run_element, text_id)) = Self::create_paragraph_run_element(
+                            doc,
+                            &runs[run_index],
+                            preserve_empty_text,
+                        ) else {
                             runs[run_index].text_node_id = None;
                             runs[run_index].revision_node_id = None;
                             run_index += 1;
@@ -37251,7 +38447,8 @@ impl WordDocument {
                         && runs[run_index].hyperlink.as_ref() == Some(&hyperlink)
                     {
                         let run = &mut runs[run_index];
-                        let Some((run_element, text_id)) = Self::create_run_element(doc, run)
+                        let Some((run_element, text_id)) =
+                            Self::create_paragraph_run_element(doc, run, preserve_empty_text)
                         else {
                             run.text_node_id = None;
                             run.revision_node_id = None;
@@ -37283,6 +38480,9 @@ impl WordDocument {
                 }
             }
 
+            // Ordinary bound runs need no source-text traversal. A budget is
+            // only consumed by an immediately following unbound plain run.
+            let following_piece = runs.get(run_index + 1).is_some_and(is_unbound_plain_run);
             let run = &mut runs[run_index];
             let existing_run_element = match tokens.front() {
                 Some(ChildToken::RunElement(element)) if run.node_id == Some(element.id) => {
@@ -37295,11 +38495,18 @@ impl WordDocument {
             };
 
             let in_instruction = in_field_instruction(run);
+            piece_budget = match existing_run_element.as_ref() {
+                Some(element) if following_piece => {
+                    source_run_piece_len(element).saturating_sub(run.text.chars().count())
+                }
+                None if is_piece => piece_budget - run.text.chars().count(),
+                _ => 0,
+            };
             let element_result = existing_run_element
                 .and_then(|element| {
                     Self::update_run_element(doc, element, run, preserve_drawings, in_instruction)
                 })
-                .or_else(|| Self::create_run_element(doc, run));
+                .or_else(|| Self::create_paragraph_run_element(doc, run, preserve_empty_text));
 
             let Some((run_element, text_id)) = element_result else {
                 run.node_id = None;
@@ -38008,6 +39215,47 @@ impl WordDocument {
         });
     }
 
+    /// The modeled `m:oMath` that comes right after the node `after` (the
+    /// container's first, with none) among the runs and equations of
+    /// `container`, in document order.
+    fn equation_after_in_container(
+        doc: &DocxXmlDocument,
+        container: &XmlElement,
+        after: Option<XmlNodeId>,
+        expected_omml: &str,
+    ) -> Option<XmlNodeId> {
+        fn items<'a>(element: &'a XmlElement, out: &mut Vec<&'a XmlElement>) {
+            for child in &element.children {
+                let XmlNode::Element(child) = child else {
+                    continue;
+                };
+                if matches!(child.name.as_str(), "w:r" | "m:oMath") {
+                    out.push(child);
+                } else {
+                    items(child, out);
+                }
+            }
+        }
+        let mut found = Vec::new();
+        items(container, &mut found);
+        let next = match after {
+            Some(after) => found
+                .iter()
+                .position(|element| element.id == after)
+                .and_then(|at| found.get(at + 1)),
+            None => found.first(),
+        }?;
+        if !Self::is_modeled_equation(doc, next) {
+            return None;
+        }
+        // The next equation may belong to a later model run: inserting y
+        // before x must not consume x as y. Compare only that candidate's
+        // normalized XML, without node ids. Existing Word equations need
+        // not meet the size limit for newly authored equations.
+        let expected = DocxXmlDocument::parse(expected_omml).ok()?;
+        (objects::element_xml(next) == objects::element_xml(expected.root())).then_some(next.id)
+    }
+
     /// Inserts `node` right after the run `after` wherever it sits in
     /// `container` (or after the container's last run if it is not there).
     fn insert_after_run_in_container(container: &mut XmlElement, after: XmlNodeId, node: XmlNode) {
@@ -38016,7 +39264,20 @@ impl WordDocument {
                 let XmlNode::Element(child) = &mut element.children[index] else {
                     continue;
                 };
-                if child.id == after {
+                // The run before is the last in a tracked change's wrapper:
+                // the new run (which brings its own wrapper, if it has a
+                // revision) goes after the wrapper. Put inside it, text
+                // following a deletion in a hyperlink was saved as deleted
+                // and written again after the next edit.
+                let ends_revision_wrapper =
+                    matches!(
+                        child.name.as_str(),
+                        "w:ins" | "w:del" | "w:moveFrom" | "w:moveTo"
+                    ) && child.children.iter().rev().find_map(|node| match node {
+                        XmlNode::Element(last) => Some(last.id),
+                        _ => None,
+                    }) == Some(after);
+                if child.id == after || ends_revision_wrapper {
                     if let Some(node) = node.take() {
                         element.children.insert(index + 1, node);
                     }
@@ -39212,6 +40473,241 @@ impl HtmlBlock {
         }
     }
 }
+/// A text watermark to author: its text and look (デザイン › 透かし).
+#[derive(Debug, Clone, PartialEq)]
+pub struct WatermarkSpec {
+    pub text: String,
+    pub style: jade_docx_reader::document::WatermarkStyle,
+}
+
+/// Whether two watermark looks are the same choice in Word's dialog — the
+/// shape box, which follows from them, aside.
+fn watermark_looks_alike(
+    a: &jade_docx_reader::document::WatermarkStyle,
+    b: &jade_docx_reader::document::WatermarkStyle,
+) -> bool {
+    let font = |style: &jade_docx_reader::document::WatermarkStyle| {
+        style.font.clone().unwrap_or_else(|| "DengXian".to_string())
+    };
+    font(a) == font(b)
+        && a.size_pt == b.size_pt
+        && a.fit_shape.unwrap_or(true) == b.fit_shape.unwrap_or(true)
+        && a.color.eq_ignore_ascii_case(&b.color)
+        && a.semitransparent == b.semitransparent
+        && a.horizontal == b.horizontal
+}
+
+/// A number as the VML style writes it: up to two decimals, no trailing zeros.
+fn trim_watermark_number(value: f32) -> String {
+    let text = format!("{value:.2}");
+    text.trim_end_matches('0').trim_end_matches('.').to_string()
+}
+
+/// `#RRGGBB` (upper case) from `#rrggbb`, `rrggbb`, `#rgb` or a VML color name.
+fn normalize_watermark_color(value: &str) -> Option<String> {
+    let value = value.trim();
+    let named = match value.to_ascii_lowercase().as_str() {
+        "silver" => Some("C0C0C0"),
+        "gray" | "grey" => Some("808080"),
+        "black" => Some("000000"),
+        "white" => Some("FFFFFF"),
+        "red" => Some("FF0000"),
+        "maroon" => Some("800000"),
+        "yellow" => Some("FFFF00"),
+        "olive" => Some("808000"),
+        "lime" => Some("00FF00"),
+        "green" => Some("008000"),
+        "aqua" => Some("00FFFF"),
+        "teal" => Some("008080"),
+        "blue" => Some("0000FF"),
+        "navy" => Some("000080"),
+        "fuchsia" => Some("FF00FF"),
+        "purple" => Some("800080"),
+        _ => None,
+    };
+    if let Some(hex) = named {
+        return Some(format!("#{hex}"));
+    }
+    // VML may follow the color with ` [index]`.
+    let hex = value
+        .split_whitespace()
+        .next()
+        .unwrap_or("")
+        .trim_start_matches('#');
+    let hex = match hex.len() {
+        3 => hex.chars().flat_map(|c| [c, c]).collect::<String>(),
+        6 => hex.to_string(),
+        _ => return None,
+    };
+    hex.chars()
+        .all(|c| c.is_ascii_hexdigit())
+        .then(|| format!("#{}", hex.to_ascii_uppercase()))
+}
+
+/// How wide `text` is in ems, as a sans-serif sets it: full-width (CJK)
+/// characters one em, capitals and figures about two thirds, the rest less.
+fn watermark_text_em_width(text: &str) -> f32 {
+    text.chars()
+        .map(|c| match c {
+            ' ' => 0.3,
+            'A'..='Z' | '0'..='9' => 0.68,
+            c if c.is_ascii() => 0.52,
+            c if (c as u32) >= 0x2E80 => 1.0,
+            _ => 0.6,
+        })
+        .sum()
+}
+
+/// The look of a watermark's `v:shape`.
+fn watermark_style_from_shape(
+    root: &XmlElement,
+    shape: &XmlElement,
+) -> jade_docx_reader::document::WatermarkStyle {
+    let attribute = |element: &XmlElement, name: &str| {
+        element
+            .attributes
+            .iter()
+            .find(|attribute| attribute.name.rsplit(':').next() == Some(name))
+            .map(|attribute| attribute.value.clone())
+    };
+    // Shape-local text path attributes override the referenced shape type.
+    // VML's fitshape default is false, not a font-size threshold.
+    fn find_shape_type<'a>(element: &'a XmlElement, id: &str) -> Option<&'a XmlElement> {
+        if element.name.rsplit(':').next() == Some("shapetype")
+            && element
+                .attributes
+                .iter()
+                .any(|a| a.name == "id" && a.value == id)
+        {
+            return Some(element);
+        }
+        element.children.iter().find_map(|child| match child {
+            XmlNode::Element(child) => find_shape_type(child, id),
+            _ => None,
+        })
+    }
+    fn fit_shape(element: &XmlElement) -> Option<bool> {
+        element.children.iter().find_map(|child| {
+            let XmlNode::Element(child) = child else {
+                return None;
+            };
+            if child.name.rsplit(':').next() != Some("textpath") {
+                return None;
+            }
+            let value = child
+                .attributes
+                .iter()
+                .find(|a| a.name.rsplit(':').next() == Some("fitshape"))?;
+            match value.value.trim().to_ascii_lowercase().as_str() {
+                "t" | "true" | "1" => Some(true),
+                "f" | "false" | "0" => Some(false),
+                _ => None,
+            }
+        })
+    }
+    let inherited_fit_shape = attribute(shape, "type")
+        .and_then(|name| {
+            name.strip_prefix('#')
+                .and_then(|id| find_shape_type(root, id))
+        })
+        .and_then(fit_shape);
+    let fits_shape = fit_shape(shape).or(inherited_fit_shape).unwrap_or(false);
+    let declarations = |style: &str| -> Vec<(String, String)> {
+        style
+            .split(';')
+            .filter_map(|declaration| declaration.split_once(':'))
+            .map(|(key, value)| (key.trim().to_ascii_lowercase(), value.trim().to_string()))
+            .collect()
+    };
+    let points = |value: &str| -> Option<f32> {
+        let value = value.trim();
+        let (number, factor) = if let Some(number) = value.strip_suffix("pt") {
+            (number, 1.0)
+        } else if let Some(number) = value.strip_suffix("in") {
+            (number, 72.0)
+        } else if let Some(number) = value.strip_suffix("cm") {
+            (number, 72.0 / 2.54)
+        } else if let Some(number) = value.strip_suffix("mm") {
+            (number, 72.0 / 25.4)
+        } else if let Some(number) = value.strip_suffix("px") {
+            (number, 0.75)
+        } else {
+            (value, 0.75)
+        };
+        number
+            .trim()
+            .parse::<f32>()
+            .ok()
+            .map(|number| number * factor)
+    };
+    let mut style = jade_docx_reader::document::WatermarkStyle {
+        fit_shape: Some(fits_shape),
+        semitransparent: false,
+        ..Default::default()
+    };
+    let shape_style = declarations(&attribute(shape, "style").unwrap_or_default());
+    let rotation = shape_style
+        .iter()
+        .find(|(key, _)| key == "rotation")
+        .and_then(|(_, value)| value.trim_end_matches("fd").parse::<f32>().ok())
+        .unwrap_or(0.0);
+    style.horizontal = (rotation.rem_euclid(360.0)).abs() < 1.0;
+    style.width_pt = shape_style
+        .iter()
+        .find(|(key, _)| key == "width")
+        .and_then(|(_, value)| points(value));
+    style.height_pt = shape_style
+        .iter()
+        .find(|(key, _)| key == "height")
+        .and_then(|(_, value)| points(value));
+    if let Some(color) =
+        attribute(shape, "fillcolor").and_then(|color| normalize_watermark_color(&color))
+    {
+        style.color = color;
+    }
+    for child in &shape.children {
+        let XmlNode::Element(child) = child else {
+            continue;
+        };
+        match child.name.rsplit(':').next() {
+            Some("fill") => {
+                let opacity = attribute(child, "opacity")
+                    .and_then(|value| {
+                        let value = value.trim();
+                        match value.strip_suffix('f') {
+                            Some(fixed) => fixed.parse::<f32>().ok().map(|v| v / 65536.0),
+                            None => value.parse::<f32>().ok(),
+                        }
+                    })
+                    .unwrap_or(1.0);
+                style.semitransparent = opacity < 0.99;
+            }
+            Some("textpath") => {
+                for (key, value) in declarations(&attribute(child, "style").unwrap_or_default()) {
+                    match key.as_str() {
+                        "font-family" => {
+                            let family = value.trim_matches(['"', '\'', ' ']).to_string();
+                            if !family.is_empty() {
+                                style.font = Some(family);
+                            }
+                        }
+                        "font-size" => {
+                            // A 1pt text path fitted to the shape is Word's
+                            // automatic-size sentinel. A fixed 1pt font is valid.
+                            style.size_pt = points(&value).filter(|size| {
+                                size.is_finite() && *size > 0.0 && !(fits_shape && *size == 1.0)
+                            });
+                        }
+                        _ => {}
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+    style
+}
+
 #[cfg(test)]
 mod tests {
     mod body_index {
@@ -39248,6 +40744,31 @@ mod tests {
     use std::time::{Duration, Instant};
     use zip::write::SimpleFileOptions;
     use zip::ZipArchive;
+
+    #[test]
+    fn watermark_font_size_uses_fitshape_inheritance_instead_of_a_size_threshold() {
+        for (inherited, direct, expected) in [
+            ("t", "", None),
+            ("t", "fitshape=\"f\"", Some(1.0)),
+            ("f", "", Some(1.0)),
+            ("f", "fitshape=\"true\"", None),
+            ("", "", Some(1.0)),
+        ] {
+            let xml = format!(
+                r##"<w:hdr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+                xmlns:v="urn:schemas-microsoft-com:vml"><w:p><w:r><w:pict>
+                <v:shapetype id="wm"><v:textpath fitshape="{inherited}"/></v:shapetype>
+                <v:shape id="PowerPlusWaterMarkObject1" type="#wm" style="width:200pt;height:80pt">
+                  <v:textpath {direct} style="font-size:1pt" string="CONFIDENTIAL"/>
+                </v:shape></w:pict></w:r></w:p></w:hdr>"##
+            );
+            let (_, style) = WordDocument::watermark_from_xml(&xml).expect("watermark");
+            assert_eq!(
+                style.size_pt, expected,
+                "inherited={inherited}, direct={direct}"
+            );
+        }
+    }
 
     #[test]
     fn upsert_run_fonts_preserves_replacement_ids_and_canonical_attributes() {
@@ -40101,6 +41622,42 @@ mod tests {
             exported_body_xml(&word_doc),
             r#"<w:p><w:smartTag w:uri="u" w:element="e"><w:r><w:t>A</w:t></w:r><w:del w:id="1" w:author="Reviewer"><w:r><w:rPr><w:b/></w:rPr><w:delText>B</w:delText></w:r></w:del></w:smartTag><w:r><w:t>C</w:t></w:r></w:p>"#
         );
+    }
+
+    #[test]
+    fn body_text_and_cached_metrics_include_saved_field_results() {
+        let mut paragraph = make_paragraph("");
+        paragraph.runs[0].field = Some(RunField {
+            kind: RunFieldKind::Unsupported {
+                instruction: "CITATION Source1".into(),
+            },
+            source_field_id: None,
+            cached_text: Some("[1]".into()),
+            resolved_value: None,
+            word_mac_body_result: None,
+        });
+        paragraph.runs.extend(make_paragraph("Hello").runs);
+        let mut word_doc = WordDocument::from_document(Document {
+            body: Some(Body {
+                elements: vec![BodyElement::from_paragraph(paragraph)],
+            }),
+            ..Document::default()
+        });
+        assert_eq!(word_doc.body_paragraph_text(0).as_deref(), Some("[1]Hello"));
+        assert_eq!(word_doc.body_paragraph_text(1), None);
+        assert_eq!(word_doc.document_text_metrics().chars_with_space, 8);
+        word_doc.paragraph_mut(0).unwrap().runs[0]
+            .field
+            .as_mut()
+            .unwrap()
+            .cached_text = Some("[12]".into());
+        word_doc.sync_paragraph_text(0);
+        assert_eq!(
+            word_doc.body_paragraph_text(0).as_deref(),
+            Some("[12]Hello")
+        );
+        assert_eq!(word_doc.document_text_metrics().chars_with_space, 9);
+        assert!(word_doc.paragraph(0).unwrap().runs[0].text.is_empty());
     }
 
     #[test]
@@ -53209,6 +54766,72 @@ mod tests {
         assert_eq!(second.runs[0].text, "World");
     }
 
+    fn body_count_index_document() -> WordDocument {
+        let mut host = text_box_host_document();
+        let mut document = Rc::unwrap_or_clone(host.document.take().unwrap());
+        let mut blocks = std::mem::take(&mut document.body.as_mut().unwrap().elements);
+        for _ in 0..2 {
+            blocks = vec![BodyElement::from_table(Table {
+                rows: vec![TableRow {
+                    cells: vec![TableCell {
+                        blocks,
+                        ..Default::default()
+                    }],
+                    ..Default::default()
+                }],
+                ..Default::default()
+            })];
+        }
+        blocks.push(BodyElement::from_math_paragraph(MathParagraph::default()));
+        document.body.as_mut().unwrap().elements = blocks;
+        WordDocument::from_document(document)
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig {
+            cases: 96,
+            .. ProptestConfig::default()
+        })]
+
+        #[test]
+        fn body_count_index_tracks_edit_sequences_without_auxiliary_surfaces(
+            operations in proptest::collection::vec((0u8..5, 0usize..64), 1..65),
+        ) {
+            // The count model is just an integer. Text boxes contribute no body
+            // paragraphs, even when their own paragraphs are split or edited.
+            let mut word_doc = body_count_index_document();
+            let mut expected = 1usize;
+            for (step, (operation, position)) in operations.into_iter().enumerate() {
+                match operation {
+                    0 => {
+                        let body_index = position % expected;
+                        let surface = word_doc.surface_index_for_body(body_index).unwrap();
+                        prop_assert!(word_doc.split_paragraph_at(surface, 0), "step {}", step);
+                        expected += 1;
+                    }
+                    1 => {
+                        let body_index = position % expected;
+                        let surface = word_doc.surface_index_for_body(body_index).unwrap();
+                        insert_text_at(&mut word_doc, surface, 0, "日a");
+                    }
+                    2 => {
+                        // Replacement must not retain the preceding snapshot's
+                        // larger count or confuse box paragraphs with body ones.
+                        word_doc = body_count_index_document();
+                        expected = 1;
+                    }
+                    3 => {
+                        let surface = (0..word_doc.paragraph_count())
+                            .find(|&index| word_doc.is_text_box_paragraph_surface(index)).unwrap();
+                        prop_assert!(word_doc.split_paragraph_at(surface, 0), "box step {}", step);
+                    }
+                    _ => word_doc.rebuild_paragraph_surfaces(),
+                }
+                prop_assert_eq!(word_doc.body_paragraph_count(), expected, "step {}", step);
+            }
+        }
+    }
+
     #[test]
     fn package_theme_resolves_shape_and_group_child_colors() {
         let mut document = text_box_host_document()
@@ -54026,6 +55649,39 @@ mod tests {
                 doc = reload_exported(&doc);
             }
         }
+    }
+
+    #[test]
+    fn typing_into_a_box_emptied_in_front_of_a_nested_box_writes_the_nested_box_once() {
+        // Found by the proptest below: the outer box's paragraph is "Level 1"
+        // then a nested box, saved as DrawingML with a VML fallback. With its
+        // text all deleted, the empty run had no `w:r`; typed into, the VML
+        // copy paired it with the nested box's run, so the text went into
+        // that run and the nested box was written again beside it.
+        let bytes = imported_nested_text_box_docx(1, true);
+        let mut doc =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+        for _ in 0.."Level 1".len() {
+            delete_text_range(&mut doc, (1, 0), (1, 1));
+        }
+        insert_text_at(&mut doc, 1, 0, "a");
+        let exported = exported_document_xml(&doc);
+        assert_eq!(exported.matches("<w:txbxContent>").count(), 6, "{exported}");
+        assert_eq!(
+            exported.matches("<w:t>Level 0</w:t>").count(),
+            4,
+            "{exported}"
+        );
+        let reopened = reload_exported(&doc);
+        let text: String = reopened
+            .paragraph(1)
+            .expect("outer box paragraph")
+            .runs
+            .iter()
+            .filter(|run| run.text_box.is_none())
+            .map(|run| run.text.as_str())
+            .collect();
+        assert_eq!(text, "a");
     }
 
     proptest! {
@@ -56754,11 +58410,7 @@ mod tests {
             layout_document_lines(document, &context)
                 .expect("layout document")
                 .get_lines()
-                .find(|line| {
-                    line.text.starts_with(
-                        "3　法第15条の6の2第2項に規定する条例で定める事項は、次に掲げる事項とする",
-                    )
-                })
+                .find(|line| line.text.starts_with("3　法第15条の6の2第2項"))
                 .map(|line| line.page)
                 .expect("heading line page")
         };
@@ -56820,8 +58472,8 @@ mod tests {
             "clearing inherited run font sizes should move the heading back to page 5"
         );
         assert_eq!(
-            cleared_ascii_size_page, 4,
-            "clearing inherited font sizes only on ASCII runs is not enough; the page shift also depends on inherited sizes on Japanese runs"
+            cleared_ascii_size_page, 5,
+            "with Windows known-face line boxes, clearing ASCII sizes also crosses the page boundary"
         );
     }
 

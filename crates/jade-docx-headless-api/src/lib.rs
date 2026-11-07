@@ -222,6 +222,36 @@ pub struct HeadlessParagraphShading {
     pub fill: Option<String>,
 }
 
+/// A page fill effect (Word's 塗りつぶし効果).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+#[serde(deny_unknown_fields)]
+pub struct HeadlessPageFill {
+    /// `gradient`, `texture`, `pattern` or `picture`.
+    pub kind: String,
+    /// The page colour it starts from (`#RRGGBB`): a gradient's first
+    /// colour, a pattern's foreground. A texture or picture keeps the page
+    /// colour there is when absent.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub color: Option<String>,
+    /// A gradient's second colour, a pattern's background (`#RRGGBB`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub color2: Option<String>,
+    /// A gradient's angle, degrees: 0 top to bottom, -90 left to right, -45
+    /// and 45 the diagonals.
+    #[serde(default)]
+    pub angle: f64,
+    /// A gradient's focus, percent: 0, 100 (reversed), 50 and -50 (mirrored).
+    #[serde(default)]
+    pub focus: f64,
+    /// The texture tile, the pattern's bits (dark on light) or the picture:
+    /// PNG or JPEG, base64.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub image_base64: Option<String>,
+    /// Its name, as Word's `o:title`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub title: Option<String>,
+}
+
 /// Editable subset of the package-wide DrawingML document theme.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -316,6 +346,53 @@ pub enum HeadlessTableCellInsertDirection {
     /// The new cell takes the target's place and the cells below it in that
     /// column move down; a row is appended to hold the last one.
     ShiftDown,
+}
+
+/// Word's 枠 (`w:framePr`, ECMA-376 Part 1 §17.3.1.11) as the 枠の書式設定
+/// dialog sets it. Lengths are points; a size left out is 自動, a position
+/// left out is 0 from its base.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+pub struct HeadlessParagraphFrame {
+    /// 幅 (`w:w`); `None` is 自動.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub width: Option<f32>,
+    /// 高さ (`w:h`), read by `height_rule`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub height: Option<f32>,
+    /// `auto` (自動), `atLeast` (最小値) or `exact` (固定値).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub height_rule: Option<String>,
+    /// 水平方向の位置 as a distance (`w:x`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub x: Option<f32>,
+    /// 水平方向の位置 by alignment (`w:xAlign`): `left`, `center`, `right`,
+    /// `inside` or `outside`; it wins over `x`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub x_align: Option<String>,
+    /// 水平方向の基準 (`w:hAnchor`): `text` (段), `margin` or `page`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub h_anchor: Option<String>,
+    /// 垂直方向の位置 as a distance (`w:y`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub y: Option<f32>,
+    /// 垂直方向の位置 by alignment (`w:yAlign`): `top`, `center`, `bottom`,
+    /// `inside`, `outside` or `inline`; it wins over `y`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub y_align: Option<String>,
+    /// 垂直方向の基準 (`w:vAnchor`): `text` (段落: 文字列と一緒に移動する),
+    /// `margin` or `page`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub v_anchor: Option<String>,
+    /// 文字列の折り返し (`w:wrap`): `around` (周囲) or `none` (なし), or
+    /// `notBeside`, `tight`, `through`, `auto`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub wrap: Option<String>,
+    /// 文字列との間隔, left and right (`w:hSpace`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub h_space: Option<f32>,
+    /// 文字列との間隔, above and below (`w:vSpace`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub v_space: Option<f32>,
 }
 
 /// How 並べ替え compares one column: Word's 種類.
@@ -1017,6 +1094,21 @@ pub enum HeadlessCommand {
         offset: usize,
         text: String,
     },
+    /// 位置合わせタブの挿入: an absolute position tab (ECMA-376 Part 1
+    /// §17.3.3.16 `w:ptab`) at a byte offset — a tab character that aligns
+    /// the text after it to the `left`, `center` or `right` of the margins
+    /// (`relative_to` `margin`, the default) or of the paragraph's indents
+    /// (`indent`), with an optional leader (`dot`, `hyphen`, `underscore`,
+    /// `middleDot`).
+    InsertPositionalTab {
+        paragraph: usize,
+        offset: usize,
+        alignment: String,
+        #[serde(default)]
+        relative_to: Option<String>,
+        #[serde(default)]
+        leader: Option<String>,
+    },
     ReplaceRange {
         start_paragraph: usize,
         start_offset: usize,
@@ -1270,6 +1362,15 @@ pub enum HeadlessCommand {
         #[serde(default = "default_drop_cap_lines")]
         lines: u8,
     },
+    /// 枠 (開発 › 旧形式のツール › 枠, 枠の書式設定): paragraphs
+    /// `start_paragraph..=end_paragraph` in one text frame, or — with
+    /// `frame: null` — 枠の削除. A paragraph with a drop cap is refused.
+    SetParagraphFrame {
+        start_paragraph: usize,
+        end_paragraph: usize,
+        #[serde(default)]
+        frame: Option<HeadlessParagraphFrame>,
+    },
     /// Paragraph options Word sets from its タブとリーダー, 線種とページ罫線と
     /// 網かけの設定 and 段落 dialogs. Each field left out stays as it is.
     /// `tabs` replaces the paragraphs' effective tab stops (style tab stops
@@ -1293,6 +1394,10 @@ pub enum HeadlessCommand {
         borders: Option<HeadlessParagraphBorderBox>,
         #[serde(default)]
         shading: Option<Option<HeadlessParagraphShading>>,
+        /// 見開きページのインデント設定 (`w:mirrorIndents`): the left and
+        /// right indents become inside and outside.
+        #[serde(default)]
+        mirror_indents: Option<bool>,
     },
     /// Applies (or with `style_id: None` removes) a character style on a range.
     /// Offsets are the same rendered byte offsets the other range commands take.
@@ -1369,6 +1474,20 @@ pub enum HeadlessCommand {
         /// 改ページ時 1 行残して段落を区切らない.
         #[serde(default)]
         widow_control: Option<bool>,
+    },
+    /// The 段落 dialog's アウトライン レベル and 既定で折りたたみ (ECMA-376
+    /// Part 1 §17.3.1.20 `w:outlineLvl`; the `w15:collapsed` extension Word
+    /// 2013 writes). `level` is 0–8 for レベル 1–9 and 9 for 本文: the level
+    /// the paragraph's style already gives takes the direct `w:outlineLvl`
+    /// away, any other is written. `collapsed` writes or removes
+    /// `w15:collapsed`. `None` leaves either as it is.
+    SetParagraphOutlineLevel {
+        start_paragraph: usize,
+        end_paragraph: usize,
+        #[serde(default)]
+        level: Option<u8>,
+        #[serde(default)]
+        collapsed: Option<bool>,
     },
     /// Word's Ctrl+0: add 12pt of space before each paragraph in the range,
     /// or remove it when every paragraph already has exactly 12pt.
@@ -1913,6 +2032,29 @@ pub enum HeadlessCommand {
         column: usize,
         alignment: String,
     },
+    /// 文字列をセル幅に合わせる (`w:tcFitText`): the cell's text squeezed or
+    /// spread to the cell's width.
+    SetTableCellFitText {
+        table_order_index: usize,
+        row: usize,
+        column: usize,
+        fit: bool,
+    },
+    /// 表の方向 (`w:bidiVisual`): `true` lays the columns out from the right.
+    SetTableDirection {
+        table_order_index: usize,
+        right_to_left: bool,
+    },
+    /// 代替テキスト: the table's タイトル (`w:tblCaption`) and 説明
+    /// (`w:tblDescription`). An absent one is left alone; an empty one is
+    /// taken off.
+    SetTableAltText {
+        table_order_index: usize,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        title: Option<String>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        description: Option<String>,
+    },
     /// One border edge: the line style (`single`, `double`, `dashed`, `none`,
     /// …), its thickness in points, and its colour. Absent parts fall back to a
     /// single line, Word's own default thickness, and `auto`.
@@ -1937,7 +2079,7 @@ pub enum HeadlessCommand {
         inside_v: Option<HeadlessBorderEdge>,
     },
     /// One cell's own borders (`w:tcBorders`), which win over the table's
-    /// defaults. A cell has only its four edges.
+    /// defaults: its four edges and its two diagonals (斜め罫線).
     SetTableCellBorders {
         table_order_index: usize,
         row: usize,
@@ -1950,6 +2092,13 @@ pub enum HeadlessCommand {
         left: Option<HeadlessBorderEdge>,
         #[serde(default)]
         right: Option<HeadlessBorderEdge>,
+        /// 斜め罫線 (右下がり): top-left to bottom-right (`w:tl2br`); style
+        /// `none` takes it away.
+        #[serde(default)]
+        tl2br: Option<HeadlessBorderEdge>,
+        /// 斜め罫線 (右上がり): top-right to bottom-left (`w:tr2bl`).
+        #[serde(default)]
+        tr2bl: Option<HeadlessBorderEdge>,
     },
     /// Row properties for a table that runs over a page break: repeat this row
     /// as the header at the top of every page (`w:tblHeader`), and keep the row
@@ -2175,6 +2324,19 @@ pub enum HeadlessCommand {
         #[serde(default)]
         header_rows: usize,
     },
+    /// 並べ替え outside a table: body paragraphs `start_paragraph..=
+    /// end_paragraph` ordered by their text (Word's 段落 key); with `header`
+    /// the first one is a 見出し行 and stays first.
+    SortParagraphs {
+        start_paragraph: usize,
+        end_paragraph: usize,
+        #[serde(default)]
+        kind: HeadlessTableSortKind,
+        #[serde(default)]
+        descending: bool,
+        #[serde(default)]
+        header: bool,
+    },
     /// Word's 計算式: an `=` field at the caret, whose result is computed now
     /// from the table around it — `=SUM(ABOVE)`, `=AVERAGE(LEFT)`,
     /// `=B2*C2`, … `number_format` is the `\#` picture (`0`, `#,##0`,
@@ -2262,6 +2424,33 @@ pub enum HeadlessCommand {
         clear: bool,
         #[serde(default)]
         text: Option<String>,
+        /// フォント: the text path's font family; omitted keeps Word's default.
+        #[serde(default)]
+        font: Option<String>,
+        /// サイズ in points; omitted is 自動 (the text fills the page).
+        #[serde(default)]
+        size: Option<f32>,
+        /// 色 as `#RRGGBB`; omitted is Word's silver (`#C0C0C0`).
+        #[serde(default)]
+        color: Option<String>,
+        /// 半透明にする; omitted is on, as Word's dialog starts.
+        #[serde(default)]
+        semitransparent: Option<bool>,
+        /// レイアウト: `diagonal` (対角線上, the default) or `horizontal` (水平).
+        #[serde(default)]
+        layout: Option<String>,
+    },
+    /// 原稿用紙設定's drawing: the manuscript-paper grid in every header over
+    /// the final section's body box — `squares` (マス目付き), `lines`
+    /// (下線付き) or `frame` (外枠付き), `chars` × `lines`, in `color`
+    /// (`#RRGGBB`). `style` omitted (なし) takes it away. The page, margins
+    /// and `snapToChars` grid are set with `set_section_layout` first.
+    SetManuscriptGrid {
+        #[serde(default)]
+        style: Option<String>,
+        chars: u32,
+        lines: u32,
+        color: String,
     },
     /// Replaces the package-wide Word theme fonts and color scheme while
     /// preserving unmodeled theme XML.
@@ -2271,6 +2460,12 @@ pub enum HeadlessCommand {
     /// Sets the document page background color (`#RRGGBB`); `None` clears it.
     SetPageBackgroundColor {
         color: Option<String>,
+    },
+    /// ページの色 › 塗りつぶし効果: a gradient, texture, pattern or picture
+    /// behind every page; `None` takes the effect off, leaving the colour.
+    SetPageFill {
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        fill: Option<HeadlessPageFill>,
     },
     /// Sets the paragraph line-spacing multiplier (1.0/1.5/2.0; `None` clears).
     /// Paragraph spacing (`w:spacing`): the line height and the space above and
@@ -2320,6 +2515,7 @@ impl HeadlessCommand {
     pub fn name(&self) -> &'static str {
         match self {
             HeadlessCommand::InsertText { .. } => "insert_text",
+            HeadlessCommand::InsertPositionalTab { .. } => "insert_positional_tab",
             HeadlessCommand::ReplaceRange { .. } => "replace_range",
             HeadlessCommand::ReplacePlaceholder { .. } => "replace_placeholder",
             HeadlessCommand::DeleteText { .. } => "delete_text",
@@ -2355,12 +2551,14 @@ impl HeadlessCommand {
             HeadlessCommand::SetParagraphShading { .. } => "set_paragraph_shading",
             HeadlessCommand::SetParagraphBorders { .. } => "set_paragraph_borders",
             HeadlessCommand::SetDropCap { .. } => "set_drop_cap",
+            HeadlessCommand::SetParagraphFrame { .. } => "set_paragraph_frame",
             HeadlessCommand::SetParagraphOptions { .. } => "set_paragraph_options",
             HeadlessCommand::SetParagraphTabs { .. } => "set_paragraph_tabs",
             HeadlessCommand::SetParagraphIndent { .. } => "set_paragraph_indent",
             HeadlessCommand::AdjustParagraphIndent { .. } => "adjust_paragraph_indent",
             HeadlessCommand::ToggleParagraphSpaceBefore { .. } => "toggle_paragraph_space_before",
             HeadlessCommand::SetParagraphPagination { .. } => "set_paragraph_pagination",
+            HeadlessCommand::SetParagraphOutlineLevel { .. } => "set_paragraph_outline_level",
             HeadlessCommand::ResetParagraphFormatting { .. } => "reset_paragraph_formatting",
             HeadlessCommand::AdjustFontSize { .. } => "adjust_font_size",
             HeadlessCommand::SetParagraphMetrics { .. } => "set_paragraph_metrics",
@@ -2412,6 +2610,9 @@ impl HeadlessCommand {
             HeadlessCommand::SetTableCellVerticalAlignment { .. } => {
                 "set_table_cell_vertical_alignment"
             }
+            HeadlessCommand::SetTableCellFitText { .. } => "set_table_cell_fit_text",
+            HeadlessCommand::SetTableDirection { .. } => "set_table_direction",
+            HeadlessCommand::SetTableAltText { .. } => "set_table_alt_text",
             HeadlessCommand::ResetTableCellMargins { .. } => "reset_table_cell_margins",
             HeadlessCommand::SetTableRowHeightProperties { .. } => {
                 "set_table_row_height_properties"
@@ -2443,6 +2644,7 @@ impl HeadlessCommand {
             HeadlessCommand::ConvertTextToTable { .. } => "convert_text_to_table",
             HeadlessCommand::ConvertTableToText { .. } => "convert_table_to_text",
             HeadlessCommand::SortTable { .. } => "sort_table",
+            HeadlessCommand::SortParagraphs { .. } => "sort_paragraphs",
             HeadlessCommand::InsertTableFormula { .. } => "insert_table_formula",
             HeadlessCommand::UpdateTableFormulas => "update_table_formulas",
             HeadlessCommand::SetNumbering { .. } => "set_numbering",
@@ -2463,8 +2665,10 @@ impl HeadlessCommand {
             HeadlessCommand::SetPageColumns { .. } => "set_page_columns",
             HeadlessCommand::SetPageBorders { .. } => "set_page_borders",
             HeadlessCommand::SetWatermark { .. } => "set_watermark",
+            HeadlessCommand::SetManuscriptGrid { .. } => "set_manuscript_grid",
             HeadlessCommand::SetDocumentTheme { .. } => "set_document_theme",
             HeadlessCommand::SetPageBackgroundColor { .. } => "set_page_background_color",
+            HeadlessCommand::SetPageFill { .. } => "set_page_fill",
             HeadlessCommand::SetParagraphLineSpacing { .. } => "set_paragraph_line_spacing",
             HeadlessCommand::InsertAfterHeading { .. } => "insert_after_heading",
             HeadlessCommand::InsertBeforeHeading { .. } => "insert_before_heading",
@@ -2914,6 +3118,7 @@ mod tests {
             HeadlessCommand::SetWatermark {
                 clear: false,
                 text: Some(value),
+                ..
             } if value == "社外秘"
         ));
 

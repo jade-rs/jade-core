@@ -69,6 +69,17 @@ impl HeadlessWorkbook {
         Ok(at)
     }
 
+    /// Move or Copy ▸ Create a copy: `source` copied, as `name`, right after
+    /// it. A sheet with drawings, charts, tables or comments is refused.
+    /// Returns the copy's index. One undo step.
+    pub fn copy_sheet(&mut self, source: &str, name: &str) -> Result<usize> {
+        let index = self.sheet_index(source)?;
+        let source = self.workbook.sheets[index].name.clone();
+        let (written, at) = jade_xlsx_writer::sheets::copy_sheet(&self.source, &source, name)?;
+        self.commit_sheet_change(written, |_| {})?;
+        Ok(at)
+    }
+
     /// Renames the sheet `old` to `new`, rewriting — as Excel does — every
     /// formula, defined name, conditional format and validation formula,
     /// table formula and chart series that names it (`Old!A1` becomes

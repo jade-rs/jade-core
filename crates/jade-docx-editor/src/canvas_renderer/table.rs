@@ -495,8 +495,31 @@ impl CellParagraph {
         }
     }
 
-    pub(super) fn height(&self) -> f64 {
-        self.height
+    /// The number of columns a vertically laid paragraph takes.
+    pub(super) fn vertical_columns(&self) -> usize {
+        self.vertical_layout
+            .as_ref()
+            .map_or(0, |layout| layout.column_ranges.len())
+    }
+
+    /// How far apart a vertically laid paragraph's columns are: as wide as
+    /// its widest character, and never narrower than a line.
+    pub(super) fn vertical_column_pitch(&self, line_height: f64) -> f64 {
+        self.max_line_width.max(line_height).max(1.0)
+    }
+
+    /// The same paragraph with only `columns` of its vertical columns, for
+    /// the part of it that fits on a page. Line indices are kept, so the
+    /// selection still finds every character where it is drawn.
+    pub(super) fn with_vertical_columns(&self, columns: Range<usize>) -> Self {
+        let mut part = self.clone();
+        if let Some(layout) = part.vertical_layout.as_mut() {
+            let end = columns.end.min(layout.column_ranges.len());
+            let start = columns.start.min(end);
+            layout.column_ranges = layout.column_ranges[start..end].to_vec();
+        }
+        part.is_continuation = columns.start > 0;
+        part
     }
 
     #[cfg(all(debug_assertions, target_arch = "wasm32"))]
@@ -3921,7 +3944,17 @@ where
                             .fill_text(&line.text, 0.0, 0.0)
                             .map_err(PainterError::into_js_value)?;
                         context.restore();
-                    } else {
+                    } else if !fill_vertical_form(
+                        context,
+                        &line.text,
+                        font.as_deref().unwrap_or(TABLE_FONT),
+                        draw_text_x,
+                        paint_y,
+                        line_top + line_advance * 0.5,
+                        line_advance,
+                    )
+                    .map_err(PainterError::into_js_value)?
+                    {
                         context
                             .fill_text(&line.text, draw_text_x, paint_y)
                             .map_err(PainterError::into_js_value)?;
@@ -8002,10 +8035,13 @@ fn table_autofit_cache_signature(
     line_height_for: &dyn Fn(&Paragraph) -> f64,
     field_value_for: &dyn Fn(&RunField) -> Option<String>,
 ) -> Option<TableAutofitCacheSignature> {
-    let mut bytes = serde_json::to_vec(table).ok()?;
+    // A table's key runs to kilobytes: start there rather than growing from
+    // serde_json's 128 bytes on every paint.
+    let mut bytes = Vec::with_capacity(4096);
+    serde_json::to_writer(&mut bytes, table).ok()?;
     // `resolved_style` is intentionally skipped by the document serializer but
     // affects table and first-row typography, so retain it in the cache key.
-    bytes.extend_from_slice(format!("{:?}", table.resolved_style).as_bytes());
+    std::io::Write::write_fmt(&mut bytes, format_args!("{:?}", table.resolved_style)).ok()?;
     bytes.extend_from_slice(&available_width.to_bits().to_le_bytes());
     bytes.extend_from_slice(&default_padding_x.to_bits().to_le_bytes());
     for width in column_widths {
@@ -12267,6 +12303,67 @@ fn paragraph_line_tate_chu_yoko(
     })
 }
 
+/// Paints `text`, one character of an upright column, in its vertical form
+/// when it has one (see [`jade_docx_layout::vertical_forms`]): first as the
+/// font's own `vert` alternate, as Word draws it; else as the presentation
+/// form, turned a quarter about `center_y`, or nudged up and right by
+/// fractions of `em`. `Ok(false)` when the character stands as it is and the
+/// caller paints it.
+fn fill_vertical_form<P: Painter>(
+    context: &P,
+    text: &str,
+    font: &str,
+    x: f64,
+    y: f64,
+    center_y: f64,
+    em: f64,
+) -> Result<bool, P::Error> {
+    use jade_docx_layout::vertical_forms::{vertical_form, VerticalForm, VERT_FEATURE};
+    let form = vertical_form(text);
+    if form == VerticalForm::Upright {
+        return Ok(false);
+    }
+    let shaped_font = match jade_painter::font_features::features_token(font) {
+        Some(token) => font.replacen(
+            &format!("{}{token}", jade_painter::font_features::PREFIX),
+            &format!(
+                "{}{token},{VERT_FEATURE}",
+                jade_painter::font_features::PREFIX
+            ),
+            1,
+        ),
+        None => format!(
+            "{}{VERT_FEATURE} {font}",
+            jade_painter::font_features::PREFIX
+        ),
+    };
+    context.set_font(&shaped_font);
+    let shaped = context.try_fill_shaped_text(text, &[(0, x)], y)?;
+    context.set_font(font);
+    if shaped {
+        return Ok(true);
+    }
+    match form {
+        VerticalForm::Upright => return Ok(false),
+        VerticalForm::Substitute(form) => {
+            let mut buffer = [0u8; 4];
+            context.fill_text(form.encode_utf8(&mut buffer), x, y)?;
+        }
+        VerticalForm::Rotate => {
+            let width = context.measure_text_width(text)?;
+            let _guard = StateGuard::new(context);
+            context.translate(x + width * 0.5, center_y)?;
+            context.rotate(FRAC_PI_2)?;
+            context.set_text_baseline("middle");
+            context.fill_text(text, -width * 0.5, 0.0)?;
+        }
+        VerticalForm::Shift { right, up } => {
+            context.fill_text(text, x + right * em, y - up * em)?;
+        }
+    }
+    Ok(true)
+}
+
 fn paragraph_line_font_descriptor(paragraph: &CellParagraph, line: &LineLayout) -> Option<Rc<str>> {
     let run = paragraph
         .styled_runs
@@ -12608,6 +12705,9 @@ fn layout_paragraph_with_table_context<P: Painter<Error: PainterError>>(
     )
 }
 
+/// A vertical section paragraph's columns. `snap_char_space_px` is the
+/// `w:charSpace` of a `snapToChars` grid, whose characters each take whole
+/// character pitches down the column, centred in them.
 pub(super) fn layout_vertical_paragraph_with_wrap_context<C: LineWrapContext>(
     context: &C,
     text: &str,
@@ -12615,8 +12715,9 @@ pub(super) fn layout_vertical_paragraph_with_wrap_context<C: LineWrapContext>(
     direction: TextDirection,
     available_height: Option<f64>,
     line_height: f64,
+    snap_char_space_px: Option<f64>,
 ) -> Result<CellParagraph, C::Error> {
-    let mut paragraph = layout_vertical_paragraph_with_run_styles_context(
+    let mut paragraph = layout_vertical_paragraph_on_grid(
         context,
         text,
         direction,
@@ -12624,6 +12725,7 @@ pub(super) fn layout_vertical_paragraph_with_wrap_context<C: LineWrapContext>(
         line_height,
         run_styles,
         true,
+        snap_char_space_px,
     )?;
     // Section text uses this table-like layout adapter too. Keep its resolved
     // run properties for painting, instead of falling back to TABLE_FONT.
@@ -12669,20 +12771,52 @@ fn layout_vertical_paragraph_with_run_styles_context<C: LineWrapContext>(
     run_styles: &[RunStyle],
     upright_section: bool,
 ) -> Result<CellParagraph, C::Error> {
-    let layout = if upright_section {
-        jade_docx_layout::line_wrap::layout_section_text_vertically
-    } else {
-        jade_docx_layout::line_wrap::layout_text_vertically
-    };
-    let wrapped = layout(
+    layout_vertical_paragraph_on_grid(
         context,
         text,
-        run_styles,
-        direction_prefers_horizontal_latin(direction),
-        0,
+        direction,
         available_height,
         line_height,
-    )?;
+        run_styles,
+        upright_section,
+        None,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn layout_vertical_paragraph_on_grid<C: LineWrapContext>(
+    context: &C,
+    text: &str,
+    direction: TextDirection,
+    available_height: Option<f64>,
+    line_height: f64,
+    run_styles: &[RunStyle],
+    upright_section: bool,
+    snap_char_space_px: Option<f64>,
+) -> Result<CellParagraph, C::Error> {
+    let prefer_horizontal_latin = direction_prefers_horizontal_latin(direction);
+    let wrapped = if upright_section {
+        jade_docx_layout::line_wrap::layout_section_text_vertically_on_grid(
+            context,
+            text,
+            run_styles,
+            prefer_horizontal_latin,
+            0,
+            available_height,
+            line_height,
+            snap_char_space_px,
+        )?
+    } else {
+        jade_docx_layout::line_wrap::layout_text_vertically(
+            context,
+            text,
+            run_styles,
+            prefer_horizontal_latin,
+            0,
+            available_height,
+            line_height,
+        )?
+    };
     let lines = wrapped
         .lines
         .iter()
@@ -12691,6 +12825,23 @@ fn layout_vertical_paragraph_with_run_styles_context<C: LineWrapContext>(
             if upright_section {
                 line.word_baseline_offset =
                     jade_docx_layout::line_wrap::wrapped_line_max_font_ascent(wrapped_line);
+                // A glyph centred in its grid cells: its baseline drops by
+                // the space above it, and it is centred across the column by
+                // its own width, not the cells it takes down it.
+                let snapped = wrapped_line
+                    .clusters
+                    .first()
+                    .and_then(|cluster| cluster.layout.as_ref())
+                    .filter(|layout| snap_char_space_px.is_some() && layout.leading_advance > 0.0);
+                if let Some(layout) = snapped {
+                    line.word_baseline_offset = line
+                        .word_baseline_offset
+                        .map(|ascent| ascent + layout.leading_advance);
+                    for glyph in &mut line.glyphs {
+                        glyph.x = 0.0;
+                        glyph.width = layout.adjusted_glyph_width;
+                    }
+                }
             }
             line
         })
@@ -13465,6 +13616,21 @@ mod tests {
             }
         }
 
+        fn with_recording_font(mut self) -> Self {
+            let descriptor = TABLE_FONT.replace("Times New Roman", "Recording Test");
+            self.style = Rc::new(ResolvedRunStyle::new(
+                descriptor.clone(),
+                descriptor.clone(),
+                descriptor.clone(),
+                descriptor,
+                0.0,
+                1.0,
+                false,
+                None,
+            ));
+            self
+        }
+
         fn measure_calls(&self) -> u64 {
             self.measure_calls.get()
         }
@@ -13543,7 +13709,7 @@ mod tests {
             ..Default::default()
         };
         autofit_content_widths(
-            &OverhangingWrapContext(FixedWidthWrapContext::new()),
+            &OverhangingWrapContext(FixedWidthWrapContext::new().with_recording_font()),
             &table,
             &[100.0],
             0.0,
@@ -13821,7 +13987,7 @@ mod tests {
             hyphenation: Default::default(),
             styles_part: None,
         };
-        let context = FixedWidthWrapContext::new();
+        let context = FixedWidthWrapContext::new().with_recording_font();
         let text = "ab cd ef gh";
         for (alignment, expected_first_line) in [("both", "ab cd ef "), ("left", "ab cd ")] {
             let paragraph = Paragraph {

@@ -56,6 +56,39 @@ class NativeMacosWorkflowTest < Minitest::Test
     assert_includes step.fetch("run"), "--locked --test word_mac_coordinates"
   end
 
+  def test_mac_coordinate_comparison_has_an_independent_failing_job
+    job = @workflow.fetch("jobs").fetch("word-mac-coordinates")
+    assert_equal "macos-latest", job.fetch("runs-on")
+    refute job.key?("if")
+    refute job.key?("needs"), "other jobs must not block the coordinate comparison"
+    refute job.fetch("continue-on-error", false)
+    step = job.fetch("steps").find do |item|
+      item["name"] == "Compare Mac drawing coordinates with committed Word references"
+    end
+    refute_nil step
+    refute step.key?("if")
+    refute step.fetch("continue-on-error", false)
+    command = step.fetch("run")
+    assert_includes command, "--locked --test word_mac_coordinates"
+    refute_includes command, "--skip"
+    refute_includes command, "--ignored"
+    refute_includes job.to_s, "JADE_UPDATE_WORD_MAC_SNAPSHOT"
+  end
+
+  def test_windows_version_baselines_run_on_windows_without_ignored_failures
+    job = @workflow.fetch("jobs").fetch("windows-word-baselines")
+    assert_equal "windows-latest", job.fetch("runs-on")
+    refute job.key?("if")
+    refute job.key?("needs")
+    refute job.fetch("continue-on-error", false)
+    step = job.fetch("steps").find { |item| item["name"] == "Compare every registered Word version's baselines" }
+    refute_nil step
+    refute step.key?("if")
+    refute step.fetch("continue-on-error", false)
+    assert_includes step.fetch("run"), "--locked --test word_windows_coordinates windows_word_baselines_with_bundled_standins"
+    assert_includes step.fetch("run"), "--exact"
+  end
+
   private
 
   def run_command(step_name)

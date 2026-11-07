@@ -146,6 +146,7 @@ fn a_picture_placeholder_inherits_its_geometry_from_the_layout() {
         shadow: None,
         effects: Default::default(),
         alpha: None,
+        ..Default::default()
     };
     let laid_out = layout_slide_inheriting(
         slide_size(),

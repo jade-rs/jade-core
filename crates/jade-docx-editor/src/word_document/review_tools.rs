@@ -198,7 +198,7 @@ impl WordDocument {
 
 /// The commands that change paragraph formatting: with changes tracked,
 /// what each one changes is recorded as a `w:pPrChange`.
-pub(crate) const PARAGRAPH_FORMAT_COMMANDS: [&str; 16] = [
+pub(crate) const PARAGRAPH_FORMAT_COMMANDS: [&str; 18] = [
     "adjust_paragraph_indent",
     "apply_multilevel_list",
     "reset_paragraph_formatting",
@@ -206,8 +206,10 @@ pub(crate) const PARAGRAPH_FORMAT_COMMANDS: [&str; 16] = [
     "set_numbering",
     "set_paragraph_alignment",
     "set_paragraph_direction",
+    "set_paragraph_frame",
     "set_paragraph_indent",
     "set_paragraph_line_spacing",
+    "set_paragraph_outline_level",
     "set_paragraph_pagination",
     "set_paragraph_style",
     "set_paragraph_visuals",
@@ -559,12 +561,24 @@ impl WordDocument {
         if let Some(inherited) = self.inherited_paragraph_properties(index, style.as_deref()) {
             Self::fill_missing_paragraph_props(&mut properties, &inherited);
         }
+        let mut restyled = None;
         if let Some(paragraph) = self.paragraph_mut(index) {
             // What the paragraph mark carries stays the paragraph's own.
-            if let Some(old) = paragraph.properties.as_ref() {
+            let previous_style = paragraph.properties.as_ref().and_then(|old| {
                 properties.mark_revision = old.mark_revision.clone();
-            }
+                old.style.as_deref().map(str::to_string)
+            });
             paragraph.properties = Some(properties);
+            restyled = Some((previous_style, paragraph.runs.len()));
+        }
+        // The runs hold what the rejected style gave them, as the paragraph
+        // style a load resolves into them. Left, a text box paragraph put
+        // back from a heading kept the heading's size on screen only.
+        if let Some((previous_style, run_count)) = restyled {
+            self.restyle_runs_from(index, 0..run_count, previous_style.as_deref());
+            if let Some(theme) = self.loaded_theme_part() {
+                self.apply_theme_fonts_at(index, &theme);
+            }
         }
         Ok(())
     }

@@ -209,7 +209,23 @@ fn render_body<P: Painter>(
         render_grid_lines(painter, layout, viewport, options);
     }
     let blank_cells = layout.blank_cells_in(viewport);
-    for cell in layout.cells_in(viewport).chain(blank_cells.iter()) {
+    // The stored cells under the viewport, and those whose text reaches
+    // into it (overflow included), found in one walk: each pass below
+    // walked every cell of the sheet to find them again, a large sheet's
+    // thousands of cells for the few hundred on screen.
+    let mut visible: Vec<&PlacedCell> = Vec::new();
+    let mut texts: Vec<&PlacedCell> = Vec::new();
+    for cell in &layout.cells {
+        if cell.rect.intersects(&viewport) {
+            visible.push(cell);
+        }
+        // As `text_cells_in` picks them.
+        if cell.rect.width > 0.0 && cell.rect.height > 0.0 && cell.text_rect().intersects(&viewport)
+        {
+            texts.push(cell);
+        }
+    }
+    for cell in visible.iter().copied().chain(blank_cells.iter()) {
         if let Some(fill) = &cell.fill {
             let sheet_background = options.background.as_deref().unwrap_or("#ffffff");
             render_cell_fill(painter, fill, cell.rect, sheet_background, options);
@@ -222,7 +238,7 @@ fn render_body<P: Painter>(
         // the background back over the anchor's box erases them without having
         // to split every grid line around the merge.
         if let Some(background) = &options.background {
-            for cell in layout.cells_in(viewport) {
+            for cell in visible.iter().copied() {
                 if cell.merge.is_none() || cell.fill.is_some() {
                     continue;
                 }
@@ -232,7 +248,7 @@ fn render_body<P: Painter>(
         }
     }
 
-    for cell in layout.cells_in(viewport) {
+    for cell in visible.iter().copied() {
         if let Some(bar) = &cell.data_bar {
             if bar.rect.width > 0.0 && bar.rect.height > 0.0 {
                 let color = |rgba: [u8; 4]| {
@@ -290,7 +306,7 @@ fn render_body<P: Painter>(
         }
     }
 
-    for cell in layout.cells_in(viewport).chain(blank_cells.iter()) {
+    for cell in visible.iter().copied().chain(blank_cells.iter()) {
         render_borders(painter, &cell.border, cell.rect, options);
     }
 
@@ -313,13 +329,13 @@ fn render_body<P: Painter>(
         result?;
     }
 
-    for cell in layout.cells_in(viewport) {
+    for cell in visible.iter().copied() {
         if let Some(icon) = &cell.icon {
             icons::render_icon(painter, &icon.icon_set, icon.index, icon.rect)?;
         }
     }
 
-    for cell in layout.text_cells_in(viewport) {
+    for cell in texts {
         if cell.data_bar.as_ref().is_some_and(|bar| !bar.show_value)
             || cell.icon.as_ref().is_some_and(|icon| !icon.show_value)
         {
@@ -338,6 +354,12 @@ fn render_body<P: Painter>(
 
     for note in layout.notes_in(viewport) {
         render_note_marker(painter, note.rect);
+    }
+
+    // Only the cells under the viewport: a long sheet's others are not
+    // looked at.
+    for cell in visible.iter().filter(|cell| cell.error_flag) {
+        render_error_marker(painter, cell.rect);
     }
 
     for shape in layout.shapes_in(viewport) {
@@ -413,6 +435,25 @@ fn render_note_marker<P: Painter>(painter: &P, rect: Rect) {
     painter.move_to(right - size, rect.y);
     painter.line_to(right, rect.y);
     painter.line_to(right, rect.y + size);
+    painter.close_path();
+    painter.fill();
+}
+
+/// Excel's error indicator is green whatever the theme is, as the note
+/// marker is red.
+const ERROR_MARKER_COLOR: &str = "#00a000";
+
+/// The green top-left triangle marking a cell error checking flags.
+fn render_error_marker<P: Painter>(painter: &P, rect: Rect) {
+    let size = NOTE_MARKER_PX.min(rect.width).min(rect.height);
+    if size <= 0.0 {
+        return;
+    }
+    painter.set_fill_style_str(ERROR_MARKER_COLOR);
+    painter.begin_path();
+    painter.move_to(rect.x, rect.y);
+    painter.line_to(rect.x + size, rect.y);
+    painter.line_to(rect.x, rect.y + size);
     painter.close_path();
     painter.fill();
 }
@@ -1025,7 +1066,12 @@ fn render_grid_lines<P: Painter>(
         return;
     }
 
-    painter.set_stroke_style_str(&options.grid_line_color);
+    // A sheet's own gridline colour wins over the painter's.
+    let grid = layout
+        .grid_line_color
+        .as_deref()
+        .unwrap_or(&options.grid_line_color);
+    painter.set_stroke_style_str(grid);
     painter.set_line_width(1.0);
     painter.set_line_dash(&[]);
     painter.begin_path();
@@ -1976,6 +2022,17 @@ fn render_headers<P: Painter>(
     let style = &options.header;
     let surface_width = metrics.row_width + viewport.width;
     let surface_height = metrics.column_height + viewport.height;
+    if !layout.show_headers {
+        // No headings: only the outline gutters, when anything is grouped.
+        if metrics.outline_width > 0.0 || metrics.outline_height > 0.0 {
+            painter.set_fill_style_str(&style.background);
+            painter.fill_rect(0.0, 0.0, surface_width, metrics.column_height);
+            painter.fill_rect(0.0, 0.0, metrics.row_width, surface_height);
+            let regions = layout.viewport_regions(viewport);
+            render_outline_gutter(painter, layout, &regions, metrics, style)?;
+        }
+        return Ok(());
+    }
 
     painter.set_fill_style_str(&style.background);
     painter.fill_rect(0.0, 0.0, surface_width, metrics.column_height);

@@ -187,6 +187,30 @@ fn day_month_and_quarter_names_go_round_excels_lists() {
 }
 
 #[test]
+fn quarter_names_wrap_only_with_recognized_words_and_case() {
+    for (prefix, suffix, wraps) in [
+        ("Q", "", true),
+        ("q", "", true),
+        ("Qtr", "", true),
+        ("qtr", "", true),
+        ("QTR", "", true),
+        ("QtR", "", false),
+        ("xq", "", false),
+        ("q", " ", false),
+    ] {
+        let mut workbook = open();
+        set(
+            &mut workbook,
+            &[("F1", CellInput::Text(format!("{prefix}3{suffix}")))],
+        );
+        workbook.fill(SHEET, "F1", "F1:F3").expect("fill");
+        assert_eq!(text(&workbook, "F2"), format!("{prefix}4{suffix}"));
+        let last = if wraps { 1 } else { 5 };
+        assert_eq!(text(&workbook, "F3"), format!("{prefix}{last}{suffix}"));
+    }
+}
+
+#[test]
 fn text_runs_with_different_words_repeat_instead() {
     let mut workbook = open();
     set(
@@ -285,6 +309,13 @@ fn sheet_with(cells: Vec<(CellRef, CellValue, Option<&str>)>) -> Sheet {
         default_row_custom_height: false,
         default_rows_hidden: false,
         show_grid_lines: true,
+        show_formulas: false,
+        show_zeros: true,
+        page_break_preview: false,
+        tab_selected: false,
+        show_headers: true,
+        grid_color: None,
+        zoom_percent: None,
         freeze_pane: None,
         tables: Vec::new(),
         header_footer: None,
@@ -293,10 +324,13 @@ fn sheet_with(cells: Vec<(CellRef, CellValue, Option<&str>)>) -> Sheet {
         page_setup: Default::default(),
         shapes: Vec::new(),
         array_formulas: Vec::new(),
+        data_tables: Vec::new(),
+        scenarios: None,
         phonetic_readings: Default::default(),
         rich_text: Default::default(),
         tab_color: None,
         sparkline_groups: Vec::new(),
+        ignored_errors: Vec::new(),
         outline: Default::default(),
         protection: None,
     }
@@ -513,13 +547,17 @@ proptest! {
         }
     }
 
-    /// Text that ends in a number counts along the same progression, with
-    /// the words around the number untouched.
+    /// Numbered text counts with its words untouched, except recognized
+    /// quarter names, which cycle through the four quarters.
     #[test]
     fn counting_text_keeps_its_words(
-        prefix in "[a-zA-Z ]{0,6}",
+        prefix in prop_oneof![
+            "[a-zA-Z ]{0,6}",
+            prop::sample::select(vec!["Q", "q", "Qtr", "qtr", "QTR", "QtR"])
+                .prop_map(str::to_owned),
+        ],
         suffix in "[a-zA-Z ]{0,4}",
-        first in 0i64..1_000,
+        first in prop_oneof![0i64..1_000, 1i64..5],
         step in 1i64..50,
         count in 1u32..5,
         above in 1u32..6,
@@ -539,11 +577,17 @@ proptest! {
         let target = range(CellRef::new(0, 0), CellRef::new(count - 1 + above, 0));
         let writes = plan_fill(&sheet, &StyleTable::default(), source, target);
 
+        // Built-in quarter lists take precedence over generic numbered text.
+        // Keep this oracle independent of the production list recognizer.
+        let quarters = suffix.is_empty()
+            && ["Q", "q", "Qtr", "qtr", "QTR"].contains(&prefix.as_str())
+            && (0..count).all(|index| (1..=4).contains(&(first + step * i64::from(index))));
         // One cell continues by one; a run continues by its step.
         let step = if count == 1 { 1 } else { step };
         prop_assert_eq!(writes.len() as u32, above);
         for write in &writes {
             let value = first + step * i64::from(write.at.column);
+            let value = if quarters { (value - 1).rem_euclid(4) + 1 } else { value };
             prop_assert_eq!(&write.value, &CellInput::Text(format!("{prefix}{value}{suffix}")));
         }
     }
@@ -675,4 +719,122 @@ fn clear_formats_puts_the_default_style_back_and_keeps_values() {
     assert_eq!(workbook.clear_formats(SHEET, "G1:G3").expect("clear"), 0);
     assert!(workbook.undo().expect("undo"));
     assert_eq!(workbook.cell(SHEET, "G2").expect("cell").display, "¥200");
+}
+
+#[test]
+fn show_formulas_is_written_to_the_sheet_and_undoes() {
+    let mut workbook = open();
+    let index = workbook
+        .workbook()
+        .sheets
+        .iter()
+        .position(|sheet| sheet.name == SHEET)
+        .expect("sheet");
+    assert!(!workbook.workbook().sheets[index].show_formulas);
+    assert!(workbook.set_show_formulas(SHEET, true).expect("show"));
+    assert!(workbook.workbook().sheets[index].show_formulas);
+    assert!(!workbook.set_show_formulas(SHEET, true).expect("again"));
+    // It survives a save and reopen.
+    let reopened = HeadlessWorkbook::open(&workbook.export_bytes().expect("export")).expect("open");
+    assert!(reopened.workbook().sheets[index].show_formulas);
+    assert!(workbook.undo().expect("undo"));
+    assert!(!workbook.workbook().sheets[index].show_formulas);
+}
+
+#[test]
+fn a_sheet_copies_next_to_itself_with_its_cells() {
+    let mut workbook = open();
+    let source = SHEET.to_string();
+    let count = workbook.workbook().sheets.len();
+    let first = workbook
+        .workbook()
+        .sheets
+        .iter()
+        .position(|sheet| sheet.name == SHEET)
+        .expect("sheet");
+    workbook
+        .set_cells(&source, &[("H40".into(), CellInput::Text("copied".into()))])
+        .expect("set");
+    let at = workbook.copy_sheet(&source, "Copy of it").expect("copy");
+    assert_eq!(at, first + 1);
+    assert_eq!(workbook.workbook().sheets[at].name, "Copy of it");
+    assert_eq!(
+        workbook.cell("Copy of it", "H40").expect("cell").display,
+        "copied"
+    );
+    assert_eq!(
+        workbook.cell("Copy of it", "B2").expect("cell").display,
+        workbook.cell(&source, "B2").expect("cell").display
+    );
+    // Editing the copy leaves the source alone.
+    workbook
+        .set_cells(
+            "Copy of it",
+            &[("H40".into(), CellInput::Text("changed".into()))],
+        )
+        .expect("set");
+    assert_eq!(
+        workbook.cell(&source, "H40").expect("cell").display,
+        "copied"
+    );
+    // Saved and reopened, both are there.
+    let reopened = HeadlessWorkbook::open(&workbook.export_bytes().expect("export")).expect("open");
+    assert_eq!(
+        reopened.cell("Copy of it", "H40").expect("cell").display,
+        "changed"
+    );
+    assert!(
+        workbook.copy_sheet(&source, "Copy of it").is_err(),
+        "names stay unique"
+    );
+    assert!(workbook.undo().expect("undo"));
+    assert!(workbook.undo().expect("undo"));
+    assert_eq!(workbook.workbook().sheets.len(), count);
+}
+
+#[test]
+fn a_sheet_with_a_table_copies_with_a_table_of_its_own() {
+    let mut workbook =
+        HeadlessWorkbook::open(&fixture("grid-operations-workbook.xlsx")).expect("open");
+    let name = workbook.workbook().sheets[0].name.clone();
+    let original = workbook.workbook().sheets[0].tables[0].name.clone();
+    workbook
+        .set_cells(
+            &name,
+            &[(
+                "H30".into(),
+                CellInput::Formula(format!("=ROWS({original}[#Data])")),
+            )],
+        )
+        .expect("set");
+    let at = workbook.copy_sheet(&name, "Table copy").expect("copy");
+    let copied = workbook.workbook().sheets[at].tables[0].clone();
+    assert_eq!(copied.name, format!("{original}2"));
+    assert_eq!(copied.display_name, copied.name);
+    assert_ne!(
+        copied.part_name,
+        workbook.workbook().sheets[0].tables[0].part_name
+    );
+    // The copy's formula reads its own table; the source's still reads its.
+    let formula = |sheet: &str| {
+        workbook
+            .cell(sheet, "H30")
+            .expect("cell")
+            .formula
+            .unwrap_or_default()
+    };
+    assert!(
+        formula("Table copy").contains(&copied.name),
+        "{}",
+        formula("Table copy")
+    );
+    assert!(!formula(&name).contains(&copied.name));
+    let reopened = HeadlessWorkbook::open(&workbook.export_bytes().unwrap()).expect("reopen");
+    let names: Vec<_> = reopened
+        .workbook()
+        .sheets
+        .iter()
+        .flat_map(|sheet| sheet.tables.iter().map(|table| table.name.clone()))
+        .collect();
+    assert_eq!(names, [original.clone(), copied.name.clone()]);
 }

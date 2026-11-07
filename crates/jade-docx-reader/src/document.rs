@@ -119,12 +119,26 @@ pub struct Document {
     /// or absent leaves it `None` (the default white/transparent page).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub background_color: Option<String>,
+    /// 塗りつぶし効果 over the page colour (`w:background/v:background/
+    /// v:fill`, VML): a gradient, a tiled texture or pattern, or a picture.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub background_fill: Option<PageBackgroundFill>,
     /// Word-compatible text watermark discovered in a referenced header VML
     /// shape (`v:textpath/@string`). The raw header XML remains the export
     /// source of truth; this normalized value lets renderers and hosts expose
     /// the watermark without understanding VML.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub watermark_text: Option<String>,
+    /// How the text watermark is drawn — font, size, color, transparency and
+    /// layout — read from the same VML shape (`v:shape/@style`,
+    /// `@fillcolor`, `v:fill/@opacity`, `v:textpath/@style`). `None` when
+    /// there is no watermark or its shape could not be read.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub watermark_style: Option<WatermarkStyle>,
+    /// 原稿用紙設定: the manuscript-paper grid Word draws in the headers (a
+    /// VML group whose id starts `Genko:`). `None` when there is none.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub manuscript_grid: Option<ManuscriptGrid>,
     /// Table-of-contents fields found in the body, in document order. Each entry
     /// is the parsed switch set of one `TOC` field instruction
     /// (`{ TOC \o "1-3" \h \z \u }`; ECMA-376 Part 1 §17.16.5.68). The TOC
@@ -1192,15 +1206,73 @@ pub(crate) fn tokenize_field_instruction(instruction: &str) -> Vec<String> {
 pub(crate) fn tokenize_field_instruction_with_quotes(
     instruction: &str,
 ) -> Vec<FieldInstructionToken> {
+    tokenize_field_instruction_impl::<false>(instruction, &[])
+}
+
+/// Literal spans are nested field results, not instruction syntax. The spans
+/// are built internally by `FieldCode::parse_parts`, in order and on UTF-8
+/// boundaries; empty spans represent empty nested results.
+pub(crate) fn tokenize_field_instruction_with_literals(
+    instruction: &str,
+    literals: &[std::ops::Range<usize>],
+) -> Vec<FieldInstructionToken> {
+    tokenize_field_instruction_impl::<true>(instruction, literals)
+}
+
+fn tokenize_field_instruction_impl<const HAS_LITERALS: bool>(
+    instruction: &str,
+    literals: &[std::ops::Range<usize>],
+) -> Vec<FieldInstructionToken> {
+    let mut literals = literals.iter().peekable();
     let mut tokens = Vec::new();
     let mut current = String::new();
     let mut in_quotes = false;
     let mut token_started = false;
     let mut token_quoted = false;
-    let mut chars = instruction.chars().peekable();
-    while let Some(ch) = chars.next() {
+    let mut chars = instruction.char_indices().peekable();
+    loop {
+        if HAS_LITERALS
+            && literals.peek().is_some_and(|span| {
+                span.start
+                    == chars
+                        .peek()
+                        .map_or(instruction.len(), |(offset, _)| *offset)
+            })
+        {
+            let span = literals.next().unwrap();
+            let value = &instruction[span.clone()];
+            if in_quotes {
+                current.push_str(value);
+            } else {
+                if token_started {
+                    tokens.push(FieldInstructionToken {
+                        text: std::mem::take(&mut current),
+                        quoted: token_quoted,
+                    });
+                    token_started = false;
+                    token_quoted = false;
+                }
+                tokens.push(FieldInstructionToken {
+                    text: value.to_string(),
+                    // Numeric nested results retain numeric comparison semantics.
+                    quoted: value.trim().parse::<f64>().is_err(),
+                });
+            }
+            while chars.peek().is_some_and(|(offset, _)| *offset < span.end) {
+                chars.next();
+            }
+            continue;
+        }
+        let Some((_, ch)) = chars.next() else { break };
+
         match ch {
-            '\\' if in_quotes && chars.peek() == Some(&'"') => {
+            '\\' if in_quotes
+                && chars.peek().is_some_and(|(offset, ch)| {
+                    *ch == '"'
+                        && !(HAS_LITERALS
+                            && literals.peek().is_some_and(|span| span.start == *offset))
+                }) =>
+            {
                 // A backslash-escaped quote is content, not the end of the
                 // quoted operand. Consume the quote but omit the escape.
                 chars.next();
@@ -1838,7 +1910,7 @@ fn resolve_fields_in_paragraph(
                 }
                 Some(resolved)
             }
-            // PRIVATE/ADDIN store opaque data but do not display a field
+            // Storage and index-entry fields do not display a field
             // result. Record an explicit empty resolution so structural
             // consumers cannot fall back to stale cached text.
             RunFieldKind::NonDisplay { .. } => Some(String::new()),
@@ -2064,6 +2136,42 @@ impl BodyElement {
     }
 }
 
+/// The page background's fill effect (Word's ページの色 › 塗りつぶし効果),
+/// as VML keeps it under `w:background`.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct PageBackgroundFill {
+    /// The VML fill type: `gradient`, `gradientRadial`, `tile` (a texture),
+    /// `pattern` or `frame` (a picture).
+    pub kind: String,
+    /// `v:background/@fillcolor`, `#RRGGBB`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub color: Option<String>,
+    /// `v:fill/@color2`, `#RRGGBB`: a gradient's second colour, a pattern's
+    /// background.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub color2: Option<String>,
+    /// A gradient's angle, degrees: 0 runs top to bottom, -90 left to right.
+    #[serde(default)]
+    pub angle: f64,
+    /// A gradient's focus, percent: 0 from the first colour, 100 from the
+    /// second, 50 the second in the middle, -50 the first in the middle.
+    #[serde(default)]
+    pub focus: f64,
+    /// `v:fill/@r:id`: the texture, pattern or picture part.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub relationship_id: Option<String>,
+    /// `v:fill/@o:title`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub title: Option<String>,
+    /// The picture as it is drawn — a pattern already in its colours —
+    /// filled in by the editor from the part.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub data_uri: Option<String>,
+    /// A tile's size, CSS px.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tile_size: Option<(f64, f64)>,
+}
+
 /// Represents a Word paragraph, including its inline runs and paragraph level
 /// properties such as spacing, indentation, and numbering.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -2126,6 +2234,30 @@ pub struct Run {
 }
 
 impl Run {
+    /// Plain-text snapshot of this run's saved or structurally resolved result.
+    /// This does not evaluate fields that require live page geometry, and must
+    /// not be used for editable paragraph offsets: computed fields occupy no
+    /// characters in `Run::text`.
+    pub fn cached_display_text(&self) -> &str {
+        let Some(field) = &self.field else {
+            return &self.text;
+        };
+        if !field.kind.has_visible_result() {
+            return "";
+        }
+        if field.kind.keeps_result_in_run_text() {
+            return &self.text;
+        }
+        if field.kind.is_locked() {
+            return field.cached_text.as_deref().unwrap_or_default();
+        }
+        field
+            .resolved_value
+            .as_deref()
+            .or(field.cached_text.as_deref())
+            .unwrap_or(&self.text)
+    }
+
     /// Whether this run's glyph metrics must be excluded from paragraph line
     /// height. Word's `SYMBOL \h` switch is intentionally visual-only: a large
     /// symbol may overlap neighbouring leading instead of expanding the line.
@@ -2202,8 +2334,9 @@ pub struct RunHyperlink {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct RunField {
     pub kind: RunFieldKind,
-    /// Original simple-field wrapper identity retained by split fragments. This prevents
-    /// a newly inserted field from joining a neighbouring simple-field wrapper.
+    /// Original simple-field wrapper or complex-field begin-run identity retained
+    /// by split result fragments. Distinct fields keep distinct identities even
+    /// when their instructions match.
     #[serde(skip)]
     pub source_field_id: Option<XmlNodeId>,
     /// Word's last-computed result text for a computed field (the run children
@@ -2670,10 +2803,10 @@ pub enum RunFieldKind {
     Unsupported {
         instruction: String,
     },
-    /// A Word field that stores data but has no visible result. PRIVATE is a
-    /// cold field and ADDIN is hidden add-in storage; both retain their
-    /// normalized instruction and cached bytes for inspection/round-trip while
-    /// renderers deliberately suppress any stale result text.
+    /// A Word field that stores data but has no visible result, such as PRIVATE,
+    /// XE, TA, and RD. Retain its normalized instruction and cached bytes for
+    /// inspection/round-trip while renderers suppress stale result text.
+    /// ADDIN is intentionally excluded: its owner may supply visible citations.
     NonDisplay {
         instruction: String,
     },
@@ -2733,6 +2866,15 @@ impl RunFieldKind {
             Self::Formatted { kind, .. } => kind,
             other => other,
         }
+    }
+
+    /// Whether the saved result contributes text to the document surface.
+    /// Assignment and storage fields keep a cache without displaying it.
+    pub fn has_visible_result(&self) -> bool {
+        !matches!(
+            self.base_kind(),
+            Self::NonDisplay { .. } | Self::Ask { .. } | Self::Set { .. }
+        )
     }
 
     /// Whether a top-level field of this kind keeps its result as editable
@@ -4042,6 +4184,70 @@ impl TextBoxBorderStyle {
 mod tests {
 
     #[test]
+    fn text_snapshots_include_computed_fields_without_changing_editable_text() {
+        use super::{Run, RunField, RunFieldKind};
+        let mut run: Run = serde_json::from_value(serde_json::json!({
+            "text": "edited", "properties": null, "image": null,
+            "text_box": null, "field": null
+        }))
+        .unwrap();
+        assert_eq!(run.cached_display_text(), "edited");
+        run.field = Some(RunField {
+            kind: RunFieldKind::Unsupported {
+                instruction: "CITATION Source1".into(),
+            },
+            source_field_id: None,
+            cached_text: Some("saved".into()),
+            resolved_value: Some("resolved".into()),
+            word_mac_body_result: None,
+        });
+        assert_eq!(run.cached_display_text(), "resolved");
+        run.field.as_mut().unwrap().resolved_value = Some(String::new());
+        assert_eq!(run.cached_display_text(), "");
+        run.field.as_mut().unwrap().resolved_value = None;
+        assert_eq!(run.cached_display_text(), "saved");
+        run.field.as_mut().unwrap().cached_text = None;
+        assert_eq!(run.cached_display_text(), "edited");
+        for kind in [RunFieldKind::PageNumber, RunFieldKind::NumPages] {
+            let field = run.field.as_mut().unwrap();
+            field.kind = kind.with_lock(true);
+            field.cached_text = Some("frozen".into());
+            field.resolved_value = Some("stale".into());
+            assert_eq!(run.cached_display_text(), "frozen");
+        }
+        for (instruction, expected) in [
+            ("FORMTEXT", "edited"),
+            ("HYPERLINK https://example.test", "edited"),
+            ("MERGEFIELD name", "edited"),
+            ("FILLIN prompt", "edited"),
+            ("REF mark", "edited"),
+            ("PAGEREF mark", "edited"),
+            ("NOTEREF mark", "edited"),
+            ("PRIVATE hidden", ""),
+            ("ADDIN vendor-payload", "saved"),
+            ("RD chapter.docx", ""),
+            ("ASK mark prompt", ""),
+            ("SET mark value", ""),
+        ] {
+            let field = run.field.as_mut().unwrap();
+            field.cached_text = Some("saved".into());
+            field.resolved_value = None;
+            field.kind =
+                crate::parser::DocumentParser::parse_field_instruction(instruction).unwrap();
+            for locked in [false, true] {
+                run.field.as_mut().unwrap().kind =
+                    run.field.as_ref().unwrap().kind.clone().with_lock(locked);
+                assert_eq!(
+                    run.cached_display_text(),
+                    expected,
+                    "{instruction}, locked={locked}"
+                );
+            }
+        }
+        assert_eq!(run.text, "edited");
+    }
+
+    #[test]
     #[cfg(target_pointer_width = "64")]
     fn locked_field_metadata_keeps_existing_inline_run_sizes_and_shares_clones() {
         use super::{Run, RunField, RunFieldKind};
@@ -4081,12 +4287,12 @@ mod tests {
     use super::BorderEdge;
     use super::Indent;
     use super::ParagraphBorders;
-    use super::Shading;
     use super::TextBoxBorderStyle;
     use super::{
         apply_field_text_case, heading_style_level, parse_outline_range, parse_toc_entry_field,
         parse_toc_switches, FieldTextCase,
     };
+    use super::{Shading, ShadingLines};
     use proptest::prelude::*;
 
     #[test]
@@ -4283,6 +4489,67 @@ mod tests {
     fn solid_match_is_case_insensitive() {
         let s = shading(Some("SOLID"), Some("#112233"), Some("#445566"));
         assert_eq!(s.resolved_background_color().as_deref(), Some("#112233"));
+    }
+
+    #[test]
+    fn stripes_show_the_fill_and_draw_their_lines_on_a_page_grid() {
+        let s = shading(Some("horzstripe"), Some("#FF0000"), Some("#00FF00"));
+        assert_eq!(s.resolved_background_color().as_deref(), Some("#00FF00"));
+        let pattern = s.pattern().unwrap();
+        assert_eq!(pattern.lines, ShadingLines::Horizontal);
+        assert!(!pattern.thin);
+        // A band from y 5 to 15: lines at 8 and 12, the one at 4 cut to 5–6.
+        let (rows, columns, diagonals) = pattern.lines_in(0.0, 5.0, 10.0, 10.0);
+        assert_eq!(rows, vec![(5.0, 1.0), (8.0, 2.0), (12.0, 2.0)]);
+        assert!(columns.is_empty() && diagonals.is_empty());
+        // No fill: only the lines, nothing behind them.
+        let lines_only = shading(Some("thinvertstripe"), None, None);
+        assert_eq!(lines_only.resolved_background_color(), None);
+        assert_eq!(lines_only.pattern_color(), "#000000");
+        let thin = lines_only.pattern().unwrap();
+        assert!(thin.thin && thin.lines == ShadingLines::Vertical);
+        let (_, columns, _) = thin.lines_in(0.0, 0.0, 8.0, 2.0);
+        assert_eq!(columns, vec![(0.0, 1.0), (4.0, 1.0)]);
+        for (value, lines) in [
+            ("diagStripe", ShadingLines::DiagonalDown),
+            ("reverseDiagStripe", ShadingLines::DiagonalUp),
+            ("horzCross", ShadingLines::Cross),
+            ("thinDiagCross", ShadingLines::DiagonalCross),
+        ] {
+            assert_eq!(
+                shading(Some(value), None, None).pattern().unwrap().lines,
+                lines
+            );
+        }
+        assert_eq!(shading(Some("pct25"), None, None).pattern(), None);
+        assert_eq!(shading(Some("clear"), None, None).pattern(), None);
+    }
+
+    #[test]
+    fn diagonals_are_cut_to_the_rectangle() {
+        let pattern = shading(Some("diagStripe"), None, None).pattern().unwrap();
+        let (_, _, segments) = pattern.lines_in(0.0, 0.0, 8.0, 8.0);
+        assert!(!segments.is_empty());
+        for ((x0, y0), (x1, y1)) in &segments {
+            for (x, y) in [(x0, y0), (x1, y1)] {
+                assert!((0.0..=8.0).contains(x) && (0.0..=8.0).contains(y));
+            }
+            // Down to the right: y grows with x.
+            assert!((y1 - y0) * (x1 - x0) > 0.0);
+        }
+        // The main diagonal is one of them.
+        assert!(segments.contains(&((0.0, 0.0), (8.0, 8.0))));
+        let up = shading(Some("reverseDiagStripe"), None, None)
+            .pattern()
+            .unwrap();
+        let (_, _, segments) = up.lines_in(0.0, 0.0, 8.0, 8.0);
+        assert!(segments.contains(&((0.0, 8.0), (8.0, 0.0))));
+    }
+
+    #[test]
+    fn an_automatic_percentage_is_black_over_white() {
+        let s = shading(Some("pct25"), None, None);
+        assert_eq!(s.resolved_background_color().as_deref(), Some("#BFBFBF"));
     }
 
     #[test]
@@ -4947,6 +5214,13 @@ pub struct ParagraphProperties {
     /// `\o`. This is parse-time metadata and does not change layout.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub outline_level_is_direct: bool,
+    /// The paragraph's absolute position tabs (`w:ptab`, ECMA-376 Part 1
+    /// §17.3.3.16), in text order. Each is a tab character of the text: the
+    /// `ordinal`-th `\t` of the paragraph.
+    /// `None` when there are none, so the many paragraphs without one
+    /// clone and drop nothing for it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub positional_tabs: Option<Vec<PositionalTab>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub east_asian_settings: Option<EastAsianLineBreakingSettings>,
     /// Paragraph shading (`w:shd` inside `w:pPr`).  See ECMA-376 Part 1
@@ -5061,6 +5335,89 @@ impl BorderEdge {
     }
 }
 
+/// Where an absolute position tab (`w:ptab`) aligns what follows it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub enum PositionalTabAlignment {
+    #[default]
+    Left,
+    Center,
+    Right,
+}
+
+/// An absolute position tab (`w:ptab`): which tab character of the
+/// paragraph it is, how it aligns the text after it, whether it measures
+/// from the margins or the paragraph's indents, and its leader.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct PositionalTab {
+    /// The paragraph's `ordinal`-th tab character (0-based).
+    pub ordinal: usize,
+    pub alignment: PositionalTabAlignment,
+    /// `w:relativeTo="indent"`; otherwise the margins.
+    pub relative_to_indent: bool,
+    /// `w:leader`: `none`, `dot`, `hyphen`, `underscore` or `middleDot`.
+    pub leader: Option<String>,
+}
+
+impl PositionalTab {
+    /// Reads `w:alignment`, `w:relativeTo` and `w:leader`.
+    pub fn from_attributes<'a>(
+        ordinal: usize,
+        attributes: impl IntoIterator<Item = (&'a str, &'a str)>,
+    ) -> Self {
+        let mut tab = Self {
+            ordinal,
+            ..Self::default()
+        };
+        for (name, value) in attributes {
+            match name {
+                "w:alignment" => {
+                    tab.alignment = match value {
+                        "center" => PositionalTabAlignment::Center,
+                        "right" => PositionalTabAlignment::Right,
+                        _ => PositionalTabAlignment::Left,
+                    }
+                }
+                "w:relativeTo" => tab.relative_to_indent = value == "indent",
+                "w:leader" => {
+                    tab.leader = (value != "none").then(|| value.to_string());
+                }
+                _ => {}
+            }
+        }
+        tab
+    }
+
+    /// The `w:ptab` attributes, as Word writes them.
+    pub fn attributes(&self) -> Vec<(&'static str, String)> {
+        vec![
+            (
+                "w:relativeTo",
+                if self.relative_to_indent {
+                    "indent"
+                } else {
+                    "margin"
+                }
+                .to_string(),
+            ),
+            (
+                "w:alignment",
+                match self.alignment {
+                    PositionalTabAlignment::Left => "left",
+                    PositionalTabAlignment::Center => "center",
+                    PositionalTabAlignment::Right => "right",
+                }
+                .to_string(),
+            ),
+            (
+                "w:leader",
+                self.leader.clone().unwrap_or_else(|| "none".to_string()),
+            ),
+        ]
+    }
+}
+
 /// WordprocessingML shading (`w:shd`).  Used by paragraphs (`w:pPr`), runs
 /// (`w:rPr`), and table cells (`w:tcPr`).  See ECMA-376 Part 1 §17.3.5.
 ///
@@ -5100,8 +5457,11 @@ impl Shading {
     ///   the `fill`.
     /// - percentage patterns (`pct25`, …): blend `color` over `fill` using the
     ///   encoded foreground coverage.
-    /// - stripe patterns (`horzStripe`, …): use `fill` (falling back to
-    ///   `color`) until patterned canvas brushes are available.
+    /// - stripe and cross patterns (`horzStripe`, …): the `fill` alone; the
+    ///   lines are drawn over it in [`Self::pattern_color`] ([`Self::pattern`]).
+    ///
+    /// A percentage with an automatic colour is black over white, as Word
+    /// shows `pct25` with `w:color="auto"`.
     pub fn resolved_background_color(&self) -> Option<String> {
         fn parse_hex_rgb(value: &str) -> Option<[u8; 3]> {
             let value = value.strip_prefix('#').unwrap_or(value);
@@ -5128,10 +5488,15 @@ impl Shading {
             .as_deref()
             .and_then(|value| percentage_pattern(&value.to_ascii_lowercase()))
         {
-            if let (Some(foreground), Some(background)) = (
-                self.color.as_deref().and_then(parse_hex_rgb),
-                self.fill.as_deref().and_then(parse_hex_rgb),
-            ) {
+            let foreground = match self.color.as_deref() {
+                None => Some([0, 0, 0]),
+                Some(color) => parse_hex_rgb(color),
+            };
+            let background = match self.fill.as_deref() {
+                None => Some([255, 255, 255]),
+                Some(fill) => parse_hex_rgb(fill),
+            };
+            if let (Some(foreground), Some(background)) = (foreground, background) {
                 let blend = |foreground: u8, background: u8| {
                     ((u16::from(foreground) * u16::from(percentage)
                         + u16::from(background) * u16::from(100 - percentage)
@@ -5152,9 +5517,178 @@ impl Shading {
             .is_some_and(|v| v.eq_ignore_ascii_case("solid"));
         if is_solid {
             self.color.clone().or_else(|| self.fill.clone())
+        } else if self.pattern().is_some() {
+            self.fill.clone()
         } else {
             self.fill.clone().or_else(|| self.color.clone())
         }
+    }
+
+    /// The lines a stripe or cross pattern draws over the fill (ECMA-376
+    /// Part 1 §17.18.78 `ST_Shd`): `None` for clear, solid, a percentage and
+    /// anything unknown.
+    pub fn pattern(&self) -> Option<ShadingPattern> {
+        // Without allocating: every shaded paragraph asks on every paint, and
+        // nearly all of them are `clear` or `solid`.
+        let value = self.val.as_deref()?;
+        let (thin, lines) = match value.get(..4) {
+            Some(prefix) if prefix.eq_ignore_ascii_case("thin") => (true, &value[4..]),
+            _ => (false, value),
+        };
+        let lines = [
+            ("horzstripe", ShadingLines::Horizontal),
+            ("vertstripe", ShadingLines::Vertical),
+            ("diagstripe", ShadingLines::DiagonalDown),
+            ("reversediagstripe", ShadingLines::DiagonalUp),
+            ("horzcross", ShadingLines::Cross),
+            ("diagcross", ShadingLines::DiagonalCross),
+        ]
+        .into_iter()
+        .find_map(|(name, kind)| lines.eq_ignore_ascii_case(name).then_some(kind))?;
+        Some(ShadingPattern { lines, thin })
+    }
+
+    /// The colour a pattern's lines are drawn in: `w:color`, black for
+    /// automatic.
+    pub fn pattern_color(&self) -> String {
+        self.color.clone().unwrap_or_else(|| "#000000".to_string())
+    }
+}
+
+/// Which lines a shading pattern draws.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum ShadingLines {
+    /// 横縞 (`horzStripe`).
+    Horizontal,
+    /// 縦縞 (`vertStripe`).
+    Vertical,
+    /// 右下がり斜線 (`diagStripe`): from the top left down to the right.
+    DiagonalDown,
+    /// 右上がり斜線 (`reverseDiagStripe`).
+    DiagonalUp,
+    /// 格子 (`horzCross`).
+    Cross,
+    /// 斜め格子 (`diagCross`).
+    DiagonalCross,
+}
+
+/// A stripe or cross shading pattern: its lines, and whether it is the 細
+/// (`thin…`) one.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct ShadingPattern {
+    pub lines: ShadingLines,
+    pub thin: bool,
+}
+
+impl ShadingPattern {
+    /// The distance from one line to the next, in CSS pixels at 100 %: Word
+    /// draws its patterns on a 4-pixel cell.
+    pub const PERIOD_PX: f64 = 4.0;
+
+    /// How wide a line is, in CSS pixels: half the cell for the dark
+    /// patterns, a pixel for the 細 ones.
+    pub fn line_width_px(&self) -> f64 {
+        if self.thin {
+            1.0
+        } else {
+            2.0
+        }
+    }
+
+    /// The pattern's lines over the rectangle, in page pixels: (horizontal
+    /// bands as `(y, height)`, vertical bands as `(x, width)`, diagonals as
+    /// segments `((x0, y0), (x1, y1))`, already cut to the rectangle).
+    /// Lines sit on a grid fixed to the page, so the pattern runs on
+    /// unbroken from one line box to the next.
+    #[allow(clippy::type_complexity)]
+    pub fn lines_in(
+        &self,
+        x: f64,
+        y: f64,
+        width: f64,
+        height: f64,
+    ) -> (
+        Vec<(f64, f64)>,
+        Vec<(f64, f64)>,
+        Vec<((f64, f64), (f64, f64))>,
+    ) {
+        let period = Self::PERIOD_PX;
+        let line = self.line_width_px();
+        let mut horizontal = Vec::new();
+        let mut vertical = Vec::new();
+        let mut diagonal = Vec::new();
+        if width <= 0.0 || height <= 0.0 {
+            return (horizontal, vertical, diagonal);
+        }
+        let bands = |start: f64, length: f64, out: &mut Vec<(f64, f64)>| {
+            let mut at = (start / period).floor() * period;
+            while at < start + length {
+                let from = at.max(start);
+                let to = (at + line).min(start + length);
+                if to > from {
+                    out.push((from, to - from));
+                }
+                at += period;
+            }
+        };
+        let (rows, columns, down, up) = match self.lines {
+            ShadingLines::Horizontal => (true, false, false, false),
+            ShadingLines::Vertical => (false, true, false, false),
+            ShadingLines::DiagonalDown => (false, false, true, false),
+            ShadingLines::DiagonalUp => (false, false, false, true),
+            ShadingLines::Cross => (true, true, false, false),
+            ShadingLines::DiagonalCross => (false, false, true, true),
+        };
+        if rows {
+            bands(y, height, &mut horizontal);
+        }
+        if columns {
+            bands(x, width, &mut vertical);
+        }
+        // A diagonal is the line x - y = c (down) or x + y = c (up), c on
+        // the grid, cut to the rectangle.
+        let (right, bottom) = (x + width, y + height);
+        let mut cut = |down: bool| {
+            let (low, high) = if down {
+                (x - bottom, right - y)
+            } else {
+                (x + y, right + bottom)
+            };
+            let mut c = (low / period).floor() * period;
+            while c <= high {
+                // Where the line crosses each edge, kept when on it.
+                let mut points: Vec<(f64, f64)> = Vec::with_capacity(4);
+                let at_x = |px: f64| if down { px - c } else { c - px };
+                let at_y = |py: f64| if down { py + c } else { c - py };
+                for px in [x, right] {
+                    let py = at_x(px);
+                    if py >= y && py <= bottom {
+                        points.push((px, py));
+                    }
+                }
+                for py in [y, bottom] {
+                    let px = at_y(py);
+                    if px > x && px < right {
+                        points.push((px, py));
+                    }
+                }
+                points.sort_by(|a, b| a.0.total_cmp(&b.0));
+                points.dedup_by(|a, b| (a.0 - b.0).abs() < 1e-9 && (a.1 - b.1).abs() < 1e-9);
+                if let (Some(first), Some(last)) = (points.first(), points.last()) {
+                    if (first.0 - last.0).abs() > 1e-9 || (first.1 - last.1).abs() > 1e-9 {
+                        diagonal.push((*first, *last));
+                    }
+                }
+                c += period;
+            }
+        };
+        if down {
+            cut(true);
+        }
+        if up {
+            cut(false);
+        }
+        (horizontal, vertical, diagonal)
     }
 }
 
@@ -5724,6 +6258,24 @@ impl RunProperties {
         };
     }
 
+    /// Drops the inherited font values a load filled in, keeping only those
+    /// the run states itself. A run whose provenance is unknown is left as
+    /// it is.
+    pub fn keep_only_stated_font_properties(&mut self) {
+        if !self.direct_font_properties.known {
+            return;
+        }
+        let stated = self.direct_font_properties.clone();
+        self.font_size = stated.font_size;
+        self.font_size_complex = stated.font_size_complex;
+        self.kerning = stated.kerning;
+        self.text_scale = stated.text_scale;
+        if stated.fonts.is_none() {
+            self.font_family = None;
+        }
+        self.fonts = stated.fonts;
+    }
+
     pub fn mark_font_properties_direct_from(&mut self, source: &RunProperties) {
         if !self.direct_font_properties.known {
             return;
@@ -5814,6 +6366,77 @@ impl RunProperties {
             && self.theme_color.is_none()
             && self.east_asian_layout.is_none()
             && self.text_effects.is_none()
+    }
+}
+
+/// 原稿用紙設定's スタイル: what each square of the grid is drawn as.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub enum ManuscriptStyle {
+    /// マス目付き原稿用紙: a square per character.
+    Squares,
+    /// 下線付き原稿用紙: a rule under each line.
+    Lines,
+    /// 外枠付き原稿用紙: a frame round the body, ruled between the lines.
+    Frame,
+}
+
+/// The manuscript-paper grid (原稿用紙設定): its style, 文字数 × 行数 and
+/// 罫線の色 (`#RRGGBB`).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct ManuscriptGrid {
+    pub style: ManuscriptStyle,
+    pub chars: u32,
+    pub lines: u32,
+    pub color: String,
+}
+
+/// How Word draws a text watermark (デザイン › 透かし › ユーザー設定の透かし),
+/// as its header VML shape states it.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct WatermarkStyle {
+    /// `v:textpath` `font-family`; `None` lets the renderer pick the
+    /// document's sans-serif.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub font: Option<String>,
+    /// `v:textpath` `font-size` in points; `None` is サイズ 自動 (Word writes
+    /// `1pt` and lets `fitshape` scale the text to the shape).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub size_pt: Option<f32>,
+    /// Effective `v:textpath/@fitshape`, including the shape type's value.
+    /// When omitted by a caller, setting a watermark infers fitting for an
+    /// automatic size and fixed font metrics for an explicit size.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fit_shape: Option<bool>,
+    /// `v:shape/@fillcolor` as `#RRGGBB`.
+    pub color: String,
+    /// 半透明にする: `v:fill/@opacity` below 1.
+    pub semitransparent: bool,
+    /// レイアウト 水平 (no `rotation`); otherwise 対角線上 (`rotation:315`).
+    pub horizontal: bool,
+    /// The shape box (`width` / `height` in the shape style), in points.
+    /// The text is stretched to fill it only when `fitshape` is enabled.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub width_pt: Option<f32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub height_pt: Option<f32>,
+}
+
+impl Default for WatermarkStyle {
+    /// Word's defaults: silver, semitransparent, diagonal, size automatic.
+    fn default() -> Self {
+        WatermarkStyle {
+            font: None,
+            size_pt: None,
+            fit_shape: None,
+            color: "#C0C0C0".to_string(),
+            semitransparent: true,
+            horizontal: false,
+            width_pt: None,
+            height_pt: None,
+        }
     }
 }
 

@@ -32,11 +32,28 @@ fn page_setup_and_print_titles_round_trip_together_and_undo_in_one_step() {
         }),
         title_rows: Some((0, 2)),
         title_columns: Some((0, 26)),
+        center_horizontally: true,
+        center_vertically: false,
+        print_grid_lines: true,
+        print_headings: true,
     };
     book.set_page_setup(sheet, &setup).unwrap();
     assert_eq!(book.workbook().sheets[0].page_setup, setup);
-    let reopened = HeadlessWorkbook::open(&book.save_bytes().unwrap()).unwrap();
+    let saved = book.save_bytes().unwrap();
+    let reopened = HeadlessWorkbook::open(&saved).unwrap();
     assert_eq!(reopened.workbook().sheets[0].page_setup, setup);
+    // printOptions has its place, just before the sheet's own pageMargins
+    // (after the custom views, which keep theirs).
+    let part = reopened.workbook().sheets[0].part_name.clone();
+    let xml = OpcPackage::open(&saved)
+        .unwrap()
+        .required_part_str(&part)
+        .unwrap();
+    let options = xml.find("<printOptions").expect("printOptions written");
+    assert!(options > xml.find("</customSheetViews>").unwrap());
+    assert!(options < xml.rfind("<pageMargins").unwrap());
+    assert!(xml[options..]
+        .starts_with(r#"<printOptions horizontalCentered="1" gridLines="1" headings="1"/>"#));
     book.undo().unwrap();
     assert_eq!(book.workbook().sheets[0].page_setup, original);
     book.redo().unwrap();
@@ -146,4 +163,23 @@ fn bad_page_settings_are_atomic() {
         assert_eq!(book.bytes(), before);
     }
     assert!(!book.can_undo());
+}
+
+/// Page Break Preview saved with the sheet: the file opens in it, and the
+/// normal view takes it away again.
+#[test]
+fn page_break_preview_is_saved_with_the_sheet() {
+    let mut workbook = HeadlessWorkbook::open(include_bytes!(
+        "../../../public/fixtures/sample-workbook.xlsx"
+    ))
+    .unwrap();
+    let sheet = workbook.workbook().sheets[0].name.clone();
+    assert!(!workbook.workbook().sheets[0].page_break_preview);
+    assert!(workbook.set_page_break_preview(&sheet, true).unwrap());
+    assert!(!workbook.set_page_break_preview(&sheet, true).unwrap());
+    let reopened = HeadlessWorkbook::open(workbook.bytes()).unwrap();
+    assert!(reopened.workbook().sheets[0].page_break_preview);
+    assert!(workbook.set_page_break_preview(&sheet, false).unwrap());
+    let reopened = HeadlessWorkbook::open(workbook.bytes()).unwrap();
+    assert!(!reopened.workbook().sheets[0].page_break_preview);
 }

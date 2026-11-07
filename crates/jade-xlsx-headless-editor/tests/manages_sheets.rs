@@ -355,6 +355,53 @@ fn renaming_a_sheet_follows_into_charts() {
 }
 
 #[test]
+fn three_d_references_follow_deleted_endpoints_through_export_and_history() {
+    for (deleted, remaining, expected) in [("Jan", "Feb:Mar", 5.), ("Mar", "Jan:Feb", 3.)] {
+        let mut workbook = open();
+        workbook.rename_sheet(SALES, "Jan").unwrap();
+        workbook.rename_sheet("Notes", "Output").unwrap();
+        workbook.add_sheet("Feb", None).unwrap();
+        workbook.add_sheet("Mar", None).unwrap();
+        workbook.move_sheet("Output", 3).unwrap();
+        for (sheet, value) in [("Jan", 1.), ("Feb", 2.), ("Mar", 3.)] {
+            workbook.set(sheet, "A1", CellInput::Number(value)).unwrap();
+        }
+        workbook
+            .set(
+                "Output",
+                "D8",
+                CellInput::Formula("SUM(Jan:Mar!$A$1)".into()),
+            )
+            .unwrap();
+        assert_eq!(workbook.cell("Output", "D8").unwrap().number, Some(6.));
+        workbook.delete_sheet(deleted).unwrap();
+        let expected_formula = format!("SUM({remaining}!$A$1)");
+        assert_eq!(
+            formula(&workbook, "Output", "D8"),
+            Some(expected_formula.clone())
+        );
+        assert_eq!(
+            workbook.cell("Output", "D8").unwrap().number,
+            Some(expected)
+        );
+        let again = reopened(&workbook);
+        assert_eq!(formula(&again, "Output", "D8"), Some(expected_formula));
+        assert_eq!(again.cell("Output", "D8").unwrap().number, Some(expected));
+        assert!(workbook.undo().unwrap());
+        assert_eq!(
+            formula(&workbook, "Output", "D8").as_deref(),
+            Some("SUM(Jan:Mar!$A$1)")
+        );
+        assert_eq!(workbook.cell("Output", "D8").unwrap().number, Some(6.));
+        assert!(workbook.redo().unwrap());
+        assert_eq!(
+            workbook.cell("Output", "D8").unwrap().number,
+            Some(expected)
+        );
+    }
+}
+
+#[test]
 fn deleting_a_sheet_turns_references_to_it_into_ref_errors() {
     let mut workbook = open();
     let before = workbook.bytes().to_vec();

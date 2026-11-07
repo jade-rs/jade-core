@@ -86,3 +86,79 @@ fn a_sheet_without_page_setup_reads_excels_defaults() {
     assert_eq!(setup.fit_to(), None);
     assert_eq!(setup.title_rows, None);
 }
+
+#[test]
+fn reads_print_options_centring_gridlines_and_headings() {
+    let xml = r#"<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData/><printOptions horizontalCentered="1" verticalCentered="true" gridLines="0" headings="1"/><pageMargins left="0.7" right="0.7" top="0.75" bottom="0.75" header="0.3" footer="0.3"/></worksheet>"#;
+    let sheet = jade_xlsx_reader::sheet::parse_sheet("S", "s.xml", xml, &[]).unwrap();
+    let options = sheet.page_setup;
+    assert!(options.center_horizontally && options.center_vertically);
+    assert!(!options.print_grid_lines && options.print_headings);
+    // A sheet without them prints neither centred nor with gridlines.
+    let plain = setup("Letter Landscape");
+    assert!(!plain.center_horizontally && !plain.print_grid_lines);
+}
+
+#[test]
+fn reads_the_zoom_the_sheet_was_last_shown_at() {
+    let zoom = |view: &str| {
+        let xml = format!(
+            r#"<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews>{view}</sheetViews><sheetData/></worksheet>"#
+        );
+        jade_xlsx_reader::sheet::parse_sheet("S", "s.xml", &xml, &[])
+            .unwrap()
+            .zoom_percent
+    };
+    assert_eq!(
+        zoom(r#"<sheetView workbookViewId="0" zoomScale="85"/>"#),
+        Some(85)
+    );
+    assert_eq!(zoom(r#"<sheetView workbookViewId="0"/>"#), None);
+    assert_eq!(
+        zoom(r#"<sheetView workbookViewId="0" zoomScale="5"/>"#),
+        None
+    );
+    assert_eq!(
+        zoom(
+            r#"<sheetView workbookViewId="0" zoomScale="70"/><sheetView workbookViewId="1" zoomScale="200"/>"#
+        ),
+        Some(70)
+    );
+}
+
+#[test]
+fn reads_whether_the_headings_show() {
+    let headers = |view: &str| {
+        let xml = format!(
+            r#"<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews>{view}</sheetViews><sheetData/></worksheet>"#
+        );
+        jade_xlsx_reader::sheet::parse_sheet("S", "s.xml", &xml, &[])
+            .unwrap()
+            .show_headers
+    };
+    assert!(headers(r#"<sheetView workbookViewId="0"/>"#));
+    assert!(!headers(
+        r#"<sheetView showRowColHeaders="0" workbookViewId="0"/>"#
+    ));
+}
+
+#[test]
+fn reads_a_sheets_own_gridline_colour() {
+    let grid = |view: &str| {
+        let xml = format!(
+            r#"<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews>{view}</sheetViews><sheetData/></worksheet>"#
+        );
+        jade_xlsx_reader::sheet::parse_sheet("S", "s.xml", &xml, &[])
+            .unwrap()
+            .grid_color
+    };
+    assert_eq!(
+        grid(r#"<sheetView defaultGridColor="0" colorId="10" workbookViewId="0"/>"#),
+        Some(10)
+    );
+    // colorId without defaultGridColor="0" is Excel's own grey.
+    assert_eq!(
+        grid(r#"<sheetView colorId="10" workbookViewId="0"/>"#),
+        None
+    );
+}

@@ -101,6 +101,23 @@ pub fn open_checked_archive(
     Ok(archive)
 }
 
+/// Count `size` more expanded bytes against the budgets, as
+/// [`read_part`] counts what it inflates.
+pub(crate) fn account(size: u64, limits: PackageLoadLimits, total: &mut u64) -> crate::Result<()> {
+    check_limit("part bytes", size, limits.max_part_bytes)?;
+    let remaining = limits.max_total_bytes.saturating_sub(*total);
+    if size > remaining {
+        return Err(PackageLimitError {
+            resource: "expanded bytes",
+            actual: total.saturating_add(size),
+            limit: limits.max_total_bytes,
+        }
+        .into());
+    }
+    *total += size;
+    Ok(())
+}
+
 /// Inflate one entry, reading at most one byte past what the budgets allow.
 ///
 /// `total` is the running inflated size of the parts read so far; it is only

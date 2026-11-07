@@ -1665,19 +1665,19 @@ fn pdf_text_preserves_japanese_fixture_text() {
     let bytes = fs::read(fixture_path("yokohama_page6.docx")).expect("read yokohama_page6 fixture");
     let pdf = render_docx_to_pdf(&bytes, &RenderOptions::default()).expect("render pdf");
     let pdf_positions = extract_pdf_text_positions(&pdf);
-    let first_japanese_line = pdf_positions
+    // A font-slot boundary can split the heading into several PDF text
+    // operations (the leading circle is a separate non-ASCII operation).
+    let text: String = pdf_positions
         .iter()
-        .find(|line| !line.text.is_ascii())
-        .expect("pdf should contain Japanese text from fixture");
-
+        .map(|position| position.text.as_str())
+        .collect();
     assert!(
-        first_japanese_line.text.contains('第') || first_japanese_line.text.contains('市'),
-        "expected real Japanese text in PDF, got {:?}",
-        first_japanese_line.text
+        text.contains("横浜市") && text.contains("第"),
+        "expected Japanese fixture text in PDF, got {text:?}"
     );
     assert!(
-        !first_japanese_line.text.contains('?'),
-        "Japanese text should not be replaced with question marks"
+        !text.contains('?') && !text.contains('\u{fffd}'),
+        "Japanese text should not be replaced with fallback characters"
     );
 }
 

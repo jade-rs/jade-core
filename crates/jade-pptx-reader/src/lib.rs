@@ -7,8 +7,12 @@
 //! `docs/pptx-plan.md`; this crate exists so that plan has a place to land and
 //! so the package-level facts are already tested when it does.
 
+mod blip;
+pub use blip::BlipEffect;
+pub mod animation;
 pub mod chart;
 pub mod error;
+pub mod media;
 mod shape_guides;
 pub mod slide;
 mod slide_theme;
@@ -16,6 +20,13 @@ pub mod table_style;
 pub mod theme;
 pub use slide_theme::{SlideTheme, ThemeRef};
 mod xml_tree;
+// Slide show, notes pages and views (スライド ショー / ノート / 表示).
+pub mod notes_pages;
+pub mod show;
+pub mod view_props;
+pub use notes_pages::{read_notes_pages, HeaderFooterFlags, NotesPages, NotesSlide, PageMaster};
+pub use show::{read_show, CustomShow, ShowInfo, ShowRange, ShowSettings, ShowType, SlideAdvance};
+pub use view_props::{read_view_props, Guide, LastView, ViewProps};
 
 use jade_opc::{local_name, OpcPackage};
 use quick_xml::events::Event;
@@ -27,6 +38,11 @@ pub use chart::{
     DataLabels,
 };
 pub use error::{PptxError, Result};
+pub use media::{
+    cue_at, media_duration_ms, parse_media_playback, parse_webvtt, CaptionCue, CaptionPlacement,
+    CaptionTrack, Ink, InkBrush, InkTool, InkTrace, Media, MediaBookmark, MediaKind, MediaPlayback,
+    MediaStart,
+};
 pub use shape_guides::ShapeGuides;
 pub use slide::{
     diagram_drawing_rel_id, parse_diagram_drawing_xml, Chart, CustomGeometry, GeometryPath,
@@ -261,6 +277,13 @@ pub fn read_deck(bytes: &[u8]) -> Result<Deck> {
                 &mut content.shapes,
                 &relationships,
                 &entry.part_name,
+                &theme_colors,
+            )?;
+            resolve_ink_and_media(
+                &package,
+                &mut content.shapes,
+                &relationships,
+                &entry.part_name,
             )?;
             layout_part = relationships
                 .by_type_suffix("/slideLayout")
@@ -372,7 +395,7 @@ fn resolve_slide_number_fields(shapes: &mut [ShapeItem], slide_number: usize) {
                     }
                 }
             }
-            ShapeItem::Picture(_) | ShapeItem::Chart(_) => {}
+            ShapeItem::Picture(_) | ShapeItem::Chart(_) | ShapeItem::Ink(_) => {}
         }
     }
 }
@@ -437,7 +460,7 @@ fn resolve_hyperlinks(shapes: &mut [ShapeItem], relationships: &jade_opc::Relati
                     }
                 }
             }
-            ShapeItem::Picture(_) | ShapeItem::Chart(_) => {}
+            ShapeItem::Picture(_) | ShapeItem::Chart(_) | ShapeItem::Ink(_) => {}
         }
     }
 }
@@ -561,7 +584,7 @@ fn visit_shape_bullets(shapes: &mut [ShapeItem], visit: &mut dyn FnMut(&mut Bull
                     }
                 }
             }
-            ShapeItem::Picture(_) | ShapeItem::Chart(_) => {}
+            ShapeItem::Picture(_) | ShapeItem::Chart(_) | ShapeItem::Ink(_) => {}
         }
     }
 }
@@ -579,6 +602,11 @@ fn resolve_image_parts(
                     .as_deref()
                     .and_then(|id| relationships.target(id))
                     .map(|target| jade_opc::resolve_target(slide_part, target));
+                picture.svg_part = picture
+                    .svg_rel_id
+                    .as_deref()
+                    .and_then(|id| relationships.target(id))
+                    .map(|target| jade_opc::resolve_target(slide_part, target));
             }
             ShapeItem::Group(group) => {
                 resolve_image_parts(&mut group.children, relationships, slide_part);
@@ -590,9 +618,101 @@ fn resolve_image_parts(
                     .and_then(|id| relationships.target(id))
                     .map(|target| jade_opc::resolve_target(slide_part, target));
             }
-            ShapeItem::Table(_) | ShapeItem::Chart(_) => {}
+            ShapeItem::Table(_) | ShapeItem::Chart(_) | ShapeItem::Ink(_) => {}
         }
     }
+}
+
+/// Reads each ink drawing's InkML part into its strokes, and finds each
+/// video and audio's media: the embedded part, or a linked file's target.
+fn resolve_ink_and_media(
+    package: &OpcPackage,
+    shapes: &mut [ShapeItem],
+    relationships: &jade_opc::Relationships,
+    slide_part: &str,
+) -> Result<()> {
+    for item in shapes {
+        match item {
+            ShapeItem::Ink(ink) => {
+                let Some(part) = ink
+                    .rel_id
+                    .as_deref()
+                    .and_then(|id| relationships.relationship(id))
+                    .filter(|relationship| !relationship.external)
+                    .map(|relationship| jade_opc::resolve_target(slide_part, &relationship.target))
+                else {
+                    continue;
+                };
+                if let Some(xml) = package.part_str(&part)? {
+                    let traces = jade_ink::inkml::parse_inkml(&xml);
+                    let (width, height) = ink
+                        .transform
+                        .map(|t| (emu_to_px(t.extent_emu.0), emu_to_px(t.extent_emu.1)))
+                        .unwrap_or((0.0, 0.0));
+                    ink.traces = jade_ink::inkml::fit_traces_to_box(traces, width, height);
+                }
+                ink.ink_part = Some(part);
+            }
+            ShapeItem::Picture(picture) => {
+                let Some(media) = picture.media.as_mut() else {
+                    continue;
+                };
+                if let Some(relationship) = media
+                    .embed_rel_id
+                    .as_deref()
+                    .and_then(|id| relationships.relationship(id))
+                {
+                    if relationship.external {
+                        media.linked_target = Some(relationship.target.clone());
+                    } else {
+                        media.media_part =
+                            Some(jade_opc::resolve_target(slide_part, &relationship.target));
+                    }
+                }
+                if media.media_part.is_none() {
+                    // A linked file: p14:media r:link, else the file element's.
+                    let linked = media
+                        .link_rel_id
+                        .as_deref()
+                        .or(media.file_rel_id.as_deref())
+                        .and_then(|id| relationships.relationship(id));
+                    match linked {
+                        Some(relationship) if relationship.external => {
+                            media.linked_target = Some(relationship.target.clone());
+                        }
+                        Some(relationship) => {
+                            media.media_part =
+                                Some(jade_opc::resolve_target(slide_part, &relationship.target));
+                        }
+                        None => {}
+                    }
+                }
+                for track in &mut media.captions {
+                    let Some(relationship) = track
+                        .rel_id
+                        .as_deref()
+                        .and_then(|id| relationships.relationship(id))
+                    else {
+                        continue;
+                    };
+                    if relationship.external {
+                        track.linked_target = Some(relationship.target.clone());
+                        continue;
+                    }
+                    let part = jade_opc::resolve_target(slide_part, &relationship.target);
+                    if let Some(text) = package.part_str(&part)? {
+                        track.cues = media::parse_webvtt(&text);
+                    }
+                    track.part = Some(part);
+                }
+            }
+            ShapeItem::Group(group) => {
+                resolve_ink_and_media(package, &mut group.children, relationships, slide_part)?;
+            }
+            _ => {}
+        }
+    }
+    Ok(())
 }
 
 /// Reads each chart frame's part: kind, title and cached series.
@@ -634,46 +754,136 @@ fn resolve_charts(
 
 /// Fills each SmartArt frame with the shapes of the drawing PowerPoint
 /// caches next to its data: the data part's `dataModelExt` names the
-/// drawing relationship; a slide with a single drawing relationship needs
-/// no such link.
+/// drawing relationship; a slide with a single diagram needs no such
+/// link. A diagram without a drawing (its data alone, as PowerPoint itself
+/// accepts) is laid out from its data, as PowerPoint lays it out.
 fn resolve_diagrams(
     package: &OpcPackage,
     shapes: &mut [ShapeItem],
     relationships: &jade_opc::Relationships,
     slide_part: &str,
+    theme: &ThemeColors,
 ) -> Result<()> {
     const DIAGRAM_DRAWING: &str = "/diagramDrawing";
+    let single_diagram = relationships.by_type_suffix("/diagramData").len() == 1;
     for item in shapes {
         let ShapeItem::Group(group) = item else {
             continue;
         };
         let Some(data_rel) = group.diagram_data_rel_id.as_deref() else {
-            resolve_diagrams(package, &mut group.children, relationships, slide_part)?;
+            resolve_diagrams(
+                package,
+                &mut group.children,
+                relationships,
+                slide_part,
+                theme,
+            )?;
             continue;
         };
         let data_part = relationships
             .target(data_rel)
             .map(|target| jade_opc::resolve_target(slide_part, target));
-        let drawing_rel = match data_part.and_then(|part| package.part_str(&part).ok().flatten()) {
-            Some(xml) => diagram_drawing_rel_id(&xml)?,
+        let data_xml = match &data_part {
+            Some(part) => package.part_str(part)?,
+            None => None,
+        };
+        let drawing_rel = match &data_xml {
+            Some(xml) => diagram_drawing_rel_id(xml)?,
             None => None,
         };
         let drawing_target = drawing_rel
             .as_deref()
             .and_then(|id| relationships.target(id))
-            .or_else(|| relationships.target_by_type_suffix(DIAGRAM_DRAWING));
-        let Some(drawing_part) =
-            drawing_target.map(|target| jade_opc::resolve_target(slide_part, target))
-        else {
-            continue;
+            .or_else(|| {
+                single_diagram
+                    .then(|| relationships.target_by_type_suffix(DIAGRAM_DRAWING))
+                    .flatten()
+            });
+        let drawing_part =
+            drawing_target.map(|target| jade_opc::resolve_target(slide_part, target));
+        let drawing_xml = match &drawing_part {
+            Some(part) => package.part_str(part)?,
+            None => None,
         };
-        if let Some(xml) = package.part_str(&drawing_part)? {
+        // Pictures in the shapes are the drawing's relationships, or the
+        // data's for a drawing laid out here.
+        let image_owner = match (&drawing_xml, &drawing_part) {
+            (Some(_), Some(part)) => Some(part.clone()),
+            _ => data_part.clone(),
+        };
+        let drawing_xml = match (drawing_xml, &data_xml) {
+            (Some(xml), _) => Some(xml),
+            (None, Some(data)) => {
+                let part =
+                    |suffix: &str| -> Result<Option<String>> {
+                        let found = relationships.by_type_suffix(suffix);
+                        match (single_diagram, found.as_slice()) {
+                            (true, [one]) => Ok(package
+                                .part_str(&jade_opc::resolve_target(slide_part, &one.target))?),
+                            _ => Ok(None),
+                        }
+                    };
+                let (layout, colors, style) = (
+                    part("/diagramLayout")?,
+                    part("/diagramColors")?,
+                    part("/diagramQuickStyle")?,
+                );
+                let palette = theme_palette(theme);
+                let (width, height) = group
+                    .transform
+                    .map(|t| t.outer.extent_emu)
+                    .unwrap_or((0, 0));
+                jade_smartart::render(
+                    data,
+                    jade_smartart::Parts {
+                        layout: layout.as_deref(),
+                        colors: colors.as_deref(),
+                        style: style.as_deref(),
+                    },
+                    Some(&palette),
+                    width,
+                    height,
+                )
+                .ok()
+            }
+            (None, None) => None,
+        };
+        if let Some(xml) = drawing_xml {
             let mut children = parse_diagram_drawing_xml(&xml)?;
-            resolve_image_parts(&mut children, relationships, slide_part);
+            let owner_rels = match &image_owner {
+                Some(owner) => package
+                    .part_str(&jade_opc::rels_part_name(owner))?
+                    .map(|rels| jade_opc::parse_relationships(&rels))
+                    .transpose()?,
+                None => None,
+            };
+            match (&owner_rels, &image_owner) {
+                (Some(rels), Some(owner)) => resolve_image_parts(&mut children, rels, owner),
+                _ => resolve_image_parts(&mut children, relationships, slide_part),
+            }
             group.children = children;
         }
     }
     Ok(())
+}
+
+/// The theme's colours as SmartArt colour spans need them.
+pub fn theme_palette(theme: &ThemeColors) -> jade_smartart::colors::ThemePalette {
+    let mut palette = jade_smartart::colors::ThemePalette::new();
+    for name in [
+        "dk1", "lt1", "dk2", "lt2", "accent1", "accent2", "accent3", "accent4", "accent5",
+        "accent6",
+    ] {
+        let Some(hex) = theme.get(name) else {
+            continue;
+        };
+        let value = u32::from_str_radix(hex.trim_start_matches('#'), 16).unwrap_or(0);
+        palette.insert(
+            name.to_string(),
+            ((value >> 16) as u8, (value >> 8) as u8, value as u8),
+        );
+    }
+    palette
 }
 
 fn presentation_part_name(package: &OpcPackage) -> Result<String> {

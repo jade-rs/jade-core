@@ -15,6 +15,8 @@ mod measure;
 mod number_format;
 pub use number_format::format_chart_number;
 mod paragraph_format;
+mod picture_key;
+pub use picture_key::{picture_effects, picture_image_key};
 mod placeholder;
 pub mod preset_shapes;
 mod presets;
@@ -93,6 +95,18 @@ pub enum PlacedGeometry {
     /// A preset evaluated from its ECMA-376 definition: each DrawingML path
     /// keeps its own fill mode and stroke, and open subpaths stay open.
     Paths(Vec<PlacedPath>),
+    /// Ink: strokes drawn over the rect, stretched from the box they were
+    /// laid in.
+    Ink(PlacedInk),
+}
+
+/// Ink strokes and the box they were laid in (px): the rect is that box
+/// moved and sized, and the strokes stretch with it.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct PlacedInk {
+    pub traces: Vec<jade_pptx_reader::InkTrace>,
+    pub width: f64,
+    pub height: f64,
 }
 
 /// One DrawingML `<a:path>`, flattened, in normalized shape coordinates.
@@ -1009,8 +1023,52 @@ fn place_items(
             ShapeItem::Chart(chart) => {
                 out.extend(place_chart(chart, &space, context, origin));
             }
+            ShapeItem::Ink(ink) => {
+                if let Some(placed) = place_ink(ink, &space, origin) {
+                    out.push(placed);
+                }
+            }
         }
     }
+}
+
+/// Ink places as its strokes over its box.
+fn place_ink(
+    ink: &jade_pptx_reader::Ink,
+    space: &GroupSpace,
+    origin: PlacedOrigin,
+) -> Option<PlacedShape> {
+    let transform = ink.transform.as_ref()?;
+    let rect = placed_rect(transform, space);
+    Some(PlacedShape {
+        text_region: None,
+        local_rect: None,
+        group_transforms: Vec::new(),
+        group_ids: Vec::new(),
+        name: ink.name.clone(),
+        rect,
+        rotation_rad: rotation_rad(transform),
+        flip_h: transform.flip_h,
+        flip_v: transform.flip_v,
+        geometry: PlacedGeometry::Ink(PlacedInk {
+            traces: ink.traces.clone(),
+            width: jade_pptx_reader::emu_to_px(transform.extent_emu.0),
+            height: jade_pptx_reader::emu_to_px(transform.extent_emu.1),
+        }),
+        fill: None,
+        gradient: None,
+        outline: None,
+        image_part: None,
+        source_rect: None,
+        lines: Vec::new(),
+        origin,
+        source_id: ink.id,
+        text_rotation_deg: 0.0,
+        shadow: None,
+        image_alpha: None,
+        pattern: None,
+        effects: PlacedEffects::default(),
+    })
 }
 
 /// The frame colour a chart draws with until charts draw as charts.
@@ -1482,17 +1540,23 @@ fn place_picture(
         rotation_rad: rotation_rad(transform),
         flip_h: transform.flip_h,
         flip_v: transform.flip_v,
-        geometry: presets::resolve(
-            picture.preset_geometry.as_deref(),
-            &picture.adjustments,
-            placed_rect(transform, space).width,
-            placed_rect(transform, space).height,
-        )
-        .map_or(PlacedGeometry::Rect, |preset| preset.geometry),
+        geometry: match &picture.custom_geometry {
+            // A picture cropped to a freeform is clipped to its outline.
+            Some(custom) if picture.preset_geometry.is_none() => {
+                geometry::custom_geometry(custom).unwrap_or(PlacedGeometry::Rect)
+            }
+            _ => presets::resolve(
+                picture.preset_geometry.as_deref(),
+                &picture.adjustments,
+                placed_rect(transform, space).width,
+                placed_rect(transform, space).height,
+            )
+            .map_or(PlacedGeometry::Rect, |preset| preset.geometry),
+        },
         fill: None,
         gradient: None,
         outline: resolve_outline(picture.outline.as_ref(), None, context.theme, None),
-        image_part: picture.image_part.clone(),
+        image_part: picture_image_key(picture, context.theme),
         source_rect: picture.source_rect,
         lines: Vec::new(),
         origin,

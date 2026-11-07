@@ -11,6 +11,8 @@ unexpected_cfgs = { level = "warn", check-cfg = ['cfg(kani)'] }
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
+jade-crdt = { path = "../jade-crdt" }
+jade-docx-crdt = { path = "../jade-docx-crdt" }
 # jade-docx-convert's PDF reflow reads PDFs through lopdf, whose random
 # numbers come from the JavaScript host in the browser build.
 lopdf = { version = "=0.39.0", default-features = false, features = ["wasm_js"] }
@@ -27,6 +29,8 @@ unicode-script = "0.5"
 base64 = "0.22"
 sha2 = "0.10"
 cfb = "0.7"
+# The Packager's class on an embedded file's compound file (ole_objects).
+uuid = { version = "1.26", default-features = false }
 bumpalo = { version = "3", features = ["collections"] }
 png = "0.17"
 resvg = { version = "0.45.1", default-features = false }
@@ -60,6 +64,7 @@ jade-docx-layout = { path = "../jade-docx-layout" }
 jade-pptx-layout = { path = "../jade-pptx-layout" }
 jade-canvas-painter = { path = "../jade-canvas-painter" }
 jade-painter = { path = "../jade-painter" }
+jade-ink = { path = "../jade-ink" }
 jade-docx-headless-api = { path = "../jade-docx-headless-api" }
 jade-preview-plugin-api = { path = "../jade-preview-plugin-api" }
 serde_json = "1.0"
@@ -107,8 +112,8 @@ features = [
 ]
 
 [dev-dependencies]
-futures = "0.3"
 proptest = "1.6"
+futures = "0.3"
 
 [[example]]
 name = "math_font_plan"

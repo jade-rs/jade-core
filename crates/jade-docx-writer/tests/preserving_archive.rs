@@ -45,6 +45,42 @@ fn raw_member(bytes: &[u8], name: &str) -> (CompressionMethod, Vec<u8>) {
 }
 
 #[test]
+fn removed_or_replaced_large_media_does_not_retain_source_capacity() {
+    let name = "word/media/large.bin".to_string();
+    let source = source(
+        &HashMap::from([
+            ("custom/keep.bin".to_string(), b"keep".to_vec()),
+            (name.clone(), vec![17; 1_048_576]),
+        ]),
+        true,
+    );
+    for (overrides, removed) in [
+        (HashMap::new(), HashSet::from([name.clone()])),
+        (
+            HashMap::from([(name.clone(), b"replacement".to_vec())]),
+            HashSet::new(),
+        ),
+        (
+            HashMap::from([(name.clone(), vec![29; 1_048_576])]),
+            HashSet::from([name.clone()]),
+        ),
+    ] {
+        let output = write_docx_preserving_archive(&source, &overrides, &removed).unwrap();
+        let mut expected = HashMap::from([("custom/keep.bin".to_string(), b"keep".to_vec())]);
+        if !removed.contains(&name) {
+            expected.insert(name.clone(), overrides[&name].clone());
+        }
+        assert_eq!(inflated(&output), expected);
+        assert!(
+            output.capacity() <= output.len() * 4,
+            "export retained deleted media capacity: {} bytes for {} bytes of output",
+            output.capacity(),
+            output.len()
+        );
+    }
+}
+
+#[test]
 fn preserves_registered_unix_extra_fields_from_existing_packages() {
     use zip::write::FileOptions;
 

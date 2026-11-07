@@ -60,6 +60,25 @@ pub fn place(
         let all = || series.iter().flatten().flatten().copied();
         let group_min = all().fold(f64::INFINITY, f64::min);
         let group_max = all().fold(f64::NEG_INFINITY, f64::max);
+        // A date axis: each point where its date falls between the first
+        // and the last.
+        let dates: Option<Vec<Option<f64>>> = group
+            .date_range
+            .as_deref()
+            .filter(|_| group.date_axis)
+            .and_then(|range| {
+                let reference = resolve_chart_reference(range, sheet, workbook)?;
+                Some(
+                    reference
+                        .points
+                        .iter()
+                        .map(|point| match point.cell.map(|cell| &cell.value) {
+                            Some(CellValue::Number(value)) if value.is_finite() => Some(*value),
+                            _ => None,
+                        })
+                        .collect(),
+                )
+            });
         for (sparkline, values) in group.sparklines.iter().zip(&series) {
             let (Some(column), Some(row)) = (
                 columns.get(sparkline.cell.column as usize),
@@ -99,7 +118,7 @@ pub fn place(
                 "custom" => group.manual_max.unwrap_or(own_max),
                 _ => own_max,
             };
-            let ops = draw(group, values, rect, min, max);
+            let ops = draw(group, values, rect, min, max, dates.as_deref());
             placed.push(PlacedSparkline {
                 reference: sparkline.cell,
                 rect,
@@ -116,12 +135,22 @@ fn draw(
     cell: Rect,
     min: f64,
     max: f64,
+    dates: Option<&[Option<f64>]>,
 ) -> Vec<ChartOp> {
     let mut ops = Vec::new();
     let count = values.len();
     if count == 0 {
         return ops;
     }
+    // Where each point falls along the cell, 0 to 1: by its date on a date
+    // axis whose dates are all there, else evenly.
+    let dated: Option<Vec<f64>> = dates.filter(|d| d.len() >= count).and_then(|dates| {
+        let dates: Option<Vec<f64>> = dates[..count].iter().copied().collect();
+        let dates = dates?;
+        let first = dates.iter().copied().fold(f64::INFINITY, f64::min);
+        let last = dates.iter().copied().fold(f64::NEG_INFINITY, f64::max);
+        (last > first).then(|| dates.iter().map(|d| (d - first) / (last - first)).collect())
+    });
     let inset_x = 3.0_f64.min(cell.width / 4.0);
     let inset_y = 3.0_f64.min(cell.height / 4.0);
     let area = Rect {
@@ -207,8 +236,19 @@ fn draw(
             } else {
                 area.bottom()
             };
+            let bar = if dated.is_some() { bar.min(3.0) } else { bar };
             for (index, value) in &present {
-                let x = area.x + order(*index) as f64 * slot + (slot - bar) / 2.0;
+                let x = match &dated {
+                    Some(at) => {
+                        let f = if group.right_to_left {
+                            1.0 - at[*index]
+                        } else {
+                            at[*index]
+                        };
+                        area.x + f * (area.width - bar)
+                    }
+                    None => area.x + order(*index) as f64 * slot + (slot - bar) / 2.0,
+                };
                 let top = if win_loss {
                     if *value > 0.0 {
                         area.y
@@ -247,6 +287,14 @@ fn draw(
                 axis(&mut ops, y_of(0.0));
             }
             let x_of = |index: usize| {
+                if let Some(at) = &dated {
+                    let f = if group.right_to_left {
+                        1.0 - at[index]
+                    } else {
+                        at[index]
+                    };
+                    return area.x + f * area.width;
+                }
                 if count == 1 {
                     area.x + area.width / 2.0
                 } else {

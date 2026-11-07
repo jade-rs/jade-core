@@ -16,7 +16,7 @@
 
 use super::paragraph_property_sync::{
     restore_paragraph_properties_xml, snapshot_paragraph_properties_xml, sync_paragraph_indent_xml,
-    sync_paragraph_numbering_xml,
+    sync_paragraph_numbering_xml, IndentXmlChange,
 };
 use super::{Command, CommandContext, CommandError, CommandResult};
 use crate::document::{Indent, ParagraphProperties};
@@ -309,6 +309,11 @@ impl Command for AdjustParagraphIndentCommand {
         self.changed = false;
 
         for paragraph_index in start..=end {
+            // A block equation in the range has no paragraph to format; it
+            // is skipped, as `ParagraphRangeUndo::begin` skips it.
+            if ctx.document.is_math_surface(paragraph_index) {
+                continue;
+            }
             let previous = ctx
                 .document
                 .paragraph(paragraph_index)
@@ -404,8 +409,12 @@ impl Command for AdjustParagraphIndentCommand {
                 ctx.document,
                 paragraph_index,
                 Some(&applied_indent),
-                !bidi,
-                bidi,
+                IndentXmlChange {
+                    left: !bidi,
+                    right: bidi,
+                    special: self.target == IndentTarget::Hanging,
+                    bidi,
+                },
             );
         }
 

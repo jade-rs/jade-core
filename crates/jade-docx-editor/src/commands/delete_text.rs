@@ -10,9 +10,10 @@ use jade_docx_layout::selection::{SelectionRange, TextPosition};
 use super::paragraph_undo::{commented_body_paragraph, ParagraphRangeUndo};
 use super::raw_xml_undo::RawXmlUndo;
 use super::text_edit::{
-    append_rebased_tail_comment_anchors, apply_text_edit, range_contains_deleted_revision,
-    rebase_comment_anchors_for_edit, split_runs_at_preserving_source, unprotected_spans,
-    CommentAnchors, DeletedFields, ZeroWidthRuns,
+    append_rebased_tail_comment_anchors, apply_text_edit, is_empty_field_result,
+    range_contains_deleted_revision, rebase_comment_anchors_for_edit,
+    split_runs_at_preserving_source, unprotected_spans, CommentAnchors, DeletedFields,
+    ZeroWidthRuns,
 };
 use super::{Command, CommandContext, CommandError, CommandResult, HistoryRenderFootprint};
 
@@ -608,8 +609,17 @@ impl DeleteTextCommand {
             // pushed some together, re-syncing the restored runs cannot tell
             // which side of a marker the text goes back on, and the comment
             // lost or gained text after an undo; journal this paragraph's XML.
+            // So too when a field's code runs can go: the model holds nothing
+            // to rebuild their `w:fldChar`s and `w:instrText` from.
             // (Note paragraphs keep their XML in their own part.)
-            let mut anchored = if commented_body_paragraph(ctx, start.paragraph) {
+            let zero_width = ctx.document.zero_width_runs(start.paragraph);
+            let mut anchored = if commented_body_paragraph(ctx, start.paragraph)
+                || ctx
+                    .document
+                    .paragraph(start.paragraph)
+                    .is_some_and(|paragraph| {
+                        deletes_field_code(paragraph, delete_start, delete_end, &zero_width)
+                    }) {
                 Some(ParagraphRangeUndo::begin(
                     ctx,
                     Some((start.paragraph, start.paragraph)),
@@ -644,7 +654,6 @@ impl DeleteTextCommand {
                         }
                     }
                 } else {
-                    let zero_width = ctx.document.zero_width_runs(start.paragraph);
                     for (from, to) in spans.iter().rev() {
                         let paragraph = ctx
                             .document
@@ -688,7 +697,6 @@ impl DeleteTextCommand {
                 }
             }
 
-            let zero_width = ctx.document.zero_width_runs(start.paragraph);
             let paragraph = ctx
                 .document
                 .paragraph_mut(start.paragraph)
@@ -1172,6 +1180,22 @@ impl DeleteTextCommand {
     }
 }
 
+/// Whether deleting `start..end` can take a zero-width run of field code with
+/// it: one at either edge goes when its whole field does.
+fn deletes_field_code(
+    paragraph: &Paragraph,
+    start: usize,
+    end: usize,
+    zero_width: &ZeroWidthRuns,
+) -> bool {
+    let mut position = 0;
+    paragraph.runs.iter().any(|run| {
+        let deleted = zero_width.keeps(run) && (start..=end).contains(&position);
+        position += run.text.len();
+        deleted
+    })
+}
+
 /// The note reference mark right before (Backward) or right after (Forward)
 /// the rendered offset: `(mark start, note id, is footnote)`.
 fn adjacent_reference_mark(
@@ -1370,6 +1394,10 @@ impl FoldedSelection {
             }
             paragraph_start = position + 1;
         }
+        // A computed field's result goes or stays with its code. Cut with the
+        // text, a field right at the start of the selection lost its result
+        // run and kept its code, and came back on reload.
+        let keeps_as_code = |run: &Run| zero_width.keeps(run) || is_empty_field_result(run);
         let dropped = if keeps_every_field {
             HashSet::new()
         } else {
@@ -1377,7 +1405,7 @@ impl FoldedSelection {
             runs.iter()
                 .enumerate()
                 .filter(|&(index, &(run, position))| {
-                    zero_width.keeps(run) && !fields.keeps_zero_width(index, position)
+                    keeps_as_code(run) && !fields.keeps_zero_width(index, position)
                 })
                 .filter_map(|(_, (run, _))| run.node_id)
                 .collect()
@@ -1399,7 +1427,7 @@ impl FoldedSelection {
                 let _ = split_runs_at_preserving_source(&mut selected, end_offset, &zero_width);
             }
             for mut run in selected {
-                if zero_width.keeps(&run) {
+                if keeps_as_code(&run) {
                     let Some(id) = run.node_id.filter(|id| !dropped.contains(id)) else {
                         continue;
                     };
@@ -6539,5 +6567,41 @@ mod tests {
                 "{label}"
             );
         }
+    }
+
+    #[test]
+    fn undoing_a_deletion_of_a_whole_field_gives_its_code_back() {
+        // A table of contents line: the page number is a PAGEREF field whose
+        // code runs hold nothing the model can rebuild them from.
+        let bytes = build_docx_with_body(
+            r#"<w:p><w:r><w:t>Ab</w:t></w:r><w:r><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:instrText xml:space="preserve"> PAGEREF target \h </w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r><w:r><w:t>7</w:t></w:r><w:r><w:fldChar w:fldCharType="end"/></w:r></w:p><w:p><w:bookmarkStart w:id="1" w:name="target"/><w:r><w:t>Target</w:t></w:r><w:bookmarkEnd w:id="1"/></w:p>"#,
+        );
+        let mut doc =
+            executor::block_on(WordDocument::load(&bytes, &Options::default())).expect("load");
+        let original = doc.export_docx().expect("export");
+        let range = SelectionRange::new(TextPosition::new(0, 1), TextPosition::new(0, 3));
+        let mut selection = Some(range);
+        let mut executor = CommandExecutor::new();
+        {
+            let mut ctx = CommandContext::new(&mut doc, &mut selection);
+            executor
+                .execute(
+                    Box::new(DeleteTextCommand::new(range, DeleteDirection::Backward)),
+                    &mut ctx,
+                )
+                .expect("delete");
+        }
+        assert!(doc
+            .paragraph(0)
+            .is_some_and(|paragraph| paragraph.runs.iter().all(|run| run.field.is_none())));
+        {
+            let mut ctx = CommandContext::new(&mut doc, &mut selection);
+            executor.undo(&mut ctx).expect("undo");
+        }
+
+        assert!(
+            doc.export_docx().expect("export") == original,
+            "undo saves the field's code again"
+        );
     }
 }

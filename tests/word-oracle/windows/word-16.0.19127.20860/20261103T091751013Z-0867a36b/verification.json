@@ -1,0 +1,16 @@
+{
+  "engine_commit": "296deaca29d00fe47b0a6b9492255035e4ac15b7",
+  "word_product_version": "16.0.19127.20860",
+  "capture_id": "20261103T091751013Z-0867a36b",
+  "reference_kind": "emf",
+  "engine_source_worktree_dirty": false,
+  "strict_fixtures": [
+    "word-windows-tnr-balanced-sweep",
+    "word-windows-tnr-unbalanced-sweep"
+  ],
+  "matching_fixtures": [
+    "word-windows-tnr-balanced-sweep",
+    "word-windows-tnr-unbalanced-sweep"
+  ],
+  "pending_fixtures": []
+}

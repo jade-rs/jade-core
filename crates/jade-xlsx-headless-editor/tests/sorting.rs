@@ -20,8 +20,11 @@ fn sort(reference: &str, header: bool, keys: &[(u32, bool)]) -> SortRequest {
             .map(|(column, descending)| SortKey {
                 column: *column,
                 descending: *descending,
+                color: None,
+                custom_list: None,
             })
             .collect(),
+        by_columns: false,
     }
 }
 fn text(book: &HeadlessWorkbook, reference: &str) -> String {
@@ -651,4 +654,233 @@ fn unrelated_empty_filter_owners_do_not_move_hidden_rows_or_block_active_owner_s
         .is_err());
     assert_eq!(book.bytes(), before);
     assert!(!book.can_undo());
+}
+
+/// Sort On Cell Color or Font Color: the cells of the colour first (On Top)
+/// or last (On Bottom), every other row keeping its order; the same column
+/// once per colour, as Excel's levels allow.
+#[test]
+fn sorting_by_colour_puts_that_colour_on_top_or_bottom() {
+    use jade_xlsx_headless_api::SortColor;
+    const NAME: &str = "売上サマリ";
+    let mut book = HeadlessWorkbook::open_for_editing(include_bytes!(
+        "../../../public/fixtures/sample-workbook.xlsx"
+    ))
+    .unwrap();
+    let names = ["a", "b", "c", "d", "e", "f"];
+    let cells: Vec<(String, CellInput)> = names
+        .iter()
+        .enumerate()
+        .map(|(row, name)| (format!("K{}", 31 + row), CellInput::Text(name.to_string())))
+        .collect();
+    book.set_cells(NAME, &cells).unwrap();
+    let fill = |book: &mut HeadlessWorkbook, reference: &str, rgb: &str| {
+        let change = FormatChange {
+            fill_color: Some(rgb.into()),
+            ..FormatChange::default()
+        };
+        book.set_format(NAME, reference, &change).unwrap();
+    };
+    // b and e yellow, d red.
+    fill(&mut book, "K32", "FFFF00");
+    fill(&mut book, "K35", "FFFF00");
+    fill(&mut book, "K34", "FF0000");
+    let column = |book: &HeadlessWorkbook| {
+        (31..=36)
+            .map(|row| book.cell(NAME, &format!("K{row}")).unwrap().display)
+            .collect::<Vec<_>>()
+    };
+    let by = |rgb: &str, bottom: bool| SortKey {
+        column: 0,
+        descending: bottom,
+        color: Some(SortColor {
+            font: false,
+            rgb: rgb.into(),
+        }),
+        custom_list: None,
+    };
+    let request = |keys: Vec<SortKey>| SortRequest {
+        reference: "K31:K36".into(),
+        header: false,
+        case_sensitive: false,
+        locale: None,
+        phonetic: None,
+        keys,
+        by_columns: false,
+    };
+    // Reapplying a colour sort must discard the previous value-sort state.
+    book.sort_range(NAME, &sort("K31:K36", false, &[(0, false)]))
+        .unwrap();
+    book.sort_range(NAME, &request(vec![by("FFFF00", false)]))
+        .unwrap();
+    assert_eq!(column(&book), ["b", "e", "a", "c", "d", "f"]);
+    // Red on top, then yellow: one column, two levels.
+    book.sort_range(
+        NAME,
+        &request(vec![by("FF0000", false), by("FFFF00", false)]),
+    )
+    .unwrap();
+    assert_eq!(column(&book), ["d", "b", "e", "a", "c", "f"]);
+    // No fill on bottom.
+    book.sort_range(NAME, &request(vec![by("", true)])).unwrap();
+    assert_eq!(column(&book), ["d", "b", "e", "a", "c", "f"]);
+    book.sort_range(NAME, &request(vec![by("", false)]))
+        .unwrap();
+    assert_eq!(column(&book), ["a", "c", "f", "d", "b", "e"]);
+    // The font's colour.
+    let red_text = FormatChange {
+        font_color: Some("C00000".into()),
+        ..FormatChange::default()
+    };
+    book.set_format(NAME, "K36", &red_text).unwrap();
+    let font = SortKey {
+        column: 0,
+        descending: false,
+        color: Some(SortColor {
+            font: true,
+            rgb: "C00000".into(),
+        }),
+        custom_list: None,
+    };
+    book.sort_range(NAME, &request(vec![font])).unwrap();
+    assert_eq!(column(&book)[0], "e");
+    // The same colour twice is refused, as the same column twice is.
+    assert!(book
+        .sort_range(
+            NAME,
+            &request(vec![by("FFFF00", false), by("FFFF00", true)])
+        )
+        .is_err());
+    // A sort by colour writes no sort state to sort by again.
+    let sheet = book.workbook().sheets[0].part_name.clone();
+    assert!(!part(&book, &sheet).contains("sortState"));
+}
+
+#[test]
+fn colour_sort_clears_table_value_sort_state_and_preserves_foreign_metadata_and_history() {
+    let mut package = OpcPackage::open(&source()).unwrap();
+    let foreign = r#"<foreign:autoFilter xmlns:foreign="urn:test"><sortState xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" ref="A2:C4"><sortCondition ref="A2:A4"/></sortState></foreign:autoFilter>"#;
+    let table = package.part_str("xl/tables/table1.xml").unwrap().unwrap();
+    package.replace(
+        "xl/tables/table1.xml",
+        table
+            .replace("<autoFilter", &format!("{foreign}<autoFilter"))
+            .into_bytes(),
+    );
+    let mut book = HeadlessWorkbook::open_for_editing(&package.write().unwrap()).unwrap();
+    book.sort_range("Operations", &sort("A1:C4", true, &[(1, true)]))
+        .unwrap();
+    let before = book.bytes().to_vec();
+    assert_eq!(
+        part(&book, "xl/tables/table1.xml")
+            .matches("<sortState")
+            .count(),
+        2
+    );
+    let mut request = sort("A1:C4", true, &[(0, false)]);
+    request.keys[0].color = Some(jade_xlsx_headless_api::SortColor {
+        font: false,
+        rgb: String::new(),
+    });
+    book.sort_range("Operations", &request).unwrap();
+    let table = part(&book, "xl/tables/table1.xml");
+    assert!(table.contains(foreign));
+    assert_eq!(table.matches("<sortState").count(), 1);
+    let after = book.bytes().to_vec();
+    book.undo().unwrap();
+    assert_eq!(book.bytes(), before);
+    book.redo().unwrap();
+    assert_eq!(book.bytes(), after);
+    let reopened = HeadlessWorkbook::open_for_editing(&book.export_bytes().unwrap()).unwrap();
+    assert_eq!(
+        part(&reopened, "xl/tables/table1.xml")
+            .matches("<sortState")
+            .count(),
+        1
+    );
+}
+
+/// Sort Options ▸ Sort left to right: the columns put in the order of a
+/// row's values, each column whole with its formats and notes; one undo.
+#[test]
+fn sorting_left_to_right_moves_whole_columns() {
+    const NAME: &str = "売上サマリ";
+    let mut book = HeadlessWorkbook::open_for_editing(include_bytes!(
+        "../../../public/fixtures/sample-workbook.xlsx"
+    ))
+    .unwrap();
+    // A header column K, then three columns of a row of keys and a row below.
+    let cells: Vec<(String, CellInput)> = [
+        ("K40", "Key"),
+        ("K41", "Name"),
+        ("L40", "3"),
+        ("L41", "c"),
+        ("M40", "1"),
+        ("M41", "a"),
+        ("N40", "2"),
+        ("N41", "b"),
+    ]
+    .iter()
+    .map(|(at, text)| {
+        let input = match text.parse::<f64>() {
+            Ok(number) => CellInput::Number(number),
+            Err(_) => CellInput::Text(text.to_string()),
+        };
+        (at.to_string(), input)
+    })
+    .collect();
+    book.set_cells(NAME, &cells).unwrap();
+    let bold = FormatChange {
+        bold: Some(true),
+        ..FormatChange::default()
+    };
+    book.set_format(NAME, "M41", &bold).unwrap();
+    let request = SortRequest {
+        reference: "K40:N41".into(),
+        header: true,
+        case_sensitive: false,
+        locale: None,
+        phonetic: None,
+        keys: vec![SortKey {
+            column: 0,
+            descending: false,
+            color: None,
+            custom_list: None,
+        }],
+        by_columns: true,
+    };
+    // A previous top-to-bottom sort records a row-oriented sortState.
+    book.sort_range(NAME, &sort("K40:N41", false, &[(0, false)]))
+        .unwrap();
+    let sheet_part = book.workbook().sheets[0].part_name.clone();
+    assert!(part(&book, &sheet_part).contains("sortState"));
+    let summary = book.sort_range(NAME, &request).unwrap();
+    assert!(
+        !part(&book, &sheet_part).contains("sortState"),
+        "left-to-right sorting must discard the previous row-sort state"
+    );
+    assert_eq!(summary.moved_rows, 3);
+    let row = |book: &HeadlessWorkbook, row: u32| {
+        ["K", "L", "M", "N"]
+            .iter()
+            .map(|column| book.cell(NAME, &format!("{column}{row}")).unwrap().display)
+            .collect::<Vec<_>>()
+    };
+    assert_eq!(row(&book, 40), ["Key", "1", "2", "3"]);
+    assert_eq!(row(&book, 41), ["Name", "a", "b", "c"]);
+    // The format went with its column.
+    assert_eq!(book.format_at(NAME, "L41").unwrap().bold, Some(true));
+    assert_eq!(book.format_at(NAME, "M41").unwrap().bold, Some(false));
+    // Descending, and back with one undo each.
+    let mut down = request.clone();
+    down.keys[0].descending = true;
+    book.sort_range(NAME, &down).unwrap();
+    assert_eq!(row(&book, 41), ["Name", "c", "b", "a"]);
+    assert!(book.undo().unwrap());
+    assert!(book.undo().unwrap());
+    assert_eq!(row(&book, 41), ["Name", "c", "a", "b"]);
+    // A key row outside the range is refused.
+    let mut outside = request.clone();
+    outside.keys[0].column = 5;
+    assert!(book.sort_range(NAME, &outside).is_err());
 }

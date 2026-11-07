@@ -29,7 +29,8 @@ pub use properties::{CustomProperty, CustomValue, DocumentProperties};
 
 use crate::commands::{Command, CommandContext, CommandError, CommandResult};
 use crate::docx_xml::{DocxXmlDocument, XmlElement, XmlNode, XmlNodeId};
-use crate::word_document::{WordDocument, WordDocumentSnapshot};
+use crate::word::references::citations::{self, BibliographyStyle};
+use crate::word_document::{FieldBlockLine, WordDocument, WordDocumentSnapshot};
 use eval::{DocumentData, Evaluation, Outcome, StoryKind};
 use jade_docx_layout::selection::{SelectionRange, TextPosition};
 use jade_docx_reader::field_datetime::FieldDateTime;
@@ -225,6 +226,35 @@ pub fn field_code_display(
         }
     }
     display
+}
+
+/// フィールドの網かけ's 選択時に表示する: the body runs of the fields the
+/// selection touches (the outermost, with what is nested in them), for
+/// `CanvasRenderer::set_field_shading`.
+pub fn field_shading_runs(doc: &WordDocument, range: SelectionRange) -> HashSet<XmlNodeId> {
+    let Some(raw) = doc.raw_document.as_ref() else {
+        return HashSet::new();
+    };
+    let story = scan::scan_document(raw.root());
+    let mut runs = HashSet::new();
+    for index in selected_fields(doc, &story, range) {
+        let mut top = index;
+        while let Some((parent, _)) = story.fields[top].parent {
+            top = parent;
+        }
+        let field = &story.fields[top];
+        runs.extend(field.span_runs.iter().copied());
+        if let Some(simple) = field.simple {
+            runs.insert(simple);
+            if let Some(element) = write::find_element(raw.root(), simple) {
+                runs.extend(element.children.iter().filter_map(|child| match child {
+                    XmlNode::Element(run) if run.name == "w:r" => Some(run.id),
+                    _ => None,
+                }));
+            }
+        }
+    }
+    runs
 }
 
 /// The fields the selection touches, in order.
@@ -536,6 +566,22 @@ fn document_data(
         note_references: body.note_references.clone(),
         ..DocumentData::default()
     };
+    if !data.sources.is_empty()
+        || body.fields.iter().any(|field| {
+            field
+                .instruction_with(|_| String::new())
+                .split_whitespace()
+                .next()
+                .is_some_and(|name| name.eq_ignore_ascii_case("BIBLIOGRAPHY"))
+        })
+    {
+        data.citation_style = doc
+            .bibliography_style()
+            .map_or(Some(BibliographyStyle::Apa), |name| {
+                BibliographyStyle::from_name(&name)
+            });
+        data.citation_order = citations::citation_order(doc, &data.sources);
+    }
     let metrics = doc.document_text_metrics();
     data.words = metrics.words;
     data.characters = metrics.chars_no_space;
@@ -727,29 +773,46 @@ fn update_fields_in_scope(
             Some(with_operands(&story, &top))
         }
     };
-    let toc_targets: Vec<usize> = doc
-        .tables_of_contents()
+    let mut block_indices = HashMap::<String, usize>::new();
+    let block_targets: Vec<(String, usize)> = doc
+        .field_blocks()
         .iter()
-        .enumerate()
-        .filter(|(_, block)| {
-            if !matches!(doc.validate_field_block(block), Ok(false)) {
-                return false;
+        .filter_map(|block| {
+            let name = block.name();
+            if name != "TOC" && name != "BIBLIOGRAPHY" {
+                return None;
             }
-            story.fields.iter().enumerate().any(|(index, field)| {
-                field.parent.is_none()
-                    && !field.locked
-                    && selected
-                        .as_ref()
-                        .is_none_or(|selected| selected.contains(&index))
-                    && story
-                        .paragraphs
-                        .get(field.paragraph)
-                        .and_then(|paragraph| surfaces.get(&paragraph.id))
-                        == Some(&block.start)
-                    && field.instruction_with(|_| String::new()).trim() == block.instruction
-            })
+            let next = block_indices.entry(name.clone()).or_default();
+            let index = *next;
+            *next += 1;
+            if name == "BIBLIOGRAPHY"
+                && (data.citation_style.is_none()
+                    || !citations::supported_bibliography(&block.instruction))
+            {
+                return None;
+            }
+            if !matches!(doc.validate_field_block(block), Ok(false)) {
+                return None;
+            }
+            story
+                .fields
+                .iter()
+                .enumerate()
+                .any(|(index, field)| {
+                    field.parent.is_none()
+                        && !field.locked
+                        && selected
+                            .as_ref()
+                            .is_none_or(|selected| selected.contains(&index))
+                        && story
+                            .paragraphs
+                            .get(field.paragraph)
+                            .and_then(|paragraph| surfaces.get(&paragraph.id))
+                            == Some(&block.start)
+                        && field.instruction_with(|_| String::new()).trim() == block.instruction
+                })
+                .then_some((name, index))
         })
-        .map(|(index, _)| index)
         .collect();
     let (mut written, mut changes) = update_story(
         root_mut(&mut body),
@@ -810,15 +873,45 @@ fn update_fields_in_scope(
         }
         properties.write(&mut files)?;
     }
-    if written == 0 && changes.is_empty() && toc_targets.is_empty() {
+    if written == 0 && changes.is_empty() && block_targets.is_empty() {
         return Ok(0);
     }
     if written > 0 || !changes.is_empty() {
         replace_with(doc, &files)?;
     }
-    // Updating the last table first keeps earlier table indices stable.
-    for index in toc_targets.into_iter().rev() {
-        doc.update_table_of_contents_at(index)?;
+    let has_bibliography = block_targets.iter().any(|(name, _)| name == "BIBLIOGRAPHY");
+    let mut bibliography_lines = if has_bibliography {
+        data.citation_style
+            .map(|style| citations::bibliography_lines(doc, style))
+            .unwrap_or_default()
+    } else {
+        Vec::new()
+    };
+    if has_bibliography && bibliography_lines.is_empty() {
+        bibliography_lines.push(FieldBlockLine {
+            text: if env.japanese {
+                "現在の文書には資料文献がありません。"
+            } else {
+                "There are no sources in the current document."
+            }
+            .into(),
+            ..FieldBlockLine::default()
+        });
+    }
+    // Regenerate the last block first; paragraph growth then leaves the
+    // earlier blocks, including interleaved TOCs and bibliographies, stable.
+    for (name, index) in block_targets.into_iter().rev() {
+        if name == "TOC" {
+            doc.update_table_of_contents_at(index)?;
+        } else {
+            let block = doc
+                .field_blocks()
+                .into_iter()
+                .filter(|block| block.name() == "BIBLIOGRAPHY")
+                .nth(index)
+                .ok_or("the bibliography is unavailable")?;
+            citations::replace_bibliography(doc, &block, &bibliography_lines)?;
+        }
         written += 1;
     }
     Ok(written)

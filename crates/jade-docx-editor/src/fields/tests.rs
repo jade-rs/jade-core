@@ -1488,3 +1488,29 @@ fn code_display_shows_each_field_once_in_braces() {
     );
     assert_eq!(one.len(), all.len());
 }
+
+#[test]
+fn shading_runs_are_those_of_the_field_the_selection_is_in() {
+    let body = paragraph(concat!(
+        "<w:r><w:t>前</w:t></w:r>",
+        "<w:r><w:fldChar w:fldCharType=\"begin\"/></w:r>",
+        "<w:r><w:instrText> USERNAME </w:instrText></w:r>",
+        "<w:r><w:fldChar w:fldCharType=\"separate\"/></w:r>",
+        "<w:r><w:t>two</w:t></w:r>",
+        "<w:r><w:fldChar w:fldCharType=\"end\"/></w:r>",
+        "<w:r><w:t>後</w:t></w:r>"
+    ));
+    let doc = load(&package(&body, &[]));
+    let inside = SelectionRange::collapsed(TextPosition::new(0, "前".len()));
+    let runs = field_shading_runs(&doc, inside);
+    assert_eq!(runs.len(), 5, "begin, code, separate, result and end");
+    // Every run the reader made of the field is among them.
+    let paragraph = doc.paragraph(0).unwrap();
+    assert!(paragraph
+        .runs
+        .iter()
+        .filter(|run| run.field.is_some())
+        .all(|run| run.node_id.is_some_and(|id| runs.contains(&id))));
+    let outside = SelectionRange::collapsed(TextPosition::new(0, 0));
+    assert!(field_shading_runs(&doc, outside).is_empty());
+}

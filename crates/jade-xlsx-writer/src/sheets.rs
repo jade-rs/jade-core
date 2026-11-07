@@ -1277,6 +1277,68 @@ pub fn add_sheet(original: &[u8], name: &str, after: Option<&str>) -> Result<(Ve
     Ok((parts.finish(workbook_xml)?, at))
 }
 
+/// Move or Copy ▸ Create a copy: the sheet `source` copied, as `name`,
+/// right after it — its cells, formats, merges, view and page setup, its
+/// external hyperlinks, and its pictures, charts (reading the copy's cells)
+/// and notes. A sheet with tables or other parts the workbook numbers is
+/// refused rather than copied in part. Returns the package and the copy's
+/// position.
+pub fn copy_sheet(original: &[u8], source: &str, name: &str) -> Result<(Vec<u8>, usize)> {
+    let parts = WorkbookParts::open(original)?;
+    let from = parts.position(source)?;
+    let source_name = parts.sheets[from].name.clone();
+    let source_part = parts.sheet_parts()?[from]
+        .clone()
+        .ok_or_else(|| WriteError::NoSuchSheet(source.to_string()))?;
+    let package = &parts.package;
+    let source_rels = package.part_str(&jade_opc::rels_part_name(&source_part))?;
+    if let Some(rels) = &source_rels {
+        // Refused before anything is written, as copying would refuse it.
+        crate::copy_objects::refuse_uncopyable(rels)?;
+    }
+    let xml = package.required_part_str(&source_part)?;
+    let (added, at) = add_sheet(original, name, Some(&source_name))?;
+    let mut parts = WorkbookParts::open(&added)?;
+    let copy_part = parts.sheet_parts()?[at]
+        .clone()
+        .ok_or_else(|| WriteError::NoSuchSheet(name.to_string()))?;
+    // The copy is not the selected tab.
+    parts
+        .package
+        .replace(&copy_part, rewrite_selected_tabs(&xml)?.into_bytes());
+    if let Some(rels) = source_rels {
+        let book = jade_xlsx_reader::read_xlsx(original)?;
+        let mut tables = crate::copy_objects::TableNames::of(&parts.package, &book)?;
+        let rels = crate::copy_objects::copy_sheet_parts(
+            &mut parts.package,
+            &source_part,
+            &copy_part,
+            &rels,
+            &source_name,
+            name,
+            &mut tables,
+        )?;
+        parts
+            .package
+            .replace(&jade_opc::rels_part_name(&copy_part), rels.into_bytes());
+        // The copy's formulas read its own tables, as Excel's copy does.
+        if !tables.renamed.is_empty() {
+            let xml = parts.package.required_part_str(&copy_part)?;
+            let xml = rewrite_formula_elements(&xml, &|formula: &str| {
+                tables
+                    .renamed
+                    .iter()
+                    .fold(formula.to_string(), |formula, (old, new)| {
+                        crate::copy_objects::rename_table_references(&formula, old, new)
+                    })
+            })?;
+            parts.package.replace(&copy_part, xml.into_bytes());
+        }
+    }
+    let workbook_xml = parts.workbook_xml.clone();
+    Ok((parts.finish(workbook_xml)?, at))
+}
+
 /// The `defaultRowHeight` of a worksheet's `sheetFormatPr`, unless it is a
 /// custom height a new sheet should not inherit.
 fn default_row_height(xml: &str) -> Option<String> {

@@ -1,5 +1,7 @@
 [workspace]
 members = [
+  "crates/jade-crdt",
+  "crates/jade-docx-crdt",
   "crates/jade-docx-extract",
   "crates/jade-diff-align",
   "crates/jade-pixel-diff",
@@ -31,11 +33,14 @@ members = [
   "crates/jade-docx-headless-mcp",
   "crates/jade-canvas-painter",
   "crates/jade-painter",
+  "crates/jade-ink",
   "crates/jade-docx-pdf-renderer",
   "crates/jade-docx-para-compare",
   "crates/jade-preview-plugin-api",
   "crates/jade-opc",
   "crates/jade-pptx-reader",
+  "crates/jade-smartart",
+  "crates/jade-picture-effects",
   "crates/jade-pptx-writer",
   "crates/jade-pptx-layout",
   "crates/jade-pptx-render",

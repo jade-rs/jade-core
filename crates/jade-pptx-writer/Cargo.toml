@@ -8,12 +8,15 @@ license = "MIT"
 jade-opc = { path = "../jade-opc" }
 jade-pptx-reader = { path = "../jade-pptx-reader" }
 jade-pptx-layout = { path = "../jade-pptx-layout" }
+jade-smartart = { path = "../jade-smartart" }
+jade-ink = { path = "../jade-ink" }
 quick-xml = "0.39"
 serde = { version = "1.0", features = ["derive"] }
 thiserror = "2.0"
 unicode-segmentation = "1.10"
 uuid = { version = "1.26", features = ["v4", "js"] }
-image = { version = "0.25", default-features = false, features = ["png", "jpeg"] }
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "gif"] }
+jade-picture-effects = { path = "../jade-picture-effects" }
 sha2 = "0.10"
 png = "0.18"
 

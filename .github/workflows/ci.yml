@@ -22,6 +22,34 @@ permissions:
   contents: read
 
 jobs:
+  crdt-worker-proof:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24
+      - name: Install pinned Lean toolchain manager
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/elan-crdt"
+          cd "$RUNNER_TEMP/elan-crdt"
+          curl --fail --location --retry 3 --output elan.tar.gz https://github.com/leanprover/elan/releases/download/v4.2.4/elan-x86_64-unknown-linux-gnu.tar.gz
+          echo '42b94d4244e8353142c456ec0e4ca6528fd898a6c604d4059f494e706e431f63  elan.tar.gz' | sha256sum --check
+          tar -xzf elan.tar.gz
+          ./elan-init -y --default-toolchain none --no-modify-path
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+      - name: Check capture proofs (pinned by lean-toolchain)
+        working-directory: crates/jade-docx-crdt/formal
+        run: |
+          lean Capture.lean
+          lean Session.lean
+      - name: Worker PBT against the executable proved model
+        env:
+          JADE_LEAN_ORACLE: '1'
+        run: node --experimental-strip-types --test crates/jade-docx-crdt/worker/*.test.ts
+
   lint:
     runs-on: ubuntu-latest
     # A stalled dependency install used to burn the full six-hour default.
@@ -89,6 +117,14 @@ jobs:
             --skip text_extract::tests::extracts_expected_first_wrapped_line_from_yokohama_mini \
             --skip text_extract::tests::line_layout_exposes_index_text_page_and_geometry
 
+      - name: Install Node.js for CRDT worker tests
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24
+
+      - name: CRDT worker capture barriers
+        run: node --experimental-strip-types --test crates/jade-docx-crdt/worker/*.test.ts
+
       - name: Verify native macOS workflow contract
         run: ruby tests/ci/native_macos_workflow_test.rb
 
@@ -99,6 +135,70 @@ jobs:
         run: |
           python3 -m unittest discover -s scripts -p test_audit_mac_release_corpus.py
           python3 scripts/audit-mac-release-corpus.py
+
+  # Run the coordinate gate independently: a lint/PDF dependency failure in
+  # native-macos must not prevent the Mac coordinate comparison from running.
+  word-mac-coordinates:
+    name: Mac Word coordinate match
+    runs-on: macos-latest
+    timeout-minutes: 45
+    env:
+      RUSTUP_TOOLCHAIN: stable
+      CARGO_TARGET_DIR: ${{ github.workspace }}/target/word-mac-coordinates
+      CARGO_PROFILE_DEV_DEBUG: '0'
+      CARGO_PROFILE_TEST_DEBUG: '0'
+      CARGO_INCREMENTAL: '0'
+      CARGO_BUILD_JOBS: '2'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+        with:
+          workspaces: |
+            . -> target/word-mac-coordinates
+      - name: Compare Mac drawing coordinates with committed Word references
+        run: cargo test --manifest-path crates/jade-docx-native-render/Cargo.toml --locked --test word_mac_coordinates -- --test-threads=1
+      - name: Upload coordinate differences
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: mac-word-coordinate-differences
+          path: crates/jade-docx-native-render/target/word-mac-coordinates
+          if-no-files-found: ignore
+
+  windows-word-baselines:
+    name: Windows Word baselines by version
+    runs-on: windows-latest
+    timeout-minutes: 45
+    env:
+      RUSTUP_TOOLCHAIN: stable
+      SKIA_BINARIES_URL: https://github.com/rust-skia/skia-binaries/releases/download/0.87.0/skia-binaries-e551f334ad5cbdf43abf-x86_64-pc-windows-msvc-pdf-svg-textlayout-vulkan-webpd-webpe.tar.gz
+      CARGO_PROFILE_DEV_DEBUG: '0'
+      CARGO_PROFILE_TEST_DEBUG: '0'
+      CARGO_INCREMENTAL: '0'
+      CARGO_BUILD_JOBS: '2'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+        with:
+          workspaces: crates/jade-docx-native-render
+      # No Office installation/font redistribution is required for this
+      # vertical-policy check. Full installed-font XY tests run on the Word
+      # capture machine via jade-office/scripts/test-windows-word.ps1.
+      - name: Setup drawing-reference verifier Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12'
+      - name: Verify drawing-origin extraction and rejection cases
+        run: python -m unittest discover -s scripts/word-oracle -p test_windows_emf.py
+      - name: Reconstruct registered origins from original Word drawing files
+        run: python scripts/word-oracle/extract_windows_emf.py --verify-index tests/word-oracle/windows/index.json
+      - name: Compare every registered Word version's baselines
+        run: cargo test --manifest-path crates/jade-docx-native-render/Cargo.toml --locked --test word_windows_coordinates windows_word_baselines_with_bundled_standins -- --exact
 
   native-macos:
     runs-on: macos-latest

@@ -61,7 +61,7 @@ fn map_body_elements(elements: &mut [BodyElement], xml_parent: &XmlElement, doc:
                     .take()
                     .or_else(|| find_next_with_name(&mut iter, "w:p"));
                 if let Some(xml_paragraph) = xml_paragraph {
-                    map_paragraph(paragraph.as_mut(), xml_paragraph, doc);
+                    attach_paragraph_xml_ids(paragraph.as_mut(), xml_paragraph, doc);
                 } else {
                     paragraph.as_mut().node_id = None;
                 }
@@ -95,7 +95,14 @@ fn map_body_elements(elements: &mut [BodyElement], xml_parent: &XmlElement, doc:
     }
 }
 
-fn map_paragraph(paragraph: &mut Paragraph, xml_paragraph: &XmlElement, doc: &DocxXmlDocument) {
+/// Links one already-parsed paragraph to its final XML subtree, including
+/// field containers and runs nested in hyperlinks. Use after inserting a
+/// generated paragraph, whose temporary XML IDs are reassigned on insertion.
+pub fn attach_paragraph_xml_ids(
+    paragraph: &mut Paragraph,
+    xml_paragraph: &XmlElement,
+    doc: &DocxXmlDocument,
+) {
     paragraph.node_id = Some(xml_paragraph.id);
 
     for run in &mut paragraph.runs {
@@ -109,18 +116,55 @@ fn map_paragraph(paragraph: &mut Paragraph, xml_paragraph: &XmlElement, doc: &Do
 
     let mut slots = Vec::new();
     collect_run_slots(&xml_paragraph.children, None, doc, &mut slots);
-    let mut slots = slots.into_iter();
+    let mut complex_fields = Vec::new();
+    let mut slots = slots.into_iter().map(|slot| {
+        let source = complex_field_source(&slot, &mut complex_fields);
+        (slot, source)
+    });
 
-    for run in &mut paragraph.runs {
+    let mut next_run = 0;
+    while next_run < paragraph.runs.len() {
+        let index = next_run;
+        next_run += 1;
         // A bare slot whose content the parser did not turn into a run (a
         // `w:fldSimple` nested in another field's instruction) owns no model
         // run. Skip it rather than leave this run without its `w:r`.
-        let Some(slot) = slots.find(|slot| match slot {
-            RunSlot::Element(..) => true,
-            RunSlot::Bare(bare) => bare.is_modeled_by(run),
-        }) else {
+        let slot = {
+            let run = &paragraph.runs[index];
+            slots.find(|(slot, _)| match slot {
+                RunSlot::Element(..) => true,
+                RunSlot::Bare(bare) => bare.is_modeled_by(run),
+            })
+        };
+        let Some((slot, complex_source)) = slot else {
             break;
         };
+        // The parser cuts a `w:r` holding soft line breaks into a run per
+        // break and per stretch of text between them (see
+        // `split_run_by_soft_breaks`). The first piece takes the `w:r`; the
+        // rest have none of their own, as after a split in the editor.
+        // Paired a `w:r` each, every later run in the paragraph took the
+        // next run's element.
+        if let RunSlot::Element(xml_run, _) = &slot {
+            let run = &paragraph.runs[index];
+            // The parser keeps fields, images and text boxes whole, even
+            // when their source run contains a soft break.
+            let pieces = if run.field.is_none() && run.image.is_none() && run.text_box.is_none() {
+                soft_break_pieces(xml_run)
+            } else {
+                Vec::new()
+            };
+            if pieces.len() > 1
+                && paragraph.runs.len() >= index + pieces.len()
+                && paragraph.runs[index..index + pieces.len()]
+                    .iter()
+                    .zip(&pieces)
+                    .all(|(run, &is_break)| (run.text == "\n") == is_break)
+            {
+                next_run = index + pieces.len();
+            }
+        }
+        let run = &mut paragraph.runs[index];
         let RunSlot::Element(xml_run, wrapper_id) = slot else {
             // Bare content has no `w:r`. Empty fields still name their
             // source container so the writer can reuse it exactly once.
@@ -134,13 +178,24 @@ fn map_paragraph(paragraph: &mut Paragraph, xml_paragraph: &XmlElement, doc: &Do
         map_run(run, xml_run);
         if let Some(field) = run.field.as_mut() {
             let mut ancestor = doc.parent_id(xml_run.id);
-            field.source_field_id = None;
+            field.source_field_id = complex_source;
             while let Some(id) = ancestor {
                 let Some(element) = doc.element(id) else {
                     break;
                 };
                 if element.name == "w:fldSimple" {
-                    field.source_field_id = Some(id);
+                    // A complex field can be a result inside this wrapper,
+                    // or this simple field can be inside a complex result.
+                    // Preserve the innermost field's identity in either order.
+                    let complex_is_inside = complex_source.is_some_and(|source| {
+                        std::iter::successors(doc.parent_id(source), |&parent| {
+                            doc.parent_id(parent)
+                        })
+                        .any(|parent| parent == id)
+                    });
+                    if !complex_is_inside {
+                        field.source_field_id = Some(id);
+                    }
                     break;
                 }
                 if element.name == "w:p" {
@@ -162,6 +217,61 @@ fn map_paragraph(paragraph: &mut Paragraph, xml_paragraph: &XmlElement, doc: &Do
     }
 }
 
+/// The runs the parser makes of `xml_run`: `true` for a soft line break,
+/// `false` for a stretch of text. One piece when the parser keeps the run
+/// whole — a carriage return, a break with `w:clear`, a drawing or a field.
+/// An empty vector also means the run stays whole.
+fn soft_break_pieces(xml_run: &XmlElement) -> Vec<bool> {
+    let mut pieces = Vec::new();
+    let mut has_text = false;
+    for child in element_children(xml_run) {
+        match child.name.as_str() {
+            "w:br" => {
+                let attribute = |name: &str| {
+                    child
+                        .attributes
+                        .iter()
+                        .find(|attribute| attribute.name == name)
+                        .map(|attribute| attribute.value.to_ascii_lowercase())
+                };
+                if attribute("w:clear").is_some() {
+                    return Vec::new();
+                }
+                match attribute("w:type").as_deref() {
+                    None | Some("textwrapping") => {
+                        if std::mem::take(&mut has_text) {
+                            pieces.push(false);
+                        }
+                        pieces.push(true);
+                    }
+                    // A page or column break is a character of the text.
+                    _ => has_text = true,
+                }
+            }
+            "w:cr"
+            | "w:drawing"
+            | "w:pict"
+            | "w:object"
+            | "mc:AlternateContent"
+            | "w:fldChar"
+            | "w:instrText" => return Vec::new(),
+            "w:t" | "w:delText" => {
+                has_text |= child
+                    .children
+                    .iter()
+                    .any(|node| matches!(node, XmlNode::Text(text) if !text.is_empty()));
+            }
+            "w:tab" | "w:ptab" | "w:noBreakHyphen" | "w:softHyphen" | "w:sym" => has_text = true,
+            _ => {}
+        }
+    }
+    // Ordinary text needs no split description or allocation.
+    if has_text && !pieces.is_empty() {
+        pieces.push(false);
+    }
+    pieces
+}
+
 fn map_run(run: &mut Run, xml_run: &XmlElement) {
     run.node_id = Some(xml_run.id);
     run.text_node_id = element_children(xml_run)
@@ -178,6 +288,47 @@ enum RunSlot<'a> {
     Element(&'a XmlElement, Option<XmlNodeId>),
     /// Content the parser models as a run of its own with no `w:r`.
     Bare(BareRun),
+}
+
+/// Complex fields have no wrapper element. Their begin run identifies the
+/// field across its result fragments, independently of neighbouring fields
+/// with identical instructions. Track markers in XML order, even for slots
+/// that do not materialize as model runs.
+fn complex_field_source(
+    slot: &RunSlot<'_>,
+    fields: &mut Vec<(XmlNodeId, bool)>,
+) -> Option<XmlNodeId> {
+    let RunSlot::Element(run, _) = slot else {
+        return None;
+    };
+    let mut source = fields
+        .last()
+        .filter(|(_, result)| *result)
+        .map(|(id, _)| *id);
+    for marker in element_children(run).filter(|child| child.name == "w:fldChar") {
+        match marker
+            .attributes
+            .iter()
+            .find(|a| a.name == "w:fldCharType")
+            .map(|a| a.value.as_str())
+        {
+            Some("begin") => {
+                fields.push((run.id, false));
+                source = None;
+            }
+            Some("separate") => {
+                if let Some((id, result)) = fields.last_mut() {
+                    *result = true;
+                    source = Some(*id);
+                }
+            }
+            Some("end") => {
+                fields.pop();
+            }
+            _ => {}
+        }
+    }
+    source
 }
 
 enum BareRun {
@@ -241,7 +392,13 @@ fn collect_run_slots<'a>(
                 }
             }
             "w:r" => out.push(RunSlot::Element(element, wrapper)),
-            "w:ins" | "w:del" => collect_run_slots(&element.children, Some(element.id), doc, out),
+            // A move is a revision wrapper like an insertion or deletion:
+            // its runs are model runs. Passed over, each one took the next
+            // run's `w:r`, so an edit wrote the moved text's formatting there
+            // and moved the move's range markers off its text.
+            "w:ins" | "w:del" | "w:moveFrom" | "w:moveTo" => {
+                collect_run_slots(&element.children, Some(element.id), doc, out)
+            }
             "m:oMath" => out.push(RunSlot::Bare(BareRun::Math)),
             "w:object" => out.push(RunSlot::Bare(BareRun::Object)),
             name if is_transparent_run_container(name) => {
@@ -354,10 +511,40 @@ fn map_table_row(row: &mut TableRow, xml_row: &XmlElement, doc: &DocxXmlDocument
     row.node_id = Some(xml_row.id);
     let mut cells = Vec::new();
     collect_transparently_wrapped_children(&xml_row.children, &["w:tc"], &mut cells);
-    let mut xml_cells = cells.into_iter();
+    // Ordinary rows need no legacy reconstruction or property scans.
+    if cells.len() == row.cells.len() {
+        for (cell, xml_cell) in row.cells.iter_mut().zip(cells) {
+            map_table_cell(cell, xml_cell, doc);
+        }
+        return;
+    }
+    let mut xml_cells = cells.into_iter().peekable();
     for cell in &mut row.cells {
         if let Some(xml_cell) = xml_cells.next() {
-            map_table_cell(cell, xml_cell, doc);
+            if horizontal_merge_kind(xml_cell) == Some("restart") {
+                while xml_cells
+                    .peek()
+                    .is_some_and(|next| horizontal_merge_kind(next) == Some("continue"))
+                {
+                    xml_cells.next();
+                }
+                match normalized_legacy_horizontal_merge_cell(
+                    xml_row,
+                    xml_cell.id,
+                    &doc.root().attributes,
+                ) {
+                    Ok(Some(normalized)) => map_table_cell(cell, &normalized, doc),
+                    Ok(None) => map_table_cell(cell, xml_cell, doc),
+                    Err(_) => {
+                        // Never attach a logical block to an unrelated raw cell
+                        // if a malformed legacy group cannot be reconstructed.
+                        cell.node_id = None;
+                        clear_block_ids(cell.blocks.as_mut_slice());
+                    }
+                }
+            } else {
+                map_table_cell(cell, xml_cell, doc);
+            }
         } else {
             cell.node_id = None;
             clear_block_ids(cell.blocks.as_mut_slice());
@@ -474,11 +661,235 @@ fn clear_block_ids(blocks: &mut [BodyElement]) {
     }
 }
 
+/// The raw form of a reader-normalized legacy cell, retaining the original
+/// block/run ids. No stored XML is changed: callers can use this view for id
+/// mapping or gather its content before a structural edit.
+///
+/// Only legacy groups take this path. Reparse the small group without its
+/// horizontal markers so the *same reader contract* decides which mandatory
+/// empty paragraphs to discard, including fields, equations and drawings.
+pub fn normalized_legacy_horizontal_merge_cell(
+    row: &XmlElement,
+    cell_id: XmlNodeId,
+    root_attributes: &[super::XmlAttribute],
+) -> Result<Option<XmlElement>, String> {
+    let mut cells = Vec::new();
+    collect_transparently_wrapped_children(&row.children, &["w:tc"], &mut cells);
+    let Some(at) = cells.iter().position(|cell| cell.id == cell_id) else {
+        return Err("legacy merge source cell is missing".into());
+    };
+    if horizontal_merge_kind(cells[at]) != Some("restart") {
+        return Ok(None);
+    }
+    let end = at
+        + 1
+        + cells[at + 1..]
+            .iter()
+            .take_while(|cell| horizontal_merge_kind(cell) == Some("continue"))
+            .count();
+    if end == at + 1 {
+        return Ok(None);
+    }
+    let sources = &cells[at..end];
+    let mut unmerged_row = XmlElement {
+        id: row.id,
+        name: row.name.clone(),
+        attributes: row.attributes.clone(),
+        children: Vec::new(),
+    };
+    unmerged_row.children = sources.iter().map(|cell| {
+        let mut cell = (*cell).clone();
+        for child in &mut cell.children {
+            if let XmlNode::Element(properties) = child {
+                if properties.name == "w:tcPr" {
+                    properties.children.retain(|node| !matches!(node, XmlNode::Element(element) if element.name == "w:hMerge"));
+                }
+            }
+        }
+        XmlNode::Element(cell)
+    }).collect();
+    let wrap = |name: &str, children: Vec<XmlNode>| XmlElement {
+        id: XmlNodeId::new(0),
+        name: name.into(),
+        attributes: Vec::new(),
+        children,
+    };
+    let mut root = wrap(
+        "w:document",
+        vec![XmlNode::Element(wrap(
+            "w:body",
+            vec![XmlNode::Element(wrap(
+                "w:tbl",
+                vec![XmlNode::Element(unmerged_row)],
+            ))],
+        ))],
+    );
+    root.attributes = root_attributes.to_vec();
+    let mut xml = String::new();
+    let plan = super::schema::write_plan(&root);
+    root.write_with(&mut xml, plan.namespaces.as_ref(), &plan.renumbered, None)
+        .map_err(|error| error.to_string())?;
+    let parsed = DocumentParser::new()
+        .parse_document_xml(&xml)
+        .map_err(|error| error.to_string())?;
+    let parsed_cells = parsed
+        .body
+        .as_ref()
+        .and_then(|body| body.elements.first())
+        .and_then(|block| {
+            if let BodyElement::Table(table) = block {
+                table.rows.first().map(|row| &row.cells)
+            } else {
+                None
+            }
+        })
+        .ok_or_else(|| "legacy merge group could not be parsed".to_owned())?;
+    if parsed_cells.len() != sources.len() {
+        return Err("legacy merge group changed cell count".into());
+    }
+    let mut normalized = (*sources[0]).clone();
+    let properties: Vec<_> = normalized
+        .children
+        .iter()
+        .filter(|node| matches!(node, XmlNode::Element(element) if element.name == "w:tcPr"))
+        .cloned()
+        .collect();
+    let mut content: Vec<_> = normalized
+        .children
+        .iter()
+        .filter(|node| !matches!(node, XmlNode::Element(element) if element.name == "w:tcPr"))
+        .cloned()
+        .collect();
+    let mut has_content = DocumentParser::legacy_merge_blocks_have_content(&parsed_cells[0].blocks);
+    for (source, parsed) in sources.iter().zip(parsed_cells).skip(1) {
+        if DocumentParser::legacy_merge_blocks_have_content(&parsed.blocks) {
+            if !has_content {
+                content.clear();
+            }
+            has_content = true;
+            content.extend(source.children.iter().filter(|node| !matches!(node, XmlNode::Element(element) if element.name == "w:tcPr")).cloned());
+        }
+    }
+    normalized.children = properties;
+    normalized.children.extend(content);
+    Ok(Some(normalized))
+}
+
+fn horizontal_merge_kind(cell: &XmlElement) -> Option<&'static str> {
+    let merge = element_children(cell)
+        .find(|child| child.name == "w:tcPr")
+        .and_then(|properties| {
+            element_children(properties).find(|child| child.name == "w:hMerge")
+        })?;
+    match merge
+        .attributes
+        .iter()
+        .find(|attribute| attribute.name == "w:val")
+    {
+        None => Some("continue"),
+        Some(attribute) if attribute.value.eq_ignore_ascii_case("restart") => Some("restart"),
+        Some(attribute) if attribute.value.eq_ignore_ascii_case("continue") => Some("continue"),
+        Some(_) => None,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::document::Body;
     use crate::parser::DocumentParser;
+
+    #[test]
+    fn complex_result_fragments_share_only_their_own_field_identity() {
+        let field = r#"<w:r><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:instrText> DATE </w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r><w:r><w:rPr><w:vanish/></w:rPr><w:t>first</w:t></w:r><w:r><w:t>second</w:t></w:r><w:r><w:fldChar w:fldCharType="end"/></w:r>"#;
+        let source = format!(
+            r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p>{field}{field}<w:r><w:t>after</w:t></w:r></w:p></w:body></w:document>"#
+        );
+        let mut document = DocumentParser::new().parse_document_xml(&source).unwrap();
+        let xml = DocxXmlDocument::parse(&source).unwrap();
+        attach_document_xml_ids(&mut document, &xml).unwrap();
+        let paragraph = document.body.as_ref().unwrap().elements[0]
+            .as_paragraph()
+            .unwrap();
+        let identities: Vec<_> = paragraph
+            .runs
+            .iter()
+            .filter_map(|run| run.field.as_ref().map(|field| field.source_field_id))
+            .collect();
+        assert_eq!(identities.len(), 4);
+        assert!(identities.iter().all(Option::is_some));
+        assert_eq!(identities[0], identities[1]);
+        assert_eq!(identities[2], identities[3]);
+        assert_ne!(identities[0], identities[2]);
+        for identity in identities.into_iter().flatten() {
+            let begin = xml.element(identity).unwrap();
+            assert_eq!(begin.name, "w:r");
+            assert!(element_children(begin).any(|child| child.name == "w:fldChar"));
+        }
+        assert!(paragraph.runs.last().unwrap().field.is_none());
+    }
+
+    #[test]
+    fn nested_complex_fields_keep_their_own_identity_inside_a_simple_field() {
+        let field = r#"<w:r><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:instrText> DATE </w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r><w:r><w:rPr><w:vanish/></w:rPr><w:t>first</w:t></w:r><w:r><w:t>second</w:t></w:r><w:r><w:fldChar w:fldCharType="end"/></w:r>"#;
+        let source = format!(
+            r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:fldSimple w:instr=" PAGE ">{field}{field}</w:fldSimple><w:r><w:t>after</w:t></w:r></w:p></w:body></w:document>"#
+        );
+        let mut document = DocumentParser::new().parse_document_xml(&source).unwrap();
+        let xml = DocxXmlDocument::parse(&source).unwrap();
+        attach_document_xml_ids(&mut document, &xml).unwrap();
+        let paragraph = document.body.as_ref().unwrap().elements[0]
+            .as_paragraph()
+            .unwrap();
+        let identities: Vec<_> = paragraph
+            .runs
+            .iter()
+            .filter_map(|run| run.field.as_ref())
+            .filter(|field| matches!(field.kind, RunFieldKind::Date { .. }))
+            .map(|field| field.source_field_id)
+            .collect();
+        assert_eq!(identities.len(), 4);
+        assert!(identities.iter().all(Option::is_some));
+        assert_eq!(identities[0], identities[1]);
+        assert_eq!(identities[2], identities[3]);
+        assert_ne!(identities[0], identities[2]);
+        for identity in identities.into_iter().flatten() {
+            let begin = xml.element(identity).unwrap();
+            assert_eq!(begin.name, "w:r");
+            assert!(element_children(begin).any(|child| child.name == "w:fldChar"));
+        }
+        assert!(paragraph.runs.last().unwrap().field.is_none());
+    }
+
+    #[test]
+    fn simple_result_fragments_keep_their_identity_inside_a_complex_field() {
+        let field = r#"<w:fldSimple w:instr=" DATE "><w:r><w:t>first</w:t></w:r><w:r><w:t>second</w:t></w:r></w:fldSimple>"#;
+        let source = format!(
+            r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:instrText> PAGE </w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r>{field}{field}<w:r><w:fldChar w:fldCharType="end"/></w:r><w:r><w:t>after</w:t></w:r></w:p></w:body></w:document>"#
+        );
+        let mut document = DocumentParser::new().parse_document_xml(&source).unwrap();
+        let xml = DocxXmlDocument::parse(&source).unwrap();
+        attach_document_xml_ids(&mut document, &xml).unwrap();
+        let paragraph = document.body.as_ref().unwrap().elements[0]
+            .as_paragraph()
+            .unwrap();
+        let identities: Vec<_> = paragraph
+            .runs
+            .iter()
+            .filter_map(|run| run.field.as_ref())
+            .filter(|field| matches!(field.kind, RunFieldKind::Date { .. }))
+            .map(|field| field.source_field_id)
+            .collect();
+        assert_eq!(identities.len(), 4);
+        assert!(identities.iter().all(Option::is_some));
+        assert_eq!(identities[0], identities[1]);
+        assert_eq!(identities[2], identities[3]);
+        assert_ne!(identities[0], identities[2]);
+        for identity in identities.into_iter().flatten() {
+            assert_eq!(xml.element(identity).unwrap().name, "w:fldSimple");
+        }
+        assert!(paragraph.runs.last().unwrap().field.is_none());
+    }
 
     #[test]
     fn maps_paragraphs_after_math_wrappers_to_their_own_xml_nodes() {
@@ -822,6 +1233,125 @@ mod tests {
             .expect("nested controlled cell paragraph");
         assert!(cell_paragraph.node_id.is_some());
         assert!(cell_paragraph.runs[0].node_id.is_some());
+    }
+
+    #[test]
+    fn maps_moved_runs_to_their_own_elements() {
+        const XML: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:body>
+    <w:p><w:moveFromRangeStart w:id="1" w:name="move1"/><w:moveFrom w:id="2"><w:r><w:t>moved</w:t></w:r></w:moveFrom><w:moveFromRangeEnd w:id="1"/><w:r><w:t> stays</w:t></w:r></w:p>
+    <w:p><w:r><w:t>Target </w:t></w:r><w:moveToRangeStart w:id="3" w:name="move1"/><w:moveTo w:id="4"><w:r><w:t>moved</w:t></w:r></w:moveTo><w:moveToRangeEnd w:id="3"/></w:p>
+  </w:body>
+</w:document>
+"#;
+        let mut document = DocumentParser::new()
+            .parse_document_xml(XML)
+            .expect("parse moves");
+        let xml = DocxXmlDocument::parse(XML).expect("parse raw moves");
+        attach_document_xml_ids(&mut document, &xml).expect("map move ids");
+        let body = document.body.expect("body");
+        for (index, expected) in [(0, ["moved", " stays"]), (1, ["Target ", "moved"])] {
+            let paragraph = body.elements[index].as_paragraph().expect("paragraph");
+            let texts: Vec<_> = paragraph
+                .runs
+                .iter()
+                .map(|run| {
+                    let element = xml
+                        .element(run.node_id.expect("bound run"))
+                        .expect("run xml");
+                    element_children(element)
+                        .filter(|child| child.name == "w:t")
+                        .flat_map(|child| child.children.iter())
+                        .filter_map(|node| match node {
+                            XmlNode::Text(text) => Some(text.as_str()),
+                            _ => None,
+                        })
+                        .collect::<String>()
+                })
+                .collect();
+            assert_eq!(texts, expected);
+        }
+    }
+
+    #[test]
+    fn a_run_cut_at_soft_breaks_keeps_later_runs_on_their_own_elements() {
+        // The parser makes "A", "\n", "B" of the first `w:r`. Paired a `w:r`
+        // each, the break took "C"'s element and "B" and "C" had none.
+        for (body, bound) in [
+            (
+                r#"<w:p><w:r><w:t>A</w:t><w:br/><w:t>B</w:t></w:r><w:r><w:t>C</w:t></w:r></w:p>"#,
+                vec![
+                    ("A", Some("A\u{0}B")),
+                    ("\n", None),
+                    ("B", None),
+                    ("C", Some("C")),
+                ],
+            ),
+            (
+                r#"<w:p><w:r><w:br w:type="textWrapping"/><w:t>B</w:t></w:r><w:r><w:t>C</w:t></w:r></w:p>"#,
+                vec![("\n", Some("\u{0}B")), ("B", None), ("C", Some("C"))],
+            ),
+            (
+                r#"<w:p><w:r><w:t>A</w:t><w:br/></w:r><w:r><w:t>C</w:t></w:r></w:p>"#,
+                vec![("A", Some("A\u{0}")), ("\n", None), ("C", Some("C"))],
+            ),
+            // A field result stays one model run even when its source has a
+            // soft break; the standalone break and text after it own their runs.
+            (
+                r#"<w:p><w:fldSimple w:instr=" AUTHOR "><w:r><w:t>A</w:t><w:br/><w:t>B</w:t></w:r></w:fldSimple><w:r><w:br/></w:r><w:r><w:t>D</w:t></w:r><w:r><w:t>C</w:t></w:r></w:p>"#,
+                vec![
+                    ("", Some("A\u{0}B")),
+                    ("\n", Some("\u{0}")),
+                    ("D", Some("D")),
+                    ("C", Some("C")),
+                ],
+            ),
+            // A break that clears floats keeps its run whole.
+            (
+                r#"<w:p><w:r><w:t>A</w:t><w:br w:clear="all"/><w:t>B</w:t></w:r><w:r><w:t>C</w:t></w:r></w:p>"#,
+                vec![("A\nB", Some("A\u{0}B")), ("C", Some("C"))],
+            ),
+        ] {
+            let xml = format!(
+                r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>{body}</w:body></w:document>"#
+            );
+            let mut document = DocumentParser::new()
+                .parse_document_xml(&xml)
+                .expect("parse");
+            let raw = DocxXmlDocument::parse(&xml).expect("parse raw");
+            attach_document_xml_ids(&mut document, &raw).expect("map ids");
+            let paragraph = document.body.as_ref().expect("body").elements[0]
+                .as_paragraph()
+                .expect("paragraph");
+            // Each run's text, and its element's: `w:t` text, a break as NUL.
+            let element_text = |id| {
+                let element = raw.element(id).expect("run element");
+                element_children(element)
+                    .map(|child| match child.name.as_str() {
+                        "w:br" => "\u{0}".to_string(),
+                        _ => child
+                            .children
+                            .iter()
+                            .filter_map(|node| match node {
+                                XmlNode::Text(text) => Some(text.as_str()),
+                                _ => None,
+                            })
+                            .collect(),
+                    })
+                    .collect::<String>()
+            };
+            let actual: Vec<_> = paragraph
+                .runs
+                .iter()
+                .map(|run| (run.text.clone(), run.node_id.map(element_text)))
+                .collect();
+            let expected: Vec<_> = bound
+                .into_iter()
+                .map(|(text, element)| (text.to_string(), element.map(str::to_string)))
+                .collect();
+            assert_eq!(actual, expected, "{body}");
+        }
     }
 
     #[test]

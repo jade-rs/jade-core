@@ -43,6 +43,13 @@ fn sheet(rows: u32, merges: Vec<&str>) -> Sheet {
         default_row_custom_height: false,
         default_rows_hidden: false,
         show_grid_lines: true,
+        show_formulas: false,
+        show_zeros: true,
+        page_break_preview: false,
+        tab_selected: false,
+        show_headers: true,
+        grid_color: None,
+        zoom_percent: None,
         freeze_pane: None,
         tables: Vec::new(),
         header_footer: None,
@@ -51,10 +58,13 @@ fn sheet(rows: u32, merges: Vec<&str>) -> Sheet {
         page_setup: Default::default(),
         shapes: Vec::new(),
         array_formulas: Vec::new(),
+        data_tables: Vec::new(),
+        scenarios: None,
         phonetic_readings: Default::default(),
         rich_text: Default::default(),
         tab_color: None,
         sparkline_groups: Vec::new(),
+        ignored_errors: Vec::new(),
         outline: Default::default(),
         protection: None,
     }
@@ -257,4 +267,14 @@ fn grouped_rows_and_columns_grow_an_outline_gutter_a_click_finds() {
         })
     );
     assert_eq!(plain.outline_hit(5.0, 30.0, none), None);
+}
+
+#[test]
+fn a_sheet_that_hides_its_headings_has_no_header_bands() {
+    let mut hidden = sheet(10, vec![]);
+    hidden.show_headers = false;
+    let metrics = laid_out(&hidden).header_metrics();
+    assert_eq!((metrics.row_width, metrics.column_height), (0.0, 0.0));
+    let shown = laid_out(&sheet(10, vec![])).header_metrics();
+    assert!(shown.row_width > 0.0 && shown.column_height > 0.0);
 }

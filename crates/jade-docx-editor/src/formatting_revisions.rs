@@ -67,7 +67,11 @@ type RunChanges = HashMap<XmlNodeId, (Box<crate::document::RunPropertiesChange>,
 
 /// Note XML is reparsed on each edit. Bind only a temporary paragraph clone:
 /// storing these part-local IDs on the live model would alias body IDs.
-fn bind_note_paragraph(paragraph: &Paragraph, raw: &DocxXmlDocument, id: XmlNodeId) -> Paragraph {
+pub(super) fn bind_note_paragraph(
+    paragraph: &Paragraph,
+    raw: &DocxXmlDocument,
+    id: XmlNodeId,
+) -> Paragraph {
     let mut parent = raw.element(id).expect("note paragraph XML").clone();
     parent.children = vec![XmlNode::Element(parent.clone())];
     let mut blocks = vec![BodyElement::Paragraph(Box::new(paragraph.clone()))];
@@ -620,10 +624,11 @@ impl WordDocument {
         let original = self.document.replace(Rc::new(parsed));
         self.rebuild_paragraph_surfaces();
         let properties = (0..self.paragraph_count())
-            .filter_map(|index| self.paragraph(index))
-            .map(|paragraph| {
+            .filter_map(|index| Some((self.paragraph_surfaces.get(index)?, self.paragraph(index)?)))
+            .map(|(surface, paragraph)| {
                 (
                     paragraph.node_id,
+                    surface.clone(),
                     paragraph.properties.clone(),
                     paragraph
                         .runs
@@ -635,27 +640,55 @@ impl WordDocument {
             .collect::<Vec<_>>();
         self.document = original;
         self.rebuild_paragraph_surfaces();
+        let mut unbound_runs = Vec::new();
         for index in 0..self.paragraph_count() {
+            let surface = self.paragraph_surfaces.get(index).cloned();
             if let Some(paragraph) = self.paragraph_mut(index) {
-                let saved = if paragraph.node_id.is_none() {
-                    properties.get(index)
-                } else {
-                    properties
-                        .iter()
-                        .find(|(id, _, _)| *id == paragraph.node_id)
-                };
-                if let Some((_, props, runs)) = saved {
+                // A text box or note paragraph has no XML id: it is found by
+                // where it sits. Not by its index — the parse leaves out the
+                // paragraph a load gives a textless shape, so every unbound
+                // paragraph after one took the formatting of the next.
+                let saved = properties.iter().find(|(id, saved_surface, _, _)| {
+                    if paragraph.node_id.is_none() {
+                        id.is_none() && Some(saved_surface) == surface.as_ref()
+                    } else {
+                        *id == paragraph.node_id
+                    }
+                });
+                if let Some((_, _, props, runs)) = saved {
                     paragraph.properties = props.clone();
                     for (run_index, run) in paragraph.runs.iter_mut().enumerate() {
                         let saved = if paragraph.node_id.is_none() {
                             runs.get(run_index)
                         } else {
-                            runs.iter().find(|(id, _)| *id == run.node_id)
+                            run.node_id.and_then(|node_id| {
+                                runs.iter().find(|(id, _)| *id == Some(node_id))
+                            })
                         };
-                        if let Some((_, props)) = saved {
-                            run.properties = props.clone();
+                        match saved {
+                            Some((_, props)) => run.properties = props.clone(),
+                            // A run with no XML of its own (an empty paragraph's)
+                            // is not in the reparse. It kept the fonts its old
+                            // style gave it, which the next text typed there
+                            // took: refilled below from the style it has now.
+                            None => {
+                                if let Some(props) = run.properties.as_mut() {
+                                    props.keep_only_stated_font_properties();
+                                    unbound_runs.push(index);
+                                }
+                            }
                         }
                     }
+                }
+            }
+        }
+        unbound_runs.dedup();
+        if !unbound_runs.is_empty() {
+            let theme = self.loaded_theme_part();
+            for index in unbound_runs {
+                self.apply_run_font_defaults_at(index);
+                if let Some(theme) = theme.as_ref() {
+                    self.apply_theme_fonts_at(index, theme);
                 }
             }
         }

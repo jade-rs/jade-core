@@ -3,28 +3,46 @@ use jade_pptx_reader::Transform;
 use quick_xml::{events::Event, name::ResolveResult, NsReader};
 use std::ops::Range;
 
+pub(crate) mod animation;
 pub(crate) mod crop;
 pub(crate) mod diagrams;
 mod formatting;
 pub(crate) mod grouping;
+pub(crate) mod media;
 mod objects;
+pub(crate) mod picture_ranges;
 pub(crate) mod pictures;
 pub(crate) mod shape_insertion;
 pub(crate) mod shape_style;
+pub(crate) mod smartart_frames;
 pub(crate) mod tables;
+pub(crate) use objects::insert_picture_shape;
 pub(crate) use objects::{
     arrange as arrange_shape, delete as delete_shape, duplicate as duplicate_shape, insert_text_box,
 };
 mod paragraphs;
 pub(crate) use paragraphs::format_paragraphs;
+pub(crate) mod ink;
 pub(crate) mod layouts;
 mod notes;
+pub(crate) mod page_masters;
+pub(crate) mod presenting;
 mod slides;
-pub(crate) use notes::{notes_snapshot, replace_notes_range, set_notes};
+pub(crate) use notes::{edit_notes_body, notes_snapshot, replace_notes_range, set_notes};
 mod text;
 pub(crate) use formatting::format_text_range;
 pub(crate) use slides::{copy_objects, edit_slides, SlideEdit};
 pub(crate) use text::{replace_text_range, text_snapshot};
+
+/// Content-type overrides for parts removed or one part inserted.
+pub(crate) fn slides_content_types(
+    package: &mut jade_opc::OpcPackage,
+    copies: &std::collections::BTreeMap<String, String>,
+    removed: &std::collections::BTreeSet<String>,
+    inserted: Option<(&str, &str)>,
+) -> Result<()> {
+    slides::content_types(package, copies, removed, inserted)
+}
 
 pub(crate) struct RunAnchor {
     pub value: EditableRun,

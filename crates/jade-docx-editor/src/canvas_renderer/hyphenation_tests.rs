@@ -120,7 +120,7 @@ fn german_text_is_hyphenated_with_german_patterns() {
         und Wirtschaftsförderungsmaßnahmen für mittelständische Unternehmen.";
     let paragraph = |lang: &str| {
         format!(
-            r#"<w:p><w:r><w:rPr><w:lang w:val="{lang}"/></w:rPr><w:t>{german}</w:t></w:r></w:p>"#
+            r#"<w:p><w:r><w:rPr><w:rFonts w:ascii="Recording Test" w:hAnsi="Recording Test"/><w:lang w:val="{lang}"/></w:rPr><w:t>{german}</w:t></w:r></w:p>"#
         )
     };
     assert!(hyphens(&render_body(&paragraph("de-DE"), true)) > 0);

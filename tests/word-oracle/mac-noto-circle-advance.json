@@ -1,0 +1,17 @@
+{
+  "fixture": "noto-yokohama_page6",
+  "docx_sha256": "833a39953e277fe237f53d3c1126897af1ff57cdd10519623bd857dcf1b9af71",
+  "reference_sha256": "7566025e333dec8c429764b02c66ed4da869415e9670d1268b3786b67f216343",
+  "pdf_sha256": "85259096331bd5e02424010f313fbbec25b0f0aa42e23652bff424fd9cfd0b4f",
+  "source": "Unmodified Word for Mac 16.114 PDF; ToUnicode 0x22 maps to U+25CB, embedded NotoSans cmap maps 0x22 to glyph00002; hmtx advance, not bounding box or adjusted origin.",
+  "pdf_font_xref": 8,
+  "pdf_to_unicode_xref": 119,
+  "pdf_character_code": 34,
+  "font": "NotoSans",
+  "glyph": "glyph00002",
+  "units_per_em": 2048,
+  "advance_units": 1237,
+  "requested_size_pt": 10.5,
+  "title_characters": 8,
+  "scope": "Only the title row is a new native coordinate gate; the other known corpus differences are not declared fixed."
+}

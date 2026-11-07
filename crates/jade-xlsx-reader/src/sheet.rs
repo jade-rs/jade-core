@@ -8,8 +8,8 @@ use quick_xml::Reader;
 
 use crate::error::Result;
 use crate::model::{
-    ArrayFormula, Cell, CellRange, CellRef, CellValue, ColumnSpan, FreezePane, HeaderFooter,
-    PageBreak, PageMargins, PageOrientation, PageSetup, Row, Sheet, SheetVisibility,
+    ArrayFormula, Cell, CellRange, CellRef, CellValue, ColumnSpan, DataTable, FreezePane,
+    HeaderFooter, PageBreak, PageMargins, PageOrientation, PageSetup, Row, Sheet, SheetVisibility,
     MAX_COLUMN_COUNT,
 };
 use jade_opc::{local_name, Relationships};
@@ -65,7 +65,20 @@ pub fn parse_sheet_with_relationships(
     shared_strings: &[String],
     relationships: &Relationships,
 ) -> Result<Sheet> {
-    let grid = crate::cell_content::worksheet(xml)?;
+    parse_sheet_noting_order(name, part_name, xml, shared_strings, relationships)
+        .map(|(sheet, _)| sheet)
+}
+
+/// [`parse_sheet_with_relationships`], also saying whether the part's rows
+/// and cells were already in order, which a writer patching it can use.
+pub(crate) fn parse_sheet_noting_order(
+    name: &str,
+    part_name: &str,
+    xml: &str,
+    shared_strings: &[String],
+    relationships: &Relationships,
+) -> Result<(Sheet, bool)> {
+    let (grid, in_order) = crate::cell_content::worksheet_noting_order(xml)?;
     let mut protection_seen = false;
     let mut reader = Reader::from_str(&grid);
     reader.config_mut().trim_text(false);
@@ -90,6 +103,13 @@ pub fn parse_sheet_with_relationships(
         default_row_custom_height: false,
         default_rows_hidden: false,
         show_grid_lines: true,
+        show_formulas: false,
+        show_zeros: true,
+        page_break_preview: false,
+        tab_selected: false,
+        show_headers: true,
+        grid_color: None,
+        zoom_percent: None,
         freeze_pane: None,
         tables: Vec::new(),
         header_footer: None,
@@ -98,10 +118,13 @@ pub fn parse_sheet_with_relationships(
         page_setup: Default::default(),
         shapes: Vec::new(),
         array_formulas: Vec::new(),
+        data_tables: Vec::new(),
+        scenarios: crate::scenarios::parse(xml)?,
         phonetic_readings: Default::default(),
         rich_text: Default::default(),
         tab_color: None,
         sparkline_groups: crate::sparkline::parse_sparklines(xml)?,
+        ignored_errors: crate::ignored_errors::parse(xml)?,
         protection: None,
         outline: Default::default(),
     };
@@ -159,6 +182,17 @@ pub fn parse_sheet_with_relationships(
                         sheet.page_setup.fit_to_page = attribute_value(element, b"fitToPage")?
                             .is_some_and(|value| value != "0" && value != "false");
                     }
+                    b"printOptions" if !in_custom_views => {
+                        let on = |key: &[u8]| -> Result<bool> {
+                            Ok(attribute_value(element, key)?
+                                .is_some_and(|value| value == "1" || value == "true"))
+                        };
+                        let setup = &mut sheet.page_setup;
+                        setup.center_horizontally = on(b"horizontalCentered")?;
+                        setup.center_vertically = on(b"verticalCentered")?;
+                        setup.print_grid_lines = on(b"gridLines")?;
+                        setup.print_headings = on(b"headings")?;
+                    }
                     b"pageMargins" if !in_custom_views => {
                         sheet.page_setup.margins = Some(parse_page_margins(element)?);
                     }
@@ -190,6 +224,33 @@ pub fn parse_sheet_with_relationships(
                     b"sheetView" => {
                         if let Some(value) = attribute_value(element, b"showGridLines")? {
                             sheet.show_grid_lines = value != "0" && value != "false";
+                        }
+                        if let Some(value) = attribute_value(element, b"showFormulas")? {
+                            sheet.show_formulas = value == "1" || value == "true";
+                        }
+                        if let Some(value) = attribute_value(element, b"showZeros")? {
+                            sheet.show_zeros = value != "0" && value != "false";
+                        }
+                        if let Some(value) = attribute_value(element, b"view")? {
+                            sheet.page_break_preview = value == "pageBreakPreview";
+                        }
+                        if let Some(value) = attribute_value(element, b"tabSelected")? {
+                            sheet.tab_selected = value == "1" || value == "true";
+                        }
+                        if let Some(value) = attribute_value(element, b"showRowColHeaders")? {
+                            sheet.show_headers = value != "0" && value != "false";
+                        }
+                        let own_grid_color = attribute_value(element, b"defaultGridColor")?
+                            .is_some_and(|value| value == "0" || value == "false");
+                        if own_grid_color && sheet.grid_color.is_none() {
+                            sheet.grid_color = attribute_value(element, b"colorId")?
+                                .and_then(|value| value.parse().ok());
+                        }
+                        // The first view's zoom: the one Excel opens at.
+                        if sheet.zoom_percent.is_none() {
+                            sheet.zoom_percent = attribute_value(element, b"zoomScale")?
+                                .and_then(|value| value.parse::<u32>().ok())
+                                .filter(|percent| (10..=400).contains(percent));
                         }
                     }
                     b"pane" if sheet.freeze_pane.is_none() => {
@@ -297,6 +358,35 @@ pub fn parse_sheet_with_relationships(
                                     .and_then(|range| CellRange::parse(&range).ok()),
                             ) {
                                 sheet.array_formulas.push(ArrayFormula { anchor, range });
+                            }
+                        }
+                        if kind.as_deref() == Some("dataTable") {
+                            let flag = |name: &[u8]| -> Result<bool> {
+                                Ok(attribute_value(element, name)?
+                                    .is_some_and(|value| value == "1" || value == "true"))
+                            };
+                            let cell_at = |name: &[u8]| -> Result<Option<CellRef>> {
+                                Ok(attribute_value(element, name)?
+                                    .and_then(|text| CellRef::parse(&text).ok()))
+                            };
+                            if let Some(range) = attribute_value(element, b"ref")?
+                                .and_then(|range| CellRange::parse(&range).ok())
+                            {
+                                sheet.data_tables.push(DataTable {
+                                    range,
+                                    two_way: flag(b"dt2D")?,
+                                    row: flag(b"dtr")?,
+                                    first: if flag(b"del1")? {
+                                        None
+                                    } else {
+                                        cell_at(b"r1")?
+                                    },
+                                    second: if flag(b"del2")? {
+                                        None
+                                    } else {
+                                        cell_at(b"r2")?
+                                    },
+                                });
                             }
                         }
                         if kind.as_deref() == Some("shared") {
@@ -438,7 +528,7 @@ pub fn parse_sheet_with_relationships(
             cell.formula = Some(translate_formula(formula, *origin, cell.reference));
         }
     }
-    Ok(sheet)
+    Ok((sheet, in_order))
 }
 
 fn parse_header_footer(element: &BytesStart<'_>) -> Result<HeaderFooter> {

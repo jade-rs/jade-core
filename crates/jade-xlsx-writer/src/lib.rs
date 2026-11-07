@@ -38,9 +38,12 @@ mod calc;
 pub mod cell_shift;
 mod cell_shift_extensions;
 pub mod chart_cache;
+pub mod chart_format;
 pub mod charts;
 pub mod clipboard;
 pub mod conditional_formats;
+mod copy_objects;
+pub mod data_tables;
 pub mod data_validations;
 pub mod defined_names;
 pub mod dimensions;
@@ -51,6 +54,7 @@ pub mod format_axes;
 pub mod freeze_panes;
 pub mod header_footer;
 pub mod hyperlinks;
+pub mod ignored_errors;
 pub mod merges;
 pub mod notes;
 pub mod objects;
@@ -58,22 +62,28 @@ pub mod outline;
 pub mod page_breaks;
 pub mod page_setup;
 mod patch;
+pub mod pictures;
 pub(crate) mod pivot_chart;
 pub mod pivot_refresh;
 mod pivots;
 pub mod protected_ranges;
 pub mod protection;
 mod refresh;
+pub mod scenarios;
+pub mod shapes;
 pub mod sheet_protection;
+pub mod sheet_view;
 pub mod sheets;
 pub mod shift;
 pub mod sort;
+pub mod sparklines;
 pub mod spills;
 pub mod styles;
 pub mod table;
 mod table_calculation;
 mod table_formulas;
 pub mod tables;
+pub mod threads;
 mod validation_sources;
 mod validation_structure;
 mod worksheet_formulas;
@@ -145,6 +155,10 @@ pub enum WriteError {
     Clipboard(String),
     #[error("no sheet called `{0}`")]
     NoSuchSheet(String),
+    #[error("picture: {0}")]
+    Picture(&'static str),
+    #[error("copying a sheet: {0}")]
+    CopySheet(String),
     #[error("a structural change needs at least one row or column")]
     EmptyStructureChange,
     #[error("axis formatting exceeds the {limit} metadata/cell limit")]
@@ -241,6 +255,26 @@ pub fn set_calculation_properties(
         .part_str(&name)?
         .ok_or_else(|| WriteError::MissingPart(name.clone()))?;
     let updated = calc::set_properties(&xml, mode, calculate_on_save)?;
+    if updated == xml {
+        return Ok(original.to_vec());
+    }
+    package.replace(&name, updated.into_bytes());
+    Ok(package.write()?)
+}
+
+/// Persist iterative calculation and precision as displayed, the calculation
+/// options that change what formulas give, in `calcPr`.
+pub fn set_calculation_options(
+    original: &[u8],
+    iteration: jade_xlsx_reader::Iteration,
+    full_precision: bool,
+) -> Result<Vec<u8>> {
+    let mut package = OpcPackage::open(original)?;
+    let name = workbook_part_name(&package)?;
+    let xml = package
+        .part_str(&name)?
+        .ok_or_else(|| WriteError::MissingPart(name.clone()))?;
+    let updated = calc::set_options(&xml, iteration, full_precision)?;
     if updated == xml {
         return Ok(original.to_vec());
     }

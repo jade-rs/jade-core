@@ -499,9 +499,11 @@ impl<'a> Walk<'a> {
     }
 
     fn check_prefix(&mut self, name: &'a str) {
-        let Some((prefix, _)) = name.split_once(':') else {
+        let Some(colon) = name.as_bytes().iter().position(|&byte| byte == b':') else {
             return;
         };
+        // ASCII ':' is a UTF-8 boundary, including in non-ASCII names.
+        let prefix = &name[..colon];
         if prefix == "xml" || prefix == "xmlns" || self.checked.contains(&prefix) {
             return;
         }
@@ -516,6 +518,44 @@ impl<'a> Walk<'a> {
 #[cfg(test)]
 mod tests {
     use super::super::DocxXmlDocument;
+    use proptest::prelude::*;
+
+    proptest! {
+        #[test]
+        fn namespace_prefix_cache_matches_reference(
+            names in prop::collection::vec(
+                prop_oneof![
+                    any::<String>(),
+                    (any::<String>(), any::<String>()).prop_map(|(prefix, local)| format!("{prefix}:{local}")),
+                    prop::sample::select(vec!["w:t", "m:oMath", "custom:item", "xml:space", "xmlns:w", "other:item"])
+                        .prop_map(str::to_owned),
+                ],
+                0..32,
+            ),
+        ) {
+            let scope = vec!["w", "m", "custom"];
+            let mut walk = super::Walk { scope: scope.clone(), ..Default::default() };
+            let mut missing = std::collections::BTreeSet::new();
+            let mut checked = Vec::new();
+            for name in &names {
+                walk.check_prefix(name);
+                if let Some((prefix, _)) = name.split_once(':') {
+                    if !matches!(prefix, "xml" | "xmlns") {
+                        if scope.contains(&prefix) {
+                            if !checked.contains(&prefix) {
+                                checked.push(prefix);
+                            }
+                        } else {
+                            missing.insert(prefix);
+                        }
+                    }
+                }
+                prop_assert_eq!(&walk.missing, &missing);
+                prop_assert_eq!(&walk.checked, &checked);
+                prop_assert_eq!(&walk.scope, &scope);
+            }
+        }
+    }
 
     const W: &str = r#"xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main""#;
 

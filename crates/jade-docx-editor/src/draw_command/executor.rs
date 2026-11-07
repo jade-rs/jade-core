@@ -119,8 +119,8 @@ pub struct FontStateTracker {
     /// pointer comparison with incoming Rc<str> font descriptors is O(1).
     current_font: Option<Rc<str>>,
     current_font_hash: Option<u64>,
-    /// Cached fill style to avoid redundant `set_fill_style_str()` calls.
-    current_fill_style: Option<String>,
+    /// Retains the command's fill style without copying its color string.
+    current_fill_style: Option<Rc<str>>,
     /// Cached line width to avoid redundant `set_line_width()` calls.
     current_line_width: Option<f64>,
     /// Whether textBaseline is already set to "alphabetic".
@@ -134,6 +134,11 @@ pub struct FontStateTracker {
     segment_buf: String,
     /// Reusable buffer for pair kerning measurement.
     pair_buf: String,
+    /// One immutable descriptor's feature fact, independent of canvas state.
+    /// Owning the Rc prevents an allocation address from being reused as a hit.
+    last_font_features: Option<(Rc<str>, bool)>,
+    #[cfg(test)]
+    feature_checks: usize,
 }
 
 impl FontStateTracker {
@@ -143,6 +148,21 @@ impl FontStateTracker {
     /// for each of those short-lived trackers.
     pub fn new() -> Self {
         Self::default()
+    }
+
+    fn font_has_features(&mut self, font: &Rc<str>) -> bool {
+        if let Some((previous, has_features)) = &self.last_font_features {
+            if Rc::ptr_eq(previous, font) {
+                return *has_features;
+            }
+        }
+        #[cfg(test)]
+        {
+            self.feature_checks += 1;
+        }
+        let has_features = jade_painter::font_features::has_features(font);
+        self.last_font_features = Some((Rc::clone(font), has_features));
+        has_features
     }
 
     /// Sets the font on the context only if it differs from the current font.
@@ -228,12 +248,30 @@ impl FontStateTracker {
     #[inline]
     pub fn set_fill_style_if_changed<P: Painter>(&mut self, context: &P, color: &str) -> bool {
         if let Some(ref current) = self.current_fill_style {
-            if current.len() == color.len() && current.as_str() == color {
+            if current.len() == color.len() && current.as_ref() == color {
                 return false;
             }
         }
         context.set_fill_style_str(color);
-        self.current_fill_style = Some(color.to_string());
+        self.current_fill_style = Some(Rc::from(color));
+        true
+    }
+
+    /// Sets a shared fill style without allocating a second color string.
+    /// Equal values from separate allocations still skip the backend setter.
+    #[inline]
+    pub fn set_fill_style_rc_if_changed<P: Painter>(
+        &mut self,
+        context: &P,
+        color: &Rc<str>,
+    ) -> bool {
+        if let Some(ref current) = self.current_fill_style {
+            if Rc::ptr_eq(current, color) || current.as_ref() == color.as_ref() {
+                return false;
+            }
+        }
+        context.set_fill_style_str(color);
+        self.current_fill_style = Some(Rc::clone(color));
         true
     }
 
@@ -749,7 +787,7 @@ pub fn execute_command_with_font_state<P: Painter>(
             font_state.invalidate();
         }
         DrawCommand::SetFillStyle { color } => {
-            font_state.set_fill_style_if_changed(context, color);
+            font_state.set_fill_style_rc_if_changed(context, color);
         }
         DrawCommand::SetFont { font } => {
             font_state.set_font_rc_if_changed(context, font);
@@ -873,7 +911,7 @@ fn draw_combined_characters<P: Painter>(
 ) -> Result<(), P::Error> {
     let split = glyphs.len().div_ceil(2);
     let mut start_x = x + glyphs.first().map_or(0.0, |glyph| glyph.x_offset);
-    font_state.set_fill_style_if_changed(context, &style.fill_color);
+    font_state.set_fill_style_rc_if_changed(context, &style.fill_color);
     font_state.ensure_text_baseline_alphabetic(context);
     let first_font = glyphs
         .first()
@@ -943,7 +981,7 @@ fn draw_enclosed_character<P: Painter>(
     };
     let start_x = x + first.x_offset;
     let inner: String = glyphs.iter().filter_map(|glyph| glyph.text(text)).collect();
-    font_state.set_fill_style_if_changed(context, &style.fill_color);
+    font_state.set_fill_style_rc_if_changed(context, &style.fill_color);
     font_state.ensure_text_baseline_alphabetic(context);
     font_state.set_font_rc_if_changed(context, font);
     let enclosure_width = context.measure_text_width(enclosure)?;
@@ -1059,7 +1097,7 @@ fn draw_text_run_glyphs<P: Painter>(
     glyphs: &[crate::draw_command::GlyphRunStep],
     font_state: &mut FontStateTracker,
 ) -> Result<(), P::Error> {
-    font_state.set_fill_style_if_changed(context, &style.fill_color);
+    font_state.set_fill_style_rc_if_changed(context, &style.fill_color);
     font_state.ensure_text_baseline_alphabetic(context);
 
     // `w:outline` (§17.3.2.23): draw the glyphs as hollow stroked outlines using
@@ -1122,24 +1160,22 @@ fn draw_text_run_glyphs<P: Painter>(
     // individually measured glyphs used during layout. This mismatch causes
     // visible paragraph expansion/contraction when cache-replayed commands are
     // drawn at positions computed from individual glyph measurements.
-    let characters: Vec<PlacedCharacter<'_>> = if fonts
-        .iter()
-        .any(|font| jade_painter::font_features::has_features(font))
-    {
-        glyphs
-            .iter()
-            .filter_map(|glyph| {
-                Some(PlacedCharacter {
-                    start: glyph.text_start as usize,
-                    end: glyph.text_end as usize,
-                    font: fonts.get(glyph.font_index as usize)?.as_ref(),
-                    x_offset: glyph.x_offset,
+    let characters: Vec<PlacedCharacter<'_>> =
+        if fonts.iter().any(|font| font_state.font_has_features(font)) {
+            glyphs
+                .iter()
+                .filter_map(|glyph| {
+                    Some(PlacedCharacter {
+                        start: glyph.text_start as usize,
+                        end: glyph.text_end as usize,
+                        font: fonts.get(glyph.font_index as usize)?.as_ref(),
+                        x_offset: glyph.x_offset,
+                    })
                 })
-            })
-            .collect()
-    } else {
-        Vec::new()
-    };
+                .collect()
+        } else {
+            Vec::new()
+        };
     if !characters.is_empty()
         && try_fill_featured_text(context, text, x, y, &characters, &mut |context, font| {
             font_state.set_font_if_changed(context, font);
@@ -1246,7 +1282,14 @@ fn try_execute_bmp_glyph_run_batch<P: Painter>(
     glyphs: &[crate::draw_command::GlyphRunStep],
     font_state: &mut FontStateTracker,
 ) -> Result<bool, P::Error> {
-    let mut text = String::with_capacity(glyphs.len());
+    // The buffer stores UTF-8 bytes, not glyphs: a BMP character needs up to
+    // three bytes. Use the source length as a bounded estimate so dense CJK
+    // runs do not repeatedly grow, without reserving an entire large source
+    // string when this batch references only a few glyphs.
+    let text_capacity = run_text
+        .len()
+        .clamp(glyphs.len(), glyphs.len().saturating_mul(3));
+    let mut text = String::with_capacity(text_capacity);
     let mut x_positions = Vec::with_capacity(glyphs.len());
     // Most replayed runs use one font and take the single-font JS path. Allocate
     // indexes only after discovering a font change that requires the multi-font path.
@@ -1390,7 +1433,7 @@ fn execute_text_with_font_state<P: Painter>(
         );
     }
 
-    font_state.set_fill_style_if_changed(context, &style.fill_color);
+    font_state.set_fill_style_rc_if_changed(context, &style.fill_color);
     record_replay_text_run(text.graphemes(true).count() as u64);
 
     let mut width = 0.0;
@@ -1483,7 +1526,7 @@ fn execute_text_with_spacing_and_font_state<P: Painter>(
 
     // Keep replayed body text on alphabetic baseline even if callers changed it.
     font_state.ensure_text_baseline_alphabetic(context);
-    font_state.set_fill_style_if_changed(context, &style.fill_color);
+    font_state.set_fill_style_rc_if_changed(context, &style.fill_color);
 
     if letter_spacing.abs() < f64::EPSILON && !style.requires_advanced_layout() {
         return execute_text_with_font_state(context, text, x, y, style, font_state);
@@ -1847,7 +1890,7 @@ fn execute_tab_leader_with_font_state<P: Painter>(
         return Ok(());
     }
 
-    font_state.set_fill_style_if_changed(context, &style.fill_color);
+    font_state.set_fill_style_rc_if_changed(context, &style.fill_color);
     let font = &style.font_descriptor_latin_ascii;
     font_state.set_font_if_changed(context, font);
 
@@ -1885,7 +1928,7 @@ fn execute_control_mark_with_font_state<P: Painter>(
 
     const CONTROL_MARK_FONT_SCALE: f64 = 0.75;
 
-    font_state.set_fill_style_if_changed(context, &style.fill_color);
+    font_state.set_fill_style_rc_if_changed(context, &style.fill_color);
 
     let scaled_font_size_pt = (style.font_size_pt as f64 * CONTROL_MARK_FONT_SCALE).max(1.0) as f32;
     let scaled_descriptor = format!(
@@ -1916,6 +1959,9 @@ fn extract_font_family(descriptor: &str) -> &str {
         descriptor
     }
 }
+
+#[cfg(test)]
+mod fill_style_tests;
 
 #[cfg(test)]
 mod tests {
@@ -2197,6 +2243,34 @@ mod tests {
     proptest::proptest! {
         #![proptest_config(proptest::test_runner::Config::with_cases(96))]
         #[test]
+        fn font_feature_facts_match_parser_across_descriptor_lifecycles(
+            operations in proptest::collection::vec((0u8..6, 0usize..5), 1..100)
+        ) {
+            let mut tracker = FontStateTracker::new();
+            let mut fonts: Vec<Rc<str>> = [
+                "10.50pt 'Noto Sans JP'",
+                "ot:onum 10.50pt Calibri",
+                "italic 10.50pt Calibri ot:liga",
+                "10.50pt 'Not:an OpenType token'",
+                "10.50pt\u{3000}Calibri\u{3000}ot:liga",
+            ].into_iter().map(Rc::from).collect();
+            for (operation, index) in operations {
+                match operation {
+                    0 => tracker.invalidate(),
+                    1 => tracker = tracker.clone(),
+                    2 => fonts[index] = Rc::from(fonts[index].as_ref()),
+                    3 => Rc::make_mut(&mut fonts[index]).make_ascii_uppercase(),
+                    4 => tracker = FontStateTracker::new(),
+                    _ => {}
+                }
+                let font = Rc::clone(&fonts[index]);
+                let expected = jade_painter::font_features::has_features(&font);
+                proptest::prop_assert_eq!(tracker.font_has_features(&font), expected);
+                proptest::prop_assert_eq!(tracker.font_has_features(&font), expected);
+            }
+        }
+
+        #[test]
         fn font_state_tracker_lifecycle_preserves_measurements(
             operations in proptest::collection::vec((0u8..5, 0usize..3, 0usize..5), 1..100)
         ) {
@@ -2233,6 +2307,24 @@ mod tests {
                 proptest::prop_assert_eq!(tracker.grapheme_cache.len(), measured.len());
             }
         }
+    }
+
+    #[test]
+    fn font_feature_facts_retain_only_the_last_descriptor() {
+        let mut tracker = FontStateTracker::new();
+        let old: Rc<str> = Rc::from("ot:liga 10pt Calibri");
+        let old_weak = Rc::downgrade(&old);
+        assert!(tracker.font_has_features(&old));
+        drop(old);
+        tracker.invalidate();
+        assert!(old_weak.upgrade().is_some());
+        let replacement: Rc<str> = Rc::from("10pt Calibri");
+        assert!(!tracker.font_has_features(&replacement));
+        assert!(old_weak.upgrade().is_none());
+        let replacement_weak = Rc::downgrade(&replacement);
+        drop(replacement);
+        drop(tracker);
+        assert!(replacement_weak.upgrade().is_none());
     }
 
     #[test]
@@ -2358,6 +2450,7 @@ mod painter_backend_tests {
     use super::*;
     use crate::draw_command::{GlyphRunStep, TextStyle};
     use jade_painter::recording::{Op, RecordingPainter};
+    use proptest::prelude::*;
     use std::rc::Rc;
 
     fn style() -> TextStyle {
@@ -2445,6 +2538,121 @@ mod painter_backend_tests {
             "every glyph should be painted individually: {:?}",
             painter.ops()
         );
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(128))]
+
+        #[test]
+        fn glyph_run_fallback_preserves_unicode_ranges_and_positions(
+            characters in proptest::collection::vec(
+                prop_oneof![Just('A'), Just('é'), Just('税'), Just('\u{0301}'), Just('😀')],
+                0..96,
+            ),
+            selections in proptest::collection::vec((0usize..128, 0u16..3, -500i32..500), 0..128),
+        ) {
+            let painter = RecordingPainter::new();
+            let text: String = characters.iter().collect();
+            let mut starts = Vec::with_capacity(characters.len());
+            let mut offset = 0;
+            for ch in &characters {
+                starts.push(offset);
+                offset += ch.len_utf8();
+            }
+            let mut glyphs = Vec::with_capacity(selections.len());
+            let mut expected = Vec::new();
+            for (index, font_index, x_offset) in selections {
+                // Generated references may be sparse, repeated, reordered or invalid.
+                let (start, end) = if let Some(ch) = characters.get(index) {
+                    if font_index < 2 {
+                        expected.push((ch.to_string(), 8.0 + f64::from(x_offset), 21.0));
+                    }
+                    (starts[index] as u32, (starts[index] + ch.len_utf8()) as u32)
+                } else {
+                    (u32::MAX, u32::MAX)
+                };
+                glyphs.push(GlyphRunStep {
+                    text_start: start,
+                    text_end: end,
+                    font_index,
+                    x_offset: f64::from(x_offset),
+                });
+            }
+            execute_commands(&painter, &[DrawCommand::TextRun {
+                text: Rc::from(text),
+                x: 8.0,
+                y: 21.0,
+                style: style(),
+                fonts: vec![Rc::from("10.50pt 'Noto Sans JP'"), Rc::from("10.50pt Calibri")],
+                glyphs,
+            }]).unwrap();
+            let actual: Vec<_> = painter.ops().into_iter().filter_map(|op| match op {
+                Op::FillText(text, x, y) => Some((text, x, y)),
+                _ => None,
+            }).collect();
+            prop_assert_eq!(actual, expected);
+        }
+    }
+
+    #[test]
+    fn replay_reuses_feature_checks_without_changing_visible_glyphs() {
+        for descriptor in ["10.50pt 'Noto Sans JP'", "ot:onum 10.50pt Calibri"] {
+            let painter = RecordingPainter::new();
+            let reference = RecordingPainter::new();
+            let mut tracker = FontStateTracker::new();
+            let fonts = [Rc::<str>::from(descriptor)];
+            let glyphs = [
+                GlyphRunStep {
+                    text_start: 0,
+                    text_end: 1,
+                    font_index: 0,
+                    x_offset: 0.0,
+                },
+                GlyphRunStep {
+                    text_start: 1,
+                    text_end: 4,
+                    font_index: 0,
+                    x_offset: 7.0,
+                },
+            ];
+            for line in 0..100 {
+                // Canvas state invalidation does not change an immutable font.
+                tracker.invalidate();
+                draw_text_run_glyphs(
+                    &painter,
+                    "A日",
+                    8.0,
+                    line as f64 * 16.0,
+                    &style(),
+                    &fonts,
+                    &glyphs,
+                    &mut tracker,
+                )
+                .unwrap();
+                draw_text_run_glyphs(
+                    &reference,
+                    "A日",
+                    8.0,
+                    line as f64 * 16.0,
+                    &style(),
+                    &fonts,
+                    &glyphs,
+                    &mut FontStateTracker::new(),
+                )
+                .unwrap();
+            }
+            let visible_characters: usize = painter
+                .ops()
+                .iter()
+                .map(|op| match op {
+                    Op::FillText(text, ..) | Op::FillShapedText(text, ..) => text.chars().count(),
+                    _ => 0,
+                })
+                .sum();
+            assert_eq!(visible_characters, 200);
+            assert_eq!(painter.ops(), reference.ops());
+            assert_eq!(tracker.feature_checks, 1, "{descriptor}");
+        }
     }
 }
 

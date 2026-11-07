@@ -1,20 +1,30 @@
 mod isomitted;
 
+mod cell_info;
+
 use crate::{
     calc_result::CalcResult,
+    constants::COLUMN_WIDTH_FACTOR,
     expressions::{
         parser::{ArrayNode, Node},
         token::Error,
         types::CellReferenceIndex,
-        utils::number_to_column,
+        utils::{number_to_column, quote_name},
     },
-    get_all_timezones,
+    get_all_timezones, host,
     model::{Model, ParsedDefinedName},
+    types::HorizontalAlignment,
 };
 
+/// What INFO("system") names the operating system: "mac" and "pcdos" as
+/// Excel does, the system's own name elsewhere.
 #[cfg(not(target_arch = "wasm32"))]
 fn get_system() -> String {
-    std::env::consts::OS.to_string()
+    match std::env::consts::OS {
+        "macos" => "mac".to_string(),
+        "windows" => "pcdos".to_string(),
+        other => other.to_string(),
+    }
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -129,9 +139,10 @@ impl<'a> Model<'a> {
             return CalcResult::new_args_number_error(cell);
         }
         match &args[0] {
-            Node::ReferenceKind { .. } | Node::RangeKind { .. } | Node::OpRangeKind { .. } => {
-                CalcResult::Boolean(true)
-            }
+            Node::ReferenceKind { .. }
+            | Node::RangeKind { .. }
+            | Node::OpRangeKind { .. }
+            | Node::Range3DKind { .. } => CalcResult::Boolean(true),
             Node::FunctionKind { kind, args: _ } => CalcResult::Boolean(kind.returns_reference()),
             _ => CalcResult::Boolean(false),
         }
@@ -321,6 +332,24 @@ impl<'a> Model<'a> {
                     message: format!("Name not found: {name}"),
                 }
             }
+            arg @ (Node::ReferenceKind { .. }
+            | Node::RangeKind { .. }
+            | Node::Range3DKind { .. }
+            | Node::FunctionKind { .. }) => {
+                // A reference: the sheet it is on. A function giving one
+                // (INDIRECT, OFFSET) counts; one giving a value names a sheet.
+                if let CalcResult::Range { left, .. } = self.evaluate_node_with_reference(arg, cell)
+                {
+                    return CalcResult::Number(left.sheet as f64 + 1.0);
+                }
+                let sheet_name = match self.get_string(arg, cell) {
+                    Ok(s) => s,
+                    Err(e) => return e,
+                };
+                if let Some(sheet_index) = self.get_sheet_index_by_name(&sheet_name) {
+                    return CalcResult::Number(sheet_index as f64 + 1.0);
+                }
+            }
             arg => {
                 // Now it should be the name of a sheet
                 let sheet_name = match self.get_string(arg, cell) {
@@ -381,10 +410,17 @@ impl<'a> Model<'a> {
             return CalcResult::new_args_number_error(cell);
         }
         if arg_count == 1 {
-            return CalcResult::Error {
-                error: Error::NIMPL,
-                origin: cell,
-                message: "Sheets function with an argument is not implemented".to_string(),
+            // The sheets a reference spans: one, or each of a 3-D one's.
+            return match self.evaluate_node_with_reference(&args[0], cell) {
+                CalcResult::Range { left, right } => {
+                    CalcResult::Number((right.sheet as f64 - left.sheet as f64).abs() + 1.0)
+                }
+                error @ CalcResult::Error { .. } => error,
+                _ => CalcResult::Error {
+                    error: Error::VALUE,
+                    origin: cell,
+                    message: "Argument must be a reference".to_string(),
+                },
             };
         }
         let sheet_count = self.workbook.worksheets.len() as f64;
@@ -425,13 +461,6 @@ impl<'a> Model<'a> {
         };
         match info_type.as_str() {
             "ADDRESS" => {
-                if reference.sheet != cell.sheet {
-                    return CalcResult::Error {
-                        error: Error::NIMPL,
-                        origin: cell,
-                        message: "References to other sheets not implemented".to_string(),
-                    };
-                }
                 let column = match number_to_column(reference.column) {
                     Some(c) => c,
                     None => {
@@ -443,15 +472,101 @@ impl<'a> Model<'a> {
                     }
                 };
                 let address = format!("${}${}", column, reference.row);
-                CalcResult::String(address)
+                if reference.sheet == cell.sheet {
+                    return CalcResult::String(address);
+                }
+                // On another sheet, Excel names the book and the sheet:
+                // [Book1.xlsx]Sheet2!$A$1, quoted as a whole when it needs it.
+                let sheet_name = match self.workbook.worksheet(reference.sheet) {
+                    Ok(ws) => ws.name.clone(),
+                    Err(_) => {
+                        return CalcResult::Error {
+                            error: Error::VALUE,
+                            origin: cell,
+                            message: "Invalid sheet".to_string(),
+                        }
+                    }
+                };
+                let qualified = format!("[{}]{}", self.book_file_name(), sheet_name);
+                let qualified = if quote_name(&sheet_name) != sheet_name
+                    || self.book_file_name().contains(' ')
+                {
+                    format!("'{}'", qualified.replace('\'', "''"))
+                } else {
+                    qualified
+                };
+                CalcResult::String(format!("{qualified}!{address}"))
             }
             "COL" => CalcResult::Number(reference.column as f64),
-            "COLOR" | "FORMAT" | "PARENTHESES" | "PREFIX" | "PROTECT" | "WIDTH" => {
-                CalcResult::Error {
-                    error: Error::VALUE,
-                    origin: cell,
-                    message: "info_type not implemented".to_string(),
+            "COLOR" | "FORMAT" | "PARENTHESES" | "PREFIX" | "PROTECT" => {
+                let look = self.cell_look(reference);
+                match info_type.as_str() {
+                    "COLOR" => CalcResult::Number(
+                        cell_info::negative_in_colour(&look.number_format) as i32 as f64,
+                    ),
+                    "FORMAT" => CalcResult::String(cell_info::format_code(&look.number_format)),
+                    "PARENTHESES" => CalcResult::Number(cell_info::positive_in_parentheses(
+                        &look.number_format,
+                    ) as i32 as f64),
+                    "PROTECT" => CalcResult::Number(look.locked as i32 as f64),
+                    _ => {
+                        // The label prefix of text: ' left, " right, ^
+                        // centred, \\ filled; nothing for anything else.
+                        if !matches!(self.evaluate_cell(reference), CalcResult::String(_)) {
+                            return CalcResult::String(String::new());
+                        }
+                        let prefix = match look.horizontal {
+                            HorizontalAlignment::Left => "'",
+                            HorizontalAlignment::Right => "\"",
+                            HorizontalAlignment::Center | HorizontalAlignment::CenterContinuous => {
+                                "^"
+                            }
+                            HorizontalAlignment::Fill => "\\",
+                            _ => "",
+                        };
+                        CalcResult::String(prefix.to_string())
+                    }
                 }
+            }
+            "WIDTH" => {
+                // The width rounded to whole characters, and whether it is
+                // the sheet's default, side by side as Excel gives them.
+                let (width, default) = match host::column_width(reference.sheet, reference.column) {
+                    Some(Some(width)) => width,
+                    _ => {
+                        let pixels = self
+                            .workbook
+                            .worksheet(reference.sheet)
+                            .ok()
+                            .and_then(|ws| {
+                                let custom = ws.cols.iter().any(|col| {
+                                    col.min <= reference.column
+                                        && reference.column <= col.max
+                                        && col.custom_width
+                                });
+                                ws.get_column_width(reference.column)
+                                    .ok()
+                                    .map(|width| (width, !custom))
+                            });
+                        match pixels {
+                            Some((pixels, default)) => (
+                                host::characters_of_width(pixels / COLUMN_WIDTH_FACTOR),
+                                default,
+                            ),
+                            None => {
+                                return CalcResult::Error {
+                                    error: Error::VALUE,
+                                    origin: cell,
+                                    message: "Invalid sheet".to_string(),
+                                }
+                            }
+                        }
+                    }
+                };
+                CalcResult::Array(vec![vec![
+                    ArrayNode::Number(width.trunc()),
+                    ArrayNode::Boolean(default),
+                ]])
             }
             "CONTENTS" => self.evaluate_cell(reference),
             "FILENAME" => {
@@ -466,7 +581,23 @@ impl<'a> Model<'a> {
                         }
                     }
                 };
-                CalcResult::String(format!("[{}.xlsx]{}", workbook_name, worksheet_name))
+                match host::document() {
+                    // Excel gives the whole path of a saved book, and
+                    // nothing before it is saved.
+                    Some(document) => match (document.directory, document.file_name) {
+                        (Some(directory), Some(file)) => {
+                            CalcResult::String(format!("{directory}[{file}]{worksheet_name}"))
+                        }
+                        // A book with a name but no folder (in a browser).
+                        (None, Some(file)) => {
+                            CalcResult::String(format!("[{file}]{worksheet_name}"))
+                        }
+                        _ => CalcResult::String(String::new()),
+                    },
+                    None => {
+                        CalcResult::String(format!("[{}.xlsx]{}", workbook_name, worksheet_name))
+                    }
+                }
             }
             "ROW" => CalcResult::Number(reference.row as f64),
             "TYPE" => {
@@ -504,17 +635,41 @@ impl<'a> Model<'a> {
         // See build.rs
         let release = env!("GIT_VERSION");
         match type_text.as_str() {
-            "DIRECTORY" | "ORIGIN" | "OSVERSION" => CalcResult::Error {
-                error: Error::NIMPL,
-                origin: cell,
-                message: "type_text not implemented".to_string(),
-            },
+            "DIRECTORY" => {
+                let document = host::document();
+                match document
+                    .and_then(|document| document.directory)
+                    .or_else(host::current_directory)
+                {
+                    Some(directory) => CalcResult::String(directory),
+                    None => CalcResult::Error {
+                        error: Error::NA,
+                        origin: cell,
+                        message: "No current folder".to_string(),
+                    },
+                }
+            }
+            "ORIGIN" => {
+                // The top-left cell the window shows, after Lotus's "$A:".
+                let (row, column) = host::document()
+                    .and_then(|document| document.origin)
+                    .unwrap_or((1, 1));
+                let column = number_to_column(column).unwrap_or_else(|| "A".to_string());
+                CalcResult::String(format!("$A:${column}${row}"))
+            }
+            "OSVERSION" => CalcResult::String(host::os_version()),
 
             // For now we just show the count of sheets in the current workbook
             "NUMFILE" => CalcResult::Number(self.workbook.worksheets.len() as f64),
 
-            // At the moment we always do automatic recalc
-            "RECALC" => CalcResult::String("Automatic".to_string()),
+            "RECALC" => CalcResult::String(
+                if host::document().is_some_and(|document| document.manual) {
+                    "Manual"
+                } else {
+                    "Automatic"
+                }
+                .to_string(),
+            ),
             "RELEASE" => CalcResult::String(release.to_string()),
             "SYSTEM" => CalcResult::String(get_system()),
             "TIMEZONE" => CalcResult::String(self.get_timezone()),
@@ -532,6 +687,37 @@ impl<'a> Model<'a> {
                 origin: cell,
                 message: "Invalid type_text".to_string(),
             },
+        }
+    }
+
+    /// The book's file name as CELL names it: the saved file's, else the
+    /// model's name as an .xlsx.
+    fn book_file_name(&self) -> String {
+        host::document()
+            .and_then(|document| document.file_name)
+            .unwrap_or_else(|| format!("{}.xlsx", self.workbook.name))
+    }
+
+    /// The format CELL reads for a cell: the application's when it keeps
+    /// the formats, else the engine's own style.
+    fn cell_look(&self, reference: CellReferenceIndex) -> host::CellLook {
+        if let Some(look) = host::cell_look(reference.sheet, reference.row, reference.column) {
+            return look.unwrap_or(host::CellLook {
+                number_format: "General".to_string(),
+                horizontal: HorizontalAlignment::General,
+                locked: true,
+            });
+        }
+        let style = self
+            .get_style_for_cell(reference.sheet, reference.row, reference.column)
+            .unwrap_or_default();
+        host::CellLook {
+            number_format: style.num_fmt,
+            horizontal: style
+                .alignment
+                .map(|alignment| alignment.horizontal)
+                .unwrap_or_default(),
+            locked: true,
         }
     }
 }

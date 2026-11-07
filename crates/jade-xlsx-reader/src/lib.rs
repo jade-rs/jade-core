@@ -40,12 +40,14 @@ pub mod error;
 pub mod filter_state;
 pub mod formula;
 mod hyperlinks;
+pub mod ignored_errors;
 pub mod model;
 pub mod object_protection;
 pub mod phonetic;
 pub mod pivot;
 pub mod protected_ranges;
 pub mod rich_text;
+pub mod scenarios;
 pub mod shared_strings;
 pub mod sheet;
 pub mod sheet_protection;
@@ -67,12 +69,12 @@ pub use formula::{
 pub use jade_opc::OpcPackage;
 pub use model::{
     builtin_number_format, Alignment, ArrayFormula, Border, BorderEdge, CalculationMode, Cell,
-    CellComment, CellFormat, CellRange, CellRef, CellValue, Color, ColumnSpan, DataValidation,
-    DateSystem, DefinedName, DrawingColor, Fill, Font, FreezePane, GradientFill, HeaderFooter,
-    HorizontalAlignment, Hyperlink, Outline, PageBreak, PageMargins, PageOrientation, PageSetup,
-    Row, Shape, ShapeKind, ShapePaint, ShapeStyle, Sheet, SheetProtection, SheetVisibility,
-    StyleTable, Table, TableColumn, TableStyleDefinition, TableStyleElement, VerticalAlignment,
-    Workbook, EMU_PER_PX,
+    CellComment, CellFormat, CellRange, CellRef, CellValue, Color, ColumnSpan, CustomPath,
+    DataTable, DataValidation, DateSystem, DefinedName, DrawingColor, Fill, Font, FreezePane,
+    GradientFill, HeaderFooter, HorizontalAlignment, Hyperlink, Iteration, Outline, PageBreak,
+    PageMargins, PageOrientation, PageSetup, PathCommand, Row, Shape, ShapeKind, ShapePaint,
+    ShapeStyle, Sheet, SheetProtection, SheetVisibility, StyleTable, Table, TableColumn,
+    TableStyleDefinition, TableStyleElement, VerticalAlignment, Workbook, EMU_PER_PX,
 };
 pub use sheet::{translate_formula, transpose_formula};
 pub use workbook_part::{SheetEntry, WorkbookPart};
@@ -130,8 +132,21 @@ pub fn read_xlsx(bytes: &[u8]) -> Result<Workbook> {
     read_package(&package)
 }
 
+/// [`read_xlsx`], also naming the worksheet parts whose rows and cells are
+/// already in order — found while reading them anyway — for an editor to
+/// patch without reading them through again (see
+/// `jade_xlsx_writer::patch_sheet_known`).
+pub fn read_xlsx_noting_order(bytes: &[u8]) -> Result<(Workbook, Vec<String>)> {
+    let package = OpcPackage::open(bytes)?;
+    read_package_noting_order(&package)
+}
+
 /// Reads an already-open package, including in-memory part replacements.
 pub fn read_package(package: &OpcPackage) -> Result<Workbook> {
+    read_package_noting_order(package).map(|(workbook, _)| workbook)
+}
+
+fn read_package_noting_order(package: &OpcPackage) -> Result<(Workbook, Vec<String>)> {
     let workbook_part = match package.part_str("_rels/.rels")? {
         Some(xml) => jade_opc::parse_relationships(&xml)?
             .target_by_type_suffix(OFFICE_DOCUMENT)
@@ -193,6 +208,7 @@ pub fn read_package(package: &OpcPackage) -> Result<Workbook> {
     let part = workbook_part::parse_workbook(&workbook_xml)?;
 
     let mut sheets = Vec::new();
+    let mut in_order = Vec::new();
     let mut media_cache = std::collections::HashMap::new();
     for (position, entry) in part.sheets.into_iter().enumerate() {
         let target = entry
@@ -210,13 +226,16 @@ pub fn read_package(package: &OpcPackage) -> Result<Workbook> {
             Some(xml) => jade_opc::parse_relationships(&xml)?,
             None => Default::default(),
         };
-        let mut sheet = sheet::parse_sheet_with_relationships(
+        let (mut sheet, ordered) = sheet::parse_sheet_noting_order(
             &entry.name,
             &target,
             &xml,
             &shared_strings,
             &relationships,
         )?;
+        if ordered {
+            in_order.push(target.clone());
+        }
         read_sheet_parts(
             package,
             &target,
@@ -246,13 +265,16 @@ pub fn read_package(package: &OpcPackage) -> Result<Workbook> {
                     Some(xml) => jade_opc::parse_relationships(&xml)?,
                     None => Default::default(),
                 };
-                let mut sheet = sheet::parse_sheet_with_relationships(
+                let (mut sheet, ordered) = sheet::parse_sheet_noting_order(
                     "Sheet1",
                     &part,
                     &xml,
                     &shared_strings,
                     &relationships,
                 )?;
+                if ordered {
+                    in_order.push(part.clone());
+                }
                 read_sheet_parts(
                     package,
                     &part,
@@ -302,7 +324,7 @@ pub fn read_package(package: &OpcPackage) -> Result<Workbook> {
         }
     }
     let pivots = pivot::read_catalog(package, &workbook_part, &workbook_xml, &sheets);
-    Ok(Workbook {
+    let workbook = Workbook {
         pivots,
         sheets,
         styles,
@@ -313,7 +335,10 @@ pub fn read_package(package: &OpcPackage) -> Result<Workbook> {
         full_calculation_on_load: part.full_calculation_on_load,
         calculation_mode: part.calculation_mode,
         calculate_on_save: part.calculate_on_save.unwrap_or(true),
-    })
+        iteration: part.iteration,
+        full_precision: part.full_precision.unwrap_or(true),
+    };
+    Ok((workbook, in_order))
 }
 
 /// The rows and columns the sheet at tab `position` repeats on every
@@ -385,6 +410,33 @@ fn read_sheet_parts(
         let comments_part = jade_opc::resolve_target(sheet_part, comments_target);
         if let Some(xml) = package.part_str(&comments_part)? {
             sheet.comments = comments::parse_comments(&xml)?;
+        }
+    }
+    // Current Excel's threaded comments, read in place of the notes it
+    // writes beside them for older versions.
+    let threads = relationships
+        .all()
+        .into_iter()
+        .find(|r| {
+            !r.external
+                && r.relationship_type
+                    .ends_with("/relationships/threadedComment")
+        })
+        .map(|r| r.target.clone());
+    if let Some(target) = threads {
+        let part = jade_opc::resolve_target(sheet_part, &target);
+        if let Some(xml) = package.part_str(&part)? {
+            let mut people = std::collections::HashMap::new();
+            for name in package
+                .part_names()
+                .iter()
+                .filter(|name| name.starts_with("xl/persons/") && name.ends_with(".xml"))
+            {
+                if let Some(persons) = package.part_str(name)? {
+                    people.extend(comments::parse_persons(&persons)?);
+                }
+            }
+            comments::apply_threads(&mut sheet.comments, &xml, &people)?;
         }
     }
     for table_part in table::referenced_table_parts(sheet_xml, relationships, sheet_part)? {

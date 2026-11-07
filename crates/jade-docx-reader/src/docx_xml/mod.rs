@@ -12,8 +12,9 @@ use std::collections::{HashMap, HashSet};
 use std::hash::{BuildHasherDefault, Hasher};
 
 pub use mapping::{
-    attach_block_xml_ids, attach_document_xml_ids, attach_text_box_xml_ids, clear_block_xml_ids,
-    is_ruby_run, is_transparent_run_container, DocxMappingError,
+    attach_block_xml_ids, attach_document_xml_ids, attach_paragraph_xml_ids,
+    attach_text_box_xml_ids, clear_block_xml_ids, is_ruby_run, is_transparent_run_container,
+    normalized_legacy_horizontal_merge_cell, DocxMappingError,
 };
 
 mod mapping;
@@ -123,7 +124,13 @@ pub struct DocxXmlDocument {
     /// empty-element form (`<w:r/>`). The document parser models none of them
     /// as runs, so the model-to-XML run mapping must skip them.
     self_closing_elements: HashSet<XmlNodeId>,
+    /// Elements named in [`SELF_CLOSING_TRACKED`] the source wrote open and
+    /// closed with nothing between (`<w:r></w:r>`), which the document parser
+    /// does model.
+    explicit_empty_elements: HashSet<XmlNodeId>,
     journal: JournalSlot,
+    /// Independent of the undo journal; clones retain unacknowledged changes.
+    changes: Option<HashSet<XmlNodeId>>,
     /// Length of the text the tree was parsed from, which
     /// [`Self::to_string`] reserves up front: a written part is about as long
     /// as its source, and growing the buffer by doubling copied a
@@ -137,11 +144,51 @@ pub struct DocxXmlDocument {
 const SELF_CLOSING_TRACKED: [&str; 4] = ["w:r", "w:fldSimple", "m:oMath", "w:object"];
 
 impl DocxXmlDocument {
-    /// Whether `id` is a `w:r`, `w:fldSimple`, `m:oMath` or `w:object` the
-    /// source wrote in empty-element form (see [`Self::self_closing_elements`]).
-    /// Elements created after parsing never are.
+    /// Start a fresh change-tracking epoch after acknowledging a projection.
+    /// Mutable borrows conservatively invalidate the entire borrowed subtree.
+    /// Tracking is opt-in and independent of native Undo/Redo journals.
+    pub fn track_changes(&mut self) {
+        self.changes = Some(HashSet::new());
+    }
+
+    /// Subtrees touched since `track_changes`, including structural parents.
+    /// Removed elements are omitted: their surviving parent is also recorded.
+    /// Reading does not acknowledge changes, so failed consumers can retry.
+    pub fn changed_elements(&self) -> Option<Vec<XmlNodeId>> {
+        self.changes.as_ref().map(|changes| {
+            changes
+                .iter()
+                .copied()
+                .filter(|id| self.element(*id).is_some())
+                .collect()
+        })
+    }
+
+    fn mark_changed(&mut self, id: XmlNodeId) {
+        if let Some(changes) = &mut self.changes {
+            changes.insert(id);
+        }
+    }
+
+    /// Whether `id` is a `w:r`, `w:fldSimple`, `m:oMath` or `w:object`
+    /// written in empty-element form: as the source wrote it (see
+    /// [`Self::self_closing_elements`]), or, for one the source did not
+    /// write open and closed, as [`Self::to_string`] writes any element
+    /// without children. A reparse of that text models no run for it, so
+    /// the run mapping must skip it too. Counted as a run, an empty `w:r`
+    /// rebuilt by an edit (a split field's result) gave every later run the
+    /// element before its own, and a rejected or accepted formatting change
+    /// put one run's formatting on the next.
     pub fn is_self_closing(&self, id: XmlNodeId) -> bool {
-        self.self_closing_elements.contains(&id)
+        if self.self_closing_elements.contains(&id) {
+            return true;
+        }
+        if self.explicit_empty_elements.contains(&id) {
+            return false;
+        }
+        self.element(id).is_some_and(|element| {
+            element.children.is_empty() && SELF_CLOSING_TRACKED.contains(&element.name.as_str())
+        })
     }
 
     /// 文字列から XML ツリーを構築する。
@@ -307,6 +354,7 @@ impl DocxXmlDocument {
     /// recorded, unless it or an ancestor was kept already: restoring an
     /// ancestor restores everything below it.
     fn record_modification(&mut self, id: XmlNodeId, path: &[usize]) {
+        self.mark_changed(id);
         let Some(journal) = self.journal.0.as_mut() else {
             return;
         };
@@ -334,6 +382,7 @@ impl DocxXmlDocument {
     }
 
     fn restore_element(&mut self, id: XmlNodeId, before: XmlElement) -> Result<(), DocxXmlError> {
+        self.mark_changed(id);
         let path = self.path(id).ok_or(DocxXmlError::UnknownNode(id))?;
         let Self { root, index, .. } = self;
         let element = Self::element_by_path_mut(root, path.as_slice())
@@ -363,6 +412,7 @@ impl DocxXmlDocument {
             )));
         }
         parent.children.insert(index, node);
+        self.mark_changed(parent_id);
         self.reindex_children_from(parent_path.as_slice(), index);
         Ok(())
     }
@@ -555,6 +605,7 @@ impl DocxXmlDocument {
         }
 
         parent.children.insert(index, node);
+        self.mark_changed(parent_id);
         self.reindex_children_from(parent_path.as_slice(), index);
         self.record(|| JournalEntry::Inserted {
             parent: parent_id,
@@ -610,6 +661,7 @@ impl DocxXmlDocument {
             )));
         }
         parent.children.insert(index, node);
+        self.mark_changed(parent_id);
         self.reindex_children_from(parent_path.as_slice(), index);
         self.record(|| JournalEntry::Inserted {
             parent: parent_id,
@@ -644,6 +696,7 @@ impl DocxXmlDocument {
         }
 
         let removed = parent.children.remove(index);
+        self.mark_changed(parent_id);
 
         // インデックスをインクリメンタルに更新する（全ツリー走査の
         // `rebuild_index` を避ける）。削除は 1 ノード（とそのサブツリー）
@@ -727,6 +780,7 @@ impl DocxXmlDocument {
         }
         removed.reverse();
 
+        self.mark_changed(parent_id);
         self.reindex_children_from(parent_path.as_slice(), start_index);
         Ok(removed)
     }
@@ -936,6 +990,7 @@ pub struct DocxXmlTreeBuilder {
     next_id: u32,
     declaration: XmlDeclaration,
     self_closing_elements: HashSet<XmlNodeId>,
+    explicit_empty_elements: HashSet<XmlNodeId>,
 }
 
 impl Default for DocxXmlTreeBuilder {
@@ -953,6 +1008,7 @@ impl DocxXmlTreeBuilder {
             next_id: 0,
             declaration: XmlDeclaration::default(),
             self_closing_elements: HashSet::new(),
+            explicit_empty_elements: HashSet::new(),
         }
     }
 
@@ -982,6 +1038,11 @@ impl DocxXmlTreeBuilder {
                     .stack
                     .pop()
                     .ok_or_else(|| DocxXmlError::Malformed("unexpected closing tag".into()))?;
+                if element.children.is_empty()
+                    && SELF_CLOSING_TRACKED.contains(&element.name.as_str())
+                {
+                    self.explicit_empty_elements.insert(element.id);
+                }
                 self.attach_child(XmlNode::Element(element))?;
             }
             Event::Decl(e) => {
@@ -1058,7 +1119,9 @@ impl DocxXmlTreeBuilder {
             declaration: self.declaration,
             next_drawing_object_id: None,
             self_closing_elements: self.self_closing_elements,
+            explicit_empty_elements: self.explicit_empty_elements,
             journal: JournalSlot::default(),
+            changes: None,
             source_len: 0,
         })
     }
@@ -1357,6 +1420,9 @@ pub struct XmlAttribute {
 
 impl XmlAttribute {
     fn parse_attributes(e: &quick_xml::events::BytesStart<'_>) -> Result<Vec<Self>, DocxXmlError> {
+        if let Some(attributes) = Self::parse_plain_attributes(e.attributes_raw()) {
+            return Ok(attributes);
+        }
         // Attribute names already live in the result. Reuse them for duplicate
         // detection instead of allocating quick-xml's separate key-range vector
         // for every element with attributes.
@@ -1396,6 +1462,58 @@ impl XmlAttribute {
             attributes.push(Self::from_attribute(attr)?);
         }
         Ok(attributes)
+    }
+
+    /// The common case read straight from the tag's text: well-formed
+    /// `name="value"` pairs whose values need no normalization (no `&`, tab
+    /// or line break) and whose names are unique. Those values are exactly
+    /// what quick-xml would return, and this keeps the reader's cost from
+    /// hanging on whether the optimizer inlines quick-xml's attribute
+    /// iterator here. Anything else returns `None` for the checked path.
+    fn parse_plain_attributes(raw: &[u8]) -> Option<Vec<Self>> {
+        // Each attribute has an '='. Values may contain it too, so this is
+        // only a bounded capacity hint.
+        let capacity = raw.iter().filter(|&&byte| byte == b'=').count().min(8);
+        let mut attributes = Vec::<Self>::with_capacity(capacity);
+        let mut rest = raw.trim_ascii_start();
+        while !rest.is_empty() {
+            let eq = rest.iter().position(|&byte| byte == b'=')?;
+            let name = rest[..eq].trim_ascii_end();
+            if name.is_empty()
+                || name
+                    .iter()
+                    .any(|&byte| byte.is_ascii_whitespace() || byte == b'"' || byte == b'\'')
+                || attributes
+                    .iter()
+                    .any(|previous| previous.name.as_bytes() == name)
+            {
+                return None;
+            }
+            let after = rest[eq + 1..].trim_ascii_start();
+            let quote = *after
+                .first()
+                .filter(|&&byte| byte == b'"' || byte == b'\'')?;
+            let body = &after[1..];
+            let end = body.iter().position(|&byte| byte == quote)?;
+            let value = &body[..end];
+            if value
+                .iter()
+                .any(|&byte| matches!(byte, b'&' | b'\t' | b'\r' | b'\n'))
+            {
+                return None;
+            }
+            rest = &body[end + 1..];
+            // Attributes are separated by whitespace.
+            if rest.first().is_some_and(|byte| !byte.is_ascii_whitespace()) {
+                return None;
+            }
+            attributes.push(Self {
+                name: String::from_utf8(name.to_vec()).ok()?,
+                value: String::from_utf8(value.to_vec()).ok()?,
+            });
+            rest = rest.trim_ascii_start();
+        }
+        Some(attributes)
     }
 
     fn from_attribute(attr: Attribute<'_>) -> Result<Self, DocxXmlError> {
@@ -1557,7 +1675,170 @@ fn push_escaped(buffer: &mut String, value: &str, entity: impl Fn(u8) -> Option<
 
 #[cfg(test)]
 pub(crate) mod tests {
+    #[test]
+    fn plain_attributes_read_as_quick_xml_reads_them() {
+        use quick_xml::events::Event;
+        let checked = |tag: &str| {
+            let mut reader = quick_xml::Reader::from_str(tag);
+            let Ok(Event::Empty(start)) = reader.read_event() else {
+                panic!("{tag} is one empty element");
+            };
+            let mut iter = start.attributes();
+            iter.with_checks(false);
+            let checked: Result<Vec<_>, DocxXmlError> = iter
+                .map(|attr| {
+                    attr.map_err(DocxXmlError::from)
+                        .and_then(super::XmlAttribute::from_attribute)
+                })
+                .collect();
+            (
+                super::XmlAttribute::parse_plain_attributes(start.attributes_raw()),
+                checked,
+            )
+        };
+        for tag in [
+            "<a/>",
+            "<a   />",
+            r#"<w:t xml:space="preserve"/>"#,
+            r#"<a x="1" y='two' z = "=3" />"#,
+            "<a x=\"\u{5b57}\" y=\"\"/>",
+            "<a\n\tx=\"1\"\r\n y=\"2\"/>",
+        ] {
+            let (plain, checked) = checked(tag);
+            let plain = plain.unwrap_or_else(|| panic!("{tag} is plain"));
+            let pairs = |attributes: &[super::XmlAttribute]| -> Vec<(String, String)> {
+                attributes
+                    .iter()
+                    .map(|attribute| (attribute.name.clone(), attribute.value.clone()))
+                    .collect()
+            };
+            assert_eq!(pairs(&plain), pairs(&checked.expect(tag)), "{tag}");
+        }
+        // Values to normalize, duplicates, missing quotes or separators and
+        // valueless names all take the checked path.
+        for tag in [
+            r#"<a x="&amp;"/>"#,
+            "<a x=\"1\n2\"/>",
+            r#"<a x="1" x="2"/>"#,
+            "<a x=1/>",
+            r#"<a x="1"y="2"/>"#,
+            r#"<a x y="2"/>"#,
+        ] {
+            assert!(checked(tag).0.is_none(), "{tag}");
+        }
+    }
+
+    #[test]
+    fn an_empty_run_counts_as_self_closing_as_it_is_written() {
+        // The source's `<w:r/>` and an empty run made after parsing are both
+        // written `<w:r/>`, which a parse models no run for; a `<w:r></w:r>`
+        // the source wrote open is one the parser does model.
+        let mut doc = DocxXmlDocument::parse(
+            r#"<w:document xmlns:w="w"><w:body><w:p><w:r/><w:r></w:r></w:p></w:body></w:document>"#,
+        )
+        .expect("parse");
+        let paragraph = doc.root().children.iter().find_map(|node| match node {
+            XmlNode::Element(body) => body.children.iter().find_map(|node| match node {
+                XmlNode::Element(paragraph) => Some(paragraph.clone()),
+                _ => None,
+            }),
+            _ => None,
+        });
+        let paragraph = paragraph.expect("paragraph");
+        let runs: Vec<XmlNodeId> = paragraph
+            .children
+            .iter()
+            .filter_map(|node| match node {
+                XmlNode::Element(run) => Some(run.id),
+                _ => None,
+            })
+            .collect();
+        assert!(doc.is_self_closing(runs[0]));
+        assert!(!doc.is_self_closing(runs[1]));
+        let created = doc.create_element("w:r", Vec::new(), Vec::new());
+        let created_id = doc
+            .insert_node(paragraph.id, 2, XmlNode::Element(created))
+            .expect("insert")
+            .expect("an element id");
+        assert!(doc.is_self_closing(created_id));
+        assert!(doc
+            .to_string()
+            .expect("write")
+            .contains("<w:r/><w:r/><w:r/>"));
+    }
+
     use super::*;
+
+    #[test]
+    fn change_tracking_is_opt_in_non_destructive_and_cloned_for_checkpoints() {
+        let mut doc = DocxXmlDocument::parse("<root><a/><b/></root>").unwrap();
+        assert!(doc.changed_elements().is_none());
+        doc.track_changes();
+        let a = match &doc.root().children[0] {
+            XmlNode::Element(e) => e.id,
+            _ => unreachable!(),
+        };
+        doc.element_mut(a).unwrap().name = "edited".into();
+        assert_eq!(doc.changed_elements().unwrap(), vec![a]);
+        let checkpoint = doc.clone();
+        doc.track_changes();
+        assert!(doc.changed_elements().unwrap().is_empty());
+        assert_eq!(checkpoint.changed_elements().unwrap(), vec![a]);
+        assert_eq!(checkpoint.changed_elements().unwrap(), vec![a]);
+    }
+
+    proptest! {
+        #[test]
+        fn change_tracking_scopes_reconstruct_full_tree_after_structural_edits_and_rollback(
+            ops in proptest::collection::vec(index_op(), 1..32),
+            rollback in any::<bool>(),
+        ) {
+            let mut doc = DocxXmlDocument::parse(
+                "<root><p><r><t>A</t></r></p><table><row><cell><p/></cell></row></table><p>B</p></root>",
+            ).unwrap();
+            let before = doc.root().clone();
+            doc.track_changes();
+            doc.begin_edit_journal();
+            for op in ops {
+                apply_index_op(&mut doc, op);
+            }
+            let journal = doc.finish_edit_journal().unwrap();
+            // A consumer may acknowledge a successful epoch before a later undo.
+            let source = if rollback {
+                let source = doc.root().clone();
+                doc.track_changes();
+                doc.roll_back(journal).unwrap();
+                source
+            } else {
+                before
+            };
+            let dirty: HashSet<_> = doc.changed_elements().unwrap().into_iter().collect();
+            fn rebuild(
+                old: &XmlElement,
+                doc: &DocxXmlDocument,
+                dirty: &HashSet<XmlNodeId>,
+            ) -> XmlElement {
+                if dirty.contains(&old.id) {
+                    return doc.element(old.id).unwrap().clone();
+                }
+                let mut copy = old.clone();
+                for child in &mut copy.children {
+                    if let XmlNode::Element(element) = child {
+                        *element = rebuild(element, doc, dirty);
+                    }
+                }
+                copy
+            }
+            let mut reconstructed = doc.clone();
+            reconstructed.root = rebuild(&source, &doc, &dirty);
+            prop_assert_eq!(reconstructed.to_string().unwrap(), doc.to_string().unwrap());
+            let mut actual = vec![];
+            let mut expected = vec![];
+            element_ids(reconstructed.root(), &mut actual);
+            element_ids(doc.root(), &mut expected);
+            prop_assert_eq!(actual, expected);
+        }
+    }
 
     #[test]
     fn attribute_whitespace_survives_roundtrip() {

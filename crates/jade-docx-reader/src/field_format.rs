@@ -14,7 +14,10 @@
 //! The parser keeps what each switch applies to, so an evaluator reads the
 //! operands it needs and hands the raw result to [`apply_general_format`].
 
-use crate::document::{tokenize_field_instruction_with_quotes, FieldInstructionToken};
+use crate::document::{
+    tokenize_field_instruction_with_literals, tokenize_field_instruction_with_quotes,
+    FieldInstructionToken,
+};
 use crate::field_datetime::{format_word_date, FieldDateTime};
 use crate::numbering::{format_number_value, to_english_cardinal, to_english_ordinal_text};
 
@@ -68,6 +71,13 @@ impl GeneralFormat {
     }
 }
 
+/// An instruction fragment or the opaque result of a nested field.
+#[derive(Clone, Copy, Debug)]
+pub enum FieldInstructionPart<'a> {
+    Code(&'a str),
+    Literal(&'a str),
+}
+
 /// A parsed field instruction.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct FieldCode {
@@ -94,6 +104,42 @@ impl FieldCode {
             return Some(Self::parse_formula(rest));
         }
         let tokens = tokenize_field_instruction_with_quotes(trimmed);
+        Self::from_tokens(tokens)
+    }
+
+    /// Parses nested results without interpreting their quotes, backslashes or
+    /// whitespace as field syntax. Literals within a quoted operand join that
+    /// operand; otherwise each literal is one operand (text stays literal and numbers
+    /// retain numeric comparison semantics). Formula results
+    /// remain part of the arithmetic expression.
+    pub fn parse_parts<'a>(
+        parts: impl IntoIterator<Item = FieldInstructionPart<'a>>,
+    ) -> Option<Self> {
+        let mut instruction = String::new();
+        let mut literals = Vec::new();
+        for part in parts {
+            match part {
+                FieldInstructionPart::Code(text) => instruction.push_str(text),
+                FieldInstructionPart::Literal(value) => {
+                    let start = instruction.len();
+                    instruction.push_str(value);
+                    literals.push(start..instruction.len());
+                }
+            }
+        }
+        // A field name comes from code, never from a nested result.
+        if instruction.trim_start().starts_with('=') {
+            return Some(Self::parse_formula(
+                instruction.trim_start().strip_prefix('=')?,
+            ));
+        }
+        Self::from_tokens(tokenize_field_instruction_with_literals(
+            &instruction,
+            &literals,
+        ))
+    }
+
+    fn from_tokens(tokens: Vec<FieldInstructionToken>) -> Option<Self> {
         let mut tokens = tokens.into_iter().peekable();
         let name = loop {
             let token = tokens.next()?;
@@ -823,6 +869,43 @@ mod tests {
 
     fn picture(value: f64, picture: &str) -> String {
         format_numeric_picture(value, picture)
+    }
+
+    #[test]
+    fn nested_results_are_opaque_in_quoted_and_bare_operands() {
+        use FieldInstructionPart::{Code, Literal};
+        for value in ["", "a\"b", "\\switch", "a b\\", "日\t\n本", "\\\"", "* ?"] {
+            for (before, after) in [("IF ", " = 1 yes no"), ("IF \"", "\" = 1 yes no")] {
+                let code =
+                    FieldCode::parse_parts([Code(before), Literal(value), Code(after)]).unwrap();
+                assert_eq!(
+                    code.operands[0],
+                    FieldOperand {
+                        text: value.into(),
+                        quoted: true
+                    }
+                );
+                assert_eq!(code.operand(1), Some("="));
+                assert_eq!(code.operand(4), Some("no"));
+                assert!(code.switches.is_empty());
+            }
+        }
+        let code = FieldCode::parse_parts([
+            Code(r#"QUOTE "prefix \""#),
+            Literal("\\"),
+            Literal(""),
+            Literal("\""),
+            Code(r#"suffix" \* Upper"#),
+        ])
+        .unwrap();
+        assert_eq!(code.operand(0), Some("prefix \"\\\"suffix"));
+        assert_eq!(code.format.formats, ["Upper"]);
+        let numeric =
+            FieldCode::parse_parts([Code("IF 10 > "), Literal("2"), Code(" yes no")]).unwrap();
+        assert!(!numeric.operands[2].quoted);
+        let code = FieldCode::parse_parts([Code("= 1 + "), Literal("2"), Code(" \\# 0")]).unwrap();
+        assert_eq!(code.expression.as_deref(), Some("1 + 2"));
+        assert_eq!(code.format.numeric_picture.as_deref(), Some("0"));
     }
 
     #[test]

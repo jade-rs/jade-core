@@ -72,6 +72,7 @@ pub fn add_implicit_intersection(node: &mut Node, add: bool) {
         | Node::ParseErrorKind { .. }
         | Node::WrongReferenceKind { .. }
         | Node::WrongRangeKind { .. }
+        | Node::Range3DKind { .. }
         | Node::NamedFunctionKind { .. }
         | Node::ArrayKind(_)
         | Node::ReferenceKind { .. }
@@ -229,6 +230,7 @@ pub fn remove_redundant_implicit_intersection(node: &mut Node, add: bool) {
         | Node::ParseErrorKind { .. }
         | Node::WrongReferenceKind { .. }
         | Node::WrongRangeKind { .. }
+        | Node::Range3DKind { .. }
         | Node::NamedFunctionKind { .. }
         | Node::ArrayKind(_)
         | Node::ReferenceKind { .. }
@@ -366,6 +368,8 @@ pub(crate) fn run_static_analysis_on_node(node: &Node) -> StaticResult {
             // TODO: We could do a bit better here
             StaticResult::Unknown
         }
+        // Only the functions taking one accept it.
+        Node::Range3DKind { .. } => StaticResult::Unknown,
         Node::ReferenceKind { .. } => StaticResult::Scalar,
 
         // binary operations
@@ -994,6 +998,8 @@ fn args_signature_wrapcols(arg_count: usize) -> Vec<Signature> {
 fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signature> {
     match kind {
         Function::Single | Function::Anchorarray => args_signature_one_vector(arg_count),
+        Function::Filterxml => args_signature_scalars(arg_count, 2, 0),
+        Function::Groupby | Function::Pivotby => vec![Signature::Vector; arg_count],
         Function::EcmaCeiling => args_signature_scalars(arg_count, 2, 0),
         Function::Getpivotdata => {
             if (2..=254).contains(&arg_count) {
@@ -1663,6 +1669,8 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
     match kind {
         Function::Single => StaticResult::Scalar,
         Function::Anchorarray => StaticResult::Unknown,
+        Function::Filterxml => StaticResult::Unknown,
+        Function::Groupby | Function::Pivotby => StaticResult::Unknown,
         Function::EcmaCeiling => scalar_arguments(args),
         Function::Getpivotdata => StaticResult::Unknown,
         Function::And => StaticResult::Scalar,

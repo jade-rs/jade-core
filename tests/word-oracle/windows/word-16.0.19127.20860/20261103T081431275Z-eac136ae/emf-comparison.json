@@ -1,0 +1,304 @@
+[
+  {
+    "fixture": "yokohama_page1",
+    "coordinate_source": "Word Page.EnhMetaFileBits / MS-EMF",
+    "word_pages": 1,
+    "native_pages": 1,
+    "word_glyphs": 853,
+    "native_glyphs": 853,
+    "matched": 853,
+    "within_0_375pt": 853,
+    "x_p50": 0.119996948242175,
+    "x_p95": 0.26999694824212384,
+    "y_p50": 0.033906249999972715,
+    "y_p95": 0.07796874999999659,
+    "first_errors": [],
+    "pdf_sha256": "cde20fc6e6a2fc618c1a2b63bf05b37d3251a1e0f8ba626004e7e5b783099b72",
+    "metafile_sha256": [
+      "c32e276ce8d236a26c72f0fdb5bca076ca8a23288a1568f957fe947ad6865fd9"
+    ]
+  },
+  {
+    "fixture": "yokohama_page6",
+    "coordinate_source": "Word Page.EnhMetaFileBits / MS-EMF",
+    "word_pages": 5,
+    "native_pages": 5,
+    "word_glyphs": 5425,
+    "native_glyphs": 5425,
+    "matched": 5425,
+    "within_0_375pt": 5425,
+    "x_p50": 0.119996948242175,
+    "x_p95": 0.26999694824212384,
+    "y_p50": 0.03203125000000284,
+    "y_p95": 0.07796874999999659,
+    "first_errors": [],
+    "pdf_sha256": "52991aad185a155228669a7b96e5bd2ab2d94708b70c2c42c8e497e39318b8ee",
+    "metafile_sha256": [
+      "624c7e0d630d27972b332565ba2200906ea4edafbab0902af651ad089a4eb115",
+      "d0f2e6217d62249ff56d43f68f3b6807084fa861e197c90524720a325c14870b",
+      "46e3625500494d41dd48e5b67b3527052cacbfde13d94ac9057c8d7ed33f9e36",
+      "491dc16fb6ac73640f14400db12e8fbc90c7ebefd30f588663ab2653d9a9e940",
+      "a30f3c308cf4d3920bc9fea28f69e33bc7e40130fbd1cd6b03c2ad69d7b76470"
+    ]
+  },
+  {
+    "fixture": "contract",
+    "coordinate_source": "Word Page.EnhMetaFileBits / MS-EMF",
+    "word_pages": 3,
+    "native_pages": 3,
+    "word_glyphs": 1907,
+    "native_glyphs": 1907,
+    "matched": 1907,
+    "within_0_375pt": 1896,
+    "x_p50": 0.10999999999998522,
+    "x_p95": 0.23999847412113695,
+    "y_p50": 0.09789639236987568,
+    "y_p95": 0.10388270935963817,
+    "first_errors": [
+      {
+        "word": [
+          1,
+          "a",
+          310.68,
+          130.67689566704675
+        ],
+        "native": [
+          1,
+          "a",
+          311.0999984741211,
+          130.5734405517578
+        ],
+        "dx": 0.41999847412108693,
+        "dy": -0.1034551152889378
+      },
+      {
+        "word": [
+          1,
+          "s",
+          315.36,
+          130.67689566704675
+        ],
+        "native": [
+          1,
+          "s",
+          315.7603988647461,
+          130.5734405517578
+        ],
+        "dx": 0.4003988647460801,
+        "dy": -0.1034551152889378
+      },
+      {
+        "word": [
+          1,
+          "d",
+          319.44,
+          130.67689566704675
+        ],
+        "native": [
+          1,
+          "d",
+          319.8465805053711,
+          130.5734405517578
+        ],
+        "dx": 0.406580505371096,
+        "dy": -0.1034551152889378
+      },
+      {
+        "word": [
+          1,
+          "a",
+          324.72,
+          130.67689566704675
+        ],
+        "native": [
+          1,
+          "a",
+          325.0965805053711,
+          130.5734405517578
+        ],
+        "dx": 0.37658050537106647,
+        "dy": -0.1034551152889378
+      },
+      {
+        "word": [
+          1,
+          "s",
+          241.32000000000002,
+          256.67390250855186
+        ],
+        "native": [
+          1,
+          "s",
+          241.74658203124997,
+          256.5734405517578
+        ],
+        "dx": 0.42658203124995,
+        "dy": -0.10046195679404946
+      },
+      {
+        "word": [
+          1,
+          "a",
+          245.4,
+          256.67390250855186
+        ],
+        "native": [
+          1,
+          "a",
+          245.83276367187497,
+          256.5734405517578
+        ],
+        "dx": 0.4327636718749659,
+        "dy": -0.10046195679404946
+      },
+      {
+        "word": [
+          1,
+          "d",
+          250.08,
+          256.67390250855186
+        ],
+        "native": [
+          1,
+          "d",
+          250.49316406249997,
+          256.5734405517578
+        ],
+        "dx": 0.4131640624999591,
+        "dy": -0.10046195679404946
+      },
+      {
+        "word": [
+          1,
+          "s",
+          255.36,
+          256.67390250855186
+        ],
+        "native": [
+          1,
+          "s",
+          255.74316406249997,
+          256.5734405517578
+        ],
+        "dx": 0.38316406249995794,
+        "dy": -0.10046195679404946
+      },
+      {
+        "word": [
+          1,
+          "a",
+          259.44,
+          256.67390250855186
+        ],
+        "native": [
+          1,
+          "a",
+          259.829345703125,
+          256.5734405517578
+        ],
+        "dx": 0.3893457031250023,
+        "dy": -0.10046195679404946
+      },
+      {
+        "word": [
+          1,
+          "a",
+          260.52000000000004,
+          292.6730473204105
+        ],
+        "native": [
+          1,
+          "a",
+          260.9931640625,
+          292.5734405517578
+        ],
+        "dx": 0.47316406249996135,
+        "dy": -0.09960676865267715
+      },
+      {
+        "word": [
+          3,
+          "Y",
+          360.48,
+          256.67390250855186
+        ],
+        "native": [
+          3,
+          "Y",
+          360.9000015258789,
+          256.5734405517578
+        ],
+        "dx": 0.42000152587888806,
+        "dy": -0.10046195679404946
+      }
+    ],
+    "pdf_sha256": "699756abc9fbd3ff304154b0cdbfa6ea2edbdffee2bf37a328bddac2f7478c94",
+    "metafile_sha256": [
+      "f8242228e4cf96194531afa5cda95a9796e6d08e00ee840f39b3b1f1894cc01a",
+      "e0b00d6b57a91300d980c3b0629b5ee841107bf81b62b4326420aad7b82d754a",
+      "f585dda7f809897d9ffc3ed31290f345fe17e52b78223b0180f4b1b9d6cf98b8"
+    ]
+  },
+  {
+    "fixture": "numbering-restart",
+    "coordinate_source": "Word Page.EnhMetaFileBits / MS-EMF",
+    "word_pages": 2,
+    "native_pages": 2,
+    "word_glyphs": 563,
+    "native_glyphs": 563,
+    "matched": 563,
+    "within_0_375pt": 563,
+    "x_p50": 0.02922950410911085,
+    "x_p95": 0.12428123343403286,
+    "y_p50": 0.071568887356392,
+    "y_p95": 0.12085652286822324,
+    "first_errors": [],
+    "pdf_sha256": "496d25d2feb3f495deae0162b72d5461ac7a17011a6965467d8de9b1b0b1a2ca",
+    "metafile_sha256": [
+      "6dd9bfb3ecf6080d939d54627062367917a15e812519773f0860484eaf269499",
+      "387c70d6dc927389d159063eb75b7cd6cc2157d9a352a7fd9d4b8dae5c8cba85"
+    ]
+  },
+  {
+    "fixture": "word-windows-yu-gothic-lines",
+    "coordinate_source": "Word Page.EnhMetaFileBits / MS-EMF",
+    "word_pages": 24,
+    "native_pages": 24,
+    "word_glyphs": 2160,
+    "native_glyphs": 2160,
+    "matched": 2160,
+    "within_0_375pt": 2160,
+    "x_p50": 0.052500000000009095,
+    "x_p95": 0.18000000000000682,
+    "y_p50": 0.039609374999997726,
+    "y_p95": 0.10875000000001478,
+    "first_errors": [],
+    "pdf_sha256": "f83e8d043891175accf347a4c40fad67e0d9cd9fbe2f4cfb6a2e4fed69f5f9fc",
+    "metafile_sha256": [
+      "d37cac66ada9f26a0ae2d87c33dbe5bf12eadff8dcab2ce6c0ce1925f199861f",
+      "58f6a4a0a9c76c3d15ca3dba141b1d5a34274e2dbc4e9b4e1f8307a6b8f96756",
+      "a2af69760e519965662de770751171d39cd785d38625453ce0a37b303782fcb6",
+      "031f2b89e016a1b866d74cef6f1b47b1bb870b0a094616c8eed9c0d6cab84377",
+      "7294bcecb862fdb979455022cd403d31adad00614330f4c48ec7b611ff785301",
+      "445307ff6ac38589a97b286b08712c328168431e3d72bd4fdb1e3165c61d6e1f",
+      "8eb76ace4e0fe5352d760c767b8b137bc25b01fdfb1ef879b4a6bf4dabfe76aa",
+      "034e1917fed731ce952b319ca9201a407238820bd1b0ecc3510a7b1672a6d539",
+      "e238c12653b24d078418e749208c966a66c4fff3493d2dc7de33eb62aa61adfd",
+      "baffa0a540ffa68a24bc00797fccc8dff4c58838267f856d27c5012eb0236a97",
+      "0b27f557316b1022a5406c566c48c06724f6b32d4cae03fbb27a22e994894c99",
+      "25b30f93844fe8d9cd3f86514b67a996d4bff1c4a5a0df53a84a40326ae0d08e",
+      "767f6d3ec87c1f2ef17cc97152c05cc3cc5366f86bc4ba8d70758a8ab8d07896",
+      "1a87ca1409647429d9774433d61721c0b1b8f21aa4bfc7afb384258f6052e99f",
+      "6eda350b08ddfcb6c39dc6da6898b157f50d6dba70d1ce8c67ca552dd622f275",
+      "e18f09666360a441e971bb438be0a5f13c28df2d7979ec23faaa7d832c51c0f7",
+      "a83b0b688f024299747a36c7ea692c4d15c632623f0222ac1595dcb82201e8ea",
+      "2eb4cdff654d449dadd4403358cc1cc9d018ee4783d57196547797ce0dbbcfb2",
+      "fef866f807cd05403bcff4b12791c592fd8fe7e516d438b0efc2df48e4ce5ba3",
+      "0ddcd293f86bd3fd0755a8fb4c06d6e58091cede1a33eaa51c97214d870b35c3",
+      "bb3b6b6b39cca9702e4f1dc964ec87351ee643f6c8234599b3e5e6c6074fa33f",
+      "e51ba66383c0cc072150a05ba60fbcd9207456836b64772ffda1f96e2aa8cb25",
+      "937e703a53e9ef7b770500336db4b28d49f355a4d59edacb3d997f56c3547bba",
+      "6c77f5b9262c7cc7466e0b04f95e3f5a699ec2d006fab91308ab73760ab3830a"
+    ]
+  }
+]

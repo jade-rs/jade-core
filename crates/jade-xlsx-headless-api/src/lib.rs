@@ -50,6 +50,15 @@ pub enum AutoFilterChange {
         #[serde(default)]
         include_blank: bool,
     },
+    /// Date Filters ▸ Today, This Month… and Above/Below Average: Excel's
+    /// `dynamicFilter` of `kind` (its `type`: `today`, `thisMonth`, `Q1`,
+    /// `M12`, `aboveAverage`…).
+    Dynamic {
+        target: AutoFilterTarget,
+        reference: Option<String>,
+        column: u32,
+        kind: String,
+    },
     Rank {
         target: AutoFilterTarget,
         reference: Option<String>,
@@ -190,13 +199,37 @@ pub struct SortRequest {
     #[serde(default)]
     pub phonetic: Option<bool>,
     pub keys: Vec<SortKey>,
+    /// Sort left to right: the columns move, each key a row of the range
+    /// counted from its first, and `header` keeps its first column in place.
+    #[serde(default)]
+    pub by_columns: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SortKey {
     pub column: u32,
+    /// Z to A; for a colour key, On Bottom.
     #[serde(default)]
     pub descending: bool,
+    /// Sort On a colour rather than the values: the cells of it first (or,
+    /// `descending`, last), the rest after them in the order they were.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub color: Option<SortColor>,
+    /// Order ▸ Custom List: the values in this list's order first (or,
+    /// `descending`, in its order turned round), each matched without
+    /// case; the rest after them, sorted as values are.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub custom_list: Option<Vec<String>>,
+}
+
+/// The colour a sort key puts first: the cells' fill, or their text's.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct SortColor {
+    /// The font's colour rather than the fill's.
+    #[serde(default)]
+    pub font: bool,
+    /// `RRGGBB`; empty for No Fill, or the automatic font colour.
+    pub rgb: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

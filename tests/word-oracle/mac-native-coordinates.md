@@ -46,13 +46,34 @@ fixture against its frozen Mac Word reference: its title page has no footer,
 while page two inherits `SHARED FOOTER`. Complete native capture must preserve
 that blank first-page footer, the page-two footer, both header texts and the
 two-page count. This assertion concerns story selection and painted text; it
-does not claim Office-font coordinate agreement. A separate exhaustive unit
-test covers all variant-presence and flag combinations, including blank even
-stories and first-page precedence on an even-numbered section start.
+does not claim Office-font coordinate agreement. A second required assertion
+compares all 163 visible document characters, including 43 header/footer
+characters, against the original Word coordinates at the unchanged **0.375 pt**
+tolerance, using physical document pages for auxiliary stories. It also checks
+all 48 header/footer character origins,
+including five actual spaces, from `mac-bold-header-footer-origins.json`. These raw
+origins come from the same frozen PDF; both DOCX and PDF hashes are pinned.
+The layout unit test bounds each observed advance within 0.01 pt and cumulative
+requested-size origins within 1/32 pt. Unknown bold pairs, italic faces and
+Windows retain their previous behavior. No existing snapshot is regenerated.
+A separate exhaustive unit test covers all variant-presence and flag
+combinations, including blank even stories and first-page precedence on an
+even-numbered section start.
+
+The required `mac_noto_circle_title_matches_original_word_coordinates` test
+also compares all eight characters of `○横浜市市税条例` in the existing
+`noto-yokohama_page6` fixture with its original Word PDF coordinates at the
+same **0.375 pt** tolerance, with unchanged page count and source hashes.
+The leading Noto Sans circle uses the embedded PDF font's 1237/2048-em
+advance; `mac-noto-circle-advance.json` records its ToUnicode/cmap/hmtx
+provenance. Bold, italic, other families, Windows and oracle-supplied widths
+keep their previous behavior. This is a title-row gate only: other known
+differences in this document are not declared fixed.
 
 This is not full Word compatibility coverage. The original
 `layout_debug_lines()` capture omits some painted content; the additional
-full-capture gate covers numbering and ruby only in these six probes. These
+auxiliary snapshot gate covers numbering and ruby in these six probes; the
+separate header/footer assertion covers the stories described above. These
 34 probes do not cover the full corpus or browser rendering. A native
 snapshot guards against changes to current behavior, including current bugs;
 it does not prove that the other 25 probes match Word. Relevant follow-ups:
