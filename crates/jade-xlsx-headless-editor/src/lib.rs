@@ -188,6 +188,7 @@ impl HeadlessError {
                 | HeadlessError::EmptyFormatChange
                 | HeadlessError::Write(
                     jade_xlsx_writer::WriteError::ProtectedRange(_)
+                        | jade_xlsx_writer::WriteError::Clipboard(_)
                         | jade_xlsx_writer::WriteError::DefinedName(_)
                         | jade_xlsx_writer::WriteError::DataValidation(_)
                         | jade_xlsx_writer::WriteError::Hyperlink(_)

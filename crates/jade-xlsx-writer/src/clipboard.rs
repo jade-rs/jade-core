@@ -6,7 +6,7 @@ use crate::{
 use jade_opc::OpcPackage;
 use jade_xlsx_reader::{
     model::{MAX_COLUMN_COUNT, MAX_ROW_COUNT},
-    Cell, CellRange, CellRef, CellValue, Sheet,
+    ArrayFormulaKind, Cell, CellRange, CellRef, CellValue, Sheet,
 };
 use quick_xml::{events::Event, name::QName, Reader};
 use std::collections::{BTreeMap, BTreeSet};
@@ -75,8 +75,31 @@ pub fn paste_snapshot(
         start: request.target,
         end,
     };
+    if target.array_formulas.iter().any(|array| {
+        array.kind == ArrayFormulaKind::Dynamic
+            && intersects(array.range, destination)
+            && (array.range.start != array.anchor || !array.range.contains(array.anchor))
+    }) {
+        return Err(WriteError::Clipboard("invalid array formula bounds".into()));
+    }
     if request.cut {
         guard_legacy_arrays(source, range, None)?;
+        if source.array_formulas.iter().any(|array| {
+            array.kind == ArrayFormulaKind::Dynamic
+                && range.contains(array.anchor)
+                && (array.range.start != array.anchor || !array.range.contains(array.anchor))
+        }) {
+            return Err(WriteError::Clipboard("invalid array formula bounds".into()));
+        }
+        if source.array_formulas.iter().any(|array| {
+            array.kind == ArrayFormulaKind::Dynamic
+                && intersects(array.range, range)
+                && !range.contains(array.anchor)
+        }) {
+            return Err(WriteError::Clipboard(
+                "cannot cut a dynamic-array output without its formula anchor".into(),
+            ));
+        }
     }
     guard_legacy_arrays(
         target,
@@ -252,6 +275,30 @@ pub fn paste_snapshot(
             },
         );
     }
+    // An explicit paste wins over the old spill. Clear only its old cached
+    // tail; the untouched anchor will retry from a one-cell declaration.
+    for array in target.array_formulas.iter().filter(|array| {
+        array.kind == ArrayFormulaKind::Dynamic
+            && intersects(array.range, destination)
+            && !(request.cut
+                && source.part_name == target.part_name
+                && range.contains(array.anchor))
+    }) {
+        for cell in stored_cells(target, array.range).filter(|cell| {
+            cell.formula.is_none()
+                && cell.reference != array.anchor
+                && !destination.contains(cell.reference)
+        }) {
+            edits.insert(
+                cell.reference,
+                CellEdit {
+                    reference: cell.reference,
+                    value: NewValue::Blank,
+                    style_index: None,
+                },
+            );
+        }
+    }
     let mut row_defaults = BTreeMap::new();
     let mut column_defaults = BTreeMap::new();
     let mut row_dimensions = BTreeMap::new();
@@ -372,6 +419,28 @@ pub fn paste_snapshot(
                     CellEdit {
                         reference: cell.reference,
                         value: NewValue::Remove,
+                        style_index: None,
+                    },
+                );
+            }
+        }
+        // Cutting only the dynamic anchor also removes its old cached tail.
+        // Walk stored cells, never the potentially huge declared area.
+        for array in source.array_formulas.iter().filter(|array| {
+            array.kind == ArrayFormulaKind::Dynamic
+                && range.contains(array.anchor)
+                && !contains_range(range, array.range)
+        }) {
+            for cell in stored_cells(source, array.range).filter(|cell| {
+                cell.formula.is_none()
+                    && !range.contains(cell.reference)
+                    && !(same_sheet && destination.contains(cell.reference))
+            }) {
+                clear_edits.insert(
+                    cell.reference,
+                    CellEdit {
+                        reference: cell.reference,
+                        value: NewValue::Blank,
                         style_index: None,
                     },
                 );
@@ -599,60 +668,145 @@ pub fn paste_snapshot(
             sheet
                 .array_formulas
                 .iter()
-                .any(|array| array.kind == jade_xlsx_reader::ArrayFormulaKind::Legacy)
+                .any(|array| array.kind != ArrayFormulaKind::Unknown)
         })
     {
         return Ok((written, destination));
     }
-    // Cell writes serialize formula text/caches, not the CSE attributes.
-    // Reapply declared ranges after all cell rewrites, also for unrelated
-    // CSE anchors whose references followed a cut. No member expansion.
+    // Cell writes serialize text/caches, not array attributes. Preserve the
+    // evaluation dialect too, including scalar-result dynamic aggregates.
     let mut package = OpcPackage::open(&written)?;
+    let rewritten = sheets
+        .iter()
+        .flat_map(|edits| {
+            edits
+                .cells
+                .iter()
+                .filter(|edit| {
+                    matches!(
+                        edit.value,
+                        NewValue::Formula(_) | NewValue::FormulaCached { .. }
+                    )
+                })
+                .map(move |edit| (edits.part_name.as_str(), edit.reference))
+        })
+        .collect::<BTreeSet<_>>();
     for sheet in &target_book.sheets {
         let mut arrays = sheet
             .array_formulas
             .iter()
-            .filter(|array| array.kind == jade_xlsx_reader::ArrayFormulaKind::Legacy)
+            .filter(|array| array.kind != ArrayFormulaKind::Unknown)
             .filter(|array| {
-                !(sheet.part_name == target.part_name && intersects(array.range, destination)
-                    || request.cut
+                if array.kind == ArrayFormulaKind::Legacy {
+                    !(sheet.part_name == target.part_name && intersects(array.range, destination)
+                        || request.cut
+                            && sheet.part_name == source.part_name
+                            && intersects(array.range, range))
+                } else {
+                    !(request.cut
                         && sheet.part_name == source.part_name
-                        && intersects(array.range, range))
+                        && range.contains(array.anchor)
+                        || sheet.part_name == target.part_name
+                            && destination.contains(array.anchor))
+                        && (sheet.part_name == target.part_name
+                            && intersects(array.range, destination)
+                            || rewritten.contains(&(sheet.part_name.as_str(), array.anchor)))
+                }
             })
-            .map(|array| crate::spills::ArrayRange {
-                anchor: array.anchor,
-                range: array.range,
+            .map(|array| {
+                (
+                    crate::spills::ArrayRange {
+                        anchor: array.anchor,
+                        range: if array.kind == ArrayFormulaKind::Dynamic
+                            && sheet.part_name == target.part_name
+                            && intersects(array.range, destination)
+                        {
+                            CellRange {
+                                start: array.anchor,
+                                end: array.anchor,
+                            }
+                        } else {
+                            array.range
+                        },
+                    },
+                    array.kind,
+                    array.kind == ArrayFormulaKind::Dynamic
+                        && rewritten.contains(&(sheet.part_name.as_str(), array.anchor)),
+                )
             })
             .collect::<Vec<_>>();
         if sheet.part_name == target.part_name {
             for array in source.array_formulas.iter().filter(|array| {
-                array.kind == jade_xlsx_reader::ArrayFormulaKind::Legacy
-                    && contains_range(range, array.range)
+                (array.kind == ArrayFormulaKind::Legacy && contains_range(range, array.range))
+                    || (array.kind == ArrayFormulaKind::Dynamic && range.contains(array.anchor))
             }) {
+                if array.range.start != array.anchor || !array.range.contains(array.anchor) {
+                    return Err(WriteError::Clipboard("invalid array formula bounds".into()));
+                }
+                let end = if array.kind == ArrayFormulaKind::Dynamic {
+                    CellRef::new(
+                        array.range.end.column.min(range.end.column),
+                        array.range.end.row.min(range.end.row),
+                    )
+                } else {
+                    array.range.end
+                };
                 let moved = crate::spills::ArrayRange {
                     anchor: at_target(array.anchor),
                     range: CellRange {
                         start: at_target(array.range.start),
-                        end: at_target(array.range.end),
+                        end: at_target(end),
                     },
                 };
-                if target
-                    .tables
-                    .iter()
-                    .any(|table| intersects(table.reference, moved.range))
+                if array.kind == ArrayFormulaKind::Legacy
+                    && target
+                        .tables
+                        .iter()
+                        .any(|table| intersects(table.reference, moved.range))
                 {
                     return Err(WriteError::Clipboard(
                         "legacy array formulas cannot be pasted into an Excel table".into(),
                     ));
                 }
-                arrays.push(moved);
+                arrays.push((moved, array.kind, array.kind == ArrayFormulaKind::Dynamic));
             }
         }
         if !arrays.is_empty() {
-            let xml = package
+            let cm = if arrays
+                .iter()
+                .any(|(_, kind, restore)| *kind == ArrayFormulaKind::Dynamic && *restore)
+            {
+                Some(
+                    crate::spills::dynamic_array_metadata(&mut package)?.ok_or_else(|| {
+                        WriteError::Clipboard(
+                            "dynamic-array metadata cannot be preserved in the target".into(),
+                        )
+                    })?,
+                )
+            } else {
+                None
+            };
+            let mut xml = package
                 .part_str(&sheet.part_name)?
                 .ok_or_else(|| WriteError::MissingPart(sheet.part_name.clone()))?;
-            let xml = crate::spills::mark_array_formulas(&xml, &arrays, None)?;
+            for (kind, restore) in [
+                (ArrayFormulaKind::Legacy, false),
+                (ArrayFormulaKind::Dynamic, false),
+                (ArrayFormulaKind::Dynamic, true),
+            ] {
+                let ranges = arrays
+                    .iter()
+                    .filter(|(_, k, r)| *k == kind && *r == restore)
+                    .map(|(range, _, _)| *range)
+                    .collect::<Vec<_>>();
+                if !ranges.is_empty() {
+                    xml = crate::spills::mark_array_formulas(
+                        &xml,
+                        &ranges,
+                        if restore { cm } else { None },
+                    )?;
+                }
+            }
             package.replace(&sheet.part_name, xml.into_bytes());
         }
     }
@@ -662,6 +816,24 @@ pub fn paste_snapshot(
 
 fn contains_range(outer: CellRange, inner: CellRange) -> bool {
     outer.contains(inner.start) && outer.contains(inner.end)
+}
+
+// Reader-owned rows/cells are sorted. Visit the physical cells in an area
+// without scanning unrelated columns or expanding empty declared positions.
+fn stored_cells(sheet: &Sheet, range: CellRange) -> impl Iterator<Item = &Cell> {
+    let first = sheet
+        .rows
+        .partition_point(|row| row.index < range.start.row);
+    let end = sheet.rows.partition_point(|row| row.index <= range.end.row);
+    sheet.rows[first..end].iter().flat_map(move |row| {
+        let first = row
+            .cells
+            .partition_point(|cell| cell.reference.column < range.start.column);
+        let end = row
+            .cells
+            .partition_point(|cell| cell.reference.column <= range.end.column);
+        row.cells[first..end].iter()
+    })
 }
 
 fn guard_legacy_arrays(sheet: &Sheet, affected: CellRange, moved: Option<CellRange>) -> Result<()> {
