@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "documents": [
+    {
+      "name": "word-windows-edge-table-zero-spacing-bidi-border-widths-compat14",
+      "file": "inputs/word-windows-edge-table-zero-spacing-bidi-border-widths-compat14.docx",
+      "sha256": "5fa62fd84075310abde7a79a4966a64296416e3dc5e0bb3d7c9d65ec15337500"
+    },
+    {
+      "name": "word-windows-edge-table-zero-spacing-bidi-border-widths-compat15",
+      "file": "inputs/word-windows-edge-table-zero-spacing-bidi-border-widths-compat15.docx",
+      "sha256": "486cbf4a1f19d8ac26d8eccdb447377db1310fbcbe29b46149b3f5381c1c96ff"
+    },
+    {
+      "name": "word-windows-edge-table-zero-spacing-ltr-border-widths-compat14",
+      "file": "inputs/word-windows-edge-table-zero-spacing-ltr-border-widths-compat14.docx",
+      "sha256": "13ac226e1028f45a63698f5f857abee6507b447d57f3965cd9c680d54b1353a9"
+    },
+    {
+      "name": "word-windows-edge-table-zero-spacing-ltr-border-widths-compat15",
+      "file": "inputs/word-windows-edge-table-zero-spacing-ltr-border-widths-compat15.docx",
+      "sha256": "c5b196e941821ce638eaea1115ec11b647d60daff4bf536a0af20a4170472d82"
+    }
+  ]
+}

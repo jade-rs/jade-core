@@ -54,6 +54,9 @@ fn escaped_code_unit(bytes: &[u8], index: usize) -> Option<u16> {
         return None;
     }
     let digits = std::str::from_utf8(&bytes[index + 2..index + 6]).ok()?;
+    if !digits.bytes().all(|byte| byte.is_ascii_hexdigit()) {
+        return None;
+    }
     u16::from_str_radix(digits, 16).ok()
 }
 
@@ -112,5 +115,23 @@ mod tests {
     #[test]
     fn a_lone_surrogate_stays_literal() {
         assert_eq!(decode_xstring("_xD800_"), "_xD800_");
+    }
+
+    #[test]
+    fn escapes_require_exactly_four_hexadecimal_digits() {
+        for literal in ["_x+041_", "_x-041_", "_x 041_", "_x00G1_", "_x１２３４_"] {
+            assert_eq!(decode_xstring(literal), literal);
+            assert_eq!(encode_xstring(literal), literal);
+        }
+        assert_eq!(decode_xstring("_x0041__X00e9_"), "Aé");
+        assert_eq!(encode_xstring("_x0041_"), "_x005F_x0041_");
+    }
+
+    #[test]
+    fn shared_string_cells_preserve_escape_lookalikes() {
+        let strings = crate::shared_strings::parse_shared_strings(
+            r#"<sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><si><t>code _x+041_ / _x0041_ / _x005F_x0041_</t></si></sst>"#,
+        ).unwrap();
+        assert_eq!(strings, ["code _x+041_ / A / _x0041_"]);
     }
 }

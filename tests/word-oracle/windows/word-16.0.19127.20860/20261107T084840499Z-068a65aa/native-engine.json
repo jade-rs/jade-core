@@ -1,0 +1,6 @@
+{
+  "schema": 1,
+  "native_source_commit": "00f7aeed602be91ebe3995d0869dbdefe32fdb06",
+  "native_executable_sha256": "e203e63cd4cca298d5409d1cad31791fa35608b0a2fedd22e562e80b0281ceb3",
+  "provenance_note": "Original clean engine traces before collapsed-rule painting corrections. Explicit zero spacing mixed-border failures remain pending and are not registered."
+}

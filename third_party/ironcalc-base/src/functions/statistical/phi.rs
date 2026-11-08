@@ -1,5 +1,7 @@
 use crate::expressions::types::CellReferenceIndex;
-use crate::{calc_result::CalcResult, expressions::parser::Node, model::Model};
+use crate::{
+    calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
+};
 
 impl<'a> Model<'a> {
     // PHI(x) = standard normal PDF at x
@@ -8,14 +10,20 @@ impl<'a> Model<'a> {
             return CalcResult::new_args_number_error(cell);
         }
 
-        let x = match self.get_number_no_bools(&args[0], cell) {
-            Ok(f) => f,
-            Err(e) => return e,
-        };
-
-        // Standard normal PDF: (1 / sqrt(2π)) * exp(-x^2 / 2)
-        let result = (-(x * x) / 2.0).exp() / (2.0 * std::f64::consts::PI).sqrt();
-
-        CalcResult::Number(result)
+        self.map_scalar_values(&args[0], cell, |model, value| {
+            if matches!(value, CalcResult::Boolean(_)) {
+                return CalcResult::new_error(Error::VALUE, cell, "Expecting number".into());
+            }
+            let x = match model.cast_to_number(value, cell) {
+                Ok(number) => number,
+                Err(error) => return error,
+            };
+            if !x.is_finite() {
+                return CalcResult::new_error(Error::NUM, cell, "Invalid PHI parameter".into());
+            }
+            // Retain the standard normal density expression and tail behavior.
+            let result = (-(x * x) / 2.0).exp() / (2.0 * std::f64::consts::PI).sqrt();
+            CalcResult::Number(result)
+        })
     }
 }
