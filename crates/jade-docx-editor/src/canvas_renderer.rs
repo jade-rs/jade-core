@@ -28484,6 +28484,9 @@ where
                         max_width: Some(width),
                         text_family: Some(self.math_text_family()),
                         settings: self.math_settings,
+                        script_scales: Some(
+                            jade_docx_layout::math_layout::styled::WORD_SCRIPT_SCALES,
+                        ),
                         ..Default::default()
                     };
                     let plan =
@@ -46515,6 +46518,32 @@ mod tests {
             assert!((lines[0].start_x - drawn_x).abs() < 1e-9);
             assert!((lines[0].fragments[0].x - drawn_x).abs() < 1e-9);
         }
+    }
+
+    #[cfg(feature = "opentype-math")]
+    #[test]
+    fn boxed_math_inherits_paragraph_font_size_and_word_script_scales() {
+        let xml = r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><w:body><w:p><w:pPr><w:rPr><w:rFonts w:ascii="Host Math"/><w:sz w:val="30"/></w:rPr></w:pPr><m:oMathPara><m:oMath><m:sSup><m:e><m:r><m:t>x</m:t></m:r></m:e><m:sup><m:r><m:t>x</m:t></m:r></m:sup></m:sSup></m:oMath></m:oMathPara></w:p></w:body></w:document>"#;
+        let document = jade_docx_reader::DocumentParser::new()
+            .parse_document_xml(xml)
+            .unwrap();
+        let blocks = document.body.unwrap().elements;
+        let (mut renderer, _) = recording_renderer();
+        renderer
+            .register_math_font(
+                "Host Math".into(),
+                include_bytes!("../../jade-docx-layout/tests/fixtures/math-font.ttf").to_vec(),
+            )
+            .unwrap();
+        let measured = renderer
+            .measure_text_box_blocks(&blocks, 0.0, 400.0, &mut NumberingCounter::new())
+            .unwrap();
+        let glyphs = &measured.math_plans[0].glyphs;
+        assert_eq!(glyphs.len(), 2);
+        assert_eq!(glyphs[0].style.family, "Host Math");
+        assert!((glyphs[0].style.size_px - 20.0).abs() < 1e-9);
+        assert!((glyphs[1].style.size_px - 14.0).abs() < 1e-9);
+        assert_eq!(renderer.math_font_stats()["fonts"][0]["layouts"], 1);
     }
 
     #[test]
