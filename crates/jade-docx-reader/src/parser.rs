@@ -1733,7 +1733,7 @@ impl DocumentParser {
                         }
                         b"w:color" => {
                             if parsing_run_props {
-                                let theme = Self::run_theme_color(e.attributes());
+                                let (formatted, theme) = Self::run_color_with_theme(e);
                                 Self::apply_to_active_run_props(
                                     parsing_paragraph_run_props,
                                     &mut current_paragraph_run_props,
@@ -1742,7 +1742,7 @@ impl DocumentParser {
                                         props.theme_color = theme.clone().map(Box::new);
                                     },
                                 );
-                                if let Some(formatted) = Self::run_color(e) {
+                                if let Some(formatted) = formatted {
                                     Self::apply_to_active_run_props(
                                         parsing_paragraph_run_props,
                                         &mut current_paragraph_run_props,
@@ -3162,7 +3162,7 @@ impl DocumentParser {
                     }
                     b"w:color" => {
                         if parsing_run_props {
-                            let theme = Self::run_theme_color(e.attributes());
+                            let (formatted, theme) = Self::run_color_with_theme(e);
                             Self::apply_to_active_run_props(
                                 parsing_paragraph_run_props,
                                 &mut current_paragraph_run_props,
@@ -3171,7 +3171,7 @@ impl DocumentParser {
                                     props.theme_color = theme.clone().map(Box::new);
                                 },
                             );
-                            if let Some(formatted) = Self::run_color(e) {
+                            if let Some(formatted) = formatted {
                                 Self::apply_to_active_run_props(
                                     parsing_paragraph_run_props,
                                     &mut current_paragraph_run_props,
@@ -8489,8 +8489,8 @@ impl DocumentParser {
     /// `#RRGGBB`; the `auto` sentinel becomes `None`.
     pub(crate) fn parse_shading(attributes: Attributes<'_>) -> Shading {
         let mut shading = Shading::default();
-        let mut foreground = crate::document::RunThemeColor::default();
-        let mut background = crate::document::RunThemeColor::default();
+        let mut foreground = None;
+        let mut background = None;
         for attr in attributes.flatten() {
             match attr.key.as_ref() {
                 b"w:val" => {
@@ -8510,14 +8510,23 @@ impl DocumentParser {
                 }
                 name @ (b"w:themeColor" | b"w:themeTint" | b"w:themeShade" | b"w:themeFill"
                 | b"w:themeFillTint" | b"w:themeFillShade") => {
+                    let reference = if matches!(
+                        name,
+                        b"w:themeFill" | b"w:themeFillTint" | b"w:themeFillShade"
+                    ) {
+                        &mut background
+                    } else {
+                        &mut foreground
+                    }
+                    .get_or_insert_with(crate::document::RunThemeColor::default);
                     let value = String::from_utf8_lossy(&attr.value).trim().to_string();
                     match name {
-                        b"w:themeColor" => foreground.name = Rc::from(value),
-                        b"w:themeTint" => foreground.tint = Some(Rc::from(value)),
-                        b"w:themeShade" => foreground.shade = Some(Rc::from(value)),
-                        b"w:themeFill" => background.name = Rc::from(value),
-                        b"w:themeFillTint" => background.tint = Some(Rc::from(value)),
-                        b"w:themeFillShade" => background.shade = Some(Rc::from(value)),
+                        b"w:themeColor" => reference.name = Rc::from(value),
+                        b"w:themeTint" => reference.tint = Some(Rc::from(value)),
+                        b"w:themeShade" => reference.shade = Some(Rc::from(value)),
+                        b"w:themeFill" => reference.name = Rc::from(value),
+                        b"w:themeFillTint" => reference.tint = Some(Rc::from(value)),
+                        b"w:themeFillShade" => reference.shade = Some(Rc::from(value)),
                         _ => unreachable!(),
                     }
                 }
@@ -8528,7 +8537,7 @@ impl DocumentParser {
             (foreground, &mut shading.color, &mut shading.theme_color),
             (background, &mut shading.fill, &mut shading.theme_fill),
         ] {
-            if !reference.name.is_empty() {
+            if let Some(reference) = reference.filter(|reference| !reference.name.is_empty()) {
                 if let Some(resolved) = crate::theme::text_theme_color(
                     &reference.name,
                     reference.tint.as_deref(),
@@ -8545,25 +8554,47 @@ impl DocumentParser {
     /// A run's `w:color`, as `#RRGGBB` (or `#auto`): the theme colour it
     /// names in the scheme being read, else its `w:val`.
     pub(crate) fn run_color(e: &BytesStart) -> Option<String> {
+        Self::run_color_with_theme(e).0
+    }
+
+    /// Read the rendered color and its preserved theme reference in one pass.
+    fn run_color_with_theme(e: &BytesStart) -> (Option<String>, Option<RunThemeColor>) {
         let mut value = None;
-        let mut theme = None;
-        let mut tint = None;
-        let mut shade = None;
+        let mut theme: Option<String> = None;
+        let mut tint: Option<String> = None;
+        let mut shade: Option<String> = None;
         for attr in e.attributes().flatten() {
-            let text = String::from_utf8_lossy(&attr.value).to_string();
             match attr.key.as_ref() {
-                b"w:val" => value = Some(text),
-                b"w:themeColor" => theme = Some(text),
-                b"w:themeTint" => tint = Some(text),
-                b"w:themeShade" => shade = Some(text),
+                b"w:val" => value = Some(String::from_utf8_lossy(&attr.value).into_owned()),
+                b"w:themeColor" => theme = Some(String::from_utf8_lossy(&attr.value).into_owned()),
+                b"w:themeTint" => tint = Some(String::from_utf8_lossy(&attr.value).into_owned()),
+                b"w:themeShade" => shade = Some(String::from_utf8_lossy(&attr.value).into_owned()),
                 _ => {}
             }
         }
-        theme
+        let preserved = theme
+            .as_deref()
+            .map(str::trim)
+            .filter(|name| !name.is_empty())
+            .map(|name| RunThemeColor {
+                name: Rc::from(name),
+                tint: tint
+                    .as_deref()
+                    .map(str::trim)
+                    .filter(|v| !v.is_empty())
+                    .map(Rc::from),
+                shade: shade
+                    .as_deref()
+                    .map(str::trim)
+                    .filter(|v| !v.is_empty())
+                    .map(Rc::from),
+            });
+        let color = theme
             .and_then(|theme| {
                 crate::theme::text_theme_color(&theme, tint.as_deref(), shade.as_deref())
             })
-            .or_else(|| value.map(|value| format!("#{value}")))
+            .or_else(|| value.map(|value| format!("#{value}")));
+        (color, preserved)
     }
 
     /// Normalizes an OOXML hex color (`RRGGBB` or `#RRGGBB`) to `#RRGGBB`.
@@ -9204,12 +9235,6 @@ impl DocumentParser {
             shade,
             ..theme
         })
-    }
-
-    /// Resolves a border's theme reference before falling back to its cached RGB.
-    fn border_theme_color(attributes: Attributes<'_>) -> Option<String> {
-        let theme = Self::run_theme_color(attributes)?;
-        crate::theme::text_theme_color(&theme.name, theme.tint.as_deref(), theme.shade.as_deref())
     }
 
     /// Builds a single [`BorderEdge`] from an edge element's attributes. `w:val`

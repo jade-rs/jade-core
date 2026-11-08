@@ -8872,24 +8872,24 @@ impl WordDocument {
     /// [`Self::settings_xml_content`], borrowed where it can be: what a
     /// reader that only looks at it takes, instead of copying the part.
     pub(crate) fn settings_xml_str(&self) -> Option<std::borrow::Cow<'_, str>> {
-        let settings_path = self.tracking_settings_path();
-        if let Some(part) = self.parts.get(&settings_path) {
+        let settings_path = self.tracking_settings_path_ref();
+        if let Some(part) = self.parts.get(settings_path.as_ref()) {
             return Some(std::borrow::Cow::Borrowed(part.content.as_str()));
         }
-        let bytes = self.package.as_ref()?.files.get(&settings_path)?;
+        let bytes = self.package.as_ref()?.files.get(settings_path.as_ref())?;
         Some(String::from_utf8_lossy(bytes))
     }
 
     /// A lexical guard shared by the editing restriction checks. Comparing
     /// unchanged bytes avoids searching settings twice on every keystroke.
     fn settings_mention_document_protection(&self) -> bool {
-        let settings_path = self.tracking_settings_path();
-        let bytes = if let Some(part) = self.parts.get(&settings_path) {
+        let settings_path = self.tracking_settings_path_ref();
+        let bytes = if let Some(part) = self.parts.get(settings_path.as_ref()) {
             Some(part.content.as_bytes())
         } else {
             self.package
                 .as_ref()
-                .and_then(|package| package.files.get(&settings_path))
+                .and_then(|package| package.files.get(settings_path.as_ref()))
                 .map(Vec::as_slice)
         };
         let Some(bytes) = bytes else {

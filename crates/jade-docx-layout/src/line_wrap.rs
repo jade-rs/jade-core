@@ -1426,7 +1426,7 @@ fn compute_grapheme_advance_with_ascii_width(
             .map(|style| punctuation_compression_adjustment(style, grapheme, script, glyph_width))
             .unwrap_or(0.0)
     };
-    let top_line_adjustment = if measured_width_is_oracle {
+    let top_line_adjustment = if measured_width_is_oracle || !is_line_start {
         0.0
     } else {
         paragraph_style
@@ -1497,23 +1497,24 @@ fn compute_grapheme_advance_with_ascii_width(
             .unwrap_or(0.0)
             .max(0.0)
     };
-    let (implicit_latin_gap, implicit_latin_trailing_gap) = if measured_width_is_oracle {
-        (0.0, 0.0)
-    } else {
-        paragraph_style
-            .map(|style| {
-                implicit_latin_east_asian_gap_width(
-                    style,
-                    grapheme,
-                    script,
-                    adjusted_glyph_width,
-                    prev_grapheme,
-                    next_grapheme,
-                    font_descriptor,
-                )
-            })
-            .unwrap_or((0.0, 0.0))
-    };
+    let (implicit_latin_gap, implicit_latin_trailing_gap) =
+        if measured_width_is_oracle || script != ScriptCategory::Latin {
+            (0.0, 0.0)
+        } else {
+            paragraph_style
+                .map(|style| {
+                    implicit_latin_east_asian_gap_width(
+                        style,
+                        grapheme,
+                        script,
+                        adjusted_glyph_width,
+                        prev_grapheme,
+                        next_grapheme,
+                        font_descriptor,
+                    )
+                })
+                .unwrap_or((0.0, 0.0))
+        };
     // The gap only sits at a digit/East Asian boundary, so most graphemes
     // skip the call: this runs for every grapheme measured.
     let implicit_numeric_gap = if measured_width_is_oracle
@@ -2062,7 +2063,7 @@ pub fn top_line_punctuation_adjustment(
     glyph_width: f64,
     is_line_start: bool,
 ) -> f64 {
-    if !paragraph_style.applies_top_line_punctuation_half_width() || !is_line_start {
+    if !is_line_start || !paragraph_style.applies_top_line_punctuation_half_width() {
         return 0.0;
     }
     if script != ScriptCategory::EastAsia || !is_top_line_half_width_target(grapheme) {

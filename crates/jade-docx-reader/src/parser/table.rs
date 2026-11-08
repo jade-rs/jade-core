@@ -1199,7 +1199,7 @@ impl DocumentParser {
         // the CSS keyword `none` for parity with the rest of the pipeline.
         let mut raw_style: Option<String> = None;
         let mut size_eighths: Option<f32> = None;
-        let theme_color = Self::border_theme_color(attributes.clone());
+        let (mut theme_name, mut tint, mut shade) = (None, None, None);
         let mut color: Option<String> = None;
         for attr in attributes.flatten() {
             match attr.key.as_ref() {
@@ -1221,6 +1221,18 @@ impl DocumentParser {
                         } else {
                             value
                         });
+                    }
+                }
+                b"w:themeColor" | b"w:themeTint" | b"w:themeShade" => {
+                    let decoded = String::from_utf8_lossy(&attr.value);
+                    let value = decoded.trim();
+                    if !value.is_empty() {
+                        let target = match attr.key.as_ref() {
+                            b"w:themeColor" => &mut theme_name,
+                            b"w:themeTint" => &mut tint,
+                            _ => &mut shade,
+                        };
+                        *target = Some(value.to_owned());
                     }
                 }
                 _ => {}
@@ -1245,6 +1257,9 @@ impl DocumentParser {
                 .insert(width_key.to_string(), format!("{points:.4}pt"));
         }
 
+        let theme_color = theme_name.as_deref().and_then(|name| {
+            crate::theme::text_theme_color(name, tint.as_deref(), shade.as_deref())
+        });
         if let Some(color) = theme_color.or(color) {
             cell.style.insert(color_key.to_string(), color);
         }

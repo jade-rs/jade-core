@@ -11,20 +11,31 @@ impl WordDocument {
     }
 
     pub(super) fn tracking_settings_path(&self) -> String {
-        self.document_part
-            .as_ref()
-            .and_then(|part| {
-                part.relationships
-                    .iter()
-                    .find(|rel| rel.r#type == RelationshipTypes::Settings.as_str())
-                    .map(|rel| Self::resolve_target_path(&part.path, &rel.target))
+        self.tracking_settings_path_ref().into_owned()
+    }
+
+    pub(super) fn tracking_settings_path_ref(&self) -> std::borrow::Cow<'_, str> {
+        let Some(part) = self.document_part.as_ref() else {
+            return std::borrow::Cow::Borrowed("word/settings.xml");
+        };
+        let target = part
+            .relationships
+            .iter()
+            .find(|rel| {
+                // Relationship types share a long namespace prefix. Reject
+                // other kinds by their suffix before comparing the full URI.
+                rel.r#type.ends_with("/settings")
+                    && rel.r#type == RelationshipTypes::Settings.as_str()
             })
-            .unwrap_or_else(|| {
-                self.document_part
-                    .as_ref()
-                    .map(|part| Self::resolve_target_path(&part.path, "settings.xml"))
-                    .unwrap_or_else(|| "word/settings.xml".into())
-            })
+            .map(|rel| rel.target.as_str())
+            .unwrap_or("settings.xml");
+        if target == "settings.xml" && part.path == "word/document.xml" {
+            std::borrow::Cow::Borrowed("word/settings.xml")
+        } else if target.starts_with('/') {
+            std::borrow::Cow::Borrowed(target.trim_start_matches('/'))
+        } else {
+            std::borrow::Cow::Owned(Self::resolve_target_path(&part.path, target))
+        }
     }
 
     pub(super) fn saved_change_tracking_enabled(&self) -> bool {
@@ -210,6 +221,34 @@ mod tests {
             },
         )
         .unwrap();
+    }
+
+    #[test]
+    fn settings_path_observes_relationship_changes_and_exact_types() {
+        let mut doc = fixture(
+            Some(
+                r#"<w:settings xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"/>"#,
+            ),
+            false,
+        );
+        assert_eq!(doc.tracking_settings_path_ref(), "word/settings.xml");
+        let mut other = doc.document_part.as_ref().unwrap().relationships[0].clone();
+        other.r#type = "https://example.invalid/settings".into();
+        other.target = "wrong.xml".into();
+        doc.document_part
+            .as_mut()
+            .unwrap()
+            .relationships
+            .insert(0, other);
+        assert_eq!(doc.tracking_settings_path_ref(), "word/settings.xml");
+        doc.document_part.as_mut().unwrap().relationships[1].target = "/config/first.xml".into();
+        assert_eq!(doc.tracking_settings_path_ref(), "config/first.xml");
+        doc.document_part.as_mut().unwrap().relationships[1].target = "../config/next.xml".into();
+        assert_eq!(doc.tracking_settings_path_ref(), "config/next.xml");
+        doc.document_part.as_mut().unwrap().relationships.clear();
+        assert_eq!(doc.tracking_settings_path_ref(), "word/settings.xml");
+        doc.document_part.as_mut().unwrap().path = "custom/document.xml".into();
+        assert_eq!(doc.tracking_settings_path_ref(), "custom/settings.xml");
     }
 
     #[test]

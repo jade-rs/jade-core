@@ -397,7 +397,15 @@ impl ThemePart {
         {
             return None;
         }
-        let token = token.trim();
+        // Canonical theme tokens have no surrounding whitespace. Avoid Unicode
+        // trimming for each of the four slots on every ordinary themed run.
+        let token = if token.starts_with('+')
+            && token.as_bytes().last().is_some_and(u8::is_ascii_alphabetic)
+        {
+            token
+        } else {
+            token.trim()
+        };
         if !token.starts_with('+') {
             return None;
         }
