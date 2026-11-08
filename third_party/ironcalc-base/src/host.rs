@@ -28,6 +28,8 @@ pub struct CellLook {
     pub number_format: String,
     pub horizontal: HorizontalAlignment,
     pub locked: bool,
+    /// Whether active worksheet protection hides this cell's formula.
+    pub formula_hidden: bool,
 }
 
 /// A column's width in characters of the default font, and whether it is

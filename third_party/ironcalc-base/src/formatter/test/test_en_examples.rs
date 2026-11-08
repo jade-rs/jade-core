@@ -118,9 +118,7 @@ fn format_millions_scale_integer() {
     assert_eq!(r3.text, "12");
 }
 
-// skip this test: not implemented yet
 #[test]
-#[ignore]
 fn format_fraction_simple() {
     let locale = get_default_locale();
     let r1 = format_number(1.25, "# ?/?", locale);
@@ -180,8 +178,6 @@ fn format_hash_group_0_0hash() {
     assert_eq!(r3.text, "12.0");
 }
 
-// skip: not implemented yet
-#[ignore]
 #[test]
 fn format_group_with_leading_hashes() {
     let locale = get_default_locale();
@@ -206,10 +202,8 @@ fn format_scientific() {
     assert_eq!(r3.text, "1.E+03");
 }
 
-// skip test: Wrong rounding
 #[test]
-#[ignore]
-fn format_scientific_failing() {
+fn format_scientific_rounds_decimal_halves() {
     let locale = get_default_locale();
     let r1 = format_number(12_345.0, "0.###E+00", locale);
 
@@ -230,9 +224,7 @@ fn format_fraction_two_digit_den() {
     assert_eq!(r3.text, " 3/4");
 }
 
-// skip this test: not implemented yet
 #[test]
-#[ignore]
 fn format_fraction_eighths() {
     let locale = get_default_locale();
     let r1 = format_number(1.25, "# ?/8", locale);

@@ -1,0 +1,471 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261107T063337099Z-03342251",
+  "captured_at_utc": "2026-11-07T06:33:37.1227367Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20860",
+    "file_version": "16.0.19127.20860",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "9bafe09d0c458006744b9edce767a328ba2da1bb5d9a460e5830c47bf6d7f1d1"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-edge-table-spacing-continuation-compat12",
+      "source": "tmp\\spaced-continuation-inputs\\public\\fixtures\\word-windows-edge-table-spacing-continuation-compat12.docx",
+      "sha256": "2a424433b4a4750eedbc8e10adf7b480a3b44ba1ef933b46481518719c3bb787",
+      "pdf": "word-windows-edge-table-spacing-continuation-compat12.pdf",
+      "pdf_sha256": "ea00184964102f4c0a07020ed1afcb40197e75ae16f8648a55177a3034fa9e94",
+      "pages": 20,
+      "compatibility_mode": 12,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-spacing-continuation-compat12.page-001.emf",
+          "sha256": "f26543c09b4c16099e1fac5a19929e50dcd97a5a4fb129dd005ff967c24ebb18",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 2,
+          "file": "word-windows-edge-table-spacing-continuation-compat12.page-002.emf",
+          "sha256": "17ebaf1f51d5d9050eb4714b2045456705a82912d0eeef3021320fbacdc802af",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 3,
+          "file": "word-windows-edge-table-spacing-continuation-compat12.page-003.emf",
+          "sha256": "48fb08de766b1564e15472d5512d54be9b6b4a0d33b2957b3609e096ee422e54",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 4,
+          "file": "word-windows-edge-table-spacing-continuation-compat12.page-004.emf",
+          "sha256": "4f0d1c1094ddfebd2818d0bdb21817385ed1246e8196a4aaed462a838922a098",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 5,
+          "file": "word-windows-edge-table-spacing-continuation-compat12.page-005.emf",
+          "sha256": "891710987c710daa6f9efe4508bc87753e761988bf2c980e13b845e6e1db56de",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 6,
+          "file": "word-windows-edge-table-spacing-continuation-compat12.page-006.emf",
+          "sha256": "08b97c81a39021255665f4b9942a8388a876c9cc339deaafc05e08db981a015a",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 7,
+          "file": "word-windows-edge-table-spacing-continuation-compat12.page-007.emf",
+          "sha256": "f98a21612139a52576296510d7026ab8562242a3973428cc1e0ffdf20dd51026",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 8,
+          "file": "word-windows-edge-table-spacing-continuation-compat12.page-008.emf",
+          "sha256": "a0d81be3c9ce37aa7f2fb624debd0e8841fa457dff43d7358783e9a2b58bb34e",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 9,
+          "file": "word-windows-edge-table-spacing-continuation-compat12.page-009.emf",
+          "sha256": "2a864af8c1512a9a04b9f9756ae30fc2b8bd98d8558159b8346f366e796cb1e1",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 10,
+          "file": "word-windows-edge-table-spacing-continuation-compat12.page-010.emf",
+          "sha256": "10fdcd0b981c343106a7397bc0f54ed173a46db1367fd881cec21fe261e7cb9d",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 11,
+          "file": "word-windows-edge-table-spacing-continuation-compat12.page-011.emf",
+          "sha256": "c985a29ebc3cfccb48e4a0f9dbdc9a1f59a722205401d78923a327a46c1a380c",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 12,
+          "file": "word-windows-edge-table-spacing-continuation-compat12.page-012.emf",
+          "sha256": "dcbb2098a446a9d9f9c46d0dae5b976b4141358b2c2cbbf3d7a1b2f5815059b7",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 13,
+          "file": "word-windows-edge-table-spacing-continuation-compat12.page-013.emf",
+          "sha256": "2f6413236a35f1f9b1cac4f9a84ab7d1794f18e37ee3816fa80b03f3d45fa8a5",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 14,
+          "file": "word-windows-edge-table-spacing-continuation-compat12.page-014.emf",
+          "sha256": "6122b2bef5f0c0b6deac6ce9d76ec9f44da8cc3311180b65942f53804d08261d",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 15,
+          "file": "word-windows-edge-table-spacing-continuation-compat12.page-015.emf",
+          "sha256": "839b556123920a088ca2dc09d3a15124935c611435201cd3d4a428ae14370034",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 16,
+          "file": "word-windows-edge-table-spacing-continuation-compat12.page-016.emf",
+          "sha256": "f65a358e24822124e623f6118648783aa56710a50b0089a26c32e1c77707700a",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 17,
+          "file": "word-windows-edge-table-spacing-continuation-compat12.page-017.emf",
+          "sha256": "54fd9723371e870a9ad0a5d5517b55a3b7c594653085b053bd0f97b902d578f2",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 18,
+          "file": "word-windows-edge-table-spacing-continuation-compat12.page-018.emf",
+          "sha256": "a126773d98e865eb5be50c02f663dabb3b531755b4cdf077f80ea459404fc948",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 19,
+          "file": "word-windows-edge-table-spacing-continuation-compat12.page-019.emf",
+          "sha256": "e875f3cc5d553133d3e8ac890dbf058416e94539258c7a5ed8821a349d31785c",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 20,
+          "file": "word-windows-edge-table-spacing-continuation-compat12.page-020.emf",
+          "sha256": "b43099dad90ddfa86eeeae4b0ae83885dfb9e2f72d97abe395d1d1a869aec298",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-spacing-continuation-compat14",
+      "source": "tmp\\spaced-continuation-inputs\\public\\fixtures\\word-windows-edge-table-spacing-continuation-compat14.docx",
+      "sha256": "56e9f4c781a61f3feee673c631028e4f5bfe6cef8f50665dfad8e27d4cc47b0f",
+      "pdf": "word-windows-edge-table-spacing-continuation-compat14.pdf",
+      "pdf_sha256": "3aa1fbaa48efdf884a4fb5faac9b70bd0837589e038aede2b0e938ac5af5b2e9",
+      "pages": 20,
+      "compatibility_mode": 14,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-spacing-continuation-compat14.page-001.emf",
+          "sha256": "3aa0c7130368b61b36c3cfe1a8c331b1a317275252f2566ef6e0f44c2f490845",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 2,
+          "file": "word-windows-edge-table-spacing-continuation-compat14.page-002.emf",
+          "sha256": "17ebaf1f51d5d9050eb4714b2045456705a82912d0eeef3021320fbacdc802af",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 3,
+          "file": "word-windows-edge-table-spacing-continuation-compat14.page-003.emf",
+          "sha256": "48fb08de766b1564e15472d5512d54be9b6b4a0d33b2957b3609e096ee422e54",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 4,
+          "file": "word-windows-edge-table-spacing-continuation-compat14.page-004.emf",
+          "sha256": "4f0d1c1094ddfebd2818d0bdb21817385ed1246e8196a4aaed462a838922a098",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 5,
+          "file": "word-windows-edge-table-spacing-continuation-compat14.page-005.emf",
+          "sha256": "f543b0752f201f516bfb6d8c9c3acaf83acd041071cbd0d48bd72eec87a96d91",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 6,
+          "file": "word-windows-edge-table-spacing-continuation-compat14.page-006.emf",
+          "sha256": "08b97c81a39021255665f4b9942a8388a876c9cc339deaafc05e08db981a015a",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 7,
+          "file": "word-windows-edge-table-spacing-continuation-compat14.page-007.emf",
+          "sha256": "53bb9a670a8c8d3b6861251dba4704075cd87c914185384011dbd009cb32b2db",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 8,
+          "file": "word-windows-edge-table-spacing-continuation-compat14.page-008.emf",
+          "sha256": "a0d81be3c9ce37aa7f2fb624debd0e8841fa457dff43d7358783e9a2b58bb34e",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 9,
+          "file": "word-windows-edge-table-spacing-continuation-compat14.page-009.emf",
+          "sha256": "47f5a65fc1565459cd017903044e72847927cdbc3868291f00068f74b2132f21",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 10,
+          "file": "word-windows-edge-table-spacing-continuation-compat14.page-010.emf",
+          "sha256": "10fdcd0b981c343106a7397bc0f54ed173a46db1367fd881cec21fe261e7cb9d",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 11,
+          "file": "word-windows-edge-table-spacing-continuation-compat14.page-011.emf",
+          "sha256": "87f7cf09a643aaaac76ad41b1f151dee79e47837d6522a0087982cec6357f8e1",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 12,
+          "file": "word-windows-edge-table-spacing-continuation-compat14.page-012.emf",
+          "sha256": "6b24b9b790443fdb21524850d93b11dcad66c7c129ff6a197546060a21c9e5e8",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 13,
+          "file": "word-windows-edge-table-spacing-continuation-compat14.page-013.emf",
+          "sha256": "2f6413236a35f1f9b1cac4f9a84ab7d1794f18e37ee3816fa80b03f3d45fa8a5",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 14,
+          "file": "word-windows-edge-table-spacing-continuation-compat14.page-014.emf",
+          "sha256": "6122b2bef5f0c0b6deac6ce9d76ec9f44da8cc3311180b65942f53804d08261d",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 15,
+          "file": "word-windows-edge-table-spacing-continuation-compat14.page-015.emf",
+          "sha256": "839b556123920a088ca2dc09d3a15124935c611435201cd3d4a428ae14370034",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 16,
+          "file": "word-windows-edge-table-spacing-continuation-compat14.page-016.emf",
+          "sha256": "8364437c5b215cb150af04ee69ee9f7baaaddb9f406c7a34253334af6d5a959a",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 17,
+          "file": "word-windows-edge-table-spacing-continuation-compat14.page-017.emf",
+          "sha256": "03f20fb5441d4f8ef60694b071f1318118009ada0218b78f86cd2f8713ea0a40",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 18,
+          "file": "word-windows-edge-table-spacing-continuation-compat14.page-018.emf",
+          "sha256": "84cb56a4c370d8514c5935c758ba0537c54a689643739e29aeb91dee1ce4d27a",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 19,
+          "file": "word-windows-edge-table-spacing-continuation-compat14.page-019.emf",
+          "sha256": "e875f3cc5d553133d3e8ac890dbf058416e94539258c7a5ed8821a349d31785c",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 20,
+          "file": "word-windows-edge-table-spacing-continuation-compat14.page-020.emf",
+          "sha256": "b43099dad90ddfa86eeeae4b0ae83885dfb9e2f72d97abe395d1d1a869aec298",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-spacing-continuation-compat15",
+      "source": "tmp\\spaced-continuation-inputs\\public\\fixtures\\word-windows-edge-table-spacing-continuation-compat15.docx",
+      "sha256": "8fb7bf8ff84e24713009a8e42c747f40bdc0e4d3afa026f5ff98c3bc4992dac4",
+      "pdf": "word-windows-edge-table-spacing-continuation-compat15.pdf",
+      "pdf_sha256": "ccb0960b57b7b1bb480f0f4f852f0b2c30b8177a216ae8832a65bccf3059eb51",
+      "pages": 20,
+      "compatibility_mode": 15,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-spacing-continuation-compat15.page-001.emf",
+          "sha256": "9b904b1627c3568b9edfbdc703c105785a9db488294c55a02eb4d1bda448faec",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 2,
+          "file": "word-windows-edge-table-spacing-continuation-compat15.page-002.emf",
+          "sha256": "17ebaf1f51d5d9050eb4714b2045456705a82912d0eeef3021320fbacdc802af",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 3,
+          "file": "word-windows-edge-table-spacing-continuation-compat15.page-003.emf",
+          "sha256": "a2dc43f3edb9d41b55a5798842a8794778f0848a5f1586c0daebdbd4f78184bb",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 4,
+          "file": "word-windows-edge-table-spacing-continuation-compat15.page-004.emf",
+          "sha256": "a3c22aa7bbe8a07139118ad0d5c55692fd5c3bbc0b54f6c6ee5f78286deda12c",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 5,
+          "file": "word-windows-edge-table-spacing-continuation-compat15.page-005.emf",
+          "sha256": "b6113101d991e872b91963aeeb74a9405bd5b11973ba22f448c44729002f974e",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 6,
+          "file": "word-windows-edge-table-spacing-continuation-compat15.page-006.emf",
+          "sha256": "561c42a9f36a38573dd3a10c42dcbd586582b93fbb57faf1b4ac8a51c4589ece",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 7,
+          "file": "word-windows-edge-table-spacing-continuation-compat15.page-007.emf",
+          "sha256": "572ca12617cebb1afa22218696ce626352e029b6a982b5055c271c24a4e0a698",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 8,
+          "file": "word-windows-edge-table-spacing-continuation-compat15.page-008.emf",
+          "sha256": "e3c49ceb4cb3c4273e9dcbe84d2991b75d7fdc0911eedab16fe03c52e9356950",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 9,
+          "file": "word-windows-edge-table-spacing-continuation-compat15.page-009.emf",
+          "sha256": "a79a1cae2ba16d2ff8830e5ab3e4843cdbea6380c2271ccbd19174e9fb920884",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 10,
+          "file": "word-windows-edge-table-spacing-continuation-compat15.page-010.emf",
+          "sha256": "a76684be22a2b2820fd518d1ade5b1677e11344633e5cb43a649853e41e2d8f6",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 11,
+          "file": "word-windows-edge-table-spacing-continuation-compat15.page-011.emf",
+          "sha256": "1f4c631b80f1ef912217b3a7eeb78a03232cf2bbca6145822b745ff2e6e38c68",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 12,
+          "file": "word-windows-edge-table-spacing-continuation-compat15.page-012.emf",
+          "sha256": "dcbb2098a446a9d9f9c46d0dae5b976b4141358b2c2cbbf3d7a1b2f5815059b7",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 13,
+          "file": "word-windows-edge-table-spacing-continuation-compat15.page-013.emf",
+          "sha256": "f3c2d307a5436de0b9391fb7b87fc96ae5dc63262adc63ba4e31f1593912fb03",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 14,
+          "file": "word-windows-edge-table-spacing-continuation-compat15.page-014.emf",
+          "sha256": "dff6adc46241f1665d0ce9b541a3a9975a8d262154119901a357956e2ed1f3c8",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 15,
+          "file": "word-windows-edge-table-spacing-continuation-compat15.page-015.emf",
+          "sha256": "a161007f2f2516d675822d7e07c3050fc3ce52027f2d16533d38a4dbc8fe4a6d",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 16,
+          "file": "word-windows-edge-table-spacing-continuation-compat15.page-016.emf",
+          "sha256": "cb6daf16dd5f97a3b663ac2b092c2cd0f81798f6048e2190cb40775302260dc8",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 17,
+          "file": "word-windows-edge-table-spacing-continuation-compat15.page-017.emf",
+          "sha256": "608e4bbc95ce2940c329535869c8778eb01d1a9ff8e4103782e712868930e101",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 18,
+          "file": "word-windows-edge-table-spacing-continuation-compat15.page-018.emf",
+          "sha256": "236f99a6200f9c58751e1d261b8c68f2fc5a32da7a58bc799234ed0f5d787b4f",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 19,
+          "file": "word-windows-edge-table-spacing-continuation-compat15.page-019.emf",
+          "sha256": "64875a48f31dd9a0485c5745341e55e040de7f52baa2126fb5f21f8ddd58e97c",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 20,
+          "file": "word-windows-edge-table-spacing-continuation-compat15.page-020.emf",
+          "sha256": "12cd36269cb2e2fe8f4fb1502f88dc41521c6a25e5b8b4d6d31cbbe277cb747f",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    }
+  ]
+}

@@ -16,6 +16,485 @@ use std::path::PathBuf;
 const SHEET: &str = "xl/worksheets/sheet1.xml";
 const NAME: &str = "売上サマリ";
 
+#[test]
+fn inline_formula_alternatives_rebase_each_formula_instead_of_staying_stale() {
+    let xml = r#"<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:m="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"><sheetData><row r="1"><c r="A1"><v>1</v></c><c r="B1"><f><mc:AlternateContent><mc:Choice Requires="m">A1+1</mc:Choice><mc:Fallback>A1+2</mc:Fallback></mc:AlternateContent></f><v>2</v></c></row></sheetData></worksheet>"#;
+    let workbook = read_xlsx(&workbook_with_sheet(xml)).unwrap();
+    let updated = jade_xlsx_writer::shift::shift_sheet(
+        xml,
+        &workbook.sheets[0],
+        true,
+        &change("Sheet1", Axis::Rows, 0, 1, true),
+    )
+    .unwrap();
+    assert!(updated.contains(">A2+1</mc:Choice>"), "{updated}");
+    assert!(updated.contains(">A2+2</mc:Fallback>"), "{updated}");
+    let moved = read_xlsx(&workbook_with_sheet(&updated)).unwrap();
+    assert_eq!(
+        moved.sheets[0].rows[0].cells[1].formula.as_deref(),
+        Some("A2+1")
+    );
+    let mut book = HeadlessWorkbook::open_for_editing(&workbook_with_sheet(xml)).unwrap();
+    let before = book.bytes().to_vec();
+    book.insert_rows("Sheet1", 1, 1).unwrap();
+    assert_eq!(book.cell("Sheet1", "B2").unwrap().display, "2");
+    book.undo().unwrap();
+    assert_eq!(book.bytes(), before);
+    book.redo().unwrap();
+    let saved = book.save_bytes().unwrap();
+    assert!(part(&saved, SHEET).contains(">A2+2</mc:Fallback>"));
+    let reopened = HeadlessWorkbook::open_for_editing(&saved).unwrap();
+    assert_eq!(reopened.cell("Sheet1", "B2").unwrap().display, "2");
+}
+
+fn formula_alternative(required: &str, choice: &str, fallback: &str) -> String {
+    format!("<mc:AlternateContent>\n<mc:Choice Requires=\"u\"><u:opaque>A99</u:opaque></mc:Choice><mc:Choice Requires=\"{required}\">{choice}</mc:Choice><mc:Fallback>{fallback}</mc:Fallback>\n</mc:AlternateContent>")
+}
+
+fn inline_formula_sheet(formula: &str) -> String {
+    let ns = "http://schemas.openxmlformats.org/spreadsheetml/2006/main";
+    format!("<worksheet xmlns=\"{ns}\" xmlns:a=\"{ns}\" xmlns:b=\"{ns}\" xmlns:mc=\"http://schemas.openxmlformats.org/markup-compatibility/2006\" xmlns:u=\"urn:future\" xmlns:p=\"urn:processed\" mc:Ignorable=\"p\" mc:ProcessContent=\"p:wrap\"><sheetData><row r=\"1\"><c r=\"A1\"><v>1</v></c><c r=\"B1\"><v>2</v></c></row><row r=\"4\"><c r=\"D4\"><f>{formula}</f><v>0</v></c></row></sheetData></worksheet>")
+}
+
+fn selected_inline_formula(xml: &str, mask: usize) -> String {
+    let mut xml = xml.to_string();
+    for (bit, prefix) in [(1, "a"), (2, "b")] {
+        if mask & bit != 0 {
+            xml = xml.replace(
+                &format!(
+                    "xmlns:{prefix}=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\""
+                ),
+                &format!("xmlns:{prefix}=\"urn:unsupported-{prefix}\""),
+            );
+        }
+    }
+    read_xlsx(&workbook_with_sheet(&xml)).unwrap().sheets[0]
+        .rows
+        .iter()
+        .flat_map(|r| &r.cells)
+        .find_map(|c| c.formula.clone())
+        .unwrap()
+}
+
+#[test]
+fn split_coordinates_and_ranges_rebase_all_independent_inline_alternatives() {
+    let column = formula_alternative("a", "<p:wrap><![CDATA[A]]></p:wrap><!--keep-->", "B");
+    let row = formula_alternative("b", "9", "10");
+    let range = format!(
+        "SUM({}:{})",
+        formula_alternative("a", "A9", "B9"),
+        formula_alternative("b", "C10", "D10")
+    );
+    for (formula, range) in [
+        (format!("{column}{row}"), false),
+        (format!("\"あ\"&amp;{column}{row}"), false),
+        (range, true),
+    ] {
+        let xml = inline_formula_sheet(&formula);
+        let workbook = read_xlsx(&workbook_with_sheet(&xml)).unwrap();
+        for axis in [Axis::Rows, Axis::Columns] {
+            let updated = jade_xlsx_writer::shift::shift_sheet(
+                &xml,
+                &workbook.sheets[0],
+                true,
+                &change("Sheet1", axis, 0, 1, true),
+            )
+            .unwrap();
+            assert_eq!(updated.matches("<u:opaque>A99</u:opaque>").count(), 2);
+            if !range {
+                assert!(updated.contains("<p:wrap>"));
+                assert!(updated.contains("<!--keep-->"));
+            }
+            for mask in 0..4 {
+                let expected = if range {
+                    let (left, right) = if axis == Axis::Rows {
+                        (["A10", "B10"], ["C11", "D11"])
+                    } else {
+                        (["B9", "C9"], ["D10", "E10"])
+                    };
+                    format!("SUM({}:{})", left[mask & 1], right[(mask >> 1) & 1])
+                } else {
+                    (if axis == Axis::Rows {
+                        ["A10", "B10", "A11", "B11"]
+                    } else {
+                        ["B9", "C9", "B10", "C10"]
+                    })[mask]
+                        .to_string()
+                };
+                assert_eq!(
+                    selected_inline_formula(&updated, mask),
+                    if formula.starts_with("\"あ\"") {
+                        format!("\"あ\"&{expected}")
+                    } else {
+                        expected
+                    },
+                    "{updated}"
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn deleted_branch_references_can_relocate_their_shared_prefix() {
+    let xml = inline_formula_sheet(&format!("A{}", formula_alternative("a", "1", "2")));
+    let workbook = read_xlsx(&workbook_with_sheet(&xml)).unwrap();
+    let updated = jade_xlsx_writer::shift::shift_sheet(
+        &xml,
+        &workbook.sheets[0],
+        true,
+        &change("Sheet1", Axis::Rows, 0, 1, false),
+    )
+    .unwrap();
+    assert_eq!(selected_inline_formula(&updated, 0), "#REF!");
+    assert_eq!(selected_inline_formula(&updated, 1), "A1");
+    assert!(updated.contains("<u:opaque>A99</u:opaque>"));
+}
+
+#[test]
+fn qualified_inline_references_update_when_only_another_sheet_moves() {
+    let xml = inline_formula_sheet(&format!("Sheet1!{}", formula_alternative("a", "A1", "A2")));
+    let mut workbook = read_xlsx(&workbook_with_sheet(&xml)).unwrap();
+    workbook.sheets[0].name = "Other".into();
+    let updated = jade_xlsx_writer::shift::shift_sheet(
+        &xml,
+        &workbook.sheets[0],
+        false,
+        &change("Sheet1", Axis::Rows, 0, 1, true),
+    )
+    .unwrap();
+    assert_eq!(selected_inline_formula(&updated, 0), "Sheet1!A2");
+    assert_eq!(selected_inline_formula(&updated, 1), "Sheet1!A3");
+    assert!(updated.contains("<c r=\"D4\">"));
+}
+
+#[test]
+fn incompatible_shared_formula_text_rejects_structure_without_changing_history() {
+    let xml = inline_formula_sheet(&format!(
+        "{}{}",
+        formula_alternative("a", "A", "B"),
+        formula_alternative("b", "1", "2")
+    ));
+    let mut book = HeadlessWorkbook::open_for_editing(&workbook_with_sheet(&xml)).unwrap();
+    book.set(
+        "Sheet1",
+        "F1",
+        jade_xlsx_headless_api::CellInput::Text("ready".into()),
+    )
+    .unwrap();
+    let before = book.bytes().to_vec();
+    let error = book.delete_columns("Sheet1", "A", 1).unwrap_err();
+    assert!(error.is_invalid_input());
+    assert!(matches!(
+        error,
+        jade_xlsx_headless_editor::HeadlessError::Write(
+            jade_xlsx_writer::WriteError::FormulaMarkup(_)
+        )
+    ));
+    assert_eq!(book.bytes(), before);
+    book.undo().unwrap();
+    assert_eq!(book.cell("Sheet1", "F1").unwrap().display, "");
+    book.redo().unwrap();
+    assert_eq!(book.cell("Sheet1", "F1").unwrap().display, "ready");
+}
+
+#[test]
+fn deeply_nested_inline_alternatives_shift_without_recursive_xml_rewrites() {
+    let mut formula = "A1".to_string();
+    for _ in 0..256 {
+        formula = format!("<mc:AlternateContent><mc:Choice Requires=\"a\">{formula}</mc:Choice><mc:Fallback>A1</mc:Fallback></mc:AlternateContent>");
+    }
+    let xml = inline_formula_sheet(&formula);
+    let workbook = read_xlsx(&workbook_with_sheet(&xml)).unwrap();
+    let updated = jade_xlsx_writer::shift::shift_sheet(
+        &xml,
+        &workbook.sheets[0],
+        true,
+        &change("Sheet1", Axis::Rows, 0, 1, true),
+    )
+    .unwrap();
+    assert_eq!(updated.matches("<mc:AlternateContent>").count(), 256);
+    let formula = updated
+        .split_once("<f>")
+        .unwrap()
+        .1
+        .split_once("</f>")
+        .unwrap()
+        .0;
+    assert_eq!(formula.matches("A2").count(), 257);
+    assert_eq!(selected_inline_formula(&updated, 0), "A2");
+    assert_eq!(selected_inline_formula(&updated, 1), "A2");
+}
+
+#[test]
+fn unrelated_sheets_keep_complex_unqualified_inline_formulas_byte_exact() {
+    let formula = (0..11)
+        .map(|_| formula_alternative("a", "A1", "B1"))
+        .collect::<Vec<_>>()
+        .join("+");
+    let xml = inline_formula_sheet(&formula);
+    let workbook = read_xlsx(&workbook_with_sheet(&xml)).unwrap();
+    let updated = jade_xlsx_writer::shift::shift_sheet(
+        &xml,
+        &workbook.sheets[0],
+        false,
+        &change("Other", Axis::Rows, 0, 1, true),
+    )
+    .unwrap();
+    assert_eq!(updated, xml);
+}
+
+#[test]
+fn moving_formula_text_decodes_cdata_and_keeps_comments_and_processed_wrappers() {
+    for (formula, original, shifted) in [
+        ("<![CDATA[A1+1]]>", "A1+1", "A2+1"),
+        ("A<!--keep-->1+1", "A1+1", "A2+1"),
+        ("A<?keep marker?>1+1", "A1+1", "A2+1"),
+        ("<u:wrap>A1</u:wrap>+1", "A1+1", "A2+1"),
+        ("<u:ignored>A99</u:ignored>A1+1", "A1+1", "A2+1"),
+        (
+            "A<u:wrap><!--keep--><![CDATA[1]]></u:wrap>+1",
+            "A1+1",
+            "A2+1",
+        ),
+        (
+            "<![CDATA[IF(A1<2,\"x&y\",A1)]]>",
+            "IF(A1<2,\"x&y\",A1)",
+            "IF(A2<2,\"x&y\",A2)",
+        ),
+        (
+            "IF(A<!--keep-->1&lt;2,&quot;x&amp;y&quot;,A1)",
+            "IF(A1<2,\"x&y\",A1)",
+            "IF(A2<2,\"x&y\",A2)",
+        ),
+    ] {
+        let xml = format!("<worksheet xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\" xmlns:mc=\"http://schemas.openxmlformats.org/markup-compatibility/2006\" xmlns:u=\"urn:future\" mc:Ignorable=\"u\" mc:ProcessContent=\"u:wrap\"><sheetData><row r=\"1\"><c r=\"A1\"><v>1</v></c><c r=\"B1\"><f>{formula}</f><v>2</v></c></row></sheetData></worksheet>");
+        let bytes = workbook_with_sheet(&xml);
+        let workbook = read_xlsx(&bytes).unwrap();
+        assert_eq!(
+            workbook.sheets[0].rows[0].cells[1].formula.as_deref(),
+            Some(original)
+        );
+        assert_eq!(
+            jade_xlsx_writer::shift::shift_sheet(
+                &xml,
+                &workbook.sheets[0],
+                false,
+                &change("Other", Axis::Rows, 0, 1, true)
+            )
+            .unwrap(),
+            xml
+        );
+        let updated = jade_xlsx_writer::shift::shift_sheet(
+            &xml,
+            &workbook.sheets[0],
+            true,
+            &change("Sheet1", Axis::Rows, 0, 1, true),
+        )
+        .unwrap();
+        let moved = read_xlsx(&workbook_with_sheet(&updated)).unwrap();
+        assert_eq!(
+            moved.sheets[0].rows[0].cells[1].formula.as_deref(),
+            Some(shifted),
+            "{updated}"
+        );
+        if formula.contains("<!--keep-->") {
+            assert!(updated.contains("<!--keep-->"));
+        }
+        if formula.contains("<u:wrap>") {
+            assert!(updated.contains("<u:wrap>"));
+        }
+        if formula.contains("<?keep marker?>") {
+            assert!(updated.contains("<?keep marker?>"));
+        }
+        if formula.contains("<u:ignored>") {
+            assert!(updated.contains("<u:ignored>A99</u:ignored>"));
+        }
+    }
+}
+
+#[test]
+fn defined_name_xml_text_moves_without_changing_comments_or_unrelated_names() {
+    let untouched = "<definedName name=\"Other\"><![CDATA[Other!$A$1]]></definedName>";
+    let xml = format!("<workbook xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\"><definedNames><definedName name=\"Example\"><![CDATA[Sheet1!$A$]]><!--keep-->1</definedName>{untouched}</definedNames></workbook>");
+    let moved = jade_xlsx_writer::shift::shift_defined_names(
+        &xml,
+        &change("Sheet1", Axis::Rows, 0, 1, true),
+    )
+    .unwrap();
+    let part = jade_xlsx_reader::workbook_part::parse_workbook(&moved).unwrap();
+    assert_eq!(part.defined_names[0].formula, "Sheet1!$A$2");
+    assert!(moved.contains("<!--keep-->"));
+    assert!(moved.contains(untouched));
+}
+
+#[test]
+fn a_cdata_defined_name_still_calculates_after_structure_history_and_reopen() {
+    let source = workbook_with_sheet(
+        r#"<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData><row r="1"><c r="A1"><v>1</v></c><c r="B1"><f>Price+1</f><v>2</v></c></row></sheetData></worksheet>"#,
+    );
+    let mut package = OpcPackage::open(&source).unwrap();
+    let workbook = package.part_str("xl/workbook.xml").unwrap().unwrap().replace("</sheets>", "</sheets><definedNames><definedName name=\"Price\"><![CDATA[Sheet1!$A$1]]></definedName></definedNames>");
+    package.replace("xl/workbook.xml", workbook.into_bytes());
+    let mut book = HeadlessWorkbook::open_for_editing(&package.write().unwrap()).unwrap();
+    assert_eq!(book.cell("Sheet1", "B1").unwrap().display, "2");
+    book.insert_rows("Sheet1", 1, 1).unwrap();
+    assert_eq!(book.cell("Sheet1", "B2").unwrap().display, "2");
+    assert_eq!(book.workbook().defined_names[0].formula, "Sheet1!$A$2");
+    book.undo().unwrap();
+    assert_eq!(book.workbook().defined_names[0].formula, "Sheet1!$A$1");
+    book.redo().unwrap();
+    let reopened = HeadlessWorkbook::open_for_editing(&book.save_bytes().unwrap()).unwrap();
+    assert_eq!(reopened.cell("Sheet1", "B2").unwrap().display, "2");
+    assert_eq!(reopened.workbook().defined_names[0].formula, "Sheet1!$A$2");
+}
+
+#[test]
+fn implicit_cells_in_alternatives_shift_from_their_logical_coordinates() {
+    let xml = r#"<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:m="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"><sheetData><row><c><v>1</v></c><mc:AlternateContent><mc:Choice Requires="m"><c><f>A1+1</f><v>2</v></c></mc:Choice><mc:Fallback><c><f>A1+2</f><v>3</v></c></mc:Fallback></mc:AlternateContent><c><v>4</v></c></row></sheetData></worksheet>"#;
+    let workbook = read_xlsx(&workbook_with_sheet(xml)).unwrap();
+    let updated = jade_xlsx_writer::shift::shift_sheet(
+        xml,
+        &workbook.sheets[0],
+        true,
+        &change("Sheet1", Axis::Rows, 0, 1, true),
+    )
+    .unwrap();
+    assert_eq!(
+        updated.matches("<c r=\"B2\">").count(),
+        2,
+        "alternatives must share B2: {updated}"
+    );
+    assert!(updated.contains("<c r=\"C2\"><v>4</v></c>"));
+}
+
+#[test]
+fn shifting_the_grid_preserves_foreign_cells_and_formula_payloads() {
+    let payload = "<u:c r=\"Z9\"><u:f>A1+99</u:f></u:c>";
+    let foreign_formula = "<u:f>A1+88</u:f>";
+    let xml = format!("<worksheet xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\" xmlns:u=\"urn:foreign\"><sheetData><row r=\"1\"><c r=\"A1\"><v>1</v></c>{payload}<c r=\"B1\">{foreign_formula}<f>A1+1</f><v>2</v></c></row></sheetData></worksheet>");
+    let bytes = workbook_with_sheet(&xml);
+    let workbook = read_xlsx(&bytes).unwrap();
+    for axis in [Axis::Rows, Axis::Columns] {
+        let change = change("Sheet1", axis, 0, 1, true);
+        let updated =
+            jade_xlsx_writer::shift::shift_sheet(&xml, &workbook.sheets[0], true, &change).unwrap();
+        assert!(
+            updated.contains(payload),
+            "foreign cell payload changed: {updated}"
+        );
+        assert!(
+            updated.contains(foreign_formula),
+            "foreign formula payload changed: {updated}"
+        );
+        assert!(updated.contains(if axis == Axis::Rows {
+            "<f>A2+1</f>"
+        } else {
+            "<f>B1+1</f>"
+        }));
+    }
+    let mut book = HeadlessWorkbook::open_for_editing(&bytes).unwrap();
+    let before = book.bytes().to_vec();
+    book.insert_rows("Sheet1", 1, 1).unwrap();
+    assert_eq!(book.cell("Sheet1", "B2").unwrap().display, "2");
+    assert!(part(book.bytes(), SHEET).contains(payload));
+    book.undo().unwrap();
+    assert_eq!(book.bytes(), before);
+    book.redo().unwrap();
+    let saved = book.save_bytes().unwrap();
+    assert!(part(&saved, SHEET).contains(payload));
+    assert!(part(&saved, SHEET).contains(foreign_formula));
+    let reopened = HeadlessWorkbook::open_for_editing(&saved).unwrap();
+    assert_eq!(reopened.cell("Sheet1", "B2").unwrap().display, "2");
+}
+
+#[test]
+fn grid_shifts_keep_opaque_branches_and_move_understood_processed_cells() {
+    let opaque = "<mc:Choice Requires=\"u\"><c r=\"Z9\"><f>A1+99</f></c></mc:Choice>";
+    let payload = "<extLst><ext><c r=\"Y9\"><f>A1+88</f></c></ext></extLst>";
+    let xml = format!("<worksheet xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\" xmlns:m=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\" xmlns:mc=\"http://schemas.openxmlformats.org/markup-compatibility/2006\" xmlns:u=\"urn:future\" mc:Ignorable=\"u\" mc:ProcessContent=\"u:wrap\"><sheetData><row r=\"1\"><c r=\"A1\"><v>1</v></c><mc:AlternateContent>{opaque}<mc:Choice Requires=\"m\"><u:wrap><c r=\"B1\"><f>A1+1</f><v>2</v></c></u:wrap></mc:Choice><mc:Fallback><c r=\"C1\"><f>A1+2</f><v>3</v></c></mc:Fallback></mc:AlternateContent>{payload}</row></sheetData></worksheet>");
+    let bytes = workbook_with_sheet(&xml);
+    let workbook = read_xlsx(&bytes).unwrap();
+    for wrapper in ["wrap", "row", "c", "f", "sheetData"] {
+        let xml = xml.replace("u:wrap", &format!("u:{wrapper}"));
+        for changed in [false, true] {
+            let updated = jade_xlsx_writer::shift::shift_sheet(
+                &xml,
+                &workbook.sheets[0],
+                changed,
+                &change("Sheet1", Axis::Rows, 0, 1, true),
+            )
+            .unwrap();
+            assert!(updated.contains(opaque));
+            assert!(updated.contains(payload));
+            assert!(updated.contains("<f>A2+1</f>"));
+            assert!(updated.contains("<f>A2+2</f>"));
+            assert!(updated.contains(&format!("<u:{wrapper}>")));
+            if changed {
+                assert!(updated.contains("<c r=\"B2\">"));
+                assert!(updated.contains("<c r=\"C2\">"));
+            }
+        }
+    }
+}
+
+#[test]
+fn direct_writer_calls_cannot_split_legacy_array_declarations() {
+    for reference in ["A1:C3", "A1:XFD1048576"] {
+        let xml = format!(
+            r#"<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData><row r="1"><c r="A1"><f t="array" ref="{reference}">{{1;2;3}}</f><v>1</v></c></row></sheetData></worksheet>"#
+        );
+        let bytes = workbook_with_sheet(&xml);
+        let workbook = read_xlsx(&bytes).unwrap();
+        for axis in [Axis::Rows, Axis::Columns] {
+            for inserted in [false, true] {
+                let change = change("Sheet1", axis, 1, 1, inserted);
+                assert!(
+                    restructure(&bytes, &workbook, &change).is_err(),
+                    "direct package writer accepted {reference}: {change:?}"
+                );
+                assert!(
+                    jade_xlsx_writer::shift::shift_sheet(&xml, &workbook.sheets[0], true, &change)
+                        .is_err(),
+                    "direct sheet writer accepted {reference}: {change:?}"
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn direct_writers_move_or_delete_whole_arrays_and_only_guard_legacy_kind() {
+    let xml = r#"<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData><row r="1"><c r="A1"><f t="array" ref="A1:C3">{1;2;3}</f><v>1</v></c></row></sheetData></worksheet>"#;
+    let bytes = workbook_with_sheet(xml);
+    let mut workbook = read_xlsx(&bytes).unwrap();
+    for axis in [Axis::Rows, Axis::Columns] {
+        let moved = if axis == Axis::Rows { "A2:C4" } else { "B1:D3" };
+        let insertion = change("Sheet1", axis, 0, 1, true);
+        let written = restructure(&bytes, &workbook, &insertion).unwrap();
+        assert_eq!(
+            read_xlsx(&written).unwrap().sheets[0].array_formulas[0].range,
+            jade_xlsx_reader::CellRange::parse(moved).unwrap()
+        );
+        let deletion = change("Sheet1", axis, 0, 3, false);
+        let written = restructure(&bytes, &workbook, &deletion).unwrap();
+        assert!(read_xlsx(&written).unwrap().sheets[0]
+            .array_formulas
+            .is_empty());
+    }
+    for kind in [
+        jade_xlsx_reader::ArrayFormulaKind::Dynamic,
+        jade_xlsx_reader::ArrayFormulaKind::Unknown,
+    ] {
+        workbook.sheets[0].array_formulas[0].kind = kind;
+        assert!(jade_xlsx_writer::shift::guard_legacy_array_structure(
+            &workbook.sheets[0],
+            &change("Sheet1", Axis::Rows, 1, 1, true)
+        )
+        .is_ok());
+    }
+}
+
 fn fixture() -> Vec<u8> {
     let path = PathBuf::from(concat!(
         env!("CARGO_MANIFEST_DIR"),
