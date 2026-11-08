@@ -167,6 +167,7 @@ pub fn shift_sheet(
     }
     let grid = jade_xlsx_reader::cell_content::compatible_worksheet_source(xml)?;
     let processed = jade_xlsx_reader::process_content::processed_elements(xml)?;
+    let extensions = jade_xlsx_reader::worksheet_extensions::sources(xml)?;
     let mut reader = Reader::from_str(xml);
     reader.config_mut().trim_text(false);
     let mut buf = Vec::new();
@@ -221,6 +222,10 @@ pub fn shift_sheet(
                 };
                 // A processed foreign wrapper contributes children, but its
                 // own name/attributes never participate in feature dispatch.
+                if extensions.opaque_at(start) {
+                    whole_end(&mut reader)?;
+                    continue;
+                }
                 if processed.processes_content_at(start) {
                     continue;
                 }

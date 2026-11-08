@@ -652,6 +652,7 @@ pub(crate) fn rewrite_formula_elements(
     xml: &str,
     formula: &dyn Fn(&str) -> String,
 ) -> Result<String> {
+    let extensions = jade_xlsx_reader::worksheet_extensions::sources(xml)?;
     let mut reader = Reader::from_str(xml);
     reader.config_mut().trim_text(false);
     let mut buf = Vec::new();
@@ -661,6 +662,11 @@ pub(crate) fn rewrite_formula_elements(
         let start = reader.buffer_position() as usize;
         match reader.read_event_into(&mut buf)? {
             Event::Start(ref element) => {
+                if extensions.opaque_at(start) {
+                    reader.read_to_end_into(element.name(), &mut Vec::new())?;
+                    content = None;
+                    continue;
+                }
                 // Only an element holding text is a formula; `<formula1>`
                 // around an `<xm:f>` is not.
                 content = is_formula_element(local(element.name().as_ref()))
