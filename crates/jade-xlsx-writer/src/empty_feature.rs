@@ -158,6 +158,7 @@ pub(crate) fn required(name: &[u8]) -> Option<&'static [u8]> {
     Some(match name {
         b"dataValidations" => b"dataValidation",
         b"mergeCells" => b"mergeCell",
+        b"hyperlinks" => b"hyperlink",
         b"conditionalFormattings" => b"conditionalFormatting",
         b"conditionalFormatting" => b"cfRule",
         b"sparklineGroups" => b"sparklineGroup",
