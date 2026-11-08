@@ -182,6 +182,11 @@ impl FontStateTracker {
             {
                 return false;
             }
+            // Rc-backed replay leaves the measurement hash uncomputed. Keep
+            // the borrowed setter's content-equality behavior in that state.
+            if self.current_font_hash.is_none() && current_str == font {
+                return false;
+            }
         }
         // Medium path: hash + length + content comparison
         let new_hash = Self::compute_font_hash(font);
@@ -212,7 +217,9 @@ impl FontStateTracker {
         }
         context.set_font(font);
         self.current_font = Some(Rc::clone(font));
-        self.current_font_hash = Some(Self::compute_font_hash(font));
+        // Positioned glyph replay does not measure text. Hash this descriptor
+        // only if a later short-text measurement needs a grapheme-cache key.
+        self.current_font_hash = None;
         true
     }
 
@@ -308,11 +315,15 @@ impl FontStateTracker {
     ) -> Result<f64, P::Error> {
         // For short strings (graphemes), use the fast cache
         if text.len() <= 8 {
-            // Reuse the cached font hash when available (set by set_font_if_changed).
-            let font_hash = self
-                .current_font_hash
-                .filter(|_| self.current_font.as_deref() == Some(font))
-                .unwrap_or_else(|| Self::compute_font_hash(font));
+            // Rc-backed font changes defer hashing until the first measurement.
+            // A measurement for another font must not populate the active font's hash.
+            let font_hash = if self.current_font.as_deref() == Some(font) {
+                *self
+                    .current_font_hash
+                    .get_or_insert_with(|| Self::compute_font_hash(font))
+            } else {
+                Self::compute_font_hash(font)
+            };
             let cache_key = Self::compute_cache_key_from_font_hash(font_hash, text);
 
             // Fast path: check cache first
@@ -2318,6 +2329,117 @@ mod tests {
     fn test_font_state_tracker_new() {
         let tracker = FontStateTracker::new();
         assert!(tracker.current().is_none());
+    }
+
+    #[test]
+    fn lazy_rc_font_hash_preserves_mixed_setter_operations() {
+        use jade_painter::recording::{Op, RecordingPainter};
+
+        for descriptor in ["12pt Arial", "ot:liga 10pt 'Noto Sans JP'", ""] {
+            let painter = RecordingPainter::with_width_per_char(1.0);
+            let mut tracker = FontStateTracker::new();
+            let font: Rc<str> = Rc::from(descriptor);
+            let equal_font: Rc<str> = Rc::from(descriptor);
+            let borrowed_font = descriptor.to_owned();
+
+            assert!(tracker.set_font_rc_if_changed(&painter, &font));
+            assert!(!tracker.set_font_rc_if_changed(&painter, &font));
+            assert!(!tracker.set_font_if_changed(&painter, &borrowed_font));
+            // The Rc setter historically sets equal text from a different
+            // allocation; deferring its hash must preserve those operations.
+            assert!(tracker.set_font_rc_if_changed(&painter, &equal_font));
+            assert!(!tracker.set_font_if_changed(&painter, &borrowed_font));
+            assert_eq!(tracker.current_font_hash, None);
+
+            assert_eq!(
+                tracker.measure_text_cached(&painter, "long text", descriptor),
+                Ok(9.0)
+            );
+            assert_eq!(tracker.current_font_hash, None);
+            tracker.invalidate();
+            assert!(tracker.set_font_if_changed(&painter, &borrowed_font));
+            assert!(tracker.set_font_rc_if_changed(&painter, &font));
+            assert!(!tracker.set_font_if_changed(&painter, &borrowed_font));
+            assert_eq!(tracker.current_font_hash, None);
+            assert_eq!(
+                painter.ops(),
+                vec![
+                    Op::SetFont(descriptor.into()),
+                    Op::SetFont(descriptor.into()),
+                    Op::MeasureText("long text".into()),
+                    Op::SetFont(descriptor.into()),
+                    Op::SetFont(descriptor.into()),
+                ]
+            );
+        }
+    }
+
+    #[test]
+    fn lazy_rc_font_hash_keeps_widths_separate_across_font_switches() {
+        use jade_painter::recording::{Op, RecordingPainter};
+
+        let mut tracker = FontStateTracker::new();
+        let fonts: [Rc<str>; 2] = [Rc::from("10pt Arial"), Rc::from("12pt Arial")];
+        let painters = [
+            RecordingPainter::with_width_per_char(3.0),
+            RecordingPainter::with_width_per_char(5.0),
+        ];
+        let texts = ["", "A", "·", "日本", "12345678", "123456789"];
+        for round in 0..8 {
+            let index = round % 2;
+            let font = &fonts[index];
+            let painter = &painters[index];
+            assert!(tracker.set_font_rc_if_changed(painter, font));
+            assert_eq!(tracker.current_font_hash, None);
+            for text in texts {
+                assert_eq!(
+                    tracker.measure_text_cached(painter, text, font),
+                    Ok(text.chars().count() as f64 * [3.0, 5.0][index])
+                );
+            }
+            assert_eq!(
+                tracker.current_font_hash,
+                Some(FontStateTracker::compute_font_hash(font))
+            );
+        }
+        for painter in painters {
+            // Five distinct short strings are measured once per font; the
+            // long string bypasses the cache on each of that font's four turns.
+            assert_eq!(painter.count(|op| matches!(op, Op::MeasureText(_))), 9);
+        }
+    }
+
+    #[test]
+    fn lazy_rc_font_hash_does_not_cache_another_fonts_hash() {
+        use jade_painter::recording::{Op, RecordingPainter};
+
+        let mut tracker = FontStateTracker::new();
+        let font: Rc<str> = Rc::from("10pt Arial");
+        let painter = RecordingPainter::with_width_per_char(3.0);
+        let other_painter = RecordingPainter::with_width_per_char(5.0);
+        tracker.set_font_rc_if_changed(&painter, &font);
+        assert_eq!(
+            tracker.measure_text_cached(&other_painter, "A", "12pt Arial"),
+            Ok(5.0)
+        );
+        assert_eq!(tracker.current_font_hash, None);
+        assert_eq!(tracker.measure_text_cached(&painter, "A", &font), Ok(3.0));
+        assert_eq!(
+            tracker.current_font_hash,
+            Some(FontStateTracker::compute_font_hash(&font))
+        );
+        assert_eq!(
+            tracker.measure_text_cached(&other_painter, "A", "12pt Arial"),
+            Ok(5.0)
+        );
+        tracker.invalidate();
+        assert_eq!(tracker.measure_text_cached(&painter, "A", &font), Ok(3.0));
+        assert_eq!(tracker.current_font_hash, None);
+        assert_eq!(painter.count(|op| matches!(op, Op::MeasureText(_))), 1);
+        assert_eq!(
+            other_painter.count(|op| matches!(op, Op::MeasureText(_))),
+            1
+        );
     }
 
     #[test]
