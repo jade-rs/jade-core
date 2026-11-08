@@ -1,0 +1,17 @@
+{
+  "engine_commit": "9b409e13b538aa5763711604e4fb21f38eb9e5fe",
+  "word_product_version": "16.0.19127.20860",
+  "capture_id": "20261107T065217527Z-03cce62f",
+  "reference_kind": "emf",
+  "engine_source_worktree_dirty": false,
+  "strict_fixtures": [],
+  "matching_fixtures": [],
+  "pending_fixtures": [
+    "word-windows-edge-table-spacing-at-least-compat12",
+    "word-windows-edge-table-spacing-at-least-compat14",
+    "word-windows-edge-table-spacing-at-least-compat15",
+    "word-windows-edge-table-spacing-auto-compat12",
+    "word-windows-edge-table-spacing-auto-compat14",
+    "word-windows-edge-table-spacing-auto-compat15"
+  ]
+}

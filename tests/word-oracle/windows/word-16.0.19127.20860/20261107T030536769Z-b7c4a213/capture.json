@@ -1,0 +1,101 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261107T030536769Z-b7c4a213",
+  "captured_at_utc": "2026-11-07T03:05:36.7982170Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20860",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "9bafe09d0c458006744b9edce767a328ba2da1bb5d9a460e5830c47bf6d7f1d1"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "documents": [
+    {
+      "name": "word-windows-edge-indents",
+      "source": "jade-core\\public\\fixtures\\word-windows-edge-indents.docx",
+      "sha256": "f7c87da6a605d366fb039a7d54467aacf5b8248118eb80b7db28a817e41c906e",
+      "pdf": "word-windows-edge-indents.pdf",
+      "pdf_sha256": "7111a10efa441846976cc406338451755dba3f49b0e506148dd963a7b63c0e37",
+      "pages": 1,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-indents.page-001.emf",
+          "sha256": "989f72a8b69a1017bca762f620c0b05a2dbd8bed910c8bdff0c4cc8339dd0dda",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-run-position",
+      "source": "jade-core\\public\\fixtures\\word-windows-edge-run-position.docx",
+      "sha256": "51d1cc390dd83e0f4cae80ca8920321b7644e7126148d505fa3139413a5df9c9",
+      "pdf": "word-windows-edge-run-position.pdf",
+      "pdf_sha256": "650513eb36250b5229ee989ebdc06fe828d444a43a6f79c9dae9d9a295d6f441",
+      "pages": 1,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-run-position.page-001.emf",
+          "sha256": "ad4002b5feee6810c3dcf5e7e900227e25fa6d56f2a75fcb25fa07dbaf53e4f5",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-run-width",
+      "source": "jade-core\\public\\fixtures\\word-windows-edge-run-width.docx",
+      "sha256": "ffc1b8c2823163a1faf87ee1c58cb237a2d6262fe2934c150bbe36d8ce4ee34d",
+      "pdf": "word-windows-edge-run-width.pdf",
+      "pdf_sha256": "413bfbb1492fb6050663746ac7b27d9e2e38884b0e8ddf5967294dfc34202e02",
+      "pages": 1,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-run-width.page-001.emf",
+          "sha256": "234ff8bd7824205ee8defd09bb135cd1412d184d471ba8b730712917723bdffa",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-spacing",
+      "source": "jade-core\\public\\fixtures\\word-windows-edge-spacing.docx",
+      "sha256": "888abdd2e3aa2553c6a3776a21bfa87c57d6e57c214b3923b7f64b39af88f799",
+      "pdf": "word-windows-edge-spacing.pdf",
+      "pdf_sha256": "c10b4dec4951437f2f17a35c91eb8ec8313c06423a17d6a32b07286315cf0590",
+      "pages": 1,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-spacing.page-001.emf",
+          "sha256": "0e155bd7dfb4a0fe88ae922b5e9dd4c740d27a910de2050153d28ef2cba3342f",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-tabs",
+      "source": "jade-core\\public\\fixtures\\word-windows-edge-tabs.docx",
+      "sha256": "d6831dbd8f4e78c7712e40a8d5b82347ad7855dbf7fff771d70098f058875853",
+      "pdf": "word-windows-edge-tabs.pdf",
+      "pdf_sha256": "09aff86e3a6a2cbae342e4ef7d1709ee87a36958f2e587ec51e2167203c90a88",
+      "pages": 1,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-tabs.page-001.emf",
+          "sha256": "bb60d77b24969b0dcf234f47b6ee78659fb23438ff53bf392c3e267262973222",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    }
+  ]
+}
