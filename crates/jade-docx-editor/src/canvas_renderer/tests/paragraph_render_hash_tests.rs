@@ -201,3 +201,58 @@ fn render_hash_keeps_legacy_float_buckets_and_string_option_tags() {
         }
     }
 }
+
+#[test]
+fn render_hash_distinguishes_every_environment_flag_combination() {
+    let mut renderer = test_renderer();
+    let paragraph = paragraph(properties());
+    let mut options = Options::default();
+    // Enumerate the original inputs independently of the production encoding.
+    // In particular, mark-kind settings must remain distinct even with the
+    // all-marks switch on, and renderer state is separate from Options.
+    for content in [None, Some(ContentHash::new(7))] {
+        let mut keys = std::collections::HashSet::new();
+        let mut first = None;
+        for mask in 0_u16..(1 << 15) {
+            renderer.pageless_mode = mask & 1 != 0;
+            renderer.dark_mode_text = mask & 2 != 0;
+            options.render_changes = mask & 4 != 0;
+            options.render_original = mask & 8 != 0;
+            options.render_comments = mask & 16 != 0;
+            options.show_formatting_marks = mask & 32 != 0;
+            options.render_footnotes = mask & 64 != 0;
+            options.render_endnotes = mask & 128 != 0;
+            renderer.document_snap_to_grid_default = mask & 256 != 0;
+            options.set_formatting_mark_kinds(crate::FormattingMarkKinds {
+                tabs: mask & 512 != 0,
+                spaces: mask & 1024 != 0,
+                paragraph_marks: mask & 2048 != 0,
+                hidden_text: mask & 4096 != 0,
+                optional_hyphens: mask & 8192 != 0,
+                anchors: mask & 16384 != 0,
+            });
+            let key = renderer.compute_paragraph_render_hash(&paragraph, &options, content);
+            assert!(keys.insert(key), "mask={mask:015b}, content={content:?}");
+            if mask == 0 {
+                first = Some(key);
+            }
+        }
+        assert_eq!(keys.len(), 1 << 15);
+        // Restore every input after visiting the entire state space.
+        renderer.pageless_mode = false;
+        renderer.dark_mode_text = false;
+        renderer.document_snap_to_grid_default = false;
+        options.render_changes = false;
+        options.render_original = false;
+        options.render_comments = false;
+        options.show_formatting_marks = false;
+        options.render_footnotes = false;
+        options.render_endnotes = false;
+        options.set_formatting_mark_kinds(crate::FormattingMarkKinds::default());
+        assert_eq!(
+            Some(renderer.compute_paragraph_render_hash(&paragraph, &options, content)),
+            first,
+            "restoration, content={content:?}"
+        );
+    }
+}

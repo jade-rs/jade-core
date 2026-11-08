@@ -11413,16 +11413,26 @@ where
         self.current_column_x().to_bits().hash(&mut hasher);
         self.current_column_width().to_bits().hash(&mut hasher);
         self.column_index.hash(&mut hasher);
-        self.pageless_mode.hash(&mut hasher);
-        self.dark_mode_text.hash(&mut hasher);
-        options.render_changes.hash(&mut hasher);
-        options.render_original.hash(&mut hasher);
+        // Each boolean keeps its own bit, including the individual mark kinds:
+        // those still distinguish cache keys when the all-marks toggle is on.
+        let marks = options.formatting_mark_kinds();
+        let environment_flags = u16::from(self.pageless_mode)
+            | (u16::from(self.dark_mode_text) << 1)
+            | (u16::from(options.render_changes) << 2)
+            | (u16::from(options.render_original) << 3)
+            | (u16::from(options.render_comments) << 4)
+            | (u16::from(options.show_formatting_marks) << 5)
+            | (u16::from(options.render_footnotes) << 6)
+            | (u16::from(options.render_endnotes) << 7)
+            | (u16::from(self.document_snap_to_grid_default) << 8)
+            | (u16::from(marks.tabs) << 9)
+            | (u16::from(marks.spaces) << 10)
+            | (u16::from(marks.paragraph_marks) << 11)
+            | (u16::from(marks.hidden_text) << 12)
+            | (u16::from(marks.optional_hyphens) << 13)
+            | (u16::from(marks.anchors) << 14);
+        environment_flags.hash(&mut hasher);
         options.revision_view().hash(&mut hasher);
-        options.render_comments.hash(&mut hasher);
-        options.show_formatting_marks.hash(&mut hasher);
-        options.formatting_mark_kinds().hash(&mut hasher);
-        options.render_footnotes.hash(&mut hasher);
-        options.render_endnotes.hash(&mut hasher);
         let dir_tag: u8 = match self.current_text_direction {
             None => 0,
             Some(TextDirection::TbRl) => 1,
@@ -11434,7 +11444,6 @@ where
             Some(TextDirection::TbLrV) => 7,
         };
         dir_tag.hash(&mut hasher);
-        self.document_snap_to_grid_default.hash(&mut hasher);
         self.current_doc_grid_char_spacing_px
             .map(|v| v.to_bits())
             .hash(&mut hasher);
