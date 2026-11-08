@@ -136,6 +136,9 @@ jobs:
       - name: Verify native macOS workflow contract
         run: ruby tests/ci/native_macos_workflow_test.rb
 
+      - name: Verify macOS Skia acquisition
+        run: python3 -m unittest discover -s scripts/ci -p test_prepare_macos_skia.py
+
       - name: Verify Word inline-space probe inputs
         run: python3 -m unittest discover -s tests/word-oracle/mac-probes-20261019/generators -p test_object_spaces_probe.py
 
@@ -166,9 +169,8 @@ jobs:
         with:
           workspaces: |
             . -> target/word-mac-coordinates
-      - name: Prepare pinned Mac Skia binaries
-        uses: ./.github/actions/prepare-macos-skia
-
+      - name: Prepare verified macOS Skia binaries
+        run: python3 scripts/ci/prepare_macos_skia.py --output "$RUNNER_TEMP/jade-skia-0.87.0-macos.tar.gz"
       - name: Compare Mac drawing coordinates with committed Word references
         run: cargo test --manifest-path crates/jade-docx-native-render/Cargo.toml --locked --test word_mac_coordinates -- --test-threads=1
       - name: Upload coordinate differences
@@ -278,9 +280,8 @@ jobs:
         with:
           workspaces: |
             . -> target/native-macos
-
-      - name: Prepare pinned Mac Skia binaries
-        uses: ./.github/actions/prepare-macos-skia
+      - name: Prepare verified macOS Skia binaries
+        run: python3 scripts/ci/prepare_macos_skia.py --output "$RUNNER_TEMP/jade-skia-0.87.0-macos.tar.gz"
 
       - name: Cargo check native crates
         run: |
@@ -356,8 +357,8 @@ jobs:
         with:
           workspaces: |
             . -> target/xlsx-native
-      - name: Prepare pinned Mac Skia binaries
-        uses: ./.github/actions/prepare-macos-skia
+      - name: Prepare verified macOS Skia binaries
+        run: python3 scripts/ci/prepare_macos_skia.py --output "$RUNNER_TEMP/jade-skia-0.87.0-macos.tar.gz"
       - name: Verify the vendored formula engine
         run: |
           cargo fmt --manifest-path third_party/ironcalc-base/Cargo.toml -- --check

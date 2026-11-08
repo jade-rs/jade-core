@@ -48,6 +48,26 @@ class NativeMacosWorkflowTest < Minitest::Test
     assert_includes cached_workspaces, ". -> target/native-macos"
   end
 
+  def test_every_native_mac_job_prepares_verified_skia_before_cargo
+    %w[word-mac-coordinates native-macos xlsx-native].each do |name|
+      job = @workflow.fetch("jobs").fetch(name)
+      assert_equal "macos-latest", job.fetch("runs-on")
+      steps = job.fetch("steps")
+      preparation = steps.index { |step| step["name"] == "Prepare verified macOS Skia binaries" }
+      refute_nil preparation, name
+      step = steps.fetch(preparation)
+      refute step.key?("if"), name
+      refute step.fetch("continue-on-error", false), name
+      assert_includes step.fetch("run"), "scripts/ci/prepare_macos_skia.py"
+      assert_includes step.fetch("run"), '--output "$RUNNER_TEMP/'
+      first_cargo = steps.index do |item|
+        item.fetch("run", "").lines.any? { |line| line.strip.start_with?("cargo ") }
+      end
+      refute_nil first_cargo, name
+      assert_operator preparation, :<, first_cargo, name
+    end
+  end
+
   def test_mac_coordinate_gate_is_unconditional_and_uses_locked_dependencies
     step = @steps.find { |item| item["name"] == "Verify unadjusted Word for Mac probe coordinates" }
     refute_nil step
@@ -148,34 +168,6 @@ class NativeMacosWorkflowTest < Minitest::Test
       assert_includes step.fetch("run"), command
       refute_includes step.fetch("run"), "--skip"
     end
-  end
-
-  def test_mac_jobs_prepare_verified_binaries_before_any_cargo_command
-    mac_cargo_jobs = @workflow.fetch("jobs").select do |_name, job|
-      Array(job.fetch("runs-on")).any? { |runner| runner.start_with?("macos-") } &&
-        job.fetch("steps").any? { |step| step.fetch("run", "").include?("cargo ") }
-    end
-    refute_empty mac_cargo_jobs
-    assert_includes mac_cargo_jobs.keys, "xlsx-native"
-    mac_cargo_jobs.each do |name, job|
-      steps = job.fetch("steps")
-      prepare = steps.index { |step| step["uses"] == "./.github/actions/prepare-macos-skia" }
-      refute_nil prepare, "#{name} must prepare the pinned Skia archive"
-      step = steps.fetch(prepare)
-      refute step.key?("if")
-      refute step.fetch("continue-on-error", false)
-      first_cargo = steps.index { |item| item.fetch("run", "").include?("cargo ") }
-      refute_nil first_cargo
-      assert_operator prepare, :<, first_cargo
-    end
-    action = YAML.safe_load(File.read(File.join(REPOSITORY_ROOT, ".github/actions/prepare-macos-skia/action.yml")))
-    step = action.fetch("runs").fetch("steps").fetch(0)
-    assert_equal "${{ github.token }}", step.fetch("env").fetch("GH_TOKEN")
-    command = step.fetch("run")
-    assert_includes command, "releases/assets/266267944"
-    assert_includes command, "f15a955e61503f77d57d3cfee7362aabe93ea934d6580065a96de5519f2e7019"
-    assert_includes command, "shasum -a 256 --check"
-    assert_includes command, 'SKIA_BINARIES_URL=file://$archive'
   end
 
   def test_lean_api_download_retains_the_pinned_checksum
