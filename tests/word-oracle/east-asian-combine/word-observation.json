@@ -1,0 +1,265 @@
+{
+  "application": "Microsoft Word for Mac 16.114.3",
+  "date": "2026-11-07",
+  "export": "Save As PDF, best for printing",
+  "observations": {
+    "combine-brackets": {
+      "docx_sha256": "a92be160fe50ad2f599460e1b40facd1fc3d813e3efa6efdac76b26ff554c461",
+      "words": [
+        {
+          "text": "株式",
+          "xMin": 114.029304,
+          "yMin": 73.2,
+          "xMax": 126.029304,
+          "yMax": 79.812
+        },
+        {
+          "text": "none:前",
+          "xMin": 72.0,
+          "yMin": 73.86,
+          "xMax": 114.029304,
+          "yMax": 87.264
+        },
+        {
+          "text": "会社",
+          "xMin": 114.029304,
+          "yMin": 81.84,
+          "xMax": 126.029304,
+          "yMax": 88.452
+        },
+        {
+          "text": "後",
+          "xMin": 126.029304,
+          "yMin": 74.16,
+          "xMax": 138.029304,
+          "yMax": 87.384
+        },
+        {
+          "text": "株式",
+          "xMin": 123.199224,
+          "yMin": 90.24,
+          "xMax": 135.199224,
+          "yMax": 96.852
+        },
+        {
+          "text": "round:前(",
+          "xMin": 72.0,
+          "yMin": 90.9,
+          "xMax": 123.1974,
+          "yMax": 104.304
+        },
+        {
+          "text": "会社",
+          "xMin": 123.199224,
+          "yMin": 98.88,
+          "xMax": 135.199224,
+          "yMax": 105.492
+        },
+        {
+          "text": ")後",
+          "xMin": 135.199224,
+          "yMin": 91.2,
+          "xMax": 152.373048,
+          "yMax": 104.424
+        },
+        {
+          "text": "株式",
+          "xMin": 129.199224,
+          "yMin": 107.52,
+          "xMax": 141.199224,
+          "yMax": 114.132
+        },
+        {
+          "text": "square:前[",
+          "xMin": 72.0,
+          "yMin": 108.18,
+          "xMax": 129.1974,
+          "yMax": 121.584
+        },
+        {
+          "text": "会社",
+          "xMin": 129.199224,
+          "yMin": 116.16,
+          "xMax": 141.199224,
+          "yMax": 122.772
+        },
+        {
+          "text": "]後",
+          "xMin": 141.199224,
+          "yMin": 108.48,
+          "xMax": 158.373048,
+          "yMax": 121.704
+        },
+        {
+          "text": "株式",
+          "xMin": 125.21484,
+          "yMin": 124.8,
+          "xMax": 137.21484,
+          "yMax": 131.412
+        },
+        {
+          "text": "angle:前<",
+          "xMin": 72.0,
+          "yMin": 125.46,
+          "xMax": 125.21532,
+          "yMax": 138.864
+        },
+        {
+          "text": "会社",
+          "xMin": 125.21484,
+          "yMin": 133.44,
+          "xMax": 137.21484,
+          "yMax": 140.052
+        },
+        {
+          "text": ">後",
+          "xMin": 137.21484,
+          "yMin": 125.76,
+          "xMax": 157.734384,
+          "yMax": 138.984
+        },
+        {
+          "text": "株式",
+          "xMin": 117.843744,
+          "yMin": 141.84,
+          "xMax": 129.843744,
+          "yMax": 148.452
+        },
+        {
+          "text": "curly:前{",
+          "xMin": 72.0,
+          "yMin": 142.5,
+          "xMax": 117.84192,
+          "yMax": 155.904
+        },
+        {
+          "text": "会社",
+          "xMin": 117.843744,
+          "yMin": 150.48,
+          "xMax": 129.843744,
+          "yMax": 157.092
+        },
+        {
+          "text": "}後",
+          "xMin": 129.843744,
+          "yMin": 142.8,
+          "xMax": 147.017568,
+          "yMax": 156.024
+        }
+      ],
+      "text_matrices": {
+        "source": "PDF FlateDecode content stream; outer CTM [0.24,0,0,0.24,0,640.08]",
+        "round": {
+          "normal_y": 417,
+          "opening_bracket_y": 417,
+          "closing_bracket_y": 417,
+          "top_y": 443,
+          "bottom_y": 407,
+          "normal_font_scale": 50,
+          "combined_font_scale": 25
+        }
+      }
+    },
+    "combine-fit": {
+      "docx_sha256": "3388c570a2624bba419930a0feb9e7bb5c762b276d90cae1bea9539af11cf8f3",
+      "words": [
+        {
+          "text": "plain:前株式会社後",
+          "xMin": 72.0,
+          "yMin": 73.86,
+          "xMax": 172.687488,
+          "yMax": 87.264
+        },
+        {
+          "text": "株式",
+          "xMin": 132.691416,
+          "yMin": 90.24,
+          "xMax": 144.691416,
+          "yMax": 96.852
+        },
+        {
+          "text": "combine:前",
+          "xMin": 72.0,
+          "yMin": 90.9,
+          "xMax": 132.691416,
+          "yMax": 104.304
+        },
+        {
+          "text": "会社",
+          "xMin": 132.691416,
+          "yMin": 98.88,
+          "xMax": 144.691416,
+          "yMax": 105.492
+        },
+        {
+          "text": "後",
+          "xMin": 144.691416,
+          "yMin": 91.2,
+          "xMax": 156.691416,
+          "yMax": 104.424
+        },
+        {
+          "text": "fit:前株式会社後",
+          "xMin": 72.0,
+          "yMin": 108.18,
+          "xMax": 156.667968,
+          "yMax": 121.584
+        },
+        {
+          "text": "both:前株式会社後",
+          "xMin": 72.0,
+          "yMin": 125.46,
+          "xMax": 170.689464,
+          "yMax": 138.864
+        },
+        {
+          "text": "single:前",
+          "xMin": 72.0,
+          "yMin": 142.5,
+          "xMax": 118.687488,
+          "yMax": 155.904
+        },
+        {
+          "text": "株",
+          "xMin": 118.687488,
+          "yMin": 148.08,
+          "xMax": 124.687488,
+          "yMax": 154.692
+        },
+        {
+          "text": "後",
+          "xMin": 124.687488,
+          "yMin": 142.8,
+          "xMax": 136.687488,
+          "yMax": 156.024
+        },
+        {
+          "text": "singlePlain:前株後",
+          "xMin": 72.0,
+          "yMin": 159.78,
+          "xMax": 169.371096,
+          "yMax": 173.184
+        }
+      ],
+      "text_matrices": {
+        "source": "PDF FlateDecode content stream; outer CTM [0.24,0,0,0.24,0,640.08]",
+        "combine": {
+          "normal_y": 417,
+          "top_y": 443,
+          "bottom_y": 407,
+          "normal_font_scale": 50,
+          "combined_font_scale": 25,
+          "raise_pt": 6.24,
+          "lower_pt": 2.4
+        },
+        "single": {
+          "normal_y": 202,
+          "combined_y": 202,
+          "normal_font_scale": 50,
+          "combined_font_scale": 25,
+          "baseline_shift_pt": 0
+        }
+      }
+    }
+  }
+}

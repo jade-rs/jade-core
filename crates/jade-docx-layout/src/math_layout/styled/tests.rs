@@ -1,6 +1,44 @@
 use super::*;
 use jade_docx_reader::document::MathElementKind;
 use std::cell::RefCell;
+
+#[test]
+fn break_after_reserves_the_trailing_operator_width() {
+    let math = parse("<m:r><m:t>aa+bb+cc+dd+ee+ff+gg+hh</m:t></m:r>");
+    for width in [40.0, 48.0, 60.0, 80.0] {
+        for indent in [0.0, 8.0] {
+            let plan = plan_with(
+                &math,
+                MathLayoutOptions {
+                    max_width: Some(width),
+                    settings: MathSettings {
+                        break_binary: BreakBinary::After,
+                        wrap_indent_px: indent,
+                        ..Default::default()
+                    },
+                    ..display()
+                },
+            );
+            assert!(plan.lines.len() > 1);
+            for line in &plan.lines {
+                assert!(
+                    line.x + line.width <= width + 1e-9,
+                    "width={width}, indent={indent}: {line:?}"
+                );
+            }
+            for line in &plan.lines[..plan.lines.len() - 1] {
+                let last = plan
+                    .glyphs
+                    .iter()
+                    .rev()
+                    .find(|g| g.baseline == line.baseline)
+                    .unwrap();
+                assert_eq!(&plan.text[last.text_range.clone()], "+");
+            }
+        }
+    }
+}
+
 #[derive(Default)]
 struct Measure {
     calls: RefCell<Vec<(String, f64)>>,
@@ -391,4 +429,42 @@ fn eq_fields_lay_out_upright_at_one_size() {
     assert!(glyph(&p, "1").baseline < 0.0);
     let raised = glyph(&p, "2");
     assert!((raised.baseline + 8.0 * 96.0 / 72.0).abs() < 1e-9);
+}
+
+#[test]
+fn display_math_margins_narrow_wrapping_and_drop_an_excess_left_margin() {
+    let settings = MathSettings {
+        display_margins_px: (40.0, 20.0),
+        ..Default::default()
+    };
+    assert_eq!(settings.display_content_box(10.0, 140.0), (50.0, 80.0));
+    assert_eq!(settings.display_content_box(10.0, 50.0), (10.0, 30.0));
+    assert_eq!(settings.display_content_box(10.0, 10.0), (10.0, 1.0));
+    assert_eq!(
+        MathSettings {
+            use_display_defaults: false,
+            ..settings
+        }
+        .display_content_box(10.0, 140.0),
+        (10.0, 140.0)
+    );
+    let math = parse("<m:r><m:t>a=b+c+d+e+f+g+h</m:t></m:r>");
+    let options = MathLayoutOptions {
+        max_width: Some(400.0),
+        ..display()
+    };
+    let wide = plan_with(&math, options);
+    let narrow = plan_with(
+        &math,
+        MathLayoutOptions {
+            max_width: Some(settings.display_content_box(0.0, 140.0).1),
+            settings: MathSettings {
+                wrap_indent_px: 10.0,
+                ..settings
+            },
+            ..options
+        },
+    );
+    assert_eq!(wide.lines.len(), 1);
+    assert!(narrow.lines.len() > wide.lines.len());
 }

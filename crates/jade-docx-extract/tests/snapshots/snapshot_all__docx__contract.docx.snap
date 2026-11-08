@@ -1,5 +1,5 @@
 ---
-source: crates/docx-extract/tests/snapshot_all.rs
+source: crates/jade-docx-extract/tests/snapshot_all.rs
 expression: paragraphs
 ---
 - text: 秘密保持契約書は営業上の情報、本契約の存在および内容そのasdasd他一切の情報を言う。あｓだｓだｓだｓasdasdasdasdasdasdasdasdasdas
@@ -67,9 +67,9 @@ expression: paragraphs
   in_shape: false
   para_id: "00000008"
 - text: （反社会的勢力の排除）
-  numbering_text: 第1条　
+  numbering_text: 第１条　
   accepted_text: （反社会的勢力の排除）
-  accepted_numbering_text: 第1条　
+  accepted_numbering_text: 第１条　
   in_table: false
   in_textbox: false
   in_shape: false
@@ -107,9 +107,9 @@ expression: paragraphs
   in_shape: false
   para_id: 0000000d
 - text: （秘密情報等の取扱い）
-  numbering_text: 第2条　
+  numbering_text: 第２条　
   accepted_text: （秘密情報等の取扱い）
-  accepted_numbering_text: 第2条　
+  accepted_numbering_text: 第２条　
   in_table: false
   in_textbox: false
   in_shape: false
@@ -187,9 +187,9 @@ expression: paragraphs
   in_shape: false
   para_id: "00000017"
 - text: （返還義務等）
-  numbering_text: 第3条　
+  numbering_text: 第３条　
   accepted_text: （返還義務等）
-  accepted_numbering_text: 第3条　
+  accepted_numbering_text: 第３条　
   in_table: false
   in_textbox: false
   in_shape: false
@@ -219,9 +219,9 @@ expression: paragraphs
   in_shape: false
   para_id: 0000001b
 - text: （有効期限）
-  numbering_text: 第4条　
+  numbering_text: 第４条　
   accepted_text: （有効期限）
-  accepted_numbering_text: 第4条　
+  accepted_numbering_text: 第４条　
   in_table: false
   in_textbox: false
   in_shape: false
@@ -243,9 +243,9 @@ expression: paragraphs
   in_shape: false
   para_id: 0000001e
 - text: （損害賠償等）
-  numbering_text: 第5条　
+  numbering_text: 第５条　
   accepted_text: （損害賠償等）
-  accepted_numbering_text: 第5条　
+  accepted_numbering_text: 第５条　
   in_table: false
   in_textbox: false
   in_shape: false
@@ -267,9 +267,9 @@ expression: paragraphs
   in_shape: false
   para_id: "00000021"
 - text: （協議事項）
-  numbering_text: 第6条　
+  numbering_text: 第６条　
   accepted_text: （協議事項）
-  accepted_numbering_text: 第6条　
+  accepted_numbering_text: 第６条　
   in_table: false
   in_textbox: false
   in_shape: false
@@ -291,9 +291,9 @@ expression: paragraphs
   in_shape: false
   para_id: "00000024"
 - text: （管轄）
-  numbering_text: 第7条　
+  numbering_text: 第７条　
   accepted_text: （管轄）
-  accepted_numbering_text: 第7条　
+  accepted_numbering_text: 第７条　
   in_table: false
   in_textbox: false
   in_shape: false

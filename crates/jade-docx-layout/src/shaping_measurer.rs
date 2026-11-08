@@ -38,6 +38,7 @@ use std::error::Error;
 use std::fs;
 use std::path::Path;
 use std::rc::Rc;
+use unicode_segmentation::UnicodeSegmentation;
 
 /// Full-width punctuation whose *left* half is blank (opening brackets).
 /// Chromium trims that half whenever another full-width punctuation precedes it.
@@ -110,6 +111,38 @@ struct RegisteredFace {
     face: Face<'static>,
     _bytes: Box<[u8]>,
     shape_plans: RefCell<ShapePlanCache>,
+    // Cache design units, independently of descriptor size and pixel rounding.
+    upright_advances: RefCell<HashMap<String, Option<u16>>>,
+}
+
+impl RegisteredFace {
+    fn upright_advance(&self, text: &str) -> Option<u16> {
+        if let Some(&advance) = self.upright_advances.borrow().get(text) {
+            return advance;
+        }
+        let advance = (|| {
+            let mut buffer = UnicodeBuffer::new();
+            buffer.push_str(text);
+            buffer.set_direction(Direction::TopToBottom);
+            let shaped = self
+                .shape_plans
+                .borrow_mut()
+                .shape(&self.face, buffer, true, &[]);
+            let [info] = shaped.glyph_infos() else {
+                return None;
+            };
+            if info.glyph_id == 0 {
+                return None;
+            }
+            self.face
+                .glyph_ver_advance(rustybuzz::ttf_parser::GlyphId(info.glyph_id as u16))
+                .filter(|advance| *advance > 0)
+        })();
+        self.upright_advances
+            .borrow_mut()
+            .insert(text.to_owned(), advance);
+        advance
+    }
 }
 
 // Bound retained OpenType plans independently for every immutable face. Plans
@@ -295,6 +328,7 @@ impl ShapingMeasurer {
             face,
             _bytes: owned,
             shape_plans: RefCell::new(ShapePlanCache::default()),
+            upright_advances: RefCell::new(HashMap::new()),
         });
         self.descriptor_cache.borrow_mut().clear();
         Ok(())
@@ -359,6 +393,26 @@ impl ShapingMeasurer {
             return Some((ascent, descent));
         }
         self.font_bounding_box(font_descriptor)
+    }
+
+    /// Advance of the vertically substituted glyph in the per-character fallback face.
+    /// A grapheme must shape to one glyph; multiple-glyph clusters use the fallback.
+    pub fn measure_upright_vertical_advance(
+        &self,
+        text: &str,
+        font_descriptor: &str,
+    ) -> Option<f64> {
+        let mut chars = text.chars();
+        let ch = chars.next()?;
+        if text.graphemes(true).count() != 1 {
+            return None;
+        }
+        let stack = self.resolve_stack(font_descriptor)?;
+        let entry = self.faces.get(self.face_for_char(&stack, ch))?;
+        let advance = entry.upright_advance(text)?;
+        let px = f64::from(advance) * self.font_size_px(stack.size_pt)
+            / f64::from(entry.face.units_per_em());
+        (px.is_finite() && px > 0.0).then_some(px)
     }
 
     /// Converts pt to px the way Chromium does. Blink shapes at a px size that
@@ -689,6 +743,16 @@ impl LineWrapContext for ShapingLineWrapContext {
     ) -> Result<f64, Self::Error> {
         let mut cache = self.cache.borrow_mut();
         cache.measure_with_hash(&self.measurer, text, font_descriptor, font_descriptor_hash)
+    }
+
+    fn measure_upright_vertical_advance(
+        &self,
+        text: &str,
+        font_descriptor: &str,
+    ) -> Result<Option<f64>, Self::Error> {
+        Ok(self
+            .measurer
+            .measure_upright_vertical_advance(text, font_descriptor))
     }
 
     fn measure_line_box_height(&self, font_descriptor: &str) -> Result<Option<f64>, Self::Error> {

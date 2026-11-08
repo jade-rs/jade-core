@@ -113,7 +113,7 @@ fn cross_sheet_partial_shift_keeps_x14_choice_metadata_and_foreign_wrappers() {
     let unknown = r#"<mc:Choice Requires="u"><m:f>Notes!$A3</m:f></mc:Choice>"#;
     let mut b = open(
         &format!(
-            r#"<s:sheetData/><s:extLst><s:ext uri="dv"><x:dataValidations count="1"><x:dataValidation type="whole"><x:formula1><mc:AlternateContent><mc:Choice Requires="x"><m:f>Notes!$A3</m:f></mc:Choice>{unknown}<mc:Fallback><m:f>Notes!$A3</m:f></mc:Fallback></mc:AlternateContent></x:formula1>{opaque}<m:sqref>B1:B2</m:sqref></x:dataValidation></x:dataValidations></s:ext></s:extLst>"#
+            r#"<s:sheetData/><s:extLst><s:ext uri="{{CCE6A557-97BC-4B89-ADB6-D9C93CAAB3DF}}"><x:dataValidations count="1"><x:dataValidation type="whole"><x:formula1><mc:AlternateContent><mc:Choice Requires="x"><m:f>Notes!$A3</m:f></mc:Choice>{unknown}<mc:Fallback><m:f>Notes!$A3</m:f></mc:Fallback></mc:AlternateContent></x:formula1>{opaque}<m:sqref>B1:B2</m:sqref></x:dataValidation></x:dataValidations></s:ext></s:extLst>"#
         ),
         "<s:sheetData/>",
     );
@@ -168,7 +168,7 @@ fn x14_rules_inside_tables_supply_context_for_unqualified_column_rename() {
     let (b, name) = table();
     let mut p = OpcPackage::open(b.bytes()).unwrap();
     let old = p.required_part_str(FIRST).unwrap();
-    let ext = r#"<s:extLst><s:ext uri="dv"><x:dataValidations count="1"><x:dataValidation type="whole"><x:formula1><m:f>[@Qty]</m:f></x:formula1><m:sqref>H3:H4</m:sqref></x:dataValidation></x:dataValidations></s:ext></s:extLst>"#;
+    let ext = r#"<s:extLst><s:ext uri="{CCE6A557-97BC-4B89-ADB6-D9C93CAAB3DF}"><x:dataValidations count="1"><x:dataValidation type="whole"><x:formula1><m:f>[@Qty]</m:f></x:formula1><m:sqref>H3:H4</m:sqref></x:dataValidation></x:dataValidations></s:ext></s:extLst>"#;
     p.replace(
         FIRST,
         old.replace("</s:worksheet>", &format!("{ext}</s:worksheet>"))
@@ -206,7 +206,7 @@ fn conversion_uses_each_x14_rule_anchor_for_current_row_a1_sources() {
     let (b, name) = table();
     let mut p = OpcPackage::open(b.bytes()).unwrap();
     let old = p.required_part_str(FIRST).unwrap();
-    let ext = r#"<s:extLst><s:ext uri="dv"><x:dataValidations count="2"><x:dataValidation type="whole"><x:formula1><m:f>[@Qty]</m:f></x:formula1><m:sqref>H3:H4</m:sqref></x:dataValidation><x:dataValidation type="whole"><x:formula1><m:f>Sales[@Qty]</m:f></x:formula1><m:sqref>H4</m:sqref></x:dataValidation></x:dataValidations></s:ext></s:extLst>"#;
+    let ext = r#"<s:extLst><s:ext uri="{CCE6A557-97BC-4B89-ADB6-D9C93CAAB3DF}"><x:dataValidations count="2"><x:dataValidation type="whole"><x:formula1><m:f>[@Qty]</m:f></x:formula1><m:sqref>H3:H4</m:sqref></x:dataValidation><x:dataValidation type="whole"><x:formula1><m:f>Sales[@Qty]</m:f></x:formula1><m:sqref>H4</m:sqref></x:dataValidation></x:dataValidations></s:ext></s:extLst>"#;
     p.replace(
         FIRST,
         old.replace("</s:worksheet>", &format!("{ext}</s:worksheet>"))
@@ -238,7 +238,7 @@ fn conversion_uses_each_x14_rule_anchor_for_current_row_a1_sources() {
 fn cross_sheet_conditional_thresholds_and_sparklines_follow_their_owned_formula_paths() {
     let foreign = r#"<u:wrapper><s:formula>Notes!$A3</s:formula><m:f>Notes!$A3</m:f></u:wrapper>"#;
     let body = format!(
-        r#"<s:sheetData/><s:conditionalFormatting sqref="B1:B2"><s:cfRule type="expression" priority="1"><s:formula>Notes!$A3</s:formula>{foreign}</s:cfRule><s:cfRule type="dataBar" priority="2"><s:dataBar><s:cfvo type="formula" val="Notes!$A$3"/><s:cfvo type="num" val="3"/><s:color rgb="FF123456"/></s:dataBar></s:cfRule></s:conditionalFormatting><s:extLst><s:ext uri="cf"><x:conditionalFormattings><x:conditionalFormatting><x:cfRule type="expression" priority="3"><m:f>Notes!$A3</m:f>{foreign}</x:cfRule><m:sqref>C1:C2</m:sqref></x:conditionalFormatting></x:conditionalFormattings></s:ext><s:ext uri="spark"><x:sparklineGroups><x:sparklineGroup><m:f>Notes!$A$3:$A$5</m:f><x:sparklines><x:sparkline><m:f>Notes!$A$3:$A$5</m:f><m:sqref>D1</m:sqref>{foreign}</x:sparkline></x:sparklines></x:sparklineGroup></x:sparklineGroups></s:ext></s:extLst>"#
+        r#"<s:sheetData/><s:conditionalFormatting sqref="B1:B2"><s:cfRule type="expression" priority="1"><s:formula>Notes!$A3</s:formula>{foreign}</s:cfRule><s:cfRule type="dataBar" priority="2"><s:dataBar><s:cfvo type="formula" val="Notes!$A$3"/><s:cfvo type="num" val="3"/><s:color rgb="FF123456"/></s:dataBar></s:cfRule></s:conditionalFormatting><s:extLst><s:ext uri="{{78C0D931-6437-407D-A8EE-F0AAD7539E65}}"><x:conditionalFormattings><x:conditionalFormatting><x:cfRule type="expression" priority="3"><m:f>Notes!$A3</m:f>{foreign}</x:cfRule><m:sqref>C1:C2</m:sqref></x:conditionalFormatting></x:conditionalFormattings></s:ext><s:ext uri="{{05C60535-1F16-4FD2-B633-F4F36F0B64E0}}"><x:sparklineGroups><x:sparklineGroup><m:f>Notes!$A$3:$A$5</m:f><x:sparklines><x:sparkline><m:f>Notes!$A$3:$A$5</m:f><m:sqref>D1</m:sqref>{foreign}</x:sparkline></x:sparklines></x:sparklineGroup></x:sparklineGroups></s:ext></s:extLst>"#
     );
     for main in [MAIN, STRICT] {
         let b = open(&body, "<s:sheetData/>");
@@ -260,7 +260,7 @@ fn cross_sheet_conditional_thresholds_and_sparklines_follow_their_owned_formula_
 fn scoped_sparkline_reading_survives_cross_sheet_edits_save_and_history() {
     let foreign = r#"<u:wrapper><m:f>Notes!$A$3:$A$5</m:f><m:sqref>Z99</m:sqref><x:colorSeries rgb="FFFFFFFF"/></u:wrapper>"#;
     let body = format!(
-        r#"<s:sheetData/><s:extLst><s:ext uri="spark"><x:sparklineGroups><x:sparklineGroup type="column"><x:colorSeries rgb="FF123456"/>{foreign}<x:sparklines><x:sparkline><m:f><![CDATA[Notes!$A$3:$A$5]]></m:f><m:sqref><![CDATA[D1:D1]]></m:sqref>{foreign}</x:sparkline></x:sparklines></x:sparklineGroup></x:sparklineGroups></s:ext></s:extLst>"#
+        r#"<s:sheetData/><s:extLst><s:ext uri="{{05C60535-1F16-4FD2-B633-F4F36F0B64E0}}"><x:sparklineGroups><x:sparklineGroup type="column"><x:colorSeries rgb="FF123456"/>{foreign}<x:sparklines><x:sparkline><m:f><![CDATA[Notes!$A$3:$A$5]]></m:f><m:sqref><![CDATA[D1:D1]]></m:sqref>{foreign}</x:sparkline></x:sparklines></x:sparklineGroup></x:sparklineGroups></s:ext></s:extLst>"#
     );
     for main in [MAIN, STRICT] {
         let b = open(&body, "<s:sheetData/>");

@@ -1,0 +1,58 @@
+{
+  "status": "known difference, unresolved",
+  "tolerance_pt": 0.375,
+  "test": "ruby_guide_positions_match_word_relative_baselines",
+  "source_sha256": "6a3cd5fff391225af66794ce91cf49ee7a8757d4904a94f9310913591eb8078c",
+  "reference_sha256": "6e5c55bfc6c3b891a260e8ed05eec36cbbbc03eab4136677131da2df41feb3a8",
+  "measurements": [
+    {
+      "case": "normal",
+      "word_base_minus_guide_pt": 14.88,
+      "native_base_minus_guide_pt": 15.0,
+      "difference_pt": 0.12,
+      "within_tolerance": true
+    },
+    {
+      "case": "raise2",
+      "word_base_minus_guide_pt": 15.12,
+      "native_base_minus_guide_pt": 15.0,
+      "difference_pt": -0.12,
+      "within_tolerance": true
+    },
+    {
+      "case": "lower3",
+      "word_base_minus_guide_pt": 14.88,
+      "native_base_minus_guide_pt": 15.0,
+      "difference_pt": 0.12,
+      "within_tolerance": true
+    },
+    {
+      "case": "super",
+      "word_base_minus_guide_pt": 18.24,
+      "native_base_minus_guide_pt": 18.0,
+      "difference_pt": -0.24,
+      "within_tolerance": true
+    },
+    {
+      "case": "sub",
+      "word_base_minus_guide_pt": 14.4,
+      "native_base_minus_guide_pt": 14.0,
+      "difference_pt": -0.4,
+      "within_tolerance": false
+    },
+    {
+      "case": "super_raise2",
+      "word_base_minus_guide_pt": 18.24,
+      "native_base_minus_guide_pt": 18.0,
+      "difference_pt": -0.24,
+      "within_tolerance": true
+    },
+    {
+      "case": "lower30",
+      "word_base_minus_guide_pt": 14.88,
+      "native_base_minus_guide_pt": 15.0,
+      "difference_pt": 0.12,
+      "within_tolerance": true
+    }
+  ]
+}

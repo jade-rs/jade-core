@@ -104,7 +104,7 @@ fn relationship_ids(xml: &str) -> Result<HashSet<String>> {
     Ok(ids)
 }
 fn clear(xml: &str, ranges: &[CellRange]) -> Result<(String, HashSet<String>)> {
-    let Some((_, _, container)) = xml_edit_ns::children(xml, b"hyperlinks")?
+    let Some((list_start, list_end, container)) = xml_edit_ns::children(xml, b"hyperlinks")?
         .into_iter()
         .next()
     else {
@@ -144,8 +144,43 @@ fn clear(xml: &str, ranges: &[CellRange]) -> Result<(String, HashSet<String>)> {
     }
     let updated = apply(&container.text, splices);
     let updated = container.finish(&updated)?;
-    let updated = xml_edit_ns::set_child(xml, b"hyperlinks", |_| updated, FOLLOWING)?;
+    let updated = apply(
+        xml,
+        vec![Splice {
+            start: list_start,
+            end: list_end,
+            text: updated,
+        }],
+    );
     Ok((updated, removed))
+}
+
+/// Normalize only changed existing lists. Authoring uses `clear` as an
+/// intermediate step before appending a replacement, so it must keep the list
+/// and its original attributes until the complete edit is ready.
+pub(crate) fn after_structure(before: &str, after: &str) -> Result<String> {
+    if !before.contains("hyperlinks") {
+        return Ok(after.into());
+    }
+    let original = xml_edit_ns::children(before, b"hyperlinks")?;
+    let moved = xml_edit_ns::children(after, b"hyperlinks")?;
+    if original.len() != moved.len() {
+        return Ok(after.into());
+    }
+    let mut edits = Vec::new();
+    for ((a, b, _), (start, end, context)) in original.iter().zip(&moved) {
+        if before[*a..*b] != after[*start..*end] {
+            let text = crate::empty_feature::finish(context, &context.text, b"hyperlink")?;
+            if text != after[*start..*end] {
+                edits.push(Splice {
+                    start: *start,
+                    end: *end,
+                    text,
+                });
+            }
+        }
+    }
+    Ok(apply(after, edits))
 }
 /// Apply a link over its whole range, replacing overlapping links only there.
 /// Cell values and formatting are deliberately left to the caller.
@@ -328,6 +363,7 @@ pub fn clear_hyperlinks(
     if updated == original {
         return Ok(false);
     }
+    let updated = after_structure(&original, &updated)?;
     let part = jade_opc::rels_part_name(sheet_part);
     let old_rels = package.part_str(&part)?;
     let rels = prune(old_rels.clone(), &updated, &removed)?;

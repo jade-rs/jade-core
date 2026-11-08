@@ -73,6 +73,7 @@ pub struct RecordingPainter {
     /// Width returned by [`Painter::measure_text_width`], per character of the
     /// measured string. Real metrics are not this backend's job.
     width_per_char: f64,
+    upright_vertical_advance: Option<f64>,
 }
 
 impl RecordingPainter {
@@ -81,6 +82,7 @@ impl RecordingPainter {
             ops: Rc::new(RefCell::new(Vec::new())),
             last_fill: Rc::new(RefCell::new(String::new())),
             width_per_char: 0.0,
+            upright_vertical_advance: None,
         }
     }
 
@@ -91,7 +93,14 @@ impl RecordingPainter {
             ops: Rc::new(RefCell::new(Vec::new())),
             last_fill: Rc::new(RefCell::new(String::new())),
             width_per_char,
+            upright_vertical_advance: None,
         }
+    }
+
+    /// Supplies a font vertical advance for layout and geometry tests.
+    pub fn with_upright_vertical_advance(mut self, advance: f64) -> Self {
+        self.upright_vertical_advance = Some(advance);
+        self
     }
 
     pub fn ops(&self) -> Vec<Op> {
@@ -236,6 +245,10 @@ impl Painter for RecordingPainter {
 
     /// Only `width` is populated: this backend has no glyph outlines to derive
     /// an ink box from, and tests that need real metrics use a real backend.
+    fn measure_upright_vertical_advance(&self, _text: &str) -> Result<Option<f64>, Self::Error> {
+        Ok(self.upright_vertical_advance)
+    }
+
     fn measure_text_metrics(&self, text: &str) -> Result<TextMetrics, Self::Error> {
         Ok(TextMetrics {
             width: self.measure_text_width(text)?,

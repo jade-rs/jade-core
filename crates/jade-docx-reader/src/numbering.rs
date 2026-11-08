@@ -1,4 +1,8 @@
-mod more_formats;
+pub use jade_number_format::{canonical_number_format, format_number_value, CUSTOM_FORMAT_PREFIX};
+pub(crate) use jade_number_format::{
+    is_english_language, to_english_cardinal, to_english_ordinal, to_english_ordinal_text, to_hex,
+    to_letter, to_roman,
+};
 
 #[cfg(test)]
 mod counter_histories;
@@ -124,6 +128,9 @@ impl MultilevelListPreset {
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct LevelOverride {
     pub start: Option<u32>,
+    /// A complete replacement for this instance's abstract numbering level.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub level: Option<NumberingLevel>,
 }
 
 impl NumberingPart {
@@ -457,7 +464,9 @@ impl NumberingPart {
                 if *in_level_run_props {
                     if let Some(level) = current_level.as_mut() {
                         let props = ensure_run_props(level);
-                        props.bold = Some(true);
+                        props.bold = Some(crate::parser::DocumentParser::parse_on_off_attr(
+                            e.attributes(),
+                        ));
                     }
                 }
             }
@@ -465,38 +474,157 @@ impl NumberingPart {
                 if *in_level_run_props {
                     if let Some(level) = current_level.as_mut() {
                         let props = ensure_run_props(level);
-                        props.italic = Some(true);
+                        props.italic = Some(crate::parser::DocumentParser::parse_on_off_attr(
+                            e.attributes(),
+                        ));
                     }
+                }
+            }
+            b"w:bCs" | b"w:iCs" if *in_level_run_props => {
+                if let Some(level) = current_level.as_mut() {
+                    let enabled = crate::parser::DocumentParser::parse_on_off_attr(e.attributes());
+                    let props = ensure_run_props(level);
+                    if e.name().as_ref() == b"w:bCs" {
+                        props.bold_complex = Some(enabled);
+                    } else {
+                        props.italic_complex = Some(enabled);
+                    }
+                }
+            }
+            b"w:bdr" if *in_level_run_props => {
+                if let Some(level) = current_level.as_mut() {
+                    ensure_run_props(level).border = Some(
+                        crate::parser::DocumentParser::build_border_edge(e.attributes()),
+                    );
+                }
+            }
+            b"w:shd" if *in_level_run_props => {
+                if let Some(level) = current_level.as_mut() {
+                    ensure_run_props(level).shading =
+                        Some(crate::parser::DocumentParser::parse_shading(e.attributes()));
+                }
+            }
+            b"w:em" if *in_level_run_props => {
+                if let Some(level) = current_level.as_mut() {
+                    let value = attr_value(e, b"w:val").map(|value| value.into_owned());
+                    ensure_run_props(level).emphasis =
+                        crate::parser::normalize_emphasis_mark(value).map(Rc::from);
+                }
+            }
+            b"w:shadow" | b"w:outline" | b"w:emboss" | b"w:imprint" if *in_level_run_props => {
+                if let Some(level) = current_level.as_mut() {
+                    let enabled = crate::parser::DocumentParser::parse_on_off_attr(e.attributes());
+                    let props = ensure_run_props(level);
+                    match e.name().as_ref() {
+                        b"w:shadow" => props.shadow = Some(enabled),
+                        b"w:outline" => props.outline = Some(enabled),
+                        b"w:emboss" => props.emboss = Some(enabled),
+                        b"w:imprint" => props.imprint = Some(enabled),
+                        _ => unreachable!(),
+                    }
+                }
+            }
+            b"w:smallCaps" if *in_level_run_props => {
+                if let Some(level) = current_level.as_mut() {
+                    ensure_run_props(level).small_caps = Some(
+                        crate::parser::DocumentParser::parse_on_off_attr(e.attributes()),
+                    );
+                }
+            }
+            b"w:caps" if *in_level_run_props => {
+                if let Some(level) = current_level.as_mut() {
+                    ensure_run_props(level).caps = Some(
+                        crate::parser::DocumentParser::parse_on_off_attr(e.attributes()),
+                    );
+                }
+            }
+            b"w:strike" | b"w:dstrike" if *in_level_run_props => {
+                if let Some(level) = current_level.as_mut() {
+                    let enabled = crate::parser::DocumentParser::parse_on_off_attr(e.attributes());
+                    let props = ensure_run_props(level);
+                    if e.name().as_ref() == b"w:dstrike" {
+                        props.double_strike = Some(enabled);
+                    } else {
+                        props.strike = Some(enabled);
+                    }
+                }
+            }
+            b"w:vertAlign" if *in_level_run_props => {
+                if let (Some(level), Some(value)) =
+                    (current_level.as_mut(), attr_value(e, b"w:val"))
+                {
+                    ensure_run_props(level).baseline = Some(Rc::from(value.as_ref()));
                 }
             }
             b"w:u" => {
                 if *in_level_run_props {
                     if let Some(level) = current_level.as_mut() {
                         let props = ensure_run_props(level);
-                        props.underline = Some(true);
+                        let parsed = crate::parser::parse_underline(e.attributes());
+                        props.underline = parsed.on_off;
+                        props.underline_kind = parsed.kind.map(Rc::from);
+                        props.underline_color = parsed.color.map(Rc::from);
+                        props.underline_theme_color = parsed.theme.map(Box::new);
                     }
                 }
             }
             b"w:color" => {
                 if *in_level_run_props {
                     if let Some(level) = current_level.as_mut() {
-                        if let Some(val) = attr_value(e, b"w:val") {
-                            let props = ensure_run_props(level);
-                            props.color = Some(Rc::from(format!("#{}", val)));
-                        }
+                        let props = ensure_run_props(level);
+                        props.color = crate::parser::DocumentParser::run_color(e).map(Rc::from);
+                        props.theme_color =
+                            crate::parser::DocumentParser::run_theme_color(e.attributes())
+                                .map(Box::new);
                     }
                 }
             }
-            b"w:sz" => {
+            b"w:sz" | b"w:szCs" => {
                 if *in_level_run_props {
                     if let Some(level) = current_level.as_mut() {
                         if let Some(val) = attr_value(e, b"w:val") {
                             if let Ok(parsed) = val.parse::<f32>() {
                                 let props = ensure_run_props(level);
-                                props.font_size = Some(parsed / 2.0);
+                                if e.name().as_ref() == b"w:szCs" {
+                                    props.font_size_complex = Some(parsed / 2.0);
+                                } else {
+                                    props.font_size = Some(parsed / 2.0);
+                                }
                             }
                         }
                     }
+                }
+            }
+            b"w:w" if *in_level_run_props => {
+                if let (Some(level), Some(percent)) = (
+                    current_level.as_mut(),
+                    crate::parser::parse_text_scale_percent(e.attributes()),
+                ) {
+                    ensure_run_props(level).text_scale = Some(percent);
+                }
+            }
+            b"w:position" if *in_level_run_props => {
+                if let (Some(level), Some(points)) = (
+                    current_level.as_mut(),
+                    crate::parser::parse_text_position_points(e.attributes()),
+                ) {
+                    ensure_run_props(level).text_position = Some(points);
+                }
+            }
+            b"w:kern" if *in_level_run_props => {
+                if let (Some(level), Some(points)) = (
+                    current_level.as_mut(),
+                    crate::parser::parse_kerning_points(e),
+                ) {
+                    ensure_run_props(level).kerning = Some(points);
+                }
+            }
+            b"w:snapToGrid" if *in_level_run_props => {
+                if let Some(level) = current_level.as_mut() {
+                    ensure_run_props(level).snap_to_grid = Some(
+                        attr_value(e, b"w:val")
+                            .is_none_or(|value| !matches!(value.as_ref(), "0" | "false" | "off")),
+                    );
                 }
             }
             b"w:spacing" if *in_level_run_props => {
@@ -562,10 +690,15 @@ impl NumberingPart {
             }
             b"w:lang" => {
                 if *in_level_run_props {
-                    if let (Some(level), Some(language)) =
-                        (current_level.as_mut(), attr_value(e, b"w:val"))
-                    {
-                        level.language = Some(language.into_owned());
+                    if let Some(level) = current_level.as_mut() {
+                        if let Some(language) = attr_value(e, b"w:val") {
+                            ensure_run_props(level).language = Some(Rc::from(language.as_ref()));
+                            level.language = Some(language.into_owned());
+                        }
+                        if let Some(language) = attr_value(e, b"w:eastAsia") {
+                            ensure_run_props(level).east_asia_language =
+                                Some(Rc::from(language.as_ref()));
+                        }
                     }
                 }
             }
@@ -618,7 +751,13 @@ impl NumberingPart {
         match name {
             b"w:lvl" => {
                 if let Some(level) = current_level.take() {
-                    if let Some(abs) = current_abstract.as_mut() {
+                    if let (Some(index), Some(num)) =
+                        (*current_override_level, current_num.as_mut())
+                    {
+                        let mut level = level;
+                        level.ilvl = index;
+                        num.overrides.entry(index).or_default().level = Some(level);
+                    } else if let Some(abs) = current_abstract.as_mut() {
                         abs.levels.push(level);
                     }
                 }
@@ -653,13 +792,13 @@ impl NumberingPart {
     /// Finds an existing numbering instance whose level-0 format matches
     /// `num_fmt` (e.g. `"bullet"` or `"decimal"`).  Returns the instance ID.
     pub fn find_instance_by_format(&self, num_fmt: &str) -> Option<&str> {
-        for (id, instance) in &self.numbering_instances {
-            if let Some(abstract_num) = self.abstract_nums.get(&instance.abstract_num_id) {
-                if let Some(level) = abstract_num.levels.iter().find(|l| l.ilvl == 0) {
-                    if level.num_fmt.as_deref() == Some(num_fmt) {
-                        return Some(id.as_str());
-                    }
-                }
+        for id in self.numbering_instances.keys() {
+            if self
+                .get_level_info(id, 0)
+                .and_then(|level| level.num_fmt.as_deref())
+                == Some(num_fmt)
+            {
+                return Some(id.as_str());
             }
         }
         None
@@ -847,9 +986,28 @@ impl NumberingPart {
     /// instance. Returns `None` when the instance or level is missing.
     pub fn get_level_info(&self, num_id: &str, level: u32) -> Option<&NumberingLevel> {
         let instance = self.numbering_instances.get(num_id)?;
+        if let Some(replacement) = instance
+            .overrides
+            .get(&level)
+            .and_then(|value| value.level.as_ref())
+        {
+            return Some(replacement);
+        }
         let abstract_num = self.abstract_nums.get(&instance.abstract_num_id)?;
-
         abstract_num.levels.iter().find(|l| l.ilvl == level)
+    }
+
+    /// All stored levels, including instance-specific replacements.
+    pub fn levels_mut(&mut self) -> impl Iterator<Item = &mut NumberingLevel> {
+        self.abstract_nums
+            .values_mut()
+            .flat_map(|definition| definition.levels.iter_mut())
+            .chain(self.numbering_instances.values_mut().flat_map(|instance| {
+                instance
+                    .overrides
+                    .values_mut()
+                    .filter_map(|value| value.level.as_mut())
+            }))
     }
 
     pub fn has_instance(&self, num_id: &str) -> bool {
@@ -866,8 +1024,7 @@ impl NumberingPart {
         self.numbering_instances
             .get(num_id)
             .and_then(|instance| instance.overrides.get(&level))
-            .and_then(|override_level| override_level.start)
-            .is_some()
+            .is_some_and(|value| value.start.is_some())
     }
 
     pub fn start_value(&self, num_id: &str, level: u32) -> Option<u32> {
@@ -877,12 +1034,24 @@ impl NumberingPart {
                 return override_level.start;
             }
         }
+        self.abstract_level_info(num_id, level)
+            .and_then(|level| level.start)
+    }
+
+    fn abstract_level_info(&self, num_id: &str, level: u32) -> Option<&NumberingLevel> {
+        let instance = self.numbering_instances.get(num_id)?;
         self.abstract_nums
             .get(&instance.abstract_num_id)?
             .levels
             .iter()
-            .find(|lvl| lvl.ilvl == level)
-            .and_then(|lvl| lvl.start)
+            .find(|info| info.ilvl == level)
+    }
+
+    /// Word ignores start/restart properties inside a concrete level override.
+    pub fn restart_value(&self, num_id: &str, level: u32) -> Option<u32> {
+        self.abstract_level_info(num_id, level)
+            .and_then(|info| info.restart)
+            .filter(|restart| *restart <= level && *restart <= 7)
     }
 
     /// Formats a numbering text according to the level template (e.g. `%1.` or
@@ -948,10 +1117,10 @@ impl NumberingPart {
                     if idx >= 1 {
                         let placeholder_level = idx - 1;
                         let mut value = counters.get_counter(num_id, placeholder_level);
-                        if counters.counter_value(num_id, placeholder_level).is_none() {
-                            if let Some(info) = self.get_level_info(num_id, placeholder_level) {
-                                value = info.start.unwrap_or(1);
-                            }
+                        if counters.counter_value(num_id, placeholder_level).is_none()
+                            && self.get_level_info(num_id, placeholder_level).is_some()
+                        {
+                            value = self.start_value(num_id, placeholder_level).unwrap_or(1);
                         }
                         if let Some(offsets) = offsets {
                             if let Some(level_offsets) = offsets.get(num_id) {
@@ -966,11 +1135,13 @@ impl NumberingPart {
                                 }
                             }
                         }
-                        // A legal level writes the levels above it that
-                        // it names in decimal, whatever their own formats;
-                        // its own number keeps its format (Word's
-                        // `Section 1.01` under `Article I`).
-                        let formatted = if legal && placeholder_level != level {
+                        // MS-OI29500 2.1.278: Word applies legal numbering to
+                        // the current level as well, but preserves numFmt=none.
+                        let hidden = self
+                            .get_level_info(num_id, placeholder_level)
+                            .and_then(|info| info.num_fmt.as_deref())
+                            == Some("none");
+                        let formatted = if legal && !hidden {
                             value.to_string()
                         } else {
                             self.format_counter_value(num_id, placeholder_level, value)
@@ -1025,464 +1196,6 @@ impl NumberingPart {
 
         format_number_value(&format, value, language)
     }
-}
-
-/// Formats `value` with an `ST_NumberFormat` token (ECMA-376 Part 1
-/// §17.18.59). List levels, page numbers (`w:pgNumType/@w:fmt`) and note
-/// markers (`w:numFmt` in `w:footnotePr`/`w:endnotePr`) all name their counter
-/// style with this one simple type, so they share this formatter. Tokens match
-/// case-insensitively: section and note formats are kept lowercased by the
-/// parser. Unknown tokens fall back to decimal.
-///
-/// Zero has no representation in most systems; it stays a decimal `0` here
-/// and list levels clamp to one before calling.
-pub fn format_number_value(format: &str, value: u32, language: Option<&str>) -> String {
-    let format = canonical_number_format(format).unwrap_or(format);
-    if value == 0
-        && !matches!(
-            format,
-            "decimal"
-                | "decimalHalfWidth"
-                | "decimalFullWidth"
-                | "decimalFullWidth2"
-                | "decimalZero"
-                | "hindiNumbers"
-                | "thaiNumbers"
-                | "numberInDash"
-                | "hex"
-                | "none"
-                | "bullet"
-        )
-    {
-        return value.to_string();
-    }
-    match format {
-        "decimal" => value.to_string(),
-        "upperRoman" => to_roman(value, true),
-        "lowerRoman" => to_roman(value, false),
-        "upperLetter" => to_letter(value, true),
-        "lowerLetter" => to_letter(value, false),
-        "ordinal" if language.is_some_and(is_english_language) => to_english_ordinal(value),
-        "cardinalText" if language.is_some_and(is_english_language) => to_english_cardinal(value),
-        "ordinalText" if language.is_some_and(is_english_language) => {
-            to_english_ordinal_text(value)
-        }
-        "hex" => to_hex(value),
-        // `target/contract-numbering-word-trace.json` records Word COM
-        // `ListString` as `第１条　` for a `decimalFullWidth` heading.
-        // Keeping this formatter explicit lets TRACE reports distinguish
-        // true numbering interpretation bugs from later layout/metric drift.
-        "decimalFullWidth" | "decimalFullWidth2" => to_full_width_decimal(value),
-        // Keep this token explicit even though Rust's decimal output is
-        // already single-byte ASCII. Otherwise a future generic fallback
-        // could silently change a format whose width is layout-significant.
-        "decimalHalfWidth" => value.to_string(),
-        // `decimalZero` is a *minimum* width of two, not a fixed-width
-        // counter: Word emits 01..09 and then continues with 10, 11, ... .
-        // This distinction affects the numbering label advance and thus the
-        // first-line text origin for single-digit list items.
-        "decimalZero" => format!("{value:02}"),
-        // Word follows the ST_NumberFormat examples: the unsuffixed token
-        // uses half-width Katakana and the FullWidth token uses ordinary
-        // full-width Katakana. This intentionally follows observed Word
-        // interoperability rather than the contradictory "Hiragana" label
-        // attached to aiueo in the schema prose.
-        "aiueo" => to_kana_sequence(value, AIUEO_KATAKANA_HALF_WIDTH),
-        "aiueoFullWidth" => to_kana_sequence(value, AIUEO_KATAKANA_FULL_WIDTH),
-        "iroha" => to_kana_sequence(value, IROHA_KATAKANA_HALF_WIDTH),
-        "irohaFullWidth" => to_kana_sequence(value, IROHA_KATAKANA_FULL_WIDTH),
-        // Both formats are positional digit sequences (10 -> 一〇), unlike
-        // japaneseCounting (10 -> 十). Microsoft notes that Word does not
-        // apply the circle suggested by old ideographDigital prose.
-        "japaneseDigitalTenThousand" | "ideographDigital" => to_japanese_positional_digits(value),
-        "japaneseCounting" => to_japanese_counting(value, JapaneseKanjiStyle::Standard),
-        "chineseCountingThousand" => to_japanese_counting(value, JapaneseKanjiStyle::Standard),
-        "japaneseLegal" => to_japanese_counting(value, JapaneseKanjiStyle::Legal),
-        // ST_NumberFormat defines dedicated Unicode enclosed glyphs only
-        // through 20 (or 10 for the Chinese circle variant). Word permits
-        // ordinary decimal output after that range, which is preferable to
-        // synthesizing a visually different combining enclosure.
-        "decimalEnclosedCircle" => to_enclosed_decimal(value, '①', 20),
-        "decimalEnclosedFullstop" => to_enclosed_decimal(value, '⒈', 20),
-        "decimalEnclosedParen" => to_enclosed_decimal(value, '⑴', 20),
-        "decimalEnclosedCircleChinese" => to_enclosed_decimal(value, '①', 10),
-        "ideographEnclosedCircle" => to_enclosed_ideograph(value),
-        // These OOXML formats preserve the decimal place-value system and
-        // replace each ASCII digit with the corresponding native digit.
-        // Formatting the whole value first also handles embedded zeroes.
-        "hindiNumbers" => to_decimal_digit_set(value, '०'),
-        "thaiNumbers" => to_decimal_digit_set(value, '๐'),
-        "numberInDash" => format!("- {value} -"),
-        "chicago" => to_chicago_symbols(value),
-        // Ten heavenly stems, twelve earthly branches and their sixty-term
-        // sexagenary cycle. These are closed sets; Word wraps round them.
-        "ideographTraditional" => cycle_char(value, HEAVENLY_STEMS),
-        "ideographZodiac" => cycle_char(value, EARTHLY_BRANCHES),
-        "ideographZodiacTraditional" => to_sexagenary(value),
-        "taiwaneseDigital" => to_japanese_positional_digits(value),
-        "chineseCounting" | "taiwaneseCounting" | "taiwaneseCountingThousand" => {
-            to_chinese_counting(value, ChineseNumerals::COUNTING)
-        }
-        "chineseLegalSimplified" => to_chinese_counting(value, ChineseNumerals::LEGAL_SIMPLIFIED),
-        "ideographLegalTraditional" => {
-            to_chinese_counting(value, ChineseNumerals::LEGAL_TRADITIONAL)
-        }
-        "koreanDigital" => to_decimal_digits(value, KOREAN_DIGITS),
-        "koreanCounting" => to_korean_counting(value),
-        "koreanLegal" => to_korean_native(value),
-        "ganada" => cycle_char(value, GANADA),
-        "chosung" => cycle_char(value, CHOSUNG),
-        "russianLower" => to_repeated_letter(value, RUSSIAN_LOWER),
-        "russianUpper" => to_repeated_letter(value, RUSSIAN_UPPER),
-        "hebrew1" => to_hebrew_numeral(value),
-        "hebrew2" => to_repeated_letter(value, HEBREW_ALPHABET),
-        "arabicAlpha" => to_repeated_letter(value, ARABIC_ALPHA),
-        "arabicAbjad" => to_repeated_letter(value, ARABIC_ABJAD),
-        "koreanDigital2" => more_formats::korean_digital2(value),
-        "vietnameseCounting" => more_formats::vietnamese_counting(value),
-        "hindiVowels" => to_repeated_letter(value, more_formats::HINDI_VOWELS),
-        "hindiConsonants" => to_repeated_letter(value, more_formats::HINDI_CONSONANTS),
-        "hindiCounting" => more_formats::hindi_counting(value),
-        "thaiLetters" => to_repeated_letter(value, more_formats::THAI_LETTERS),
-        "thaiCounting" => more_formats::thai_counting(value),
-        "bahtText" => more_formats::baht_text(value),
-        "dollarText" => more_formats::dollar_text(value),
-        custom if custom.starts_with(CUSTOM_FORMAT_PREFIX) => {
-            more_formats::custom(&custom[CUSTOM_FORMAT_PREFIX.len()..], value)
-        }
-        "none" => String::new(),
-        "bullet" => "•".to_string(),
-        _ => value.to_string(),
-    }
-}
-
-/// Every `ST_NumberFormat` token this module formats, in schema spelling.
-const NUMBER_FORMAT_TOKENS: &[&str] = &[
-    "decimal",
-    "upperRoman",
-    "lowerRoman",
-    "upperLetter",
-    "lowerLetter",
-    "ordinal",
-    "cardinalText",
-    "ordinalText",
-    "hex",
-    "chicago",
-    "ideographDigital",
-    "japaneseCounting",
-    "aiueo",
-    "iroha",
-    "decimalFullWidth",
-    "decimalHalfWidth",
-    "japaneseLegal",
-    "japaneseDigitalTenThousand",
-    "decimalEnclosedCircle",
-    "decimalFullWidth2",
-    "aiueoFullWidth",
-    "irohaFullWidth",
-    "decimalZero",
-    "bullet",
-    "ganada",
-    "chosung",
-    "decimalEnclosedFullstop",
-    "decimalEnclosedParen",
-    "decimalEnclosedCircleChinese",
-    "ideographEnclosedCircle",
-    "ideographTraditional",
-    "ideographZodiac",
-    "ideographZodiacTraditional",
-    "taiwaneseCounting",
-    "ideographLegalTraditional",
-    "taiwaneseCountingThousand",
-    "taiwaneseDigital",
-    "chineseCounting",
-    "chineseLegalSimplified",
-    "chineseCountingThousand",
-    "koreanDigital",
-    "koreanCounting",
-    "koreanLegal",
-    "russianLower",
-    "russianUpper",
-    "none",
-    "numberInDash",
-    "hebrew1",
-    "hebrew2",
-    "arabicAlpha",
-    "arabicAbjad",
-    "hindiNumbers",
-    "thaiNumbers",
-    "koreanDigital2",
-    "vietnameseCounting",
-    "hindiVowels",
-    "hindiConsonants",
-    "hindiCounting",
-    "thaiLetters",
-    "thaiCounting",
-    "bahtText",
-    "dollarText",
-];
-
-/// How a level's custom format is kept in `num_fmt`: Word writes
-/// `w:numFmt w:val="custom" w:format="001, 002, 003, ..."` (with a decimal
-/// fallback for older readers), and the sample is what to format by.
-pub const CUSTOM_FORMAT_PREFIX: &str = "custom:";
-
-/// The schema spelling of an `ST_NumberFormat` token this module formats,
-/// matched case-insensitively (`"upperroman"` → `"upperRoman"`).
-pub fn canonical_number_format(format: &str) -> Option<&'static str> {
-    NUMBER_FORMAT_TOKENS
-        .iter()
-        .find(|token| token.eq_ignore_ascii_case(format))
-        .copied()
-}
-
-/// Chicago Manual of Style note symbols: `*`, `†`, `‡`, `§`, then the same
-/// four doubled, tripled, and so on.
-fn to_chicago_symbols(value: u32) -> String {
-    const SYMBOLS: [char; 4] = ['*', '†', '‡', '§'];
-    to_repeated_symbol(value, &SYMBOLS)
-}
-
-const HEAVENLY_STEMS: &str = "甲乙丙丁戊己庚辛壬癸";
-const EARTHLY_BRANCHES: &str = "子丑寅卯辰巳午未申酉戌亥";
-
-/// Korean consonant-plus-a syllables, the order Hangul dictionaries use.
-const GANADA: &str = "가나다라마바사아자차카타파하";
-/// The fourteen basic initial consonants (jamo) in the same order.
-const CHOSUNG: &str = "ㄱㄴㄷㄹㅁㅂㅅㅇㅈㅊㅋㅌㅍㅎ";
-
-/// The Russian alphabet without ё, й, ъ, ы and ь, which are not used as
-/// list labels.
-const RUSSIAN_LOWER: &[char] = &[
-    'а', 'б', 'в', 'г', 'д', 'е', 'ж', 'з', 'и', 'к', 'л', 'м', 'н', 'о', 'п', 'р', 'с', 'т', 'у',
-    'ф', 'х', 'ц', 'ч', 'ш', 'щ', 'э', 'ю', 'я',
-];
-const RUSSIAN_UPPER: &[char] = &[
-    'А', 'Б', 'В', 'Г', 'Д', 'Е', 'Ж', 'З', 'И', 'К', 'Л', 'М', 'Н', 'О', 'П', 'Р', 'С', 'Т', 'У',
-    'Ф', 'Х', 'Ц', 'Ч', 'Ш', 'Щ', 'Э', 'Ю', 'Я',
-];
-const HEBREW_ALPHABET: &[char] = &[
-    'א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ז', 'ח', 'ט', 'י', 'כ', 'ל', 'מ', 'נ', 'ס', 'ע', 'פ', 'צ', 'ק',
-    'ר', 'ש', 'ת',
-];
-/// Hijāʾī order (letters grouped by shape).
-const ARABIC_ALPHA: &[char] = &[
-    'أ', 'ب', 'ت', 'ث', 'ج', 'ح', 'خ', 'د', 'ذ', 'ر', 'ز', 'س', 'ش', 'ص', 'ض', 'ط', 'ظ', 'ع', 'غ',
-    'ف', 'ق', 'ك', 'ل', 'م', 'ن', 'ه', 'و', 'ي',
-];
-/// Abjadī order (the letters' traditional numeric values 1, 2, 3, …).
-const ARABIC_ABJAD: &[char] = &[
-    'أ', 'ب', 'ج', 'د', 'ه', 'و', 'ز', 'ح', 'ط', 'ي', 'ك', 'ل', 'م', 'ن', 'س', 'ع', 'ف', 'ص', 'ق',
-    'ر', 'ش', 'ت', 'ث', 'خ', 'ذ', 'ض', 'ظ', 'غ',
-];
-const KOREAN_DIGITS: [char; 10] = ['영', '일', '이', '삼', '사', '오', '육', '칠', '팔', '구'];
-
-fn cycle_char(value: u32, alphabet: &str) -> String {
-    let len = alphabet.chars().count() as u32;
-    alphabet
-        .chars()
-        .nth(((value.max(1) - 1) % len) as usize)
-        .map(String::from)
-        .unwrap_or_default()
-}
-
-/// `甲子`, `乙丑`, … `癸亥`: the stem and branch advance together, so the
-/// cycle repeats after sixty terms.
-fn to_sexagenary(value: u32) -> String {
-    let index = (value.max(1) - 1) % 60;
-    let mut label = cycle_char(index % 10 + 1, HEAVENLY_STEMS);
-    label.push_str(&cycle_char(index % 12 + 1, EARTHLY_BRANCHES));
-    label
-}
-
-/// Longest label the repeating formats build before falling back to decimal;
-/// Word's own lettered lists stop well short of this.
-const MAX_REPEATED_LABEL: u32 = 40;
-
-/// Word's alphabetic rollover: after the last letter the first comes back
-/// doubled, then the second doubled (`z`, `aa`, `bb`, …), not the
-/// spreadsheet-style `aa`, `ab`.
-fn to_repeated_letter(value: u32, alphabet: &[char]) -> String {
-    to_repeated_symbol(value, alphabet)
-}
-
-fn to_repeated_symbol(value: u32, alphabet: &[char]) -> String {
-    let len = alphabet.len() as u32;
-    let index = value.max(1) - 1;
-    let times = index / len + 1;
-    if times > MAX_REPEATED_LABEL {
-        return value.to_string();
-    }
-    std::iter::repeat_n(alphabet[(index % len) as usize], times as usize).collect()
-}
-
-fn to_decimal_digits(value: u32, digits: [char; 10]) -> String {
-    value
-        .to_string()
-        .bytes()
-        .map(|digit| digits[(digit - b'0') as usize])
-        .collect()
-}
-
-/// Digits, small units and large units of one Chinese counting style.
-struct ChineseNumerals {
-    /// Index 0 is the zero written between non-zero places (一百〇一).
-    digits: [char; 10],
-    /// 十, 百, 千 (or their financial forms).
-    small_units: [char; 3],
-    /// Units for the 10⁴ and 10⁸ groups.
-    large_units: [&'static str; 2],
-    /// Everyday counting writes 10–19 as 十, 十一, …; the legal (financial)
-    /// styles always keep the digit: 壹拾.
-    omit_leading_one_before_ten: bool,
-}
-
-impl ChineseNumerals {
-    const COUNTING: Self = Self {
-        digits: ['〇', '一', '二', '三', '四', '五', '六', '七', '八', '九'],
-        small_units: ['十', '百', '千'],
-        large_units: ["万", "亿"],
-        omit_leading_one_before_ten: true,
-    };
-    const LEGAL_SIMPLIFIED: Self = Self {
-        digits: ['零', '壹', '贰', '叁', '肆', '伍', '陆', '柒', '捌', '玖'],
-        small_units: ['拾', '佰', '仟'],
-        large_units: ["万", "亿"],
-        omit_leading_one_before_ten: false,
-    };
-    const LEGAL_TRADITIONAL: Self = Self {
-        digits: ['零', '壹', '貳', '參', '肆', '伍', '陸', '柒', '捌', '玖'],
-        small_units: ['拾', '佰', '仟'],
-        large_units: ["萬", "億"],
-        omit_leading_one_before_ten: false,
-    };
-}
-
-/// Chinese place-value counting. Unlike Japanese counting, the digit one is
-/// kept before 百 and 千 (一百, 一千), and a run of empty places between
-/// non-zero ones is written as a single zero (一百〇一, 一万〇一).
-fn to_chinese_counting(value: u32, numerals: ChineseNumerals) -> String {
-    let groups = [value / 100_000_000, value / 10_000 % 10_000, value % 10_000];
-    let mut result = String::new();
-    let mut gap = false;
-    for (index, &group) in groups.iter().enumerate() {
-        if group == 0 {
-            gap |= !result.is_empty();
-            continue;
-        }
-        if !result.is_empty() && (gap || group < 1_000) {
-            result.push(numerals.digits[0]);
-        }
-        gap = false;
-        push_chinese_group(&mut result, group, &numerals);
-        result.push_str(match index {
-            0 => numerals.large_units[1],
-            1 => numerals.large_units[0],
-            _ => "",
-        });
-    }
-    result
-}
-
-fn push_chinese_group(result: &mut String, group: u32, numerals: &ChineseNumerals) {
-    let leading = result.is_empty();
-    let places = [group / 1_000, group / 100 % 10, group / 10 % 10, group % 10];
-    let units = [
-        Some(numerals.small_units[2]),
-        Some(numerals.small_units[1]),
-        Some(numerals.small_units[0]),
-        None,
-    ];
-    let mut started = false;
-    let mut zero_run = false;
-    for (place, (&digit, unit)) in places.iter().zip(units).enumerate() {
-        if digit == 0 {
-            zero_run |= started;
-            continue;
-        }
-        if zero_run {
-            result.push(numerals.digits[0]);
-            zero_run = false;
-        }
-        let bare_ten =
-            numerals.omit_leading_one_before_ten && leading && !started && place == 2 && digit == 1;
-        if !bare_ten {
-            result.push(numerals.digits[digit as usize]);
-        }
-        if let Some(unit) = unit {
-            result.push(unit);
-        }
-        started = true;
-    }
-}
-
-/// Sino-Korean numerals in Hangul: 일, 이, … 십, 십일, … 백, 천, 만. As in
-/// Japanese counting the digit one is dropped before a unit, and Korean
-/// writes no zero for empty places.
-fn to_korean_counting(value: u32) -> String {
-    const UNITS: [&str; 4] = ["천", "백", "십", ""];
-    const LARGE: [&str; 3] = ["억", "만", ""];
-    let groups = [value / 100_000_000, value / 10_000 % 10_000, value % 10_000];
-    let mut result = String::new();
-    for (index, &group) in groups.iter().enumerate() {
-        if group == 0 {
-            continue;
-        }
-        if !(group == 1 && index == 1) {
-            let places = [group / 1_000, group / 100 % 10, group / 10 % 10, group % 10];
-            for (place, &digit) in places.iter().enumerate() {
-                if digit == 0 {
-                    continue;
-                }
-                if digit != 1 || place == 3 {
-                    result.push(KOREAN_DIGITS[digit as usize]);
-                }
-                result.push_str(UNITS[place]);
-            }
-        }
-        result.push_str(LARGE[index]);
-    }
-    result
-}
-
-/// Native Korean numerals (하나, 둘, … 아흔아홉). They stop at 99; larger
-/// values are written in decimal.
-fn to_korean_native(value: u32) -> String {
-    const TENS: [&str; 10] = [
-        "", "열", "스물", "서른", "마흔", "쉰", "예순", "일흔", "여든", "아흔",
-    ];
-    const ONES: [&str; 10] = [
-        "", "하나", "둘", "셋", "넷", "다섯", "여섯", "일곱", "여덟", "아홉",
-    ];
-    if value > 99 {
-        return value.to_string();
-    }
-    format!(
-        "{}{}",
-        TENS[(value / 10) as usize],
-        ONES[(value % 10) as usize]
-    )
-}
-
-/// Hebrew alphabetic numerals (gematria) for 1–999. 15 and 16 are written
-/// טו and טז rather than spelling a divine name. Larger values stay decimal.
-fn to_hebrew_numeral(value: u32) -> String {
-    const ONES: [&str; 10] = ["", "א", "ב", "ג", "ד", "ה", "ו", "ז", "ח", "ט"];
-    const TENS: [&str; 10] = ["", "י", "כ", "ל", "מ", "נ", "ס", "ע", "פ", "צ"];
-    const HUNDREDS: [&str; 10] = ["", "ק", "ר", "ש", "ת", "תק", "תר", "תש", "תת", "תתק"];
-    if value > 999 {
-        return value.to_string();
-    }
-    let mut result = String::from(HUNDREDS[(value / 100) as usize]);
-    match value % 100 {
-        15 => result.push_str("טו"),
-        16 => result.push_str("טז"),
-        rest => {
-            result.push_str(TENS[(rest / 10) as usize]);
-            result.push_str(ONES[(rest % 10) as usize]);
-        }
-    }
-    result
 }
 
 fn multilevel_preset_levels(preset: MultilevelListPreset) -> Vec<NumberingLevel> {
@@ -1550,375 +1263,45 @@ fn multilevel_preset_levels(preset: MultilevelListPreset) -> Vec<NumberingLevel>
 // numbering model need an owned String; escaped or invalid values retain the
 // same unescaping and lossy fallback behavior as before.
 fn attr_value<'a>(e: &'a BytesStart<'_>, key: &[u8]) -> Option<Cow<'a, str>> {
-    for attr in e.attributes().flatten() {
-        if attr.key.as_ref() == key {
-            return Some(
-                attr.normalized_value(quick_xml::XmlVersion::Implicit1_0)
-                    .unwrap_or_else(|_| {
-                        Cow::Owned(String::from_utf8_lossy(&attr.value).into_owned())
-                    }),
-            );
+    // Avoid the checked iterator's per-lookup allocation on ordinary short
+    // attribute lists. Replay malformed or duplicate lists with its original
+    // recovery behavior before accepting a later key.
+    let mut seen = [b"".as_slice(); 8];
+    let mut seen_len = 0;
+    let mut attributes = e.attributes();
+    attributes.with_checks(false);
+    let attr = loop {
+        match attributes.next() {
+            Some(Ok(attr)) if !seen[..seen_len].contains(&attr.key.into_inner()) => {
+                if attr.key.as_ref() == key {
+                    break attr;
+                }
+                if seen_len == seen.len() {
+                    break e
+                        .attributes()
+                        .flatten()
+                        .find(|attr| attr.key.as_ref() == key)?;
+                }
+                seen[seen_len] = attr.key.into_inner();
+                seen_len += 1;
+            }
+            Some(_) => {
+                break e
+                    .attributes()
+                    .flatten()
+                    .find(|attr| attr.key.as_ref() == key)?
+            }
+            None => return None,
         }
-    }
-
-    None
+    };
+    Some(
+        attr.normalized_value(quick_xml::XmlVersion::Implicit1_0)
+            .unwrap_or_else(|_| Cow::Owned(String::from_utf8_lossy(&attr.value).into_owned())),
+    )
 }
 
 fn ensure_run_props(level: &mut NumberingLevel) -> &mut RunProperties {
     level.run_props.get_or_insert_with(RunProperties::default)
-}
-
-pub(crate) fn to_roman(num: u32, uppercase: bool) -> String {
-    let values = [1000, 900, 500, 400, 100, 90, 50, 40, 10, 9, 5, 4, 1];
-    let symbols = if uppercase {
-        [
-            "M", "CM", "D", "CD", "C", "XC", "L", "XL", "X", "IX", "V", "IV", "I",
-        ]
-    } else {
-        [
-            "m", "cm", "d", "cd", "c", "xc", "l", "xl", "x", "ix", "v", "iv", "i",
-        ]
-    };
-
-    let mut result = String::new();
-    let mut n = num;
-
-    for (i, &value) in values.iter().enumerate() {
-        while n >= value {
-            result.push_str(symbols[i]);
-            n -= value;
-        }
-    }
-
-    result
-}
-
-pub(crate) fn to_letter(num: u32, uppercase: bool) -> String {
-    const UPPER: [char; 26] = [
-        'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R',
-        'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
-    ];
-    let label = to_repeated_letter(num, &UPPER);
-    if uppercase {
-        label
-    } else {
-        label.to_ascii_lowercase()
-    }
-}
-
-pub(crate) fn to_hex(num: u32) -> String {
-    format!("{num:X}")
-}
-
-pub(crate) fn is_english_language(language: &str) -> bool {
-    language.eq_ignore_ascii_case("en")
-        || language
-            .get(..3)
-            .is_some_and(|prefix| prefix.eq_ignore_ascii_case("en-"))
-}
-
-pub(crate) fn to_english_ordinal(value: u32) -> String {
-    // 11, 12, and 13 are the exception even when the final digit would
-    // otherwise select st/nd/rd (for example 112th).
-    let suffix = if (11..=13).contains(&(value % 100)) {
-        "th"
-    } else {
-        match value % 10 {
-            1 => "st",
-            2 => "nd",
-            3 => "rd",
-            _ => "th",
-        }
-    };
-    format!("{value}{suffix}")
-}
-
-pub(crate) fn to_english_cardinal(mut value: u32) -> String {
-    if value == 0 {
-        return "zero".to_string();
-    }
-    let mut groups = Vec::new();
-
-    // Word's English CardText output uses short-scale groups and omits the
-    // British-style "and" (for example, "seven hundred ninety").
-    for (scale, name) in [
-        (1_000_000_000, "billion"),
-        (1_000_000, "million"),
-        (1_000, "thousand"),
-    ] {
-        let group = value / scale;
-        if group > 0 {
-            groups.push(format!("{} {name}", to_english_under_thousand(group)));
-            value %= scale;
-        }
-    }
-
-    if value > 0 {
-        groups.push(to_english_under_thousand(value));
-    }
-
-    groups.join(" ")
-}
-
-fn to_english_under_thousand(value: u32) -> String {
-    debug_assert!((1..1000).contains(&value));
-
-    const ONES: [&str; 20] = [
-        "zero",
-        "one",
-        "two",
-        "three",
-        "four",
-        "five",
-        "six",
-        "seven",
-        "eight",
-        "nine",
-        "ten",
-        "eleven",
-        "twelve",
-        "thirteen",
-        "fourteen",
-        "fifteen",
-        "sixteen",
-        "seventeen",
-        "eighteen",
-        "nineteen",
-    ];
-    const TENS: [&str; 10] = [
-        "", "", "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety",
-    ];
-
-    let hundreds = value / 100;
-    let remainder = value % 100;
-    let mut result = String::new();
-
-    if hundreds > 0 {
-        result.push_str(ONES[hundreds as usize]);
-        result.push_str(" hundred");
-        if remainder > 0 {
-            result.push(' ');
-        }
-    }
-
-    if remainder < 20 {
-        if remainder > 0 {
-            result.push_str(ONES[remainder as usize]);
-        }
-    } else {
-        result.push_str(TENS[(remainder / 10) as usize]);
-        if !remainder.is_multiple_of(10) {
-            result.push('-');
-            result.push_str(ONES[(remainder % 10) as usize]);
-        }
-    }
-
-    result
-}
-
-pub(crate) fn to_english_ordinal_text(value: u32) -> String {
-    let cardinal = to_english_cardinal(value);
-    let last_separator = cardinal.rfind([' ', '-']);
-    let (prefix, final_word) = match last_separator {
-        Some(index) => cardinal.split_at(index + 1),
-        None => ("", cardinal.as_str()),
-    };
-
-    let ordinal_word = match final_word {
-        "one" => "first".to_string(),
-        "two" => "second".to_string(),
-        "three" => "third".to_string(),
-        "five" => "fifth".to_string(),
-        "eight" => "eighth".to_string(),
-        "nine" => "ninth".to_string(),
-        "twelve" => "twelfth".to_string(),
-        word if word.ends_with('y') => format!("{}ieth", &word[..word.len() - 1]),
-        word => format!("{word}th"),
-    };
-
-    format!("{prefix}{ordinal_word}")
-}
-
-fn to_full_width_decimal(value: u32) -> String {
-    to_decimal_digit_set(value, '０')
-}
-
-fn to_decimal_digit_set(value: u32, zero: char) -> String {
-    value
-        .to_string()
-        .chars()
-        .map(|ch| {
-            // All three digit sets used here are contiguous Unicode blocks.
-            // Keeping the zero code point as the parameter makes the mapping
-            // shared without hiding which script each numFmt requests.
-            char::from_u32(zero as u32 + (ch as u32 - '0' as u32))
-                .expect("decimal digit set is valid Unicode")
-        })
-        .collect()
-}
-
-/// Word's half-width `aiueo` alphabet. Small kana and voiced variants are
-/// intentionally absent; they are not independent numbering positions.
-const AIUEO_KATAKANA_HALF_WIDTH: &str = "ｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎﾏﾐﾑﾒﾓﾔﾕﾖﾗﾘﾙﾚﾛﾜｦﾝ";
-
-const AIUEO_KATAKANA_FULL_WIDTH: &str =
-    "アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン";
-
-/// Unicode has no half-width code points for the historic `ヰ` and `ヱ` used by
-/// iroha. Word-compatible output therefore keeps those two glyphs full-width
-/// while all representable positions use half-width Katakana.
-const IROHA_KATAKANA_HALF_WIDTH: &str = "ｲﾛﾊﾆﾎﾍﾄﾁﾘﾇﾙｦﾜｶﾖﾀﾚｿﾂﾈﾅﾗﾑｳヰﾉｵｸﾔﾏｹﾌｺｴﾃｱｻｷﾕﾒﾐｼヱﾋﾓｾｽ";
-
-const IROHA_KATAKANA_FULL_WIDTH: &str =
-    "イロハニホヘトチリヌルヲワカヨタレソツネナラムウヰノオクヤマケフコエテアサキユメミシヱヒモセス";
-
-fn to_kana_sequence(value: u32, alphabet: &str) -> String {
-    let alphabet: Vec<char> = alphabet.chars().collect();
-    debug_assert!(!alphabet.is_empty());
-
-    // Use the same bijective rollover model as Latin letter numbering: after
-    // the last one-character label, continue with the first doubled label.
-    // This avoids silently falling back to decimal in long generated lists and
-    // keeps every counter value representable without a document-specific cap.
-    let radix = alphabet.len() as u32;
-    let mut remaining = value.max(1);
-    let mut result = Vec::new();
-    while remaining > 0 {
-        remaining -= 1;
-        result.push(alphabet[(remaining % radix) as usize]);
-        remaining /= radix;
-    }
-    result.into_iter().rev().collect()
-}
-
-fn to_japanese_positional_digits(value: u32) -> String {
-    value
-        .max(1)
-        .to_string()
-        .chars()
-        .map(|digit| match digit {
-            '0' => '〇',
-            '1' => '一',
-            '2' => '二',
-            '3' => '三',
-            '4' => '四',
-            '5' => '五',
-            '6' => '六',
-            '7' => '七',
-            '8' => '八',
-            '9' => '九',
-            _ => unreachable!("u32 decimal rendering contains only ASCII digits"),
-        })
-        .collect()
-}
-
-fn to_enclosed_decimal(value: u32, first_glyph: char, limit: u32) -> String {
-    if (1..=limit).contains(&value) {
-        // Each supported Unicode block is contiguous in numeric order:
-        // ①..⑳, ⒈..⒛, and ⑴..⒇. Keeping the start character explicit makes
-        // the mapping auditable against the OOXML examples.
-        char::from_u32(first_glyph as u32 + value - 1)
-            .expect("enclosed decimal range is valid Unicode")
-            .to_string()
-    } else {
-        value.to_string()
-    }
-}
-
-fn to_enclosed_ideograph(value: u32) -> String {
-    if (1..=10).contains(&value) {
-        // Unicode assigns the OOXML example sequence contiguously as
-        // CIRCLED IDEOGRAPH ONE (㊀) through TEN (㊉).
-        char::from_u32('㊀' as u32 + value - 1)
-            .expect("circled ideograph range is valid Unicode")
-            .to_string()
-    } else {
-        // ST_NumberFormat allows non-enclosed equivalents after ten. Preserve
-        // the ideographic counting system so the fallback remains script- and
-        // width-compatible with the requested format.
-        to_japanese_counting(value, JapaneseKanjiStyle::Standard)
-    }
-}
-
-#[derive(Clone, Copy)]
-enum JapaneseKanjiStyle {
-    Standard,
-    Legal,
-}
-
-impl JapaneseKanjiStyle {
-    fn digits(self) -> &'static [&'static str; 10] {
-        match self {
-            Self::Standard => &["", "一", "二", "三", "四", "五", "六", "七", "八", "九"],
-            // Word's Japanese legal numbering uses the modern financial forms
-            // for the digits that need tamper resistance. Four, six, seven,
-            // eight, and nine remain the ordinary common-use characters.
-            Self::Legal => &["", "壱", "弐", "参", "四", "伍", "六", "七", "八", "九"],
-        }
-    }
-
-    fn small_units(self) -> &'static [&'static str; 4] {
-        match self {
-            Self::Standard => &["千", "百", "十", ""],
-            // Microsoft/CLDR examples use 拾 for ten while retaining 百 and 千
-            // in this numbering style (as opposed to rarer accounting glyphs
-            // such as 佰 and 阡).
-            Self::Legal => &["千", "百", "拾", ""],
-        }
-    }
-
-    fn large_units(self) -> &'static [&'static str; 3] {
-        match self {
-            Self::Standard => &["", "万", "億"],
-            Self::Legal => &["", "萬", "億"],
-        }
-    }
-}
-
-fn to_japanese_counting(value: u32, style: JapaneseKanjiStyle) -> String {
-    // Japanese groups large values by 10,000 rather than 1,000. Three groups
-    // are sufficient for every u32 value: units, 万, and 億 (up to 42億...).
-    let mut remaining = value.max(1);
-    let mut groups = [0_u32; 3];
-    for group in &mut groups {
-        *group = remaining % 10_000;
-        remaining /= 10_000;
-    }
-
-    let mut result = String::new();
-    for group_index in (0..groups.len()).rev() {
-        let group = groups[group_index];
-        if group == 0 {
-            continue;
-        }
-        result.push_str(&format_japanese_four_digit_group(group, style));
-        result.push_str(style.large_units()[group_index]);
-    }
-    result
-}
-
-fn format_japanese_four_digit_group(group: u32, style: JapaneseKanjiStyle) -> String {
-    debug_assert!(group < 10_000);
-    let divisors = [1_000, 100, 10, 1];
-    let digits = style.digits();
-    let units = style.small_units();
-    let mut result = String::new();
-
-    for (index, divisor) in divisors.into_iter().enumerate() {
-        let digit = (group / divisor) % 10;
-        if digit == 0 {
-            continue;
-        }
-
-        // Japanese omits the leading one before 千/百/十: 10 is 十, not 一十.
-        // The ones position and large-unit groups keep it, yielding 一万 and
-        // 壱萬 rather than a bare unit marker.
-        if divisor == 1 || digit != 1 {
-            result.push_str(digits[digit as usize]);
-        }
-        result.push_str(units[index]);
-    }
-    result
 }
 
 /// Keeps track of numbering counters for every numbering instance and level.
@@ -2057,8 +1440,7 @@ impl NumberingCounter {
         // to the one it names.
         let restarts = |deeper: usize| {
             numbering
-                .and_then(|numbering| numbering.get_level_info(num_id, deeper as u32))
-                .and_then(|info| info.restart)
+                .and_then(|numbering| numbering.restart_value(num_id, deeper as u32))
                 .is_none_or(|restart| level < restart)
         };
         let counters = self.counters.entry(num_id.to_string()).or_default();
@@ -2583,6 +1965,40 @@ mod tests {
     use super::{NumberingCounter, NumberingPart};
 
     #[test]
+    fn attribute_fast_path_preserves_checked_lookup_recovery_and_normalization() {
+        use quick_xml::events::BytesStart;
+        for source in [
+            r#"lvl a="1" w:val="&#x32;""#,
+            r#"lvl a="1" a="2" w:val="&#x32;""#,
+            r#"lvl w:val="1" w:val="2""#,
+            r#"lvl a="1" invalid w:val="2""#,
+            r#"lvl a="1" b="2" c="3" d="4" e="5" f="6" g="7" h="8" i="9" w:val="2""#,
+            r#"lvl w:val="a&#x9;b&amp;c""#,
+            r#"lvl w:val="&invalid;""#,
+        ] {
+            let event = BytesStart::from_content(source, 3);
+            for key in [b"w:val".as_slice(), b"a", b"missing"] {
+                let checked = event
+                    .attributes()
+                    .flatten()
+                    .find(|attr| attr.key.as_ref() == key)
+                    .map(|attr| {
+                        attr.normalized_value(quick_xml::XmlVersion::Implicit1_0)
+                            .unwrap_or_else(|_| {
+                                String::from_utf8_lossy(&attr.value).into_owned().into()
+                            })
+                            .into_owned()
+                    });
+                assert_eq!(
+                    super::attr_value(&event, key).map(|value| value.into_owned()),
+                    checked,
+                    "{source}"
+                );
+            }
+        }
+    }
+
+    #[test]
     fn original_toc_child_first_list_retains_the_implicit_parent_number() {
         let bytes = include_bytes!("../../../public/fixtures/toc.docx");
         let mut archive = zip::ZipArchive::new(std::io::Cursor::new(bytes)).unwrap();
@@ -2684,6 +2100,497 @@ mod tests {
                     .and_then(|props| props.char_spacing),
                 Some(-0.5)
             );
+        }
+    }
+
+    #[test]
+    fn numbering_border_preserves_edges_and_scope() {
+        for expanded in [false, true] {
+            for token in ["single", "double", "dashed", "nil", "none"] {
+                let attrs = format!(r#"w:val="{token}" w:sz="12" w:space="3" w:color="ABCDEF""#);
+                let property = if expanded {
+                    format!("<w:bdr {attrs}></w:bdr>")
+                } else {
+                    format!("<w:bdr {attrs}/>")
+                };
+                let part = NumberingPart::from_xml(&format!(r#"<w:numbering xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:abstractNum w:abstractNumId="1"><w:lvl w:ilvl="0"><w:rPr>{property}</w:rPr></w:lvl><w:lvl w:ilvl="1"><w:pPr>{property}</w:pPr></w:lvl></w:abstractNum><w:num w:numId="1"><w:abstractNumId w:val="1"/><w:lvlOverride w:ilvl="2"><w:lvl w:ilvl="2"><w:rPr>{property}</w:rPr></w:lvl></w:lvlOverride></w:num></w:numbering>"#)).unwrap();
+                for level in [0, 2] {
+                    let props = part
+                        .get_level_info("1", level)
+                        .unwrap()
+                        .run_props
+                        .as_ref()
+                        .unwrap();
+                    let edge = props.border.as_ref().expect("numbering border");
+                    assert_eq!(edge.val.as_deref(), Some(token));
+                    assert_eq!(edge.color.as_deref(), Some("#ABCDEF"));
+                    assert_eq!(edge.size_eighths, Some(12));
+                    assert_eq!(edge.space, Some(3));
+                }
+                assert!(part.get_level_info("1", 1).unwrap().run_props.is_none());
+            }
+        }
+    }
+
+    #[test]
+    fn numbering_shading_preserves_colors_and_scope() {
+        for expanded in [false, true] {
+            for token in ["clear", "solid", "pct25", "nil"] {
+                let attrs = format!(r#"w:val="{token}" w:color="123456" w:fill="ABCDEF""#);
+                let property = if expanded {
+                    format!("<w:shd {attrs}></w:shd>")
+                } else {
+                    format!("<w:shd {attrs}/>")
+                };
+                let part = NumberingPart::from_xml(&format!(r#"<w:numbering xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:abstractNum w:abstractNumId="1"><w:lvl w:ilvl="0"><w:rPr>{property}</w:rPr></w:lvl><w:lvl w:ilvl="1"><w:pPr>{property}</w:pPr></w:lvl></w:abstractNum><w:num w:numId="1"><w:abstractNumId w:val="1"/><w:lvlOverride w:ilvl="2"><w:lvl w:ilvl="2"><w:rPr>{property}</w:rPr></w:lvl></w:lvlOverride></w:num></w:numbering>"#)).unwrap();
+                for level in [0, 2] {
+                    let props = part
+                        .get_level_info("1", level)
+                        .unwrap()
+                        .run_props
+                        .as_ref()
+                        .unwrap();
+                    let shading = props.shading.as_ref().expect("numbering shading");
+                    assert_eq!(shading.val.as_deref(), Some(token));
+                    assert_eq!(shading.color.as_deref(), Some("#123456"));
+                    assert_eq!(shading.fill.as_deref(), Some("#ABCDEF"));
+                }
+                assert!(part.get_level_info("1", 1).unwrap().run_props.is_none());
+            }
+        }
+    }
+
+    #[test]
+    fn numbering_emphasis_marks_preserve_tokens_and_scope() {
+        for expanded in [false, true] {
+            for (value, expected) in [
+                (Some("dot"), Some("dot")),
+                (Some("comma"), Some("comma")),
+                (Some("circle"), Some("circle")),
+                (Some("underDot"), Some("underdot")),
+                (Some("none"), Some("none")),
+                (Some(""), None),
+                (None, None),
+            ] {
+                let attrs = value
+                    .map(|value| format!(r#" w:val="{value}""#))
+                    .unwrap_or_default();
+                let property = if expanded {
+                    format!("<w:em{attrs}></w:em>")
+                } else {
+                    format!("<w:em{attrs}/>")
+                };
+                let part = NumberingPart::from_xml(&format!(r#"<w:numbering xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:abstractNum w:abstractNumId="1"><w:lvl w:ilvl="0"><w:rPr>{property}</w:rPr></w:lvl><w:lvl w:ilvl="1"><w:pPr>{property}</w:pPr></w:lvl></w:abstractNum><w:num w:numId="1"><w:abstractNumId w:val="1"/><w:lvlOverride w:ilvl="2"><w:lvl w:ilvl="2"><w:rPr>{property}</w:rPr></w:lvl></w:lvlOverride></w:num></w:numbering>"#)).unwrap();
+                for level in [0, 2] {
+                    assert_eq!(
+                        part.get_level_info("1", level)
+                            .unwrap()
+                            .run_props
+                            .as_ref()
+                            .and_then(|props| props.emphasis.as_deref()),
+                        expected,
+                        "{property}, level={level}"
+                    );
+                }
+                assert!(part.get_level_info("1", 1).unwrap().run_props.is_none());
+            }
+        }
+    }
+
+    #[test]
+    fn numbering_character_effects_preserve_explicit_on_off() {
+        for expanded in [false, true] {
+            for (token, expected) in [
+                (None, true),
+                (Some("1"), true),
+                (Some("true"), true),
+                (Some("on"), true),
+                (Some("0"), false),
+                (Some("false"), false),
+                (Some("off"), false),
+            ] {
+                let attrs = token
+                    .map(|value| format!(r#" w:val="{value}""#))
+                    .unwrap_or_default();
+                for tag in ["shadow", "outline", "emboss", "imprint"] {
+                    let property = if expanded {
+                        format!("<w:{tag}{attrs}></w:{tag}>")
+                    } else {
+                        format!("<w:{tag}{attrs}/>")
+                    };
+                    let xml = format!(
+                        r#"<w:numbering xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:abstractNum w:abstractNumId="1"><w:lvl w:ilvl="0"><w:rPr>{property}</w:rPr></w:lvl><w:lvl w:ilvl="1"><w:pPr>{property}</w:pPr></w:lvl></w:abstractNum><w:num w:numId="1"><w:abstractNumId w:val="1"/><w:lvlOverride w:ilvl="2"><w:lvl w:ilvl="2"><w:rPr>{property}</w:rPr></w:lvl></w:lvlOverride></w:num></w:numbering>"#
+                    );
+                    let part = NumberingPart::from_xml(&xml).unwrap();
+                    for level in [0, 2] {
+                        let props = part
+                            .get_level_info("1", level)
+                            .unwrap()
+                            .run_props
+                            .as_ref()
+                            .expect("numbering character effect must be read");
+                        for (name, value) in [
+                            ("shadow", props.shadow),
+                            ("outline", props.outline),
+                            ("emboss", props.emboss),
+                            ("imprint", props.imprint),
+                        ] {
+                            assert_eq!(
+                                value,
+                                if name == tag { Some(expected) } else { None },
+                                "{property}: level={level}, effect={name}"
+                            );
+                        }
+                    }
+                    assert!(part.get_level_info("1", 1).unwrap().run_props.is_none());
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn numbering_languages_preserve_independent_slots() {
+        for expanded in [false, true] {
+            for (attrs, language, east_asia) in [
+                (
+                    r#"w:val="fr-FR" w:eastAsia="ja-JP""#,
+                    Some("fr-FR"),
+                    Some("ja-JP"),
+                ),
+                (r#"w:eastAsia="zh-CN""#, None, Some("zh-CN")),
+                (r#"w:val="de-DE""#, Some("de-DE"), None),
+            ] {
+                let property = if expanded {
+                    format!("<w:lang {attrs}></w:lang>")
+                } else {
+                    format!("<w:lang {attrs}/>")
+                };
+                let xml = format!(
+                    r#"<w:numbering xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:abstractNum w:abstractNumId="1"><w:lvl w:ilvl="0"><w:rPr>{property}</w:rPr></w:lvl><w:lvl w:ilvl="1"><w:pPr>{property}</w:pPr></w:lvl></w:abstractNum><w:num w:numId="1"><w:abstractNumId w:val="1"/><w:lvlOverride w:ilvl="2"><w:lvl w:ilvl="2"><w:rPr>{property}</w:rPr></w:lvl></w:lvlOverride></w:num></w:numbering>"#
+                );
+                let part = NumberingPart::from_xml(&xml).unwrap();
+                for level in [0, 2] {
+                    let level = part.get_level_info("1", level).unwrap();
+                    assert_eq!(level.language.as_deref(), language);
+                    let props = level.run_props.as_ref().unwrap();
+                    assert_eq!(props.language.as_deref(), language);
+                    assert_eq!(props.east_asia_language.as_deref(), east_asia);
+                }
+                let guard = part.get_level_info("1", 1).unwrap();
+                assert!(guard.language.is_none());
+                assert!(guard.run_props.is_none());
+            }
+        }
+    }
+
+    #[test]
+    fn numbering_complex_script_preserves_independent_properties() {
+        for expanded in [false, true] {
+            for (token, expected) in [
+                (None, true),
+                (Some("1"), true),
+                (Some("true"), true),
+                (Some("on"), true),
+                (Some("0"), false),
+                (Some("false"), false),
+                (Some("off"), false),
+            ] {
+                let attrs = token
+                    .map(|value| format!(r#" w:val="{value}""#))
+                    .unwrap_or_default();
+                let property = if expanded {
+                    format!("<w:bCs{attrs}></w:bCs><w:iCs{attrs}></w:iCs><w:szCs w:val=\"37\"></w:szCs><w:b w:val=\"0\"/><w:i w:val=\"0\"/><w:sz w:val=\"22\"/>")
+                } else {
+                    format!("<w:bCs{attrs}/><w:iCs{attrs}/><w:szCs w:val=\"37\"/><w:b w:val=\"0\"/><w:i w:val=\"0\"/><w:sz w:val=\"22\"/>")
+                };
+                let xml = format!(
+                    r#"<w:numbering xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:abstractNum w:abstractNumId="1"><w:lvl w:ilvl="0"><w:rPr>{property}</w:rPr></w:lvl><w:lvl w:ilvl="1"><w:pPr>{property}</w:pPr></w:lvl></w:abstractNum><w:num w:numId="1"><w:abstractNumId w:val="1"/><w:lvlOverride w:ilvl="2"><w:lvl w:ilvl="2"><w:rPr>{property}</w:rPr></w:lvl></w:lvlOverride></w:num></w:numbering>"#
+                );
+                let part = NumberingPart::from_xml(&xml).unwrap();
+                for level in [0, 2] {
+                    let props = part
+                        .get_level_info("1", level)
+                        .unwrap()
+                        .run_props
+                        .as_ref()
+                        .unwrap();
+                    assert_eq!(props.bold_complex, Some(expected));
+                    assert_eq!(props.italic_complex, Some(expected));
+                    assert_eq!(props.font_size_complex, Some(18.5));
+                    assert_eq!(props.bold, Some(false));
+                    assert_eq!(props.italic, Some(false));
+                    assert_eq!(props.font_size, Some(11.0));
+                }
+                assert!(part.get_level_info("1", 1).unwrap().run_props.is_none());
+            }
+        }
+    }
+
+    #[test]
+    fn numbering_small_caps_preserves_explicit_on_off() {
+        for expanded in [false, true] {
+            for (token, expected) in [
+                (None, true),
+                (Some("1"), true),
+                (Some("true"), true),
+                (Some("on"), true),
+                (Some("0"), false),
+                (Some("false"), false),
+                (Some("off"), false),
+            ] {
+                let attrs = token
+                    .map(|value| format!(r#" w:val="{value}""#))
+                    .unwrap_or_default();
+                let property = if expanded {
+                    format!("<w:smallCaps{attrs}></w:smallCaps>")
+                } else {
+                    format!("<w:smallCaps{attrs}/>")
+                };
+                let xml = format!(
+                    r#"<w:numbering xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:abstractNum w:abstractNumId="1"><w:lvl w:ilvl="0"><w:rPr>{property}</w:rPr></w:lvl><w:lvl w:ilvl="1"><w:pPr>{property}</w:pPr></w:lvl></w:abstractNum><w:num w:numId="1"><w:abstractNumId w:val="1"/><w:lvlOverride w:ilvl="2"><w:lvl w:ilvl="2"><w:rPr>{property}</w:rPr></w:lvl></w:lvlOverride></w:num></w:numbering>"#
+                );
+                let part = NumberingPart::from_xml(&xml).unwrap();
+                for level in [0, 2] {
+                    assert_eq!(
+                        part.get_level_info("1", level)
+                            .unwrap()
+                            .run_props
+                            .as_ref()
+                            .and_then(|props| props.small_caps),
+                        Some(expected)
+                    );
+                }
+                assert!(part.get_level_info("1", 1).unwrap().run_props.is_none());
+            }
+        }
+    }
+
+    #[test]
+    fn numbering_caps_preserves_explicit_on_off() {
+        for expanded in [false, true] {
+            for (token, expected) in [
+                (None, true),
+                (Some("1"), true),
+                (Some("true"), true),
+                (Some("on"), true),
+                (Some("0"), false),
+                (Some("false"), false),
+                (Some("off"), false),
+            ] {
+                let attrs = token
+                    .map(|value| format!(r#" w:val="{value}""#))
+                    .unwrap_or_default();
+                let property = if expanded {
+                    format!("<w:caps{attrs}></w:caps>")
+                } else {
+                    format!("<w:caps{attrs}/>")
+                };
+                let xml = format!(
+                    r#"<w:numbering xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:abstractNum w:abstractNumId="1"><w:lvl w:ilvl="0"><w:rPr>{property}</w:rPr></w:lvl><w:lvl w:ilvl="1"><w:pPr>{property}</w:pPr></w:lvl></w:abstractNum><w:num w:numId="1"><w:abstractNumId w:val="1"/><w:lvlOverride w:ilvl="2"><w:lvl w:ilvl="2"><w:rPr>{property}</w:rPr></w:lvl></w:lvlOverride></w:num></w:numbering>"#
+                );
+                let part = NumberingPart::from_xml(&xml).unwrap();
+                for level in [0, 2] {
+                    assert_eq!(
+                        part.get_level_info("1", level)
+                            .unwrap()
+                            .run_props
+                            .as_ref()
+                            .and_then(|props| props.caps),
+                        Some(expected)
+                    );
+                }
+                assert!(part.get_level_info("1", 1).unwrap().run_props.is_none());
+            }
+        }
+    }
+
+    #[test]
+    fn numbering_strike_and_baseline_preserve_explicit_values() {
+        for expanded in [false, true] {
+            for (token, expected) in [
+                (None, true),
+                (Some("1"), true),
+                (Some("true"), true),
+                (Some("on"), true),
+                (Some("0"), false),
+                (Some("false"), false),
+                (Some("off"), false),
+            ] {
+                for (tag, double) in [("strike", false), ("dstrike", true)] {
+                    let attrs = token
+                        .map(|v| format!(r#" w:val="{v}""#))
+                        .unwrap_or_default();
+                    let property = if expanded {
+                        format!("<w:{tag}{attrs}></w:{tag}>")
+                    } else {
+                        format!("<w:{tag}{attrs}/>")
+                    };
+                    let xml = format!(
+                        r#"<w:numbering xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:abstractNum w:abstractNumId="1"><w:lvl w:ilvl="0"><w:rPr>{property}</w:rPr></w:lvl><w:lvl w:ilvl="1"><w:pPr>{property}</w:pPr></w:lvl></w:abstractNum><w:num w:numId="1"><w:abstractNumId w:val="1"/></w:num></w:numbering>"#
+                    );
+                    let part = NumberingPart::from_xml(&xml).unwrap();
+                    let props = part
+                        .get_level_info("1", 0)
+                        .unwrap()
+                        .run_props
+                        .clone()
+                        .unwrap_or_default();
+                    assert_eq!(
+                        if double {
+                            props.double_strike
+                        } else {
+                            props.strike
+                        },
+                        Some(expected),
+                        "tag={tag}, token={token:?}, expanded={expanded}"
+                    );
+                    assert!(part.get_level_info("1", 1).unwrap().run_props.is_none());
+                }
+            }
+            for alignment in ["superscript", "subscript", "baseline"] {
+                let property = if expanded {
+                    format!(r#"<w:vertAlign w:val="{alignment}"></w:vertAlign>"#)
+                } else {
+                    format!(r#"<w:vertAlign w:val="{alignment}"/>"#)
+                };
+                let xml = format!(
+                    r#"<w:numbering xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:abstractNum w:abstractNumId="1"><w:lvl w:ilvl="0"><w:rPr>{property}</w:rPr></w:lvl></w:abstractNum><w:num w:numId="1"><w:abstractNumId w:val="1"/><w:lvlOverride w:ilvl="1"><w:lvl w:ilvl="1"><w:rPr>{property}</w:rPr></w:lvl></w:lvlOverride></w:num></w:numbering>"#
+                );
+                let part = NumberingPart::from_xml(&xml).unwrap();
+                for level in [0, 1] {
+                    assert_eq!(
+                        part.get_level_info("1", level)
+                            .unwrap()
+                            .run_props
+                            .as_ref()
+                            .and_then(|p| p.baseline.as_deref()),
+                        Some(alignment)
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn numbering_character_metrics_preserve_overrides_and_resets() {
+        for expanded in [false, true] {
+            for (scale, position, kern, expected) in [
+                ("50", "-6", "16", (Some(50.0), Some(-3.0), Some(8.0))),
+                ("100", "0", "0", (Some(100.0), Some(0.0), Some(0.0))),
+                ("NaN", "inf", "-1", (None, None, None)),
+            ] {
+                let properties: String = [("w", scale), ("position", position), ("kern", kern)]
+                    .into_iter()
+                    .map(|(tag, value)| {
+                        if expanded {
+                            format!(r#"<w:{tag} w:val="{value}"></w:{tag}>"#)
+                        } else {
+                            format!(r#"<w:{tag} w:val="{value}"/>"#)
+                        }
+                    })
+                    .collect();
+                let xml = format!(
+                    r#"<w:numbering xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:abstractNum w:abstractNumId="1"><w:lvl w:ilvl="0"><w:rPr>{properties}</w:rPr></w:lvl><w:lvl w:ilvl="1"><w:pPr>{properties}</w:pPr></w:lvl></w:abstractNum><w:num w:numId="1"><w:abstractNumId w:val="1"/><w:lvlOverride w:ilvl="2"><w:lvl w:ilvl="2"><w:rPr>{properties}</w:rPr></w:lvl></w:lvlOverride></w:num></w:numbering>"#
+                );
+                let part = NumberingPart::from_xml(&xml).unwrap();
+                for level in [0, 2] {
+                    let props = part
+                        .get_level_info("1", level)
+                        .unwrap()
+                        .run_props
+                        .clone()
+                        .unwrap_or_default();
+                    assert_eq!(
+                        (props.text_scale, props.text_position, props.kerning),
+                        expected,
+                        "expanded={expanded}, level={level}, scale={scale}"
+                    );
+                }
+                assert!(part.get_level_info("1", 1).unwrap().run_props.is_none());
+            }
+        }
+    }
+
+    #[test]
+    fn numbering_emphasis_preserves_explicit_on_off_in_both_element_forms() {
+        for (token, expected) in [
+            (None, true),
+            (Some("0"), false),
+            (Some("false"), false),
+            (Some("off"), false),
+            (Some("1"), true),
+            (Some("true"), true),
+            (Some("on"), true),
+        ] {
+            for expanded in [false, true] {
+                let attrs = token
+                    .map(|token| format!(r#" w:val="{token}""#))
+                    .unwrap_or_default();
+                let properties: String = ["b", "i"]
+                    .into_iter()
+                    .map(|tag| {
+                        if expanded {
+                            format!("<w:{tag}{attrs}></w:{tag}>")
+                        } else {
+                            format!("<w:{tag}{attrs}/>")
+                        }
+                    })
+                    .collect();
+                let xml = format!(
+                    r#"<w:numbering xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:abstractNum w:abstractNumId="1"><w:lvl w:ilvl="0"><w:rPr>{properties}</w:rPr></w:lvl><w:lvl w:ilvl="1"><w:pPr>{properties}</w:pPr></w:lvl></w:abstractNum><w:num w:numId="1"><w:abstractNumId w:val="1"/></w:num></w:numbering>"#
+                );
+                let part = NumberingPart::from_xml(&xml).unwrap();
+                let props = part
+                    .get_level_info("1", 0)
+                    .unwrap()
+                    .run_props
+                    .as_ref()
+                    .unwrap();
+                assert_eq!(
+                    props.bold,
+                    Some(expected),
+                    "token={token:?}, expanded={expanded}"
+                );
+                assert_eq!(
+                    props.italic,
+                    Some(expected),
+                    "token={token:?}, expanded={expanded}"
+                );
+                assert!(part.get_level_info("1", 1).unwrap().run_props.is_none());
+            }
+        }
+    }
+
+    #[test]
+    fn run_grid_switch_is_preserved_in_numbering_levels() {
+        for (value, expected) in [
+            ("0", false),
+            ("false", false),
+            ("off", false),
+            ("1", true),
+            ("true", true),
+            ("on", true),
+        ] {
+            for expanded in [false, true] {
+                let element = if expanded {
+                    format!(r#"<w:snapToGrid w:val="{value}"></w:snapToGrid>"#)
+                } else {
+                    format!(r#"<w:snapToGrid w:val="{value}"/>"#)
+                };
+                let xml = format!(
+                    r#"<w:numbering xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:abstractNum w:abstractNumId="1"><w:lvl w:ilvl="0"><w:rPr>{element}</w:rPr></w:lvl></w:abstractNum><w:num w:numId="1"><w:abstractNumId w:val="1"/></w:num></w:numbering>"#
+                );
+                let part = NumberingPart::from_xml(&xml).unwrap();
+                assert_eq!(
+                    part.get_level_info("1", 0)
+                        .unwrap()
+                        .run_props
+                        .as_ref()
+                        .unwrap()
+                        .snap_to_grid,
+                    Some(expected)
+                );
+            }
         }
     }
 
@@ -2954,8 +2861,8 @@ mod legal_numbering_tests {
 
     /// Word's 正規形式の番号を使用する (`w:isLgl`): a 第一章 heading's
     /// second level reads `2.1`, not `二.1`; the level without it keeps the
-    /// first level's own format, and a legal level keeps its own (the
-    /// `Section 1.01` of Word's `Article I` list).
+    /// first level's own format. Word also renders the legal level's own
+    /// placeholder in decimal (MS-OI29500 2.1.278).
     #[test]
     fn a_legal_level_names_every_level_in_decimal() {
         let xml = r#"
@@ -3024,6 +2931,242 @@ mod legal_numbering_tests {
             );
         }
         assert_eq!(numbering.format_number("8", 0, &counter), "Article III.");
-        assert_eq!(numbering.format_number("8", 1, &counter), "Section 3.01");
+        assert_eq!(numbering.format_number("8", 1, &counter), "Section 3.1");
+    }
+}
+
+#[cfg(test)]
+mod marker_run_property_tests {
+    use super::NumberingPart;
+
+    #[test]
+    fn marker_underlines_preserve_kind_color_and_explicit_disable() {
+        for (underline, enabled, kind) in [
+            (r#"w:val="double""#, Some(true), Some("double")),
+            (r#"w:val="none""#, Some(false), None),
+            (r#"w:val="0""#, Some(false), None),
+            (r#"w:val="single""#, Some(true), None),
+            ("", None, None),
+        ] {
+            let xml = format!(
+                r#"<w:numbering xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:abstractNum w:abstractNumId="0"><w:lvl w:ilvl="0"><w:numFmt w:val="bullet"/><w:lvlText w:val="•"/><w:rPr><w:color w:val="123456"/><w:u {underline} w:color="654321"/></w:rPr></w:lvl></w:abstractNum><w:num w:numId="1"><w:abstractNumId w:val="0"/></w:num></w:numbering>"#
+            );
+            let numbering = NumberingPart::from_xml(&xml).unwrap();
+            let props = numbering
+                .get_level_info("1", 0)
+                .unwrap()
+                .run_props
+                .as_ref()
+                .unwrap();
+            assert_eq!(props.underline, enabled);
+            assert_eq!(props.underline_kind.as_deref(), kind);
+            assert_eq!(props.underline_color.as_deref(), Some("654321"));
+            assert_eq!(props.color.as_deref(), Some("#123456"));
+        }
+    }
+}
+
+#[cfg(test)]
+mod level_replacement_tests {
+    use super::{NumberingCounter, NumberingPart};
+
+    #[test]
+    fn concrete_level_replaces_format_layout_and_start_without_changing_other_instances() {
+        let xml = r#"<w:numbering xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:abstractNum w:abstractNumId="4"><w:lvl w:ilvl="0"><w:start w:val="1"/><w:numFmt w:val="decimal"/><w:lvlText w:val="%1."/><w:lvlJc w:val="left"/><w:rPr><w:b/></w:rPr></w:lvl><w:lvl w:ilvl="1"><w:start w:val="1"/><w:numFmt w:val="lowerLetter"/><w:lvlText w:val="%2."/></w:lvl></w:abstractNum>
+          <w:num w:numId="5"><w:abstractNumId w:val="4"/></w:num>
+          <w:num w:numId="6"><w:abstractNumId w:val="4"/><w:lvlOverride w:ilvl="0"><w:startOverride w:val="4"/><w:lvl w:ilvl="0"><w:start w:val="4"/><w:numFmt w:val="upperRoman"/><w:lvlText w:val="Article %1)"/><w:lvlJc w:val="right"/><w:suff w:val="space"/><w:pPr><w:ind w:left="720" w:hanging="360"/></w:pPr><w:rPr><w:i/><w:color w:val="123456"/></w:rPr></w:lvl></w:lvlOverride></w:num>
+          <w:num w:numId="7"><w:abstractNumId w:val="4"/><w:lvlOverride w:ilvl="0"><w:startOverride w:val="8"/><w:lvl w:ilvl="0"><w:start w:val="4"/><w:numFmt w:val="decimal"/><w:lvlText w:val="%1)"/></w:lvl></w:lvlOverride></w:num>
+          <w:num w:numId="8"><w:abstractNumId w:val="4"/><w:lvlOverride w:ilvl="0"><w:lvl w:ilvl="0"><w:numFmt w:val="bullet"/><w:lvlText w:val="•"/></w:lvl></w:lvlOverride></w:num>
+        </w:numbering>"#;
+        let part = NumberingPart::from_xml(xml).unwrap();
+        let level = part.get_level_info("6", 0).unwrap();
+        assert_eq!(level.lvl_jc.as_deref(), Some("right"));
+        assert_eq!(level.suffix.as_deref(), Some("space"));
+        assert_eq!(level.indent.as_ref().unwrap().left, Some(36.0));
+        assert_eq!(level.indent.as_ref().unwrap().hanging, Some(18.0));
+        let props = level.run_props.as_ref().unwrap();
+        assert_eq!(props.italic, Some(true));
+        assert_eq!(
+            props.bold, None,
+            "replacement does not merge the abstract run properties"
+        );
+        assert_eq!(props.color.as_deref(), Some("#123456"));
+        assert_eq!(part.start_value("6", 0), Some(4));
+        assert_eq!(part.start_value("7", 0), Some(8));
+        assert_eq!(
+            part.get_level_info("6", 1).unwrap().num_fmt.as_deref(),
+            Some("lowerLetter")
+        );
+        assert_eq!(
+            part.get_level_info("5", 0).unwrap().num_fmt.as_deref(),
+            Some("decimal")
+        );
+        assert_eq!(part.find_instance_by_format("bullet"), Some("8"));
+        let mut counters = NumberingCounter::new();
+        for (id, expected) in [
+            ("5", "1."),
+            ("6", "Article IV) "),
+            ("7", "8)"),
+            ("6", "Article V) "),
+        ] {
+            counters.increment_with(
+                Some(&part),
+                id,
+                "4",
+                0,
+                part.start_value(id, 0),
+                part.has_start_override(id, 0),
+            );
+            assert_eq!(part.format_number(id, 0, &counters), expected);
+        }
+    }
+}
+
+#[cfg(test)]
+mod word_restart_compatibility_tests {
+    use super::{NumberingCounter, NumberingPart};
+
+    fn labels(xml: &str, paragraphs: &[(u32, u32)]) -> Vec<String> {
+        let numbering = NumberingPart::from_xml(xml).unwrap();
+        let mut counters = NumberingCounter::new();
+        paragraphs
+            .iter()
+            .map(|(id, level)| {
+                let id = id.to_string();
+                counters.increment_with(
+                    Some(&numbering),
+                    &id,
+                    numbering.abstract_num_id(&id).unwrap(),
+                    *level,
+                    numbering.start_value(&id, *level),
+                    numbering.has_start_override(&id, *level),
+                );
+                numbering.format_number(&id, *level, &counters)
+            })
+            .collect()
+    }
+
+    #[test]
+    fn restart_controls_which_ancestors_reset_a_level() {
+        for (restart, expected) in [
+            ("", ["3.", "1.", "3.", "1.", "3."]),
+            (
+                r#"<w:lvlRestart w:val="0"/>"#,
+                ["3.", "1.", "4.", "1.", "5."],
+            ),
+            (
+                r#"<w:lvlRestart w:val="1"></w:lvlRestart>"#,
+                ["3.", "1.", "4.", "1.", "3."],
+            ),
+            (
+                r#"<w:lvlRestart w:val="2"/>"#,
+                ["3.", "1.", "3.", "1.", "3."],
+            ),
+            // Invalid forward references and values outside Word's range are ignored.
+            (
+                r#"<w:lvlRestart w:val="3"/>"#,
+                ["3.", "1.", "3.", "1.", "3."],
+            ),
+            (
+                r#"<w:lvlRestart w:val="99"/>"#,
+                ["3.", "1.", "3.", "1.", "3."],
+            ),
+        ] {
+            let xml = format!(
+                r#"<w:numbering xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:abstractNum w:abstractNumId="1"><w:lvl w:ilvl="0"><w:lvlText w:val="%1."/></w:lvl><w:lvl w:ilvl="1"><w:lvlText w:val="%2."/></w:lvl><w:lvl w:ilvl="2"><w:start w:val="3"/><w:lvlText w:val="%3."/>{restart}</w:lvl></w:abstractNum><w:num w:numId="1"><w:abstractNumId w:val="1"/></w:num></w:numbering>"#
+            );
+            assert_eq!(
+                labels(&xml, &[(1, 2), (1, 1), (1, 2), (1, 0), (1, 2)]),
+                expected,
+                "{restart}"
+            );
+        }
+    }
+
+    #[test]
+    fn word_ignores_start_and_restart_inside_concrete_level() {
+        let xml = r#"<w:numbering xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:abstractNum w:abstractNumId="1"><w:lvl w:ilvl="0"><w:lvlText w:val="%1."/></w:lvl><w:lvl w:ilvl="1"><w:start w:val="3"/><w:lvlRestart w:val="0"/><w:lvlText w:val="%2."/></w:lvl></w:abstractNum><w:num w:numId="1"><w:abstractNumId w:val="1"/><w:lvlOverride w:ilvl="1"><w:lvl w:ilvl="1"><w:start w:val="9"/><w:lvlRestart w:val="1"/><w:numFmt w:val="upperRoman"/><w:lvlText w:val="%2)"/></w:lvl></w:lvlOverride></w:num></w:numbering>"#;
+        let part = NumberingPart::from_xml(xml).unwrap();
+        assert_eq!(part.format_number("1", 1, &NumberingCounter::new()), "III)");
+        assert_eq!(
+            labels(xml, &[(1, 1), (1, 0), (1, 1)]),
+            ["III)", "1.", "IV)"]
+        );
+    }
+
+    #[test]
+    fn zero_start_advances_and_shared_num_ids_follow_latest_counter() {
+        let xml = r#"<w:numbering xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:abstractNum w:abstractNumId="1"><w:lvl w:ilvl="0"><w:start w:val="0"/><w:lvlText w:val="%1."/></w:lvl></w:abstractNum><w:num w:numId="1"><w:abstractNumId w:val="1"/></w:num><w:num w:numId="2"><w:abstractNumId w:val="1"/></w:num></w:numbering>"#;
+        assert_eq!(
+            labels(xml, &[(1, 0), (1, 0), (2, 0), (1, 0)]),
+            ["0.", "1.", "2.", "3."]
+        );
+    }
+}
+
+#[cfg(test)]
+mod legal_word_compatibility_tests {
+    use super::{NumberingCounter, NumberingPart};
+    fn labels(xml: &str, paragraphs: &[(u32, u32)]) -> Vec<String> {
+        let numbering = NumberingPart::from_xml(xml).unwrap();
+        let mut counter = NumberingCounter::new();
+        paragraphs
+            .iter()
+            .map(|(id, level)| {
+                let id = id.to_string();
+                counter.increment_with(
+                    Some(&numbering),
+                    &id,
+                    numbering.abstract_num_id(&id).unwrap(),
+                    *level,
+                    numbering.start_value(&id, *level),
+                    numbering.has_start_override(&id, *level),
+                );
+                numbering.format_number(&id, *level, &counter)
+            })
+            .collect()
+    }
+
+    #[test]
+    fn legal_numbering_uses_decimal_for_ancestors_and_current_level() {
+        for (flag, expected) in [
+            ("", "III.01"),
+            ("<w:isLgl/>", "3.1"),
+            (r#"<w:isLgl w:val="true"></w:isLgl>"#, "3.1"),
+            (r#"<w:isLgl w:val="1"/>"#, "3.1"),
+            (r#"<w:isLgl w:val="on"/>"#, "3.1"),
+            (r#"<w:isLgl w:val="0"/>"#, "III.01"),
+            (r#"<w:isLgl w:val="false"></w:isLgl>"#, "III.01"),
+            (r#"<w:isLgl w:val="off"/>"#, "III.01"),
+        ] {
+            let xml = format!(
+                r#"<w:numbering xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:abstractNum w:abstractNumId="1"><w:lvl w:ilvl="0"><w:start w:val="3"/><w:numFmt w:val="upperRoman"/><w:lvlText w:val="%1"/></w:lvl><w:lvl w:ilvl="1"><w:numFmt w:val="decimalZero"/><w:lvlText w:val="%1.%2"/>{flag}</w:lvl></w:abstractNum><w:num w:numId="1"><w:abstractNumId w:val="1"/></w:num></w:numbering>"#
+            );
+            assert_eq!(labels(&xml, &[(1, 0), (1, 1)]), ["III", expected], "{flag}");
+            // Implicit ancestors use their initial value; legal decimal keeps zero.
+            assert_eq!(labels(&xml, &[(1, 1)]), [expected], "{flag}");
+        }
+    }
+
+    #[test]
+    fn legal_numbering_honors_concrete_replacement_and_none() {
+        for (abstract_flag, replacement_flag, expected) in [
+            ("", "<w:isLgl/>", "3.1"),
+            ("<w:isLgl/>", "", "III.a"),
+            ("<w:isLgl/>", r#"<w:isLgl w:val="0"/>"#, "III.a"),
+        ] {
+            let xml = format!(
+                r#"<w:numbering xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:abstractNum w:abstractNumId="1"><w:lvl w:ilvl="0"><w:start w:val="3"/><w:numFmt w:val="upperRoman"/><w:lvlText w:val="%1"/></w:lvl><w:lvl w:ilvl="1"><w:numFmt w:val="decimal"/><w:lvlText w:val="%2"/>{abstract_flag}</w:lvl></w:abstractNum><w:num w:numId="1"><w:abstractNumId w:val="1"/><w:lvlOverride w:ilvl="1"><w:lvl w:ilvl="1"><w:numFmt w:val="lowerLetter"/><w:lvlText w:val="%1.%2"/>{replacement_flag}</w:lvl></w:lvlOverride></w:num></w:numbering>"#
+            );
+            assert_eq!(labels(&xml, &[(1, 0), (1, 1)]), ["III", expected]);
+        }
+        let xml = r#"<w:numbering xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:abstractNum w:abstractNumId="1"><w:lvl w:ilvl="0"><w:numFmt w:val="none"/><w:lvlText w:val="%1"/><w:isLgl/></w:lvl><w:lvl w:ilvl="1"><w:numFmt w:val="decimalZero"/><w:lvlText w:val="%1.%2"/><w:isLgl/></w:lvl></w:abstractNum><w:num w:numId="1"><w:abstractNumId w:val="1"/></w:num></w:numbering>"#;
+        assert_eq!(labels(xml, &[(1, 0), (1, 1)]), ["", ".1"]);
+        let xml = xml.replace(
+            r#"<w:numFmt w:val="none"/>"#,
+            r#"<w:start w:val="0"/><w:numFmt w:val="upperRoman"/>"#,
+        );
+        assert_eq!(labels(&xml, &[(1, 0), (1, 1)]), ["0", "0.1"]);
     }
 }

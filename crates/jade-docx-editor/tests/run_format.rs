@@ -213,17 +213,31 @@ fn taking_properties_off_removes_them_and_undo_restores() {
             .unwrap();
     }
     let xml = document_xml(&document);
-    for gone in [
-        "<w:dstrike/>",
-        "<w:em ",
-        "<w:shd ",
-        "<w:bdr ",
-        "<w:position ",
-        "<w:eastAsianLayout",
-        "<w14:ligatures",
-    ] {
-        assert!(!xml.contains(gone), "{gone} still written");
-    }
+    assert!(xml.contains(r#"<w:position w:val="0"/>"#));
+    assert!(xml.contains(r#"<w:spacing w:val="0"/>"#));
+    let reread = load_bytes(&document.export_docx().unwrap());
+    assert_eq!(format_at(&reread, paragraph, 0).position, Some(0.0));
+    assert_eq!(format_at(&reread, paragraph, 0).spacing, Some(0.0));
+    assert_eq!(
+        format_at(&reread, paragraph, 0).shading.as_deref(),
+        Some("none")
+    );
+    assert!(xml.contains(r#"<w:shd w:val="nil"/>"#));
+    assert!(xml.contains(r#"<w:bdr w:val="nil"/>"#));
+    assert!(xml.contains(r#"<w:em w:val="none"/>"#));
+    assert_eq!(
+        format_at(&reread, paragraph, 0).emphasis.as_deref(),
+        Some("none")
+    );
+    assert_eq!(format_at(&reread, paragraph, 0).border, Some(false));
+    assert!(xml.contains(r#"w:combine="0""#));
+    assert!(xml.contains(r#"w:vert="0""#));
+    assert!(xml.contains(r#"<w14:ligatures w14:val="none"/>"#));
+    assert_eq!(
+        format_at(&reread, paragraph, 0).ligatures.as_deref(),
+        Some("none")
+    );
+    assert!(!xml.contains("<w:dstrike/>"));
     {
         let mut ctx = CommandContext::new(&mut document, &mut selection);
         executor.undo(&mut ctx).unwrap();
@@ -233,4 +247,519 @@ fn taking_properties_off_removes_them_and_undo_restores() {
     assert_ne!(format.double_strike, Some(true));
     assert_eq!(format.emphasis, None);
     assert!(document_xml(&document).len() <= before.len() + 64);
+}
+
+#[test]
+fn zero_position_resets_inherited_shift_and_undo_restores_inheritance() {
+    let mut document = load("hello.docx");
+    document.styles_part = Some(jade_docx_reader::StylesPart::from_xml(
+        r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:docDefaults><w:rPrDefault><w:rPr><w:position w:val="12"/></w:rPr></w:rPrDefault></w:docDefaults></w:styles>"#,
+    ).unwrap());
+    let paragraph = paragraph_with_text(&document, 4);
+    let effective_position = |document: &WordDocument| {
+        let p = document.paragraph(paragraph).unwrap();
+        document
+            .styles_part
+            .as_ref()
+            .unwrap()
+            .resolve_effective_run_properties(
+                p.properties
+                    .as_ref()
+                    .and_then(|properties| properties.style.as_deref()),
+                p.runs[0].properties.as_ref(),
+            )
+            .unwrap()
+            .text_position
+    };
+    assert_eq!(effective_position(&document), Some(6.0));
+    let range = SelectionRange::new(
+        TextPosition::new(paragraph, 0),
+        TextPosition::new(paragraph, 3),
+    );
+    let mut selection = Some(range);
+    let mut executor = CommandExecutor::new();
+    executor
+        .execute(
+            Box::new(SetRunFormatCommand::new(
+                range,
+                HeadlessRunFormat {
+                    position: Some(0.0),
+                    ..Default::default()
+                },
+            )),
+            &mut CommandContext::new(&mut document, &mut selection),
+        )
+        .unwrap();
+    assert_eq!(effective_position(&document), Some(0.0));
+    assert!(document_xml(&document).contains(r#"<w:position w:val="0"/>"#));
+    let reread = load_bytes(&document.export_docx().unwrap());
+    assert_eq!(format_at(&reread, paragraph, 0).position, Some(0.0));
+    executor
+        .undo(&mut CommandContext::new(&mut document, &mut selection))
+        .unwrap();
+    assert_eq!(effective_position(&document), Some(6.0));
+}
+
+#[test]
+fn zero_spacing_resets_inherited_spacing_and_undo_restores_inheritance() {
+    let mut document = load("hello.docx");
+    document.styles_part = Some(jade_docx_reader::StylesPart::from_xml(
+        r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:docDefaults><w:rPrDefault><w:rPr><w:spacing w:val="120"/></w:rPr></w:rPrDefault></w:docDefaults></w:styles>"#,
+    ).unwrap());
+    let paragraph = paragraph_with_text(&document, 4);
+    let effective_spacing = |document: &WordDocument| {
+        let p = document.paragraph(paragraph).unwrap();
+        document
+            .styles_part
+            .as_ref()
+            .unwrap()
+            .resolve_effective_run_properties(
+                p.properties
+                    .as_ref()
+                    .and_then(|properties| properties.style.as_deref()),
+                p.runs[0].properties.as_ref(),
+            )
+            .unwrap()
+            .char_spacing
+    };
+    assert_eq!(effective_spacing(&document), Some(6.0));
+    let range = SelectionRange::new(
+        TextPosition::new(paragraph, 0),
+        TextPosition::new(paragraph, 3),
+    );
+    let mut selection = Some(range);
+    let mut executor = CommandExecutor::new();
+    executor
+        .execute(
+            Box::new(SetRunFormatCommand::new(
+                range,
+                HeadlessRunFormat {
+                    spacing: Some(0.0),
+                    ..Default::default()
+                },
+            )),
+            &mut CommandContext::new(&mut document, &mut selection),
+        )
+        .unwrap();
+    assert_eq!(effective_spacing(&document), Some(0.0));
+    assert!(document_xml(&document).contains(r#"<w:spacing w:val="0"/>"#));
+    let reread = load_bytes(&document.export_docx().unwrap());
+    assert_eq!(format_at(&reread, paragraph, 0).spacing, Some(0.0));
+    executor
+        .undo(&mut CommandContext::new(&mut document, &mut selection))
+        .unwrap();
+    assert_eq!(effective_spacing(&document), Some(6.0));
+}
+
+#[test]
+fn no_shading_cancels_inherited_shading_and_undo_restores_it() {
+    let mut document = load("hello.docx");
+    document.styles_part = Some(jade_docx_reader::StylesPart::from_xml(
+        r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:docDefaults><w:rPrDefault><w:rPr><w:shd w:val="clear" w:fill="FFFF00"/></w:rPr></w:rPrDefault></w:docDefaults></w:styles>"#,
+    ).unwrap());
+    let paragraph = paragraph_with_text(&document, 4);
+    let effective_shading = |document: &WordDocument| {
+        let p = document.paragraph(paragraph).unwrap();
+        document
+            .styles_part
+            .as_ref()
+            .unwrap()
+            .resolve_effective_run_properties(
+                p.properties
+                    .as_ref()
+                    .and_then(|properties| properties.style.as_deref()),
+                p.runs[0].properties.as_ref(),
+            )
+            .unwrap()
+            .shading
+            .and_then(|shading| shading.resolved_background_color())
+    };
+    assert_eq!(effective_shading(&document), Some("#FFFF00".into()));
+    let range = SelectionRange::new(
+        TextPosition::new(paragraph, 0),
+        TextPosition::new(paragraph, 3),
+    );
+    let mut selection = Some(range);
+    let mut executor = CommandExecutor::new();
+    executor
+        .execute(
+            Box::new(SetRunFormatCommand::new(
+                range,
+                HeadlessRunFormat {
+                    shading: Some("none".into()),
+                    ..Default::default()
+                },
+            )),
+            &mut CommandContext::new(&mut document, &mut selection),
+        )
+        .unwrap();
+    assert_eq!(effective_shading(&document), None);
+    assert!(document_xml(&document).contains(r#"<w:shd w:val="nil"/>"#));
+    let reread = load_bytes(&document.export_docx().unwrap());
+    assert_eq!(
+        format_at(&reread, paragraph, 0).shading.as_deref(),
+        Some("none")
+    );
+    executor
+        .undo(&mut CommandContext::new(&mut document, &mut selection))
+        .unwrap();
+    assert_eq!(effective_shading(&document), Some("#FFFF00".into()));
+}
+
+#[test]
+fn no_border_cancels_inherited_border_and_undo_restores_it() {
+    let mut document = load("hello.docx");
+    document.styles_part = Some(jade_docx_reader::StylesPart::from_xml(
+        r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:docDefaults><w:rPrDefault><w:rPr><w:bdr w:val="single" w:sz="12" w:color="FF0000"/></w:rPr></w:rPrDefault></w:docDefaults></w:styles>"#,
+    ).unwrap());
+    let paragraph = paragraph_with_text(&document, 4);
+    let effective_border = |document: &WordDocument| {
+        let p = document.paragraph(paragraph).unwrap();
+        document
+            .styles_part
+            .as_ref()
+            .unwrap()
+            .resolve_effective_run_properties(
+                p.properties
+                    .as_ref()
+                    .and_then(|properties| properties.style.as_deref()),
+                p.runs[0].properties.as_ref(),
+            )
+            .unwrap()
+            .border
+            .map(|border| border.is_visible())
+    };
+    assert_eq!(effective_border(&document), Some(true));
+    let range = SelectionRange::new(
+        TextPosition::new(paragraph, 0),
+        TextPosition::new(paragraph, 3),
+    );
+    let mut selection = Some(range);
+    let mut executor = CommandExecutor::new();
+    executor
+        .execute(
+            Box::new(SetRunFormatCommand::new(
+                range,
+                HeadlessRunFormat {
+                    border: Some(false),
+                    ..Default::default()
+                },
+            )),
+            &mut CommandContext::new(&mut document, &mut selection),
+        )
+        .unwrap();
+    assert_eq!(effective_border(&document), Some(false));
+    assert!(document_xml(&document).contains(r#"<w:bdr w:val="nil"/>"#));
+    let reread = load_bytes(&document.export_docx().unwrap());
+    assert_eq!(format_at(&reread, paragraph, 0).border, Some(false));
+    executor
+        .undo(&mut CommandContext::new(&mut document, &mut selection))
+        .unwrap();
+    assert_eq!(effective_border(&document), Some(true));
+}
+
+#[test]
+fn no_emphasis_cancels_inherited_emphasis_and_undo_restores_it() {
+    let mut document = load("hello.docx");
+    document.styles_part = Some(jade_docx_reader::StylesPart::from_xml(
+        r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:docDefaults><w:rPrDefault><w:rPr><w:em w:val="dot"/></w:rPr></w:rPrDefault></w:docDefaults></w:styles>"#,
+    ).unwrap());
+    let paragraph = paragraph_with_text(&document, 4);
+    let effective_emphasis = |document: &WordDocument| {
+        let p = document.paragraph(paragraph).unwrap();
+        document
+            .styles_part
+            .as_ref()
+            .unwrap()
+            .resolve_effective_run_properties(
+                p.properties
+                    .as_ref()
+                    .and_then(|properties| properties.style.as_deref()),
+                p.runs[0].properties.as_ref(),
+            )
+            .unwrap()
+            .emphasis
+            .map(|mark| mark.to_string())
+    };
+    assert_eq!(effective_emphasis(&document), Some("dot".into()));
+    let range = SelectionRange::new(
+        TextPosition::new(paragraph, 0),
+        TextPosition::new(paragraph, 3),
+    );
+    let mut selection = Some(range);
+    let mut executor = CommandExecutor::new();
+    executor
+        .execute(
+            Box::new(SetRunFormatCommand::new(
+                range,
+                HeadlessRunFormat {
+                    emphasis: Some("none".into()),
+                    ..Default::default()
+                },
+            )),
+            &mut CommandContext::new(&mut document, &mut selection),
+        )
+        .unwrap();
+    assert_eq!(effective_emphasis(&document), Some("none".into()));
+    assert!(document_xml(&document).contains(r#"<w:em w:val="none"/>"#));
+    let reread = load_bytes(&document.export_docx().unwrap());
+    assert_eq!(
+        format_at(&reread, paragraph, 0).emphasis,
+        Some("none".into())
+    );
+    executor
+        .undo(&mut CommandContext::new(&mut document, &mut selection))
+        .unwrap();
+    assert_eq!(effective_emphasis(&document), Some("dot".into()));
+}
+
+#[test]
+fn multiple_stylistic_sets_round_trip_and_reset_with_undo() {
+    let mut document = load("hello.docx");
+    let paragraph = paragraph_with_text(&document, 4);
+    let range = SelectionRange::new(
+        TextPosition::new(paragraph, 0),
+        TextPosition::new(paragraph, 3),
+    );
+    let mut selection = Some(range);
+    let mut executor = CommandExecutor::new();
+    for sets in [vec![20, 1, 4, 4], vec![]] {
+        executor
+            .execute(
+                Box::new(SetRunFormatCommand::new(
+                    range,
+                    HeadlessRunFormat {
+                        stylistic_sets: Some(sets.clone()),
+                        ..Default::default()
+                    },
+                )),
+                &mut CommandContext::new(&mut document, &mut selection),
+            )
+            .unwrap();
+        let mut expected = sets;
+        expected.sort_unstable();
+        expected.dedup();
+        let reread = load_bytes(&document.export_docx().unwrap());
+        assert_eq!(
+            format_at(&reread, paragraph, 0).stylistic_sets,
+            Some(expected)
+        );
+    }
+    assert!(document_xml(&document).contains("<w14:stylisticSets/>"));
+    executor
+        .undo(&mut CommandContext::new(&mut document, &mut selection))
+        .unwrap();
+    assert_eq!(
+        format_at(&document, paragraph, 0).stylistic_sets,
+        Some(vec![1, 4, 20])
+    );
+    let reread = load_bytes(&document.export_docx().unwrap());
+    assert_eq!(
+        format_at(&reread, paragraph, 0).stylistic_sets,
+        Some(vec![1, 4, 20])
+    );
+}
+
+#[test]
+fn visual_effects_keep_opacity_and_explicitly_reset_inheritance() {
+    let mut document = load("hello.docx");
+    document.styles_part = Some(jade_docx_reader::StylesPart::from_xml(
+        r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:w14="http://schemas.microsoft.com/office/word/2010/wordml"><w:docDefaults><w:rPrDefault><w:rPr><w14:glow w14:rad="63500"><w14:srgbClr w14:val="FF0000"><w14:alpha w14:val="40000"/></w14:srgbClr></w14:glow><w14:textOutline w14:w="12700"><w14:solidFill><w14:srgbClr w14:val="00FF00"/></w14:solidFill></w14:textOutline></w:rPr></w:rPrDefault></w:docDefaults></w:styles>"#,
+    ).unwrap());
+    let paragraph = paragraph_with_text(&document, 4);
+    let effective = |document: &WordDocument| {
+        let p = document.paragraph(paragraph).unwrap();
+        document
+            .styles_part
+            .as_ref()
+            .unwrap()
+            .resolve_effective_run_properties(
+                p.properties.as_ref().and_then(|p| p.style.as_deref()),
+                p.runs[0].properties.as_ref(),
+            )
+            .unwrap()
+            .text_effects
+            .unwrap()
+    };
+    assert_eq!(effective(&document).glow_alpha, Some(0.4));
+    let range = SelectionRange::new(
+        TextPosition::new(paragraph, 0),
+        TextPosition::new(paragraph, 3),
+    );
+    let mut selection = Some(range);
+    let mut executor = CommandExecutor::new();
+    executor
+        .execute(
+            Box::new(SetRunFormatCommand::new(
+                range,
+                HeadlessRunFormat {
+                    glow_color: Some("none".into()),
+                    text_outline_color: Some("none".into()),
+                    ..Default::default()
+                },
+            )),
+            &mut CommandContext::new(&mut document, &mut selection),
+        )
+        .unwrap();
+    assert_eq!(effective(&document).glow_radius, Some(0.0));
+    assert_eq!(effective(&document).outline_width, Some(0.0));
+    let reread = load_bytes(&document.export_docx().unwrap());
+    let reset = reread.paragraph(paragraph).unwrap().runs[0]
+        .properties
+        .as_ref()
+        .unwrap()
+        .text_effects
+        .as_ref()
+        .unwrap();
+    assert_eq!(reset.glow_radius, Some(0.0));
+    assert_eq!(reset.outline_width, Some(0.0));
+    executor
+        .undo(&mut CommandContext::new(&mut document, &mut selection))
+        .unwrap();
+    assert_eq!(effective(&document).glow_radius, Some(5.0));
+    assert_eq!(effective(&document).outline_width, Some(1.0));
+
+    // A directly imported opacity must survive a radius-only edit.
+    let props = document.paragraph_mut(paragraph).unwrap().runs[0]
+        .properties
+        .get_or_insert_with(Default::default);
+    props.text_effects = Some(Box::new(jade_docx_reader::document::RunTextEffects {
+        glow_color: Some("#FF0000".into()),
+        glow_radius: Some(5.0),
+        glow_alpha: Some(0.4),
+        ..Default::default()
+    }));
+    executor
+        .execute(
+            Box::new(SetRunFormatCommand::new(
+                range,
+                HeadlessRunFormat {
+                    glow_radius: Some(7.0),
+                    ..Default::default()
+                },
+            )),
+            &mut CommandContext::new(&mut document, &mut selection),
+        )
+        .unwrap();
+    let reread = load_bytes(&document.export_docx().unwrap());
+    let effects = reread.paragraph(paragraph).unwrap().runs[0]
+        .properties
+        .as_ref()
+        .unwrap()
+        .text_effects
+        .as_ref()
+        .unwrap();
+    assert_eq!(effects.glow_radius, Some(7.0));
+    assert_eq!(effects.glow_alpha, Some(0.4));
+    assert!(document_xml(&document).contains(r#"w14:val="40000""#));
+}
+
+#[test]
+fn partial_visual_effect_edits_preserve_inherited_settings() {
+    for patch in [
+        HeadlessRunFormat {
+            glow_radius: Some(7.0),
+            ..Default::default()
+        },
+        HeadlessRunFormat {
+            glow_color: Some("0000FF".into()),
+            ..Default::default()
+        },
+        HeadlessRunFormat {
+            text_outline_width: Some(2.0),
+            ..Default::default()
+        },
+        HeadlessRunFormat {
+            text_outline_color: Some("0000FF".into()),
+            ..Default::default()
+        },
+    ] {
+        let mut document = load("hello.docx");
+        document.styles_part = Some(jade_docx_reader::StylesPart::from_xml(
+            r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:w14="http://schemas.microsoft.com/office/word/2010/wordml"><w:docDefaults><w:rPrDefault><w:rPr><w14:glow w14:rad="63500"><w14:srgbClr w14:val="FF0000"><w14:alpha w14:val="40000"/></w14:srgbClr></w14:glow><w14:textOutline w14:w="12700"><w14:solidFill><w14:srgbClr w14:val="00FF00"/></w14:solidFill></w14:textOutline></w:rPr></w:rPrDefault></w:docDefaults></w:styles>"#,
+        ).unwrap());
+        let paragraph = paragraph_with_text(&document, 4);
+        let before: Vec<_> = document
+            .paragraph(paragraph)
+            .unwrap()
+            .runs
+            .iter()
+            .map(|run| (run.text.clone(), run.properties.clone()))
+            .collect();
+        let range = SelectionRange::new(
+            TextPosition::new(paragraph, 1),
+            TextPosition::new(paragraph, 3),
+        );
+        let mut selection = Some(range);
+        let mut executor = CommandExecutor::new();
+        executor
+            .execute(
+                Box::new(SetRunFormatCommand::new(range, patch.clone())),
+                &mut CommandContext::new(&mut document, &mut selection),
+            )
+            .unwrap();
+        let reread = load_bytes(&document.export_docx().unwrap());
+        let format = format_at(&reread, paragraph, 1);
+        if patch.glow_radius.is_some() || patch.glow_color.is_some() {
+            assert_eq!(format.glow_radius, Some(patch.glow_radius.unwrap_or(5.0)));
+            assert_eq!(
+                format.glow_color,
+                Some(patch.glow_color.clone().unwrap_or("FF0000".into()))
+            );
+            let p = reread.paragraph(paragraph).unwrap();
+            let effects = p
+                .runs
+                .iter()
+                .find(|run| {
+                    run.properties.as_ref().is_some_and(|props| {
+                        props
+                            .text_effects
+                            .as_ref()
+                            .is_some_and(|effects| effects.glow_alpha.is_some())
+                    })
+                })
+                .unwrap()
+                .properties
+                .as_ref()
+                .unwrap()
+                .text_effects
+                .as_ref()
+                .unwrap();
+            assert_eq!(effects.glow_alpha, Some(0.4));
+            assert!(
+                effects.outline_width.is_none(),
+                "unmodified outline remains inherited"
+            );
+        } else {
+            assert_eq!(
+                format.text_outline_width,
+                Some(patch.text_outline_width.unwrap_or(1.0))
+            );
+            assert_eq!(
+                format.text_outline_color,
+                Some(patch.text_outline_color.clone().unwrap_or("00FF00".into()))
+            );
+            assert!(
+                format.glow_radius.is_none(),
+                "unmodified glow remains inherited"
+            );
+        }
+        assert!(format_at(&reread, paragraph, 0).glow_radius.is_none());
+        assert!(format_at(&reread, paragraph, 3)
+            .text_outline_width
+            .is_none());
+        executor
+            .undo(&mut CommandContext::new(&mut document, &mut selection))
+            .unwrap();
+        assert_eq!(
+            document
+                .paragraph(paragraph)
+                .unwrap()
+                .runs
+                .iter()
+                .map(|run| (run.text.clone(), run.properties.clone()))
+                .collect::<Vec<_>>(),
+            before
+        );
+    }
 }

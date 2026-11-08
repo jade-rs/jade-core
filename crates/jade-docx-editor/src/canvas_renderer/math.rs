@@ -1,3 +1,4 @@
+#[cfg(test)]
 use crate::document::MathParagraph;
 #[cfg(test)]
 use crate::document::{MathElement, MathElementKind};
@@ -5,9 +6,7 @@ pub(crate) use jade_docx_layout::math_layout::math_text;
 use jade_docx_layout::math_layout::MathMetrics;
 use jade_painter::Painter;
 
-use jade_docx_layout::math_layout::styled::{
-    layout_styled_math, MathTextStyle, StyledMathLayout, StyledMathMeasure,
-};
+use jade_docx_layout::math_layout::styled::{MathTextStyle, StyledMathLayout, StyledMathMeasure};
 use std::cell::RefCell;
 
 struct StyledPainterMeasure<'a, P> {
@@ -78,53 +77,19 @@ fn styled_color(color: &str) -> std::borrow::Cow<'_, str> {
         std::borrow::Cow::Owned(format!("#{color}"))
     }
 }
-pub(super) fn layout_boxed_math<'a, P: Painter>(
-    painter: &P,
-    math: &'a MathParagraph,
-    style: MathTextStyle<'a>,
-) -> Result<StyledMathLayout<'a>, P::Error> {
-    painter.save();
-    let result = layout_styled_math(
-        &StyledPainterMeasure {
-            painter,
-            font: RefCell::new(None),
-        },
-        math,
-        style,
-    );
-    painter.restore();
-    result
-}
-
-#[cfg(feature = "opentype-math")]
-pub(super) fn layout_boxed_math_with_font<'a, P: Painter>(
-    painter: &P,
-    math: &'a MathParagraph,
-    style: MathTextStyle<'a>,
-    font: &jade_docx_layout::math_layout::styled::font::MathFontData,
-) -> Result<
-    StyledMathLayout<'a>,
-    jade_docx_layout::math_layout::styled::font::MathFontLayoutError<P::Error>,
-> {
-    painter.save();
-    let result = font.layout(
-        StyledPainterMeasure {
-            painter,
-            font: RefCell::new(None),
-        },
-        math,
-        style,
-        true,
-    );
-    painter.restore();
-    result
-}
 /// The layout settings a document's `m:mathPr` asks for.
 pub(super) fn settings_from(
     properties: &jade_docx_reader::settings::MathProperties,
 ) -> jade_docx_layout::math_layout::styled::MathSettings {
     use jade_docx_layout::math_layout::styled::{BreakBinary, MathJustification, MathSettings};
-    let mut settings = MathSettings::default();
+    let mut settings = MathSettings {
+        use_display_defaults: properties.display_default != Some(false),
+        ..Default::default()
+    };
+    if settings.use_display_defaults {
+        let px = |twips: Option<f32>| f64::from(twips.unwrap_or(0.0)) / 15.0;
+        settings.display_margins_px = (px(properties.left_margin), px(properties.right_margin));
+    }
     if let Some(value) = properties.integral_limits.as_deref() {
         settings.integral_limits_side = value != "undOvr";
     }
@@ -208,6 +173,7 @@ where
 /// editor that needs to know where everything went.
 #[derive(Debug, Clone)]
 pub struct OwnedMathPlan {
+    pub alignment: jade_docx_layout::math_layout::MathParagraphAlignment,
     pub metrics: MathMetrics,
     /// The paragraph box display math reserves (font leading included).
     pub line_metrics: MathMetrics,
@@ -246,6 +212,7 @@ pub struct OwnedMathShape {
 impl OwnedMathPlan {
     pub fn from_plan(plan: &StyledMathLayout<'_>) -> Self {
         Self {
+            alignment: plan.alignment,
             metrics: plan.metrics,
             line_metrics: plan.line_metrics,
             text: plan.text.clone(),
@@ -398,6 +365,7 @@ pub struct MathZone {
     pub plan: std::rc::Rc<OwnedMathPlan>,
 }
 
+#[cfg(feature = "opentype-math")]
 pub fn paint_boxed_math<P: Painter>(
     painter: &P,
     plan: &StyledMathLayout<'_>,
@@ -451,6 +419,7 @@ pub fn paint_boxed_math<P: Painter>(
 }
 
 /// Draws a stretched delimiter, a radical sign, a wide accent or a border.
+#[cfg(feature = "opentype-math")]
 fn paint_math_shape<P: Painter>(
     painter: &P,
     shape: &jade_docx_layout::math_layout::styled::MathShape<'_>,

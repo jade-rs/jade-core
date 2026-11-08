@@ -1,0 +1,29 @@
+{
+  "engine_commit": "2b8815ede7a1706bff8121e28c19c7b93977d39f",
+  "word_product_version": "16.0.19127.20860",
+  "capture_id": "20261107T091326151Z-fd041683",
+  "reference_kind": "emf",
+  "engine_source_worktree_dirty": false,
+  "strict_fixtures": [],
+  "matching_fixtures": [],
+  "pending_fixtures": [
+    "word-windows-edge-table-spacing-auto-mixed-borders-compat12",
+    "word-windows-edge-table-spacing-auto-mixed-borders-compat14",
+    "word-windows-edge-table-spacing-auto-mixed-borders-compat15",
+    "word-windows-edge-table-spacing-missing-type-mixed-borders-compat12",
+    "word-windows-edge-table-spacing-missing-type-mixed-borders-compat14",
+    "word-windows-edge-table-spacing-missing-type-mixed-borders-compat15",
+    "word-windows-edge-table-spacing-missing-width-mixed-borders-compat12",
+    "word-windows-edge-table-spacing-missing-width-mixed-borders-compat14",
+    "word-windows-edge-table-spacing-missing-width-mixed-borders-compat15",
+    "word-windows-edge-table-spacing-negative-mixed-borders-compat12",
+    "word-windows-edge-table-spacing-negative-mixed-borders-compat14",
+    "word-windows-edge-table-spacing-negative-mixed-borders-compat15",
+    "word-windows-edge-table-spacing-nil-mixed-borders-compat12",
+    "word-windows-edge-table-spacing-nil-mixed-borders-compat14",
+    "word-windows-edge-table-spacing-nil-mixed-borders-compat15",
+    "word-windows-edge-table-spacing-percent-mixed-borders-compat12",
+    "word-windows-edge-table-spacing-percent-mixed-borders-compat14",
+    "word-windows-edge-table-spacing-percent-mixed-borders-compat15"
+  ]
+}

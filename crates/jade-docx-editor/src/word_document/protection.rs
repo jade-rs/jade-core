@@ -4,16 +4,12 @@
 //! parts of a restricted document (`w:permStart` / `w:permEnd`), and 書き込み
 //! パスワード / 読み取り専用を推奨 (`w:writeProtection`).
 //!
-//! Passwords are hashed as ECMA-376 Part 1 §17.15.1.29 describes for
-//! `w:algorithmName="SHA-512"`: the hash of the salt and the UTF-16LE
-//! password, then hashed again with each iteration's number appended, 100 000
-//! times. A protection Word wrote with its older `w:hash` / `w:salt`
-//! attributes derives its key from the password another way first; such a
-//! protection is read and kept, and lifted only with the document's own
-//! 保護の中止 when its password cannot be checked here.
+//! New passwords use SHA-512 with a random salt and 100,000 iterations.
+//! Imported SHA-1/256/384/512 verifiers retain their algorithm and attribute
+//! form. Unsupported or malformed verifiers never authorize lifting protection.
 
 use super::*;
-use sha2::{Digest, Sha512};
+use sha2::Sha512;
 
 /// What a restricted document lets a reader do.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -52,6 +48,8 @@ impl EditingKind {
 /// A password's hash as a protection element stores it.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PasswordHash {
+    /// OOXML algorithm name, or `sid:<number>` for an unknown legacy identifier.
+    pub algorithm: String,
     /// Base64.
     pub hash: String,
     /// Base64.
@@ -63,16 +61,22 @@ pub struct PasswordHash {
 
 /// ECMA-376's SHA-512 password hash.
 pub fn hash_password(password: &str, salt: &[u8], spin_count: u32) -> Vec<u8> {
-    let utf16: Vec<u8> = password
-        .encode_utf16()
-        .flat_map(|unit| unit.to_le_bytes())
-        .collect();
-    let mut hasher = Sha512::new();
+    hash_password_with::<Sha512>(password, salt, spin_count)
+}
+
+fn hash_password_with<D: sha2::Digest + Default>(
+    password: &str,
+    salt: &[u8],
+    spin_count: u32,
+) -> Vec<u8> {
+    let mut hasher = D::new();
     hasher.update(salt);
-    hasher.update(&utf16);
-    let mut hash: Vec<u8> = hasher.finalize().to_vec();
+    for unit in password.encode_utf16() {
+        hasher.update(unit.to_le_bytes());
+    }
+    let mut hash = hasher.finalize().to_vec();
     for iteration in 0..spin_count {
-        let mut hasher = Sha512::new();
+        let mut hasher = D::new();
         hasher.update(&hash);
         hasher.update(iteration.to_le_bytes());
         hash = hasher.finalize().to_vec();
@@ -85,6 +89,7 @@ impl PasswordHash {
     pub fn new(password: &str, salt: &[u8]) -> Self {
         const SPIN: u32 = 100_000;
         Self {
+            algorithm: "SHA-512".into(),
             hash: BASE64.encode(hash_password(password, salt, SPIN)),
             salt: BASE64.encode(salt),
             spin_count: SPIN,
@@ -92,14 +97,53 @@ impl PasswordHash {
         }
     }
 
-    /// Whether `password` is the one hashed; `None` when the hash is the
-    /// older kind, which cannot be checked here.
+    /// Whether `password` matches; unsupported or malformed verifiers return
+    /// `None` and must never be treated as successful authentication.
     pub fn verifies(&self, password: &str) -> Option<bool> {
-        if self.legacy {
+        // Validate sizes and the work factor before allocating or hashing. The
+        // shared OOXML validator also accepts XML Schema base64 whitespace.
+        jade_opc::protection::PasswordVerifier {
+            legacy: None,
+            algorithm: Some(self.algorithm.clone()),
+            hash: Some(self.hash.clone()),
+            salt: Some(self.salt.clone()),
+            spin_count: Some(self.spin_count.to_string()),
+        }
+        .validate()
+        .ok()?;
+        let compact = |value: &str| {
+            value
+                .chars()
+                .filter(|c| !matches!(c, ' ' | '\t' | '\r' | '\n'))
+                .collect::<String>()
+        };
+        let salt = BASE64.decode(compact(&self.salt)).ok()?;
+        let expected = BASE64.decode(compact(&self.hash)).ok()?;
+        let actual = match self.algorithm.as_str() {
+            "SHA-1" => hash_password_with::<sha1::Sha1>(password, &salt, self.spin_count),
+            "SHA-256" => hash_password_with::<sha2::Sha256>(password, &salt, self.spin_count),
+            "SHA-384" => hash_password_with::<sha2::Sha384>(password, &salt, self.spin_count),
+            "SHA-512" => hash_password(password, &salt, self.spin_count),
+            _ => return None,
+        };
+        if expected.len() != actual.len() {
             return None;
         }
-        let salt = BASE64.decode(&self.salt).ok()?;
-        Some(BASE64.encode(hash_password(password, &salt, self.spin_count)) == self.hash)
+        Some(
+            expected
+                .iter()
+                .zip(actual)
+                .fold(0u8, |difference, (a, b)| difference | (a ^ b))
+                == 0,
+        )
+    }
+
+    pub fn verify_for_unlock(&self, password: &str) -> Result<(), String> {
+        match self.verifies(password) {
+            Some(true) => Ok(()),
+            Some(false) => Err("the password is wrong".into()),
+            None => Err("the protection password format is unsupported or invalid".into()),
+        }
     }
 }
 
@@ -135,8 +179,6 @@ pub struct EditableRange {
     pub editors: String,
 }
 
-const SETTINGS: &str = "word/settings.xml";
-
 fn attribute_of(element: &XmlElement, local: &str) -> Option<String> {
     element
         .attributes
@@ -146,30 +188,49 @@ fn attribute_of(element: &XmlElement, local: &str) -> Option<String> {
 }
 
 fn password_of(element: &XmlElement) -> Option<PasswordHash> {
-    if let (Some(hash), Some(salt)) = (
-        attribute_of(element, "hashValue"),
-        attribute_of(element, "saltValue"),
-    ) {
-        return Some(PasswordHash {
-            hash,
-            salt,
-            spin_count: attribute_of(element, "spinCount")
-                .and_then(|count| count.parse().ok())
-                .unwrap_or(100_000),
-            legacy: false,
-        });
+    let modern = attribute_of(element, "hashValue").is_some()
+        || attribute_of(element, "saltValue").is_some()
+        || attribute_of(element, "algorithmName").is_some()
+        || attribute_of(element, "spinCount").is_some();
+    let legacy = attribute_of(element, "hash").is_some()
+        || attribute_of(element, "salt").is_some()
+        || attribute_of(element, "cryptAlgorithmSid").is_some()
+        || attribute_of(element, "cryptSpinCount").is_some();
+    if !modern && !legacy {
+        return None;
     }
-    match (attribute_of(element, "hash"), attribute_of(element, "salt")) {
-        (Some(hash), Some(salt)) => Some(PasswordHash {
-            hash,
-            salt,
-            spin_count: attribute_of(element, "cryptSpinCount")
-                .and_then(|count| count.parse().ok())
-                .unwrap_or(100_000),
-            legacy: true,
-        }),
-        _ => None,
-    }
+    let (hash, salt, spin_count, algorithm) = if modern {
+        (
+            "hashValue",
+            "saltValue",
+            "spinCount",
+            attribute_of(element, "algorithmName").unwrap_or_default(),
+        )
+    } else {
+        let sid = attribute_of(element, "cryptAlgorithmSid").unwrap_or_default();
+        let algorithm = match sid.as_str() {
+            "4" => "SHA-1".into(),
+            "12" => "SHA-256".into(),
+            "13" => "SHA-384".into(),
+            "14" => "SHA-512".into(),
+            _ => format!("sid:{sid}"),
+        };
+        ("hash", "salt", "cryptSpinCount", algorithm)
+    };
+    Some(PasswordHash {
+        algorithm,
+        hash: attribute_of(element, hash).unwrap_or_default(),
+        salt: attribute_of(element, salt).unwrap_or_default(),
+        spin_count: attribute_of(element, spin_count)
+            .map(|count| {
+                count
+                    .trim_matches([' ', '\t', '\r', '\n'])
+                    .parse()
+                    .unwrap_or(u32::MAX)
+            })
+            .unwrap_or(100_000),
+        legacy: !modern,
+    })
 }
 
 fn truthy(value: Option<String>) -> bool {
@@ -177,7 +238,7 @@ fn truthy(value: Option<String>) -> bool {
 }
 
 /// The attributes that store a password, in the ECMA-376 form.
-fn password_attributes(prefix: &str, password: &PasswordHash) -> Vec<XmlAttribute> {
+pub(super) fn password_attributes(prefix: &str, password: &PasswordHash) -> Vec<XmlAttribute> {
     let name = |local: &str| format!("{prefix}{local}");
     if password.legacy {
         // Kept as Word wrote it.
@@ -196,7 +257,14 @@ fn password_attributes(prefix: &str, password: &PasswordHash) -> Vec<XmlAttribut
             },
             XmlAttribute {
                 name: name("cryptAlgorithmSid"),
-                value: "14".into(),
+                value: match password.algorithm.as_str() {
+                    "SHA-1" => "4",
+                    "SHA-256" => "12",
+                    "SHA-384" => "13",
+                    "SHA-512" => "14",
+                    other => other.strip_prefix("sid:").unwrap_or(other),
+                }
+                .into(),
             },
             XmlAttribute {
                 name: name("cryptSpinCount"),
@@ -215,7 +283,7 @@ fn password_attributes(prefix: &str, password: &PasswordHash) -> Vec<XmlAttribut
     vec![
         XmlAttribute {
             name: name("algorithmName"),
-            value: "SHA-512".into(),
+            value: password.algorithm.clone(),
         },
         XmlAttribute {
             name: name("hashValue"),
@@ -230,6 +298,30 @@ fn password_attributes(prefix: &str, password: &PasswordHash) -> Vec<XmlAttribut
             value: password.spin_count.to_string(),
         },
     ]
+}
+
+fn password_setting_attributes(password: &PasswordHash) -> Vec<(&'static str, String)> {
+    let mut attributes = Vec::new();
+    for attribute in password_attributes("", password) {
+        attributes.push((
+            // Static names for the settings writer.
+            match attribute.name.as_str() {
+                "cryptProviderType" => "cryptProviderType",
+                "cryptAlgorithmClass" => "cryptAlgorithmClass",
+                "cryptAlgorithmType" => "cryptAlgorithmType",
+                "cryptAlgorithmSid" => "cryptAlgorithmSid",
+                "cryptSpinCount" => "cryptSpinCount",
+                "hash" => "hash",
+                "salt" => "salt",
+                "algorithmName" => "algorithmName",
+                "hashValue" => "hashValue",
+                "saltValue" => "saltValue",
+                _ => "spinCount",
+            },
+            attribute.value,
+        ));
+    }
+    attributes
 }
 
 impl WordDocument {
@@ -260,9 +352,13 @@ impl WordDocument {
         local: &str,
         attributes: Option<Vec<(&str, String)>>,
     ) -> Result<(), String> {
-        let previous = self
-            .settings_xml_content()
-            .ok_or_else(|| "settings.xml is not present in this package".to_string())?;
+        let existing = self.settings_xml_content();
+        if existing.is_none() && attributes.is_none() {
+            return Ok(());
+        }
+        let previous = existing.unwrap_or_else(|| {
+            r#"<w:settings xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"/>"#.into()
+        });
         let mut doc = DocxXmlDocument::parse(&previous)
             .map_err(|error| format!("failed to parse settings.xml: {error:?}"))?;
         let root_id = doc.root().id;
@@ -315,16 +411,8 @@ impl WordDocument {
         let content = doc
             .to_string()
             .map_err(|error| format!("failed to serialize settings.xml: {error:?}"))?;
-        self.parts.insert(
-            SETTINGS.to_string(),
-            DocumentPart {
-                path: SETTINGS.to_string(),
-                relationships: Vec::new(),
-                content,
-                parsed_document: None,
-            },
-        );
-        Ok(())
+        let path = self.tracking_settings_path();
+        self.write_tracking_settings_xml(&path, content)
     }
 
     /// The document's editing restriction, enforced or not.
@@ -365,29 +453,20 @@ impl WordDocument {
                 if restriction.enforced { "1" } else { "0" }.to_string(),
             ));
             if let Some(password) = &restriction.password {
-                for attribute in password_attributes("", password) {
-                    attributes.push((
-                        // Static names for the settings writer.
-                        match attribute.name.as_str() {
-                            "cryptProviderType" => "cryptProviderType",
-                            "cryptAlgorithmClass" => "cryptAlgorithmClass",
-                            "cryptAlgorithmType" => "cryptAlgorithmType",
-                            "cryptAlgorithmSid" => "cryptAlgorithmSid",
-                            "cryptSpinCount" => "cryptSpinCount",
-                            "hash" => "hash",
-                            "salt" => "salt",
-                            "algorithmName" => "algorithmName",
-                            "hashValue" => "hashValue",
-                            "saltValue" => "saltValue",
-                            _ => "spinCount",
-                        },
-                        attribute.value,
-                    ));
-                }
+                attributes.extend(password_setting_attributes(password));
             }
             attributes
         });
-        self.set_settings_element("documentProtection", attributes)
+        self.set_settings_element("documentProtection", attributes)?;
+        if self.tracking_locked() {
+            let session = self.revision_session().cloned().unwrap_or(RevisionSession {
+                author: Some("jade".into()),
+                date: None,
+                date_utc: None,
+            });
+            self.set_saved_revision_session(Some(session))?;
+        }
+        Ok(())
     }
 
     /// 書き込みパスワード and 読み取り専用を推奨.
@@ -411,22 +490,7 @@ impl WordDocument {
                     attributes.push(("recommended", "1".to_string()));
                 }
                 if let Some(password) = &protection.password {
-                    let names = [
-                        ("algorithmName", 0usize),
-                        ("hashValue", 1),
-                        ("saltValue", 2),
-                        ("spinCount", 3),
-                    ];
-                    let values = password_attributes(
-                        "",
-                        &PasswordHash {
-                            legacy: false,
-                            ..password.clone()
-                        },
-                    );
-                    for (name, index) in names {
-                        attributes.push((name, values[index].value.clone()));
-                    }
+                    attributes.extend(password_setting_attributes(password));
                 }
                 attributes
             });
@@ -613,7 +677,7 @@ impl WordDocument {
 
     /// Whether the enforced restriction lets `name` — a command — run with
     /// the selection at `at`: an edit inside an exception range always may;
-    /// 変更履歴 lets every edit run (the shells keep tracking on);
+    /// 変更履歴 permits edits while preventing recording from being stopped;
     /// コメント lets only comments; 書式の制限 stops formatting.
     pub fn restriction_allows(&self, name: &str, at: Option<(usize, usize)>) -> Result<(), String> {
         if self.opened_read_only && !name.contains("protection") && !name.contains("restriction") {
@@ -633,6 +697,14 @@ impl WordDocument {
             || name == "protect_forms"
         {
             return Ok(());
+        }
+        if restriction.kind == Some(EditingKind::TrackedChanges)
+            && matches!(
+                name,
+                "stop_change_tracking" | "accept_revisions" | "reject_revisions"
+            )
+        {
+            return Err("tracking is locked".into());
         }
         let commenting = matches!(
             name,
@@ -680,9 +752,8 @@ impl WordDocument {
         self.opened_read_only
     }
 
-    /// 保護の中止 with the right password (or on a protection whose
-    /// password cannot be checked): edits run unrestricted until the
-    /// document is opened again.
+    /// Session-only override for a host that has already authorized editing.
+    /// This low-level switch performs no password authentication itself.
     pub fn lift_protection(&mut self, lifted: bool) {
         self.protection_lifted = lifted;
     }
@@ -818,6 +889,124 @@ mod tests {
         assert_forms_guards(&plain, true);
         protected.restore_snapshot(plain_snapshot);
         assert_forms_guards(&protected, false);
+    }
+
+    #[test]
+    fn word_password_algorithms_verify_and_round_trip_both_attribute_forms() {
+        // Independent hashlib vectors: UTF-16LE, fixed 16-byte salt, 23 spins.
+        for (algorithm, sid, hash) in [
+            ("SHA-1", "4", "2BGoHn7VxIl6R998wai+DvGs95o="),
+            ("SHA-256", "12", "AEbC0IVM3fPhq+u+0BmUQ2Dkr7+7ZUe+Qe995ZlecyE="),
+            ("SHA-384", "13", "4G1uhh3KDpbu+gAoqm5AEV7RD7lLsYuKyQ9lOBn8mSyNW6aAgA4KvTwgQTNQN1Qs"),
+            ("SHA-512", "14", "tsizw+IXGC/j/xv06GsA7ZT5UNaU04jZXgEGGH8epcmupy9GttK1YLyPCJPzOaFu0U5fIWeojfNyASVxv+qpzw=="),
+        ] {
+            for legacy in [false, true] {
+                let attributes = if legacy {
+                    format!(r#"w:cryptAlgorithmSid="{sid}" w:cryptSpinCount="23" w:hash="{hash}" w:salt="MDEyMzQ1Njc4OWFiY2RlZg==""#)
+                } else {
+                    format!(r#"w:algorithmName="{algorithm}" w:spinCount="23" w:hashValue="{hash}" w:saltValue="MDEyMzQ1Njc4OWFiY2RlZg==""#)
+                };
+                let settings = format!(r#"<w:documentProtection w:edit="readOnly" w:enforcement="1" {attributes}/>"#);
+                let mut doc = document("<w:p/>", &settings);
+                let restriction = doc.editing_restriction().unwrap();
+                let password = restriction.password.as_ref().unwrap();
+                assert_eq!(password.algorithm, algorithm);
+                assert_eq!(password.verifies("秘密🔑"), Some(true));
+                assert!(password.verify_for_unlock("秘密🔑").is_ok());
+                assert_eq!(password.verifies("wrong"), Some(false));
+                assert!(password.verify_for_unlock("wrong").is_err());
+                doc.set_editing_restriction(Some(&restriction)).unwrap();
+                let write = WriteProtection { recommended: true, password: Some(password.clone()) };
+                doc.set_write_protection(Some(&write)).unwrap();
+                assert_eq!(doc.write_protection(), Some(write));
+                let reopened = executor::block_on(WordDocument::load(&doc.export_docx().unwrap(), &Options::default())).unwrap();
+                assert_eq!(reopened.editing_restriction(), Some(restriction));
+            }
+        }
+    }
+
+    #[test]
+    fn imported_password_whitespace_and_invalid_work_factors() {
+        let hash = "2BGoHn7VxIl6R998wai+DvGs95o=";
+        for legacy in [false, true] {
+            let (algorithm, spin, hash_name, salt_name) = if legacy {
+                ("cryptAlgorithmSid=\"4\"", "cryptSpinCount", "hash", "salt")
+            } else {
+                (
+                    "algorithmName=\"SHA-1\"",
+                    "spinCount",
+                    "hashValue",
+                    "saltValue",
+                )
+            };
+            for count in [" 23 ", "-1", "garbage", "4294967296", "10000001"] {
+                let settings = format!(
+                    r#"<w:documentProtection w:edit="readOnly" w:enforcement="1" w:{algorithm} w:{spin}="{count}" w:{hash_name}="  {hash}  " w:{salt_name}="MDEyMzQ1 Njc4OWFiY2RlZg=="/>"#
+                );
+                let doc = document("<w:p/>", &settings);
+                let restriction = doc.editing_restriction().unwrap();
+                let password = restriction.password.unwrap();
+                if count == " 23 " {
+                    assert_eq!(password.verifies("秘密🔑"), Some(true));
+                    assert_eq!(password.verifies("incorrect"), Some(false));
+                } else {
+                    assert_eq!(password.verifies("秘密🔑"), None, "{count}");
+                }
+            }
+            let doc = document(
+                "<w:p/>",
+                &format!(
+                    r#"<w:documentProtection w:edit="readOnly" w:enforcement="1" w:{spin}="23"/>"#
+                ),
+            );
+            assert!(doc
+                .editing_restriction()
+                .unwrap()
+                .password
+                .unwrap()
+                .verify_for_unlock("anything")
+                .is_err());
+        }
+    }
+
+    #[test]
+    fn verifier_bounds_metadata_and_accepts_xml_base64_whitespace() {
+        let mut password = PasswordHash {
+            algorithm: "SHA-1".into(),
+            hash: "2BGoHn7VxIl6R998wai+DvGs95o=".into(),
+            salt: "MDEyMzQ1Njc4OWFiY2RlZg==".into(),
+            spin_count: 23,
+            legacy: false,
+        };
+        password.hash.insert_str(8, " \t\r\n");
+        password.salt.insert_str(8, " \t\r\n");
+        assert_eq!(password.verifies("秘密🔑"), Some(true));
+        password.salt = BASE64.encode(vec![0u8; 65_537]);
+        assert_eq!(password.verifies("秘密🔑"), None);
+        password.salt.clear();
+        password.hash = BASE64.encode(vec![0u8; 65]);
+        assert_eq!(password.verifies("秘密🔑"), None);
+    }
+
+    #[test]
+    fn unverifiable_passwords_remain_protected_and_keep_the_algorithm() {
+        for attributes in [
+            r#"w:cryptAlgorithmSid="99" w:hash="AQ==" w:salt="Ag==""#,
+            r#"w:algorithmName="WHIRLPOOL" w:hashValue="AQ==" w:saltValue="Ag==""#,
+            r#"w:algorithmName="SHA-512" w:hashValue="invalid" w:saltValue="Ag==""#,
+            r#"w:algorithmName="SHA-512" w:hashValue="AQ==""#,
+        ] {
+            let settings = format!(
+                r#"<w:documentProtection w:edit="readOnly" w:enforcement="1" {attributes}/>"#
+            );
+            let mut doc = document("<w:p/>", &settings);
+            let restriction = doc.editing_restriction().unwrap();
+            let password = restriction.password.as_ref().unwrap();
+            assert!(password.verify_for_unlock("anything").is_err());
+            assert!(doc.restriction_allows("insert_text", None).is_err());
+            doc.set_editing_restriction(Some(&restriction)).unwrap();
+            assert_eq!(doc.editing_restriction(), Some(restriction));
+        }
     }
 
     #[test]

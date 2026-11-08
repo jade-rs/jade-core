@@ -1,0 +1,14 @@
+{
+  "engine_commit": "f41d7e73d356dc703a4ea2e8c6da64a1ac733c1b",
+  "word_product_version": "16.0.19127.20860",
+  "capture_id": "20261107T130008739Z-08f6b53a",
+  "reference_kind": "emf",
+  "engine_source_worktree_dirty": false,
+  "strict_fixtures": [],
+  "matching_fixtures": [],
+  "pending_fixtures": [
+    "word-windows-edge-table-negative-spacing-autofit-unequal-3-compat14",
+    "word-windows-edge-table-negative-spacing-bidi-unequal-3-compat14"
+  ],
+  "table_glyph_projection": "unclipped"
+}

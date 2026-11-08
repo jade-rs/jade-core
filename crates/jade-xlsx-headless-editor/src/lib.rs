@@ -55,13 +55,17 @@ fn spilled_value(value: &CellValue) -> NewValue {
 
 fn formula_cache_state(cell: &Cell, needs_recalculation: bool) -> Option<FormulaState> {
     cell.formula.as_ref()?;
-    Some(if matches!(cell.value, CellValue::Empty) {
+    Some(formula_value_state(&cell.value, needs_recalculation))
+}
+
+fn formula_value_state(value: &CellValue, needs_recalculation: bool) -> FormulaState {
+    if matches!(value, CellValue::Empty) {
         FormulaState::Uncalculated
     } else if needs_recalculation {
         FormulaState::Stale
     } else {
         FormulaState::Cached
-    })
+    }
 }
 
 use std::collections::{BTreeMap, HashSet};
@@ -122,6 +126,8 @@ pub enum HeadlessError {
     BadReference(String),
     #[error("duplicate cell reference `{0}` in one batch")]
     DuplicateReference(String),
+    #[error("cannot change part of legacy array `{sheet}!{range}`")]
+    PartialLegacyArray { sheet: String, range: String },
     /// A format change that names nothing to change.
     #[error("the format change names nothing to change")]
     EmptyFormatChange,
@@ -177,10 +183,14 @@ impl HeadlessError {
                 | HeadlessError::AutoFilter(_)
                 | HeadlessError::BadReference(_)
                 | HeadlessError::DuplicateReference(_)
+                | HeadlessError::PartialLegacyArray { .. }
                 | HeadlessError::FillShape { .. }
                 | HeadlessError::EmptyFormatChange
                 | HeadlessError::Write(
                     jade_xlsx_writer::WriteError::ProtectedRange(_)
+                        | jade_xlsx_writer::WriteError::Clipboard(_)
+                        | jade_xlsx_writer::WriteError::ArrayMetadata(_)
+                        | jade_xlsx_writer::WriteError::FormulaMarkup(_)
                         | jade_xlsx_writer::WriteError::DefinedName(_)
                         | jade_xlsx_writer::WriteError::DataValidation(_)
                         | jade_xlsx_writer::WriteError::Hyperlink(_)
@@ -195,6 +205,7 @@ impl HeadlessError {
                         | jade_xlsx_writer::WriteError::NoSuchSheet(_)
                         | jade_xlsx_writer::WriteError::EmptyStructureChange
                         | jade_xlsx_writer::WriteError::StructureOutOfBounds { .. }
+                        | jade_xlsx_writer::WriteError::PartialLegacyArray { .. }
                         | jade_xlsx_writer::WriteError::InvalidSheetName { .. }
                         | jade_xlsx_writer::WriteError::DuplicateSheetName(_)
                         | jade_xlsx_writer::WriteError::LastVisibleSheet(_)
@@ -1285,6 +1296,7 @@ impl HeadlessWorkbook {
                         CellInput::Number(number) => NewValue::Number(*number),
                         CellInput::Text(text) => NewValue::Text(text.clone()),
                         CellInput::Bool(flag) => NewValue::Bool(*flag),
+                        CellInput::Error(error) => NewValue::Error(error.clone()),
                         // Stored as Excel stores it: `_xlfn.` before the
                         // newer functions, `_xlpm.` on LET/LAMBDA names.
                         CellInput::Formula(formula) => {
@@ -1360,6 +1372,43 @@ impl HeadlessWorkbook {
         styles: Option<(String, String)>,
     ) -> Result<()> {
         self.write_edits_with_parts(edits, styles, Vec::new())
+    }
+
+    /// A CSE array is one value-editing unit. Count only explicit writes in
+    /// the batch, so a tiny edit cannot expand a huge declared file range.
+    /// Formatting-only edits may change individual cells.
+    fn guard_legacy_array_edits(&self, edits: &[(usize, CellEdit)]) -> Result<()> {
+        let writes: HashSet<_> = edits
+            .iter()
+            .filter(|(_, edit)| !matches!(edit.value, NewValue::Unchanged))
+            .map(|(index, edit)| (*index, edit.reference))
+            .collect();
+        for (index, sheet) in self.workbook.sheets.iter().enumerate() {
+            for array in sheet
+                .array_formulas
+                .iter()
+                .filter(|array| array.kind == jade_xlsx_reader::ArrayFormulaKind::Legacy)
+            {
+                let range = array.range;
+                let count = writes
+                    .iter()
+                    .filter(|(at, cell)| {
+                        *at == index
+                            && (range.start.column..=range.end.column).contains(&cell.column)
+                            && (range.start.row..=range.end.row).contains(&cell.row)
+                    })
+                    .count() as u64;
+                let area = (u64::from(range.end.column) - u64::from(range.start.column) + 1)
+                    * (u64::from(range.end.row) - u64::from(range.start.row) + 1);
+                if count != 0 && count != area {
+                    return Err(HeadlessError::PartialLegacyArray {
+                        sheet: sheet.name.clone(),
+                        range: format_range(range),
+                    });
+                }
+            }
+        }
+        Ok(())
     }
 
     /// Edits that write into an array formula's spill block it, as typing
@@ -1469,6 +1518,7 @@ impl HeadlessWorkbook {
         extra_parts: Vec<(String, String)>,
         base: Option<&[u8]>,
     ) -> Result<()> {
+        self.guard_legacy_array_edits(&edits)?;
         let (edits, blocked) = self.block_spills(edits);
         for (index, edit) in &edits {
             if !matches!(edit.value, NewValue::Unchanged) {
@@ -1583,6 +1633,51 @@ impl HeadlessWorkbook {
         }
         written = jade_xlsx_writer::tables::after_cell_entries(&self.workbook, &written, &sheets)?;
         written = jade_xlsx_writer::tables::follow_total_cells(&self.workbook, &written, &sheets)?;
+        let entered = sheets
+            .iter()
+            .flat_map(|edits| {
+                let index = self
+                    .workbook
+                    .sheets
+                    .iter()
+                    .position(|s| s.part_name == edits.part_name);
+                edits
+                    .cells
+                    .iter()
+                    .filter_map(move |edit| match (&edit.value, index) {
+                        (NewValue::Formula(formula), Some(index)) => {
+                            Some((index, edit.reference, formula.clone()))
+                        }
+                        _ => None,
+                    })
+            })
+            .collect::<Vec<_>>();
+        if !entered.is_empty() {
+            let projected = jade_xlsx_reader::read_xlsx(&written)?;
+            let mut marks = BTreeMap::<usize, Vec<jade_xlsx_writer::spills::ArrayRange>>::new();
+            for (index, at) in
+                jade_xlsx_calc::formulas_requiring_array_evaluation(&projected, &entered)?
+            {
+                marks
+                    .entry(index)
+                    .or_default()
+                    .push(jade_xlsx_writer::spills::ArrayRange {
+                        anchor: at,
+                        range: CellRange { start: at, end: at },
+                    });
+            }
+            if !marks.is_empty() {
+                let marks = marks
+                    .into_iter()
+                    .map(|(index, ranges)| jade_xlsx_writer::spills::SheetSpills {
+                        part_name: projected.sheets[index].part_name.clone(),
+                        values: Vec::new(),
+                        ranges,
+                    })
+                    .collect::<Vec<_>>();
+                written = jade_xlsx_writer::spills::write_spills(&written, &marks, false)?;
+            }
+        }
         self.workbook = if plain {
             let mut workbook = std::mem::take(&mut self.workbook);
             for edits in &sheets {
@@ -2782,6 +2877,16 @@ impl HeadlessWorkbook {
             count,
             inserted,
         };
+        jade_xlsx_writer::shift::guard_legacy_array_structure(
+            &self.workbook.sheets[index],
+            &change,
+        )
+        .map_err(|error| match error {
+            jade_xlsx_writer::WriteError::PartialLegacyArray { sheet, range } => {
+                HeadlessError::PartialLegacyArray { sheet, range }
+            }
+            error => HeadlessError::Write(error),
+        })?;
         let written = jade_xlsx_writer::restructure(&self.source, &self.workbook, &change)?;
         self.workbook = jade_xlsx_reader::read_xlsx(&written)?;
         let before = std::mem::replace(&mut self.source, written);
@@ -3051,6 +3156,12 @@ impl HeadlessWorkbook {
         // is cleared, and the anchor's range follows.
         for (index, sheet) in self.workbook.sheets.iter().enumerate() {
             for array in &sheet.array_formulas {
+                // Legacy outputs have fixed bounds, including when their
+                // calculation is held. Never resize them or enumerate a huge
+                // unsupported range merely because no dynamic spill returned.
+                if array.kind == jade_xlsx_reader::ArrayFormulaKind::Legacy {
+                    continue;
+                }
                 let now = spills
                     .iter()
                     .find(|spill| spill.sheet == index && spill.anchor == array.anchor)
@@ -3130,7 +3241,14 @@ impl HeadlessWorkbook {
 
     pub fn formula_state(&self, sheet_index: usize, reference: CellRef) -> Option<FormulaState> {
         let sheet = self.workbook.sheets.get(sheet_index)?;
-        formula_cache_state(sheet.cell_at(reference)?, self.calculation_is_stale())
+        sheet.formula_source_at(reference)?;
+        Some(formula_value_state(
+            sheet
+                .cell_at(reference)
+                .map(|cell| &cell.value)
+                .unwrap_or(&CellValue::Empty),
+            self.calculation_is_stale(),
+        ))
     }
 
     fn calculation_is_stale(&self) -> bool {
@@ -3564,6 +3682,9 @@ impl HeadlessWorkbook {
         );
         let format = self.workbook.styles.cell_format(style_index);
         let value = cell.map(|cell| &cell.value).unwrap_or(&CellValue::Empty);
+        let formula = sheet
+            .formula_source_at(reference)
+            .map(|(_, source)| formula_text::to_display_formula(source));
         let conditional_style = jade_xlsx_layout::conditional_format::ConditionalStyles::new(
             sheet,
             &self.workbook.styles,
@@ -3602,13 +3723,10 @@ impl HeadlessWorkbook {
             )
             .text,
             // As Excel shows it, without the file's `_xlfn.` prefixes.
-            formula: cell.and_then(|cell| {
-                cell.formula
-                    .as_deref()
-                    .map(jade_xlsx_calc::formula_text::to_display_formula)
-            }),
-            formula_state: cell
-                .and_then(|cell| formula_cache_state(cell, self.calculation_is_stale())),
+            formula_state: formula
+                .as_ref()
+                .map(|_| formula_value_state(value, self.calculation_is_stale())),
+            formula,
             number_format,
             hyperlink: sheet.hyperlink_at(reference).map(|link| HyperlinkView {
                 target: link.target.clone(),

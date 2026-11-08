@@ -12,9 +12,9 @@
 //! a style tab stop it no longer has is a `w:tab w:val="clear"`.
 
 use super::paragraph_property_sync::{
-    restore_paragraph_properties_xml, snapshot_paragraph_properties_xml,
-    sync_paragraph_borders_xml, sync_paragraph_flag_xml, sync_paragraph_shading_xml,
-    sync_paragraph_tabs_xml,
+    paragraph_borders_override, paragraph_shading_override, restore_paragraph_properties_xml,
+    snapshot_paragraph_properties_xml, sync_paragraph_borders_xml, sync_paragraph_flag_xml,
+    sync_paragraph_shading_xml, sync_paragraph_tabs_xml,
 };
 use super::{Command, CommandContext, CommandError, CommandResult};
 use crate::document::{BorderEdge, ParagraphBorders, ParagraphProperties, Shading, TabStop};
@@ -177,6 +177,7 @@ pub fn border_line(
         size_eighths: Some((width * 8.0).round().clamp(2.0, 96.0) as u32),
         space: Some(space.round() as u32),
         color,
+        theme_color: None,
     })
 }
 
@@ -203,6 +204,7 @@ pub fn shading(
         val: Some(pattern),
         color: Some(colour(color, "shading color")?.unwrap_or_else(|| "auto".to_string())),
         fill: Some(colour(fill, "shading fill")?.unwrap_or_else(|| "auto".to_string())),
+        ..Default::default()
     })
 }
 
@@ -238,14 +240,14 @@ fn same_position(a: &TabStop, b: &TabStop) -> bool {
 /// The style's tab stops a paragraph sees: what it defines, less what it
 /// clears.
 pub(crate) fn effective_tabs(tabs: &[TabStop]) -> Vec<TabStop> {
-    let cleared: Vec<&TabStop> = tabs
-        .iter()
-        .filter(|tab| tab.kind.as_deref() == Some("clear"))
-        .collect();
-    normalized_tabs(tabs)
-        .into_iter()
-        .filter(|tab| !cleared.iter().any(|clear| same_position(clear, tab)))
-        .collect()
+    let mut effective = Vec::new();
+    for tab in tabs.iter().filter(|tab| tab.position.is_some()) {
+        effective.retain(|existing| !same_position(existing, tab));
+        if tab.kind.as_deref() != Some("clear") {
+            effective.push(tab.clone());
+        }
+    }
+    normalized_tabs(&effective)
 }
 
 /// What the paragraph's own `w:tabs` holds for `wanted` over the style's
@@ -351,7 +353,13 @@ impl Command for SetParagraphOptionsCommand {
                 .unwrap_or_default();
             self.previous.push((index, previous, previous_xml));
 
-            let options = self.options.clone();
+            let mut options = self.options.clone();
+            options.borders = options.borders.map(|borders| {
+                paragraph_borders_override(ctx.document, index, Some(borders)).unwrap_or_default()
+            });
+            options.shading = options
+                .shading
+                .map(|shading| paragraph_shading_override(ctx.document, index, shading));
             let direct = options
                 .tabs
                 .as_ref()
@@ -468,12 +476,35 @@ mod tests {
     /// A package whose `List` style has a left tab at 1 inch and contextual
     /// spacing, and two paragraphs in that style.
     fn styled_docx() -> Vec<u8> {
+        styled_docx_with_visuals(false)
+    }
+
+    fn styled_docx_with_visuals(visuals: bool) -> Vec<u8> {
+        styled_docx_with_border_case(visuals, false)
+    }
+
+    fn styled_docx_with_border_case(visuals: bool, partial: bool) -> Vec<u8> {
         let document = format!(
             r#"<?xml version="1.0" encoding="UTF-8"?><w:document xmlns:w="{W}"><w:body><w:p><w:pPr><w:pStyle w:val="List"/></w:pPr><w:r><w:t>one	two</w:t></w:r></w:p><w:p><w:pPr><w:pStyle w:val="List"/></w:pPr><w:r><w:t>three</w:t></w:r></w:p></w:body></w:document>"#
         );
         let styles = format!(
             r#"<?xml version="1.0" encoding="UTF-8"?><w:styles xmlns:w="{W}"><w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/></w:style><w:style w:type="paragraph" w:styleId="List"><w:name w:val="List"/><w:basedOn w:val="Normal"/><w:pPr><w:tabs><w:tab w:val="left" w:pos="1440"/></w:tabs><w:contextualSpacing/></w:pPr></w:style></w:styles>"#
         );
+        let styles = if visuals {
+            styles.replace("<w:contextualSpacing/>", r#"<w:contextualSpacing/><w:shd w:val="clear" w:fill="FFFF00"/><w:pBdr><w:top w:val="single" w:sz="8"/><w:between w:val="double" w:sz="12"/></w:pBdr>"#)
+        } else {
+            styles
+        };
+        let (document, styles) = if partial {
+            (
+                document.replacen(r#"<w:pStyle w:val="List"/>"#,
+                    r#"<w:pStyle w:val="List"/><w:pBdr><w:top w:val="nil"/><w:right w:val="double" w:sz="16"/></w:pBdr>"#, 1),
+                styles.replace(r#"<w:name w:val="Normal"/>"#,
+                    r#"<w:name w:val="Normal"/><w:pPr><w:pBdr><w:left w:val="dashed" w:sz="8"/><w:bottom w:val="wave" w:sz="8"/><w:bar w:val="dotted" w:sz="8"/></w:pBdr></w:pPr>"#),
+            )
+        } else {
+            (document, styles)
+        };
         let mut cursor = std::io::Cursor::new(Vec::new());
         {
             let mut zip = zip::ZipWriter::new(&mut cursor);
@@ -645,6 +676,317 @@ mod tests {
     }
 
     #[test]
+    fn border_theme_attributes_survive_export_reopen_and_history() {
+        use crate::commands::set_paragraph_visuals::SetParagraphVisualsCommand;
+        use crate::commands::CommandExecutor;
+        for use_options in [false, true] {
+            let mut document =
+                executor::block_on(WordDocument::load(&styled_docx(), &Options::default()))
+                    .unwrap();
+            let baseline = document_xml(&document.export_docx().unwrap());
+            let edge: crate::document::BorderEdge = serde_json::from_value(serde_json::json!({
+                "val": "single", "sizeEighths": 8, "color": "#123456",
+                "themeColor": {"name": "accent1", "tint": "80", "shade": "BF"}
+            }))
+            .unwrap();
+            let borders = ParagraphBorders {
+                top: Some(edge.clone()),
+                ..Default::default()
+            };
+            let mut commands = CommandExecutor::new();
+            let mut selection = None;
+            let command: Box<dyn Command> = if use_options {
+                Box::new(SetParagraphOptionsCommand::new(
+                    0,
+                    0,
+                    ParagraphOptions {
+                        borders: Some(borders),
+                        ..Default::default()
+                    },
+                ))
+            } else {
+                Box::new(SetParagraphVisualsCommand::borders(0, 0, Some(borders)))
+            };
+            commands
+                .execute(
+                    command,
+                    &mut CommandContext::new(&mut document, &mut selection),
+                )
+                .unwrap();
+            let applied = document.export_docx().unwrap();
+            let xml = document_xml(&applied);
+            for (name, value) in [
+                ("w:themeColor", "accent1"),
+                ("w:themeTint", "80"),
+                ("w:themeShade", "BF"),
+            ] {
+                assert!(xml.contains(&format!("{name}=\"{value}\"")), "{xml}");
+            }
+            let reopened =
+                executor::block_on(WordDocument::load(&applied, &Options::default())).unwrap();
+            assert_eq!(
+                props(&reopened, 0).borders.unwrap().top.as_ref(),
+                Some(&edge)
+            );
+            assert!(commands
+                .undo(&mut CommandContext::new(&mut document, &mut selection))
+                .unwrap());
+            assert_eq!(document_xml(&document.export_docx().unwrap()), baseline);
+            assert!(commands
+                .redo(&mut CommandContext::new(&mut document, &mut selection))
+                .unwrap());
+            assert_eq!(document_xml(&document.export_docx().unwrap()), xml);
+        }
+    }
+
+    #[test]
+    fn shading_theme_attributes_survive_export_reopen_and_history() {
+        use crate::commands::CommandExecutor;
+        use jade_docx_reader::document::RunThemeColor;
+        let mut document =
+            executor::block_on(WordDocument::load(&styled_docx(), &Options::default())).unwrap();
+        let baseline = document_xml(&document.export_docx().unwrap());
+        let shading = Shading {
+            val: Some("solid".into()),
+            color: Some("#123456".into()),
+            fill: Some("#ABCDEF".into()),
+            theme_color: Some(Box::new(RunThemeColor {
+                name: "accent1".into(),
+                tint: Some("80".into()),
+                shade: Some("BF".into()),
+            })),
+            theme_fill: Some(Box::new(RunThemeColor {
+                name: "accent2".into(),
+                tint: Some("40".into()),
+                shade: Some("C0".into()),
+            })),
+        };
+        let mut commands = CommandExecutor::new();
+        let mut selection = None;
+        commands
+            .execute(
+                Box::new(SetParagraphOptionsCommand::new(
+                    0,
+                    0,
+                    ParagraphOptions {
+                        shading: Some(Some(shading.clone())),
+                        ..Default::default()
+                    },
+                )),
+                &mut CommandContext::new(&mut document, &mut selection),
+            )
+            .unwrap();
+        let applied = document.export_docx().unwrap();
+        let xml = document_xml(&applied);
+        for (name, value) in shading.theme_attributes() {
+            assert!(xml.contains(&format!("{name}=\"{value}\"")), "{xml}");
+        }
+        let reopened =
+            executor::block_on(WordDocument::load(&applied, &Options::default())).unwrap();
+        let restored = props(&reopened, 0).shading.unwrap();
+        // This fixture has no theme part: cached RGB and the references both survive.
+        assert_eq!(restored, shading);
+        assert!(commands
+            .undo(&mut CommandContext::new(&mut document, &mut selection))
+            .unwrap());
+        assert_eq!(document_xml(&document.export_docx().unwrap()), baseline);
+        assert!(commands
+            .redo(&mut CommandContext::new(&mut document, &mut selection))
+            .unwrap());
+        assert_eq!(document_xml(&document.export_docx().unwrap()), xml);
+    }
+
+    #[test]
+    fn clearing_inherited_visuals_survives_reopening_and_history() {
+        use crate::commands::set_paragraph_visuals::SetParagraphVisualsCommand;
+        use crate::commands::CommandExecutor;
+        for use_options in [false, true] {
+            let mut document = executor::block_on(WordDocument::load(
+                &styled_docx_with_visuals(true),
+                &Options::default(),
+            ))
+            .unwrap();
+            let baseline = document_xml(&document.export_docx().unwrap());
+            assert_eq!(
+                props(&document, 0).shading.unwrap().fill.as_deref(),
+                Some("#FFFF00")
+            );
+            let mut selection = None;
+            let mut commands = CommandExecutor::new();
+            let command: Box<dyn Command> = if use_options {
+                Box::new(SetParagraphOptionsCommand::new(
+                    0,
+                    0,
+                    ParagraphOptions {
+                        borders: Some(ParagraphBorders::default()),
+                        shading: Some(None),
+                        ..Default::default()
+                    },
+                ))
+            } else {
+                // Exercise the ribbon commands separately as well as the dialog.
+                commands
+                    .execute(
+                        Box::new(SetParagraphVisualsCommand::shading(0, 0, None)),
+                        &mut CommandContext::new(&mut document, &mut selection),
+                    )
+                    .unwrap();
+                Box::new(SetParagraphVisualsCommand::borders(0, 0, None))
+            };
+            commands
+                .execute(
+                    command,
+                    &mut CommandContext::new(&mut document, &mut selection),
+                )
+                .unwrap();
+            if !use_options {
+                // Repeating a clear must not add an extra undo step.
+                for command in [
+                    SetParagraphVisualsCommand::shading(0, 0, None),
+                    SetParagraphVisualsCommand::borders(0, 0, None),
+                ] {
+                    commands
+                        .execute(
+                            Box::new(command),
+                            &mut CommandContext::new(&mut document, &mut selection),
+                        )
+                        .unwrap();
+                }
+            }
+            let applied = document.export_docx().unwrap();
+            let reopened =
+                executor::block_on(WordDocument::load(&applied, &Options::default())).unwrap();
+            for doc in [&document, &reopened] {
+                assert_eq!(
+                    props(doc, 0).shading.unwrap().resolved_background_color(),
+                    None
+                );
+                let borders = props(doc, 0).borders.unwrap();
+                assert_eq!(borders.top.unwrap().val.as_deref(), Some("nil"));
+                assert_eq!(borders.between.unwrap().val.as_deref(), Some("nil"));
+                assert_eq!(
+                    props(doc, 1).shading.unwrap().fill.as_deref(),
+                    Some("#FFFF00")
+                );
+                assert_eq!(
+                    props(doc, 1).borders.unwrap().top.unwrap().val.as_deref(),
+                    Some("single")
+                );
+            }
+            for _ in 0..if use_options { 1 } else { 2 } {
+                assert!(commands
+                    .undo(&mut CommandContext::new(&mut document, &mut selection))
+                    .unwrap());
+            }
+            assert_eq!(document_xml(&document.export_docx().unwrap()), baseline);
+            for _ in 0..if use_options { 1 } else { 2 } {
+                assert!(commands
+                    .redo(&mut CommandContext::new(&mut document, &mut selection))
+                    .unwrap());
+            }
+            assert_eq!(document.export_docx().unwrap(), applied);
+        }
+    }
+
+    #[test]
+    fn partial_borders_inherit_per_edge_and_effective_edits_suppress_omitted_edges() {
+        use crate::commands::set_paragraph_visuals::SetParagraphVisualsCommand;
+        use crate::commands::CommandExecutor;
+        for use_options in [false, true] {
+            let mut document = executor::block_on(WordDocument::load(
+                &styled_docx_with_border_case(true, true),
+                &Options::default(),
+            ))
+            .unwrap();
+            let initial = props(&document, 0).borders.unwrap();
+            assert_eq!(initial.top.as_ref().unwrap().val.as_deref(), Some("nil"));
+            assert_eq!(
+                initial.right.as_ref().unwrap().val.as_deref(),
+                Some("double")
+            );
+            assert_eq!(
+                initial.left.as_ref().unwrap().val.as_deref(),
+                Some("dashed")
+            );
+            assert_eq!(
+                initial.bottom.as_ref().unwrap().val.as_deref(),
+                Some("wave")
+            );
+            assert_eq!(
+                initial.between.as_ref().unwrap().val.as_deref(),
+                Some("double")
+            );
+            assert_eq!(initial.bar.as_ref().unwrap().val.as_deref(), Some("dotted"));
+            let untouched = props(&document, 1).borders;
+            let baseline = document.export_docx().unwrap();
+            let reopened =
+                executor::block_on(WordDocument::load(&baseline, &Options::default())).unwrap();
+            assert_eq!(props(&reopened, 0).borders.as_ref(), Some(&initial));
+            let wanted = ParagraphBorders {
+                bottom: Some(BorderEdge {
+                    val: Some("single".into()),
+                    size_eighths: Some(24),
+                    ..Default::default()
+                }),
+                ..Default::default()
+            };
+            let command: Box<dyn Command> = if use_options {
+                Box::new(SetParagraphOptionsCommand::new(
+                    0,
+                    0,
+                    ParagraphOptions {
+                        borders: Some(wanted),
+                        ..Default::default()
+                    },
+                ))
+            } else {
+                Box::new(SetParagraphVisualsCommand::borders(0, 0, Some(wanted)))
+            };
+            let mut selection = None;
+            let mut commands = CommandExecutor::new();
+            commands
+                .execute(
+                    command,
+                    &mut CommandContext::new(&mut document, &mut selection),
+                )
+                .unwrap();
+            let applied = document.export_docx().unwrap();
+            let xml = document_xml(&applied);
+            for edge in ["top", "left", "right", "between", "bar"] {
+                assert!(xml.contains(&format!("<w:{edge} w:val=\"nil\"/>")), "{xml}");
+            }
+            let reopened =
+                executor::block_on(WordDocument::load(&applied, &Options::default())).unwrap();
+            for doc in [&document, &reopened] {
+                let borders = props(doc, 0).borders.unwrap();
+                assert_eq!(
+                    borders.bottom.as_ref().unwrap().val.as_deref(),
+                    Some("single")
+                );
+                assert_eq!(borders.bottom.as_ref().unwrap().size_eighths, Some(24));
+                for edge in [
+                    borders.top,
+                    borders.left,
+                    borders.right,
+                    borders.between,
+                    borders.bar,
+                ] {
+                    assert_eq!(edge.unwrap().val.as_deref(), Some("nil"));
+                }
+                assert_eq!(props(doc, 1).borders, untouched);
+            }
+            assert!(commands
+                .undo(&mut CommandContext::new(&mut document, &mut selection))
+                .unwrap());
+            assert_eq!(document.export_docx().unwrap(), baseline);
+            assert!(commands
+                .redo(&mut CommandContext::new(&mut document, &mut selection))
+                .unwrap());
+            assert_eq!(document.export_docx().unwrap(), applied);
+        }
+    }
+
+    #[test]
     fn undo_puts_the_paragraph_back_exactly() {
         let source = styled_docx();
         let mut document =
@@ -729,6 +1071,7 @@ mod tests {
                 val: Some("pct25".into()),
                 color: Some("auto".into()),
                 fill: Some("#FFFF00".into()),
+                ..Default::default()
             }
         );
     }

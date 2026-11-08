@@ -1,0 +1,32 @@
+[
+  {
+    "page": 1,
+    "direction": "tbRl",
+    "vertCompress": null
+  },
+  {
+    "page": 2,
+    "direction": "tbRl",
+    "vertCompress": "0"
+  },
+  {
+    "page": 3,
+    "direction": "tbRl",
+    "vertCompress": "1"
+  },
+  {
+    "page": 4,
+    "direction": "tbRlV",
+    "vertCompress": null
+  },
+  {
+    "page": 5,
+    "direction": "tbRlV",
+    "vertCompress": "0"
+  },
+  {
+    "page": 6,
+    "direction": "tbRlV",
+    "vertCompress": "1"
+  }
+]

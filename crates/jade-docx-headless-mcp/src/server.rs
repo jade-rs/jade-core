@@ -7059,6 +7059,14 @@ mod tests {
             .unwrap();
         let session = tool_json(&open)["session_id"].as_str().unwrap().to_string();
 
+        // This test edits without adding revisions; the fixture saves recording ON.
+        try_tool(
+            &mut server,
+            "stop_change_tracking",
+            json!({ "session_id": session }),
+        )
+        .expect("stop fixture recording");
+
         let before = revisions(&mut server, &session);
         assert!(
             !before.is_empty(),
@@ -8014,6 +8022,14 @@ mod tests {
     fn replace_text_preserves_unrelated_revisions_through_roundtrip() {
         let mut server = test_server();
         let session = open_session(&mut server, REVIEW_DOCX);
+        // This test edits without adding revisions; the fixture saves recording ON.
+        try_tool(
+            &mut server,
+            "stop_change_tracking",
+            json!({ "session_id": session }),
+        )
+        .expect("stop fixture recording");
+
         let revisions_before = revisions(&mut server, &session);
         assert!(!revisions_before.is_empty());
 
@@ -8983,6 +8999,7 @@ mod tests {
                     server,
                     &session,
                     json!([
+                        { "type": "stop_change_tracking" },
                         { "type": "insert_text", "paragraph": 1, "offset": 0, "text": "ABCD" },
                         { "type": "start_change_tracking", "author": "AI" },
                     ]),
@@ -9178,6 +9195,13 @@ mod tests {
     /// inside its scope instead of wandering into someone else's redline.
     fn session_with_paragraph(server: &mut Server, content: &str) -> String {
         let session = open_session(server, REVIEW_DOCX);
+        // Seed ordinary text before tests opt into their own tracking session.
+        try_tool(
+            server,
+            "stop_change_tracking",
+            json!({ "session_id": session }),
+        )
+        .expect("stop fixture recording");
         if !content.is_empty() {
             apply(
                 server,

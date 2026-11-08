@@ -110,9 +110,9 @@ fn compute_icon_index(v: f64, thresholds: &[(f64, bool)]) -> u32 {
 /// Parses a date bound of a Between/NotBetween time-period rule: either a
 /// date string in any format DATEVALUE accepts (e.g. "2025-04-25",
 /// "4/25/2025") or a plain Excel serial number.
-fn parse_cf_date_bound(value: &str) -> Option<f64> {
+fn parse_cf_date_bound(value: &str, locale: &crate::locale::Locale) -> Option<f64> {
     let trimmed = value.trim();
-    if let Ok(serial) = crate::functions::date_and_time::parse_datevalue_text(trimmed) {
+    if let Ok(serial) = crate::functions::date_and_time::parse_datevalue_text(trimmed, locale) {
         return Some(serial as f64);
     }
     trimmed.parse::<f64>().ok().map(f64::floor)
@@ -988,8 +988,10 @@ impl<'a> Model<'a> {
                 let (Some(d1), Some(d2)) = (date1, date2) else {
                     return;
                 };
-                let (Some(s1), Some(s2)) = (parse_cf_date_bound(d1), parse_cf_date_bound(d2))
-                else {
+                let (Some(s1), Some(s2)) = (
+                    parse_cf_date_bound(d1, self.locale),
+                    parse_cf_date_bound(d2, self.locale),
+                ) else {
                     return;
                 };
                 (s1.min(s2), s1.max(s2))

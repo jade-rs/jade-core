@@ -17,6 +17,42 @@ fn part(bytes: &[u8], name: &str) -> String {
         .expect("xml");
     text
 }
+// Tracking commands may create the settings part. Preserve every other
+// relationship semantically, including all of its attributes.
+fn non_settings_relationships(bytes: &[u8]) -> Vec<Vec<(String, String)>> {
+    let xml = part(bytes, "word/_rels/document.xml.rels");
+    let doc = roxmltree::Document::parse(&xml).expect("relationships XML");
+    let mut ids = std::collections::HashSet::new();
+    let mut settings_count = 0;
+    let mut relationships = Vec::new();
+    for node in doc
+        .root_element()
+        .children()
+        .filter(|node| node.is_element())
+    {
+        assert!(ids.insert(node.attribute("Id").expect("relationship ID")));
+        if node.attribute("Type")
+            == Some("http://schemas.openxmlformats.org/officeDocument/2006/relationships/settings")
+        {
+            settings_count += 1;
+            assert_eq!(node.attribute("Target"), Some("settings.xml"));
+            assert_eq!(node.attribute("TargetMode"), None);
+            let settings = part(bytes, "word/settings.xml");
+            let settings = roxmltree::Document::parse(&settings).expect("settings XML");
+            assert_eq!(settings.root_element().tag_name().name(), "settings");
+        } else {
+            let mut attributes: Vec<_> = node
+                .attributes()
+                .map(|attribute| (attribute.name().to_owned(), attribute.value().to_owned()))
+                .collect();
+            attributes.sort();
+            relationships.push(attributes);
+        }
+    }
+    assert!(settings_count <= 1, "duplicate settings relationships");
+    relationships.sort();
+    relationships
+}
 fn package(body: &str) -> Vec<u8> {
     let mut zip = ZipWriter::new(Cursor::new(Vec::new()));
     let document = format!(
@@ -573,7 +609,7 @@ fn tracking(tracked: bool) -> HeadlessCommand {
 fn exercise(shape: Shape, ops: Vec<Op>) -> Result<(), TestCaseError> {
     let (mut bytes, mut model) = synthetic(&shape);
     let comments = part(&bytes, "word/comments.xml");
-    let relationships = part(&bytes, "word/_rels/document.xml.rels");
+    let relationships = non_settings_relationships(&bytes);
     let baseline = observe(&part(&bytes, "word/document.xml"));
     let (text, tokens) = model.expected();
     prop_assert_eq!(&baseline.text, &text, "generator text");
@@ -717,7 +753,7 @@ fn exercise(shape: Shape, ops: Vec<Op>) -> Result<(), TestCaseError> {
             "comment part"
         );
         prop_assert_eq!(
-            part(&bytes, "word/_rels/document.xml.rels"),
+            non_settings_relationships(&bytes),
             relationships.clone(),
             "relationships"
         );
@@ -835,7 +871,7 @@ fn exercise_history(shape: Shape, ops: Vec<HistoryOp>) -> Result<(), TestCaseErr
     let (bytes, mut model) = synthetic(&shape);
     let baseline = observe(&part(&bytes, "word/document.xml"));
     let comments = part(&bytes, "word/comments.xml");
-    let relationships = part(&bytes, "word/_rels/document.xml.rels");
+    let relationships = non_settings_relationships(&bytes);
     let load = |bytes: &[u8]| {
         futures::executor::block_on(WordDocument::load(bytes, &Default::default()))
             .expect("synthetic load")
@@ -951,10 +987,7 @@ fn exercise_history(shape: Shape, ops: Vec<HistoryOp>) -> Result<(), TestCaseErr
             prop_assert_eq!(&after, &snapshot, "step {}, {:?}: restored XML", step, op);
         }
         prop_assert_eq!(part(&bytes, "word/comments.xml"), comments.clone());
-        prop_assert_eq!(
-            part(&bytes, "word/_rels/document.xml.rels"),
-            relationships.clone()
-        );
+        prop_assert_eq!(non_settings_relationships(&bytes), relationships.clone());
         prop_assert_eq!(
             executor.undo_depth(),
             undo.len(),

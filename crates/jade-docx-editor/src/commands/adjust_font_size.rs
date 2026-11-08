@@ -9,7 +9,7 @@
 use super::run_backup::{capture_paragraph_runs, restore_paragraph_runs, ParagraphRunsBackup};
 use super::text_edit::apply_run_properties;
 use super::{Command, CommandContext, CommandError, CommandResult};
-use crate::document::{Paragraph, RunProperties};
+use crate::document::{Paragraph, ParagraphProperties, RunProperties};
 use jade_docx_layout::selection::SelectionRange;
 
 /// The size list Word's ribbon steps through between 8pt and 72pt.
@@ -107,6 +107,7 @@ pub struct AdjustFontSizeCommand {
     step: FontSizeStep,
     previous_runs: Option<Vec<ParagraphRunsBackup>>,
     previous_selection: Option<SelectionRange>,
+    previous_mark_properties: Vec<(usize, Option<ParagraphProperties>)>,
 }
 
 impl AdjustFontSizeCommand {
@@ -125,6 +126,7 @@ impl AdjustFontSizeCommand {
             step,
             previous_runs: None,
             previous_selection: None,
+            previous_mark_properties: Vec::new(),
         }
     }
 
@@ -167,6 +169,7 @@ impl Command for AdjustFontSizeCommand {
         }
         self.previous_runs = Some(capture_paragraph_runs(ctx, start.paragraph, end.paragraph)?);
         self.previous_selection = *ctx.selection;
+        self.previous_mark_properties.clear();
 
         for paragraph_index in start.paragraph..=end.paragraph {
             // Collect per-run segments and their target sizes before mutating:
@@ -222,6 +225,52 @@ impl Command for AdjustFontSizeCommand {
                 segments
             };
 
+            if paragraph_index < end.paragraph {
+                let paragraph = ctx
+                    .document
+                    .paragraph(paragraph_index)
+                    .ok_or(CommandError::ParagraphUnavailable)?;
+                let paragraph_properties = paragraph.properties.as_ref();
+                let mark_properties = paragraph_properties
+                    .and_then(|properties| properties.mark_run_properties.as_ref());
+                let effective_size = mark_properties
+                    .and_then(|properties| properties.font_size)
+                    .or_else(|| {
+                        ctx.document.styles_part.as_ref().and_then(|styles| {
+                            styles
+                                .resolve_effective_run_properties(
+                                    paragraph_properties.and_then(|p| p.style.as_deref()),
+                                    mark_properties,
+                                )
+                                .and_then(|properties| properties.font_size)
+                        })
+                    })
+                    .unwrap_or(DEFAULT_FONT_SIZE_PT);
+                let new_size = self.step(effective_size);
+                self.previous_mark_properties
+                    .push((paragraph_index, paragraph.properties.clone()));
+                let mark_properties = ctx
+                    .document
+                    .paragraph_mut(paragraph_index)
+                    .ok_or(CommandError::ParagraphUnavailable)?
+                    .properties
+                    .get_or_insert_with(Default::default)
+                    .mark_run_properties
+                    .get_or_insert_with(Default::default);
+                // Use the same direct size patch as text runs, including szCs.
+                super::text_edit::merge_run_properties(
+                    mark_properties,
+                    &RunProperties {
+                        font_size: Some(new_size),
+                        ..Default::default()
+                    },
+                );
+                super::paragraph_property_sync::sync_paragraph_mark_run_properties_xml(
+                    ctx.document,
+                    paragraph_index,
+                );
+            }
+
             if segments.is_empty() {
                 continue;
             }
@@ -259,6 +308,16 @@ impl Command for AdjustFontSizeCommand {
             .take()
             .ok_or_else(|| CommandError::Custom("missing backup for undo".into()))?;
         restore_paragraph_runs(ctx, &backups)?;
+        for (index, properties) in self.previous_mark_properties.drain(..) {
+            ctx.document
+                .paragraph_mut(index)
+                .ok_or(CommandError::ParagraphUnavailable)?
+                .properties = properties;
+            super::paragraph_property_sync::sync_paragraph_mark_run_properties_xml(
+                ctx.document,
+                index,
+            );
+        }
         *ctx.selection = self.previous_selection;
         Ok(())
     }

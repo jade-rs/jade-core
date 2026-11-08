@@ -9,7 +9,7 @@
 use super::run_backup::{capture_paragraph_runs, restore_paragraph_runs, ParagraphRunsBackup};
 use super::text_edit::mutate_run_properties;
 use super::{Command, CommandContext, CommandError, CommandResult};
-use crate::document::Paragraph;
+use crate::document::{Paragraph, ParagraphProperties};
 use jade_docx_layout::selection::SelectionRange;
 use std::rc::Rc;
 
@@ -20,6 +20,7 @@ pub struct SetCharacterStyleCommand {
     style_id: Option<String>,
     previous_runs: Option<Vec<ParagraphRunsBackup>>,
     previous_selection: Option<SelectionRange>,
+    previous_mark_properties: Vec<(usize, Option<ParagraphProperties>)>,
 }
 
 impl SetCharacterStyleCommand {
@@ -29,6 +30,7 @@ impl SetCharacterStyleCommand {
             style_id,
             previous_runs: None,
             previous_selection: None,
+            previous_mark_properties: Vec::new(),
         }
     }
 }
@@ -83,6 +85,7 @@ impl Command for SetCharacterStyleCommand {
 
         self.previous_runs = Some(capture_paragraph_runs(ctx, start.paragraph, end.paragraph)?);
         self.previous_selection = *ctx.selection;
+        self.previous_mark_properties.clear();
 
         let style: Option<Rc<str>> = resolved.map(|id| Rc::from(id.as_str()));
 
@@ -105,7 +108,24 @@ impl Command for SetCharacterStyleCommand {
                 paragraph_len
             };
 
+            let selects_mark = paragraph_index < end.paragraph;
+            if selects_mark {
+                self.previous_mark_properties
+                    .push((paragraph_index, paragraph.properties.clone()));
+                paragraph
+                    .properties
+                    .get_or_insert_with(Default::default)
+                    .mark_run_properties
+                    .get_or_insert_with(Default::default)
+                    .style = style.clone();
+            }
             if range_start >= range_end {
+                if selects_mark {
+                    super::paragraph_property_sync::sync_paragraph_mark_run_properties_xml(
+                        ctx.document,
+                        paragraph_index,
+                    );
+                }
                 continue;
             }
 
@@ -162,6 +182,12 @@ impl Command for SetCharacterStyleCommand {
                 .restyle_runs_character_style(paragraph_index, &changes);
             ctx.document
                 .sync_paragraph_run_properties(paragraph_index, &restyled);
+            if selects_mark {
+                super::paragraph_property_sync::sync_paragraph_mark_run_properties_xml(
+                    ctx.document,
+                    paragraph_index,
+                );
+            }
         }
 
         *ctx.selection = Some(self.range);
@@ -174,6 +200,16 @@ impl Command for SetCharacterStyleCommand {
             .take()
             .ok_or_else(|| CommandError::Custom("missing backup for undo".into()))?;
         restore_paragraph_runs(ctx, &backups)?;
+        for (index, properties) in self.previous_mark_properties.drain(..) {
+            ctx.document
+                .paragraph_mut(index)
+                .ok_or(CommandError::ParagraphUnavailable)?
+                .properties = properties;
+            super::paragraph_property_sync::sync_paragraph_mark_run_properties_xml(
+                ctx.document,
+                index,
+            );
+        }
         *ctx.selection = self.previous_selection;
         Ok(())
     }
@@ -196,6 +232,10 @@ mod tests {
 
     /// A package whose `styles.xml` defines one character style (`強調`).
     fn build_docx_with_character_style() -> Vec<u8> {
+        build_docx_with_body("<w:p><w:r><w:t>秘密情報とは</w:t></w:r></w:p>")
+    }
+
+    fn build_docx_with_body(body: &str) -> Vec<u8> {
         const CONTENT_TYPES: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
 <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
   <Default Extension="xml" ContentType="application/xml"/>
@@ -218,13 +258,9 @@ mod tests {
   <w:style w:type="character" w:styleId="Kyocho"><w:name w:val="強調"/><w:rPr><w:b/></w:rPr></w:style>
 </w:styles>
 "#;
-        const DOCUMENT: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
-<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
-  <w:body>
-    <w:p><w:r><w:t>秘密情報とは</w:t></w:r></w:p>
-  </w:body>
-</w:document>
-"#;
+        let document = format!(
+            r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>{body}</w:body></w:document>"#
+        );
         let mut cursor = std::io::Cursor::new(Vec::new());
         {
             let mut zip = zip::ZipWriter::new(&mut cursor);
@@ -235,7 +271,7 @@ mod tests {
                 ("_rels/.rels", RELS),
                 ("word/_rels/document.xml.rels", DOC_RELS),
                 ("word/styles.xml", STYLES),
-                ("word/document.xml", DOCUMENT),
+                ("word/document.xml", document.as_str()),
             ] {
                 zip.start_file(path, options).expect("entry");
                 zip.write_all(body.as_bytes()).expect("write");
@@ -377,6 +413,103 @@ mod tests {
             !document_xml(&cleared).contains("w:rStyle"),
             "clearing after reopen must remove both modeled and preserved w:rStyle"
         );
+    }
+
+    #[test]
+    fn character_style_includes_selected_marks_and_round_trips_undo() {
+        for mark_only in [false, true] {
+            let data = build_docx_with_body(
+                r#"<w:p><w:pPr><w:keepNext/><w:rPr><w:i/></w:rPr></w:pPr><w:r><w:t>A</w:t></w:r></w:p><w:p/><w:p><w:r><w:t>B</w:t></w:r></w:p>"#,
+            );
+            let mut document =
+                executor::block_on(WordDocument::load(&data, &Options::default())).unwrap();
+            let before = document_xml(&document.export_docx().unwrap());
+            let range = SelectionRange::new(
+                TextPosition::new(2, 0),
+                TextPosition::new(0, usize::from(mark_only)),
+            );
+            let mut selection = Some(range);
+            let mut history = CommandExecutor::new();
+            history
+                .execute(
+                    Box::new(SetCharacterStyleCommand::new(range, Some("強調".into()))),
+                    &mut CommandContext::new(&mut document, &mut selection),
+                )
+                .unwrap();
+            let applied = document_xml(&document.export_docx().unwrap());
+            let bytes = document.export_docx().unwrap();
+            let reopened =
+                executor::block_on(WordDocument::load(&bytes, &Options::default())).unwrap();
+            for index in [0, 1] {
+                let mark = reopened
+                    .paragraph(index)
+                    .unwrap()
+                    .properties
+                    .as_ref()
+                    .unwrap()
+                    .mark_run_properties
+                    .as_ref()
+                    .unwrap();
+                assert_eq!(mark.style.as_deref(), Some("Kyocho"));
+                assert_eq!(
+                    reopened.run_formats_in_range(
+                        (index, if index == 0 { 1 } else { 0 }),
+                        (index + 1, 0)
+                    )[0]
+                    .bold,
+                    Some(true)
+                );
+            }
+            assert_eq!(
+                reopened
+                    .paragraph(0)
+                    .unwrap()
+                    .properties
+                    .as_ref()
+                    .unwrap()
+                    .mark_run_properties
+                    .as_ref()
+                    .unwrap()
+                    .italic,
+                Some(true)
+            );
+            assert!(applied.contains("w:keepNext"));
+            assert_eq!(
+                styles_of(&reopened),
+                vec![if mark_only {
+                    None
+                } else {
+                    Some("Kyocho".into())
+                }]
+            );
+            assert!(reopened
+                .paragraph(2)
+                .unwrap()
+                .properties
+                .as_ref()
+                .and_then(|p| p.mark_run_properties.as_ref())
+                .is_none());
+            history
+                .undo(&mut CommandContext::new(&mut document, &mut selection))
+                .unwrap();
+            assert_eq!(document_xml(&document.export_docx().unwrap()), before);
+            history
+                .redo(&mut CommandContext::new(&mut document, &mut selection))
+                .unwrap();
+            assert_eq!(document_xml(&document.export_docx().unwrap()), applied);
+
+            history
+                .execute(
+                    Box::new(SetCharacterStyleCommand::new(range, None)),
+                    &mut CommandContext::new(&mut document, &mut selection),
+                )
+                .unwrap();
+            assert!(!document_xml(&document.export_docx().unwrap()).contains("w:rStyle"));
+            history
+                .undo(&mut CommandContext::new(&mut document, &mut selection))
+                .unwrap();
+            assert_eq!(document_xml(&document.export_docx().unwrap()), applied);
+        }
     }
 
     #[test]
