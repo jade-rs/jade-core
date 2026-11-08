@@ -1475,10 +1475,11 @@ impl XmlAttribute {
         // only a bounded capacity hint.
         let capacity = raw.iter().filter(|&&byte| byte == b'=').count().min(8);
         let mut attributes = Vec::<Self>::with_capacity(capacity);
-        let mut rest = raw.trim_ascii_start();
+        // XML whitespace excludes form feed, unlike trim_ascii_*.
+        let mut rest = quick_xml::utils::trim_xml_start(raw);
         while !rest.is_empty() {
             let eq = rest.iter().position(|&byte| byte == b'=')?;
-            let name = rest[..eq].trim_ascii_end();
+            let name = quick_xml::utils::trim_xml_end(&rest[..eq]);
             if name.is_empty()
                 || name
                     .iter()
@@ -1489,7 +1490,7 @@ impl XmlAttribute {
             {
                 return None;
             }
-            let after = rest[eq + 1..].trim_ascii_start();
+            let after = quick_xml::utils::trim_xml_start(&rest[eq + 1..]);
             let quote = *after
                 .first()
                 .filter(|&&byte| byte == b'"' || byte == b'\'')?;
@@ -1504,14 +1505,17 @@ impl XmlAttribute {
             }
             rest = &body[end + 1..];
             // Attributes are separated by whitespace.
-            if rest.first().is_some_and(|byte| !byte.is_ascii_whitespace()) {
+            if rest
+                .first()
+                .is_some_and(|&byte| !quick_xml::utils::is_whitespace(byte))
+            {
                 return None;
             }
             attributes.push(Self {
                 name: String::from_utf8(name.to_vec()).ok()?,
                 value: String::from_utf8(value.to_vec()).ok()?,
             });
-            rest = rest.trim_ascii_start();
+            rest = quick_xml::utils::trim_xml_start(rest);
         }
         Some(attributes)
     }
@@ -1875,6 +1879,54 @@ pub(crate) mod tests {
         assert_eq!(
             normalized_xml_text(&document.to_string().unwrap()),
             "a\rb\r\nc\td\ne"
+        );
+    }
+
+    #[test]
+    fn attribute_control_bytes_match_checked_iterator() {
+        let mut mismatches = Vec::new();
+        for byte in 0..=u8::MAX {
+            for (position, (prefix, suffix)) in [
+                (b"<r ".as_slice(), b"a=\"v\"/>".as_slice()),
+                (b"<r a", b"=\"v\"/>"),
+                (b"<r a=", b"\"v\"/>"),
+                (b"<r a=\"v\"", b"/>"),
+                (b"<r a=\"v\" ", b"/>"),
+                (b"<r a=\"v\"", b"b=\"w\"/>"),
+                (b"<r a=\"v\" ", b"b=\"w\"/>"),
+                (b"<r a=\"", b"\"/>"),
+            ]
+            .into_iter()
+            .enumerate()
+            {
+                let mut xml = prefix.to_vec();
+                xml.push(byte);
+                xml.extend_from_slice(suffix);
+                let mut reader = Reader::from_reader(xml.as_slice());
+                if let Ok(Event::Start(element) | Event::Empty(element)) = reader.read_event() {
+                    let actual = attribute_result(XmlAttribute::parse_attributes(&element));
+                    let expected = attribute_result(checked_attributes(&element));
+                    if actual != expected {
+                        mismatches.push((byte, position, actual, expected));
+                    }
+                }
+            }
+        }
+        assert!(mismatches.is_empty(), "{mismatches:#?}");
+    }
+
+    #[test]
+    fn quoted_attribute_form_feed_remains_literal() {
+        let content = "r a=\"x\u{c}y\"";
+        let element = quick_xml::events::BytesStart::from_content(content, 1);
+        assert!(XmlAttribute::parse_plain_attributes(element.attributes_raw()).is_some());
+        assert_eq!(
+            attribute_result(XmlAttribute::parse_attributes(&element)),
+            Ok(vec![("a".to_owned(), "x\u{c}y".to_owned())]),
+        );
+        assert_eq!(
+            attribute_result(XmlAttribute::parse_attributes(&element)),
+            attribute_result(checked_attributes(&element)),
         );
     }
 

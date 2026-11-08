@@ -75,7 +75,7 @@ fn formula(
         if extended {
             return set_formula_value(existing, value);
         }
-        return crate::cell_shift::text_content(existing, value);
+        return set_text_value(existing, value);
     }
     let text = if extended {
         format!(
@@ -96,7 +96,7 @@ fn literal(existing: Option<&str>, text: &str) -> Result<String> {
         .replace('\n', "_x000A_")
         .replace('\t', "_x0009_");
     if let Some(existing) = existing {
-        return crate::cell_shift::text_content(existing, &encoded);
+        return set_text_value(existing, &encoded);
     }
     Ok(format!(
         "<jadeList:list xmlns:jadeList=\"{}\" xml:space=\"preserve\">{}</jadeList:list>",
@@ -387,8 +387,7 @@ fn formula_level(xml: &str, value: &str) -> Result<(String, bool)> {
     let mut found = false;
     for (start, end, leaf) in xml_edit_ns::children_ns(xml, b"f", XM_NAMESPACE)? {
         found = true;
-        let moved =
-            crate::cell_shift::text_content(&leaf.text, value.strip_prefix('=').unwrap_or(value))?;
+        let moved = set_text_value(&leaf.text, value.strip_prefix('=').unwrap_or(value))?;
         if moved != leaf.text {
             edits.push(Splice {
                 start,
@@ -449,18 +448,19 @@ pub(crate) fn map_formulas(
     extended: bool,
     map: &impl Fn(&str) -> String,
 ) -> Result<String> {
-    map_source_level(
+    map_source_level_with_policy(
         xml,
         &namespace(xml)?,
         &[b"formula1", b"formula2"],
         extended,
+        true,
         map,
     )
 }
 
 /// Extended coverage may use the same transparent alternatives as sources.
 pub(crate) fn map_extended_ranges(xml: &str, map: &impl Fn(&str) -> String) -> Result<String> {
-    map_source_level(xml, XM_NAMESPACE, &[b"sqref"], false, map)
+    map_source_level_with_policy(xml, XM_NAMESPACE, &[b"sqref"], false, true, map)
 }
 
 pub(crate) fn map_source_level(
@@ -470,13 +470,31 @@ pub(crate) fn map_source_level(
     wrapped: bool,
     map: &impl Fn(&str) -> String,
 ) -> Result<String> {
+    map_source_level_with_policy(xml, ns, names, wrapped, false, map)
+}
+
+fn map_source_level_with_policy(
+    xml: &str,
+    ns: &[u8],
+    names: &[&[u8]],
+    wrapped: bool,
+    ignore_opaque: bool,
+    map: &impl Fn(&str) -> String,
+) -> Result<String> {
     let mut edits = Vec::new();
     for name in names {
         for (start, end, source) in xml_edit_ns::children_ns(xml, name, ns)? {
             let moved = if wrapped {
-                map_source_level(&source.text, XM_NAMESPACE, &[b"f"], false, map)?
+                map_source_level_with_policy(
+                    &source.text,
+                    XM_NAMESPACE,
+                    &[b"f"],
+                    false,
+                    ignore_opaque,
+                    map,
+                )?
             } else {
-                map_text_leaf(&source.text, map)?
+                map_text_leaf(&source.text, ignore_opaque, map)?
             };
             if moved != source.text {
                 edits.push(Splice {
@@ -487,6 +505,17 @@ pub(crate) fn map_source_level(
             }
         }
     }
+    for (start, end, wrapper) in xml_edit_ns::processed_children(xml)? {
+        let moved =
+            map_source_level_with_policy(&wrapper.text, ns, names, wrapped, ignore_opaque, map)?;
+        if moved != wrapper.text {
+            edits.push(Splice {
+                start,
+                end,
+                text: wrapper.finish(&moved)?,
+            });
+        }
+    }
     for (start, end, wrapper) in xml_edit_ns::children_ns(xml, b"AlternateContent", MC_NAMESPACE)? {
         let mut changes = Vec::new();
         for (a, b, branch, is_fallback) in branches(&wrapper.text)? {
@@ -495,7 +524,8 @@ pub(crate) fn map_source_level(
             {
                 continue;
             }
-            let moved = map_source_level(&branch.text, ns, names, wrapped, map)?;
+            let moved =
+                map_source_level_with_policy(&branch.text, ns, names, wrapped, ignore_opaque, map)?;
             if moved != branch.text {
                 changes.push(Splice {
                     start: a,
@@ -517,19 +547,80 @@ pub(crate) fn map_source_level(
 
 // Comments and processing instructions are not formula characters. Keep them
 // when a text leaf changes; a leaf containing element children is opaque.
-fn map_text_leaf(xml: &str, map: &impl Fn(&str) -> String) -> Result<String> {
+fn map_text_leaf(xml: &str, ignore_opaque: bool, map: &impl Fn(&str) -> String) -> Result<String> {
+    let processed = jade_xlsx_reader::process_content::processed_elements(xml)?;
+    map_text_leaf_with_elements(
+        xml,
+        &|offset| {
+            if processed.processes_content_at(offset) {
+                TextElement::Process
+            } else if ignore_opaque {
+                TextElement::Ignore
+            } else {
+                TextElement::Opaque
+            }
+        },
+        map,
+    )
+}
+
+/// Replace interpreted text without discarding source attributes, comments, or
+/// opaque child XML. Nominated ProcessContent wrappers contribute their text.
+pub(crate) fn set_text_value(xml: &str, value: &str) -> Result<String> {
+    let processed = jade_xlsx_reader::process_content::processed_elements(xml)?;
+    map_text_leaf_with_elements(
+        xml,
+        &|offset| {
+            if processed.processes_content_at(offset) {
+                TextElement::Process
+            } else {
+                TextElement::Ignore
+            }
+        },
+        &|_| value.to_owned(),
+    )
+}
+
+pub(crate) enum TextElement {
+    Process,
+    Ignore,
+    Opaque,
+}
+
+/// A caller with full-part ownership information may nominate transparent or
+/// ignored element starts. Opaque children keep the complete source unchanged.
+pub(crate) fn map_text_leaf_with_elements(
+    xml: &str,
+    element: &impl Fn(usize) -> TextElement,
+    map: &impl Fn(&str) -> String,
+) -> Result<String> {
     use quick_xml::{events::Event, Reader};
     let mut reader = Reader::from_str(xml);
     let mut root = true;
+    let mut depth = 0usize;
     let mut text = String::new();
     let mut spans = Vec::new();
     loop {
         let start = reader.buffer_position() as usize;
         let event = reader.read_event()?;
         match event {
-            Event::Start(_) if root => root = false,
+            Event::Start(_) if root => {
+                root = false;
+                depth = 1;
+            }
             Event::Empty(_) if root => break,
-            Event::Start(_) | Event::Empty(_) => return Ok(xml.into()),
+            Event::Start(e) => match element(start) {
+                TextElement::Process => depth += 1,
+                TextElement::Ignore => {
+                    reader.read_to_end(e.name())?;
+                }
+                TextElement::Opaque => return Ok(xml.into()),
+            },
+            Event::Empty(_) => {
+                if matches!(element(start), TextElement::Opaque) {
+                    return Ok(xml.into());
+                }
+            }
             Event::Text(e) => {
                 text.push_str(&e.decode()?);
                 spans.push((start, reader.buffer_position() as usize));
@@ -545,7 +636,13 @@ fn map_text_leaf(xml: &str, map: &impl Fn(&str) -> String) -> Result<String> {
                 );
                 spans.push((start, reader.buffer_position() as usize));
             }
-            Event::End(_) | Event::Eof => break,
+            Event::End(_) => {
+                depth = depth.saturating_sub(1);
+                if depth == 0 {
+                    break;
+                }
+            }
+            Event::Eof => break,
             _ => {}
         }
     }

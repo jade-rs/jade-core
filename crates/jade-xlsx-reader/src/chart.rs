@@ -395,7 +395,7 @@ impl Node {
         self.child(name)?.attrs.get("val").map(String::as_str)
     }
     fn enabled(&self, name: &str, default: bool) -> bool {
-        match self.val(name) {
+        match self.val(name).map(str::trim) {
             Some("1" | "true") => true,
             Some("0" | "false") => false,
             _ => default,
@@ -571,7 +571,7 @@ fn axis(node: Option<&Node>) -> ChartAxis {
         number_format: node
             .child("numFmt")
             .and_then(|n| n.attrs.get("formatCode"))
-            .cloned(),
+            .map(|code| crate::xstring::decode_xstring(code)),
         reverse: scaling.and_then(|n| n.val("orientation")) == Some("maxMin"),
         hidden: node.enabled("delete", false),
         gridlines: node.child("majorGridlines").is_some(),
@@ -612,9 +612,13 @@ fn data_labels(node: Option<&Node>) -> Option<DataLabels> {
         position: node.val("dLblPos").map(str::to_string),
         number_format: node
             .child("numFmt")
-            .filter(|n| n.attrs.get("sourceLinked").is_none_or(|v| v != "1"))
+            .filter(|n| {
+                n.attrs
+                    .get("sourceLinked")
+                    .is_none_or(|v| !matches!(v.trim(), "1" | "true"))
+            })
             .and_then(|n| n.attrs.get("formatCode"))
-            .cloned(),
+            .map(|code| crate::xstring::decode_xstring(code)),
         separator: node.child("separator").map(|n| n.text.clone()),
         deleted: node
             .children
@@ -761,7 +765,7 @@ fn parse_plot(kind: &Node, issues: &mut Vec<String>) -> ChartPlot {
         horizontal: kind.val("barDir") == Some("bar"),
         vary_colors: kind
             .val("varyColors")
-            .map(|v| v == "1" || v == "true")
+            .map(|v| matches!(v.trim(), "1" | "true"))
             .unwrap_or(matches!(name.as_str(), "pieChart" | "doughnutChart")),
         gap_width: kind
             .val("gapWidth")

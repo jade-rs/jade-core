@@ -629,7 +629,7 @@ pub fn import_cell_format(
                         attrs
                             .into_iter()
                             .find(|(key, _)| key == "formatCode")
-                            .map(|(_, code)| code)
+                            .map(|(_, code)| jade_xlsx_reader::xstring::decode_xstring(&code))
                     })
                     .flatten()
             })
@@ -963,8 +963,8 @@ fn number_format_id(
         let existing = attributes
             .iter()
             .find(|(key, _)| key == "formatCode")
-            .map(|(_, value)| value.as_str());
-        if existing == Some(code) {
+            .map(|(_, value)| jade_xlsx_reader::xstring::decode_xstring(value));
+        if existing.as_deref() == Some(code) {
             if let Some(id) = id {
                 return Ok(id);
             }
@@ -974,7 +974,11 @@ fn number_format_id(
     let id = highest + 1;
     let entry = format!(
         "<{p}numFmt numFmtId=\"{id}\" formatCode=\"{}\"/>",
-        escape(code),
+        escape(
+            &jade_xlsx_reader::xstring::encode_xstring(code)
+                .replace('\n', "_x000A_")
+                .replace('\t', "_x0009_")
+        ),
         p = layout.prefix
     );
     if layout.num_fmts.open.is_some() {

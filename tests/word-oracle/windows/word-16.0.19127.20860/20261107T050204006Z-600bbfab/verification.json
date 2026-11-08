@@ -1,0 +1,24 @@
+{
+  "engine_commit": "6bedd8c7b0666392e53568982037b9a37f4e5523",
+  "word_product_version": "16.0.19127.20860",
+  "capture_id": "20261107T050204006Z-600bbfab",
+  "reference_kind": "emf",
+  "engine_source_worktree_dirty": false,
+  "strict_fixtures": [
+    "word-windows-edge-table-alignment-compat12",
+    "word-windows-edge-table-alignment-compat14",
+    "word-windows-edge-table-borders-compat12",
+    "word-windows-edge-table-borders-compat14",
+    "word-windows-edge-table-indents-compat12",
+    "word-windows-edge-table-indents-compat14"
+  ],
+  "matching_fixtures": [
+    "word-windows-edge-table-alignment-compat12",
+    "word-windows-edge-table-alignment-compat14",
+    "word-windows-edge-table-borders-compat12",
+    "word-windows-edge-table-borders-compat14",
+    "word-windows-edge-table-indents-compat12",
+    "word-windows-edge-table-indents-compat14"
+  ],
+  "pending_fixtures": []
+}

@@ -1,6 +1,23 @@
 use crate::test::util::new_empty_model;
 
 #[test]
+fn complex_aggregate_scalar_argument_limits() {
+    let mut model = new_empty_model();
+    let ones = std::iter::repeat_n("1", 255).collect::<Vec<_>>().join(",");
+    for (function, result) in [("IMSUM", "255"), ("IMPRODUCT", "1")] {
+        model._set("A1", &format!("={function}({ones})"));
+        model._set("A2", &format!("={function}({ones},1)"));
+        model._set("A3", &format!("={function}()"));
+        model._set("A4", &format!(r#"={function}("1+2j")"#));
+        model.evaluate();
+        assert_eq!(model._get_text("A1"), result);
+        assert_eq!(model._get_text("A2"), "#ERROR!");
+        assert_eq!(model._get_text("A3"), "#ERROR!");
+        assert_eq!(model._get_text("A4"), "1+2j");
+    }
+}
+
+#[test]
 fn fn_complex() {
     let mut model = new_empty_model();
     model._set("A1", r#"=COMPLEX(3, 4.5, "i")"#);
