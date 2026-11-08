@@ -206,7 +206,7 @@ impl DocxXmlDocument {
             if matches!(event, Event::Eof) {
                 break;
             }
-            builder.observe(&event)?;
+            builder.observe_from_str(&event, xml)?;
         }
         let mut document = builder.finish()?;
         document.source_len = xml.len();
@@ -1015,16 +1015,32 @@ impl DocxXmlTreeBuilder {
     /// Feeds one event into the tree. Events must arrive in document order;
     /// `Event::Eof` is ignored so callers can pass every event through.
     pub fn observe(&mut self, event: &Event<'_>) -> Result<(), DocxXmlError> {
+        self.observe_with_source(event, None)
+    }
+
+    pub(crate) fn observe_from_str(
+        &mut self,
+        event: &Event<'_>,
+        source: &str,
+    ) -> Result<(), DocxXmlError> {
+        self.observe_with_source(event, Some(source))
+    }
+
+    fn observe_with_source(
+        &mut self,
+        event: &Event<'_>,
+        source: Option<&str>,
+    ) -> Result<(), DocxXmlError> {
         match event {
             Event::Start(e) => {
-                let mut element = XmlElement::from_bytes_start(e)?;
+                let mut element = XmlElement::from_bytes_start(e, source)?;
                 element.id = self.allocate_id();
                 let entry = self.next_child_entry()?;
                 self.index.insert(element.id, entry);
                 self.stack.push(element);
             }
             Event::Empty(e) => {
-                let mut element = XmlElement::from_bytes_start(e)?;
+                let mut element = XmlElement::from_bytes_start(e, source)?;
                 element.id = self.allocate_id();
                 if SELF_CLOSING_TRACKED.contains(&element.name.as_str()) {
                     self.self_closing_elements.insert(element.id);
@@ -1278,6 +1294,24 @@ impl std::fmt::Display for XmlDeclaration {
     }
 }
 
+/// Copies an event span from its already validated source when it is actually
+/// borrowed from that source. Buffered or owned events keep the original UTF-8
+/// validation, including its error. Checked string slicing also rejects spans
+/// that start or end inside a UTF-8 character; no pointer is dereferenced here.
+fn copy_utf8(bytes: &[u8], source: Option<&str>) -> Result<String, std::string::FromUtf8Error> {
+    if let Some(source) = source {
+        if let Some(start) = (bytes.as_ptr() as usize).checked_sub(source.as_ptr() as usize) {
+            if let Some(value) = start
+                .checked_add(bytes.len())
+                .and_then(|end| source.get(start..end))
+            {
+                return Ok(value.to_owned());
+            }
+        }
+    }
+    String::from_utf8(bytes.to_vec())
+}
+
 /// 汎用 XML 要素。
 #[derive(Clone, Debug)]
 pub struct XmlElement {
@@ -1288,10 +1322,13 @@ pub struct XmlElement {
 }
 
 impl XmlElement {
-    fn from_bytes_start(e: &quick_xml::events::BytesStart<'_>) -> Result<Self, DocxXmlError> {
-        let name = String::from_utf8(e.name().as_ref().to_vec())
+    fn from_bytes_start(
+        e: &quick_xml::events::BytesStart<'_>,
+        source: Option<&str>,
+    ) -> Result<Self, DocxXmlError> {
+        let name = copy_utf8(e.name().as_ref(), source)
             .map_err(|err| DocxXmlError::Malformed(err.to_string()))?;
-        let attributes = XmlAttribute::parse_attributes(e)?;
+        let attributes = XmlAttribute::parse_attributes(e, source)?;
         Ok(Self {
             id: XmlNodeId::new(0),
             name,
@@ -1419,8 +1456,11 @@ pub struct XmlAttribute {
 }
 
 impl XmlAttribute {
-    fn parse_attributes(e: &quick_xml::events::BytesStart<'_>) -> Result<Vec<Self>, DocxXmlError> {
-        if let Some(attributes) = Self::parse_plain_attributes(e.attributes_raw()) {
+    fn parse_attributes(
+        e: &quick_xml::events::BytesStart<'_>,
+        source: Option<&str>,
+    ) -> Result<Vec<Self>, DocxXmlError> {
+        if let Some(attributes) = Self::parse_plain_attributes(e.attributes_raw(), source) {
             return Ok(attributes);
         }
         // Attribute names already live in the result. Reuse them for duplicate
@@ -1470,7 +1510,7 @@ impl XmlAttribute {
     /// what quick-xml would return, and this keeps the reader's cost from
     /// hanging on whether the optimizer inlines quick-xml's attribute
     /// iterator here. Anything else returns `None` for the checked path.
-    fn parse_plain_attributes(raw: &[u8]) -> Option<Vec<Self>> {
+    fn parse_plain_attributes(raw: &[u8], source: Option<&str>) -> Option<Vec<Self>> {
         // Each attribute has an '='. Values may contain it too, so this is
         // only a bounded capacity hint.
         let capacity = raw.iter().filter(|&&byte| byte == b'=').count().min(8);
@@ -1512,8 +1552,8 @@ impl XmlAttribute {
                 return None;
             }
             attributes.push(Self {
-                name: String::from_utf8(name.to_vec()).ok()?,
-                value: String::from_utf8(value.to_vec()).ok()?,
+                name: copy_utf8(name, source).ok()?,
+                value: copy_utf8(value, source).ok()?,
             });
             rest = quick_xml::utils::trim_xml_start(rest);
         }
@@ -1696,7 +1736,7 @@ pub(crate) mod tests {
                 })
                 .collect();
             (
-                super::XmlAttribute::parse_plain_attributes(start.attributes_raw()),
+                super::XmlAttribute::parse_plain_attributes(start.attributes_raw(), None),
                 checked,
             )
         };
@@ -1904,7 +1944,7 @@ pub(crate) mod tests {
                 xml.extend_from_slice(suffix);
                 let mut reader = Reader::from_reader(xml.as_slice());
                 if let Ok(Event::Start(element) | Event::Empty(element)) = reader.read_event() {
-                    let actual = attribute_result(XmlAttribute::parse_attributes(&element));
+                    let actual = attribute_result(XmlAttribute::parse_attributes(&element, None));
                     let expected = attribute_result(checked_attributes(&element));
                     if actual != expected {
                         mismatches.push((byte, position, actual, expected));
@@ -1919,18 +1959,113 @@ pub(crate) mod tests {
     fn quoted_attribute_form_feed_remains_literal() {
         let content = "r a=\"x\u{c}y\"";
         let element = quick_xml::events::BytesStart::from_content(content, 1);
-        assert!(XmlAttribute::parse_plain_attributes(element.attributes_raw()).is_some());
+        assert!(XmlAttribute::parse_plain_attributes(element.attributes_raw(), None).is_some());
         assert_eq!(
-            attribute_result(XmlAttribute::parse_attributes(&element)),
+            attribute_result(XmlAttribute::parse_attributes(&element, None)),
             Ok(vec![("a".to_owned(), "x\u{c}y".to_owned())]),
         );
         assert_eq!(
-            attribute_result(XmlAttribute::parse_attributes(&element)),
+            attribute_result(XmlAttribute::parse_attributes(&element, None)),
             attribute_result(checked_attributes(&element)),
         );
     }
 
     use proptest::prelude::*;
+
+    #[test]
+    fn retained_source_copy_matches_utf8_validation_for_every_byte_span() {
+        let source = String::from("a日本語😀z");
+        let unrelated = source.clone();
+        for start in 0..=source.len() {
+            for end in start..=source.len() {
+                let bytes = &source.as_bytes()[start..end];
+                let expected = String::from_utf8(bytes.to_vec());
+                assert_eq!(super::copy_utf8(bytes, Some(&source)), expected);
+                assert_eq!(super::copy_utf8(bytes, Some(&unrelated)), expected);
+                assert_eq!(super::copy_utf8(bytes, Some("")), expected);
+                assert_eq!(super::copy_utf8(bytes, None), expected);
+            }
+        }
+        for bytes in [b"\xff".as_slice(), b"a\xc0\x80", b"\xf0\x9f\x98"] {
+            assert_eq!(
+                super::copy_utf8(bytes, Some(&source)),
+                String::from_utf8(bytes.to_vec()),
+            );
+        }
+    }
+
+    /// Independent oracle: copies events into a scratch buffer and uses the
+    /// public builder, which has no retained source and validates every span.
+    pub(crate) fn buffered_document(xml: &[u8]) -> Result<DocxXmlDocument, DocxXmlError> {
+        let mut reader = Reader::from_reader(xml);
+        reader.config_mut().trim_text(false);
+        let mut builder = DocxXmlTreeBuilder::new();
+        let mut buf = Vec::new();
+        loop {
+            buf.clear();
+            let event = reader
+                .read_event_into(&mut buf)
+                .map_err(|err| DocxXmlError::Malformed(err.to_string()))?;
+            if matches!(event, Event::Eof) {
+                break;
+            }
+            builder.observe(&event)?;
+        }
+        let mut document = builder.finish()?;
+        document.set_source_len(xml.len());
+        Ok(document)
+    }
+
+    pub(crate) fn assert_same_document(actual: &DocxXmlDocument, expected: &DocxXmlDocument) {
+        assert_eq!(format!("{:?}", actual.root), format!("{:?}", expected.root));
+        assert_eq!(
+            format!("{:?}", actual.declaration),
+            format!("{:?}", expected.declaration),
+        );
+        assert_eq!(actual.next_id, expected.next_id);
+        assert_eq!(actual.self_closing_elements, expected.self_closing_elements);
+        assert_eq!(
+            actual.explicit_empty_elements,
+            expected.explicit_empty_elements
+        );
+        assert_eq!(index_snapshot(actual), index_snapshot(expected));
+        assert_eq!(actual.to_string().unwrap(), expected.to_string().unwrap());
+    }
+
+    fn assert_retained_source_matches_buffered(xml: &str) {
+        match (
+            DocxXmlDocument::parse(xml),
+            buffered_document(xml.as_bytes()),
+        ) {
+            (Ok(actual), Ok(expected)) => assert_same_document(&actual, &expected),
+            (Err(actual), Err(expected)) => {
+                assert_eq!(format!("{actual:?}"), format!("{expected:?}"), "{xml:?}");
+            }
+            (actual, expected) => panic!("{xml:?}: actual={actual:?}, expected={expected:?}"),
+        }
+    }
+
+    #[test]
+    fn retained_source_preserves_buffered_trees_and_exact_errors() {
+        for xml in [
+            "\u{feff}<?xml version=\"1.0\" encoding=\"UTF-8\"?><根 属性='日本語😀' empty=\"\"><w:r/><w:r></w:r><!--注--><![CDATA[字]]>&amp;&#x1F600;</根>",
+            "<r a='x\u{c}y' b='日本語' />",
+            "<r a='1' a='2'/>",
+            "<r a='1' a='&unknown;'/>",
+            "<r a='&unknown;' a=unquoted/>",
+            "<r a='&#0;'/>",
+            "<r a='x\r\ny\tz' />",
+            "<r a='unterminated/>",
+            "<r a='1'b='2'/>",
+            "<r a='1'\u{c}b='2'/>",
+            "<r><a></r>",
+            "<r>",
+            "<r/><r/>",
+            "",
+        ] {
+            assert_retained_source_matches_buffered(xml);
+        }
+    }
 
     fn checked_attributes(
         element: &quick_xml::events::BytesStart<'_>,
@@ -1972,7 +2107,7 @@ pub(crate) mod tests {
         ] {
             let element = quick_xml::events::BytesStart::from_content(content, 1);
             assert_eq!(
-                attribute_result(XmlAttribute::parse_attributes(&element)),
+                attribute_result(XmlAttribute::parse_attributes(&element, None)),
                 attribute_result(checked_attributes(&element)),
                 "{content}",
             );
@@ -1988,7 +2123,7 @@ pub(crate) mod tests {
                 panic!("expected an empty element");
             };
             assert_eq!(
-                attribute_result(XmlAttribute::parse_attributes(&element)),
+                attribute_result(XmlAttribute::parse_attributes(&element, None)),
                 attribute_result(checked_attributes(&element)),
                 "{xml:?}",
             );
@@ -1996,6 +2131,25 @@ pub(crate) mod tests {
     }
 
     proptest! {
+        #[test]
+        fn retained_source_matches_buffered_for_generated_events(
+            fragments in proptest::collection::vec(
+                prop_oneof![
+                    ("[a-c:]{1,4}|日本語", ".{0,12}")
+                        .prop_map(|(key, value)| format!("<子 {key}=\"{value}\"/>")),
+                    prop::sample::select(vec![
+                        "<w:r/>", "<w:r></w:r>", "<p>", "</p>", "字😀", "&amp;",
+                        "&#x1F600;", "&unknown;", "<!--comment-->", "<![CDATA[x]]>",
+                        "<a x='1' x='2'/>", "<a x=unquoted/>", "<a x='x\r\ny\tz'/>",
+                    ]).prop_map(str::to_owned),
+                ],
+                0..32,
+            ),
+        ) {
+            let xml = format!("<root>{}</root>", fragments.concat());
+            assert_retained_source_matches_buffered(&xml);
+        }
+
         #[test]
         fn attribute_parsing_matches_checked_iterator(
             fragments in proptest::collection::vec(
@@ -2012,7 +2166,7 @@ pub(crate) mod tests {
             let content = format!("r{}", fragments.concat());
             let element = quick_xml::events::BytesStart::from_content(content, 1);
             prop_assert_eq!(
-                attribute_result(XmlAttribute::parse_attributes(&element)),
+                attribute_result(XmlAttribute::parse_attributes(&element, None)),
                 attribute_result(checked_attributes(&element)),
             );
         }
@@ -2027,7 +2181,7 @@ pub(crate) mod tests {
             let mut reader = Reader::from_reader(xml.as_slice());
             if let Ok(Event::Start(element) | Event::Empty(element)) = reader.read_event() {
                 prop_assert_eq!(
-                    attribute_result(XmlAttribute::parse_attributes(&element)),
+                    attribute_result(XmlAttribute::parse_attributes(&element, None)),
                     attribute_result(checked_attributes(&element)),
                 );
             }

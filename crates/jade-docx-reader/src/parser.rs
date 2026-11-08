@@ -176,6 +176,7 @@ impl XmlEventSource for SliceXmlReader<'_> {
 /// [`Self::finish`] reports the error to the caller.
 pub struct RawTreeTeeReader<'a> {
     reader: SliceXmlReader<'a>,
+    source: &'a str,
     builder: Option<DocxXmlTreeBuilder>,
     error: Option<DocxXmlError>,
 }
@@ -184,6 +185,7 @@ impl<'a> RawTreeTeeReader<'a> {
     pub fn new(xml: &'a str) -> Self {
         Self {
             reader: SliceXmlReader::new(xml),
+            source: xml,
             builder: Some(DocxXmlTreeBuilder::new()),
             error: None,
         }
@@ -217,7 +219,7 @@ impl<'a> RawTreeTeeReader<'a> {
 
     fn observe_event(&mut self, event: &Event<'_>) {
         if let Some(builder) = self.builder.as_mut() {
-            if let Err(err) = builder.observe(event) {
+            if let Err(err) = builder.observe_from_str(event, self.source) {
                 self.error = Some(err);
                 self.builder = None;
             }
@@ -11547,24 +11549,24 @@ mod tests {
 
     #[test]
     fn raw_tree_can_mix_buffered_and_borrowed_events_then_drain() {
-        let xml = "<?xml version=\"1.0\"?><root><!--c--><p a=\"1\">&amp;<![CDATA[x]]><empty/></p><other/></root>";
-        let mut source = RawTreeTeeReader::new(xml);
-        let mut buf = Vec::new();
-        for index in 0..5 {
-            buf.clear();
-            if index % 2 == 0 {
-                source.read_event_into(&mut buf).unwrap();
-            } else {
-                source.next_event(&mut buf).unwrap();
+        let xml = "<?xml version=\"1.0\"?><root><!--c--><p 属性=\"日本語😀\">&amp;<![CDATA[x]]><w:r/><w:r></w:r></p><other/></root>";
+        let expected = crate::docx_xml::tests::buffered_document(xml.as_bytes()).unwrap();
+        for consumed in 0..=16 {
+            for buffered_first in [false, true] {
+                let mut source = RawTreeTeeReader::new(xml);
+                let mut buf = Vec::new();
+                for index in 0..consumed {
+                    buf.clear();
+                    if (index % 2 == 0) == buffered_first {
+                        source.read_event_into(&mut buf).unwrap();
+                    } else {
+                        source.next_event(&mut buf).unwrap();
+                    }
+                }
+                let actual = source.finish().unwrap();
+                crate::docx_xml::tests::assert_same_document(&actual, &expected);
             }
         }
-        let actual = source.finish().unwrap();
-        let expected = DocxXmlDocument::parse(xml).unwrap();
-        assert_eq!(actual.to_string().unwrap(), expected.to_string().unwrap());
-        assert_eq!(
-            crate::docx_xml::tests::index_snapshot(&actual),
-            crate::docx_xml::tests::index_snapshot(&expected),
-        );
     }
 
     /// The one-pass entry must hand back exactly the tree a standalone
@@ -11582,10 +11584,23 @@ mod tests {
             let Some(xml) = read_document_xml(&path) else {
                 continue;
             };
-            let standalone = match DocxXmlDocument::parse(&xml) {
+            let buffered = match crate::docx_xml::tests::buffered_document(xml.as_bytes()) {
                 Ok(tree) => tree,
-                Err(_) => continue,
+                Err(expected) => {
+                    let actual = DocxXmlDocument::parse(&xml)
+                        .expect_err("retained-source parsing must preserve buffered errors");
+                    assert_eq!(
+                        format!("{actual:?}"),
+                        format!("{expected:?}"),
+                        "{}: raw-tree errors diverge",
+                        path.display()
+                    );
+                    continue;
+                }
             };
+            let standalone = DocxXmlDocument::parse(&xml)
+                .unwrap_or_else(|err| panic!("{}: {err:?}", path.display()));
+            crate::docx_xml::tests::assert_same_document(&standalone, &buffered);
             let parser = DocumentParser::new();
             let (document, raw) = parser
                 .parse_document_xml_with_raw_tree(&xml)
