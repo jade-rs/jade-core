@@ -20941,7 +20941,7 @@ where
         const UNBOUNDED: f64 = 1.0e7;
         let mut widest: f64 = 0.0;
         for paragraph in paragraphs {
-            let (text, run_styles) = self.text_box_paragraph_layout(paragraph);
+            let (text, run_styles, _) = self.text_box_paragraph_layout(paragraph)?;
             let format = self.text_box_paragraph_format(
                 paragraph,
                 content_left,
@@ -28302,15 +28302,62 @@ where
 
     /// Flattens a text-box paragraph into the text the shared wrap engine sees
     /// plus the run styles that map each byte range back to its `w:rPr`.
+    /// Inline equations occupy an object cluster and keep their two-dimensional
+    /// plan for painting and equation hit testing.
     /// Field results are appended to their run so live DOCVARIABLE/DOCPROPERTY
     /// values show up. Text-box wrapping used to drop the run properties and
     /// measure everything in the renderer's 12pt fallback, so a line that fits
     /// in Word at the run's own size wrapped early here.
-    fn text_box_paragraph_layout(&self, paragraph: &Paragraph) -> (String, Vec<RunStyle>) {
+    fn text_box_paragraph_layout(
+        &self,
+        paragraph: &Paragraph,
+    ) -> Result<(String, Vec<RunStyle>, InlineMaths), JsValue> {
         let mut text = String::new();
         let mut run_styles = Vec::with_capacity(paragraph.runs.len());
+        let mut inline_maths = InlineMaths::new();
+        let alone = paragraph
+            .runs
+            .iter()
+            .filter(|run| {
+                !run.text.is_empty()
+                    || run.image.is_some()
+                    || run.text_box.is_some()
+                    || run.math.is_some()
+                    || run.field.is_some()
+            })
+            .count()
+            == 1;
         for (run_index, run) in paragraph.runs.iter().enumerate() {
             let start = text.len();
+            let properties = self
+                .effective_run_properties(paragraph, run.properties.as_ref())
+                .map(Rc::new);
+            if let Some(math) = run.math.as_ref().filter(|math| !math.elements.is_empty()) {
+                let plan = self.inline_math_plan(
+                    &math.elements,
+                    properties.as_deref(),
+                    paragraph
+                        .properties
+                        .as_ref()
+                        .and_then(|properties| properties.style.as_deref()),
+                    alone,
+                )?;
+                text.push('\u{fffc}');
+                run_styles.push(RunStyle {
+                    start,
+                    end: text.len(),
+                    properties,
+                    revision: None,
+                    hyperlink: None,
+                    inline_object: Some(InlineObject {
+                        width: plan.metrics.width.max(1.0),
+                        height: plan.metrics.ascent.max(1.0),
+                        descent: plan.metrics.descent.max(0.0),
+                    }),
+                });
+                inline_maths.insert(start, (run_index, Rc::new(plan)));
+                continue;
+            }
             // As in the body: a resolved value replaces the saved result,
             // once per field.
             match run
@@ -28329,16 +28376,14 @@ where
                 run_styles.push(RunStyle {
                     start,
                     end: text.len(),
-                    properties: self
-                        .effective_run_properties(paragraph, run.properties.as_ref())
-                        .map(Rc::new),
+                    properties,
                     revision: None,
                     hyperlink: None,
                     inline_object: None,
                 });
             }
         }
-        (text, run_styles)
+        Ok((text, run_styles, inline_maths))
     }
 
     /// Rebases paragraph run styles onto one `\n`-delimited chunk, which is
@@ -28379,6 +28424,39 @@ where
     /// shared font box and spacing plan. Other lines and missing metric inputs
     /// retain the scaled 12pt fallback.
     fn text_box_line_metrics(
+        &self,
+        wrapped_line: &WrappedLine,
+        format: &TextBoxParagraphFormat<'_>,
+    ) -> (f64, f64) {
+        let (ascent, pitch) = self.text_box_text_line_metrics(wrapped_line, format);
+        if !wrapped_line
+            .clusters
+            .iter()
+            .any(|cluster| cluster.inline_object.is_some())
+        {
+            return (ascent, pitch);
+        }
+        let (object_ascent, object_descent) = wrapped_line
+            .clusters
+            .iter()
+            .filter_map(|cluster| cluster.inline_object_bounds_px())
+            .fold((0.0_f64, 0.0_f64), |(ascent, descent), (top, bottom)| {
+                (ascent.max(-top), descent.max(bottom))
+            });
+        let enlarged_ascent = ascent.max(object_ascent);
+        let exact = format
+            .spacing
+            .and_then(|spacing| spacing.line_rule.as_deref())
+            .is_some_and(|rule| matches!(rule, "exact" | "exactly"));
+        let enlarged_pitch = if exact {
+            pitch
+        } else {
+            enlarged_ascent + (pitch - ascent).max(object_descent)
+        };
+        (enlarged_ascent, enlarged_pitch)
+    }
+
+    fn text_box_text_line_metrics(
         &self,
         wrapped_line: &WrappedLine,
         format: &TextBoxParagraphFormat<'_>,
@@ -28498,7 +28576,7 @@ where
         for element in blocks {
             match element {
                 BodyElement::Paragraph(paragraph) => {
-                    let (text, run_styles) = self.text_box_paragraph_layout(paragraph);
+                    let (text, run_styles, _) = self.text_box_paragraph_layout(paragraph)?;
                     let mut format =
                         self.text_box_paragraph_format(paragraph, content_left, numbering_counter)?;
                     format.preceding_spacing_after_px = preceding_after;
@@ -28764,13 +28842,15 @@ where
             match element {
                 BodyElement::Paragraph(paragraph) => {
                     rendered = true;
-                    let (text, run_styles) = self.text_box_paragraph_layout(paragraph);
+                    let (text, run_styles, inline_maths) =
+                        self.text_box_paragraph_layout(paragraph)?;
                     let mut format =
                         self.text_box_paragraph_format(paragraph, content_left, numbering_counter)?;
                     format.preceding_spacing_after_px = preceding_after;
                     preceding_after = self.render_text_box_paragraph(
                         &text,
                         &run_styles,
+                        &inline_maths,
                         &format,
                         content_left,
                         content_right,
@@ -29018,6 +29098,7 @@ where
         &mut self,
         text: &str,
         run_styles: &[RunStyle],
+        inline_maths: &InlineMaths,
         format: &TextBoxParagraphFormat<'_>,
         content_left: f64,
         content_right: f64,
@@ -29134,7 +29215,42 @@ where
                     .peekable();
                 let mut build_state = TextAdvanceState::default();
                 let mut cluster_cursor = 0usize;
+                let has_objects = wrapped_line
+                    .clusters
+                    .iter()
+                    .any(|cluster| cluster.inline_object.is_some());
+                let mut cluster_positions = HashMap::new();
+                let mut inline_math_draws = Vec::new();
+                if has_objects {
+                    // Object clusters have no text segment. Position text and
+                    // math from the complete sequence, including object widths.
+                    let mut object_x = line_origin;
+                    for cluster in &wrapped_line.clusters {
+                        cluster_positions.insert(cluster.start, object_x);
+                        if let Some((run_index, plan)) = inline_maths.get(&cluster.start) {
+                            let (top, bottom) = cluster.inline_object_bounds_px().unwrap();
+                            inline_math_draws.push((
+                                cluster.start,
+                                *run_index,
+                                Rc::clone(plan),
+                                object_x,
+                                top,
+                                bottom,
+                            ));
+                            min_top_offset = min_top_offset.min(top);
+                            max_bottom_offset = max_bottom_offset.max(bottom);
+                            offsets_initialised = true;
+                        }
+                        object_x += cluster.width;
+                    }
+                }
                 while let Some(segment) = line_segments.next() {
+                    if has_objects {
+                        cursor_x = cluster_positions
+                            .get(&segment.start)
+                            .copied()
+                            .unwrap_or(cursor_x);
+                    }
                     let next_grapheme_after_segment = line_segments
                         .peek()
                         .and_then(|next| Self::first_grapheme(next.text.as_str()));
@@ -29190,6 +29306,14 @@ where
                     }
                 }
 
+                if has_objects {
+                    cursor_x = line_origin
+                        + wrapped_line
+                            .clusters
+                            .iter()
+                            .map(|cluster| cluster.width)
+                            .sum::<f64>();
+                }
                 if !offsets_initialised {
                     min_top_offset = -line_pitch * 0.8;
                     max_bottom_offset = line_pitch * 0.2;
@@ -29212,6 +29336,26 @@ where
                         alignment_shift_for(entry.4, entry.5, fragment.baseline_shift_px);
                 }
 
+                for (offset, _, plan, x, top, bottom) in &inline_math_draws {
+                    let shift = alignment_shift_for(*top, *bottom, 0.0);
+                    fragments.push(SelectionFragmentLayout {
+                        baseline_shift_px: bottom + shift,
+                        start: *offset,
+                        end: *offset + '\u{fffc}'.len_utf8(),
+                        x: *x,
+                        width: plan.metrics.width.max(1.0),
+                        glyphs: vec![GlyphBox {
+                            start: *offset,
+                            end: *offset + '\u{fffc}'.len_utf8(),
+                            x: 0.0,
+                            width: plan.metrics.width.max(1.0),
+                        }]
+                        .into(),
+                    });
+                }
+                if has_objects {
+                    fragments.sort_by(|a, b| a.start.cmp(&b.start));
+                }
                 let line_width = (cursor_x - line_origin).max(0.0);
                 let baseline = *cursor_y + line_ascent;
                 if baseline > box_bottom {
@@ -29296,6 +29440,26 @@ where
                 }
 
                 let context = self.host.painter();
+                for (offset, run_index, plan, x, top, bottom) in &inline_math_draws {
+                    let math_baseline = baseline + alignment_shift_for(*top, *bottom, 0.0);
+                    let x = *x + alignment_shift;
+                    if self.should_draw_current_page_for_render() {
+                        plan.paint(&context, x, math_baseline)
+                            .map_err(PainterError::into_js_value)?;
+                        self.reset_fill_style_state();
+                    }
+                    self.record_math_zone(math::MathZone {
+                        paragraph: paragraph_index,
+                        offset: *offset,
+                        run_index: Some(*run_index),
+                        display: false,
+                        page: self.current_page_number,
+                        x,
+                        baseline: math_baseline,
+                        absolute_baseline: self.page_offset_y + math_baseline,
+                        plan: Rc::clone(plan),
+                    });
+                }
                 for (
                     segment_index,
                     (segment, start_x, glyph_steps, width, top_offset, bottom_offset),
@@ -30161,6 +30325,7 @@ where
         self.render_text_box_paragraph(
             &shape.text,
             &run_styles,
+            &InlineMaths::new(),
             &format,
             content_left,
             content_right,
@@ -46432,6 +46597,141 @@ mod tests {
     }
 
     #[test]
+    fn text_box_inline_math_wraps_paints_and_registers_object_positions() {
+        use jade_painter::recording::Op;
+        let xml = r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><w:body><w:p><w:r><w:t>before</w:t></w:r><m:oMath><m:f><m:num><m:r><m:rPr><m:nor/></m:rPr><m:t>num</m:t></m:r></m:num><m:den><m:r><m:rPr><m:nor/></m:rPr><m:t>den</m:t></m:r></m:den></m:f></m:oMath><w:r><w:br/><w:t>after</w:t></w:r><m:oMath><m:r><m:rPr><m:nor/></m:rPr><m:t>second</m:t></m:r></m:oMath><w:r><w:t>end</w:t></w:r></w:p></w:body></w:document>"#;
+        let document = jade_docx_reader::DocumentParser::new()
+            .parse_document_xml(xml)
+            .unwrap();
+        let blocks = document.body.unwrap().elements;
+        for width in [400.0, 70.0] {
+            let (mut renderer, painter) = recording_renderer();
+            let measured = renderer
+                .measure_text_box_blocks(&blocks, 10.0, 10.0 + width, &mut NumberingCounter::new())
+                .unwrap();
+            let mut y = 100.0;
+            painter.clear();
+            renderer
+                .render_text_box_blocks(
+                    &blocks,
+                    10.0,
+                    10.0 + width,
+                    &mut y,
+                    2000.0,
+                    false,
+                    &mut NumberingCounter::new(),
+                    0.0,
+                    &mut 0,
+                    &mut measured.math_plans.iter(),
+                )
+                .unwrap();
+            assert_eq!(
+                renderer.math_zones.len(),
+                2,
+                "both equations must survive at width {width}"
+            );
+            assert!((y - 100.0 - measured.height).abs() < 1e-9);
+            let painted: String = painter
+                .ops()
+                .iter()
+                .filter_map(|op| match op {
+                    Op::FillText(text, _, _) => Some(text.as_str()),
+                    _ => None,
+                })
+                .collect();
+            assert!(
+                painted.contains("num") && painted.contains("den") && painted.contains("second"),
+                "equation glyphs must paint: {painted}"
+            );
+            assert!(!painted.contains('\u{fffc}'));
+            let lines = renderer.layout_debug_lines();
+            assert_eq!(lines.len(), measured.line_count);
+            for line in &lines {
+                for pair in line.fragments.windows(2) {
+                    assert!(
+                        pair[0].x + pair[0].width <= pair[1].x + 1e-9,
+                        "text and equation fragments must not overlap: {pair:?}"
+                    );
+                }
+            }
+            for zone in &renderer.math_zones {
+                assert!(!zone.display);
+                assert!(zone.x >= 10.0);
+                let line = lines
+                    .iter()
+                    .find(|line| {
+                        line.fragments.iter().any(|f| {
+                            f.start == zone.offset && f.end == zone.offset + '\u{fffc}'.len_utf8()
+                        })
+                    })
+                    .expect("equation must have a caret fragment");
+                assert!(line.height >= zone.plan.metrics.ascent + zone.plan.metrics.descent);
+            }
+        }
+    }
+
+    #[test]
+    fn text_box_math_only_paragraph_keeps_alignment_on_repaint() {
+        let math = jade_docx_reader::parser::math::parse_math_paragraph(
+            r#"<m:oMath xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><m:f><m:num><m:r><m:t>x</m:t></m:r></m:num><m:den><m:r><m:t>y</m:t></m:r></m:den></m:f></m:oMath>"#.to_string(),
+        ).unwrap();
+        for (alignment, share) in [("left", 0.0), ("center", 0.5), ("right", 1.0)] {
+            let mut run = build_run(None);
+            run.text.clear();
+            run.math = Some(jade_docx_reader::document::MathRun {
+                raw_omml: math.raw_omml.clone(),
+                elements: math.elements.clone(),
+            });
+            let paragraph = Paragraph {
+                properties: Some(ParagraphProperties {
+                    alignment: Some(alignment.into()),
+                    ..Default::default()
+                }),
+                runs: vec![run],
+                node_id: None,
+                comment_ranges: Vec::new(),
+                comment_markers: Vec::new(),
+            };
+            let blocks = [BodyElement::Paragraph(Box::new(paragraph))];
+            let (mut renderer, _) = recording_renderer();
+            let measured = renderer
+                .measure_text_box_blocks(&blocks, 10.0, 410.0, &mut NumberingCounter::new())
+                .unwrap();
+            assert_eq!(measured.line_count, 1);
+            for _ in 0..2 {
+                renderer.paragraph_counter = 0;
+                let mut y = 100.0;
+                renderer
+                    .render_text_box_blocks(
+                        &blocks,
+                        10.0,
+                        410.0,
+                        &mut y,
+                        1000.0,
+                        false,
+                        &mut NumberingCounter::new(),
+                        0.0,
+                        &mut 0,
+                        &mut measured.math_plans.iter(),
+                    )
+                    .unwrap();
+                assert_eq!(renderer.math_zones.len(), 1);
+                let zone = &renderer.math_zones[0];
+                assert!(
+                    (zone.x - (10.0 + share * (400.0 - zone.plan.metrics.width.max(1.0)))).abs()
+                        < 1e-9,
+                    "math-only paragraph must keep {alignment} alignment"
+                );
+                let lines = renderer.layout_debug_lines();
+                assert_eq!(lines.len(), 1);
+                assert_eq!(lines[0].fragments.len(), 1);
+                assert!((lines[0].fragments[0].x - zone.x).abs() < 1e-9);
+                assert!((y - 100.0 - measured.height).abs() < 1e-9);
+            }
+        }
+    }
+
+    #[test]
     fn boxed_math_keeps_structure_authored_font_and_captured_baselines() {
         use jade_painter::recording::Op;
         let math = jade_docx_reader::parser::math::parse_math_paragraph(
@@ -48427,7 +48727,7 @@ mod tests {
             comment_ranges: Vec::new(),
             comment_markers: Vec::new(),
         };
-        let (_, runs) = renderer.text_box_paragraph_layout(&paragraph);
+        let (_, runs, _) = renderer.text_box_paragraph_layout(&paragraph).unwrap();
         let properties = runs[0].properties.as_ref().unwrap();
         assert_eq!(properties.font_size, Some(11.0));
         assert_eq!(
@@ -52361,7 +52661,7 @@ mod tests {
         };
 
         assert_eq!(
-            renderer.text_box_paragraph_layout(&paragraph).0,
+            renderer.text_box_paragraph_layout(&paragraph).unwrap().0,
             "Textbox channel: Beta & Preview"
         );
     }
@@ -53489,7 +53789,8 @@ mod tests {
                 .text_box_paragraph_format(&paragraph, 20.0, &mut NumberingCounter::new())
                 .unwrap();
             assert_eq!(format.style.text_alignment.as_deref(), Some(alignment));
-            let (text, runs) = renderer.text_box_paragraph_layout(&paragraph);
+            let (text, runs, inline_maths) =
+                renderer.text_box_paragraph_layout(&paragraph).unwrap();
             let mut first = None;
             for pass in 0..2 {
                 painter.clear();
@@ -53499,6 +53800,7 @@ mod tests {
                     .render_text_box_paragraph(
                         &text,
                         &runs,
+                        &inline_maths,
                         &format,
                         20.0,
                         600.0,
