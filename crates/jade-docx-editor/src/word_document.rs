@@ -15431,19 +15431,39 @@ impl WordDocument {
         let node_id = paragraph
             .node_id
             .ok_or_else(|| "the paragraph has no XML".to_string())?;
+        let paragraph_ids = if matches!(
+            self.paragraph_surfaces.get(paragraph_index),
+            Some(ParagraphSurface::TextBox { .. })
+        ) {
+            let ids = self.text_box_paragraph_element_ids(paragraph_index);
+            if ids.is_empty() {
+                return Err("the text box paragraph XML is missing".to_string());
+            }
+            ids
+        } else {
+            vec![node_id]
+        };
         let raw = self
             .raw_document
             .as_mut()
             .ok_or_else(|| "raw document xml is unavailable".to_string())?;
-        let element = raw
-            .element(node_id)
-            .ok_or_else(|| "the paragraph XML is missing".to_string())?;
-        let mut found = Vec::new();
-        Self::collect_equation_elements(raw, element, false, &mut found);
-        let target = *found
-            .get(ordinal)
-            .ok_or_else(|| "the equation's XML is missing".to_string())?;
-        Self::replace_xml_element(raw, target, root)?;
+        let targets = paragraph_ids
+            .into_iter()
+            .map(|id| {
+                let element = raw
+                    .element(id)
+                    .ok_or_else(|| "the paragraph XML is missing".to_string())?;
+                let mut found = Vec::new();
+                Self::collect_equation_elements(raw, element, false, &mut found);
+                found
+                    .get(ordinal)
+                    .copied()
+                    .ok_or_else(|| "the equation's XML is missing".to_string())
+            })
+            .collect::<Result<Vec<_>, String>>()?;
+        for target in targets {
+            Self::replace_xml_element(raw, target, root.clone())?;
+        }
         let paragraph = self
             .paragraph_mut(paragraph_index)
             .ok_or_else(|| "target paragraph is missing".to_string())?;
