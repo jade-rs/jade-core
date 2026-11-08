@@ -1,0 +1,16 @@
+{
+  "engine_commit": "a95ede06a0681a568639884704a4ea96e6a9c98c",
+  "word_product_version": "16.0.19127.20860",
+  "capture_id": "20261107T110106544Z-29ee12e9",
+  "reference_kind": "emf",
+  "engine_source_worktree_dirty": false,
+  "strict_fixtures": [],
+  "matching_fixtures": [
+    "word-windows-edge-table-negative-spacing-columns-2-compat14"
+  ],
+  "pending_fixtures": [
+    "word-windows-edge-table-negative-spacing-columns-3-compat14",
+    "word-windows-edge-table-negative-spacing-columns-4-compat14",
+    "word-windows-edge-table-negative-spacing-columns-5-compat14"
+  ]
+}

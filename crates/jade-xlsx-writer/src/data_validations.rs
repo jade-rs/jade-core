@@ -54,13 +54,18 @@ pub fn set_data_validation(
 
 /// The reader index at which a newly appended standard rule will appear.
 pub fn data_validation_insertion_index(xml: &str) -> Result<usize> {
-    let records = jade_xlsx_reader::data_validations::validation_records(xml)?;
-    let first = crate::xml_edit_ns::children(xml, b"dataValidations")?
+    // Locate the same direct container that authoring will use, including its
+    // insertion position when only compatibility-wrapped containers exist.
+    let placed = crate::xml_edit_ns::edit_child(xml, b"dataValidations", FOLLOWING, |list| {
+        Ok(list.to_owned())
+    })?;
+    let records = jade_xlsx_reader::data_validations::validation_records(&placed)?;
+    let first = crate::xml_edit_ns::children(&placed, b"dataValidations")?
         .first()
         .map(|(start, _, _)| *start);
     Ok(records
         .iter()
-        .filter(|r| !r.extended && Some(r.container.start) == first)
+        .filter(|r| !r.extended && Some(r.container.start) <= first)
         .count())
 }
 

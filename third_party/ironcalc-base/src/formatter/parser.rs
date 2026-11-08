@@ -1,4 +1,4 @@
-use super::lexer::{Compare, Lexer, Token};
+use super::lexer::{split_sections, Compare, Lexer, Token};
 
 pub struct Digit {
     pub kind: char, // '#' | '?' | '0'
@@ -33,13 +33,14 @@ pub enum TextToken {
     MinutePadded,
     Second,
     SecondPadded,
+    FractionalSecond(usize),
     ElapsedHour,
     ElapsedHourPadded,
     ElapsedMinute,
     ElapsedMinutePadded,
     ElapsedSecond,
     ElapsedSecondPadded,
-    AMPM,
+    AMPM(String, String),
     // Jade: Japanese dates
     Era(u8),
     EraYear(u8),
@@ -62,13 +63,16 @@ pub struct NumberPart {
 
 pub struct DatePart {
     pub color: Option<i32>,
+    pub condition: Option<(Compare, f64)>,
     pub use_ampm: bool,
     pub tokens: Vec<TextToken>,
 }
 
 pub struct ErrorPart {}
 
-pub struct GeneralPart {}
+pub struct GeneralPart {
+    pub condition: Option<(Compare, f64)>,
+}
 
 pub enum ParsePart {
     Number(NumberPart),
@@ -80,6 +84,7 @@ pub enum ParsePart {
 pub struct Parser {
     pub parts: Vec<ParsePart>,
     lexer: Lexer,
+    section_count: usize,
 }
 
 #[derive(PartialEq, Copy, Clone)]
@@ -104,6 +109,15 @@ impl NumberState {
 }
 
 impl ParsePart {
+    pub(super) fn condition(&self) -> Option<&(Compare, f64)> {
+        match self {
+            ParsePart::Number(part) => part.condition.as_ref(),
+            ParsePart::Date(part) => part.condition.as_ref(),
+            ParsePart::General(part) => part.condition.as_ref(),
+            ParsePart::Error(_) => None,
+        }
+    }
+
     pub fn is_error(&self) -> bool {
         match &self {
             ParsePart::Date(..) => false,
@@ -130,10 +144,21 @@ impl Parser {
     pub fn new(format: &str) -> Self {
         let lexer = Lexer::new(format);
         let parts = vec![];
-        Parser { parts, lexer }
+        Parser {
+            parts,
+            lexer,
+            section_count: split_sections(format).len(),
+        }
     }
     pub fn parse(&mut self) {
         while self.lexer.peek_token() != Token::EOF {
+            let part = self.parse_part();
+            self.parts.push(part);
+        }
+        // EOF does not distinguish an omitted format from an explicit empty
+        // final section. Preserve the raw section count before selecting by
+        // sign or condition (e.g. `0;;` must hide both negatives and zero).
+        while self.parts.len() < self.section_count {
             let part = self.parse_part();
             self.parts.push(part);
         }
@@ -163,7 +188,32 @@ impl Parser {
         let mut is_time = false;
 
         while token != Token::EOF && token != Token::Separator {
-            let next_token = self.lexer.next_token();
+            let mut next_token = self.lexer.next_token();
+            if token == Token::Period
+                && matches!(
+                    tokens.last(),
+                    Some(
+                        TextToken::Second
+                            | TextToken::SecondPadded
+                            | TextToken::ElapsedSecond
+                            | TextToken::ElapsedSecondPadded
+                    )
+                )
+            {
+                let mut places = 0;
+                while next_token == Token::Zero {
+                    places += 1;
+                    next_token = self.lexer.next_token();
+                }
+                if places > 0 {
+                    if places > 3 {
+                        return ParsePart::Error(ErrorPart {});
+                    }
+                    tokens.push(TextToken::FractionalSecond(places));
+                    token = next_token;
+                    continue;
+                }
+            }
             let token_is_digit = token.is_digit();
             is_number = is_number || token_is_digit;
             let next_token_is_digit = next_token.is_digit();
@@ -179,7 +229,7 @@ impl Parser {
             match token {
                 Token::General => {
                     if tokens.is_empty() {
-                        return ParsePart::General(GeneralPart {});
+                        return ParsePart::General(GeneralPart { condition });
                     } else {
                         return ParsePart::Error(ErrorPart {});
                     }
@@ -200,7 +250,11 @@ impl Parser {
                     percent += 1;
                 }
                 Token::Period => {
-                    if is_number && !found_decimal_dot {
+                    if !found_decimal_dot
+                        && (is_number
+                            || next_token_is_digit
+                            || self.lexer.digit_after_literals(&next_token))
+                    {
                         tokens.push(TextToken::Period);
                         found_decimal_dot = true;
                         if number.is_integer() {
@@ -333,10 +387,10 @@ impl Parser {
                     is_time = true;
                     tokens.push(TextToken::SecondPadded);
                 }
-                Token::AMPM => {
+                Token::AMPM(am, pm) => {
                     is_date = true;
                     use_ampm = true;
-                    tokens.push(TextToken::AMPM);
+                    tokens.push(TextToken::AMPM(am, pm));
                 }
                 Token::Scientific => {
                     if !is_scientific {
@@ -412,8 +466,58 @@ impl Parser {
             if is_number {
                 return ParsePart::Error(ErrorPart {});
             }
+            // m/mm means minutes next to hours or seconds; an earlier hour
+            // must not turn a later calendar month into minutes.
+            let date_field = |token: &&TextToken| {
+                !matches!(
+                    token,
+                    TextToken::Literal(_)
+                        | TextToken::Text(_)
+                        | TextToken::Ghost(_)
+                        | TextToken::Spacer(_)
+                        | TextToken::Raw
+                        | TextToken::Digit(_)
+                        | TextToken::Period
+                        | TextToken::FractionalSecond(_)
+                )
+            };
+            for index in 0..tokens.len() {
+                let padded = matches!(
+                    tokens[index],
+                    TextToken::MonthPadded | TextToken::MinutePadded
+                );
+                if !padded && !matches!(tokens[index], TextToken::Month | TextToken::Minute) {
+                    continue;
+                }
+                let previous = tokens[..index].iter().rev().find(date_field);
+                let next = tokens[index + 1..].iter().find(date_field);
+                let minute = matches!(
+                    previous,
+                    Some(
+                        TextToken::Hour
+                            | TextToken::HourPadded
+                            | TextToken::ElapsedHour
+                            | TextToken::ElapsedHourPadded
+                    )
+                ) || matches!(
+                    next,
+                    Some(
+                        TextToken::Second
+                            | TextToken::SecondPadded
+                            | TextToken::ElapsedSecond
+                            | TextToken::ElapsedSecondPadded
+                    )
+                );
+                tokens[index] = match (minute, padded) {
+                    (true, true) => TextToken::MinutePadded,
+                    (true, false) => TextToken::Minute,
+                    (false, true) => TextToken::MonthPadded,
+                    (false, false) => TextToken::Month,
+                };
+            }
             ParsePart::Date(DatePart {
                 color,
+                condition,
                 use_ampm,
                 tokens,
             })

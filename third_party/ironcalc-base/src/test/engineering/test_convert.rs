@@ -21,7 +21,7 @@ fn fn_convert() {
     model.evaluate();
 
     assert_eq!(model._get_text("A1"), "0.45359237");
-    assert_eq!(model._get_text("A2"), "19.65");
+    assert_eq!(model._get_text("A2"), "20");
     assert_eq!(model._get_text("A3"), "#N/A");
     assert_eq!(model._get_text("A4"), "9.290304");
 

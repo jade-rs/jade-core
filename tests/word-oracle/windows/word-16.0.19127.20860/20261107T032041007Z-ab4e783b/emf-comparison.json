@@ -1,0 +1,71 @@
+[
+  {
+    "fixture": "word-windows-edge-arial-script-sweep-bold-italic",
+    "coordinate_source": "Word Page.EnhMetaFileBits / MS-EMF",
+    "word_pages": 5,
+    "native_pages": 5,
+    "word_glyphs": 1911,
+    "native_glyphs": 1911,
+    "matched": 1911,
+    "within_0_375pt": 1911,
+    "x_p50": 0.05600463867187955,
+    "x_p95": 0.1442431640625017,
+    "y_p50": 0.03819335937498636,
+    "y_p95": 0.1017968749999909,
+    "first_errors": [],
+    "pdf_sha256": "8263253bb10c4b4905f38fd46954741ab3c54cb6c91258062585cc788f6551c3",
+    "metafile_sha256": [
+      "45edded2841e195bc26dca32ac0fe0a0c1e0094755789cc7321d0fb121a55667",
+      "09b747f47d9df1c8458b38718f66358e474bdbe9e18da193a82ccdbedfa0ea36",
+      "2c80e7a5df67c076ce23801fdb6ee4616ecf84911240306517d2d10f5eb2ffda",
+      "47bbe00f730a9ffc3294598c90f0e1a2c9ee5a24de77f8583b28c855ed4f3584",
+      "8621375bd652f8d0842d68bd8e617ace91693b9100bab44f803c413e0485f3b4"
+    ]
+  },
+  {
+    "fixture": "word-windows-edge-arial-script-sweep-bold",
+    "coordinate_source": "Word Page.EnhMetaFileBits / MS-EMF",
+    "word_pages": 5,
+    "native_pages": 5,
+    "word_glyphs": 1911,
+    "native_glyphs": 1911,
+    "matched": 1911,
+    "within_0_375pt": 1911,
+    "x_p50": 0.058685302734375,
+    "x_p95": 0.15858398437499943,
+    "y_p50": 0.03819335937498636,
+    "y_p95": 0.1017968749999909,
+    "first_errors": [],
+    "pdf_sha256": "4daf3592685d266725467d69c7837b0a06a356123adf6dcd9e69c49884b1e271",
+    "metafile_sha256": [
+      "67c68937a584774df6ca783eb9a27a49239f14fe6d027ee96a4de07eafdaff6b",
+      "f8220139584fcb9d119a6f40fceef47fe7810458a4ab6e4103895067d152e358",
+      "c135d0d40a817a975528e2d734535406853ed0ff48ec82da08d9bbea36b0e8c0",
+      "53fe9c77a4ad84cc27f090ca1b2d5f748b734850e2f13c34a60e53d4cfff0079",
+      "6785b6777b2858e9a4673a277578396592c8871b4dede15b225b72a1beecf79b"
+    ]
+  },
+  {
+    "fixture": "word-windows-edge-arial-script-sweep-italic",
+    "coordinate_source": "Word Page.EnhMetaFileBits / MS-EMF",
+    "word_pages": 5,
+    "native_pages": 5,
+    "word_glyphs": 1911,
+    "native_glyphs": 1911,
+    "matched": 1911,
+    "within_0_375pt": 1911,
+    "x_p50": 0.055898437499990905,
+    "x_p95": 0.1497473144530943,
+    "y_p50": 0.03819335937498636,
+    "y_p95": 0.10274414062502046,
+    "first_errors": [],
+    "pdf_sha256": "4a9103e5e9dd2020f01fcf283b930b8ae083c46ba108456092006d8d1183138c",
+    "metafile_sha256": [
+      "e40792dc37d44b0cd8ff2231f67646f37f72914302b7a0cce970fd7eb21c5687",
+      "3c2353fe14953fa5f82d903dcdc085f14ccaf011d5cb80b63f55a3ab5295ba78",
+      "02472b0888ab6f1043e22f9b4bc5cdb35948e811435330ed6fa3baef0c431a4f",
+      "fa269c36e9e2bf6228a70d8365b70be4bc7a81bab424ca8120649fe582ce2b0a",
+      "3139dec19f6e8bc0b9ae98c79c6e3922e7d9a17e38612d06abfac21413350db8"
+    ]
+  }
+]

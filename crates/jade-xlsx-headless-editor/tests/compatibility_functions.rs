@@ -115,6 +115,22 @@ fn saved_operator_spelling_scalarizes_arrays_and_reference_arguments_too() {
 fn spill_consumers_evaluate_a_later_anchor_before_reading_its_shape() {
     let mut p = OpcPackage::open(book().bytes()).unwrap();
     p.replace("xl/worksheets/sheet1.xml", br#"<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData><row r="1"><c r="A1"><f>SUM(_xlfn.ANCHORARRAY(Z10))</f><v>0</v></c></row><row r="10"><c r="Z10"><f>_xlfn.SEQUENCE(3)</f><v>0</v></c></row></sheetData></worksheet>"#.to_vec());
+    // This fixture authors a dynamic anchor. Persist its mode explicitly;
+    // an unmarked ordinary <f> instead requests implicit intersection.
+    let cm = jade_xlsx_writer::spills::dynamic_array_metadata(&mut p)
+        .unwrap()
+        .expect("dynamic metadata");
+    let xml = p.part_str("xl/worksheets/sheet1.xml").unwrap().unwrap();
+    let xml = jade_xlsx_writer::spills::mark_array_formulas(
+        &xml,
+        &[jade_xlsx_writer::spills::ArrayRange {
+            anchor: jade_xlsx_reader::CellRef::parse("Z10").unwrap(),
+            range: jade_xlsx_reader::CellRange::parse("Z10:Z12").unwrap(),
+        }],
+        Some(cm),
+    )
+    .unwrap();
+    p.replace("xl/worksheets/sheet1.xml", xml.into_bytes());
     let mut b = HeadlessWorkbook::open_for_editing(&p.write().unwrap()).unwrap();
     assert_eq!(shown(&b, "A1"), "6");
     formula(&mut b, "B1", "SUM(ANCHORARRAY(Z10))");

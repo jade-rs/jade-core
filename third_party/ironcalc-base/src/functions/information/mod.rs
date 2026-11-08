@@ -33,103 +33,59 @@ fn get_system() -> String {
 }
 
 impl<'a> Model<'a> {
-    pub(crate) fn fn_isnumber(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() == 1 {
-            match self.evaluate_node_in_context(&args[0], cell) {
-                CalcResult::Number(_) => return CalcResult::Boolean(true),
-                _ => {
-                    return CalcResult::Boolean(false);
-                }
-            };
+    /// IS predicates inspect values without coercion and lift over arrays.
+    /// Scalar errors are inspected too, rather than propagated by a cast.
+    fn information_predicate(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+        predicate: fn(&CalcResult) -> bool,
+    ) -> CalcResult {
+        if args.len() != 1 {
+            return CalcResult::new_args_number_error(cell);
         }
-        CalcResult::new_args_number_error(cell)
+        self.map_scalar_values(&args[0], cell, |_, value| {
+            CalcResult::Boolean(predicate(&value))
+        })
+    }
+
+    pub(crate) fn fn_isnumber(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.information_predicate(args, cell, |value| matches!(value, CalcResult::Number(_)))
     }
     pub(crate) fn fn_istext(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() == 1 {
-            match self.evaluate_node_in_context(&args[0], cell) {
-                CalcResult::String(_) => return CalcResult::Boolean(true),
-                _ => {
-                    return CalcResult::Boolean(false);
-                }
-            };
-        }
-        CalcResult::new_args_number_error(cell)
+        self.information_predicate(args, cell, |value| matches!(value, CalcResult::String(_)))
     }
     pub(crate) fn fn_isnontext(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() == 1 {
-            match self.evaluate_node_in_context(&args[0], cell) {
-                CalcResult::String(_) => return CalcResult::Boolean(false),
-                _ => {
-                    return CalcResult::Boolean(true);
-                }
-            };
-        }
-        CalcResult::new_args_number_error(cell)
+        self.information_predicate(args, cell, |value| !matches!(value, CalcResult::String(_)))
     }
     pub(crate) fn fn_islogical(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() == 1 {
-            match self.evaluate_node_in_context(&args[0], cell) {
-                CalcResult::Boolean(_) => return CalcResult::Boolean(true),
-                _ => {
-                    return CalcResult::Boolean(false);
-                }
-            };
-        }
-        CalcResult::new_args_number_error(cell)
+        self.information_predicate(args, cell, |value| matches!(value, CalcResult::Boolean(_)))
     }
     pub(crate) fn fn_isblank(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() == 1 {
-            match self.evaluate_node_in_context(&args[0], cell) {
-                CalcResult::EmptyCell => return CalcResult::Boolean(true),
-                _ => {
-                    return CalcResult::Boolean(false);
-                }
-            };
-        }
-        CalcResult::new_args_number_error(cell)
+        self.information_predicate(args, cell, |value| matches!(value, CalcResult::EmptyCell))
     }
     pub(crate) fn fn_iserror(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() == 1 {
-            match self.evaluate_node_in_context(&args[0], cell) {
-                CalcResult::Error { .. } => return CalcResult::Boolean(true),
-                _ => {
-                    return CalcResult::Boolean(false);
-                }
-            };
-        }
-        CalcResult::new_args_number_error(cell)
+        self.information_predicate(args, cell, |value| {
+            matches!(value, CalcResult::Error { .. })
+        })
     }
     pub(crate) fn fn_iserr(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() == 1 {
-            match self.evaluate_node_in_context(&args[0], cell) {
-                CalcResult::Error { error, .. } => {
-                    if Error::NA == error {
-                        return CalcResult::Boolean(false);
-                    } else {
-                        return CalcResult::Boolean(true);
-                    }
-                }
-                _ => {
-                    return CalcResult::Boolean(false);
-                }
-            };
-        }
-        CalcResult::new_args_number_error(cell)
+        self.information_predicate(
+            args,
+            cell,
+            |value| matches!(value, CalcResult::Error { error, .. } if *error != Error::NA),
+        )
     }
     pub(crate) fn fn_isna(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() == 1 {
-            match self.evaluate_node_in_context(&args[0], cell) {
+        self.information_predicate(args, cell, |value| {
+            matches!(
+                value,
                 CalcResult::Error {
-                    error: Error::NA, ..
-                } => {
-                    return CalcResult::Boolean(true);
+                    error: Error::NA,
+                    ..
                 }
-                _ => {
-                    return CalcResult::Boolean(false);
-                }
-            };
-        }
-        CalcResult::new_args_number_error(cell)
+            )
+        })
     }
 
     // Returns true if it is a reference or evaluates to a reference
@@ -149,25 +105,34 @@ impl<'a> Model<'a> {
     }
 
     pub(crate) fn fn_isodd(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 1 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let value = match self.get_number_no_bools(&args[0], cell) {
-            Ok(f) => f.abs().trunc() as i64,
-            Err(s) => return s,
-        };
-        CalcResult::Boolean(value % 2 == 1)
+        self.parity_predicate(args, cell, true)
     }
 
     pub(crate) fn fn_iseven(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.parity_predicate(args, cell, false)
+    }
+
+    fn parity_predicate(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+        odd: bool,
+    ) -> CalcResult {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         }
-        let value = match self.get_number_no_bools(&args[0], cell) {
-            Ok(f) => f.abs().trunc() as i64,
-            Err(s) => return s,
-        };
-        CalcResult::Boolean(value % 2 == 0)
+        self.map_scalar_values(&args[0], cell, |model, value| {
+            if matches!(value, CalcResult::Boolean(_)) {
+                return CalcResult::new_error(Error::VALUE, cell, "Expecting number".into());
+            }
+            let number = match model.cast_to_number(value, cell) {
+                Ok(number) => number.abs().trunc(),
+                Err(error) => return error,
+            };
+            // Keep large numbers in the workbook representation: narrowing
+            // to i64 would saturate large even numbers to the odd i64::MAX.
+            CalcResult::Boolean(number % 2.0 == if odd { 1.0 } else { 0.0 })
+        })
     }
 
     // ISFORMULA arg needs to be a reference or something that evaluates to a reference
@@ -192,16 +157,20 @@ impl<'a> Model<'a> {
                     message: "argument must be a reference to a single cell".to_string(),
                 };
             }
-            let is_formula = if let Ok(f) = self.get_cell_formula(left.sheet, left.row, left.column)
-            {
-                f.is_some()
-            } else {
-                false
-            };
+            let (formula_row, formula_column) =
+                self.formula_information_reference(left.sheet, left.row, left.column);
+            let is_formula =
+                self.source_formulas
+                    .contains_key(&(left.sheet, formula_row, formula_column))
+                    || self
+                        .get_cell_formula(left.sheet, formula_row, formula_column)
+                        .ok()
+                        .flatten()
+                        .is_some();
             CalcResult::Boolean(is_formula)
         } else {
             CalcResult::Error {
-                error: Error::ERROR,
+                error: Error::VALUE,
                 origin: cell,
                 message: "Argument must be a reference".to_string(),
             }
@@ -212,7 +181,7 @@ impl<'a> Model<'a> {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         }
-        match self.evaluate_node_in_context(&args[0], cell) {
+        self.map_scalar_values(&args[0], cell, |_, value| match value {
             CalcResult::Error { error, .. } => {
                 match error {
                     Error::NULL => CalcResult::Number(1.0),
@@ -242,7 +211,7 @@ impl<'a> Model<'a> {
                 origin: cell,
                 message: "Not an error".to_string(),
             },
-        }
+        })
     }
 
     // Excel believes for some reason that TYPE(A1:A7) is an array formula
@@ -256,16 +225,16 @@ impl<'a> Model<'a> {
             CalcResult::Number(_) => CalcResult::Number(1.0),
             CalcResult::Boolean(_) => CalcResult::Number(4.0),
             CalcResult::Error { .. } => CalcResult::Number(16.0),
-            CalcResult::Range { .. } => CalcResult::Number(64.0),
+            CalcResult::Range { .. } | CalcResult::Array(_) => CalcResult::Number(64.0),
             CalcResult::EmptyCell => CalcResult::Number(1.0),
             CalcResult::EmptyArg => {
                 // This cannot happen
                 CalcResult::Number(1.0)
             }
-            CalcResult::Array(_) | CalcResult::Lambda(_) => CalcResult::Error {
+            CalcResult::Lambda(_) => CalcResult::Error {
                 error: Error::NIMPL,
                 origin: cell,
-                message: "Arrays not supported yet".to_string(),
+                message: "Lambda type not supported yet".to_string(),
             },
         }
     }
@@ -373,35 +342,16 @@ impl<'a> Model<'a> {
         if arg_count != 1 {
             return CalcResult::new_args_number_error(cell);
         }
-        let value = match self.evaluate_node_in_context(&args[0], cell) {
-            CalcResult::Number(n) => n,
-            CalcResult::String(_) => 0.0,
-            CalcResult::Boolean(f) => {
-                if f {
-                    1.0
-                } else {
-                    0.0
-                }
-            }
-            CalcResult::EmptyCell | CalcResult::EmptyArg => 0.0,
-            error @ CalcResult::Error { .. } => return error,
-            CalcResult::Range { .. } => {
-                return CalcResult::Error {
-                    error: Error::NIMPL,
-                    origin: cell,
-                    message: "Arrays not supported yet".to_string(),
-                }
-            }
-            CalcResult::Array(_) | CalcResult::Lambda(_) => {
-                return CalcResult::Error {
-                    error: Error::NIMPL,
-                    origin: cell,
-                    message: "Arrays not supported yet".to_string(),
-                }
-            }
-        };
-
-        CalcResult::Number(value)
+        self.map_scalar_values(&args[0], cell, |_, value| match value {
+            CalcResult::Number(_) | CalcResult::Error { .. } => value,
+            CalcResult::Boolean(value) => CalcResult::Number(if value { 1.0 } else { 0.0 }),
+            CalcResult::Lambda(_) => CalcResult::new_error(
+                Error::NIMPL,
+                cell,
+                "Lambda conversion not supported yet".into(),
+            ),
+            _ => CalcResult::Number(0.0),
+        })
     }
 
     pub(crate) fn fn_sheets(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -706,6 +656,7 @@ impl<'a> Model<'a> {
                 number_format: "General".to_string(),
                 horizontal: HorizontalAlignment::General,
                 locked: true,
+                formula_hidden: false,
             });
         }
         let style = self
@@ -718,6 +669,7 @@ impl<'a> Model<'a> {
                 .map(|alignment| alignment.horizontal)
                 .unwrap_or_default(),
             locked: true,
+            formula_hidden: false,
         }
     }
 }

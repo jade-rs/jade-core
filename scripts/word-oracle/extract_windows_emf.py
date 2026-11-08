@@ -171,12 +171,66 @@ def extract(manifest_path):
         fixtures.append(dict(name=item['name'], docx_sha256=item['sha256'],
                              pdf_sha256=item['pdf_sha256'], pdf_file=item['pdf'],
                              metafiles=pages, page_count=item['pages'], glyphs=glyphs))
-    return dict(schema=2, platform='windows', word_product_version=version,
+    result = dict(schema=2, platform='windows', word_product_version=version,
                 word=capture['word'], capture_id=capture['capture_id'],
                 captured_at_utc=capture['captured_at_utc'],
                 coordinate_source='Word Page.EnhMetaFileBits / MS-EMF',
                 extractor='MS-EMF GM_COMPATIBLE baseline Unicode origins v1',
                 tolerance_pt=0.375, fixtures=fixtures)
+    projection = capture.get('table_glyph_projection', 'visible')
+    if projection not in ('visible', 'unclipped'):
+        raise ValueError('Unknown table glyph projection')
+    if projection == 'unclipped':
+        result['table_glyph_projection'] = projection
+    return result
+
+
+def verify_visible_reference(directory, entry, full, selected):
+    """Independently reconstruct the additional visible PDF plane, without fits."""
+    if full.get('table_glyph_projection', 'visible') != 'unclipped':
+        return 0
+    import pymupdf
+    filename = entry.get('visible_reference', '')
+    if not filename or '/' in filename or '\\' in filename or filename in ('.', '..'):
+        raise ValueError('Unclipped captures require a visible reference in the same directory')
+    visible = json.loads((directory/filename).read_text(encoding='utf-8'))
+    for key in ('word_product_version', 'word', 'capture_id', 'captured_at_utc', 'tolerance_pt'):
+        if visible[key] != full[key]:
+            raise ValueError('Visible reference provenance differs from Word drawing evidence')
+    if (visible.get('table_glyph_projection') != 'visible'
+            or visible.get('pdf_text_flags') != pymupdf.TEXTFLAGS_RAWDICT
+            or visible.get('extractor') != f'PyMuPDF {pymupdf.VersionBind}'):
+        raise ValueError('Visible PDF extraction flags or decoder differ')
+    expected_names = {item['name'] for item in selected['fixtures']}
+    by_name = {item['name']: item for item in visible['fixtures']}
+    if set(by_name) != expected_names or len(by_name) != len(visible['fixtures']):
+        raise ValueError('Visible reference is missing or duplicating required fixtures')
+    checked = 0
+    for original in selected['fixtures']:
+        name = original['name']
+        if '/' in name or '\\' in name or name in ('', '.', '..'):
+            raise ValueError('Invalid source fixture name')
+        if hashlib.sha256((directory/'inputs'/(name+'.docx')).read_bytes()).hexdigest() != original['docx_sha256']:
+            raise ValueError('Archived source DOCX changed')
+        glyphs = []
+        doc = pymupdf.open(directory/original['pdf_file'])
+        if len(doc) != original['page_count']:
+            raise ValueError('Visible PDF page count changed')
+        for page_number, page in enumerate(doc, 1):
+            for block in page.get_text('rawdict', flags=visible['pdf_text_flags'])['blocks']:
+                for line in block.get('lines', []):
+                    for span in line['spans']:
+                        glyphs.extend([page_number, char['c'], *char['origin']]
+                                      for char in span['chars'] if not char['c'].isspace())
+        expected = dict(name=name, docx_sha256=original['docx_sha256'],
+                        pdf_sha256=original['pdf_sha256'], pdf_file=original['pdf_file'],
+                        page_count=original['page_count'], glyphs=glyphs)
+        if by_name[name] != expected:
+            raise ValueError('Visible origins differ from original Word PDF')
+        checked += len(glyphs)
+    if checked != entry.get('visible_glyph_count'):
+        raise ValueError('Visible glyph coverage differs from its registered count')
+    return checked
 
 
 def verify_index(index_path):
@@ -195,6 +249,7 @@ def verify_index(index_path):
         selected = dict(full, fixtures=[f for f in full['fixtures'] if f['name'] in names])
         if selected != reference or len(names) != entry['fixture_count']:
             raise ValueError('Strict drawing origins differ from the raw Word EMFs')
+        verify_visible_reference(directory, entry, full, selected)
         checked += sum(len(f['glyphs']) for f in reference['fixtures'])
     return checked
 

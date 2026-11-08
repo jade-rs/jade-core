@@ -1,0 +1,30 @@
+{
+  "engine_commit": "a95ede06a0681a568639884704a4ea96e6a9c98c",
+  "word_product_version": "16.0.19127.20860",
+  "capture_id": "20261107T104832151Z-b2b90731",
+  "reference_kind": "emf",
+  "engine_source_worktree_dirty": false,
+  "strict_fixtures": [
+    "word-windows-edge-table-collapsed-mixed-borders-compat12",
+    "word-windows-edge-table-collapsed-mixed-borders-compat14",
+    "word-windows-edge-table-collapsed-mixed-borders-compat15",
+    "word-windows-edge-table-spacing-missing-type-mixed-borders-compat12",
+    "word-windows-edge-table-spacing-missing-type-mixed-borders-compat14",
+    "word-windows-edge-table-spacing-missing-type-mixed-borders-compat15",
+    "word-windows-edge-table-spacing-missing-width-mixed-borders-compat12",
+    "word-windows-edge-table-spacing-missing-width-mixed-borders-compat14",
+    "word-windows-edge-table-spacing-missing-width-mixed-borders-compat15"
+  ],
+  "matching_fixtures": [
+    "word-windows-edge-table-collapsed-mixed-borders-compat12",
+    "word-windows-edge-table-collapsed-mixed-borders-compat14",
+    "word-windows-edge-table-collapsed-mixed-borders-compat15",
+    "word-windows-edge-table-spacing-missing-type-mixed-borders-compat12",
+    "word-windows-edge-table-spacing-missing-type-mixed-borders-compat14",
+    "word-windows-edge-table-spacing-missing-type-mixed-borders-compat15",
+    "word-windows-edge-table-spacing-missing-width-mixed-borders-compat12",
+    "word-windows-edge-table-spacing-missing-width-mixed-borders-compat14",
+    "word-windows-edge-table-spacing-missing-width-mixed-borders-compat15"
+  ],
+  "pending_fixtures": []
+}
