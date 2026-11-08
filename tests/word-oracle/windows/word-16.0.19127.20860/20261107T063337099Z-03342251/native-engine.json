@@ -1,0 +1,6 @@
+{
+  "schema": 1,
+  "native_source_commit": "6bedd8c7b0666392e53568982037b9a37f4e5523",
+  "native_executable_sha256": "038c42bb9b26cbb970879c12753cfe866d5d186b14f30c685ea5354723451e24",
+  "provenance_note": "Unchanged word_coordinates.exe built from clean 6bedd8c7; native geometry precedes the table spacing fixes."
+}

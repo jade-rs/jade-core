@@ -11,10 +11,25 @@ fn sheet(body: &str) -> String {
     )
 }
 fn extension(body: &str) -> String {
-    format!("<s:extLst><s:ext uri=\"spark\"><x:sparklineGroups>{body}</x:sparklineGroups></s:ext></s:extLst>")
+    format!("<s:extLst><s:ext uri=\"{{05C60535-1F16-4FD2-B633-F4F36F0B64E0}}\"><x:sparklineGroups>{body}</x:sparklineGroups></s:ext></s:extLst>")
 }
 fn spark(formula: &str, destination: &str) -> String {
     format!("<x:sparkline><m:f>{formula}</m:f><m:sqref>{destination}</m:sqref></x:sparkline>")
+}
+
+#[test]
+fn unknown_extension_uri_does_not_own_a_sparkline_group() {
+    let body = extension(&format!(
+        "<x:sparklineGroup><x:sparklines>{}</x:sparklines></x:sparklineGroup>",
+        spark("Data!A1:A3", "D1")
+    ));
+    let xml = sheet(&body);
+    assert_eq!(parse_sparklines(&xml).unwrap().len(), 1);
+    let unknown = xml.replace(
+        "{05C60535-1F16-4FD2-B633-F4F36F0B64E0}",
+        "urn:unknown-extension",
+    );
+    assert!(parse_sparklines(&unknown).unwrap().is_empty());
 }
 
 #[test]
@@ -43,7 +58,7 @@ fn only_direct_owned_group_children_supply_settings_and_data() {
 #[test]
 fn strict_and_locally_default_namespaces_are_supported() {
     let xml = format!(
-        r#"<s:worksheet xmlns:s="{STRICT}"><s:extLst><s:ext uri="spark"><sparklineGroups xmlns="{X14}"><sparklineGroup type="column"><sparklines><sparkline><f xmlns="{XM}">Data!A1:A3</f><sqref xmlns="{XM}">D1</sqref></sparkline></sparklines></sparklineGroup></sparklineGroups></s:ext></s:extLst></s:worksheet>"#
+        r#"<s:worksheet xmlns:s="{STRICT}"><s:extLst><s:ext uri="{{05C60535-1F16-4FD2-B633-F4F36F0B64E0}}"><sparklineGroups xmlns="{X14}"><sparklineGroup type="column"><sparklines><sparkline><f xmlns="{XM}">Data!A1:A3</f><sqref xmlns="{XM}">D1</sqref></sparkline></sparklines></sparklineGroup></sparklineGroups></s:ext></s:extLst></s:worksheet>"#
     );
     let groups = parse_sparklines(&xml).unwrap();
     assert_eq!(groups.len(), 1);

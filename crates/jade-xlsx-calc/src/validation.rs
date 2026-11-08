@@ -186,10 +186,8 @@ fn install(
             model.evaluate();
         }
     }
-    model
-        .get_cell_value_by_index(sheet as u32, at.row as i32 + 1, at.column as i32 + 1)
-        .map(|v| from_cell(crate::to_cell_value(v)))
-        .map_err(crate::CalcError::Engine)
+    crate::read_cell_value(model, sheet as u32, at.row as i32 + 1, at.column as i32 + 1)
+        .map(from_cell)
 }
 fn from_cell(v: CellValue) -> AnchoredValue {
     match v {
@@ -305,10 +303,8 @@ fn list_values(
             let mut items = Vec::new();
             for row in left.row..=right.row {
                 for column in left.column..=right.column {
-                    let v = model
-                        .get_cell_value_by_index(left.sheet, row, column)
-                        .map_err(crate::CalcError::Engine)?;
-                    items.push(from_cell(crate::to_cell_value(v)));
+                    let v = crate::read_cell_value(model, left.sheet, row, column)?;
+                    items.push(from_cell(v));
                 }
             }
             Some(items)

@@ -122,6 +122,7 @@ pub fn parse_sparklines(xml: &str) -> Result<Vec<SparklineGroup>> {
         return Ok(Vec::new());
     }
     let mut reader = NsReader::from_str(xml);
+    let extensions = crate::worksheet_extensions::sources(xml)?;
     let mut stack: Vec<Element> = Vec::new();
     let mut groups = Vec::new();
     let mut group: Option<(usize, SparklineGroup)> = None;
@@ -129,10 +130,17 @@ pub fn parse_sparklines(xml: &str) -> Result<Vec<SparklineGroup>> {
     let mut leaf: Option<Leaf> = None;
     let mut date_leaf: Option<(usize, String)> = None;
     loop {
+        let start = reader.buffer_position() as usize;
         let event = reader.read_event()?;
         match &event {
             Event::Start(element) | Event::Empty(element) => {
                 let empty = matches!(event, Event::Empty(_));
+                if extensions.opaque_at(start) {
+                    if !empty {
+                        reader.read_to_end(element.name())?;
+                    }
+                    continue;
+                }
                 let namespace = match reader.resolver().resolve_element(element.name()).0 {
                     ResolveResult::Unbound => Vec::new(),
                     ResolveResult::Bound(ns) => ns.as_ref().to_vec(),

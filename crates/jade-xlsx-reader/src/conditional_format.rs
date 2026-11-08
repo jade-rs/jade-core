@@ -621,7 +621,10 @@ pub fn parse_differential_styles(xml: &str) -> Result<Vec<DifferentialStyle>> {
                                 edge.color = crate::styles::parse_color(element)?;
                             }
                         }
-                        b"numFmt" => style.number_format_code = attribute(element, b"formatCode")?,
+                        b"numFmt" => {
+                            style.number_format_code = attribute(element, b"formatCode")?
+                                .map(|code| crate::xstring::decode_xstring(&code));
+                        }
                         b"gradientFill" => {
                             style.fill = None;
                             style.unsupported_properties.push("gradientFill".into());

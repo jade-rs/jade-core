@@ -132,7 +132,9 @@ impl HeadlessWorkbook {
         }
         let part_name = model.part_name.clone();
         let patched = jade_xlsx_writer::set_merges(&self.sheet_part(&part_name)?, &kept)?;
-        self.replace_parts(vec![(part_name, patched)])?;
+        // Removing a merge can unblock a dynamic spill even though no
+        // literal cell changed. Recalculate in the same history entry.
+        self.write_edits_with_parts(Vec::new(), None, vec![(part_name, patched)])?;
         Ok(removed.into_iter().map(format_range).collect())
     }
 
