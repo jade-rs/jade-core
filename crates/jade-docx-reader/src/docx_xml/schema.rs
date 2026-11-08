@@ -519,7 +519,7 @@ impl<'a> Walk<'a> {
         };
         // ASCII ':' is a UTF-8 boundary, including in non-ASCII names.
         let prefix = &name[..colon];
-        if prefix == "xml" || prefix == "xmlns" || self.checked.contains(&prefix) {
+        if self.checked.contains(&prefix) || prefix == "xml" || prefix == "xmlns" {
             return;
         }
         if self.scope.contains(&prefix) {
