@@ -144,6 +144,36 @@ def without_run_typed_beside_object(xml: bytes, typed: str) -> bytes:
     return xml
 
 
+def without_new_tracked_insertion(before: bytes, after: bytes, typed: str) -> bytes:
+    """Remove only the new text-only insertion produced by the audited edit.
+
+    Existing revision IDs, other text and embedded objects remain subject to
+    the structural check. Revision ID uniqueness is checked on the full export.
+    """
+    source_ids = {
+        element.get(WORD + "id")
+        for element in ET.fromstring(before).iter()
+        if element.tag in REVISION_ELEMENTS
+    }
+    root = ET.fromstring(after)
+    for parent in root.iter():
+        for insertion in list(parent):
+            if (
+                insertion.tag != WORD + "ins"
+                or insertion.get(WORD + "id") is None
+                or insertion.get(WORD + "id") in source_ids
+            ):
+                continue
+            runs = list(insertion)
+            if len(runs) != 1 or runs[0].tag != WORD + "r":
+                continue
+            content = [child for child in runs[0] if child.tag != WORD + "rPr"]
+            if len(content) == 1 and content[0].tag == WORD + "t" and content[0].text == typed:
+                parent.remove(insertion)
+                return ET.tostring(root)
+    return after
+
+
 def revision_id_errors(before: bytes, after: bytes) -> list[str]:
     """Revision ids must survive an edit, except that a source which repeats
     one gets the repeats renumbered, and every id in the export is unique."""
@@ -272,7 +302,8 @@ def audit(source: Path, exported: Path) -> list[str]:
             for tag in ("cr", "br", "tab", "ptab", "softHyphen", "noBreakHyphen"):
                 if marker_sequence(before, tag) != marker_sequence(after, tag):
                     failures.append(f"changed {tag} marker sequence or attributes")
-            structure = without_run_typed_beside_object(after, "Z")
+            structure = without_new_tracked_insertion(before, after, "Z")
+            structure = without_run_typed_beside_object(structure, "Z")
             if Counter(structural_sequence(before)) != Counter(structural_sequence(structure)):
                 failures.append("changed non-text document structure or attributes")
             if structural_sequence(before, False) != structural_sequence(structure, False):
