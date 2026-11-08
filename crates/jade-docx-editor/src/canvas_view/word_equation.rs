@@ -25,19 +25,31 @@ fn linear_format(name: &str) -> Result<LinearFormat, JsValue> {
     }
 }
 
+fn equation_zone_at_position(
+    zones: &[MathZone],
+    paragraph: usize,
+    offset: usize,
+) -> Option<&MathZone> {
+    zones
+        .iter()
+        .filter(|zone| zone.paragraph == paragraph)
+        .filter(|zone| {
+            // Inline equations occupy one object replacement character in
+            // rendered text, whose positions are UTF-8 byte offsets.
+            zone.display
+                || (zone.offset..=zone.offset.saturating_add('\u{fffc}'.len_utf8()))
+                    .contains(&offset)
+        })
+        .min_by_key(|zone| zone.offset.abs_diff(offset))
+}
+
 impl OffscreenDocumentView {
     /// The equation the caret is in or beside: a display equation's
     /// paragraph, or the inline equation nearest the caret in its paragraph.
     fn equation_zone_at_selection(&self) -> Option<MathZone> {
         let caret = self.current_selection().focus;
         let renderer = self.renderer.borrow();
-        renderer
-            .math_zones()
-            .iter()
-            .filter(|zone| zone.paragraph == caret.paragraph)
-            .filter(|zone| zone.display || zone.offset.abs_diff(caret.offset) <= 1)
-            .min_by_key(|zone| zone.offset.abs_diff(caret.offset))
-            .cloned()
+        equation_zone_at_position(renderer.math_zones(), caret.paragraph, caret.offset).cloned()
     }
 }
 
@@ -264,5 +276,64 @@ impl OffscreenDocumentView {
             editor.to_professional_form();
             editor.commit(session)
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::canvas_renderer::OwnedMathPlan;
+    use std::rc::Rc;
+
+    fn zone(paragraph: usize, offset: usize, display: bool) -> MathZone {
+        MathZone {
+            paragraph,
+            offset,
+            display,
+            run_index: (!display).then_some(0),
+            page: 1,
+            x: 0.0,
+            baseline: 0.0,
+            absolute_baseline: 0.0,
+            plan: Rc::new(OwnedMathPlan {
+                alignment: Default::default(),
+                metrics: Default::default(),
+                line_metrics: Default::default(),
+                text: String::new(),
+                glyphs: vec![],
+                rules: vec![],
+                shapes: vec![],
+                boxes: vec![],
+                lines: vec![],
+            }),
+        }
+    }
+
+    #[test]
+    fn inline_equation_is_selected_at_both_utf8_object_boundaries() {
+        // A non-ASCII prefix keeps the offsets in paragraph UTF-8 bytes.
+        let start = "前 ".len();
+        let zones = [zone(2, start, false)];
+        for offset in [start, start + '\u{fffc}'.len_utf8()] {
+            assert!(
+                equation_zone_at_position(&zones, 2, offset).is_some(),
+                "offset {offset}"
+            );
+        }
+        assert!(equation_zone_at_position(&zones, 1, start).is_none());
+        assert!(equation_zone_at_position(&zones, 2, start - 1).is_none());
+        assert!(equation_zone_at_position(&zones, 2, start + 4).is_none());
+    }
+
+    #[test]
+    fn adjacent_equations_prefer_the_one_starting_at_the_caret() {
+        let zones = [zone(0, 0, false), zone(0, 3, false)];
+        let selected = equation_zone_at_position(&zones, 0, 3).unwrap();
+        assert_eq!(selected.offset, 3);
+        assert_eq!(equation_zone_at_position(&zones, 0, 6).unwrap().offset, 3);
+        assert!(equation_zone_at_position(&zones, 0, 7).is_none());
+        let display = [zone(4, 0, true)];
+        assert!(equation_zone_at_position(&display, 4, 12).is_some());
+        assert!(equation_zone_at_position(&display, 0, 0).is_none());
     }
 }
