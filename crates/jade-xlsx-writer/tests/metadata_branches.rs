@@ -15,6 +15,64 @@ fn write(metadata: &str, dynamic: bool) -> Result<Vec<u8>, WriteError> {
 }
 
 #[test]
+fn missing_metadata_fallback_gets_its_own_dynamic_dictionary() {
+    let content = "<metadataTypes count=\"1\"><metadataType name=\"OTHER\"/></metadataTypes><futureMetadata name=\"OTHER\" count=\"1\"><bk/></futureMetadata><cellMetadata count=\"1\"><bk><rc t=\"1\" v=\"0\"/></bk></cellMetadata>";
+    for namespace in [NS, "http://purl.oclc.org/ooxml/spreadsheetml/main"] {
+        for required in ["m", "u"] {
+            for depth in [1, 4] {
+                for empty in [false, true] {
+                    let mut nested = if empty {
+                        String::new()
+                    } else {
+                        content.to_string()
+                    };
+                    for _ in 0..depth {
+                        nested = format!("<mc:AlternateContent><mc:Choice Requires=\"{required}\">{nested}</mc:Choice></mc:AlternateContent>");
+                    }
+                    let metadata = format!("<metadata xmlns=\"{namespace}\" xmlns:m=\"{namespace}\" xmlns:mc=\"{MC}\" xmlns:u=\"urn:future\">{nested}</metadata>");
+                    let bytes = write(&metadata, true).unwrap();
+                    let package = OpcPackage::open(&bytes).unwrap();
+                    let updated = package.part_str("xl/metadata.xml").unwrap().unwrap();
+                    assert!(updated.contains(&format!("<mc:Choice Requires=\"{required}\">")));
+                    assert_eq!(updated.matches("Fallback").count(), 2 * depth);
+                    assert_eq!(
+                        jade_xlsx_reader::array_metadata::common_dynamic_array_cell_metadata(
+                            &updated
+                        )
+                        .unwrap(),
+                        Some(if empty { 1 } else { 2 })
+                    );
+                    assert_eq!(
+                        read_xlsx(&bytes).unwrap().sheets[0].array_formulas[0].kind,
+                        jade_xlsx_reader::ArrayFormulaKind::Dynamic
+                    );
+                    if required == "u" && depth == 1 && !empty {
+                        let mut book =
+                            jade_xlsx_headless_editor::HeadlessWorkbook::open_for_editing(&bytes)
+                                .unwrap();
+                        book.set(
+                            "Operations",
+                            "J1",
+                            jade_xlsx_headless_api::CellInput::Formula("SEQUENCE(4)".into()),
+                        )
+                        .unwrap();
+                        assert_eq!(book.cell("Operations", "J4").unwrap().display, "4");
+                        book.undo().unwrap();
+                        assert_eq!(book.cell("Operations", "J4").unwrap().display, "");
+                        book.redo().unwrap();
+                        let saved = book.save_bytes().unwrap();
+                        let reopened =
+                            jade_xlsx_headless_editor::HeadlessWorkbook::open_for_editing(&saved)
+                                .unwrap();
+                        assert_eq!(reopened.cell("Operations", "J4").unwrap().display, "4");
+                    }
+                }
+            }
+        }
+    }
+}
+
+#[test]
 fn processed_metadata_dictionaries_append_without_duplicate_containers() {
     let content = "<metadataTypes count=\"1\"><metadataType name=\"OTHER\"/></metadataTypes><futureMetadata name=\"OTHER\" count=\"1\"><bk/></futureMetadata><cellMetadata count=\"1\"><bk><rc t=\"1\" v=\"0\"/></bk></cellMetadata>";
     for content in [content.to_string(), String::new()] {
@@ -254,7 +312,7 @@ fn conditional_append_does_not_activate_dangling_cell_links_or_conflicting_share
         "",
     );
     assert!(matches!(
-        write(&no_fallback, true),
+        write_with_cm(&no_fallback, true, Some(1)),
         Err(WriteError::ArrayMetadata(_))
     ));
 }

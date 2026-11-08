@@ -74,6 +74,16 @@ impl View<'_> {
                             .map(|&index| (index, depth + 1)),
                     );
                 }
+            } else if !node.empty
+                && node
+                    .children
+                    .iter()
+                    .any(|&i| self.tree[i].namespace == MC && self.tree[i].name == "Choice")
+            {
+                // The absent fallback is an empty logical representation.
+                // Keep additions local to that representation rather than
+                // leaking new dictionaries into every existing Choice.
+                result.slots.push((result.nodes.len(), index, depth + 1));
             }
         }
         result
@@ -103,6 +113,7 @@ struct Layout {
 enum Anchor {
     Position(usize),
     EmptyBranch(usize),
+    MissingFallback(usize),
 }
 fn layouts(tree: &[Node], root: usize) -> Option<Vec<Layout>> {
     let mut pending = vec![Choices::new()];
@@ -259,7 +270,10 @@ fn location(xml: &str, tree: &[Node], root: usize, layout: &Layout, target: u8) 
     }
     for &(offset, branch, depth) in &layout.root.slots {
         if lower <= offset && offset <= upper {
-            let anchor = if tree[branch].empty {
+            let anchor = if tree[branch].namespace == MC && tree[branch].name == "AlternateContent"
+            {
+                Anchor::MissingFallback(branch)
+            } else if tree[branch].empty {
                 Anchor::EmptyBranch(branch)
             } else {
                 Anchor::Position(tree[branch].close)
@@ -437,6 +451,13 @@ pub(super) fn append_dynamic(
                         text: format!("{head}{text}</{}>", node.qualified),
                     }
                 }
+                Anchor::MissingFallback(index) => Splice {
+                    start: tree[index].close,
+                    end: tree[index].close,
+                    // Declare the MC namespace explicitly: a branch-local
+                    // prefix or foreign default must not change its meaning.
+                    text: format!("<Fallback xmlns=\"{MC}\">{text}</Fallback>"),
+                },
             });
         }
         for splice in splices {
