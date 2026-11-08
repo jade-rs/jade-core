@@ -35,12 +35,31 @@ pub fn features_token(descriptor: &str) -> Option<&str> {
 
 /// Whether `descriptor` asks for any OpenType features.
 pub fn has_features(descriptor: &str) -> bool {
-    // The token leads the descriptor wherever jade puts one in; a plain
-    // descriptor is answered without scanning it.
+    // The token leads the descriptor wherever jade puts one in.
     if descriptor.starts_with(PREFIX) {
         return true;
     }
-    descriptor.contains(PREFIX) && features_token(descriptor).is_some()
+    // Search bytes so colon-free descriptors avoid substring-search setup
+    // and can use memchr's vectorized search on native targets. An ASCII
+    // colon always starts at a valid UTF-8 boundary.
+    let Some(colon) = memchr::memchr(b':', descriptor.as_bytes()) else {
+        return false;
+    };
+    if colon >= 2
+        && &descriptor.as_bytes()[colon - 2..colon] == b"ot"
+        && (colon == 2
+            || descriptor[..colon - 2]
+                .chars()
+                .next_back()
+                .is_some_and(char::is_whitespace))
+    {
+        return true;
+    }
+    // Nothing before the first colon can be a feature token. Keep that colon
+    // so an embedded `:ot:` cannot become a token at the start of the slice.
+    // Use the tokenizer for the remainder rather than searching each colon.
+    let remainder = &descriptor[colon..];
+    remainder.contains(PREFIX) && features_token(remainder).is_some()
 }
 
 /// `descriptor` without its features token: the plain CSS shorthand a canvas
@@ -124,6 +143,98 @@ mod tests {
         assert!(has_features("bold ot:onum 11.00pt Calibri"));
         assert!(!has_features("italic 11.00pt Calibri, sans-serif"));
         assert!(!has_features("11.00pt 'Not:a font'"));
+    }
+
+    #[test]
+    fn feature_detection_matches_tokenizer_at_every_unicode_boundary() {
+        let mut descriptor = String::with_capacity(64);
+        for codepoint in 0..=0x10ffff {
+            let Some(character) = char::from_u32(codepoint) else {
+                continue;
+            };
+            // Exercise both the first colon and the tokenizer fallback, with
+            // every whitespace and non-whitespace scalar before the prefix.
+            for prefix in ["bold ", "font:"] {
+                descriptor.clear();
+                descriptor.push_str(prefix);
+                descriptor.push(character);
+                descriptor.push_str("ot:liga 12pt serif");
+                assert_eq!(
+                    has_features(&descriptor),
+                    features_token(&descriptor).is_some(),
+                    "prefix {prefix:?}, U+{codepoint:04X}"
+                );
+            }
+            // A colon after a multi-byte scalar must be safe to inspect.
+            descriptor.clear();
+            descriptor.push(character);
+            descriptor.push_str(":ot:liga");
+            assert_eq!(
+                has_features(&descriptor),
+                features_token(&descriptor).is_some(),
+                "embedded prefix after U+{codepoint:04X}"
+            );
+        }
+    }
+
+    #[test]
+    fn feature_detection_and_strip_match_tokenizer_for_mixed_tokens() {
+        fn check(descriptor: &str) {
+            let expected = features_token(descriptor).is_some();
+            assert_eq!(has_features(descriptor), expected, "{descriptor:?}");
+            let stripped = strip(descriptor);
+            if expected {
+                let expected: String = descriptor
+                    .split_whitespace()
+                    .filter(|token| !token.starts_with(PREFIX))
+                    .collect::<Vec<_>>()
+                    .join(" ");
+                assert_eq!(stripped, expected, "{descriptor:?}");
+            } else {
+                assert!(matches!(stripped, std::borrow::Cow::Borrowed(_)));
+                assert_eq!(stripped, descriptor);
+            }
+        }
+
+        fn visit(descriptor: &mut String, remaining: usize) {
+            check(descriptor);
+            if remaining == 0 {
+                return;
+            }
+            for fragment in [
+                "ot:", "ot:liga", "ot", "o", ":", ":ot:", "a", " \t", "\u{2003}", "\u{3000}", "🦀",
+                "'Not:a'", ":::::", "\0",
+            ] {
+                let length = descriptor.len();
+                descriptor.push_str(fragment);
+                visit(descriptor, remaining - 1);
+                descriptor.truncate(length);
+            }
+        }
+
+        visit(&mut String::new(), 4);
+    }
+
+    #[test]
+    fn feature_detection_matches_tokenizer_for_long_descriptors() {
+        for length in 0..=256 {
+            let family = "a".repeat(length);
+            for boundary in [" ", "\u{85}", "\u{2003}", "\u{3000}", "x", "🦀"] {
+                for descriptor in [
+                    format!("{family}{boundary}ot:liga 12pt serif"),
+                    format!("{family}:{boundary}ot:liga 12pt serif"),
+                    format!("{family}:ot:liga 12pt serif"),
+                    format!("{family} 12pt serif"),
+                    format!("{family}:{boundary}ot 12pt serif"),
+                ] {
+                    assert_eq!(
+                        has_features(&descriptor),
+                        features_token(&descriptor).is_some(),
+                        "{descriptor:?}"
+                    );
+                }
+            }
+        }
     }
 
     #[test]
