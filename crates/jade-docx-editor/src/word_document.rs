@@ -15347,9 +15347,9 @@ impl WordDocument {
     }
 
     /// Replaces an equation's OMML in place: an inline one (`run_index`, a
-    /// math run of a body paragraph) or a display one (a math surface). The
-    /// model and the document XML change together; nothing else around the
-    /// equation is rewritten.
+    /// math run of a body or text-box paragraph) or a display one (a math
+    /// surface). The model and document XML change together; nothing else
+    /// around the equation is rewritten.
     pub(crate) fn replace_equation_at(
         &mut self,
         paragraph: usize,
@@ -15360,9 +15360,10 @@ impl WordDocument {
             (Some(ParagraphSurface::Math { path: Some(path) }), _) => {
                 self.replace_display_equation(paragraph, &path, raw_omml)
             }
-            (Some(ParagraphSurface::Body { .. }), Some(run_index)) => {
-                self.replace_inline_equation(paragraph, run_index, raw_omml)
-            }
+            (
+                Some(ParagraphSurface::Body { .. } | ParagraphSurface::TextBox { .. }),
+                Some(run_index),
+            ) => self.replace_inline_equation(paragraph, run_index, raw_omml),
             _ => Err("there is no editable equation there".to_string()),
         }
     }
