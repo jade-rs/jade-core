@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "documents": [
+    {
+      "name": "word-windows-edge-table-negative-spacing-row-scopes-compat14",
+      "file": "inputs/word-windows-edge-table-negative-spacing-row-scopes-compat14.docx",
+      "sha256": "7021237b83426e8decee7798b9d020760b7ef18ae8fbf0e0bf3ac2733d3c5f34"
+    },
+    {
+      "name": "word-windows-edge-table-negative-spacing-unequal-2-compat14",
+      "file": "inputs/word-windows-edge-table-negative-spacing-unequal-2-compat14.docx",
+      "sha256": "6d36c268dd709b2a653022e1fe3977a929be5e4d3d5386d0bebd1293ffb87a2b"
+    },
+    {
+      "name": "word-windows-edge-table-negative-spacing-unequal-3-compat14",
+      "file": "inputs/word-windows-edge-table-negative-spacing-unequal-3-compat14.docx",
+      "sha256": "4f4286c30d31aef0ab783094829e013abf4bc5951f048178d3775bd42333c11f"
+    },
+    {
+      "name": "word-windows-edge-table-negative-spacing-unequal-4-compat14",
+      "file": "inputs/word-windows-edge-table-negative-spacing-unequal-4-compat14.docx",
+      "sha256": "3a9252adee8107cf04c13ebe31fb6d954cf25ad0c9e06ee82bf7df66de99eacc"
+    }
+  ]
+}

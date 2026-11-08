@@ -8,6 +8,46 @@ fn en_locale() -> &'static Locale {
     get_locale("en").unwrap()
 }
 
+#[test]
+fn numeric_criteria_accept_ascii_spaces_around_the_number() {
+    for (text, expected) in [
+        ("< 2 ", [true, false, false]),
+        ("<= 2 ", [true, true, false]),
+        ("> 2 ", [false, false, true]),
+        (">= 2 ", [false, true, true]),
+        ("<> 2 ", [true, false, true]),
+        ("= 2 ", [false, true, false]),
+        (" 2 ", [false, true, false]),
+        ("= +2E0 ", [false, true, false]),
+    ] {
+        let criterion = CalcResult::String(text.into());
+        let matches = build_criteria(&criterion, en_locale());
+        for (number, expected) in [1.0, 2.0, 3.0].into_iter().zip(expected) {
+            assert_eq!(
+                matches(&CalcResult::Number(number)),
+                expected,
+                "{text}: {number}"
+            );
+        }
+    }
+}
+
+#[test]
+fn text_and_wildcard_criterion_spaces_remain_significant() {
+    for text in ["= red ", "= * "] {
+        let criterion = CalcResult::String(text.into());
+        let matches = build_criteria(&criterion, en_locale());
+        assert!(matches(&CalcResult::String(" red ".into())));
+        assert!(!matches(&CalcResult::String("red".into())));
+        assert!(!matches(&CalcResult::String(" red".into())));
+    }
+    let criterion = CalcResult::String("= ".into());
+    let matches = build_criteria(&criterion, en_locale());
+    assert!(matches(&CalcResult::String(" ".into())));
+    assert!(!matches(&CalcResult::EmptyCell));
+    assert!(!matches(&CalcResult::String(String::new())));
+}
+
 // Tests for build_criteria
 // ------------------------
 //

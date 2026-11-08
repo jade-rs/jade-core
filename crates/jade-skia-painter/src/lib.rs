@@ -25,6 +25,8 @@ use lopdf::dictionary;
 use skia_safe::RoundOut;
 use std::collections::HashMap;
 mod pdf_text;
+#[cfg(target_os = "windows")]
+mod windows_typefaces;
 pub use skia_safe::Typeface;
 
 /// A link in the painter's logical CSS-pixel page coordinate space.
@@ -619,6 +621,9 @@ impl SkiaPainter {
         bytes: &[u8],
         index: usize,
     ) -> Option<()> {
+        #[cfg(target_os = "windows")]
+        let typeface = windows_typefaces::face(bytes, index)?;
+        #[cfg(not(target_os = "windows"))]
         let typeface = if index == 0 {
             with_font_mgr(|mgr| mgr.new_from_data(bytes, None))?
         } else {

@@ -1,0 +1,6 @@
+{
+  "schema": 1,
+  "native_source_commit": "90132ee5deba71a0883864ad28cd84a5fab3338b",
+  "native_executable_sha256": "ed43709438b2eaad0a60d7c1280bcc25e9f3795b5e88b15dbebab514f5d150fc",
+  "provenance_note": "Original clean 90132ee5 traces, before mixed-rule and vertical cell-border painting corrections."
+}

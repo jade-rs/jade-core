@@ -291,7 +291,7 @@ impl HeadlessWorkbook {
             password,
             salt,
         )?;
-        self.commit_protection(written)
+        self.commit_sheet_protection(written)
     }
     pub fn unprotect_sheet(&mut self, sheet: &str, password: &str) -> Result<bool> {
         let index = self.sheet_index(sheet)?;
@@ -300,7 +300,14 @@ impl HeadlessWorkbook {
             &self.workbook.sheets[index].part_name,
             password,
         )?;
-        self.commit_protection(written)
+        self.commit_sheet_protection(written)
+    }
+    fn commit_sheet_protection(&mut self, written: Vec<u8>) -> Result<bool> {
+        let changed = self.commit_protection(written)?;
+        if changed {
+            self.recalculate_after_edit();
+        }
+        Ok(changed)
     }
     fn commit_protection(&mut self, written: Vec<u8>) -> Result<bool> {
         if written == self.source {

@@ -177,6 +177,14 @@ fn a_ref_error_qualifier_evaluates_as_the_error_alone() {
         r##""#REF!A1"&'#REF!'!A1"##
     );
     assert_eq!(collapse_ref_errors("Sheet1!A1"), "Sheet1!A1");
+    assert_eq!(
+        collapse_ref_errors("SUM(Table1[['#REF!A1]])+#REF!B2"),
+        "SUM(Table1[['#REF!A1]])+#REF!"
+    );
+    assert_eq!(
+        collapse_ref_errors("SUM(Table1[[part']'#REF!A1]])+#REF!Rate"),
+        "SUM(Table1[[part']'#REF!A1]])+#REF!"
+    );
 }
 
 /// A sheet name as a formula writes it.

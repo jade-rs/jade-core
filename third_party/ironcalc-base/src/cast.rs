@@ -1,4 +1,5 @@
 use crate::{
+    arithmetic::bcast_idx,
     calc_result::{CalcResult, Range},
     expressions::{
         parser::{ArrayNode, Node},
@@ -56,6 +57,145 @@ pub(crate) fn array_node_to_string(node: &ArrayNode) -> Result<String, Error> {
 }
 
 impl<'a> Model<'a> {
+    fn evaluate_broadcast_operand(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> Result<CalcResult, CalcResult> {
+        match self.evaluate_node_in_context(node, cell) {
+            CalcResult::Range { left, right } => {
+                if left.sheet != right.sheet {
+                    return Err(CalcResult::new_error(
+                        Error::VALUE,
+                        cell,
+                        "3D ranges are not allowed".into(),
+                    ));
+                }
+                let rows = (i64::from(right.row) - i64::from(left.row) + 1).max(0) as usize;
+                let columns =
+                    (i64::from(right.column) - i64::from(left.column) + 1).max(0) as usize;
+                if let Some((error, message)) = crate::functions::check_array_size(rows, columns) {
+                    return Err(CalcResult::new_error(error, cell, message));
+                }
+                Ok(CalcResult::Array(self.evaluate_range(left, right)))
+            }
+            value => Ok(value),
+        }
+    }
+
+    /// Apply a scalar operation to a value or each element of an array/range.
+    /// Unlike coercing casts, this lets the operation inspect scalar errors,
+    /// empty cells and original value types. The operation must return scalars.
+    pub(crate) fn map_scalar_values(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+        mut map: impl FnMut(&mut Self, CalcResult) -> CalcResult,
+    ) -> CalcResult {
+        let array = match self.evaluate_broadcast_operand(node, cell) {
+            Ok(CalcResult::Array(array)) => array,
+            Ok(value) => return map(self, value),
+            Err(error) => return error,
+        };
+        CalcResult::Array(
+            array
+                .into_iter()
+                .map(|row| {
+                    row.into_iter()
+                        .map(|item| {
+                            let value = match item {
+                                ArrayNode::Number(n) => CalcResult::Number(n),
+                                ArrayNode::String(s) => CalcResult::String(s),
+                                ArrayNode::Boolean(b) => CalcResult::Boolean(b),
+                                ArrayNode::Empty => CalcResult::EmptyCell,
+                                ArrayNode::Error(error) => {
+                                    CalcResult::new_error(error, cell, String::new())
+                                }
+                            };
+                            calc_result_to_array_node(map(self, value))
+                        })
+                        .collect()
+                })
+                .collect(),
+        )
+    }
+
+    /// Lift a scalar operation over multiple typed operands. Singleton axes
+    /// broadcast; missing positions yield NA. Scalar errors retain the shape
+    /// supplied by other operands, while cycles and resource guards stop early.
+    pub(crate) fn map_scalar_arguments(
+        &mut self,
+        nodes: &[Node],
+        cell: CellReferenceIndex,
+        mut map: impl FnMut(&mut Self, &[CalcResult]) -> CalcResult,
+    ) -> CalcResult {
+        let mut values = Vec::with_capacity(nodes.len());
+        let (mut rows, mut columns) = (1, 1);
+        let mut has_array = false;
+        for node in nodes {
+            let value = match self.evaluate_broadcast_operand(node, cell) {
+                Ok(value) => value,
+                Err(error) => return error,
+            };
+            if matches!(
+                &value,
+                CalcResult::Error {
+                    error: Error::CIRC,
+                    ..
+                }
+            ) {
+                return value;
+            }
+            if let CalcResult::Array(array) = &value {
+                has_array = true;
+                rows = rows.max(array.len());
+                columns = columns.max(array.first().map_or(0, Vec::len));
+            }
+            values.push(value);
+        }
+        if !has_array {
+            return map(self, &values);
+        }
+        if let Some((error, message)) = crate::functions::check_array_size(rows, columns) {
+            return CalcResult::new_error(error, cell, message);
+        }
+        let mut result = Vec::with_capacity(rows);
+        let mut elements = Vec::with_capacity(values.len());
+        for row in 0..rows {
+            let mut output = Vec::with_capacity(columns);
+            for column in 0..columns {
+                elements.clear();
+                for value in &values {
+                    let value = match value {
+                        CalcResult::Array(array) => {
+                            let item = bcast_idx(array.len(), row)
+                                .and_then(|r| array.get(r))
+                                .and_then(|r| {
+                                    bcast_idx(array.first().map_or(0, Vec::len), column)
+                                        .and_then(|c| r.get(c))
+                                });
+                            match item {
+                                Some(ArrayNode::Number(n)) => CalcResult::Number(*n),
+                                Some(ArrayNode::String(s)) => CalcResult::String(s.clone()),
+                                Some(ArrayNode::Boolean(b)) => CalcResult::Boolean(*b),
+                                Some(ArrayNode::Empty) => CalcResult::EmptyCell,
+                                Some(ArrayNode::Error(error)) => {
+                                    CalcResult::new_error(error.clone(), cell, String::new())
+                                }
+                                None => CalcResult::new_error(Error::NA, cell, String::new()),
+                            }
+                        }
+                        value => value.clone(),
+                    };
+                    elements.push(value);
+                }
+                output.push(calc_result_to_array_node(map(self, &elements)));
+            }
+            result.push(output);
+        }
+        CalcResult::Array(result)
+    }
+
     pub(crate) fn cast_number(&self, s: &str) -> Option<f64> {
         match s.trim().parse::<f64>() {
             Ok(f) => Some(f),
@@ -284,6 +424,14 @@ impl<'a> Model<'a> {
         cell: CellReferenceIndex,
     ) -> Result<f64, CalcResult> {
         let result = self.evaluate_node_in_context(node, cell);
+        self.cast_to_number_no_bools(result, cell)
+    }
+
+    pub(crate) fn cast_to_number_no_bools(
+        &mut self,
+        result: CalcResult,
+        cell: CellReferenceIndex,
+    ) -> Result<f64, CalcResult> {
         if matches!(result, CalcResult::Boolean(_)) {
             return Err(CalcResult::new_error(
                 Error::VALUE,

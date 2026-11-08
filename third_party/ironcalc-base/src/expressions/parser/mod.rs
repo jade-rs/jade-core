@@ -568,11 +568,11 @@ impl<'a> Parser<'a> {
 
     fn parse_power(&mut self) -> Node {
         let mut next_token = self.lexer.peek_token();
-        let mut sign = 1;
+        let mut minus_count = 0;
         while let TokenType::Addition(op) = next_token {
             self.lexer.advance_token();
             if op == token::OpSum::Minus {
-                sign = -sign;
+                minus_count += 1;
             }
             next_token = self.lexer.peek_token();
         }
@@ -581,7 +581,9 @@ impl<'a> Parser<'a> {
         if let Node::ParseErrorKind { .. } = t {
             return t;
         }
-        if sign == -1 {
+        // Repeated minus operators also coerce text/Booleans to numbers.
+        // Cancelling pairs here would incorrectly turn --TRUE back into TRUE.
+        for _ in 0..minus_count {
             t = Node::UnaryKind {
                 kind: token::OpUnary::Minus,
                 right: Box::new(t),
@@ -654,7 +656,7 @@ impl<'a> Parser<'a> {
         let first_element = match self.parse_expr() {
             Node::BooleanKind(s) => ArrayNode::Boolean(s),
             Node::NumberKind(s) => ArrayNode::Number(s),
-            Node::StringKind(s) => ArrayNode::String(s),
+            Node::StringKind(s) => ArrayNode::String(s.replace("\"\"", "\"")),
             Node::ErrorKind(kind) => ArrayNode::Error(kind),
             Node::UnaryKind {
                 kind: OpUnary::Minus,
@@ -688,7 +690,7 @@ impl<'a> Parser<'a> {
             let value = match self.parse_expr() {
                 Node::BooleanKind(s) => ArrayNode::Boolean(s),
                 Node::NumberKind(s) => ArrayNode::Number(s),
-                Node::StringKind(s) => ArrayNode::String(s),
+                Node::StringKind(s) => ArrayNode::String(s.replace("\"\"", "\"")),
                 Node::ErrorKind(kind) => ArrayNode::Error(kind),
                 Node::UnaryKind {
                     kind: OpUnary::Minus,

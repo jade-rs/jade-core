@@ -11,6 +11,106 @@ fn get_default_locale() -> &'static Locale {
 }
 
 #[test]
+fn decimal_points_precede_literals_and_follow_locale_symbols() {
+    for (locale_name, separator) in [("en", "."), ("de", ","), ("fr", ",")] {
+        let locale = get_locale(locale_name).unwrap();
+        assert_eq!(
+            format_number(1.25, "0.", locale).text,
+            format!("1{separator}")
+        );
+        assert_eq!(
+            format_number(1.23, "0.\"x\"00", locale).text,
+            format!("1{separator}x23")
+        );
+        assert_eq!(
+            format_number(1.23, ".\"x\"00", locale).text,
+            format!("1{separator}x23")
+        );
+        assert_eq!(
+            format_number(-12.34, ".00", locale).text,
+            format!("-12{separator}34")
+        );
+    }
+}
+
+#[test]
+fn engineering_formats_keep_locale_and_coefficient_precision() {
+    for (locale_name, separator) in [("en", "."), ("de", ","), ("fr", ",")] {
+        let locale = get_locale(locale_name).unwrap();
+        for (value, format, expected) in [
+            (12_200_000.0, "#0.0E+0", format!("12{separator}2E+6")),
+            (123_456.0, "##0.0E+0", format!("123{separator}5E+3")),
+            (0.0123, "##0.0E+0", format!("12{separator}3E-3")),
+            (999.96, "##0.0E+0", format!("1{separator}0E+3")),
+        ] {
+            let formatted = format_number(value, format, locale);
+            assert_eq!(formatted.text, expected);
+            assert_eq!(formatted.error, None);
+        }
+    }
+}
+
+#[test]
+fn scientific_carries_use_the_locale_decimal_separator() {
+    for (locale_name, separator) in [("en", "."), ("de", ","), ("fr", ",")] {
+        let locale = get_locale(locale_name).unwrap();
+        for (value, sign) in [(999.9, ""), (-999.9, "-")] {
+            let formatted = format_number(value, "0.00E+00", locale);
+            assert_eq!(formatted.text, format!("{sign}1{separator}00E+03"));
+            assert_eq!(formatted.error, None);
+        }
+    }
+}
+
+#[test]
+fn decimal_padding_keeps_the_locale_separator() {
+    for (locale_name, separator) in [("en", "."), ("de", ","), ("fr", ",")] {
+        let locale = get_locale(locale_name).unwrap();
+        for (value, suffix) in [(1.0, "  "), (1.2, "2 "), (1.25, "25")] {
+            let formatted = format_number(value, "0.??", locale);
+            assert_eq!(formatted.text, format!("1{separator}{suffix}"));
+            assert_eq!(formatted.error, None);
+        }
+    }
+}
+
+#[test]
+fn format_parser_retains_empty_sections_without_counting_literal_semicolons() {
+    for (format, count) in [
+        ("", 1),
+        ("0;", 2),
+        ("0;;", 3),
+        (";;;", 4),
+        ("0;;;;", 5),
+        ("0\\;;", 2),
+        ("0\";\";", 2),
+        ("0*;;", 2),
+        ("0_;;", 2),
+    ] {
+        let mut parser = crate::formatter::parser::Parser::new(format);
+        parser.parse();
+        assert_eq!(parser.parts.len(), count, "{format}");
+        assert!(parser.parts.iter().all(|part| !part.is_error()), "{format}");
+    }
+}
+
+#[test]
+fn conditional_fraction_sections_keep_color_and_signed_value() {
+    let locale = get_default_locale();
+    let format = "[Red][>=1]0/0;[Blue][<0]0/0;0.00";
+    for (value, expected, color) in [
+        (1.5, "3/2", Some(2)),
+        (-1.5, "-3/2", Some(4)),
+        (0.5, "0.50", None),
+    ] {
+        let formatted = format_number(value, format, locale);
+        assert_eq!(formatted.text, expected);
+        assert_eq!(formatted.color, color);
+        assert_eq!(formatted.error, None);
+    }
+}
+
+#[test]
 fn simple_test() {
     let locale = get_default_locale();
     let bond_james_bond = format_number(7.0, "000", locale);

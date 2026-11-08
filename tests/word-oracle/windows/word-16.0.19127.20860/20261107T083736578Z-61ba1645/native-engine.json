@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "native_source_commit": "00f7aeed602be91ebe3995d0869dbdefe32fdb06",
+  "native_source_worktree_dirty": false,
+  "native_executable_sha256": "e203e63cd4cca298d5409d1cad31791fa35608b0a2fedd22e562e80b0281ceb3",
+  "compiler": "rustc 1.99.1 (58cf8f9c3 2026-10-13)\nbinary: rustc\ncommit-hash: 58cf8f9c35b355199727627d07ae34a4e2846d67\ncommit-date: 2026-10-13\nhost: x86_64-pc-windows-msvc\nrelease: 1.99.1\nLLVM version: 23.1.1"
+}

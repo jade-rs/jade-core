@@ -1,0 +1,168 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261107T050204006Z-600bbfab",
+  "captured_at_utc": "2026-11-07T05:02:04.0457066Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20860",
+    "file_version": "16.0.19127.20860",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "9bafe09d0c458006744b9edce767a328ba2da1bb5d9a460e5830c47bf6d7f1d1"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-edge-table-alignment-compat12",
+      "source": "tmp\\decimal-anchor-core\\public\\fixtures\\word-windows-edge-table-alignment-compat12.docx",
+      "sha256": "0b2de55e222c70ca8325ffdd3a0d3f1ad912272ebe102cc0f06c876f4361ff5f",
+      "pdf": "word-windows-edge-table-alignment-compat12.pdf",
+      "pdf_sha256": "0eeb47acfe9f559f2ea1d9d989c8bcb9bb87d470dd68c5b715d4938371b4f5cc",
+      "pages": 2,
+      "compatibility_mode": 12,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-alignment-compat12.page-001.emf",
+          "sha256": "b07e45bf1bafb7c5dbe732f4e5f734930c89eecfdeca113d2995c120d616d2f8",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 2,
+          "file": "word-windows-edge-table-alignment-compat12.page-002.emf",
+          "sha256": "b7323636c31c68823478c80656154e7e2e6de877a8aa5efb04e2a12b024d171f",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-alignment-compat14",
+      "source": "tmp\\decimal-anchor-core\\public\\fixtures\\word-windows-edge-table-alignment-compat14.docx",
+      "sha256": "92952d2420240d4c8c8abf16950178258e6e2e581e6180d8bc975078606375b0",
+      "pdf": "word-windows-edge-table-alignment-compat14.pdf",
+      "pdf_sha256": "55e2d7dd2b835b0ed2f667af40e592442354d2c634c35186618ac6934ae5a76d",
+      "pages": 2,
+      "compatibility_mode": 14,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-alignment-compat14.page-001.emf",
+          "sha256": "ef161f7796f97f77cd54cbfb81e30ccca983259046fed3e6bf8092b2396fb2dc",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 2,
+          "file": "word-windows-edge-table-alignment-compat14.page-002.emf",
+          "sha256": "0e7b9a905b6563329cdbf1e0a05edbe49d5cb9484b1c81cdf8bc700cf8d8b35c",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-borders-compat12",
+      "source": "tmp\\decimal-anchor-core\\public\\fixtures\\word-windows-edge-table-borders-compat12.docx",
+      "sha256": "052bcd6ea7b5d6ffe6a1a9276969fbb136c668b9f60d24eb7039e6c6f3b2eab3",
+      "pdf": "word-windows-edge-table-borders-compat12.pdf",
+      "pdf_sha256": "ab1aa85632c360a9cd9b11f29e90a3ed7cfbd9a55c046890bbe06b94208e8abd",
+      "pages": 2,
+      "compatibility_mode": 12,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-borders-compat12.page-001.emf",
+          "sha256": "675a08c66c0dd5c9150be6a9a8be9d6e7ac37bdbc61990e2805519a03ffc9d75",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 2,
+          "file": "word-windows-edge-table-borders-compat12.page-002.emf",
+          "sha256": "3b7a6ada9cf792d527d1b1e01b835fdfda6d8df1c7b3f5ecece4ac6aa20e4ca4",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-borders-compat14",
+      "source": "tmp\\decimal-anchor-core\\public\\fixtures\\word-windows-edge-table-borders-compat14.docx",
+      "sha256": "352ff5d12f88beeeb2134be8fc0cdade49e2ddc0f6ec1371ee1e2d5780b53650",
+      "pdf": "word-windows-edge-table-borders-compat14.pdf",
+      "pdf_sha256": "dbb9db6b103df0087ae0cfb58b283d9b863a723bfe250d417a58716ee5da49dc",
+      "pages": 2,
+      "compatibility_mode": 14,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-borders-compat14.page-001.emf",
+          "sha256": "c9d2e3768ba2768d751d770b5681d1e8819bb782230b7470bfc590910bc0d724",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 2,
+          "file": "word-windows-edge-table-borders-compat14.page-002.emf",
+          "sha256": "6599cfb4408f05e4780bc15f84cf3dadae438c81bcf99ee329474730db40e418",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-indents-compat12",
+      "source": "tmp\\decimal-anchor-core\\public\\fixtures\\word-windows-edge-table-indents-compat12.docx",
+      "sha256": "133f4ac8d834a43a357a0a87932037a4875cbb8112744975b5a7d27de29a8dea",
+      "pdf": "word-windows-edge-table-indents-compat12.pdf",
+      "pdf_sha256": "e3c534d8bfb060b92d18f1808526d9e9f2e5350bf69d2cfb9a36a193dbc08575",
+      "pages": 2,
+      "compatibility_mode": 12,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-indents-compat12.page-001.emf",
+          "sha256": "e568d471b9d5df4c55adeda3ff3200963b02e48c292dd7c9455f921b424e7258",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 2,
+          "file": "word-windows-edge-table-indents-compat12.page-002.emf",
+          "sha256": "2099127f4ceae43c04eb35664db6cda8610031b622fd73e738d5785e4ae9edb2",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-indents-compat14",
+      "source": "tmp\\decimal-anchor-core\\public\\fixtures\\word-windows-edge-table-indents-compat14.docx",
+      "sha256": "ca8e006695ecbc489b9a883003d803d9169c902289a6110937a535bbb762f55e",
+      "pdf": "word-windows-edge-table-indents-compat14.pdf",
+      "pdf_sha256": "49b8f1337e5990e5c15cc9798dc41866455abd8d67d66cf7af384a64172b3c24",
+      "pages": 2,
+      "compatibility_mode": 14,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-indents-compat14.page-001.emf",
+          "sha256": "f34df62048b13422bc1215e6f0bb5b7057f8027b89353581bf84b6bab4e95683",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 2,
+          "file": "word-windows-edge-table-indents-compat14.page-002.emf",
+          "sha256": "2099127f4ceae43c04eb35664db6cda8610031b622fd73e738d5785e4ae9edb2",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    }
+  ]
+}

@@ -25,7 +25,7 @@ fn custom(tail: &str) -> HeadlessWorkbook {
 }
 fn mixed() -> HeadlessWorkbook {
     custom(
-        r#"<dataValidations count="1"><dataValidation type="whole" operator="lessThan" sqref="D1"><formula1>5</formula1></dataValidation></dataValidations><extLst><ext uri="dv"><e:dataValidations count="2" disablePrompts="1" u:setting="keep"><e:dataValidation type="list" showDropDown="1" showErrorMessage="1" errorTitle="選択" prompt="one_x000A_two" rev:uid="{AAAAAAAA-0000-4000-8000-000000000001}" u:tag="keep"><e:formula1><q:f>"東京,大阪"</q:f></e:formula1><q:sqref>B1:B5</q:sqref><u:formula1>foreign</u:formula1></e:dataValidation><e:dataValidation type="whole" operator="lessThan" showErrorMessage="1"><e:formula1><q:f>$A1</q:f></e:formula1><q:sqref>C1:C5</q:sqref></e:dataValidation></e:dataValidations><u:dataValidations count="1"><u:dataValidation><q:sqref>Z1</q:sqref></u:dataValidation></u:dataValidations></ext><ext uri="opaque"><u:info>keep</u:info></ext></extLst>"#,
+        r#"<dataValidations count="1"><dataValidation type="whole" operator="lessThan" sqref="D1"><formula1>5</formula1></dataValidation></dataValidations><extLst><ext uri="{CCE6A557-97BC-4B89-ADB6-D9C93CAAB3DF}"><e:dataValidations count="2" disablePrompts="1" u:setting="keep"><e:dataValidation type="list" showDropDown="1" showErrorMessage="1" errorTitle="選択" prompt="one_x000A_two" rev:uid="{AAAAAAAA-0000-4000-8000-000000000001}" u:tag="keep"><e:formula1><q:f>"東京,大阪"</q:f></e:formula1><q:sqref>B1:B5</q:sqref><u:formula1>foreign</u:formula1></e:dataValidation><e:dataValidation type="whole" operator="lessThan" showErrorMessage="1"><e:formula1><q:f>$A1</q:f></e:formula1><q:sqref>C1:C5</q:sqref></e:dataValidation></e:dataValidations><u:dataValidations count="1"><u:dataValidation><q:sqref>Z1</q:sqref></u:dataValidation></u:dataValidations></ext><ext uri="opaque"><u:info>keep</u:info></ext></extLst>"#,
     )
 }
 #[test]
@@ -181,7 +181,7 @@ fn clearing_and_replacing_overlaps_rebases_retained_extended_formulas() {
 #[test]
 fn strict_default_namespaces_multiple_containers_and_missing_ranges_keep_index_alignment() {
     let mut b = custom(&format!(
-        r#"<dataValidations count="2"><dataValidation type="none"/><dataValidation sqref="D1" type="none"/></dataValidations><extLst><ext uri="one"><dataValidations xmlns="{X14}" xmlns:m="{XM}" count="2"><dataValidation type="none"/><dataValidation type="custom"><formula1><m:f><![CDATA[B1>0]]></m:f></formula1><m:sqref>B1:B2</m:sqref></dataValidation></dataValidations></ext><ext uri="two"><e:dataValidations count="1"><e:dataValidation type="whole" operator="lessThan"><e:formula1><q:f>10</q:f></e:formula1><q:sqref>C1</q:sqref></e:dataValidation></e:dataValidations></ext></extLst>"#
+        r#"<dataValidations count="2"><dataValidation type="none"/><dataValidation sqref="D1" type="none"/></dataValidations><extLst><ext uri="{{CCE6A557-97BC-4B89-ADB6-D9C93CAAB3DF}}"><dataValidations xmlns="{X14}" xmlns:m="{XM}" count="2"><dataValidation type="none"/><dataValidation type="custom"><formula1><m:f><![CDATA[B1>0]]></m:f></formula1><m:sqref>B1:B2</m:sqref></dataValidation></dataValidations></ext><ext uri="{{CCE6A557-97BC-4B89-ADB6-D9C93CAAB3DF}}"><e:dataValidations count="1"><e:dataValidation type="whole" operator="lessThan"><e:formula1><q:f>10</q:f></e:formula1><q:sqref>C1</q:sqref></e:dataValidation></e:dataValidations></ext></extLst>"#
     ));
     let mut p = OpcPackage::open(b.bytes()).unwrap();
     p.replace(
@@ -205,7 +205,7 @@ fn strict_default_namespaces_multiple_containers_and_missing_ranges_keep_index_a
 #[test]
 fn adding_missing_bounds_keeps_schema_order_and_creates_locally_bound_formula_leaves() {
     let mut b = custom(
-        r#"<extLst><ext uri="dv"><e:dataValidations count="1"><e:dataValidation type="none"><q:sqref>B1</q:sqref><u:info>keep</u:info></e:dataValidation></e:dataValidations></ext></extLst>"#,
+        r#"<extLst><ext uri="{CCE6A557-97BC-4B89-ADB6-D9C93CAAB3DF}"><e:dataValidations count="1"><e:dataValidation type="none"><q:sqref>B1</q:sqref><u:info>keep</u:info></e:dataValidation></e:dataValidations></ext></extLst>"#,
     );
     let s = b.workbook().sheets[0].name.clone();
     let r = DataValidation {
@@ -227,7 +227,7 @@ fn adding_missing_bounds_keeps_schema_order_and_creates_locally_bound_formula_le
 #[test]
 fn foreign_extension_locations_and_formula_wrappers_do_not_shadow_real_rules() {
     let b = custom(
-        r#"<extLst><ext uri="dv"><u:wrapper><e:dataValidations><e:dataValidation type="custom"><e:formula1><q:f>BAD1</q:f></e:formula1><q:sqref>Z1</q:sqref></e:dataValidation></e:dataValidations></u:wrapper><e:dataValidations count="1"><e:dataValidation type="custom" sqref="invalid ignored attribute"><u:formula1><q:f>BAD2</q:f></u:formula1><e:formula1><u:f>BAD3</u:f><q:f>B1&gt;0</q:f></e:formula1><u:sqref>Z2</u:sqref><q:sqref>B1:B2</q:sqref></e:dataValidation></e:dataValidations></ext></extLst>"#,
+        r#"<extLst><ext uri="{CCE6A557-97BC-4B89-ADB6-D9C93CAAB3DF}"><u:wrapper><e:dataValidations><e:dataValidation type="custom"><e:formula1><q:f>BAD1</q:f></e:formula1><q:sqref>Z1</q:sqref></e:dataValidation></e:dataValidations></u:wrapper><e:dataValidations count="1"><e:dataValidation type="custom" sqref="invalid ignored attribute"><u:formula1><q:f>BAD2</q:f></u:formula1><e:formula1><u:f>BAD3</u:f><q:f>B1&gt;0</q:f></e:formula1><u:sqref>Z2</u:sqref><q:sqref>B1:B2</q:sqref></e:dataValidation></e:dataValidations></ext></extLst>"#,
     );
     let rules = &b.workbook().sheets[0].data_validations;
     assert_eq!(rules.len(), 1);
