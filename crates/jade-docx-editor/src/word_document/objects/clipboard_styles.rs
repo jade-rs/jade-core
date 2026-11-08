@@ -90,7 +90,7 @@ impl WordDocument {
         let content = self
             .styles_part_path()
             .and_then(|path| self.read_xml_part_content(&path))
-            .unwrap_or_else(|| StylesPart::word_default_xml().into());
+            .unwrap_or_else(|| StylesPart::word_default_xml_for_platform());
         let raw = DocxXmlDocument::parse(&content).map_err(|e| e.to_string())?;
         let mut root = raw.root().clone();
         let mut defaults = Vec::new();
@@ -319,7 +319,7 @@ impl WordDocument {
         let current_xml = self
             .styles_part_path()
             .and_then(|path| self.read_xml_part_content(&path))
-            .unwrap_or_else(|| StylesPart::word_default_xml().into());
+            .unwrap_or_else(|| StylesPart::word_default_xml_for_platform());
         let current = DocxXmlDocument::parse(&current_xml).map_err(|e| e.to_string())?;
         let properties = |root: &XmlElement, container: &str, name: &str| {
             child(root, "w:docDefaults")
@@ -611,7 +611,7 @@ impl WordDocument {
         let current_xml = self
             .styles_part_path()
             .and_then(|path| self.read_xml_part_content(&path))
-            .unwrap_or_else(|| StylesPart::word_default_xml().into());
+            .unwrap_or_else(|| StylesPart::word_default_xml_for_platform());
         let current = DocxXmlDocument::parse(&current_xml).map_err(|e| e.to_string())?;
         let existing = definitions(current.root());
         let default_id = |root: &XmlElement, kind: &str| -> Option<String> {
@@ -752,7 +752,7 @@ impl WordDocument {
         let existing_xml = self
             .styles_part_path()
             .and_then(|path| self.read_xml_part_content(&path))
-            .unwrap_or_else(|| StylesPart::word_default_xml().into());
+            .unwrap_or_else(|| StylesPart::word_default_xml_for_platform());
         let existing = DocxXmlDocument::parse(&existing_xml).map_err(|e| e.to_string())?;
         let existing = definitions(existing.root());
         let mut needed = HashSet::new();
@@ -863,7 +863,7 @@ impl WordDocument {
         };
         let content = self
             .read_xml_part_content(&path)
-            .unwrap_or_else(|| StylesPart::word_default_xml().into());
+            .unwrap_or_else(|| StylesPart::word_default_xml_for_platform());
         let mut raw = DocxXmlDocument::parse(&content).map_err(|e| e.to_string())?;
         let mut taken: HashSet<String> = raw
             .root()

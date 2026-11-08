@@ -146,6 +146,17 @@ impl StylesPart {
         WORD_DEFAULT_STYLES_XML
     }
 
+    /// XML matching the implicit Normal used by the active Word platform.
+    pub fn word_default_xml_for_platform() -> String {
+        if crate::word_platform::word_layout_platform()
+            == crate::word_platform::WordLayoutPlatform::Windows
+        {
+            WORD_DEFAULT_STYLES_XML.replace("<w:jc w:val=\"both\"/>", "<w:jc w:val=\"left\"/>")
+        } else {
+            WORD_DEFAULT_STYLES_XML.to_owned()
+        }
+    }
+
     pub fn from_xml(xml: &str) -> ParseResult<Self> {
         let mut part = Self::new();
         part.parse(xml)?;

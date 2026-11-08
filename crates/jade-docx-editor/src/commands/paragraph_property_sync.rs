@@ -993,10 +993,34 @@ pub(crate) fn set_paragraph_spacing_xml(
 ) {
     let line = spacing.and_then(|value| value.line);
     let line_rule = spacing.and_then(|value| value.line_rule.as_deref());
-    let before = spacing.and_then(|value| value.before);
-    let after = spacing.and_then(|value| value.after);
-    let before_lines = spacing.and_then(|value| value.before_lines);
-    let after_lines = spacing.and_then(|value| value.after_lines);
+    let before = spacing.and_then(|s| {
+        if s.before_auto {
+            s.before_auto_fallback.as_ref().and_then(|v| v.points)
+        } else {
+            s.before
+        }
+    });
+    let after = spacing.and_then(|s| {
+        if s.after_auto {
+            s.after_auto_fallback.as_ref().and_then(|v| v.points)
+        } else {
+            s.after
+        }
+    });
+    let before_lines = spacing.and_then(|s| {
+        if s.before_auto {
+            s.before_auto_fallback.as_ref().and_then(|v| v.lines)
+        } else {
+            s.before_lines
+        }
+    });
+    let after_lines = spacing.and_then(|s| {
+        if s.after_auto {
+            s.after_auto_fallback.as_ref().and_then(|v| v.lines)
+        } else {
+            s.after_lines
+        }
+    });
     let mut managed: Vec<XmlAttribute> = Vec::new();
     let points_to_twips = |value: f32| (value * 20.0).round().max(0.0) as i32;
     if let Some(value) = before.filter(|v| update_before && v.is_finite() && *v >= 0.0) {
@@ -1030,26 +1054,22 @@ pub(crate) fn set_paragraph_spacing_xml(
     // A fixed value must explicitly disable auto spacing inherited from a style.
     // Only write sides requested by the caller; untouched attributes retain their
     // original spelling and style inheritance.
-    for (update, points, lines, automatic, name) in [
+    for (update, setting, name) in [
         (
             update_before,
-            before,
-            before_lines,
-            spacing.is_some_and(|s| s.before_auto),
+            spacing.and_then(|s| s.before_auto_setting.or(s.before_auto.then_some(true))),
             "w:beforeAutospacing",
         ),
         (
             update_after,
-            after,
-            after_lines,
-            spacing.is_some_and(|s| s.after_auto),
+            spacing.and_then(|s| s.after_auto_setting.or(s.after_auto.then_some(true))),
             "w:afterAutospacing",
         ),
     ] {
-        if update && (automatic || points.or(lines).is_some_and(|v| v.is_finite() && v >= 0.0)) {
+        if let Some(setting) = setting.filter(|_| update) {
             managed.push(XmlAttribute {
                 name: name.to_string(),
-                value: if automatic { "1" } else { "0" }.to_string(),
+                value: if setting { "1" } else { "0" }.to_string(),
             });
         }
     }

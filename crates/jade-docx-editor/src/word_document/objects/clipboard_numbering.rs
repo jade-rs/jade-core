@@ -207,7 +207,7 @@ impl WordDocument {
         let styles_xml = source_part(RelationshipTypes::Styles.as_str())
             .or_else(|| source_part(RelationshipTypes::StylesWithEffects.as_str()))
             .map(|(_, xml)| xml)
-            .unwrap_or_else(|| StylesPart::word_default_xml().into());
+            .unwrap_or_else(|| StylesPart::word_default_xml_for_platform());
         let theme = source_part(RelationshipTypes::Theme.as_str())
             .map(|(_, xml)| ThemePart::from_xml(&xml).map_err(|e| e.to_string()))
             .transpose()?
@@ -319,7 +319,7 @@ impl WordDocument {
         let current_styles = self
             .styles_part_path()
             .and_then(|path| self.read_xml_part_content(&path))
-            .unwrap_or_else(|| StylesPart::word_default_xml().into());
+            .unwrap_or_else(|| StylesPart::word_default_xml_for_platform());
         let current_styles = DocxXmlDocument::parse(&current_styles).map_err(|e| e.to_string())?;
         let styles_changed = styles.root().children.iter().any(|node| {
             let XmlNode::Element(style) = node else { return false; };

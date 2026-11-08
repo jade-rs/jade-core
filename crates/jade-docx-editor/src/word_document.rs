@@ -329,8 +329,8 @@ pub(crate) fn rebase_paragraph_style_properties(
         }};
     }
     rebase_groups!(spacing, "w:spacing",
-        before, before_lines, before_auto => ["w:before", "w:beforeLines", "w:beforeAutospacing"];
-        after, after_lines, after_auto => ["w:after", "w:afterLines", "w:afterAutospacing"];
+        before, before_lines, before_auto, before_auto_setting, before_auto_fallback => ["w:before", "w:beforeLines", "w:beforeAutospacing"];
+        after, after_lines, after_auto, after_auto_setting, after_auto_fallback => ["w:after", "w:afterLines", "w:afterAutospacing"];
         line => ["w:line"];
         line_rule => ["w:line", "w:lineRule"];
     );
@@ -25245,8 +25245,14 @@ impl WordDocument {
             *slot = Some(value.to_border_edge());
         }
         self.sync_borders_xml(cell_id, "w:tcPr", "w:tcBorders", &resolved, bidi_visual)?;
-        let diagonals = self.cell_diagonals_from_style(table_order_index, row, column)?;
-        self.sync_cell_diagonals_xml(cell_id, diagonals)
+        if edges
+            .iter()
+            .any(|(side, _)| matches!(side, BorderSide::Tl2br | BorderSide::Tr2bl))
+        {
+            let diagonals = self.cell_diagonals_from_style(table_order_index, row, column)?;
+            self.sync_cell_diagonals_xml(cell_id, diagonals)?;
+        }
+        Ok(())
     }
 
     /// A cell's diagonals (`w:tl2br`, `w:tr2bl`) as its style keys hold them.
@@ -35020,6 +35026,12 @@ impl WordDocument {
                 .is_some_and(|begin| moved.contains(begin))
         };
         for run in runs {
+            if let Some(field) = run.field.as_mut() {
+                field.source_field_id = field
+                    .source_field_id
+                    .and_then(|id| tail.copies.get(&id).copied());
+            }
+
             run.node_id = match run.node_id {
                 Some(id) if run.field.is_none() || field_moved_whole(&id) => {
                     tail.copies.get(&id).copied()
@@ -36038,14 +36050,6 @@ impl WordDocument {
                 element
                     .attributes
                     .iter()
-                    .filter(|attribute| {
-                        element.name != "w:spacing"
-                            || !matches!(
-                                attribute.name.as_str(),
-                                "w:beforeAutospacing" | "w:afterAutospacing"
-                            )
-                            || matches!(attribute.value.as_str(), "1" | "true" | "on")
-                    })
                     .map(|attribute| (element.name.clone(), attribute.name.clone()))
             })
             .collect()
@@ -36766,13 +36770,6 @@ impl WordDocument {
                             image_alternate_content = Some((element, choice_index, drawing_index));
                         }
                     }
-                }
-                XmlNode::Element(element)
-                    if !preserve_drawings && element.name == "w:pict" && run.text_box.is_some() =>
-                {
-                    // Object edits rebuild the modeled VML text box as DrawingML.
-                    // Keeping the original pict as an unknown child would emit
-                    // a second box and let its stale frame win on reopening.
                 }
                 XmlNode::Element(element)
                     if preserve_drawings && element.name == "w:pict" && run.text_box.is_some() =>
