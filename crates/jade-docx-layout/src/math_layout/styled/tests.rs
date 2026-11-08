@@ -1,6 +1,44 @@
 use super::*;
 use jade_docx_reader::document::MathElementKind;
 use std::cell::RefCell;
+
+#[test]
+fn break_after_reserves_the_trailing_operator_width() {
+    let math = parse("<m:r><m:t>aa+bb+cc+dd+ee+ff+gg+hh</m:t></m:r>");
+    for width in [40.0, 48.0, 60.0, 80.0] {
+        for indent in [0.0, 8.0] {
+            let plan = plan_with(
+                &math,
+                MathLayoutOptions {
+                    max_width: Some(width),
+                    settings: MathSettings {
+                        break_binary: BreakBinary::After,
+                        wrap_indent_px: indent,
+                        ..Default::default()
+                    },
+                    ..display()
+                },
+            );
+            assert!(plan.lines.len() > 1);
+            for line in &plan.lines {
+                assert!(
+                    line.x + line.width <= width + 1e-9,
+                    "width={width}, indent={indent}: {line:?}"
+                );
+            }
+            for line in &plan.lines[..plan.lines.len() - 1] {
+                let last = plan
+                    .glyphs
+                    .iter()
+                    .rev()
+                    .find(|g| g.baseline == line.baseline)
+                    .unwrap();
+                assert_eq!(&plan.text[last.text_range.clone()], "+");
+            }
+        }
+    }
+}
+
 #[derive(Default)]
 struct Measure {
     calls: RefCell<Vec<(String, f64)>>,
