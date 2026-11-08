@@ -904,3 +904,229 @@ proptest! {
         check_history(&edits, windows);
     }
 }
+
+#[test]
+fn render_environment_options_match_fresh_frames_after_toggles() {
+    use jade_docx_layout::line_metrics::{set_word_layout_platform, WordLayoutPlatform};
+    let _restore = RestoreWordPlatform::mac();
+    for platform in [WordLayoutPlatform::Mac, WordLayoutPlatform::Windows] {
+        set_word_layout_platform(platform);
+        for prefix_replay in [false, true] {
+            let mut document =
+                doc_with_paragraph_texts(&["Visible \t soft\u{ad}hyphen 税😀", "UNCHANGED"]);
+            let BodyElement::Paragraph(paragraph) =
+                &mut document.body.as_mut().unwrap().elements[0]
+            else {
+                unreachable!()
+            };
+            let mut hidden = build_run(Some(RunProperties {
+                vanish: Some(true),
+                ..Default::default()
+            }));
+            hidden.text = " HIDDEN".into();
+            paragraph.runs.push(hidden);
+            let (mut warm, painter) = renderer_with_painter();
+            let mut state = PaintState::new();
+            let mut saw_replay = false;
+            // A -> B -> A for each input, both sparse and dense backgrounds, plus
+            // pairs of set bits. Include repeated frames with unchanged settings.
+            let mut masks = vec![0_u16, 0x7ffe, 0, 0x5554, 0x2aaa, 0];
+            for bit in 1..15 {
+                masks.extend([1 << bit, 0, 0x7ffe ^ (1 << bit), 0x7ffe, 0]);
+                for other in (bit + 1)..15 {
+                    masks.extend([(1 << bit) | (1 << other), 0]);
+                }
+            }
+            for (step, mask) in masks.into_iter().enumerate() {
+                let mut options = Options {
+                    render_changes: mask & 4 != 0,
+                    render_original: mask & 8 != 0,
+                    render_comments: mask & 16 != 0,
+                    show_formatting_marks: mask & 32 != 0,
+                    render_footnotes: mask & 64 != 0,
+                    render_endnotes: mask & 128 != 0,
+                    show_crop_marks: false,
+                    ..Default::default()
+                };
+                options.set_dark_mode(mask & 2 != 0);
+                options.set_formatting_mark_kinds(crate::FormattingMarkKinds {
+                    tabs: mask & 512 != 0,
+                    spaces: mask & 1024 != 0,
+                    paragraph_marks: mask & 2048 != 0,
+                    hidden_text: mask & 4096 != 0,
+                    optional_hyphens: mask & 8192 != 0,
+                    anchors: mask & 16384 != 0,
+                });
+                document.snap_to_grid_default = mask & 256 != 0;
+                for repeat in 0..2 {
+                    // Retain paragraph caches across display-option changes.
+                    // Cover both prefix replay and the light/hash lookup paths.
+                    if prefix_replay {
+                        warm.set_incremental_dirty_from(1);
+                    } else {
+                        warm.disable_seek_replay_once();
+                    }
+                    warm.mark_full_repaint();
+                    painter.clear();
+                    warm.render(&document, &options).unwrap();
+                    let (mut fresh, fresh_painter) = renderer_with_painter();
+                    fresh.render(&document, &options).unwrap();
+                    let context = format!(
+                    "platform={platform:?}, prefix={prefix_replay}, step={step}, mask={mask:015b}, repeat={repeat}"
+                );
+                    let warm_layout = serde_json::to_value(warm.layout_debug_lines()).unwrap();
+                    let fresh_layout = serde_json::to_value(fresh.layout_debug_lines()).unwrap();
+                    assert_eq!(
+                        layout_difference(&warm_layout, &fresh_layout),
+                        None,
+                        "{context}"
+                    );
+                    assert_eq!(
+                        ink(&painter, &mut state),
+                        ink(&fresh_painter, &mut PaintState::new()),
+                        "{context}"
+                    );
+                    saw_replay |= warm.paragraph_render_cache_stats().hits > 0;
+                }
+            }
+            assert!(saw_replay, "expected actual cache replay on {platform:?}");
+        }
+    }
+}
+
+// A host refresh can fail before any new paragraph commands are recorded.
+struct FailNextRefreshHost {
+    inner: NonCanvasHost,
+    fail: Rc<std::cell::Cell<bool>>,
+}
+
+impl crate::render_host::CanvasRenderHost for FailNextRefreshHost {
+    type Painter = RecordingPainter;
+    fn painter(&self) -> Self::Painter {
+        self.inner.painter()
+    }
+    fn device_pixel_ratio(&self) -> f64 {
+        self.inner.device_pixel_ratio()
+    }
+    fn update_device_pixel_ratio(&mut self) -> Result<bool, JsValue> {
+        if self.fail.replace(false) {
+            Err(JsValue::NULL)
+        } else {
+            self.inner.update_device_pixel_ratio()
+        }
+    }
+    fn reset_pages(&mut self) -> Result<(), JsValue> {
+        self.inner.reset_pages()
+    }
+    fn configure_base_canvas(
+        &mut self,
+        w: f64,
+        h: f64,
+        pageless: bool,
+        mt: f64,
+    ) -> Result<(), JsValue> {
+        self.inner.configure_base_canvas(w, h, pageless, mt)
+    }
+    fn clear(&mut self, w: f64, pageless: bool, full: f64) -> Result<(), JsValue> {
+        self.inner.clear(w, pageless, full)
+    }
+    fn ensure_pageless_height(&mut self, h: f64, mb: f64) -> Result<(), JsValue> {
+        self.inner.ensure_pageless_height(h, mb)
+    }
+    fn start_new_page(&mut self, w: f64, h: f64, mt: f64) -> Result<(), JsValue> {
+        self.inner.start_new_page(w, h, mt)
+    }
+    fn context(&self) -> &web_sys::CanvasRenderingContext2d {
+        self.inner.context()
+    }
+    fn context_mut(&mut self) -> &mut web_sys::CanvasRenderingContext2d {
+        self.inner.context_mut()
+    }
+    fn device_to_css(&self, v: f64) -> f64 {
+        self.inner.device_to_css(v)
+    }
+    fn canvas_css_size(&self) -> (f64, f64) {
+        self.inner.canvas_css_size()
+    }
+    fn take_paged_snapshots(&mut self) -> Result<Option<Vec<JsValue>>, JsValue> {
+        self.inner.take_paged_snapshots()
+    }
+    fn take_paged_snapshots_for_pages(
+        &mut self,
+        pages: Option<&[usize]>,
+    ) -> Result<Option<Vec<JsValue>>, JsValue> {
+        self.inner.take_paged_snapshots_for_pages(pages)
+    }
+    fn page_count(&self) -> usize {
+        self.inner.page_count()
+    }
+    fn page_dimensions(&self, index: usize) -> Option<(f64, f64)> {
+        self.inner.page_dimensions(index)
+    }
+    fn create_page_bitmap(&self, index: usize) -> Result<js_sys::Promise, JsValue> {
+        self.inner.create_page_bitmap(index)
+    }
+    fn measure_text_width(&self, text: &str) -> Result<f64, JsValue> {
+        self.inner.measure_text_width(text)
+    }
+    fn measure_text_metrics(&self, text: &str) -> Result<jade_painter::TextMetrics, JsValue> {
+        self.inner.measure_text_metrics(text)
+    }
+}
+
+#[test]
+fn render_environment_options_match_fresh_frames_after_failed_refresh() {
+    use jade_docx_layout::line_metrics::{set_word_layout_platform, WordLayoutPlatform};
+    let _restore = RestoreWordPlatform::mac();
+    for platform in [WordLayoutPlatform::Mac, WordLayoutPlatform::Windows] {
+        set_word_layout_platform(platform);
+        let fail = Rc::new(std::cell::Cell::new(false));
+        let painter = RecordingPainter::with_width_per_char(8.0);
+        let mut warm = CanvasRenderer::with_host(
+            Box::new(FailNextRefreshHost {
+                inner: NonCanvasHost {
+                    painter: painter.clone(),
+                },
+                fail: Rc::clone(&fail),
+            }),
+            true,
+        )
+        .unwrap();
+        let document = doc_with_paragraph_texts(&["Visible 税😀", "UNCHANGED"]);
+        let mut options = Options {
+            render_changes: false,
+            render_original: false,
+            render_comments: false,
+            show_formatting_marks: false,
+            show_crop_marks: false,
+            ..Default::default()
+        };
+        let mut state = PaintState::new();
+        warm.render(&document, &options).unwrap();
+        ink(&painter, &mut state);
+        options.set_dark_mode(true);
+        fail.set(true);
+        assert!(warm.render(&document, &options).is_err());
+        for dark_mode in [true, false, true] {
+            options.set_dark_mode(dark_mode);
+            warm.mark_full_repaint();
+            warm.disable_seek_replay_once();
+            painter.clear();
+            warm.render(&document, &options).unwrap();
+            let (mut fresh, fresh_painter) = renderer_with_painter();
+            fresh.render(&document, &options).unwrap();
+            assert_eq!(
+                ink(&painter, &mut state),
+                ink(&fresh_painter, &mut PaintState::new()),
+                "platform={platform:?}, retry dark_mode={dark_mode}"
+            );
+            assert_eq!(
+                layout_difference(
+                    &serde_json::to_value(warm.layout_debug_lines()).unwrap(),
+                    &serde_json::to_value(fresh.layout_debug_lines()).unwrap()
+                ),
+                None
+            );
+        }
+    }
+}

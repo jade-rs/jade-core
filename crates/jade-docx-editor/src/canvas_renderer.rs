@@ -3665,6 +3665,9 @@ where
     /// Using `Rc` avoids expensive cloning of large documents on every render.
     last_document: Option<Rc<Document>>,
     last_options: Option<Options>,
+    /// Previous-frame compatibility captured before last_options becomes current.
+    /// Only set while a render pass is active.
+    render_replay_options_compatible: Option<bool>,
     last_numbering_part: Option<Rc<NumberingPart>>,
     /// Package style catalog used to resolve paragraph and character run
     /// styles without materializing their visual properties as direct OOXML
@@ -6081,6 +6084,11 @@ where
         if !self.incremental_layout_enabled || self.mirror_margins {
             return false;
         }
+        self.render_replay_options_compatible
+            .unwrap_or_else(|| self.last_options_match_for_replay(options))
+    }
+
+    fn last_options_match_for_replay(&self, options: &Options) -> bool {
         let Some(last) = self.last_options.as_ref() else {
             return false;
         };
@@ -8675,6 +8683,7 @@ where
             footer_distance: points_to_px(36.0),
             last_document: None,
             last_options: None,
+            render_replay_options_compatible: None,
             last_numbering_part: None,
             styles_part: None,
             theme_part: None,
@@ -14184,6 +14193,37 @@ where
     }
 
     fn render_with_numbering_rc_once(
+        &mut self,
+        document_rc: Rc<Document>,
+        options: &Options,
+        numbering_part: Option<&NumberingPart>,
+        header_lines: Option<&[HeaderLine]>,
+        footer_lines: Option<&[HeaderLine]>,
+        comments: Option<&HashMap<String, DocumentComment>>,
+    ) -> Result<(), JsValue> {
+        // last_options is also the current pass's drawing configuration. Keep
+        // its previous-frame comparison before that snapshot is replaced.
+        let compatible = self.last_options_match_for_replay(options);
+        let previous = self.render_replay_options_compatible.replace(compatible);
+        let result = self.render_with_numbering_rc_once_inner(
+            document_rc,
+            options,
+            numbering_part,
+            header_lines,
+            footer_lines,
+            comments,
+        );
+        // An early rendering error must not leak a pass's decision to callers.
+        self.render_replay_options_compatible = previous;
+        if result.is_err() {
+            // The failed pass may have replaced last_options without rebuilding
+            // every cached paragraph. Require hash checks on the next render.
+            self.last_options = None;
+        }
+        result
+    }
+
+    fn render_with_numbering_rc_once_inner(
         &mut self,
         document_rc: Rc<Document>,
         options: &Options,
