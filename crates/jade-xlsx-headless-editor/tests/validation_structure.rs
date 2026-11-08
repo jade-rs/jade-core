@@ -156,7 +156,9 @@ fn conditional_standard_and_extended_containers_split_partial_edits_and_rename_s
             container("B", 1)
         );
         let tail = if extended {
-            format!(r#"<s:extLst><s:ext uri="conditional">{branches}</s:ext></s:extLst>"#)
+            format!(
+                r#"<s:extLst><s:ext uri="{{CCE6A557-97BC-4B89-ADB6-D9C93CAAB3DF}}">{branches}</s:ext></s:extLst>"#
+            )
         } else {
             branches
         };
@@ -313,7 +315,7 @@ fn column_deletion_reanchors_relative_columns_and_preserves_absolute_external_co
 #[test]
 fn extended_alternative_formulas_shift_once_and_opaque_branches_and_literals_stay_exact() {
     let mut b = open(
-        r#"<s:extLst><s:ext uri="dv"><x:dataValidations count="2" disablePrompts="1" u:meta="keep"><x:dataValidation type="custom" u:tag="keep"><x:formula1><mc:AlternateContent><mc:Choice Requires="x"><m:f>$C1&gt;0</m:f></mc:Choice><mc:Choice Requires="u"><m:f>opaque!C1</m:f></mc:Choice><mc:Fallback><m:f>$C1&gt;0</m:f></mc:Fallback></mc:AlternateContent></x:formula1><m:sqref>B1:B5</m:sqref><u:formula1><m:f>foreign!C1</m:f></u:formula1></x:dataValidation><x:dataValidation type="list"><mc:AlternateContent><mc:Choice Requires="ac"><ac:list>"B1,B2",=C1</ac:list></mc:Choice><mc:Fallback><x:formula1><m:f>"B1,B2,=C1"</m:f></x:formula1></mc:Fallback></mc:AlternateContent><m:sqref>D1:D5</m:sqref></x:dataValidation></x:dataValidations></s:ext></s:extLst>"#,
+        r#"<s:extLst><s:ext uri="{CCE6A557-97BC-4B89-ADB6-D9C93CAAB3DF}"><x:dataValidations count="2" disablePrompts="1" u:meta="keep"><x:dataValidation type="custom" u:tag="keep"><x:formula1><mc:AlternateContent><mc:Choice Requires="x"><m:f>$C1&gt;0</m:f></mc:Choice><mc:Choice Requires="u"><m:f>opaque!C1</m:f></mc:Choice><mc:Fallback><m:f>$C1&gt;0</m:f></mc:Fallback></mc:AlternateContent></x:formula1><m:sqref>B1:B5</m:sqref><u:formula1><m:f>foreign!C1</m:f></u:formula1></x:dataValidation><x:dataValidation type="list"><mc:AlternateContent><mc:Choice Requires="ac"><ac:list>"B1,B2",=C1</ac:list></mc:Choice><mc:Fallback><x:formula1><m:f>"B1,B2,=C1"</m:f></x:formula1></mc:Fallback></mc:AlternateContent><m:sqref>D1:D5</m:sqref></x:dataValidation></x:dataValidations></s:ext></s:extLst>"#,
     );
     let before = b.bytes().to_vec();
     let name = b.workbook().sheets[0].name.clone();
@@ -378,7 +380,7 @@ fn strict_standard_alternatives_and_cdata_are_shifted_as_formula_text_only() {
 #[test]
 fn deleting_all_coverage_removes_records_but_retains_unmodeled_container_children() {
     let mut b = open(
-        r#"<s:dataValidations count="1"><s:dataValidation type="custom" sqref="B1"><s:formula1>C1</s:formula1></s:dataValidation></s:dataValidations><s:extLst><s:ext uri="dv"><x:dataValidations count="1" u:setting="keep"><x:dataValidation type="custom"><x:formula1><m:f>C1</m:f></x:formula1><m:sqref>B1</m:sqref></x:dataValidation><u:extra>keep</u:extra></x:dataValidations></s:ext></s:extLst>"#,
+        r#"<s:dataValidations count="1"><s:dataValidation type="custom" sqref="B1"><s:formula1>C1</s:formula1></s:dataValidation></s:dataValidations><s:extLst><s:ext uri="{CCE6A557-97BC-4B89-ADB6-D9C93CAAB3DF}"><x:dataValidations count="1" u:setting="keep"><x:dataValidation type="custom"><x:formula1><m:f>C1</m:f></x:formula1><m:sqref>B1</m:sqref></x:dataValidation><u:extra>keep</u:extra></x:dataValidations></s:ext></s:extLst>"#,
     );
     let before = b.bytes().to_vec();
     let name = b.workbook().sheets[0].name.clone();
@@ -523,7 +525,7 @@ fn extended_coverage_alternatives_move_without_modifying_unknown_choices() {
     let unknown = r#"<mc:Choice Requires="u"><m:sqref>Z3</m:sqref></mc:Choice>"#;
     for (primary, expected) in [("B3:B4", "B4:B5"), ("B1", "B1")] {
         let mut b = open(&format!(
-            r#"<s:extLst><s:ext uri="dv"><x:dataValidations count="1"><x:dataValidation type="whole"><x:formula1><m:f>1</m:f></x:formula1><mc:AlternateContent><mc:Choice Requires="x"><m:sqref>{primary}</m:sqref></mc:Choice>{unknown}<mc:Fallback><m:sqref>C3:C4</m:sqref></mc:Fallback></mc:AlternateContent></x:dataValidation></x:dataValidations></s:ext></s:extLst>"#
+            r#"<s:extLst><s:ext uri="{{CCE6A557-97BC-4B89-ADB6-D9C93CAAB3DF}}"><x:dataValidations count="1"><x:dataValidation type="whole"><x:formula1><m:f>1</m:f></x:formula1><mc:AlternateContent><mc:Choice Requires="x"><m:sqref>{primary}</m:sqref></mc:Choice>{unknown}<mc:Fallback><m:sqref>C3:C4</m:sqref></mc:Fallback></mc:AlternateContent></x:dataValidation></x:dataValidations></s:ext></s:extLst>"#
         ));
         let name = b.workbook().sheets[0].name.clone();
         b.insert_rows(&name, 2, 1).unwrap();

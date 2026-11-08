@@ -154,6 +154,7 @@ fn sparklines(xml: &str, rewrite: &Rewrite<'_>) -> Result<String> {
 /// existing namespace and parent-path checks.
 pub(crate) fn rewrite(xml: &str, map: &Rewrite<'_>) -> Result<String> {
     let mut validations = validations(xml, map)?;
+    let extensions = jade_xlsx_reader::worksheet_extensions::sources(xml)?;
     let mut reader = NsReader::from_str(xml);
     let mut main = None;
     let mut stack: Vec<(Vec<u8>, Vec<u8>)> = Vec::new();
@@ -168,6 +169,12 @@ pub(crate) fn rewrite(xml: &str, map: &Rewrite<'_>) -> Result<String> {
         match event {
             Event::Start(ref e) | Event::Empty(ref e) => {
                 let empty = matches!(event, Event::Empty(_));
+                if extensions.opaque_at(start) {
+                    if !empty {
+                        reader.read_to_end(e.name())?;
+                    }
+                    continue;
+                }
                 let ns = namespace(&reader, e.name());
                 let name = e.local_name().as_ref().to_vec();
                 if stack.is_empty()

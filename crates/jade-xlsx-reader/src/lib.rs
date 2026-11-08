@@ -59,6 +59,7 @@ pub mod table;
 pub mod table_reference;
 mod theme;
 pub mod workbook_part;
+pub mod worksheet_extensions;
 pub mod xstring;
 
 pub use cell_shift::CellShift;

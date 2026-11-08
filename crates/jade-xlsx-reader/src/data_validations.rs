@@ -75,6 +75,7 @@ fn records(xml: &str, all_containers: bool) -> Result<Vec<ValidationRecord>> {
         return Ok(Vec::new());
     }
     let mut reader = NsReader::from_str(xml);
+    let extensions = crate::worksheet_extensions::sources(xml)?;
     let mut stack: Vec<(Vec<u8>, Vec<u8>)> = Vec::new();
     let mut main: Option<Vec<u8>> = None;
     let mut container: Option<Container> = None;
@@ -90,6 +91,12 @@ fn records(xml: &str, all_containers: bool) -> Result<Vec<ValidationRecord>> {
         match event {
             Event::Start(ref e) | Event::Empty(ref e) => {
                 let empty = matches!(event, Event::Empty(_));
+                if extensions.opaque_at(start) {
+                    if !empty {
+                        reader.read_to_end(e.name())?;
+                    }
+                    continue;
+                }
                 scope.push(&reader, e)?;
                 let ns = match reader.resolver().resolve_element(e.name()).0 {
                     ResolveResult::Unbound => Vec::new(),
@@ -157,6 +164,10 @@ fn records(xml: &str, all_containers: bool) -> Result<Vec<ValidationRecord>> {
                     (
                         own && path.len() == 1,
                         ns == X14_NAMESPACE
+                            && extensions.owns_payload_at(
+                                start,
+                                crate::worksheet_extensions::Kind::Validations,
+                            )
                             && path.len() == 3
                             && main.as_ref().is_some_and(|m| {
                                 path[1].0 == *m

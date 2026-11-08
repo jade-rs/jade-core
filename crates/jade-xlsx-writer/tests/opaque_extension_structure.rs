@@ -75,19 +75,50 @@ fn unknown_extension_uri_keeps_standard_named_payloads_opaque() {
         "http://schemas.microsoft.com/office/excel/2006/main",
         "http://schemas.microsoft.com/office/spreadsheetml/2009/9/main",
     ] {
-        let payload = format!(
-            r#"<q:mergeCells xmlns:q="{namespace}" count="1"><q:mergeCell ref="D4:E5"/></q:mergeCells>"#
-        );
-        let sheet = format!(
-            r#"<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData/><mergeCells count="1"><mergeCell ref="D4:E5"/></mergeCells><extLst><ext uri="urn:unknown-extension">{payload}</ext></extLst></worksheet>"#
-        );
-        let mut book =
-            HeadlessWorkbook::open_for_editing(&common::workbook_with_sheet(&sheet)).unwrap();
-        book.insert_rows("Sheet1", 1, 1).unwrap();
-        assert_eq!(
-            book.workbook().sheets[0].merges,
-            [CellRange::parse("D5:E6").unwrap()]
-        );
-        assert_payload(&book.save_bytes().unwrap(), &payload);
+        for uri in [
+            "urn:unknown-extension",
+            "{CCE6A557-97BC-4B89-ADB6-D9C93CAAB3DF}",
+        ] {
+            let payload = format!(
+                r#"<q:mergeCells xmlns:q="{namespace}" count="1"><q:mergeCell ref="D4:E5"/></q:mergeCells>"#
+            );
+            let sheet = format!(
+                r#"<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData/><mergeCells count="1"><mergeCell ref="D4:E5"/></mergeCells><extLst><ext uri="{uri}">{payload}</ext></extLst></worksheet>"#
+            );
+            let mut book =
+                HeadlessWorkbook::open_for_editing(&common::workbook_with_sheet(&sheet)).unwrap();
+            book.insert_rows("Sheet1", 1, 1).unwrap();
+            assert_eq!(
+                book.workbook().sheets[0].merges,
+                [CellRange::parse("D5:E6").unwrap()]
+            );
+            assert_payload(&book.save_bytes().unwrap(), &payload);
+        }
     }
+}
+
+#[test]
+fn unknown_validation_extensions_are_not_interpreted_as_input_rules() {
+    let opaque = r#"<ext uri="urn:future"><x:dataValidations count="1"><x:dataValidation type="custom"><x:formula1><m:f>Sheet1!A4&gt;0</m:f></x:formula1><m:sqref>D4:D5</m:sqref></x:dataValidation></x:dataValidations></ext>"#;
+    let sheet = format!(
+        r#"<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:x="http://schemas.microsoft.com/office/spreadsheetml/2009/9/main" xmlns:m="http://schemas.microsoft.com/office/excel/2006/main"><sheetData/><extLst>{opaque}<ext uri="{{CCE6A557-97BC-4B89-ADB6-D9C93CAAB3DF}}"><x:dataValidations count="1"><x:dataValidation type="custom"><x:formula1><m:f>Sheet1!$A1&gt;0</m:f></x:formula1><m:sqref>H3:H5</m:sqref></x:dataValidation></x:dataValidations></ext></extLst></worksheet>"#
+    );
+    let mut book =
+        HeadlessWorkbook::open_for_editing(&common::workbook_with_sheet(&sheet)).unwrap();
+    assert_eq!(book.workbook().sheets[0].data_validations.len(), 1);
+    book.insert_rows("Sheet1", 1, 1).unwrap();
+    assert_eq!(
+        book.workbook().sheets[0].data_validations[0].ranges,
+        [CellRange::parse("H4:H6").unwrap()]
+    );
+    book.rename_sheet("Sheet1", "Renamed").unwrap();
+    assert_payload(&book.save_bytes().unwrap(), opaque);
+    let reopened = HeadlessWorkbook::open(&book.save_bytes().unwrap()).unwrap();
+    assert_eq!(reopened.workbook().sheets[0].data_validations.len(), 1);
+    assert_eq!(
+        reopened.workbook().sheets[0].data_validations[0]
+            .formula1
+            .as_deref(),
+        Some("Renamed!$A2>0")
+    );
 }

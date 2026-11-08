@@ -19,8 +19,8 @@
 //! it — rather than rewritten.
 
 use quick_xml::events::Event;
-use quick_xml::name::{QName, ResolveResult};
-use quick_xml::{NsReader, Reader};
+use quick_xml::name::QName;
+use quick_xml::Reader;
 
 use jade_opc::OpcPackage;
 use jade_xlsx_reader::{shift_formula, Axis, CellRange, CellRef, Sheet, StructureChange, Workbook};
@@ -167,7 +167,8 @@ pub fn shift_sheet(
     }
     let grid = jade_xlsx_reader::cell_content::compatible_worksheet_source(xml)?;
     let processed = jade_xlsx_reader::process_content::processed_elements(xml)?;
-    let mut reader = NsReader::from_str(xml);
+    let extensions = jade_xlsx_reader::worksheet_extensions::sources(xml)?;
+    let mut reader = Reader::from_str(xml);
     reader.config_mut().trim_text(false);
     let mut buf = Vec::new();
     let mut splices: Vec<Splice> = Vec::new();
@@ -204,7 +205,6 @@ pub fn shift_sheet(
                                                                        // range went is removed whole.
     let mut ext_containers: Vec<(usize, Vec<u8>, bool)> = Vec::new();
     let mut sqref_content: Option<usize> = None;
-    let mut main_namespace = None::<Vec<u8>>;
 
     loop {
         let start = reader.buffer_position() as usize;
@@ -214,51 +214,19 @@ pub fn shift_sheet(
                 let empty = matches!(event, Event::Empty(_));
                 let name = element.name().as_ref().to_vec();
                 let head_end = reader.buffer_position() as usize;
-                let whole_end = |reader: &mut NsReader<&[u8]>| -> Result<usize> {
+                let whole_end = |reader: &mut Reader<&[u8]>| -> Result<usize> {
                     if !empty {
-                        reader.read_to_end(QName(&name))?;
+                        reader.read_to_end_into(QName(&name), &mut Vec::new())?;
                     }
                     Ok(reader.buffer_position() as usize)
                 };
                 // A processed foreign wrapper contributes children, but its
                 // own name/attributes never participate in feature dispatch.
-                if processed.processes_content_at(start) {
+                if extensions.opaque_at(start) {
+                    whole_end(&mut reader)?;
                     continue;
                 }
-                let namespace = match reader.resolver().resolve_element(element.name()).0 {
-                    ResolveResult::Bound(ns) => Some(ns.0),
-                    ResolveResult::Unbound => Some(b"".as_slice()),
-                    ResolveResult::Unknown(_) => None,
-                };
-                if main_namespace.is_none()
-                    && local(&name) == b"worksheet"
-                    && namespace.is_some_and(|ns| {
-                        matches!(
-                            ns,
-                            b"" | b"http://schemas.openxmlformats.org/spreadsheetml/2006/main"
-                                | b"http://purl.oclc.org/ooxml/spreadsheetml/main"
-                        )
-                    })
-                {
-                    main_namespace = namespace.map(<[u8]>::to_vec);
-                }
-                let understood = namespace.is_some_and(|ns| {
-                    main_namespace.as_deref() == Some(ns)
-                        || matches!(
-                            ns,
-                            b"http://schemas.microsoft.com/office/spreadsheetml/2009/9/main"
-                                | b"http://schemas.microsoft.com/office/excel/2006/main"
-                        )
-                        || (ns == jade_xlsx_reader::data_validations::MC_NAMESPACE
-                            && matches!(
-                                local(&name),
-                                b"AlternateContent" | b"Choice" | b"Fallback"
-                            ))
-                });
-                // Keep an opaque namespace subtree whole, including any
-                // familiar-looking descendants in its private payload.
-                if !understood {
-                    whole_end(&mut reader)?;
+                if processed.processes_content_at(start) {
                     continue;
                 }
                 if matches!(local(&name), b"sheetData" | b"row" | b"c" | b"f")

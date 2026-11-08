@@ -139,7 +139,7 @@ fn nested_extended_validation_containers_resolve_local_capabilities_and_empty_ch
         )
     };
     let body = format!(
-        r#"<s:sheetData/><s:extLst><s:ext uri="test"><mc:AlternateContent><mc:Choice xmlns:q="{x14}" Requires="q"><mc:AlternateContent><mc:Choice xmlns:q="urn:rebound" Requires="q">{}</mc:Choice><mc:Fallback>{}</mc:Fallback></mc:AlternateContent></mc:Choice><mc:Fallback>{}</mc:Fallback></mc:AlternateContent></s:ext></s:extLst>"#,
+        r#"<s:sheetData/><s:extLst><s:ext uri="{{CCE6A557-97BC-4B89-ADB6-D9C93CAAB3DF}}"><mc:AlternateContent><mc:Choice xmlns:q="{x14}" Requires="q"><mc:AlternateContent><mc:Choice xmlns:q="urn:rebound" Requires="q">{}</mc:Choice><mc:Fallback>{}</mc:Fallback></mc:AlternateContent></mc:Choice><mc:Fallback>{}</mc:Fallback></mc:AlternateContent></s:ext></s:extLst>"#,
         container(99),
         container(3),
         container(2)
