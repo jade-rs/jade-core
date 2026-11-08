@@ -5,7 +5,7 @@ use crate::{
     cell_shift::{
         aggregate_rule, children_map, head_attr, leaf_text, rule_formula, rule_pieces, text_content,
     },
-    patch::{apply, local, Splice},
+    patch::{apply, Splice},
     shift::{range_text, reference_text},
     xml_edit, xml_edit_ns, Result,
 };
@@ -365,10 +365,104 @@ pub(crate) fn move_extensions(
     normalize_priorities_and_uids(&result, ids)
 }
 
+// Familiar names inside foreign children do not identify feature records.
+fn identity_roots(
+    xml: &str,
+    sources: &jade_xlsx_reader::worksheet_extensions::Sources,
+) -> Result<BTreeMap<usize, bool>> {
+    use jade_xlsx_reader::{
+        data_validations::all_supported_validation_containers, worksheet_extensions::Kind,
+    };
+    let mut validations: BTreeMap<usize, BTreeSet<usize>> = BTreeMap::new();
+    for record in all_supported_validation_containers(xml)? {
+        validations
+            .entry(record.container.start)
+            .or_default()
+            .insert(record.index);
+    }
+    let mut reader = NsReader::from_str(xml);
+    let mut depth = 0usize;
+    let mut validation: Option<(usize, Vec<u8>, BTreeSet<usize>, usize)> = None;
+    let mut conditional: Option<(usize, Vec<u8>)> = None;
+    let mut conditional_list: Option<usize> = None;
+    let mut result = BTreeMap::new();
+    loop {
+        let start = reader.buffer_position() as usize;
+        let event = reader.read_event()?;
+        match event {
+            Event::Start(ref e) | Event::Empty(ref e) => {
+                let empty = matches!(event, Event::Empty(_));
+                if sources.opaque_at(start) {
+                    if !empty {
+                        reader.read_to_end(e.name())?;
+                    }
+                    continue;
+                }
+                let ns = match reader.resolver().resolve_element(e.name()).0 {
+                    ResolveResult::Bound(ns) => ns.as_ref().to_vec(),
+                    _ => Vec::new(),
+                };
+                let name = e.local_name();
+                let name = name.as_ref();
+                if let Some((at, own, indices, next)) = validation.as_mut() {
+                    if depth == *at + 1 && ns == *own && name == b"dataValidation" {
+                        if indices.contains(next) {
+                            result.insert(start, false);
+                        }
+                        *next += 1;
+                    }
+                }
+                if conditional
+                    .as_ref()
+                    .is_some_and(|(at, own)| depth == at + 1 && ns == *own)
+                    && name == b"cfRule"
+                {
+                    result.insert(start, true);
+                }
+                if !empty {
+                    if let Some(indices) = validations.remove(&start) {
+                        validation = Some((depth, ns.clone(), indices, 0));
+                    }
+                    if sources.owns_conditional_at(start)
+                        || (conditional_list.is_some_and(|at| depth == at + 1)
+                            && ns == X14
+                            && name == b"conditionalFormatting")
+                    {
+                        result.insert(start, false);
+                        conditional = Some((depth, ns));
+                    }
+                    if sources.owns_payload_at(start, Kind::ConditionalFormats) {
+                        conditional_list = Some(depth);
+                    }
+                    depth += 1;
+                }
+            }
+            Event::End(_) => {
+                depth = depth.saturating_sub(1);
+                if validation
+                    .as_ref()
+                    .is_some_and(|(at, _, _, _)| *at == depth)
+                {
+                    validation = None;
+                }
+                if conditional.as_ref().is_some_and(|(at, _)| *at == depth) {
+                    conditional = None;
+                }
+                if conditional_list == Some(depth) {
+                    conditional_list = None;
+                }
+            }
+            Event::Eof => return Ok(result),
+            _ => {}
+        }
+    }
+}
+
 // Priority is shared by standard and standalone extended rules. Paired x14
 // rules deliberately omit it; adding a priority would change their meaning.
 fn normalize_priorities_and_uids(xml: &str, ids: &mut IdPool) -> Result<String> {
     let extensions = jade_xlsx_reader::worksheet_extensions::sources(xml)?;
+    let owned = identity_roots(xml, &extensions)?;
     let mut reader = NsReader::from_str(xml);
     let mut edits = Vec::new();
     let mut rules = Vec::new();
@@ -385,19 +479,14 @@ fn normalize_priorities_and_uids(xml: &str, ids: &mut IdPool) -> Result<String> 
                     continue;
                 }
                 let end = reader.buffer_position() as usize;
-                let (ns, _) = reader.resolver().resolve_element(e.name());
-                let known = matches!(ns,ResolveResult::Bound(ref n) if matches!(n.as_ref(),
-                    b"http://schemas.openxmlformats.org/spreadsheetml/2006/main" |
-                    b"http://purl.oclc.org/ooxml/spreadsheetml/main" |
-                    b"http://schemas.microsoft.com/office/spreadsheetml/2009/9/main"));
-                if !known {
+                let Some(conditional) = owned.get(&start) else {
                     continue;
-                }
+                };
                 let mut updates = Vec::new();
                 for attr in e.attributes() {
                     let attr = attr?;
                     let value = attr.unescape_value()?.into_owned();
-                    if local(e.name().as_ref()) == b"cfRule" && attr.key.as_ref() == b"priority" {
+                    if *conditional && attr.key.as_ref() == b"priority" {
                         if let Ok(priority) = value.parse::<u32>() {
                             rules.push((priority, start, end));
                         }

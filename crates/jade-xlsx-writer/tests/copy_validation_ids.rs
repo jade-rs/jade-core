@@ -172,3 +172,67 @@ fn optional_foreign_and_unprocessed_input_rule_ids_are_preserved() {
         assert!(copied.contains(&payload), "{copied}");
     }
 }
+
+#[test]
+fn splitting_input_rules_assigns_independent_revision_ids() {
+    use jade_xlsx_reader::{Axis, CellRange};
+    for ns in [
+        "http://schemas.openxmlformats.org/spreadsheetml/2006/main",
+        "http://purl.oclc.org/ooxml/spreadsheetml/main",
+    ] {
+        for alias in ["q", "rev"] {
+            let foreign = format!("<u:data {alias}:uid=\"{}\"><dataValidation {alias}:uid=\"{}\" sqref=\"Z1\"/><cfRule priority=\"1\"/></u:data>", IDS[2], IDS[0]);
+            let opaque = format!("<ext uri=\"urn:opaque\"><x:dataValidations count=\"1\"><x:dataValidation {alias}:uid=\"{}\" type=\"custom\"><x:formula1><m:f>1</m:f></x:formula1><m:sqref>B2:D4</m:sqref></x:dataValidation></x:dataValidations></ext>", IDS[2]);
+            let body = format!("<dataValidations count=\"1\"><dataValidation {alias}:uid=\"{}\" type=\"custom\" sqref=\"B2:D4\" u:uid=\"keep\"><formula1>A1</formula1>{foreign}</dataValidation></dataValidations><extLst>{opaque}<ext uri=\"{DV}\"><x:dataValidations count=\"1\"><x:dataValidation {alias}:uid=\"{}\" type=\"custom\" u:uid=\"keep\"><x:formula1><m:f>A1</m:f></x:formula1><m:sqref>B2:D4</m:sqref>{foreign}</x:dataValidation></x:dataValidations></ext></extLst>", IDS[0], IDS[1]);
+            for mode in 0..3 {
+                let body = match mode {
+                    1 => format!("<u:pass>{body}</u:pass>"),
+                    2 => format!("<mc:AlternateContent><mc:Choice Requires=\"u\"><u:ignored/></mc:Choice><mc:Fallback>{body}</mc:Fallback></mc:AlternateContent>"),
+                    _ => body.clone(),
+                };
+                for axis in [Axis::Rows, Axis::Columns] {
+                    for inserted in [false, true] {
+                        let mut book = open(ns, alias, &body);
+                        let before = book.bytes().to_vec();
+                        book.shift_cells("Sheet1", CellRange::parse("C3").unwrap(), axis, inserted)
+                            .unwrap();
+                        let after = book.bytes().to_vec();
+                        book.undo().unwrap();
+                        assert_eq!(book.bytes(), before);
+                        book.redo().unwrap();
+                        assert_eq!(book.bytes(), after);
+                        let bytes = book.save_bytes().unwrap();
+                        let xml = OpcPackage::open(&bytes)
+                            .unwrap()
+                            .required_part_str("xl/worksheets/sheet1.xml")
+                            .unwrap();
+                        let ids = owned_ids(&xml, alias);
+                        assert!(ids.len() > 2, "{xml}");
+                        assert_eq!(
+                            ids.iter().collect::<BTreeSet<_>>().len(),
+                            ids.len(),
+                            "split rules share IDs: {xml}"
+                        );
+                        for source in &IDS[..2] {
+                            assert_eq!(
+                                ids.iter().filter(|id| id.as_str() == *source).count(),
+                                1,
+                                "{xml}"
+                            );
+                        }
+                        assert!(!ids.iter().any(|id| id == IDS[2]), "{xml}");
+                        assert!(xml.contains(&opaque), "{xml}");
+                        assert_eq!(xml.matches(&foreign).count(), ids.len(), "{xml}");
+                        assert_eq!(xml.matches("u:uid=\"keep\"").count(), ids.len(), "{xml}");
+                        let mut reopened = HeadlessWorkbook::open_for_editing(&bytes).unwrap();
+                        let saved = OpcPackage::open(&reopened.save_bytes().unwrap())
+                            .unwrap()
+                            .required_part_str("xl/worksheets/sheet1.xml")
+                            .unwrap();
+                        assert_eq!(saved, xml);
+                    }
+                }
+            }
+        }
+    }
+}
