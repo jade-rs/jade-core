@@ -22,6 +22,7 @@ pub(super) struct BorrowedParagraphHashableProps<'a> {
 }
 
 impl<'a> From<&'a ParagraphProperties> for BorrowedParagraphHashableProps<'a> {
+    #[inline]
     fn from(props: &'a ParagraphProperties) -> Self {
         let spacing = props.spacing.as_ref();
         let indent = props.indent.as_ref();
