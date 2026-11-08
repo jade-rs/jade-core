@@ -137,7 +137,7 @@ fn namespace_aliases_and_x14_wrappers_select_the_same_literal_candidates() {
         "../../../public/fixtures/sample-workbook.xlsx"
     ))
     .unwrap();
-    p.replace(PART,format!(r#"<s:worksheet xmlns:s="http://purl.oclc.org/ooxml/spreadsheetml/main" xmlns:x="http://schemas.microsoft.com/office/spreadsheetml/2009/9/main" xmlns:m="http://schemas.microsoft.com/office/excel/2006/main" xmlns:c="{MC}" xmlns:l="{AC}"><s:sheetData/><s:extLst><s:ext uri="dv"><x:dataValidations count="1"><x:dataValidation type="list" showDropDown="1"><c:AlternateContent><c:Choice Requires="l"><l:list>"a,b",c</l:list></c:Choice><c:Fallback><x:formula1><m:f>"fallback"</m:f></x:formula1></c:Fallback></c:AlternateContent><m:sqref>B1:B5</m:sqref></x:dataValidation></x:dataValidations></s:ext></s:extLst></s:worksheet>"#).into_bytes());
+    p.replace(PART,format!(r#"<s:worksheet xmlns:s="http://purl.oclc.org/ooxml/spreadsheetml/main" xmlns:x="http://schemas.microsoft.com/office/spreadsheetml/2009/9/main" xmlns:m="http://schemas.microsoft.com/office/excel/2006/main" xmlns:c="{MC}" xmlns:l="{AC}"><s:sheetData/><s:extLst><s:ext uri="{{CCE6A557-97BC-4B89-ADB6-D9C93CAAB3DF}}"><x:dataValidations count="1"><x:dataValidation type="list" showDropDown="1"><c:AlternateContent><c:Choice Requires="l"><l:list>"a,b",c</l:list></c:Choice><c:Fallback><x:formula1><m:f>"fallback"</m:f></x:formula1></c:Fallback></c:AlternateContent><m:sqref>B1:B5</m:sqref></x:dataValidation></x:dataValidations></s:ext></s:extLst></s:worksheet>"#).into_bytes());
     let mut b = HeadlessWorkbook::open(&p.write().unwrap()).unwrap();
     assert_eq!(list(&b), texts(&["a,b", "c"]));
     let mut r = b.workbook().sheets[0].data_validations[0].clone();
@@ -230,7 +230,7 @@ fn x14_formula_leaf_alternatives_are_updated_without_adding_a_duplicate_direct_l
         "../../../public/fixtures/sample-workbook.xlsx"
     ))
     .unwrap();
-    p.replace(PART,format!(r#"<worksheet xmlns="{MAIN}" xmlns:x="http://schemas.microsoft.com/office/spreadsheetml/2009/9/main" xmlns:m="http://schemas.microsoft.com/office/excel/2006/main" xmlns:c="{MC}"><sheetData/><extLst><ext uri="dv"><x:dataValidations count="1"><x:dataValidation type="whole" operator="lessThan"><x:formula1><c:AlternateContent><c:Choice Requires="x"><m:f>10</m:f></c:Choice><c:Fallback><m:f>5</m:f></c:Fallback></c:AlternateContent></x:formula1><m:sqref>B1</m:sqref></x:dataValidation></x:dataValidations></ext></extLst></worksheet>"#).into_bytes());
+    p.replace(PART,format!(r#"<worksheet xmlns="{MAIN}" xmlns:x="http://schemas.microsoft.com/office/spreadsheetml/2009/9/main" xmlns:m="http://schemas.microsoft.com/office/excel/2006/main" xmlns:c="{MC}"><sheetData/><extLst><ext uri="{{CCE6A557-97BC-4B89-ADB6-D9C93CAAB3DF}}"><x:dataValidations count="1"><x:dataValidation type="whole" operator="lessThan"><x:formula1><c:AlternateContent><c:Choice Requires="x"><m:f>10</m:f></c:Choice><c:Fallback><m:f>5</m:f></c:Fallback></c:AlternateContent></x:formula1><m:sqref>B1</m:sqref></x:dataValidation></x:dataValidations></ext></extLst></worksheet>"#).into_bytes());
     let mut b = HeadlessWorkbook::open(&p.write().unwrap()).unwrap();
     let s = b.workbook().sheets[0].name.clone();
     let mut r = b.workbook().sheets[0].data_validations[0].clone();

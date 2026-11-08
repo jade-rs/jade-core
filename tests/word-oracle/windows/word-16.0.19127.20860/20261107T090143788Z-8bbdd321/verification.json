@@ -1,0 +1,31 @@
+{
+  "engine_commit": "2b8815ede7a1706bff8121e28c19c7b93977d39f",
+  "word_product_version": "16.0.19127.20860",
+  "capture_id": "20261107T090143788Z-8bbdd321",
+  "reference_kind": "emf",
+  "engine_source_worktree_dirty": false,
+  "strict_fixtures": [
+    "word-windows-edge-table-collapsed-hairline-borders-compat12",
+    "word-windows-edge-table-collapsed-hairline-borders-compat14",
+    "word-windows-edge-table-collapsed-hairline-borders-compat15",
+    "word-windows-edge-table-spacing-hairline-borders-compat12",
+    "word-windows-edge-table-spacing-hairline-borders-compat14",
+    "word-windows-edge-table-spacing-hairline-borders-compat15"
+  ],
+  "matching_fixtures": [
+    "word-windows-edge-table-collapsed-hairline-borders-compat12",
+    "word-windows-edge-table-collapsed-hairline-borders-compat14",
+    "word-windows-edge-table-collapsed-hairline-borders-compat15",
+    "word-windows-edge-table-spacing-hairline-borders-compat12",
+    "word-windows-edge-table-spacing-hairline-borders-compat14",
+    "word-windows-edge-table-spacing-hairline-borders-compat15"
+  ],
+  "pending_fixtures": [
+    "word-windows-edge-table-collapsed-implicit-mixed-borders-compat12",
+    "word-windows-edge-table-collapsed-implicit-mixed-borders-compat14",
+    "word-windows-edge-table-collapsed-implicit-mixed-borders-compat15",
+    "word-windows-edge-table-collapsed-mixed-borders-compat12",
+    "word-windows-edge-table-collapsed-mixed-borders-compat14",
+    "word-windows-edge-table-collapsed-mixed-borders-compat15"
+  ]
+}

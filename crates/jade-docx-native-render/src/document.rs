@@ -2574,6 +2574,16 @@ impl NativeDocument {
             .map_err(|_| "full layout capture failed".to_owned())
     }
 
+    /// Capture original table glyph origins even when painter clipping hides
+    /// them, for comparison with Word's complete EMF text records.
+    pub fn capture_full_layout_debug_unclipped_tables(
+        &mut self,
+    ) -> Result<FullLayoutDebugSnapshot, String> {
+        self.renderer
+            .capture_full_layout_debug_unclipped_tables()
+            .map_err(|_| "unclipped table layout capture failed".to_owned())
+    }
+
     /// The clock `DATE` and `TIME` fields show from the next repaint, as
     /// Word updates them when a document is opened or printed; `None` keeps
     /// their saved results.

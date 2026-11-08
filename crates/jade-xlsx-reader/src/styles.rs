@@ -145,7 +145,9 @@ pub fn parse_styles(xml: &str) -> Result<StyleTable> {
                             match attribute.key.as_ref() {
                                 b"numFmtId" => id = attribute.unescape_value()?.parse::<u32>().ok(),
                                 b"formatCode" => {
-                                    code = Some(attribute.unescape_value()?.into_owned())
+                                    code = Some(crate::xstring::decode_xstring(
+                                        &attribute.unescape_value()?,
+                                    ))
                                 }
                                 _ => {}
                             }

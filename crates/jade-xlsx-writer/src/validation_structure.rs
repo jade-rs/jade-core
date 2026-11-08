@@ -3,7 +3,7 @@
 use std::collections::BTreeMap;
 
 use jade_xlsx_reader::{
-    data_validations::{validation_records, ValidationRecord},
+    data_validations::{all_supported_validation_containers, ValidationRecord},
     shift_formula, translate_formula, Axis, CellRange, CellRef, StructureChange,
 };
 
@@ -23,7 +23,7 @@ pub(crate) fn containers(
     change: &StructureChange,
 ) -> Result<BTreeMap<usize, String>> {
     let mut groups: BTreeMap<usize, Vec<ValidationRecord>> = BTreeMap::new();
-    for record in validation_records(xml)? {
+    for record in all_supported_validation_containers(xml)? {
         groups
             .entry(record.container.start)
             .or_default()
@@ -140,7 +140,7 @@ pub(crate) fn containers(
     Ok(result)
 }
 
-fn surviving_start(range: CellRange, change: &StructureChange) -> CellRef {
+pub(crate) fn surviving_start(range: CellRange, change: &StructureChange) -> CellRef {
     let mut source = range.start;
     if !change.inserted {
         let index = match change.axis {

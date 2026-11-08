@@ -16,6 +16,18 @@ fn formula(b: &mut Workbook, target: &str, text: &str) {
     cell.formula = Some(text.into());
     cell.value = CellValue::Number(999.);
     row.cells.push(cell);
+    // This helper authors new AE formulas rather than importing plain OOXML.
+    let reference = at(target);
+    b.sheets[1]
+        .array_formulas
+        .push(jade_xlsx_reader::ArrayFormula {
+            anchor: reference,
+            range: CellRange {
+                start: reference,
+                end: reference,
+            },
+            kind: jade_xlsx_reader::ArrayFormulaKind::Dynamic,
+        });
 }
 #[test]
 fn tracing_is_opt_in_and_keeps_the_same_calculation_values() {
