@@ -218,12 +218,15 @@ pub fn shift_sheet(
                     }
                     Ok(reader.buffer_position() as usize)
                 };
+                // A processed foreign wrapper contributes children, but its
+                // own name/attributes never participate in feature dispatch.
+                if grid.processes_content_at(start) {
+                    continue;
+                }
                 if matches!(local(&name), b"sheetData" | b"row" | b"c" | b"f")
                     && !grid.owns_start(start)
                 {
-                    if !grid.processes_content_at(start) {
-                        whole_end(&mut reader)?;
-                    }
+                    whole_end(&mut reader)?;
                     continue;
                 }
                 if matches!(local(&name), b"protectedRanges" | b"protectedRange") {
@@ -235,9 +238,7 @@ pub fn shift_sheet(
                     }
                     continue;
                 }
-                if matches!(local(&name), b"dataValidations" | b"dataValidation")
-                    && !grid.processes_content_at(start)
-                {
+                if matches!(local(&name), b"dataValidations" | b"dataValidation") {
                     let end = whole_end(&mut reader)?;
                     if let Some(text) = validations.remove(&start) {
                         if text != xml[start..end] {
@@ -688,6 +689,7 @@ pub fn shift_sheet(
                     _ => {}
                 }
             }
+            Event::End(_) if grid.processes_content_end_at(start) => {}
             Event::End(ref element)
                 if matches!(
                     local(element.name().as_ref()),

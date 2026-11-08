@@ -20,6 +20,12 @@ fn processed_validation_wrappers_named_like_sheet_elements_keep_inner_edits() {
         "row",
         "c",
         "f",
+        "protectedRanges",
+        "mergeCells",
+        "rowBreaks",
+        "colBreaks",
+        "conditionalFormatting",
+        "extLst",
     ] {
         let tail = format!(
             r#"<u:{wrapper} mc:Ignorable="u" mc:ProcessContent="u:{wrapper}">{opaque}<s:dataValidations count="1"><s:dataValidation type="custom" sqref="B1:B3"><s:formula1>$C1&gt;0</s:formula1></s:dataValidation></s:dataValidations></u:{wrapper}>"#

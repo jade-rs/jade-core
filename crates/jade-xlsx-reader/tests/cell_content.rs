@@ -8,6 +8,26 @@ const STRICT: &str = "http://purl.oclc.org/ooxml/spreadsheetml/main";
 const MC: &str = "http://schemas.openxmlformats.org/markup-compatibility/2006";
 
 #[test]
+fn compatible_structure_records_processed_closings_without_opaque_branch_offsets() {
+    let xml = worksheet(r#"<s:sheetData/><u:wrap><u:wrap/></u:wrap><mc:AlternateContent><mc:Choice Requires="u"><u:wrap></u:wrap></mc:Choice><mc:Fallback><u:wrap></u:wrap></mc:Fallback></mc:AlternateContent>"#)
+        .replace("<s:worksheet ", "<s:worksheet mc:Ignorable=\"u\" mc:ProcessContent=\"u:wrap\" ");
+    let source = jade_xlsx_reader::cell_content::compatible_worksheet_source(&xml).unwrap();
+    assert_eq!(
+        xml.match_indices("<u:wrap")
+            .map(|(at, _)| source.processes_content_at(at))
+            .collect::<Vec<_>>(),
+        [true, true, false, true]
+    );
+    assert_eq!(
+        xml.match_indices("</u:wrap>")
+            .map(|(at, _)| source.processes_content_end_at(at))
+            .collect::<Vec<_>>(),
+        [true, false, true]
+    );
+    assert!(!source.processes_content_end_at(xml.find("</s:worksheet>").unwrap()));
+}
+
+#[test]
 fn processed_validation_containers_use_expanded_names_and_scoped_ignorable_declarations() {
     let rule = r#"<s:dataValidations count="1"><s:dataValidation type="whole" operator="equal" sqref="A1"><s:formula1>3</s:formula1></s:dataValidation></s:dataValidations>"#;
     for main in [MAIN, STRICT] {
