@@ -4726,9 +4726,11 @@ mod tests {
     }
 
     #[test]
-    fn stripe_approximation_without_fill_uses_color() {
+    fn stripes_without_fill_keep_foreground_separate_from_background() {
         let s = shading(Some("horzStripe"), Some("#ABCDEF"), None);
-        assert_eq!(s.resolved_background_color().as_deref(), Some("#ABCDEF"));
+        assert_eq!(s.resolved_background_color(), None);
+        assert_eq!(s.pattern_color(), "#ABCDEF");
+        assert_eq!(s.pattern().unwrap().lines, ShadingLines::Horizontal);
     }
 
     #[test]
