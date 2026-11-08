@@ -1338,13 +1338,28 @@ fn balanced_space_width_px(
     crate::line_metrics::word_balanced_space_advance_px(paragraph.word_platform, font_descriptor)
 }
 
+// Specialize the run's grid switch once instead of branching at every
+// adjustment of every grapheme. Both paths use the same width algorithm.
+#[inline]
 fn compute_grapheme_advance_with_ascii_width(
     context: GraphemeAdvanceContext<'_>,
     requested_ascii_width: Option<f64>,
     resolved_style: Option<&ResolvedRunStyle>,
 ) -> GraphemeAdvance {
+    if context.snap_to_grid {
+        compute_grapheme_advance_for_grid::<true>(context, requested_ascii_width, resolved_style)
+    } else {
+        compute_grapheme_advance_for_grid::<false>(context, requested_ascii_width, resolved_style)
+    }
+}
+
+fn compute_grapheme_advance_for_grid<const SNAP_TO_GRID: bool>(
+    context: GraphemeAdvanceContext<'_>,
+    requested_ascii_width: Option<f64>,
+    resolved_style: Option<&ResolvedRunStyle>,
+) -> GraphemeAdvance {
     let GraphemeAdvanceContext {
-        snap_to_grid,
+        snap_to_grid: _,
         paragraph_style,
         grapheme,
         script,
@@ -1441,7 +1456,7 @@ fn compute_grapheme_advance_with_ascii_width(
         0.0
     } else {
         paragraph_style
-            .filter(|style| snap_to_grid && !style.doc_grid_snap_to_chars)
+            .filter(|style| SNAP_TO_GRID && !style.doc_grid_snap_to_chars)
             .and_then(|style| style.doc_grid_char_space_px)
             .unwrap_or(0.0)
             * if full_grid_cell { 1.0 } else { 0.5 }
@@ -1453,7 +1468,7 @@ fn compute_grapheme_advance_with_ascii_width(
     // zero extra_spacing. Cell snapping and non-grid paths retain
     // their ordinary between-character tracking. Windows fixed faces use
     // the same two tracking intervals inside a full grid cell.
-    let extra_spacing = if snap_to_grid
+    let extra_spacing = if SNAP_TO_GRID
         && extra_spacing != 0.0
         && full_grid_cell
         && paragraph_style.is_some_and(|style| {
@@ -1552,7 +1567,7 @@ fn compute_grapheme_advance_with_ascii_width(
     } else {
         paragraph_style
             .filter(|style| {
-                snap_to_grid
+                SNAP_TO_GRID
                     && style.word_platform == crate::line_metrics::WordLayoutPlatform::Mac
                     && !style.doc_grid_snap_to_chars
             })
@@ -1571,7 +1586,7 @@ fn compute_grapheme_advance_with_ascii_width(
     let implicit_latin_trailing_gap = widen(implicit_latin_trailing_gap);
     let implicit_numeric_gap = widen(implicit_numeric_gap);
     let (snap_leading, snap_trailing) = snap_cell_width
-        .filter(|_| snap_to_grid)
+        .filter(|_| SNAP_TO_GRID)
         .map(|cell_width| snap_to_chars_cell_span_adjustment(grapheme, core_advance, cell_width))
         .unwrap_or((0.0, 0.0));
     let glyph_box_width =
