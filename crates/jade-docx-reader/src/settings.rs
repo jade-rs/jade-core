@@ -69,7 +69,7 @@ pub struct MathProperties {
     /// `m:smallFrac`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub small_fractions: Option<bool>,
-    /// `m:dispDef`: display math by default.
+    /// `m:dispDef`: apply special display-math paragraph defaults.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub display_default: Option<bool>,
     /// `m:lMargin` / `m:rMargin`, twips.
@@ -459,8 +459,20 @@ impl DocumentSettings {
             b"brkBinSub" => math.break_binary_subtraction = value.clone(),
             b"smallFrac" => math.small_fractions = Some(on()),
             b"dispDef" => math.display_default = Some(on()),
-            b"lMargin" => math.left_margin = twips(),
-            b"rMargin" => math.right_margin = twips(),
+            b"lMargin" => {
+                math.left_margin = if value.is_none() {
+                    Some(1440.0)
+                } else {
+                    twips()
+                }
+            }
+            b"rMargin" => {
+                math.right_margin = if value.is_none() {
+                    Some(1440.0)
+                } else {
+                    twips()
+                }
+            }
             b"defJc" => math.default_justification = value.clone(),
             b"preSp" => math.space_before = twips(),
             b"postSp" => math.space_after = twips(),
@@ -1066,6 +1078,22 @@ mod tests {
     }
 
     use super::*;
+
+    #[test]
+    fn math_margin_elements_without_values_default_to_one_inch() {
+        for children in [
+            "<m:lMargin/><m:rMargin/>",
+            "<m:lMargin></m:lMargin><m:rMargin></m:rMargin>",
+        ] {
+            let xml = format!(
+                r#"<w:settings xmlns:w="urn:w" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><m:mathPr>{children}</m:mathPr></w:settings>"#
+            );
+            let math = DocumentSettings::from_xml(&xml).unwrap().math;
+            assert_eq!(math.left_margin, Some(1440.0));
+            assert_eq!(math.right_margin, Some(1440.0));
+        }
+        assert_eq!(DocumentSettings::default().math.left_margin, None);
+    }
 
     #[test]
     fn math_properties_are_read_from_math_pr() {
