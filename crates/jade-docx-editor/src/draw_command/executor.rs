@@ -190,11 +190,28 @@ impl FontStateTracker {
                 return has_features;
             }
         }
-        #[cfg(test)]
+        // A replay may rebuild an identical descriptor in a new Rc. Reuse its
+        // value-only fact, but still retain/replace the incoming Rc below so
+        // pointer-hit promotion and descriptor lifetimes stay unchanged.
+        let has_features = if let Some((_, has_features)) = self
+            .last_font_features
+            .as_ref()
+            .filter(|(cached, _)| cached.as_ref() == font.as_ref())
         {
-            self.feature_checks += 1;
-        }
-        let has_features = jade_painter::font_features::has_features(font);
+            *has_features
+        } else if let Some((_, has_features)) = self
+            .previous_font_features
+            .as_ref()
+            .filter(|(cached, _)| cached.as_ref() == font.as_ref())
+        {
+            *has_features
+        } else {
+            #[cfg(test)]
+            {
+                self.feature_checks += 1;
+            }
+            jade_painter::font_features::has_features(font)
+        };
         self.previous_font_features = self
             .last_font_features
             .replace((Rc::clone(font), has_features));
@@ -2589,6 +2606,62 @@ mod tests {
     }
 
     #[test]
+    fn equal_font_feature_facts_preserve_descriptor_ownership_and_replacement() {
+        for descriptor in [
+            "",
+            "10pt Calibri",
+            "ot:liga 10pt Calibri",
+            "10pt\u{3000}Calibri\u{3000}ot:liga",
+            "font:a ot:liga 10pt Calibri",
+            "font:ot:liga 10pt Calibri",
+            "font:\u{0085}ot:liga 10pt Calibri",
+            "ot: 10pt Calibri",
+        ] {
+            for previous_slot in [false, true] {
+                let mut tracker = FontStateTracker::new();
+                let old: Rc<str> = Rc::from(descriptor);
+                let other: Rc<str> = Rc::from("13pt distinct descriptor");
+                let expected = jade_painter::font_features::features_token(descriptor).is_some();
+                let old_weak = Rc::downgrade(&old);
+                let other_weak = Rc::downgrade(&other);
+                if previous_slot {
+                    assert_eq!(tracker.font_has_features(&old), expected);
+                    assert!(!tracker.font_has_features(&other));
+                } else {
+                    assert!(!tracker.font_has_features(&other));
+                    assert_eq!(tracker.font_has_features(&old), expected);
+                }
+                tracker.invalidate();
+                let replacement: Rc<str> = Rc::from(descriptor);
+                assert!(!Rc::ptr_eq(&replacement, &old));
+                assert_eq!(tracker.font_has_features(&replacement), expected);
+                assert_eq!(tracker.feature_checks, 2);
+                assert!(Rc::ptr_eq(
+                    &tracker.last_font_features.as_ref().unwrap().0,
+                    &replacement,
+                ));
+                assert!(Rc::ptr_eq(
+                    &tracker.previous_font_features.as_ref().unwrap().0,
+                    if previous_slot { &other } else { &old },
+                ));
+                drop(old);
+                drop(other);
+                assert_eq!(old_weak.upgrade().is_some(), !previous_slot);
+                assert_eq!(other_weak.upgrade().is_some(), previous_slot);
+                let replacement_weak = Rc::downgrade(&replacement);
+                drop(replacement);
+                let cloned = tracker.clone();
+                drop(tracker);
+                assert!(replacement_weak.upgrade().is_some());
+                drop(cloned);
+                assert!(old_weak.upgrade().is_none());
+                assert!(other_weak.upgrade().is_none());
+                assert!(replacement_weak.upgrade().is_none());
+            }
+        }
+    }
+
+    #[test]
     fn test_font_state_tracker_tracks_font() {
         let mut tracker = FontStateTracker::new();
 
@@ -2907,66 +2980,78 @@ mod painter_backend_tests {
                         "10.50pt 'Noto Sans JP'"
                     }),
                 ];
-                let painter = RecordingPainter::new();
-                let reference = RecordingPainter::new();
-                let mut tracker = FontStateTracker::new();
-                for font in &fonts {
-                    tracker.font_has_features(font);
-                }
-                let glyphs = [
-                    GlyphRunStep {
-                        text_start: 0,
-                        text_end: 1,
-                        font_index: 0,
-                        x_offset: 0.0,
-                    },
-                    GlyphRunStep {
-                        text_start: 1,
-                        text_end: 4,
-                        font_index: 1,
-                        x_offset: 7.0,
-                    },
-                ];
-                for line in 0..32 {
-                    tracker.invalidate();
-                    let mut ordered_fonts = fonts.clone();
-                    if line % 2 != 0 {
-                        ordered_fonts.reverse();
+                for fresh_descriptors in [false, true] {
+                    let painter = RecordingPainter::new();
+                    let reference = RecordingPainter::new();
+                    let mut tracker = FontStateTracker::new();
+                    for font in &fonts {
+                        tracker.font_has_features(font);
                     }
-                    let mut fresh_tracker = FontStateTracker::new();
-                    for (target, state) in
-                        [(&painter, &mut tracker), (&reference, &mut fresh_tracker)]
-                    {
-                        draw_text_run_glyphs(
-                            target,
-                            "A日",
-                            8.0,
-                            line as f64 * 16.0,
-                            &style(),
-                            &ordered_fonts,
-                            &glyphs,
-                            state,
-                        )
-                        .unwrap();
-                    }
-                }
-                assert_eq!(painter.ops(), reference.ops());
-                assert_eq!(tracker.feature_checks, 2);
-                assert_eq!(
-                    painter.count(|op| matches!(op, Op::FillShapedText(..))),
-                    32 * (usize::from(first_featured) + usize::from(second_featured))
-                );
-                let visible_characters: usize = painter
-                    .ops()
-                    .iter()
-                    .map(|op| match op {
-                        Op::FillText(text, ..) | Op::FillShapedText(text, ..) => {
-                            text.chars().count()
+                    let glyphs = [
+                        GlyphRunStep {
+                            text_start: 0,
+                            text_end: 1,
+                            font_index: 0,
+                            x_offset: 0.0,
+                        },
+                        GlyphRunStep {
+                            text_start: 1,
+                            text_end: 4,
+                            font_index: 1,
+                            x_offset: 7.0,
+                        },
+                    ];
+                    let mut reference_feature_checks = 0;
+                    for line in 0..32 {
+                        tracker.invalidate();
+                        let mut ordered_fonts = if fresh_descriptors {
+                            fonts.iter().map(|font| Rc::from(font.as_ref())).collect()
+                        } else {
+                            fonts.clone()
+                        };
+                        if line % 2 != 0 {
+                            ordered_fonts.reverse();
                         }
-                        _ => 0,
-                    })
-                    .sum();
-                assert_eq!(visible_characters, 64);
+                        let mut fresh_tracker = FontStateTracker::new();
+                        for (target, state) in
+                            [(&painter, &mut tracker), (&reference, &mut fresh_tracker)]
+                        {
+                            draw_text_run_glyphs(
+                                target,
+                                "A日",
+                                8.0,
+                                line as f64 * 16.0,
+                                &style(),
+                                &ordered_fonts,
+                                &glyphs,
+                                state,
+                            )
+                            .unwrap();
+                        }
+                        reference_feature_checks += fresh_tracker.feature_checks;
+                    }
+                    assert_eq!(painter.ops(), reference.ops());
+                    if fresh_descriptors {
+                        assert!(tracker.feature_checks < reference_feature_checks);
+                    } else {
+                        assert_eq!(tracker.feature_checks, 2);
+                    }
+                    assert_eq!(
+                        painter.count(|op| matches!(op, Op::FillShapedText(..))),
+                        32 * (usize::from(first_featured) + usize::from(second_featured))
+                    );
+                    let visible_characters: usize = painter
+                        .ops()
+                        .iter()
+                        .map(|op| match op {
+                            Op::FillText(text, ..) | Op::FillShapedText(text, ..) => {
+                                text.chars().count()
+                            }
+                            _ => 0,
+                        })
+                        .sum();
+                    assert_eq!(visible_characters, 64);
+                }
             }
         }
     }
