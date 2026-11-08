@@ -314,7 +314,7 @@ pub(crate) fn structure_containers(
         let updated = apply(&xml[container.span.clone()], edits);
         out.insert(
             container.span.start,
-            if plain_empty(&updated, &[])? {
+            if xml_edit_ns::plain_empty(&updated, &[])? {
                 String::new()
             } else {
                 updated
@@ -324,46 +324,12 @@ pub(crate) fn structure_containers(
     Ok(out)
 }
 
-fn plain_empty(xml: &str, allowed: &[&[u8]]) -> Result<bool> {
-    let mut r = Reader::from_str(xml);
-    let mut depth = 0;
-    loop {
-        match r.read_event()? {
-            event @ (Event::Start(_) | Event::Empty(_)) => {
-                let empty = matches!(event, Event::Empty(_));
-                let e = match event {
-                    Event::Start(e) | Event::Empty(e) => e,
-                    _ => unreachable!(),
-                };
-                if depth != 0 {
-                    return Ok(false);
-                }
-                for a in e.attributes() {
-                    let a = a?;
-                    if a.key.as_ref() != b"xmlns"
-                        && !a.key.as_ref().starts_with(b"xmlns:")
-                        && !allowed.contains(&a.key.as_ref())
-                    {
-                        return Ok(false);
-                    }
-                }
-                if !empty {
-                    depth += 1;
-                }
-            }
-            Event::End(_) => depth -= 1,
-            Event::Text(t) if t.decode()?.trim().is_empty() => {}
-            Event::Eof => return Ok(true),
-            _ => return Ok(false),
-        }
-    }
-}
 /// Remove only empty owned containers/wrappers with no opaque data to preserve.
 pub(crate) fn cleanup(xml: &str) -> Result<String> {
     let source = sources(xml)?;
     let mut edits = Vec::new();
     for container in source.containers {
-        if plain_empty(&xml[container.span.clone()], &[])? {
+        if xml_edit_ns::plain_empty(&xml[container.span.clone()], &[])? {
             edits.push(Splice {
                 start: container.span.start,
                 end: container.span.end,
@@ -397,7 +363,7 @@ pub(crate) fn cleanup(xml: &str) -> Result<String> {
                     _ => {}
                 }
             }
-            if known && plain_empty(&extension.text, &[b"uri"])? {
+            if known && xml_edit_ns::plain_empty(&extension.text, &[b"uri"])? {
                 children.push(Splice {
                     start: a,
                     end: b,
@@ -409,7 +375,7 @@ pub(crate) fn cleanup(xml: &str) -> Result<String> {
             continue;
         }
         let moved = apply(&list.text, children);
-        let moved = if plain_empty(&moved, &[])? {
+        let moved = if xml_edit_ns::plain_empty(&moved, &[])? {
             String::new()
         } else {
             list.finish(&moved)?

@@ -188,7 +188,16 @@ impl<'a> Model<'a> {
         node: &Node,
         cell: CellReferenceIndex,
     ) -> Result<(f64, f64, Suffix), CalcResult> {
-        let value = self.get_string(node, cell)?;
+        let value = self.evaluate_node_in_context(node, cell);
+        self.cast_complex_number(value, cell)
+    }
+
+    fn cast_complex_number(
+        &mut self,
+        value: CalcResult,
+        cell: CellReferenceIndex,
+    ) -> Result<(f64, f64, Suffix), CalcResult> {
+        let value = self.cast_to_string(value, cell)?;
         if value.is_empty() {
             return Ok((0.0, 0.0, Suffix::I));
         }
@@ -202,324 +211,354 @@ impl<'a> Model<'a> {
         if !(2..=3).contains(&args.len()) {
             return CalcResult::new_args_number_error(cell);
         }
-        let x = match self.get_number(&args[0], cell) {
-            Ok(s) => s,
-            Err(s) => return s,
-        };
-        let y = match self.get_number(&args[1], cell) {
-            Ok(s) => s,
-            Err(s) => return s,
-        };
-        let suffix = if args.len() == 3 {
-            match self.get_string(&args[2], cell) {
-                Ok(s) => {
-                    if s == "i" || s.is_empty() {
-                        Suffix::I
-                    } else if s == "j" {
-                        Suffix::J
-                    } else {
-                        return CalcResult::new_error(
-                            Error::VALUE,
-                            cell,
-                            "Invalid suffix".to_string(),
-                        );
-                    }
-                }
+        self.map_scalar_arguments(args, cell, |model, values| {
+            let x = match model.cast_to_number(values[0].clone(), cell) {
+                Ok(s) => s,
                 Err(s) => return s,
-            }
-        } else {
-            Suffix::I
-        };
+            };
+            let y = match model.cast_to_number(values[1].clone(), cell) {
+                Ok(s) => s,
+                Err(s) => return s,
+            };
+            let suffix = if args.len() == 3 {
+                match model.cast_to_string(values[2].clone(), cell) {
+                    Ok(s) => {
+                        if s == "i" || s.is_empty() {
+                            Suffix::I
+                        } else if s == "j" {
+                            Suffix::J
+                        } else {
+                            return CalcResult::new_error(
+                                Error::VALUE,
+                                cell,
+                                "Invalid suffix".to_string(),
+                            );
+                        }
+                    }
+                    Err(s) => return s,
+                }
+            } else {
+                Suffix::I
+            };
 
-        let complex = Complex { x, y, suffix };
-        CalcResult::String(complex.to_string())
+            let complex = Complex { x, y, suffix };
+            CalcResult::String(complex.to_string())
+        })
     }
 
     pub(crate) fn fn_imabs(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         }
-        let (x, y, _) = match self.get_complex_number(&args[0], cell) {
-            Ok(s) => s,
-            Err(error) => return error,
-        };
-        CalcResult::Number(f64::sqrt(x * x + y * y))
+        self.map_scalar_arguments(args, cell, |model, values| {
+            let (x, y, _) = match model.cast_complex_number(values[0].clone(), cell) {
+                Ok(s) => s,
+                Err(error) => return error,
+            };
+            CalcResult::Number(f64::sqrt(x * x + y * y))
+        })
     }
 
     pub(crate) fn fn_imaginary(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         }
-        let (_, y, _) = match self.get_complex_number(&args[0], cell) {
-            Ok(s) => s,
-            Err(error) => return error,
-        };
-        CalcResult::Number(y)
+        self.map_scalar_arguments(args, cell, |model, values| {
+            let (_, y, _) = match model.cast_complex_number(values[0].clone(), cell) {
+                Ok(s) => s,
+                Err(error) => return error,
+            };
+            CalcResult::Number(y)
+        })
     }
     pub(crate) fn fn_imargument(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         }
-        let (x, y, _) = match self.get_complex_number(&args[0], cell) {
-            Ok(s) => s,
-            Err(error) => return error,
-        };
-        if x == 0.0 && y == 0.0 {
-            return CalcResult::new_error(Error::DIV, cell, "Division by zero".to_string());
-        }
-        let angle = f64::atan2(y, x);
-        CalcResult::Number(angle)
+        self.map_scalar_arguments(args, cell, |model, values| {
+            let (x, y, _) = match model.cast_complex_number(values[0].clone(), cell) {
+                Ok(s) => s,
+                Err(error) => return error,
+            };
+            if x == 0.0 && y == 0.0 {
+                return CalcResult::new_error(Error::DIV, cell, "Division by zero".to_string());
+            }
+            let angle = f64::atan2(y, x);
+            CalcResult::Number(angle)
+        })
     }
     pub(crate) fn fn_imconjugate(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         }
-        let (x, y, suffix) = match self.get_complex_number(&args[0], cell) {
-            Ok(s) => s,
-            Err(error) => return error,
-        };
-        let complex = Complex { x, y: -y, suffix };
-        CalcResult::String(complex.to_string())
+        self.map_scalar_arguments(args, cell, |model, values| {
+            let (x, y, suffix) = match model.cast_complex_number(values[0].clone(), cell) {
+                Ok(s) => s,
+                Err(error) => return error,
+            };
+            let complex = Complex { x, y: -y, suffix };
+            CalcResult::String(complex.to_string())
+        })
     }
     pub(crate) fn fn_imcos(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         }
-        let value = match self.get_string(&args[0], cell) {
-            Ok(s) => s,
-            Err(s) => return s,
-        };
-        let (x, y, suffix) = match parse_complex_number(&value) {
-            Ok(s) => s,
-            Err(message) => return CalcResult::new_error(Error::NUM, cell, message),
-        };
+        self.map_scalar_arguments(args, cell, |model, values| {
+            let value = match model.cast_to_string(values[0].clone(), cell) {
+                Ok(s) => s,
+                Err(s) => return s,
+            };
+            let (x, y, suffix) = match parse_complex_number(&value) {
+                Ok(s) => s,
+                Err(message) => return CalcResult::new_error(Error::NUM, cell, message),
+            };
 
-        let complex = Complex {
-            x: x.cos() * y.cosh(),
-            y: -x.sin() * y.sinh(),
-            suffix,
-        };
-        CalcResult::String(complex.to_string())
+            let complex = Complex {
+                x: x.cos() * y.cosh(),
+                y: -x.sin() * y.sinh(),
+                suffix,
+            };
+            CalcResult::String(complex.to_string())
+        })
     }
     pub(crate) fn fn_imcosh(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         }
-        let value = match self.get_string(&args[0], cell) {
-            Ok(s) => s,
-            Err(s) => return s,
-        };
-        let (x, y, suffix) = match parse_complex_number(&value) {
-            Ok(s) => s,
-            Err(message) => return CalcResult::new_error(Error::NUM, cell, message),
-        };
+        self.map_scalar_arguments(args, cell, |model, values| {
+            let value = match model.cast_to_string(values[0].clone(), cell) {
+                Ok(s) => s,
+                Err(s) => return s,
+            };
+            let (x, y, suffix) = match parse_complex_number(&value) {
+                Ok(s) => s,
+                Err(message) => return CalcResult::new_error(Error::NUM, cell, message),
+            };
 
-        let complex = Complex {
-            x: x.cosh() * y.cos(),
-            y: x.sinh() * y.sin(),
-            suffix,
-        };
-        CalcResult::String(complex.to_string())
+            let complex = Complex {
+                x: x.cosh() * y.cos(),
+                y: x.sinh() * y.sin(),
+                suffix,
+            };
+            CalcResult::String(complex.to_string())
+        })
     }
     pub(crate) fn fn_imcot(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         }
-        let value = match self.get_string(&args[0], cell) {
-            Ok(s) => s,
-            Err(s) => return s,
-        };
-        let (x, y, suffix) = match parse_complex_number(&value) {
-            Ok(s) => s,
-            Err(message) => return CalcResult::new_error(Error::NUM, cell, message),
-        };
-
-        if x == 0.0 && y != 0.0 {
-            let complex = Complex {
-                x: 0.0,
-                y: -1.0 / y.tanh(),
-                suffix,
+        self.map_scalar_arguments(args, cell, |model, values| {
+            let value = match model.cast_to_string(values[0].clone(), cell) {
+                Ok(s) => s,
+                Err(s) => return s,
             };
-            return CalcResult::String(complex.to_string());
-        } else if y == 0.0 {
-            let complex = Complex {
-                x: 1.0 / x.tan(),
-                y: 0.0,
-                suffix,
+            let (x, y, suffix) = match parse_complex_number(&value) {
+                Ok(s) => s,
+                Err(message) => return CalcResult::new_error(Error::NUM, cell, message),
             };
-            return CalcResult::String(complex.to_string());
-        }
 
-        let x_cot = 1.0 / x.tan();
-        let y_coth = 1.0 / y.tanh();
+            if x == 0.0 && y != 0.0 {
+                let complex = Complex {
+                    x: 0.0,
+                    y: -1.0 / y.tanh(),
+                    suffix,
+                };
+                return CalcResult::String(complex.to_string());
+            } else if y == 0.0 {
+                let complex = Complex {
+                    x: 1.0 / x.tan(),
+                    y: 0.0,
+                    suffix,
+                };
+                return CalcResult::String(complex.to_string());
+            }
 
-        let t = x_cot * x_cot + y_coth * y_coth;
-        let x = (x_cot * y_coth * y_coth - x_cot) / t;
-        let y = (-x_cot * x_cot * y_coth - y_coth) / t;
+            let x_cot = 1.0 / x.tan();
+            let y_coth = 1.0 / y.tanh();
 
-        if x.is_infinite() || y.is_infinite() || x.is_nan() || y.is_nan() {
-            return CalcResult::new_error(Error::NUM, cell, "Invalid operation".to_string());
-        }
+            let t = x_cot * x_cot + y_coth * y_coth;
+            let x = (x_cot * y_coth * y_coth - x_cot) / t;
+            let y = (-x_cot * x_cot * y_coth - y_coth) / t;
 
-        let complex = Complex { x, y, suffix };
-        CalcResult::String(complex.to_string())
+            if x.is_infinite() || y.is_infinite() || x.is_nan() || y.is_nan() {
+                return CalcResult::new_error(Error::NUM, cell, "Invalid operation".to_string());
+            }
+
+            let complex = Complex { x, y, suffix };
+            CalcResult::String(complex.to_string())
+        })
     }
 
     pub(crate) fn fn_imcsc(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         }
-        let value = match self.get_string(&args[0], cell) {
-            Ok(s) => s,
-            Err(s) => return s,
-        };
-        let (x, y, suffix) = match parse_complex_number(&value) {
-            Ok(s) => s,
-            Err(message) => return CalcResult::new_error(Error::NUM, cell, message),
-        };
-        let x_cos = x.cos();
-        let x_sin = x.sin();
+        self.map_scalar_arguments(args, cell, |model, values| {
+            let value = match model.cast_to_string(values[0].clone(), cell) {
+                Ok(s) => s,
+                Err(s) => return s,
+            };
+            let (x, y, suffix) = match parse_complex_number(&value) {
+                Ok(s) => s,
+                Err(message) => return CalcResult::new_error(Error::NUM, cell, message),
+            };
+            let x_cos = x.cos();
+            let x_sin = x.sin();
 
-        let y_cosh = y.cosh();
-        let y_sinh = y.sinh();
+            let y_cosh = y.cosh();
+            let y_sinh = y.sinh();
 
-        let t = x_sin * x_sin * y_cosh * y_cosh + x_cos * x_cos * y_sinh * y_sinh;
+            let t = x_sin * x_sin * y_cosh * y_cosh + x_cos * x_cos * y_sinh * y_sinh;
 
-        let complex = Complex {
-            x: x_sin * y_cosh / t,
-            y: -x_cos * y_sinh / t,
-            suffix,
-        };
-        CalcResult::String(complex.to_string())
+            let complex = Complex {
+                x: x_sin * y_cosh / t,
+                y: -x_cos * y_sinh / t,
+                suffix,
+            };
+            CalcResult::String(complex.to_string())
+        })
     }
 
     pub(crate) fn fn_imcsch(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         }
-        let value = match self.get_string(&args[0], cell) {
-            Ok(s) => s,
-            Err(s) => return s,
-        };
-        let (x, y, suffix) = match parse_complex_number(&value) {
-            Ok(s) => s,
-            Err(message) => return CalcResult::new_error(Error::NUM, cell, message),
-        };
-        let x_cosh = x.cosh();
-        let x_sinh = x.sinh();
+        self.map_scalar_arguments(args, cell, |model, values| {
+            let value = match model.cast_to_string(values[0].clone(), cell) {
+                Ok(s) => s,
+                Err(s) => return s,
+            };
+            let (x, y, suffix) = match parse_complex_number(&value) {
+                Ok(s) => s,
+                Err(message) => return CalcResult::new_error(Error::NUM, cell, message),
+            };
+            let x_cosh = x.cosh();
+            let x_sinh = x.sinh();
 
-        let y_cos = y.cos();
-        let y_sin = y.sin();
+            let y_cos = y.cos();
+            let y_sin = y.sin();
 
-        let t = x_sinh * x_sinh * y_cos * y_cos + x_cosh * x_cosh * y_sin * y_sin;
+            let t = x_sinh * x_sinh * y_cos * y_cos + x_cosh * x_cosh * y_sin * y_sin;
 
-        let complex = Complex {
-            x: x_sinh * y_cos / t,
-            y: -x_cosh * y_sin / t,
-            suffix,
-        };
-        CalcResult::String(complex.to_string())
+            let complex = Complex {
+                x: x_sinh * y_cos / t,
+                y: -x_cosh * y_sin / t,
+                suffix,
+            };
+            CalcResult::String(complex.to_string())
+        })
     }
 
     pub(crate) fn fn_imdiv(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 2 {
             return CalcResult::new_args_number_error(cell);
         }
-        let (x1, y1, suffix) = match self.get_complex_number(&args[0], cell) {
-            Ok(s) => s,
-            Err(error) => return error,
-        };
-        let (x2, y2, suffix2) = match self.get_complex_number(&args[1], cell) {
-            Ok(s) => s,
-            Err(error) => return error,
-        };
-        if suffix != suffix2 {
-            return CalcResult::new_error(Error::VALUE, cell, "Different suffixes".to_string());
-        }
-        let t = x2 * x2 + y2 * y2;
-        if t == 0.0 {
-            return CalcResult::new_error(Error::NUM, cell, "Invalid".to_string());
-        }
-        let complex = Complex {
-            x: (x1 * x2 + y1 * y2) / t,
-            y: (-x1 * y2 + y1 * x2) / t,
-            suffix,
-        };
-        CalcResult::String(complex.to_string())
+        self.map_scalar_arguments(args, cell, |model, values| {
+            let (x1, y1, suffix) = match model.cast_complex_number(values[0].clone(), cell) {
+                Ok(s) => s,
+                Err(error) => return error,
+            };
+            let (x2, y2, suffix2) = match model.cast_complex_number(values[1].clone(), cell) {
+                Ok(s) => s,
+                Err(error) => return error,
+            };
+            if suffix != suffix2 {
+                return CalcResult::new_error(Error::VALUE, cell, "Different suffixes".to_string());
+            }
+            let t = x2 * x2 + y2 * y2;
+            if t == 0.0 {
+                return CalcResult::new_error(Error::NUM, cell, "Invalid".to_string());
+            }
+            let complex = Complex {
+                x: (x1 * x2 + y1 * y2) / t,
+                y: (-x1 * y2 + y1 * x2) / t,
+                suffix,
+            };
+            CalcResult::String(complex.to_string())
+        })
     }
 
     pub(crate) fn fn_imexp(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         }
-        let (x, y, suffix) = match self.get_complex_number(&args[0], cell) {
-            Ok(s) => s,
-            Err(error) => return error,
-        };
+        self.map_scalar_arguments(args, cell, |model, values| {
+            let (x, y, suffix) = match model.cast_complex_number(values[0].clone(), cell) {
+                Ok(s) => s,
+                Err(error) => return error,
+            };
 
-        let complex = Complex {
-            x: x.exp() * y.cos(),
-            y: x.exp() * y.sin(),
-            suffix,
-        };
-        CalcResult::String(complex.to_string())
+            let complex = Complex {
+                x: x.exp() * y.cos(),
+                y: x.exp() * y.sin(),
+                suffix,
+            };
+            CalcResult::String(complex.to_string())
+        })
     }
     pub(crate) fn fn_imln(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         }
-        let (x, y, suffix) = match self.get_complex_number(&args[0], cell) {
-            Ok(s) => s,
-            Err(error) => return error,
-        };
+        self.map_scalar_arguments(args, cell, |model, values| {
+            let (x, y, suffix) = match model.cast_complex_number(values[0].clone(), cell) {
+                Ok(s) => s,
+                Err(error) => return error,
+            };
 
-        let r = f64::sqrt(x * x + y * y);
-        let a = f64::atan2(y, x);
+            let r = f64::sqrt(x * x + y * y);
+            let a = f64::atan2(y, x);
 
-        let complex = Complex {
-            x: r.ln(),
-            y: a,
-            suffix,
-        };
-        CalcResult::String(complex.to_string())
+            let complex = Complex {
+                x: r.ln(),
+                y: a,
+                suffix,
+            };
+            CalcResult::String(complex.to_string())
+        })
     }
     pub(crate) fn fn_imlog10(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         }
-        let (x, y, suffix) = match self.get_complex_number(&args[0], cell) {
-            Ok(s) => s,
-            Err(error) => return error,
-        };
+        self.map_scalar_arguments(args, cell, |model, values| {
+            let (x, y, suffix) = match model.cast_complex_number(values[0].clone(), cell) {
+                Ok(s) => s,
+                Err(error) => return error,
+            };
 
-        let r = f64::sqrt(x * x + y * y);
-        let a = f64::atan2(y, x);
+            let r = f64::sqrt(x * x + y * y);
+            let a = f64::atan2(y, x);
 
-        let complex = Complex {
-            x: r.log10(),
-            y: a * f64::log10(f64::exp(1.0)),
-            suffix,
-        };
-        CalcResult::String(complex.to_string())
+            let complex = Complex {
+                x: r.log10(),
+                y: a * f64::log10(f64::exp(1.0)),
+                suffix,
+            };
+            CalcResult::String(complex.to_string())
+        })
     }
     pub(crate) fn fn_imlog2(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         }
-        let (x, y, suffix) = match self.get_complex_number(&args[0], cell) {
-            Ok(s) => s,
-            Err(error) => return error,
-        };
+        self.map_scalar_arguments(args, cell, |model, values| {
+            let (x, y, suffix) = match model.cast_complex_number(values[0].clone(), cell) {
+                Ok(s) => s,
+                Err(error) => return error,
+            };
 
-        let r = f64::sqrt(x * x + y * y);
-        let a = f64::atan2(y, x);
+            let r = f64::sqrt(x * x + y * y);
+            let a = f64::atan2(y, x);
 
-        let complex = Complex {
-            x: r.log2(),
-            y: a * f64::log2(f64::exp(1.0)),
-            suffix,
-        };
-        CalcResult::String(complex.to_string())
+            let complex = Complex {
+                x: r.log2(),
+                y: a * f64::log2(f64::exp(1.0)),
+                suffix,
+            };
+            CalcResult::String(complex.to_string())
+        })
     }
 
     // IMPOWER(imnumber, power)
@@ -529,243 +568,250 @@ impl<'a> Model<'a> {
         if args.len() != 2 {
             return CalcResult::new_args_number_error(cell);
         }
+        self.map_scalar_arguments(args, cell, |model, values| {
+            let (x, y, suffix) = match model.cast_complex_number(values[0].clone(), cell) {
+                Ok(s) => s,
+                Err(error) => return error,
+            };
 
-        let (x, y, suffix) = match self.get_complex_number(&args[0], cell) {
-            Ok(s) => s,
-            Err(error) => return error,
-        };
+            let n = match model.cast_to_number_no_bools(values[1].clone(), cell) {
+                Ok(f) => f,
+                Err(s) => return s,
+            };
 
-        let n = match self.get_number_no_bools(&args[1], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
+            // if n == n.trunc() && n < 10.0 {
+            //     // for small powers we compute manually
+            //     let (mut x0, mut y0) = (x, y);
+            //     for _ in 1..(n.trunc() as i32) {
+            //         (x0, y0) = (x0 * x - y0 * y, x0 * y + y0 * x);
+            //     }
+            //     let complex = Complex {
+            //         x: x0,
+            //         y: y0,
+            //         suffix,
+            //     };
+            //     return CalcResult::String(complex.to_string());
+            // };
 
-        // if n == n.trunc() && n < 10.0 {
-        //     // for small powers we compute manually
-        //     let (mut x0, mut y0) = (x, y);
-        //     for _ in 1..(n.trunc() as i32) {
-        //         (x0, y0) = (x0 * x - y0 * y, x0 * y + y0 * x);
-        //     }
-        //     let complex = Complex {
-        //         x: x0,
-        //         y: y0,
-        //         suffix,
-        //     };
-        //     return CalcResult::String(complex.to_string());
-        // };
+            let r = f64::sqrt(x * x + y * y);
+            let a = f64::atan2(y, x);
 
-        let r = f64::sqrt(x * x + y * y);
-        let a = f64::atan2(y, x);
+            let x = r.powf(n) * f64::cos(a * n);
+            let y = r.powf(n) * f64::sin(a * n);
 
-        let x = r.powf(n) * f64::cos(a * n);
-        let y = r.powf(n) * f64::sin(a * n);
+            if x.is_infinite() || y.is_infinite() || x.is_nan() || y.is_nan() {
+                return CalcResult::new_error(Error::NUM, cell, "Invalid operation".to_string());
+            }
 
-        if x.is_infinite() || y.is_infinite() || x.is_nan() || y.is_nan() {
-            return CalcResult::new_error(Error::NUM, cell, "Invalid operation".to_string());
-        }
-
-        let complex = Complex { x, y, suffix };
-        CalcResult::String(complex.to_string())
+            let complex = Complex { x, y, suffix };
+            CalcResult::String(complex.to_string())
+        })
     }
 
     pub(crate) fn fn_improduct(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 2 {
-            return CalcResult::new_args_number_error(cell);
-        }
-
-        let (x1, y1, suffix) = match self.get_complex_number(&args[0], cell) {
-            Ok(s) => s,
-            Err(error) => return error,
-        };
-
-        let (x2, y2, suffix2) = match self.get_complex_number(&args[1], cell) {
-            Ok(s) => s,
-            Err(error) => return error,
-        };
-
-        if suffix != suffix2 {
-            return CalcResult::new_error(Error::VALUE, cell, "Different suffixes".to_string());
-        }
-        let complex = Complex {
-            x: x1 * x2 - y1 * y2,
-            y: x1 * y2 + y1 * x2,
-            suffix,
-        };
-        CalcResult::String(complex.to_string())
+        self.complex_scalar_aggregate(args, cell, true)
     }
     pub(crate) fn fn_imreal(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         }
-        let (x, _, _) = match self.get_complex_number(&args[0], cell) {
-            Ok(s) => s,
-            Err(error) => return error,
-        };
-        CalcResult::Number(x)
+        self.map_scalar_arguments(args, cell, |model, values| {
+            let (x, _, _) = match model.cast_complex_number(values[0].clone(), cell) {
+                Ok(s) => s,
+                Err(error) => return error,
+            };
+            CalcResult::Number(x)
+        })
     }
     pub(crate) fn fn_imsec(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         }
-        let (x, y, suffix) = match self.get_complex_number(&args[0], cell) {
-            Ok(s) => s,
-            Err(error) => return error,
-        };
-        let x_cos = x.cos();
-        let x_sin = x.sin();
+        self.map_scalar_arguments(args, cell, |model, values| {
+            let (x, y, suffix) = match model.cast_complex_number(values[0].clone(), cell) {
+                Ok(s) => s,
+                Err(error) => return error,
+            };
+            let x_cos = x.cos();
+            let x_sin = x.sin();
 
-        let y_cosh = y.cosh();
-        let y_sinh = y.sinh();
+            let y_cosh = y.cosh();
+            let y_sinh = y.sinh();
 
-        let t = x_cos * x_cos * y_cosh * y_cosh + x_sin * x_sin * y_sinh * y_sinh;
+            let t = x_cos * x_cos * y_cosh * y_cosh + x_sin * x_sin * y_sinh * y_sinh;
 
-        let complex = Complex {
-            x: x_cos * y_cosh / t,
-            y: x_sin * y_sinh / t,
-            suffix,
-        };
-        CalcResult::String(complex.to_string())
+            let complex = Complex {
+                x: x_cos * y_cosh / t,
+                y: x_sin * y_sinh / t,
+                suffix,
+            };
+            CalcResult::String(complex.to_string())
+        })
     }
     pub(crate) fn fn_imsech(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         }
-        let (x, y, suffix) = match self.get_complex_number(&args[0], cell) {
-            Ok(s) => s,
-            Err(error) => return error,
-        };
-        let x_cosh = x.cosh();
-        let x_sinh = x.sinh();
+        self.map_scalar_arguments(args, cell, |model, values| {
+            let (x, y, suffix) = match model.cast_complex_number(values[0].clone(), cell) {
+                Ok(s) => s,
+                Err(error) => return error,
+            };
+            let x_cosh = x.cosh();
+            let x_sinh = x.sinh();
 
-        let y_cos = y.cos();
-        let y_sin = y.sin();
+            let y_cos = y.cos();
+            let y_sin = y.sin();
 
-        let t = x_cosh * x_cosh * y_cos * y_cos + x_sinh * x_sinh * y_sin * y_sin;
+            let t = x_cosh * x_cosh * y_cos * y_cos + x_sinh * x_sinh * y_sin * y_sin;
 
-        let complex = Complex {
-            x: x_cosh * y_cos / t,
-            y: -x_sinh * y_sin / t,
-            suffix,
-        };
-        CalcResult::String(complex.to_string())
+            let complex = Complex {
+                x: x_cosh * y_cos / t,
+                y: -x_sinh * y_sin / t,
+                suffix,
+            };
+            CalcResult::String(complex.to_string())
+        })
     }
     pub(crate) fn fn_imsin(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         }
-        let (x, y, suffix) = match self.get_complex_number(&args[0], cell) {
-            Ok(s) => s,
-            Err(error) => return error,
-        };
+        self.map_scalar_arguments(args, cell, |model, values| {
+            let (x, y, suffix) = match model.cast_complex_number(values[0].clone(), cell) {
+                Ok(s) => s,
+                Err(error) => return error,
+            };
 
-        let complex = Complex {
-            x: x.sin() * y.cosh(),
-            y: x.cos() * y.sinh(),
-            suffix,
-        };
-        CalcResult::String(complex.to_string())
+            let complex = Complex {
+                x: x.sin() * y.cosh(),
+                y: x.cos() * y.sinh(),
+                suffix,
+            };
+            CalcResult::String(complex.to_string())
+        })
     }
     pub(crate) fn fn_imsinh(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         }
-        let (x, y, suffix) = match self.get_complex_number(&args[0], cell) {
-            Ok(s) => s,
-            Err(error) => return error,
-        };
+        self.map_scalar_arguments(args, cell, |model, values| {
+            let (x, y, suffix) = match model.cast_complex_number(values[0].clone(), cell) {
+                Ok(s) => s,
+                Err(error) => return error,
+            };
 
-        let complex = Complex {
-            x: x.sinh() * y.cos(),
-            y: x.cosh() * y.sin(),
-            suffix,
-        };
-        CalcResult::String(complex.to_string())
+            let complex = Complex {
+                x: x.sinh() * y.cos(),
+                y: x.cosh() * y.sin(),
+                suffix,
+            };
+            CalcResult::String(complex.to_string())
+        })
     }
     pub(crate) fn fn_imsqrt(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         }
-        let (x, y, suffix) = match self.get_complex_number(&args[0], cell) {
-            Ok(s) => s,
-            Err(error) => return error,
-        };
+        self.map_scalar_arguments(args, cell, |model, values| {
+            let (x, y, suffix) = match model.cast_complex_number(values[0].clone(), cell) {
+                Ok(s) => s,
+                Err(error) => return error,
+            };
 
-        let r = f64::sqrt(x * x + y * y).sqrt();
-        let a = f64::atan2(y, x);
+            let r = f64::sqrt(x * x + y * y).sqrt();
+            let a = f64::atan2(y, x);
 
-        let complex = Complex {
-            x: r * f64::cos(a / 2.0),
-            y: r * f64::sin(a / 2.0),
-            suffix,
-        };
-        CalcResult::String(complex.to_string())
+            let complex = Complex {
+                x: r * f64::cos(a / 2.0),
+                y: r * f64::sin(a / 2.0),
+                suffix,
+            };
+            CalcResult::String(complex.to_string())
+        })
     }
     pub(crate) fn fn_imsub(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 2 {
             return CalcResult::new_args_number_error(cell);
         }
-        let (x1, y1, suffix) = match self.get_complex_number(&args[0], cell) {
-            Ok(s) => s,
-            Err(error) => return error,
-        };
-        let (x2, y2, suffix2) = match self.get_complex_number(&args[1], cell) {
-            Ok(s) => s,
-            Err(error) => return error,
-        };
-        if suffix != suffix2 {
-            return CalcResult::new_error(Error::VALUE, cell, "Different suffixes".to_string());
-        }
-        let complex = Complex {
-            x: x1 - x2,
-            y: y1 - y2,
-            suffix,
-        };
-        CalcResult::String(complex.to_string())
+        self.map_scalar_arguments(args, cell, |model, values| {
+            let (x1, y1, suffix) = match model.cast_complex_number(values[0].clone(), cell) {
+                Ok(s) => s,
+                Err(error) => return error,
+            };
+            let (x2, y2, suffix2) = match model.cast_complex_number(values[1].clone(), cell) {
+                Ok(s) => s,
+                Err(error) => return error,
+            };
+            if suffix != suffix2 {
+                return CalcResult::new_error(Error::VALUE, cell, "Different suffixes".to_string());
+            }
+            let complex = Complex {
+                x: x1 - x2,
+                y: y1 - y2,
+                suffix,
+            };
+            CalcResult::String(complex.to_string())
+        })
     }
 
     pub(crate) fn fn_imsum(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 2 {
+        self.complex_scalar_aggregate(args, cell, false)
+    }
+
+    // Preserve scalar coercion/suffix policy; range aggregation needs native captures.
+    fn complex_scalar_aggregate(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+        product: bool,
+    ) -> CalcResult {
+        if !(1..=255).contains(&args.len()) {
             return CalcResult::new_args_number_error(cell);
         }
-        let (x1, y1, suffix) = match self.get_complex_number(&args[0], cell) {
-            Ok(s) => s,
+        let (mut x, mut y, suffix) = match self.get_complex_number(&args[0], cell) {
+            Ok(value) => value,
             Err(error) => return error,
         };
-        let (x2, y2, suffix2) = match self.get_complex_number(&args[1], cell) {
-            Ok(s) => s,
-            Err(error) => return error,
-        };
-        if suffix != suffix2 {
-            return CalcResult::new_error(Error::VALUE, cell, "Different suffixes".to_string());
+        for arg in &args[1..] {
+            let (next_x, next_y, next_suffix) = match self.get_complex_number(arg, cell) {
+                Ok(value) => value,
+                Err(error) => return error,
+            };
+            if suffix != next_suffix {
+                return CalcResult::new_error(Error::VALUE, cell, "Different suffixes".into());
+            }
+            (x, y) = if product {
+                (x * next_x - y * next_y, x * next_y + y * next_x)
+            } else {
+                (x + next_x, y + next_y)
+            };
         }
-        let complex = Complex {
-            x: x1 + x2,
-            y: y1 + y2,
-            suffix,
-        };
-        CalcResult::String(complex.to_string())
+        CalcResult::String(Complex { x, y, suffix }.to_string())
     }
 
     pub(crate) fn fn_imtan(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         }
-        let (x, y, suffix) = match self.get_complex_number(&args[0], cell) {
-            Ok(s) => s,
-            Err(error) => return error,
-        };
+        self.map_scalar_arguments(args, cell, |model, values| {
+            let (x, y, suffix) = match model.cast_complex_number(values[0].clone(), cell) {
+                Ok(s) => s,
+                Err(error) => return error,
+            };
 
-        let x_tan = x.tan();
-        let y_tanh = y.tanh();
+            let x_tan = x.tan();
+            let y_tanh = y.tanh();
 
-        let t = 1.0 + x_tan * x_tan * y_tanh * y_tanh;
+            let t = 1.0 + x_tan * x_tan * y_tanh * y_tanh;
 
-        let complex = Complex {
-            x: (x_tan - x_tan * y_tanh * y_tanh) / t,
-            y: (y_tanh + x_tan * x_tan * y_tanh) / t,
-            suffix,
-        };
-        CalcResult::String(complex.to_string())
+            let complex = Complex {
+                x: (x_tan - x_tan * y_tanh * y_tanh) / t,
+                y: (y_tanh + x_tan * x_tan * y_tanh) / t,
+                suffix,
+            };
+            CalcResult::String(complex.to_string())
+        })
     }
 }
 

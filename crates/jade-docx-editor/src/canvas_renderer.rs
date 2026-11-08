@@ -10936,7 +10936,9 @@ where
             let shape_box = style
                 .width_pt
                 .zip(style.height_pt)
-                .filter(|(width, height)| *width > 0.0 && *height > 0.0);
+                .filter(|(width, height)| {
+                    style.fit_shape.unwrap_or(true) && *width > 0.0 && *height > 0.0
+                });
             let (font_size, measured_width, stretch) = match shape_box {
                 // `fitshape`: the text path is scaled to fill the shape box.
                 Some((width, height)) => {
@@ -10956,7 +10958,7 @@ where
                         Some(size) => points_to_px(size),
                         None => (self.page_width * 0.12).clamp(48.0, 116.0),
                     };
-                    context.set_font(&format!("{font_size:.2}px {family}"));
+                    context.set_font(&format!("{font_size}px {family}"));
                     let mut measured_width = painter.measure_text_width(text)?;
                     if style.size_pt.is_none()
                         && measured_width > target_width
@@ -20110,18 +20112,27 @@ where
         let suppress_spacing_after = self.contextual_suppresses_spacing_after(body_element_index);
         if spacing_ref
             .is_some_and(|spacing| spacing.after.is_some() || spacing.after_lines.is_some())
-            && !suppress_spacing_after
             && !paragraph_ended_with_page_break
         {
             let spacing_after =
                 jade_docx_layout::text_extract::spacing_after_px(paragraph, line_height_points);
-            self.apply_spacing_after_value(spacing_after)?;
-            self.trailing_spacing_after = Some((
-                self.current_page_number,
-                self.column_index,
-                self.current_y,
-                spacing_after,
-            ));
+            if !suppress_spacing_after {
+                self.apply_spacing_after_value(spacing_after)?;
+            }
+            // Windows still collapses the next before against this specified
+            // after, even when contextualSpacing suppresses its drawing.
+            // Keep Mac's existing suppression and cache behavior unchanged.
+            if !suppress_spacing_after
+                || paragraph_style.word_platform
+                    == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+            {
+                self.trailing_spacing_after = Some((
+                    self.current_page_number,
+                    self.column_index,
+                    self.current_y,
+                    spacing_after,
+                ));
+            }
         }
 
         for object in floating_paint_objects
@@ -22594,7 +22605,12 @@ where
                 // the same face and size give the same line pitch, in MS
                 // Mincho and Calibri too, whose raised top passes the
                 // unshifted run's. `w:position` still moves the line.
-                let script_shift = if mac_line_ignores_script_shift {
+                let script_shift = if mac_line_ignores_script_shift
+                    || (prepared.style.script_shift_px != 0.0
+                        && jade_docx_layout::line_metrics::word_ignores_script_shift_for_line_height(
+                            prepared.style.families.latin_ascii_stack(),
+                        ))
+                {
                     prepared.style.script_shift_px
                 } else {
                     0.0
@@ -23252,7 +23268,7 @@ where
                 right_limit,
                 current_column_right,
                 paragraph_style.right_indent,
-                line_width,
+                wrapped_line.alignment_width_px(line_width, paragraph_style.word_platform),
                 justify,
             );
             line_layout.start_x = line_start_x;
@@ -31422,10 +31438,12 @@ where
                         let families = resolve_font_families(properties);
                         let stack = families.latin_ascii_stack();
                         baseline_shift_px = -points_to_px(
-                            jade_docx_layout::line_metrics::word_script_baseline_offset_pt(
+                            jade_docx_layout::line_metrics::word_script_baseline_offset_for_style_pt(
                                 font_size_pt,
                                 stack,
                                 true,
+                                props.bold.unwrap_or(false),
+                                props.italic.unwrap_or(false),
                             ),
                         );
                         font_size_pt = jade_docx_layout::line_metrics::word_shifted_script_size_pt(
@@ -31440,10 +31458,12 @@ where
                         let families = resolve_font_families(properties);
                         let stack = families.latin_ascii_stack();
                         baseline_shift_px = points_to_px(
-                            jade_docx_layout::line_metrics::word_script_baseline_offset_pt(
+                            jade_docx_layout::line_metrics::word_script_baseline_offset_for_style_pt(
                                 font_size_pt,
                                 stack,
                                 false,
+                                props.bold.unwrap_or(false),
+                                props.italic.unwrap_or(false),
                             ),
                         );
                         font_size_pt = jade_docx_layout::line_metrics::word_shifted_script_size_pt(
@@ -34162,6 +34182,22 @@ where
     /// Rebuilds diagnostics from page one with no lazy limit or seek replay.
     /// This is deliberately expensive and should only run for release captures.
     pub fn capture_full_layout_debug(&mut self) -> Result<FullLayoutDebugSnapshot, JsValue> {
+        self.capture_full_layout_debug_with_table_projection(true)
+    }
+
+    /// Include table glyph origins hidden by an exact row's clipping region.
+    /// Word EMF text records retain these origins. This changes diagnostic
+    /// projection only; painter clipping and the default capture are unchanged.
+    pub fn capture_full_layout_debug_unclipped_tables(
+        &mut self,
+    ) -> Result<FullLayoutDebugSnapshot, JsValue> {
+        self.capture_full_layout_debug_with_table_projection(false)
+    }
+
+    fn capture_full_layout_debug_with_table_projection(
+        &mut self,
+        clip_table_glyphs: bool,
+    ) -> Result<FullLayoutDebugSnapshot, JsValue> {
         if self.last_document.is_none() {
             return Err(JsValue::from_str("Document not loaded"));
         }
@@ -34208,8 +34244,9 @@ where
                 .map(|entry| (entry.line.paragraph, entry.line.line, entry.line.page))
                 .collect::<HashSet<_>>();
             for mut line in self.layout_debug_lines() {
-                if let Some(painted) =
-                    clipped_table_lines.remove(&(line.paragraph, line.line, line.page))
+                if let Some(painted) = clipped_table_lines
+                    .remove(&(line.paragraph, line.line, line.page))
+                    .filter(|_| clip_table_glyphs)
                 {
                     // Preserve every diagnostic field and source range; only
                     // the capture's visible-glyph projection changes.
@@ -59568,6 +59605,88 @@ mod tests {
                 assert_eq!(widths[0], widths[1], "{story}, draw={draw}");
             }
         }
+    }
+
+    #[test]
+    fn watermark_fixed_font_size_is_independent_of_its_shape_box() {
+        use jade_painter::recording::{Op, RecordingPainter};
+        for size in [1.0_f32, 1.005, 72.0] {
+            let painter = RecordingPainter::with_width_per_char(10.0);
+            let mut renderer = CanvasRenderer::with_host(
+                Box::new(NonCanvasHost {
+                    painter: painter.clone(),
+                }),
+                false,
+            )
+            .expect("recording renderer");
+            renderer.watermark_text = Some("TEST".to_string());
+            renderer.watermark_style = Some(jade_docx_reader::document::WatermarkStyle {
+                size_pt: Some(size),
+                fit_shape: Some(false),
+                horizontal: true,
+                width_pt: Some(200.0),
+                height_pt: Some(80.0),
+                ..Default::default()
+            });
+            painter.clear();
+            renderer.draw_watermark().expect("draw fixed watermark");
+            let ops = painter.ops();
+            let font = ops
+                .iter()
+                .find_map(|op| match op {
+                    Op::SetFont(font) => Some(font),
+                    _ => None,
+                })
+                .expect("font");
+            let actual: f64 = font.split("px").next().unwrap().parse().expect("CSS size");
+            assert!(
+                (actual - f64::from(size) * 96.0 / 72.0).abs() < 1e-9,
+                "{font}"
+            );
+            assert!(!ops.iter().any(|op| matches!(op, Op::Scale(..))), "{ops:?}");
+            assert_eq!(
+                ops.iter()
+                    .filter(|op| matches!(op, Op::FillText(text, ..) if text == "TEST"))
+                    .count(),
+                1
+            );
+            assert_eq!(ops.first(), Some(&Op::Save));
+            assert_eq!(ops.last(), Some(&Op::Restore));
+        }
+    }
+
+    #[test]
+    fn watermark_fitshape_keeps_stretching_to_the_imported_shape_box() {
+        use jade_painter::recording::{Op, RecordingPainter};
+        let painter = RecordingPainter::with_width_per_char(10.0);
+        let mut renderer = CanvasRenderer::with_host(
+            Box::new(NonCanvasHost {
+                painter: painter.clone(),
+            }),
+            false,
+        )
+        .expect("recording renderer");
+        renderer.watermark_text = Some("TEST".to_string());
+        renderer.watermark_style = Some(jade_docx_reader::document::WatermarkStyle {
+            size_pt: Some(72.0),
+            fit_shape: Some(true),
+            horizontal: true,
+            width_pt: Some(200.0),
+            height_pt: Some(80.0),
+            ..Default::default()
+        });
+        painter.clear();
+        renderer.draw_watermark().expect("draw fitted watermark");
+        let ops = painter.ops();
+        assert!(ops.iter().any(|op| matches!(op, Op::Scale(x, y) if (*x * 40.0 - 200.0 * 96.0 / 72.0).abs() < 1e-9 && *y == 1.0)), "{ops:?}");
+        assert_eq!(
+            ops.iter()
+                .filter(|op| matches!(op, Op::FillText(text, ..) if text == "TEST"))
+                .count(),
+            1
+        );
+        assert_eq!(ops.first(), Some(&Op::Save));
+        assert_eq!(ops.last(), Some(&Op::Restore));
     }
 
     #[test]

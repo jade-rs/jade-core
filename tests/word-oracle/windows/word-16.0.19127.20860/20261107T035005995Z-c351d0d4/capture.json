@@ -1,0 +1,40 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261107T035005995Z-c351d0d4",
+  "captured_at_utc": "2026-11-07T03:50:06.0155833Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20860",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "9bafe09d0c458006744b9edce767a328ba2da1bb5d9a460e5830c47bf6d7f1d1"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "documents": [
+    {
+      "name": "word-windows-edge-table-borders",
+      "source": "tmp\\edge-next-root\\public\\fixtures\\word-windows-edge-table-borders.docx",
+      "sha256": "3ecebda439a2d7d3a7a2689b072e626c83e0a0eb67b35426eab37a7fb5ad72c4",
+      "pdf": "word-windows-edge-table-borders.pdf",
+      "pdf_sha256": "bea0af2155aabd6ef7e22bd521c3d69e70fe9f537128741bdad1d10382230430",
+      "pages": 2,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-borders.page-001.emf",
+          "sha256": "e5fce26506575d420d5e36ddbce875614cf607b0078b38e5542594a9be764f94",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 2,
+          "file": "word-windows-edge-table-borders.page-002.emf",
+          "sha256": "9fc56b4f016cf29f791a895668720b951de4ec0e92dbed856b14d521864034a7",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    }
+  ]
+}

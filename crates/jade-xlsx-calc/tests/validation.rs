@@ -26,6 +26,45 @@ fn number(n: f64) -> Candidate {
     Candidate::Value(CellValue::Number(n))
 }
 #[test]
+fn list_sources_and_formula_candidates_keep_error_looking_text_typed() {
+    let mut book = workbook();
+    for (reference, value) in [
+        ("B2", CellValue::Text("#N/A".into())),
+        ("B3", CellValue::Error("#N/A".into())),
+    ] {
+        let reference = at(reference);
+        let cell = book.sheets[0]
+            .rows
+            .iter_mut()
+            .flat_map(|row| &mut row.cells)
+            .find(|cell| cell.reference == reference)
+            .unwrap();
+        cell.formula = None;
+        cell.value = value;
+    }
+    let r = rule("list", "H2", "$B$2:$B$3");
+    assert_eq!(
+        list(&book, 0, at("H2"), &r, "UTC").unwrap(),
+        Some(vec![
+            CellValue::Text("#N/A".into()),
+            CellValue::Error("#N/A".into())
+        ])
+    );
+    assert_eq!(
+        validate(
+            &book,
+            0,
+            at("H2"),
+            &r,
+            &Candidate::Formula("\"#N/A\"".into()),
+            "UTC"
+        )
+        .unwrap(),
+        Valid
+    );
+}
+
+#[test]
 fn references_and_relative_bounds_are_evaluated_at_the_candidate_cell() {
     let mut book = workbook();
     // The fixture B2/B3 values are 10 and 20, rather than literal bounds.

@@ -1,9 +1,10 @@
 use chrono::Datelike;
 
-use crate::{locale::Locale, number_format::to_precision};
+use crate::{locale::Locale, number_format::format_decimal_abs};
 
 use super::{
     dates::{date_to_serial_number, from_excel_date},
+    lexer::Compare,
     parser::{ParsePart, Parser, TextToken},
 };
 
@@ -13,30 +14,56 @@ pub struct Formatted {
     pub error: Option<String>,
 }
 
-/// Returns the vector of chars of the fractional part of a *positive* number:
-/// 3.1415926 ==> ['1', '4', '1', '5', '9', '2', '6']
-fn get_fract_part(value: f64, precision: i32, int_len: usize) -> Vec<char> {
-    let b = format!("{:.1$}", value.fract(), precision as usize)
-        .chars()
-        .collect::<Vec<char>>();
-    let l = b.len() - 1;
-    let mut last_non_zero = b.len() - 1;
-    for i in 0..l {
-        if b[l - i] != '0' {
-            last_non_zero = l - i + 1;
-            break;
+// Shared by token-based formats and the raw fraction-pattern renderer.
+pub(super) fn select_conditional_section(
+    conditions: &[Option<&(Compare, f64)>],
+    value: f64,
+) -> Option<usize> {
+    let mut fallback = None;
+    for (index, condition) in conditions.iter().take(3).enumerate() {
+        let matches = match condition {
+            Some((Compare::Equal, threshold)) => value == *threshold,
+            Some((Compare::NotEqual, threshold)) => value != *threshold,
+            Some((Compare::LessThan, threshold)) => value < *threshold,
+            Some((Compare::GreaterThan, threshold)) => value > *threshold,
+            Some((Compare::LessOrEqualThan, threshold)) => value <= *threshold,
+            Some((Compare::GreaterOrEqualThan, threshold)) => value >= *threshold,
+            None => {
+                fallback.get_or_insert(index);
+                false
+            }
+        };
+        if matches {
+            return Some(index);
         }
     }
-    if last_non_zero < 2 {
-        return vec![];
+    fallback
+}
+
+fn scientific_parts(value: f64, precision: usize, integer_digits: i32) -> Option<(f64, i32)> {
+    let step = integer_digits.max(1);
+    // Preserve input precision until the coefficient's decimal position is
+    // known, then apply the same decimal rounding as fixed-point formats.
+    let scientific = format!("{value:e}");
+    let (coefficient, exponent) = scientific.split_once('e')?;
+    let mut coefficient = coefficient.parse::<f64>().ok()?;
+    let mut exponent = exponent.parse::<i32>().ok()?;
+    let shift = exponent.rem_euclid(step);
+    coefficient *= 10.0_f64.powi(shift);
+    exponent -= shift;
+    if !coefficient.is_finite() {
+        return None;
     }
-    let max_len = if int_len > 15 {
-        2_usize
-    } else {
-        15_usize - int_len + 1
-    };
-    let last_non_zero = usize::min(last_non_zero, max_len + 1);
-    b[2..last_non_zero].to_vec()
+    coefficient = format_decimal_abs(coefficient.abs(), precision as i32)
+        .parse::<f64>()
+        .ok()?
+        .copysign(coefficient);
+    let limit = 10.0_f64.powi(step);
+    if coefficient.abs() >= limit {
+        coefficient /= limit;
+        exponent += step;
+    }
+    coefficient.is_finite().then_some((coefficient, exponent))
 }
 
 /// Return true if we need to add a separator in position digit_index
@@ -58,12 +85,8 @@ fn use_group_separator(use_thousands: bool, digit_index: i32, group_sizes: &str)
 
 pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Formatted {
     // Jade: fractions (`# ?/?`, `?/8`), which the token parser does not model.
-    if let Some(text) = super::fraction::format_fraction(value_original, format) {
-        return Formatted {
-            text,
-            color: None,
-            error: None,
-        };
+    if let Some(formatted) = super::fraction::format_fraction(value_original, format, locale) {
+        return formatted;
     }
     let mut parser = Parser::new(format);
     parser.parse();
@@ -81,46 +104,62 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
     // You can use the ampersand (&) text operator to join, or concatenate, two values.
     let mut value = value_original;
     let part;
-    match parts.len() {
-        1 => {
-            part = &parts[0];
-        }
-        2 => {
-            if value >= 0.0 {
-                part = &parts[0]
-            } else {
-                value = -value;
-                part = &parts[1];
-            }
-        }
-        3 => {
-            if value > 0.0 {
-                part = &parts[0]
-            } else if value < 0.0 {
-                value = -value;
-                part = &parts[1];
-            } else {
-                value = 0.0;
-                part = &parts[2];
-            }
-        }
-        4 => {
-            if value > 0.0 {
-                part = &parts[0]
-            } else if value < 0.0 {
-                value = -value;
-                part = &parts[1];
-            } else {
-                value = 0.0;
-                part = &parts[2];
-            }
-        }
-        _ => {
+    let conditional = parts.iter().take(2).any(|part| part.condition().is_some());
+    if conditional && (2..=4).contains(&parts.len()) {
+        // Explicit conditions replace the positive/negative/zero routing.
+        // Keep the signed value: the second section is no longer an implicit
+        // negative-number section whose magnitude should be formatted.
+        let conditions = parts.iter().map(ParsePart::condition).collect::<Vec<_>>();
+        let Some(selected) = select_conditional_section(&conditions, value) else {
             return Formatted {
-                text: "#VALUE!".to_owned(),
+                text: "#VALUE!".into(),
                 color: None,
-                error: Some("Too many parts".to_owned()),
+                error: Some("No matching number format section".into()),
             };
+        };
+        part = &parts[selected];
+    } else {
+        match parts.len() {
+            1 => {
+                part = &parts[0];
+            }
+            2 => {
+                if value >= 0.0 {
+                    part = &parts[0]
+                } else {
+                    value = -value;
+                    part = &parts[1];
+                }
+            }
+            3 => {
+                if value > 0.0 {
+                    part = &parts[0]
+                } else if value < 0.0 {
+                    value = -value;
+                    part = &parts[1];
+                } else {
+                    value = 0.0;
+                    part = &parts[2];
+                }
+            }
+            4 => {
+                if value > 0.0 {
+                    part = &parts[0]
+                } else if value < 0.0 {
+                    value = -value;
+                    part = &parts[1];
+                } else {
+                    value = 0.0;
+                    part = &parts[2];
+                }
+            }
+            _ => {
+                return Formatted {
+                    text: "#VALUE!".to_owned(),
+                    color: None,
+                    error: Some("Too many parts".to_owned()),
+                };
+            }
         }
     }
     match part {
@@ -152,15 +191,23 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
                         error: None,
                     };
                 }
-                let exponent = value_abs.log10().floor();
-                value /= 10.0_f64.powf(exponent);
-                let sign = if exponent < 0.0 { '-' } else { '+' };
-                let s = format!("{value:.5}");
+                // Let decimal formatting normalize any carry into the
+                // exponent; scaling manually could produce 10E+11 or overflow.
+                let scientific = format!("{value:.5e}");
+                let Some((s, exponent)) = scientific.split_once('e') else {
+                    return Formatted {
+                        text: "#VALUE!".into(),
+                        color: None,
+                        error: Some("Invalid numeric value".into()),
+                    };
+                };
+                let exponent: i32 = exponent.parse().unwrap_or(0);
+                let sign = if exponent < 0 { '-' } else { '+' };
                 let mut text = format!(
                     "{}E{}{:02}",
                     s.trim_end_matches('0').trim_end_matches('.'),
                     sign,
-                    exponent.abs()
+                    exponent.unsigned_abs()
                 );
                 if locale.numbers.symbols.decimal != "." {
                     text = text.replace('.', &locale.numbers.symbols.decimal.to_string());
@@ -177,7 +224,18 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
             let mut text = "".to_string();
             // Round once before extracting components, so binary serials never
             // format an exact minute as 02:29:60 and midnight carries the date.
-            let total_seconds = (value * 86400.0).round() as i64;
+            let precision = tokens
+                .iter()
+                .filter_map(|token| match token {
+                    TextToken::FractionalSecond(places) => Some(*places),
+                    _ => None,
+                })
+                .max()
+                .unwrap_or(0);
+            let scale = 10u32.pow(precision as u32);
+            let ticks = (value * 86400.0 * f64::from(scale)).round();
+            let total_seconds = (ticks / f64::from(scale)).floor() as i64;
+            let fraction = ticks.rem_euclid(f64::from(scale)) as u32;
             let clock_seconds = total_seconds.rem_euclid(86400);
             let hours = (clock_seconds / 3600) as f64;
             let minutes = ((clock_seconds % 3600) / 60) as f64;
@@ -191,7 +249,7 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
                         | TextToken::MinutePadded
                         | TextToken::Second
                         | TextToken::SecondPadded
-                        | TextToken::AMPM
+                        | TextToken::AMPM(_, _)
                         | TextToken::ElapsedHour
                         | TextToken::ElapsedHourPadded
                         | TextToken::ElapsedMinute
@@ -441,8 +499,12 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
                         let second = seconds as i32;
                         text = format!("{text}{second:02}");
                     }
-                    TextToken::AMPM => {
-                        let ampm = if hours < 12.0 { "AM" } else { "PM" };
+                    TextToken::FractionalSecond(places) => {
+                        let digits = fraction / 10u32.pow((precision - places) as u32);
+                        text = format!("{text}.{digits:0width$}", width = *places);
+                    }
+                    TextToken::AMPM(am, pm) => {
+                        let ampm = if hours < 12.0 { am } else { pm };
                         text = format!("{text}{ampm}");
                     }
                     TextToken::Minute => {
@@ -492,52 +554,60 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
             }
             let tokens = &p.tokens;
             value = value * 100.0_f64.powi(p.percent) / (1000.0_f64.powi(p.comma));
-            // p.precision is the number of significant digits _after_ the decimal point
-            value = to_precision(
-                value,
-                (p.precision as usize) + format!("{}", value.abs().floor()).len(),
-            );
-            let mut value_abs = value.abs();
+            if !value.is_finite() {
+                return Formatted {
+                    text: "#VALUE!".into(),
+                    color: p.color,
+                    error: Some("Invalid numeric value".into()),
+                };
+            }
             let mut exponent_part: Vec<char> = vec![];
-            let mut exponent_is_negative = value_abs < 10.0;
+            let mut exponent_is_negative = false;
             if p.is_scientific {
-                if value_abs == 0.0 {
-                    exponent_part = vec!['0'];
-                    exponent_is_negative = false;
-                } else {
-                    // TODO: Implement engineering formatting.
-                    let exponent = value_abs.log10().floor();
-                    exponent_part = format!("{}", exponent.abs()).chars().collect();
-                    value /= 10.0_f64.powf(exponent);
-                    value = to_precision(value, 15);
-                    value_abs = value.abs();
-                }
+                // Round and normalize the coefficient together with the
+                // exponent. Separate log/power scaling loses carries and can
+                // overflow/underflow for otherwise finite input values.
+                let parsed = scientific_parts(value, p.precision as usize, p.digit_count);
+                let Some((coefficient, exponent)) = parsed else {
+                    return Formatted {
+                        text: "#VALUE!".into(),
+                        color: p.color,
+                        error: Some("Invalid scientific value".into()),
+                    };
+                };
+                exponent_part = exponent.unsigned_abs().to_string().chars().collect();
+                exponent_is_negative = exponent < 0;
+                value = coefficient;
             }
             let l_exp = exponent_part.len() as i32;
-            let int_number = if p.precision == 0 {
-                value_abs.round()
+            // Keep decimal carry and fractional digits together, avoiding a
+            // second binary-float rounding after the integer/fraction split.
+            let decimal = format_decimal_abs(value.abs(), p.precision);
+            let (integer, fraction) = decimal.split_once('.').unwrap_or((&decimal, ""));
+            let int_part: Vec<char> = if integer == "0" {
+                Vec::new()
             } else {
-                value_abs.floor()
+                integer.chars().collect()
             };
-            let mut int_part: Vec<char> = format!("{}", int_number).chars().collect();
-            if int_number as i64 == 0 {
-                int_part = vec![];
-            }
-            let fract_part = get_fract_part(value_abs, p.precision, int_part.len());
+            let fract_part: Vec<char> = fraction.trim_end_matches('0').chars().collect();
             // ln is the number of digits of the integer part of the value
             let ln = int_part.len() as i32;
             // digit count is the number of digit tokens ('0', '?' and '#') to the left of the decimal point
             let digit_count = p.digit_count;
             // digit_index points to the digit index in value that we have already formatted
             let mut digit_index = 0;
+            let mut exponent_digit_index = 0;
 
             let symbols = &locale.numbers.symbols;
             let group_sizes = locale.numbers.decimal_formats.standard.to_owned();
             let group_separator = symbols.group.to_owned();
             let decimal_separator = symbols.decimal.to_owned();
-            // There probably are better ways to check if a number at a given precision is negative :/
-            let is_negative = value < -(10.0_f64.powf(-(p.precision as f64)));
-            let mut needs_period = false;
+            // Section selection already removes the sign for an ordinary
+            // negative section. Decide from the rounded display digits rather
+            // than comparing to one unit at the requested precision. Retain
+            // the existing unsigned-zero policy until native captures resolve
+            // the exact TEXT behavior of negative values rounded to zero.
+            let mut sign_pending = value < 0.0 && (!int_part.is_empty() || !fract_part.is_empty());
 
             for token in tokens {
                 match token {
@@ -561,19 +631,24 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
                         text = format!("{text}{value}");
                     }
                     TextToken::Period => {
-                        // if !fract_part.is_empty() &&  {
-                        //     text = format!("{text}{decimal_separator}");
-                        // }
-                        needs_period = true;
+                        // A decimal point is visible at its specified position,
+                        // even without following placeholders or before literals.
+                        // `.00` omits a leading-zero placeholder, not actual
+                        // nonzero integer digits.
+                        if digit_count == 0 {
+                            text.extend(int_part.iter());
+                        }
+                        text.push_str(&decimal_separator);
                     }
                     TextToken::Digit(digit) => {
+                        if sign_pending && !digit.number.is_exponent() {
+                            text = format!("-{text}");
+                            sign_pending = false;
+                        }
                         if digit.number.is_integer() {
                             // 1. Integer part
                             let index = digit.index;
                             let number_index = ln - digit_count + index;
-                            if index == 0 && is_negative {
-                                text = format!("-{text}");
-                            }
                             if ln <= digit_count {
                                 // The number of digits is less or equal than the number of digit tokens
                                 // i.e. the value is 123 and the format_code is ##### (ln = 3 and digit_count = 5)
@@ -590,7 +665,9 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
                                     };
                                     let sep = if use_group_separator(
                                         p.use_thousands,
-                                        ln - digit_index,
+                                        // Suppressed leading `#` placeholders
+                                        // do not consume actual integer digits.
+                                        ln - number_index,
                                         &group_sizes,
                                     ) {
                                         &group_separator
@@ -621,27 +698,12 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
                             // 2. After the decimal point
                             let index = digit.index as usize;
                             if index < fract_part.len() {
-                                if needs_period {
-                                    text = format!(
-                                        "{}{}{}",
-                                        text, decimal_separator, fract_part[index]
-                                    );
-                                } else {
-                                    text = format!("{}{}", text, fract_part[index]);
-                                }
+                                text.push(fract_part[index]);
                             } else if digit.kind == '0' {
-                                if needs_period {
-                                    text = format!("{text}{}0", decimal_separator);
-                                } else {
-                                    text = format!("{text}0");
-                                }
+                                text.push('0');
                             } else if digit.kind == '?' {
-                                text = format!("{text} ");
-                            } else if digit.kind == '#' && needs_period {
-                                // FIXME: This is what Excel does, but it transforms "3" into "3."
-                                text = format!("{text}{}", decimal_separator);
+                                text.push(' ');
                             }
-                            needs_period = false;
                         } else if digit.number.is_exponent() {
                             // 3. Exponent part
                             let index = digit.index;
@@ -670,9 +732,10 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
                                     text = format!("{text}{c}");
                                 }
                             } else {
-                                for i in 0..number_index + 1 {
+                                for i in exponent_digit_index..number_index + 1 {
                                     text = format!("{}{}", text, exponent_part[i as usize]);
                                 }
+                                exponent_digit_index = number_index + 1;
                                 digit_index += number_index + 1;
                             }
                         }
@@ -698,7 +761,8 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
                     TextToken::MinutePadded => {}
                     TextToken::Second => {}
                     TextToken::SecondPadded => {}
-                    TextToken::AMPM => {}
+                    TextToken::FractionalSecond(_) => {}
+                    TextToken::AMPM(_, _) => {}
                     TextToken::ElapsedHour => {}
                     TextToken::ElapsedHourPadded => {}
                     TextToken::ElapsedMinute => {}

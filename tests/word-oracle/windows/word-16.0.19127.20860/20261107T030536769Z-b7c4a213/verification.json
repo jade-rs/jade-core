@@ -1,0 +1,17 @@
+{
+  "engine_commit": "bfecf0ab951398cd0869eabc013687b3ce02cbc8",
+  "word_product_version": "16.0.19127.20860",
+  "capture_id": "20261107T030536769Z-b7c4a213",
+  "reference_kind": "emf",
+  "engine_source_worktree_dirty": false,
+  "strict_fixtures": [],
+  "matching_fixtures": [
+    "word-windows-edge-run-width"
+  ],
+  "pending_fixtures": [
+    "word-windows-edge-indents",
+    "word-windows-edge-run-position",
+    "word-windows-edge-spacing",
+    "word-windows-edge-tabs"
+  ]
+}

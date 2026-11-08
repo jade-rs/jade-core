@@ -1,0 +1,10 @@
+{
+  "before_native_source_commit": "a95ede06a0681a568639884704a4ea96e6a9c98c",
+  "before_native_executable_sha256": "48f1a239c534235f9a5b1dc40c2bf201e9765db704ccddbbf63f4a25a55ff466",
+  "after_native_source_commit": "f41d7e73d356dc703a4ea2e8c6da64a1ac733c1b",
+  "after_native_executable_sha256": "72c9e6a082a54636f2c375fbb8b28c0f66678a8f1d132ff293bcb5353fc448d0",
+  "host": "Windows; WordLayoutPlatform::Mac policy",
+  "glyph_comparison": "exact",
+  "pixel_comparison": "exact decoded RGBA",
+  "fixture_count": 11
+}
