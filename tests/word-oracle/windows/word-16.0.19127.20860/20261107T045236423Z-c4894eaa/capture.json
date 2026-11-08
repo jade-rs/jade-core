@@ -1,0 +1,68 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261107T045236423Z-c4894eaa",
+  "captured_at_utc": "2026-11-07T04:52:36.4461772Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20860",
+    "file_version": "16.0.19127.20860",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "9bafe09d0c458006744b9edce767a328ba2da1bb5d9a460e5830c47bf6d7f1d1"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-edge-table-indents-compat12",
+      "source": "tmp\\decimal-anchor-core\\public\\fixtures\\word-windows-edge-table-indents-compat12.docx",
+      "sha256": "133f4ac8d834a43a357a0a87932037a4875cbb8112744975b5a7d27de29a8dea",
+      "pdf": "word-windows-edge-table-indents-compat12.pdf",
+      "pdf_sha256": "730d150e7fc74a3b19e878afa318f1e56aedcfe3d2ef89f3ade65c97eaf896c8",
+      "pages": 2,
+      "compatibility_mode": 12,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-indents-compat12.page-001.emf",
+          "sha256": "fcc4c2deaa04a95e146be2951e798be04116fc9e9c668b2cb0ead3e570d24871",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 2,
+          "file": "word-windows-edge-table-indents-compat12.page-002.emf",
+          "sha256": "a3697b833d74f378f5f91ac44fedc6e81ac42d7c3d0a2cee700fb0dacb36da84",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-indents-compat14",
+      "source": "tmp\\decimal-anchor-core\\public\\fixtures\\word-windows-edge-table-indents-compat14.docx",
+      "sha256": "ca8e006695ecbc489b9a883003d803d9169c902289a6110937a535bbb762f55e",
+      "pdf": "word-windows-edge-table-indents-compat14.pdf",
+      "pdf_sha256": "13e61c14e8286290795ca61ebf167a3955200bd28f64949a7c1916a866a928d7",
+      "pages": 2,
+      "compatibility_mode": 14,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-indents-compat14.page-001.emf",
+          "sha256": "640e5f3e5809266e9131e5b933300f11bf45657190edb7954dd1b6c6f80adf4d",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 2,
+          "file": "word-windows-edge-table-indents-compat14.page-002.emf",
+          "sha256": "2099127f4ceae43c04eb35664db6cda8610031b622fd73e738d5785e4ae9edb2",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    }
+  ]
+}

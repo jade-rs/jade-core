@@ -27,6 +27,40 @@ fn xml(b: &HeadlessWorkbook) -> String {
 }
 
 #[test]
+fn split_escape_lookalikes_keep_values_and_runs_through_save_and_undo() {
+    let runs = "<r><rPr><b/></rPr><t>_x00</t></r><r><t>41_</t></r><r><t>_x0042_</t></r>";
+    for shared in [false, true] {
+        let cell = if shared {
+            "<s:c r=\"A1\" t=\"s\"><s:v>0</s:v></s:c>".to_string()
+        } else {
+            format!("<s:c r=\"A1\" t=\"inlineStr\"><s:is xmlns=\"{MAIN}\">{runs}</s:is></s:c>")
+        };
+        let mut p = package(&format!("<s:sheetData><s:row r=\"1\">{cell}<s:c r=\"B1\"><s:f>LEN(A1)</s:f><s:v>0</s:v></s:c></s:row></s:sheetData>"), MAIN);
+        if shared {
+            p.replace(
+                "xl/sharedStrings.xml",
+                format!("<sst xmlns=\"{MAIN}\"><si>{runs}</si></sst>").into_bytes(),
+            );
+        }
+        let mut book = HeadlessWorkbook::open_for_editing(&p.write().unwrap()).unwrap();
+        assert_eq!(book.cell(NAME, "A1").unwrap().display, "_x0041_B");
+        assert_eq!(book.cell(NAME, "B1").unwrap().number, Some(8.0));
+        let at = CellRef::new(0, 0);
+        let rich = book.workbook().sheets[0].rich_text[&at].clone();
+        let before = book.bytes().to_vec();
+        book.set(NAME, "C1", CellInput::Number(3.0)).unwrap();
+        let saved = HeadlessWorkbook::open_for_editing(&book.save_bytes().unwrap()).unwrap();
+        assert_eq!(saved.cell(NAME, "A1").unwrap().display, "_x0041_B");
+        assert_eq!(saved.cell(NAME, "B1").unwrap().number, Some(8.0));
+        assert_eq!(saved.workbook().sheets[0].rich_text[&at], rich);
+        book.undo().unwrap();
+        assert_eq!(book.bytes(), before);
+        book.redo().unwrap();
+        assert_eq!(book.cell(NAME, "A1").unwrap().display, "_x0041_B");
+    }
+}
+
+#[test]
 fn selected_cells_calculate_edit_save_and_undo_without_touching_foreign_or_inactive_records() {
     let foreign = r#"<u:wrapper><s:c r="B1"><s:f>100+200</s:f><s:v>300</s:v></s:c></u:wrapper>"#;
     let inactive = r#"<mc:Choice Requires="u"><s:row r="1"><s:c r="A1"><s:v>900</s:v></s:c></s:row></mc:Choice>"#;

@@ -1,0 +1,180 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261107T104832151Z-b2b90731",
+  "captured_at_utc": "2026-11-07T10:48:32.1817781Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20860",
+    "file_version": "16.0.19127.20860",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "9bafe09d0c458006744b9edce767a328ba2da1bb5d9a460e5830c47bf6d7f1d1"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-edge-table-collapsed-mixed-borders-compat12",
+      "source": "..\\decimal-anchor-core\\public\\fixtures\\word-windows-edge-table-collapsed-mixed-borders-compat12.docx",
+      "sha256": "c6251634fd0b4cdccc8a8a87ac9129d8b29ae0d461caae6d8ed04dc2fbcf19d9",
+      "pdf": "word-windows-edge-table-collapsed-mixed-borders-compat12.pdf",
+      "pdf_sha256": "df0a4bc2275ec5de0b47dda950a1ee02e2bb0a277b39f5e276b3bcda97dbffd1",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-collapsed-mixed-borders-compat12.page-001.emf",
+          "sha256": "de284ec2791104c26229c09960a48dae54c300480b04074b722dd386099a1023",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-collapsed-mixed-borders-compat14",
+      "source": "..\\decimal-anchor-core\\public\\fixtures\\word-windows-edge-table-collapsed-mixed-borders-compat14.docx",
+      "sha256": "74f8e29ded31c8c692bfdea93b0803da6c4caf4bd592601f198a20e15dd694e4",
+      "pdf": "word-windows-edge-table-collapsed-mixed-borders-compat14.pdf",
+      "pdf_sha256": "c10519be547ee44f788c26aebe9acdde187cc48fd27cbde4e0f8f2a287445364",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-collapsed-mixed-borders-compat14.page-001.emf",
+          "sha256": "5e88e0f90ac788275a8a76597f114e7b1d085f326134a84dc2feb3b6d4852820",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-collapsed-mixed-borders-compat15",
+      "source": "..\\decimal-anchor-core\\public\\fixtures\\word-windows-edge-table-collapsed-mixed-borders-compat15.docx",
+      "sha256": "67c0dbfc640db7522aec14e3f9ece35ee989a297870e718b1472261e3813e277",
+      "pdf": "word-windows-edge-table-collapsed-mixed-borders-compat15.pdf",
+      "pdf_sha256": "6690cffc1e6c57d57888f43edc492dfe81f2d8ca636cae81f58e1a9a7deac59e",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-collapsed-mixed-borders-compat15.page-001.emf",
+          "sha256": "59443fe34fe2a346c5d192301099f1bc49d3d8703926d829d2c36d60fe4aec0f",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-spacing-missing-type-mixed-borders-compat12",
+      "source": "..\\decimal-anchor-core\\public\\fixtures\\word-windows-edge-table-spacing-missing-type-mixed-borders-compat12.docx",
+      "sha256": "08e1d23c4cb418f55c917d0e2b3594b378539c9b4d9028c16fd91e5c436d442a",
+      "pdf": "word-windows-edge-table-spacing-missing-type-mixed-borders-compat12.pdf",
+      "pdf_sha256": "1db658dc0709adc808ef0cb9ca1c8df0d94f8f26dfc888d1a1301b76ba51cd21",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-spacing-missing-type-mixed-borders-compat12.page-001.emf",
+          "sha256": "f305401e8861820ed7af90c1ebf34cf7d12152aca57e5a4cb548266b1f8eece6",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-spacing-missing-type-mixed-borders-compat14",
+      "source": "..\\decimal-anchor-core\\public\\fixtures\\word-windows-edge-table-spacing-missing-type-mixed-borders-compat14.docx",
+      "sha256": "8d2fdec6174ed5dbb579b89ef699da75e3027adef188bd1b6366dc13c4dd58b1",
+      "pdf": "word-windows-edge-table-spacing-missing-type-mixed-borders-compat14.pdf",
+      "pdf_sha256": "676f0e089b2c5cb1670aa8e4f3297e235f943fadac5e0dcfcc07a3b1bcb5f3f5",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-spacing-missing-type-mixed-borders-compat14.page-001.emf",
+          "sha256": "8d03634bbd0355938861954913e73c5b1d242a2dd47116c0d22ca58a3c3c7b52",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-spacing-missing-type-mixed-borders-compat15",
+      "source": "..\\decimal-anchor-core\\public\\fixtures\\word-windows-edge-table-spacing-missing-type-mixed-borders-compat15.docx",
+      "sha256": "57b3359ee7d2a475b53f8daa187a724bdb06c74de024b5840800af6741e66897",
+      "pdf": "word-windows-edge-table-spacing-missing-type-mixed-borders-compat15.pdf",
+      "pdf_sha256": "27ce1199f2c6946021627e5902e3890bb11e21c9b22dd407ffe3d663e354d51d",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-spacing-missing-type-mixed-borders-compat15.page-001.emf",
+          "sha256": "7ad96932a882d89a0057240029df4801766d23ecf82b32cb6ac8ffcd55972fe5",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-spacing-missing-width-mixed-borders-compat12",
+      "source": "..\\decimal-anchor-core\\public\\fixtures\\word-windows-edge-table-spacing-missing-width-mixed-borders-compat12.docx",
+      "sha256": "837a33ea781d65247cd70a4eac7a5a32513498270709001d58baa475bd00b187",
+      "pdf": "word-windows-edge-table-spacing-missing-width-mixed-borders-compat12.pdf",
+      "pdf_sha256": "d357fb89f836e43845688c2fdc67ffaa02f4df83861f0316a40366b6ea49fd6c",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-spacing-missing-width-mixed-borders-compat12.page-001.emf",
+          "sha256": "b88eccf67961491c573e3e070e94578905a8921eda827459e2ece367c7692e5c",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-spacing-missing-width-mixed-borders-compat14",
+      "source": "..\\decimal-anchor-core\\public\\fixtures\\word-windows-edge-table-spacing-missing-width-mixed-borders-compat14.docx",
+      "sha256": "61c3898fbb0c94ec3c841127df22a74340e40b01d8af2d9878c5b3d730d314dc",
+      "pdf": "word-windows-edge-table-spacing-missing-width-mixed-borders-compat14.pdf",
+      "pdf_sha256": "6ae32b749167228668037c5996830914c62eaa383ae558bf3ef7f98e62e088c7",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-spacing-missing-width-mixed-borders-compat14.page-001.emf",
+          "sha256": "75b4cdb63d865dac98dc1832b5079ebfc66b2b00b187439d6a700d0d67ed9231",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-spacing-missing-width-mixed-borders-compat15",
+      "source": "..\\decimal-anchor-core\\public\\fixtures\\word-windows-edge-table-spacing-missing-width-mixed-borders-compat15.docx",
+      "sha256": "be50289c236ba073a4d2c45e7060fa83e4ae806a68f2452fd168a345b9e54184",
+      "pdf": "word-windows-edge-table-spacing-missing-width-mixed-borders-compat15.pdf",
+      "pdf_sha256": "953a63e48dcbd465813bc2e7e6d82d2d135236da5cf1decc47bcacd9e885e675",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-spacing-missing-width-mixed-borders-compat15.page-001.emf",
+          "sha256": "f1a0a39398c8609384e512cca9ee43c05d4adacfbfb16083bd235f64b46cc297",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    }
+  ]
+}

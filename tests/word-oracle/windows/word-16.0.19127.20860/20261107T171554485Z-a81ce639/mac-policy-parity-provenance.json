@@ -1,0 +1,171 @@
+{
+  "schema": 1,
+  "host": "Windows; Mac layout policy, not a native macOS execution",
+  "before_native_source_commit": "2ef8f939509680fb21cc01213de0319a331bcb27",
+  "before_native_executable_sha256": "7132654ed6d1144403df4137c48aeefdfd8a0e3478b1c8666684d0475fe7fd25",
+  "after_native_source_commit": "2068e7d1e576633200b1bdf367d0bc6ce81b6438",
+  "after_native_executable_sha256": "4a1f859ed4f6a9651b5982364ef0ceba435901a135581687b2c63bd220abf011",
+  "comparison": [
+    {
+      "name": "word-windows-edge-table-negative-spacing-autofit-bidi-alignment-compat12",
+      "glyphs_equal": true,
+      "pages_equal": true,
+      "pixels_equal": true,
+      "docx_sha256": "bab87cfe956ea661cf82ee1cb348eacf134bfcb8fb929eb1fba8744628ed511b"
+    },
+    {
+      "name": "word-windows-edge-table-negative-spacing-autofit-bidi-alignment-compat14",
+      "glyphs_equal": true,
+      "pages_equal": true,
+      "pixels_equal": true,
+      "docx_sha256": "3626daa52ff791015d578a92d40288efe6bebfdf71d4f383163778298d69a42e"
+    },
+    {
+      "name": "word-windows-edge-table-negative-spacing-autofit-bidi-alignment-compat15",
+      "glyphs_equal": true,
+      "pages_equal": true,
+      "pixels_equal": true,
+      "docx_sha256": "89b3b0d80838539be0ae48851f150300c78ed0afd3a4d31b6f49f8187c16d8bd"
+    },
+    {
+      "name": "word-windows-edge-table-negative-spacing-autofit-bidi-unequal-3-compat12",
+      "glyphs_equal": true,
+      "pages_equal": true,
+      "pixels_equal": true,
+      "docx_sha256": "0c60680ee6d8b747f698489c31519afe68f8bec807212050618eab59527c2efd"
+    },
+    {
+      "name": "word-windows-edge-table-negative-spacing-autofit-bidi-unequal-3-compat14",
+      "glyphs_equal": true,
+      "pages_equal": true,
+      "pixels_equal": true,
+      "docx_sha256": "79f17cce141a93ea03f02164c8bcf17e107f5ae7e70f340f1badff75e9c7ba52"
+    },
+    {
+      "name": "word-windows-edge-table-negative-spacing-autofit-bidi-unequal-3-compat15",
+      "glyphs_equal": true,
+      "pages_equal": true,
+      "pixels_equal": true,
+      "docx_sha256": "189d07e3d0530af150b261245ed8a29ebbd4b88156307dc18fcf67de4cfd6bec"
+    },
+    {
+      "name": "word-windows-edge-table-negative-spacing-autofit-unequal-3-compat12",
+      "glyphs_equal": true,
+      "pages_equal": true,
+      "pixels_equal": true,
+      "docx_sha256": "75325afdd11ed4eb6b3f6c360ab93f907a0bd755e0a0a7621a5ae31bd5342f4b"
+    },
+    {
+      "name": "word-windows-edge-table-negative-spacing-autofit-unequal-3-compat15",
+      "glyphs_equal": true,
+      "pages_equal": true,
+      "pixels_equal": true,
+      "docx_sha256": "5ee2d3707294d7a4651093997ed9c516063903792eb9485ccde73e152a300057"
+    },
+    {
+      "name": "word-windows-edge-table-negative-spacing-bidi-unequal-3-compat12",
+      "glyphs_equal": true,
+      "pages_equal": true,
+      "pixels_equal": true,
+      "docx_sha256": "5d4fb6016ce76fb3816f9d09b35e7cc21108bba38f7841ab2fbdbf8e6f3ec6c5"
+    },
+    {
+      "name": "word-windows-edge-table-negative-spacing-bidi-unequal-3-compat15",
+      "glyphs_equal": true,
+      "pages_equal": true,
+      "pixels_equal": true,
+      "docx_sha256": "cdc541e6a516064df5f31bc92b2c3cc8799bc55dd4191c559fbd608d1a6fe7ae"
+    },
+    {
+      "name": "word-windows-edge-table-positive-spacing-bidi-border-widths-compat14",
+      "glyphs_equal": true,
+      "pages_equal": true,
+      "pixels_equal": true,
+      "docx_sha256": "29831463c6be8052dec37440cc801925abc9d20238383a9d56bb3d695335c415"
+    },
+    {
+      "name": "word-windows-edge-table-positive-spacing-bidi-border-widths-compat15",
+      "glyphs_equal": true,
+      "pages_equal": true,
+      "pixels_equal": true,
+      "docx_sha256": "4f06f6a176a5b8c1d272c93491bc8d3d3f2501941af8398f0a209bdb422e58f9"
+    },
+    {
+      "name": "word-windows-edge-table-positive-spacing-sizing-autofit-bidi-compat14",
+      "glyphs_equal": true,
+      "pages_equal": true,
+      "pixels_equal": true,
+      "docx_sha256": "3ef7f3200585a42edc34917c8af6dcb1a71910dcd96369491fd3e307d7623fae"
+    },
+    {
+      "name": "word-windows-edge-table-positive-spacing-sizing-autofit-bidi-compat15",
+      "glyphs_equal": true,
+      "pages_equal": true,
+      "pixels_equal": true,
+      "docx_sha256": "df04af8e79cf37bd2b3ba6a6f244940894f83c7efac2e8da253eea1038e8c390"
+    },
+    {
+      "name": "word-windows-edge-table-positive-spacing-sizing-autofit-bidi-short-compat14",
+      "glyphs_equal": true,
+      "pages_equal": true,
+      "pixels_equal": true,
+      "docx_sha256": "e028f635ca087b8e0be980a9160ba8db5648a24b4162f772e5347f758e7f977a"
+    },
+    {
+      "name": "word-windows-edge-table-positive-spacing-sizing-autofit-ltr-compat14",
+      "glyphs_equal": true,
+      "pages_equal": true,
+      "pixels_equal": true,
+      "docx_sha256": "16953b45e46afcda186adc78b2ba3f6b037726e3d933f13412de3bc021ed93f8"
+    },
+    {
+      "name": "word-windows-edge-table-positive-spacing-sizing-autofit-ltr-short-compat14",
+      "glyphs_equal": true,
+      "pages_equal": true,
+      "pixels_equal": true,
+      "docx_sha256": "8124cd0fd85009ecee29b2df74b19b17ced7e60bffed953032721e5263000786"
+    },
+    {
+      "name": "word-windows-edge-table-positive-spacing-sizing-fixed-bidi-compat14",
+      "glyphs_equal": true,
+      "pages_equal": true,
+      "pixels_equal": true,
+      "docx_sha256": "f4362bfdb73a1c3f820b3fd5460b81b5c17be1a94aeb36d6bac788f397feba9e"
+    },
+    {
+      "name": "word-windows-edge-table-positive-spacing-sizing-fixed-bidi-short-compat14",
+      "glyphs_equal": true,
+      "pages_equal": true,
+      "pixels_equal": true,
+      "docx_sha256": "1937bc5a3bac4b75f00c16351e4ceed4fafdf6a91ed30b480777e5de4d2740e2"
+    },
+    {
+      "name": "word-windows-edge-table-zero-spacing-bidi-border-widths-compat14",
+      "glyphs_equal": true,
+      "pages_equal": true,
+      "pixels_equal": true,
+      "docx_sha256": "5fa62fd84075310abde7a79a4966a64296416e3dc5e0bb3d7c9d65ec15337500"
+    },
+    {
+      "name": "word-windows-edge-table-zero-spacing-bidi-border-widths-compat15",
+      "glyphs_equal": true,
+      "pages_equal": true,
+      "pixels_equal": true,
+      "docx_sha256": "486cbf4a1f19d8ac26d8eccdb447377db1310fbcbe29b46149b3f5381c1c96ff"
+    },
+    {
+      "name": "word-windows-edge-table-zero-spacing-ltr-border-widths-compat14",
+      "glyphs_equal": true,
+      "pages_equal": true,
+      "pixels_equal": true,
+      "docx_sha256": "13ac226e1028f45a63698f5f857abee6507b447d57f3965cd9c680d54b1353a9"
+    },
+    {
+      "name": "word-windows-edge-table-zero-spacing-ltr-border-widths-compat15",
+      "glyphs_equal": true,
+      "pages_equal": true,
+      "pixels_equal": true,
+      "docx_sha256": "c5b196e941821ce638eaea1115ec11b647d60daff4bf536a0af20a4170472d82"
+    }
+  ]
+}

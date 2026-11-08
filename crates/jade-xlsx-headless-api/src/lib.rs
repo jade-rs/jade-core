@@ -798,6 +798,8 @@ pub struct CellView {
     /// are expanded to this cell's actual A1 references rather than reported
     /// only on the master cell. The value beside it is what the file cached;
     /// nothing recalculates yet.
+    /// Legacy CSE members expose their anchor's original formula without
+    /// translation or outer CSE braces. Their own cached values remain separate.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub formula: Option<String>,
     /// Cache freshness for a formula. Absent on non-formula cells.
@@ -944,6 +946,8 @@ pub enum CellInput {
     Number(f64),
     Text(String),
     Bool(bool),
+    /// An Excel error value, stored as an error rather than text or a formula.
+    Error(String),
     /// A formula, with or without the leading `=`. Formula calculation is
     /// deferred to the spreadsheet that opens the exported workbook.
     Formula(String),
@@ -953,8 +957,8 @@ pub enum CellInput {
 
 impl CellInput {
     /// Reads a value the way a spreadsheet reads what you type: a number if it
-    /// looks like one, a boolean for `TRUE`/`FALSE`, blank for nothing at all,
-    /// and text otherwise.
+    /// looks like one, a boolean for `TRUE`/`FALSE`, a standard Excel error
+    /// literal, blank for nothing at all, and text otherwise.
     ///
     /// A caller that means the text `007` has to say so — [`CellInput::Text`]
     /// exists for exactly that, and the CLI spells it `--text`.
@@ -970,6 +974,9 @@ impl CellInput {
         match input.to_ascii_uppercase().as_str() {
             "TRUE" => CellInput::Bool(true),
             "FALSE" => CellInput::Bool(false),
+            error @ ("#NULL!" | "#DIV/0!" | "#VALUE!" | "#REF!" | "#NAME?" | "#NUM!" | "#N/A") => {
+                CellInput::Error(error.into())
+            }
             _ => CellInput::Text(input.to_string()),
         }
     }

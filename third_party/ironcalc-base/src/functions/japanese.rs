@@ -276,13 +276,7 @@ fn numberstring(value: u64, style: u8) -> String {
 
 impl<'a> Model<'a> {
     pub(crate) fn fn_jis(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 1 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        match self.get_string(&args[0], cell) {
-            Ok(text) => CalcResult::String(to_fullwidth(&text)),
-            Err(error) => error,
-        }
+        self.apply_text_unary(args, cell, to_fullwidth)
     }
 
     /// The furigana of the referenced cells, joined: a cell's saved reading,

@@ -58,6 +58,12 @@ pub fn restructure(
         return Err(WriteError::NoSuchSheet(change.sheet.clone()));
     }
 
+    for sheet in &workbook.sheets {
+        if sheet.name.eq_ignore_ascii_case(&change.sheet) {
+            guard_legacy_array_structure(sheet, change)?;
+        }
+    }
+
     let mut package = OpcPackage::open(original)?;
     crate::pivots::after_structure(&mut package, workbook, change)?;
     if change.inserted {
@@ -114,6 +120,39 @@ pub fn restructure(
     Ok(package.write()?)
 }
 
+/// Refuses a structural edit that splits a legacy CSE area or moves an
+/// unstored member beyond the worksheet edge. Whole areas may move or be
+/// deleted. Only declared bounds are inspected, without expanding members.
+pub fn guard_legacy_array_structure(sheet: &Sheet, change: &StructureChange) -> Result<()> {
+    if change.count == 0 {
+        return Ok(());
+    }
+    for array in sheet
+        .array_formulas
+        .iter()
+        .filter(|array| array.kind == jade_xlsx_reader::ArrayFormulaKind::Legacy)
+    {
+        let (start, end) = match change.axis {
+            Axis::Rows => (array.range.start.row, array.range.end.row),
+            Axis::Columns => (array.range.start.column, array.range.end.column),
+        };
+        let splits = if change.inserted {
+            (start < change.at && change.at <= end)
+                || (change.at <= start && change.map_index(end).is_none())
+        } else {
+            let last = change.at.saturating_add(change.count - 1);
+            change.at <= end && start <= last && !(change.at <= start && end <= last)
+        };
+        if splits {
+            return Err(WriteError::PartialLegacyArray {
+                sheet: sheet.name.clone(),
+                range: range_text(array.range),
+            });
+        }
+    }
+    Ok(())
+}
+
 /// A worksheet part with `change` applied. `changed` says whether this is
 /// the sheet whose grid moves; on any other sheet only formulas that point
 /// at it are rewritten.
@@ -123,6 +162,11 @@ pub fn shift_sheet(
     changed: bool,
     change: &StructureChange,
 ) -> Result<String> {
+    if changed {
+        guard_legacy_array_structure(sheet, change)?;
+    }
+    let grid = jade_xlsx_reader::cell_content::compatible_worksheet_source(xml)?;
+    let processed = jade_xlsx_reader::process_content::processed_elements(xml)?;
     let mut reader = Reader::from_str(xml);
     reader.config_mut().trim_text(false);
     let mut buf = Vec::new();
@@ -175,6 +219,17 @@ pub fn shift_sheet(
                     }
                     Ok(reader.buffer_position() as usize)
                 };
+                // A processed foreign wrapper contributes children, but its
+                // own name/attributes never participate in feature dispatch.
+                if processed.processes_content_at(start) {
+                    continue;
+                }
+                if matches!(local(&name), b"sheetData" | b"row" | b"c" | b"f")
+                    && !grid.owns_start(start)
+                {
+                    whole_end(&mut reader)?;
+                    continue;
+                }
                 if matches!(local(&name), b"protectedRanges" | b"protectedRange") {
                     let end = whole_end(&mut reader)?;
                     if let Some(text) = protected_ranges.remove(&start) {
@@ -243,11 +298,7 @@ pub fn shift_sheet(
                         }
                     }
                     b"row" if in_sheet_data => {
-                        let index = attribute(element, b"r")?
-                            .and_then(|value| value.parse::<u32>().ok())
-                            .filter(|value| *value > 0)
-                            .map(|value| value - 1)
-                            .unwrap_or(next_row_index);
+                        let index = grid.row_index_at(start).unwrap_or(next_row_index);
                         next_row_index = index.saturating_add(1);
                         if changed && change.axis == Axis::Rows {
                             match change.map_index(index) {
@@ -294,11 +345,9 @@ pub fn shift_sheet(
                     }
                     b"c" if row.is_some() => {
                         let (row_index, mapped_row, next_column) = row.expect("a row");
-                        let reference = match attribute(element, b"r")? {
-                            Some(value) => CellRef::parse(&value)
-                                .unwrap_or_else(|_| CellRef::new(next_column, row_index)),
-                            None => CellRef::new(next_column, row_index),
-                        };
+                        let reference = grid
+                            .cell_reference_at(start)
+                            .unwrap_or(CellRef::new(next_column, row_index));
                         row = Some((row_index, mapped_row, reference.column.saturating_add(1)));
                         if changed {
                             let mapped = match change.axis {
@@ -641,15 +690,26 @@ pub fn shift_sheet(
                     _ => {}
                 }
             }
+            Event::End(_) if processed.processes_content_end_at(start) => {}
+            Event::End(ref element)
+                if matches!(
+                    local(element.name().as_ref()),
+                    b"sheetData" | b"row" | b"c" | b"f"
+                ) && !grid.owns_end(start) => {}
             Event::End(ref element) => match local(element.name().as_ref()) {
                 b"sheetData" => in_sheet_data = false,
                 b"row" => row = None,
                 b"c" => cell = None,
                 b"f" | b"formula" | b"formula1" | b"formula2" => {
                     if let Some(content_start) = formula_content.take() {
-                        if let Some(splice) =
-                            shifted_content(xml, content_start, start, &sheet.name, change)?
-                        {
+                        if let Some(splice) = shifted_content(
+                            xml,
+                            content_start,
+                            start,
+                            &sheet.name,
+                            change,
+                            grid.owns_end(start).then_some(&grid),
+                        )? {
                             splices.push(splice);
                         }
                     }
@@ -968,7 +1028,9 @@ pub fn shift_defined_names(xml: &str, change: &StructureChange) -> Result<String
                 if let Some(content_start) = content.take() {
                     // A name has no sheet of its own: only qualified
                     // references can point at the changed sheet.
-                    if let Some(splice) = shifted_content(xml, content_start, start, "", change)? {
+                    if let Some(splice) =
+                        shifted_content(xml, content_start, start, "", change, None)?
+                    {
                         splices.push(splice);
                     }
                 }
@@ -989,8 +1051,48 @@ fn shifted_content(
     content_end: usize,
     formula_sheet: &str,
     change: &StructureChange,
+    grid: Option<&jade_xlsx_reader::cell_content::WorksheetSource>,
 ) -> Result<Option<Splice>> {
     let raw = &xml[content_start..content_end];
+    if raw.contains('<') {
+        if let Some(source) =
+            grid.filter(|source| source.has_alternate_content_between(content_start, content_end))
+        {
+            let next =
+                crate::formula_text::rewrite(raw, content_start, source, formula_sheet, change)?;
+            return Ok((next != raw).then_some(Splice {
+                start: content_start,
+                end: content_end,
+                text: next,
+            }));
+        }
+        // Decode actual XML text, including CDATA and character references.
+        // Comments/PIs and nominated wrappers retain their original bytes.
+        let framed = format!("<f>{raw}</f>");
+        let next = crate::validation_sources::map_text_leaf_with_elements(
+            &framed,
+            &|at| {
+                use crate::validation_sources::TextElement;
+                let (Some(offset), Some(source)) = (at.checked_sub(3), grid) else {
+                    return TextElement::Opaque;
+                };
+                let offset = content_start + offset;
+                if source.has_alternate_content_at(offset) {
+                    TextElement::Opaque
+                } else if source.processes_content_at(offset) {
+                    TextElement::Process
+                } else {
+                    TextElement::Ignore
+                }
+            },
+            &|formula| shift_formula(formula, formula_sheet, change),
+        )?;
+        return Ok((next != framed).then(|| Splice {
+            start: content_start,
+            end: content_end,
+            text: next[3..next.len() - 4].to_string(),
+        }));
+    }
     let formula = quick_xml::escape::unescape(raw).map_err(quick_xml::Error::from)?;
     let shifted = shift_formula(&formula, formula_sheet, change);
     if shifted == formula {

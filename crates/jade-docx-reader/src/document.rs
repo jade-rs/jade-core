@@ -6405,14 +6405,19 @@ pub struct WatermarkStyle {
     /// `1pt` and lets `fitshape` scale the text to the shape).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub size_pt: Option<f32>,
+    /// Effective `v:textpath/@fitshape`, including the shape type's value.
+    /// When omitted by a caller, setting a watermark infers fitting for an
+    /// automatic size and fixed font metrics for an explicit size.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fit_shape: Option<bool>,
     /// `v:shape/@fillcolor` as `#RRGGBB`.
     pub color: String,
     /// 半透明にする: `v:fill/@opacity` below 1.
     pub semitransparent: bool,
     /// レイアウト 水平 (no `rotation`); otherwise 対角線上 (`rotation:315`).
     pub horizontal: bool,
-    /// The shape box (`width` / `height` in the shape style), in points: the
-    /// text is stretched to fill it as `fitshape` asks.
+    /// The shape box (`width` / `height` in the shape style), in points.
+    /// The text is stretched to fill it only when `fitshape` is enabled.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub width_pt: Option<f32>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -6425,6 +6430,7 @@ impl Default for WatermarkStyle {
         WatermarkStyle {
             font: None,
             size_pt: None,
+            fit_shape: None,
             color: "#C0C0C0".to_string(),
             semitransparent: true,
             horizontal: false,

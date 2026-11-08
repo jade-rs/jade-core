@@ -6,7 +6,7 @@ import struct
 import tempfile
 import unittest
 
-from extract_windows_emf import emf_glyphs, extract
+from extract_windows_emf import emf_glyphs, extract, verify_visible_reference
 
 
 def record(kind, body):
@@ -119,6 +119,84 @@ class DrawingOriginTests(unittest.TestCase):
             (root / 'page.emf').write_bytes(data + b'tampered')
             with self.assertRaisesRegex(ValueError, 'changed'):
                 extract(manifest)
+
+
+class VisiblePdfProofTests(unittest.TestCase):
+    """Synthetic clipped text proves the extra visible plane cannot be skipped."""
+    def setUp(self):
+        import pymupdf
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name)
+        (self.root/'inputs').mkdir()
+        source = b'synthetic DOCX integrity input'
+        (self.root/'inputs/probe.docx').write_bytes(source)
+        doc = pymupdf.open()
+        page = doc.new_page(width=100, height=100)
+        page.insert_text((20,40), 'A', fontsize=12)
+        page.insert_text((20,90), 'B', fontsize=12)
+        stream = page.get_contents()[-1]
+        doc.update_stream(stream, b'q\n0 40 100 60 re W n\n'+doc.xref_stream(stream)+b'\nQ\n')
+        pdf = doc.tobytes()
+        (self.root/'probe.pdf').write_bytes(pdf)
+        fixture = dict(name='probe', docx_sha256=hashlib.sha256(source).hexdigest(),
+                       pdf_sha256=hashlib.sha256(pdf).hexdigest(), pdf_file='probe.pdf',
+                       page_count=1, glyphs=[[1,'A',20.,40.],[1,'B',20.,90.]])
+        self.full = dict(schema=2, platform='windows', word_product_version='16.0.19127.20860',
+                         word=dict(product_version='16.0.19127.20860'), capture_id='synthetic',
+                         captured_at_utc='2026-11-01T01:02:03Z', tolerance_pt=.375,
+                         table_glyph_projection='unclipped', fixtures=[fixture])
+        self.visible = dict(self.full, table_glyph_projection='visible',
+                            pdf_text_flags=pymupdf.TEXTFLAGS_RAWDICT,
+                            extractor=f'PyMuPDF {pymupdf.VersionBind}',
+                            fixtures=[dict(fixture, glyphs=[[1,'A',20.,40.]])])
+        self.entry = dict(visible_reference='strict-visible.json', visible_glyph_count=1)
+        self.write()
+
+    def write(self):
+        (self.root/'strict-visible.json').write_bytes((json.dumps(self.visible)+'\n').encode())
+
+    def verify(self):
+        return verify_visible_reference(self.root, self.entry, self.full, self.full)
+
+    def test_original_visible_pdf_plane_is_independent_of_hidden_text(self):
+        self.assertEqual(self.verify(), 1)
+        self.assertEqual(len(self.full['fixtures'][0]['glyphs']), 2)
+
+    def test_shifted_missing_reordered_or_repaginated_visible_text_is_rejected(self):
+        variants = [[[1,'A',21.,40.]], [], [[1,'B',20.,40.]], [[2,'A',20.,40.]]]
+        for glyphs in variants:
+            with self.subTest(glyphs=glyphs):
+                self.visible['fixtures'][0]['glyphs'] = glyphs
+                self.write()
+                with self.assertRaisesRegex(ValueError, 'Visible origins'):
+                    self.verify()
+
+    def test_missing_visible_reference_is_rejected(self):
+        self.entry.pop('visible_reference')
+        with self.assertRaisesRegex(ValueError, 'require a visible reference'):
+            self.verify()
+
+    def test_clipping_flags_and_word_build_are_not_interchangeable(self):
+        self.visible['pdf_text_flags'] &= ~64
+        self.write()
+        with self.assertRaisesRegex(ValueError, 'flags or decoder'):
+            self.verify()
+        self.visible['pdf_text_flags'] |= 64
+        self.visible['word_product_version'] = '16.0.20000.10000'
+        self.write()
+        with self.assertRaisesRegex(ValueError, 'provenance'):
+            self.verify()
+
+    def test_source_docx_tampering_is_rejected(self):
+        (self.root/'inputs/probe.docx').write_bytes(b'tampered')
+        with self.assertRaisesRegex(ValueError, 'source DOCX'):
+            self.verify()
+
+    def test_visible_coverage_floor_cannot_be_lowered(self):
+        self.entry['visible_glyph_count'] = 0
+        with self.assertRaisesRegex(ValueError, 'coverage'):
+            self.verify()
 
 
 if __name__ == '__main__':

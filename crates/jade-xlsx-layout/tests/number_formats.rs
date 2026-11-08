@@ -5,12 +5,67 @@ fn number(value: f64, code: Option<&str>) -> String {
     format_value(&CellValue::Number(value), code, DateSystem::Nineteen00).text
 }
 
+#[test]
+fn elapsed_units_and_fractional_seconds_share_one_rounding_step() {
+    for (seconds, code, expected) in [
+        (3735.8, "[ss].00", "3735.80"),
+        (59.8, "[m]:ss.00", "0:59.80"),
+        (3599.8, "[h]:mm:ss.00", "0:59:59.80"),
+        (59.999, "[m]:ss.00", "1:00.00"),
+        (86_399.8, "[h]:mm:ss.00", "23:59:59.80"),
+        (86_400.8, "[s].00", "86400.80"),
+    ] {
+        assert_eq!(number(seconds / 86_400.0, Some(code)), expected, "{code}");
+    }
+}
+
+#[test]
+fn meridiem_format_preserves_uppercase_and_lowercase_tokens() {
+    for (code, am, pm) in [
+        ("h:mm AM/PM", "9:00 AM", "9:00 PM"),
+        ("h:mm am/pm", "9:00 am", "9:00 pm"),
+        ("h:mm A/P", "9:00 A", "9:00 P"),
+        ("h:mm a/p", "9:00 a", "9:00 p"),
+    ] {
+        assert_eq!(number(0.375, Some(code)), am);
+        assert_eq!(number(0.875, Some(code)), pm);
+    }
+}
+
 fn formatted(value: f64, code: &str) -> Formatted {
     format_value(
         &CellValue::Number(value),
         Some(code),
         DateSystem::Nineteen00,
     )
+}
+
+#[test]
+fn private_use_characters_survive_formatting_and_real_repeat_directives() {
+    let text = CellValue::Text("a\u{E000}b".into());
+    for code in [None, Some("@"), Some("@*.")] {
+        let result = format_value(&text, code, DateSystem::Nineteen00);
+        assert_eq!(result.text, "a\u{E000}b");
+        assert_eq!(
+            result.fill,
+            code.filter(|c| c.contains('*')).map(|_| (5, '.'))
+        );
+    }
+    for code in ["\"\u{E000}\"0", "\"\u{E000}\"*x0", "\"\u{E000}\"*\u{E000}0"] {
+        let result = formatted(2.0, code);
+        assert_eq!(result.text, "\u{E000}2");
+        if code.contains('*') {
+            assert_eq!(result.fill, Some((3, code.chars().nth(4).unwrap())));
+        } else {
+            assert_eq!(result.fill, None);
+        }
+    }
+    assert_eq!(number(0.5, Some("\"\u{E000}\"h:mm")), "\u{E000}12:00");
+    assert_eq!(number(2.0, Some("\"\u{E000}\"")), "\u{E000}");
+    let text = CellValue::Text("\u{E000}\0\u{E000}".into());
+    let result = format_value(&text, Some("@@*x*y"), DateSystem::Nineteen00);
+    assert_eq!(result.text, "\u{E000}\0\u{E000}\u{E000}\0\u{E000}");
+    assert_eq!(result.filled(2), format!("{}xx", result.text));
 }
 
 fn in_1904(value: f64, code: &str) -> String {
@@ -339,6 +394,60 @@ fn a_time_that_rounds_up_to_midnight_moves_to_the_next_day() {
 #[test]
 fn a_quoted_letter_is_a_literal_not_a_date_token() {
     assert_eq!(number(5.0, Some(r#"0"m""#)), "5m");
+}
+
+#[test]
+fn spacing_and_fill_characters_do_not_split_format_sections() {
+    assert_eq!(number(7.0, Some("0_;")), "7 ");
+    assert_eq!(number(-7.0, Some("0_;;(0)")), "(7)");
+    let filled = formatted(7.0, "0*;");
+    assert_eq!(filled.text, "7");
+    assert_eq!(filled.filled(3), "7;;;");
+    assert_eq!(number(-7.0, Some("0*;;(0)")), "(7)");
+}
+
+#[test]
+fn consumed_characters_are_not_date_tokens_or_colour_directives() {
+    assert_eq!(number(7.0, Some("0_m")), "7 ");
+    assert_eq!(formatted(7.0, "0*m").filled(3), "7mmm");
+    assert_eq!(number(7.0, Some(r"0\[>5\]")), "7[>5]");
+}
+
+#[test]
+fn date_formats_apply_spacing_and_repeat_without_interpreting_their_characters() {
+    assert_eq!(number(1.0, Some("yyyy_m")), "1900 ");
+    assert_eq!(formatted(1.0, "yyyy*m").filled(3), "1900mmm");
+    assert_eq!(number(1.0, Some("yyyy_;;yyyy")), "1900 ");
+    assert_eq!(in_1904(0.0, "yyyy_d"), "1904 ");
+}
+
+#[test]
+fn each_unescaped_percent_scales_the_value_once() {
+    assert_eq!(number(0.12, Some("0.00%%")), "1200.00%%");
+    assert_eq!(number(0.12, Some("0.00%%%")), "120000.00%%%");
+    assert_eq!(number(0.12, Some(r"0.00%\%")), "12.00%%");
+    assert_eq!(number(0.12, Some("0.00%\"%\"")), "12.00%%");
+    assert_eq!(number(1.2, Some("0.00,%%")), "12.00%%");
+}
+
+#[test]
+fn elapsed_time_and_indexed_colours_are_case_insensitive() {
+    assert_eq!(number(1.5, Some("[H]:MM:SS")), "36:00:00");
+    assert_eq!(number(1.5, Some("[HH]:MM")), "36:00");
+    assert_eq!(number(1.5, Some("[M]")), "2160");
+    assert_eq!(number(1.5, Some("[SS]")), "129600");
+    let colour = formatted(7.0, "[cOlOr3]0");
+    assert_eq!(colour.text, "7");
+    assert_eq!(colour.color, Some(FormatColor::Indexed(3)));
+}
+
+#[test]
+fn conditional_fraction_formats_keep_negative_values_and_their_sign() {
+    assert_eq!(number(-1.5, Some("[<0]# ?/?;0")), "-1 1/2");
+    assert_eq!(number(-0.25, Some("[<0]?/?;0")), "-1/4");
+    assert_eq!(number(-0.25, Some("[<0]?/8;0")), "-2/8");
+    assert_eq!(number(-2.0, Some("[<0]# ?/?;0")), "-2");
+    assert_eq!(number(-1.5, Some("# ?/?;# ?/?")), "1 1/2");
 }
 
 #[test]

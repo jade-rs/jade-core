@@ -1,0 +1,95 @@
+{
+  "schema": 1,
+  "documents": [
+    {
+      "name": "word-windows-edge-table-spacing-auto-mixed-borders-compat12",
+      "file": "inputs/word-windows-edge-table-spacing-auto-mixed-borders-compat12.docx",
+      "sha256": "f5422e652059f14b3f858bf5a87aa34ff98037e155947f53541843379b2e790a"
+    },
+    {
+      "name": "word-windows-edge-table-spacing-auto-mixed-borders-compat14",
+      "file": "inputs/word-windows-edge-table-spacing-auto-mixed-borders-compat14.docx",
+      "sha256": "1a1c09f2e29b31a2467a4b2c4a6f9357dd42907a48a67b064920c2bf2d6bc784"
+    },
+    {
+      "name": "word-windows-edge-table-spacing-auto-mixed-borders-compat15",
+      "file": "inputs/word-windows-edge-table-spacing-auto-mixed-borders-compat15.docx",
+      "sha256": "3f68333a2eb055146c1e47a75d75cd3320ec85085f60f9dec972066ff970bd03"
+    },
+    {
+      "name": "word-windows-edge-table-spacing-missing-type-mixed-borders-compat12",
+      "file": "inputs/word-windows-edge-table-spacing-missing-type-mixed-borders-compat12.docx",
+      "sha256": "08e1d23c4cb418f55c917d0e2b3594b378539c9b4d9028c16fd91e5c436d442a"
+    },
+    {
+      "name": "word-windows-edge-table-spacing-missing-type-mixed-borders-compat14",
+      "file": "inputs/word-windows-edge-table-spacing-missing-type-mixed-borders-compat14.docx",
+      "sha256": "8d2fdec6174ed5dbb579b89ef699da75e3027adef188bd1b6366dc13c4dd58b1"
+    },
+    {
+      "name": "word-windows-edge-table-spacing-missing-type-mixed-borders-compat15",
+      "file": "inputs/word-windows-edge-table-spacing-missing-type-mixed-borders-compat15.docx",
+      "sha256": "57b3359ee7d2a475b53f8daa187a724bdb06c74de024b5840800af6741e66897"
+    },
+    {
+      "name": "word-windows-edge-table-spacing-missing-width-mixed-borders-compat12",
+      "file": "inputs/word-windows-edge-table-spacing-missing-width-mixed-borders-compat12.docx",
+      "sha256": "837a33ea781d65247cd70a4eac7a5a32513498270709001d58baa475bd00b187"
+    },
+    {
+      "name": "word-windows-edge-table-spacing-missing-width-mixed-borders-compat14",
+      "file": "inputs/word-windows-edge-table-spacing-missing-width-mixed-borders-compat14.docx",
+      "sha256": "61c3898fbb0c94ec3c841127df22a74340e40b01d8af2d9878c5b3d730d314dc"
+    },
+    {
+      "name": "word-windows-edge-table-spacing-missing-width-mixed-borders-compat15",
+      "file": "inputs/word-windows-edge-table-spacing-missing-width-mixed-borders-compat15.docx",
+      "sha256": "be50289c236ba073a4d2c45e7060fa83e4ae806a68f2452fd168a345b9e54184"
+    },
+    {
+      "name": "word-windows-edge-table-spacing-negative-mixed-borders-compat12",
+      "file": "inputs/word-windows-edge-table-spacing-negative-mixed-borders-compat12.docx",
+      "sha256": "db79c5dfcc922b3ea5bf4ed243dcba9f1db8c7205aa9187594741f9e7cd50369"
+    },
+    {
+      "name": "word-windows-edge-table-spacing-negative-mixed-borders-compat14",
+      "file": "inputs/word-windows-edge-table-spacing-negative-mixed-borders-compat14.docx",
+      "sha256": "a8674127ec0066fb7827f7470aa61cc470ecba4bf0078755647a280df5d304c6"
+    },
+    {
+      "name": "word-windows-edge-table-spacing-negative-mixed-borders-compat15",
+      "file": "inputs/word-windows-edge-table-spacing-negative-mixed-borders-compat15.docx",
+      "sha256": "e3d7f88d4027df43ac3c21b9370669e460be8998991cc7677ae147b0ccf372a6"
+    },
+    {
+      "name": "word-windows-edge-table-spacing-nil-mixed-borders-compat12",
+      "file": "inputs/word-windows-edge-table-spacing-nil-mixed-borders-compat12.docx",
+      "sha256": "85731f191f84424ac7b920cc5db3a2b0d1d6e9b70a7265a2e80dbc81e92536a9"
+    },
+    {
+      "name": "word-windows-edge-table-spacing-nil-mixed-borders-compat14",
+      "file": "inputs/word-windows-edge-table-spacing-nil-mixed-borders-compat14.docx",
+      "sha256": "dbd9d720ee49fe215bff76de35dad104b07c1fa3ad9f7847f43d2eb89001da48"
+    },
+    {
+      "name": "word-windows-edge-table-spacing-nil-mixed-borders-compat15",
+      "file": "inputs/word-windows-edge-table-spacing-nil-mixed-borders-compat15.docx",
+      "sha256": "6cc84a3cdad1e78171e0f820d9dbbd9fd520d962d76163ae75a6e2f36e769d84"
+    },
+    {
+      "name": "word-windows-edge-table-spacing-percent-mixed-borders-compat12",
+      "file": "inputs/word-windows-edge-table-spacing-percent-mixed-borders-compat12.docx",
+      "sha256": "9c80645d747acf6e264f84c120f8e7aa52a78be61cccf1b4b866fdf9e7e46050"
+    },
+    {
+      "name": "word-windows-edge-table-spacing-percent-mixed-borders-compat14",
+      "file": "inputs/word-windows-edge-table-spacing-percent-mixed-borders-compat14.docx",
+      "sha256": "ae30e8c2e696cc7b68fd8df1386b41c28cca3cbb9712452353844b70c7c72ebe"
+    },
+    {
+      "name": "word-windows-edge-table-spacing-percent-mixed-borders-compat15",
+      "file": "inputs/word-windows-edge-table-spacing-percent-mixed-borders-compat15.docx",
+      "sha256": "fe2d4ed56f53811218bfc36f0d3a770b52299318c97e1c77c3dcb4b106d9d249"
+    }
+  ]
+}
