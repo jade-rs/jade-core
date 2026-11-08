@@ -366,6 +366,9 @@ pub struct SelectionSuffix {
 #[derive(Clone, Debug, Default)]
 pub struct SelectionManager {
     paragraphs: Vec<ParagraphLayout>,
+    /// Empty text and line buffers from the previous render. Keep the cache
+    /// bounded so a large document or paragraph does not pin its allocation.
+    paragraph_buffers: Vec<ParagraphLayout>,
     selection: Option<SelectionRange>,
     /// The line a collapsed caret on a soft wrap is drawn on.
     caret_affinity: CaretAffinity,
@@ -471,7 +474,7 @@ impl SelectionManager {
         }
         let selection = self.selection;
         self.render_pass = self.render_pass.wrapping_add(1);
-        self.paragraphs.clear();
+        self.recycle_paragraphs_from(0);
         self.caret_x_overrides.clear();
         *self.paragraph_bounds_index.get_mut() = None;
         self.selection = selection;
@@ -486,6 +489,34 @@ impl SelectionManager {
     /// previous render (0 after a full `begin_render`).
     pub fn preserved_prefix_len(&self) -> usize {
         self.preserved_prefix_len
+    }
+
+    fn recycle_paragraphs_from(&mut self, from: usize) {
+        const MAX_PARAGRAPHS: usize = 256;
+        const MAX_BYTES: usize = 1024 * 1024;
+        self.paragraph_buffers.clear();
+        let mut bytes = 0usize;
+        // Reverse insertion lets registration pop buffers in paragraph order.
+        for (offset, mut paragraph) in self.paragraphs.drain(from..).enumerate().rev() {
+            if offset >= MAX_PARAGRAPHS {
+                continue;
+            }
+            let capacity = paragraph.text.capacity().saturating_add(
+                paragraph
+                    .lines
+                    .capacity()
+                    .saturating_mul(std::mem::size_of::<LineLayout>()),
+            );
+            if capacity == 0 || capacity > MAX_BYTES - bytes {
+                continue;
+            }
+            // Release shared line contents immediately; only retain buffers.
+            paragraph.text.clear();
+            paragraph.lines.clear();
+            paragraph.invalidate_bounding_box();
+            bytes += capacity;
+            self.paragraph_buffers.push(paragraph);
+        }
     }
 
     /// Move the untouched tail out before an edit render that may stop after
@@ -567,7 +598,7 @@ impl SelectionManager {
             Some(from) if from > 0 && from <= self.paragraphs.len() => {
                 // Keep paragraphs 0..from, clear from..
                 self.preserved_prefix_len = from;
-                self.paragraphs.truncate(from);
+                self.recycle_paragraphs_from(from);
                 self.caret_x_overrides
                     .retain(|(paragraph_index, _), _| *paragraph_index < from);
                 // Clear cells and paragraph_to_cell for affected range
@@ -581,7 +612,7 @@ impl SelectionManager {
             _ => {
                 // Full clear
                 self.preserved_prefix_len = 0;
-                self.paragraphs.clear();
+                self.recycle_paragraphs_from(0);
                 self.caret_x_overrides.clear();
                 self.cells.clear();
                 self.paragraph_to_cell.clear();
@@ -704,9 +735,11 @@ impl SelectionManager {
         *self.paragraph_bounds_index.get_mut() = None;
         if self.paragraphs.len() <= index {
             let render_pass = self.render_pass;
-            self.paragraphs.resize_with(index + 1, || ParagraphLayout {
-                render_pass,
-                ..ParagraphLayout::default()
+            let buffers = &mut self.paragraph_buffers;
+            self.paragraphs.resize_with(index + 1, || {
+                let mut paragraph = buffers.pop().unwrap_or_default();
+                paragraph.render_pass = render_pass;
+                paragraph
             });
         }
         let paragraph = &mut self.paragraphs[index];
@@ -7274,3 +7307,7 @@ mod tests {
         );
     }
 }
+
+#[cfg(test)]
+#[path = "selection/render_history_tests.rs"]
+mod render_history_tests;
