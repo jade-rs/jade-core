@@ -3800,6 +3800,21 @@ impl WrappedLine {
         shares
     }
 
+    /// Windows Word aligns visible content, excluding trailing spaces even
+    /// on the final line (`word-windows-edge-indents`). Mac retains its
+    /// independently measured alignment policy.
+    pub fn alignment_width_px(
+        &self,
+        natural_advance: f64,
+        platform: crate::line_metrics::WordLayoutPlatform,
+    ) -> f64 {
+        if platform == crate::line_metrics::WordLayoutPlatform::Windows {
+            (natural_advance - trailing_whitespace_width(&self.clusters)).max(0.0)
+        } else {
+            natural_advance
+        }
+    }
+
     /// Extra advance for a distributed line. A soft line's trailing separator
     /// and hanging punctuation sit outside its content edge. Natural advance
     /// comes from this line's shared plan.
@@ -6992,7 +7007,7 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
                 }
                 buffer_is_whitespace = None;
 
-                let segment_width = measure_tab_segment(
+                let (segment_width, decimal_prefix_width) = measure_tab_segment(
                     ctx,
                     text,
                     run_styles,
@@ -7037,6 +7052,7 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
                     line_origin,
                     current_width,
                     segment_width,
+                    decimal_prefix_width,
                     alignment,
                     paragraph_style.default_tab_width,
                 );
@@ -7064,6 +7080,7 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
                         next_line_origin,
                         0.0,
                         segment_width,
+                        decimal_prefix_width,
                         next_alignment,
                         paragraph_style.default_tab_width,
                     );
@@ -8312,6 +8329,7 @@ fn tab_segment_start_width(
     line_origin: f64,
     current_width: f64,
     segment_width: f64,
+    decimal_prefix_width: Option<f64>,
     alignment: TabAlignment,
     default_tab_width: f64,
 ) -> f64 {
@@ -8319,7 +8337,9 @@ fn tab_segment_start_width(
         TabAlignment::Left => target_x - line_origin,
         TabAlignment::Center => target_x - line_origin - segment_width / 2.0,
         TabAlignment::Right => target_x - line_origin - segment_width,
-        TabAlignment::Decimal => target_x - line_origin - segment_width / 2.0,
+        TabAlignment::Decimal => {
+            target_x - line_origin - decimal_prefix_width.unwrap_or(segment_width / 2.0)
+        }
         TabAlignment::Bar => target_x - line_origin,
     };
     if desired_width <= current_width + 0.5 {
@@ -8422,8 +8442,17 @@ fn measure_tab_segment<C: LineWrapContext>(
     base_offset: usize,
     paragraph_style: &ParagraphStyle,
     snap_to_chars_cell_width_cache: &mut FxHashMap<SnapToCharsCacheKey, f64>,
-) -> Result<f64, C::Error> {
+) -> Result<(f64, Option<f64>), C::Error> {
     let mut width = 0.0;
+    // Nondecimal tab lookahead needs only the total advance. Avoid numeric
+    // scanning in those common paths (including implicit default tabs).
+    let windows = paragraph_style.word_platform == crate::line_metrics::WordLayoutPlatform::Windows
+        && paragraph_style
+            .tab_stops
+            .iter()
+            .any(|stop| stop.alignment == TabAlignment::Decimal);
+    let mut decimal_prefix_width = None;
+    let mut decimal_has_digit = false;
     let mut run_index = start_run_index;
     let mut cursor_rel = start_abs_offset.saturating_sub(base_offset);
     // The actual text walk resets context after every tab. Lookahead must use
@@ -8490,7 +8519,11 @@ fn measure_tab_segment<C: LineWrapContext>(
                 || grapheme == jade_docx_reader::COLUMN_BREAK_STR
                 || grapheme == "\t"
             {
-                return Ok(width + character_border_extent_px(previous_border));
+                let total = width + character_border_extent_px(previous_border);
+                return Ok((
+                    total,
+                    windows.then_some(decimal_prefix_width.unwrap_or(total)),
+                ));
             }
             if first_grapheme_in_run {
                 if previous_border != border {
@@ -8509,6 +8542,18 @@ fn measure_tab_segment<C: LineWrapContext>(
             let (font_desc, font_desc_hash, font_desc_id) =
                 style.descriptor_key_for_grapheme(grapheme, script);
             let grapheme_start_abs = base_offset + run_start_aligned + rel_offset;
+            // Windows Word stops at the first point or the first nonnumeric
+            // character after a digit (except grouping commas). Thus 12 EUR
+            // anchors before its space, and 12/34.56 before its slash, even
+            // though a point appears later. Keep this state across source runs.
+            // The Mac path retains its independently tested behavior.
+            if windows && decimal_prefix_width.is_none() {
+                let digit = grapheme.bytes().all(|byte| byte.is_ascii_digit());
+                if grapheme == "." || (decimal_has_digit && !digit && grapheme != ",") {
+                    decimal_prefix_width = Some(width);
+                }
+                decimal_has_digit |= digit;
+            }
             let computed = compute_text_advance_step_with_descriptor(
                 ctx,
                 grapheme,
@@ -8540,7 +8585,11 @@ fn measure_tab_segment<C: LineWrapContext>(
         run_index += 1;
     }
 
-    Ok(width + character_border_extent_px(previous_border))
+    let total = width + character_border_extent_px(previous_border);
+    Ok((
+        total,
+        windows.then_some(decimal_prefix_width.unwrap_or(total)),
+    ))
 }
 
 fn measure_wrapped_line_width<C: LineWrapContext>(
@@ -17219,7 +17268,7 @@ mod tests {
                         ..ParagraphStyle::default()
                     };
                     let mut cache = FxHashMap::default();
-                    let width =
+                    let (width, _) =
                         measure_tab_segment(&ctx, text, &runs, 0, 1, 0, &paragraph, &mut cache)
                             .unwrap();
                     assert!(
@@ -17258,7 +17307,7 @@ mod tests {
         ctx.style.letter_spacing_px = 0.75;
         let mut cache = FxHashMap::default();
         // Tracking applies across a run boundary, and tabs reset pair context.
-        let width = measure_tab_segment(
+        let (width, _) = measure_tab_segment(
             &ctx,
             text,
             &runs,
@@ -17278,7 +17327,7 @@ mod tests {
             ]))),
             ..ParagraphStyle::default()
         };
-        let width =
+        let (width, _) =
             measure_tab_segment(&ctx, text, &runs, 0, 101, 100, &paragraph, &mut cache).unwrap();
         assert_eq!(width, 8.0);
         assert_eq!(*ctx.pair_measurements.borrow(), 1);
@@ -17291,9 +17340,97 @@ mod tests {
         let runs = vec![make_run(text)];
         let paragraph = ParagraphStyle::default();
         let mut snap_cache = FxHashMap::default();
-        let width =
+        let (width, _) =
             measure_tab_segment(&ctx, text, &runs, 0, 1, 0, &paragraph, &mut snap_cache).unwrap();
         assert_eq!(width, 3.0 * 2.0);
+    }
+
+    #[test]
+    fn windows_decimal_tab_anchors_the_point_across_source_runs() {
+        use crate::line_metrics::WordLayoutPlatform;
+        let ctx = TestContext::new(2.0);
+        for (text, windows_prefix) in [
+            ("\t12.34", 4.0),
+            ("\t1234", 8.0),
+            ("\tAB CD", 10.0),
+            ("\t12 EUR", 4.0),
+            ("\t12%", 4.0),
+            ("\t12/34.56", 4.0),
+            ("\tA12B", 6.0),
+            ("\t12,345", 12.0),
+            ("\t12,34X", 10.0),
+            ("\tABC.DEF", 6.0),
+            ("\tUSD 12", 12.0),
+            ("\tA B12", 10.0),
+            ("\t(12)", 6.0),
+        ] {
+            for platform in [WordLayoutPlatform::Windows, WordLayoutPlatform::Mac] {
+                let paragraph = ParagraphStyle {
+                    word_platform: platform,
+                    tab_stops: resolve_tab_stops(&[TabStop {
+                        kind: Some("decimal".into()),
+                        position: Some(100.0),
+                        leader: None,
+                    }]),
+                    ..ParagraphStyle::default()
+                };
+                for split in [false, true] {
+                    let runs = if split {
+                        vec![
+                            RunStyle {
+                                end: 3,
+                                ..make_run(text)
+                            },
+                            RunStyle {
+                                start: 3,
+                                ..make_run(text)
+                            },
+                        ]
+                    } else {
+                        vec![make_run(text)]
+                    };
+                    let lines =
+                        wrap_text_into_lines(&ctx, text, &runs, 0.0, &paragraph, 0, 500.0).unwrap();
+                    assert_eq!(lines.len(), 1);
+                    let prefix = if platform == WordLayoutPlatform::Windows {
+                        windows_prefix
+                    } else {
+                        (text.len() - 1) as f64
+                    };
+                    assert!(
+                        (lines[0].segments[0].leading_width - (points_to_px(100.0) - prefix)).abs()
+                            < 1e-6,
+                        "{text:?} {platform:?} split={split}"
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn windows_alignment_excludes_trailing_spaces_and_preserves_mac_width() {
+        use crate::line_metrics::WordLayoutPlatform;
+        let ctx = TestContext::new(2.0);
+        let text = "AB  ";
+        let lines = wrap_text_into_lines(
+            &ctx,
+            text,
+            &[make_run(text)],
+            0.0,
+            &ParagraphStyle::default(),
+            0,
+            500.0,
+        )
+        .unwrap();
+        assert_eq!(lines.len(), 1);
+        assert_eq!(
+            lines[0].alignment_width_px(8.0, WordLayoutPlatform::Windows),
+            4.0
+        );
+        assert_eq!(
+            lines[0].alignment_width_px(8.0, WordLayoutPlatform::Mac),
+            8.0
+        );
     }
 
     #[test]
@@ -17971,8 +18108,9 @@ mod tests {
         )
         .expect("legacy tab segment width");
         let mut snap_cache = FxHashMap::default();
-        let current = measure_tab_segment(&ctx, text, &runs, 0, 1, 0, &paragraph, &mut snap_cache)
-            .expect("current tab segment width");
+        let (current, _) =
+            measure_tab_segment(&ctx, text, &runs, 0, 1, 0, &paragraph, &mut snap_cache)
+                .expect("current tab segment width");
 
         assert!(
             (legacy - current).abs() < 1e-9,

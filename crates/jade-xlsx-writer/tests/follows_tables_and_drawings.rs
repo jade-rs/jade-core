@@ -197,7 +197,8 @@ fn deleting_every_row_of_the_table_removes_it_and_what_sat_on_those_rows() {
     assert!(!sheet.contains("<protectedRange"), "{sheet}");
     assert!(!sheet.contains("<conditionalFormatting"), "{sheet}");
     assert!(!sheet.contains("<x14:conditionalFormatting "), "{sheet}");
-    assert!(sheet.contains("<x14:conditionalFormattings>"), "{sheet}");
+    // CT_ConditionalFormattings requires at least one child.
+    assert!(!sheet.contains("<x14:conditionalFormattings"), "{sheet}");
     let rels = part(&written, "xl/worksheets/_rels/sheet1.xml.rels");
     assert!(!rels.contains("table1.xml"), "{rels}");
     assert!(!rels.contains("comments1.xml"), "{rels}");

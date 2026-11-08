@@ -3,7 +3,7 @@
 use std::collections::BTreeMap;
 
 use jade_xlsx_reader::{
-    data_validations::{validation_records, ValidationRecord},
+    data_validations::{all_supported_validation_containers, ValidationRecord},
     shift_formula, translate_formula, Axis, CellRange, CellRef, StructureChange,
 };
 
@@ -23,7 +23,7 @@ pub(crate) fn containers(
     change: &StructureChange,
 ) -> Result<BTreeMap<usize, String>> {
     let mut groups: BTreeMap<usize, Vec<ValidationRecord>> = BTreeMap::new();
-    for record in validation_records(xml)? {
+    for record in all_supported_validation_containers(xml)? {
         groups
             .entry(record.container.start)
             .or_default()
@@ -123,7 +123,7 @@ pub(crate) fn containers(
             )?;
             // A foreign child or an unmodeled rule is still owned by this
             // container. Retain it even after all interpreted coverage goes.
-            if entries.len() == removed && !has_content(&moved)? {
+            if entries.len() == removed && xml_edit_ns::plain_empty(&moved, &[b"count"])? {
                 moved.clear();
             }
         }
@@ -133,14 +133,14 @@ pub(crate) fn containers(
         let replacement = if moved.is_empty() {
             moved
         } else {
-            container.finish(&moved)?
+            crate::empty_feature::finish(&container, &moved, b"dataValidation")?
         };
         result.insert(start, replacement);
     }
     Ok(result)
 }
 
-fn surviving_start(range: CellRange, change: &StructureChange) -> CellRef {
+pub(crate) fn surviving_start(range: CellRange, change: &StructureChange) -> CellRef {
     let mut source = range.start;
     if !change.inserted {
         let index = match change.axis {
@@ -175,24 +175,4 @@ pub(crate) fn map_range(range: CellRange, change: &StructureChange) -> Option<Ce
         }
     }
     Some(CellRange { start, end })
-}
-
-fn has_content(xml: &str) -> Result<bool> {
-    use quick_xml::{events::Event, Reader};
-    let mut reader = Reader::from_str(xml);
-    let mut root = true;
-    loop {
-        match reader.read_event()? {
-            Event::Start(_) | Event::Empty(_) if root => root = false,
-            Event::Start(_)
-            | Event::Empty(_)
-            | Event::Comment(_)
-            | Event::PI(_)
-            | Event::CData(_) => return Ok(true),
-            Event::Text(e) if !e.decode()?.trim().is_empty() => return Ok(true),
-            Event::GeneralRef(_) => return Ok(true),
-            Event::Eof => return Ok(false),
-            _ => {}
-        }
-    }
 }

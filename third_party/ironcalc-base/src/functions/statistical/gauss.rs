@@ -9,10 +9,6 @@ impl<'a> Model<'a> {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         }
-        let z = match self.get_number(&args[0], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
         let dist = match Normal::new(0.0, 1.0) {
             Ok(d) => d,
             Err(_) => {
@@ -24,16 +20,20 @@ impl<'a> Model<'a> {
             }
         };
 
-        let result = dist.cdf(z) - 0.5;
-
-        if !result.is_finite() {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "Invalid result for GAUSS".to_string(),
+        self.map_scalar_values(&args[0], cell, |model, value| {
+            let z = match model.cast_to_number(value, cell) {
+                Ok(number) => number,
+                Err(error) => return error,
             };
-        }
-
-        CalcResult::Number(result)
+            if !z.is_finite() {
+                return CalcResult::new_error(Error::NUM, cell, "Invalid GAUSS parameter".into());
+            }
+            let result = dist.cdf(z) - 0.5;
+            if result.is_finite() {
+                CalcResult::Number(result)
+            } else {
+                CalcResult::new_error(Error::NUM, cell, "Invalid GAUSS result".into())
+            }
+        })
     }
 }

@@ -1,0 +1,40 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261107T033408518Z-22774eef",
+  "captured_at_utc": "2026-11-07T03:34:08.5394889Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20860",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "9bafe09d0c458006744b9edce767a328ba2da1bb5d9a460e5830c47bf6d7f1d1"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "documents": [
+    {
+      "name": "word-windows-edge-decimal-suffix",
+      "source": "tmp\\edge-next-root\\public\\fixtures\\word-windows-edge-decimal-suffix.docx",
+      "sha256": "cad15b14929126f2e6912d846664c17e4bc197f195725fc01d8b6627332d9642",
+      "pdf": "word-windows-edge-decimal-suffix.pdf",
+      "pdf_sha256": "7028ff33412cd1b87bd3e6915e44f53f3e6ac982cb57c1cd1ba6be2a117805a3",
+      "pages": 2,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-decimal-suffix.page-001.emf",
+          "sha256": "a9f92db3673c89f4ba507958c3052062dc66dbdb239b627f16c05a1ae09d8cb1",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 2,
+          "file": "word-windows-edge-decimal-suffix.page-002.emf",
+          "sha256": "53e057ac6f00d61064094f6c72a760f3c8d8ca8b4eb0d6d08d09e23529035f99",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    }
+  ]
+}

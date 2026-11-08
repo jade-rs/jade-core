@@ -2,24 +2,6 @@ use crate::functions::Function;
 
 use super::Node;
 
-#[cfg(target_arch = "wasm32")]
-use regex_lite as regex;
-
-use regex::Regex;
-use std::sync::OnceLock;
-
-static RANGE_REFERENCE_REGEX: OnceLock<Regex> = OnceLock::new();
-
-#[allow(clippy::expect_used)]
-fn get_re() -> &'static Regex {
-    RANGE_REFERENCE_REGEX
-        .get_or_init(|| Regex::new(r":[A-Z]*[0-9]*$").expect("Regex is known to be valid"))
-}
-
-fn is_range_reference(s: &str) -> bool {
-    get_re().is_match(s)
-}
-
 /*
 
 # NOTES on the Implicit Intersection operator: @
@@ -144,13 +126,12 @@ pub fn add_implicit_intersection(node: &mut Node, add: bool) {
 
         Node::DefinedNameKind(v) => {
             if add {
-                // Not all defined names deserve the II operator
-                // For instance =Sheet1!A1 doesn't need to be intersected
-                if is_range_reference(&v.2) {
-                    *node = Node::ImplicitIntersection {
-                        automatic: true,
-                        child: Box::new(Node::DefinedNameKind(v.to_owned())),
-                    }
+                // A definition may return a range through OFFSET, INDIRECT
+                // or another name. Its source spelling does not establish
+                // its shape. Intersection leaves scalar definitions intact.
+                *node = Node::ImplicitIntersection {
+                    automatic: true,
+                    child: Box::new(Node::DefinedNameKind(v.to_owned())),
                 }
             }
         }
@@ -837,7 +818,6 @@ fn args_signature_textafter(arg_count: usize) -> Vec<Signature> {
 fn args_signature_textjoin(arg_count: usize) -> Vec<Signature> {
     if arg_count >= 3 {
         let mut result = vec![Signature::Vector; arg_count];
-        result[0] = Signature::Scalar;
         result[1] = Signature::Scalar;
         result
     } else {
@@ -1172,8 +1152,8 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         Function::Days360 => args_signature_scalars(arg_count, 2, 1),
         Function::Weekday => args_signature_scalars(arg_count, 1, 1),
         Function::Weeknum => args_signature_scalars(arg_count, 1, 1),
-        Function::Workday => args_signature_scalars(arg_count, 2, 1),
-        Function::WorkdayIntl => args_signature_scalars(arg_count, 2, 2),
+        Function::Workday => args_signature_networkdays(arg_count),
+        Function::WorkdayIntl => args_signature_networkdays_intl(arg_count),
         Function::Yearfrac => args_signature_scalars(arg_count, 2, 1),
         Function::Isoweeknum => args_signature_scalars(arg_count, 1, 0),
         Function::Accrint => args_signature_scalars(arg_count, 6, 2),
@@ -1272,7 +1252,7 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         Function::Imlog10 => args_signature_scalars(arg_count, 1, 0),
         Function::Imlog2 => args_signature_scalars(arg_count, 1, 0),
         Function::Impower => args_signature_scalars(arg_count, 2, 0),
-        Function::Improduct => args_signature_scalars(arg_count, 2, 0),
+        Function::Improduct => args_signature_scalars(arg_count, 1, 254),
         Function::Imreal => args_signature_scalars(arg_count, 1, 0),
         Function::Imsec => args_signature_scalars(arg_count, 1, 0),
         Function::Imsech => args_signature_scalars(arg_count, 1, 0),
@@ -1280,7 +1260,7 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         Function::Imsinh => args_signature_scalars(arg_count, 1, 0),
         Function::Imsqrt => args_signature_scalars(arg_count, 1, 0),
         Function::Imsub => args_signature_scalars(arg_count, 2, 0),
-        Function::Imsum => args_signature_scalars(arg_count, 2, 0),
+        Function::Imsum => args_signature_scalars(arg_count, 1, 254),
         Function::Imtan => args_signature_scalars(arg_count, 1, 0),
         Function::Convert => args_signature_scalars(arg_count, 3, 0),
         Function::Delta => args_signature_scalars(arg_count, 1, 1),
@@ -1719,20 +1699,20 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Sumifs => not_implemented(args),
         Function::Tan => scalar_arguments(args),
         Function::Tanh => scalar_arguments(args),
-        Function::ErrorType => not_implemented(args),
-        Function::Isblank => not_implemented(args),
-        Function::Iserr => not_implemented(args),
-        Function::Iserror => not_implemented(args),
-        Function::Iseven => not_implemented(args),
+        Function::ErrorType => scalar_arguments(args),
+        Function::Isblank => scalar_arguments(args),
+        Function::Iserr => scalar_arguments(args),
+        Function::Iserror => scalar_arguments(args),
+        Function::Iseven => scalar_arguments(args),
         Function::Isformula => not_implemented(args),
-        Function::Islogical => not_implemented(args),
-        Function::Isna => not_implemented(args),
-        Function::Isnontext => not_implemented(args),
-        Function::Isnumber => not_implemented(args),
-        Function::Isodd => not_implemented(args),
+        Function::Islogical => scalar_arguments(args),
+        Function::Isna => scalar_arguments(args),
+        Function::Isnontext => scalar_arguments(args),
+        Function::Isnumber => scalar_arguments(args),
+        Function::Isodd => scalar_arguments(args),
         Function::Isomitted => not_implemented(args),
         Function::Isref => not_implemented(args),
-        Function::Istext => not_implemented(args),
+        Function::Istext => scalar_arguments(args),
         Function::Na => StaticResult::Scalar,
         Function::Sheet => StaticResult::Scalar,
         Function::Type => not_implemented(args),
@@ -1777,19 +1757,19 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Randarray => StaticResult::Unknown,
         Function::Textsplit => StaticResult::Unknown,
         Function::Concat => not_implemented(args),
-        Function::Concatenate => not_implemented(args),
-        Function::Exact => not_implemented(args),
-        Function::Find => not_implemented(args),
+        Function::Concatenate => scalar_arguments(args),
+        Function::Exact => scalar_arguments(args),
+        Function::Find => scalar_arguments(args),
         // LEFT/MID/RIGHT broadcast element-wise: an array/range argument yields an array.
         Function::Left => scalar_arguments(args),
-        Function::Len => not_implemented(args),
+        Function::Len => scalar_arguments(args),
         // UPPER/LOWER broadcast element-wise: an array/range argument yields an array.
         Function::Lower => scalar_arguments(args),
         Function::Mid => scalar_arguments(args),
-        Function::Rept => not_implemented(args),
+        Function::Rept => scalar_arguments(args),
         Function::Right => scalar_arguments(args),
-        Function::Search => not_implemented(args),
-        Function::Substitute => not_implemented(args),
+        Function::Search => scalar_arguments(args),
+        Function::Substitute => scalar_arguments(args),
         Function::Regexextract => {
             if args.len() == 3 {
                 StaticResult::Unknown
@@ -1799,34 +1779,34 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         }
         Function::Regexreplace => not_implemented(args),
         Function::Regextest => not_implemented(args),
-        Function::T => not_implemented(args),
+        Function::T => scalar_arguments(args),
         Function::Text => scalar_arguments(args),
         Function::Textafter => not_implemented(args),
         Function::Textbefore => not_implemented(args),
         Function::Textjoin => not_implemented(args),
-        Function::Trim => not_implemented(args),
-        Function::Unicode => not_implemented(args),
-        Function::Unichar => not_implemented(args),
-        Function::Char => not_implemented(args),
-        Function::Clean => not_implemented(args),
-        Function::Code => not_implemented(args),
-        Function::Asc => not_implemented(args),
+        Function::Trim => scalar_arguments(args),
+        Function::Unicode => scalar_arguments(args),
+        Function::Unichar => scalar_arguments(args),
+        Function::Char => scalar_arguments(args),
+        Function::Clean => scalar_arguments(args),
+        Function::Code => scalar_arguments(args),
+        Function::Asc => scalar_arguments(args),
         Function::Arraytotext => not_implemented(args),
-        Function::Dollar => not_implemented(args),
+        Function::Dollar => scalar_arguments(args),
         Function::Findb => not_implemented(args),
-        Function::Fixed => not_implemented(args),
+        Function::Fixed => scalar_arguments(args),
         Function::Leftb => not_implemented(args),
         Function::Lenb => not_implemented(args),
         Function::Midb => not_implemented(args),
-        Function::Numbervalue => not_implemented(args),
-        Function::Proper => not_implemented(args),
-        Function::Replace => not_implemented(args),
+        Function::Numbervalue => scalar_arguments(args),
+        Function::Proper => scalar_arguments(args),
+        Function::Replace => scalar_arguments(args),
         Function::Replaceb => not_implemented(args),
         Function::Rightb => not_implemented(args),
         Function::Searchb => not_implemented(args),
         Function::Upper => scalar_arguments(args),
-        Function::Value => not_implemented(args),
-        Function::Valuetotext => not_implemented(args),
+        Function::Value => scalar_arguments(args),
+        Function::Valuetotext => scalar_arguments(args),
         Function::Average => not_implemented(args),
         Function::Averagea => not_implemented(args),
         Function::Avedev => not_implemented(args),
@@ -1841,26 +1821,26 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Minifs => not_implemented(args),
         // DATE broadcasts element-wise: an array/range argument yields an array.
         Function::Date => scalar_arguments(args),
-        Function::Datedif => not_implemented(args),
-        Function::Datevalue => not_implemented(args),
+        Function::Datedif => scalar_arguments(args),
+        Function::Datevalue => scalar_arguments(args),
         Function::Day => scalar_arguments(args),
-        Function::Edate => not_implemented(args),
+        Function::Edate => scalar_arguments(args),
         Function::Month => scalar_arguments(args),
-        Function::Time => not_implemented(args),
-        Function::Timevalue => not_implemented(args),
-        Function::Hour => not_implemented(args),
-        Function::Minute => not_implemented(args),
-        Function::Second => not_implemented(args),
+        Function::Time => scalar_arguments(args),
+        Function::Timevalue => scalar_arguments(args),
+        Function::Hour => scalar_arguments(args),
+        Function::Minute => scalar_arguments(args),
+        Function::Second => scalar_arguments(args),
         Function::Now => not_implemented(args),
         Function::Today => not_implemented(args),
         Function::Year => scalar_arguments(args),
-        Function::Days => not_implemented(args),
-        Function::Days360 => not_implemented(args),
+        Function::Days => scalar_arguments(args),
+        Function::Days360 => scalar_arguments(args),
         Function::Weekday => scalar_arguments(args),
-        Function::Weeknum => not_implemented(args),
-        Function::Workday => not_implemented(args),
-        Function::WorkdayIntl => not_implemented(args),
-        Function::Yearfrac => not_implemented(args),
+        Function::Weeknum => scalar_arguments(args),
+        Function::Workday => scalar_arguments(&args[..args.len().min(2)]),
+        Function::WorkdayIntl => scalar_arguments(&args[..args.len().min(3)]),
+        Function::Yearfrac => scalar_arguments(args),
         Function::Isoweeknum => scalar_arguments(args),
         Function::Accrint => scalar_arguments(args),
         Function::Accrintm => scalar_arguments(args),
@@ -1876,25 +1856,25 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Cumprinc => not_implemented(args),
         Function::Db => not_implemented(args),
         Function::Ddb => not_implemented(args),
-        Function::Dollarde => not_implemented(args),
-        Function::Dollarfr => not_implemented(args),
-        Function::Effect => not_implemented(args),
+        Function::Dollarde => scalar_arguments(args),
+        Function::Dollarfr => scalar_arguments(args),
+        Function::Effect => scalar_arguments(args),
         Function::Fv => not_implemented(args),
         Function::Ipmt => not_implemented(args),
         Function::Irr => not_implemented(args),
         Function::Ispmt => not_implemented(args),
         Function::Mirr => not_implemented(args),
-        Function::Nominal => not_implemented(args),
+        Function::Nominal => scalar_arguments(args),
         Function::Nper => not_implemented(args),
         Function::Npv => not_implemented(args),
-        Function::Pduration => not_implemented(args),
+        Function::Pduration => scalar_arguments(args),
         Function::Pmt => not_implemented(args),
         Function::Ppmt => not_implemented(args),
         Function::Pv => not_implemented(args),
         Function::Rate => not_implemented(args),
-        Function::Rri => not_implemented(args),
-        Function::Sln => not_implemented(args),
-        Function::Syd => not_implemented(args),
+        Function::Rri => scalar_arguments(args),
+        Function::Sln => scalar_arguments(args),
+        Function::Syd => scalar_arguments(args),
         Function::Tbilleq => not_implemented(args),
         Function::Tbillprice => not_implemented(args),
         Function::Tbillyield => not_implemented(args),
@@ -1968,9 +1948,9 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Imsub => scalar_arguments(args),
         Function::Imsum => scalar_arguments(args),
         Function::Imtan => scalar_arguments(args),
-        Function::Convert => not_implemented(args),
-        Function::Delta => not_implemented(args),
-        Function::Gestep => not_implemented(args),
+        Function::Convert => scalar_arguments(args),
+        Function::Delta => scalar_arguments(args),
+        Function::Gestep => scalar_arguments(args),
         Function::Subtotal => not_implemented(args),
         Function::Aggregate => not_implemented(args),
         Function::Jis => scalar_arguments(args),
@@ -1986,8 +1966,8 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Eomonth => scalar_arguments(args),
         Function::Formulatext => not_implemented(args),
         Function::Geomean => not_implemented(args),
-        Function::Networkdays => not_implemented(args),
-        Function::NetworkdaysIntl => not_implemented(args),
+        Function::Networkdays => scalar_arguments(&args[..args.len().min(2)]),
+        Function::NetworkdaysIntl => scalar_arguments(&args[..args.len().min(3)]),
         Function::Acot => scalar_arguments(args),
         Function::Acoth => scalar_arguments(args),
         Function::Cot => scalar_arguments(args),
@@ -2069,8 +2049,8 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::FInv => StaticResult::Scalar,
         Function::FInvRT => StaticResult::Scalar,
         Function::FTest => StaticResult::Scalar,
-        Function::Fisher => StaticResult::Scalar,
-        Function::FisherInv => StaticResult::Scalar,
+        Function::Fisher => scalar_arguments(args),
+        Function::FisherInv => scalar_arguments(args),
         Function::Gamma => StaticResult::Scalar,
         Function::GammaDist => StaticResult::Scalar,
         Function::GammaInv => StaticResult::Scalar,
@@ -2085,9 +2065,9 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::NormSdist => StaticResult::Scalar,
         Function::NormSInv => StaticResult::Scalar,
         Function::Pearson => StaticResult::Scalar,
-        Function::Phi => StaticResult::Scalar,
+        Function::Phi => scalar_arguments(args),
         Function::PoissonDist => StaticResult::Scalar,
-        Function::Standardize => StaticResult::Scalar,
+        Function::Standardize => scalar_arguments(args),
         Function::Stdev => StaticResult::Scalar,
         Function::StDevP => StaticResult::Scalar,
         Function::StDevS => StaticResult::Scalar,
@@ -2130,11 +2110,15 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::NormDistCompat => StaticResult::Scalar,
         Function::NormInvCompat => StaticResult::Scalar,
         Function::NormSInvCompat => StaticResult::Scalar,
-        Function::PercentileCompat => StaticResult::Scalar,
-        Function::PercentrankCompat => StaticResult::Scalar,
+        Function::PercentileCompat => scalar_arguments(args.get(1..).unwrap_or(&[])),
+        Function::PercentrankCompat => scalar_arguments(args.get(1..).unwrap_or(&[])),
         Function::PoissonCompat => StaticResult::Scalar,
-        Function::QuartileCompat => StaticResult::Scalar,
-        Function::RankCompat => StaticResult::Scalar,
+        Function::QuartileCompat => scalar_arguments(args.get(1..).unwrap_or(&[])),
+        Function::RankCompat | Function::RankEq | Function::RankAvg => {
+            let mut operands = args.get(..1).unwrap_or(&[]).to_vec();
+            operands.extend_from_slice(args.get(2..).unwrap_or(&[]));
+            scalar_arguments(&operands)
+        }
         Function::StDevPCompat => StaticResult::Scalar,
         Function::TInvCompat => StaticResult::Scalar,
         Function::TTestCompat => StaticResult::Scalar,
@@ -2165,27 +2149,25 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Trend => StaticResult::Unknown,
         // Scalar-returning functions
         Function::ModeSingl => StaticResult::Scalar,
-        Function::PercentileExc => StaticResult::Scalar,
-        Function::PercentileInc => StaticResult::Scalar,
-        Function::PercentrankExc => StaticResult::Scalar,
-        Function::PercentrankInc => StaticResult::Scalar,
-        Function::Permut => StaticResult::Scalar,
-        Function::Permutationa => StaticResult::Scalar,
+        Function::PercentileExc => scalar_arguments(args.get(1..).unwrap_or(&[])),
+        Function::PercentileInc => scalar_arguments(args.get(1..).unwrap_or(&[])),
+        Function::PercentrankExc => scalar_arguments(args.get(1..).unwrap_or(&[])),
+        Function::PercentrankInc => scalar_arguments(args.get(1..).unwrap_or(&[])),
+        Function::Permut => scalar_arguments(args),
+        Function::Permutationa => scalar_arguments(args),
         Function::Prob => StaticResult::Scalar,
-        Function::QuartileExc => StaticResult::Scalar,
-        Function::QuartileInc => StaticResult::Scalar,
+        Function::QuartileExc => scalar_arguments(args.get(1..).unwrap_or(&[])),
+        Function::QuartileInc => scalar_arguments(args.get(1..).unwrap_or(&[])),
         Function::Trimmean => StaticResult::Scalar,
-        Function::Gauss => StaticResult::Scalar,
+        Function::Gauss => scalar_arguments(args),
         Function::Harmean => StaticResult::Scalar,
         Function::Kurt => StaticResult::Scalar,
-        Function::Large => StaticResult::Scalar,
+        Function::Large => scalar_arguments(args.get(1..).unwrap_or(&[])),
         Function::MaxA => StaticResult::Scalar,
         Function::Median => StaticResult::Scalar,
         Function::MinA => StaticResult::Scalar,
-        Function::RankAvg => StaticResult::Scalar,
-        Function::RankEq => StaticResult::Scalar,
         Function::Skew => StaticResult::Scalar,
         Function::SkewP => StaticResult::Scalar,
-        Function::Small => StaticResult::Scalar,
+        Function::Small => scalar_arguments(args.get(1..).unwrap_or(&[])),
     }
 }

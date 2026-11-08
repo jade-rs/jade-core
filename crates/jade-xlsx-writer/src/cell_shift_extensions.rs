@@ -5,7 +5,7 @@ use crate::{
     cell_shift::{
         aggregate_rule, children_map, head_attr, leaf_text, rule_formula, rule_pieces, text_content,
     },
-    patch::{apply, local, Splice},
+    patch::{apply, Splice},
     shift::{range_text, reference_text},
     xml_edit, xml_edit_ns, Result,
 };
@@ -55,7 +55,7 @@ impl IdPool {
         }
         pool
     }
-    fn fresh(&mut self) -> String {
+    pub(crate) fn fresh(&mut self) -> String {
         loop {
             // Derive stable identities from the package, with UUID version
             // and variant bits. Always check all XML parts for collisions.
@@ -79,14 +79,9 @@ fn map_ns(
     xml: &str,
     name: &[u8],
     ns: &[u8],
-    descend: bool,
     mut f: impl FnMut(&str) -> Result<String>,
 ) -> Result<String> {
-    let entries = if descend {
-        xml_edit_ns::descendants_ns(xml, name, ns)?
-    } else {
-        xml_edit_ns::children_ns(xml, name, ns)?
-    };
+    let entries = xml_edit_ns::children_ns(xml, name, ns)?;
     let mut edits = Vec::new();
     for (start, end, c) in entries {
         let moved = f(&c.text)?;
@@ -95,6 +90,8 @@ fn map_ns(
         }
         let text = if moved.is_empty() {
             moved
+        } else if let Some(required) = crate::empty_feature::required(name) {
+            crate::empty_feature::finish(&c, &moved, required)?
         } else {
             c.finish(&moved)?
         };
@@ -119,20 +116,22 @@ fn set_coverage(xml: &str, ranges: &[CellRange]) -> Result<String> {
         .map(range_text)
         .collect::<Vec<_>>()
         .join(" ");
-    map_ns(xml, b"sqref", XM, false, |s| text_content(s, &text))
+    map_ns(xml, b"sqref", XM, |s| text_content(s, &text))
 }
-fn formula_map(xml: &str, f: impl Fn(&str) -> String) -> Result<String> {
-    map_ns(xml, b"f", XM, true, |s| text_content(s, &f(&leaf_text(s)?)))
+fn conditional_formulas(xml: &str, f: impl Fn(&str) -> String) -> Result<String> {
+    crate::worksheet_formulas::conditional(xml, X14, true, &|formula, _| f(formula), None)
 }
-fn structural(xml: &str, change: &CellShift) -> Result<String> {
-    formula_map(xml, |f| shift_cells_formula(f, &change.sheet, change))
+fn structural_conditional(xml: &str, change: &CellShift) -> Result<String> {
+    conditional_formulas(xml, |f| shift_cells_formula(f, &change.sheet, change))
 }
 fn retain_nonempty(xml: String, name: &[u8]) -> Result<String> {
-    Ok(if xml_edit_ns::children(&xml, name)?.is_empty() {
-        String::new()
-    } else {
-        xml
-    })
+    Ok(
+        if xml_edit_ns::children(&xml, name)?.is_empty() && xml_edit_ns::plain_empty(&xml, &[])? {
+            String::new()
+        } else {
+            xml
+        },
+    )
 }
 fn paired_ranges(xml: &str) -> Result<BTreeMap<String, Vec<CellRange>>> {
     let mut pairs = BTreeMap::new();
@@ -184,7 +183,10 @@ fn move_cf(
                 .filter(|id| old_pairs.contains_key(*id) && !standalone)
             {
                 if let Some(targets) = pairs.get(id) {
-                    result.push_str(&structural(&set_coverage(&one, targets)?, change)?);
+                    result.push_str(&structural_conditional(
+                        &set_coverage(&one, targets)?,
+                        change,
+                    )?);
                 }
                 continue;
             }
@@ -195,7 +197,10 @@ fn move_cf(
                     .flat_map(|r| change.map_regions(*r))
                     .collect::<Vec<_>>();
                 if !targets.is_empty() {
-                    result.push_str(&structural(&set_coverage(&one, &targets)?, change)?);
+                    result.push_str(&structural_conditional(
+                        &set_coverage(&one, &targets)?,
+                        change,
+                    )?);
                 }
             } else {
                 for (copies, piece) in ranges
@@ -209,7 +214,7 @@ fn move_cf(
                         ));
                     }
                     let mut moved = set_coverage(&one, &[piece.target])?;
-                    moved = formula_map(&moved, |f| rule_formula(f, base, piece, change))?;
+                    moved = conditional_formulas(&moved, |f| rule_formula(f, base, piece, change))?;
                     if copies > 0 && id.is_some() {
                         let id = ids.fresh();
                         moved = children_map(&moved, b"cfRule", |r| {
@@ -224,7 +229,7 @@ fn move_cf(
     })?;
     retain_nonempty(moved, b"conditionalFormatting")
 }
-fn move_dv(xml: &str, change: &CellShift) -> Result<String> {
+pub(crate) fn move_dv(xml: &str, change: &CellShift) -> Result<String> {
     let moved = children_map(xml, b"dataValidation", |rule| {
         let ranges = coverage(rule)?;
         let Some(base) = ranges.first().map(|r| r.start) else {
@@ -251,7 +256,7 @@ fn move_dv(xml: &str, change: &CellShift) -> Result<String> {
         Ok(result)
     })?;
     let count = xml_edit_ns::children(&moved, b"dataValidation")?.len();
-    if count == 0 {
+    if count == 0 && xml_edit_ns::plain_empty(&moved, &[b"count"])? {
         return Ok(String::new());
     }
     xml_edit::root_attributes(&moved, &[("count", Some(count.to_string()))])
@@ -267,23 +272,19 @@ fn move_sparklines(xml: &str, change: &CellShift) -> Result<String> {
                 let Some(target) = change.map_cell(location.start) else {
                     return Ok(String::new());
                 };
-                let moved = map_ns(sparkline, b"sqref", XM, false, |s| {
+                let moved = map_ns(sparkline, b"sqref", XM, |s| {
                     text_content(s, &reference_text(target))
                 })?;
-                structural(&moved, change)
+                crate::validation_sources::map_source_level(&moved, XM, &[b"f"], false, &|f| {
+                    shift_cells_formula(f, &change.sheet, change)
+                })
             })?;
             retain_nonempty(moved, b"sparkline")
         })?;
-        if xml_edit_ns::children(&group, b"sparklines")?.is_empty() {
-            return Ok(String::new());
-        }
         // A group's optional date-axis formula has the same structural
         // semantics as a sparkline source, independent of the display cell.
-        map_ns(&group, b"f", XM, false, |f| {
-            text_content(
-                f,
-                &shift_cells_formula(&leaf_text(f)?, &change.sheet, change),
-            )
+        crate::validation_sources::map_source_level(&group, XM, &[b"f"], false, &|f| {
+            shift_cells_formula(f, &change.sheet, change)
         })
     })?;
     retain_nonempty(moved, b"sparklineGroup")
@@ -314,14 +315,30 @@ pub(crate) fn move_extensions(
                     return Ok(ext.into());
                 };
                 let mut moved = ext.to_owned();
-                for name in [
-                    b"conditionalFormattings".as_slice(),
-                    b"dataValidations",
-                    b"sparklineGroups",
+                for (name, kind) in [
+                    (
+                        b"conditionalFormattings".as_slice(),
+                        jade_xlsx_reader::worksheet_extensions::Kind::ConditionalFormats,
+                    ),
+                    (
+                        b"dataValidations".as_slice(),
+                        jade_xlsx_reader::worksheet_extensions::Kind::Validations,
+                    ),
+                    (
+                        b"sparklineGroups".as_slice(),
+                        jade_xlsx_reader::worksheet_extensions::Kind::Sparklines,
+                    ),
                 ] {
+                    if uri
+                        .as_deref()
+                        .and_then(jade_xlsx_reader::worksheet_extensions::Kind::from_uri)
+                        != Some(kind)
+                    {
+                        continue;
+                    }
                     let originals = xml_edit_ns::children_ns(&source.text, name, X14)?;
                     let mut index = 0;
-                    moved = map_ns(&moved, name, X14, false, |_| {
+                    moved = map_ns(&moved, name, X14, |_| {
                         let Some((_, _, source)) = originals.get(index) else {
                             return Ok(String::new());
                         };
@@ -347,31 +364,128 @@ pub(crate) fn move_extensions(
     normalize_priorities_and_uids(&result, ids)
 }
 
+// Familiar names inside foreign children do not identify feature records.
+fn identity_roots(
+    xml: &str,
+    sources: &jade_xlsx_reader::worksheet_extensions::Sources,
+) -> Result<BTreeMap<usize, bool>> {
+    use jade_xlsx_reader::{
+        data_validations::all_supported_validation_containers, worksheet_extensions::Kind,
+    };
+    let mut validations: BTreeMap<usize, BTreeSet<usize>> = BTreeMap::new();
+    for record in all_supported_validation_containers(xml)? {
+        validations
+            .entry(record.container.start)
+            .or_default()
+            .insert(record.index);
+    }
+    let mut reader = NsReader::from_str(xml);
+    let mut depth = 0usize;
+    let mut validation: Option<(usize, Vec<u8>, BTreeSet<usize>, usize)> = None;
+    let mut conditional: Option<(usize, Vec<u8>)> = None;
+    let mut conditional_list: Option<usize> = None;
+    let mut result = BTreeMap::new();
+    loop {
+        let start = reader.buffer_position() as usize;
+        let event = reader.read_event()?;
+        match event {
+            Event::Start(ref e) | Event::Empty(ref e) => {
+                let empty = matches!(event, Event::Empty(_));
+                if sources.opaque_at(start) {
+                    if !empty {
+                        reader.read_to_end(e.name())?;
+                    }
+                    continue;
+                }
+                let ns = match reader.resolver().resolve_element(e.name()).0 {
+                    ResolveResult::Bound(ns) => ns.as_ref().to_vec(),
+                    _ => Vec::new(),
+                };
+                let name = e.local_name();
+                let name = name.as_ref();
+                if let Some((at, own, indices, next)) = validation.as_mut() {
+                    if depth == *at + 1 && ns == *own && name == b"dataValidation" {
+                        if indices.contains(next) {
+                            result.insert(start, false);
+                        }
+                        *next += 1;
+                    }
+                }
+                if conditional
+                    .as_ref()
+                    .is_some_and(|(at, own)| depth == at + 1 && ns == *own)
+                    && name == b"cfRule"
+                {
+                    result.insert(start, true);
+                }
+                if !empty {
+                    if let Some(indices) = validations.remove(&start) {
+                        validation = Some((depth, ns.clone(), indices, 0));
+                    }
+                    if sources.owns_conditional_at(start)
+                        || (conditional_list.is_some_and(|at| depth == at + 1)
+                            && ns == X14
+                            && name == b"conditionalFormatting")
+                    {
+                        result.insert(start, false);
+                        conditional = Some((depth, ns));
+                    }
+                    if sources.owns_payload_at(start, Kind::ConditionalFormats) {
+                        conditional_list = Some(depth);
+                    }
+                    depth += 1;
+                }
+            }
+            Event::End(_) => {
+                depth = depth.saturating_sub(1);
+                if validation
+                    .as_ref()
+                    .is_some_and(|(at, _, _, _)| *at == depth)
+                {
+                    validation = None;
+                }
+                if conditional.as_ref().is_some_and(|(at, _)| *at == depth) {
+                    conditional = None;
+                }
+                if conditional_list == Some(depth) {
+                    conditional_list = None;
+                }
+            }
+            Event::Eof => return Ok(result),
+            _ => {}
+        }
+    }
+}
+
 // Priority is shared by standard and standalone extended rules. Paired x14
 // rules deliberately omit it; adding a priority would change their meaning.
 fn normalize_priorities_and_uids(xml: &str, ids: &mut IdPool) -> Result<String> {
+    let extensions = jade_xlsx_reader::worksheet_extensions::sources(xml)?;
+    let owned = identity_roots(xml, &extensions)?;
     let mut reader = NsReader::from_str(xml);
     let mut edits = Vec::new();
     let mut rules = Vec::new();
     let mut seen_uids = BTreeSet::new();
     loop {
         let start = reader.buffer_position() as usize;
-        match reader.read_event()? {
-            Event::Start(e) | Event::Empty(e) => {
-                let end = reader.buffer_position() as usize;
-                let (ns, _) = reader.resolver().resolve_element(e.name());
-                let known = matches!(ns,ResolveResult::Bound(ref n) if matches!(n.as_ref(),
-                    b"http://schemas.openxmlformats.org/spreadsheetml/2006/main" |
-                    b"http://purl.oclc.org/ooxml/spreadsheetml/main" |
-                    b"http://schemas.microsoft.com/office/spreadsheetml/2009/9/main"));
-                if !known {
+        let event = reader.read_event()?;
+        match event {
+            Event::Start(ref e) | Event::Empty(ref e) => {
+                if extensions.opaque_at(start) {
+                    if matches!(event, Event::Start(_)) {
+                        reader.read_to_end(e.name())?;
+                    }
                     continue;
                 }
+                let end = reader.buffer_position() as usize;
+                let Some(conditional) = owned.get(&start) else {
+                    continue;
+                };
                 let mut updates = Vec::new();
                 for attr in e.attributes() {
                     let attr = attr?;
                     let value = attr.unescape_value()?.into_owned();
-                    if local(e.name().as_ref()) == b"cfRule" && attr.key.as_ref() == b"priority" {
+                    if *conditional && attr.key.as_ref() == b"priority" {
                         if let Ok(priority) = value.parse::<u32>() {
                             rules.push((priority, start, end));
                         }
