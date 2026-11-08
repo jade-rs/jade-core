@@ -86,7 +86,7 @@ impl Config {
                         .iter()
                         .enumerate()
                         .filter_map(|(level, &start)| {
-                            start.map(|_| (level as u32, LevelOverride { start }))
+                            start.map(|_| (level as u32, LevelOverride { start, level: None }))
                         })
                         .collect(),
                 },
