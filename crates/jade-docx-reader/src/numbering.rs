@@ -1,5 +1,8 @@
 mod more_formats;
 
+#[cfg(test)]
+mod counter_histories;
+
 use crate::document::{FontHint, ParagraphProperties, RunFonts, RunProperties};
 use quick_xml::events::{BytesStart, Event};
 use quick_xml::Reader;
@@ -2073,11 +2076,11 @@ impl NumberingCounter {
         // continues it after whichever num advanced it last. A level the
         // definition has tracked, even one a parent reset, is the list's
         // state; only an untracked one keeps the num's own.
-        let shared = self
+        let abstract_levels = self
             .abstract_counters
-            .get(abstract_num_id)
-            .and_then(|levels| levels.get(level as usize))
-            .copied();
+            .entry(abstract_num_id.to_string())
+            .or_default();
+        let shared = abstract_levels.get(level as usize).copied();
         let previous = match shared {
             Some(shared) if !has_start_override => shared,
             _ => *counter,
@@ -2085,10 +2088,6 @@ impl NumberingCounter {
         let value = previous.map_or_else(|| start.unwrap_or(1), |previous| previous + 1);
         *counter = Some(value);
 
-        let abstract_levels = self
-            .abstract_counters
-            .entry(abstract_num_id.to_string())
-            .or_default();
         while abstract_levels.len() <= level as usize {
             abstract_levels.push(None);
         }
@@ -2103,10 +2102,7 @@ impl NumberingCounter {
         }
         abstract_levels[level as usize] = Some(value);
         if let Some(numbering) = numbering {
-            let concrete = self
-                .counters
-                .get_mut(num_id)
-                .expect("counter inserted above");
+            let concrete = counters;
             for (ancestor, shared) in abstract_levels.iter().enumerate().take(level as usize) {
                 if shared.is_some()
                     && ancestor < concrete.len()
