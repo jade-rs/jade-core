@@ -103,6 +103,9 @@ pub struct MathProperties {
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct DocumentSettings {
+    /// WordprocessingML logical theme slots mapped to physical theme colors.
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    pub color_scheme_mapping: HashMap<String, String>,
     /// `m:mathPr`.
     #[serde(default)]
     pub math: MathProperties,
@@ -536,6 +539,15 @@ impl DocumentSettings {
                     depth += 1;
                     let raw = e.name().as_ref().to_vec();
                     let name = local_name(&raw);
+                    if depth == 2 && name == b"clrSchemeMapping" {
+                        for attr in e.attributes().flatten() {
+                            settings.color_scheme_mapping.insert(
+                                String::from_utf8_lossy(local_name(attr.key.as_ref())).into_owned(),
+                                attr.normalized_value(quick_xml::XmlVersion::Implicit1_0)?
+                                    .into_owned(),
+                            );
+                        }
+                    }
                     if name == b"endnotePr" && depth == 2 {
                         endnote_properties_depth = Some(depth);
                         settings.endnote_properties = Some(NoteNumbering::default());
@@ -716,6 +728,15 @@ impl DocumentSettings {
                 Ok(Event::Empty(ref e)) => {
                     let raw = e.name().as_ref().to_vec();
                     let name = local_name(&raw);
+                    if depth == 1 && name == b"clrSchemeMapping" {
+                        for attr in e.attributes().flatten() {
+                            settings.color_scheme_mapping.insert(
+                                String::from_utf8_lossy(local_name(attr.key.as_ref())).into_owned(),
+                                attr.normalized_value(quick_xml::XmlVersion::Implicit1_0)?
+                                    .into_owned(),
+                            );
+                        }
+                    }
                     if depth == 1 && name == b"revisionView" {
                         settings.display_content_revisions =
                             Self::parse_revision_content_visibility(e);
@@ -1003,6 +1024,27 @@ mod saved_revision_view_tests {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn parses_document_color_scheme_mapping_in_both_element_forms() {
+        for end in ["/>", "></w:clrSchemeMapping>"] {
+            let xml = format!(
+                r#"<w:settings xmlns:w="urn:test"><w:clrSchemeMapping w:t1="light1" w:accent1="accent2"{end}</w:settings>"#
+            );
+            let settings = super::DocumentSettings::from_xml(&xml).unwrap();
+            assert_eq!(
+                settings.color_scheme_mapping.get("t1").map(String::as_str),
+                Some("light1")
+            );
+            assert_eq!(
+                settings
+                    .color_scheme_mapping
+                    .get("accent1")
+                    .map(String::as_str),
+                Some("accent2")
+            );
+        }
+    }
+
     use super::*;
 
     #[test]

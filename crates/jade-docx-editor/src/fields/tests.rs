@@ -72,6 +72,15 @@ fn package(body: &str, extra: &[(&str, &str)]) -> Vec<u8> {
         ),
         ("word/document.xml".into(), document),
     ];
+    if extra.iter().any(|(path, _)| *path == "word/comments.xml") {
+        for (path, content) in &mut parts {
+            if path == "[Content_Types].xml" {
+                *content = content.replace("</Types>", "<Override PartName=\"/word/comments.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.wordprocessingml.comments+xml\"/></Types>");
+            } else if path == "word/_rels/document.xml.rels" {
+                *content = content.replace("</Relationships>", "<Relationship Id=\"rIdComments\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/comments\" Target=\"comments.xml\"/></Relationships>");
+            }
+        }
+    }
     for (path, content) in extra {
         parts.push((path.to_string(), content.to_string()));
     }
@@ -799,10 +808,9 @@ fn block_regeneration_rejects_destructive_ranges_and_keeps_other_fields_updatabl
     let section = "<w:pPr><w:sectPr><w:type w:val=\"continuous\"/></w:sectPr></w:pPr>";
     let toc = field("TOC", "cached");
     for block in [
-        paragraph(&format!("<w:r><w:t>前</w:t></w:r>{toc}<w:r><w:t>後</w:t></w:r>")),
         paragraph(&format!("{toc}{}", field("NUMPAGES", "old"))),
         format!("<w:p>{section}<w:r><w:fldChar w:fldCharType=\"begin\"/><w:instrText> TOC </w:instrText><w:fldChar w:fldCharType=\"separate\"/><w:t>cached</w:t></w:r></w:p><w:p><w:r><w:fldChar w:fldCharType=\"end\"/></w:r></w:p>"),
-        paragraph(&format!("<w:bookmarkStart w:id=\"9\" w:name=\"Around\"/>{toc}<w:bookmarkEnd w:id=\"9\"/>")),
+        paragraph(&format!("<w:moveFromRangeStart w:id=\"9\" w:name=\"MovedText\"/>{toc}<w:moveFromRangeEnd w:id=\"9\"/>")),
     ] {
         let mut doc = load(&package(&format!("{block}{}", paragraph(&field("NUMPAGES", "old"))), &[]));
         let xml = || parse_part(&unpack(&doc).unwrap(), "word/document.xml").unwrap().to_string().unwrap();
@@ -817,6 +825,478 @@ fn block_regeneration_rejects_destructive_ranges_and_keeps_other_fields_updatabl
         assert_eq!(saved_fields(&doc)[0], ("TOC".into(), "cached".into()));
         assert_eq!(saved_fields(&doc).last().unwrap().1, environment().page_count.unwrap().to_string());
     }
+}
+
+#[test]
+fn regenerated_fields_preserve_boundary_bookmark_ranges() {
+    let body = paragraph(&format!(
+        "<w:bookmarkStart w:id=\"7\" w:name=\"Around\"/><w:bookmarkStart w:id=\"8\" w:name=\"Prefix\"/><w:r><w:t>前</w:t></w:r><w:bookmarkEnd w:id=\"8\"/>{}<w:bookmarkStart w:id=\"9\" w:name=\"Suffix\"/><w:r><w:t>後</w:t></w:r><w:bookmarkEnd w:id=\"9\"/><w:bookmarkEnd w:id=\"7\"/>",
+        field("TOC", "cached")
+    ));
+    let body = format!(
+        "{body}{}",
+        paragraph(&format!(
+            "{}{}",
+            field("REF Prefix", "old"),
+            field("REF Suffix", "old")
+        ))
+    );
+    for texts in [vec!["One"], vec!["One", "Two"]] {
+        let mut doc = load(&package(&body, &[]));
+        let block = doc.field_blocks()[0].clone();
+        let lines: Vec<_> = texts
+            .iter()
+            .map(|text| crate::word_document::FieldBlockLine {
+                text: (*text).into(),
+                ..Default::default()
+            })
+            .collect();
+        doc.replace_field_block(&block, "TOC", &lines).unwrap();
+        let reopened = load(&doc.export_docx().unwrap());
+        for document in [&doc, &reopened] {
+            let model = document.document.as_ref().unwrap();
+            assert_eq!(model.bookmarks.len(), 3);
+            for (name, text) in [("Prefix", "前"), ("Suffix", "後")] {
+                let bookmark = model.bookmarks.iter().find(|b| b.name == name).unwrap();
+                assert_eq!(model.bookmark_display_text(bookmark).as_deref(), Some(text));
+            }
+            let around = model.bookmarks.iter().find(|b| b.name == "Around").unwrap();
+            assert_eq!((around.start_paragraph, around.start_offset), (0, 0));
+            assert_eq!(
+                (around.end_paragraph, around.end_offset),
+                (
+                    texts.len() - 1,
+                    texts.last().unwrap().len()
+                        + "後".len()
+                        + if texts.len() == 1 { "前".len() } else { 0 }
+                )
+            );
+        }
+        let xml = parse_part(&unpack(&doc).unwrap(), "word/document.xml")
+            .unwrap()
+            .to_string()
+            .unwrap();
+        for id in [7, 8, 9] {
+            assert_eq!(
+                xml.matches(&format!("w:bookmarkStart w:id=\"{id}\""))
+                    .count(),
+                1
+            );
+            assert_eq!(
+                xml.matches(&format!("w:bookmarkEnd w:id=\"{id}\"")).count(),
+                1
+            );
+        }
+        update_fields(&mut doc, FieldScope::Document, &environment()).unwrap();
+        let references: Vec<_> = saved_fields(&doc)
+            .into_iter()
+            .filter(|(code, _)| code.starts_with("REF "))
+            .collect();
+        assert_eq!(
+            references,
+            vec![
+                ("REF Prefix".into(), "前".into()),
+                ("REF Suffix".into(), "後".into())
+            ]
+        );
+    }
+}
+
+#[test]
+fn regenerated_fields_preserve_editing_exceptions_and_restrictions() {
+    use crate::word_document::{EditingKind, EditingRestriction};
+    for (attributes, editor) in [
+        ("w:edGrp=\"everyone\"", "everyone"),
+        (
+            "w:ed=\"reviewer@example.com\" w:colFirst=\"2\" w:colLast=\"4\"",
+            "reviewer@example.com",
+        ),
+    ] {
+        for neighboring in [false, true] {
+            let start = format!("<w:permStart w:id=\"7\" {attributes}/>");
+            let end = "<w:permEnd w:id=\"7\"/>";
+            let cached = field("TOC", "cached").replace("<w:r><w:t xml:space=\"preserve\">cached</w:t></w:r>", "<w:bookmarkStart w:id=\"7\" w:name=\"OldResult\"/><w:r><w:t>cached</w:t></w:r><w:bookmarkEnd w:id=\"7\"/>");
+            let toc = paragraph(&format!(
+                "{}<w:r><w:t>前</w:t></w:r>{cached}<w:r><w:t>後</w:t></w:r>{}",
+                if neighboring { "" } else { &start },
+                if neighboring { "" } else { end }
+            ));
+            let body = if neighboring {
+                format!("{}{toc}{}", paragraph(&start), paragraph(end))
+            } else {
+                toc
+            };
+            let body = format!("{body}{}", paragraph("<w:r><w:t>Locked</w:t></w:r>"));
+            for texts in [vec!["One"], vec!["One", "Two"]] {
+                let mut doc = load(&package(&body, &[]));
+                let restriction = EditingRestriction {
+                    kind: Some(EditingKind::ReadOnly),
+                    formatting: false,
+                    enforced: true,
+                    password: None,
+                };
+                doc.set_editing_restriction(Some(&restriction)).unwrap();
+                let block = doc.field_blocks()[0].clone();
+                let lines: Vec<_> = texts
+                    .iter()
+                    .map(|text| crate::word_document::FieldBlockLine {
+                        text: (*text).into(),
+                        ..Default::default()
+                    })
+                    .collect();
+                doc.replace_field_block(&block, "TOC", &lines).unwrap();
+                let reopened = load(&doc.export_docx().unwrap());
+                for document in [&doc, &reopened] {
+                    assert_eq!(document.editing_restriction(), Some(restriction.clone()));
+                    let ranges = document.editable_ranges();
+                    assert_eq!(ranges.len(), 1);
+                    assert_eq!(ranges[0].id, "7");
+                    assert_eq!(ranges[0].editors, editor);
+                    assert_eq!(ranges[0].start, (0, 0));
+                    let end = if neighboring {
+                        (texts.len() + 1, 0)
+                    } else {
+                        (
+                            texts.len() - 1,
+                            texts.last().unwrap().len()
+                                + "後".len()
+                                + if texts.len() == 1 { "前".len() } else { 0 },
+                        )
+                    };
+                    assert_eq!(ranges[0].end, end);
+                    assert!(document
+                        .restriction_allows("insert_text", Some((end.0 + 1, 0)))
+                        .is_err());
+                    assert!(document.document.as_ref().unwrap().bookmarks.is_empty());
+                }
+                let xml = parse_part(&unpack(&doc).unwrap(), "word/document.xml")
+                    .unwrap()
+                    .to_string()
+                    .unwrap();
+                assert!(xml.contains(&start));
+                assert_eq!(xml.matches("<w:permStart ").count(), 1);
+                assert_eq!(xml.matches("<w:permEnd ").count(), 1);
+            }
+        }
+    }
+}
+
+#[test]
+fn regenerating_a_field_rejects_removing_only_one_permission_endpoint() {
+    let start = "<w:permStart w:id=\"7\" w:edGrp=\"everyone\"/>";
+    let end = "<w:permEnd w:id=\"7\"/>";
+    for body in [
+        paragraph(&format!(
+            "{start}{}",
+            field("TOC", "cached").replace(
+                "<w:r><w:fldChar w:fldCharType=\"end\"/>",
+                &format!("{end}<w:r><w:fldChar w:fldCharType=\"end\"/>")
+            )
+        )),
+        paragraph(&format!(
+            "{}{end}",
+            field("TOC", "cached").replace(
+                "<w:r><w:t xml:space=\"preserve\">cached",
+                &format!("{start}<w:r><w:t xml:space=\"preserve\">cached")
+            )
+        )),
+        format!(
+            "{}{}",
+            paragraph(start),
+            paragraph(&field("TOC", "cached").replace(
+                "<w:r><w:fldChar w:fldCharType=\"end\"/>",
+                &format!("{end}<w:r><w:fldChar w:fldCharType=\"end\"/>")
+            ))
+        ),
+        format!(
+            "{}{}",
+            paragraph(&field("TOC", "cached").replace(
+                "<w:r><w:t xml:space=\"preserve\">cached",
+                &format!("{start}<w:r><w:t xml:space=\"preserve\">cached")
+            )),
+            paragraph(end)
+        ),
+    ] {
+        let mut doc = load(&package(&body, &[]));
+        let before = doc.export_docx().unwrap();
+        assert!(doc
+            .update_table_of_contents_at(0)
+            .unwrap_err()
+            .contains("one end"));
+        assert_eq!(doc.export_docx().unwrap(), before);
+    }
+}
+
+#[test]
+fn regenerated_fields_preserve_surrounding_comments_and_their_metadata() {
+    let comments = format!("<w:comments {W}><w:comment w:id=\"7\" w:author=\"Reviewer\" w:initials=\"R\"><w:p><w:r><w:t>Keep this comment</w:t></w:r></w:p></w:comment></w:comments>");
+    let start = "<w:commentRangeStart w:id=\"7\"/>";
+    let end = "<w:commentRangeEnd w:id=\"7\"/><w:r><w:rPr><w:rStyle w:val=\"CommentReference\"/></w:rPr><w:commentReference w:id=\"7\"/></w:r>";
+    for neighboring in [false, true] {
+        let cached = field("TOC", "cached").replace("<w:r><w:t xml:space=\"preserve\">cached</w:t></w:r>", "<w:bookmarkStart w:id=\"7\" w:name=\"OldResult\"/><w:r><w:t>cached</w:t></w:r><w:bookmarkEnd w:id=\"7\"/>");
+        let toc = paragraph(&format!(
+            "{}<w:r><w:t>前</w:t></w:r>{cached}<w:r><w:t>後</w:t></w:r>{}",
+            if neighboring { "" } else { start },
+            if neighboring { "" } else { end }
+        ));
+        let body = if neighboring {
+            format!("{}{toc}{}", paragraph(start), paragraph(end))
+        } else {
+            toc
+        };
+        for texts in [vec!["One"], vec!["One", "Two"]] {
+            let mut doc = load(&package(&body, &[("word/comments.xml", &comments)]));
+            let original_comment = doc.comments.get("7").unwrap().clone();
+            let block = doc.field_blocks()[0].clone();
+            let lines: Vec<_> = texts
+                .iter()
+                .map(|text| crate::word_document::FieldBlockLine {
+                    text: (*text).into(),
+                    ..Default::default()
+                })
+                .collect();
+            doc.replace_field_block(&block, "TOC", &lines).unwrap();
+            let reopened = load(&doc.export_docx().unwrap());
+            for document in [&doc, &reopened] {
+                assert_eq!(document.comments.get("7"), Some(&original_comment));
+                assert!(document.document.as_ref().unwrap().bookmarks.is_empty());
+                let body = document.document.as_ref().unwrap().body.as_ref().unwrap();
+                let last = body.elements.last().unwrap().as_paragraph().unwrap();
+                assert_eq!(last.comment_markers.len(), 1);
+                assert_eq!(last.comment_markers[0].id, "7");
+                assert_eq!(
+                    last.comment_markers[0].position,
+                    if neighboring {
+                        0
+                    } else {
+                        texts.last().unwrap().len()
+                            + "後".len()
+                            + if texts.len() == 1 { "前".len() } else { 0 }
+                    }
+                );
+            }
+            let xml = parse_part(&unpack(&doc).unwrap(), "word/document.xml")
+                .unwrap()
+                .to_string()
+                .unwrap();
+            for marker in ["commentRangeStart", "commentRangeEnd", "commentReference"] {
+                assert_eq!(xml.matches(&format!("<w:{marker} w:id=\"7\"")).count(), 1);
+            }
+            assert!(xml.contains("CommentReference"));
+        }
+    }
+}
+
+#[test]
+fn regenerated_fields_reject_detaching_a_comment_range_or_reference() {
+    let start = "<w:commentRangeStart w:id=\"7\"/>";
+    let end = "<w:commentRangeEnd w:id=\"7\"/>";
+    let reference = "<w:r><w:commentReference w:id=\"7\"/></w:r>";
+    for (prefix, cached, suffix) in [
+        (start, format!("cached{end}"), reference.to_string()),
+        ("", format!("{start}cached"), format!("{end}{reference}")),
+        (start, format!("cached{reference}"), end.to_string()),
+        ("", format!("{start}cached{end}"), reference.to_string()),
+    ] {
+        let body = paragraph(&format!(
+            "{prefix}{}{suffix}",
+            field("TOC", "cached").replace(
+                "<w:r><w:t xml:space=\"preserve\">cached</w:t></w:r>",
+                &format!(
+                    "<w:r><w:t>cached</w:t></w:r>{}",
+                    cached.replace("cached", "")
+                )
+            )
+        ));
+        let mut doc = load(&package(&body, &[]));
+        let before = doc.export_docx().unwrap();
+        assert!(doc
+            .update_table_of_contents_at(0)
+            .unwrap_err()
+            .contains("one end or reference"));
+        assert_eq!(doc.export_docx().unwrap(), before);
+    }
+}
+
+#[test]
+fn regenerated_toc_heading_anchors_do_not_reuse_retained_bookmark_ids_or_names() {
+    for name in ["Around", "_Toc1"] {
+        let body = format!(
+            "{}<w:p><w:pPr><w:outlineLvl w:val=\"0\"/></w:pPr><w:r><w:t>Heading</w:t></w:r></w:p>",
+            paragraph(&format!(
+                "<w:bookmarkStart w:id=\"1\" w:name=\"{name}\"/>{}<w:bookmarkEnd w:id=\"1\"/>",
+                field("TOC \\o \"1-3\" \\h \\u", "cached")
+            ))
+        );
+        let mut doc = load(&package(&body, &[]));
+        for _ in 0..2 {
+            doc.update_table_of_contents_at(0).unwrap();
+            doc = load(&doc.export_docx().unwrap());
+            let model = doc.document.as_ref().unwrap();
+            let retained = model.bookmarks.iter().find(|b| b.name == name).unwrap();
+            assert_eq!(retained.id, "1");
+            assert_eq!((retained.start_paragraph, retained.end_paragraph), (0, 0));
+            let anchor = model
+                .bookmarks
+                .iter()
+                .find(|b| b.start_paragraph == 1)
+                .unwrap();
+            assert_ne!(anchor.id, retained.id);
+            assert_ne!(anchor.name, retained.name);
+            let ids: std::collections::HashSet<_> = model.bookmarks.iter().map(|b| &b.id).collect();
+            let names: std::collections::HashSet<_> =
+                model.bookmarks.iter().map(|b| &b.name).collect();
+            assert_eq!(ids.len(), model.bookmarks.len());
+            assert_eq!(names.len(), model.bookmarks.len());
+        }
+    }
+}
+
+#[test]
+fn regenerated_fields_keep_bookmark_endpoints_in_neighboring_paragraphs() {
+    let body = format!(
+        "{}{}{}",
+        paragraph("<w:bookmarkStart w:id=\"7\" w:name=\"Across\"/><w:r><w:t>Before</w:t></w:r>"),
+        paragraph(&format!(
+            "<w:r><w:t>前</w:t></w:r>{}<w:r><w:t>後</w:t></w:r>",
+            field("TOC", "cached")
+        )),
+        paragraph("<w:r><w:t>After</w:t></w:r><w:bookmarkEnd w:id=\"7\"/>")
+    );
+    let mut doc = load(&package(&body, &[]));
+    let block = doc.field_blocks()[0].clone();
+    let lines: Vec<_> = ["One", "Two"]
+        .iter()
+        .map(|text| crate::word_document::FieldBlockLine {
+            text: (*text).into(),
+            ..Default::default()
+        })
+        .collect();
+    doc.replace_field_block(&block, "TOC", &lines).unwrap();
+    let model = doc.document.as_ref().unwrap();
+    let bookmark = model.bookmarks.iter().find(|b| b.name == "Across").unwrap();
+    assert_eq!((bookmark.start_paragraph, bookmark.end_paragraph), (0, 3));
+    let text = model.bookmark_display_text(bookmark).unwrap();
+    for expected in ["Before", "前", "One", "Two", "後", "After"] {
+        assert!(text.contains(expected), "{text}");
+    }
+    assert!(!text.contains("cached"));
+}
+
+#[test]
+fn regenerating_a_field_rejects_removing_only_one_bookmark_endpoint() {
+    let start = "<w:bookmarkStart w:id=\"7\" w:name=\"Partial\"/>";
+    let end = "<w:bookmarkEnd w:id=\"7\"/>";
+    for body in [
+        paragraph(&format!(
+            "{start}{}",
+            field("TOC", "cached").replace(
+                "<w:r><w:fldChar w:fldCharType=\"end\"/>",
+                &format!("{end}<w:r><w:fldChar w:fldCharType=\"end\"/>")
+            )
+        )),
+        paragraph(&format!(
+            "{}{end}",
+            field("TOC", "cached").replace(
+                "<w:r><w:t xml:space=\"preserve\">cached",
+                &format!("{start}<w:r><w:t xml:space=\"preserve\">cached")
+            )
+        )),
+        format!(
+            "{}{}",
+            paragraph(start),
+            paragraph(&field("TOC", "cached").replace(
+                "<w:r><w:fldChar w:fldCharType=\"end\"/>",
+                &format!("{end}<w:r><w:fldChar w:fldCharType=\"end\"/>")
+            ))
+        ),
+        format!(
+            "{}{}",
+            paragraph(&field("TOC", "cached").replace(
+                "<w:r><w:t xml:space=\"preserve\">cached",
+                &format!("{start}<w:r><w:t xml:space=\"preserve\">cached")
+            )),
+            paragraph(end)
+        ),
+    ] {
+        let mut doc = load(&package(&body, &[]));
+        let before = doc.export_docx().unwrap();
+        assert!(doc
+            .update_table_of_contents_at(0)
+            .unwrap_err()
+            .contains("one end"));
+        assert_eq!(doc.export_docx().unwrap(), before);
+    }
+}
+
+#[test]
+fn block_regeneration_keeps_surrounding_text_and_run_formatting() {
+    for body in [
+        format!("<w:p><w:pPr><w:jc w:val=\"center\"/></w:pPr><w:r><w:rPr><w:b/></w:rPr><w:t>前</w:t></w:r>{}<w:r><w:rPr><w:i/></w:rPr><w:t>後</w:t></w:r></w:p>", field("TOC", "cached")),
+        paragraph("<w:r><w:rPr><w:b/></w:rPr><w:t>前</w:t><w:fldChar w:fldCharType=\"begin\"/><w:instrText> TOC </w:instrText><w:fldChar w:fldCharType=\"separate\"/><w:t>cached</w:t><w:fldChar w:fldCharType=\"end\"/><w:t>後</w:t></w:r>"),
+        format!("<w:p><w:pPr><w:sectPr><w:type w:val=\"continuous\"/></w:sectPr></w:pPr><w:r><w:rPr><w:b/></w:rPr><w:t>前</w:t></w:r>{}<w:r><w:t>後</w:t></w:r></w:p>", field("TOC", "cached")),
+    ] {
+        for texts in [vec!["Entry one"], vec!["Entry one", "Entry two"]] {
+            let mut doc = load(&package(&body, &[]));
+            let block = doc.field_blocks()[0].clone();
+            let lines: Vec<_> = texts.iter().map(|text| crate::word_document::FieldBlockLine {
+                text: (*text).into(), ..Default::default()
+            }).collect();
+            let caret = doc.replace_field_block(&block, "TOC", &lines).unwrap();
+            assert_eq!(saved_text(&doc), format!("前{}後", texts.join("\n")));
+            let last_len = texts.last().unwrap().len() + if texts.len() == 1 { "前".len() } else { 0 };
+            assert_eq!(caret.focus, TextPosition::new(texts.len() - 1, last_len));
+            let xml = parse_part(&unpack(&doc).unwrap(), "word/document.xml").unwrap().to_string().unwrap();
+            assert!(xml.contains("<w:b/>"));
+            if body.contains("<w:sectPr>") {
+                // The package also has a final body-level section definition.
+                assert_eq!(xml.matches("<w:sectPr>").count(), 2);
+                let body = doc.document.as_ref().unwrap().body.as_ref().unwrap();
+                for (index, element) in body.elements.iter().take(texts.len()).enumerate() {
+                    let has_section = element.as_paragraph().unwrap().properties.as_ref()
+                        .and_then(|p| p.section.as_ref()).is_some();
+                    assert_eq!(has_section, index + 1 == texts.len());
+                }
+            }
+            if body.contains("w:jc") { assert!(xml.contains("<w:jc w:val=\"center\"/>")); }
+            let reopened = load(&doc.export_docx().unwrap());
+            assert_eq!(saved_text(&reopened), saved_text(&doc));
+            assert_eq!(saved_fields(&reopened), saved_fields(&doc));
+            assert_eq!(saved_fields(&doc).len(), 1);
+        }
+    }
+}
+
+#[test]
+fn regenerated_field_caret_counts_special_hyphens_before_the_field() {
+    let body = paragraph(&format!(
+        "<w:r><w:noBreakHyphen/><w:softHyphen/></w:r>{}",
+        field("TOC", "cached")
+    ));
+    let mut doc = load(&package(&body, &[]));
+    let block = doc.field_blocks()[0].clone();
+    let caret = doc
+        .replace_field_block(
+            &block,
+            "TOC",
+            &[crate::word_document::FieldBlockLine {
+                text: "Entry".into(),
+                ..Default::default()
+            }],
+        )
+        .unwrap();
+    let text: String = doc
+        .paragraph(0)
+        .unwrap()
+        .runs
+        .iter()
+        .map(|run| run.text.as_str())
+        .collect();
+    assert_eq!(text, "\u{2011}\u{00ad}Entry");
+    assert_eq!(
+        caret.focus,
+        TextPosition::new(0, "\u{2011}\u{00ad}Entry".len())
+    );
 }
 
 #[test]

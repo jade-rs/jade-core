@@ -4265,8 +4265,11 @@ mod tests {
         // Word ink strokes (`RunImage::ink`). 24 more: a picture's 装飾用
         // flag (`RunImage::decorative`), the boxed tracked formatting change
         // (`RunProperties::change`) and a picture's boxed 署名欄 setup
-        // (`RunImage::signature_line`).
-        assert_eq!(std::mem::size_of::<Run>(), 3160);
+        // (`RunImage::signature_line`). 8 more: the underline's boxed theme
+        // reference (`RunProperties::underline_theme_color`). 16 more: shading
+        // foreground/background boxed theme references. 8 more: the border's
+        // boxed theme reference.
+        assert_eq!(std::mem::size_of::<Run>(), 3192);
         let kind = RunFieldKind::NumPages.with_lock(true);
         let clone = kind.clone();
         match (&kind, &clone) {
@@ -4465,6 +4468,24 @@ mod tests {
             val: val.map(str::to_string),
             color: color.map(str::to_string),
             fill: fill.map(str::to_string),
+            ..Shading::default()
+        }
+    }
+
+    #[test]
+    fn nil_shading_matches_word_solid_pattern() {
+        for val in ["nil", "NIL"] {
+            for color in [None, Some("#123456")] {
+                for fill in [None, Some("#ABCDEF")] {
+                    let s = shading(Some(val), color, fill);
+                    assert_eq!(
+                        s.resolved_background_color(),
+                        shading(Some("solid"), color, fill).resolved_background_color(),
+                    );
+                    // Keep the explicit value in the style cascade.
+                    assert!(!s.is_empty());
+                }
+            }
         }
     }
 
@@ -4472,6 +4493,22 @@ mod tests {
     fn clear_pattern_shows_fill() {
         let s = shading(Some("clear"), None, Some("#FFFF00"));
         assert_eq!(s.resolved_background_color().as_deref(), Some("#FFFF00"));
+    }
+
+    #[test]
+    fn clear_shading_never_paints_the_pattern_foreground() {
+        for val in [None, Some("clear"), Some("CLEAR")] {
+            for color in [None, Some("#FF0000")] {
+                for fill in [None, Some("#ABCDEF")] {
+                    let s = shading(val, color, fill);
+                    assert_eq!(
+                        s.resolved_background_color().as_deref(),
+                        fill,
+                        "val={val:?}, color={color:?}, fill={fill:?}"
+                    );
+                }
+            }
+        }
     }
 
     #[test]
@@ -4558,6 +4595,23 @@ mod tests {
         assert_eq!(s.resolved_background_color().as_deref(), Some("#4000BF"));
     }
 
+    #[test]
+    fn fractional_percentage_patterns_use_half_percent_coverage() {
+        for (pattern, expected) in [
+            ("pct12", "#DFDFDF"),
+            ("pct37", "#9F9F9F"),
+            ("pct62", "#606060"),
+            ("pct87", "#202020"),
+        ] {
+            let s = shading(Some(pattern), Some("#000000"), Some("#FFFFFF"));
+            assert_eq!(
+                s.resolved_background_color().as_deref(),
+                Some(expected),
+                "{pattern}",
+            );
+        }
+    }
+
     proptest! {
         #![proptest_config(ProptestConfig { cases: 256, ..ProptestConfig::default() })]
 
@@ -4637,10 +4691,23 @@ mod tests {
             .resolved_background_color()
             .expect("blended color");
             let expected_channel = |foreground: u8, background: u8| {
-                ((u16::from(foreground) * u16::from(percentage)
-                    + u16::from(background) * u16::from(100 - percentage)
-                    + 50)
-                    / 100) as u8
+                let coverage = match percentage {
+                    12 => Some(0.125),
+                    37 => Some(0.375),
+                    62 => Some(0.625),
+                    87 => Some(0.875),
+                    _ => None,
+                };
+                if let Some(coverage) = coverage {
+                    (f64::from(foreground) * coverage
+                        + f64::from(background) * (1.0 - coverage))
+                        .round() as u8
+                } else {
+                    ((u16::from(foreground) * u16::from(percentage)
+                        + u16::from(background) * u16::from(100 - percentage)
+                        + 50)
+                        / 100) as u8
+                }
             };
             let expected = format!(
                 "#{:02X}{:02X}{:02X}",
@@ -4659,8 +4726,8 @@ mod tests {
     }
 
     #[test]
-    fn non_solid_without_fill_uses_color() {
-        let s = shading(Some("clear"), Some("#ABCDEF"), None);
+    fn stripe_approximation_without_fill_uses_color() {
+        let s = shading(Some("horzStripe"), Some("#ABCDEF"), None);
         assert_eq!(s.resolved_background_color().as_deref(), Some("#ABCDEF"));
     }
 
@@ -4671,6 +4738,7 @@ mod tests {
             size_eighths: Some(8),
             space: Some(1),
             color: Some("#000000".to_string()),
+            theme_color: None,
         };
         assert!(edge.is_visible());
     }
@@ -5262,6 +5330,23 @@ pub struct ParagraphBorders {
 }
 
 impl ParagraphBorders {
+    /// Each omitted paragraph border inherits independently. An explicit `nil`
+    /// or `none` edge is present and therefore blocks inheritance.
+    pub fn inherit_missing_from(&mut self, fallback: &Self) {
+        for (edge, inherited) in [
+            (&mut self.top, &fallback.top),
+            (&mut self.bottom, &fallback.bottom),
+            (&mut self.left, &fallback.left),
+            (&mut self.right, &fallback.right),
+            (&mut self.between, &fallback.between),
+            (&mut self.bar, &fallback.bar),
+        ] {
+            if edge.is_none() {
+                *edge = inherited.clone();
+            }
+        }
+    }
+
     /// Returns true when no edge carries any information, so callers may treat
     /// the whole `w:pBdr` as absent.
     pub fn is_empty(&self) -> bool {
@@ -5322,9 +5407,27 @@ pub struct BorderEdge {
     pub space: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub color: Option<String>,
+    /// Original theme reference, retained alongside the resolved display color.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub theme_color: Option<Box<RunThemeColor>>,
 }
 
 impl BorderEdge {
+    /// Original theme attributes to retain when regenerating border XML.
+    pub fn theme_attributes(&self) -> impl Iterator<Item = (&'static str, &str)> {
+        let theme = self.theme_color.as_ref();
+        [
+            ("w:themeColor", theme.map(|color| color.name.as_ref())),
+            ("w:themeTint", theme.and_then(|color| color.tint.as_deref())),
+            (
+                "w:themeShade",
+                theme.and_then(|color| color.shade.as_deref()),
+            ),
+        ]
+        .into_iter()
+        .filter_map(|(name, value)| value.map(|value| (name, value)))
+    }
+
     /// Returns true when the edge should be drawn: it has a line style that is
     /// not the `nil`/`none` sentinel. Word treats a missing `w:val` or an
     /// explicit `nil`/`none` as "no line".
@@ -5437,13 +5540,51 @@ pub struct Shading {
     pub color: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub fill: Option<String>,
+    /// Original foreground theme reference, retained alongside the resolved RGB.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub theme_color: Option<Box<RunThemeColor>>,
+    /// Original background theme reference, retained alongside the resolved RGB.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub theme_fill: Option<Box<RunThemeColor>>,
 }
 
 impl Shading {
+    /// Theme attributes to retain when serializing this shading back to OOXML.
+    pub fn theme_attributes(&self) -> impl Iterator<Item = (&'static str, &str)> {
+        let foreground = self.theme_color.as_ref();
+        let background = self.theme_fill.as_ref();
+        [
+            ("w:themeColor", foreground.map(|color| color.name.as_ref())),
+            (
+                "w:themeTint",
+                foreground.and_then(|color| color.tint.as_deref()),
+            ),
+            (
+                "w:themeShade",
+                foreground.and_then(|color| color.shade.as_deref()),
+            ),
+            ("w:themeFill", background.map(|color| color.name.as_ref())),
+            (
+                "w:themeFillTint",
+                background.and_then(|color| color.tint.as_deref()),
+            ),
+            (
+                "w:themeFillShade",
+                background.and_then(|color| color.shade.as_deref()),
+            ),
+        ]
+        .into_iter()
+        .filter_map(|(name, value)| value.map(|value| (name, value)))
+    }
+
     /// Returns true when the shading carries no visible information (no pattern
     /// and no colors), so callers can treat it as absent.
     pub fn is_empty(&self) -> bool {
-        self.val.is_none() && self.color.is_none() && self.fill.is_none()
+        self.val.is_none()
+            && self.color.is_none()
+            && self.fill.is_none()
+            && self.theme_color.is_none()
+            && self.theme_fill.is_none()
     }
 
     /// Resolves the effective solid background color a renderer should paint
@@ -5451,9 +5592,10 @@ impl Shading {
     /// visible background.
     ///
     /// Word's shading is `pattern(color) over fill`. We approximate:
-    /// - `solid`: the pattern fully covers the area, so the visible color is
-    ///   the pattern `color` (falling back to `fill`).
-    /// - `clear` / `nil` / absent: no pattern overlay, so the visible color is
+    /// - `solid` / `nil`: the pattern fully covers the area, so the visible color
+    ///   is the pattern `color` (falling back to `fill`). Word treats `nil` as
+    ///   `solid`, per MS-OE376 §2.1.586, rather than the standard's `clear`.
+    /// - `clear` / absent: no pattern overlay, so the visible color is
     ///   the `fill`.
     /// - percentage patterns (`pct25`, …): blend `color` over `fill` using the
     ///   encoded foreground coverage.
@@ -5463,6 +5605,17 @@ impl Shading {
     /// A percentage with an automatic colour is black over white, as Word
     /// shows `pct25` with `w:color="auto"`.
     pub fn resolved_background_color(&self) -> Option<String> {
+        // A clear mask has no foreground pixels. In particular, an explicit
+        // automatic/absent fill must not turn its unused pattern color into a
+        // solid background (including a resolved theme foreground).
+        if self
+            .val
+            .as_deref()
+            .is_none_or(|val| val.eq_ignore_ascii_case("clear"))
+        {
+            return self.fill.clone();
+        }
+
         fn parse_hex_rgb(value: &str) -> Option<[u8; 3]> {
             let value = value.strip_prefix('#').unwrap_or(value);
             if value.len() != 6 || !value.bytes().all(|byte| byte.is_ascii_hexdigit()) {
@@ -5475,18 +5628,20 @@ impl Shading {
             ])
         }
 
-        fn percentage_pattern(value: &str) -> Option<u8> {
-            value
-                .strip_prefix("pct")?
-                .parse::<u8>()
-                .ok()
-                .filter(|percentage| *percentage <= 100)
+        fn percentage_pattern_half_units(value: &str) -> Option<u16> {
+            let percentage = value.strip_prefix("pct")?.parse::<u8>().ok()?;
+            // These abbreviated OOXML tokens encode an additional half percent.
+            match percentage {
+                12 | 37 | 62 | 87 => Some(u16::from(percentage) * 2 + 1),
+                0..=100 => Some(u16::from(percentage) * 2),
+                _ => None,
+            }
         }
 
-        if let Some(percentage) = self
+        if let Some(coverage) = self
             .val
             .as_deref()
-            .and_then(|value| percentage_pattern(&value.to_ascii_lowercase()))
+            .and_then(|value| percentage_pattern_half_units(&value.to_ascii_lowercase()))
         {
             let foreground = match self.color.as_deref() {
                 None => Some([0, 0, 0]),
@@ -5498,10 +5653,10 @@ impl Shading {
             };
             if let (Some(foreground), Some(background)) = (foreground, background) {
                 let blend = |foreground: u8, background: u8| {
-                    ((u16::from(foreground) * u16::from(percentage)
-                        + u16::from(background) * u16::from(100 - percentage)
-                        + 50)
-                        / 100) as u8
+                    ((u16::from(foreground) * coverage
+                        + u16::from(background) * (200 - coverage)
+                        + 100)
+                        / 200) as u8
                 };
                 return Some(format!(
                     "#{:02X}{:02X}{:02X}",
@@ -5514,7 +5669,7 @@ impl Shading {
         let is_solid = self
             .val
             .as_deref()
-            .is_some_and(|v| v.eq_ignore_ascii_case("solid"));
+            .is_some_and(|v| v.eq_ignore_ascii_case("solid") || v.eq_ignore_ascii_case("nil"));
         if is_solid {
             self.color.clone().or_else(|| self.fill.clone())
         } else if self.pattern().is_some() {
@@ -5837,7 +5992,7 @@ impl Numbering {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default, Hash)]
 #[serde(rename_all = "camelCase")]
 pub enum FontHint {
     #[default]
@@ -5860,7 +6015,7 @@ impl FontHint {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default, Hash)]
 #[serde(rename_all = "camelCase")]
 pub struct RunFonts {
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -6071,6 +6226,9 @@ pub struct RunProperties {
     /// the text color).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub underline_color: Option<Rc<str>>,
+    /// Theme reference for the underline color; retained when other formatting changes.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub underline_theme_color: Option<Box<RunThemeColor>>,
     pub strike: Option<bool>,
     /// Double strikethrough (`w:dstrike`, ECMA-376 Part 1 §17.3.2.9). Drawn as
     /// two parallel horizontal lines through the text.
@@ -6137,10 +6295,15 @@ pub struct RunProperties {
     /// §17.3.2.24). The attribute `w:val` is in half-points; positive raises the
     /// text above the baseline, negative lowers it. Unlike `w:vertAlign`
     /// (super/subscript) this only shifts the baseline and does not change the
-    /// font size, and the two combine additively.
+    /// font size, and the two combine additively. Zero explicitly resets an
+    /// inherited shift; `None` inherits from the style hierarchy.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub text_position: Option<f32>,
     pub char_spacing: Option<f32>,
+    /// Whether this run participates in the document character grid.
+    /// An omitted value inherits from styles and otherwise defaults to true.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub snap_to_grid: Option<bool>,
     /// Kerning threshold in points (`w:kern` in half-points).
     pub kerning: Option<f32>,
     /// Horizontal text scaling percent (`w:w`, 100 = normal width).
@@ -6333,6 +6496,7 @@ impl RunProperties {
             && self.underline.is_none()
             && self.underline_kind.is_none()
             && self.underline_color.is_none()
+            && self.underline_theme_color.is_none()
             && self.strike.is_none()
             && self.double_strike.is_none()
             && self.caps.is_none()
@@ -6348,6 +6512,7 @@ impl RunProperties {
             && self.baseline.is_none()
             && self.text_position.is_none()
             && self.char_spacing.is_none()
+            && self.snap_to_grid.is_none()
             && self.kerning.is_none()
             && self.text_scale.is_none()
             && self.fit_text.is_none()
@@ -6483,9 +6648,13 @@ pub struct RunTextEffects {
     /// `w14:numSpacing/@w14:val`: `default`, `proportional`, `tabular`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub number_spacing: Option<Rc<str>>,
-    /// `w14:stylisticSets`: the one set turned on, 1–20.
+    /// Legacy single-set view (the first enabled stylistic set), 1–20.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub stylistic_set: Option<u8>,
+    /// All enabled `w14:stylisticSets`, 1–20. An empty list explicitly
+    /// selects the default; absence allows inheritance/legacy single-set input.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub stylistic_sets: Option<Vec<u8>>,
     /// `w14:cntxtAlts`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub contextual_alternates: Option<bool>,
@@ -6518,7 +6687,7 @@ impl RunTextEffects {
 
 /// A run colour's theme reference (`w:themeColor`, `w:themeTint`,
 /// `w:themeShade`).
-#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq, Hash)]
 #[serde(rename_all = "camelCase")]
 pub struct RunThemeColor {
     /// ST_ThemeColor, as written (`accent1`, `text1`, …).
@@ -6532,7 +6701,7 @@ pub struct RunThemeColor {
 }
 
 /// `w:eastAsianLayout` (ECMA-376 Part 1 §17.3.2.10).
-#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq, Hash)]
 #[serde(rename_all = "camelCase")]
 pub struct EastAsianLayout {
     /// `w:id`: runs of one combined or vertical group share it.
@@ -6571,6 +6740,15 @@ impl EastAsianLayout {
     }
 }
 
+/// A formatting interval inside a phonetic guide, separate from editable base runs.
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct RubyGuideRun {
+    pub text: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub properties: Option<Box<RunProperties>>,
+}
+
 /// Ruby (phonetic guide) annotation parsed from `w:ruby` (ECMA-376 Part 1
 /// §17.3.3.25). Word draws the guide text (`w:rt`) in a small font above the
 /// base text (`w:rubyBase`); common in Japanese documents as ふりがな.
@@ -6579,8 +6757,9 @@ impl EastAsianLayout {
 pub struct RubyAnnotation {
     /// Concatenated guide text from the `w:rt` runs.
     pub text: String,
-    /// Guide text size in points, from the `w:rt` run's `w:sz` (half-points)
-    /// or the `w:rubyPr/w:hps` fallback. `None` means "half the base size".
+    /// Guide text size fallback in points (`w:rubyPr/w:hps`). A single guide
+    /// run's `w:sz` also populates this legacy scalar; mixed guides retain their
+    /// individual sizes below. `None` means "half the base size".
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub size_pt: Option<f32>,
     /// Distribution of the guide over the base (`w:rubyPr/w:rubyAlign`,
@@ -6594,6 +6773,10 @@ pub struct RubyAnnotation {
     /// Fonts the guide run names directly (`w:rt/w:r/w:rPr/w:rFonts`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub fonts: Option<RunFonts>,
+    /// Original guide run boundaries and formatting. Empty for legacy annotations
+    /// and EQ fields, which use the scalar guide formatting above.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub guide_runs: Vec<RubyGuideRun>,
     /// Whether this run continues the base started by an earlier run. A base
     /// may span several runs (one per formatting change); every one of them
     /// carries the annotation so edits know which text belongs to the base,
@@ -6658,21 +6841,114 @@ pub(crate) fn ooxml_on(value: &[u8]) -> bool {
     matches!(value, b"1" | b"true" | b"on")
 }
 
+/// Authored spacing hidden while automatic spacing is enabled.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Default, PartialEq)]
+pub struct ParagraphSpacingValues {
+    pub points: Option<f32>,
+    pub lines: Option<f32>,
+}
+
 impl Spacing {
-    /// Applies `w:beforeAutospacing`/`w:afterAutospacing` once every other
-    /// attribute of the element is read: auto spacing replaces the authored
-    /// points and lines on its side.
-    pub(crate) fn apply_autospacing(&mut self, before: bool, after: bool) {
-        if before {
-            self.before = Some(WORD_AUTO_PARAGRAPH_SPACING_PT);
-            self.before_lines = None;
-            self.before_auto = true;
+    fn before_values(&self) -> ParagraphSpacingValues {
+        if self.before_auto {
+            self.before_auto_fallback.unwrap_or_default()
+        } else {
+            ParagraphSpacingValues {
+                points: self.before,
+                lines: self.before_lines,
+            }
         }
-        if after {
-            self.after = Some(WORD_AUTO_PARAGRAPH_SPACING_PT);
-            self.after_lines = None;
-            self.after_auto = true;
+    }
+
+    fn after_values(&self) -> ParagraphSpacingValues {
+        if self.after_auto {
+            self.after_auto_fallback.unwrap_or_default()
+        } else {
+            ParagraphSpacingValues {
+                points: self.after,
+                lines: self.after_lines,
+            }
         }
+    }
+
+    fn apply_before(&mut self, setting: Option<bool>, values: ParagraphSpacingValues) {
+        self.before_auto_setting = setting;
+        self.before_auto = setting == Some(true);
+        self.before_auto_fallback = self.before_auto.then_some(values);
+        self.before = if self.before_auto {
+            Some(WORD_AUTO_PARAGRAPH_SPACING_PT)
+        } else {
+            values.points
+        };
+        self.before_lines = if self.before_auto { None } else { values.lines };
+    }
+
+    fn apply_after(&mut self, setting: Option<bool>, values: ParagraphSpacingValues) {
+        self.after_auto_setting = setting;
+        self.after_auto = setting == Some(true);
+        self.after_auto_fallback = self.after_auto.then_some(values);
+        self.after = if self.after_auto {
+            Some(WORD_AUTO_PARAGRAPH_SPACING_PT)
+        } else {
+            values.points
+        };
+        self.after_lines = if self.after_auto { None } else { values.lines };
+    }
+
+    /// Retain explicit off values and the numeric attributes masked by auto.
+    pub(crate) fn apply_autospacing(&mut self, before: Option<bool>, after: Option<bool>) {
+        if before.is_some() {
+            self.apply_before(before, self.before_values());
+        }
+        if after.is_some() {
+            self.apply_after(after, self.after_values());
+        }
+    }
+
+    /// Resolve before/after spacing without confusing omitted auto flags with off.
+    /// Numeric spacing and its auto flag inherit separately. Keep the numeric
+    /// values even while auto masks them, so a nearer off can reveal them again.
+    pub fn inherit_spacing_sides_from(&mut self, fallback: &Self) {
+        let mut before = self.before_values();
+        let mut after = self.after_values();
+        if before.points.is_none() && before.lines.is_none() {
+            before = fallback.before_values();
+        }
+        if after.points.is_none() && after.lines.is_none() {
+            after = fallback.after_values();
+        }
+        let before_setting = self
+            .before_auto_setting
+            .or(self.before_auto.then_some(true))
+            .or(fallback.before_auto_setting)
+            .or(fallback.before_auto.then_some(true));
+        let after_setting = self
+            .after_auto_setting
+            .or(self.after_auto.then_some(true))
+            .or(fallback.after_auto_setting)
+            .or(fallback.after_auto.then_some(true));
+        self.apply_before(before_setting, before);
+        self.apply_after(after_setting, after);
+    }
+
+    pub fn set_before_points(&mut self, points: f32) {
+        self.apply_before(
+            Some(false),
+            ParagraphSpacingValues {
+                points: Some(points),
+                lines: None,
+            },
+        );
+    }
+
+    pub fn set_after_points(&mut self, points: f32) {
+        self.apply_after(
+            Some(false),
+            ParagraphSpacingValues {
+                points: Some(points),
+                lines: None,
+            },
+        );
     }
 }
 
@@ -6692,6 +6968,17 @@ pub struct Spacing {
     /// `after` came from `w:afterAutospacing`.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub after_auto: bool,
+    /// Explicit automatic-spacing attributes, including false. Absent values
+    /// inherit independently of the numeric before/after attributes.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub before_auto_setting: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub after_auto_setting: Option<bool>,
+    /// Numeric values masked by automatic spacing, retained for style inheritance.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub before_auto_fallback: Option<ParagraphSpacingValues>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub after_auto_fallback: Option<ParagraphSpacingValues>,
 }
 
 /// Page size and margin information derived from the section properties.

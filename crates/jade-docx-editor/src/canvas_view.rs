@@ -790,8 +790,8 @@ impl InlineFormattingState {
     }
 
     fn set_underline_kind(&mut self, value: String) {
-        self.underline = Some(true);
-        self.underline_kind = Some(value);
+        self.underline = Some(value != "none");
+        self.underline_kind = (!matches!(value.as_str(), "none" | "single")).then_some(value);
     }
 
     fn set_strike(&mut self, value: bool) {
@@ -2485,6 +2485,252 @@ impl OffscreenDocumentView {
         }
     }
 
+    fn hf_line_segment_mapping(
+        word_doc: &WordDocument,
+        mode: EditingMode,
+        variant: HfVariant,
+        cursor: HfEditCursor,
+    ) -> Option<(HeaderFooterRole, HeaderFooterVariant, usize)> {
+        let (role, hf_variant) = Self::hf_role_variant(mode, variant)?;
+        let lines = Self::variant_lines(word_doc, mode, variant)?;
+        let line = lines.get(cursor.line_index)?;
+        let prefix = if let Some((segment, _)) =
+            Self::hf_plain_line_segment(word_doc, mode, variant, cursor.line_index, line)
+        {
+            if segment != cursor.segment {
+                return None;
+            }
+            0
+        } else {
+            let left = line.left.as_deref().unwrap_or("");
+            let center = line.center.as_deref().unwrap_or("");
+            let right = line.right.as_deref().unwrap_or("");
+            let text = word_doc.hf_plain_paragraph_text(role, hf_variant, cursor.line_index)?;
+            let parts: Vec<_> = text.splitn(3, '\t').collect();
+            // Empty trailing segments are omitted from HeaderLine, but their
+            // tabs still occupy positions in the underlying paragraph.
+            if parts.len() < 2
+                || parts[0] != left
+                || parts[1] != center
+                || parts.get(2).copied().unwrap_or("") != right
+            {
+                return None;
+            }
+            match cursor.segment {
+                HfSegment::Left => 0,
+                HfSegment::Center => left.len() + 1,
+                HfSegment::Right if parts.len() == 3 => left.len() + center.len() + 2,
+                HfSegment::Right => return None,
+            }
+        };
+        Some((role, hf_variant, prefix))
+    }
+
+    /// Resolve both endpoints in the original paragraph, including separating tabs.
+    fn hf_mapped_line_selection(
+        document: &WordDocument,
+        mode: EditingMode,
+        variant: HfVariant,
+        anchor: HfEditCursor,
+        cursor: HfEditCursor,
+    ) -> Option<(usize, usize)> {
+        if anchor.page_index != cursor.page_index || anchor.line_index != cursor.line_index {
+            return None;
+        }
+        let line = Self::variant_lines(document, mode, variant)?
+            .get(anchor.line_index)?
+            .clone();
+        let mut offsets = [0; 2];
+        for (index, endpoint) in [anchor, cursor].into_iter().enumerate() {
+            let text = match endpoint.segment {
+                HfSegment::Left => line.left.as_deref(),
+                HfSegment::Center => line.center.as_deref(),
+                HfSegment::Right => line.right.as_deref(),
+            }
+            .unwrap_or("");
+            if !text.is_char_boundary(endpoint.offset) {
+                return None;
+            }
+            let (_, _, prefix) = Self::hf_line_segment_mapping(document, mode, variant, endpoint)?;
+            offsets[index] = prefix.checked_add(endpoint.offset)?;
+        }
+        (offsets[0] != offsets[1])
+            .then_some((offsets[0].min(offsets[1]), offsets[0].max(offsets[1])))
+    }
+
+    fn hf_mapped_line_selection_range(
+        document: &WordDocument,
+        mode: EditingMode,
+        variant: HfVariant,
+        anchor: HfEditCursor,
+        cursor: HfEditCursor,
+    ) -> Option<SelectionRange> {
+        let (start, end) = Self::hf_mapped_line_selection(document, mode, variant, anchor, cursor)?;
+        let (_, _, prefix) = Self::hf_line_segment_mapping(document, mode, variant, anchor)?;
+        let (start, end) = (
+            TextPosition::new(anchor.line_index, start),
+            TextPosition::new(anchor.line_index, end),
+        );
+        Some(if prefix + anchor.offset == start.offset {
+            SelectionRange::new(start, end)
+        } else {
+            SelectionRange::new(end, start)
+        })
+    }
+
+    fn hf_cursor_at_paragraph_offset(
+        document: &WordDocument,
+        mode: EditingMode,
+        variant: HfVariant,
+        template: HfEditCursor,
+        position: TextPosition,
+    ) -> Option<HfEditCursor> {
+        let line = Self::variant_lines(document, mode, variant)?
+            .get(position.paragraph)?
+            .clone();
+        for (segment, text) in [
+            (HfSegment::Left, line.left.as_deref().unwrap_or("")),
+            (HfSegment::Center, line.center.as_deref().unwrap_or("")),
+            (HfSegment::Right, line.right.as_deref().unwrap_or("")),
+        ] {
+            let probe = HfEditCursor {
+                line_index: position.paragraph,
+                segment,
+                offset: 0,
+                ..template
+            };
+            if let Some((_, _, prefix)) =
+                Self::hf_line_segment_mapping(document, mode, variant, probe)
+            {
+                if let Some(offset) = position
+                    .offset
+                    .checked_sub(prefix)
+                    .filter(|offset| text.is_char_boundary(*offset))
+                {
+                    return Some(HfEditCursor { offset, ..probe });
+                }
+            }
+        }
+        None
+    }
+
+    fn change_hf_case_selection(
+        document: &mut WordDocument,
+        mode: EditingMode,
+        variant: HfVariant,
+        anchor: HfEditCursor,
+        cursor: HfEditCursor,
+        selection: SelectionRange,
+        case: HeadlessChangeCaseMode,
+    ) -> Result<Option<(HfEditCursor, HfEditCursor)>, String> {
+        let Some((role, hf_variant)) = Self::hf_role_variant(mode, variant) else {
+            return Ok(None);
+        };
+        let before = document.clone();
+        let Some(changed) = document.change_hf_story_case(role, hf_variant, selection, case)?
+        else {
+            return Ok(None);
+        };
+        let after_anchor =
+            Self::hf_cursor_at_paragraph_offset(document, mode, variant, anchor, changed.anchor);
+        let after_cursor =
+            Self::hf_cursor_at_paragraph_offset(document, mode, variant, cursor, changed.focus);
+        if let (Some(anchor), Some(cursor)) = (after_anchor, after_cursor) {
+            return Ok(Some((anchor, cursor)));
+        }
+        *document = before;
+        Err("Cannot map the selection after changing story case".to_owned())
+    }
+
+    fn delete_hf_mapped_line_selection(
+        document: &mut WordDocument,
+        mode: EditingMode,
+        variant: HfVariant,
+        anchor: HfEditCursor,
+        cursor: HfEditCursor,
+    ) -> Result<Option<HfEditCursor>, String> {
+        let Some((start, end)) =
+            Self::hf_mapped_line_selection(document, mode, variant, anchor, cursor)
+        else {
+            return Ok(None);
+        };
+        let (role, hf_variant) = Self::hf_role_variant(mode, variant).unwrap();
+        let before = document.clone();
+        if !document.edit_hf_paragraph_range(role, hf_variant, anchor.line_index, start, end, "")? {
+            return Ok(None);
+        }
+        if let Some(after) = Self::hf_cursor_at_paragraph_offset(
+            document,
+            mode,
+            variant,
+            anchor,
+            TextPosition::new(anchor.line_index, start),
+        ) {
+            return Ok(Some(after));
+        }
+        *document = before;
+        Err("Cannot map the caret after deleting the story selection".to_owned())
+    }
+
+    /// Use actual caret offsets when the rendered line maps to ordinary story text.
+    fn edit_hf_line_range(
+        word_doc: &mut WordDocument,
+        mode: EditingMode,
+        variant: HfVariant,
+        cursor: HfEditCursor,
+        start: usize,
+        end: usize,
+        insert: &str,
+        full_text: &str,
+    ) -> Result<(), String> {
+        if let Some((role, hf_variant)) = Self::hf_role_variant(mode, variant) {
+            if word_doc
+                .hf_ruler_paragraph(role, hf_variant, cursor.line_index)
+                .is_some_and(|paragraph| paragraph.runs.iter().any(|run| run.field.is_some()))
+            {
+                let range = Self::hf_mapped_field_range(
+                    word_doc,
+                    mode,
+                    variant,
+                    HfEditCursor {
+                        offset: start,
+                        ..cursor
+                    },
+                    HfEditCursor {
+                        offset: end,
+                        ..cursor
+                    },
+                )
+                .ok_or("Cannot map the text beside a header/footer field")?;
+                if word_doc.edit_hf_paragraph_range(
+                    role,
+                    hf_variant,
+                    cursor.line_index,
+                    range.anchor.offset,
+                    range.focus.offset,
+                    insert,
+                )? {
+                    return Ok(());
+                }
+                return Err("Cannot edit the text beside a header/footer field".into());
+            }
+        }
+        let mapping = Self::hf_line_segment_mapping(word_doc, mode, variant, cursor);
+        if let Some((role, hf_variant, prefix)) = mapping {
+            if word_doc.edit_hf_paragraph_range(
+                role,
+                hf_variant,
+                cursor.line_index,
+                prefix + start,
+                prefix + end,
+                insert,
+            )? {
+                return Ok(());
+            }
+            return Err("Cannot edit the story text range".to_string());
+        }
+        Self::replace_hf_line(word_doc, mode, variant, cursor.line_index, full_text)
+    }
     fn hf_role_variant(
         mode: EditingMode,
         variant: HfVariant,
@@ -2943,7 +3189,8 @@ impl OffscreenDocumentView {
     }
 
     /// Resolve only lines whose UTF-8 offsets address ordinary story paragraphs.
-    /// Table rows, fields and tab-separated segments keep the text paste path.
+    /// Table rows and fields keep the text paste path. Tabbed segments map to
+    /// their original paragraph offsets.
     fn hf_package_target(state: &CanvasDocumentState) -> Option<HfPackageTarget> {
         let word_doc = state.word_doc.as_ref()?;
         let focus = state.hf_edit_cursor?;
@@ -2970,31 +3217,522 @@ impl OffscreenDocumentView {
         let (role, variant) = Self::hf_role_variant(mode, hf_variant)?;
         let reference = word_doc.active_hf_reference(role, variant)?;
         let part_path = word_doc.hf_part_path_for_reference(&reference)?;
-        let lines = Self::variant_lines(word_doc, mode, hf_variant)?;
-        for index in
-            anchor.line_index.min(focus.line_index)..=anchor.line_index.max(focus.line_index)
-        {
-            Self::hf_plain_line_segment(word_doc, mode, hf_variant, index, lines.get(index)?)?;
+        let range = Self::hf_mapped_story_range(word_doc, mode, hf_variant, anchor, focus)?;
+        Some(HfPackageTarget { part_path, range })
+    }
+
+    fn hf_mapped_story_selection(
+        document: &WordDocument,
+        mode: EditingMode,
+        variant: HfVariant,
+        anchor: HfEditCursor,
+        cursor: HfEditCursor,
+    ) -> Option<SelectionRange> {
+        let range = Self::hf_mapped_story_range(document, mode, variant, anchor, cursor)?;
+        (range.anchor != range.focus).then_some(range)
+    }
+
+    /// Map a just-authored field's display boundary without treating the
+    /// field cache as editable plain text. Other edit paths retain their strict
+    /// plain-paragraph mapping.
+    fn hf_cursor_at_field_display_offset(
+        document: &WordDocument,
+        mode: EditingMode,
+        variant: HfVariant,
+        template: HfEditCursor,
+        position: TextPosition,
+    ) -> Option<HfEditCursor> {
+        let (role, hf_variant) = Self::hf_role_variant(mode, variant)?;
+        let paragraph = document.hf_ruler_paragraph(role, hf_variant, position.paragraph)?;
+        let tabs = paragraph
+            .runs
+            .iter()
+            .map(|run| run.text.matches('\t').count())
+            .sum::<usize>();
+        let lines = Self::variant_lines(document, mode, variant)?;
+        let line = lines.get(position.paragraph)?;
+        if tabs == 0 {
+            let (segment, text) = Self::hf_single_segment(line)?;
+            return text
+                .is_char_boundary(position.offset)
+                .then_some(HfEditCursor {
+                    line_index: position.paragraph,
+                    segment,
+                    offset: position.offset,
+                    ..template
+                });
         }
-        for cursor in [anchor, focus] {
-            let (segment, text) = Self::hf_plain_line_segment(
-                word_doc,
-                mode,
-                hf_variant,
-                cursor.line_index,
-                lines.get(cursor.line_index)?,
+        let mut prefix = 0;
+        for (segment, text) in [
+            (HfSegment::Left, line.left.as_deref().unwrap_or("")),
+            (HfSegment::Center, line.center.as_deref().unwrap_or("")),
+            (HfSegment::Right, line.right.as_deref().unwrap_or("")),
+        ]
+        .into_iter()
+        .take(tabs + 1)
+        {
+            if let Some(offset) = position
+                .offset
+                .checked_sub(prefix)
+                .filter(|offset| text.is_char_boundary(*offset))
+            {
+                return Some(HfEditCursor {
+                    line_index: position.paragraph,
+                    segment,
+                    offset,
+                    ..template
+                });
+            }
+            prefix += text.len() + 1;
+        }
+        None
+    }
+
+    fn apply_hf_inline_field(
+        &self,
+        kind: HeadlessFieldKind,
+        cached_text: &str,
+    ) -> Result<JsValue, JsValue> {
+        self.apply_hf_field_edit(|document, role, variant, range| {
+            document.insert_hf_story_field(role, variant, range, kind, cached_text)
+        })
+    }
+
+    fn hf_mapped_field_range(
+        document: &WordDocument,
+        mode: EditingMode,
+        variant: HfVariant,
+        anchor: HfEditCursor,
+        cursor: HfEditCursor,
+    ) -> Option<SelectionRange> {
+        if anchor.page_index != cursor.page_index {
+            return None;
+        }
+        let (role, hf_variant) = Self::hf_role_variant(mode, variant)?;
+        let mut positions = Vec::new();
+        for endpoint in [anchor, cursor] {
+            let paragraph = document.hf_ruler_paragraph(role, hf_variant, endpoint.line_index)?;
+            let text = WordDocument::hf_field_edit_paragraph_text(&paragraph)?;
+            let parts: Vec<_> = text.split('\t').collect();
+            let prefix = if parts.len() == 1 {
+                0
+            } else {
+                let index = match endpoint.segment {
+                    HfSegment::Left => 0,
+                    HfSegment::Center => 1,
+                    HfSegment::Right => 2,
+                };
+                parts.get(index)?;
+                parts[..index].iter().map(|part| part.len() + 1).sum()
+            };
+            let position = TextPosition::new(endpoint.line_index, prefix + endpoint.offset);
+            let resolved = Self::hf_cursor_at_field_display_offset(
+                document, mode, variant, endpoint, position,
             )?;
-            if segment != cursor.segment || !text.is_char_boundary(cursor.offset) {
+            if resolved.segment != endpoint.segment || resolved.offset != endpoint.offset {
                 return None;
             }
+            positions.push(position);
         }
-        Some(HfPackageTarget {
-            part_path,
-            range: SelectionRange::new(
-                TextPosition::new(anchor.line_index, anchor.offset),
-                TextPosition::new(focus.line_index, focus.offset),
-            ),
-        })
+        Some(SelectionRange::new(positions[0], positions[1]))
+    }
+
+    fn apply_hf_field_edit(
+        &self,
+        edit: impl FnOnce(
+            &mut WordDocument,
+            HeaderFooterRole,
+            HeaderFooterVariant,
+            SelectionRange,
+        ) -> Result<Option<TextPosition>, String>,
+    ) -> Result<JsValue, JsValue> {
+        let (mode, variant, cursor, anchor, before_doc, range) = {
+            let state = self.state.borrow();
+            if state.preview_mode {
+                return Ok(JsValue::NULL);
+            }
+            let (Some(cursor), Some(document)) = (state.hf_edit_cursor, state.word_doc.as_ref())
+            else {
+                return Ok(JsValue::NULL);
+            };
+            let anchor = state.hf_selection_anchor;
+            let Some(range) = Self::hf_mapped_field_range(
+                document,
+                state.editing_mode,
+                state.hf_variant,
+                anchor.unwrap_or(cursor),
+                cursor,
+            ) else {
+                return Ok(JsValue::NULL);
+            };
+            (
+                state.editing_mode,
+                state.hf_variant,
+                cursor,
+                anchor,
+                document.clone(),
+                range,
+            )
+        };
+        let Some((role, hf_variant)) = Self::hf_role_variant(mode, variant) else {
+            return Ok(JsValue::NULL);
+        };
+        let mut after_doc = before_doc.clone();
+        let Some(position) = edit(&mut after_doc, role, hf_variant, range)
+            .map_err(|error| JsValue::from_str(&error))?
+        else {
+            return Ok(JsValue::NULL);
+        };
+        let after_cursor =
+            Self::hf_cursor_at_field_display_offset(&after_doc, mode, variant, cursor, position)
+                .ok_or_else(|| JsValue::from_str("field insertion cursor is unavailable"))?;
+        {
+            let mut state = self.state.borrow_mut();
+            state.word_doc = Some(after_doc.clone());
+            state.hf_edit_cursor = Some(after_cursor);
+            state.hf_selection_anchor = None;
+        }
+        self.push_hf_history_entry(HfHistoryEntry {
+            before_doc,
+            after_doc,
+            before_cursor: Some(cursor),
+            after_cursor: Some(after_cursor),
+            before_selection_anchor: anchor,
+            after_selection_anchor: None,
+            mode,
+            variant,
+        });
+        self.prepare_hf_edit_rerender(mode, cursor.page_index);
+        self.finish_hf_edit_result_sync(mode)
+    }
+
+    fn apply_hf_hyperlink(
+        &self,
+        link: Option<(Option<&str>, &str, Option<&str>)>,
+    ) -> Result<JsValue, JsValue> {
+        let (mode, variant, cursor, anchor, before_doc, range) = {
+            let state = self.state.borrow();
+            if state.preview_mode {
+                return Ok(JsValue::NULL);
+            }
+            let (Some(cursor), Some(document)) = (state.hf_edit_cursor, state.word_doc.as_ref())
+            else {
+                return Ok(JsValue::NULL);
+            };
+            let anchor = state.hf_selection_anchor;
+            let Some(range) = Self::hf_mapped_story_range(
+                document,
+                state.editing_mode,
+                state.hf_variant,
+                anchor.unwrap_or(cursor),
+                cursor,
+            ) else {
+                return Ok(JsValue::NULL);
+            };
+            (
+                state.editing_mode,
+                state.hf_variant,
+                cursor,
+                anchor,
+                document.clone(),
+                range,
+            )
+        };
+        let Some((role, hf_variant)) = Self::hf_role_variant(mode, variant) else {
+            return Ok(JsValue::NULL);
+        };
+        let mut after_doc = before_doc.clone();
+        let Some(result) = after_doc
+            .edit_hf_story_hyperlink(role, hf_variant, range, link)
+            .map_err(|error| JsValue::from_str(&error))?
+        else {
+            return Ok(JsValue::NULL);
+        };
+        let Some(after_cursor) =
+            Self::hf_cursor_at_paragraph_offset(&after_doc, mode, variant, cursor, result.focus)
+        else {
+            return Ok(JsValue::NULL);
+        };
+        let after_anchor = if result.is_collapsed() {
+            None
+        } else {
+            Some(
+                Self::hf_cursor_at_paragraph_offset(
+                    &after_doc,
+                    mode,
+                    variant,
+                    cursor,
+                    result.anchor,
+                )
+                .ok_or_else(|| JsValue::from_str("hyperlink selection is unavailable"))?,
+            )
+        };
+        {
+            let mut state = self.state.borrow_mut();
+            state.word_doc = Some(after_doc.clone());
+            state.hf_edit_cursor = Some(after_cursor);
+            state.hf_selection_anchor = after_anchor;
+        }
+        self.push_hf_history_entry(HfHistoryEntry {
+            before_doc,
+            after_doc,
+            before_cursor: Some(cursor),
+            after_cursor: Some(after_cursor),
+            before_selection_anchor: anchor,
+            after_selection_anchor: after_anchor,
+            mode,
+            variant,
+        });
+        self.prepare_hf_edit_rerender(mode, cursor.page_index);
+        self.finish_hf_edit_result_sync(mode)
+    }
+
+    fn hf_mapped_story_range(
+        document: &WordDocument,
+        mode: EditingMode,
+        variant: HfVariant,
+        anchor: HfEditCursor,
+        cursor: HfEditCursor,
+    ) -> Option<SelectionRange> {
+        if anchor.page_index != cursor.page_index {
+            return None;
+        }
+        let (role, hf_variant) = Self::hf_role_variant(mode, variant)?;
+        for index in
+            anchor.line_index.min(cursor.line_index)..=anchor.line_index.max(cursor.line_index)
+        {
+            let text = document.hf_plain_paragraph_text(role, hf_variant, index)?;
+            for offset in [0, text.len()] {
+                Self::hf_cursor_at_paragraph_offset(
+                    document,
+                    mode,
+                    variant,
+                    anchor,
+                    TextPosition::new(index, offset),
+                )?;
+            }
+        }
+        let mut positions = Vec::with_capacity(2);
+        for endpoint in [anchor, cursor] {
+            let (_, _, prefix) = Self::hf_line_segment_mapping(document, mode, variant, endpoint)?;
+            let position =
+                TextPosition::new(endpoint.line_index, prefix.checked_add(endpoint.offset)?);
+            let resolved =
+                Self::hf_cursor_at_paragraph_offset(document, mode, variant, endpoint, position)?;
+            if resolved.segment != endpoint.segment || resolved.offset != endpoint.offset {
+                return None;
+            }
+            positions.push(position);
+        }
+        Some(SelectionRange::new(positions[0], positions[1]))
+    }
+
+    fn hf_mapped_selection_text(
+        document: &WordDocument,
+        mode: EditingMode,
+        variant: HfVariant,
+        range: SelectionRange,
+    ) -> Option<String> {
+        let (role, hf_variant) = Self::hf_role_variant(mode, variant)?;
+        let (start, end) = range.normalized();
+        let mut selected = Vec::new();
+        for index in start.paragraph..=end.paragraph {
+            let text = document.hf_plain_paragraph_text(role, hf_variant, index)?;
+            let from = if index == start.paragraph {
+                start.offset
+            } else {
+                0
+            };
+            let to = if index == end.paragraph {
+                end.offset
+            } else {
+                text.len()
+            };
+            selected.push(text.get(from..to)?.to_owned());
+        }
+        Some(selected.join("\n"))
+    }
+
+    fn delete_hf_adjacent_field(
+        document: &mut WordDocument,
+        mode: EditingMode,
+        variant: HfVariant,
+        cursor: HfEditCursor,
+        backward: bool,
+    ) -> Result<Option<HfEditCursor>, String> {
+        let Some(range) = Self::hf_mapped_field_range(document, mode, variant, cursor, cursor)
+        else {
+            return Ok(None);
+        };
+        let Some((role, hf_variant)) = Self::hf_role_variant(mode, variant) else {
+            return Ok(None);
+        };
+        let Some(selection) =
+            document.hf_adjacent_field_selection(role, hf_variant, range.focus, backward)
+        else {
+            return Ok(None);
+        };
+        let anchor = Self::hf_cursor_at_field_display_offset(
+            document,
+            mode,
+            variant,
+            cursor,
+            selection.anchor,
+        )
+        .ok_or("Cannot map the start of the adjacent header/footer field")?;
+        let focus = Self::hf_cursor_at_field_display_offset(
+            document,
+            mode,
+            variant,
+            cursor,
+            selection.focus,
+        )
+        .ok_or("Cannot map the end of the adjacent header/footer field")?;
+        Self::delete_hf_mapped_field_selection(document, mode, variant, anchor, focus)
+    }
+
+    fn delete_hf_mapped_field_selection(
+        document: &mut WordDocument,
+        mode: EditingMode,
+        variant: HfVariant,
+        anchor: HfEditCursor,
+        cursor: HfEditCursor,
+    ) -> Result<Option<HfEditCursor>, String> {
+        let Some(range) = Self::hf_mapped_field_range(document, mode, variant, anchor, cursor)
+        else {
+            return Ok(None);
+        };
+        let Some((role, hf_variant)) = Self::hf_role_variant(mode, variant) else {
+            return Ok(None);
+        };
+        let (start, end) = range.normalized();
+        if start == end
+            || !(start.paragraph..=end.paragraph).any(|index| {
+                document
+                    .hf_ruler_paragraph(role, hf_variant, index)
+                    .is_some_and(|paragraph| paragraph.runs.iter().any(|run| run.field.is_some()))
+            })
+        {
+            return Ok(None);
+        }
+        let before = document.clone();
+        let Some(position) = document.delete_hf_story_selection(role, hf_variant, range)? else {
+            // Do not fall back to plain text editing for a partial field.
+            return Err("Cannot delete a partial header/footer field".to_owned());
+        };
+        let template = if range.anchor <= range.focus {
+            anchor
+        } else {
+            cursor
+        };
+        if let Some(after) =
+            Self::hf_cursor_at_field_display_offset(document, mode, variant, template, position)
+        {
+            return Ok(Some(after));
+        }
+        *document = before;
+        Err("Cannot map the caret after deleting header/footer fields".to_owned())
+    }
+
+    fn delete_hf_mapped_story_selection(
+        document: &mut WordDocument,
+        mode: EditingMode,
+        variant: HfVariant,
+        anchor: HfEditCursor,
+        cursor: HfEditCursor,
+        range: SelectionRange,
+    ) -> Result<Option<HfEditCursor>, String> {
+        let Some((role, hf_variant)) = Self::hf_role_variant(mode, variant) else {
+            return Ok(None);
+        };
+        let before = document.clone();
+        let Some(position) = document.delete_hf_story_selection(role, hf_variant, range)? else {
+            return Ok(None);
+        };
+        let template = if anchor.line_index < cursor.line_index {
+            anchor
+        } else {
+            cursor
+        };
+        if let Some(after) =
+            Self::hf_cursor_at_paragraph_offset(document, mode, variant, template, position)
+        {
+            return Ok(Some(after));
+        }
+        *document = before;
+        Err("Cannot map the caret after deleting the story selection".to_owned())
+    }
+
+    fn hf_mapped_selection_segments(
+        document: &WordDocument,
+        mode: EditingMode,
+        variant: HfVariant,
+        anchor: HfEditCursor,
+        cursor: HfEditCursor,
+    ) -> Option<Vec<(HfEditCursor, HfEditCursor)>> {
+        let range = Self::hf_mapped_story_selection(document, mode, variant, anchor, cursor)?;
+        let (start, end) = range.normalized();
+        let lines = Self::variant_lines(document, mode, variant)?;
+        let mut ranges = Vec::new();
+        for index in start.paragraph..=end.paragraph {
+            let line = lines.get(index)?;
+            for (segment, text) in [
+                (HfSegment::Left, line.left.as_deref().unwrap_or("")),
+                (HfSegment::Center, line.center.as_deref().unwrap_or("")),
+                (HfSegment::Right, line.right.as_deref().unwrap_or("")),
+            ] {
+                let probe = HfEditCursor {
+                    line_index: index,
+                    segment,
+                    offset: 0,
+                    ..anchor
+                };
+                let Some((_, _, prefix)) =
+                    Self::hf_line_segment_mapping(document, mode, variant, probe)
+                else {
+                    continue;
+                };
+                let from = if index == start.paragraph {
+                    start.offset.max(prefix)
+                } else {
+                    prefix
+                };
+                let to = if index == end.paragraph {
+                    end.offset.min(prefix + text.len())
+                } else {
+                    prefix + text.len()
+                };
+                if from < to {
+                    ranges.push((
+                        HfEditCursor {
+                            offset: from - prefix,
+                            ..probe
+                        },
+                        HfEditCursor {
+                            offset: to - prefix,
+                            ..probe
+                        },
+                    ));
+                }
+            }
+        }
+        Some(ranges)
+    }
+
+    fn hf_multiline_selection_range(state: &CanvasDocumentState) -> Option<SelectionRange> {
+        let document = state.word_doc.as_ref()?;
+        let anchor = state.hf_selection_anchor?;
+        let cursor = state.hf_edit_cursor?;
+        if anchor.line_index == cursor.line_index {
+            return None;
+        }
+        Self::hf_mapped_story_selection(
+            document,
+            state.editing_mode,
+            state.hf_variant,
+            anchor,
+            cursor,
+        )
     }
 
     fn hf_segment_text(
@@ -3120,6 +3858,7 @@ impl OffscreenDocumentView {
         }
     }
 
+    #[cfg(test)]
     fn hf_segment_for_alignment(alignment: &str) -> HfSegment {
         match alignment.trim() {
             "center" => HfSegment::Center,
@@ -3205,6 +3944,75 @@ impl OffscreenDocumentView {
     /// Selection rectangles of the header/footer selection, page-local like
     /// the body's, for the runtime's selection overlay.
     fn hf_selection_rects(&self) -> Vec<(f64, f64, f64, f64, usize)> {
+        {
+            let state = self.state.borrow();
+            if let Some(range) = Self::hf_multiline_selection_range(&state) {
+                let renderer = self.renderer.borrow();
+                let document = state.word_doc.as_ref().unwrap();
+                let lines =
+                    Self::variant_lines(document, state.editing_mode, state.hf_variant).unwrap();
+                if let Some(rects) = renderer.hf_story_range_selection_rects(
+                    state.hf_edit_cursor.unwrap().page_index,
+                    state.editing_mode == EditingMode::Header,
+                    range,
+                    |index, expected| {
+                        lines
+                            .get(index)
+                            .and_then(|line| {
+                                Self::hf_plain_line_segment(
+                                    document,
+                                    state.editing_mode,
+                                    state.hf_variant,
+                                    index,
+                                    line,
+                                )
+                            })
+                            .is_some_and(|(_, text)| text == expected)
+                    },
+                ) {
+                    return rects
+                        .into_iter()
+                        .map(|rect| (rect.x, rect.y, rect.width, rect.height, rect.page))
+                        .collect();
+                }
+            }
+        }
+        let segment_ranges = {
+            let state = self.state.borrow();
+            state
+                .hf_selection_anchor
+                .zip(state.hf_edit_cursor)
+                .and_then(|(anchor, cursor)| {
+                    if anchor.line_index == cursor.line_index && anchor.segment == cursor.segment {
+                        return None;
+                    }
+                    Self::hf_mapped_selection_segments(
+                        state.word_doc.as_ref()?,
+                        state.editing_mode,
+                        state.hf_variant,
+                        anchor,
+                        cursor,
+                    )
+                })
+        };
+        if let Some(ranges) = segment_ranges {
+            let renderer = self.renderer.borrow();
+            return ranges
+                .into_iter()
+                .filter_map(|(start, end)| {
+                    let start_rect = self.compute_hf_caret_rect(&renderer, &start)?;
+                    let end_rect = self.compute_hf_caret_rect(&renderer, &end)?;
+                    let page_offset = start.page_index as f64 * (renderer.page_height_css() + 16.0);
+                    Some((
+                        start_rect.0.min(end_rect.0),
+                        start_rect.1 - page_offset,
+                        (end_rect.0 - start_rect.0).abs(),
+                        start_rect.2,
+                        start.page_index,
+                    ))
+                })
+                .collect();
+        }
         let Some((start, end)) = self.hf_selection() else {
             return Vec::new();
         };
@@ -3281,6 +4089,75 @@ impl OffscreenDocumentView {
     /// start. The caller records the complete edit as one history entry.
     /// Returns whether text was removed.
     fn delete_hf_selection(&self, mode: EditingMode) -> Result<bool, JsValue> {
+        {
+            let mut state = self.state.borrow_mut();
+            if let Some((anchor, cursor)) = state.hf_selection_anchor.zip(state.hf_edit_cursor) {
+                let variant = state.hf_variant;
+                if let Some(document) = state.word_doc.as_mut() {
+                    if let Some(after) = Self::delete_hf_mapped_field_selection(
+                        document, mode, variant, anchor, cursor,
+                    )
+                    .map_err(|error| JsValue::from_str(&error))?
+                    {
+                        state.hf_edit_cursor = Some(after);
+                        state.hf_selection_anchor = None;
+                        return Ok(true);
+                    }
+                }
+            }
+        }
+        {
+            let mut state = self.state.borrow_mut();
+            if let Some((anchor, cursor)) = state.hf_selection_anchor.zip(state.hf_edit_cursor) {
+                if anchor.line_index == cursor.line_index && anchor.segment != cursor.segment {
+                    let variant = state.hf_variant;
+                    let document = state
+                        .word_doc
+                        .as_mut()
+                        .ok_or_else(|| JsValue::from_str("Missing story document"))?;
+                    let after = Self::delete_hf_mapped_line_selection(
+                        document, mode, variant, anchor, cursor,
+                    )
+                    .map_err(|error| JsValue::from_str(&error))?
+                    .ok_or_else(|| {
+                        JsValue::from_str("Cannot map the story selection to editable text")
+                    })?;
+                    state.hf_edit_cursor = Some(after);
+                    state.hf_selection_anchor = None;
+                    return Ok(true);
+                }
+            }
+        }
+        let story_range = Self::hf_multiline_selection_range(&self.state.borrow());
+        if let Some(range) = story_range {
+            let mut state = self.state.borrow_mut();
+            let variant = state.hf_variant;
+            let cursor = state.hf_edit_cursor.unwrap();
+            let anchor = state.hf_selection_anchor.unwrap();
+            let Some(document) = state.word_doc.as_mut() else {
+                return Ok(false);
+            };
+            let after = Self::delete_hf_mapped_story_selection(
+                document, mode, variant, anchor, cursor, range,
+            )
+            .map_err(|error| JsValue::from_str(&error))?
+            .ok_or_else(|| JsValue::from_str("Cannot delete the story selection"))?;
+            state.hf_edit_cursor = Some(after);
+            state.hf_selection_anchor = None;
+            return Ok(true);
+        }
+        {
+            let state = self.state.borrow();
+            if state
+                .hf_selection_anchor
+                .zip(state.hf_edit_cursor)
+                .is_some_and(|(anchor, cursor)| anchor.line_index != cursor.line_index)
+            {
+                return Err(JsValue::from_str(
+                    "Cannot map the story selection to editable text",
+                ));
+            }
+        }
         let Some((start, end)) = self.hf_selection() else {
             return Ok(false);
         };
@@ -3306,7 +4183,7 @@ impl OffscreenDocumentView {
         {
             let mut state_mut = self.state.borrow_mut();
             if let Some(word_doc) = state_mut.word_doc.as_mut() {
-                Self::replace_hf_line(word_doc, mode, variant, start.line_index, &full_text)
+                Self::edit_hf_line_range(word_doc, mode, variant, start, from, to, "", &full_text)
                     .map_err(|err| JsValue::from_str(&err))?;
             }
             state_mut.hf_edit_cursor = Some(HfEditCursor {
@@ -3321,6 +4198,22 @@ impl OffscreenDocumentView {
     /// Byte range of the header/footer selection in its paragraph's text,
     /// including tab prefixes only for tab-separated segments.
     fn hf_selection_paragraph_range(&self, mode: EditingMode) -> Option<(usize, usize, usize)> {
+        {
+            let state = self.state.borrow();
+            if let Some((anchor, cursor)) = state.hf_selection_anchor.zip(state.hf_edit_cursor) {
+                if let Some(document) = state.word_doc.as_ref() {
+                    if let Some((start, end)) = Self::hf_mapped_line_selection(
+                        document,
+                        mode,
+                        state.hf_variant,
+                        anchor,
+                        cursor,
+                    ) {
+                        return Some((anchor.line_index, start, end));
+                    }
+                }
+            }
+        }
         let (start, end) = self.hf_selection()?;
         let state = self.state.borrow();
         let word_doc = state.word_doc.as_ref()?;
@@ -4011,25 +4904,14 @@ impl OffscreenDocumentView {
                 .ok_or_else(|| {
                     JsValue::from_str("The pasted caret is not an ordinary story paragraph")
                 })?;
-            let lines = Self::variant_lines(&after_doc, mode, variant)
-                .ok_or_else(|| JsValue::from_str("The pasted story is unavailable"))?;
-            let (segment, text) = lines
-                .get(caret.paragraph)
-                .and_then(Self::hf_single_segment)
-                .ok_or_else(|| {
-                    JsValue::from_str("The pasted caret cannot address a story segment")
-                })?;
-            if !text.is_char_boundary(caret.offset) {
-                return Err(JsValue::from_str(
-                    "The pasted caret is outside the story text",
-                ));
-            }
-            let after_cursor = HfEditCursor {
-                line_index: caret.paragraph,
-                segment,
-                offset: caret.offset,
-                ..before_cursor.unwrap()
-            };
+            let after_cursor = Self::hf_cursor_at_paragraph_offset(
+                &after_doc,
+                mode,
+                variant,
+                before_cursor.unwrap(),
+                caret,
+            )
+            .ok_or_else(|| JsValue::from_str("The pasted caret cannot address a story segment"))?;
             state.word_doc = Some(after_doc.clone());
             state.hf_edit_cursor = Some(after_cursor);
             state.hf_selection_anchor = None;
@@ -4062,6 +4944,45 @@ impl OffscreenDocumentView {
             return Ok(JsValue::NULL);
         }
         self.finish_hf_edit_result_async(mode).await
+    }
+
+    fn insert_hf_text_with_cursor(
+        document: &mut WordDocument,
+        mode: EditingMode,
+        variant: HfVariant,
+        cursor: HfEditCursor,
+        offset: usize,
+        text: &str,
+        full_text: &str,
+    ) -> Result<HfEditCursor, String> {
+        let caret = HfEditCursor { offset, ..cursor };
+        let mapped = Self::hf_mapped_field_range(document, mode, variant, caret, caret);
+        // A tab changes the displayed segment. Keep the edit atomic if that
+        // resulting segment cannot be addressed by the header/footer editor.
+        let before = text.contains('\t').then(|| document.clone());
+        Self::edit_hf_line_range(
+            document, mode, variant, cursor, offset, offset, text, full_text,
+        )?;
+        let resolved = mapped.and_then(|range| {
+            Self::hf_cursor_at_field_display_offset(
+                document,
+                mode,
+                variant,
+                cursor,
+                TextPosition::new(range.focus.paragraph, range.focus.offset + text.len()),
+            )
+        });
+        if let Some(resolved) = resolved {
+            return Ok(resolved);
+        }
+        if let Some(before) = before {
+            *document = before;
+            return Err("Cannot address the caret after the header/footer tab".into());
+        }
+        Ok(HfEditCursor {
+            offset: offset + text.len(),
+            ..cursor
+        })
     }
 
     fn insert_hf_text_at_caret(
@@ -4101,15 +5022,11 @@ impl OffscreenDocumentView {
             let Some(word_doc) = state_mut.word_doc.as_mut() else {
                 return Ok(None);
             };
-            Self::replace_hf_line(word_doc, mode, variant, cursor.line_index, &full_text)
-                .map_err(|err| JsValue::from_str(&err))?;
-            // Update cursor offset
-            state_mut.hf_edit_cursor = Some(HfEditCursor {
-                page_index: cursor.page_index,
-                line_index: cursor.line_index,
-                segment: cursor.segment,
-                offset: offset + text.len(),
-            });
+            let after = Self::insert_hf_text_with_cursor(
+                word_doc, mode, variant, cursor, offset, text, &full_text,
+            )
+            .map_err(|err| JsValue::from_str(&err))?;
+            state_mut.hf_edit_cursor = Some(after);
             state_mut.hf_selection_anchor = None;
             state_mut.hf_edit_cursor
         };
@@ -4121,13 +5038,133 @@ impl OffscreenDocumentView {
         count: usize,
         mode: EditingMode,
     ) -> Result<JsValue, JsValue> {
+        let may_exit_list = {
+            let state = self.state.borrow();
+            count.max(1) == 1
+                && state
+                    .hf_selection_anchor
+                    .is_none_or(|anchor| Some(anchor) == state.hf_edit_cursor)
+        };
         if self
-            .apply_hf_insertion(mode, || self.insert_hf_breaks_at_caret(count, mode))?
+            .apply_hf_insertion(mode, || {
+                if may_exit_list {
+                    let mut state = self.state.borrow_mut();
+                    if let (Some(cursor), Some((role, variant))) = (
+                        state.hf_edit_cursor,
+                        Self::hf_role_variant(mode, state.hf_variant),
+                    ) {
+                        if cursor.offset == 0
+                            && state.word_doc.as_ref().is_some_and(|doc| {
+                                doc.hf_ruler_paragraph(role, variant, cursor.line_index)
+                                    .is_some()
+                            })
+                        {
+                            if state
+                                .word_doc
+                                .as_mut()
+                                .unwrap()
+                                .exit_hf_empty_list_item(role, variant, cursor.line_index)
+                                .map_err(|error| JsValue::from_str(&error))?
+                            {
+                                state.hf_selection_anchor = None;
+                                return Ok(Some(cursor));
+                            }
+                        }
+                    }
+                }
+                self.insert_hf_breaks_at_caret(count, mode)
+            })?
             .is_none()
         {
             return Ok(JsValue::NULL);
         }
         self.finish_hf_edit_result_async(mode).await
+    }
+
+    /// Split a story paragraph using the displayed segment's real offset.
+    /// This keeps tabs, run properties and hyperlink wrappers in the original XML.
+    fn split_hf_mapped_paragraph(
+        doc: &mut WordDocument,
+        mode: EditingMode,
+        variant: HfVariant,
+        cursor: HfEditCursor,
+        break_count: usize,
+    ) -> Result<Option<HfEditCursor>, String> {
+        let (role, hf_variant) = Self::hf_role_variant(mode, variant)
+            .ok_or_else(|| "header/footer mode is unavailable".to_string())?;
+        if let Some(paragraph) = doc.hf_ruler_paragraph(role, hf_variant, cursor.line_index) {
+            if paragraph.runs.iter().any(|run| run.field.is_some()) {
+                let range = Self::hf_mapped_field_range(doc, mode, variant, cursor, cursor)
+                    .ok_or_else(|| "header/footer field caret is unavailable".to_string())?;
+                let text = WordDocument::hf_field_edit_paragraph_text(&paragraph)
+                    .ok_or_else(|| "unsupported header/footer field paragraph".to_string())?;
+                let before = doc.clone();
+                doc.split_hf_paragraph_at_display_offset(
+                    role,
+                    hf_variant,
+                    cursor.line_index,
+                    text[..range.focus.offset].chars().count(),
+                    break_count,
+                )?;
+                let continuation = Self::hf_cursor_at_field_display_offset(
+                    doc,
+                    mode,
+                    variant,
+                    cursor,
+                    TextPosition::new(cursor.line_index + break_count.max(1), 0),
+                );
+                if continuation.is_none() {
+                    *doc = before;
+                    return Err("header/footer continuation caret is unavailable".to_string());
+                }
+                return Ok(continuation);
+            }
+        }
+        let Some((role, hf_variant, prefix)) =
+            Self::hf_line_segment_mapping(doc, mode, variant, cursor)
+        else {
+            return Ok(None);
+        };
+        if doc
+            .hf_ruler_paragraph(role, hf_variant, cursor.line_index)
+            .is_none()
+        {
+            return Ok(None);
+        }
+        let Some(text) = doc.hf_plain_paragraph_text(role, hf_variant, cursor.line_index) else {
+            return Ok(None);
+        };
+        let Some(offset) = prefix
+            .checked_add(cursor.offset)
+            .filter(|offset| text.is_char_boundary(*offset))
+        else {
+            return Ok(None);
+        };
+        doc.split_hf_paragraph_at_display_offset(
+            role,
+            hf_variant,
+            cursor.line_index,
+            text[..offset].chars().count(),
+            break_count,
+        )?;
+        let mut continuation = HfEditCursor {
+            line_index: cursor.line_index + break_count.max(1),
+            offset: 0,
+            ..cursor
+        };
+        for segment in [HfSegment::Left, HfSegment::Center, HfSegment::Right] {
+            let candidate = HfEditCursor {
+                segment,
+                ..continuation
+            };
+            if Self::hf_line_segment_mapping(doc, mode, variant, candidate)
+                .is_some_and(|(_, _, prefix)| prefix == 0)
+            {
+                continuation = candidate;
+                break;
+            }
+        }
+        Ok(Some(continuation))
     }
 
     fn insert_hf_breaks_at_caret(
@@ -4178,55 +5215,39 @@ impl OffscreenDocumentView {
             let Some(word_doc) = state_mut.word_doc.as_mut() else {
                 return Ok(None);
             };
-            // Split ordinary story XML directly so each side retains its runs.
-            let split_plain_paragraph =
-                Self::variant_lines(word_doc, mode, variant).is_some_and(|lines| {
-                    let Some((segment, text)) = lines.get(cursor.line_index).and_then(|line| {
-                        Self::hf_plain_line_segment(
-                            word_doc,
-                            mode,
-                            variant,
-                            cursor.line_index,
-                            line,
-                        )
-                    }) else {
-                        return false;
-                    };
-                    segment == cursor.segment && text == current_text
-                });
-            if !split_plain_paragraph {
-                Self::replace_hf_line(
-                    word_doc,
-                    mode,
-                    variant,
-                    cursor.line_index,
-                    &before_full_text,
-                )
-                .map_err(|err| JsValue::from_str(&err))?;
+            if let Some(cursor) =
+                Self::split_hf_mapped_paragraph(word_doc, mode, variant, cursor, break_count)
+                    .map_err(|error| JsValue::from_str(&error))?
+            {
+                state_mut.hf_edit_cursor = Some(cursor);
+                state_mut.hf_selection_anchor = None;
+                return Ok(Some(cursor));
             }
+            Self::replace_hf_line(
+                word_doc,
+                mode,
+                variant,
+                cursor.line_index,
+                &before_full_text,
+            )
+            .map_err(|error| JsValue::from_str(&error))?;
             word_doc
                 .split_hf_paragraph_at_display_offset(
                     role,
                     hf_variant,
                     cursor.line_index,
-                    if split_plain_paragraph {
-                        before_segment_text.chars().count()
-                    } else {
-                        before_full_text.chars().count()
-                    },
+                    before_full_text.chars().count(),
                     break_count,
                 )
-                .map_err(|err| JsValue::from_str(&err))?;
-            if !split_plain_paragraph {
-                Self::replace_hf_line(
-                    word_doc,
-                    mode,
-                    variant,
-                    cursor.line_index + break_count,
-                    &after_full_text,
-                )
-                .map_err(|err| JsValue::from_str(&err))?;
-            }
+                .map_err(|error| JsValue::from_str(&error))?;
+            Self::replace_hf_line(
+                word_doc,
+                mode,
+                variant,
+                cursor.line_index + break_count,
+                &after_full_text,
+            )
+            .map_err(|error| JsValue::from_str(&error))?;
             state_mut.hf_edit_cursor = Some(HfEditCursor {
                 page_index: cursor.page_index,
                 line_index: cursor.line_index + break_count,
@@ -4258,7 +5279,7 @@ impl OffscreenDocumentView {
         self.finish_hf_edit_result_async(mode).await
     }
 
-    /// Only merge boundaries that map to adjacent ordinary story paragraphs.
+    /// Merge adjacent story paragraphs at a complete displayed boundary.
     fn hf_paragraph_merge_target(
         word_doc: &WordDocument,
         mode: EditingMode,
@@ -4266,16 +5287,14 @@ impl OffscreenDocumentView {
         cursor: HfEditCursor,
         backward: bool,
     ) -> Option<(usize, HfEditCursor)> {
-        let lines = Self::variant_lines(word_doc, mode, variant)?;
         let (role, hf_variant) = Self::hf_role_variant(mode, variant)?;
         let paragraph = |index| {
-            let (segment, text) = Self::hf_single_segment(lines.get(index)?)?;
-            let plain_text = word_doc.hf_plain_paragraph_text(role, hf_variant, index)?;
-            (!plain_text.contains('\t') && plain_text == text).then_some((segment, text))
+            let paragraph = word_doc.hf_ruler_paragraph(role, hf_variant, index)?;
+            WordDocument::hf_field_edit_paragraph_text(&paragraph)
         };
-        let (segment, text) = paragraph(cursor.line_index)?;
-        let boundary = if backward { 0 } else { text.len() };
-        if cursor.segment != segment || cursor.offset != boundary {
+        let text = paragraph(cursor.line_index)?;
+        let mapped = Self::hf_mapped_field_range(word_doc, mode, variant, cursor, cursor)?;
+        if mapped.focus.offset != if backward { 0 } else { text.len() } {
             return None;
         }
         let merge_index = if backward {
@@ -4284,22 +5303,180 @@ impl OffscreenDocumentView {
             cursor.line_index.checked_add(1)?
         };
         let previous_index = merge_index.checked_sub(1)?;
-        let (previous_segment, previous_text) = paragraph(previous_index)?;
+        let previous = paragraph(previous_index)?;
         paragraph(merge_index)?;
-        Some((
-            merge_index,
-            HfEditCursor {
-                line_index: previous_index,
-                segment: previous_segment,
-                offset: previous_text.len(),
-                ..cursor
-            },
-        ))
+        let previous_end = Self::hf_cursor_at_field_display_offset(
+            word_doc,
+            mode,
+            variant,
+            cursor,
+            TextPosition::new(previous_index, previous.len()),
+        )?;
+        Some((merge_index, previous_end))
+    }
+
+    fn merge_hf_paragraph_with_cursor(
+        doc: &mut WordDocument,
+        mode: EditingMode,
+        variant: HfVariant,
+        merge_index: usize,
+        previous_end: HfEditCursor,
+    ) -> Result<HfEditCursor, String> {
+        let (role, hf_variant) = Self::hf_role_variant(mode, variant)
+            .ok_or_else(|| "header/footer mode is unavailable".to_string())?;
+        let position = Self::hf_mapped_field_range(doc, mode, variant, previous_end, previous_end)
+            .ok_or_else(|| "header/footer merge caret is unavailable".to_string())?
+            .focus;
+        let before = doc.clone();
+        doc.merge_hf_paragraph_with_previous(role, hf_variant, merge_index)?;
+        match Self::hf_cursor_at_field_display_offset(doc, mode, variant, previous_end, position) {
+            Some(cursor) => Ok(cursor),
+            None => {
+                *doc = before;
+                Err("header/footer merged caret is unavailable".to_string())
+            }
+        }
+    }
+
+    fn hf_list_start_target(
+        doc: &WordDocument,
+        mode: EditingMode,
+        variant: HfVariant,
+        cursor: HfEditCursor,
+    ) -> Option<(HeaderFooterRole, HeaderFooterVariant)> {
+        if cursor.offset != 0 {
+            return None;
+        }
+        if let Some((role, variant, prefix)) =
+            Self::hf_line_segment_mapping(doc, mode, variant, cursor)
+        {
+            return (prefix == 0).then_some((role, variant));
+        }
+        if let Some(mapped) = Self::hf_mapped_field_range(doc, mode, variant, cursor, cursor) {
+            return (mapped.focus.offset == 0)
+                .then(|| Self::hf_role_variant(mode, variant))
+                .flatten();
+        }
+        // Drawings have no text range mapping. A single aligned segment
+        // still identifies the beginning of their paragraph.
+        let (role, hf_variant) = Self::hf_role_variant(mode, variant)?;
+        let paragraph = doc.hf_ruler_paragraph(role, hf_variant, cursor.line_index)?;
+        if paragraph.runs.iter().any(|run| run.text.contains('\t')) {
+            return None;
+        }
+        let lines = Self::variant_lines(doc, mode, variant)?;
+        let (segment, _) = Self::hf_single_segment(lines.get(cursor.line_index)?)?;
+        (segment == cursor.segment).then_some((role, hf_variant))
+    }
+
+    fn hf_list_tab_target(
+        doc: &WordDocument,
+        mode: EditingMode,
+        variant: HfVariant,
+        anchor: HfEditCursor,
+        focus: HfEditCursor,
+    ) -> Option<(HeaderFooterRole, HeaderFooterVariant, usize, usize)> {
+        if anchor.page_index != focus.page_index {
+            return None;
+        }
+        let (role, hf_variant) = Self::hf_role_variant(mode, variant)?;
+        let position = |cursor: HfEditCursor| {
+            if let Some((_, _, prefix)) = Self::hf_line_segment_mapping(doc, mode, variant, cursor)
+            {
+                Some(TextPosition::new(cursor.line_index, prefix + cursor.offset))
+            } else if let Some(mapped) =
+                Self::hf_mapped_field_range(doc, mode, variant, cursor, cursor)
+            {
+                Some(mapped.focus)
+            } else {
+                Self::hf_list_start_target(doc, mode, variant, cursor)?;
+                Some(TextPosition::new(cursor.line_index, 0))
+            }
+        };
+        let selection = SelectionRange::new(position(anchor)?, position(focus)?);
+        let (start, end) = selection.normalized();
+        if start.paragraph == end.paragraph && start.offset != 0 {
+            return None;
+        }
+        (start.paragraph..=end.paragraph)
+            .all(|index| {
+                doc.hf_ruler_paragraph(role, hf_variant, index)
+                    .as_ref()
+                    .and_then(paragraph_list_id)
+                    .is_some()
+            })
+            .then_some((role, hf_variant, start.paragraph, end.paragraph))
+    }
+
+    fn list_tab_hf(&self, backward: bool, mode: EditingMode) -> Result<JsValue, JsValue> {
+        let (cursor, anchor, variant, target, before_doc) = {
+            let state = self.state.borrow();
+            let (Some(doc), Some(cursor)) = (state.word_doc.as_ref(), state.hf_edit_cursor) else {
+                return Ok(JsValue::NULL);
+            };
+            let anchor = state.hf_selection_anchor;
+            (
+                cursor,
+                anchor,
+                state.hf_variant,
+                Self::hf_list_tab_target(
+                    doc,
+                    mode,
+                    state.hf_variant,
+                    anchor.unwrap_or(cursor),
+                    cursor,
+                ),
+                doc.clone(),
+            )
+        };
+        let Some((role, hf_variant, start, end)) = target else {
+            return if backward {
+                self.finish_hf_edit_result_sync(mode)
+            } else {
+                Ok(JsValue::NULL)
+            };
+        };
+        let after_doc = {
+            let mut state = self.state.borrow_mut();
+            let doc = state.word_doc.as_mut().unwrap();
+            if doc
+                .adjust_hf_list_level(role, hf_variant, start, end, backward)
+                .map_err(|error| JsValue::from_str(&error))?
+            {
+                Some(doc.clone())
+            } else {
+                None
+            }
+        };
+        if let Some(after_doc) = after_doc {
+            self.push_hf_history_entry(HfHistoryEntry {
+                before_doc,
+                after_doc,
+                before_cursor: Some(cursor),
+                after_cursor: Some(cursor),
+                before_selection_anchor: anchor,
+                after_selection_anchor: anchor,
+                mode,
+                variant,
+            });
+            self.prepare_hf_edit_rerender(mode, cursor.page_index);
+        }
+        // Consume the key even at the first or last list level.
+        self.finish_hf_edit_result_sync(mode)
     }
 
     fn delete_hf_text(&self, backward: bool, mode: EditingMode) -> Result<JsValue, JsValue> {
         // Backspace / Delete remove the selection as a whole.
-        if self.hf_selection().is_some() {
+        if self.hf_selection().is_some()
+            || self
+                .state
+                .borrow()
+                .hf_selection_anchor
+                .zip(self.state.borrow().hf_edit_cursor)
+                .is_some_and(|(anchor, cursor)| {
+                    anchor.line_index != cursor.line_index || anchor.segment != cursor.segment
+                })
+        {
             let (before_doc, before_cursor, before_selection_anchor, variant) = {
                 let state = self.state.borrow();
                 (
@@ -4331,6 +5508,17 @@ impl OffscreenDocumentView {
                 return self.finish_hf_delete_result(mode);
             }
         }
+        if self
+            .state
+            .borrow()
+            .hf_selection_anchor
+            .zip(self.state.borrow().hf_edit_cursor)
+            .is_some_and(|(anchor, cursor)| {
+                anchor.line_index != cursor.line_index || anchor.segment != cursor.segment
+            })
+        {
+            return Ok(JsValue::NULL);
+        }
         let (cursor, variant) = {
             let state = self.state.borrow();
             match state.hf_edit_cursor {
@@ -4338,18 +5526,92 @@ impl OffscreenDocumentView {
                 None => return Ok(JsValue::NULL),
             }
         };
+        let adjacent_edit = {
+            let mut state = self.state.borrow_mut();
+            let before_anchor = state.hf_selection_anchor;
+            if let Some(document) = state.word_doc.as_mut() {
+                let before = document.clone();
+                Self::delete_hf_adjacent_field(document, mode, variant, cursor, backward)
+                    .map_err(|error| JsValue::from_str(&error))?
+                    .map(|after| (before, document.clone(), after, before_anchor))
+            } else {
+                None
+            }
+        };
+        if let Some((before_doc, after_doc, after, before_selection_anchor)) = adjacent_edit {
+            {
+                let mut state = self.state.borrow_mut();
+                state.hf_edit_cursor = Some(after);
+                state.hf_selection_anchor = None;
+            }
+            self.push_hf_history_entry(HfHistoryEntry {
+                before_doc,
+                after_doc,
+                before_cursor: Some(cursor),
+                after_cursor: Some(after),
+                before_selection_anchor,
+                after_selection_anchor: None,
+                mode,
+                variant,
+            });
+            self.prepare_hf_edit_rerender(mode, after.page_index);
+            return self.finish_hf_delete_result(mode);
+        }
         let current_text = self
             .hf_segment_text(mode, variant, &cursor)
             .unwrap_or_default();
 
         let offset = Self::nearest_hf_caret_boundary(&current_text, cursor.offset);
+        if backward && offset == 0 {
+            let target = self
+                .state
+                .borrow()
+                .word_doc
+                .as_ref()
+                .and_then(|doc| Self::hf_list_start_target(doc, mode, variant, cursor));
+            if let Some((role, hf_variant)) = target {
+                let (before_doc, before_anchor) = {
+                    let state = self.state.borrow();
+                    (state.word_doc.clone(), state.hf_selection_anchor)
+                };
+                let changed = self
+                    .state
+                    .borrow_mut()
+                    .word_doc
+                    .as_mut()
+                    .map(|doc| {
+                        doc.remove_hf_list_numbering(role, hf_variant, cursor.line_index, false)
+                    })
+                    .transpose()
+                    .map_err(|error| JsValue::from_str(&error))?
+                    .unwrap_or(false);
+                if changed {
+                    let after_doc = {
+                        let mut state = self.state.borrow_mut();
+                        state.hf_selection_anchor = None;
+                        state.word_doc.clone()
+                    };
+                    if let (Some(before_doc), Some(after_doc)) = (before_doc, after_doc) {
+                        self.push_hf_history_entry(HfHistoryEntry {
+                            before_doc,
+                            after_doc,
+                            before_cursor: Some(cursor),
+                            after_cursor: Some(cursor),
+                            before_selection_anchor: before_anchor,
+                            after_selection_anchor: None,
+                            mode,
+                            variant,
+                        });
+                    }
+                    self.prepare_hf_edit_rerender(mode, cursor.page_index);
+                    return self.finish_hf_delete_result(mode);
+                }
+            }
+        }
         let merge_target = self.state.borrow().word_doc.as_ref().and_then(|word_doc| {
             Self::hf_paragraph_merge_target(word_doc, mode, variant, cursor, backward)
         });
         if let Some((merge_index, merged_cursor)) = merge_target {
-            let Some((role, hf_variant)) = Self::hf_role_variant(mode, variant) else {
-                return Ok(JsValue::NULL);
-            };
             let before_doc = self.state.borrow().word_doc.clone();
             let before_cursor = Some(cursor);
             let (after_doc, after_cursor) = {
@@ -4357,9 +5619,14 @@ impl OffscreenDocumentView {
                 let Some(word_doc) = state_mut.word_doc.as_mut() else {
                     return Ok(JsValue::NULL);
                 };
-                word_doc
-                    .merge_hf_paragraph_with_previous(role, hf_variant, merge_index)
-                    .map_err(|err| JsValue::from_str(&err))?;
+                let merged_cursor = Self::merge_hf_paragraph_with_cursor(
+                    word_doc,
+                    mode,
+                    variant,
+                    merge_index,
+                    merged_cursor,
+                )
+                .map_err(|err| JsValue::from_str(&err))?;
                 state_mut.hf_edit_cursor = Some(merged_cursor);
                 state_mut.hf_selection_anchor = None;
                 (state_mut.word_doc.clone(), state_mut.hf_edit_cursor)
@@ -4418,8 +5685,16 @@ impl OffscreenDocumentView {
         let (after_doc, after_cursor) = {
             let mut state_mut = self.state.borrow_mut();
             if let Some(word_doc) = state_mut.word_doc.as_mut() {
-                let result =
-                    Self::replace_hf_line(word_doc, mode, variant, cursor.line_index, &full_text);
+                let result = Self::edit_hf_line_range(
+                    word_doc,
+                    mode,
+                    variant,
+                    cursor,
+                    new_offset,
+                    new_offset + current_text.len() - new_text.len(),
+                    "",
+                    &full_text,
+                );
                 if let Err(err) = result {
                     return Err(JsValue::from_str(&err));
                 }
@@ -4495,9 +5770,16 @@ impl OffscreenDocumentView {
             (state.editing_mode, state.hf_edit_cursor?, state.hf_variant)
         };
         let (role, hf_variant) = Self::hf_role_variant(mode, variant)?;
+        let story_range = Self::hf_multiline_selection_range(&self.state.borrow());
         let selection_range = self.hf_selection_paragraph_range(mode);
         let mut state = self.state.borrow_mut();
         let word_doc = state.word_doc.as_mut()?;
+        if let Some(range) = story_range {
+            return word_doc
+                .hf_story_range_run_state(role, hf_variant, range)
+                .ok()
+                .flatten();
+        }
         if let Some((line_index, start, end)) = selection_range {
             if let Ok(Some(range_state)) =
                 word_doc.hf_range_run_state(role, hf_variant, line_index, start, end)
@@ -4505,11 +5787,21 @@ impl OffscreenDocumentView {
                 return Some(range_state);
             }
         }
+        if let Some((_, _, prefix)) = Self::hf_line_segment_mapping(word_doc, mode, variant, cursor)
+        {
+            if let Some(caret_state) = word_doc.hf_caret_run_state(
+                role,
+                hf_variant,
+                cursor.line_index,
+                prefix + cursor.offset,
+            ) {
+                return Some(caret_state);
+            }
+        }
         word_doc
             .hf_paragraph_run_state(role, hf_variant, cursor.line_index)
             .ok()
     }
-
     /// The line-level character format a body inline command stands for in a
     /// header/footer story, or `None` for commands the story cannot take.
     fn hf_run_format_for_command(command: &HeadlessCommand) -> Option<HfRunFormat> {
@@ -4572,20 +5864,57 @@ impl OffscreenDocumentView {
             let state = self.state.borrow();
             (state.word_doc.clone(), state.hf_selection_anchor)
         };
+        let story_range = Self::hf_multiline_selection_range(&self.state.borrow());
+        // Do not turn an unsupported cross-line selection into a caret-line edit.
+        if selection_anchor.is_some_and(|anchor| anchor.line_index != cursor.line_index)
+            && story_range.is_none()
+        {
+            return Ok(JsValue::NULL);
+        }
         let selection_range = self.hf_selection_paragraph_range(mode);
+        if selection_anchor.is_some_and(|anchor| anchor.segment != cursor.segment)
+            && story_range.is_none()
+            && selection_range.is_none()
+        {
+            return Ok(JsValue::NULL);
+        }
         let after_doc = {
             let mut state_mut = self.state.borrow_mut();
             let Some(word_doc) = state_mut.word_doc.as_mut() else {
                 return Ok(JsValue::NULL);
             };
-            // Word formats the selection; without one, the caret's line.
-            let applied_to_range = match selection_range {
-                Some((line_index, start, end)) => word_doc
-                    .apply_hf_range_run_format(role, hf_variant, line_index, start, end, &format)
-                    .map_err(|error| JsValue::from_str(&error))?,
-                None => false,
+            let caret_mapping = if story_range.is_none() && selection_range.is_none() {
+                Self::hf_line_segment_mapping(word_doc, mode, variant, cursor)
+            } else {
+                None
             };
-            if format.clear_visual && selection_range.is_some() && !applied_to_range {
+            let applied_to_range = if let Some((_, _, prefix)) = caret_mapping {
+                word_doc
+                    .apply_hf_caret_run_format(
+                        role,
+                        hf_variant,
+                        cursor.line_index,
+                        prefix + cursor.offset,
+                        &format,
+                    )
+                    .map_err(|error| JsValue::from_str(&error))?
+            } else if let Some(range) = story_range {
+                word_doc
+                    .apply_hf_story_run_format(role, hf_variant, range, &format)
+                    .map_err(|error| JsValue::from_str(&error))?
+            } else {
+                match selection_range {
+                    Some((line_index, start, end)) => word_doc
+                        .apply_hf_range_run_format(
+                            role, hf_variant, line_index, start, end, &format,
+                        )
+                        .map_err(|error| JsValue::from_str(&error))?,
+                    None => false,
+                }
+            };
+            if (caret_mapping.is_some() || story_range.is_some() || selection_range.is_some())
+                && !applied_to_range
+            {
                 return Ok(JsValue::NULL);
             }
             if !applied_to_range {
@@ -4594,9 +5923,20 @@ impl OffscreenDocumentView {
                     .map_err(|error| JsValue::from_str(&error))?;
             }
             if reset_paragraph {
-                word_doc
-                    .reset_hf_paragraph_formatting(role, hf_variant, cursor.line_index)
-                    .map_err(|error| JsValue::from_str(&error))?;
+                let (first, last) = story_range
+                    .map(|range| {
+                        let (start, end) = range.normalized();
+                        (
+                            start.paragraph,
+                            end.paragraph - usize::from(end.offset == 0),
+                        )
+                    })
+                    .unwrap_or((cursor.line_index, cursor.line_index));
+                for index in first..=last {
+                    word_doc
+                        .reset_hf_paragraph_formatting(role, hf_variant, index)
+                        .map_err(|error| JsValue::from_str(&error))?;
+                }
             }
             state_mut.word_doc.clone()
         };
@@ -4615,56 +5955,75 @@ impl OffscreenDocumentView {
         self.prepare_hf_edit_rerender(mode, cursor.page_index);
         self.finish_hf_edit_result_sync(mode)
     }
-
     fn change_hf_case(&self, case: HeadlessChangeCaseMode) -> Result<JsValue, JsValue> {
-        let Some((start_cursor, end_cursor)) = self.hf_selection() else {
-            return Ok(JsValue::NULL);
-        };
-        let (mode, cursor, variant) = {
+        let (mode, cursor, variant, anchor, before_doc) = {
             let state = self.state.borrow();
-            let Some(cursor) = state.hf_edit_cursor else {
+            let (Some(cursor), Some(anchor)) = (state.hf_edit_cursor, state.hf_selection_anchor)
+            else {
                 return Ok(JsValue::NULL);
             };
-            (state.editing_mode, cursor, state.hf_variant)
+            (
+                state.editing_mode,
+                cursor,
+                state.hf_variant,
+                anchor,
+                state.word_doc.clone(),
+            )
         };
-        let Some((role, hf_variant)) = Self::hf_role_variant(mode, variant) else {
+        let Some(_) = Self::hf_role_variant(mode, variant) else {
             return Ok(JsValue::NULL);
         };
-        let Some((line, start, end)) = self.hf_selection_paragraph_range(mode) else {
+        let mapped_selection = {
+            let state = self.state.borrow();
+            state.word_doc.as_ref().and_then(|document| {
+                Self::hf_mapped_line_selection_range(document, mode, variant, anchor, cursor)
+            })
+        };
+        let selection = Self::hf_multiline_selection_range(&self.state.borrow())
+            .or(mapped_selection)
+            .or_else(|| {
+                let (line, start, end) = self.hf_selection_paragraph_range(mode)?;
+                let (start, end) = (TextPosition::new(line, start), TextPosition::new(line, end));
+                Some(if anchor.offset <= cursor.offset {
+                    SelectionRange::new(start, end)
+                } else {
+                    SelectionRange::new(end, start)
+                })
+            });
+        let Some(selection) = selection else {
             return Ok(JsValue::NULL);
         };
-        let before_doc = self.state.borrow().word_doc.clone();
-        let (after_doc, after_cursor) = {
+        let (after_doc, after_cursor, after_anchor) = {
             let mut state = self.state.borrow_mut();
             let Some(word_doc) = state.word_doc.as_mut() else {
                 return Ok(JsValue::NULL);
             };
-            let Some(length) = word_doc
-                .change_hf_range_case(role, hf_variant, line, start..end, case)
-                .map_err(|error| JsValue::from_str(&error))?
+            let Some((after_anchor, after_cursor)) = Self::change_hf_case_selection(
+                word_doc, mode, variant, anchor, cursor, selection, case,
+            )
+            .map_err(|error| JsValue::from_str(&error))?
             else {
                 return Ok(JsValue::NULL);
             };
-            let transformed_end = HfEditCursor {
-                offset: start_cursor.offset + length,
-                ..end_cursor
-            };
-            if cursor == end_cursor {
-                state.hf_edit_cursor = Some(transformed_end);
-            } else {
-                state.hf_selection_anchor = Some(transformed_end);
-            }
-            (state.word_doc.clone(), state.hf_edit_cursor)
+            state.hf_edit_cursor = Some(after_cursor);
+            state.hf_selection_anchor = Some(after_anchor);
+            (
+                state.word_doc.clone(),
+                state.hf_edit_cursor,
+                state.hf_selection_anchor,
+            )
         };
         if let (Some(before_doc), Some(after_doc)) = (before_doc, after_doc) {
-            self.push_hf_history(
+            self.push_hf_history_entry(HfHistoryEntry {
                 before_doc,
                 after_doc,
-                Some(cursor),
+                before_cursor: Some(cursor),
                 after_cursor,
+                before_selection_anchor: Some(anchor),
+                after_selection_anchor: after_anchor,
                 mode,
                 variant,
-            );
+            });
         }
         self.prepare_hf_edit_rerender(mode, cursor.page_index);
         self.finish_hf_edit_result_sync(mode)
@@ -4705,41 +6064,118 @@ impl OffscreenDocumentView {
         Ok(result.into())
     }
 
-    fn remap_hf_paragraph_cursor(
-        state: &mut CanvasDocumentState,
+    fn edit_hf_selected_paragraphs(
+        document: &mut WordDocument,
         mode: EditingMode,
         variant: HfVariant,
         cursor: HfEditCursor,
-        alignment: &str,
-    ) {
-        let segment = state
-            .word_doc
-            .as_ref()
-            .and_then(|doc| Self::variant_lines(doc, mode, variant))
-            .and_then(|lines| lines.get(cursor.line_index).cloned())
-            .and_then(|line| {
-                let segments: Vec<_> = [
-                    (HfSegment::Left, line.left),
-                    (HfSegment::Center, line.center),
-                    (HfSegment::Right, line.right),
-                ]
-                .into_iter()
-                .filter(|(_, text)| text.is_some())
-                .collect();
-                match segments.as_slice() {
-                    [] => Some(Self::hf_segment_for_alignment(alignment)),
-                    [(segment, _)] => Some(*segment),
-                    _ => None,
-                }
-            });
-        if let Some(segment) = segment {
-            state.hf_edit_cursor = Some(HfEditCursor { segment, ..cursor });
-            if let Some(anchor) = state.hf_selection_anchor.as_mut() {
-                if anchor.line_index == cursor.line_index {
-                    anchor.segment = segment;
-                }
+        anchor: Option<HfEditCursor>,
+        commands: &[HeadlessCommand],
+    ) -> Result<Option<(HfEditCursor, Option<HfEditCursor>)>, String> {
+        let Some((role, hf_variant)) = Self::hf_role_variant(mode, variant) else {
+            return Ok(None);
+        };
+        let range =
+            Self::hf_mapped_story_range(document, mode, variant, anchor.unwrap_or(cursor), cursor);
+        if range.is_none() {
+            let anchor = anchor.unwrap_or(cursor);
+            if anchor.page_index != cursor.page_index
+                || anchor.line_index != cursor.line_index
+                || anchor.segment != cursor.segment
+            {
+                return Ok(None);
+            }
+            let lines = Self::variant_lines(document, mode, variant);
+            let Some((segment, text)) = lines
+                .as_ref()
+                .and_then(|lines| lines.get(cursor.line_index))
+                .and_then(Self::hf_single_segment)
+            else {
+                return Ok(None);
+            };
+            if segment != cursor.segment
+                || !text.is_char_boundary(cursor.offset)
+                || !text.is_char_boundary(anchor.offset)
+            {
+                return Ok(None);
             }
         }
+        let (first, last) = range
+            .map(|range| {
+                let (start, end) = range.normalized();
+                (start.paragraph, end.paragraph)
+            })
+            .unwrap_or((cursor.line_index, cursor.line_index));
+        if !(first..=last).all(|index| {
+            document
+                .hf_ruler_paragraph(role, hf_variant, index)
+                .is_some()
+        }) {
+            return Ok(None);
+        }
+        // Commit the entire selection together, including any shared style edits.
+        let mut edited = document.clone();
+        let changed = match commands {
+            [HeadlessCommand::SetParagraphStyle { .. }]
+            | [HeadlessCommand::SetParagraphAlignment { .. }] => {
+                let mut changed = false;
+                for index in first..=last {
+                    changed |=
+                        match commands {
+                            [HeadlessCommand::SetParagraphStyle { style_id, .. }] => edited
+                                .set_hf_paragraph_style(role, hf_variant, index, style_id.clone()),
+                            [HeadlessCommand::SetParagraphAlignment { alignment, .. }] => edited
+                                .set_hf_paragraph_alignment(role, hf_variant, index, alignment),
+                            _ => unreachable!(),
+                        }?;
+                }
+                changed
+            }
+            _ => edited
+                .apply_hf_paragraph_commands_to_range(role, hf_variant, first, last, commands)?,
+        };
+        if !changed {
+            return Ok(None);
+        }
+        let (after_cursor, after_anchor) = if let Some(range) = range {
+            let after_cursor =
+                Self::hf_cursor_at_paragraph_offset(&edited, mode, variant, cursor, range.focus)
+                    .ok_or_else(|| {
+                        "Cannot map the caret after formatting the story paragraphs".to_owned()
+                    })?;
+            let after_anchor = anchor
+                .map(|anchor| {
+                    Self::hf_cursor_at_paragraph_offset(
+                        &edited,
+                        mode,
+                        variant,
+                        anchor,
+                        range.anchor,
+                    )
+                    .ok_or_else(|| {
+                        "Cannot map the selection after formatting the story paragraphs".to_owned()
+                    })
+                })
+                .transpose()?;
+            (after_cursor, after_anchor)
+        } else {
+            // Fields cannot use plain-text offsets. Retain the single-paragraph
+            // behavior and resolve its segment without changing the local offset.
+            let segment = Self::variant_lines(&edited, mode, variant)
+                .and_then(|lines| {
+                    lines
+                        .get(cursor.line_index)
+                        .and_then(Self::hf_single_segment)
+                        .map(|(segment, _)| segment)
+                })
+                .unwrap_or(cursor.segment);
+            (
+                HfEditCursor { segment, ..cursor },
+                anchor.map(|anchor| HfEditCursor { segment, ..anchor }),
+            )
+        };
+        *document = edited;
+        Ok(Some((after_cursor, after_anchor)))
     }
 
     fn apply_hf_paragraph_commands(
@@ -4748,13 +6184,13 @@ impl OffscreenDocumentView {
     ) -> Result<JsValue, JsValue> {
         let (mode, cursor, variant) = {
             let state = self.state.borrow();
+            if state.preview_mode {
+                return Ok(JsValue::NULL);
+            }
             let Some(cursor) = state.hf_edit_cursor else {
                 return Ok(JsValue::NULL);
             };
             (state.editing_mode, cursor, state.hf_variant)
-        };
-        let Some((role, hf_variant)) = Self::hf_role_variant(mode, variant) else {
-            return Ok(JsValue::NULL);
         };
         let (before_doc, before_selection_anchor) = {
             let state = self.state.borrow();
@@ -4765,26 +6201,21 @@ impl OffscreenDocumentView {
             let Some(doc) = state.word_doc.as_mut() else {
                 return Ok(JsValue::NULL);
             };
-            let changed = match commands.as_slice() {
-                [HeadlessCommand::SetParagraphStyle { style_id, .. }] => doc
-                    .set_hf_paragraph_style(role, hf_variant, cursor.line_index, style_id.clone()),
-                _ => {
-                    doc.apply_hf_paragraph_commands(role, hf_variant, cursor.line_index, &commands)
-                }
-            }
-            .map_err(|error| JsValue::from_str(&error))?;
-            if !changed {
-                return Ok(JsValue::NULL);
-            }
-            let alignment = doc
-                .hf_paragraph_alignment(role, hf_variant, cursor.line_index)
-                .unwrap_or_else(|| "left".to_string());
-            Self::remap_hf_paragraph_cursor(&mut state, mode, variant, cursor, &alignment);
-            (
-                state.word_doc.clone(),
-                state.hf_edit_cursor,
-                state.hf_selection_anchor,
+            let Some((after_cursor, after_anchor)) = Self::edit_hf_selected_paragraphs(
+                doc,
+                mode,
+                variant,
+                cursor,
+                before_selection_anchor,
+                &commands,
             )
+            .map_err(|error| JsValue::from_str(&error))?
+            else {
+                return Ok(JsValue::NULL);
+            };
+            state.hf_edit_cursor = Some(after_cursor);
+            state.hf_selection_anchor = after_anchor;
+            (state.word_doc.clone(), Some(after_cursor), after_anchor)
         };
         if let (Some(before_doc), Some(after_doc)) = (before_doc, after_doc) {
             self.push_hf_history_entry(HfHistoryEntry {
@@ -4802,56 +6233,16 @@ impl OffscreenDocumentView {
         self.finish_hf_edit_result_sync(mode)
     }
 
-    fn apply_hf_alignment(&self, alignment: String, mode: EditingMode) -> Result<JsValue, JsValue> {
-        let (cursor, variant) = {
-            let state = self.state.borrow();
-            if state.preview_mode {
-                return Ok(JsValue::NULL);
-            }
-            let Some(cursor) = state.hf_edit_cursor else {
-                return Ok(JsValue::NULL);
-            };
-            (cursor, state.hf_variant)
-        };
-        let Some((role, hf_variant)) = Self::hf_role_variant(mode, variant) else {
-            return Ok(JsValue::NULL);
-        };
-        let (before_doc, before_selection_anchor) = {
-            let state = self.state.borrow();
-            (state.word_doc.clone(), state.hf_selection_anchor)
-        };
-        let (after_doc, after_cursor, after_selection_anchor) = {
-            let mut state = self.state.borrow_mut();
-            let Some(doc) = state.word_doc.as_mut() else {
-                return Ok(JsValue::NULL);
-            };
-            if !doc
-                .set_hf_paragraph_alignment(role, hf_variant, cursor.line_index, &alignment)
-                .map_err(|error| JsValue::from_str(&error))?
-            {
-                return Ok(JsValue::NULL);
-            }
-            Self::remap_hf_paragraph_cursor(&mut state, mode, variant, cursor, &alignment);
-            (
-                state.word_doc.clone(),
-                state.hf_edit_cursor,
-                state.hf_selection_anchor,
-            )
-        };
-        if let (Some(before_doc), Some(after_doc)) = (before_doc, after_doc) {
-            self.push_hf_history_entry(HfHistoryEntry {
-                before_doc,
-                after_doc,
-                before_cursor: Some(cursor),
-                after_cursor,
-                before_selection_anchor,
-                after_selection_anchor,
-                mode,
-                variant,
-            });
-        }
-        self.prepare_hf_edit_rerender(mode, cursor.page_index);
-        self.finish_hf_edit_result_sync(mode)
+    fn apply_hf_alignment(
+        &self,
+        alignment: String,
+        _mode: EditingMode,
+    ) -> Result<JsValue, JsValue> {
+        self.apply_hf_paragraph_commands(vec![HeadlessCommand::SetParagraphAlignment {
+            start_paragraph: 0,
+            end_paragraph: 0,
+            alignment,
+        }])
     }
 
     fn adjust_hf_font_size(
@@ -4870,55 +6261,79 @@ impl OffscreenDocumentView {
         let Some((role, hf_variant)) = Self::hf_role_variant(mode, variant) else {
             return Ok(JsValue::NULL);
         };
+        let story_range = Self::hf_multiline_selection_range(&self.state.borrow());
         let selection = self
             .hf_selection_paragraph_range(mode)
             .map(|(_, start, end)| start..end);
-        // A selection spanning lines/segments is not a whole-line command.
-        if self.hf_selection().is_some() && selection.is_none() {
+        let (before_doc, anchor) = {
+            let state = self.state.borrow();
+            (state.word_doc.clone(), state.hf_selection_anchor)
+        };
+        if (anchor.is_some_and(|anchor| anchor.line_index != cursor.line_index)
+            && story_range.is_none())
+            || ((self.hf_selection().is_some()
+                || anchor.is_some_and(|anchor| anchor.segment != cursor.segment))
+                && selection.is_none()
+                && story_range.is_none())
+        {
             return Ok(JsValue::NULL);
         }
-        let before_doc = self.state.borrow().word_doc.clone();
+        let direction = match direction {
+            jade_docx_headless_api::HeadlessFontSizeDirection::Grow => FontSizeDirection::Grow,
+            jade_docx_headless_api::HeadlessFontSizeDirection::Shrink => FontSizeDirection::Shrink,
+        };
+        let step = match step {
+            jade_docx_headless_api::HeadlessFontSizeStep::Ladder => FontSizeStep::Ladder,
+            jade_docx_headless_api::HeadlessFontSizeStep::Point => FontSizeStep::Point,
+        };
         let after_doc = {
             let mut state = self.state.borrow_mut();
             let Some(doc) = state.word_doc.as_mut() else {
                 return Ok(JsValue::NULL);
             };
-            let applied = doc
-                .adjust_hf_font_size(
+            let caret_mapping = if story_range.is_none() && selection.is_none() {
+                Self::hf_line_segment_mapping(doc, mode, variant, cursor)
+            } else {
+                None
+            };
+            let applied = if let Some((_, _, prefix)) = caret_mapping {
+                doc.adjust_hf_caret_font_size(
+                    role,
+                    hf_variant,
+                    cursor.line_index,
+                    prefix + cursor.offset,
+                    direction,
+                    step,
+                )
+            } else if let Some(range) = story_range {
+                doc.adjust_hf_story_font_size(role, hf_variant, range, direction, step)
+            } else {
+                doc.adjust_hf_font_size(
                     role,
                     hf_variant,
                     cursor.line_index,
                     selection,
-                    match direction {
-                        jade_docx_headless_api::HeadlessFontSizeDirection::Grow => {
-                            FontSizeDirection::Grow
-                        }
-                        jade_docx_headless_api::HeadlessFontSizeDirection::Shrink => {
-                            FontSizeDirection::Shrink
-                        }
-                    },
-                    match step {
-                        jade_docx_headless_api::HeadlessFontSizeStep::Ladder => {
-                            FontSizeStep::Ladder
-                        }
-                        jade_docx_headless_api::HeadlessFontSizeStep::Point => FontSizeStep::Point,
-                    },
+                    direction,
+                    step,
                 )
-                .map_err(|error| JsValue::from_str(&error))?;
+            }
+            .map_err(|error| JsValue::from_str(&error))?;
             if !applied {
                 return Ok(JsValue::NULL);
             }
             state.word_doc.clone()
         };
         if let (Some(before_doc), Some(after_doc)) = (before_doc, after_doc) {
-            self.push_hf_history(
+            self.push_hf_history_entry(HfHistoryEntry {
                 before_doc,
                 after_doc,
-                Some(cursor),
-                Some(cursor),
+                before_cursor: Some(cursor),
+                after_cursor: Some(cursor),
+                before_selection_anchor: anchor,
+                after_selection_anchor: anchor,
                 mode,
                 variant,
-            );
+            });
         }
         self.prepare_hf_edit_rerender(mode, cursor.page_index);
         self.finish_hf_edit_result_sync(mode)
@@ -13576,6 +14991,10 @@ impl OffscreenDocumentView {
         if self.state.borrow().preview_mode {
             return Ok(JsValue::NULL);
         }
+        let mode = self.state.borrow().editing_mode;
+        if matches!(mode, EditingMode::Header | EditingMode::Footer) {
+            return self.list_tab_hf(backward, mode);
+        }
         let Some(selection) = self.body_list_selection() else {
             return Ok(JsValue::NULL);
         };
@@ -13668,32 +15087,54 @@ impl OffscreenDocumentView {
         })
     }
 
-    #[wasm_bindgen(js_name = toggleBulletList)]
-    pub fn toggle_bullet_list(&self) -> Result<JsValue, JsValue> {
-        let is_bullet = {
-            let state = self.state.borrow();
+    fn current_list_state(&self) -> (Option<String>, u32) {
+        let state = self.state.borrow();
+        let Some(document) = state.word_doc.as_ref() else {
+            return (None, 0);
+        };
+        let numbering = if state.editing_mode != EditingMode::Body {
+            Self::hf_role_variant(state.editing_mode, state.hf_variant)
+                .and_then(|(role, variant)| {
+                    let cursor = state.hf_edit_cursor?;
+                    let first = state
+                        .hf_selection_anchor
+                        .unwrap_or(cursor)
+                        .line_index
+                        .min(cursor.line_index);
+                    document.hf_ruler_paragraph(role, variant, first)
+                })
+                .and_then(|paragraph| {
+                    paragraph
+                        .properties
+                        .and_then(|properties| properties.numbering)
+                })
+        } else {
             let selection = state.selection.unwrap_or_else(|| {
-                let renderer = self.renderer.borrow();
-                renderer
+                self.renderer
+                    .borrow()
                     .selection_range()
                     .unwrap_or_else(|| SelectionRange::collapsed(TextPosition::default()))
             });
-            let start = selection.anchor.paragraph.min(selection.focus.paragraph);
-            let word_doc = state.word_doc.as_ref();
-            let current_num = word_doc
-                .and_then(|doc| doc.paragraph(start))
-                .and_then(|p| p.properties.as_ref())
-                .and_then(|props| props.numbering.as_ref());
-            current_num
-                .and_then(|n| n.id.as_deref())
-                .and_then(|id| {
-                    word_doc
-                        .and_then(|doc| doc.numbering_part.as_ref())
-                        .and_then(|np| np.get_level_info(id, 0))
-                })
-                .and_then(|level| level.num_fmt.as_deref())
-                == Some("bullet")
+            document
+                .paragraph(selection.anchor.paragraph.min(selection.focus.paragraph))
+                .and_then(|paragraph| paragraph.properties.as_ref())
+                .and_then(|properties| properties.numbering.clone())
         };
+        let level = numbering
+            .as_ref()
+            .and_then(|numbering| numbering.level)
+            .unwrap_or(0);
+        let format = numbering
+            .as_ref()
+            .and_then(|numbering| numbering.id.as_deref())
+            .and_then(|id| document.numbering_part.as_ref()?.get_level_info(id, level))
+            .and_then(|level| level.num_fmt.clone());
+        (format, level)
+    }
+
+    #[wasm_bindgen(js_name = toggleBulletList)]
+    pub fn toggle_bullet_list(&self) -> Result<JsValue, JsValue> {
+        let is_bullet = self.current_list_state().0.as_deref() == Some("bullet");
 
         if is_bullet {
             // Toggle off: remove numbering
@@ -13715,30 +15156,7 @@ impl OffscreenDocumentView {
 
     #[wasm_bindgen(js_name = toggleNumberedList)]
     pub fn toggle_numbered_list(&self) -> Result<JsValue, JsValue> {
-        let is_decimal = {
-            let state = self.state.borrow();
-            let selection = state.selection.unwrap_or_else(|| {
-                let renderer = self.renderer.borrow();
-                renderer
-                    .selection_range()
-                    .unwrap_or_else(|| SelectionRange::collapsed(TextPosition::default()))
-            });
-            let start = selection.anchor.paragraph.min(selection.focus.paragraph);
-            let word_doc = state.word_doc.as_ref();
-            let current_num = word_doc
-                .and_then(|doc| doc.paragraph(start))
-                .and_then(|p| p.properties.as_ref())
-                .and_then(|props| props.numbering.as_ref());
-            current_num
-                .and_then(|n| n.id.as_deref())
-                .and_then(|id| {
-                    word_doc
-                        .and_then(|doc| doc.numbering_part.as_ref())
-                        .and_then(|np| np.get_level_info(id, 0))
-                })
-                .and_then(|level| level.num_fmt.as_deref())
-                == Some("decimal")
-        };
+        let is_decimal = self.current_list_state().0.as_deref() == Some("decimal");
 
         if is_decimal {
             self.apply_paragraph_style_headless(|s, e| HeadlessCommand::SetNumbering {
@@ -13769,24 +15187,7 @@ impl OffscreenDocumentView {
             "bulletHierarchy" => HeadlessMultilevelListPreset::BulletHierarchy,
             _ => return Err(JsValue::from_str("Unknown multilevel list preset")),
         };
-        let effective_level = level.unwrap_or_else(|| {
-            let state = self.state.borrow();
-            let selection = state.selection.unwrap_or_else(|| {
-                let renderer = self.renderer.borrow();
-                renderer
-                    .selection_range()
-                    .unwrap_or_else(|| SelectionRange::collapsed(TextPosition::default()))
-            });
-            let start = selection.anchor.paragraph.min(selection.focus.paragraph);
-            state
-                .word_doc
-                .as_ref()
-                .and_then(|document| document.paragraph(start))
-                .and_then(|paragraph| paragraph.properties.as_ref())
-                .and_then(|properties| properties.numbering.as_ref())
-                .and_then(|numbering| numbering.level)
-                .unwrap_or(0)
-        });
+        let effective_level = level.unwrap_or_else(|| self.current_list_state().1);
         self.apply_paragraph_style_headless(|start_paragraph, end_paragraph| {
             HeadlessCommand::ApplyMultilevelList {
                 start_paragraph,
@@ -13807,24 +15208,7 @@ impl OffscreenDocumentView {
             .map_err(|error| {
                 JsValue::from_str(&format!("Invalid custom multilevel list: {error}"))
             })?;
-        let effective_level = level.unwrap_or_else(|| {
-            let state = self.state.borrow();
-            let selection = state.selection.unwrap_or_else(|| {
-                let renderer = self.renderer.borrow();
-                renderer
-                    .selection_range()
-                    .unwrap_or_else(|| SelectionRange::collapsed(TextPosition::default()))
-            });
-            let start = selection.anchor.paragraph.min(selection.focus.paragraph);
-            state
-                .word_doc
-                .as_ref()
-                .and_then(|document| document.paragraph(start))
-                .and_then(|paragraph| paragraph.properties.as_ref())
-                .and_then(|properties| properties.numbering.as_ref())
-                .and_then(|numbering| numbering.level)
-                .unwrap_or(0)
-        });
+        let effective_level = level.unwrap_or_else(|| self.current_list_state().1);
         self.apply_paragraph_style_headless(|start_paragraph, end_paragraph| {
             HeadlessCommand::ApplyCustomMultilevelList {
                 start_paragraph,
@@ -13842,6 +15226,13 @@ impl OffscreenDocumentView {
         target: String,
         tooltip: Option<String>,
     ) -> Result<JsValue, JsValue> {
+        if !self.body_commands_allowed() {
+            return self.apply_hf_hyperlink(Some((
+                display_text.as_deref(),
+                &target,
+                tooltip.as_deref(),
+            )));
+        }
         self.apply_inline_style(
             |_| {},
             move |range| {
@@ -13857,6 +15248,9 @@ impl OffscreenDocumentView {
 
     #[wasm_bindgen(js_name = removeHyperlink)]
     pub fn remove_hyperlink(&self) -> Result<JsValue, JsValue> {
+        if !self.body_commands_allowed() {
+            return self.apply_hf_hyperlink(None);
+        }
         self.apply_inline_style(|_| {}, |range| Box::new(RemoveHyperlinkCommand::new(range)))
     }
 
@@ -13896,6 +15290,11 @@ impl OffscreenDocumentView {
                 ));
             }
         };
+        if !self.body_commands_allowed() {
+            return self.apply_hf_field_edit(|document, role, variant, range| {
+                document.insert_hf_story_cross_reference(role, variant, range, &bookmark_name, kind)
+            });
+        }
         self.apply_inline_style(
             |_| {},
             move |range| {
@@ -13926,6 +15325,11 @@ impl OffscreenDocumentView {
                 ))
             }
         };
+        if !self.body_commands_allowed() {
+            return self.apply_hf_field_edit(|document, role, variant, range| {
+                document.insert_hf_story_target_cross_reference(role, variant, range, &target, kind)
+            });
+        }
         self.apply_inline_style(
             |_| {},
             move |range| {
@@ -14116,6 +15520,9 @@ impl OffscreenDocumentView {
             "fileName" => HeadlessFieldKind::FileName,
             _ => return Err(JsValue::from_str("unsupported inline field kind")),
         };
+        if !self.body_commands_allowed() {
+            return self.apply_hf_inline_field(kind, &cached_text);
+        }
         self.apply_inline_style(
             |_| {},
             move |range| Box::new(InsertFieldCommand::new(range, kind, cached_text.clone())),
@@ -14665,10 +16072,7 @@ impl OffscreenDocumentView {
 
     #[wasm_bindgen]
     pub fn apply_underline_kind(&self, kind: String) -> Result<JsValue, JsValue> {
-        const SUPPORTED: &[&str] = &[
-            "single", "words", "double", "thick", "dotted", "dash", "wave",
-        ];
-        if !SUPPORTED.contains(&kind.as_str()) {
+        if !crate::word::font::UNDERLINE_STYLES.contains(&kind.as_str()) {
             return Err(JsValue::from_str("unsupported underline kind"));
         }
         self.apply_inline_style_headless(
@@ -14678,8 +16082,8 @@ impl OffscreenDocumentView {
                 start_offset: range.anchor.offset,
                 end_paragraph: range.focus.paragraph,
                 end_offset: range.focus.offset,
-                kind: Some(kind.clone()),
-                enabled: true,
+                kind: (kind != "none").then(|| kind.clone()),
+                enabled: kind != "none",
             },
         )
     }
@@ -15729,6 +17133,19 @@ impl OffscreenDocumentView {
             (state.editing_mode, state.hf_variant)
         };
         if mode != EditingMode::Body {
+            {
+                let state = self.state.borrow();
+                if let Some((anchor, cursor)) = state.hf_selection_anchor.zip(state.hf_edit_cursor)
+                {
+                    if let Some(document) = state.word_doc.as_ref() {
+                        if let Some(range) =
+                            Self::hf_mapped_story_selection(document, mode, variant, anchor, cursor)
+                        {
+                            return Self::hf_mapped_selection_text(document, mode, variant, range);
+                        }
+                    }
+                }
+            }
             let (start, end) = self.hf_selection()?;
             let text = self.hf_segment_text(mode, variant, &start)?;
             return text.get(start.offset..end.offset).map(str::to_owned);
@@ -17535,41 +18952,14 @@ impl OffscreenDocumentView {
             .as_ref()
             .and_then(|p| p.style.as_deref());
 
-        // Layer 0: document defaults (`w:docDefaults/w:rPrDefault`). Without
-        // this, body text with no explicit style reports an empty font
-        // family/size and the ribbon readout goes stale.
-        let mut effective_run = RunProperties::default();
-        if let Some(styles) = word_doc.styles_part.as_ref() {
-            if let Some(defaults) = styles.doc_default_run_properties() {
-                merge_run_properties_override(&mut effective_run, defaults);
-            }
-        }
-
-        // Layer 1: paragraph style run properties. Paragraphs without an
-        // explicit `w:pStyle` use the document's default paragraph style,
-        // matching the renderer's cascade.
-        if let Some(styles) = word_doc.styles_part.as_ref() {
-            let style_id = para_style_id.or_else(|| styles.default_paragraph_style_id());
-            if let Some(sid) = style_id {
-                if let Some(style_props) = styles.resolve_run_properties(sid) {
-                    merge_run_properties_override(&mut effective_run, &style_props);
-                }
-            }
-        }
-
-        // Layer 2: character style run properties
-        if let Some(styles) = word_doc.styles_part.as_ref() {
-            if let Some(char_style_id) = target_props.and_then(|p| p.style.as_deref()) {
-                if let Some(char_props) = styles.resolve_character_run_properties(char_style_id) {
-                    merge_run_properties_override(&mut effective_run, &char_props);
-                }
-            }
-        }
-
-        // Layer 3: direct run properties
-        if let Some(direct) = target_props {
-            merge_run_properties_override(&mut effective_run, direct);
-        }
+        // Use the renderer's cascade so style toggles and direct overrides
+        // report the same formatting in the ribbon as on the canvas.
+        let mut effective_run = word_doc
+            .styles_part
+            .as_ref()
+            .and_then(|styles| styles.resolve_effective_run_properties(para_style_id, target_props))
+            .or_else(|| target_props.cloned())
+            .unwrap_or_default();
 
         // Layer 4: pending inline formatting — only while the caret still
         // sits where the pending formatting was armed.
@@ -18591,6 +19981,63 @@ impl OffscreenDocumentView {
     pub fn set_character_style(&self, style_id: Option<String>) -> Result<JsValue, JsValue> {
         if self.state.borrow().preview_mode {
             return Ok(JsValue::NULL);
+        }
+        if !self.body_commands_allowed() {
+            let (mode, variant, cursor, anchor, before_doc, range) = {
+                let state = self.state.borrow();
+                let (Some(cursor), Some(anchor), Some(document)) = (
+                    state.hf_edit_cursor,
+                    state.hf_selection_anchor,
+                    state.word_doc.as_ref(),
+                ) else {
+                    return Ok(JsValue::NULL);
+                };
+                let Some(range) = Self::hf_mapped_story_selection(
+                    document,
+                    state.editing_mode,
+                    state.hf_variant,
+                    anchor,
+                    cursor,
+                ) else {
+                    return Ok(JsValue::NULL);
+                };
+                (
+                    state.editing_mode,
+                    state.hf_variant,
+                    cursor,
+                    anchor,
+                    document.clone(),
+                    range,
+                )
+            };
+            let Some((role, hf_variant)) = Self::hf_role_variant(mode, variant) else {
+                return Ok(JsValue::NULL);
+            };
+            let mut after_doc = before_doc.clone();
+            let normalized = style_id
+                .as_deref()
+                .map(str::trim)
+                .filter(|id| !id.is_empty())
+                .map(str::to_owned);
+            if !after_doc
+                .set_hf_story_character_style(role, hf_variant, range, normalized)
+                .map_err(|error| JsValue::from_str(&error))?
+            {
+                return Ok(JsValue::NULL);
+            }
+            self.state.borrow_mut().word_doc = Some(after_doc.clone());
+            self.push_hf_history_entry(HfHistoryEntry {
+                before_doc,
+                after_doc,
+                before_cursor: Some(cursor),
+                after_cursor: Some(cursor),
+                before_selection_anchor: Some(anchor),
+                after_selection_anchor: Some(anchor),
+                mode,
+                variant,
+            });
+            self.prepare_hf_edit_rerender(mode, cursor.page_index);
+            return self.finish_hf_edit_result_sync(mode);
         }
         let selection = {
             let state_ref = self.state.borrow();
@@ -21236,6 +22683,19 @@ mod tests {
     }
 
     #[test]
+    fn pending_underline_accepts_all_word_styles_and_clears_previous_kind() {
+        let mut formatting = InlineFormattingState::default();
+        for kind in crate::word::font::UNDERLINE_STYLES {
+            formatting.set_underline_kind("wavyDouble".into());
+            formatting.set_underline_kind(kind.into());
+            let properties = formatting.as_run_properties().expect("inline properties");
+            assert_eq!(properties.underline, Some(kind != "none"), "{kind}");
+            let expected = (!matches!(kind, "none" | "single")).then_some(kind);
+            assert_eq!(properties.underline_kind.as_deref(), expected, "{kind}");
+        }
+    }
+
+    #[test]
     fn caret_bold_and_italic_include_complex_script_properties() {
         let mut formatting = InlineFormattingState::default();
         formatting.set_bold(true);
@@ -21474,6 +22934,1909 @@ mod tests {
     }
 
     #[test]
+    fn header_footer_tabbed_multiline_selection_preserves_text_format_and_positions() {
+        use super::{EditingMode, HfEditCursor, HfSegment, HfVariant, WordDocument};
+        use crate::word_document::HfRunFormat;
+        use jade_docx_headless_api::HeadlessChangeCaseMode;
+        let data = include_bytes!("../../../public/fixtures/hello.docx");
+        let texts = ["左\tİ甲\t末", "\t中\t\t後\t", "首\t乙İ\t右\t尾", "tail"];
+        for mode in [EditingMode::Header, EditingMode::Footer] {
+            for variant in [HfVariant::Default, HfVariant::First, HfVariant::Even] {
+                for alignment in ["left", "center", "right"] {
+                    for (
+                        first_segment,
+                        first_offset,
+                        first_global,
+                        last_segment,
+                        last_offset,
+                        last_global,
+                    ) in [
+                        (HfSegment::Center, 2, 6, HfSegment::Right, 3, 13),
+                        (HfSegment::Right, 0, 10, HfSegment::Center, 3, 7),
+                        (HfSegment::Left, 3, 3, HfSegment::Left, 0, 0),
+                        (HfSegment::Center, 0, 4, HfSegment::Right, 7, 17),
+                        (HfSegment::Left, 0, 0, HfSegment::Left, 0, 0),
+                        (HfSegment::Right, 3, 13, HfSegment::Center, 3, 7),
+                    ] {
+                        for reverse in [false, true] {
+                            let (role, hf_variant) =
+                                OffscreenDocumentView::hf_role_variant(mode, variant).unwrap();
+                            let mut doc = futures::executor::block_on(WordDocument::load(
+                                data,
+                                &Options::default(),
+                            ))
+                            .unwrap();
+                            doc.ensure_hf_part_for_edit(role, hf_variant).unwrap();
+                            OffscreenDocumentView::replace_hf_line(&mut doc, mode, variant, 0, "")
+                                .unwrap();
+                            doc.split_hf_paragraph_at_display_offset(role, hf_variant, 0, 0, 3)
+                                .unwrap();
+                            for (index, text) in texts.iter().enumerate() {
+                                OffscreenDocumentView::replace_hf_line(
+                                    &mut doc, mode, variant, index, text,
+                                )
+                                .unwrap();
+                                doc.set_hf_paragraph_alignment(role, hf_variant, index, alignment)
+                                    .unwrap();
+                                doc.apply_hf_range_run_format(
+                                    role,
+                                    hf_variant,
+                                    index,
+                                    0,
+                                    text.len(),
+                                    &HfRunFormat {
+                                        bold: Some(index == 0),
+                                        italic: Some(index == 2),
+                                        font_size: Some(12.0),
+                                        ..Default::default()
+                                    },
+                                )
+                                .unwrap();
+                            }
+                            let first = HfEditCursor {
+                                page_index: 0,
+                                line_index: 0,
+                                segment: first_segment,
+                                offset: first_offset,
+                            };
+                            let last = HfEditCursor {
+                                line_index: 2,
+                                segment: last_segment,
+                                offset: last_offset,
+                                ..first
+                            };
+                            let (anchor, cursor) = if reverse {
+                                (last, first)
+                            } else {
+                                (first, last)
+                            };
+                            let range = OffscreenDocumentView::hf_mapped_story_selection(
+                                &doc, mode, variant, anchor, cursor,
+                            )
+                            .unwrap();
+                            let (start, end) = range.normalized();
+                            assert_eq!(
+                                (start.paragraph, start.offset, end.paragraph, end.offset),
+                                (0, first_global, 2, last_global)
+                            );
+                            assert_eq!(range.anchor.paragraph > range.focus.paragraph, reverse);
+                            let selected = format!(
+                                "{}\n{}\n{}",
+                                &texts[0][first_global..],
+                                texts[1],
+                                &texts[2][..last_global]
+                            );
+                            assert_eq!(
+                                OffscreenDocumentView::hf_mapped_selection_text(
+                                    &doc, mode, variant, range
+                                ),
+                                Some(selected.clone())
+                            );
+                            assert!(OffscreenDocumentView::hf_mapped_story_selection(
+                                &doc,
+                                mode,
+                                variant,
+                                HfEditCursor {
+                                    offset: usize::MAX,
+                                    ..anchor
+                                },
+                                cursor
+                            )
+                            .is_none());
+                            assert!(OffscreenDocumentView::hf_mapped_story_selection(
+                                &doc,
+                                mode,
+                                variant,
+                                HfEditCursor {
+                                    page_index: 1,
+                                    ..anchor
+                                },
+                                cursor
+                            )
+                            .is_none());
+                            let target = OffscreenDocumentView::hf_package_target_for_selection(
+                                &doc, mode, variant, anchor, cursor,
+                            )
+                            .unwrap();
+                            assert_eq!(target.range, range);
+                            assert_eq!(
+                                Some(target.part_path),
+                                doc.active_hf_reference(role, hf_variant)
+                                    .and_then(|id| doc.hf_part_path_for_reference(&id))
+                            );
+                            let segments = OffscreenDocumentView::hf_mapped_selection_segments(
+                                &doc, mode, variant, anchor, cursor,
+                            )
+                            .unwrap();
+                            let mut displayed = String::new();
+                            let lines =
+                                OffscreenDocumentView::variant_lines(&doc, mode, variant).unwrap();
+                            for (from, to) in segments {
+                                assert_eq!(from.line_index, to.line_index);
+                                assert_eq!(from.segment, to.segment);
+                                let line = &lines[from.line_index];
+                                let text = match from.segment {
+                                    HfSegment::Left => &line.left,
+                                    HfSegment::Center => &line.center,
+                                    HfSegment::Right => &line.right,
+                                }
+                                .as_deref()
+                                .unwrap();
+                                displayed.push_str(&text[from.offset..to.offset]);
+                            }
+                            assert_eq!(
+                                displayed.replace('\t', ""),
+                                selected.replace(['\t', '\n'], "")
+                            );
+                            assert!(doc
+                                .apply_hf_story_run_format(
+                                    role,
+                                    hf_variant,
+                                    range,
+                                    &HfRunFormat {
+                                        underline: Some(true),
+                                        font_size: Some(20.0),
+                                        ..Default::default()
+                                    }
+                                )
+                                .unwrap());
+                            let selected_state = doc
+                                .hf_story_range_run_state(role, hf_variant, range)
+                                .unwrap()
+                                .unwrap();
+                            assert!(selected_state.all_underline);
+                            assert_eq!(selected_state.font_size, Some(20.0));
+                            let mut changed = doc.clone();
+                            let (after_anchor, after_cursor) =
+                                OffscreenDocumentView::change_hf_case_selection(
+                                    &mut changed,
+                                    mode,
+                                    variant,
+                                    anchor,
+                                    cursor,
+                                    range,
+                                    HeadlessChangeCaseMode::Lower,
+                                )
+                                .unwrap()
+                                .unwrap();
+                            let changed_range = OffscreenDocumentView::hf_mapped_story_selection(
+                                &changed,
+                                mode,
+                                variant,
+                                after_anchor,
+                                after_cursor,
+                            )
+                            .unwrap();
+                            assert_eq!(
+                                changed_range.anchor.paragraph > changed_range.focus.paragraph,
+                                reverse
+                            );
+                            assert_eq!(
+                                OffscreenDocumentView::hf_mapped_selection_text(
+                                    &changed,
+                                    mode,
+                                    variant,
+                                    changed_range
+                                ),
+                                Some(selected.to_lowercase())
+                            );
+                            let after = OffscreenDocumentView::delete_hf_mapped_story_selection(
+                                &mut doc, mode, variant, anchor, cursor, range,
+                            )
+                            .unwrap()
+                            .unwrap();
+                            let expected = format!(
+                                "{}{}",
+                                &texts[0][..first_global],
+                                &texts[2][last_global..]
+                            );
+                            let reopened = futures::executor::block_on(WordDocument::load(
+                                &doc.export_docx().unwrap(),
+                                &Options::default(),
+                            ))
+                            .unwrap();
+                            assert_eq!(
+                                reopened
+                                    .hf_plain_paragraph_text(role, hf_variant, 0)
+                                    .as_deref(),
+                                Some(expected.as_str())
+                            );
+                            assert_eq!(
+                                reopened
+                                    .hf_plain_paragraph_text(role, hf_variant, 1)
+                                    .as_deref(),
+                                Some("tail")
+                            );
+                            assert!(reopened
+                                .hf_plain_paragraph_text(role, hf_variant, 2)
+                                .is_none());
+                            for (index, ch) in expected.char_indices().filter(|(_, ch)| *ch != '\t')
+                            {
+                                let formats = reopened.hf_run_formats_in_range(
+                                    role,
+                                    hf_variant,
+                                    0,
+                                    index,
+                                    index + ch.len_utf8(),
+                                );
+                                assert!(!formats.is_empty());
+                                assert!(formats.iter().all(|format| format.font_size
+                                    == Some(12.0)
+                                    && format.bold == Some(index < first_global)
+                                    && format.italic == Some(index >= first_global)
+                                    && format.underline.as_deref() != Some("single")));
+                            }
+                            let (_, _, prefix) = OffscreenDocumentView::hf_line_segment_mapping(
+                                &doc, mode, variant, after,
+                            )
+                            .unwrap();
+                            assert_eq!(prefix + after.offset, first_global);
+                            let mut with_input = expected.clone();
+                            with_input.insert(first_global, 'X');
+                            OffscreenDocumentView::edit_hf_line_range(
+                                &mut doc,
+                                mode,
+                                variant,
+                                after,
+                                after.offset,
+                                after.offset,
+                                "X",
+                                &with_input,
+                            )
+                            .unwrap();
+                            assert_eq!(
+                                doc.hf_plain_paragraph_text(role, hf_variant, 0).as_deref(),
+                                Some(with_input.as_str())
+                            );
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn header_footer_cross_segment_format_and_case_preserve_selection() {
+        use super::{EditingMode, HfEditCursor, HfSegment, HfVariant, WordDocument};
+        use crate::word_document::HfRunFormat;
+        use jade_docx_headless_api::HeadlessChangeCaseMode;
+        let data = include_bytes!("../../../public/fixtures/hello.docx");
+        let text = "pİx\tİa\tİßz\t終";
+        for mode in [EditingMode::Header, EditingMode::Footer] {
+            for variant in [HfVariant::Default, HfVariant::First, HfVariant::Even] {
+                for alignment in ["left", "center", "right"] {
+                    for reverse in [false, true] {
+                        for (case, expected, end_offset) in [
+                            (
+                                HeadlessChangeCaseMode::Lower,
+                                "pi\u{307}x\ti\u{307}a\ti\u{307}ßz\t終",
+                                5,
+                            ),
+                            (HeadlessChangeCaseMode::Upper, "pİX\tİA\tİSSz\t終", 4),
+                            (
+                                HeadlessChangeCaseMode::Toggle,
+                                "pi\u{307}X\ti\u{307}A\ti\u{307}SSz\t終",
+                                5,
+                            ),
+                        ] {
+                            let (role, hf_variant) =
+                                OffscreenDocumentView::hf_role_variant(mode, variant).unwrap();
+                            let mut doc = futures::executor::block_on(WordDocument::load(
+                                data,
+                                &Options::default(),
+                            ))
+                            .unwrap();
+                            doc.ensure_hf_part_for_edit(role, hf_variant).unwrap();
+                            OffscreenDocumentView::replace_hf_line(
+                                &mut doc, mode, variant, 0, text,
+                            )
+                            .unwrap();
+                            doc.set_hf_paragraph_alignment(role, hf_variant, 0, alignment)
+                                .unwrap();
+                            doc.apply_hf_range_run_format(
+                                role,
+                                hf_variant,
+                                0,
+                                0,
+                                text.len(),
+                                &HfRunFormat {
+                                    italic: Some(true),
+                                    font_size: Some(12.0),
+                                    ..Default::default()
+                                },
+                            )
+                            .unwrap();
+                            let left = HfEditCursor {
+                                page_index: 0,
+                                line_index: 0,
+                                segment: HfSegment::Left,
+                                offset: 1,
+                            };
+                            let right = HfEditCursor {
+                                segment: HfSegment::Right,
+                                offset: 4,
+                                ..left
+                            };
+                            let (anchor, cursor) = if reverse {
+                                (right, left)
+                            } else {
+                                (left, right)
+                            };
+                            let range = OffscreenDocumentView::hf_mapped_line_selection_range(
+                                &doc, mode, variant, anchor, cursor,
+                            )
+                            .unwrap();
+                            assert_eq!(range.anchor.offset, if reverse { 13 } else { 1 });
+                            assert_eq!(range.focus.offset, if reverse { 1 } else { 13 });
+                            let (start, end) = range.normalized();
+                            doc.apply_hf_range_run_format(
+                                role,
+                                hf_variant,
+                                0,
+                                start.offset,
+                                end.offset,
+                                &HfRunFormat {
+                                    bold: Some(true),
+                                    font_size: Some(20.0),
+                                    ..Default::default()
+                                },
+                            )
+                            .unwrap();
+                            let selected = doc
+                                .hf_range_run_state(role, hf_variant, 0, start.offset, end.offset)
+                                .unwrap()
+                                .unwrap();
+                            assert!(selected.all_bold && selected.all_italic);
+                            assert_eq!(selected.font_size, Some(20.0));
+                            let (after_anchor, after_cursor) =
+                                OffscreenDocumentView::change_hf_case_selection(
+                                    &mut doc, mode, variant, anchor, cursor, range, case,
+                                )
+                                .unwrap()
+                                .unwrap();
+                            let (new_left, new_right) = if reverse {
+                                (after_cursor, after_anchor)
+                            } else {
+                                (after_anchor, after_cursor)
+                            };
+                            assert_eq!((new_left.segment, new_left.offset), (HfSegment::Left, 1));
+                            assert_eq!(
+                                (new_right.segment, new_right.offset),
+                                (HfSegment::Right, end_offset)
+                            );
+                            let after_range =
+                                OffscreenDocumentView::hf_mapped_line_selection_range(
+                                    &doc,
+                                    mode,
+                                    variant,
+                                    after_anchor,
+                                    after_cursor,
+                                )
+                                .unwrap();
+                            assert_eq!(
+                                after_range.anchor.offset > after_range.focus.offset,
+                                reverse
+                            );
+                            let (start, end) = after_range.normalized();
+                            let reopened = futures::executor::block_on(WordDocument::load(
+                                &doc.export_docx().unwrap(),
+                                &Options::default(),
+                            ))
+                            .unwrap();
+                            assert_eq!(
+                                reopened
+                                    .hf_plain_paragraph_text(role, hf_variant, 0)
+                                    .as_deref(),
+                                Some(expected)
+                            );
+                            for (index, ch) in expected.char_indices().filter(|(_, ch)| *ch != '\t')
+                            {
+                                let selected = (start.offset..end.offset).contains(&index);
+                                let formats = reopened.hf_run_formats_in_range(
+                                    role,
+                                    hf_variant,
+                                    0,
+                                    index,
+                                    index + ch.len_utf8(),
+                                );
+                                assert!(!formats.is_empty());
+                                assert!(formats.iter().all(|format| format.italic == Some(true)
+                                    && format.font_size
+                                        == Some(if selected { 20.0 } else { 12.0 })
+                                    && (format.bold == Some(true)) == selected));
+                            }
+                            // Another range edit must retain the original direction and include
+                            // the updated tab prefixes after Unicode expansion.
+                            doc.apply_hf_range_run_format(
+                                role,
+                                hf_variant,
+                                0,
+                                start.offset,
+                                end.offset,
+                                &HfRunFormat {
+                                    bold: Some(false),
+                                    ..Default::default()
+                                },
+                            )
+                            .unwrap();
+                            let selected = doc
+                                .hf_range_run_state(role, hf_variant, 0, start.offset, end.offset)
+                                .unwrap()
+                                .unwrap();
+                            assert!(!selected.all_bold && selected.all_italic);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn header_footer_tab_selection_direction_uses_paragraph_offsets() {
+        use super::{EditingMode, HfEditCursor, HfSegment, HfVariant, WordDocument};
+        let data = include_bytes!("../../../public/fixtures/hello.docx");
+        let mut doc =
+            futures::executor::block_on(WordDocument::load(data, &Options::default())).unwrap();
+        let (mode, variant) = (EditingMode::Header, HfVariant::Default);
+        let (role, hf_variant) = OffscreenDocumentView::hf_role_variant(mode, variant).unwrap();
+        doc.ensure_hf_part_for_edit(role, hf_variant).unwrap();
+        OffscreenDocumentView::replace_hf_line(&mut doc, mode, variant, 0, "left\tcenter\tright")
+            .unwrap();
+        let left = HfEditCursor {
+            page_index: 0,
+            line_index: 0,
+            segment: HfSegment::Left,
+            offset: 4,
+        };
+        let center = HfEditCursor {
+            segment: HfSegment::Center,
+            offset: 0,
+            ..left
+        };
+        for (anchor, cursor, expected) in [(left, center, (4, 5)), (center, left, (5, 4))] {
+            let range = OffscreenDocumentView::hf_mapped_line_selection_range(
+                &doc, mode, variant, anchor, cursor,
+            )
+            .unwrap();
+            assert_eq!((range.anchor.offset, range.focus.offset), expected);
+        }
+    }
+
+    #[test]
+    fn header_footer_cross_segment_deletion_preserves_format_and_caret() {
+        use super::{EditingMode, HfEditCursor, HfSegment, HfVariant, WordDocument};
+        use crate::word_document::HfRunFormat;
+        let data = include_bytes!("../../../public/fixtures/hello.docx");
+        let text = "左端\t中央\t右側\t末";
+        for mode in [EditingMode::Header, EditingMode::Footer] {
+            for variant in [HfVariant::Default, HfVariant::First, HfVariant::Even] {
+                for alignment in ["left", "center", "right"] {
+                    for (a_segment, a_offset, b_segment, b_offset, start, end) in [
+                        (HfSegment::Left, 3, HfSegment::Center, 3, 3, 10),
+                        (HfSegment::Left, 6, HfSegment::Center, 0, 6, 7),
+                        (HfSegment::Center, 6, HfSegment::Right, 0, 13, 14),
+                        (HfSegment::Center, 3, HfSegment::Right, 3, 10, 17),
+                        (HfSegment::Left, 0, HfSegment::Right, 10, 0, 24),
+                        (HfSegment::Left, 3, HfSegment::Right, 7, 3, 21),
+                    ] {
+                        for reverse in [false, true] {
+                            let (role, hf_variant) =
+                                OffscreenDocumentView::hf_role_variant(mode, variant).unwrap();
+                            let mut doc = futures::executor::block_on(WordDocument::load(
+                                data,
+                                &Options::default(),
+                            ))
+                            .unwrap();
+                            doc.ensure_hf_part_for_edit(role, hf_variant).unwrap();
+                            OffscreenDocumentView::replace_hf_line(
+                                &mut doc, mode, variant, 0, text,
+                            )
+                            .unwrap();
+                            doc.set_hf_paragraph_alignment(role, hf_variant, 0, alignment)
+                                .unwrap();
+                            for (from, to, format) in [
+                                (
+                                    0,
+                                    6,
+                                    HfRunFormat {
+                                        bold: Some(true),
+                                        font_size: Some(20.0),
+                                        ..Default::default()
+                                    },
+                                ),
+                                (
+                                    7,
+                                    13,
+                                    HfRunFormat {
+                                        italic: Some(true),
+                                        font_size: Some(14.0),
+                                        ..Default::default()
+                                    },
+                                ),
+                                (
+                                    14,
+                                    24,
+                                    HfRunFormat {
+                                        underline: Some(true),
+                                        font_size: Some(12.0),
+                                        ..Default::default()
+                                    },
+                                ),
+                            ] {
+                                doc.apply_hf_range_run_format(
+                                    role, hf_variant, 0, from, to, &format,
+                                )
+                                .unwrap();
+                            }
+                            let a = HfEditCursor {
+                                page_index: 0,
+                                line_index: 0,
+                                segment: a_segment,
+                                offset: a_offset,
+                            };
+                            let b = HfEditCursor {
+                                segment: b_segment,
+                                offset: b_offset,
+                                ..a
+                            };
+                            let (anchor, cursor) = if reverse { (b, a) } else { (a, b) };
+                            assert_eq!(
+                                OffscreenDocumentView::hf_mapped_line_selection(
+                                    &doc, mode, variant, anchor, cursor
+                                ),
+                                Some((start, end))
+                            );
+                            assert!(OffscreenDocumentView::hf_mapped_line_selection(
+                                &doc,
+                                mode,
+                                variant,
+                                HfEditCursor {
+                                    offset: 1,
+                                    ..anchor
+                                },
+                                cursor
+                            )
+                            .is_none());
+                            let after = OffscreenDocumentView::delete_hf_mapped_line_selection(
+                                &mut doc, mode, variant, anchor, cursor,
+                            )
+                            .unwrap()
+                            .unwrap();
+                            let expected = format!("{}{}", &text[..start], &text[end..]);
+                            let reopened = futures::executor::block_on(WordDocument::load(
+                                &doc.export_docx().unwrap(),
+                                &Options::default(),
+                            ))
+                            .unwrap();
+                            assert_eq!(
+                                reopened
+                                    .hf_plain_paragraph_text(role, hf_variant, 0)
+                                    .as_deref(),
+                                Some(expected.as_str())
+                            );
+                            for (index, ch) in expected.char_indices().filter(|(_, ch)| *ch != '\t')
+                            {
+                                let original = if index < start {
+                                    index
+                                } else {
+                                    index + end - start
+                                };
+                                let formats = reopened.hf_run_formats_in_range(
+                                    role,
+                                    hf_variant,
+                                    0,
+                                    index,
+                                    index + ch.len_utf8(),
+                                );
+                                assert!(!formats.is_empty());
+                                assert!(formats.iter().all(|format| if original < 6 {
+                                    format.bold == Some(true) && format.font_size == Some(20.0)
+                                } else if original < 13 {
+                                    format.italic == Some(true) && format.font_size == Some(14.0)
+                                } else {
+                                    format.underline.as_deref() == Some("single")
+                                        && format.font_size == Some(12.0)
+                                }));
+                            }
+                            let (_, _, prefix) = OffscreenDocumentView::hf_line_segment_mapping(
+                                &doc, mode, variant, after,
+                            )
+                            .unwrap();
+                            assert_eq!(prefix + after.offset, start);
+                            let mut with_input = expected.clone();
+                            with_input.insert(start, 'X');
+                            OffscreenDocumentView::edit_hf_line_range(
+                                &mut doc,
+                                mode,
+                                variant,
+                                after,
+                                after.offset,
+                                after.offset,
+                                "X",
+                                &with_input,
+                            )
+                            .unwrap();
+                            assert_eq!(
+                                doc.hf_plain_paragraph_text(role, hf_variant, 0).as_deref(),
+                                Some(with_input.as_str())
+                            );
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn header_footer_enter_preserves_empty_tab_segments() {
+        use super::{EditingMode, HfEditCursor, HfSegment, HfVariant, WordDocument};
+        use crate::word_document::HfRunFormat;
+        let data = include_bytes!("../../../public/fixtures/hello.docx");
+        for mode in [EditingMode::Header, EditingMode::Footer] {
+            for variant in [HfVariant::Default, HfVariant::First, HfVariant::Even] {
+                for alignment in ["left", "center", "right"] {
+                    for text in [
+                        "左\t",
+                        "左\t中央\t",
+                        "\t",
+                        "\t\t",
+                        "左\t\t右",
+                        "左\t中央\t右\t末",
+                        "\t\t\t",
+                        "左\t\t\t末\t",
+                    ] {
+                        let mut prefix = 0;
+                        for (segment, part) in
+                            [HfSegment::Left, HfSegment::Center, HfSegment::Right]
+                                .into_iter()
+                                .zip(text.splitn(3, '\t'))
+                        {
+                            for offset in part
+                                .char_indices()
+                                .map(|(index, _)| index)
+                                .chain(std::iter::once(part.len()))
+                            {
+                                let (role, hf_variant) =
+                                    OffscreenDocumentView::hf_role_variant(mode, variant).unwrap();
+                                let mut doc = futures::executor::block_on(WordDocument::load(
+                                    data,
+                                    &Options::default(),
+                                ))
+                                .unwrap();
+                                doc.ensure_hf_part_for_edit(role, hf_variant).unwrap();
+                                OffscreenDocumentView::replace_hf_line(
+                                    &mut doc, mode, variant, 0, text,
+                                )
+                                .unwrap();
+                                doc.set_hf_paragraph_alignment(role, hf_variant, 0, alignment)
+                                    .unwrap();
+                                doc.apply_hf_range_run_format(
+                                    role,
+                                    hf_variant,
+                                    0,
+                                    0,
+                                    text.len(),
+                                    &HfRunFormat {
+                                        bold: Some(true),
+                                        font_size: Some(20.0),
+                                        ..Default::default()
+                                    },
+                                )
+                                .unwrap();
+                                let cursor = HfEditCursor {
+                                    page_index: 0,
+                                    line_index: 0,
+                                    segment,
+                                    offset,
+                                };
+                                assert_eq!(
+                                    OffscreenDocumentView::hf_line_segment_mapping(
+                                        &doc, mode, variant, cursor
+                                    )
+                                    .map(|(_, _, prefix)| prefix),
+                                    Some(prefix),
+                                    "{mode:?}/{variant:?}/{alignment} text={text:?} segment={segment:?} offset={offset}"
+                                );
+                                let after = OffscreenDocumentView::split_hf_mapped_paragraph(
+                                    &mut doc, mode, variant, cursor, 1,
+                                )
+                                .unwrap()
+                                .unwrap();
+                                let split = prefix + offset;
+                                let reopened = futures::executor::block_on(WordDocument::load(
+                                    &doc.export_docx().unwrap(),
+                                    &Options::default(),
+                                ))
+                                .unwrap();
+                                for (paragraph, expected) in
+                                    [(0, &text[..split]), (1, &text[split..])]
+                                {
+                                    assert_eq!(
+                                        reopened
+                                            .hf_plain_paragraph_text(role, hf_variant, paragraph)
+                                            .as_deref(),
+                                        Some(expected)
+                                    );
+                                    for (index, ch) in
+                                        expected.char_indices().filter(|(_, ch)| *ch != '\t')
+                                    {
+                                        let formats = reopened.hf_run_formats_in_range(
+                                            role,
+                                            hf_variant,
+                                            paragraph,
+                                            index,
+                                            index + ch.len_utf8(),
+                                        );
+                                        assert!(formats
+                                            .iter()
+                                            .all(|format| format.bold == Some(true)
+                                                && format.font_size == Some(20.0)));
+                                    }
+                                }
+                                let expected = format!("X{}", &text[split..]);
+                                OffscreenDocumentView::edit_hf_line_range(
+                                    &mut doc, mode, variant, after, 0, 0, "X", &expected,
+                                )
+                                .unwrap();
+                                assert_eq!(
+                                    doc.hf_plain_paragraph_text(role, hf_variant, 1).as_deref(),
+                                    Some(expected.as_str())
+                                );
+                            }
+                            prefix += part.len() + 1;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn header_footer_enter_maps_tabbed_segments_and_preserves_run_format() {
+        use super::{EditingMode, HfEditCursor, HfSegment, HfVariant, WordDocument};
+        use crate::word_document::HfRunFormat;
+        let data = include_bytes!("../../../public/fixtures/hello.docx");
+        let text = "左\t中央\t右";
+        for mode in [EditingMode::Header, EditingMode::Footer] {
+            for variant in [HfVariant::Default, HfVariant::First, HfVariant::Even] {
+                for alignment in ["left", "center", "right"] {
+                    for (segment, offset, prefix) in [
+                        (HfSegment::Left, 0, 0),
+                        (HfSegment::Left, 3, 0),
+                        (HfSegment::Center, 0, 4),
+                        (HfSegment::Center, 3, 4),
+                        (HfSegment::Center, 6, 4),
+                        (HfSegment::Right, 0, 11),
+                        (HfSegment::Right, 3, 11),
+                    ] {
+                        for count in [1, 2] {
+                            let (role, hf_variant) =
+                                OffscreenDocumentView::hf_role_variant(mode, variant).unwrap();
+                            let mut doc = futures::executor::block_on(WordDocument::load(
+                                data,
+                                &Options::default(),
+                            ))
+                            .unwrap();
+                            doc.ensure_hf_part_for_edit(role, hf_variant).unwrap();
+                            OffscreenDocumentView::replace_hf_line(
+                                &mut doc, mode, variant, 0, text,
+                            )
+                            .unwrap();
+                            doc.set_hf_paragraph_alignment(role, hf_variant, 0, alignment)
+                                .unwrap();
+                            for (start, end, format) in [
+                                (
+                                    0,
+                                    3,
+                                    HfRunFormat {
+                                        bold: Some(true),
+                                        font_size: Some(20.0),
+                                        ..Default::default()
+                                    },
+                                ),
+                                (
+                                    4,
+                                    10,
+                                    HfRunFormat {
+                                        italic: Some(true),
+                                        font_size: Some(14.0),
+                                        ..Default::default()
+                                    },
+                                ),
+                                (
+                                    11,
+                                    14,
+                                    HfRunFormat {
+                                        underline: Some(true),
+                                        font_size: Some(12.0),
+                                        ..Default::default()
+                                    },
+                                ),
+                            ] {
+                                assert!(doc
+                                    .apply_hf_range_run_format(
+                                        role, hf_variant, 0, start, end, &format
+                                    )
+                                    .unwrap());
+                            }
+                            let before: Vec<_> = text
+                                .char_indices()
+                                .filter(|(_, ch)| *ch != '\t')
+                                .map(|(index, _)| {
+                                    (
+                                        index,
+                                        doc.hf_run_formats_in_range(
+                                            role,
+                                            hf_variant,
+                                            0,
+                                            index,
+                                            index + 3,
+                                        )[0]
+                                        .clone(),
+                                    )
+                                })
+                                .collect();
+                            let cursor = HfEditCursor {
+                                page_index: 0,
+                                line_index: 0,
+                                segment,
+                                offset,
+                            };
+                            let after = OffscreenDocumentView::split_hf_mapped_paragraph(
+                                &mut doc, mode, variant, cursor, count,
+                            )
+                            .unwrap()
+                            .unwrap();
+                            let split = prefix + offset;
+                            assert_eq!(
+                                doc.hf_plain_paragraph_text(role, hf_variant, 0).as_deref(),
+                                Some(&text[..split])
+                            );
+                            assert_eq!(
+                                doc.hf_plain_paragraph_text(role, hf_variant, count)
+                                    .as_deref(),
+                                Some(&text[split..])
+                            );
+                            assert_eq!(after.line_index, count);
+                            assert_eq!(after.offset, 0);
+                            assert_eq!(
+                                OffscreenDocumentView::hf_line_segment_mapping(
+                                    &doc, mode, variant, after
+                                )
+                                .map(|(_, _, prefix)| prefix),
+                                Some(0)
+                            );
+                            let reopened = futures::executor::block_on(WordDocument::load(
+                                &doc.export_docx().unwrap(),
+                                &Options::default(),
+                            ))
+                            .unwrap();
+                            for (index, format) in before {
+                                let (paragraph, offset) = if index < split {
+                                    (0, index)
+                                } else {
+                                    (count, index - split)
+                                };
+                                let actual = reopened.hf_run_formats_in_range(
+                                    role,
+                                    hf_variant,
+                                    paragraph,
+                                    offset,
+                                    offset + 3,
+                                )[0]
+                                .clone();
+                                assert_eq!(
+                                    (
+                                        actual.bold,
+                                        actual.italic,
+                                        actual.underline,
+                                        actual.font_size
+                                    ),
+                                    (
+                                        format.bold,
+                                        format.italic,
+                                        format.underline,
+                                        format.font_size
+                                    ),
+                                    "{mode:?}/{variant:?}/{alignment} split={split} count={count} char={index}"
+                                );
+                            }
+                            let expected = format!("X{}", &text[split..]);
+                            OffscreenDocumentView::edit_hf_line_range(
+                                &mut doc, mode, variant, after, 0, 0, "X", &expected,
+                            )
+                            .unwrap();
+                            assert_eq!(
+                                doc.hf_plain_paragraph_text(role, hf_variant, count)
+                                    .as_deref(),
+                                Some(expected.as_str())
+                            );
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn header_footer_position_edits_map_aligned_and_tabbed_segments() {
+        use super::{EditingMode, HfEditCursor, HfSegment, HfVariant, WordDocument};
+        let data = include_bytes!("../../../public/fixtures/hello.docx");
+        for mode in [EditingMode::Header, EditingMode::Footer] {
+            for variant in [HfVariant::Default, HfVariant::First, HfVariant::Even] {
+                for tabbed in [false, true] {
+                    let (role, hf_variant) =
+                        OffscreenDocumentView::hf_role_variant(mode, variant).unwrap();
+                    let mut doc =
+                        futures::executor::block_on(WordDocument::load(data, &Options::default()))
+                            .unwrap();
+                    doc.ensure_hf_part_for_edit(role, hf_variant).unwrap();
+                    let initial = if tabbed { "L\t日日\tR" } else { "日日" };
+                    OffscreenDocumentView::replace_hf_line(&mut doc, mode, variant, 0, initial)
+                        .unwrap();
+                    if !tabbed {
+                        doc.set_hf_paragraph_alignment(role, hf_variant, 0, "center")
+                            .unwrap();
+                    }
+                    let cursor = HfEditCursor {
+                        page_index: 0,
+                        line_index: 0,
+                        segment: HfSegment::Center,
+                        offset: 0,
+                    };
+                    let expected = if tabbed { "L\t日\tR" } else { "日" };
+                    OffscreenDocumentView::edit_hf_line_range(
+                        &mut doc, mode, variant, cursor, 0, 3, "", expected,
+                    )
+                    .unwrap();
+                    assert_eq!(
+                        doc.hf_plain_paragraph_text(role, hf_variant, 0).as_deref(),
+                        Some(expected)
+                    );
+                    OffscreenDocumentView::edit_hf_line_range(
+                        &mut doc, mode, variant, cursor, 0, 0, "日", initial,
+                    )
+                    .unwrap();
+                    assert_eq!(
+                        doc.hf_plain_paragraph_text(role, hf_variant, 0).as_deref(),
+                        Some(initial)
+                    );
+                }
+            }
+        }
+    }
+    #[test]
+    fn header_footer_selected_paragraph_formats_preserve_selection_and_neighbors() {
+        use super::{EditingMode, HfEditCursor, HfSegment, HfVariant, WordDocument};
+        use jade_docx_headless_api::HeadlessCommand;
+        let data = include_bytes!("../../../public/fixtures/hello.docx");
+        for mode in [EditingMode::Header, EditingMode::Footer] {
+            for variant in [HfVariant::Default, HfVariant::First, HfVariant::Even] {
+                for alignment in ["left", "center", "right"] {
+                    for tabbed in [false, true] {
+                        for reverse in [false, true] {
+                            for kind in 0..18 {
+                                let (role, hf_variant) =
+                                    OffscreenDocumentView::hf_role_variant(mode, variant).unwrap();
+                                let mut doc = futures::executor::block_on(WordDocument::load(
+                                    data,
+                                    &Options::default(),
+                                ))
+                                .unwrap();
+                                doc.ensure_hf_part_for_edit(role, hf_variant).unwrap();
+                                OffscreenDocumentView::replace_hf_line(
+                                    &mut doc, mode, variant, 0, "",
+                                )
+                                .unwrap();
+                                doc.split_hf_paragraph_at_display_offset(role, hf_variant, 0, 0, 4)
+                                    .unwrap();
+                                let texts = if tabbed {
+                                    ["before", "左\tİ\t右", "middle", "\t終\t", "after"]
+                                } else {
+                                    ["before", "先İ", "middle", "終Z", "after"]
+                                };
+                                for (index, text) in texts.iter().enumerate() {
+                                    OffscreenDocumentView::replace_hf_line(
+                                        &mut doc, mode, variant, index, text,
+                                    )
+                                    .unwrap();
+                                    doc.set_hf_paragraph_alignment(
+                                        role, hf_variant, index, alignment,
+                                    )
+                                    .unwrap();
+                                }
+                                let segment = if tabbed {
+                                    HfSegment::Center
+                                } else {
+                                    OffscreenDocumentView::hf_segment_for_alignment(alignment)
+                                };
+                                let first = HfEditCursor {
+                                    page_index: 2,
+                                    line_index: 1,
+                                    segment,
+                                    offset: if tabbed { 2 } else { 3 },
+                                };
+                                let last = HfEditCursor {
+                                    line_index: 3,
+                                    offset: 3,
+                                    ..first
+                                };
+                                let (anchor, cursor) = if reverse {
+                                    (last, first)
+                                } else {
+                                    (first, last)
+                                };
+                                let original_range = OffscreenDocumentView::hf_mapped_story_range(
+                                    &doc, mode, variant, anchor, cursor,
+                                )
+                                .unwrap();
+                                let neighbors = [0, 4].map(|index| {
+                                    serde_json::to_value(
+                                        doc.hf_ruler_paragraph(role, hf_variant, index).unwrap(),
+                                    )
+                                    .unwrap()
+                                });
+                                let target_alignment = if alignment == "right" {
+                                    "center"
+                                } else {
+                                    "right"
+                                };
+                                let command = match kind {
+                                    0 => HeadlessCommand::SetParagraphAlignment {
+                                        start_paragraph: 0,
+                                        end_paragraph: 0,
+                                        alignment: target_alignment.into(),
+                                    },
+                                    1 => HeadlessCommand::SetParagraphStyle {
+                                        start_paragraph: 0,
+                                        end_paragraph: 0,
+                                        style_id: Some("Heading1".into()),
+                                    },
+                                    2 => HeadlessCommand::SetParagraphIndent {
+                                        start_paragraph: 0,
+                                        end_paragraph: 0,
+                                        left: Some(36.0),
+                                        right: None,
+                                        first_line: None,
+                                        hanging: None,
+                                        left_chars: None,
+                                        right_chars: None,
+                                        first_line_chars: None,
+                                        hanging_chars: None,
+                                        clear_special: false,
+                                    },
+                                    3 => HeadlessCommand::SetParagraphLineSpacing {
+                                        start_paragraph: 0,
+                                        end_paragraph: 0,
+                                        line: None,
+                                        line_rule: None,
+                                        before: Some(12.0),
+                                        after: Some(18.0),
+                                    },
+                                    4 => HeadlessCommand::SetParagraphShading {
+                                        start_paragraph: 0,
+                                        end_paragraph: 0,
+                                        color: Some("C0FFEE".into()),
+                                    },
+                                    5 => HeadlessCommand::SetParagraphDirection {
+                                        start_paragraph: 0,
+                                        end_paragraph: 0,
+                                        bidi: true,
+                                    },
+                                    6 => HeadlessCommand::SetParagraphPagination {
+                                        start_paragraph: 0,
+                                        end_paragraph: 0,
+                                        keep_next: Some(true),
+                                        keep_lines: Some(true),
+                                        page_break_before: Some(false),
+                                        widow_control: Some(false),
+                                    },
+                                    7 => HeadlessCommand::SetParagraphOptions {
+                                        start_paragraph: 0,
+                                        end_paragraph: 0,
+                                        contextual_spacing: Some(true),
+                                        suppress_line_numbers: Some(true),
+                                        suppress_auto_hyphens: Some(true),
+                                        tabs: None,
+                                        borders: None,
+                                        shading: None,
+                                    },
+                                    8 => HeadlessCommand::SetParagraphBorders {
+                                        start_paragraph: 0,
+                                        end_paragraph: 0,
+                                        top: Some(jade_docx_headless_api::HeadlessBorderEdge {
+                                            style: Some("double".into()),
+                                            width: Some(1.5),
+                                            color: Some("123456".into()),
+                                        }),
+                                        bottom: None,
+                                        left: None,
+                                        right: None,
+                                    },
+                                    9 | 10 => HeadlessCommand::AdjustParagraphIndent {
+                                        start_paragraph: 0, end_paragraph: 0,
+                                        direction: jade_docx_headless_api::HeadlessIndentDirection::Increase,
+                                        target: if kind == 9 { jade_docx_headless_api::HeadlessIndentTarget::Start } else { jade_docx_headless_api::HeadlessIndentTarget::Hanging },
+                                    },
+                                    11 => HeadlessCommand::ToggleParagraphSpaceBefore { start_paragraph: 0, end_paragraph: 0 },
+                                    12 => HeadlessCommand::SetParagraphTypography {
+                                        start_paragraph: 0, end_paragraph: 0,
+                                        typography: jade_docx_headless_api::HeadlessParagraphTypography {
+                                            kinsoku: Some(false), word_wrap: Some(false), overflow_punctuation: Some(false),
+                                            top_line_punctuation: Some(true), auto_space_de: Some(false), auto_space_dn: Some(false),
+                                        },
+                                    },
+                                    13 => HeadlessCommand::SetParagraphSnapToGrid { start_paragraph: 0, end_paragraph: 0, snap: false },
+                                    14..=16 => HeadlessCommand::ApplyMultilevelList {
+                                        start_paragraph: 0, end_paragraph: 0, level: 2,
+                                        preset: match kind {
+                                            14 => jade_docx_headless_api::HeadlessMultilevelListPreset::BulletHierarchy,
+                                            15 => jade_docx_headless_api::HeadlessMultilevelListPreset::DecimalHierarchy,
+                                            _ => jade_docx_headless_api::HeadlessMultilevelListPreset::ChineseOfficial,
+                                        },
+                                    },
+                                    _ => HeadlessCommand::ApplyCustomMultilevelList {
+                                        start_paragraph: 0, end_paragraph: 0, level: 0,
+                                        levels: vec![jade_docx_headless_api::HeadlessCustomNumberingLevel {
+                                            num_fmt: "lowerLetter".into(), lvl_text: "%1)".into(),
+                                            indent_left: 720, hanging: Some(360), start: Some(3),
+                                        }],
+                                    },
+                                };
+                                let before = doc.export_docx().unwrap();
+                                assert!(OffscreenDocumentView::edit_hf_selected_paragraphs(
+                                    &mut doc,
+                                    mode,
+                                    variant,
+                                    cursor,
+                                    Some(HfEditCursor {
+                                        page_index: 1,
+                                        ..anchor
+                                    }),
+                                    &[command.clone()]
+                                )
+                                .unwrap()
+                                .is_none());
+                                assert_eq!(doc.export_docx().unwrap(), before);
+                                let (after_cursor, after_anchor) =
+                                    OffscreenDocumentView::edit_hf_selected_paragraphs(
+                                        &mut doc,
+                                        mode,
+                                        variant,
+                                        cursor,
+                                        Some(anchor),
+                                        &[command],
+                                    )
+                                    .unwrap()
+                                    .unwrap();
+                                assert_eq!(
+                                    OffscreenDocumentView::hf_mapped_story_range(
+                                        &doc,
+                                        mode,
+                                        variant,
+                                        after_anchor.unwrap(),
+                                        after_cursor
+                                    ),
+                                    Some(original_range)
+                                );
+                                let reopened = futures::executor::block_on(WordDocument::load(
+                                    &doc.export_docx().unwrap(),
+                                    &Options::default(),
+                                ))
+                                .unwrap();
+                                for (index, text) in texts.iter().enumerate() {
+                                    assert_eq!(
+                                        reopened
+                                            .hf_plain_paragraph_text(role, hf_variant, index)
+                                            .as_deref(),
+                                        Some(*text)
+                                    );
+                                    if index == 0 || index == 4 {
+                                        assert_eq!(
+                                            serde_json::to_value(
+                                                reopened
+                                                    .hf_ruler_paragraph(role, hf_variant, index)
+                                                    .unwrap()
+                                            )
+                                            .unwrap(),
+                                            neighbors[usize::from(index == 4)]
+                                        );
+                                        continue;
+                                    }
+                                    let props = reopened
+                                        .hf_paragraph_properties(role, hf_variant, index)
+                                        .unwrap();
+                                    match kind {
+                                        0 => assert_eq!(
+                                            props.alignment.as_deref(),
+                                            Some(target_alignment)
+                                        ),
+                                        1 => assert_eq!(
+                                            props.style.as_deref(),
+                                            reopened
+                                                .styles_part
+                                                .as_ref()
+                                                .unwrap()
+                                                .resolve_paragraph_style_id("Heading1")
+                                                .as_deref()
+                                        ),
+                                        2 => assert_eq!(props.indent.unwrap().left, Some(36.0)),
+                                        3 => {
+                                            let spacing = props.spacing.unwrap();
+                                            assert_eq!(spacing.before, Some(12.0));
+                                            assert_eq!(spacing.after, Some(18.0));
+                                        }
+                                        4 => assert_eq!(
+                                            props.shading.unwrap().fill.as_deref(),
+                                            Some("#C0FFEE")
+                                        ),
+                                        5 => assert_eq!(props.bidi, Some(true)),
+                                        6 => {
+                                            assert_eq!(props.keep_next, Some(true));
+                                            assert_eq!(props.keep_lines, Some(true));
+                                            assert_eq!(props.page_break_before, Some(false));
+                                            assert_eq!(props.widow_control, Some(false));
+                                        }
+                                        7 => {
+                                            assert_eq!(props.contextual_spacing, Some(true));
+                                            assert_eq!(props.suppress_line_numbers, Some(true));
+                                            assert_eq!(props.suppress_auto_hyphens, Some(true));
+                                        }
+                                        8 => {
+                                            let edge = props.borders.unwrap().top.unwrap();
+                                            assert_eq!(edge.val.as_deref(), Some("double"));
+                                            assert_eq!(edge.size_eighths, Some(12));
+                                            assert_eq!(edge.color.as_deref(), Some("#123456"));
+                                        }
+                                        9 => {
+                                            assert_eq!(props.indent.unwrap().left_chars, Some(100))
+                                        }
+                                        10 => assert_eq!(
+                                            props.indent.unwrap().hanging_chars,
+                                            Some(100)
+                                        ),
+                                        11 => assert_eq!(props.spacing.unwrap().before, Some(12.0)),
+                                        12 => {
+                                            let settings = props.east_asian_settings.unwrap();
+                                            assert_eq!(settings.kinsoku, Some(false));
+                                            assert_eq!(settings.word_wrap, Some(false));
+                                            assert_eq!(settings.overflow_punctuation, Some(false));
+                                            assert_eq!(settings.top_line_punctuation, Some(true));
+                                            assert_eq!(settings.auto_space_de, Some(false));
+                                            assert_eq!(settings.auto_space_dn, Some(false));
+                                        }
+                                        13 => assert_eq!(props.snap_to_grid, Some(false)),
+                                        _ => {
+                                            let numbering = props.numbering.unwrap();
+                                            assert_eq!(
+                                                numbering.level,
+                                                Some(if kind == 17 { 0 } else { 2 })
+                                            );
+                                            let definition = reopened
+                                                .numbering_part
+                                                .as_ref()
+                                                .unwrap()
+                                                .get_level_info(
+                                                    numbering.id.as_deref().unwrap(),
+                                                    numbering.level.unwrap(),
+                                                )
+                                                .unwrap();
+                                            assert_eq!(
+                                                definition.num_fmt.as_deref(),
+                                                Some(match kind {
+                                                    14 => "bullet",
+                                                    15 => "decimal",
+                                                    16 => "decimal",
+                                                    _ => "lowerLetter",
+                                                })
+                                            );
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn header_footer_inline_field_carets_follow_display_placeholders_and_tabs() {
+        use super::{EditingMode, HfEditCursor, HfSegment, HfVariant, WordDocument};
+        use jade_docx_headless_api::HeadlessFieldKind;
+        let data = include_bytes!("../../../public/fixtures/hello.docx");
+        for mode in [EditingMode::Header, EditingMode::Footer] {
+            for variant in [HfVariant::Default, HfVariant::First, HfVariant::Even] {
+                for alignment in ["left", "center", "right"] {
+                    for (text, offset, expected_segment, prefix) in [
+                        ("a日本z", 1, None, 1),
+                        ("左\t中央\t右", 4, Some(HfSegment::Center), 0),
+                        ("左\t中央\t右", 14, Some(HfSegment::Right), 3),
+                        ("\t\t", 2, Some(HfSegment::Right), 0),
+                        ("左\t中央\t右\t末\t", 15, Some(HfSegment::Right), 4),
+                        ("左\t中央\t右\t末\t", 19, Some(HfSegment::Right), 8),
+                        ("\t\t\t", 3, Some(HfSegment::Right), 1),
+                    ] {
+                        for kind in [
+                            HeadlessFieldKind::Date,
+                            HeadlessFieldKind::Page,
+                            HeadlessFieldKind::NumPages,
+                        ] {
+                            let mut doc = futures::executor::block_on(WordDocument::load(
+                                data,
+                                &Options::default(),
+                            ))
+                            .unwrap();
+                            let (role, hf_variant) =
+                                OffscreenDocumentView::hf_role_variant(mode, variant).unwrap();
+                            doc.ensure_hf_part_for_edit(role, hf_variant).unwrap();
+                            OffscreenDocumentView::replace_hf_line(
+                                &mut doc, mode, variant, 0, text,
+                            )
+                            .unwrap();
+                            doc.set_hf_paragraph_alignment(role, hf_variant, 0, alignment)
+                                .unwrap();
+                            let end = doc
+                                .insert_hf_story_field(
+                                    role,
+                                    hf_variant,
+                                    SelectionRange::collapsed(TextPosition::new(0, offset)),
+                                    kind,
+                                    "日付",
+                                )
+                                .unwrap()
+                                .unwrap();
+                            let template = HfEditCursor {
+                                page_index: 2,
+                                line_index: 0,
+                                segment: HfSegment::Left,
+                                offset: 0,
+                            };
+                            let cursor = OffscreenDocumentView::hf_cursor_at_field_display_offset(
+                                &doc, mode, variant, template, end,
+                            )
+                            .unwrap();
+                            let expected_segment = expected_segment.unwrap_or(match alignment {
+                                "center" => HfSegment::Center,
+                                "right" => HfSegment::Right,
+                                _ => HfSegment::Left,
+                            });
+                            let shown = match kind {
+                                HeadlessFieldKind::Page => crate::document::PAGE_FIELD_PLACEHOLDER,
+                                HeadlessFieldKind::NumPages => {
+                                    crate::document::PAGE_COUNT_FIELD_PLACEHOLDER
+                                }
+                                _ => "日付",
+                            };
+                            assert_eq!(cursor.segment, expected_segment);
+                            assert_eq!(cursor.offset, prefix + shown.len());
+                            assert_eq!(cursor.page_index, 2);
+                            let mapped = OffscreenDocumentView::hf_mapped_field_range(
+                                &doc, mode, variant, cursor, cursor,
+                            )
+                            .unwrap();
+                            assert_eq!(mapped, SelectionRange::collapsed(end));
+                            let beginning =
+                                OffscreenDocumentView::hf_cursor_at_field_display_offset(
+                                    &doc,
+                                    mode,
+                                    variant,
+                                    template,
+                                    TextPosition::new(0, offset),
+                                )
+                                .unwrap();
+                            for (probe, position) in
+                                [(beginning, offset), (cursor, offset + shown.len())]
+                            {
+                                let mut split = doc.clone();
+                                let next = OffscreenDocumentView::split_hf_mapped_paragraph(
+                                    &mut split, mode, variant, probe, 1,
+                                )
+                                .unwrap()
+                                .unwrap();
+                                assert_eq!(next.line_index, 1);
+                                assert_eq!(next.offset, 0);
+                                assert_eq!(next.page_index, probe.page_index);
+                                let mut full = text.to_owned();
+                                full.insert_str(offset, shown);
+                                let reopened = futures::executor::block_on(WordDocument::load(
+                                    &split.export_docx().unwrap(),
+                                    &Options::default(),
+                                ))
+                                .unwrap();
+                                for (index, expected) in
+                                    [(0, &full[..position]), (1, &full[position..])]
+                                {
+                                    let paragraph = reopened
+                                        .hf_ruler_paragraph(role, hf_variant, index)
+                                        .unwrap();
+                                    assert_eq!(
+                                        WordDocument::hf_field_edit_paragraph_text(&paragraph)
+                                            .unwrap(),
+                                        expected
+                                    );
+                                }
+                                assert_eq!(
+                                    (0..2)
+                                        .map(|index| reopened
+                                            .hf_ruler_paragraph(role, hf_variant, index)
+                                            .unwrap()
+                                            .runs
+                                            .iter()
+                                            .filter(|run| run.field.is_some())
+                                            .count())
+                                        .sum::<usize>(),
+                                    1
+                                );
+                                let mut edited = doc.clone();
+                                OffscreenDocumentView::edit_hf_line_range(
+                                    &mut edited,
+                                    mode,
+                                    variant,
+                                    probe,
+                                    probe.offset,
+                                    probe.offset,
+                                    "追加",
+                                    "",
+                                )
+                                .unwrap();
+                                let mut expected = text.to_owned();
+                                expected.insert_str(offset, shown);
+                                expected.insert_str(position, "追加");
+                                let reloaded = futures::executor::block_on(WordDocument::load(
+                                    &edited.export_docx().unwrap(),
+                                    &Options::default(),
+                                ))
+                                .unwrap();
+                                assert_eq!(
+                                    WordDocument::hf_field_edit_paragraph_text(
+                                        &reloaded.hf_ruler_paragraph(role, hf_variant, 0).unwrap()
+                                    )
+                                    .unwrap(),
+                                    expected
+                                );
+                                OffscreenDocumentView::edit_hf_line_range(
+                                    &mut edited,
+                                    mode,
+                                    variant,
+                                    probe,
+                                    probe.offset,
+                                    probe.offset + "追加".len(),
+                                    "",
+                                    "",
+                                )
+                                .unwrap();
+                                let reloaded = futures::executor::block_on(WordDocument::load(
+                                    &edited.export_docx().unwrap(),
+                                    &Options::default(),
+                                ))
+                                .unwrap();
+                                let mut expected = text.to_owned();
+                                expected.insert_str(offset, shown);
+                                assert_eq!(
+                                    WordDocument::hf_field_edit_paragraph_text(
+                                        &reloaded.hf_ruler_paragraph(role, hf_variant, 0).unwrap()
+                                    )
+                                    .unwrap(),
+                                    expected
+                                );
+                            }
+                            if !text.contains('\t') {
+                                for (probe, position) in
+                                    [(beginning, offset), (cursor, offset + shown.len())]
+                                {
+                                    for inserted in ["\t", "左\t中央\t右"] {
+                                        let mut edited = doc.clone();
+                                        let after =
+                                            OffscreenDocumentView::insert_hf_text_with_cursor(
+                                                &mut edited,
+                                                mode,
+                                                variant,
+                                                probe,
+                                                probe.offset,
+                                                inserted,
+                                                "",
+                                            )
+                                            .unwrap();
+                                        assert_eq!(after.page_index, probe.page_index);
+                                        assert_eq!(
+                                            after.segment,
+                                            if inserted == "\t" {
+                                                HfSegment::Center
+                                            } else {
+                                                HfSegment::Right
+                                            }
+                                        );
+                                        assert_eq!(
+                                            after.offset,
+                                            if inserted == "\t" { 0 } else { "右".len() }
+                                        );
+                                        let after =
+                                            OffscreenDocumentView::insert_hf_text_with_cursor(
+                                                &mut edited,
+                                                mode,
+                                                variant,
+                                                after,
+                                                after.offset,
+                                                "続",
+                                                "",
+                                            )
+                                            .unwrap();
+                                        let mut expected = text.to_owned();
+                                        expected.insert_str(offset, shown);
+                                        expected.insert_str(position, &format!("{inserted}続"));
+                                        let reopened =
+                                            futures::executor::block_on(WordDocument::load(
+                                                &edited.export_docx().unwrap(),
+                                                &Options::default(),
+                                            ))
+                                            .unwrap();
+                                        assert_eq!(
+                                            WordDocument::hf_field_edit_paragraph_text(
+                                                &reopened
+                                                    .hf_ruler_paragraph(role, hf_variant, 0)
+                                                    .unwrap()
+                                            )
+                                            .unwrap(),
+                                            expected
+                                        );
+                                        let range = OffscreenDocumentView::hf_mapped_field_range(
+                                            &reopened, mode, variant, after, after,
+                                        )
+                                        .unwrap();
+                                        assert_eq!(
+                                            range.focus.offset,
+                                            position + inserted.len() + "続".len()
+                                        );
+                                        if inserted != "\t" {
+                                            let next =
+                                                OffscreenDocumentView::insert_hf_text_with_cursor(
+                                                    &mut edited,
+                                                    mode,
+                                                    variant,
+                                                    after,
+                                                    after.offset,
+                                                    "\t",
+                                                    "",
+                                                )
+                                                .unwrap();
+                                            assert_eq!(next.segment, HfSegment::Right);
+                                            assert_eq!(next.offset, after.offset + 1);
+                                            expected.insert(
+                                                position + inserted.len() + "続".len(),
+                                                '\t',
+                                            );
+                                            let reopened =
+                                                futures::executor::block_on(WordDocument::load(
+                                                    &edited.export_docx().unwrap(),
+                                                    &Options::default(),
+                                                ))
+                                                .unwrap();
+                                            assert_eq!(
+                                                WordDocument::hf_field_edit_paragraph_text(
+                                                    &reopened
+                                                        .hf_ruler_paragraph(role, hf_variant, 0)
+                                                        .unwrap()
+                                                )
+                                                .unwrap(),
+                                                expected
+                                            );
+                                            assert_eq!(
+                                                OffscreenDocumentView::hf_mapped_field_range(
+                                                    &reopened, mode, variant, next, next
+                                                )
+                                                .unwrap()
+                                                .focus
+                                                .offset,
+                                                position + inserted.len() + "続".len() + 1
+                                            );
+                                        }
+                                    }
+                                }
+                            }
+                            for reverse in [false, true] {
+                                let mut deleted = doc.clone();
+                                let (anchor, focus) = if reverse {
+                                    (cursor, beginning)
+                                } else {
+                                    (beginning, cursor)
+                                };
+                                let after =
+                                    OffscreenDocumentView::delete_hf_mapped_field_selection(
+                                        &mut deleted,
+                                        mode,
+                                        variant,
+                                        anchor,
+                                        focus,
+                                    )
+                                    .unwrap()
+                                    .unwrap();
+                                assert_eq!(after.segment, expected_segment);
+                                assert_eq!(after.offset, prefix);
+                                let reloaded = futures::executor::block_on(WordDocument::load(
+                                    &deleted.export_docx().unwrap(),
+                                    &Options::default(),
+                                ))
+                                .unwrap();
+                                assert_eq!(
+                                    WordDocument::hf_field_edit_paragraph_text(
+                                        &reloaded.hf_ruler_paragraph(role, hf_variant, 0).unwrap()
+                                    )
+                                    .unwrap(),
+                                    text
+                                );
+                            }
+                            for backward in [false, true] {
+                                let mut deleted = doc.clone();
+                                let after = OffscreenDocumentView::delete_hf_adjacent_field(
+                                    &mut deleted,
+                                    mode,
+                                    variant,
+                                    if backward { cursor } else { beginning },
+                                    backward,
+                                )
+                                .unwrap()
+                                .unwrap();
+                                assert_eq!(after.segment, expected_segment);
+                                assert_eq!(after.offset, prefix);
+                                assert_eq!(after.page_index, template.page_index);
+                                let reloaded = futures::executor::block_on(WordDocument::load(
+                                    &deleted.export_docx().unwrap(),
+                                    &Options::default(),
+                                ))
+                                .unwrap();
+                                assert_eq!(
+                                    WordDocument::hf_field_edit_paragraph_text(
+                                        &reloaded.hf_ruler_paragraph(role, hf_variant, 0).unwrap()
+                                    )
+                                    .unwrap(),
+                                    text
+                                );
+                            }
+                            let mut consecutive = doc.clone();
+                            let next = consecutive
+                                .insert_hf_story_field(
+                                    role,
+                                    hf_variant,
+                                    mapped,
+                                    HeadlessFieldKind::Date,
+                                    "続き",
+                                )
+                                .unwrap()
+                                .unwrap();
+                            let next_cursor =
+                                OffscreenDocumentView::hf_cursor_at_field_display_offset(
+                                    &consecutive,
+                                    mode,
+                                    variant,
+                                    cursor,
+                                    next,
+                                )
+                                .unwrap();
+                            assert_eq!(next_cursor.segment, cursor.segment);
+                            assert_eq!(next_cursor.offset, cursor.offset + "続き".len());
+                            let reopened = futures::executor::block_on(WordDocument::load(
+                                &doc.export_docx().unwrap(),
+                                &Options::default(),
+                            ))
+                            .unwrap();
+                            assert_eq!(
+                                OffscreenDocumentView::hf_cursor_at_field_display_offset(
+                                    &reopened, mode, variant, template, end
+                                ),
+                                Some(cursor)
+                            );
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn header_footer_field_selection_keeps_paragraph_formatting_and_live_field() {
+        use super::{EditingMode, HfEditCursor, HfVariant, WordDocument};
+        use jade_docx_headless_api::HeadlessCommand;
+        let data = include_bytes!("../../../public/fixtures/hello.docx");
+        for mode in [EditingMode::Header, EditingMode::Footer] {
+            for alignment in ["left", "center", "right"] {
+                let mut doc =
+                    futures::executor::block_on(WordDocument::load(data, &Options::default()))
+                        .unwrap();
+                doc.insert_page_number(mode == EditingMode::Footer, alignment)
+                    .unwrap();
+                let variant = HfVariant::Default;
+                let (role, hf_variant) =
+                    OffscreenDocumentView::hf_role_variant(mode, variant).unwrap();
+                let lines = OffscreenDocumentView::variant_lines(&doc, mode, variant);
+                let (segment, text) = lines
+                    .as_ref()
+                    .and_then(|lines| lines.first())
+                    .and_then(OffscreenDocumentView::hf_single_segment)
+                    .unwrap();
+                assert!(!text.is_empty());
+                let text_len = text.len();
+                let anchor = HfEditCursor {
+                    page_index: 0,
+                    line_index: 0,
+                    segment,
+                    offset: 0,
+                };
+                let cursor = HfEditCursor {
+                    offset: text_len,
+                    ..anchor
+                };
+                assert!(OffscreenDocumentView::hf_mapped_story_range(
+                    &doc, mode, variant, anchor, cursor,
+                )
+                .is_none());
+                let (cursor, anchor) = OffscreenDocumentView::edit_hf_selected_paragraphs(
+                    &mut doc,
+                    mode,
+                    variant,
+                    cursor,
+                    Some(anchor),
+                    &[HeadlessCommand::SetParagraphAlignment {
+                        start_paragraph: 0,
+                        end_paragraph: 0,
+                        alignment: "right".to_owned(),
+                    }],
+                )
+                .unwrap()
+                .unwrap_or((cursor, Some(anchor)));
+                assert_eq!(cursor.offset, text_len);
+                assert_eq!(anchor.unwrap().offset, 0);
+                let mut reopened = futures::executor::block_on(WordDocument::load(
+                    &doc.export_docx().unwrap(),
+                    &Options::default(),
+                ))
+                .unwrap();
+                assert_eq!(
+                    reopened
+                        .hf_paragraph_properties(role, hf_variant, 0)
+                        .unwrap()
+                        .alignment
+                        .as_deref(),
+                    Some("right")
+                );
+                assert_eq!(reopened.remove_page_numbers().unwrap(), 1);
+            }
+        }
+    }
+
+    #[test]
+    fn header_footer_tabbed_package_carets_round_trip_original_offsets() {
+        use super::{EditingMode, HfEditCursor, HfSegment, HfVariant, WordDocument};
+        use crate::word_document::HfRunFormat;
+        let data = include_bytes!("../../../public/fixtures/hello.docx");
+        for mode in [EditingMode::Header, EditingMode::Footer] {
+            for variant in [HfVariant::Default, HfVariant::First, HfVariant::Even] {
+                for alignment in ["left", "center", "right"] {
+                    for text in ["左\t中央\t右\t末\t", "\t中央\t", "左\t\t右", "\t\t\t", ""]
+                    {
+                        let (role, hf_variant) =
+                            OffscreenDocumentView::hf_role_variant(mode, variant).unwrap();
+                        let mut doc = futures::executor::block_on(WordDocument::load(
+                            data,
+                            &Options::default(),
+                        ))
+                        .unwrap();
+                        doc.ensure_hf_part_for_edit(role, hf_variant).unwrap();
+                        OffscreenDocumentView::replace_hf_line(&mut doc, mode, variant, 0, text)
+                            .unwrap();
+                        doc.set_hf_paragraph_alignment(role, hf_variant, 0, alignment)
+                            .unwrap();
+                        doc.apply_hf_range_run_format(
+                            role,
+                            hf_variant,
+                            0,
+                            0,
+                            text.len(),
+                            &HfRunFormat {
+                                bold: Some(true),
+                                font_size: Some(20.0),
+                                ..Default::default()
+                            },
+                        )
+                        .unwrap();
+                        let reopened = futures::executor::block_on(WordDocument::load(
+                            &doc.export_docx().unwrap(),
+                            &Options::default(),
+                        ))
+                        .unwrap();
+                        let template = HfEditCursor {
+                            page_index: 2,
+                            line_index: 0,
+                            segment: HfSegment::Left,
+                            offset: 0,
+                        };
+                        for offset in
+                            (0..=text.len()).filter(|offset| text.is_char_boundary(*offset))
+                        {
+                            let position = TextPosition::new(0, offset);
+                            let cursor = OffscreenDocumentView::hf_cursor_at_paragraph_offset(
+                                &reopened, mode, variant, template, position,
+                            )
+                            .unwrap();
+                            assert_eq!(cursor.page_index, template.page_index);
+                            let target = OffscreenDocumentView::hf_package_target_for_selection(
+                                &reopened, mode, variant, cursor, cursor,
+                            )
+                            .unwrap();
+                            assert_eq!(target.range.anchor, position);
+                            assert_eq!(target.range.focus, position);
+                            let mut edited = reopened.clone();
+                            let mut expected = text.to_owned();
+                            expected.insert(offset, 'X');
+                            OffscreenDocumentView::edit_hf_line_range(
+                                &mut edited,
+                                mode,
+                                variant,
+                                cursor,
+                                cursor.offset,
+                                cursor.offset,
+                                "X",
+                                &expected,
+                            )
+                            .unwrap();
+                            assert_eq!(
+                                edited.hf_plain_paragraph_text(role, hf_variant, 0),
+                                Some(expected)
+                            );
+                            for (index, ch) in text.char_indices().filter(|(_, ch)| *ch != '\t') {
+                                let formats = reopened.hf_run_formats_in_range(
+                                    role,
+                                    hf_variant,
+                                    0,
+                                    index,
+                                    index + ch.len_utf8(),
+                                );
+                                assert!(!formats.is_empty());
+                                assert!(formats.iter().all(|format| format.bold == Some(true)
+                                    && format.font_size == Some(20.0)));
+                            }
+                        }
+                        for offset in (0..=text.len())
+                            .filter(|offset| !text.is_char_boundary(*offset))
+                            .chain([usize::MAX])
+                        {
+                            assert!(OffscreenDocumentView::hf_cursor_at_paragraph_offset(
+                                &reopened,
+                                mode,
+                                variant,
+                                template,
+                                TextPosition::new(0, offset)
+                            )
+                            .is_none());
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
     fn header_footer_package_targets_keep_story_byte_offsets_and_reject_ambiguous_lines() {
         use super::{EditingMode, HfEditCursor, HfSegment, HfVariant, WordDocument};
         let data = include_bytes!("../../../public/fixtures/hello.docx");
@@ -21535,10 +24898,12 @@ mod tests {
                     .is_none());
                 }
                 OffscreenDocumentView::replace_hf_line(&mut doc, mode, variant, 0, "A\tB").unwrap();
-                assert!(OffscreenDocumentView::hf_package_target_for_selection(
-                    &doc, mode, variant, focus, focus
+                let target = OffscreenDocumentView::hf_package_target_for_selection(
+                    &doc, mode, variant, focus, focus,
                 )
-                .is_none());
+                .unwrap();
+                assert_eq!(target.range.anchor, TextPosition::new(0, 3));
+                assert_eq!(target.range.anchor, target.range.focus);
             }
         }
         let doc = futures::executor::block_on(WordDocument::load(
@@ -21568,6 +24933,462 @@ mod tests {
             cursor
         )
         .is_none());
+    }
+
+    #[test]
+    fn header_footer_field_paragraphs_merge_at_display_boundaries() {
+        use super::{EditingMode, HfEditCursor, HfSegment, HfVariant, WordDocument};
+        use jade_docx_headless_api::HeadlessFieldKind;
+        let data = include_bytes!("../../../public/fixtures/hello.docx");
+        for mode in [EditingMode::Header, EditingMode::Footer] {
+            for variant in [HfVariant::Default, HfVariant::First, HfVariant::Even] {
+                let (role, hf_variant) =
+                    OffscreenDocumentView::hf_role_variant(mode, variant).unwrap();
+                for (first_alignment, second_alignment) in
+                    [("left", "center"), ("center", "right"), ("right", "left")]
+                {
+                    for kind in [
+                        HeadlessFieldKind::Page,
+                        HeadlessFieldKind::NumPages,
+                        HeadlessFieldKind::Date,
+                    ] {
+                        for placement in [0, 1, 2] {
+                            let mut doc = futures::executor::block_on(WordDocument::load(
+                                data,
+                                &Options::default(),
+                            ))
+                            .unwrap();
+                            doc.ensure_hf_part_for_edit(role, hf_variant).unwrap();
+                            OffscreenDocumentView::replace_hf_line(
+                                &mut doc,
+                                mode,
+                                variant,
+                                0,
+                                "前日本",
+                            )
+                            .unwrap();
+                            doc.split_hf_paragraph_at_display_offset(role, hf_variant, 0, 3, 1)
+                                .unwrap();
+                            OffscreenDocumentView::replace_hf_line(
+                                &mut doc,
+                                mode,
+                                variant,
+                                1,
+                                "後本文",
+                            )
+                            .unwrap();
+                            doc.set_hf_paragraph_alignment(role, hf_variant, 0, first_alignment)
+                                .unwrap();
+                            doc.set_hf_paragraph_alignment(role, hf_variant, 1, second_alignment)
+                                .unwrap();
+                            let shown = match kind {
+                                HeadlessFieldKind::Page => crate::document::PAGE_FIELD_PLACEHOLDER,
+                                HeadlessFieldKind::NumPages => {
+                                    crate::document::PAGE_COUNT_FIELD_PLACEHOLDER
+                                }
+                                _ => "2026年",
+                            };
+                            let mut expected = ["前日本".to_owned(), "後本文".to_owned()];
+                            for index in 0..=1 {
+                                if placement == 2 || placement == index {
+                                    let offset = if index == 0 { expected[index].len() } else { 0 };
+                                    doc.insert_hf_story_field(
+                                        role,
+                                        hf_variant,
+                                        SelectionRange::collapsed(TextPosition::new(index, offset)),
+                                        kind,
+                                        "2026年",
+                                    )
+                                    .unwrap();
+                                    expected[index].insert_str(offset, shown);
+                                }
+                            }
+                            let segment = |alignment| match alignment {
+                                "center" => HfSegment::Center,
+                                "right" => HfSegment::Right,
+                                _ => HfSegment::Left,
+                            };
+                            let previous_end = HfEditCursor {
+                                page_index: 2,
+                                line_index: 0,
+                                segment: segment(first_alignment),
+                                offset: expected[0].len(),
+                            };
+                            let current_start = HfEditCursor {
+                                line_index: 1,
+                                segment: segment(second_alignment),
+                                offset: 0,
+                                ..previous_end
+                            };
+                            for (cursor, backward) in [(previous_end, false), (current_start, true)]
+                            {
+                                let (index, after) =
+                                    OffscreenDocumentView::hf_paragraph_merge_target(
+                                        &doc, mode, variant, cursor, backward,
+                                    )
+                                    .unwrap();
+                                assert_eq!((index, after), (1, previous_end));
+                                let mut edited = doc.clone();
+                                edited
+                                    .merge_hf_paragraph_with_previous(role, hf_variant, index)
+                                    .unwrap();
+                                let reopened = futures::executor::block_on(WordDocument::load(
+                                    &edited.export_docx().unwrap(),
+                                    &Options::default(),
+                                ))
+                                .unwrap();
+                                let paragraph =
+                                    reopened.hf_ruler_paragraph(role, hf_variant, 0).unwrap();
+                                assert_eq!(
+                                    WordDocument::hf_field_edit_paragraph_text(&paragraph).unwrap(),
+                                    expected.concat()
+                                );
+                                assert_eq!(
+                                    paragraph
+                                        .runs
+                                        .iter()
+                                        .filter(|run| run.field.is_some())
+                                        .count(),
+                                    if placement == 2 { 2 } else { 1 }
+                                );
+                                assert!(reopened.hf_ruler_paragraph(role, hf_variant, 1).is_none());
+                                let mapped = OffscreenDocumentView::hf_mapped_field_range(
+                                    &reopened, mode, variant, after, after,
+                                )
+                                .unwrap();
+                                assert_eq!(mapped.focus, TextPosition::new(0, expected[0].len()));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn header_footer_field_list_keys_map_tabbed_paragraphs_and_selections() {
+        use super::{EditingMode, HfEditCursor, HfSegment, HfVariant, WordDocument};
+        use jade_docx_headless_api::{
+            HeadlessCommand, HeadlessFieldKind, HeadlessMultilevelListPreset,
+        };
+        for mode in [EditingMode::Header, EditingMode::Footer] {
+            for variant in [HfVariant::Default, HfVariant::First, HfVariant::Even] {
+                let (role, hf_variant) =
+                    OffscreenDocumentView::hf_role_variant(mode, variant).unwrap();
+                for alignment in ["left", "center", "right"] {
+                    for text in ["前\t中央\t後", "\t\t"] {
+                        for kind in [HeadlessFieldKind::Page, HeadlessFieldKind::Date] {
+                            let mut doc = futures::executor::block_on(WordDocument::load(
+                                include_bytes!("../../../public/fixtures/hello.docx"),
+                                &Options::default(),
+                            ))
+                            .unwrap();
+                            doc.ensure_hf_part_for_edit(role, hf_variant).unwrap();
+                            OffscreenDocumentView::replace_hf_line(
+                                &mut doc, mode, variant, 0, text,
+                            )
+                            .unwrap();
+                            doc.split_hf_paragraph_at_display_offset(
+                                role,
+                                hf_variant,
+                                0,
+                                text.chars().count(),
+                                1,
+                            )
+                            .unwrap();
+                            OffscreenDocumentView::replace_hf_line(
+                                &mut doc, mode, variant, 1, text,
+                            )
+                            .unwrap();
+                            for index in [0, 1] {
+                                doc.set_hf_paragraph_alignment(role, hf_variant, index, alignment)
+                                    .unwrap();
+                                doc.insert_hf_story_field(
+                                    role,
+                                    hf_variant,
+                                    SelectionRange::collapsed(TextPosition::new(index, text.len())),
+                                    kind,
+                                    "日付",
+                                )
+                                .unwrap()
+                                .unwrap();
+                            }
+                            assert!(doc
+                                .apply_hf_paragraph_commands_to_range(
+                                    role,
+                                    hf_variant,
+                                    0,
+                                    1,
+                                    &[HeadlessCommand::ApplyMultilevelList {
+                                        start_paragraph: 0,
+                                        end_paragraph: 1,
+                                        preset: HeadlessMultilevelListPreset::DecimalHierarchy,
+                                        level: 2
+                                    }]
+                                )
+                                .unwrap());
+                            let shown = if kind == HeadlessFieldKind::Page {
+                                crate::document::PAGE_FIELD_PLACEHOLDER
+                            } else {
+                                "日付"
+                            };
+                            let expected = format!("{text}{shown}");
+                            let template = HfEditCursor {
+                                page_index: 2,
+                                line_index: 0,
+                                segment: HfSegment::Left,
+                                offset: 0,
+                            };
+                            let caret = |index, offset| {
+                                OffscreenDocumentView::hf_cursor_at_field_display_offset(
+                                    &doc,
+                                    mode,
+                                    variant,
+                                    template,
+                                    TextPosition::new(index, offset),
+                                )
+                                .unwrap()
+                            };
+                            let start = caret(0, 0);
+                            assert_eq!(
+                                OffscreenDocumentView::hf_list_start_target(
+                                    &doc, mode, variant, start
+                                ),
+                                Some((role, hf_variant))
+                            );
+                            for offset in [text.find('\t').unwrap() + 1, expected.len()] {
+                                assert!(OffscreenDocumentView::hf_list_start_target(
+                                    &doc,
+                                    mode,
+                                    variant,
+                                    caret(0, offset)
+                                )
+                                .is_none());
+                            }
+                            assert_eq!(
+                                OffscreenDocumentView::hf_list_tab_target(
+                                    &doc, mode, variant, start, start
+                                ),
+                                Some((role, hf_variant, 0, 0))
+                            );
+                            let end_first = caret(0, expected.len());
+                            assert!(OffscreenDocumentView::hf_list_tab_target(
+                                &doc, mode, variant, end_first, end_first
+                            )
+                            .is_none());
+                            let end_second = caret(1, expected.len());
+                            for (anchor, focus) in
+                                [(end_first, end_second), (end_second, end_first)]
+                            {
+                                let (_, _, first, last) =
+                                    OffscreenDocumentView::hf_list_tab_target(
+                                        &doc, mode, variant, anchor, focus,
+                                    )
+                                    .unwrap();
+                                assert_eq!((first, last), (0, 1));
+                                for backward in [false, true] {
+                                    let mut edited = doc.clone();
+                                    assert!(edited
+                                        .adjust_hf_list_level(
+                                            role, hf_variant, first, last, backward
+                                        )
+                                        .unwrap());
+                                    let reopened = futures::executor::block_on(WordDocument::load(
+                                        &edited.export_docx().unwrap(),
+                                        &Options::default(),
+                                    ))
+                                    .unwrap();
+                                    for index in [0, 1] {
+                                        let paragraph = reopened
+                                            .hf_ruler_paragraph(role, hf_variant, index)
+                                            .unwrap();
+                                        assert_eq!(
+                                            WordDocument::hf_field_edit_paragraph_text(&paragraph)
+                                                .unwrap(),
+                                            expected
+                                        );
+                                        assert_eq!(
+                                            paragraph
+                                                .runs
+                                                .iter()
+                                                .filter(|run| run.field.is_some())
+                                                .count(),
+                                            1
+                                        );
+                                        assert_eq!(
+                                            paragraph.properties.unwrap().numbering.unwrap().level,
+                                            Some(if backward { 1 } else { 3 })
+                                        );
+                                    }
+                                }
+                            }
+                            let mut removed = doc.clone();
+                            assert!(removed
+                                .remove_hf_list_numbering(role, hf_variant, 0, false)
+                                .unwrap());
+                            let reopened = futures::executor::block_on(WordDocument::load(
+                                &removed.export_docx().unwrap(),
+                                &Options::default(),
+                            ))
+                            .unwrap();
+                            let paragraph =
+                                reopened.hf_ruler_paragraph(role, hf_variant, 0).unwrap();
+                            assert_eq!(
+                                WordDocument::hf_field_edit_paragraph_text(&paragraph).unwrap(),
+                                expected
+                            );
+                            assert!(super::paragraph_list_id(&paragraph).is_none());
+                            assert!(super::paragraph_list_id(
+                                &reopened.hf_ruler_paragraph(role, hf_variant, 1).unwrap()
+                            )
+                            .is_some());
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn header_footer_tabbed_fields_merge_and_resolve_the_new_segment() {
+        use super::{EditingMode, HfEditCursor, HfSegment, HfVariant, WordDocument};
+        use jade_docx_headless_api::HeadlessFieldKind;
+        for mode in [EditingMode::Header, EditingMode::Footer] {
+            for variant in [HfVariant::Default, HfVariant::First, HfVariant::Even] {
+                let (role, hf_variant) =
+                    OffscreenDocumentView::hf_role_variant(mode, variant).unwrap();
+                for alignment in ["left", "center", "right"] {
+                    for (first, second) in [
+                        ("前", "左\t中央\t右"),
+                        ("左\t中央\t右", "後"),
+                        ("前\t", "\t後"),
+                        ("\t\t", "後"),
+                        ("前\t中央\t右", "\t末\t"),
+                        ("\t\t\t", "後\t"),
+                        ("前", "左\t中央\t右\t末\t"),
+                    ] {
+                        let mut doc = futures::executor::block_on(WordDocument::load(
+                            include_bytes!("../../../public/fixtures/hello.docx"),
+                            &Options::default(),
+                        ))
+                        .unwrap();
+                        doc.ensure_hf_part_for_edit(role, hf_variant).unwrap();
+                        OffscreenDocumentView::replace_hf_line(&mut doc, mode, variant, 0, first)
+                            .unwrap();
+                        doc.split_hf_paragraph_at_display_offset(
+                            role,
+                            hf_variant,
+                            0,
+                            first.chars().count(),
+                            1,
+                        )
+                        .unwrap();
+                        OffscreenDocumentView::replace_hf_line(&mut doc, mode, variant, 1, second)
+                            .unwrap();
+                        doc.set_hf_paragraph_alignment(role, hf_variant, 0, alignment)
+                            .unwrap();
+                        doc.set_hf_paragraph_alignment(role, hf_variant, 1, "right")
+                            .unwrap();
+                        for (index, offset, kind) in [
+                            (0, first.len(), HeadlessFieldKind::Page),
+                            (1, 0, HeadlessFieldKind::Date),
+                        ] {
+                            doc.insert_hf_story_field(
+                                role,
+                                hf_variant,
+                                SelectionRange::collapsed(TextPosition::new(index, offset)),
+                                kind,
+                                "日付",
+                            )
+                            .unwrap()
+                            .unwrap();
+                        }
+                        let expected_first =
+                            format!("{first}{}", crate::document::PAGE_FIELD_PLACEHOLDER);
+                        let expected = format!("{expected_first}日付{second}");
+                        let template = HfEditCursor {
+                            page_index: 2,
+                            line_index: 0,
+                            segment: HfSegment::Left,
+                            offset: 0,
+                        };
+                        for backward in [false, true] {
+                            let cursor = OffscreenDocumentView::hf_cursor_at_field_display_offset(
+                                &doc,
+                                mode,
+                                variant,
+                                template,
+                                if backward {
+                                    TextPosition::new(1, 0)
+                                } else {
+                                    TextPosition::new(0, expected_first.len())
+                                },
+                            )
+                            .unwrap();
+                            let (index, previous) =
+                                OffscreenDocumentView::hf_paragraph_merge_target(
+                                    &doc, mode, variant, cursor, backward,
+                                )
+                                .unwrap();
+                            let mut edited = doc.clone();
+                            let after = OffscreenDocumentView::merge_hf_paragraph_with_cursor(
+                                &mut edited,
+                                mode,
+                                variant,
+                                index,
+                                previous,
+                            )
+                            .unwrap();
+                            let reopened = futures::executor::block_on(WordDocument::load(
+                                &edited.export_docx().unwrap(),
+                                &Options::default(),
+                            ))
+                            .unwrap();
+                            let paragraph =
+                                reopened.hf_ruler_paragraph(role, hf_variant, 0).unwrap();
+                            assert_eq!(
+                                WordDocument::hf_field_edit_paragraph_text(&paragraph).unwrap(),
+                                expected
+                            );
+                            assert_eq!(
+                                paragraph
+                                    .runs
+                                    .iter()
+                                    .filter(|run| run.field.is_some())
+                                    .count(),
+                                2
+                            );
+                            assert!(reopened.hf_ruler_paragraph(role, hf_variant, 1).is_none());
+                            let mapped = OffscreenDocumentView::hf_mapped_field_range(
+                                &reopened, mode, variant, after, after,
+                            )
+                            .unwrap();
+                            assert_eq!(mapped.focus, TextPosition::new(0, expected_first.len()));
+                            assert_eq!(after.page_index, 2);
+                            OffscreenDocumentView::insert_hf_text_with_cursor(
+                                &mut edited,
+                                mode,
+                                variant,
+                                after,
+                                after.offset,
+                                "追加",
+                                "",
+                            )
+                            .unwrap();
+                            let mut typed = expected.clone();
+                            typed.insert_str(expected_first.len(), "追加");
+                            assert_eq!(
+                                WordDocument::hf_field_edit_paragraph_text(
+                                    &edited.hf_ruler_paragraph(role, hf_variant, 0).unwrap()
+                                )
+                                .unwrap(),
+                                typed
+                            );
+                        }
+                    }
+                }
+            }
+        }
     }
 
     #[test]
@@ -21669,7 +25490,7 @@ mod tests {
                 previous_end,
                 false,
             )
-            .is_none());
+            .is_some());
         }
 
         let doc = futures::executor::block_on(WordDocument::load(

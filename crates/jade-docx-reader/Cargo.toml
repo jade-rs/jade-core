@@ -5,6 +5,7 @@ edition = "2021"
 license = "MIT"
 
 [dependencies]
+jade-number-format = { path = "../jade-number-format" }
 jade-opc = { path = "../jade-opc" }
 jade-ink = { path = "../jade-ink" }
 serde = { version = "1.0", features = ["derive", "rc"] }

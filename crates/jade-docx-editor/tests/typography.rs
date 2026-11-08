@@ -2,7 +2,9 @@
 //! document's 文字体裁, written where Word writes them, read back into the
 //! model the line breaker uses, and undone.
 
-use std::io::Read;
+mod common;
+
+use std::io::{Read, Write};
 use std::path::PathBuf;
 
 use jade_docx_editor::commands::set_typography::{
@@ -87,7 +89,7 @@ fn the_paragraph_options_are_written_read_back_and_undone() {
     assert_eq!(settings.auto_space_de, Some(false));
     assert_eq!(settings.top_line_punctuation, Some(true));
 
-    // Back to Word's defaults: the elements go.
+    // Defaults are explicit overrides, so inherited values cannot reappear.
     {
         let mut ctx = CommandContext::new(&mut document, &mut selection);
         executor
@@ -106,8 +108,8 @@ fn the_paragraph_options_are_written_read_back_and_undone() {
             .unwrap();
     }
     let xml = part(&document, "word/document.xml");
-    assert!(!xml.contains("<w:kinsoku"));
-    assert!(!xml.contains("<w:autoSpaceDE"));
+    assert!(xml.contains(r#"<w:kinsoku w:val="1"/>"#));
+    assert!(xml.contains(r#"<w:autoSpaceDE w:val="1"/>"#));
     assert!(xml.contains(r#"<w:autoSpaceDN w:val="0"/>"#));
     {
         let mut ctx = CommandContext::new(&mut document, &mut selection);
@@ -193,4 +195,183 @@ fn the_document_kinsoku_level_and_compression_go_into_settings() {
             .east_asian_line_breaking
             .strict_first_and_last_chars
     );
+}
+
+#[test]
+fn paragraph_typography_overrides_inherited_values_after_reopening() {
+    let tags = [
+        "kinsoku",
+        "wordWrap",
+        "overflowPunct",
+        "topLinePunct",
+        "autoSpaceDE",
+        "autoSpaceDN",
+    ];
+    let settings = |value| HeadlessParagraphTypography {
+        kinsoku: Some(value),
+        word_wrap: Some(value),
+        overflow_punctuation: Some(value),
+        top_line_punctuation: Some(value),
+        auto_space_de: Some(value),
+        auto_space_dn: Some(value),
+    };
+    let assert_settings = |document: &WordDocument, index, expected| {
+        let actual = document.paragraph_typography(index);
+        assert_eq!(actual.kinsoku, Some(expected));
+        assert_eq!(actual.word_wrap, Some(expected));
+        assert_eq!(actual.overflow_punctuation, Some(expected));
+        assert_eq!(actual.top_line_punctuation, Some(expected));
+        assert_eq!(actual.auto_space_de, Some(expected));
+        assert_eq!(actual.auto_space_dn, Some(expected));
+    };
+    for inherited in [false, true] {
+        let mut body = String::new();
+        for text in ["A", "", "B"] {
+            body.push_str(&format!(r#"<w:p><w:pPr><w:pStyle w:val="Child"/><w:keepNext/></w:pPr><w:r><w:rPr><w:i/></w:rPr><w:t>{text}</w:t></w:r></w:p>"#));
+        }
+        let inherited_xml: String = tags
+            .iter()
+            .map(|tag| format!(r#"<w:{tag} w:val="{}"/>"#, u8::from(inherited)))
+            .collect();
+        let bytes = styled_typography_docx(&body, &inherited_xml, "");
+        let mut session = common::Session::new(common::load(&bytes));
+        for index in 0..3 {
+            assert_settings(&session.document, index, inherited);
+        }
+        let before = session.xml();
+        session.run(Box::new(SetParagraphTypographyCommand::new(
+            1,
+            0,
+            settings(!inherited),
+        )));
+        for document in [&session.document, &session.reopened()] {
+            assert_settings(document, 0, !inherited);
+            assert_settings(document, 1, !inherited);
+            assert_settings(document, 2, inherited);
+            for index in 0..3 {
+                assert!(document.paragraph_pagination(index).keep_next);
+            }
+            assert_eq!(document.run_format_at(0, 0).italic, Some(true));
+        }
+        let changed = session.xml();
+        for tag in tags {
+            assert_eq!(
+                changed
+                    .matches(&format!(r#"<w:{tag} w:val="{}""#, u8::from(!inherited)))
+                    .count(),
+                2,
+                "{tag}"
+            );
+        }
+        session.undo();
+        assert_eq!(session.xml(), before);
+        for index in 0..3 {
+            assert_settings(&session.document, index, inherited);
+        }
+        session.redo();
+        assert_eq!(session.xml(), changed);
+        assert_settings(&session.reopened(), 0, !inherited);
+    }
+}
+
+fn styled_typography_docx(body: &str, inherited_xml: &str, child_xml: &str) -> Vec<u8> {
+    let bytes = common::package(&body, &[]);
+    let mut input = zip::ZipArchive::new(std::io::Cursor::new(bytes)).unwrap();
+    let mut output = zip::ZipWriter::new(std::io::Cursor::new(Vec::new()));
+    let options = zip::write::SimpleFileOptions::default();
+    for index in 0..input.len() {
+        let mut file = input.by_index(index).unwrap();
+        let name = file.name().unwrap().into_owned();
+        let mut content = String::new();
+        file.read_to_string(&mut content).unwrap();
+        if name == "word/_rels/document.xml.rels" {
+            content = content.replace("</Relationships>", r#"<Relationship Id="rIdStyles" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>"#);
+        } else if name == "[Content_Types].xml" {
+            content = content.replace("</Types>", r#"<Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/></Types>"#);
+        }
+        output.start_file(name, options).unwrap();
+        output.write_all(content.as_bytes()).unwrap();
+    }
+    output.start_file("word/styles.xml", options).unwrap();
+    write!(output, r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:style w:type="paragraph" w:styleId="Base"><w:pPr>{inherited_xml}</w:pPr></w:style><w:style w:type="paragraph" w:styleId="Child"><w:basedOn w:val="Base"/><w:pPr>{child_xml}</w:pPr></w:style></w:styles>"#).unwrap();
+    output.finish().unwrap().into_inner()
+}
+
+#[test]
+fn partial_paragraph_typography_keeps_each_inherited_option() {
+    let tags = [
+        "kinsoku",
+        "wordWrap",
+        "overflowPunct",
+        "topLinePunct",
+        "autoSpaceDE",
+        "autoSpaceDN",
+    ];
+    fn values(document: &WordDocument, index: usize) -> [Option<bool>; 6] {
+        let settings = document.paragraph_typography(index);
+        [
+            settings.kinsoku,
+            settings.word_wrap,
+            settings.overflow_punctuation,
+            settings.top_line_punctuation,
+            settings.auto_space_de,
+            settings.auto_space_dn,
+        ]
+    }
+    for inherited in [false, true] {
+        let base: String = tags
+            .iter()
+            .map(|tag| format!(r#"<w:{tag} w:val="{}"/>"#, u8::from(inherited)))
+            .collect();
+        for direct in 0..tags.len() {
+            let child = (direct + 1) % tags.len();
+            let edited = (direct + 2) % tags.len();
+            let child_xml = format!(r#"<w:{} w:val="{}"/>"#, tags[child], u8::from(!inherited));
+            let body = format!(
+                r#"<w:p><w:pPr><w:pStyle w:val="Child"/><w:{} w:val="{}"/><w:keepNext/></w:pPr><w:r><w:t>A</w:t></w:r></w:p><w:p><w:pPr><w:pStyle w:val="Child"/></w:pPr><w:r><w:t>B</w:t></w:r></w:p>"#,
+                tags[direct],
+                u8::from(!inherited)
+            );
+            let bytes = styled_typography_docx(&body, &base, &child_xml);
+            let mut session = common::Session::new(common::load(&bytes));
+            let mut expected = [Some(inherited); 6];
+            expected[child] = Some(!inherited);
+            let untouched = expected;
+            expected[direct] = Some(!inherited);
+            let original = expected;
+            for doc in [&session.document, &session.reopened()] {
+                assert_eq!(values(doc, 0), expected, "direct {}", tags[direct]);
+                assert_eq!(values(doc, 1), untouched);
+            }
+            let before = session.xml();
+            let mut patch = [None; 6];
+            patch[edited] = Some(!inherited);
+            session.run(Box::new(SetParagraphTypographyCommand::new(
+                0,
+                0,
+                HeadlessParagraphTypography {
+                    kinsoku: patch[0],
+                    word_wrap: patch[1],
+                    overflow_punctuation: patch[2],
+                    top_line_punctuation: patch[3],
+                    auto_space_de: patch[4],
+                    auto_space_dn: patch[5],
+                },
+            )));
+            expected[edited] = Some(!inherited);
+            for doc in [&session.document, &session.reopened()] {
+                assert_eq!(values(doc, 0), expected);
+                assert_eq!(values(doc, 1), untouched);
+                assert!(doc.paragraph_pagination(0).keep_next);
+            }
+            let changed = session.xml();
+            session.undo();
+            assert_eq!(session.xml(), before);
+            assert_eq!(values(&session.document, 0), original);
+            assert_eq!(values(&session.reopened(), 0), original);
+            session.redo();
+            assert_eq!(session.xml(), changed);
+            assert_eq!(values(&session.reopened(), 0), expected);
+        }
+    }
 }

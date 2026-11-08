@@ -92,6 +92,7 @@ mod rendering {
             size_eighths: Some(size),
             space: Some(1),
             color: Some(color.into()),
+            theme_color: None,
         }
     }
 
@@ -209,6 +210,7 @@ mod rendering {
             size_eighths: Some(12),
             space: Some(24),
             color: None,
+            theme_color: None,
         };
         let ops = render(&document(
             None,

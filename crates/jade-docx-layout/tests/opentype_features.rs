@@ -71,3 +71,23 @@ fn word_typography_becomes_a_descriptor_token() {
         .starts_with("ot:lnum,-liga,-clig,-calt,-kern "));
     assert!(!style.joins_characters);
 }
+
+#[test]
+fn every_enabled_stylistic_set_reaches_the_shaper_token() {
+    use jade_docx_layout::font_resolver::opentype_features_token;
+    use jade_docx_reader::{RunProperties, RunTextEffects};
+    let mut props = RunProperties {
+        text_effects: Some(Box::new(RunTextEffects {
+            stylistic_set: Some(2), // Legacy view must not override the full list.
+            stylistic_sets: Some(vec![1, 4, 20, 4, 0, 21]),
+            ..Default::default()
+        })),
+        ..Default::default()
+    };
+    assert_eq!(
+        opentype_features_token(&props, false).as_deref(),
+        Some("ot:ss01,ss04,ss20,-liga,-clig,-calt,-kern")
+    );
+    props.text_effects.as_mut().unwrap().stylistic_sets = Some(vec![]);
+    assert_eq!(opentype_features_token(&props, false), None);
+}

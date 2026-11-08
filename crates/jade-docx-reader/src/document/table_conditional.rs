@@ -20,7 +20,7 @@
 //! The model is display-only. The source of truth for export stays in
 //! `styles.xml` and the raw `w:tblLook` element.
 
-use super::{BorderEdge, TableBorders};
+use super::{BorderEdge, Indent, ParagraphBorders, Shading, Spacing, TabStop, TableBorders};
 use serde::{Deserialize, Serialize};
 
 /// A `w:tblStylePr/@w:type` that Word applies. `wholeTable` is intentionally
@@ -85,6 +85,8 @@ impl TableStyleCondition {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct TableStyleConditionalFormat {
+    #[serde(default, skip_serializing_if = "super::RunFonts::is_empty")]
+    pub fonts: super::RunFonts,
     /// `w:tcPr/w:shd/@w:fill`.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub fill: Option<String>,
@@ -94,9 +96,54 @@ pub struct TableStyleConditionalFormat {
     /// `w:rPr/w:i`.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub italic: Option<bool>,
+    /// `w:rPr/w:sz`, in points.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub font_size: Option<f32>,
+    /// `w:rPr/w:szCs`, in points.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub font_size_complex: Option<f32>,
     /// `w:rPr/w:color`.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub color: Option<String>,
+    /// `w:pPr/w:jc` in this conditional region.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub paragraph_alignment: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub paragraph_text_alignment: Option<String>,
+    /// Paragraph spacing supplied by this conditional region.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub paragraph_spacing: Option<Spacing>,
+    /// Paragraph indentation supplied by this conditional region.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub paragraph_indent: Option<Indent>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub paragraph_shading: Option<Shading>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub paragraph_borders: Option<ParagraphBorders>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub paragraph_tabs: Vec<TabStop>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub paragraph_bidi: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub paragraph_keep_next: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub paragraph_keep_lines: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub paragraph_page_break_before: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub paragraph_widow_control: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub paragraph_contextual_spacing: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub paragraph_snap_to_grid: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub paragraph_adjust_right_indent: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub paragraph_mirror_indents: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub paragraph_suppress_line_numbers: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub paragraph_suppress_auto_hyphens: Option<bool>,
     /// `w:tcPr/w:tcBorders`. Outer edges describe the boundary of the
     /// conditional region (a row, a band, a column, or a corner cell) and
     /// `insideH`/`insideV` the edges between cells inside that region.
@@ -106,25 +153,136 @@ pub struct TableStyleConditionalFormat {
 
 impl TableStyleConditionalFormat {
     pub fn is_empty(&self) -> bool {
-        self.fill.is_none()
+        self.fonts.is_empty()
+            && self.fill.is_none()
             && self.bold.is_none()
             && self.italic.is_none()
+            && self.font_size.is_none()
+            && self.font_size_complex.is_none()
             && self.color.is_none()
+            && self.paragraph_alignment.is_none()
+            && self.paragraph_text_alignment.is_none()
+            && self.paragraph_spacing.is_none()
+            && self.paragraph_indent.is_none()
+            && self.paragraph_shading.is_none()
+            && self
+                .paragraph_borders
+                .as_ref()
+                .is_none_or(ParagraphBorders::is_empty)
+            && self.paragraph_tabs.is_empty()
+            && self.paragraph_bidi.is_none()
+            && self.paragraph_keep_next.is_none()
+            && self.paragraph_keep_lines.is_none()
+            && self.paragraph_page_break_before.is_none()
+            && self.paragraph_widow_control.is_none()
+            && self.paragraph_contextual_spacing.is_none()
+            && self.paragraph_snap_to_grid.is_none()
+            && self.paragraph_adjust_right_indent.is_none()
+            && self.paragraph_mirror_indents.is_none()
+            && self.paragraph_suppress_line_numbers.is_none()
+            && self.paragraph_suppress_auto_hyphens.is_none()
             && self.borders.as_ref().is_none_or(TableBorders::is_empty)
     }
 
     /// Resolves `w:basedOn` inheritance: the derived style's values win.
     pub fn inherit(parent: Self, child: Self) -> Self {
+        let mut fonts = parent.fonts;
+        fonts.merge_from(&child.fonts);
         Self {
+            fonts,
             fill: child.fill.or(parent.fill),
             bold: child.bold.or(parent.bold),
             italic: child.italic.or(parent.italic),
             color: child.color.or(parent.color),
+            paragraph_alignment: child.paragraph_alignment.or(parent.paragraph_alignment),
+            paragraph_spacing: inherit_paragraph_spacing(
+                parent.paragraph_spacing,
+                child.paragraph_spacing,
+            ),
+            paragraph_indent: inherit_paragraph_indent(
+                parent.paragraph_indent,
+                child.paragraph_indent,
+            ),
+            paragraph_shading: child.paragraph_shading.or(parent.paragraph_shading),
+            paragraph_borders: inherit_paragraph_borders(
+                parent.paragraph_borders,
+                child.paragraph_borders,
+            ),
+            paragraph_tabs: parent
+                .paragraph_tabs
+                .into_iter()
+                .chain(child.paragraph_tabs)
+                .collect(),
+            paragraph_bidi: child.paragraph_bidi.or(parent.paragraph_bidi),
+            paragraph_keep_next: child.paragraph_keep_next.or(parent.paragraph_keep_next),
+            paragraph_keep_lines: child.paragraph_keep_lines.or(parent.paragraph_keep_lines),
+            paragraph_page_break_before: child
+                .paragraph_page_break_before
+                .or(parent.paragraph_page_break_before),
+            paragraph_widow_control: child
+                .paragraph_widow_control
+                .or(parent.paragraph_widow_control),
+            paragraph_contextual_spacing: child
+                .paragraph_contextual_spacing
+                .or(parent.paragraph_contextual_spacing),
+            paragraph_snap_to_grid: child
+                .paragraph_snap_to_grid
+                .or(parent.paragraph_snap_to_grid),
+            paragraph_adjust_right_indent: child
+                .paragraph_adjust_right_indent
+                .or(parent.paragraph_adjust_right_indent),
+            paragraph_mirror_indents: child
+                .paragraph_mirror_indents
+                .or(parent.paragraph_mirror_indents),
+            paragraph_suppress_line_numbers: child
+                .paragraph_suppress_line_numbers
+                .or(parent.paragraph_suppress_line_numbers),
+            paragraph_suppress_auto_hyphens: child
+                .paragraph_suppress_auto_hyphens
+                .or(parent.paragraph_suppress_auto_hyphens),
+            paragraph_text_alignment: child
+                .paragraph_text_alignment
+                .or(parent.paragraph_text_alignment),
+            font_size: child.font_size.or(parent.font_size),
+            font_size_complex: child.font_size_complex.or(parent.font_size_complex),
             borders: match (parent.borders, child.borders) {
                 (Some(parent), Some(child)) => Some(TableBorders::inherit(parent, child)),
                 (parent, child) => child.or(parent),
             },
         }
+    }
+}
+
+fn inherit_paragraph_borders(
+    parent: Option<ParagraphBorders>,
+    child: Option<ParagraphBorders>,
+) -> Option<ParagraphBorders> {
+    match (parent, child) {
+        (Some(parent), Some(mut child)) => {
+            child.inherit_missing_from(&parent);
+            Some(child)
+        }
+        (parent, child) => child.or(parent),
+    }
+}
+
+fn inherit_paragraph_spacing(parent: Option<Spacing>, child: Option<Spacing>) -> Option<Spacing> {
+    match (parent, child) {
+        (Some(mut parent), Some(child)) => {
+            crate::styles::merge_spacing_override(&mut parent, &child);
+            Some(parent)
+        }
+        (parent, child) => child.or(parent),
+    }
+}
+
+fn inherit_paragraph_indent(parent: Option<Indent>, child: Option<Indent>) -> Option<Indent> {
+    match (parent, child) {
+        (Some(mut parent), Some(child)) => {
+            crate::styles::merge_indent_override(&mut parent, &child);
+            Some(parent)
+        }
+        (parent, child) => child.or(parent),
     }
 }
 
@@ -407,10 +565,31 @@ pub struct TableStyleCellBorders {
 /// The table style's conditional formatting resolved for one cell.
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct TableStyleCellFormat {
+    pub fonts: super::RunFonts,
+    pub font_size: Option<f32>,
+    pub font_size_complex: Option<f32>,
     pub fill: Option<String>,
     pub bold: Option<bool>,
     pub italic: Option<bool>,
     pub color: Option<String>,
+    pub paragraph_alignment: Option<String>,
+    pub paragraph_text_alignment: Option<String>,
+    pub paragraph_spacing: Option<Spacing>,
+    pub paragraph_indent: Option<Indent>,
+    pub paragraph_shading: Option<Shading>,
+    pub paragraph_borders: Option<ParagraphBorders>,
+    pub paragraph_tabs: Vec<TabStop>,
+    pub paragraph_bidi: Option<bool>,
+    pub paragraph_keep_next: Option<bool>,
+    pub paragraph_keep_lines: Option<bool>,
+    pub paragraph_page_break_before: Option<bool>,
+    pub paragraph_widow_control: Option<bool>,
+    pub paragraph_contextual_spacing: Option<bool>,
+    pub paragraph_snap_to_grid: Option<bool>,
+    pub paragraph_adjust_right_indent: Option<bool>,
+    pub paragraph_mirror_indents: Option<bool>,
+    pub paragraph_suppress_line_numbers: Option<bool>,
+    pub paragraph_suppress_auto_hyphens: Option<bool>,
     pub borders: TableStyleCellBorders,
 }
 
@@ -423,6 +602,7 @@ impl TableStyleCellFormat {
     ) -> Self {
         let mut resolved = Self::default();
         for (format, edges) in formats {
+            resolved.fonts.merge_from(&format.fonts);
             if let Some(fill) = &format.fill {
                 resolved.fill = Some(fill.clone());
             }
@@ -432,9 +612,66 @@ impl TableStyleCellFormat {
             if let Some(italic) = format.italic {
                 resolved.italic = Some(italic);
             }
+            resolved.font_size = format.font_size.or(resolved.font_size);
+            resolved.font_size_complex = format.font_size_complex.or(resolved.font_size_complex);
             if let Some(color) = &format.color {
                 resolved.color = Some(color.clone());
             }
+            if let Some(alignment) = &format.paragraph_alignment {
+                resolved.paragraph_alignment = Some(alignment.clone());
+            }
+            resolved.paragraph_spacing = inherit_paragraph_spacing(
+                resolved.paragraph_spacing.take(),
+                format.paragraph_spacing.clone(),
+            );
+            resolved.paragraph_indent = inherit_paragraph_indent(
+                resolved.paragraph_indent.take(),
+                format.paragraph_indent.clone(),
+            );
+            resolved.paragraph_bidi = format.paragraph_bidi.or(resolved.paragraph_bidi);
+            resolved.paragraph_keep_next =
+                format.paragraph_keep_next.or(resolved.paragraph_keep_next);
+            resolved.paragraph_keep_lines = format
+                .paragraph_keep_lines
+                .or(resolved.paragraph_keep_lines);
+            resolved.paragraph_page_break_before = format
+                .paragraph_page_break_before
+                .or(resolved.paragraph_page_break_before);
+            resolved.paragraph_widow_control = format
+                .paragraph_widow_control
+                .or(resolved.paragraph_widow_control);
+            resolved.paragraph_text_alignment = format
+                .paragraph_text_alignment
+                .clone()
+                .or(resolved.paragraph_text_alignment);
+            resolved.paragraph_contextual_spacing = format
+                .paragraph_contextual_spacing
+                .or(resolved.paragraph_contextual_spacing);
+            resolved.paragraph_snap_to_grid = format
+                .paragraph_snap_to_grid
+                .or(resolved.paragraph_snap_to_grid);
+            resolved.paragraph_adjust_right_indent = format
+                .paragraph_adjust_right_indent
+                .or(resolved.paragraph_adjust_right_indent);
+            resolved.paragraph_mirror_indents = format
+                .paragraph_mirror_indents
+                .or(resolved.paragraph_mirror_indents);
+            resolved.paragraph_suppress_line_numbers = format
+                .paragraph_suppress_line_numbers
+                .or(resolved.paragraph_suppress_line_numbers);
+            resolved.paragraph_suppress_auto_hyphens = format
+                .paragraph_suppress_auto_hyphens
+                .or(resolved.paragraph_suppress_auto_hyphens);
+            if let Some(shading) = &format.paragraph_shading {
+                resolved.paragraph_shading = Some(shading.clone());
+            }
+            resolved
+                .paragraph_tabs
+                .extend(format.paragraph_tabs.iter().cloned());
+            resolved.paragraph_borders = inherit_paragraph_borders(
+                resolved.paragraph_borders.take(),
+                format.paragraph_borders.clone(),
+            );
             let Some(borders) = &format.borders else {
                 continue;
             };
@@ -629,6 +866,7 @@ mod tests {
             size_eighths: Some(4),
             space: None,
             color: Some(color.into()),
+            theme_color: None,
         }
     }
 

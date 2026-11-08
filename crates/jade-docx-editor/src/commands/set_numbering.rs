@@ -19,11 +19,18 @@ pub(crate) const NUMBERING_OFF: &str = "0";
 
 /// Whether the paragraph style (or a style it is based on) numbers its
 /// paragraphs.
-fn style_supplies_numbering(document: &crate::word_document::WordDocument, style: &str) -> bool {
+fn style_supplies_numbering(
+    document: &crate::word_document::WordDocument,
+    style: Option<&str>,
+) -> bool {
     document
         .styles_part
         .as_ref()
-        .and_then(|styles| styles.resolve_numbering(style))
+        .and_then(|styles| {
+            style
+                .or_else(|| styles.default_paragraph_style_id())
+                .and_then(|id| styles.resolve_numbering(id))
+        })
         .is_some_and(|numbering| numbering.list_id().is_some())
 }
 
@@ -127,11 +134,10 @@ impl Command for SetNumberingCommand {
             // would let the style number the paragraph again on open, and so
             // would the list a pending property change records.
             let style_numbered = self.num_id.is_none()
-                && (previous
-                    .as_ref()
-                    .and_then(|props| props.style.as_deref())
-                    .is_some_and(|style| style_supplies_numbering(ctx.document, style))
-                    || tracked_change_supplies_numbering(raw.as_ref()));
+                && (style_supplies_numbering(
+                    ctx.document,
+                    previous.as_ref().and_then(|props| props.style.as_deref()),
+                ) || tracked_change_supplies_numbering(raw.as_ref()));
             self.previous_properties.push((paragraph_index, previous));
             self.previous_raw_properties.push(raw);
             let (num_id, level) = if style_numbered {

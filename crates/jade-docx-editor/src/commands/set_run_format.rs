@@ -31,6 +31,7 @@ pub struct SetRunFormatCommand {
     format: HeadlessRunFormat,
     previous_runs: Option<Vec<ParagraphRunsBackup>>,
     previous_selection: Option<SelectionRange>,
+    previous_mark_properties: Vec<(usize, Option<crate::document::ParagraphProperties>)>,
 }
 
 impl SetRunFormatCommand {
@@ -40,6 +41,7 @@ impl SetRunFormatCommand {
             format,
             previous_runs: None,
             previous_selection: None,
+            previous_mark_properties: Vec::new(),
         }
     }
 }
@@ -67,8 +69,12 @@ impl Command for SetRunFormatCommand {
         }
         self.previous_runs = Some(capture_paragraph_runs(ctx, start.paragraph, end.paragraph)?);
         self.previous_selection = *ctx.selection;
+        self.previous_mark_properties.clear();
 
         let font_props = font_properties(&self.format);
+        let styles = edits_visual_effects(&self.format)
+            .then(|| ctx.document.styles_part.clone())
+            .flatten();
         // One id for the range's group, as Word gives one combined or
         // vertical group one.
         let layout_id = (start.paragraph as i64) * 65_536 + start.offset as i64 + 1;
@@ -91,7 +97,31 @@ impl Command for SetRunFormatCommand {
             } else {
                 paragraph_len
             };
+            let paragraph_style = paragraph.properties.as_ref().and_then(|p| p.style.clone());
+            let selects_mark = paragraph_index < end.paragraph;
+            if selects_mark {
+                self.previous_mark_properties
+                    .push((paragraph_index, paragraph.properties.clone()));
+                let properties = paragraph
+                    .properties
+                    .get_or_insert_with(Default::default)
+                    .mark_run_properties
+                    .get_or_insert_with(Default::default);
+                apply_to_properties(
+                    properties,
+                    format,
+                    layout_id,
+                    styles.as_ref(),
+                    paragraph_style.as_deref(),
+                );
+            }
             if range_start >= range_end {
+                if selects_mark {
+                    super::paragraph_property_sync::sync_paragraph_mark_run_properties_xml(
+                        ctx.document,
+                        paragraph_index,
+                    );
+                }
                 continue;
             }
             let mut restyled = Vec::new();
@@ -111,12 +141,26 @@ impl Command for SetRunFormatCommand {
                 range_start,
                 range_end,
                 &zero_width,
-                |props| apply_patch(props, format, layout_id),
+                |props| {
+                    materialize_edited_visual_effects(
+                        props,
+                        format,
+                        styles.as_ref(),
+                        paragraph_style.as_deref(),
+                    );
+                    apply_patch(props, format, layout_id);
+                },
             ));
             restyled.sort_by_key(|id| id.raw());
             restyled.dedup();
             ctx.document
                 .sync_paragraph_run_properties(paragraph_index, &restyled);
+            if selects_mark {
+                super::paragraph_property_sync::sync_paragraph_mark_run_properties_xml(
+                    ctx.document,
+                    paragraph_index,
+                );
+            }
         }
         *ctx.selection = Some(self.range);
         Ok(())
@@ -128,6 +172,16 @@ impl Command for SetRunFormatCommand {
             .take()
             .ok_or_else(|| CommandError::Custom("missing backup for undo".into()))?;
         restore_paragraph_runs(ctx, &backups)?;
+        for (index, properties) in self.previous_mark_properties.drain(..) {
+            ctx.document
+                .paragraph_mut(index)
+                .ok_or(CommandError::ParagraphUnavailable)?
+                .properties = properties;
+            super::paragraph_property_sync::sync_paragraph_mark_run_properties_xml(
+                ctx.document,
+                index,
+            );
+        }
         *ctx.selection = self.previous_selection;
         Ok(())
     }
@@ -184,11 +238,52 @@ pub(crate) fn apply_to_properties(
     properties: &mut RunProperties,
     format: &HeadlessRunFormat,
     layout_id: i64,
+    styles: Option<&jade_docx_reader::StylesPart>,
+    paragraph_style: Option<&str>,
 ) {
+    materialize_edited_visual_effects(properties, format, styles, paragraph_style);
     if let Some(fonts) = font_properties(format) {
         super::text_edit::merge_run_properties(properties, &fonts);
     }
     apply_patch(properties, format, layout_id);
+}
+
+fn edits_visual_effects(format: &HeadlessRunFormat) -> bool {
+    format.glow_color.is_some()
+        || format.glow_radius.is_some()
+        || format.text_outline_color.is_some()
+        || format.text_outline_width.is_some()
+}
+
+/// Effect elements replace their inherited group as a whole. Seed only the
+/// edited group from the effective run before changing one of its settings.
+fn materialize_edited_visual_effects(
+    properties: &mut RunProperties,
+    format: &HeadlessRunFormat,
+    styles: Option<&jade_docx_reader::StylesPart>,
+    paragraph_style: Option<&str>,
+) {
+    if !edits_visual_effects(format) {
+        return;
+    }
+    let Some(effective) = styles
+        .and_then(|styles| {
+            styles.resolve_effective_run_properties(paragraph_style, Some(properties))
+        })
+        .and_then(|properties| properties.text_effects)
+    else {
+        return;
+    };
+    let effects = properties.text_effects.get_or_insert_with(Default::default);
+    if format.glow_color.is_some() || format.glow_radius.is_some() {
+        effects.glow_color = effective.glow_color.clone();
+        effects.glow_radius = effective.glow_radius;
+        effects.glow_alpha = effective.glow_alpha;
+    }
+    if format.text_outline_color.is_some() || format.text_outline_width.is_some() {
+        effects.outline_color = effective.outline_color.clone();
+        effects.outline_width = effective.outline_width;
+    }
 }
 
 /// A preserved `w:rPr` child built from scratch; the writer gives it a real
@@ -223,10 +318,6 @@ fn hex(color: &str) -> String {
 
 fn is_none(value: &str) -> bool {
     matches!(value.trim(), "" | "none" | "nil")
-}
-
-fn on(value: bool) -> Option<bool> {
-    value.then_some(true)
 }
 
 /// The patch's properties on one run.
@@ -282,33 +373,37 @@ fn apply_patch(props: &mut RunProperties, format: &HeadlessRunFormat, layout_id:
             props.underline = Some(false);
             props.underline_kind = None;
             props.underline_color = None;
+            props.underline_theme_color = None;
         } else {
             props.underline = Some(true);
             props.underline_kind = (kind != "single").then(|| Rc::from(kind));
         }
     }
     if let Some(color) = format.underline_color.as_deref() {
+        props.underline_theme_color = None;
         props.underline_color = if color.trim().eq_ignore_ascii_case("auto") || is_none(color) {
-            None
+            Some(Rc::from("auto"))
         } else {
             Some(Rc::from(hex(color).as_str()))
         };
     }
     if let Some(value) = format.strike {
-        props.strike = on(value);
+        props.strike = Some(value);
         if value {
-            props.double_strike = None;
+            props.double_strike = Some(false);
         }
     }
     if let Some(value) = format.double_strike {
-        props.double_strike = on(value);
+        props.double_strike = Some(value);
         if value {
-            props.strike = None;
+            props.strike = Some(false);
         }
     }
     if let Some(align) = format.vertical_align.as_deref() {
         props.baseline = match align {
-            "superscript" | "subscript" => Some(Rc::from(align)),
+            // Removing the property would expose a style's raised/lowered
+            // baseline again. An explicit reset must override inheritance.
+            "baseline" | "superscript" | "subscript" => Some(Rc::from(align)),
             _ => None,
         };
     }
@@ -325,19 +420,19 @@ fn apply_patch(props: &mut RunProperties, format: &HeadlessRunFormat, layout_id:
             .map(|theme| Box::new(theme_color(theme)));
     }
     if let Some(value) = format.caps {
-        props.caps = on(value);
+        props.caps = Some(value);
         if value {
-            props.small_caps = None;
+            props.small_caps = Some(false);
         }
     }
     if let Some(value) = format.small_caps {
-        props.small_caps = on(value);
+        props.small_caps = Some(value);
         if value {
-            props.caps = None;
+            props.caps = Some(false);
         }
     }
     if let Some(value) = format.hidden {
-        props.vanish = on(value);
+        props.vanish = Some(value);
     }
     if format.language.is_some() || format.east_asia_language.is_some() {
         let current = props.preserved_rpr.0.iter().find_map(|child| match child {
@@ -397,27 +492,32 @@ fn apply_patch(props: &mut RunProperties, format: &HeadlessRunFormat, layout_id:
         );
     }
     if let Some(value) = format.outline {
-        props.outline = on(value);
+        props.outline = Some(value);
     }
     if let Some(value) = format.shadow {
-        props.shadow = on(value);
+        props.shadow = Some(value);
     }
     if let Some(value) = format.emboss {
-        props.emboss = on(value);
+        props.emboss = Some(value);
         if value {
-            props.imprint = None;
+            props.imprint = Some(false);
         }
     }
     if let Some(value) = format.engrave {
-        props.imprint = on(value);
+        props.imprint = Some(value);
         if value {
-            props.emboss = None;
+            props.emboss = Some(false);
         }
     }
     if let Some(mark) = format.emphasis.as_deref() {
         if is_none(mark) {
-            props.emphasis = None;
-            set_preserved(props, "w:em", None);
+            // Removing the declaration would reveal inherited emphasis.
+            props.emphasis = Some(Rc::from("none"));
+            set_preserved(
+                props,
+                "w:em",
+                Some(element("w:em", &[("w:val", "none".into())], Vec::new())),
+            );
         } else {
             let token = match mark.to_ascii_lowercase().as_str() {
                 "comma" => "comma",
@@ -435,14 +535,23 @@ fn apply_patch(props: &mut RunProperties, format: &HeadlessRunFormat, layout_id:
     }
     if let Some(fill) = format.shading.as_deref() {
         if is_none(fill) {
-            props.shading = None;
-            set_preserved(props, "w:shd", None);
+            // A missing declaration inherits shading; nil explicitly cancels it.
+            props.shading = Some(Shading {
+                val: Some("nil".into()),
+                ..Shading::default()
+            });
+            set_preserved(
+                props,
+                "w:shd",
+                Some(element("w:shd", &[("w:val", "nil".into())], Vec::new())),
+            );
         } else {
             let fill = hex(fill);
             props.shading = Some(Shading {
                 val: Some("clear".to_string()),
                 color: None,
                 fill: Some(format!("#{fill}")),
+                ..Default::default()
             });
             set_preserved(
                 props,
@@ -466,6 +575,7 @@ fn apply_patch(props: &mut RunProperties, format: &HeadlessRunFormat, layout_id:
                 size_eighths: Some(4),
                 space: Some(0),
                 color: None,
+                theme_color: None,
             });
             set_preserved(
                 props,
@@ -482,45 +592,45 @@ fn apply_patch(props: &mut RunProperties, format: &HeadlessRunFormat, layout_id:
                 )),
             );
         } else {
-            props.border = None;
-            set_preserved(props, "w:bdr", None);
+            // Absence inherits a border; nil explicitly cancels the style value.
+            props.border = Some(BorderEdge {
+                val: Some("nil".into()),
+                ..BorderEdge::default()
+            });
+            set_preserved(
+                props,
+                "w:bdr",
+                Some(element("w:bdr", &[("w:val", "nil".into())], Vec::new())),
+            );
         }
     }
     if let Some(points) = format.spacing.filter(|points| points.is_finite()) {
         let twips = (points * 20.0).round() as i32;
-        if twips == 0 {
-            props.char_spacing = None;
-            set_preserved(props, "w:spacing", None);
-        } else {
-            props.char_spacing = Some(twips as f32 / 20.0);
-            set_preserved(
-                props,
+        // Standard spacing resets the style value rather than inheriting it.
+        props.char_spacing = Some(twips as f32 / 20.0);
+        set_preserved(
+            props,
+            "w:spacing",
+            Some(element(
                 "w:spacing",
-                Some(element(
-                    "w:spacing",
-                    &[("w:val", twips.to_string())],
-                    Vec::new(),
-                )),
-            );
-        }
+                &[("w:val", twips.to_string())],
+                Vec::new(),
+            )),
+        );
     }
     if let Some(points) = format.position.filter(|points| points.is_finite()) {
         let half_points = (points * 2.0).round() as i32;
-        if half_points == 0 {
-            props.text_position = None;
-            set_preserved(props, "w:position", None);
-        } else {
-            props.text_position = Some(half_points as f32 / 2.0);
-            set_preserved(
-                props,
+        // Zero resets style inheritance and must be serialized explicitly.
+        props.text_position = Some(half_points as f32 / 2.0);
+        set_preserved(
+            props,
+            "w:position",
+            Some(element(
                 "w:position",
-                Some(element(
-                    "w:position",
-                    &[("w:val", half_points.to_string())],
-                    Vec::new(),
-                )),
-            );
-        }
+                &[("w:val", half_points.to_string())],
+                Vec::new(),
+            )),
+        );
     }
     if let Some(layout) = format.east_asian_layout.as_ref() {
         apply_east_asian_layout(props, layout, layout_id);
@@ -553,8 +663,25 @@ pub(crate) fn theme_color(theme: &HeadlessThemeColor) -> RunThemeColor {
 
 fn apply_east_asian_layout(props: &mut RunProperties, layout: &HeadlessEastAsianLayout, id: i64) {
     if layout.is_empty() {
-        props.east_asian_layout = None;
-        set_preserved(props, "w:eastAsianLayout", None);
+        // Removing the element would re-enable paragraph/character-style
+        // layout. A user-requested reset must explicitly override inheritance.
+        props.east_asian_layout = Some(Box::new(EastAsianLayout {
+            id: Some(id),
+            ..Default::default()
+        }));
+        set_preserved(
+            props,
+            "w:eastAsianLayout",
+            Some(element(
+                "w:eastAsianLayout",
+                &[
+                    ("w:id", id.to_string()),
+                    ("w:combine", "0".to_string()),
+                    ("w:vert", "0".to_string()),
+                ],
+                Vec::new(),
+            )),
+        );
         return;
     }
     let brackets = layout
@@ -600,11 +727,13 @@ fn srgb(color: &str, children: Vec<XmlNode>) -> XmlNode {
 fn apply_text_effects(props: &mut RunProperties, format: &HeadlessRunFormat) {
     let mut effects = props.text_effects.as_deref().cloned().unwrap_or_default();
     let before = effects.clone();
+    // Explicit defaults cancel inherited OpenType settings. Removing the
+    // element would restore the document, paragraph or character style value.
     let token = |value: &str, default: &str| -> Option<Rc<str>> {
-        (!is_none(value) && value != default).then(|| Rc::from(value))
+        Some(Rc::from(if is_none(value) { default } else { value }))
     };
     if let Some(value) = format.ligatures.as_deref() {
-        effects.ligatures = token(value, "");
+        effects.ligatures = token(value, "none");
         set_preserved(
             props,
             "w14:ligatures",
@@ -636,30 +765,38 @@ fn apply_text_effects(props: &mut RunProperties, format: &HeadlessRunFormat) {
                 .map(|value| element("w14:numSpacing", &[("w14:val", value.to_string())], vec![])),
         );
     }
-    if let Some(set) = format.stylistic_set {
-        effects.stylistic_set = (1..=20).contains(&set).then_some(set);
+    if format.stylistic_sets.is_some() || format.stylistic_set.is_some() {
+        let mut sets = format
+            .stylistic_sets
+            .clone()
+            .unwrap_or_else(|| format.stylistic_set.into_iter().collect());
+        sets.retain(|set| (1..=20).contains(set));
+        sets.sort_unstable();
+        sets.dedup();
+        effects.stylistic_set = sets.first().copied();
+        effects.stylistic_sets = Some(sets.clone());
         set_preserved(
             props,
             "w14:stylisticSets",
-            effects.stylistic_set.map(|set| {
-                element(
-                    "w14:stylisticSets",
-                    &[],
-                    vec![element(
-                        "w14:styleSet",
-                        &[("w14:id", set.to_string())],
-                        vec![],
-                    )],
-                )
-            }),
+            Some(element(
+                "w14:stylisticSets",
+                &[],
+                sets.into_iter()
+                    .map(|set| element("w14:styleSet", &[("w14:id", set.to_string())], vec![]))
+                    .collect(),
+            )),
         );
     }
     if let Some(value) = format.contextual_alternates {
-        effects.contextual_alternates = on(value);
+        effects.contextual_alternates = Some(value);
         set_preserved(
             props,
             "w14:cntxtAlts",
-            on(value).map(|_| element("w14:cntxtAlts", &[], vec![])),
+            Some(element(
+                "w14:cntxtAlts",
+                &[("w14:val", if value { "1" } else { "0" }.into())],
+                vec![],
+            )),
         );
     }
     if format.glow_color.is_some() || format.glow_radius.is_some() {
@@ -672,7 +809,8 @@ fn apply_text_effects(props: &mut RunProperties, format: &HeadlessRunFormat) {
         }
         let node = effects.glow_color.as_ref().map(|color| {
             let radius = effects.glow_radius.unwrap_or(5.0);
-            let alpha = ((1.0 - effects.glow_alpha.unwrap_or(0.6)) * 100_000.0).round() as i32;
+            let alpha =
+                (effects.glow_alpha.unwrap_or(0.6).clamp(0.0, 1.0) * 100_000.0).round() as i32;
             element(
                 "w14:glow",
                 &[(
@@ -689,11 +827,16 @@ fn apply_text_effects(props: &mut RunProperties, format: &HeadlessRunFormat) {
                 )],
             )
         });
-        if node.is_none() {
-            effects.glow_radius = None;
-            effects.glow_alpha = None;
-        }
-        set_preserved(props, "w14:glow", node);
+        let node = node.unwrap_or_else(|| {
+            effects.glow_radius = Some(0.0);
+            effects.glow_alpha = Some(1.0);
+            element(
+                "w14:glow",
+                &[("w14:rad", "0".into())],
+                vec![srgb("000000", vec![])],
+            )
+        });
+        set_preserved(props, "w14:glow", Some(node));
     }
     if format.text_outline_color.is_some() || format.text_outline_width.is_some() {
         if let Some(color) = format.text_outline_color.as_deref() {
@@ -723,10 +866,15 @@ fn apply_text_effects(props: &mut RunProperties, format: &HeadlessRunFormat) {
                 ],
             )
         });
-        if node.is_none() {
-            effects.outline_width = None;
-        }
-        set_preserved(props, "w14:textOutline", node);
+        let node = node.unwrap_or_else(|| {
+            effects.outline_width = Some(0.0);
+            element(
+                "w14:textOutline",
+                &[("w14:w", "0".into())],
+                vec![element("w14:noFill", &[], vec![])],
+            )
+        });
+        set_preserved(props, "w14:textOutline", Some(node));
     }
     if effects != before {
         props.text_effects = (!effects.is_empty()).then(|| Box::new(effects));
@@ -808,7 +956,17 @@ pub fn run_format_of(props: &RunProperties) -> HeadlessRunFormat {
         shading: props
             .shading
             .as_ref()
-            .and_then(|shading| shading.fill.as_deref().or(shading.color.as_deref()))
+            .and_then(|shading| {
+                if shading
+                    .val
+                    .as_deref()
+                    .is_some_and(|val| val.eq_ignore_ascii_case("nil"))
+                {
+                    Some("none")
+                } else {
+                    shading.fill.as_deref().or(shading.color.as_deref())
+                }
+            })
             .map(|fill| fill.trim_start_matches('#').to_string()),
         border: props.border.as_ref().map(BorderEdge::is_visible),
         scale: props.text_scale,
@@ -823,6 +981,7 @@ pub fn run_format_of(props: &RunProperties) -> HeadlessRunFormat {
         number_spacing: effects.and_then(|effects| text(&effects.number_spacing)),
         number_form: effects.and_then(|effects| text(&effects.number_form)),
         stylistic_set: effects.and_then(|effects| effects.stylistic_set),
+        stylistic_sets: effects.and_then(|effects| effects.stylistic_sets.clone()),
         contextual_alternates: effects.and_then(|effects| effects.contextual_alternates),
         glow_color: effects
             .and_then(|effects| effects.glow_color.as_deref())

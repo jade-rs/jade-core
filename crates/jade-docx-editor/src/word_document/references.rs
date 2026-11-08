@@ -955,9 +955,120 @@ impl WordDocument {
             .collect()
     }
 
-    /// Validate the whole-paragraph replacement contract before deleting anything.
-    /// Returns the outer field's lock state. Mixed content and interior section
-    /// breaks must stay intact until regeneration supports them.
+    /// Content outside the outer field, retaining its run/hyperlink wrappers.
+    /// Bookmarks, comments and editing exceptions retain surrounding markers.
+    fn field_boundary_content(
+        raw: &DocxXmlDocument,
+        paragraph: &XmlElement,
+        marker: XmlNodeId,
+        before: bool,
+    ) -> Result<Vec<XmlNode>, String> {
+        fn slice(parent: &XmlElement, path: &[usize], before: bool) -> Vec<XmlNode> {
+            let Some((&index, rest)) = path.split_first() else {
+                return Vec::new();
+            };
+            let mut result = if before {
+                parent.children[..index].to_vec()
+            } else {
+                Vec::new()
+            };
+            if !rest.is_empty() {
+                if let XmlNode::Element(child) = &parent.children[index] {
+                    let mut fragment = child.clone();
+                    fragment.children = slice(child, rest, before);
+                    if fragment.children.iter().any(|node| {
+                        !matches!(node,
+                        XmlNode::Element(e) if e.name == "w:rPr")
+                    }) {
+                        if !before {
+                            if let Some(properties) = child.children.iter().find(
+                                |node| matches!(node, XmlNode::Element(e) if e.name == "w:rPr"),
+                            ) {
+                                fragment.children.insert(0, properties.clone());
+                            }
+                        }
+                        result.push(XmlNode::Element(fragment));
+                    }
+                }
+            }
+            if !before {
+                result.extend_from_slice(&parent.children[index + 1..]);
+            }
+            result.retain(|node| match node {
+                XmlNode::Element(e) => e.name != "w:pPr",
+                XmlNode::Text(text) => !text.trim().is_empty(),
+                _ => true,
+            });
+            result
+        }
+        fn safe(node: &XmlNode) -> bool {
+            match node {
+                XmlNode::Text(_) => true,
+                XmlNode::Element(e) => match e.name.as_str() {
+                    "w:r" | "w:hyperlink" => e.children.iter().all(safe),
+                    "w:rPr"
+                    | "w:t"
+                    | "w:tab"
+                    | "w:br"
+                    | "w:cr"
+                    | "w:noBreakHyphen"
+                    | "w:softHyphen"
+                    | "w:proofErr"
+                    | "w:bookmarkStart"
+                    | "w:bookmarkEnd"
+                    | "w:commentRangeStart"
+                    | "w:commentRangeEnd"
+                    | "w:commentReference"
+                    | "w:permStart"
+                    | "w:permEnd" => true,
+                    _ => false,
+                },
+                _ => false,
+            }
+        }
+        let paragraph_path = raw
+            .path(paragraph.id)
+            .ok_or("field paragraph XML is unavailable")?;
+        let marker_path = raw.path(marker).ok_or("field marker XML is unavailable")?;
+        let path = marker_path
+            .as_slice()
+            .strip_prefix(paragraph_path.as_slice())
+            .ok_or("field marker is outside its paragraph")?;
+        let content = slice(paragraph, path, before);
+        if !content.iter().all(safe) {
+            return Err(
+                "field regeneration cannot relocate surrounding range markers or objects".into(),
+            );
+        }
+        Ok(content)
+    }
+
+    fn field_boundary_text_len(nodes: &[XmlNode]) -> usize {
+        nodes
+            .iter()
+            .map(|node| match node {
+                XmlNode::Element(e) => match e.name.as_str() {
+                    "w:t" => e
+                        .children
+                        .iter()
+                        .map(|node| match node {
+                            XmlNode::Text(text) => text.len(),
+                            _ => 0,
+                        })
+                        .sum(),
+                    "w:tab" | "w:br" | "w:cr" => 1,
+                    "w:noBreakHyphen" => '\u{2011}'.len_utf8(),
+                    "w:softHyphen" => '\u{00AD}'.len_utf8(),
+                    "w:r" | "w:hyperlink" => Self::field_boundary_text_len(&e.children),
+                    _ => 0,
+                },
+                _ => 0,
+            })
+            .sum()
+    }
+
+    /// Validate the replacement contract before deleting anything. Returns the
+    /// outer field's lock state. Interior section breaks remain unsupported.
     pub(crate) fn validate_field_block(&self, block: &FieldBlock) -> Result<bool, String> {
         let invalid =
             "field regeneration requires whole paragraphs without interior section breaks";
@@ -1009,45 +1120,11 @@ impl WordDocument {
                 _ => {}
             });
         }
-        let outside = |paragraph: &XmlElement, marker: XmlNodeId, before: bool| -> bool {
-            let Some(paragraph_path) = raw.path(paragraph.id) else {
-                return true;
-            };
-            let Some(marker_path) = raw.path(marker) else {
-                return true;
-            };
-            let Some(path) = marker_path
-                .as_slice()
-                .strip_prefix(paragraph_path.as_slice())
-            else {
-                return true;
-            };
-            let mut parent = paragraph;
-            for &index in path {
-                let siblings = if before {
-                    &parent.children[..index]
-                } else {
-                    &parent.children[index + 1..]
-                };
-                if siblings.iter().any(|node| match node {
-                    XmlNode::Element(e) => !matches!(e.name.as_str(), "w:pPr" | "w:rPr"),
-                    XmlNode::Text(text) => !text.trim().is_empty(),
-                    _ => true,
-                }) {
-                    return true;
-                }
-                let XmlNode::Element(child) = &parent.children[index] else {
-                    return true;
-                };
-                parent = child;
-            }
-            false
-        };
         if malformed
             || depth != 0
             || outer_count != 1
-            || begin.is_none_or(|id| outside(first, id, true))
-            || end.is_none_or(|id| outside(last, id, false))
+            || begin.is_none()
+            || end.is_none()
             || (block.start..block.end).any(|index| {
                 self.paragraph(index)
                     .and_then(|p| p.properties.as_ref())
@@ -1055,6 +1132,60 @@ impl WordDocument {
             })
         {
             return Err(invalid.into());
+        }
+        let prefix = Self::field_boundary_content(raw, first, begin.unwrap(), true)?;
+        let suffix = Self::field_boundary_content(raw, last, end.unwrap(), false)?;
+        fn ranges(element: &XmlElement, output: &mut Vec<(XmlNodeId, (&'static str, String))>) {
+            let kind = match element.name.as_str() {
+                "w:bookmarkStart" | "w:bookmarkEnd" => Some("bookmark"),
+                "w:commentRangeStart" | "w:commentRangeEnd" | "w:commentReference" => {
+                    Some("comment")
+                }
+                "w:permStart" | "w:permEnd" => Some("permission"),
+                _ => None,
+            };
+            if let Some(kind) = kind {
+                if let Some(id) = element.attributes.iter().find(|a| a.name == "w:id") {
+                    output.push((element.id, (kind, id.value.clone())));
+                }
+            }
+            for child in &element.children {
+                if let XmlNode::Element(child) = child {
+                    ranges(child, output);
+                }
+            }
+        }
+        let mut boundary = Vec::new();
+        for node in prefix.iter().chain(&suffix) {
+            if let XmlNode::Element(element) = node {
+                ranges(element, &mut boundary);
+            }
+        }
+        let boundary_nodes: HashSet<_> = boundary.iter().map(|(node, _)| *node).collect();
+        let mut replaced = Vec::new();
+        for index in block.start..=block.end {
+            ranges(paragraph(index)?, &mut replaced);
+        }
+        let removed: Vec<_> = replaced
+            .iter()
+            .filter(|(node, _)| !boundary_nodes.contains(node))
+            .collect();
+        if !removed.is_empty() {
+            let removed_nodes: HashSet<_> = removed.iter().map(|(node, _)| *node).collect();
+            let removed_ids: HashSet<_> = removed
+                .iter()
+                .map(|(_, (kind, id))| (*kind, id.as_str()))
+                .collect();
+            let mut all = Vec::new();
+            ranges(raw.root(), &mut all);
+            if all.iter().any(|(node, (kind, id))| {
+                !removed_nodes.contains(node) && removed_ids.contains(&(*kind, id.as_str()))
+            }) {
+                return Err(
+                    "field regeneration cannot remove one end or reference of a surrounding range"
+                        .into(),
+                );
+            }
         }
         Ok(locked)
     }
@@ -1089,15 +1220,44 @@ impl WordDocument {
     ) -> Result<SelectionRange, String> {
         let instruction = Self::validate_field_block_instruction(instruction)?;
         Self::validate_field_block_lines(lines)?;
-        self.replace_field_block_content(block, |document, start, location, tab_twips| {
-            document.insert_field_block_at(
-                start,
-                instruction,
-                lines,
-                Some(location),
-                Some(tab_twips),
-            )
-        })
+        self.validate_field_block(block)?;
+        let prefix_bytes = if lines.len() <= 1 {
+            let raw = self.raw_document.as_ref().unwrap();
+            let first = raw
+                .element(self.paragraph(block.start).unwrap().node_id.unwrap())
+                .unwrap();
+            let mut begin = None;
+            Self::visit_field_markers(first, &mut |marker| {
+                if let FieldMarker::Begin(id, _) = marker {
+                    if begin.is_none() {
+                        begin = Some(id);
+                    }
+                }
+            });
+            Self::field_boundary_text_len(&Self::field_boundary_content(
+                raw,
+                first,
+                begin.unwrap(),
+                true,
+            )?)
+        } else {
+            0
+        };
+        let selection =
+            self.replace_field_block_content(block, |document, start, location, tab_twips| {
+                document.insert_field_block_at(
+                    start,
+                    instruction,
+                    lines,
+                    Some(location),
+                    Some(tab_twips),
+                )
+            })?;
+        let mut caret = self.rendered_to_model_text_position(selection.focus);
+        caret.offset += prefix_bytes;
+        Ok(SelectionRange::collapsed(
+            self.model_to_rendered_text_position(caret),
+        ))
     }
 
     /// Regenerate a block without dropping the section terminated by its last
@@ -1109,6 +1269,52 @@ impl WordDocument {
         insert: impl FnOnce(&mut Self, usize, (XmlNodeId, usize), i64) -> Result<T, String>,
     ) -> Result<T, String> {
         self.validate_field_block(block)?;
+        let raw = self
+            .raw_document
+            .as_ref()
+            .ok_or("document XML is unavailable")?;
+        let first = raw
+            .element(self.paragraph(block.start).unwrap().node_id.unwrap())
+            .unwrap();
+        let last = raw
+            .element(self.paragraph(block.end).unwrap().node_id.unwrap())
+            .unwrap();
+        let mut depth = 0usize;
+        let mut begin = None;
+        let mut end_marker = None;
+        for index in block.start..=block.end {
+            let p = raw
+                .element(self.paragraph(index).unwrap().node_id.unwrap())
+                .unwrap();
+            Self::visit_field_markers(p, &mut |marker| match marker {
+                FieldMarker::Begin(id, _) => {
+                    if depth == 0 {
+                        begin = Some(id);
+                    }
+                    depth += 1;
+                }
+                FieldMarker::End(id) => {
+                    depth -= 1;
+                    if depth == 0 {
+                        end_marker = Some(id);
+                    }
+                }
+                _ => {}
+            });
+        }
+        let prefix = Self::field_boundary_content(raw, first, begin.unwrap(), true)?;
+        let suffix = Self::field_boundary_content(raw, last, end_marker.unwrap(), false)?;
+        let first_properties = first
+            .children
+            .iter()
+            .find(|node| matches!(node, XmlNode::Element(e) if e.name == "w:pPr"))
+            .cloned();
+        let last_properties = last
+            .children
+            .iter()
+            .find(|node| matches!(node, XmlNode::Element(e) if e.name == "w:pPr"))
+            .cloned();
+
         let body_element =
             |document: &Self, surface: usize| match document.paragraph_surfaces.get(surface) {
                 Some(ParagraphSurface::Body { path }) => match path.as_slice() {
@@ -1130,9 +1336,28 @@ impl WordDocument {
         });
         // Resolve the original section before removing its terminating break.
         let tab_twips = self.field_tab_position_twips_at(start);
+        let mut reserved_bookmarks: Vec<_> = self
+            .document
+            .as_ref()
+            .unwrap()
+            .bookmarks
+            .iter()
+            .filter(|_| !prefix.is_empty() || !suffix.is_empty())
+            .filter(|bookmark| bookmark.start_paragraph >= start && bookmark.end_paragraph <= end)
+            .cloned()
+            .collect();
         self.remove_body_elements(start, end)?;
         let document = self.document_mut().ok_or("document is unavailable")?;
         let remaining = document.body.as_ref().unwrap().elements.len();
+        // Boundary bookmarks are reattached after insertion. Reserve their IDs
+        // and names while generating heading anchors, outside any real paragraph
+        // so they cannot become anchors for an unrelated heading. XML reload
+        // below replaces these temporary positions with the retained endpoints.
+        for bookmark in &mut reserved_bookmarks {
+            bookmark.start_paragraph = remaining;
+            bookmark.end_paragraph = remaining;
+        }
+        document.bookmarks.extend(reserved_bookmarks);
         let result = insert(self, start, location, tab_twips)?;
         let body = self
             .document_mut()
@@ -1163,6 +1388,85 @@ impl WordDocument {
         }
         if let Some(document) = self.document_mut() {
             Self::rebuild_section_ranges(document);
+        }
+        if !prefix.is_empty() || !suffix.is_empty() {
+            let first_id = self
+                .document
+                .as_ref()
+                .unwrap()
+                .body
+                .as_ref()
+                .unwrap()
+                .elements[start]
+                .as_paragraph()
+                .unwrap()
+                .node_id
+                .unwrap();
+            let last_id = last_id.ok_or("the replacement field's paragraph XML is unavailable")?;
+            let mut rewrite: super::rewrite::XmlRewrite = Box::new(move |raw, _| {
+                fn fresh(raw: &mut DocxXmlDocument, node: &mut XmlNode) {
+                    if let XmlNode::Element(element) = node {
+                        element.id = raw.allocate_node_id();
+                        for child in &mut element.children {
+                            fresh(raw, child);
+                        }
+                    }
+                }
+                fn properties(
+                    raw: &mut DocxXmlDocument,
+                    id: XmlNodeId,
+                    original: &Option<XmlNode>,
+                ) -> Result<(), String> {
+                    let mut original = original.clone();
+                    if let Some(node) = original.as_mut() {
+                        fresh(raw, node);
+                    }
+                    let paragraph = raw
+                        .element_mut(id)
+                        .ok_or("replacement field XML is unavailable")?;
+                    paragraph
+                        .children
+                        .retain(|node| !matches!(node, XmlNode::Element(e) if e.name == "w:pPr"));
+                    if let Some(node) = original {
+                        paragraph.children.insert(0, node);
+                    }
+                    Ok(())
+                }
+                if !prefix.is_empty() {
+                    let mut first_properties = first_properties.clone();
+                    if first_id != last_id {
+                        if let Some(XmlNode::Element(properties)) = first_properties.as_mut() {
+                            // A section break belongs only to the last generated
+                            // paragraph, even when both boundaries shared a paragraph.
+                            properties.children.retain(
+                                |node| !matches!(node, XmlNode::Element(e) if e.name == "w:sectPr"),
+                            );
+                        }
+                    }
+                    properties(raw, first_id, &first_properties)?;
+                }
+                if !suffix.is_empty() {
+                    properties(raw, last_id, &last_properties)?;
+                }
+                let mut prefix = prefix.clone();
+                let mut suffix = suffix.clone();
+                for node in prefix.iter_mut().chain(suffix.iter_mut()) {
+                    fresh(raw, node);
+                }
+                let first = raw
+                    .element_mut(first_id)
+                    .ok_or("replacement field XML is unavailable")?;
+                let at = usize::from(
+                    matches!(first.children.first(), Some(XmlNode::Element(e)) if e.name == "w:pPr"),
+                );
+                first.children.splice(at..at, prefix);
+                raw.element_mut(last_id)
+                    .ok_or("replacement field XML is unavailable")?
+                    .children
+                    .extend(suffix);
+                Ok(super::rewrite::CaretAfter::Keep)
+            });
+            self.rewrite_document_xml(&mut rewrite)?;
         }
         Ok(result)
     }

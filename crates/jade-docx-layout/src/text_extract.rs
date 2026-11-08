@@ -155,6 +155,7 @@ impl WordOracleLineXOffsets {
 struct LayoutInputContext<'a, C> {
     document: &'a Document,
     styles: Option<&'a StylesPart>,
+    formatting_styles: Option<&'a StylesPart>,
     theme: Option<&'a ThemePart>,
     context: &'a C,
     oracle_advances_px_by_paragraph: Option<&'a OracleAdvanceMap>,
@@ -962,8 +963,21 @@ fn build_paragraph_input<C: LineWrapContext>(
     };
     let mut text = String::new();
     let mut run_styles = Vec::new();
+    let paragraph_style_id = paragraph
+        .properties
+        .as_ref()
+        .and_then(|properties| properties.style.as_deref());
     for run in &paragraph.runs {
-        if run_is_hidden_text(run) {
+        let resolved_formatting = layout_context.formatting_styles.and_then(|styles| {
+            styles.resolve_effective_run_properties(paragraph_style_id, run.properties.as_ref())
+        });
+        if resolved_formatting
+            .as_ref()
+            .or(run.properties.as_ref())
+            .is_some_and(|properties| {
+                properties.vanish.unwrap_or(false) || properties.spec_vanish.unwrap_or(false)
+            })
+        {
             continue;
         }
         let run_text = if run.text.is_empty() {
@@ -979,20 +993,56 @@ fn build_paragraph_input<C: LineWrapContext>(
         let start = text.len();
         text.push_str(&run_text);
         let end = text.len();
+        let mut properties = effective_run_properties(
+            run,
+            // Keep the catalogue available for `w:rStyle` even when a
+            // CJK-authored paragraph suppresses paragraph/doc-default
+            // font fallback. Character styles are run-local semantics,
+            // not paragraph font defaults.
+            layout_context.styles,
+            paragraph_run_fallback.as_ref(),
+            allow_font_size_defaults,
+        );
+        if let Some(resolved) = resolved_formatting.as_ref() {
+            // Visual formatting comes from the complete style cascade regardless of
+            // the font-default suppression used for explicit East Asian faces.
+            let properties = properties.get_or_insert_with(RunProperties::default);
+            properties.bold = resolved.bold;
+            properties.bold_complex = resolved.bold_complex;
+            properties.italic = resolved.italic;
+            properties.italic_complex = resolved.italic_complex;
+            properties.caps = resolved.caps;
+            properties.small_caps = resolved.small_caps;
+            properties.strike = resolved.strike;
+            properties.outline = resolved.outline;
+            properties.shadow = resolved.shadow;
+            properties.emboss = resolved.emboss;
+            properties.imprint = resolved.imprint;
+            properties.vanish = resolved.vanish;
+            properties.double_strike = resolved.double_strike;
+            properties.highlight = resolved.highlight.clone();
+            properties.baseline = resolved.baseline.clone();
+            properties.text_position = resolved.text_position;
+            properties.char_spacing = resolved.char_spacing;
+            properties.snap_to_grid = resolved.snap_to_grid;
+            properties.kerning = resolved.kerning;
+            properties.text_scale = resolved.text_scale;
+            properties.color = resolved.color.clone();
+            properties.theme_color = resolved.theme_color.clone();
+            properties.underline = resolved.underline;
+            properties.underline_kind = resolved.underline_kind.clone();
+            properties.underline_color = resolved.underline_color.clone();
+            properties.underline_theme_color = resolved.underline_theme_color.clone();
+            properties.shading = resolved.shading.clone();
+            properties.border = resolved.border.clone();
+            properties.emphasis = resolved.emphasis.clone();
+            properties.text_effects = resolved.text_effects.clone();
+            properties.ruby = resolved.ruby.clone();
+        }
         run_styles.push(RunStyle {
             start,
             end,
-            properties: effective_run_properties(
-                run,
-                // Keep the catalogue available for `w:rStyle` even when a
-                // CJK-authored paragraph suppresses paragraph/doc-default
-                // font fallback. Character styles are run-local semantics,
-                // not paragraph font defaults.
-                layout_context.styles,
-                paragraph_run_fallback.as_ref(),
-                allow_font_size_defaults,
-            )
-            .map(|mut props| {
+            properties: properties.map(|mut props| {
                 // Resolve `w:asciiTheme`-style references so the headless and
                 // PDF layout paths measure with the same concrete faces as
                 // the editor, instead of the default font stacks.
@@ -2000,12 +2050,13 @@ fn layout_document_lines_with_styles<C: LineWrapContext>(
     styles: Option<&StylesPart>,
     context: &C,
 ) -> Result<DocumentLineLayout, C::Error> {
-    layout_document_lines_with_styles_and_oracle(document, styles, None, context, None)
+    layout_document_lines_with_styles_and_oracle(document, styles, styles, None, context, None)
 }
 
 fn layout_document_lines_with_styles_and_oracle<C: LineWrapContext>(
     document: &Document,
     styles: Option<&StylesPart>,
+    formatting_styles: Option<&StylesPart>,
     theme: Option<&ThemePart>,
     context: &C,
     oracle_advances_px_by_paragraph: Option<&OracleAdvanceMap>,
@@ -2051,6 +2102,7 @@ fn layout_document_lines_with_styles_and_oracle<C: LineWrapContext>(
     let layout_context = LayoutInputContext {
         document,
         styles,
+        formatting_styles,
         theme,
         context,
         oracle_advances_px_by_paragraph,
@@ -2776,21 +2828,13 @@ pub fn layout_docx_lines_from_package_with_oracle_advances<C: LineWrapContext>(
             apply_document_settings(&mut document, &settings);
         }
     }
-    // Explicit East Asian faces still inherit omitted sizes from docDefaults.
-    // Windows face-based line metrics otherwise size a 10.5pt MS Mincho
-    // document with the resolver's 12pt fallback and add spurious pages.
-    let styles = if needs_style_defaults
-        || crate::line_metrics::word_layout_platform()
-            == crate::line_metrics::WordLayoutPlatform::Windows
-    {
-        package
-            .get("word/styles.xml")
-            .map(|styles_xml| StylesPart::from_xml(&String::from_utf8_lossy(styles_xml)))
-            .transpose()
-            .map_err(LineLayoutError::DocumentParse)?
-    } else {
-        None
-    };
+    // Visibility inherits styles even when explicit East Asian fonts bypass
+    // the font-default fallback used by the established oracle metrics.
+    let styles = package
+        .get("word/styles.xml")
+        .map(|styles_xml| StylesPart::from_xml(&String::from_utf8_lossy(styles_xml)))
+        .transpose()
+        .map_err(LineLayoutError::DocumentParse)?;
     // Theme font references (`w:asciiTheme`, `+mn-lt`, …) resolve to concrete
     // faces here so this path measures with the same fonts as the editor. The
     // conventional part name covers real-world producers; fall back to any
@@ -2821,6 +2865,11 @@ pub fn layout_docx_lines_from_package_with_oracle_advances<C: LineWrapContext>(
     );
     layout_document_lines_with_styles_and_oracle(
         &document,
+        if needs_style_defaults {
+            styles.as_ref()
+        } else {
+            None
+        },
         styles.as_ref(),
         theme.as_ref(),
         context,
@@ -2876,6 +2925,7 @@ fn merge_run_props_override(target: &mut RunProperties, source: &RunProperties) 
         baseline,
         text_position,
         char_spacing,
+        snap_to_grid,
         kerning,
         text_scale,
         fit_text,
@@ -2960,6 +3010,7 @@ fn fill_missing_font_props(
         baseline,
         text_position,
         char_spacing,
+        snap_to_grid,
         fit_text,
         language,
         east_asia_language,
@@ -3996,6 +4047,31 @@ mod tests {
     }
 
     #[test]
+    fn fit_text_disables_combined_character_layout() {
+        let context = FixedWidthContext::new(5.0);
+        let properties = jade_docx_reader::RunProperties {
+            font_size: Some(12.0),
+            fit_text: Some(jade_docx_reader::document::RunFitText {
+                val: 960,
+                id: Some(1),
+            }),
+            east_asian_layout: Some(Box::new(jade_docx_reader::document::EastAsianLayout {
+                combine: true,
+                combine_brackets: Some("round".into()),
+                ..Default::default()
+            })),
+            ..Default::default()
+        };
+        assert!(crate::combined_characters::combined_run_properties(
+            &context,
+            "株式会社",
+            &properties
+        )
+        .unwrap()
+        .is_none());
+    }
+
+    #[test]
     fn combined_characters_take_their_wider_half_and_brackets() {
         let context = FixedWidthContext::new(5.0);
         let mut properties = jade_docx_reader::RunProperties {
@@ -4023,8 +4099,20 @@ mod tests {
                 .unwrap()
                 .unwrap();
         assert_eq!(bracketed.text_scale, Some(100.0));
+        properties
+            .east_asian_layout
+            .as_mut()
+            .unwrap()
+            .combine_brackets = None;
+        let single =
+            crate::combined_characters::combined_run_properties(&context, "株", &properties)
+                .unwrap()
+                .expect("Word combines a single character at half size");
+        assert_eq!(single.font_size, Some(5.25));
+        assert_eq!(single.font_size_complex, Some(5.25));
+        assert_eq!(single.text_scale, Some(100.0));
         assert!(
-            crate::combined_characters::combined_run_properties(&context, "a", &properties)
+            crate::combined_characters::combined_run_properties(&context, "", &properties)
                 .unwrap()
                 .is_none()
         );
@@ -5096,6 +5184,385 @@ mod tests {
         };
 
         assert_eq!(estimate_paragraph_font_size(&paragraph), 12.0);
+    }
+
+    #[test]
+    fn style_typography_reaches_layout_and_shaping() {
+        for paired in [false, true] {
+            let xml = r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:w14="http://schemas.microsoft.com/office/word/2010/wordml">
+<w:docDefaults><w:rPrDefault><w:rPr><w14:glow w14:rad="63500"><w14:srgbClr w14:val="FF0000"><w14:alpha w14:val="40000"/></w14:srgbClr></w14:glow><w14:textOutline w14:w="12700"><w14:solidFill><w14:srgbClr w14:val="00FF00"/></w14:solidFill></w14:textOutline><w14:ligatures w14:val="standard"/><w14:numSpacing w14:val="proportional"/><w14:stylisticSets><w14:styleSet w14:id="1"/><w14:styleSet w14:id="4"/></w14:stylisticSets></w:rPr></w:rPrDefault></w:docDefaults>
+<w:style w:type="paragraph" w:styleId="Base"><w:rPr><w14:numForm w14:val="oldStyle"/><w14:cntxtAlts w14:val="1"/></w:rPr></w:style>
+<w:style w:type="character" w:styleId="Character"><w:rPr><w14:numSpacing w14:val="tabular"/></w:rPr></w:style>
+</w:styles>"#;
+            let xml = if paired {
+                let mut xml = xml.to_string();
+                for tag in ["ligatures", "numSpacing", "numForm", "cntxtAlts"] {
+                    // Expand every empty extension element to exercise both XML forms.
+                    let prefix = format!("<w14:{tag} ");
+                    let mut offset = 0;
+                    while let Some(start) = xml[offset..].find(&prefix) {
+                        let end = offset + start + xml[offset + start..].find("/>").unwrap();
+                        let close = format!("></w14:{tag}>");
+                        xml.replace_range(end..end + 2, &close);
+                        offset = end + close.len();
+                    }
+                }
+                xml
+            } else {
+                xml.to_string()
+            };
+            let styles = StylesPart::from_xml(&xml).unwrap();
+            let document = Document::default();
+            let context = FixedWidthContext::new(1.0);
+            for explicit_fonts in [false, true] {
+                for reset in [false, true] {
+                    let paragraph = Paragraph {
+                        properties: Some(ParagraphProperties {
+                            style: Some("Base".into()),
+                            ..Default::default()
+                        }),
+                        runs: vec![Run {
+                            text: "office 123".into(),
+                            properties: Some(RunProperties {
+                                style: Some("Character".into()),
+                                fonts: explicit_fonts.then(|| RunFonts {
+                                    east_asia: Some("Noto Sans JP".into()),
+                                    ..Default::default()
+                                }),
+                                text_effects: reset.then(|| {
+                                    Box::new(jade_docx_reader::document::RunTextEffects {
+                                        glow_radius: Some(0.0),
+                                        glow_alpha: Some(1.0),
+                                        outline_width: Some(0.0),
+                                        ligatures: Some("none".into()),
+                                        contextual_alternates: Some(false),
+                                        ..Default::default()
+                                    })
+                                }),
+                                ..Default::default()
+                            }),
+                            ..plain_run("")
+                        }],
+                        node_id: None,
+                        comment_ranges: Vec::new(),
+                        comment_markers: Vec::new(),
+                    };
+                    let input_context = LayoutInputContext {
+                        document: &document,
+                        styles: (!explicit_fonts).then_some(&styles),
+                        formatting_styles: Some(&styles),
+                        theme: None,
+                        context: &context,
+                        oracle_advances_px_by_paragraph: None,
+                    };
+                    let input = build_paragraph_input(
+                        &input_context,
+                        0,
+                        &paragraph,
+                        0.0,
+                        600.0,
+                        700.0,
+                        false,
+                    )
+                    .unwrap()
+                    .unwrap();
+                    let props = input.run_styles[0].properties.as_ref().unwrap();
+                    let expected = jade_docx_reader::document::RunTextEffects {
+                        glow_color: (!reset).then(|| "#FF0000".into()),
+                        glow_radius: Some(if reset { 0.0 } else { 5.0 }),
+                        glow_alpha: Some(if reset { 1.0 } else { 0.4 }),
+                        outline_color: (!reset).then(|| "#00FF00".into()),
+                        outline_width: Some(if reset { 0.0 } else { 1.0 }),
+                        ligatures: Some(if reset { "none" } else { "standard" }.into()),
+                        number_form: Some("oldStyle".into()),
+                        number_spacing: Some("tabular".into()),
+                        stylistic_set: Some(1),
+                        stylistic_sets: Some(vec![1, 4]),
+                        contextual_alternates: Some(!reset),
+                        ..Default::default()
+                    };
+                    assert_eq!(
+                        props.text_effects.as_deref(),
+                        Some(&expected),
+                        "paired={paired}, explicit_fonts={explicit_fonts}, reset={reset}"
+                    );
+                    let shaping =
+                        crate::font_resolver::resolve_run_style_for_wrap(Some(props), None);
+                    assert!(jade_painter::font_features::has_features(
+                        &shaping.font_descriptor_latin_ascii
+                    ));
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn ruby_character_styles_reach_headless_runs_with_suppressed_font_defaults() {
+        use jade_docx_reader::document::{RubyAnnotation, RubyGuideRun};
+        let styles = StylesPart::from_xml(r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+            <w:style w:type="character" w:styleId="Guide"><w:rPr><w:b/><w:sz w:val="16"/><w:color w:val="FF0000"/></w:rPr></w:style>
+            </w:styles>"#).unwrap();
+        let document = Document::default();
+        let context = FixedWidthContext::new(1.0);
+        let paragraph = Paragraph {
+            runs: vec![Run {
+                properties: Some(RunProperties {
+                    ruby: Some(Box::new(RubyAnnotation {
+                        text: "A".into(),
+                        size_pt: Some(5.0),
+                        guide_runs: vec![RubyGuideRun {
+                            text: "A".into(),
+                            properties: Some(Box::new(RunProperties {
+                                style: Some("Guide".into()),
+                                ..Default::default()
+                            })),
+                        }],
+                        ..Default::default()
+                    })),
+                    ..Default::default()
+                }),
+                ..plain_run("漢")
+            }],
+            properties: None,
+            node_id: None,
+            comment_ranges: Vec::new(),
+            comment_markers: Vec::new(),
+        };
+        for catalogue in [None, Some(&styles)] {
+            let input_context = LayoutInputContext {
+                document: &document,
+                styles: catalogue,
+                formatting_styles: Some(&styles),
+                theme: None,
+                context: &context,
+                oracle_advances_px_by_paragraph: None,
+            };
+            let input =
+                build_paragraph_input(&input_context, 0, &paragraph, 0.0, 600.0, 700.0, false)
+                    .unwrap()
+                    .unwrap();
+            let base = input.run_styles[0].properties.as_deref().unwrap();
+            let runs = crate::ruby::ruby_guide_runs(Some(base), 12.0, base.ruby.as_ref().unwrap());
+            assert_eq!(
+                (
+                    runs[0].1.font_size,
+                    runs[0].1.bold,
+                    runs[0].1.color.as_deref()
+                ),
+                (Some(8.0), Some(true), Some("#FF0000"))
+            );
+        }
+    }
+
+    #[test]
+    fn layout_runs_use_effective_style_visuals_with_explicit_east_asian_fonts() {
+        let styles = StylesPart::from_xml(
+            r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+<w:docDefaults><w:rPrDefault><w:rPr><w:i/></w:rPr></w:rPrDefault></w:docDefaults>
+<w:style w:type="paragraph" w:styleId="Base"><w:rPr><w:b/><w:i/><w:dstrike/><w:highlight w:val="yellow"/><w:vertAlign w:val="superscript"/><w:position w:val="-8"/><w:spacing w:val="40"/><w:em w:val="underDot"/><w:kern w:val="24"/><w:w w:val="80"/><w:color w:val="C00000"/><w:u w:val="wave" w:color="00B050"/><w:shd w:val="clear" w:fill="ABCDEF"/><w:bdr w:val="double" w:sz="12" w:space="2" w:color="123456"/></w:rPr></w:style>
+<w:style w:type="character" w:styleId="Toggle"><w:rPr><w:b/><w:i/></w:rPr></w:style>
+<w:style w:type="character" w:styleId="Colored"><w:rPr><w:color w:val="0000FF" w:themeColor="accent2"/><w:u w:val="double" w:color="0000FF" w:themeColor="accent2"/></w:rPr></w:style>
+</w:styles>"#,
+        )
+        .unwrap();
+        let document = Document::default();
+        let context = FixedWidthContext::new(1.0);
+        for explicit_fonts in [false, true] {
+            let paragraph = Paragraph {
+                properties: Some(ParagraphProperties {
+                    style: Some("Base".into()),
+                    ..Default::default()
+                }),
+                runs: vec![Run {
+                    text: "styled".into(),
+                    properties: Some(RunProperties {
+                        style: Some("Toggle".into()),
+                        fonts: explicit_fonts.then(|| RunFonts {
+                            east_asia: Some("Noto Sans JP".into()),
+                            ..Default::default()
+                        }),
+                        ..Default::default()
+                    }),
+                    ..plain_run("")
+                }],
+                ..Paragraph {
+                    runs: Vec::new(),
+                    properties: None,
+                    node_id: None,
+                    comment_ranges: Vec::new(),
+                    comment_markers: Vec::new(),
+                }
+            };
+            let mut paragraph = paragraph;
+            let mut reset = paragraph.runs[0].clone();
+            reset.properties.as_mut().unwrap().text_position = Some(0.0);
+            reset.properties.as_mut().unwrap().char_spacing = Some(0.0);
+            reset.properties.as_mut().unwrap().kerning = Some(0.0);
+            reset.properties.as_mut().unwrap().emphasis = Some(Rc::from("none"));
+            reset.properties.as_mut().unwrap().text_scale = Some(100.0);
+            reset.properties.as_mut().unwrap().style = Some("Colored".into());
+            reset.properties.as_mut().unwrap().color = Some("#123456".into());
+            reset.properties.as_mut().unwrap().underline = Some(false);
+            reset.properties.as_mut().unwrap().border = Some(jade_docx_reader::BorderEdge {
+                val: Some("nil".into()),
+                ..Default::default()
+            });
+            reset.properties.as_mut().unwrap().shading = Some(jade_docx_reader::Shading {
+                val: Some("nil".into()),
+                ..Default::default()
+            });
+            reset.properties.as_mut().unwrap().underline_kind = None;
+            reset.properties.as_mut().unwrap().underline_color = None;
+            paragraph.runs.push(reset);
+            let mut themed = paragraph.runs[0].clone();
+            themed.properties.as_mut().unwrap().style = Some("Colored".into());
+            paragraph.runs.push(themed);
+            let input_context = LayoutInputContext {
+                document: &document,
+                styles: (!explicit_fonts).then_some(&styles),
+                formatting_styles: Some(&styles),
+                theme: None,
+                context: &context,
+                oracle_advances_px_by_paragraph: None,
+            };
+            let input =
+                build_paragraph_input(&input_context, 0, &paragraph, 0.0, 600.0, 700.0, false)
+                    .unwrap()
+                    .unwrap();
+            let properties = input.run_styles[0].properties.as_ref().unwrap();
+            assert_eq!(
+                properties.bold,
+                Some(false),
+                "explicit_fonts={explicit_fonts}"
+            );
+            assert_eq!(
+                properties.italic,
+                Some(true),
+                "explicit_fonts={explicit_fonts}"
+            );
+            assert_eq!(properties.double_strike, Some(true));
+            assert_eq!(properties.highlight.as_deref(), Some("yellow"));
+            assert_eq!(properties.baseline.as_deref(), Some("superscript"));
+            assert_eq!(properties.text_position, Some(-4.0));
+            assert_eq!(properties.char_spacing, Some(2.0));
+            assert_eq!(properties.kerning, Some(12.0));
+            assert_eq!(properties.emphasis.as_deref(), Some("underdot"));
+            assert_eq!(properties.text_scale, Some(80.0));
+            assert_eq!(properties.color.as_deref(), Some("#C00000"));
+            assert_eq!(properties.underline, Some(true));
+            let border = properties.border.as_ref().unwrap();
+            assert_eq!(border.val.as_deref(), Some("double"));
+            assert_eq!(border.size_eighths, Some(12));
+            assert_eq!(border.space, Some(2));
+            assert_eq!(border.color.as_deref(), Some("#123456"));
+            assert_eq!(
+                properties
+                    .shading
+                    .as_ref()
+                    .unwrap()
+                    .resolved_background_color()
+                    .as_deref(),
+                Some("#ABCDEF")
+            );
+            assert_eq!(properties.underline_kind.as_deref(), Some("wave"));
+            assert_eq!(properties.underline_color.as_deref(), Some("00B050"));
+            let reset = input.run_styles[1].properties.as_ref().unwrap();
+            assert_eq!(reset.color.as_deref(), Some("#123456"));
+            assert_eq!(reset.kerning, Some(0.0));
+            assert_eq!(reset.emphasis.as_deref(), Some("none"));
+            assert_eq!(reset.text_scale, Some(100.0));
+            assert_eq!(reset.underline, Some(false));
+            assert_eq!(reset.underline_kind, None);
+            // Disabling the underline does not erase its inherited color.
+            assert_eq!(reset.underline_color.as_deref(), Some("0000FF"));
+            assert_eq!(
+                reset.underline_theme_color.as_ref().unwrap().name.as_ref(),
+                "accent2"
+            );
+            assert_eq!(reset.theme_color, None);
+            assert!(!reset.border.as_ref().unwrap().is_visible());
+            assert_eq!(reset.shading.as_ref().unwrap().val.as_deref(), Some("nil"));
+            assert_eq!(
+                reset.shading.as_ref().unwrap().resolved_background_color(),
+                None
+            );
+            let themed = input.run_styles[2].properties.as_ref().unwrap();
+            assert_eq!(
+                themed.theme_color.as_ref().unwrap().name.as_ref(),
+                "accent2"
+            );
+            assert_eq!(themed.underline_kind.as_deref(), Some("double"));
+            assert_eq!(themed.underline_color.as_deref(), Some("0000FF"));
+            assert_eq!(
+                themed.underline_theme_color.as_ref().unwrap().name.as_ref(),
+                "accent2"
+            );
+            if explicit_fonts {
+                assert_eq!(
+                    properties.fonts.as_ref().unwrap().east_asia.as_deref(),
+                    Some("Noto Sans JP")
+                );
+            }
+            assert_eq!(
+                input.run_styles[1]
+                    .properties
+                    .as_ref()
+                    .unwrap()
+                    .char_spacing,
+                Some(0.0)
+            );
+            assert_eq!(
+                input.run_styles[1]
+                    .properties
+                    .as_ref()
+                    .unwrap()
+                    .text_position,
+                Some(0.0)
+            );
+        }
+    }
+
+    #[test]
+    fn package_hidden_styles_apply_even_to_explicit_east_asian_runs() {
+        for font in ["", r#"<w:rFonts w:eastAsia="Noto Sans JP"/>"#] {
+            let document = format!(
+                r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p>
+<w:pPr><w:pStyle w:val="Hidden"/></w:pPr>
+<w:r><w:rPr>{font}</w:rPr><w:t>hidden</w:t></w:r>
+<w:r><w:rPr>{font}<w:rStyle w:val="Toggle"/></w:rPr><w:t>toggle</w:t></w:r>
+<w:r><w:rPr>{font}<w:vanish w:val="0"/></w:rPr><w:t>visible</w:t></w:r>
+<w:r><w:rPr>{font}<w:rStyle w:val="Toggle"/><w:vanish/></w:rPr><w:t>direct-hidden</w:t></w:r>
+</w:p></w:body></w:document>"#
+            );
+            let styles = r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+<w:style w:type="paragraph" w:styleId="Hidden"><w:rPr><w:vanish/></w:rPr></w:style>
+<w:style w:type="character" w:styleId="Toggle"><w:rPr><w:vanish/></w:rPr></w:style>
+</w:styles>"#;
+            let package = OpenXmlPackage {
+                files: [
+                    ("word/document.xml".into(), document.into_bytes()),
+                    ("word/styles.xml".into(), styles.as_bytes().to_vec()),
+                ]
+                .into(),
+                relationships: vec![jade_docx_reader::Relationship {
+                    id: "rId1".into(),
+                    r#type: RelationshipTypes::OfficeDocument.as_str().into(),
+                    target: "word/document.xml".into(),
+                    target_mode: None,
+                }],
+                original_size_bytes: None,
+            };
+            let layout =
+                layout_docx_lines_from_package(&package, &FixedWidthContext::new(1.0)).unwrap();
+            assert_eq!(
+                layout
+                    .get_lines()
+                    .map(|line| line.text.as_str())
+                    .collect::<String>(),
+                "togglevisible",
+                "font: {font}"
+            );
+        }
     }
 
     #[test]

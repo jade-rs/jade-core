@@ -9,7 +9,6 @@
 //! only what the dialog changed, so a property the user left alone keeps
 //! whatever each run had.
 
-use crate::commands::set_run_format::run_format_of;
 use jade_docx_headless_api::HeadlessCommand;
 pub use jade_docx_headless_api::{
     HeadlessChangeCaseMode, HeadlessEastAsianLayout, HeadlessRunFormat, HeadlessThemeColor,
@@ -451,6 +450,7 @@ pub fn format_change(before: &HeadlessRunFormat, after: &HeadlessRunFormat) -> H
         number_spacing,
         number_form,
         stylistic_set,
+        stylistic_sets,
         contextual_alternates,
         glow_color,
         glow_radius,
@@ -469,6 +469,25 @@ pub fn format_change(before: &HeadlessRunFormat, after: &HeadlessRunFormat) -> H
 /// Fills in what a run without direct formatting shows: Word's dialog
 /// shows every control set, not blank.
 fn with_defaults(mut format: HeadlessRunFormat) -> HeadlessRunFormat {
+    format.complex_bold = Some(format.complex_bold.or(format.bold).unwrap_or(false));
+    format.complex_italic = Some(format.complex_italic.or(format.italic).unwrap_or(false));
+    format.complex_font_size = format.complex_font_size.or(format.font_size);
+    format.underline_color.get_or_insert_with(|| "auto".into());
+    format.glow_color.get_or_insert_with(|| "none".into());
+    format
+        .text_outline_color
+        .get_or_insert_with(|| "none".into());
+    let mut sets = format.stylistic_sets.take().unwrap_or_else(|| {
+        format
+            .stylistic_set
+            .filter(|set| (1..=20).contains(set))
+            .into_iter()
+            .collect()
+    });
+    sets.sort_unstable();
+    sets.dedup();
+    format.stylistic_set = Some(sets.first().copied().unwrap_or(0));
+    format.stylistic_sets = Some(sets);
     format.bold.get_or_insert(false);
     format.italic.get_or_insert(false);
     format.underline.get_or_insert_with(|| "none".to_string());
@@ -515,6 +534,7 @@ pub struct FontDialog {
     pub format: HeadlessRunFormat,
     /// Text typed to narrow the font lists.
     pub filter: String,
+    mixed_fields: std::collections::BTreeSet<&'static str>,
 }
 
 impl FontDialog {
@@ -525,12 +545,156 @@ impl FontDialog {
             original: format.clone(),
             format,
             filter: String::new(),
+            mixed_fields: Default::default(),
+        }
+    }
+
+    /// Common effective values over the selected runs. Mixed values remain
+    /// blank until the user explicitly chooses one; OK preserves other fields.
+    pub fn open_selection(formats: impl IntoIterator<Item = HeadlessRunFormat>) -> Self {
+        let mut formats = formats.into_iter();
+        let mut dialog = Self::open(formats.next().unwrap_or_default());
+        for format in formats {
+            let format = with_defaults(format);
+            macro_rules! common {
+                ($($field:ident),* $(,)?) => { $(
+                    if dialog.format.$field != format.$field {
+                        dialog.format.$field = None;
+                        dialog.mixed_fields.insert(stringify!($field));
+                    }
+                )* };
+            }
+            common!(
+                latin_font,
+                east_asia_font,
+                complex_font,
+                font_size,
+                complex_font_size,
+                bold,
+                italic,
+                complex_bold,
+                complex_italic,
+                underline,
+                underline_color,
+                strike,
+                double_strike,
+                vertical_align,
+                color,
+                theme_color,
+                caps,
+                small_caps,
+                hidden,
+                emphasis,
+                shading,
+                border,
+                scale,
+                spacing,
+                position,
+                kerning,
+                outline,
+                shadow,
+                emboss,
+                engrave,
+                ligatures,
+                number_spacing,
+                number_form,
+                stylistic_set,
+                stylistic_sets,
+                contextual_alternates,
+                glow_color,
+                glow_radius,
+                text_outline_color,
+                text_outline_width,
+                east_asian_layout,
+                language,
+                east_asia_language,
+                no_proof
+            );
+        }
+        dialog.original = dialog.format.clone();
+        dialog
+    }
+
+    /// Whether the control still has an unresolved mixed value.
+    pub fn is_mixed(&self, field: &str) -> bool {
+        if !self.mixed_fields.contains(field) {
+            return false;
+        }
+        match field {
+            "latin_font" => self.format.latin_font.is_none(),
+            "east_asia_font" => self.format.east_asia_font.is_none(),
+            "complex_font" => self.format.complex_font.is_none(),
+            "font_size" => self.format.font_size.is_none(),
+            "complex_font_size" => self.format.complex_font_size.is_none(),
+            "bold" => self.format.bold.is_none(),
+            "italic" => self.format.italic.is_none(),
+            "complex_bold" => self.format.complex_bold.is_none(),
+            "complex_italic" => self.format.complex_italic.is_none(),
+            "underline" => self.format.underline.is_none(),
+            "underline_color" => self.format.underline_color.is_none(),
+            "strike" => self.format.strike.is_none(),
+            "double_strike" => self.format.double_strike.is_none(),
+            "vertical_align" => self.format.vertical_align.is_none(),
+            "color" => self.format.color.is_none(),
+            "theme_color" => self.format.theme_color.is_none(),
+            "caps" => self.format.caps.is_none(),
+            "small_caps" => self.format.small_caps.is_none(),
+            "hidden" => self.format.hidden.is_none(),
+            "emphasis" => self.format.emphasis.is_none(),
+            "shading" => self.format.shading.is_none(),
+            "border" => self.format.border.is_none(),
+            "scale" => self.format.scale.is_none(),
+            "spacing" => self.format.spacing.is_none(),
+            "position" => self.format.position.is_none(),
+            "kerning" => self.format.kerning.is_none(),
+            "outline" => self.format.outline.is_none(),
+            "shadow" => self.format.shadow.is_none(),
+            "emboss" => self.format.emboss.is_none(),
+            "engrave" => self.format.engrave.is_none(),
+            "ligatures" => self.format.ligatures.is_none(),
+            "number_spacing" => self.format.number_spacing.is_none(),
+            "number_form" => self.format.number_form.is_none(),
+            "stylistic_set" => self.format.stylistic_set.is_none(),
+            "stylistic_sets" => self.format.stylistic_sets.is_none(),
+            "contextual_alternates" => self.format.contextual_alternates.is_none(),
+            "glow_color" => self.format.glow_color.is_none(),
+            "glow_radius" => self.format.glow_radius.is_none(),
+            "text_outline_color" => self.format.text_outline_color.is_none(),
+            "text_outline_width" => self.format.text_outline_width.is_none(),
+            "east_asian_layout" => self.format.east_asian_layout.is_none(),
+            "language" => self.format.language.is_none(),
+            "east_asia_language" => self.format.east_asia_language.is_none(),
+            "no_proof" => self.format.no_proof.is_none(),
+            _ => false,
         }
     }
 
     /// What OK applies: only what the controls changed.
     pub fn change(&self) -> HeadlessRunFormat {
         format_change(&self.original, &self.format)
+    }
+
+    /// Toggle one OpenType stylistic set while retaining the others.
+    pub fn toggle_stylistic_set(&mut self, set: u8) {
+        if !(1..=20).contains(&set) {
+            return;
+        }
+        let mut sets = self.format.stylistic_sets.clone().unwrap_or_else(|| {
+            self.format
+                .stylistic_set
+                .filter(|id| (1..=20).contains(id))
+                .into_iter()
+                .collect()
+        });
+        if sets.contains(&set) {
+            sets.retain(|id| *id != set);
+        } else {
+            sets.push(set);
+        }
+        sets.sort_unstable();
+        sets.dedup();
+        self.format.stylistic_set = Some(sets.first().copied().unwrap_or(0));
+        self.format.stylistic_sets = Some(sets);
     }
 
     /// スタイル: Word's four: 標準, 斜体, 太字, 太字 斜体.
@@ -609,19 +773,23 @@ impl FontDialog {
 
     /// Whether a 文字飾り box is checked.
     pub fn effect(&self, effect: Effect) -> bool {
+        self.effect_state(effect).unwrap_or(false)
+    }
+
+    pub fn effect_state(&self, effect: Effect) -> Option<bool> {
         let format = &self.format;
         match effect {
-            Effect::Strike => format.strike == Some(true),
-            Effect::DoubleStrike => format.double_strike == Some(true),
-            Effect::Superscript => format.vertical_align.as_deref() == Some("superscript"),
-            Effect::Subscript => format.vertical_align.as_deref() == Some("subscript"),
-            Effect::SmallCaps => format.small_caps == Some(true),
-            Effect::AllCaps => format.caps == Some(true),
-            Effect::Hidden => format.hidden == Some(true),
-            Effect::Outline => format.outline == Some(true),
-            Effect::Shadow => format.shadow == Some(true),
-            Effect::Emboss => format.emboss == Some(true),
-            Effect::Engrave => format.engrave == Some(true),
+            Effect::Strike => format.strike,
+            Effect::DoubleStrike => format.double_strike,
+            Effect::Superscript => format.vertical_align.as_deref().map(|v| v == "superscript"),
+            Effect::Subscript => format.vertical_align.as_deref().map(|v| v == "subscript"),
+            Effect::SmallCaps => format.small_caps,
+            Effect::AllCaps => format.caps,
+            Effect::Hidden => format.hidden,
+            Effect::Outline => format.outline,
+            Effect::Shadow => format.shadow,
+            Effect::Emboss => format.emboss,
+            Effect::Engrave => format.engrave,
         }
     }
 
@@ -763,26 +931,7 @@ pub trait WordCharacters: WordSession {
     /// The formatting of the run at the caret, or at the start of the
     /// selection: what the dialog opens on.
     fn run_format_at(&self, (paragraph, offset): Position) -> HeadlessRunFormat {
-        let Some(paragraph) = self.word_document().paragraph(paragraph) else {
-            return HeadlessRunFormat::default();
-        };
-        let length: usize = paragraph.runs.iter().map(|run| run.text.len()).sum();
-        let target = offset.min(length.saturating_sub(1));
-        let mut start = 0;
-        let mut last = None;
-        for run in &paragraph.runs {
-            let end = start + run.text.len();
-            if !run.text.is_empty() {
-                last = Some(run);
-                if target < end {
-                    break;
-                }
-            }
-            start = end;
-        }
-        last.and_then(|run| run.properties.as_ref())
-            .map(run_format_of)
-            .unwrap_or_default()
+        self.word_document().run_format_at(paragraph, offset)
     }
 
     /// What the フォント dialog opens on.
@@ -792,7 +941,17 @@ pub trait WordCharacters: WordSession {
 
     /// Opens the フォント dialog on the selection.
     fn font_dialog(&self) -> FontDialog {
-        FontDialog::open(self.character_format())
+        if let Some(range) = self.selection_range().filter(|range| !range.is_collapsed()) {
+            let (start, end) = range.normalized();
+            FontDialog::open_selection(
+                self.word_document().run_formats_in_range(
+                    (start.paragraph, start.offset),
+                    (end.paragraph, end.offset),
+                ),
+            )
+        } else {
+            FontDialog::open(self.character_format())
+        }
     }
 
     /// Applies a patch to the selection — or the word at a bare caret — as
@@ -939,6 +1098,33 @@ mod tests {
     use super::*;
 
     #[test]
+    fn stylistic_set_choices_preserve_other_sets_and_allow_default() {
+        let mut dialog = FontDialog::open(HeadlessRunFormat {
+            stylistic_set: Some(1),
+            stylistic_sets: Some(vec![1, 4]),
+            ..Default::default()
+        });
+        assert_eq!(dialog.change(), HeadlessRunFormat::default());
+        dialog.toggle_stylistic_set(20);
+        assert_eq!(dialog.change().stylistic_sets, Some(vec![1, 4, 20]));
+        dialog.toggle_stylistic_set(4);
+        assert_eq!(dialog.change().stylistic_sets, Some(vec![1, 20]));
+        dialog.toggle_stylistic_set(1);
+        dialog.toggle_stylistic_set(20);
+        assert_eq!(dialog.change().stylistic_sets, Some(vec![]));
+        assert_eq!(dialog.change().stylistic_set, Some(0));
+        let before = dialog.change();
+        dialog.toggle_stylistic_set(21);
+        assert_eq!(dialog.change(), before);
+        let mut legacy = FontDialog::open(HeadlessRunFormat {
+            stylistic_set: Some(3),
+            ..Default::default()
+        });
+        legacy.toggle_stylistic_set(4);
+        assert_eq!(legacy.change().stylistic_sets, Some(vec![3, 4]));
+    }
+
+    #[test]
     fn the_theme_palette_tints_and_shades_as_word_writes_them() {
         let palette = theme_palette(&[("accent1".to_string(), "4472C4".to_string())]);
         assert_eq!(palette.len(), 6);
@@ -958,6 +1144,59 @@ mod tests {
         assert_eq!(palette[1][0].theme.shade.as_deref(), Some("F2"));
         assert_eq!(palette[1][1].theme.tint.as_deref(), Some("80"));
         assert_eq!(palette[1][1].color, "7F7F7F", "Word writes 7F7F7F");
+    }
+
+    #[test]
+    fn mixed_values_are_blank_and_explicit_off_is_a_change() {
+        let mut dialog = FontDialog::open_selection([
+            HeadlessRunFormat {
+                bold: Some(true),
+                font_size: Some(12.0),
+                ..Default::default()
+            },
+            HeadlessRunFormat {
+                font_size: Some(18.0),
+                ..Default::default()
+            },
+            HeadlessRunFormat {
+                bold: Some(true),
+                font_size: Some(12.0),
+                ..Default::default()
+            },
+        ]);
+        assert!(dialog.is_mixed("bold"));
+        assert!(dialog.is_mixed("font_size"));
+        assert_eq!(dialog.format.bold, None);
+        assert_eq!(dialog.format.font_size, None);
+        assert_eq!(dialog.effect_state(Effect::Strike), Some(false));
+        assert!(dialog.change().is_empty());
+        dialog.format.bold = Some(false);
+        assert!(!dialog.is_mixed("bold"));
+        assert_eq!(
+            dialog.change(),
+            HeadlessRunFormat {
+                bold: Some(false),
+                ..Default::default()
+            }
+        );
+    }
+
+    #[test]
+    fn implicit_and_explicit_defaults_are_not_mixed() {
+        let dialog = FontDialog::open_selection([
+            HeadlessRunFormat::default(),
+            HeadlessRunFormat {
+                bold: Some(false),
+                underline: Some("none".into()),
+                spacing: Some(0.0),
+                stylistic_sets: Some(vec![]),
+                ..Default::default()
+            },
+        ]);
+        assert!(!dialog.is_mixed("bold"));
+        assert!(!dialog.is_mixed("spacing"));
+        assert!(!dialog.is_mixed("stylistic_sets"));
+        assert!(dialog.change().is_empty());
     }
 
     #[test]

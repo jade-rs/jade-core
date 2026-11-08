@@ -411,9 +411,22 @@ impl ThemePart {
 
     /// Whether resolving this run can fill a face or replace a theme token.
     pub fn has_resolvable_font_reference(&self, props: &crate::document::RunProperties) -> bool {
-        let Some(fonts) = props.fonts.as_ref() else {
-            return false;
-        };
+        props
+            .fonts
+            .as_ref()
+            .into_iter()
+            .chain(props.ruby.as_ref().and_then(|ruby| ruby.fonts.as_ref()))
+            .any(|fonts| self.has_resolvable_fonts(fonts))
+            || props.ruby.as_ref().is_some_and(|ruby| {
+                ruby.guide_runs.iter().any(|run| {
+                    run.properties
+                        .as_deref()
+                        .is_some_and(|props| self.has_resolvable_font_reference(props))
+                })
+            })
+    }
+
+    fn has_resolvable_fonts(&self, fonts: &crate::document::RunFonts) -> bool {
         [
             (&fonts.ascii, &fonts.ascii_theme),
             (&fonts.h_ansi, &fonts.h_ansi_theme),
@@ -445,6 +458,40 @@ impl ThemePart {
         })
     }
 
+    /// Resolve DrawingML logical slots through the document's color mapping.
+    /// Read every target from the original scheme so swapped accents do not chain.
+    /// Physical dark/light slots remain available without mapping.
+    pub fn with_drawing_color_mapping(&self, mapping: &HashMap<String, String>) -> Self {
+        let mut mapped = self.clone();
+        for (source, target) in mapping {
+            let source = match source.as_str() {
+                "t1" => "tx1",
+                "t2" => "tx2",
+                "bg1" | "bg2" | "accent1" | "accent2" | "accent3" | "accent4" | "accent5"
+                | "accent6" => source.as_str(),
+                "hyperlink" => "hlink",
+                "followedHyperlink" => "folhlink",
+                _ => continue,
+            };
+            let target = match target.as_str() {
+                "dark1" => "dk1",
+                "dark2" => "dk2",
+                "light1" => "lt1",
+                "light2" => "lt2",
+                "hyperlink" => "hlink",
+                "followedHyperlink" => "folhlink",
+                "accent1" | "accent2" | "accent3" | "accent4" | "accent5" | "accent6" => {
+                    target.as_str()
+                }
+                _ => continue,
+            };
+            if let Some(color) = self.colors.get(target) {
+                mapped.colors.insert(source.to_owned(), color.clone());
+            }
+        }
+        mapped
+    }
+
     /// Word's Office theme, which a document without a theme part is drawn
     /// with.
     pub fn office_default() -> Self {
@@ -458,9 +505,11 @@ impl ThemePart {
     /// editor's load-time flattening and the headless/PDF layout path so both
     /// lay out theme-font documents with the same faces.
     pub fn apply_to_run_properties(&self, props: &mut crate::document::RunProperties) {
-        if self.has_resolvable_font_reference(props) {
-            let fonts = props.fonts.as_mut().expect("resolvable font reference");
-
+        for fonts in props
+            .fonts
+            .iter_mut()
+            .chain(props.ruby.iter_mut().filter_map(|ruby| ruby.fonts.as_mut()))
+        {
             let resolve_slot =
                 |slot: &mut Option<std::rc::Rc<str>>, theme_key: Option<&std::rc::Rc<str>>| {
                     if let Some(value) = slot.as_deref() {
@@ -482,6 +531,14 @@ impl ThemePart {
             resolve_slot(&mut fonts.h_ansi, h_ansi_theme.as_ref());
             resolve_slot(&mut fonts.east_asia, east_asia_theme.as_ref());
             resolve_slot(&mut fonts.complex, complex_theme.as_ref());
+        }
+
+        if let Some(ruby) = props.ruby.as_mut() {
+            for run in &mut ruby.guide_runs {
+                if let Some(properties) = run.properties.as_deref_mut() {
+                    self.apply_to_run_properties(properties);
+                }
+            }
         }
 
         if props.font_family.is_none() {
@@ -555,7 +612,45 @@ pub struct ThemeColorScope {
 
 impl ThemeColorScope {
     pub fn enter(theme: Option<&ThemePart>) -> Self {
-        let colors = theme.map(|theme| theme.colors.clone());
+        Self::enter_with_mapping(theme, &HashMap::new())
+    }
+
+    /// Apply document settings once against the original physical scheme.
+    /// Mapping targets are physical slots, so mappings never chain or recurse.
+    pub fn enter_with_mapping(
+        theme: Option<&ThemePart>,
+        mapping: &HashMap<String, String>,
+    ) -> Self {
+        let colors = theme.map(|theme| {
+            let mut colors = theme.colors.clone();
+            for (source, target) in mapping {
+                let source = match source.as_str() {
+                    "t1" => "text1",
+                    "t2" => "text2",
+                    "bg1" => "background1",
+                    "bg2" => "background2",
+                    "accent1" | "accent2" | "accent3" | "accent4" | "accent5" | "accent6"
+                    | "hyperlink" | "followedHyperlink" => source.as_str(),
+                    _ => continue,
+                };
+                let target = match target.as_str() {
+                    "dark1" => "dk1",
+                    "dark2" => "dk2",
+                    "light1" => "lt1",
+                    "light2" => "lt2",
+                    "hyperlink" => "hlink",
+                    "followedHyperlink" => "folhlink",
+                    "accent1" | "accent2" | "accent3" | "accent4" | "accent5" | "accent6" => {
+                        target.as_str()
+                    }
+                    _ => continue,
+                };
+                if let Some(color) = theme.colors.get(target) {
+                    colors.insert(source.to_owned(), color.clone());
+                }
+            }
+            colors
+        });
         let previous = READING_COLORS.with(|cell| cell.replace(colors));
         ThemeColorScope { previous }
     }
@@ -570,8 +665,9 @@ impl Drop for ThemeColorScope {
 
 /// `w:color`'s theme reference (ECMA-376 Part 1 §17.3.2.6) in the colour
 /// scheme being read: `themeColor` names the slot (`accent1`, `text1`, …,
-/// mapped as Word's default `w:clrSchemeMapping` does), `themeTint` and
+/// mapped through the scoped `w:clrSchemeMapping`), `themeTint` and
 /// `themeShade` (hex bytes) lighten and darken it in HSL, as Word does.
+/// When both transforms are present, Word uses tint (MS-OI29500 §2.1.72).
 /// `None` outside a [`ThemeColorScope`] or for an unknown slot.
 pub fn text_theme_color(
     theme_color: &str,
@@ -584,14 +680,17 @@ pub fn text_theme_color(
         "dark2" | "text2" => "dk2",
         "light2" | "background2" => "lt2",
         "hyperlink" => "hlink",
-        "followedHyperlink" => "folHlink",
+        "followedHyperlink" => "folhlink",
         other if other.starts_with("accent") => other,
         _ => return None,
     };
     let base = READING_COLORS.with(|cell| {
-        cell.borrow()
-            .as_ref()
-            .and_then(|colors| colors.get(slot).cloned())
+        cell.borrow().as_ref().and_then(|colors| {
+            colors
+                .get(theme_color)
+                .or_else(|| colors.get(slot))
+                .cloned()
+        })
     })?;
     let hex = base.trim_start_matches('#');
     if hex.len() != 6 {
@@ -608,11 +707,22 @@ pub fn text_theme_color(
     if let Some(tint) = fraction(tint) {
         l = l * tint + (1.0 - tint);
     }
-    if let Some(shade) = fraction(shade) {
-        l *= shade;
+    if tint.is_none() {
+        if let Some(shade) = fraction(shade) {
+            l *= shade;
+        }
     }
     let (r, g, b) = hsl_to_rgb(h, s, l.clamp(0.0, 1.0));
     Some(format!("#{r:02X}{g:02X}{b:02X}"))
+}
+
+/// Word gives underline themeTint precedence over themeShade (MS-OI29500 §2.1.100).
+pub fn underline_theme_color(
+    name: &str,
+    tint: Option<&str>,
+    shade: Option<&str>,
+) -> Option<String> {
+    text_theme_color(name, tint, shade)
 }
 
 fn rgb_to_hsl(r: u8, g: u8, b: u8) -> (f64, f64, f64) {
@@ -678,6 +788,34 @@ fn normalize_hex_color(value: String) -> Option<String> {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn drawing_color_mapping_keeps_physical_slots_and_swaps_once() {
+        let theme = ThemePart::office_default();
+        let mapped = theme.with_drawing_color_mapping(&HashMap::from([
+            ("t1".into(), "light1".into()),
+            ("bg1".into(), "dark1".into()),
+            ("accent1".into(), "accent2".into()),
+            ("accent2".into(), "accent1".into()),
+            ("hyperlink".into(), "followedHyperlink".into()),
+        ]));
+        for (logical, physical) in [
+            ("tx1", "lt1"),
+            ("bg1", "dk1"),
+            ("accent1", "accent2"),
+            ("accent2", "accent1"),
+            ("hlink", "folhlink"),
+            ("dk1", "dk1"),
+            ("lt1", "lt1"),
+            ("tx2", "dk2"),
+        ] {
+            assert_eq!(
+                mapped.resolve_theme_color(logical),
+                theme.resolve_theme_color(physical)
+            );
+        }
+        assert_eq!(theme.resolve_theme_color("tx1"), Some("#000000"));
+    }
+
     use super::*;
 
     #[test]
@@ -704,9 +842,14 @@ mod tests {
         let mut theme = ThemePart::default();
         theme.colors.insert("accent1".into(), "#4472C4".into());
         theme.colors.insert("dk1".into(), "#000000".into());
+        theme.colors.insert("folhlink".into(), "#954F72".into());
         assert_eq!(text_theme_color("accent1", None, None), None);
         {
             let _scope = ThemeColorScope::enter(Some(&theme));
+            assert_eq!(
+                text_theme_color("followedHyperlink", None, None).as_deref(),
+                Some("#954F72")
+            );
             assert_eq!(
                 text_theme_color("accent1", None, None).as_deref(),
                 Some("#4472C4")
@@ -722,6 +865,173 @@ mod tests {
             );
         }
         assert_eq!(text_theme_color("accent1", None, None), None);
+    }
+
+    #[test]
+    fn document_color_mapping_uses_physical_targets_and_restores_scope() {
+        let mut theme = ThemePart::default();
+        theme.colors.insert("dk1".into(), "#000000".into());
+        theme.colors.insert("lt1".into(), "#FFFFFF".into());
+        theme.colors.insert("accent1".into(), "#4472C4".into());
+        theme.colors.insert("accent2".into(), "#ED7D31".into());
+        let _outer = ThemeColorScope::enter(Some(&theme));
+        let mapping = HashMap::from([
+            ("t1".into(), "light1".into()),
+            ("bg1".into(), "dark1".into()),
+            ("accent1".into(), "accent2".into()),
+            ("accent2".into(), "accent1".into()),
+            ("hyperlink".into(), "accent1".into()),
+            ("followedHyperlink".into(), "accent2".into()),
+        ]);
+        {
+            let _mapped = ThemeColorScope::enter_with_mapping(Some(&theme), &mapping);
+            for (slot, expected) in [
+                ("text1", "#FFFFFF"),
+                ("background1", "#000000"),
+                ("dark1", "#000000"),
+                ("light1", "#FFFFFF"),
+                ("accent1", "#ED7D31"),
+                ("accent2", "#4472C4"),
+                ("hyperlink", "#4472C4"),
+                ("followedHyperlink", "#ED7D31"),
+            ] {
+                assert_eq!(
+                    text_theme_color(slot, None, None).as_deref(),
+                    Some(expected)
+                );
+                assert_eq!(
+                    underline_theme_color(slot, None, None).as_deref(),
+                    Some(expected)
+                );
+            }
+            assert_eq!(
+                text_theme_color("text1", None, Some("00")).as_deref(),
+                Some("#000000")
+            );
+        }
+        assert_eq!(
+            text_theme_color("text1", None, None).as_deref(),
+            Some("#000000")
+        );
+        assert_eq!(
+            text_theme_color("accent1", None, None).as_deref(),
+            Some("#4472C4")
+        );
+    }
+
+    #[test]
+    fn text_theme_tint_takes_precedence_over_shade() {
+        let mut theme = ThemePart::default();
+        theme.colors.insert("dk1".into(), "#000000".into());
+        let _scope = ThemeColorScope::enter(Some(&theme));
+        for (tint, expected) in [("00", "#FFFFFF"), ("80", "#7F7F7F"), ("FF", "#000000")] {
+            assert_eq!(
+                text_theme_color("text1", Some(tint), Some("00")).as_deref(),
+                Some(expected)
+            );
+            assert_eq!(
+                underline_theme_color("text1", Some(tint), Some("00")).as_deref(),
+                Some(expected)
+            );
+        }
+        assert_eq!(
+            text_theme_color("text1", None, Some("00")).as_deref(),
+            Some("#000000")
+        );
+    }
+
+    #[test]
+    fn mixed_ruby_guide_theme_fonts_resolve_independently() {
+        use crate::document::{RubyAnnotation, RubyGuideRun, RunFonts, RunProperties};
+        let theme = ThemePart {
+            minor: ThemeFonts {
+                latin: Some("Aptos".into()),
+                ..Default::default()
+            },
+            major: ThemeFonts {
+                latin: Some("Aptos Display".into()),
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        let mut props = RunProperties {
+            ruby: Some(Box::new(RubyAnnotation {
+                guide_runs: ["minorHAnsi", "majorHAnsi"]
+                    .into_iter()
+                    .map(|token| RubyGuideRun {
+                        text: "A".into(),
+                        properties: Some(Box::new(RunProperties {
+                            fonts: Some(RunFonts {
+                                ascii_theme: Some(token.into()),
+                                ..Default::default()
+                            }),
+                            ..Default::default()
+                        })),
+                    })
+                    .collect(),
+                ..Default::default()
+            })),
+            ..Default::default()
+        };
+        assert!(theme.has_resolvable_font_reference(&props));
+        theme.apply_to_run_properties(&mut props);
+        let runs = &props.ruby.as_ref().unwrap().guide_runs;
+        for (run, expected) in runs.iter().zip(["Aptos", "Aptos Display"]) {
+            assert_eq!(
+                run.properties
+                    .as_ref()
+                    .unwrap()
+                    .fonts
+                    .as_ref()
+                    .unwrap()
+                    .ascii
+                    .as_deref(),
+                Some(expected)
+            );
+        }
+        assert!(!theme.has_resolvable_font_reference(&props));
+        let resolved = props.clone();
+        theme.apply_to_run_properties(&mut props);
+        assert_eq!(props, resolved);
+    }
+
+    #[test]
+    fn ruby_theme_fonts_resolve_without_base_font_references() {
+        use crate::document::{RubyAnnotation, RunFonts, RunProperties};
+        let theme = ThemePart {
+            minor: ThemeFonts {
+                latin: Some("Aptos".into()),
+                east_asia: Some("MS Mincho".into()),
+                complex: Some("Arabic".into()),
+                ..ThemeFonts::default()
+            },
+            ..ThemePart::default()
+        };
+        let mut props = RunProperties {
+            ruby: Some(Box::new(RubyAnnotation {
+                fonts: Some(RunFonts {
+                    ascii: Some("+mn-lt".into()),
+                    h_ansi_theme: Some("minorHAnsi".into()),
+                    east_asia_theme: Some("minorEastAsia".into()),
+                    complex_theme: Some("minorBidi".into()),
+                    ..RunFonts::default()
+                }),
+                ..RubyAnnotation::default()
+            })),
+            ..RunProperties::default()
+        };
+        assert!(theme.has_resolvable_font_reference(&props));
+        theme.apply_to_run_properties(&mut props);
+        let fonts = props.ruby.as_ref().unwrap().fonts.as_ref().unwrap();
+        assert_eq!(fonts.ascii.as_deref(), Some("Aptos"));
+        assert_eq!(fonts.h_ansi.as_deref(), Some("Aptos"));
+        assert_eq!(fonts.east_asia.as_deref(), Some("MS Mincho"));
+        assert_eq!(fonts.complex.as_deref(), Some("Arabic"));
+        assert!(props.font_family.is_none());
+        assert!(!theme.has_resolvable_font_reference(&props));
+        let resolved = props.clone();
+        theme.apply_to_run_properties(&mut props);
+        assert_eq!(props, resolved);
     }
 
     #[test]

@@ -380,10 +380,25 @@ pub(crate) fn keep_declared_paragraph_properties(
         mirror_indents => "w:mirrorIndents",
         outline_level => "w:outlineLvl",
         shading => "w:shd",
-        borders => "w:pBdr",
         numbering => "w:numPr",
         contextual_spacing => "w:contextualSpacing",
     );
+    if declared("w:pBdr") {
+        let borders = props.borders.get_or_insert_with(Default::default);
+        let direct = before.borders.clone().unwrap_or_default();
+        for (name, target, source) in [
+            ("w:pBdr/w:top", &mut borders.top, direct.top),
+            ("w:pBdr/w:bottom", &mut borders.bottom, direct.bottom),
+            ("w:pBdr/w:left", &mut borders.left, direct.left),
+            ("w:pBdr/w:right", &mut borders.right, direct.right),
+            ("w:pBdr/w:between", &mut borders.between, direct.between),
+            ("w:pBdr/w:bar", &mut borders.bar, direct.bar),
+        ] {
+            if declared(name) {
+                *target = source;
+            }
+        }
+    }
     macro_rules! keep_attributes {
         ($target:expr, $source:expr, $tag:literal, $($field:ident => [$($attribute:literal),+]),* $(,)?) => {
             $(
@@ -394,23 +409,43 @@ pub(crate) fn keep_declared_paragraph_properties(
         };
     }
     if declared("w:spacing") {
-        let mut spacing = props.spacing.clone().unwrap_or_default();
-        let direct = before.spacing.clone().unwrap_or_default();
-        // Each side is kept whole, as a load fills it: a declared
-        // `w:afterLines` beside the new style's `w:after` left both, and
-        // parts of the layout that read points first spaced the paragraph
-        // by the style's points instead of the lines it declares.
+        let inherited = props.spacing.clone().unwrap_or_default();
+        let mut spacing = Spacing {
+            line: inherited.line,
+            line_rule: inherited.line_rule.clone(),
+            ..Spacing::default()
+        };
+        let mut direct = before.spacing.clone().unwrap_or_default();
+        // The effective points are synthetic while auto is enabled. Reapply
+        // only authored attributes, then resolve them against the new style.
+        if direct.before_auto {
+            let values = direct.before_auto_fallback.unwrap_or_default();
+            direct.before = values.points;
+            direct.before_lines = values.lines;
+        }
+        if direct.after_auto {
+            let values = direct.after_auto_fallback.unwrap_or_default();
+            direct.after = values.points;
+            direct.after_lines = values.lines;
+        }
+        direct.before_auto_setting = direct
+            .before_auto_setting
+            .or(direct.before_auto.then_some(true));
+        direct.after_auto_setting = direct
+            .after_auto_setting
+            .or(direct.after_auto.then_some(true));
         keep_attributes!(spacing, direct, "w:spacing",
-            before => ["w:before", "w:beforeLines", "w:beforeAutospacing"],
-            before_lines => ["w:before", "w:beforeLines", "w:beforeAutospacing"],
-            before_auto => ["w:before", "w:beforeLines", "w:beforeAutospacing"],
-            after => ["w:after", "w:afterLines", "w:afterAutospacing"],
-            after_lines => ["w:after", "w:afterLines", "w:afterAutospacing"],
-            after_auto => ["w:after", "w:afterLines", "w:afterAutospacing"],
+            before => ["w:before"],
+            after => ["w:after"],
+            before_lines => ["w:beforeLines"],
+            after_lines => ["w:afterLines"],
+            before_auto_setting => ["w:beforeAutospacing"],
+            after_auto_setting => ["w:afterAutospacing"],
             line => ["w:line"],
             // The reader gives a `w:line` without a rule the rule "auto".
             line_rule => ["w:line", "w:lineRule"],
         );
+        spacing.inherit_spacing_sides_from(&inherited);
         props.spacing = (spacing != Spacing::default()).then_some(spacing);
     }
     if declared("w:ind") {
@@ -499,6 +534,7 @@ fn rebase_run_style_properties(
         baseline => declared("w:vertAlign"),
         text_position => declared("w:position"),
         char_spacing => declared("w:spacing"),
+        snap_to_grid => declared("w:snapToGrid"),
         fit_text => declared("w:fitText"),
         color => declared("w:color"),
         theme_color => declared("w:color"),
@@ -519,12 +555,22 @@ fn rebase_run_style_properties(
     );
     // Underline's kind and color travel with the `w:u` that set it.
     if !declared("w:u")
-        && (&run.underline, &run.underline_kind, &run.underline_color)
-            == (&old.underline, &old.underline_kind, &old.underline_color)
+        && (
+            &run.underline,
+            &run.underline_kind,
+            &run.underline_color,
+            &run.underline_theme_color,
+        ) == (
+            &old.underline,
+            &old.underline_kind,
+            &old.underline_color,
+            &old.underline_theme_color,
+        )
     {
         run.underline = None;
         run.underline_kind = None;
         run.underline_color = None;
+        run.underline_theme_color = None;
     }
 }
 
@@ -798,6 +844,7 @@ impl BorderEdgeSpec {
                 (!color.eq_ignore_ascii_case("auto"))
                     .then(|| format!("#{}", color.trim_start_matches('#').to_ascii_uppercase()))
             }),
+            theme_color: None,
         }
     }
 }
@@ -833,6 +880,8 @@ impl BorderSide {
     }
 }
 
+#[path = "word_document/change_tracking.rs"]
+mod change_tracking;
 #[path = "word_document/protection.rs"]
 mod protection;
 #[path = "word_document/review_tools.rs"]
@@ -1686,6 +1735,12 @@ pub struct DocumentProtectionInfo {
     pub spin_count: Option<u32>,
     #[serde(default)]
     pub algorithm_sid: Option<u32>,
+    /// ISO attribute form; absent values use the legacy algorithm SID.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub algorithm_name: Option<String>,
+    /// Restrict direct formatting independently of the editing mode.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub formatting: Option<bool>,
 }
 
 /// One editable ink annotation stored as a transparent anchored PNG.
@@ -2245,7 +2300,7 @@ impl WordDocument {
             .and_then(|reference| self.hf_part_path_for_reference(&reference))
         {
             Some(path) => path == part_path,
-            None => true,
+            None => false,
         }
     }
 
@@ -2480,8 +2535,20 @@ impl WordDocument {
                 }
                 None => None,
             };
-            let _theme_colors =
-                jade_docx_reader::theme::ThemeColorScope::enter(reading_theme.as_ref());
+            // Settings must be available before any story or style resolves colors.
+            if let Some(rel) = doc_part
+                .relationships
+                .iter()
+                .find(|rel| rel.r#type == RelationshipTypes::Settings.as_str())
+            {
+                let path = Self::resolve_target_path(&doc_part.path, &rel.target);
+                document.load_part(&path)?;
+            }
+            let reading_settings = document.loaded_document_settings();
+            let _theme_colors = jade_docx_reader::theme::ThemeColorScope::enter_with_mapping(
+                reading_theme.as_ref(),
+                &reading_settings.color_scheme_mapping,
+            );
             let parser = DocumentParser::new();
             // When the raw tree is needed, one tokenization feeds both the
             // layout model and the lossless tree patched on save. Initial
@@ -2567,14 +2634,24 @@ impl WordDocument {
                         // definitions. Materialize run defaults before the
                         // second field pass so language-dependent formats use
                         // the same effective w:lang as body fields.
-                        Self::apply_style_paragraph_defaults_to_document(&mut parsed, styles_part);
+                        Self::apply_style_paragraph_defaults_to_document(
+                            &mut parsed,
+                            styles_part,
+                            reading_settings
+                                .compat
+                                .setting_on("overrideTableStyleFontSizeAndJustification"),
+                        );
                         Self::apply_table_style_cell_margins_to_document(&mut parsed, styles_part);
                         Self::apply_table_styles_to_document(&mut parsed, styles_part);
                         Self::apply_style_numbering_to_document(&mut parsed, styles_part);
                         Self::apply_run_font_defaults_to_document(&mut parsed, styles_part);
                     }
                     if let Some(theme) = theme {
-                        Self::apply_theme_to_document(&mut parsed, theme);
+                        Self::apply_theme_to_document(
+                            &mut parsed,
+                            theme,
+                            &reading_settings.color_scheme_mapping,
+                        );
                     }
                     // Bookmark names are shared across Word stories. Seed the
                     // header/footer resolver from the main document so REF and
@@ -2869,7 +2946,13 @@ impl WordDocument {
             Self::give_textless_shapes_an_inner_paragraph(&mut parsed_doc);
             if let Some(styles_part) = document.styles_part.as_ref() {
                 parsed_doc.default_font_size = styles_part.doc_default_font_size();
-                Self::apply_style_paragraph_defaults_to_document(&mut parsed_doc, styles_part);
+                Self::apply_style_paragraph_defaults_to_document(
+                    &mut parsed_doc,
+                    styles_part,
+                    doc_settings
+                        .compat
+                        .setting_on("overrideTableStyleFontSizeAndJustification"),
+                );
                 Self::apply_table_style_cell_margins_to_document(&mut parsed_doc, styles_part);
                 Self::apply_table_styles_to_document(&mut parsed_doc, styles_part);
                 Self::apply_style_numbering_to_document(&mut parsed_doc, styles_part);
@@ -2881,7 +2964,11 @@ impl WordDocument {
                 parsed_doc.resolve_structural_fields();
             }
             if let Some(theme) = theme_part.as_ref() {
-                Self::apply_theme_to_document(&mut parsed_doc, theme);
+                Self::apply_theme_to_document(
+                    &mut parsed_doc,
+                    theme,
+                    &reading_settings.color_scheme_mapping,
+                );
                 if let Some(numbering_part) = document.numbering_part.as_mut() {
                     Self::apply_theme_fonts_to_numbering_part(numbering_part, theme);
                 }
@@ -2907,7 +2994,10 @@ impl WordDocument {
 
         document.rebuild_paragraph_surfaces();
         document.refresh_revision_counter();
-        if options.record_changes_enabled() {
+        if options.record_changes_enabled()
+            || document.saved_change_tracking_enabled()
+            || document.tracking_locked()
+        {
             let mut session = RevisionSession {
                 author: options.revision_author_internal(),
                 date: options.revision_date_internal(),
@@ -2962,15 +3052,19 @@ impl WordDocument {
     }
 
     fn loaded_document_variables(&self) -> HashMap<String, String> {
+        self.loaded_document_settings().document_variables
+    }
+
+    fn loaded_document_settings(&self) -> DocumentSettings {
         let Some(document_part) = self.document_part.as_ref() else {
-            return HashMap::new();
+            return DocumentSettings::default();
         };
         let Some(settings_rel) = document_part
             .relationships
             .iter()
             .find(|rel| rel.r#type == RelationshipTypes::Settings.as_str())
         else {
-            return HashMap::new();
+            return DocumentSettings::default();
         };
         let path = Self::resolve_target_path(&document_part.path, &settings_rel.target);
         let content = self
@@ -2985,7 +3079,6 @@ impl WordDocument {
             });
         content
             .and_then(|xml| DocumentSettings::from_xml(xml).ok())
-            .map(|settings| settings.document_variables)
             .unwrap_or_default()
     }
 
@@ -3294,20 +3387,43 @@ impl WordDocument {
     }
 
     fn apply_authored_theme_to_live_models(&mut self, theme: &ThemePart) {
+        let mapping = self.loaded_document_settings().color_scheme_mapping;
+        // Rebuild style/default colors from their theme references, without changing XML.
+        if let Some(content) = self
+            .styles_part_path()
+            .and_then(|path| self.read_xml_part_content(&path))
+        {
+            self.reparse_styles_part(&content);
+        }
         if let Some(document) = self.document.as_mut() {
-            Self::force_apply_theme_to_document(Rc::make_mut(document), theme);
+            Self::force_apply_theme_to_document(Rc::make_mut(document), theme, &mapping);
         }
         if let Some(numbering) = self.numbering_part.as_mut() {
+            let _scope =
+                jade_docx_reader::theme::ThemeColorScope::enter_with_mapping(Some(theme), &mapping);
             Self::apply_theme_fonts_to_numbering_part(numbering, theme);
+            for level in numbering.levels_mut() {
+                if let Some(props) = level.run_props.as_mut() {
+                    Self::refresh_scoped_run_theme_colors(props);
+                }
+            }
         }
         for part in self.parts.values_mut() {
             if let Some(document) = part.parsed_document.as_mut() {
-                Self::force_apply_theme_to_document(Rc::make_mut(document), theme);
+                Self::force_apply_theme_to_document(Rc::make_mut(document), theme, &mapping);
             }
         }
     }
 
-    fn force_apply_theme_to_document(document: &mut Document, theme: &ThemePart) {
+    fn force_apply_theme_to_document(
+        document: &mut Document,
+        theme: &ThemePart,
+        mapping: &HashMap<String, String>,
+    ) {
+        let _theme_colors =
+            jade_docx_reader::theme::ThemeColorScope::enter_with_mapping(Some(theme), mapping);
+        let mapped_theme = theme.with_drawing_color_mapping(mapping);
+        let theme = &mapped_theme;
         if let Some(body) = document.body.as_mut() {
             Self::force_apply_theme_to_elements(&mut body.elements, theme);
         }
@@ -3323,6 +3439,13 @@ impl WordDocument {
         for element in elements {
             match element {
                 BodyElement::Paragraph(paragraph) => {
+                    if let Some(props) = paragraph
+                        .properties
+                        .as_mut()
+                        .and_then(|props| props.mark_run_properties.as_mut())
+                    {
+                        Self::refresh_scoped_run_theme_colors(props);
+                    }
                     for run in &mut paragraph.runs {
                         if let Some(text_box) = run.text_box.as_mut() {
                             if let Some(slot) = text_box.fill_theme_color.as_deref() {
@@ -3353,6 +3476,7 @@ impl WordDocument {
                             Self::apply_theme_to_shape_group(group, theme, true);
                         }
                         if let Some(properties) = run.properties.as_mut() {
+                            Self::refresh_scoped_run_theme_colors(properties);
                             Self::force_apply_theme_fonts_to_run_props(properties, theme);
                         }
                     }
@@ -3365,6 +3489,29 @@ impl WordDocument {
                     }
                 }
                 BodyElement::Math(_) => {}
+            }
+        }
+    }
+
+    /// Refresh cached display colors while preserving theme references for save/edit.
+    /// The caller scopes the original theme and the document color mapping.
+    fn refresh_scoped_run_theme_colors(props: &mut RunProperties) {
+        if let Some(reference) = props.theme_color.as_ref() {
+            if let Some(color) = jade_docx_reader::theme::text_theme_color(
+                &reference.name,
+                reference.tint.as_deref(),
+                reference.shade.as_deref(),
+            ) {
+                props.color = Some(Rc::from(color));
+            }
+        }
+        if let Some(reference) = props.underline_theme_color.as_ref() {
+            if let Some(color) = jade_docx_reader::theme::text_theme_color(
+                &reference.name,
+                reference.tint.as_deref(),
+                reference.shade.as_deref(),
+            ) {
+                props.underline_color = Some(Rc::from(color));
             }
         }
     }
@@ -3760,17 +3907,33 @@ impl WordDocument {
         }
     }
 
-    fn apply_style_paragraph_defaults_to_document(document: &mut Document, styles: &StylesPart) {
+    fn apply_style_paragraph_defaults_to_document(
+        document: &mut Document,
+        styles: &StylesPart,
+        override_table_justification: bool,
+    ) {
         if let Some(body) = document.body.as_mut() {
-            Self::apply_style_paragraph_defaults_to_elements(&mut body.elements, styles);
+            Self::apply_style_paragraph_defaults_to_elements(
+                &mut body.elements,
+                styles,
+                override_table_justification,
+            );
         }
 
         for note in document.footnotes.values_mut() {
-            Self::apply_style_paragraph_defaults_to_elements(&mut note.body, styles);
+            Self::apply_style_paragraph_defaults_to_elements(
+                &mut note.body,
+                styles,
+                override_table_justification,
+            );
         }
 
         for note in document.endnotes.values_mut() {
-            Self::apply_style_paragraph_defaults_to_elements(&mut note.body, styles);
+            Self::apply_style_paragraph_defaults_to_elements(
+                &mut note.body,
+                styles,
+                override_table_justification,
+            );
         }
     }
 
@@ -3890,8 +4053,14 @@ impl WordDocument {
     fn apply_style_paragraph_defaults_to_elements(
         elements: &mut [BodyElement],
         styles: &StylesPart,
+        override_table_justification: bool,
     ) {
-        Self::apply_style_paragraph_defaults_to_blocks(elements, styles, None);
+        Self::apply_style_paragraph_defaults_to_blocks(
+            elements,
+            styles,
+            None,
+            override_table_justification,
+        );
     }
 
     /// `table_style` is the paragraph properties of the table style the
@@ -3900,6 +4069,7 @@ impl WordDocument {
         elements: &mut [BodyElement],
         styles: &StylesPart,
         table_style: Option<&ParagraphProperties>,
+        override_table_justification: bool,
     ) {
         for element in elements.iter_mut() {
             match element {
@@ -3908,16 +4078,34 @@ impl WordDocument {
                         paragraph.as_mut(),
                         styles,
                         table_style,
+                        override_table_justification,
                     );
                 }
                 BodyElement::Table(table) => {
-                    let table_style = Self::table_style_paragraph_defaults(table, styles);
-                    for row in &mut table.rows {
-                        for cell in &mut row.cells {
+                    table.resolved_style = table
+                        .style_name
+                        .as_deref()
+                        .and_then(|id| styles.resolve_table_style(id))
+                        .or_else(|| styles.default_table_style());
+                    let table_style = table
+                        .style_name
+                        .as_deref()
+                        .and_then(|style_id| styles.resolve_table_style_id(style_id))
+                        .or_else(|| styles.default_table_style_id())
+                        .and_then(|style_id| styles.resolve_table_paragraph_properties(style_id));
+                    for row in 0..table.rows.len() {
+                        for cell in 0..table.rows[row].cells.len() {
+                            let cell_style = Self::table_cell_paragraph_properties(
+                                table,
+                                row,
+                                cell,
+                                table_style.clone(),
+                            );
                             Self::apply_style_paragraph_defaults_to_blocks(
-                                &mut cell.blocks,
+                                &mut table.rows[row].cells[cell].blocks,
                                 styles,
-                                table_style.as_ref(),
+                                cell_style.as_ref(),
+                                override_table_justification,
                             );
                         }
                     }
@@ -3952,11 +4140,99 @@ impl WordDocument {
         table_style: Option<&ParagraphProperties>,
         cells: &mut [TableCell],
         styles: &StylesPart,
+        override_table_justification: bool,
     ) {
         for cell in cells {
-            Self::apply_style_paragraph_defaults_to_blocks(&mut cell.blocks, styles, table_style);
+            Self::apply_style_paragraph_defaults_to_blocks(
+                &mut cell.blocks,
+                styles,
+                table_style,
+                override_table_justification,
+            );
             Self::apply_table_styles_to_elements(&mut cell.blocks, styles);
             Self::apply_run_font_defaults_to_elements(&mut cell.blocks, styles);
+        }
+    }
+
+    /// Conditional paragraph formatting overrides the whole-table formatting,
+    /// below paragraph styles and direct formatting.
+    fn table_cell_paragraph_properties(
+        table: &Table,
+        row: usize,
+        cell: usize,
+        mut properties: Option<ParagraphProperties>,
+    ) -> Option<ParagraphProperties> {
+        let position = crate::document::TableStyleCellPosition {
+            row,
+            row_count: table.rows.len(),
+            cell,
+            cell_count: table.rows.get(row)?.cells.len(),
+        };
+        let format = table.table_style_cell_format(position);
+        let conditional = ParagraphProperties {
+            alignment: format.paragraph_alignment.map(Into::into),
+            text_alignment: format.paragraph_text_alignment.map(Into::into),
+            spacing: format.paragraph_spacing,
+            indent: format.paragraph_indent,
+            shading: format.paragraph_shading,
+            borders: format.paragraph_borders,
+            tabs: format.paragraph_tabs,
+            bidi: format.paragraph_bidi,
+            keep_next: format.paragraph_keep_next,
+            keep_lines: format.paragraph_keep_lines,
+            page_break_before: format.paragraph_page_break_before,
+            widow_control: format.paragraph_widow_control,
+            contextual_spacing: format.paragraph_contextual_spacing,
+            snap_to_grid: format.paragraph_snap_to_grid,
+            adjust_right_indent: format.paragraph_adjust_right_indent,
+            mirror_indents: format.paragraph_mirror_indents,
+            suppress_line_numbers: format.paragraph_suppress_line_numbers,
+            suppress_auto_hyphens: format.paragraph_suppress_auto_hyphens,
+
+            ..Default::default()
+        };
+        if conditional.text_alignment.is_some()
+            || conditional.alignment.is_some()
+            || conditional.spacing.is_some()
+            || conditional.indent.is_some()
+            || conditional.shading.is_some()
+            || conditional.borders.is_some()
+            || !conditional.tabs.is_empty()
+            || conditional.bidi.is_some()
+            || conditional.keep_next.is_some()
+            || conditional.keep_lines.is_some()
+            || conditional.page_break_before.is_some()
+            || conditional.widow_control.is_some()
+            || conditional.contextual_spacing.is_some()
+            || conditional.snap_to_grid.is_some()
+            || conditional.adjust_right_indent.is_some()
+            || conditional.mirror_indents.is_some()
+            || conditional.suppress_line_numbers.is_some()
+            || conditional.suppress_auto_hyphens.is_some()
+        {
+            jade_docx_reader::styles::merge_paragraph_properties_override(
+                properties.get_or_insert_with(Default::default),
+                &conditional,
+            );
+        }
+        properties
+    }
+
+    /// MS-DOCX 2.3.1: by default, Normal's left justification does not
+    /// override a table style. Direct paragraph formatting is kept separately.
+    fn apply_table_justification_exception(
+        style: &mut ParagraphProperties,
+        paragraph_style_id: Option<&str>,
+        styles: &StylesPart,
+        table_style: Option<&ParagraphProperties>,
+        override_table_justification: bool,
+    ) {
+        if !override_table_justification
+            && paragraph_style_id == styles.default_paragraph_style_id()
+            && table_style.and_then(|p| p.alignment.as_deref()).is_some()
+            && style.alignment.as_deref() == Some("left")
+        {
+            style.alignment = None;
         }
     }
 
@@ -3964,6 +4240,7 @@ impl WordDocument {
         paragraph: &mut Paragraph,
         styles: &StylesPart,
         table_style: Option<&ParagraphProperties>,
+        override_table_justification: bool,
     ) {
         let paragraph_style_id = paragraph
             .properties
@@ -3971,9 +4248,16 @@ impl WordDocument {
             .and_then(|props| props.style.as_deref())
             .or_else(|| styles.default_paragraph_style_id());
 
-        if let Some(style_props) =
+        if let Some(mut style_props) =
             paragraph_style_id.and_then(|style_id| styles.resolve_paragraph_properties(style_id))
         {
+            Self::apply_table_justification_exception(
+                &mut style_props,
+                paragraph_style_id,
+                styles,
+                table_style,
+                override_table_justification,
+            );
             match paragraph.properties.as_mut() {
                 Some(props) => Self::fill_missing_paragraph_props(props, &style_props),
                 None => paragraph.properties = Some(style_props),
@@ -4002,7 +4286,11 @@ impl WordDocument {
 
         for run in &mut paragraph.runs {
             if let Some(text_box) = run.text_box.as_mut() {
-                Self::apply_style_paragraph_defaults_to_elements(&mut text_box.blocks, styles);
+                Self::apply_style_paragraph_defaults_to_elements(
+                    &mut text_box.blocks,
+                    styles,
+                    override_table_justification,
+                );
             }
         }
     }
@@ -4026,25 +4314,34 @@ impl WordDocument {
     }
 
     fn apply_style_numbering_to_paragraph(paragraph: &mut Paragraph, styles: &StylesPart) {
-        if let Some(props) = paragraph.properties.as_mut() {
-            let has_direct_numbering = props
-                .numbering
+        let direct = paragraph
+            .properties
+            .as_ref()
+            .and_then(|props| props.numbering.as_ref());
+        let direct_id = direct.and_then(|numbering| numbering.id.as_deref());
+        let needs_style = direct_id.is_none() || direct.and_then(|n| n.level).is_none();
+        if direct_id != Some("0") && needs_style {
+            let style_id = paragraph
+                .properties
                 .as_ref()
-                .and_then(|n| n.id.as_ref())
-                .is_some();
-
-            if !has_direct_numbering {
-                if let Some(style_id) = props.style.as_deref() {
-                    // Word は段落スタイルに登録された `w:numPr` を実際の段落に適用する。
-                    // 解析段階ではスタイル情報のみを保持しているため、ここで補完する。
-                    if let Some(numbering) = styles.resolve_numbering(style_id) {
-                        if numbering.id.is_some() {
-                            props.numbering = Some(numbering);
-                        }
-                    }
+                .and_then(|props| props.style.as_deref())
+                .or_else(|| styles.default_paragraph_style_id());
+            if let Some(mut numbering) = style_id.and_then(|id| styles.resolve_numbering(id)) {
+                // Each direct component takes precedence. A direct numId can
+                // still inherit the style's level, just as a direct ilvl can
+                // inherit the style's numbering instance.
+                numbering.id = direct.and_then(|n| n.id.clone()).or(numbering.id);
+                numbering.level = direct.and_then(|n| n.level).or(numbering.level);
+                if numbering.id.is_some() {
+                    paragraph
+                        .properties
+                        .get_or_insert_with(Default::default)
+                        .numbering = Some(numbering);
                 }
             }
+        }
 
+        if let Some(props) = paragraph.properties.as_mut() {
             if props.tabs.is_empty() {
                 if let Some(style_id) = props.style.as_deref() {
                     if let Some(style) = styles.get_style(style_id) {
@@ -4083,7 +4380,13 @@ impl WordDocument {
         }
     }
 
-    fn apply_theme_to_document(document: &mut Document, theme: &ThemePart) {
+    fn apply_theme_to_document(
+        document: &mut Document,
+        theme: &ThemePart,
+        mapping: &HashMap<String, String>,
+    ) {
+        let mapped_theme = theme.with_drawing_color_mapping(mapping);
+        let theme = &mapped_theme;
         if let Some(body) = document.body.as_mut() {
             Self::apply_theme_to_elements(&mut body.elements, theme);
         }
@@ -4098,11 +4401,9 @@ impl WordDocument {
     }
 
     fn apply_theme_fonts_to_numbering_part(numbering_part: &mut NumberingPart, theme: &ThemePart) {
-        for abstract_num in numbering_part.abstract_nums.values_mut() {
-            for level in &mut abstract_num.levels {
-                if let Some(props) = level.run_props.as_mut() {
-                    Self::apply_theme_fonts_to_run_props(props, theme);
-                }
+        for level in numbering_part.levels_mut() {
+            if let Some(props) = level.run_props.as_mut() {
+                Self::apply_theme_fonts_to_run_props(props, theme);
             }
         }
     }
@@ -4219,7 +4520,14 @@ impl WordDocument {
     /// fallback font until the document was reopened.
     fn fill_load_defaults(&self, paragraph: &mut Paragraph) {
         if let Some(styles) = self.styles_part.as_ref() {
-            Self::apply_style_paragraph_defaults_to_paragraph(paragraph, styles, None);
+            Self::apply_style_paragraph_defaults_to_paragraph(
+                paragraph,
+                styles,
+                None,
+                self.loaded_document_settings()
+                    .compat
+                    .setting_on("overrideTableStyleFontSizeAndJustification"),
+            );
             Self::apply_run_font_defaults_to_paragraph(paragraph, styles);
         }
         if let Some(theme) = self.loaded_theme_part() {
@@ -4523,10 +4831,14 @@ impl WordDocument {
             if let Some(key) = color.theme.as_deref() {
                 // `w14` uses the long names (`accent1`, `tx1` as `text1`…).
                 let key = match key {
-                    "text1" | "dark1" => "dk1",
-                    "background1" | "light1" => "lt1",
-                    "text2" | "dark2" => "dk2",
-                    "background2" | "light2" => "lt2",
+                    "text1" => "tx1",
+                    "dark1" => "dk1",
+                    "background1" => "bg1",
+                    "light1" => "lt1",
+                    "text2" => "tx2",
+                    "dark2" => "dk2",
+                    "background2" => "bg2",
+                    "light2" => "lt2",
                     other => other,
                 };
                 color.rgb = Self::resolve_shape_theme_color(theme, key, &color.transforms);
@@ -4775,16 +5087,7 @@ impl WordDocument {
     /// `w:after` keeps the line spacing it inherits. Each is taken whole, so an
     /// inherited `w:beforeLines` never sits beside a nearer `w:before`.
     fn fill_missing_spacing(target: &mut Spacing, fallback: &Spacing) {
-        if target.before.is_none() && target.before_lines.is_none() {
-            target.before = fallback.before;
-            target.before_lines = fallback.before_lines;
-            target.before_auto = fallback.before_auto;
-        }
-        if target.after.is_none() && target.after_lines.is_none() {
-            target.after = fallback.after;
-            target.after_lines = fallback.after_lines;
-            target.after_auto = fallback.after_auto;
-        }
+        target.inherit_spacing_sides_from(fallback);
         if target.line.is_none() && target.line_rule.is_none() {
             target.line = fallback.line;
             target.line_rule = fallback.line_rule.clone();
@@ -4797,6 +5100,9 @@ impl WordDocument {
     ) {
         if target.alignment.is_none() {
             target.alignment = fallback.alignment.clone();
+        }
+        if target.bidi.is_none() {
+            target.bidi = fallback.bidi;
         }
         match (&mut target.spacing, fallback.spacing.as_ref()) {
             (Some(spacing), Some(fallback)) => Self::fill_missing_spacing(spacing, fallback),
@@ -4877,14 +5183,43 @@ impl WordDocument {
         if target.keep_next.is_none() {
             target.keep_next = fallback.keep_next;
         }
+        if target.mirror_indents.is_none() {
+            target.mirror_indents = fallback.mirror_indents;
+        }
         if target.text_alignment.is_none() {
             target.text_alignment = fallback.text_alignment.clone();
         }
         if target.outline_level.is_none() {
             target.outline_level = fallback.outline_level;
         }
-        if target.east_asian_settings.is_none() {
-            target.east_asian_settings = fallback.east_asian_settings.clone();
+        if let Some(inherited) = fallback.east_asian_settings.as_ref() {
+            match target.east_asian_settings.as_mut() {
+                Some(settings) => {
+                    // Each of these is a separate paragraph property in OOXML.
+                    // A direct kinsoku override must not hide style autoSpaceDE,
+                    // for example; explicit false still blocks inheritance.
+                    settings.use_east_asian_layout |= inherited.use_east_asian_layout;
+                    for (value, fallback) in [
+                        (&mut settings.kinsoku, inherited.kinsoku),
+                        (&mut settings.word_wrap, inherited.word_wrap),
+                        (
+                            &mut settings.overflow_punctuation,
+                            inherited.overflow_punctuation,
+                        ),
+                        (
+                            &mut settings.top_line_punctuation,
+                            inherited.top_line_punctuation,
+                        ),
+                        (&mut settings.auto_space_de, inherited.auto_space_de),
+                        (&mut settings.auto_space_dn, inherited.auto_space_dn),
+                    ] {
+                        if value.is_none() {
+                            *value = fallback;
+                        }
+                    }
+                }
+                None => target.east_asian_settings = Some(inherited.clone()),
+            }
         }
         // Paragraph shading (`w:shd`) and borders (`w:pBdr`) defined by the
         // style flow through when the paragraph omits direct formatting, so the
@@ -4893,8 +5228,11 @@ impl WordDocument {
         if target.shading.is_none() {
             target.shading = fallback.shading.clone();
         }
-        if target.borders.is_none() {
-            target.borders = fallback.borders.clone();
+        if let Some(inherited) = fallback.borders.as_ref() {
+            target
+                .borders
+                .get_or_insert_with(Default::default)
+                .inherit_missing_from(inherited);
         }
         // Contextual spacing (`w:contextualSpacing`) is frequently declared on a
         // paragraph style (e.g. List Paragraph) rather than direct formatting, so
@@ -5131,6 +5469,96 @@ impl WordDocument {
         }
         self.set_paragraph_surfaces(paragraph_surfaces);
         self.refresh_note_cross_references();
+    }
+
+    /// Rebase materialized table paragraph formatting after changing its style or
+    /// cell positions. Only raw paragraph properties establish direct formatting.
+    fn refresh_table_paragraph_properties(&mut self, table_order_index: usize) {
+        let Some(target_id) = self
+            .table_by_order(table_order_index)
+            .and_then(|table| table.node_id)
+        else {
+            return;
+        };
+        self.refresh_table_paragraph_properties_by_id(target_id);
+    }
+
+    fn refresh_table_paragraph_properties_by_id(&mut self, target_id: XmlNodeId) {
+        if self.styles_part.is_none() || self.raw_document.is_none() {
+            return;
+        }
+        let updates: Vec<_> = self
+            .paragraph_surfaces
+            .iter()
+            .enumerate()
+            .filter_map(|(index, surface)| {
+                let ParagraphSurface::Body { path } = surface else {
+                    return None;
+                };
+                if !path
+                    .iter()
+                    .any(|entry| matches!(entry, PathEntry::TableCell { .. }))
+                {
+                    return None;
+                }
+                let mut elements = &self.document.as_ref()?.body.as_ref()?.elements;
+                let mut table_id = None;
+                let mut entries = path.iter();
+                while let Some(PathEntry::Element(index)) = entries.next() {
+                    let BodyElement::Table(table) = elements.get(*index)? else {
+                        break;
+                    };
+                    let Some(PathEntry::TableCell { row, cell }) = entries.next() else {
+                        break;
+                    };
+                    table_id = table.node_id;
+                    elements = &table.rows.get(*row)?.cells.get(*cell)?.blocks;
+                }
+                if table_id != Some(target_id) {
+                    return None;
+                }
+                let paragraph = self.paragraph(index)?;
+                self.raw_document.as_ref()?.element(paragraph.node_id?)?;
+                let before = paragraph.properties.clone().unwrap_or_default();
+                let mut inherited =
+                    self.inherited_paragraph_properties(index, before.style.as_deref())?;
+                let inherited_tabs = inherited.tabs.clone();
+                let declared = self.paragraph_declared_property_tags(index);
+                let attributes = self.paragraph_declared_property_attributes(index);
+                keep_declared_paragraph_properties(
+                    &mut inherited,
+                    &before,
+                    |tag| declared.iter().any(|item| item == tag),
+                    |tag, attr| attributes.iter().any(|(t, a)| t == tag && a == attr),
+                );
+                inherited.tabs = self.paragraph_tabs_with_direct(index, inherited_tabs);
+                Some((index, inherited))
+            })
+            .collect();
+        for (index, inherited) in updates {
+            if let Some(paragraph) = self.paragraph_mut(index) {
+                let props = paragraph.properties.get_or_insert_with(Default::default);
+                props.alignment = inherited.alignment;
+                props.spacing = inherited.spacing;
+                props.indent = inherited.indent;
+                props.shading = inherited.shading;
+                props.borders = inherited.borders;
+                props.tabs = inherited.tabs;
+                props.bidi = inherited.bidi;
+                props.keep_next = inherited.keep_next;
+                props.keep_lines = inherited.keep_lines;
+                props.page_break_before = inherited.page_break_before;
+                props.widow_control = inherited.widow_control;
+                props.text_alignment = inherited.text_alignment;
+                props.contextual_spacing = inherited.contextual_spacing;
+                props.snap_to_grid = inherited.snap_to_grid;
+                props.adjust_right_indent = inherited.adjust_right_indent;
+                props.mirror_indents = inherited.mirror_indents;
+                props.suppress_line_numbers = inherited.suppress_line_numbers;
+                props.suppress_auto_hyphens = inherited.suppress_auto_hyphens;
+            }
+        }
+        self.text_metrics_cache.get_mut().invalidate_all();
     }
 
     fn set_paragraph_surfaces(&mut self, surfaces: Vec<ParagraphSurface>) {
@@ -8273,7 +8701,7 @@ impl WordDocument {
                 .properties
                 .as_ref()
                 .and_then(|props| props.alignment.as_deref());
-            if segments.iter().all(|(text, _)| text.is_empty()) {
+            if segments.len() <= 3 && segments.iter().all(|(text, _)| text.is_empty()) {
                 if include_empty_paragraphs {
                     let mut line = HeaderLine::default();
                     if segments.len() == 1 {
@@ -8329,11 +8757,9 @@ impl WordDocument {
                     if segments.len() > 2 {
                         let mut right = String::new();
                         let mut right_runs = Vec::new();
-                        for (text, runs) in
-                            segments[2..].iter().filter(|(text, _)| !text.is_empty())
-                        {
-                            if !right.is_empty() {
-                                Self::push_header_text(&mut right, &mut right_runs, " ", None);
+                        for (index, (text, runs)) in segments[2..].iter().enumerate() {
+                            if index > 0 {
+                                Self::push_header_text(&mut right, &mut right_runs, "\t", None);
                             }
                             if runs.is_empty() {
                                 Self::push_header_text(&mut right, &mut right_runs, text, None);
@@ -8352,26 +8778,6 @@ impl WordDocument {
                             line.right = Some(right);
                             line.right_runs = right_runs;
                         }
-                    }
-                }
-            }
-
-            if line.center.is_none() && line.right.is_none() {
-                if let Some(alignment) = paragraph_alignment {
-                    match alignment {
-                        "center" => {
-                            if let Some(text) = line.left.take() {
-                                line.center = Some(text);
-                                line.center_runs = std::mem::take(&mut line.left_runs);
-                            }
-                        }
-                        "right" | "end" => {
-                            if let Some(text) = line.left.take() {
-                                line.right = Some(text);
-                                line.right_runs = std::mem::take(&mut line.left_runs);
-                            }
-                        }
-                        _ => {}
                     }
                 }
             }
@@ -8456,7 +8862,7 @@ impl WordDocument {
             .collect()
     }
 
-    /// Returns the current `word/settings.xml` text — the in-memory override
+    /// Returns the related settings part text — the in-memory override
     /// from [`Self::parts`] if present, otherwise the original package bytes.
     pub(crate) fn settings_xml_content(&self) -> Option<String> {
         self.settings_xml_str().map(std::borrow::Cow::into_owned)
@@ -8465,24 +8871,24 @@ impl WordDocument {
     /// [`Self::settings_xml_content`], borrowed where it can be: what a
     /// reader that only looks at it takes, instead of copying the part.
     pub(crate) fn settings_xml_str(&self) -> Option<std::borrow::Cow<'_, str>> {
-        const SETTINGS_PATH: &str = "word/settings.xml";
-        if let Some(part) = self.parts.get(SETTINGS_PATH) {
+        let settings_path = self.tracking_settings_path();
+        if let Some(part) = self.parts.get(&settings_path) {
             return Some(std::borrow::Cow::Borrowed(part.content.as_str()));
         }
-        let bytes = self.package.as_ref()?.files.get(SETTINGS_PATH)?;
+        let bytes = self.package.as_ref()?.files.get(&settings_path)?;
         Some(String::from_utf8_lossy(bytes))
     }
 
     /// A lexical guard shared by the editing restriction checks. Comparing
     /// unchanged bytes avoids searching settings twice on every keystroke.
     fn settings_mention_document_protection(&self) -> bool {
-        const SETTINGS_PATH: &str = "word/settings.xml";
-        let bytes = if let Some(part) = self.parts.get(SETTINGS_PATH) {
+        let settings_path = self.tracking_settings_path();
+        let bytes = if let Some(part) = self.parts.get(&settings_path) {
             Some(part.content.as_bytes())
         } else {
             self.package
                 .as_ref()
-                .and_then(|package| package.files.get(SETTINGS_PATH))
+                .and_then(|package| package.files.get(&settings_path))
                 .map(Vec::as_slice)
         };
         let Some(bytes) = bytes else {
@@ -8499,9 +8905,8 @@ impl WordDocument {
         mentions
     }
 
-    /// Reads Word's editing restriction from `word/settings.xml`.
-    /// Unknown edit modes remain visible to the host, while the ellisii UI
-    /// only treats enforced `readOnly` as its supported locked state.
+    /// Reads the editing and formatting restrictions from the Settings part.
+    /// Unknown edit modes remain visible to the host.
     pub fn document_protection(&self) -> Option<DocumentProtectionInfo> {
         let xml = self.settings_xml_content()?;
         let parsed = DocxXmlDocument::parse(&xml).ok()?;
@@ -8524,34 +8929,48 @@ impl WordDocument {
                 .find(|attribute| Self::xml_local_name(&attribute.name) == local_name)
                 .map(|attribute| attribute.value.clone())
         };
-        let edit = attr("edit")?;
-        if edit == "none" {
-            return None;
-        }
+        let formatting =
+            attr("formatting").map(|value| matches!(value.as_str(), "1" | "true" | "on"));
+        let edit = attr("edit").unwrap_or_else(|| "none".into());
         let enforced = attr("enforcement")
             .is_some_and(|value| matches!(value.as_str(), "1" | "true" | "on" | "yes"));
+        let modern = ["algorithmName", "hashValue", "saltValue", "spinCount"]
+            .iter()
+            .any(|name| attr(name).is_some());
         Some(DocumentProtectionInfo {
             edit,
             enforced,
-            hash: attr("hash"),
-            salt: attr("salt"),
-            spin_count: attr("cryptSpinCount").and_then(|value| value.parse().ok()),
-            algorithm_sid: attr("cryptAlgorithmSid").and_then(|value| value.parse().ok()),
+            hash: attr(if modern { "hashValue" } else { "hash" }),
+            salt: attr(if modern { "saltValue" } else { "salt" }),
+            spin_count: attr(if modern {
+                "spinCount"
+            } else {
+                "cryptSpinCount"
+            })
+            .and_then(|value| value.trim_matches([' ', '\t', '\r', '\n']).parse().ok()),
+            algorithm_sid: if modern {
+                None
+            } else {
+                attr("cryptAlgorithmSid").and_then(|value| value.parse().ok())
+            },
+            algorithm_name: if modern { attr("algorithmName") } else { None },
+            formatting,
         })
     }
 
     /// Sets or removes Word's `w:documentProtection` element, returning the
-    /// exact previous settings XML for undo. The supported authoring surface is
-    /// GenOffice's enforced read-only restriction; imported non-read-only
-    /// modes can still be inspected through [`Self::document_protection`].
+    /// previous settings XML (an empty settings root when absent). Creates the
+    /// settings part and OPC metadata if needed. Supports all four editing modes,
+    /// optional formatting restrictions, and inactive protection settings.
     pub fn set_document_protection(
         &mut self,
         protection: Option<DocumentProtectionInfo>,
     ) -> Result<String, String> {
-        const SETTINGS_PATH: &str = "word/settings.xml";
+        let settings_path = self.tracking_settings_path();
         const KNOWN_ATTRS: &[&str] = &[
             "edit",
             "enforcement",
+            "formatting",
             "cryptProviderType",
             "cryptAlgorithmClass",
             "cryptAlgorithmType",
@@ -8559,53 +8978,66 @@ impl WordDocument {
             "cryptSpinCount",
             "hash",
             "salt",
+            "algorithmName",
+            "hashValue",
+            "saltValue",
+            "spinCount",
         ];
 
         if let Some(value) = protection.as_ref() {
-            if value.edit != "readOnly" || !value.enforced {
-                return Err(
-                    "only an enforced readOnly document protection can be authored".to_string(),
-                );
+            if !matches!(
+                value.edit.as_str(),
+                "readOnly" | "comments" | "trackedChanges" | "forms" | "none"
+            ) {
+                return Err("unsupported document protection editing mode".into());
             }
             match (&value.hash, &value.salt) {
                 (Some(hash), Some(salt)) => {
-                    let hash_bytes = BASE64
-                        .decode(hash)
-                        .map_err(|_| "document protection hash must be base64".to_string())?;
-                    let salt_bytes = BASE64
-                        .decode(salt)
-                        .map_err(|_| "document protection salt must be base64".to_string())?;
-                    if hash_bytes.len() != 64 {
-                        return Err(
-                            "SHA-512 document protection hash must contain 64 bytes".to_string()
-                        );
+                    let algorithm = value.algorithm_name.clone().unwrap_or_else(|| {
+                        match value.algorithm_sid.unwrap_or(14) {
+                            4 => "SHA-1",
+                            12 => "SHA-256",
+                            13 => "SHA-384",
+                            14 => "SHA-512",
+                            _ => "unsupported",
+                        }
+                        .to_string()
+                    });
+                    if !matches!(
+                        algorithm.as_str(),
+                        "SHA-1" | "SHA-256" | "SHA-384" | "SHA-512"
+                    ) {
+                        return Err("unsupported document protection algorithm".into());
                     }
-                    if salt_bytes.len() != 16 {
-                        return Err("document protection salt must contain 16 bytes".to_string());
+                    jade_opc::protection::PasswordVerifier {
+                        legacy: None,
+                        algorithm: Some(algorithm),
+                        hash: Some(hash.clone()),
+                        salt: Some(salt.clone()),
+                        spin_count: Some(value.spin_count.unwrap_or(100_000).to_string()),
                     }
-                    if value.algorithm_sid.unwrap_or(14) != 14 {
-                        return Err("only SHA-512 document protection is supported".to_string());
-                    }
-                    let spin_count = value.spin_count.unwrap_or(100_000);
-                    if !(1..=10_000_000).contains(&spin_count) {
-                        return Err(
-                            "document protection spinCount must be between 1 and 10000000"
-                                .to_string(),
-                        );
-                    }
+                    .validate()
+                    .map_err(|err| format!("invalid document protection credentials: {err:?}"))?;
                 }
-                (None, None) => {}
-                _ => {
-                    return Err(
-                        "document protection hash and salt must be supplied together".to_string(),
-                    )
-                }
+                (None, None)
+                    if value.algorithm_name.is_none()
+                        && value.algorithm_sid.is_none()
+                        && value.spin_count.is_none() => {}
+                _ => return Err("document protection credentials are incomplete".into()),
             }
         }
 
-        let previous = self
-            .settings_xml_content()
-            .ok_or_else(|| "settings.xml is not present in this package".to_string())?;
+        let lock_tracking = !self.protection_lifted
+            && protection
+                .as_ref()
+                .is_some_and(|value| value.enforced && value.edit == "trackedChanges");
+        let existing = self.settings_xml_content();
+        let previous = existing.clone().unwrap_or_else(|| {
+            r#"<w:settings xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"/>"#.into()
+        });
+        if existing.is_none() && protection.is_none() {
+            return Ok(previous);
+        }
         let mut doc = DocxXmlDocument::parse(&previous)
             .map_err(|err| format!("failed to parse settings.xml: {err:?}"))?;
         let root_id = doc.root().id;
@@ -8628,7 +9060,7 @@ impl WordDocument {
                         .map(|(prefix, _)| prefix.to_string()),
                     _ => None,
                 })
-                .unwrap_or(root_prefix);
+                .unwrap_or_else(|| root_prefix.clone());
             let qualified = |local: &str| {
                 if prefix.is_empty() {
                     local.to_string()
@@ -8643,40 +9075,41 @@ impl WordDocument {
                 },
                 XmlAttribute {
                     name: qualified("enforcement"),
-                    value: "1".to_string(),
+                    value: if value.enforced { "1" } else { "0" }.to_string(),
                 },
             ];
+            if let Some(formatting) = value.formatting {
+                attributes.push(XmlAttribute {
+                    name: qualified("formatting"),
+                    value: if formatting { "1" } else { "0" }.into(),
+                });
+            }
             if let (Some(hash), Some(salt)) = (value.hash, value.salt) {
-                attributes.extend([
-                    XmlAttribute {
-                        name: qualified("cryptProviderType"),
-                        value: "rsaAES".to_string(),
+                let legacy = value.algorithm_name.is_none();
+                let algorithm = value.algorithm_name.unwrap_or_else(|| {
+                    match value.algorithm_sid.unwrap_or(14) {
+                        4 => "SHA-1",
+                        12 => "SHA-256",
+                        13 => "SHA-384",
+                        _ => "SHA-512",
+                    }
+                    .to_string()
+                });
+                let prefix = if prefix.is_empty() {
+                    String::new()
+                } else {
+                    format!("{prefix}:")
+                };
+                attributes.extend(protection::password_attributes(
+                    &prefix,
+                    &protection::PasswordHash {
+                        algorithm,
+                        hash,
+                        salt,
+                        spin_count: value.spin_count.unwrap_or(100_000),
+                        legacy,
                     },
-                    XmlAttribute {
-                        name: qualified("cryptAlgorithmClass"),
-                        value: "hash".to_string(),
-                    },
-                    XmlAttribute {
-                        name: qualified("cryptAlgorithmType"),
-                        value: "typeAny".to_string(),
-                    },
-                    XmlAttribute {
-                        name: qualified("cryptAlgorithmSid"),
-                        value: value.algorithm_sid.unwrap_or(14).to_string(),
-                    },
-                    XmlAttribute {
-                        name: qualified("cryptSpinCount"),
-                        value: value.spin_count.unwrap_or(100_000).to_string(),
-                    },
-                    XmlAttribute {
-                        name: qualified("hash"),
-                        value: hash,
-                    },
-                    XmlAttribute {
-                        name: qualified("salt"),
-                        value: salt,
-                    },
-                ]);
+                ));
             }
 
             if let Some(index) = existing_index {
@@ -8707,19 +9140,34 @@ impl WordDocument {
             });
         }
 
+        if lock_tracking {
+            // Save the recording switch in the same XML transaction as the
+            // restriction, before starting the in-memory revision session.
+            let name = if root_prefix.is_empty() {
+                "trackRevisions".into()
+            } else {
+                format!("{root_prefix}:trackRevisions")
+            };
+            let recording = doc.create_element(name, Vec::new(), Vec::new());
+            let root = doc.element_mut(root_id).ok_or("settings root is missing")?;
+            root.children.retain(|child| {
+                !matches!(child, XmlNode::Element(element)
+                    if Self::xml_local_name(&element.name) == "trackRevisions")
+            });
+            root.children.push(XmlNode::Element(recording));
+        }
         doc.rebuild_index();
         let new_xml = doc
             .to_string()
             .map_err(|err| format!("failed to serialize settings.xml: {err:?}"))?;
-        self.parts.insert(
-            SETTINGS_PATH.to_string(),
-            DocumentPart {
-                path: SETTINGS_PATH.to_string(),
-                relationships: Vec::new(),
-                content: new_xml,
-                parsed_document: None,
-            },
-        );
+        self.write_tracking_settings_xml(&settings_path, new_xml)?;
+        if lock_tracking && self.revision_session().is_none() {
+            self.set_revision_session(Some(RevisionSession {
+                author: Some("jade".into()),
+                date: None,
+                date_utc: None,
+            }));
+        }
         Ok(previous)
     }
 
@@ -10810,6 +11258,11 @@ impl WordDocument {
             break_body_index
         };
         self.rebuild_paragraph_surfaces();
+        if split {
+            for table_id in [table_node_id, new_table_node_id].into_iter().flatten() {
+                self.refresh_table_paragraph_properties_by_id(table_id);
+            }
+        }
         Ok((break_paragraph_index, break_body_index))
     }
 
@@ -11535,16 +11988,8 @@ impl WordDocument {
     /// Restores `word/settings.xml` to a previously captured snapshot (used by
     /// the settings-toggle command's undo).
     pub fn restore_settings_xml(&mut self, content: String) {
-        const SETTINGS_PATH: &str = "word/settings.xml";
-        self.parts.insert(
-            SETTINGS_PATH.to_string(),
-            DocumentPart {
-                path: SETTINGS_PATH.to_string(),
-                relationships: Vec::new(),
-                content,
-                parsed_document: None,
-            },
-        );
+        let path = self.tracking_settings_path();
+        self.upsert_xml_part_content(&path, content);
     }
 
     pub fn export_docx(&self) -> Result<Vec<u8>, DocxExportError> {
@@ -13895,7 +14340,13 @@ impl WordDocument {
         // Bake the style-resolved paragraph defaults (alignment, grid snap)
         // into the model, matching what document load does for note bodies.
         if let Some(styles) = self.styles_part.as_ref() {
-            Self::apply_style_paragraph_defaults_to_elements(&mut note_body, styles);
+            Self::apply_style_paragraph_defaults_to_elements(
+                &mut note_body,
+                styles,
+                self.loaded_document_settings()
+                    .compat
+                    .setting_on("overrideTableStyleFontSizeAndJustification"),
+            );
         }
         let document = self
             .document_mut()
@@ -14282,6 +14733,10 @@ impl WordDocument {
         self.sync_paragraph_text_preserving_drawings(paragraph_index);
         // The paragraph's other shapes were filled when it loaded, and this
         // fills only what is unset.
+        let override_table_justification = self
+            .loaded_document_settings()
+            .compat
+            .setting_on("overrideTableStyleFontSizeAndJustification");
         if let Some(styles) = self.styles_part.take() {
             if let Some(paragraph) = self.paragraph_mut(paragraph_index) {
                 for text_box in paragraph
@@ -14289,7 +14744,11 @@ impl WordDocument {
                     .iter_mut()
                     .filter_map(|run| run.text_box.as_mut())
                 {
-                    Self::apply_style_paragraph_defaults_to_elements(&mut text_box.blocks, &styles);
+                    Self::apply_style_paragraph_defaults_to_elements(
+                        &mut text_box.blocks,
+                        &styles,
+                        override_table_justification,
+                    );
                 }
             }
             self.styles_part = Some(styles);
@@ -15362,6 +15821,7 @@ impl WordDocument {
             for (index, run) in paragraph.runs.iter().enumerate() {
                 let end = offset + run.text.len();
                 if run.hyperlink.is_some()
+                    && model_start.offset >= offset
                     && (model_start.offset < end
                         || (model_start.offset == end && model_start.offset > offset))
                 {
@@ -15584,6 +16044,7 @@ impl WordDocument {
             size_eighths: Some(6),
             space: Some(1),
             color: Some("#666666".to_string()),
+            theme_color: None,
         };
         let mut model_paragraphs = normalized
             .iter()
@@ -15608,6 +16069,7 @@ impl WordDocument {
                         val: Some("clear".to_string()),
                         color: None,
                         fill: Some(format!("#{color}")),
+                        ..Default::default()
                     }),
                     borders: (spec.border_top
                         || spec.border_bottom
@@ -15744,6 +16206,8 @@ impl WordDocument {
                     ("w:bottom", borders.bottom.as_ref()),
                     ("w:left", borders.left.as_ref()),
                     ("w:right", borders.right.as_ref()),
+                    ("w:between", borders.between.as_ref()),
+                    ("w:bar", borders.bar.as_ref()),
                 ] {
                     let Some(edge) = edge else { continue };
                     let mut attributes =
@@ -15756,6 +16220,9 @@ impl WordDocument {
                     }
                     if let Some(color) = edge.color.as_deref() {
                         attributes.push(attr("w:color", color.trim_start_matches('#')));
+                    }
+                    for (name, value) in edge.theme_attributes() {
+                        attributes.push(attr(name, value));
                     }
                     border_children.push(XmlNode::Element(raw.create_element(
                         name,
@@ -15778,9 +16245,19 @@ impl WordDocument {
                 if let Some(value) = shading.val.as_deref() {
                     attributes.push(attr("w:val", value));
                 }
-                attributes.push(attr("w:color", "auto"));
+                attributes.push(attr(
+                    "w:color",
+                    shading
+                        .color
+                        .as_deref()
+                        .unwrap_or("auto")
+                        .trim_start_matches('#'),
+                ));
                 if let Some(fill) = shading.fill.as_deref() {
                     attributes.push(attr("w:fill", fill.trim_start_matches('#')));
+                }
+                for (name, value) in shading.theme_attributes() {
+                    attributes.push(attr(name, value));
                 }
                 properties_children.push(XmlNode::Element(raw.create_element(
                     "w:shd",
@@ -16543,6 +17020,15 @@ impl WordDocument {
         kind: CrossReferenceKind,
         hyperlink: bool,
     ) -> Result<SelectionRange, String> {
+        let (name, kind, note) = self.prepare_cross_reference_target(target, kind)?;
+        self.insert_bookmark_field_at_caret(range, &name, kind, note, hyperlink)
+    }
+
+    fn prepare_cross_reference_target(
+        &mut self,
+        target: &CrossReferenceTarget,
+        kind: CrossReferenceKind,
+    ) -> Result<(String, CrossReferenceKind, Option<(NoteKind, String)>), String> {
         // Resolve the descriptor again in the worker. A stale or forged target
         // must not create an orphan bookmark or add a history entry.
         if !self.cross_reference_targets().iter().any(|candidate| {
@@ -16565,7 +17051,7 @@ impl WordDocument {
             return Err("number references require a caption or note target".into());
         }
         if target.target_type == CrossReferenceTargetType::Bookmark {
-            return self.insert_bookmark_field_at_caret(range, &target.id, kind, None, hyperlink);
+            return Ok((target.id.clone(), kind, None));
         }
         let note_source = note_kind.and_then(|kind| {
             (0..self.paragraph_count()).find_map(|index| {
@@ -16675,17 +17161,15 @@ impl WordDocument {
                 name
             }
         };
-        self.insert_bookmark_field_at_caret(
-            range,
-            &name,
+        Ok((
+            name,
             if kind == CrossReferenceKind::Number && note_kind.is_none() {
                 CrossReferenceKind::Text
             } else {
                 kind
             },
             note_source.map(|(_, _, kind, id)| (kind, id)),
-            hyperlink,
-        )
+        ))
     }
 
     /// Inserts an atomic bookmark cross-reference at a collapsed caret.
@@ -19492,6 +19976,23 @@ impl WordDocument {
         display_offset: usize,
         break_count: usize,
     ) -> Result<(), String> {
+        if let Some(paragraph) = self.hf_ruler_paragraph(role, variant, paragraph_index) {
+            if paragraph.runs.iter().any(|run| run.field.is_some()) {
+                let text = Self::hf_field_edit_paragraph_text(&paragraph)
+                    .ok_or_else(|| "unsupported header/footer field paragraph".to_string())?;
+                if display_offset > text.chars().count() {
+                    return Err("header/footer split position is out of range".to_string());
+                }
+                let mut seen = 0;
+                for run in &paragraph.runs {
+                    let len = Self::hf_field_edit_run_text(run).unwrap().chars().count();
+                    if run.field.is_some() && seen < display_offset && display_offset < seen + len {
+                        return Err("cannot split inside a header/footer field".to_string());
+                    }
+                    seen += len;
+                }
+            }
+        }
         self.ensure_hf_part_for_edit(role, variant)?;
         let part_path = self.resolve_header_footer_part_path_for(role, variant)?;
         self.split_part_paragraph_at_display_offset(
@@ -19504,6 +20005,152 @@ impl WordDocument {
         Ok(())
     }
 
+    /// Delete a plain multi-paragraph story selection as one XML update.
+    /// Surviving inline XML keeps its formatting and wrapper attributes.
+    pub(crate) fn hf_adjacent_field_selection(
+        &self,
+        role: HeaderFooterRole,
+        variant: HeaderFooterVariant,
+        position: TextPosition,
+        backward: bool,
+    ) -> Option<SelectionRange> {
+        let paragraph = self.hf_ruler_paragraph(role, variant, position.paragraph)?;
+        // Validate the entire paragraph before interpreting any field offsets.
+        Self::hf_field_edit_paragraph_text(&paragraph)?;
+        let mut offset = 0;
+        for run in &paragraph.runs {
+            let end = offset + Self::hf_field_edit_run_text(run)?.len();
+            if run.field.is_some()
+                && offset < end
+                && position.offset == if backward { end } else { offset }
+            {
+                return Some(SelectionRange::new(
+                    TextPosition::new(position.paragraph, offset),
+                    TextPosition::new(position.paragraph, end),
+                ));
+            }
+            offset = end;
+        }
+        None
+    }
+
+    pub(crate) fn delete_hf_story_selection(
+        &mut self,
+        role: HeaderFooterRole,
+        variant: HeaderFooterVariant,
+        selection: SelectionRange,
+    ) -> Result<Option<TextPosition>, String> {
+        let (start, end) = selection.normalized();
+        if start != end
+            && (start.paragraph..=end.paragraph).any(|index| {
+                self.hf_ruler_paragraph(role, variant, index)
+                    .is_some_and(|paragraph| paragraph.runs.iter().any(|run| run.field.is_some()))
+            })
+        {
+            return self.edit_hf_rich_story(role, variant, selection, None, "");
+        }
+        if start.paragraph == end.paragraph {
+            return Ok(None);
+        }
+        let path = self.resolve_header_footer_part_path_for(role, variant)?;
+        let existing = self
+            .read_xml_part_content(&path)
+            .ok_or("missing story part")?;
+        let mut xml = DocxXmlDocument::parse(&existing).map_err(|error| error.to_string())?;
+        if Self::hf_story_run_ranges(&xml, selection).is_none() {
+            return Ok(None);
+        }
+        let mut paragraphs = Vec::new();
+        Self::collect_story_paragraph_ids(xml.root(), &mut paragraphs);
+        let selected = &paragraphs[start.paragraph..=end.paragraph];
+        let first = selected[0];
+        let last = *selected.last().unwrap();
+        let parent = xml
+            .parent_id(first)
+            .ok_or("missing story paragraph parent")?;
+        if selected.iter().any(|id| xml.parent_id(*id) != Some(parent)) {
+            return Ok(None);
+        }
+        let siblings = &xml.element(parent).ok_or("missing story parent")?.children;
+        let indices: Vec<_> = siblings
+            .iter()
+            .enumerate()
+            .filter_map(|(index, node)| {
+                matches!(node, XmlNode::Element(element) if selected.contains(&element.id))
+                    .then_some(index)
+            })
+            .collect();
+        if indices.windows(2).any(|pair| {
+            siblings[pair[0] + 1..pair[1]]
+                .iter()
+                .any(|node| !matches!(node, XmlNode::Text(text) if text.trim().is_empty()))
+        }) {
+            return Ok(None);
+        }
+        let first_text: String = Self::hf_text_runs(&xml, first)
+            .unwrap()
+            .iter()
+            .map(|run| run.text.as_str())
+            .collect();
+        let last_text: String = Self::hf_text_runs(&xml, last)
+            .unwrap()
+            .iter()
+            .map(|run| run.text.as_str())
+            .collect();
+        let (mut prefix, _) = Self::split_paragraph_children_at_display_offset(
+            xml.element(first).unwrap().children.clone(),
+            first_text[..start.offset].chars().count(),
+        );
+        let (_, suffix) = Self::split_paragraph_children_at_display_offset(
+            xml.element(last).unwrap().children.clone(),
+            last_text[..end.offset].chars().count(),
+        );
+        // Keep the start paragraph's caret format before appending text from
+        // the end paragraph. Otherwise a selection starting at offset zero
+        // would inherit the surviving suffix's format on replacement.
+        if Self::hf_boundary_run(&prefix, false).is_none() {
+            let runs = Self::hf_text_runs(&xml, first).unwrap();
+            let properties = runs
+                .iter()
+                .find(|run| run.start <= start.offset && start.offset < run.end)
+                .or_else(|| runs.last())
+                .and_then(|run| xml.element(run.id))
+                .and_then(Self::run_properties_element)
+                .cloned()
+                .or_else(|| {
+                    xml.element(first)?
+                        .children
+                        .iter()
+                        .find_map(|node| match node {
+                            XmlNode::Element(element) if element.name == "w:pPr" => {
+                                Self::run_properties_element(element).cloned()
+                            }
+                            _ => None,
+                        })
+                });
+            prefix.push(XmlNode::Element(Self::hf_text_run_element(
+                &mut xml,
+                properties.as_ref(),
+                "",
+            )));
+        }
+        prefix.extend(
+            suffix.into_iter().filter(
+                |node| !matches!(node, XmlNode::Element(element) if element.name == "w:pPr"),
+            ),
+        );
+        for &id in selected[1..].iter().rev() {
+            let path = xml.path(id).ok_or("missing selected paragraph")?;
+            xml.remove_node(&path).map_err(|error| error.to_string())?;
+        }
+        xml.element_mut(first)
+            .ok_or("missing surviving paragraph")?
+            .children = prefix;
+        xml.rebuild_index_for_subtree(first);
+        self.upsert_xml_part_content(&path, xml.to_string().map_err(|error| error.to_string())?);
+        self.refresh_header_footer_lines_for(role, variant, &path)?;
+        Ok(Some(start))
+    }
     pub(crate) fn merge_hf_paragraph_with_previous(
         &mut self,
         role: HeaderFooterRole,
@@ -19817,8 +20464,158 @@ impl WordDocument {
         )))
     }
 
+    fn hf_caret_run_id(
+        xml: &DocxXmlDocument,
+        paragraph: XmlNodeId,
+        offset: usize,
+    ) -> Option<XmlNodeId> {
+        let runs = Self::hf_text_runs(xml, paragraph)?;
+        let text: String = runs.iter().map(|run| run.text.as_str()).collect();
+        if !text.is_char_boundary(offset) {
+            return None;
+        }
+        runs.iter()
+            .find(|run| run.start == offset && run.end == offset)
+            .or_else(|| {
+                runs.iter()
+                    .rfind(|run| run.end == offset && run.start < offset)
+            })
+            .or_else(|| {
+                runs.iter()
+                    .find(|run| run.start <= offset && offset < run.end)
+            })
+            .map(|run| run.id)
+    }
+
+    pub(crate) fn hf_caret_run_state(
+        &self,
+        role: HeaderFooterRole,
+        variant: HeaderFooterVariant,
+        paragraph: usize,
+        offset: usize,
+    ) -> Option<HfRunState> {
+        let reference = self.active_hf_reference(role, variant)?;
+        let path = self.hf_part_path_for_reference(&reference)?;
+        let xml = DocxXmlDocument::parse(&self.read_xml_part_content(&path)?).ok()?;
+        let (id, _) = Self::hf_paragraph_run_ids(&xml, paragraph).ok()?;
+        let run = Self::hf_caret_run_id(&xml, id, offset)?;
+        Some(Self::hf_run_state_of(
+            &xml,
+            &[run],
+            self.hf_mapped_paragraph(role, variant, paragraph, &xml)
+                .as_ref(),
+            self.styles_part.as_ref(),
+        ))
+    }
+
+    /// Store the next input's format in an empty run without changing visible text.
+    pub(crate) fn apply_hf_caret_run_format(
+        &mut self,
+        role: HeaderFooterRole,
+        variant: HeaderFooterVariant,
+        paragraph: usize,
+        offset: usize,
+        format: &HfRunFormat,
+    ) -> Result<bool, String> {
+        self.edit_hf_caret_run(role, variant, paragraph, offset, |doc, xml, id, target| {
+            doc.format_hf_run(
+                xml,
+                id,
+                target,
+                format,
+                paragraph as i64 * 65_536 + offset as i64 + 1,
+            )
+        })
+    }
+
+    pub(crate) fn adjust_hf_caret_font_size(
+        &mut self,
+        role: HeaderFooterRole,
+        variant: HeaderFooterVariant,
+        paragraph: usize,
+        offset: usize,
+        direction: crate::commands::adjust_font_size::FontSizeDirection,
+        step: crate::commands::adjust_font_size::FontSizeStep,
+    ) -> Result<bool, String> {
+        self.edit_hf_caret_run(role, variant, paragraph, offset, |doc, xml, id, target| {
+            doc.adjust_hf_run_font_sizes(xml, id, &[target], direction, step)
+        })
+    }
+
+    fn edit_hf_caret_run<F>(
+        &mut self,
+        role: HeaderFooterRole,
+        variant: HeaderFooterVariant,
+        paragraph: usize,
+        offset: usize,
+        edit: F,
+    ) -> Result<bool, String>
+    where
+        F: FnOnce(&Self, &mut DocxXmlDocument, XmlNodeId, XmlNodeId) -> Result<(), String>,
+    {
+        let path = self.resolve_header_footer_part_path_for(role, variant)?;
+        let existing = self
+            .read_xml_part_content(&path)
+            .ok_or("missing story part")?;
+        let mut xml = DocxXmlDocument::parse(&existing).map_err(|error| error.to_string())?;
+        let (id, _) = Self::hf_paragraph_run_ids(&xml, paragraph)?;
+        let Some(runs) = Self::hf_text_runs(&xml, id) else {
+            return Ok(false);
+        };
+        let text: String = runs.iter().map(|run| run.text.as_str()).collect();
+        if !text.is_char_boundary(offset) {
+            return Ok(false);
+        }
+        let target = if let Some(run) = runs
+            .iter()
+            .find(|run| run.start == offset && run.end == offset)
+        {
+            run.id
+        } else if runs.is_empty() {
+            Self::insert_hf_paragraph_formatting_run(&mut xml, id)?
+        } else {
+            let template = Self::hf_caret_run_id(&xml, id, offset)
+                .and_then(|id| xml.element(id))
+                .and_then(Self::run_properties_element)
+                .cloned();
+            Self::split_hf_run_at_offset(&mut xml, id, offset);
+            let runs = Self::hf_text_runs(&xml, id).unwrap();
+            let (neighbor, after) = if let Some(run) = runs
+                .iter()
+                .rfind(|run| run.end == offset && run.start < offset)
+            {
+                (run.id, true)
+            } else {
+                (
+                    runs.iter().find(|run| run.start == offset).unwrap().id,
+                    false,
+                )
+            };
+            let parent = xml.parent_id(neighbor).ok_or("missing caret run parent")?;
+            let index = xml
+                .element(parent)
+                .unwrap()
+                .children
+                .iter()
+                .position(
+                    |node| matches!(node, XmlNode::Element(element) if element.id == neighbor),
+                )
+                .ok_or("missing caret run")?
+                + usize::from(after);
+            let run = Self::hf_text_run_element(&mut xml, template.as_ref(), "");
+            xml.insert_node(parent, index, XmlNode::Element(run))
+                .map_err(|error| error.to_string())?
+                .ok_or("missing inserted caret run")?
+        };
+        edit(self, &mut xml, id, target)?;
+        xml.rebuild_index_for_subtree(id);
+        self.upsert_xml_part_content(&path, xml.to_string().map_err(|error| error.to_string())?);
+        self.refresh_header_footer_lines_for(role, variant, &path)?;
+        Ok(true)
+    }
+
     /// Applies `format` to every run of header/footer line `paragraph_index`
-    /// (Word's ribbon acting on the line the caret is in). The story is
+    /// for whole-line operations and unsupported caret mappings. The story is
     /// edited in place: runs keep their other properties, fields and tabs.
     pub(crate) fn apply_hf_paragraph_run_format(
         &mut self,
@@ -19841,8 +20638,9 @@ impl WordDocument {
             )?);
         }
         for run_id in run_ids {
-            Self::format_hf_run(
+            self.format_hf_run(
                 &mut xml_doc,
+                paragraph_id,
                 run_id,
                 format,
                 paragraph_index as i64 * 65_536 + 1,
@@ -19855,11 +20653,7 @@ impl WordDocument {
         Ok(())
     }
 
-    /// Applies `format` to the display-text byte range `start..end` of
-    /// header/footer line `paragraph_index` (Word's ribbon acting on a
-    /// selection). Runs are split at the range ends so the rest of the line
-    /// keeps its formatting. `Ok(false)` when the paragraph carries fields;
-    /// the caller then formats the whole line as before.
+    /// Apply a ribbon format to a single paragraph's selected text.
     pub(crate) fn apply_hf_range_run_format(
         &mut self,
         role: HeaderFooterRole,
@@ -19869,38 +20663,162 @@ impl WordDocument {
         end: usize,
         format: &HfRunFormat,
     ) -> Result<bool, String> {
+        self.apply_hf_story_run_format(
+            role,
+            variant,
+            SelectionRange::new(
+                TextPosition::new(paragraph_index, start),
+                TextPosition::new(paragraph_index, end),
+            ),
+            format,
+        )
+    }
+
+    /// Validate every paragraph before changing any XML. Offsets are UTF-8
+    /// bytes in visible plain story text; fields cannot use this mapping.
+    fn hf_story_run_ranges(
+        xml: &DocxXmlDocument,
+        range: SelectionRange,
+    ) -> Option<Vec<(usize, XmlNodeId, std::ops::Range<usize>)>> {
+        let (start, end) = range.normalized();
+        if start == end {
+            return None;
+        }
+        let mut paragraphs = Vec::new();
+        Self::collect_story_paragraph_ids(xml.root(), &mut paragraphs);
+        let selected = paragraphs.get(start.paragraph..=end.paragraph)?;
+        let mut ranges = Vec::new();
+        for (relative, &id) in selected.iter().enumerate() {
+            let index = start.paragraph + relative;
+            let runs = Self::hf_text_runs(xml, id)?;
+            let text: String = runs.iter().map(|run| run.text.as_str()).collect();
+            let from = if index == start.paragraph {
+                start.offset
+            } else {
+                0
+            };
+            let to = if index == end.paragraph {
+                end.offset
+            } else {
+                text.len()
+            };
+            if from > to || !text.is_char_boundary(from) || !text.is_char_boundary(to) {
+                return None;
+            }
+            // An endpoint at the next paragraph's start does not select it.
+            if from < to || (text.is_empty() && index < end.paragraph) {
+                ranges.push((index, id, from..to));
+            }
+        }
+        Some(ranges)
+    }
+
+    /// Apply one ribbon edit across a story selection, committing the part
+    /// only after every selected paragraph has been validated and edited.
+    pub(crate) fn apply_hf_story_run_format(
+        &mut self,
+        role: HeaderFooterRole,
+        variant: HeaderFooterVariant,
+        range: SelectionRange,
+        format: &HfRunFormat,
+    ) -> Result<bool, String> {
         self.ensure_hf_part_for_edit(role, variant)?;
-        let part_path = self.resolve_header_footer_part_path_for(role, variant)?;
+        let path = self.resolve_header_footer_part_path_for(role, variant)?;
         let existing = self
-            .read_xml_part_content(&part_path)
-            .ok_or_else(|| format!("missing {part_path}"))?;
-        let mut xml_doc = DocxXmlDocument::parse(&existing).map_err(|err| err.to_string())?;
-        let (paragraph_id, _) = Self::hf_paragraph_run_ids(&xml_doc, paragraph_index)?;
-        if Self::hf_text_runs(&xml_doc, paragraph_id).is_none() {
+            .read_xml_part_content(&path)
+            .ok_or_else(|| format!("missing {path}"))?;
+        let mut xml = DocxXmlDocument::parse(&existing).map_err(|error| error.to_string())?;
+        let Some(ranges) = Self::hf_story_run_ranges(&xml, range) else {
+            return Ok(false);
+        };
+        if ranges.is_empty() {
             return Ok(false);
         }
-        // Split at the end first so the start offsets stay valid.
-        Self::split_hf_run_at_offset(&mut xml_doc, paragraph_id, end);
-        Self::split_hf_run_at_offset(&mut xml_doc, paragraph_id, start);
-        let targets: Vec<XmlNodeId> = Self::hf_text_runs(&xml_doc, paragraph_id)
-            .unwrap_or_default()
-            .into_iter()
-            .filter(|run| run.start >= start && run.end <= end && run.end > run.start)
-            .map(|run| run.id)
-            .collect();
-        for run_id in targets {
-            Self::format_hf_run(
-                &mut xml_doc,
-                run_id,
-                format,
-                paragraph_index as i64 * 65_536 + start as i64 + 1,
-            )?;
+        for (index, paragraph, range) in ranges {
+            Self::split_hf_run_at_offset(&mut xml, paragraph, range.end);
+            Self::split_hf_run_at_offset(&mut xml, paragraph, range.start);
+            let mut targets: Vec<_> = Self::hf_text_runs(&xml, paragraph)
+                .unwrap_or_default()
+                .into_iter()
+                .filter(|run| {
+                    run.start >= range.start && run.end <= range.end && run.end > run.start
+                })
+                .map(|run| run.id)
+                .collect();
+            if range.is_empty() {
+                targets = Self::hf_text_runs(&xml, paragraph)
+                    .unwrap_or_default()
+                    .into_iter()
+                    .map(|run| run.id)
+                    .collect();
+                if targets.is_empty() {
+                    targets.push(Self::insert_hf_paragraph_formatting_run(
+                        &mut xml, paragraph,
+                    )?);
+                }
+            }
+            for id in targets {
+                self.format_hf_run(
+                    &mut xml,
+                    paragraph,
+                    id,
+                    format,
+                    index as i64 * 65_536 + range.start as i64 + 1,
+                )?;
+            }
+            xml.rebuild_index_for_subtree(paragraph);
         }
-        xml_doc.rebuild_index_for_subtree(paragraph_id);
-        let serialized = xml_doc.to_string().map_err(|err| err.to_string())?;
-        self.upsert_xml_part_content(&part_path, serialized);
-        self.refresh_header_footer_lines_for(role, variant, &part_path)?;
+        self.upsert_xml_part_content(&path, xml.to_string().map_err(|error| error.to_string())?);
+        self.refresh_header_footer_lines_for(role, variant, &path)?;
         Ok(true)
+    }
+
+    /// Combine toggle states using each paragraph's own effective style.
+    pub(crate) fn hf_story_range_run_state(
+        &mut self,
+        role: HeaderFooterRole,
+        variant: HeaderFooterVariant,
+        range: SelectionRange,
+    ) -> Result<Option<HfRunState>, String> {
+        let path = self.resolve_header_footer_part_path_for(role, variant)?;
+        let existing = self
+            .read_xml_part_content(&path)
+            .ok_or_else(|| format!("missing {path}"))?;
+        let xml = DocxXmlDocument::parse(&existing).map_err(|error| error.to_string())?;
+        let Some(ranges) = Self::hf_story_run_ranges(&xml, range) else {
+            return Ok(None);
+        };
+        let mut combined: Option<HfRunState> = None;
+        for (index, paragraph, range) in ranges {
+            let ids: Vec<_> = Self::hf_text_runs(&xml, paragraph)
+                .unwrap_or_default()
+                .into_iter()
+                .filter(|run| run.start < range.end && run.end > range.start || range.is_empty())
+                .map(|run| run.id)
+                .collect();
+            let state = Self::hf_run_state_of(
+                &xml,
+                &ids,
+                self.hf_mapped_paragraph(role, variant, index, &xml)
+                    .as_ref(),
+                self.styles_part.as_ref(),
+            );
+            if let Some(all) = combined.as_mut() {
+                all.all_bold &= state.all_bold;
+                all.all_italic &= state.all_italic;
+                all.all_underline &= state.all_underline;
+                all.all_strike &= state.all_strike;
+                all.all_double_strike &= state.all_double_strike;
+                all.all_superscript &= state.all_superscript;
+                all.all_subscript &= state.all_subscript;
+                if all.underline_kind != state.underline_kind {
+                    all.underline_kind = None;
+                }
+            } else {
+                combined = Some(state);
+            }
+        }
+        Ok(combined)
     }
 
     /// Step each selected run from its own effective size, using the same
@@ -19952,6 +20870,21 @@ impl WordDocument {
         if targets.is_empty() {
             return Ok(false);
         }
+        self.adjust_hf_run_font_sizes(&mut raw, paragraph_id, &targets, direction, step)?;
+        raw.rebuild_index_for_subtree(paragraph_id);
+        self.upsert_xml_part_content(&path, raw.to_string().map_err(|error| error.to_string())?);
+        self.refresh_header_footer_lines_for(role, variant, &path)?;
+        Ok(true)
+    }
+
+    fn adjust_hf_run_font_sizes(
+        &self,
+        raw: &mut DocxXmlDocument,
+        paragraph_id: XmlNodeId,
+        targets: &[XmlNodeId],
+        direction: crate::commands::adjust_font_size::FontSizeDirection,
+        step: crate::commands::adjust_font_size::FontSizeStep,
+    ) -> Result<(), String> {
         let paragraph_properties = raw.element(paragraph_id).and_then(|paragraph| {
             paragraph.children.iter().find_map(|child| match child {
                 XmlNode::Element(element) if element.name == "w:pPr" => Some(element),
@@ -19959,7 +20892,7 @@ impl WordDocument {
             })
         });
         let paragraph_style = Self::run_property_child_value(paragraph_properties, "w:pStyle");
-        for id in targets {
+        for &id in targets {
             let properties = raw.element(id).and_then(Self::run_properties_element);
             let direct = RunProperties {
                 style: Self::run_property_child_value(properties, "w:rStyle").map(Into::into),
@@ -19984,8 +20917,9 @@ impl WordDocument {
                 })
                 .unwrap_or(10.5);
             let size = crate::commands::adjust_font_size::step_font_size(size, direction, step);
-            Self::format_hf_run(
-                &mut raw,
+            self.format_hf_run(
+                raw,
+                paragraph_id,
                 id,
                 &HfRunFormat {
                     font_size: Some(size),
@@ -19994,7 +20928,50 @@ impl WordDocument {
                 0,
             )?;
         }
-        raw.rebuild_index_for_subtree(paragraph_id);
+        Ok(())
+    }
+
+    /// Step all selected story runs using their own effective paragraph styles.
+    pub(crate) fn adjust_hf_story_font_size(
+        &mut self,
+        role: HeaderFooterRole,
+        variant: HeaderFooterVariant,
+        range: SelectionRange,
+        direction: crate::commands::adjust_font_size::FontSizeDirection,
+        step: crate::commands::adjust_font_size::FontSizeStep,
+    ) -> Result<bool, String> {
+        self.ensure_hf_part_for_edit(role, variant)?;
+        let path = self.resolve_header_footer_part_path_for(role, variant)?;
+        let existing = self
+            .read_xml_part_content(&path)
+            .ok_or_else(|| format!("missing {path}"))?;
+        let mut raw = DocxXmlDocument::parse(&existing).map_err(|error| error.to_string())?;
+        let Some(ranges) = Self::hf_story_run_ranges(&raw, range) else {
+            return Ok(false);
+        };
+        if ranges.is_empty() {
+            return Ok(false);
+        }
+        for (_, paragraph, range) in ranges {
+            Self::split_hf_run_at_offset(&mut raw, paragraph, range.end);
+            Self::split_hf_run_at_offset(&mut raw, paragraph, range.start);
+            let mut targets: Vec<_> = Self::hf_text_runs(&raw, paragraph)
+                .unwrap_or_default()
+                .into_iter()
+                .filter(|run| {
+                    range.is_empty()
+                        || run.start >= range.start && run.end <= range.end && run.end > run.start
+                })
+                .map(|run| run.id)
+                .collect();
+            if range.is_empty() && targets.is_empty() {
+                targets.push(Self::insert_hf_paragraph_formatting_run(
+                    &mut raw, paragraph,
+                )?);
+            }
+            self.adjust_hf_run_font_sizes(&mut raw, paragraph, &targets, direction, step)?;
+            raw.rebuild_index_for_subtree(paragraph);
+        }
         self.upsert_xml_part_content(&path, raw.to_string().map_err(|error| error.to_string())?);
         self.refresh_header_footer_lines_for(role, variant, &path)?;
         Ok(true)
@@ -20140,6 +21117,192 @@ impl WordDocument {
         )
     }
 
+    /// Enter on an empty list item removes its numbering without adding a paragraph.
+    pub(crate) fn exit_hf_empty_list_item(
+        &mut self,
+        role: HeaderFooterRole,
+        variant: HeaderFooterVariant,
+        paragraph_index: usize,
+    ) -> Result<bool, String> {
+        self.remove_hf_list_numbering(role, variant, paragraph_index, true)
+    }
+
+    /// Remove a list marker while retaining the story's content and properties.
+    /// Enter requires an empty item; Backspace at its start accepts any content.
+    pub(crate) fn remove_hf_list_numbering(
+        &mut self,
+        role: HeaderFooterRole,
+        variant: HeaderFooterVariant,
+        paragraph_index: usize,
+        only_empty: bool,
+    ) -> Result<bool, String> {
+        self.edit_hf_list_numbering(
+            role,
+            variant,
+            paragraph_index,
+            paragraph_index,
+            only_empty,
+            None,
+        )
+    }
+
+    /// Step each selected list item relative to its own level, preserving story XML.
+    pub(crate) fn adjust_hf_list_level(
+        &mut self,
+        role: HeaderFooterRole,
+        variant: HeaderFooterVariant,
+        start: usize,
+        end: usize,
+        backward: bool,
+    ) -> Result<bool, String> {
+        self.edit_hf_list_numbering(
+            role,
+            variant,
+            start.min(end),
+            start.max(end),
+            false,
+            Some(backward),
+        )
+    }
+
+    fn edit_hf_list_numbering(
+        &mut self,
+        role: HeaderFooterRole,
+        variant: HeaderFooterVariant,
+        paragraph_index: usize,
+        end_paragraph: usize,
+        only_empty: bool,
+        backward: Option<bool>,
+    ) -> Result<bool, String> {
+        let Some(reference) = self.active_hf_reference(role, variant) else {
+            return Ok(false);
+        };
+        let Some(path) = self.hf_part_path_for_reference(&reference) else {
+            return Ok(false);
+        };
+        let existing = self
+            .read_xml_part_content(&path)
+            .ok_or_else(|| format!("missing {path}"))?;
+        let (mut parsed, raw) = DocumentParser::new()
+            .parse_document_xml_with_raw_tree(&existing)
+            .map_err(|error| error.to_string())?;
+        if !parsed.body.as_ref().is_some_and(|body| {
+            body.elements
+                .get(end_paragraph)
+                .is_some_and(|element| element.as_paragraph().is_some())
+                && body
+                    .elements
+                    .iter()
+                    .take(end_paragraph + 1)
+                    .all(|element| element.as_paragraph().is_some())
+        }) {
+            return Ok(false);
+        }
+        let raw = raw.map_err(|error| error.to_string())?;
+        if let Some(body) = parsed.body.as_mut() {
+            attach_block_xml_ids(&mut body.elements, raw.root(), &raw);
+        }
+        if let Some(styles) = self.styles_part.as_ref() {
+            Self::apply_style_paragraph_defaults_to_document(
+                &mut parsed,
+                styles,
+                self.loaded_document_settings()
+                    .compat
+                    .setting_on("overrideTableStyleFontSizeAndJustification"),
+            );
+            Self::apply_style_numbering_to_document(&mut parsed, styles);
+        }
+        let mut scratch = self.clone();
+        scratch.document = Some(Rc::new(parsed));
+        scratch.raw_document = Some(raw);
+        scratch.rebuild_paragraph_surfaces();
+        if (paragraph_index..=end_paragraph).any(|index| {
+            scratch
+                .paragraph(index)
+                .and_then(|p| p.properties.as_ref())
+                .and_then(|p| p.numbering.as_ref())
+                .and_then(|n| n.list_id())
+                .is_none()
+        }) {
+            return Ok(false);
+        }
+        let Some(paragraph) = scratch.paragraph(paragraph_index) else {
+            return Ok(false);
+        };
+        if paragraph
+            .properties
+            .as_ref()
+            .and_then(|props| props.numbering.as_ref())
+            .and_then(|numbering| numbering.list_id())
+            .is_none()
+            || (only_empty
+                && paragraph.runs.iter().any(|run| {
+                    !run.text.is_empty()
+                        || run.image.is_some()
+                        || run.text_box.is_some()
+                        || run.field.is_some()
+                }))
+        {
+            return Ok(false);
+        }
+        // The plain-text mapping also excludes fields, drawings and breaks
+        // that may have no text in the parsed model.
+        let raw = scratch.raw_document.as_ref().unwrap();
+        let (paragraph_id, _) = Self::hf_paragraph_run_ids(raw, paragraph_index)?;
+        if only_empty
+            && !Self::hf_text_runs(raw, paragraph_id)
+                .is_some_and(|runs| runs.iter().all(|run| run.text.is_empty()))
+        {
+            return Ok(false);
+        }
+        use jade_docx_headless_api::{
+            HeadlessCommand, HeadlessIndentDirection, HeadlessIndentTarget,
+        };
+        let command = match backward {
+            Some(backward) => HeadlessCommand::AdjustParagraphIndent {
+                start_paragraph: paragraph_index,
+                end_paragraph,
+                direction: if backward {
+                    HeadlessIndentDirection::Decrease
+                } else {
+                    HeadlessIndentDirection::Increase
+                },
+                target: HeadlessIndentTarget::Start,
+            },
+            None => HeadlessCommand::SetNumbering {
+                start_paragraph: paragraph_index,
+                end_paragraph,
+                num_id: None,
+                level: None,
+            },
+        };
+        let before = scratch
+            .raw_document
+            .as_ref()
+            .unwrap()
+            .to_string()
+            .map_err(|error| error.to_string())?;
+        crate::headless_api::apply_headless_commands_to_document(
+            &mut scratch,
+            &jade_docx_headless_api::HeadlessEditRequest {
+                commands: vec![command],
+            },
+        )
+        .map_err(|error| error.to_string())?;
+        let updated = scratch
+            .raw_document
+            .as_ref()
+            .unwrap()
+            .to_string()
+            .map_err(|error| error.to_string())?;
+        if updated == before {
+            return Ok(false);
+        }
+        self.upsert_xml_part_content(&path, updated);
+        self.refresh_header_footer_lines_for(role, variant, &path)?;
+        Ok(true)
+    }
+
     /// Reuse the body style cascade against the story's own lossless tree.
     /// Only style definitions and this story are committed back to the document.
     pub(crate) fn set_hf_paragraph_style(
@@ -20169,7 +21332,13 @@ impl WordDocument {
             attach_block_xml_ids(&mut body.elements, raw.root(), &raw);
         }
         if let Some(styles) = self.styles_part.as_ref() {
-            Self::apply_style_paragraph_defaults_to_document(&mut parsed, styles);
+            Self::apply_style_paragraph_defaults_to_document(
+                &mut parsed,
+                styles,
+                self.loaded_document_settings()
+                    .compat
+                    .setting_on("overrideTableStyleFontSizeAndJustification"),
+            );
             Self::apply_style_numbering_to_document(&mut parsed, styles);
             Self::apply_run_font_defaults_to_document(&mut parsed, styles);
         }
@@ -20226,78 +21395,52 @@ impl WordDocument {
         paragraph_index: usize,
         commands: &[jade_docx_headless_api::HeadlessCommand],
     ) -> Result<bool, String> {
-        use crate::commands::paragraph_property_sync::{
-            reset_paragraph_formatting_xml, set_paragraph_indent_xml, set_paragraph_spacing_xml,
-        };
-        use jade_docx_headless_api::{HeadlessCommand, HeadlessEditRequest};
+        self.apply_hf_paragraph_commands_to_range(
+            role,
+            variant,
+            paragraph_index,
+            paragraph_index,
+            commands,
+        )
+    }
 
-        let mut indent = false;
-        let mut line = false;
-        let mut before_spacing = false;
-        let mut after_spacing = false;
-        let mut reset = false;
-        let mut tabs = false;
-        let mut shading = false;
-        for command in commands {
-            match command {
-                HeadlessCommand::SetParagraphIndent {
-                    left,
-                    right,
-                    first_line,
-                    hanging,
-                    left_chars,
-                    right_chars,
-                    first_line_chars,
-                    hanging_chars,
-                    clear_special,
-                    ..
-                } => {
-                    indent |= left.is_some()
-                        || right.is_some()
-                        || first_line.is_some()
-                        || hanging.is_some()
-                        || left_chars.is_some()
-                        || right_chars.is_some()
-                        || first_line_chars.is_some()
-                        || hanging_chars.is_some()
-                        || *clear_special;
-                }
-                HeadlessCommand::SetParagraphLineSpacing {
-                    line: value,
-                    line_rule,
-                    before,
-                    after,
-                    ..
-                } => {
-                    line |= value.is_some() || line_rule.is_some();
-                    before_spacing |= before.is_some();
-                    after_spacing |= after.is_some();
-                }
-                HeadlessCommand::SetParagraphMetrics {
-                    left,
-                    right,
-                    first_line,
-                    hanging,
-                    clear_special,
-                    before,
-                    after,
-                    ..
-                } => {
-                    indent |= left.is_some()
-                        || right.is_some()
-                        || first_line.is_some()
-                        || hanging.is_some()
-                        || *clear_special;
-                    before_spacing |= before.is_some();
-                    after_spacing |= after.is_some();
-                }
-                HeadlessCommand::SetParagraphTabs { .. } => tabs = true,
-                HeadlessCommand::SetParagraphShading { .. } => shading = true,
-                HeadlessCommand::ResetParagraphFormatting { .. } => reset = true,
-                _ => return Ok(false),
-            }
-        }
-        if !(indent || line || before_spacing || after_spacing || reset || tabs || shading) {
+    pub(crate) fn apply_hf_paragraph_commands_to_range(
+        &mut self,
+        role: HeaderFooterRole,
+        variant: HeaderFooterVariant,
+        first: usize,
+        last: usize,
+        commands: &[jade_docx_headless_api::HeadlessCommand],
+    ) -> Result<bool, String> {
+        use jade_docx_headless_api::{HeadlessCommand, HeadlessEditRequest};
+        let count = last
+            .checked_sub(first)
+            .and_then(|distance| distance.checked_add(1))
+            .ok_or_else(|| "invalid header/footer paragraph range".to_string())?;
+        if commands.is_empty()
+            || commands.iter().any(|command| {
+                !matches!(
+                    command,
+                    HeadlessCommand::SetParagraphIndent { .. }
+                        | HeadlessCommand::SetParagraphLineSpacing { .. }
+                        | HeadlessCommand::SetParagraphMetrics { .. }
+                        | HeadlessCommand::SetParagraphTabs { .. }
+                        | HeadlessCommand::SetParagraphShading { .. }
+                        | HeadlessCommand::ResetParagraphFormatting { .. }
+                        | HeadlessCommand::SetParagraphDirection { .. }
+                        | HeadlessCommand::SetParagraphPagination { .. }
+                        | HeadlessCommand::SetParagraphOptions { .. }
+                        | HeadlessCommand::SetParagraphBorders { .. }
+                        | HeadlessCommand::AdjustParagraphIndent { .. }
+                        | HeadlessCommand::ToggleParagraphSpaceBefore { .. }
+                        | HeadlessCommand::SetParagraphTypography { .. }
+                        | HeadlessCommand::SetParagraphSnapToGrid { .. }
+                        | HeadlessCommand::SetNumbering { .. }
+                        | HeadlessCommand::ApplyMultilevelList { .. }
+                        | HeadlessCommand::ApplyCustomMultilevelList { .. }
+                )
+            })
+        {
             return Ok(false);
         }
         self.ensure_hf_part_for_edit(role, variant)?;
@@ -20305,99 +21448,816 @@ impl WordDocument {
         let existing = self
             .read_xml_part_content(&path)
             .ok_or_else(|| format!("missing {path}"))?;
-        let parsed = DocumentParser::new()
-            .parse_document_xml(&existing)
+        let (mut parsed, raw) = DocumentParser::new()
+            .parse_document_xml_with_raw_tree(&existing)
             .map_err(|error| error.to_string())?;
-        let paragraph = parsed
+        let raw = raw.map_err(|error| error.to_string())?;
+        if let Some(body) = parsed.body.as_mut() {
+            attach_block_xml_ids(&mut body.elements, raw.root(), &raw);
+        }
+        if let Some(styles) = self.styles_part.as_ref() {
+            Self::apply_style_paragraph_defaults_to_document(
+                &mut parsed,
+                styles,
+                self.loaded_document_settings()
+                    .compat
+                    .setting_on("overrideTableStyleFontSizeAndJustification"),
+            );
+            Self::apply_style_numbering_to_document(&mut parsed, styles);
+        }
+        let paragraphs: Vec<_> = parsed
             .body
             .as_ref()
-            .and_then(|body| {
-                body.elements
-                    .iter()
-                    .filter_map(BodyElement::as_paragraph)
-                    .nth(paragraph_index)
-            })
-            .ok_or_else(|| "header/footer paragraph unavailable".to_string())?;
+            .into_iter()
+            .flat_map(|body| body.elements.iter())
+            .filter_map(BodyElement::as_paragraph)
+            .skip(first)
+            .take(count)
+            .cloned()
+            .map(BodyElement::from_paragraph)
+            .collect();
+        if paragraphs.len() != count {
+            return Err("header/footer paragraph unavailable".into());
+        }
+        // Retain original XML IDs, but address all selected paragraphs together.
+        // Range-dependent toggles must observe the entire selection.
+        let mut commands = commands.to_vec();
+        for command in &mut commands {
+            let (start, end) = match command {
+                HeadlessCommand::SetParagraphIndent {
+                    start_paragraph,
+                    end_paragraph,
+                    ..
+                }
+                | HeadlessCommand::SetParagraphLineSpacing {
+                    start_paragraph,
+                    end_paragraph,
+                    ..
+                }
+                | HeadlessCommand::SetParagraphMetrics {
+                    start_paragraph,
+                    end_paragraph,
+                    ..
+                }
+                | HeadlessCommand::SetParagraphTabs {
+                    start_paragraph,
+                    end_paragraph,
+                    ..
+                }
+                | HeadlessCommand::SetParagraphShading {
+                    start_paragraph,
+                    end_paragraph,
+                    ..
+                }
+                | HeadlessCommand::ResetParagraphFormatting {
+                    start_paragraph,
+                    end_paragraph,
+                }
+                | HeadlessCommand::SetParagraphDirection {
+                    start_paragraph,
+                    end_paragraph,
+                    ..
+                }
+                | HeadlessCommand::SetParagraphPagination {
+                    start_paragraph,
+                    end_paragraph,
+                    ..
+                }
+                | HeadlessCommand::SetParagraphOptions {
+                    start_paragraph,
+                    end_paragraph,
+                    ..
+                }
+                | HeadlessCommand::SetParagraphBorders {
+                    start_paragraph,
+                    end_paragraph,
+                    ..
+                }
+                | HeadlessCommand::AdjustParagraphIndent {
+                    start_paragraph,
+                    end_paragraph,
+                    ..
+                }
+                | HeadlessCommand::ToggleParagraphSpaceBefore {
+                    start_paragraph,
+                    end_paragraph,
+                }
+                | HeadlessCommand::SetParagraphTypography {
+                    start_paragraph,
+                    end_paragraph,
+                    ..
+                }
+                | HeadlessCommand::SetParagraphSnapToGrid {
+                    start_paragraph,
+                    end_paragraph,
+                    ..
+                }
+                | HeadlessCommand::SetNumbering {
+                    start_paragraph,
+                    end_paragraph,
+                    ..
+                }
+                | HeadlessCommand::ApplyMultilevelList {
+                    start_paragraph,
+                    end_paragraph,
+                    ..
+                }
+                | HeadlessCommand::ApplyCustomMultilevelList {
+                    start_paragraph,
+                    end_paragraph,
+                    ..
+                } => (start_paragraph, end_paragraph),
+                _ => unreachable!(),
+            };
+            *start = 0;
+            *end = last - first;
+        }
         let mut scratch = Self::from_document(Document {
             body: Some(Body {
-                elements: vec![BodyElement::from_paragraph(paragraph.clone())],
+                elements: paragraphs,
             }),
+            default_tab_stop: self
+                .document
+                .as_deref()
+                .and_then(|document| document.default_tab_stop),
             ..Document::default()
         });
+        let before = raw.to_string().map_err(|error| error.to_string())?;
+        scratch.raw_document = Some(raw);
+        scratch.styles_part = self.styles_part.clone();
+        // List definitions belong to the main OPC package, even when the
+        // paragraphs using them live in a header or footer.
+        scratch.numbering_part = self.numbering_part.clone();
+        scratch.package = self.package.clone();
+        scratch.parts = self.parts.clone();
+        scratch.document_part = self.document_part.clone();
         crate::headless_api::apply_headless_commands_to_document(
             &mut scratch,
-            &HeadlessEditRequest {
-                commands: commands.to_vec(),
-            },
+            &HeadlessEditRequest { commands },
         )
         .map_err(|error| error.to_string())?;
-        let updated = scratch
-            .paragraph(0)
-            .and_then(|paragraph| paragraph.properties.as_ref());
-
-        let mut raw = DocxXmlDocument::parse(&existing).map_err(|error| error.to_string())?;
-        let before = raw.to_string().map_err(|error| error.to_string())?;
-        let (paragraph_id, _) = Self::hf_paragraph_run_ids(&raw, paragraph_index)?;
-        let mut children = std::mem::take(&mut raw.element_mut(paragraph_id).unwrap().children);
-        let index = children.iter().position(
-            |child| matches!(child, XmlNode::Element(element) if element.name == "w:pPr"),
-        );
-        let mut properties = match index {
-            Some(index) => match children.remove(index) {
-                XmlNode::Element(element) => element,
-                _ => unreachable!(),
-            },
-            None => raw.create_element("w:pPr", Vec::new(), Vec::new()),
-        };
-        if reset {
-            reset_paragraph_formatting_xml(&mut properties);
-        }
-        if indent {
-            set_paragraph_indent_xml(
-                &mut raw,
-                &mut properties,
-                updated.and_then(|properties| properties.indent.as_ref()),
-                false,
-                false,
-            );
-        }
-        if tabs {
-            crate::commands::paragraph_property_sync::set_paragraph_tabs_xml(
-                &mut raw,
-                &mut properties,
-                updated
-                    .map(|properties| properties.tabs.as_slice())
-                    .unwrap_or_default(),
-            );
-        }
-        if shading {
-            crate::commands::paragraph_property_sync::set_paragraph_shading_xml(
-                &mut raw,
-                &mut properties,
-                updated.and_then(|properties| properties.shading.as_ref()),
-            );
-        }
-        if line || before_spacing || after_spacing {
-            set_paragraph_spacing_xml(
-                &mut raw,
-                &mut properties,
-                updated.and_then(|properties| properties.spacing.as_ref()),
-                line,
-                before_spacing,
-                after_spacing,
-            );
-        }
-        if index.is_some() || !properties.children.is_empty() || !properties.attributes.is_empty() {
-            children.insert(index.unwrap_or(0), XmlNode::Element(properties));
-        }
-        raw.element_mut(paragraph_id).unwrap().children = children;
-        raw.rebuild_index_for_subtree(paragraph_id);
-        let after = raw.to_string().map_err(|error| error.to_string())?;
+        let after = scratch
+            .raw_document
+            .as_ref()
+            .unwrap()
+            .to_string()
+            .map_err(|error| error.to_string())?;
         if before == after {
             return Ok(false);
         }
+        self.parts = scratch.parts;
+        self.document_part = scratch.document_part;
+        self.numbering_part = scratch.numbering_part;
         self.upsert_xml_part_content(&path, after);
         self.refresh_header_footer_lines_for(role, variant, &path)?;
+        Ok(true)
+    }
+
+    /// Insert a semantic field and return its end in the header line's display
+    /// coordinates (PAGE/NUMPAGES use renderer placeholders, not cached digits).
+    pub(crate) fn insert_hf_story_field(
+        &mut self,
+        role: HeaderFooterRole,
+        variant: HeaderFooterVariant,
+        range: SelectionRange,
+        kind: jade_docx_headless_api::HeadlessFieldKind,
+        cached_text: &str,
+    ) -> Result<Option<TextPosition>, String> {
+        let field_kind = crate::commands::insert_field::InsertFieldCommand::new(
+            range,
+            kind,
+            cached_text.to_owned(),
+        )
+        .run_field_kind();
+        self.insert_hf_story_field_kind(role, variant, range, field_kind, cached_text)
+    }
+
+    pub(crate) fn insert_hf_story_cross_reference(
+        &mut self,
+        role: HeaderFooterRole,
+        variant: HeaderFooterVariant,
+        range: SelectionRange,
+        bookmark_name: &str,
+        kind: CrossReferenceKind,
+    ) -> Result<Option<TextPosition>, String> {
+        self.insert_hf_bookmark_field(role, variant, range, bookmark_name, kind, None)
+    }
+
+    pub(crate) fn insert_hf_story_target_cross_reference(
+        &mut self,
+        role: HeaderFooterRole,
+        variant: HeaderFooterVariant,
+        range: SelectionRange,
+        target: &CrossReferenceTarget,
+        kind: CrossReferenceKind,
+    ) -> Result<Option<TextPosition>, String> {
+        if !range.is_collapsed() {
+            return Err("cross-references require a collapsed caret".into());
+        }
+        // Target preparation can create a body bookmark. Commit it only when
+        // insertion into the destination story also succeeds.
+        let mut updated = self.clone();
+        let (name, kind, note) = updated.prepare_cross_reference_target(target, kind)?;
+        let position = updated.insert_hf_bookmark_field(role, variant, range, &name, kind, note)?;
+        if position.is_some() {
+            *self = updated;
+        }
+        Ok(position)
+    }
+
+    fn insert_hf_bookmark_field(
+        &mut self,
+        role: HeaderFooterRole,
+        variant: HeaderFooterVariant,
+        range: SelectionRange,
+        bookmark_name: &str,
+        kind: CrossReferenceKind,
+        note: Option<(NoteKind, String)>,
+    ) -> Result<Option<TextPosition>, String> {
+        let name = bookmark_name.trim();
+        Self::validate_authored_bookmark_name(name)?;
+        if !range.is_collapsed() {
+            return Err("cross-references require a collapsed caret".into());
+        }
+        let bookmark = self
+            .document
+            .as_ref()
+            .and_then(|document| {
+                document
+                    .bookmarks
+                    .iter()
+                    .find(|bookmark| bookmark.name == name)
+            })
+            .ok_or("cross-reference bookmark was not found")?;
+        let (field, cached) = match kind {
+            CrossReferenceKind::Text => (
+                RunFieldKind::Ref {
+                    name: name.to_owned(),
+                    case_format: None,
+                    numbering: false,
+                    hyperlink: true,
+                },
+                self.bookmark_display_text(bookmark),
+            ),
+            CrossReferenceKind::Page => (
+                RunFieldKind::PageRef {
+                    name: name.to_owned(),
+                    hyperlink: true,
+                },
+                "1".to_owned(),
+            ),
+            CrossReferenceKind::Number => {
+                let (note_kind, id) =
+                    note.ok_or("number references require a caption or note target")?;
+                (
+                    RunFieldKind::NoteRef {
+                        name: name.to_owned(),
+                        hyperlink: true,
+                        formatted: false,
+                        relative_position: false,
+                    },
+                    self.note_reference_marker(note_kind, &id)
+                        .ok_or("note reference marker is unavailable")?,
+                )
+            }
+        };
+        self.insert_hf_story_field_kind(role, variant, range, field, &cached)
+    }
+
+    /// Use the same field display rules as the header/footer renderer.
+    pub(crate) fn hf_field_edit_paragraph_text(paragraph: &Paragraph) -> Option<String> {
+        let mut text = String::new();
+        for run in &paragraph.runs {
+            if run.image.is_some() || run.text_box.is_some() || run.math.is_some() {
+                return None;
+            }
+            text.push_str(&Self::hf_field_edit_run_text(run)?);
+        }
+        Some(text)
+    }
+
+    fn hf_field_edit_run_text(run: &Run) -> Option<String> {
+        if run.field.is_none() {
+            return Some(run.text.clone());
+        }
+        let paragraph = Paragraph {
+            runs: vec![run.clone()],
+            properties: None,
+            node_id: None,
+            comment_ranges: Vec::new(),
+            comment_markers: Vec::new(),
+        };
+        let body = Body {
+            elements: vec![BodyElement::Paragraph(Box::new(paragraph))],
+        };
+        let lines = Self::extract_text_lines_from_body(&body, true);
+        let line = lines.first()?;
+        if line.center.is_some() || line.right.is_some() {
+            return None;
+        }
+        let text = line.left.clone().unwrap_or_default();
+        (!text.chars().any(char::is_control)).then_some(text)
+    }
+
+    fn edit_hf_rich_story(
+        &mut self,
+        role: HeaderFooterRole,
+        variant: HeaderFooterVariant,
+        range: SelectionRange,
+        field_kind: Option<RunFieldKind>,
+        cached_text: &str,
+    ) -> Result<Option<TextPosition>, String> {
+        use crate::commands::{insert_text::InsertTextCommand, Command};
+        let path = self.resolve_header_footer_part_path_for(role, variant)?;
+        let existing = self
+            .read_xml_part_content(&path)
+            .ok_or("missing story part")?;
+        let (mut parsed, raw) = DocumentParser::new()
+            .parse_document_xml_with_raw_tree(&existing)
+            .map_err(|error| error.to_string())?;
+        let mut raw = raw.map_err(|error| error.to_string())?;
+        let Some(body) = parsed.body.as_mut() else {
+            return Ok(None);
+        };
+        if body
+            .elements
+            .iter()
+            .take(range.normalized().1.paragraph.saturating_add(1))
+            .any(|element| element.as_paragraph().is_none())
+        {
+            return Ok(None);
+        }
+        attach_block_xml_ids(&mut body.elements, raw.root(), &raw);
+        let (start, end) = range.normalized();
+        let mut original_field_text = HashMap::new();
+        let mut removed_simple_fields = HashSet::new();
+        for index in start.paragraph..=end.paragraph {
+            let Some(paragraph) = body
+                .elements
+                .get_mut(index)
+                .and_then(BodyElement::as_paragraph_mut)
+            else {
+                return Ok(None);
+            };
+            let Some(text) = Self::hf_field_edit_paragraph_text(paragraph) else {
+                return Ok(None);
+            };
+            for endpoint in [start, end]
+                .into_iter()
+                .filter(|endpoint| endpoint.paragraph == index)
+            {
+                if !text.is_char_boundary(endpoint.offset) {
+                    return Ok(None);
+                }
+            }
+            let mut offset = 0;
+            for run in &mut paragraph.runs {
+                let display =
+                    Self::hf_field_edit_run_text(run).ok_or("field display is unavailable")?;
+                let limit = offset + display.len();
+                if run.field.is_some() {
+                    let selected_start = if index == start.paragraph {
+                        start.offset
+                    } else {
+                        0
+                    };
+                    let selected_end = if index == end.paragraph {
+                        end.offset
+                    } else {
+                        text.len()
+                    };
+                    if [start, end].into_iter().any(|endpoint| {
+                        endpoint.paragraph == index
+                            && offset < endpoint.offset
+                            && endpoint.offset < limit
+                    }) {
+                        return Ok(None);
+                    }
+                    if offset < limit && selected_start <= offset && limit <= selected_end {
+                        // The selection contains the complete displayed field.
+                        // Drop its model metadata so the text command prunes
+                        // its emptied result, and remove a simple wrapper:
+                        // computed wrappers appear zero-width to body sync.
+                        let mut ancestor = run.node_id;
+                        let mut simple = run
+                            .field
+                            .as_ref()
+                            .and_then(|field| field.source_field_id)
+                            .filter(|id| {
+                                raw.element(*id)
+                                    .is_some_and(|element| element.name == "w:fldSimple")
+                            });
+                        while simple.is_none() {
+                            let Some(id) = ancestor else {
+                                break;
+                            };
+                            if raw
+                                .element(id)
+                                .is_some_and(|element| element.name == "w:fldSimple")
+                            {
+                                simple = Some(id);
+                                break;
+                            }
+                            ancestor = raw.parent_id(id);
+                        }
+                        if let Some(id) = simple {
+                            removed_simple_fields.insert(id);
+                            run.node_id = None;
+                            run.text_node_id = None;
+                            run.revision_node_id = None;
+                        }
+                        run.field = None;
+                        run.text = display;
+                        offset = limit;
+                        continue;
+                    }
+                    // Commands use run text coordinates; the story renderer
+                    // uses placeholders/cache for fields with no model text.
+                    if let Some(id) = run.node_id {
+                        original_field_text.insert(id, run.text.clone());
+                    }
+                    run.text = display;
+                }
+                offset = limit;
+            }
+        }
+        for id in removed_simple_fields {
+            if let Some(path) = raw.path(id) {
+                raw.remove_node(&path).map_err(|error| error.to_string())?;
+            }
+        }
+        let mut scratch = Self::from_document(parsed);
+        scratch.raw_document = Some(raw);
+        let cross_reference = matches!(
+            field_kind,
+            Some(
+                RunFieldKind::Ref { .. }
+                    | RunFieldKind::PageRef { .. }
+                    | RunFieldKind::NoteRef { .. }
+            )
+        );
+        scratch.validate_inline_field_selection(
+            range,
+            if cross_reference || field_kind.is_none() {
+                "x"
+            } else {
+                cached_text
+            },
+        )?;
+        if cross_reference && cached_text.chars().any(char::is_control) {
+            return Err("cross-reference text contains unsupported control characters".into());
+        }
+        let plain_text = field_kind.is_none() && !cached_text.is_empty();
+        let mut selection = Some(range);
+        InsertTextCommand::new(
+            range,
+            if plain_text { "" } else { cached_text }.to_owned(),
+            None,
+        )
+        .apply(&mut CommandContext::new(&mut scratch, &mut selection))
+        .map_err(|error| error.to_string())?;
+        let mut end = selection.ok_or("field selection is unavailable")?.focus;
+        if plain_text {
+            // Ordinary typing next to a computed result must live outside
+            // its wrapper. Reusing the field run would lose the typed text
+            // when restoring its saved result below.
+            if let Some(paragraph) = scratch.paragraph_mut(end.paragraph) {
+                rebase_comment_anchors_for_edit(
+                    paragraph,
+                    end.offset,
+                    end.offset,
+                    cached_text.len(),
+                );
+            }
+            scratch.insert_text_among_anchors(end.paragraph, end.offset, 0, cached_text)?;
+            end.offset += cached_text.len();
+        }
+        let display_len = match field_kind {
+            Some(RunFieldKind::PageNumber) => crate::document::PAGE_FIELD_PLACEHOLDER.len(),
+            Some(RunFieldKind::NumPages) => crate::document::PAGE_COUNT_FIELD_PLACEHOLDER.len(),
+            _ => cached_text.len(),
+        };
+        if let Some(field_kind) = field_kind {
+            scratch.promote_inserted_text_to_field(end, cached_text, field_kind)?;
+        }
+        // Display placeholders are temporary editing coordinates, never a
+        // replacement for the field's saved result in the DOCX package.
+        for index in 0..scratch.paragraph_count() {
+            let mut restored = false;
+            if let Some(paragraph) = scratch.paragraph_mut(index) {
+                for run in &mut paragraph.runs {
+                    if run.field.is_some() {
+                        if let Some(text) = run.node_id.and_then(|id| original_field_text.get(&id))
+                        {
+                            run.text = text.clone();
+                            restored = true;
+                        }
+                    }
+                }
+            }
+            if restored {
+                scratch.sync_paragraph_text_preserving_drawings(index);
+            }
+        }
+        if plain_text && cached_text.contains('\t') {
+            let (center, right) = self.header_footer_tab_stop_positions_twips();
+            let raw = scratch
+                .raw_document
+                .as_mut()
+                .ok_or("story XML is unavailable")?;
+            let (id, _) = Self::hf_paragraph_run_ids(raw, start.paragraph)?;
+            let mut children = std::mem::take(&mut raw.element_mut(id).unwrap().children);
+            Self::ensure_header_footer_tab_stops(raw, &mut children, center, right);
+            raw.element_mut(id).unwrap().children = children;
+            raw.rebuild_index_for_subtree(id);
+        }
+        let xml = scratch
+            .raw_document
+            .as_ref()
+            .ok_or("story XML is unavailable")?
+            .to_string()
+            .map_err(|error| error.to_string())?;
+        let mut updated = self.clone();
+        updated.upsert_xml_part_content(&path, xml);
+        updated.refresh_header_footer_lines_for(role, variant, &path)?;
+        *self = updated;
+        Ok(Some(TextPosition::new(
+            start.paragraph,
+            start.offset + display_len,
+        )))
+    }
+
+    fn insert_hf_story_field_kind(
+        &mut self,
+        role: HeaderFooterRole,
+        variant: HeaderFooterVariant,
+        range: SelectionRange,
+        field_kind: RunFieldKind,
+        cached_text: &str,
+    ) -> Result<Option<TextPosition>, String> {
+        let display_len = match field_kind {
+            RunFieldKind::PageNumber => crate::document::PAGE_FIELD_PLACEHOLDER.len(),
+            RunFieldKind::NumPages => crate::document::PAGE_COUNT_FIELD_PLACEHOLDER.len(),
+            _ => cached_text.len(),
+        };
+        let path = self.resolve_header_footer_part_path_for(role, variant)?;
+        let existing = self
+            .read_xml_part_content(&path)
+            .ok_or("missing story part")?;
+        let parsed = DocumentParser::new()
+            .parse_document_xml(&existing)
+            .map_err(|error| error.to_string())?;
+        if parsed.body.as_ref().is_none_or(|body| {
+            body.elements
+                .iter()
+                .take(range.normalized().1.paragraph.saturating_add(1))
+                .any(|block| block.as_paragraph().is_none())
+        }) {
+            return Ok(None);
+        }
+        if parsed.body.as_ref().is_some_and(|body| {
+            body.elements
+                .iter()
+                .enumerate()
+                .filter(|(index, _)| {
+                    let (start, end) = range.normalized();
+                    (start.paragraph..=end.paragraph).contains(index)
+                })
+                .any(|(_, element)| {
+                    element.as_paragraph().is_some_and(|paragraph| {
+                        paragraph.runs.iter().any(|run| run.field.is_some())
+                    })
+                })
+        }) {
+            return self.edit_hf_rich_story(role, variant, range, Some(field_kind), cached_text);
+        }
+        let (start, end) = range.normalized();
+        for index in start.paragraph..=end.paragraph {
+            let Some(text) = self.hf_plain_paragraph_text(role, variant, index) else {
+                return Ok(None);
+            };
+            for position in [start, end]
+                .into_iter()
+                .filter(|position| position.paragraph == index)
+            {
+                if !text.is_char_boundary(position.offset) {
+                    return Ok(None);
+                }
+            }
+        }
+        let scratch = Self::from_document(parsed);
+        if matches!(
+            field_kind,
+            RunFieldKind::Ref { .. } | RunFieldKind::PageRef { .. } | RunFieldKind::NoteRef { .. }
+        ) {
+            scratch.validate_inline_field_selection(range, "x")?;
+            if cached_text.chars().any(char::is_control) {
+                return Err("cross-reference text contains unsupported control characters".into());
+            }
+        } else {
+            scratch.validate_inline_field_selection(range, cached_text)?;
+        }
+        let mut updated = self.clone();
+        let replace_end = if start.paragraph != end.paragraph {
+            if updated
+                .delete_hf_story_selection(role, variant, range)?
+                .is_none()
+            {
+                return Ok(None);
+            }
+            start.offset
+        } else {
+            end.offset
+        };
+        if !updated.edit_hf_paragraph_range(
+            role,
+            variant,
+            start.paragraph,
+            start.offset,
+            replace_end,
+            cached_text,
+        )? {
+            return Ok(None);
+        }
+        let inserted = updated
+            .read_xml_part_content(&path)
+            .ok_or("missing story part")?;
+        let (mut parsed, raw) = DocumentParser::new()
+            .parse_document_xml_with_raw_tree(&inserted)
+            .map_err(|error| error.to_string())?;
+        let raw = raw.map_err(|error| error.to_string())?;
+        if let Some(body) = parsed.body.as_mut() {
+            attach_block_xml_ids(&mut body.elements, raw.root(), &raw);
+        }
+        let mut scratch = Self::from_document(parsed);
+        scratch.raw_document = Some(raw);
+        scratch.promote_inserted_text_to_field(
+            TextPosition::new(start.paragraph, start.offset + cached_text.len()),
+            cached_text,
+            field_kind,
+        )?;
+        let xml = scratch
+            .raw_document
+            .as_ref()
+            .unwrap()
+            .to_string()
+            .map_err(|error| error.to_string())?;
+        updated.upsert_xml_part_content(&path, xml);
+        updated.refresh_header_footer_lines_for(role, variant, &path)?;
+        *self = updated;
+        Ok(Some(TextPosition::new(
+            start.paragraph,
+            start.offset + display_len,
+        )))
+    }
+
+    /// Edit hyperlinks in a story with relationships owned by that story part.
+    pub(crate) fn edit_hf_story_hyperlink(
+        &mut self,
+        role: HeaderFooterRole,
+        variant: HeaderFooterVariant,
+        range: SelectionRange,
+        link: Option<(Option<&str>, &str, Option<&str>)>,
+    ) -> Result<Option<SelectionRange>, String> {
+        let path = self.resolve_header_footer_part_path_for(role, variant)?;
+        let existing = self
+            .read_xml_part_content(&path)
+            .ok_or("missing story part")?;
+        let (mut parsed, raw) = DocumentParser::new()
+            .parse_document_xml_with_raw_tree(&existing)
+            .map_err(|error| error.to_string())?;
+        let raw = raw.map_err(|error| error.to_string())?;
+        if parsed.body.as_ref().is_none_or(|body| {
+            body.elements
+                .iter()
+                .take(range.normalized().1.paragraph.saturating_add(1))
+                .any(|block| block.as_paragraph().is_none())
+        }) {
+            return Ok(None);
+        }
+        let (start, end) = range.normalized();
+        for index in start.paragraph..=end.paragraph {
+            let Some(text) = self.hf_plain_paragraph_text(role, variant, index) else {
+                return Ok(None);
+            };
+            for position in [start, end]
+                .into_iter()
+                .filter(|position| position.paragraph == index)
+            {
+                if !text.is_char_boundary(position.offset) {
+                    return Ok(None);
+                }
+            }
+        }
+        if let Some(body) = parsed.body.as_mut() {
+            attach_block_xml_ids(&mut body.elements, raw.root(), &raw);
+        }
+        let part = self.parts.get(&path).cloned().ok_or("missing story part")?;
+        Self::resolve_hyperlinks(&mut parsed, &part);
+        let before = raw.to_string().map_err(|error| error.to_string())?;
+        let mut scratch = Self::from_document(parsed);
+        scratch.raw_document = Some(raw);
+        scratch.package = self.package.clone();
+        scratch.parts = self.parts.clone();
+        scratch.document_part = Some(part);
+        let result = if let Some((display, target, tooltip)) = link {
+            scratch.insert_hyperlink_at_selection(range, display, target, tooltip)?
+        } else {
+            scratch.remove_hyperlink_at_selection(range)?
+        };
+        let after = scratch
+            .raw_document
+            .as_ref()
+            .unwrap()
+            .to_string()
+            .map_err(|error| error.to_string())?;
+        if before == after {
+            return Ok(None);
+        }
+        let mut updated = self.clone();
+        updated.parts = scratch.parts;
+        updated.upsert_xml_part_content(&path, after);
+        updated.refresh_header_footer_lines_for(role, variant, &path)?;
+        *self = updated;
+        Ok(Some(result))
+    }
+
+    /// Apply a character style using the body's range and paragraph-mark
+    /// semantics, while retaining the original story XML node identities.
+    pub(crate) fn set_hf_story_character_style(
+        &mut self,
+        role: HeaderFooterRole,
+        variant: HeaderFooterVariant,
+        range: SelectionRange,
+        style_id: Option<String>,
+    ) -> Result<bool, String> {
+        use jade_docx_headless_api::{HeadlessCommand, HeadlessEditRequest};
+        if range.is_collapsed() {
+            return Ok(false);
+        }
+        let path = self.resolve_header_footer_part_path_for(role, variant)?;
+        let existing = self
+            .read_xml_part_content(&path)
+            .ok_or("missing story part")?;
+        let (mut parsed, raw) = DocumentParser::new()
+            .parse_document_xml_with_raw_tree(&existing)
+            .map_err(|error| error.to_string())?;
+        let raw = raw.map_err(|error| error.to_string())?;
+        if Self::hf_story_run_ranges(&raw, range).is_none()
+            || parsed.body.as_ref().is_none_or(|body| {
+                body.elements
+                    .iter()
+                    .take(range.normalized().1.paragraph.saturating_add(1))
+                    .any(|block| block.as_paragraph().is_none())
+            })
+        {
+            return Ok(false);
+        }
+        if let Some(body) = parsed.body.as_mut() {
+            attach_block_xml_ids(&mut body.elements, raw.root(), &raw);
+        }
+        if let Some(styles) = self.styles_part.as_ref() {
+            Self::apply_style_paragraph_defaults_to_document(
+                &mut parsed,
+                styles,
+                self.loaded_document_settings()
+                    .compat
+                    .setting_on("overrideTableStyleFontSizeAndJustification"),
+            );
+        }
+        let before = raw.to_string().map_err(|error| error.to_string())?;
+        let mut scratch = Self::from_document(parsed);
+        scratch.raw_document = Some(raw);
+        scratch.styles_part = self.styles_part.clone();
+        let (start, end) = range.normalized();
+        crate::headless_api::apply_headless_commands_to_document(
+            &mut scratch,
+            &HeadlessEditRequest {
+                commands: vec![HeadlessCommand::SetCharacterStyle {
+                    start_paragraph: start.paragraph,
+                    start_offset: start.offset,
+                    end_paragraph: end.paragraph,
+                    end_offset: end.offset,
+                    style_id,
+                }],
+            },
+        )
+        .map_err(|error| error.to_string())?;
+        let after = scratch
+            .raw_document
+            .as_ref()
+            .unwrap()
+            .to_string()
+            .map_err(|error| error.to_string())?;
+        if before == after {
+            return Ok(false);
+        }
+        // Parsing/validation and the command run on a scratch document, so a
+        // rejected style or range cannot partially modify the actual story.
+        let mut updated = self.clone();
+        updated.upsert_xml_part_content(&path, after);
+        updated.refresh_header_footer_lines_for(role, variant, &path)?;
+        *self = updated;
         Ok(true)
     }
 
@@ -20445,63 +22305,93 @@ impl WordDocument {
         range: std::ops::Range<usize>,
         mode: HeadlessChangeCaseMode,
     ) -> Result<Option<usize>, String> {
+        if range.start >= range.end {
+            return Ok(None);
+        }
+        let selection = SelectionRange::new(
+            TextPosition::new(paragraph_index, range.start),
+            TextPosition::new(paragraph_index, range.end),
+        );
+        Ok(self
+            .change_hf_story_case(role, variant, selection, mode)?
+            .map(|changed| changed.focus.offset - range.start))
+    }
+
+    /// Convert each paragraph independently, preserving the direction and UTF-8
+    /// endpoint of the selection even when a case mapping changes byte length.
+    pub(crate) fn change_hf_story_case(
+        &mut self,
+        role: HeaderFooterRole,
+        variant: HeaderFooterVariant,
+        selection: SelectionRange,
+        mode: HeadlessChangeCaseMode,
+    ) -> Result<Option<SelectionRange>, String> {
         self.ensure_hf_part_for_edit(role, variant)?;
         let part_path = self.resolve_header_footer_part_path_for(role, variant)?;
         let existing = self
             .read_xml_part_content(&part_path)
             .ok_or_else(|| format!("missing {part_path}"))?;
         let mut xml_doc = DocxXmlDocument::parse(&existing).map_err(|err| err.to_string())?;
-        let (paragraph_id, _) = Self::hf_paragraph_run_ids(&xml_doc, paragraph_index)?;
-        let Some(runs) = Self::hf_text_runs(&xml_doc, paragraph_id) else {
+        let Some(ranges) = Self::hf_story_run_ranges(&xml_doc, selection) else {
             return Ok(None);
         };
-        let text: String = runs.iter().map(|run| run.text.as_str()).collect();
-        if range.start >= range.end
-            || range.end > text.len()
-            || !text.is_char_boundary(range.start)
-            || !text.is_char_boundary(range.end)
-        {
+        if ranges.is_empty() {
             return Ok(None);
         }
-        Self::split_hf_run_at_offset(&mut xml_doc, paragraph_id, range.end);
-        Self::split_hf_run_at_offset(&mut xml_doc, paragraph_id, range.start);
-        let targets = Self::hf_text_runs(&xml_doc, paragraph_id).unwrap_or_default();
-        let mut case = crate::commands::change_case::CaseState::new(mode);
-        let mut transformed_len = 0;
-        for run in targets
-            .into_iter()
-            .filter(|run| run.start >= range.start && run.end <= range.end)
-        {
-            let text = case.transform(&run.text);
-            transformed_len += text.len();
-            let properties = xml_doc.element(run.id).and_then(|element| {
-                element.children.iter().find_map(|child| match child {
-                    XmlNode::Element(element) if element.name == "w:rPr" => Some(element.clone()),
-                    _ => None,
-                })
-            });
-            let replacement = Self::hf_text_run_element(&mut xml_doc, properties.as_ref(), &text);
-            if let Some(element) = xml_doc.element_mut(run.id) {
-                element.children = replacement.children;
+        let (start, mut end) = selection.normalized();
+        for (index, paragraph_id, range) in ranges {
+            Self::split_hf_run_at_offset(&mut xml_doc, paragraph_id, range.end);
+            Self::split_hf_run_at_offset(&mut xml_doc, paragraph_id, range.start);
+            let targets = Self::hf_text_runs(&xml_doc, paragraph_id).unwrap_or_default();
+            let mut case = crate::commands::change_case::CaseState::new(mode);
+            let mut transformed_len = 0;
+            for run in targets
+                .into_iter()
+                .filter(|run| run.start >= range.start && run.end <= range.end)
+            {
+                let text = case.transform(&run.text);
+                transformed_len += text.len();
+                let properties = xml_doc.element(run.id).and_then(|element| {
+                    element.children.iter().find_map(|child| match child {
+                        XmlNode::Element(element) if element.name == "w:rPr" => {
+                            Some(element.clone())
+                        }
+                        _ => None,
+                    })
+                });
+                let replacement =
+                    Self::hf_text_run_element(&mut xml_doc, properties.as_ref(), &text);
+                if let Some(element) = xml_doc.element_mut(run.id) {
+                    element.children = replacement.children;
+                }
+            }
+            xml_doc.rebuild_index_for_subtree(paragraph_id);
+            if index == end.paragraph {
+                end.offset = range.start + transformed_len;
             }
         }
-        xml_doc.rebuild_index_for_subtree(paragraph_id);
         let serialized = xml_doc.to_string().map_err(|err| err.to_string())?;
         self.upsert_xml_part_content(&part_path, serialized);
         self.refresh_header_footer_lines_for(role, variant, &part_path)?;
-        Ok(Some(transformed_len))
+        Ok(Some(if selection.anchor <= selection.focus {
+            SelectionRange::new(start, end)
+        } else {
+            SelectionRange::new(end, start)
+        }))
     }
 
     /// Writes `format` into one run's `w:rPr`, keeping what the format does
     /// not mention (and the size when none is given).
     fn format_hf_run(
+        &self,
         xml_doc: &mut DocxXmlDocument,
+        paragraph_id: XmlNodeId,
         run_id: XmlNodeId,
         format: &HfRunFormat,
         layout_id: i64,
     ) -> Result<(), String> {
         if let Some(patch) = &format.patch {
-            return Self::patch_hf_run_properties(xml_doc, run_id, patch, layout_id);
+            return self.patch_hf_run_properties(xml_doc, paragraph_id, run_id, patch, layout_id);
         }
         if format.clear_visual {
             let run = xml_doc
@@ -20580,8 +22470,9 @@ impl WordDocument {
             .filter(|node| match node {
                 XmlNode::Element(child) => match child.name.as_str() {
                     "w:sz" | "w:szCs" => format.font_size.is_none(),
-                    "w:rFonts" => format.font_family.is_none(),
-                    "w:rStyle" | "w:kern" | "w:w" => true,
+                    "w:rFonts" => true,
+                    "w:u" => format.underline != Some(false),
+                    "w:rStyle" | "w:kern" | "w:w" | "w:rPrChange" => true,
                     _ => false,
                 },
                 _ => false,
@@ -20590,12 +22481,49 @@ impl WordDocument {
             .collect();
         let mut synced = Self::sync_run_properties_node(xml_doc, &template, existing_properties)
             .unwrap_or_else(|| xml_doc.create_element("w:rPr", Vec::new(), Vec::new()));
-        for node in preserved {
-            if let XmlNode::Element(child) = &node {
+        for mut node in preserved {
+            if let XmlNode::Element(child) = &mut node {
+                if child.name == "w:rFonts" {
+                    if let Some(family) = format.font_family.as_deref() {
+                        let all_scripts =
+                            crate::commands::set_font_family::font_family_targets_east_asia(family);
+                        if let Some(generated) =
+                            synced.children.iter().find_map(|node| match node {
+                                XmlNode::Element(element) if element.name == "w:rFonts" => {
+                                    Some(element)
+                                }
+                                _ => None,
+                            })
+                        {
+                            Self::hf_merge_run_font_attributes(
+                                child,
+                                generated,
+                                |name| match name {
+                                    "w:ascii" | "w:hAnsi" | "w:asciiTheme" | "w:hAnsiTheme" => true,
+                                    "w:eastAsia" | "w:cs" | "w:eastAsiaTheme" | "w:cstheme"
+                                    | "w:csTheme" => all_scripts,
+                                    _ => false,
+                                },
+                            );
+                        }
+                    }
+                }
+                // A ribbon style change only replaces the underline value.
+                // Keep its authored color/theme, including color-only w:u
+                // when another property (such as bold) is being changed.
+                if child.name == "w:u" && format.underline == Some(true) {
+                    let kind = format
+                        .underline_kind
+                        .as_deref()
+                        .filter(|kind| !kind.is_empty())
+                        .unwrap_or("single");
+                    crate::drawing_xml::set_attr(child, "w:val", Some(kind.into()));
+                }
                 Self::remove_run_property_child(&mut synced, &child.name);
             }
             synced.children.push(node);
         }
+        Self::hf_keep_run_revision_last(&mut synced);
         if let Some(run) = xml_doc.element_mut(run_id) {
             run.children.insert(0, XmlNode::Element(synced));
         }
@@ -20603,7 +22531,7 @@ impl WordDocument {
     }
 
     /// One text run of a header/footer paragraph with its byte range in the
-    /// paragraph's run text (`w:t` text, `w:tab` as a tab).
+    /// paragraph's run text (including tabs and special hyphens).
     fn hf_text_runs(xml_doc: &DocxXmlDocument, paragraph_id: XmlNodeId) -> Option<Vec<HfTextRun>> {
         let paragraph = xml_doc.element(paragraph_id)?;
         if Self::element_contains_named(paragraph, &["w:fldSimple", "w:fldChar", "w:instrText"]) {
@@ -20628,7 +22556,7 @@ impl WordDocument {
         Some(runs)
     }
 
-    /// The text a run shows: `w:t` text and tabs. `None` for a run carrying
+    /// The text a run shows: `w:t` text, tabs and special hyphens. `None` for a run carrying
     /// anything else (a drawing, a break, a symbol), which the range editor
     /// does not model.
     fn hf_run_text(run: &XmlElement) -> Option<String> {
@@ -20648,6 +22576,8 @@ impl WordDocument {
                     }
                 }
                 "w:tab" => text.push('\t'),
+                "w:noBreakHyphen" => text.push('\u{2011}'),
+                "w:softHyphen" => text.push('\u{00ad}'),
                 _ => return None,
             }
         }
@@ -20678,7 +22608,8 @@ impl WordDocument {
         xml_doc.create_element(element.name.clone(), element.attributes.clone(), children)
     }
 
-    /// A `w:r` showing `text` (tabs become `w:tab`) with a copy of `rpr`.
+    /// A `w:r` showing `text`, retaining tabs and special hyphens as native
+    /// WordprocessingML elements, with a copy of `rpr`.
     fn hf_text_run_element(
         xml_doc: &mut DocxXmlDocument,
         rpr: Option<&XmlElement>,
@@ -20688,10 +22619,19 @@ impl WordDocument {
         if let Some(rpr) = rpr {
             children.push(XmlNode::Element(Self::clone_element_fresh(xml_doc, rpr)));
         }
-        for (index, piece) in text.split('\t').enumerate() {
-            if index > 0 {
-                children.push(XmlNode::Element(Self::create_tab_element(xml_doc)));
-            }
+        for piece in text.split_inclusive(['\t', '\u{2011}', '\u{00ad}']) {
+            let (piece, special) = match piece.chars().next_back() {
+                Some('\t') => (&piece[..piece.len() - 1], Some("w:tab")),
+                Some('\u{2011}') => (
+                    &piece[..piece.len() - '\u{2011}'.len_utf8()],
+                    Some("w:noBreakHyphen"),
+                ),
+                Some('\u{00ad}') => (
+                    &piece[..piece.len() - '\u{00ad}'.len_utf8()],
+                    Some("w:softHyphen"),
+                ),
+                _ => (piece, None),
+            };
             if !piece.is_empty() {
                 let attributes = if piece.starts_with(' ') || piece.ends_with(' ') {
                     vec![XmlAttribute {
@@ -20707,10 +22647,16 @@ impl WordDocument {
                     vec![XmlNode::Text(piece.to_string())],
                 )));
             }
+            if let Some(name) = special {
+                children.push(XmlNode::Element(xml_doc.create_element(
+                    name,
+                    Vec::new(),
+                    Vec::new(),
+                )));
+            }
         }
         xml_doc.create_element("w:r", Vec::new(), children)
     }
-
     /// Replaces the run `run_id` by `replacements` in its parent.
     fn replace_hf_run(
         xml_doc: &mut DocxXmlDocument,
@@ -20811,33 +22757,61 @@ impl WordDocument {
             .map(|(ch, _)| ch.len_utf8())
             .sum::<usize>()
             .min(max_suffix);
-        let old_end = old_text.len() - suffix;
-        let new_middle = &new_text[prefix..new_text.len() - suffix];
+        Self::patch_hf_paragraph_range(
+            xml_doc,
+            paragraph_id,
+            prefix,
+            old_text.len() - suffix,
+            &new_text[prefix..new_text.len() - suffix],
+        )
+    }
 
-        // The run the edit belongs to: the one ending exactly at the prefix
-        // (formatting of the character before the caret), else the one the
-        // prefix falls inside, else the first run.
+    /// Apply the caller's exact UTF-8 byte range. Repeated text must not move
+    /// an edit to another run with different formatting.
+    fn patch_hf_paragraph_range(
+        xml_doc: &mut DocxXmlDocument,
+        paragraph_id: XmlNodeId,
+        start: usize,
+        end: usize,
+        insert: &str,
+    ) -> bool {
+        let Some(runs) = Self::hf_text_runs(xml_doc, paragraph_id) else {
+            return false;
+        };
+        if runs.is_empty() {
+            return false;
+        }
+        let text: String = runs.iter().map(|run| run.text.as_str()).collect();
+        if start > end || !text.is_char_boundary(start) || !text.is_char_boundary(end) {
+            return false;
+        }
+        // Prefer a retained empty formatting run at the caret, then the run
+        // ending at the start, then the run containing the start.
         let host = runs
             .iter()
-            .rposition(|run| run.end == prefix && run.start < prefix)
+            .position(|run| run.start == start && run.end == start)
             .or_else(|| {
                 runs.iter()
-                    .position(|run| run.start <= prefix && prefix < run.end)
+                    .rposition(|run| run.end == start && run.start < start)
+            })
+            .or_else(|| {
+                runs.iter()
+                    .position(|run| run.start <= start && start < run.end)
             })
             .unwrap_or(0);
 
         let mut replaced_any = false;
         for (index, run) in runs.iter().enumerate() {
-            let touched = run.start < old_end && run.end > prefix || index == host;
+            let touched = run.start < end && run.end > start || index == host;
             if !touched {
                 continue;
             }
-            let head_end = prefix.clamp(run.start, run.end) - run.start;
-            let tail_start = old_end.clamp(run.start, run.end) - run.start;
+            let head_end = start.clamp(run.start, run.end) - run.start;
+            let tail_start = end.clamp(run.start, run.end) - run.start;
             let mut text = String::new();
             text.push_str(&run.text[..head_end]);
             if index == host {
-                text.push_str(new_middle);
+                text.push_str(insert);
             }
             text.push_str(&run.text[tail_start..]);
             let rpr = xml_doc
@@ -20847,8 +22821,11 @@ impl WordDocument {
             if text.is_empty() && runs.len() > 1 && index != host {
                 Self::replace_hf_run(xml_doc, run.id, Vec::new());
             } else {
-                let element = Self::hf_text_run_element(xml_doc, rpr.as_ref(), &text);
-                Self::replace_hf_run(xml_doc, run.id, vec![element]);
+                let replacement = Self::hf_text_run_element(xml_doc, rpr.as_ref(), &text);
+                if let Some(element) = xml_doc.element_mut(run.id) {
+                    // Keep the run's identity, revision identifiers and extension attributes.
+                    element.children = replacement.children;
+                }
             }
             replaced_any = true;
         }
@@ -20858,6 +22835,65 @@ impl WordDocument {
         true
     }
 
+    pub(crate) fn edit_hf_paragraph_range(
+        &mut self,
+        role: HeaderFooterRole,
+        variant: HeaderFooterVariant,
+        paragraph: usize,
+        start: usize,
+        end: usize,
+        insert: &str,
+    ) -> Result<bool, String> {
+        if self
+            .hf_ruler_paragraph(role, variant, paragraph)
+            .is_some_and(|paragraph| paragraph.runs.iter().any(|run| run.field.is_some()))
+        {
+            if start > end || insert.chars().any(|ch| ch.is_control() && ch != '\t') {
+                return Ok(false);
+            }
+            return self
+                .edit_hf_rich_story(
+                    role,
+                    variant,
+                    SelectionRange::new(
+                        TextPosition::new(paragraph, start),
+                        TextPosition::new(paragraph, end),
+                    ),
+                    None,
+                    insert,
+                )
+                .map(|position| position.is_some());
+        }
+        let path = self.resolve_header_footer_part_path_for(role, variant)?;
+        let existing = self
+            .read_xml_part_content(&path)
+            .ok_or("missing story part")?;
+        let mut xml = DocxXmlDocument::parse(&existing).map_err(|error| error.to_string())?;
+        let (id, _) = Self::hf_paragraph_run_ids(&xml, paragraph)?;
+        let Some(runs) = Self::hf_text_runs(&xml, id) else {
+            return Ok(false);
+        };
+        let text: String = runs.iter().map(|run| run.text.as_str()).collect();
+        if start > end || !text.is_char_boundary(start) || !text.is_char_boundary(end) {
+            return Ok(false);
+        }
+        if runs.is_empty() {
+            Self::insert_hf_paragraph_formatting_run(&mut xml, id)?;
+        }
+        if !Self::patch_hf_paragraph_range(&mut xml, id, start, end, insert) {
+            return Ok(false);
+        }
+        if insert.contains('\t') {
+            let (center, right) = self.header_footer_tab_stop_positions_twips();
+            let mut children = std::mem::take(&mut xml.element_mut(id).unwrap().children);
+            Self::ensure_header_footer_tab_stops(&mut xml, &mut children, center, right);
+            xml.element_mut(id).unwrap().children = children;
+            xml.rebuild_index_for_subtree(id);
+        }
+        self.upsert_xml_part_content(&path, xml.to_string().map_err(|error| error.to_string())?);
+        self.refresh_header_footer_lines_for(role, variant, &path)?;
+        Ok(true)
+    }
     fn replace_hf_paragraph_text(
         &mut self,
         role: HeaderFooterRole,
@@ -20928,17 +22964,32 @@ impl WordDocument {
             (HeaderFooterRole::Footer, HeaderFooterVariant::First),
             (HeaderFooterRole::Footer, HeaderFooterVariant::Even),
         ];
-        let mut removed = 0usize;
-        for (role, variant) in slots {
-            let present = self
-                .document
-                .as_deref()
-                .and_then(|document| pick_hf_reference(document, role, variant))
-                .is_some();
-            if !present {
-                continue;
+        let mut references = Vec::new();
+        if let Some(document) = self.document.as_deref() {
+            for (role, variant) in slots {
+                if let Some(reference) = pick_hf_reference(document, role, variant) {
+                    references.push((role, reference));
+                }
+                for section in &document.sections {
+                    if let Some(reference) = section
+                        .properties
+                        .as_ref()
+                        .and_then(|properties| section_hf_reference(properties, role, variant))
+                    {
+                        references.push((role, reference));
+                    }
+                }
             }
-            let part_path = self.resolve_header_footer_part_path_for(role, variant)?;
+        }
+        let mut paths = Vec::new();
+        for (role, reference) in references {
+            let path = self.resolve_header_footer_reference_path(role, &reference)?;
+            if !paths.contains(&path) {
+                paths.push(path);
+            }
+        }
+        let mut removed = 0usize;
+        for part_path in paths {
             let existing = self
                 .read_xml_part_content(&part_path)
                 .ok_or_else(|| format!("missing {part_path}"))?;
@@ -20956,7 +23007,11 @@ impl WordDocument {
             xml_doc.rebuild_index();
             let serialized = xml_doc.to_string().map_err(|err| err.to_string())?;
             self.upsert_xml_part_content(&part_path, serialized);
-            self.refresh_header_footer_lines_for(role, variant, &part_path)?;
+            self.refresh_header_footer_lines_for(
+                HeaderFooterRole::Header,
+                HeaderFooterVariant::Default,
+                &part_path,
+            )?;
             removed = removed.saturating_add(slot_removed);
         }
         Ok(removed)
@@ -21312,7 +23367,13 @@ impl WordDocument {
             return table;
         };
         let mut elements = [BodyElement::from_table(table)];
-        Self::apply_style_paragraph_defaults_to_elements(&mut elements, &styles);
+        Self::apply_style_paragraph_defaults_to_elements(
+            &mut elements,
+            &styles,
+            self.loaded_document_settings()
+                .compat
+                .setting_on("overrideTableStyleFontSizeAndJustification"),
+        );
         Self::apply_table_styles_to_elements(&mut elements, &styles);
         Self::apply_run_font_defaults_to_elements(&mut elements, &styles);
         let [BodyElement::Table(table)] = elements else {
@@ -22728,44 +24789,35 @@ impl WordDocument {
         column: usize,
         color: Option<&str>,
     ) -> Result<(), String> {
-        let fill = match color {
-            Some(color) => Some(Self::normalize_hex_color(color)?),
-            None => None,
-        };
+        let fill = color.map(Self::normalize_hex_color).transpose()?;
         let cell_id = {
             let cell = self.table_cell_mut_at(table_order_index, row, column)?;
-            match fill.as_ref() {
-                Some(color) => {
-                    cell.style
-                        .insert("background-color".to_string(), format!("#{color}"));
-                }
-                None => {
-                    cell.style.remove("background-color");
-                }
-            }
+            cell.style.insert(
+                "background-color".to_string(),
+                fill.as_ref()
+                    .map(|color| format!("#{color}"))
+                    .unwrap_or_else(|| "transparent".to_string()),
+            );
             cell.node_id
         };
-        match fill {
-            Some(color) => self.set_cell_property_element(
-                cell_id,
-                "w:shd",
-                vec![
-                    XmlAttribute {
-                        name: "w:val".to_string(),
-                        value: "clear".to_string(),
-                    },
-                    XmlAttribute {
-                        name: "w:color".to_string(),
-                        value: "auto".to_string(),
-                    },
-                    XmlAttribute {
-                        name: "w:fill".to_string(),
-                        value: color,
-                    },
-                ],
-            ),
-            None => self.remove_cell_property_element(cell_id, "w:shd"),
-        }
+        self.set_cell_property_element(
+            cell_id,
+            "w:shd",
+            vec![
+                XmlAttribute {
+                    name: "w:val".to_string(),
+                    value: "clear".to_string(),
+                },
+                XmlAttribute {
+                    name: "w:color".to_string(),
+                    value: "auto".to_string(),
+                },
+                XmlAttribute {
+                    name: "w:fill".to_string(),
+                    value: fill.unwrap_or_else(|| "auto".to_string()),
+                },
+            ],
+        )
     }
 
     /// Document-defined table styles in `styles.xml`, in source order. This is
@@ -22852,7 +24904,9 @@ impl WordDocument {
                 }],
             ),
             None => self.remove_table_property_element(table_id, "w:tblStyle"),
-        }
+        }?;
+        self.refresh_table_paragraph_properties(table_order_index);
+        Ok(())
     }
 
     /// Updates the table-style conditional regions while preserving all
@@ -22933,7 +24987,9 @@ impl WordDocument {
                 flag("w:noHBand", !look.horizontal_banding_enabled()),
                 flag("w:noVBand", !look.vertical_banding_enabled()),
             ],
-        )
+        )?;
+        self.refresh_table_paragraph_properties(table_order_index);
+        Ok(())
     }
 
     /// Applies a deterministic table gallery preset as direct cell/table
@@ -22994,7 +25050,9 @@ impl WordDocument {
                 inside_v: Some(border),
                 ..TableBorderSpec::default()
             },
-        )
+        )?;
+        self.refresh_table_paragraph_properties(table_order_index);
+        Ok(())
     }
 
     /// Sets where a cell's content sits in its box (`w:vAlign`).
@@ -23066,11 +25124,29 @@ impl WordDocument {
             }
             table.node_id
         };
-        let resolved = self
-            .table_by_order(table_order_index)
-            .and_then(|table| table.borders.clone())
-            .unwrap_or_default();
-        self.sync_borders_xml(table_id, "w:tblPr", "w:tblBorders", &resolved)
+        let table = self.table_by_order(table_order_index).unwrap();
+        let bidi_visual = table.bidi_visual;
+        let current = table.borders.as_ref().unwrap();
+        let logical = current.start.is_some() || current.end.is_some();
+        let mut resolved = TableBorders::default();
+        for (side, _) in &edges {
+            match side {
+                BorderSide::Top => resolved.top = current.top.clone(),
+                BorderSide::Bottom => resolved.bottom = current.bottom.clone(),
+                BorderSide::InsideH => resolved.inside_h = current.inside_h.clone(),
+                BorderSide::InsideV => resolved.inside_v = current.inside_v.clone(),
+                BorderSide::Left | BorderSide::Right if logical => {
+                    if (*side == BorderSide::Left) != bidi_visual {
+                        resolved.start = current.start.clone();
+                    } else {
+                        resolved.end = current.end.clone();
+                    }
+                }
+                BorderSide::Left => resolved.left = current.left.clone(),
+                BorderSide::Right => resolved.right = current.right.clone(),
+            }
+        }
+        self.sync_borders_xml(table_id, "w:tblPr", "w:tblBorders", &resolved, bidi_visual)
     }
 
     /// Sets one cell's own borders (`w:tcBorders`), which take precedence over
@@ -23093,6 +25169,10 @@ impl WordDocument {
             );
         }
 
+        let bidi_visual = self
+            .table_by_order(table_order_index)
+            .ok_or_else(|| format!("table {table_order_index} was not found"))?
+            .bidi_visual;
         let cell_id = {
             let cell = self.table_cell_mut_at(table_order_index, row, column)?;
             for (side, value) in &edges {
@@ -23105,26 +25185,43 @@ impl WordDocument {
                     }
                     continue;
                 }
-                match value.style.as_deref() {
-                    Some(style) => {
+                if matches!(side, BorderSide::Left | BorderSide::Right) {
+                    let logical = if matches!(side, BorderSide::Left) != bidi_visual {
+                        "start"
+                    } else {
+                        "end"
+                    };
+                    for suffix in ["style", "width", "color"] {
+                        cell.style.remove(&format!("border-{logical}-{suffix}"));
+                    }
+                }
+                // Match the reader's CSS representation and the exact eighth-point
+                // value written to OOXML, including an omitted width's default.
+                let edge = value.to_border_edge();
+                let style = edge.val.as_deref().unwrap_or("single").to_ascii_lowercase();
+                cell.style.insert(
+                    format!("border-{name}-style"),
+                    if matches!(style.as_str(), "nil" | "none") {
+                        "none".into()
+                    } else {
+                        style
+                    },
+                );
+                match edge.size_eighths {
+                    Some(width) => {
+                        let points = width as f32 / 8.0;
                         cell.style
-                            .insert(format!("border-{name}-style"), style.to_string());
+                            .insert(format!("border-{name}-width"), format!("{points:.4}pt"));
                     }
                     None => {
-                        cell.style
-                            .insert(format!("border-{name}-style"), "single".to_string());
+                        cell.style.remove(&format!("border-{name}-width"));
                     }
                 }
-                if let Some(width) = value.width {
-                    cell.style
-                        .insert(format!("border-{name}-width"), format!("{width:.4}pt"));
-                }
-                match value.color.as_deref() {
-                    Some(color) if !color.eq_ignore_ascii_case("auto") => {
-                        cell.style
-                            .insert(format!("border-{name}-color"), color.to_string());
+                match edge.color {
+                    Some(color) => {
+                        cell.style.insert(format!("border-{name}-color"), color);
                     }
-                    _ => {
+                    None => {
                         cell.style.remove(&format!("border-{name}-color"));
                     }
                 }
@@ -23133,7 +25230,7 @@ impl WordDocument {
         };
 
         // The cell keeps whatever edges it already had; only the named ones move.
-        let mut resolved = self.cell_borders_from_style(table_order_index, row, column)?;
+        let mut resolved = TableBorders::default();
         for (side, value) in &edges {
             let slot = match side {
                 BorderSide::Top => &mut resolved.top,
@@ -23144,7 +25241,7 @@ impl WordDocument {
             };
             *slot = Some(value.to_border_edge());
         }
-        self.sync_borders_xml(cell_id, "w:tcPr", "w:tcBorders", &resolved)?;
+        self.sync_borders_xml(cell_id, "w:tcPr", "w:tcBorders", &resolved, bidi_visual)?;
         let diagonals = self.cell_diagonals_from_style(table_order_index, row, column)?;
         self.sync_cell_diagonals_xml(cell_id, diagonals)
     }
@@ -23190,6 +25287,7 @@ impl WordDocument {
                 });
             Some(BorderEdge {
                 val: Some(style.clone()),
+                theme_color: None,
                 size_eighths: width_pt.map(|pt| (pt * 8.0).round().max(0.0) as u32),
                 space: None,
                 color: cell
@@ -23441,18 +25539,21 @@ impl WordDocument {
                     .map(|color| {
                         format!("#{}", color.trim_start_matches('#').to_ascii_uppercase())
                     }),
+                theme_color: None,
             });
         }
         Ok(borders)
     }
 
     /// Writes `w:tblBorders` / `w:tcBorders` from a resolved set of edges.
+    /// Raw edges omitted from `borders` survive, except aliases of edited sides.
     fn sync_borders_xml(
         &mut self,
         node_id: Option<XmlNodeId>,
         properties_name: &str,
         element_name: &str,
         borders: &TableBorders,
+        bidi_visual: bool,
     ) -> Result<(), String> {
         let Some(node_id) = node_id else {
             return Ok(());
@@ -23493,6 +25594,16 @@ impl WordDocument {
                     .map(|color| color.trim_start_matches('#').to_ascii_uppercase())
                     .unwrap_or_else(|| "auto".to_string()),
             });
+            if let Some(space) = edge.space {
+                attributes.push(XmlAttribute {
+                    name: "w:space".to_string(),
+                    value: space.to_string(),
+                });
+            }
+            attributes.extend(edge.theme_attributes().map(|(name, value)| XmlAttribute {
+                name: name.to_string(),
+                value: value.to_string(),
+            }));
             children.push(XmlNode::Element(raw.create_element(
                 name,
                 attributes,
@@ -23500,7 +25611,49 @@ impl WordDocument {
             )));
         }
 
-        let element = raw.create_element_preserving_child_ids(element_name, Vec::new(), children);
+        let existing = raw.element(properties_id).and_then(|properties| {
+            properties.children.iter().find_map(|node| match node {
+                XmlNode::Element(element) if element.name == element_name => Some(element.clone()),
+                _ => None,
+            })
+        });
+        let mut attributes = Vec::new();
+        if let Some(existing) = existing {
+            attributes = existing.attributes;
+            children.extend(existing.children.into_iter().filter(|node| {
+                    !matches!(node, XmlNode::Element(edge) if match edge.name.as_str() {
+                        "w:top" => borders.top.is_some(),
+                        "w:bottom" => borders.bottom.is_some(),
+                        "w:left" => borders.left.is_some() || borders.start.is_some(),
+                        "w:start" => borders.start.is_some() || if bidi_visual { borders.right.is_some() } else { borders.left.is_some() },
+                        "w:end" => borders.end.is_some() || if bidi_visual { borders.left.is_some() } else { borders.right.is_some() },
+                        "w:right" => borders.right.is_some() || borders.end.is_some(),
+                        "w:insideH" => borders.inside_h.is_some(),
+                        "w:insideV" => borders.inside_v.is_some(),
+                        _ => false,
+                    })
+                }));
+            // Keep the schema order, including logical and diagonal borders.
+            children.sort_by_key(|node| match node {
+                XmlNode::Element(edge) => [
+                    "w:top",
+                    "w:start",
+                    "w:left",
+                    "w:bottom",
+                    "w:end",
+                    "w:right",
+                    "w:insideH",
+                    "w:insideV",
+                    "w:tl2br",
+                    "w:tr2bl",
+                ]
+                .iter()
+                .position(|name| *name == edge.name)
+                .unwrap_or(10),
+                _ => 10,
+            });
+        }
+        let element = raw.create_element_preserving_child_ids(element_name, attributes, children);
         let properties = raw
             .element_mut(properties_id)
             .ok_or_else(|| format!("failed to locate {properties_name}"))?;
@@ -24114,6 +26267,7 @@ impl WordDocument {
         self.rewrite_table_xml_from_model(table_order_index)?;
         self.give_new_cells_template_xml(table_order_index, templates);
         self.rebuild_paragraph_surfaces();
+        self.refresh_table_paragraph_properties(table_order_index);
         Ok(())
     }
 
@@ -24233,6 +26387,10 @@ impl WordDocument {
         row_index: usize,
         template_row: Option<usize>,
     ) -> Result<(), String> {
+        let override_table_justification = self
+            .loaded_document_settings()
+            .compat
+            .setting_on("overrideTableStyleFontSizeAndJustification");
         let styles = self.styles_part.clone();
         let mut templates = Vec::new();
         let template_exceptions = template_row.and_then(|index| {
@@ -24353,7 +26511,12 @@ impl WordDocument {
             }
             if let Some(styles) = styles.as_ref() {
                 let table_style = Self::table_style_paragraph_defaults(table, styles);
-                Self::fill_new_cell_defaults(table_style.as_ref(), &mut row.cells, styles);
+                Self::fill_new_cell_defaults(
+                    table_style.as_ref(),
+                    &mut row.cells,
+                    styles,
+                    override_table_justification,
+                );
             }
             table.rows.insert(insert_at, row);
             Self::normalize_vertical_merges(table);
@@ -24384,6 +26547,7 @@ impl WordDocument {
         }
 
         self.rebuild_paragraph_surfaces();
+        self.refresh_table_paragraph_properties(table_order_index);
         Ok(())
     }
 
@@ -24473,6 +26637,7 @@ impl WordDocument {
 
         self.rewrite_table_xml_from_model(table_order_index)?;
         self.rebuild_paragraph_surfaces();
+        self.refresh_table_paragraph_properties(table_order_index);
         Ok(())
     }
 
@@ -24561,6 +26726,7 @@ impl WordDocument {
 
         self.rewrite_table_xml_from_model(table_order_index)?;
         self.rebuild_paragraph_surfaces();
+        self.refresh_table_paragraph_properties(table_order_index);
         Ok(())
     }
 
@@ -24708,6 +26874,7 @@ impl WordDocument {
         self.rewrite_table_xml_from_model(table_order_index)?;
         self.give_new_cells_template_xml(table_order_index, templates);
         self.rebuild_paragraph_surfaces();
+        self.refresh_table_paragraph_properties(table_order_index);
         Ok(())
     }
 
@@ -24730,6 +26897,10 @@ impl WordDocument {
         if width.is_some_and(|value| !value.is_finite() || value < 0.0) {
             return Err("column width must be a finite non-negative number".to_string());
         }
+        let override_table_justification = self
+            .loaded_document_settings()
+            .compat
+            .setting_on("overrideTableStyleFontSizeAndJustification");
         let styles = self.styles_part.clone();
         let mut templates = Vec::new();
         {
@@ -24823,6 +26994,7 @@ impl WordDocument {
                         table_style.as_ref(),
                         std::slice::from_mut(&mut cell),
                         styles,
+                        override_table_justification,
                     );
                 }
                 row.cells.insert(insert_cell_index, cell);
@@ -24834,6 +27006,7 @@ impl WordDocument {
         self.rewrite_table_xml_from_model(table_order_index)?;
         self.give_new_cells_template_xml(table_order_index, templates);
         self.rebuild_paragraph_surfaces();
+        self.refresh_table_paragraph_properties(table_order_index);
         Ok(())
     }
 
@@ -25008,6 +27181,10 @@ impl WordDocument {
         table_order_index: usize,
         column_index: usize,
     ) -> Result<(), String> {
+        let override_table_justification = self
+            .loaded_document_settings()
+            .compat
+            .setting_on("overrideTableStyleFontSizeAndJustification");
         let styles = self.styles_part.clone();
         {
             let table = self
@@ -25083,6 +27260,7 @@ impl WordDocument {
                             table_style.as_ref(),
                             std::slice::from_mut(&mut cell),
                             styles,
+                            override_table_justification,
                         );
                     }
                     row.cells.push(cell);
@@ -25093,6 +27271,7 @@ impl WordDocument {
 
         self.rewrite_table_xml_from_model(table_order_index)?;
         self.rebuild_paragraph_surfaces();
+        self.refresh_table_paragraph_properties(table_order_index);
         Ok(())
     }
 
@@ -28941,14 +31120,22 @@ impl WordDocument {
         role: HeaderFooterRole,
         variant: HeaderFooterVariant,
     ) -> Result<String, String> {
+        let reference_id = self
+            .active_hf_reference(role, variant)
+            .ok_or_else(|| format!("document has no {} reference", role.as_label()))?;
+        self.resolve_header_footer_reference_path(role, &reference_id)
+    }
+
+    fn resolve_header_footer_reference_path(
+        &mut self,
+        role: HeaderFooterRole,
+        reference_id: &str,
+    ) -> Result<String, String> {
         let role_label = role.as_label();
         let rel_type = match role {
             HeaderFooterRole::Header => RelationshipTypes::Header.as_str(),
             HeaderFooterRole::Footer => RelationshipTypes::Footer.as_str(),
         };
-        let reference_id = self
-            .active_hf_reference(role, variant)
-            .ok_or_else(|| format!("document has no {role_label} reference"))?;
         let doc_part = self
             .document_part
             .as_ref()
@@ -29223,6 +31410,9 @@ impl WordDocument {
     }
 
     fn remove_page_fields_from_children(children: &mut Vec<XmlNode>) -> usize {
+        // Boundaries may share runs with ordinary text or other field events.
+        // Split those runs before grouping, retaining text outside each PAGE.
+        *children = Self::expand_field_boundary_runs(std::mem::take(children));
         let mut removed = 0usize;
         let mut index = 0usize;
         while index < children.len() {
@@ -29398,6 +31588,38 @@ impl WordDocument {
                 .ok_or_else(|| "header/footer paragraph child is unavailable".to_string())?
         };
 
+        let split_at_end = xml_doc.element(paragraph_id).is_some_and(|paragraph| {
+            Self::grouped_display_len(&paragraph.children) == display_offset
+        });
+
+        // Capture the insertion format before the split redistributes empty runs.
+        let plain_caret_properties = Self::hf_text_runs(&xml_doc, paragraph_id).map(|runs| {
+            let text: String = runs.iter().map(|run| run.text.as_str()).collect();
+            let offset = text
+                .char_indices()
+                .nth(display_offset)
+                .map_or(text.len(), |(offset, _)| offset);
+            Self::hf_caret_run_id(&xml_doc, paragraph_id, offset)
+                .and_then(|id| xml_doc.element(id))
+                .and_then(Self::run_properties_element)
+                .cloned()
+                .or_else(|| {
+                    if !runs.is_empty() {
+                        return None;
+                    }
+                    xml_doc
+                        .element(paragraph_id)?
+                        .children
+                        .iter()
+                        .find_map(|node| match node {
+                            XmlNode::Element(element) if element.name == "w:pPr" => {
+                                Self::run_properties_element(element).cloned()
+                            }
+                            _ => None,
+                        })
+                })
+        });
+
         let (paragraph_name, paragraph_attrs, mut before_children, mut after_children) = {
             let paragraph = xml_doc
                 .element_mut(paragraph_id)
@@ -29414,15 +31636,17 @@ impl WordDocument {
             XmlNode::Element(element) if element.name == "w:pPr" => Some(element.clone()),
             _ => None,
         });
-        let caret_properties = match Self::hf_boundary_run(&before_children, true)
-            .or_else(|| Self::hf_boundary_run(&after_children, false))
-        {
-            Some(run) => Self::run_properties_element(run).cloned(),
-            None => paragraph_properties
-                .as_ref()
-                .and_then(Self::run_properties_element)
-                .cloned(),
-        };
+        let caret_properties = plain_caret_properties.clone().unwrap_or_else(|| {
+            match Self::hf_boundary_run(&before_children, true)
+                .or_else(|| Self::hf_boundary_run(&after_children, false))
+            {
+                Some(run) => Self::run_properties_element(run).cloned(),
+                None => paragraph_properties
+                    .as_ref()
+                    .and_then(Self::run_properties_element)
+                    .cloned(),
+            }
+        });
         for children in [&mut before_children, &mut after_children] {
             if Self::hf_boundary_run(children, false).is_none() {
                 children.push(XmlNode::Element(Self::hf_text_run_element(
@@ -29430,6 +31654,28 @@ impl WordDocument {
                     caret_properties.as_ref(),
                     "",
                 )));
+            }
+        }
+        if plain_caret_properties.is_some() {
+            // The continuation may start with a differently formatted visible run.
+            // Keep the Enter position's format without changing that text.
+            let has_pending = Self::hf_boundary_run(&after_children, false)
+                .is_some_and(|run| Self::display_len_for_element(run) == 0);
+            if !has_pending {
+                let index = after_children
+                    .iter()
+                    .take_while(
+                        |node| matches!(node, XmlNode::Element(element) if element.name == "w:pPr"),
+                    )
+                    .count();
+                after_children.insert(
+                    index,
+                    XmlNode::Element(Self::hf_text_run_element(
+                        &mut xml_doc,
+                        caret_properties.as_ref(),
+                        "",
+                    )),
+                );
             }
         }
         xml_doc.element_mut(paragraph_id).unwrap().children = before_children;
@@ -29464,6 +31710,50 @@ impl WordDocument {
             .map_err(|err| err.to_string())?;
 
         let serialized = xml_doc.to_string().map_err(|err| err.to_string())?;
+        let serialized = if split_at_end && self.styles_part.is_some() {
+            let (mut parsed, raw) = DocumentParser::new()
+                .parse_document_xml_with_raw_tree(&serialized)
+                .map_err(|error| error.to_string())?;
+            let raw = raw.map_err(|error| error.to_string())?;
+            if let Some(body) = parsed.body.as_mut() {
+                attach_block_xml_ids(&mut body.elements, raw.root(), &raw);
+            }
+            if let Some(styles) = self.styles_part.as_ref() {
+                Self::apply_style_paragraph_defaults_to_document(
+                    &mut parsed,
+                    styles,
+                    self.loaded_document_settings()
+                        .compat
+                        .setting_on("overrideTableStyleFontSizeAndJustification"),
+                );
+                Self::apply_style_numbering_to_document(&mut parsed, styles);
+                Self::apply_run_font_defaults_to_document(&mut parsed, styles);
+            }
+            let mut scratch = self.clone();
+            scratch.document = Some(Rc::new(parsed));
+            scratch.raw_document = Some(raw);
+            scratch.rebuild_paragraph_surfaces();
+            for index in paragraph_index + 1..=paragraph_index + break_count.max(1) {
+                let source = scratch
+                    .paragraph(index - 1)
+                    .and_then(|paragraph| paragraph.properties.as_ref())
+                    .and_then(|properties| properties.style.as_deref())
+                    .map(str::to_string);
+                crate::commands::insert_paragraph_break::apply_next_style_from(
+                    &mut scratch,
+                    index,
+                    source.as_deref(),
+                );
+            }
+            scratch
+                .raw_document
+                .as_ref()
+                .unwrap()
+                .to_string()
+                .map_err(|error| error.to_string())?
+        } else {
+            serialized
+        };
         self.upsert_xml_part_content(part_path, serialized);
         Ok(())
     }
@@ -29547,7 +31837,7 @@ impl WordDocument {
         display_offset: usize,
     ) -> (Vec<XmlNode>, Vec<XmlNode>) {
         Self::split_paragraph_children_at(
-            children,
+            Self::expand_field_boundary_runs(children),
             display_offset,
             &Self::display_len_for_node,
             true,
@@ -29667,6 +31957,60 @@ impl WordDocument {
         (before, after)
     }
 
+    // A field boundary can share a run with its instruction, result or another
+    // boundary. Give each child its own run while keeping the source formatting
+    // and attributes, so field grouping observes the original XML event order.
+    fn expand_field_boundary_runs(nodes: Vec<XmlNode>) -> Vec<XmlNode> {
+        nodes
+            .into_iter()
+            .flat_map(|node| {
+                let XmlNode::Element(run) = &node else {
+                    return vec![node];
+                };
+                if run.name != "w:r"
+                    || !run
+                        .children
+                        .iter()
+                        .any(|child| matches!(child, XmlNode::Element(e) if e.name == "w:fldChar"))
+                {
+                    return vec![node];
+                }
+                let (properties, contents): (Vec<_>, Vec<_>) =
+                    run.children.iter().cloned().partition(
+                        |child| matches!(child, XmlNode::Element(e) if e.name == "w:rPr"),
+                    );
+                if contents.len() <= 1 {
+                    return vec![node];
+                }
+                contents
+                    .into_iter()
+                    .map(|child| {
+                        let mut fragment = run.clone();
+                        fragment.children = properties.clone();
+                        fragment.children.push(child);
+                        XmlNode::Element(fragment)
+                    })
+                    .collect()
+            })
+            .collect()
+    }
+
+    fn grouped_display_len(nodes: &[XmlNode]) -> usize {
+        let nodes = Self::expand_field_boundary_runs(nodes.to_vec());
+        let mut seen = 0;
+        let mut index = 0;
+        while index < nodes.len() {
+            if let Some((_, len, consumed)) = Self::take_field_group(&nodes[index..]) {
+                seen += len;
+                index += consumed;
+            } else {
+                seen += Self::display_len_for_node(&nodes[index]);
+                index += 1;
+            }
+        }
+        seen
+    }
+
     fn take_field_group(nodes: &[XmlNode]) -> Option<(Vec<XmlNode>, usize, usize)> {
         let XmlNode::Element(first) = nodes.first()? else {
             return None;
@@ -29675,22 +32019,33 @@ impl WordDocument {
             return None;
         }
 
-        let mut out = Vec::new();
         let mut instr = String::new();
+        let mut depth = 0;
+        let mut result_start = None;
         for (idx, node) in nodes.iter().enumerate() {
-            if let XmlNode::Element(element) = node {
-                Self::collect_instr_text(element, &mut instr);
-                let is_end = Self::run_has_field_char(element, "end");
-                out.push(node.clone());
-                if is_end {
+            let XmlNode::Element(element) = node else {
+                continue;
+            };
+            if Self::run_has_field_char(element, "begin") {
+                depth += 1;
+            } else if Self::run_has_field_char(element, "end") {
+                depth -= 1;
+                if depth == 0 {
                     let len = Self::field_placeholder_for_instr(&instr)
-                        .map(str::chars)
-                        .map(Iterator::count)
-                        .unwrap_or(1);
-                    return Some((out, len, idx + 1));
+                        .map(|text| text.chars().count())
+                        .unwrap_or_else(|| {
+                            result_start
+                                .map_or(0, |start| Self::grouped_display_len(&nodes[start..idx]))
+                        });
+                    return Some((nodes[..=idx].to_vec(), len, idx + 1));
                 }
-            } else {
-                out.push(node.clone());
+            } else if depth == 1 {
+                if Self::run_has_field_char(element, "separate") {
+                    result_start = Some(idx + 1);
+                } else if result_start.is_none() {
+                    // Nested instructions belong to their own fields, not the outer code.
+                    Self::collect_instr_text(element, &mut instr);
+                }
             }
         }
         None
@@ -29746,14 +32101,27 @@ impl WordDocument {
 
     fn display_len_for_element(element: &XmlElement) -> usize {
         match element.name.as_str() {
-            // A ruby's guide text is drawn above its base, not in the body.
-            "w:instrText" | "w:rt" => 0,
+            // Formatting metadata and ruby guides are not visible story text.
+            "w:pPr" | "w:rPr" | "w:instrText" | "w:rt" => 0,
             "w:t" | "w:delText" => element
                 .children
                 .iter()
                 .map(Self::display_len_for_node)
                 .sum(),
             "w:tab" | "w:ptab" | "w:softHyphen" | "w:noBreakHyphen" | "w:sym" => 1,
+            "w:fldSimple" => element
+                .attributes
+                .iter()
+                .find(|attr| attr.name == "w:instr")
+                .and_then(|attr| Self::field_placeholder_for_instr(&attr.value))
+                .map(|text| text.chars().count())
+                .unwrap_or_else(|| {
+                    element
+                        .children
+                        .iter()
+                        .map(Self::display_len_for_node)
+                        .sum()
+                }),
             _ => element
                 .children
                 .iter()
@@ -29881,8 +32249,8 @@ impl WordDocument {
 
     fn refresh_header_footer_lines_for(
         &mut self,
-        role: HeaderFooterRole,
-        variant: HeaderFooterVariant,
+        _role: HeaderFooterRole,
+        _variant: HeaderFooterVariant,
         part_path: &str,
     ) -> Result<(), String> {
         let parser = DocumentParser::new();
@@ -29903,14 +32271,24 @@ impl WordDocument {
             // shared document defaults here as the initial package load does,
             // otherwise the first keystroke would silently drop inherited
             // fonts and sizes from the rich rendering model.
-            Self::apply_style_paragraph_defaults_to_document(&mut parsed, styles_part);
+            Self::apply_style_paragraph_defaults_to_document(
+                &mut parsed,
+                styles_part,
+                self.loaded_document_settings()
+                    .compat
+                    .setting_on("overrideTableStyleFontSizeAndJustification"),
+            );
             Self::apply_table_style_cell_margins_to_document(&mut parsed, styles_part);
             Self::apply_table_styles_to_document(&mut parsed, styles_part);
             Self::apply_style_numbering_to_document(&mut parsed, styles_part);
             Self::apply_run_font_defaults_to_document(&mut parsed, styles_part);
         }
         if let Some(theme) = self.loaded_theme_part().as_ref() {
-            Self::apply_theme_to_document(&mut parsed, theme);
+            Self::apply_theme_to_document(
+                &mut parsed,
+                theme,
+                &self.loaded_document_settings().color_scheme_mapping,
+            );
         }
         if let Some(document) = self.document.as_deref() {
             parsed.resolve_structural_fields_with_bookmarks_from(document);
@@ -29940,31 +32318,39 @@ impl WordDocument {
             part.parsed_document = Some(Rc::new(parsed));
         }
 
-        // The flattened line fields describe the document-wide story. An
-        // edit to an earlier section's own part must not overwrite them, or
-        // the final section would start rendering that section's header.
-        if !self.hf_part_is_document_wide(role, variant, part_path) {
-            return Ok(());
-        }
-
-        match (role, variant) {
-            (HeaderFooterRole::Header, HeaderFooterVariant::Default) => {
-                self.header_lines = Some(lines);
-            }
-            (HeaderFooterRole::Header, HeaderFooterVariant::First) => {
-                self.header_lines_first = Some(lines);
-            }
-            (HeaderFooterRole::Header, HeaderFooterVariant::Even) => {
-                self.header_lines_even = Some(lines);
-            }
-            (HeaderFooterRole::Footer, HeaderFooterVariant::Default) => {
-                self.footer_lines = Some(lines);
-            }
-            (HeaderFooterRole::Footer, HeaderFooterVariant::First) => {
-                self.footer_lines_first = Some(lines);
-            }
-            (HeaderFooterRole::Footer, HeaderFooterVariant::Even) => {
-                self.footer_lines_even = Some(lines);
+        // Each referenced variant may share this part. Update all matching
+        // caches, but never populate an absent variant or another section's
+        // independent story from the edited part.
+        for role in [HeaderFooterRole::Header, HeaderFooterRole::Footer] {
+            for variant in [
+                HeaderFooterVariant::Default,
+                HeaderFooterVariant::First,
+                HeaderFooterVariant::Even,
+            ] {
+                if !self.hf_part_is_document_wide(role, variant, part_path) {
+                    continue;
+                }
+                let target = match (role, variant) {
+                    (HeaderFooterRole::Header, HeaderFooterVariant::Default) => {
+                        &mut self.header_lines
+                    }
+                    (HeaderFooterRole::Header, HeaderFooterVariant::First) => {
+                        &mut self.header_lines_first
+                    }
+                    (HeaderFooterRole::Header, HeaderFooterVariant::Even) => {
+                        &mut self.header_lines_even
+                    }
+                    (HeaderFooterRole::Footer, HeaderFooterVariant::Default) => {
+                        &mut self.footer_lines
+                    }
+                    (HeaderFooterRole::Footer, HeaderFooterVariant::First) => {
+                        &mut self.footer_lines_first
+                    }
+                    (HeaderFooterRole::Footer, HeaderFooterVariant::Even) => {
+                        &mut self.footer_lines_even
+                    }
+                };
+                *target = Some(lines.clone());
             }
         }
         Ok(())
@@ -33394,7 +35780,11 @@ impl WordDocument {
     /// [`ThemeColorScope`]: jade_docx_reader::theme::ThemeColorScope
     fn reparse_styles_part(&mut self, serialized: &str) -> bool {
         let theme = self.loaded_theme_part();
-        let _theme_colors = jade_docx_reader::theme::ThemeColorScope::enter(theme.as_ref());
+        let settings = self.loaded_document_settings();
+        let _theme_colors = jade_docx_reader::theme::ThemeColorScope::enter_with_mapping(
+            theme.as_ref(),
+            &settings.color_scheme_mapping,
+        );
         let parsed = match self.styles_part.as_mut() {
             Some(styles) => styles.parse(serialized).is_ok(),
             None => match StylesPart::from_xml(serialized) {
@@ -33434,6 +35824,15 @@ impl WordDocument {
             .and_then(|style_id| styles.resolve_paragraph_properties(style_id))
             .unwrap_or_default();
         if let Some(table_style) = self.table_style_paragraph_properties(paragraph_index) {
+            Self::apply_table_justification_exception(
+                &mut props,
+                style_id.or_else(|| styles.default_paragraph_style_id()),
+                styles,
+                Some(&table_style),
+                self.loaded_document_settings()
+                    .compat
+                    .setting_on("overrideTableStyleFontSizeAndJustification"),
+            );
             Self::fill_missing_paragraph_props(&mut props, &table_style);
         }
         if let Some(defaults) = styles.doc_default_paragraph_properties() {
@@ -33463,15 +35862,17 @@ impl WordDocument {
             let Some(PathEntry::TableCell { row, cell }) = entries.next() else {
                 break;
             };
-            table = Some(inner);
+            table = Some((inner, *row, *cell));
             elements = &inner.rows.get(*row)?.cells.get(*cell)?.blocks;
         }
-        table?
+        let (table, row, cell) = table?;
+        let properties = table
             .style_name
             .as_deref()
             .and_then(|style_id| styles.resolve_table_style_id(style_id))
             .or_else(|| styles.default_table_style_id())
-            .and_then(|style_id| styles.resolve_table_paragraph_properties(style_id))
+            .and_then(|style_id| styles.resolve_table_paragraph_properties(style_id));
+        Self::table_cell_paragraph_properties(table, row, cell, properties)
     }
 
     /// Resolves the theme font references (`w:asciiTheme` and the like) in
@@ -33543,21 +35944,73 @@ impl WordDocument {
         properties(self.raw_document.as_ref()?, paragraph_id)
     }
 
+    /// Rebuilds the tab cascade from fresh inheritance and the paragraph's
+    /// own entries. Effective tabs also contain inherited stops, so retaining
+    /// that vector across style changes would retain the old style's stops.
+    pub(crate) fn paragraph_tabs_with_direct(
+        &self,
+        paragraph_index: usize,
+        mut inherited: Vec<TabStop>,
+    ) -> Vec<TabStop> {
+        if let Some(properties) = self.paragraph_properties_xml(paragraph_index) {
+            for child in &properties.children {
+                let XmlNode::Element(tabs) = child else {
+                    continue;
+                };
+                if tabs.name != "w:tabs" {
+                    continue;
+                }
+                for child in &tabs.children {
+                    let XmlNode::Element(tab) = child else {
+                        continue;
+                    };
+                    if tab.name != "w:tab" {
+                        continue;
+                    }
+                    let value = |name: &str| {
+                        tab.attributes
+                            .iter()
+                            .find(|attribute| attribute.name == name)
+                            .map(|attribute| attribute.value.clone())
+                    };
+                    let stop = TabStop {
+                        kind: value("w:val"),
+                        position: value("w:pos")
+                            .and_then(|value| value.parse::<f32>().ok())
+                            .map(|value| value / 20.0),
+                        leader: value("w:leader"),
+                    };
+                    if stop.kind.is_some() || stop.position.is_some() || stop.leader.is_some() {
+                        inherited.push(stop);
+                    }
+                }
+            }
+        }
+        inherited
+    }
+
     /// The tags of `paragraph_index`'s `w:pPr`: the paragraph properties it
-    /// declares itself rather than takes from its style.
+    /// declares itself rather than takes from its style. Includes `w:pBdr/edge`
+    /// paths so individual direct borders can survive a style change.
     pub(crate) fn paragraph_declared_property_tags(&self, paragraph_index: usize) -> Vec<String> {
-        self.paragraph_properties_xml(paragraph_index)
-            .map(|properties| {
-                properties
-                    .children
-                    .iter()
-                    .filter_map(|child| match child {
-                        XmlNode::Element(element) => Some(element.name.clone()),
-                        _ => None,
-                    })
-                    .collect()
-            })
-            .unwrap_or_default()
+        let Some(properties) = self.paragraph_properties_xml(paragraph_index) else {
+            return Vec::new();
+        };
+        let mut tags = Vec::new();
+        for child in &properties.children {
+            let XmlNode::Element(element) = child else {
+                continue;
+            };
+            tags.push(element.name.clone());
+            if element.name == "w:pBdr" {
+                for child in &element.children {
+                    if let XmlNode::Element(edge) = child {
+                        tags.push(format!("w:pBdr/{}", edge.name));
+                    }
+                }
+            }
+        }
+        tags
     }
 
     /// The `(tag, attribute)` pairs of `paragraph_index`'s `w:pPr` children:
@@ -34310,6 +36763,13 @@ impl WordDocument {
                             image_alternate_content = Some((element, choice_index, drawing_index));
                         }
                     }
+                }
+                XmlNode::Element(element)
+                    if !preserve_drawings && element.name == "w:pict" && run.text_box.is_some() =>
+                {
+                    // Object edits rebuild the modeled VML text box as DrawingML.
+                    // Keeping the original pict as an unknown child would emit
+                    // a second box and let its stale frame win on reopening.
                 }
                 XmlNode::Element(element)
                     if preserve_drawings && element.name == "w:pict" && run.text_box.is_some() =>
@@ -36406,7 +38866,7 @@ impl WordDocument {
     }
 
     /// A run's `w:rPr` written from `properties`, patching `existing`.
-    fn sync_run_properties_element(
+    pub(crate) fn sync_run_properties_element(
         doc: &mut DocxXmlDocument,
         properties: Option<&RunProperties>,
         existing: Option<XmlElement>,
@@ -36440,6 +38900,7 @@ impl WordDocument {
             // character style to show through again in Word. `None` leaves any
             // existing element untouched.
             for (value, tag) in [
+                (props.snap_to_grid, "w:snapToGrid"),
                 (props.italic, "w:i"),
                 (props.italic_complex, "w:iCs"),
                 (props.bold_complex, "w:bCs"),
@@ -36463,11 +38924,8 @@ impl WordDocument {
                 }
             }
 
-            // Underline is not a bare toggle: `w:u`'s `w:val` defaults to "none",
-            // so a bare `<w:u/>` would mean *no* underline. Emit the modeled
-            // kind (falling back to the most common "single") and carry the
-            // declared color, so authored `w:val="double"`/`w:color` survive a
-            // run resync instead of collapsing to a plain single underline.
+            // Word inherits w:u's value and color independently. A color-only
+            // declaration must not introduce a value that masks the style.
             match props.underline {
                 Some(true) => {
                     let kind = props
@@ -36476,29 +38934,48 @@ impl WordDocument {
                         .filter(|kind| !kind.is_empty())
                         .unwrap_or("single");
                     Self::upsert_run_property_child_with_str_value(doc, &mut element, "w:u", kind);
-                    match props
-                        .underline_color
-                        .as_deref()
-                        .filter(|color| !color.is_empty())
-                    {
-                        Some(color) => Self::upsert_run_property_child_attribute(
-                            doc,
-                            &mut element,
-                            "w:u",
-                            "w:color",
-                            color.trim_start_matches('#'),
-                        ),
-                        None => Self::remove_run_property_child_attribute(
-                            &mut element,
-                            "w:u",
-                            "w:color",
-                        ),
-                    }
                 }
                 Some(false) => {
                     Self::upsert_run_property_child_with_str_value(doc, &mut element, "w:u", "none")
                 }
                 None => {}
+            }
+            match props
+                .underline_color
+                .as_deref()
+                .filter(|color| !color.is_empty())
+            {
+                Some(color) => Self::upsert_run_property_child_attribute(
+                    doc,
+                    &mut element,
+                    "w:u",
+                    "w:color",
+                    color.trim_start_matches('#'),
+                ),
+                None => Self::remove_run_property_child_attribute(&mut element, "w:u", "w:color"),
+            }
+
+            let theme = props.underline_theme_color.as_ref();
+            for (attribute, value) in [
+                ("w:themeColor", theme.map(|theme| theme.name.as_ref())),
+                ("w:themeTint", theme.and_then(|theme| theme.tint.as_deref())),
+                (
+                    "w:themeShade",
+                    theme.and_then(|theme| theme.shade.as_deref()),
+                ),
+            ] {
+                match value {
+                    Some(value) => Self::upsert_run_property_child_attribute(
+                        doc,
+                        &mut element,
+                        "w:u",
+                        attribute,
+                        value,
+                    ),
+                    None => {
+                        Self::remove_run_property_child_attribute(&mut element, "w:u", attribute)
+                    }
+                }
             }
 
             match props.color.as_deref() {
@@ -36570,7 +39047,7 @@ impl WordDocument {
             let font_size_complex = if direct.known {
                 direct.font_size_complex
             } else {
-                props.font_size
+                props.font_size_complex
             };
             match font_size {
                 Some(size) if size.is_finite() && size > 0.0 => {
@@ -37315,6 +39792,7 @@ impl WordDocument {
     /// [`RunProperties::preserved_rpr`] so it survives a run split.
     const RUN_PROP_HANDLED_TAGS: &'static [&'static str] = &[
         "w:rStyle",
+        "w:snapToGrid",
         "w:b",
         "w:i",
         "w:iCs",
@@ -37434,6 +39912,47 @@ impl WordDocument {
     }
 
     fn capture_preserved_run_props_in_paragraph(paragraph: &mut Paragraph, raw: &DocxXmlDocument) {
+        // Paragraph marks have their own run properties. Keep the same raw
+        // properties as text runs so editing and undo can round-trip them.
+        if let Some(rpr) = paragraph
+            .node_id
+            .and_then(|id| raw.element(id))
+            .and_then(|p| {
+                p.children.iter().find_map(|child| match child {
+                    XmlNode::Element(ppr) if ppr.name == "w:pPr" => {
+                        ppr.children.iter().find_map(|child| match child {
+                            XmlNode::Element(rpr) if rpr.name == "w:rPr" => Some(rpr),
+                            _ => None,
+                        })
+                    }
+                    _ => None,
+                })
+            })
+        {
+            let preserved = rpr
+                .children
+                .iter()
+                .filter(|child| match child {
+                    XmlNode::Element(element) => {
+                        !Self::RUN_PROP_HANDLED_TAGS.contains(&element.name.as_str())
+                            && !matches!(
+                                element.name.as_str(),
+                                "w:ins" | "w:del" | "w:moveFrom" | "w:moveTo"
+                            )
+                    }
+                    _ => false,
+                })
+                .cloned()
+                .collect::<Vec<_>>();
+            if !preserved.is_empty() {
+                paragraph
+                    .properties
+                    .get_or_insert_with(Default::default)
+                    .mark_run_properties
+                    .get_or_insert_with(Default::default)
+                    .preserved_rpr = PreservedRunProps(preserved);
+            }
+        }
         for run in paragraph.runs.iter_mut() {
             let Some(node_id) = run.node_id else {
                 continue;
@@ -39323,7 +41842,13 @@ impl WordDocument {
     }
 
     fn is_zero_width_field_container(element: &XmlElement) -> bool {
-        element.name == "w:fldSimple" && Self::display_len_for_element(element) == 0
+        // Count the saved result, not the live field's display placeholder.
+        // PAGE/NUMPAGES have a visible placeholder even without any result XML.
+        element.name == "w:fldSimple"
+            && element
+                .children
+                .iter()
+                .all(|child| Self::display_len_for_node(child) == 0)
     }
 
     /// Whether `element` is the result-less `w:fldSimple` the reader modeled
@@ -39333,14 +41858,13 @@ impl WordDocument {
         run.node_id.is_none()
             && run.text.is_empty()
             && Self::is_zero_width_field_container(element)
-            && run.field.as_ref().is_some_and(|field| {
-                element
-                    .attributes
-                    .iter()
-                    .find(|attribute| attribute.name == "w:instr")
-                    .and_then(|instr| DocumentParser::simple_field_kind(&instr.value))
-                    .is_some_and(|kind| kind == field.kind)
-            })
+            && run
+                .field
+                .as_ref()
+                .is_some_and(|field| match field.source_field_id {
+                    Some(id) => id == element.id,
+                    None => Self::field_matches_container_instruction(field, element),
+                })
     }
 
     fn element_contains_any_remaining_run(
@@ -40766,6 +43290,381 @@ mod tests {
             assert_eq!(
                 style.size_pt, expected,
                 "inherited={inherited}, direct={direct}"
+            );
+        }
+    }
+
+    #[test]
+    fn cell_border_edits_match_reopened_defaults_rounding_and_styles() {
+        let cell = r##"<w:tcPr><w:tcBorders><w:top w:val="double" w:sz="48" w:color="123456"/></w:tcBorders></w:tcPr><w:p/>"##;
+        let data = two_row_table_docx([[cell, "<w:p/>", "<w:p/>"], ["<w:p/>", "<w:p/>", "<w:p/>"]]);
+        for (style, width, color) in [
+            ("single", None, None),
+            ("NiL", None, Some("auto")),
+            ("ThInThIcKsMaLlGaP", Some(1.234), Some("abcdef")),
+            ("double", Some(0.2), Some("#abcdef")),
+        ] {
+            let mut doc =
+                executor::block_on(WordDocument::load(&data, &Options::default())).unwrap();
+            doc.set_table_cell_borders(
+                0,
+                0,
+                0,
+                &TableBorderSpec {
+                    top: Some(BorderEdgeSpec {
+                        style: Some(style.into()),
+                        width,
+                        color: color.map(str::to_string),
+                    }),
+                    ..Default::default()
+                },
+            )
+            .unwrap();
+            let before = doc.cell_borders_from_style(0, 0, 0).unwrap();
+            let edge = before.top.as_ref().unwrap();
+            assert_eq!(
+                edge.size_eighths,
+                width.map(|width| (width * 8.0).round() as u32)
+            );
+            assert_eq!(
+                edge.val.as_deref(),
+                Some(if style == "NiL" {
+                    "none"
+                } else if style.starts_with("ThIn") {
+                    "thinthicksmallgap"
+                } else {
+                    style
+                })
+            );
+            let exported = doc.export_docx().unwrap();
+            let reopened =
+                executor::block_on(WordDocument::load(&exported, &Options::default())).unwrap();
+            assert_eq!(
+                before,
+                reopened.cell_borders_from_style(0, 0, 0).unwrap(),
+                "{style}, {width:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn table_border_partial_edit_retains_raw_attributes_and_logical_sides() {
+        for bidi in [false, true] {
+            let data = build_document_docx(&format!(
+                r##"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:x="urn:jade:test"><w:body><w:tbl><w:tblPr>{}<w:tblBorders x:marker="keep"><w:top w:val="single" w:shadow="1" w:frame="1" w:space="3" w:themeColor="accent1"/><w:start w:val="double" w:sz="16" w:color="112233" w:shadow="1"/><w:end w:val="dotted" w:sz="8" w:color="445566" w:frame="1"/><w:insideH w:val="single" w:sz="8"/><w:insideV w:val="double" w:sz="16" w:shadow="1"/><x:extension x:value="keep"/></w:tblBorders></w:tblPr><w:tblGrid><w:gridCol w:w="2000"/></w:tblGrid><w:tr><w:tc><w:p/></w:tc></w:tr></w:tbl><w:p/></w:body></w:document>"##,
+                if bidi { "<w:bidiVisual/>" } else { "" }
+            ));
+            let mut doc =
+                executor::block_on(WordDocument::load(&data, &Options::default())).unwrap();
+            let before = exported_document_xml(&doc);
+            doc.set_table_borders(
+                0,
+                &TableBorderSpec {
+                    left: Some(BorderEdgeSpec {
+                        width: Some(3.0),
+                        color: Some("#654321".into()),
+                        ..Default::default()
+                    }),
+                    inside_h: Some(BorderEdgeSpec {
+                        style: Some("nil".into()),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                },
+            )
+            .unwrap();
+            let exported = doc.export_docx().unwrap();
+            let xml = read_document_xml_from_docx(&exported);
+            for name in ["top", if bidi { "start" } else { "end" }, "insideV"] {
+                let tag = format!("<w:{name} ");
+                let edge = before
+                    .split(&tag)
+                    .nth(1)
+                    .unwrap()
+                    .split("/>")
+                    .next()
+                    .unwrap();
+                assert!(
+                    xml.contains(&format!("{tag}{edge}/>")),
+                    "{name}, bidi={bidi}"
+                );
+            }
+            assert!(xml.contains("x:marker=\"keep\""));
+            assert!(xml.contains("<x:extension x:value=\"keep\"/>"));
+            assert!(!xml.contains("<w:left "));
+            assert!(!xml.contains("<w:right "));
+            let reopened =
+                executor::block_on(WordDocument::load(&exported, &Options::default())).unwrap();
+            assert_eq!(
+                doc.table_by_order(0).unwrap().borders,
+                reopened.table_by_order(0).unwrap().borders
+            );
+            let table = reopened.table_by_order(0).unwrap();
+            assert_eq!(
+                table
+                    .borders
+                    .as_ref()
+                    .unwrap()
+                    .physical_left(bidi)
+                    .unwrap()
+                    .color
+                    .as_deref(),
+                Some("#654321")
+            );
+            assert_eq!(
+                table
+                    .borders
+                    .as_ref()
+                    .unwrap()
+                    .inside_h
+                    .as_ref()
+                    .unwrap()
+                    .val
+                    .as_deref(),
+                Some("nil")
+            );
+        }
+    }
+
+    #[test]
+    fn table_border_edit_preserves_other_edge_theme_and_spacing() {
+        let data = build_document_docx(
+            r##"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:tbl><w:tblPr><w:tblBorders><w:top w:val="single" w:sz="8" w:space="3" w:color="123456" w:themeColor="accent1" w:themeTint="80" w:themeShade="BF"/></w:tblBorders></w:tblPr><w:tblGrid><w:gridCol w:w="2000"/></w:tblGrid><w:tr><w:tc><w:p/></w:tc></w:tr></w:tbl><w:p/></w:body></w:document>"##,
+        );
+        let mut doc = executor::block_on(WordDocument::load(&data, &Options::default())).unwrap();
+        let before = doc
+            .table_by_order(0)
+            .unwrap()
+            .borders
+            .as_ref()
+            .unwrap()
+            .top
+            .clone();
+        doc.set_table_borders(
+            0,
+            &TableBorderSpec {
+                bottom: Some(BorderEdgeSpec {
+                    width: Some(2.0),
+                    color: Some("#ABCDEF".into()),
+                    ..Default::default()
+                }),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        let exported = doc.export_docx().unwrap();
+        let xml = read_document_xml_from_docx(&exported);
+        assert!(xml.contains("w:space=\"3\""));
+        for attr in [
+            "w:themeColor=\"accent1\"",
+            "w:themeTint=\"80\"",
+            "w:themeShade=\"BF\"",
+        ] {
+            assert!(xml.contains(attr), "{attr}");
+        }
+        let reopened =
+            executor::block_on(WordDocument::load(&exported, &Options::default())).unwrap();
+        assert_eq!(
+            reopened
+                .table_by_order(0)
+                .unwrap()
+                .borders
+                .as_ref()
+                .unwrap()
+                .top,
+            before
+        );
+    }
+
+    #[test]
+    fn cell_border_edit_preserves_untouched_xml_and_replaces_logical_edge() {
+        for bidi in [false, true] {
+            let data = build_document_docx(&format!(
+                r##"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:tbl><w:tblPr>{}</w:tblPr><w:tblGrid><w:gridCol w:w="2000"/></w:tblGrid><w:tr><w:tc><w:tcPr><w:tcBorders><w:top w:val="single" w:space="3" w:themeColor="accent1" w:themeTint="80" w:shadow="1"/><w:start w:val="double" w:sz="16" w:color="112233"/><w:end w:val="dotted" w:sz="8" w:color="445566"/><w:tl2br w:val="single" w:themeColor="accent2"/><w:tr2bl w:val="double" w:color="ABCDEF"/></w:tcBorders></w:tcPr><w:p/></w:tc></w:tr></w:tbl><w:p/></w:body></w:document>"##,
+                if bidi { "<w:bidiVisual/>" } else { "" }
+            ));
+            let mut doc =
+                executor::block_on(WordDocument::load(&data, &Options::default())).unwrap();
+            let original = exported_document_xml(&doc);
+            doc.set_table_cell_borders(
+                0,
+                0,
+                0,
+                &TableBorderSpec {
+                    bottom: Some(BorderEdgeSpec {
+                        width: Some(2.0),
+                        color: Some("#FF0000".into()),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                },
+            )
+            .unwrap();
+            let xml = exported_document_xml(&doc);
+            for name in ["top", "start", "end", "tl2br", "tr2bl"] {
+                let tag = format!("<w:{name} ");
+                let edge = original
+                    .split(&tag)
+                    .nth(1)
+                    .unwrap()
+                    .split("/>")
+                    .next()
+                    .unwrap();
+                assert!(
+                    xml.contains(&format!("{tag}{edge}/>")),
+                    "{name}, bidi={bidi}"
+                );
+            }
+            doc.set_table_cell_borders(
+                0,
+                0,
+                0,
+                &TableBorderSpec {
+                    left: Some(BorderEdgeSpec {
+                        width: Some(3.0),
+                        color: Some("#654321".into()),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                },
+            )
+            .unwrap();
+            let exported = doc.export_docx().unwrap();
+            let xml = read_document_xml_from_docx(&exported);
+            let replaced = if bidi { "end" } else { "start" };
+            let retained = if bidi { "start" } else { "end" };
+            assert!(!xml.contains(&format!("<w:{replaced} ")));
+            assert!(xml.contains(&format!("<w:{retained} ")));
+            let reopened =
+                executor::block_on(WordDocument::load(&exported, &Options::default())).unwrap();
+            assert_eq!(
+                doc.cell_borders_from_style(0, 0, 0).unwrap(),
+                reopened.cell_borders_from_style(0, 0, 0).unwrap()
+            );
+        }
+    }
+
+    #[test]
+    fn cover_paragraph_border_preserves_theme_attributes_and_all_edges() {
+        let edge: crate::document::BorderEdge = serde_json::from_value(serde_json::json!({
+            "val": "single", "color": "#123456",
+            "themeColor": {"name": "accent1", "tint": "80", "shade": "BF"}
+        }))
+        .unwrap();
+        let mut paragraph = Paragraph {
+            properties: Some(crate::document::ParagraphProperties {
+                borders: Some(crate::document::ParagraphBorders {
+                    top: Some(edge.clone()),
+                    bottom: Some(edge.clone()),
+                    left: Some(edge.clone()),
+                    right: Some(edge.clone()),
+                    between: Some(edge.clone()),
+                    bar: Some(edge),
+                }),
+                ..Default::default()
+            }),
+            runs: Vec::new(),
+            node_id: None,
+            comment_ranges: Vec::new(),
+            comment_markers: Vec::new(),
+        };
+        let mut raw = DocxXmlDocument::parse("<root/>").unwrap();
+        let element = WordDocument::create_cover_paragraph_element(&mut raw, &mut paragraph);
+        let child = |element: &XmlElement, name: &str| {
+            element
+                .children
+                .iter()
+                .find_map(|node| match node {
+                    XmlNode::Element(child) if child.name == name => Some(child.clone()),
+                    _ => None,
+                })
+                .unwrap()
+        };
+        let borders = child(&child(&element, "w:pPr"), "w:pBdr");
+        for name in [
+            "w:top",
+            "w:bottom",
+            "w:left",
+            "w:right",
+            "w:between",
+            "w:bar",
+        ] {
+            let actual = child(&borders, name);
+            for (name, value) in [
+                ("w:themeColor", "accent1"),
+                ("w:themeTint", "80"),
+                ("w:themeShade", "BF"),
+            ] {
+                assert!(
+                    actual
+                        .attributes
+                        .iter()
+                        .any(|attr| attr.name == name && attr.value == value),
+                    "{name}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn cover_paragraph_shading_preserves_foreground_and_theme_attributes() {
+        let shading = crate::document::Shading {
+            val: Some("solid".into()),
+            color: Some("#123456".into()),
+            fill: Some("#ABCDEF".into()),
+            theme_color: Some(Box::new(crate::document::RunThemeColor {
+                name: "accent1".into(),
+                tint: Some("80".into()),
+                shade: Some("BF".into()),
+            })),
+            theme_fill: Some(Box::new(crate::document::RunThemeColor {
+                name: "accent2".into(),
+                tint: Some("40".into()),
+                shade: Some("C0".into()),
+            })),
+        };
+        let mut paragraph = Paragraph {
+            runs: Vec::new(),
+            properties: Some(crate::document::ParagraphProperties {
+                shading: Some(shading.clone()),
+                ..Default::default()
+            }),
+            node_id: None,
+            comment_ranges: Vec::new(),
+            comment_markers: Vec::new(),
+        };
+        let mut raw = DocxXmlDocument::parse("<root/>").unwrap();
+        let element = WordDocument::create_cover_paragraph_element(&mut raw, &mut paragraph);
+        let property = element
+            .children
+            .iter()
+            .find_map(|node| match node {
+                XmlNode::Element(child) if child.name == "w:pPr" => Some(child),
+                _ => None,
+            })
+            .unwrap();
+        let actual = property
+            .children
+            .iter()
+            .find_map(|node| match node {
+                XmlNode::Element(child) if child.name == "w:shd" => Some(child),
+                _ => None,
+            })
+            .unwrap();
+        for (name, value) in [
+            ("w:val", "solid"),
+            ("w:color", "123456"),
+            ("w:fill", "ABCDEF"),
+        ]
+        .into_iter()
+        .chain(shading.theme_attributes())
+        {
+            assert!(
+                actual
+                    .attributes
+                    .iter()
+                    .any(|attribute| attribute.name == name && attribute.value == value),
+                "{name}"
             );
         }
     }
@@ -47142,6 +50041,195 @@ mod tests {
     }
 
     #[test]
+    fn header_footer_multiline_font_steps_preserve_sizes_styles_and_round_trip() {
+        use crate::commands::adjust_font_size::{FontSizeDirection, FontSizeStep};
+        for role in [HeaderFooterRole::Header, HeaderFooterRole::Footer] {
+            for variant in [
+                HeaderFooterVariant::Default,
+                HeaderFooterVariant::First,
+                HeaderFooterVariant::Even,
+            ] {
+                for reverse in [false, true] {
+                    for end_offset in [0, 2] {
+                        for (direction, step, styled, explicit, complex) in [
+                            (
+                                FontSizeDirection::Grow,
+                                FontSizeStep::Ladder,
+                                18.0,
+                                26.0,
+                                16.0,
+                            ),
+                            (
+                                FontSizeDirection::Shrink,
+                                FontSizeStep::Ladder,
+                                14.0,
+                                22.0,
+                                14.0,
+                            ),
+                            (
+                                FontSizeDirection::Grow,
+                                FontSizeStep::Point,
+                                17.0,
+                                25.0,
+                                16.0,
+                            ),
+                            (
+                                FontSizeDirection::Shrink,
+                                FontSizeStep::Point,
+                                15.0,
+                                23.0,
+                                14.0,
+                            ),
+                        ] {
+                            let mut doc = futures::executor::block_on(WordDocument::load(
+                                &build_font_size_fallback_docx(),
+                                &Options::default(),
+                            ))
+                            .unwrap();
+                            doc.ensure_hf_part_for_edit(role, variant).unwrap();
+                            let path = doc
+                                .resolve_header_footer_part_path_for(role, variant)
+                                .unwrap();
+                            let root = if role == HeaderFooterRole::Header {
+                                "hdr"
+                            } else {
+                                "ftr"
+                            };
+                            doc.upsert_xml_part_content(&path, format!(r#"<w:{root} xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:test="urn:jade:test">
+                                <w:p><w:pPr><w:pStyle w:val="Custom"/><w:spacing w:after="120"/></w:pPr><w:hyperlink w:anchor="keep"><w:r w:rsidR="12345678"><w:rPr><w:i/></w:rPr><w:t>a日</w:t></w:r></w:hyperlink><w:r><w:rPr><w:sz w:val="48"/><w:i/></w:rPr><w:t>bc</w:t></w:r></w:p>
+                                <w:p><w:pPr><w:pStyle w:val="Custom"/></w:pPr><w:r test:marker="empty"><w:rPr><w:i/></w:rPr></w:r></w:p>
+                                <w:p><w:r><w:rPr><w:szCs w:val="30"/><w:i/></w:rPr><w:t>uvw</w:t></w:r></w:p>
+                                <w:p><w:r><w:rPr><w:sz w:val="40"/></w:rPr><w:t>tail</w:t></w:r></w:p>
+                            </w:{root}>"#));
+                            doc.refresh_header_footer_lines_for(role, variant, &path)
+                                .unwrap();
+                            let body_before =
+                                doc.read_xml_part_content("word/document.xml").unwrap();
+                            let start = TextPosition::new(0, 1);
+                            let end = TextPosition::new(2, end_offset);
+                            let range = if reverse {
+                                SelectionRange::new(end, start)
+                            } else {
+                                SelectionRange::new(start, end)
+                            };
+                            assert!(doc
+                                .adjust_hf_story_font_size(role, variant, range, direction, step)
+                                .unwrap());
+                            assert_eq!(
+                                doc.read_xml_part_content("word/document.xml").unwrap(),
+                                body_before
+                            );
+                            let reopened = futures::executor::block_on(WordDocument::load(
+                                &doc.export_docx().unwrap(),
+                                &Options::default(),
+                            ))
+                            .unwrap();
+                            for checked in [&doc, &reopened] {
+                                let content = checked.read_xml_part_content(&path).unwrap();
+                                assert!(content.contains("w:anchor=\"keep\""));
+                                assert!(content.contains("w:spacing w:after=\"120\""));
+                                assert_eq!(content.matches("test:marker=\"empty\"").count(), 1);
+                                let xml = DocxXmlDocument::parse(&content).unwrap();
+                                let mut paragraphs = Vec::new();
+                                WordDocument::collect_story_paragraph_ids(
+                                    xml.root(),
+                                    &mut paragraphs,
+                                );
+                                assert_eq!(paragraphs.len(), 4);
+                                for (index, id) in paragraphs.into_iter().enumerate() {
+                                    let runs = WordDocument::hf_text_runs(&xml, id).unwrap();
+                                    assert_eq!(
+                                        runs.iter()
+                                            .map(|run| run.text.as_str())
+                                            .collect::<String>(),
+                                        ["a日bc", "", "uvw", "tail"][index]
+                                    );
+                                    if index == 1 {
+                                        assert_eq!(runs.len(), 1);
+                                    }
+                                    for run in runs {
+                                        let props = xml
+                                            .element(run.id)
+                                            .and_then(WordDocument::run_properties_element);
+                                        let value = |name| {
+                                            WordDocument::run_property_child_value(props, name)
+                                                .and_then(|v| v.parse::<f32>().ok())
+                                                .map(|v| v / 2.0)
+                                        };
+                                        let expected = match index {
+                                            0 if run.end <= 1 => 16.0,
+                                            0 if run.start < 4 => styled,
+                                            0 => explicit,
+                                            1 => styled,
+                                            2 if run.end <= end_offset => complex,
+                                            2 => 15.0,
+                                            _ => 20.0,
+                                        };
+                                        let actual = value("w:sz")
+                                            .or_else(|| value("w:szCs"))
+                                            .unwrap_or(16.0);
+                                        assert_eq!(
+                                            actual, expected,
+                                            "paragraph {index}, text {}",
+                                            run.text
+                                        );
+                                        let selected = match index {
+                                            0 => run.start >= 1,
+                                            1 => true,
+                                            2 => run.end <= end_offset,
+                                            _ => false,
+                                        };
+                                        if selected {
+                                            assert_eq!(value("w:szCs"), Some(expected));
+                                        }
+                                        assert_eq!(props.is_some_and(|p| p.children.iter().any(|c| matches!(c, XmlNode::Element(e) if e.name == "w:i"))), index < 3);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn header_footer_multiline_font_steps_reject_invalid_ranges_atomically() {
+        use crate::commands::adjust_font_size::{FontSizeDirection, FontSizeStep};
+        let mut doc = futures::executor::block_on(WordDocument::load(
+            &build_font_size_fallback_docx(),
+            &Options::default(),
+        ))
+        .unwrap();
+        let role = HeaderFooterRole::Header;
+        let variant = HeaderFooterVariant::Default;
+        doc.ensure_hf_part_for_edit(role, variant).unwrap();
+        let path = doc
+            .resolve_header_footer_part_path_for(role, variant)
+            .unwrap();
+        doc.upsert_xml_part_content(&path, r#"<w:hdr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:p><w:r><w:t>A日本</w:t></w:r></w:p><w:p><w:fldSimple w:instr="PAGE"><w:r><w:t>1</w:t></w:r></w:fldSimple></w:p></w:hdr>"#.into());
+        let original = doc.read_xml_part_content(&path).unwrap();
+        for range in [
+            SelectionRange::new(TextPosition::new(0, 2), TextPosition::new(0, 4)),
+            SelectionRange::new(TextPosition::new(0, 0), TextPosition::new(0, 99)),
+            SelectionRange::new(TextPosition::new(0, 0), TextPosition::new(2, 0)),
+            SelectionRange::new(TextPosition::new(0, 0), TextPosition::new(1, 1)),
+            SelectionRange::collapsed(TextPosition::new(0, 0)),
+        ] {
+            assert!(!doc
+                .adjust_hf_story_font_size(
+                    role,
+                    variant,
+                    range,
+                    FontSizeDirection::Grow,
+                    FontSizeStep::Ladder
+                )
+                .unwrap());
+            assert_eq!(doc.read_xml_part_content(&path).unwrap(), original);
+        }
+    }
+
+    #[test]
     fn header_footer_font_steps_resolve_styles_defaults_and_complex_size() {
         use crate::commands::adjust_font_size::{FontSizeDirection, FontSizeStep};
 
@@ -47617,6 +50705,2002 @@ mod tests {
     }
 
     #[test]
+    fn header_footer_fields_can_be_inserted_next_to_existing_fields() {
+        use jade_docx_headless_api::HeadlessFieldKind;
+        let data = std::fs::read(fixture_path("hello.docx")).unwrap();
+        let page = crate::document::PAGE_FIELD_PLACEHOLDER;
+        for role in [HeaderFooterRole::Header, HeaderFooterRole::Footer] {
+            for variant in [
+                HeaderFooterVariant::Default,
+                HeaderFooterVariant::First,
+                HeaderFooterVariant::Even,
+            ] {
+                let mut source =
+                    executor::block_on(WordDocument::load(&data, &Options::default())).unwrap();
+                source.ensure_hf_part_for_edit(role, variant).unwrap();
+                let path = source
+                    .resolve_header_footer_part_path_for(role, variant)
+                    .unwrap();
+                let tag = if role == HeaderFooterRole::Header {
+                    "hdr"
+                } else {
+                    "ftr"
+                };
+                source.upsert_xml_part_content(&path, format!(r#"<w:{tag} xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:p w:rsidR="12345678"><w:pPr><w:spacing w:after="120"/></w:pPr><w:r><w:t>A</w:t></w:r><w:fldSimple w:instr=" PAGE "><w:r><w:t>7</w:t></w:r></w:fldSimple><w:r><w:t>日本</w:t></w:r><w:fldSimple w:instr=" DATE "><w:r><w:t>2026</w:t></w:r></w:fldSimple><w:r><w:t>Z</w:t></w:r></w:p></w:{tag}>"#));
+                source
+                    .refresh_header_footer_lines_for(role, variant, &path)
+                    .unwrap();
+                let visible = format!("A{page}日本2026Z");
+                let body = source.raw_document.as_ref().unwrap().to_string().unwrap();
+                for offset in [
+                    0,
+                    1,
+                    1 + page.len(),
+                    1 + page.len() + 3,
+                    1 + page.len() + 6,
+                    visible.len(),
+                ] {
+                    for kind in [
+                        HeadlessFieldKind::Date,
+                        HeadlessFieldKind::Page,
+                        HeadlessFieldKind::NumPages,
+                    ] {
+                        let mut doc = source.clone();
+                        let cached = "2000";
+                        let inserted = match kind {
+                            HeadlessFieldKind::Page => page,
+                            HeadlessFieldKind::NumPages => {
+                                crate::document::PAGE_COUNT_FIELD_PLACEHOLDER
+                            }
+                            _ => cached,
+                        };
+                        assert_eq!(
+                            doc.insert_hf_story_field(
+                                role,
+                                variant,
+                                SelectionRange::collapsed(TextPosition::new(0, offset)),
+                                kind,
+                                cached
+                            )
+                            .unwrap(),
+                            Some(TextPosition::new(0, offset + inserted.len()))
+                        );
+                        let reopened = executor::block_on(WordDocument::load(
+                            &doc.export_docx().unwrap(),
+                            &Options::default(),
+                        ))
+                        .unwrap();
+                        let paragraph = reopened.hf_ruler_paragraph(role, variant, 0).unwrap();
+                        assert_eq!(
+                            WordDocument::hf_field_edit_paragraph_text(&paragraph).unwrap(),
+                            format!("{}{}{}", &visible[..offset], inserted, &visible[offset..]),
+                            "role={role:?}, variant={variant:?}, offset={offset}, kind={kind:?}"
+                        );
+                        let fields = paragraph
+                            .runs
+                            .iter()
+                            .filter_map(|run| run.field.as_ref())
+                            .collect::<Vec<_>>();
+                        assert_eq!(fields.len(), 3);
+                        assert!(fields
+                            .iter()
+                            .any(|field| field.cached_text.as_deref() == Some("7")));
+                        assert!(fields
+                            .iter()
+                            .any(|field| field.cached_text.as_deref() == Some("2026")));
+                        assert_eq!(
+                            doc.raw_document.as_ref().unwrap().to_string().unwrap(),
+                            body
+                        );
+                        let xml = doc.read_xml_part_content(&path).unwrap();
+                        assert!(xml.contains("12345678"));
+                        assert!(xml.contains("w:after=\"120\""));
+                    }
+                }
+                for offset in [2, 1 + page.len() + 7] {
+                    let mut doc = source.clone();
+                    let baseline = doc.export_docx().unwrap();
+                    assert!(doc
+                        .insert_hf_story_field(
+                            role,
+                            variant,
+                            SelectionRange::collapsed(TextPosition::new(0, offset)),
+                            HeadlessFieldKind::Date,
+                            "2000"
+                        )
+                        .unwrap()
+                        .is_none());
+                    assert_eq!(doc.export_docx().unwrap(), baseline);
+                }
+                let mut doc = source.clone();
+                let range = SelectionRange::new(
+                    TextPosition::new(0, 1),
+                    TextPosition::new(0, 1 + page.len()),
+                );
+                doc.insert_hf_story_field(role, variant, range, HeadlessFieldKind::Date, "2000")
+                    .unwrap()
+                    .unwrap();
+                let reopened = executor::block_on(WordDocument::load(
+                    &doc.export_docx().unwrap(),
+                    &Options::default(),
+                ))
+                .unwrap();
+                assert_eq!(
+                    WordDocument::hf_field_edit_paragraph_text(
+                        &reopened.hf_ruler_paragraph(role, variant, 0).unwrap()
+                    )
+                    .unwrap(),
+                    "A2000日本2026Z"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn header_footer_selected_fields_are_replaced_without_stale_xml() {
+        use jade_docx_headless_api::HeadlessFieldKind;
+        let data = std::fs::read(fixture_path("hello.docx")).unwrap();
+        let page = crate::document::PAGE_FIELD_PLACEHOLDER;
+        for role in [HeaderFooterRole::Header, HeaderFooterRole::Footer] {
+            for variant in [
+                HeaderFooterVariant::Default,
+                HeaderFooterVariant::First,
+                HeaderFooterVariant::Even,
+            ] {
+                for complex in [false, true] {
+                    let field = |instruction: &str, result: &str| {
+                        if complex {
+                            format!(
+                                r#"<w:r><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:instrText xml:space="preserve"> {instruction} </w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r><w:r><w:t>{result}</w:t></w:r><w:r><w:fldChar w:fldCharType="end"/></w:r>"#
+                            )
+                        } else {
+                            format!(
+                                r#"<w:fldSimple w:instr=" {instruction} "><w:r><w:t>{result}</w:t></w:r></w:fldSimple>"#
+                            )
+                        }
+                    };
+                    let mut source =
+                        executor::block_on(WordDocument::load(&data, &Options::default())).unwrap();
+                    source.ensure_hf_part_for_edit(role, variant).unwrap();
+                    let path = source
+                        .resolve_header_footer_part_path_for(role, variant)
+                        .unwrap();
+                    let tag = if role == HeaderFooterRole::Header {
+                        "hdr"
+                    } else {
+                        "ftr"
+                    };
+                    source.upsert_xml_part_content(&path, format!(r#"<w:{tag} xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:p w:rsidR="12345678"><w:pPr><w:spacing w:after="120"/></w:pPr><w:r><w:t>A</w:t></w:r>{}<w:r><w:t>日本</w:t></w:r>{}<w:r><w:t>Z</w:t></w:r></w:p><w:p><w:r><w:t>Q</w:t></w:r>{}<w:r><w:t>E</w:t></w:r></w:p></w:{tag}>"#, field("PAGE", "7"), field("DATE", "2026"), field("PAGE", "9")));
+                    source
+                        .refresh_header_footer_lines_for(role, variant, &path)
+                        .unwrap();
+                    let original_body = source.raw_document.as_ref().unwrap().to_string().unwrap();
+                    let first = format!("A{page}日本2026Z");
+                    let second = format!("Q{page}E");
+                    for (start, end, inserted) in [
+                        (0, 0, "前"),
+                        (1, 1, "前"),
+                        (1 + page.len(), 1 + page.len(), "後"),
+                        (first.len() - 5, first.len() - 5, "前"),
+                        (first.len() - 1, first.len() - 1, "後"),
+                        (first.len(), first.len(), "後"),
+                        (0, 1, ""),
+                        (1 + page.len(), 1 + page.len() + "日".len(), ""),
+                        (first.len() - 1, first.len(), ""),
+                        (1, 1, "\t"),
+                        (1 + page.len(), 1 + page.len(), "\t"),
+                        (first.len() - 5, first.len() - 5, "左\t右"),
+                        (first.len() - 1, first.len() - 1, "\t"),
+                        (0, 0, "\t\t"),
+                        (0, 1, "前\t後"),
+                    ] {
+                        let mut edited = source.clone();
+                        assert!(
+                            edited
+                                .edit_hf_paragraph_range(role, variant, 0, start, end, inserted)
+                                .unwrap(),
+                            "text edit complex={complex} {start}..{end}"
+                        );
+                        let mut expected = first.clone();
+                        expected.replace_range(start..end, inserted);
+                        let reopened = executor::block_on(WordDocument::load(
+                            &edited.export_docx().unwrap(),
+                            &Options::default(),
+                        ))
+                        .unwrap();
+                        assert_eq!(
+                            WordDocument::hf_field_edit_paragraph_text(
+                                &reopened.hf_ruler_paragraph(role, variant, 0).unwrap()
+                            )
+                            .unwrap(),
+                            expected,
+                            "text edit complex={complex} {start}..{end}"
+                        );
+                        let xml = reopened.read_xml_part_content(&path).unwrap();
+                        if inserted.contains('\t') {
+                            assert!(xml.contains("<w:tab/>") || xml.contains("<w:tab />"));
+                            assert!(xml.contains("w:val=\"center\""));
+                            assert!(xml.contains("w:val=\"right\""));
+                        }
+                        assert_eq!(xml.matches(" PAGE ").count(), 2);
+                        assert_eq!(xml.matches(" DATE ").count(), 1);
+                        assert!(
+                            xml.contains(">7<") && xml.contains(">9<") && xml.contains(">2026<")
+                        );
+                        assert_eq!(
+                            reopened.raw_document.as_ref().unwrap().to_string().unwrap(),
+                            original_body
+                        );
+                    }
+                    for byte_offset in [
+                        0,
+                        1,
+                        1 + page.len(),
+                        first.len() - 5,
+                        first.len() - 1,
+                        first.len(),
+                    ] {
+                        for count in [1, 2] {
+                            let mut split = source.clone();
+                            split
+                                .split_hf_paragraph_at_display_offset(
+                                    role,
+                                    variant,
+                                    0,
+                                    first[..byte_offset].chars().count(),
+                                    count,
+                                )
+                                .unwrap();
+                            let reopened = executor::block_on(WordDocument::load(
+                                &split.export_docx().unwrap(),
+                                &Options::default(),
+                            ))
+                            .unwrap();
+                            for (index, expected) in [
+                                (0, &first[..byte_offset]),
+                                (count, &first[byte_offset..]),
+                                (count + 1, second.as_str()),
+                            ] {
+                                assert_eq!(
+                                    WordDocument::hf_field_edit_paragraph_text(
+                                        &reopened.hf_ruler_paragraph(role, variant, index).unwrap()
+                                    )
+                                    .unwrap(),
+                                    expected,
+                                    "split complex={complex} offset={byte_offset} count={count}"
+                                );
+                            }
+                            let xml = reopened.read_xml_part_content(&path).unwrap();
+                            assert_eq!(xml.matches(" PAGE ").count(), 2);
+                            assert_eq!(xml.matches(" DATE ").count(), 1);
+                            assert!(
+                                xml.contains(">7<")
+                                    && xml.contains(">9<")
+                                    && xml.contains(">2026<")
+                            );
+                            assert_eq!(
+                                reopened.raw_document.as_ref().unwrap().to_string().unwrap(),
+                                original_body
+                            );
+                        }
+                    }
+                    let mut rejected = source.clone();
+                    assert!(rejected
+                        .split_hf_paragraph_at_display_offset(
+                            role,
+                            variant,
+                            0,
+                            first[..first.len() - 5].chars().count() + 1,
+                            1
+                        )
+                        .is_err());
+                    assert_eq!(
+                        rejected.read_xml_part_content(&path),
+                        source.read_xml_part_content(&path)
+                    );
+                    let mut merged = source.clone();
+                    merged
+                        .merge_hf_paragraph_with_previous(role, variant, 1)
+                        .unwrap();
+                    let reopened = executor::block_on(WordDocument::load(
+                        &merged.export_docx().unwrap(),
+                        &Options::default(),
+                    ))
+                    .unwrap();
+                    assert_eq!(
+                        WordDocument::hf_field_edit_paragraph_text(
+                            &reopened.hf_ruler_paragraph(role, variant, 0).unwrap()
+                        )
+                        .unwrap(),
+                        format!("{first}{second}")
+                    );
+                    assert!(reopened.hf_ruler_paragraph(role, variant, 1).is_none());
+                    let xml = reopened.read_xml_part_content(&path).unwrap();
+                    assert_eq!(xml.matches(" PAGE ").count(), 2);
+                    assert_eq!(xml.matches(" DATE ").count(), 1);
+                    assert!(xml.contains(">7<") && xml.contains(">9<") && xml.contains(">2026<"));
+                    assert_eq!(
+                        reopened.raw_document.as_ref().unwrap().to_string().unwrap(),
+                        original_body
+                    );
+                    for (paragraph, start, end) in [
+                        (0, 1, 1 + page.len()),
+                        (0, 1 + page.len() + "日本".len(), first.len() - 1),
+                        (1, 1, 1 + page.len()),
+                    ] {
+                        for backward in [false, true] {
+                            assert_eq!(
+                                source.hf_adjacent_field_selection(
+                                    role,
+                                    variant,
+                                    TextPosition::new(
+                                        paragraph,
+                                        if backward { end } else { start }
+                                    ),
+                                    backward,
+                                ),
+                                Some(SelectionRange::new(
+                                    TextPosition::new(paragraph, start),
+                                    TextPosition::new(paragraph, end),
+                                ))
+                            );
+                        }
+                    }
+                    for (offset, backward) in [
+                        (0, true),
+                        (0, false),
+                        (first.len(), false),
+                        (first.len(), true),
+                        (first.len() - 3, false),
+                        (first.len() - 3, true),
+                    ] {
+                        assert_eq!(
+                            source.hf_adjacent_field_selection(
+                                role,
+                                variant,
+                                TextPosition::new(0, offset),
+                                backward
+                            ),
+                            None
+                        );
+                    }
+                    for (start, end, expected, remaining_page, remaining_date) in [
+                        (
+                            TextPosition::new(0, 1),
+                            TextPosition::new(0, 1 + page.len()),
+                            vec!["A2000日本2026Z".to_owned(), second.clone()],
+                            1,
+                            2,
+                        ),
+                        (
+                            TextPosition::new(0, 1 + page.len() + "日本".len()),
+                            TextPosition::new(0, first.len() - 1),
+                            vec![format!("A{page}日本2000Z"), second.clone()],
+                            2,
+                            1,
+                        ),
+                        (
+                            TextPosition::new(0, 1),
+                            TextPosition::new(0, first.len() - 1),
+                            vec!["A2000Z".to_owned(), second.clone()],
+                            1,
+                            1,
+                        ),
+                        (
+                            TextPosition::new(0, 1),
+                            TextPosition::new(1, 1 + page.len()),
+                            vec!["A2000E".to_owned()],
+                            0,
+                            1,
+                        ),
+                    ] {
+                        for reverse in [false, true] {
+                            let mut doc = source.clone();
+                            let range = if reverse {
+                                SelectionRange::new(end, start)
+                            } else {
+                                SelectionRange::new(start, end)
+                            };
+                            let mut deleted = source.clone();
+                            assert_eq!(
+                                deleted
+                                    .delete_hf_story_selection(role, variant, range)
+                                    .unwrap(),
+                                Some(start)
+                            );
+                            let reopened_deleted = executor::block_on(WordDocument::load(
+                                &deleted.export_docx().unwrap(),
+                                &Options::default(),
+                            ))
+                            .unwrap();
+                            let expected_deleted = expected
+                                .iter()
+                                .map(|text| text.replacen("2000", "", 1))
+                                .collect::<Vec<_>>();
+                            let actual_deleted = (0..expected_deleted.len())
+                                .map(|index| {
+                                    WordDocument::hf_field_edit_paragraph_text(
+                                        &reopened_deleted
+                                            .hf_ruler_paragraph(role, variant, index)
+                                            .unwrap(),
+                                    )
+                                    .unwrap()
+                                })
+                                .collect::<Vec<_>>();
+                            assert_eq!(
+                                actual_deleted, expected_deleted,
+                                "delete {role:?} {variant:?} complex={complex} range={range:?}"
+                            );
+                            let deleted_xml =
+                                reopened_deleted.read_xml_part_content(&path).unwrap();
+                            assert_eq!(
+                                deleted_xml.matches(" PAGE ").count(),
+                                remaining_page,
+                                "{deleted_xml}"
+                            );
+                            assert_eq!(
+                                deleted_xml.matches(" DATE ").count(),
+                                remaining_date - 1,
+                                "{deleted_xml}"
+                            );
+                            assert_eq!(
+                                deleted.raw_document.as_ref().unwrap().to_string().unwrap(),
+                                original_body
+                            );
+                            assert_eq!(
+                                doc.insert_hf_story_field(
+                                    role,
+                                    variant,
+                                    range,
+                                    HeadlessFieldKind::Date,
+                                    "2000"
+                                )
+                                .unwrap(),
+                                Some(TextPosition::new(start.paragraph, start.offset + 4)),
+                                "{role:?} {variant:?} complex={complex} range={range:?}"
+                            );
+                            let reopened = executor::block_on(WordDocument::load(
+                                &doc.export_docx().unwrap(),
+                                &Options::default(),
+                            ))
+                            .unwrap();
+                            let actual = (0..expected.len())
+                                .map(|index| {
+                                    WordDocument::hf_field_edit_paragraph_text(
+                                        &reopened.hf_ruler_paragraph(role, variant, index).unwrap(),
+                                    )
+                                    .unwrap()
+                                })
+                                .collect::<Vec<_>>();
+                            assert_eq!(
+                                actual, expected,
+                                "{role:?} {variant:?} complex={complex} range={range:?}"
+                            );
+                            let xml = reopened.read_xml_part_content(&path).unwrap();
+                            assert_eq!(xml.matches(" PAGE ").count(), remaining_page, "{xml}");
+                            assert_eq!(xml.matches(" DATE ").count(), remaining_date, "{xml}");
+                            assert_eq!(
+                                xml.matches("w:fldCharType=\"begin\"").count(),
+                                if complex {
+                                    remaining_page + remaining_date - 1
+                                } else {
+                                    0
+                                },
+                                "{xml}"
+                            );
+                            assert!(xml.contains("12345678"));
+                            assert!(xml.contains("w:after=\"120\""));
+                            assert_eq!(
+                                doc.raw_document.as_ref().unwrap().to_string().unwrap(),
+                                original_body
+                            );
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn header_footer_target_cross_references_are_atomic_and_roundtrip() {
+        let data = build_docx_from_parts(&[
+            (
+                "[Content_Types].xml",
+                r#"<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="xml" ContentType="application/xml"/><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>"#,
+            ),
+            (
+                "_rels/.rels",
+                r#"<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>"#,
+            ),
+            (
+                "word/document.xml",
+                r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:pPr><w:outlineLvl w:val="0"/></w:pPr><w:r><w:t>見出し 😀</w:t></w:r></w:p><w:p><w:r><w:t xml:space="preserve">図 </w:t></w:r><w:fldSimple w:instr=" SEQ 図 "><w:r><w:t>1</w:t></w:r></w:fldSimple><w:r><w:t xml:space="preserve"> 構成</w:t></w:r></w:p></w:body></w:document>"#,
+            ),
+        ]);
+        let mut source =
+            executor::block_on(WordDocument::load(&data, &Options::default())).unwrap();
+        source.insert_footnote_at(0, 0, "脚注").unwrap();
+        source.insert_endnote_at(0, 0, "文末脚注").unwrap();
+        let targets = source.cross_reference_targets();
+        assert_eq!(targets.len(), 4);
+        for role in [HeaderFooterRole::Header, HeaderFooterRole::Footer] {
+            for variant in [
+                HeaderFooterVariant::Default,
+                HeaderFooterVariant::First,
+                HeaderFooterVariant::Even,
+            ] {
+                for target in &targets {
+                    let note = matches!(
+                        target.target_type,
+                        CrossReferenceTargetType::Footnote | CrossReferenceTargetType::Endnote
+                    );
+                    for kind in [
+                        CrossReferenceKind::Text,
+                        CrossReferenceKind::Page,
+                        CrossReferenceKind::Number,
+                    ] {
+                        let supported = if note {
+                            kind != CrossReferenceKind::Text
+                        } else {
+                            kind != CrossReferenceKind::Number
+                                || target.target_type == CrossReferenceTargetType::Caption
+                        };
+                        let mut doc = source.clone();
+                        doc.ensure_hf_part_for_edit(role, variant).unwrap();
+                        let path = doc
+                            .resolve_header_footer_part_path_for(role, variant)
+                            .unwrap();
+                        let tag = if role == HeaderFooterRole::Header {
+                            "hdr"
+                        } else {
+                            "ftr"
+                        };
+                        doc.upsert_xml_part_content(&path, format!(r#"<w:{tag} xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:p><w:r><w:t>日本</w:t></w:r></w:p><w:p/></w:{tag}>"#));
+                        doc.refresh_header_footer_lines_for(role, variant, &path)
+                            .unwrap();
+                        let baseline = doc.export_docx().unwrap();
+                        let range = SelectionRange::collapsed(TextPosition::new(0, 3));
+                        let mut stale = target.clone();
+                        stale.id = "missing".into();
+                        assert!(doc
+                            .insert_hf_story_target_cross_reference(
+                                role, variant, range, &stale, kind
+                            )
+                            .is_err());
+                        assert_eq!(doc.export_docx().unwrap(), baseline);
+                        if !supported {
+                            assert!(doc
+                                .insert_hf_story_target_cross_reference(
+                                    role, variant, range, target, kind
+                                )
+                                .is_err());
+                            assert_eq!(doc.export_docx().unwrap(), baseline);
+                            continue;
+                        }
+                        assert!(doc
+                            .insert_hf_story_target_cross_reference(
+                                role,
+                                variant,
+                                SelectionRange::collapsed(TextPosition::new(0, 1)),
+                                target,
+                                kind
+                            )
+                            .unwrap()
+                            .is_none());
+                        assert_eq!(doc.export_docx().unwrap(), baseline);
+                        assert!(doc.document.as_ref().unwrap().bookmarks.is_empty());
+                        assert!(doc
+                            .insert_hf_story_target_cross_reference(
+                                role, variant, range, target, kind
+                            )
+                            .unwrap()
+                            .is_some());
+                        assert_eq!(doc.document.as_ref().unwrap().bookmarks.len(), 1);
+                        // Reuse the same hidden target bookmark in another paragraph.
+                        assert!(doc
+                            .insert_hf_story_target_cross_reference(
+                                role,
+                                variant,
+                                SelectionRange::collapsed(TextPosition::new(1, 0)),
+                                target,
+                                kind
+                            )
+                            .unwrap()
+                            .is_some());
+                        assert_eq!(doc.document.as_ref().unwrap().bookmarks.len(), 1);
+                        let reopened = executor::block_on(WordDocument::load(
+                            &doc.export_docx().unwrap(),
+                            &Options::default(),
+                        ))
+                        .unwrap();
+                        let name = &reopened.document.as_ref().unwrap().bookmarks[0].name;
+                        for index in 0..2 {
+                            let paragraph =
+                                reopened.hf_ruler_paragraph(role, variant, index).unwrap();
+                            let run = paragraph
+                                .runs
+                                .iter()
+                                .find(|run| run.field.is_some())
+                                .unwrap();
+                            let field = run.field.as_ref().unwrap();
+                            match &field.kind {
+                                RunFieldKind::NoteRef {
+                                    name: actual,
+                                    hyperlink: true,
+                                    ..
+                                } if note && kind == CrossReferenceKind::Number => {
+                                    assert_eq!(actual, name)
+                                }
+                                RunFieldKind::PageRef {
+                                    name: actual,
+                                    hyperlink: true,
+                                } if kind == CrossReferenceKind::Page => assert_eq!(actual, name),
+                                RunFieldKind::Ref {
+                                    name: actual,
+                                    hyperlink: true,
+                                    ..
+                                } if !note && kind != CrossReferenceKind::Page => {
+                                    assert_eq!(actual, name)
+                                }
+                                other => panic!("unexpected field {other:?}"),
+                            }
+                            let cached = field.cached_text.as_deref().unwrap_or(&run.text);
+                            let expected = if kind == CrossReferenceKind::Number
+                                && target.target_type == CrossReferenceTargetType::Endnote
+                            {
+                                "i"
+                            } else if kind == CrossReferenceKind::Page
+                                || kind == CrossReferenceKind::Number
+                            {
+                                "1"
+                            } else {
+                                &target.label
+                            };
+                            assert_eq!(cached, expected);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn header_footer_cross_references_preserve_body_targets_and_roundtrip() {
+        let data = std::fs::read(fixture_path("hello.docx")).unwrap();
+        for role in [HeaderFooterRole::Header, HeaderFooterRole::Footer] {
+            for variant in [
+                HeaderFooterVariant::Default,
+                HeaderFooterVariant::First,
+                HeaderFooterVariant::Even,
+            ] {
+                for target in [
+                    "日本語の参照先".to_owned(),
+                    String::new(),
+                    "長".repeat(1100),
+                ] {
+                    for kind in [CrossReferenceKind::Text, CrossReferenceKind::Page] {
+                        for offset in [0, 1, 7, 8] {
+                            let mut doc =
+                                executor::block_on(WordDocument::load(&data, &Options::default()))
+                                    .unwrap();
+                            doc.paragraph_mut(0).unwrap().runs = vec![blank_run(&target)];
+                            doc.sync_paragraph_text_preserving_drawings(0);
+                            doc.create_bookmark_at_paragraph(0, "参照先_1").unwrap();
+                            doc.ensure_hf_part_for_edit(role, variant).unwrap();
+                            let path = doc
+                                .resolve_header_footer_part_path_for(role, variant)
+                                .unwrap();
+                            let tag = if role == HeaderFooterRole::Header {
+                                "hdr"
+                            } else {
+                                "ftr"
+                            };
+                            doc.upsert_xml_part_content(&path, format!(r#"<w:{tag} xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:p w:rsidR="12345678"><w:pPr><w:spacing w:after="120"/></w:pPr><w:r><w:rPr><w:b/></w:rPr><w:t>a日本z</w:t></w:r></w:p><w:p><w:fldSimple w:instr="PAGE"><w:r><w:t>1</w:t></w:r></w:fldSimple></w:p></w:{tag}>"#));
+                            doc.refresh_header_footer_lines_for(role, variant, &path)
+                                .unwrap();
+                            let body = doc.raw_document.as_ref().unwrap().to_string().unwrap();
+                            let rels = doc.read_xml_part_content("word/_rels/document.xml.rels");
+                            let baseline = doc.export_docx().unwrap();
+                            let range = SelectionRange::collapsed(TextPosition::new(0, offset));
+                            assert!(doc
+                                .insert_hf_story_cross_reference(
+                                    role, variant, range, "missing", kind
+                                )
+                                .is_err());
+                            assert_eq!(doc.export_docx().unwrap(), baseline);
+                            assert!(doc
+                                .insert_hf_story_cross_reference(
+                                    role,
+                                    variant,
+                                    range,
+                                    "参照先_1",
+                                    CrossReferenceKind::Number
+                                )
+                                .is_err());
+                            assert_eq!(doc.export_docx().unwrap(), baseline);
+                            assert!(doc
+                                .insert_hf_story_cross_reference(
+                                    role,
+                                    variant,
+                                    SelectionRange::collapsed(TextPosition::new(0, 2)),
+                                    "参照先_1",
+                                    kind
+                                )
+                                .unwrap()
+                                .is_none());
+                            assert_eq!(doc.export_docx().unwrap(), baseline);
+                            assert!(doc
+                                .insert_hf_story_cross_reference(
+                                    role,
+                                    variant,
+                                    SelectionRange::new(
+                                        TextPosition::new(0, 0),
+                                        TextPosition::new(0, 1)
+                                    ),
+                                    "参照先_1",
+                                    kind
+                                )
+                                .is_err());
+                            assert_eq!(doc.export_docx().unwrap(), baseline);
+                            let cache = if kind == CrossReferenceKind::Page {
+                                "1"
+                            } else {
+                                &target
+                            };
+                            assert_eq!(
+                                doc.insert_hf_story_cross_reference(
+                                    role,
+                                    variant,
+                                    range,
+                                    " 参照先_1 ",
+                                    kind
+                                )
+                                .unwrap(),
+                                Some(TextPosition::new(0, offset + cache.len()))
+                            );
+                            assert_eq!(
+                                doc.raw_document.as_ref().unwrap().to_string().unwrap(),
+                                body
+                            );
+                            assert_eq!(
+                                doc.read_xml_part_content("word/_rels/document.xml.rels"),
+                                rels
+                            );
+                            let xml = doc.read_xml_part_content(&path).unwrap();
+                            assert!(xml.contains("12345678"));
+                            assert!(xml.contains("w:after=\"120\""));
+                            let reopened = executor::block_on(WordDocument::load(
+                                &doc.export_docx().unwrap(),
+                                &Options::default(),
+                            ))
+                            .unwrap();
+                            let paragraph = reopened.hf_ruler_paragraph(role, variant, 0).unwrap();
+                            let fields = paragraph
+                                .runs
+                                .iter()
+                                .filter_map(|run| run.field.as_ref())
+                                .collect::<Vec<_>>();
+                            assert_eq!(fields.len(), 1);
+                            let expected = if kind == CrossReferenceKind::Page {
+                                RunFieldKind::PageRef {
+                                    name: "参照先_1".into(),
+                                    hyperlink: true,
+                                }
+                            } else {
+                                RunFieldKind::Ref {
+                                    name: "参照先_1".into(),
+                                    case_format: None,
+                                    numbering: false,
+                                    hyperlink: true,
+                                }
+                            };
+                            assert_eq!(fields[0].kind, expected);
+                            let field_run = paragraph
+                                .runs
+                                .iter()
+                                .find(|run| run.field.is_some())
+                                .unwrap();
+                            assert_eq!(
+                                fields[0].cached_text.as_deref().unwrap_or(&field_run.text),
+                                cache
+                            );
+                            let visible = paragraph
+                                .runs
+                                .iter()
+                                .map(|run| {
+                                    run.field
+                                        .as_ref()
+                                        .and_then(|field| field.cached_text.as_deref())
+                                        .unwrap_or(&run.text)
+                                })
+                                .collect::<String>();
+                            assert_eq!(
+                                visible,
+                                format!("{}{cache}{}", &"a日本z"[..offset], &"a日本z"[offset..])
+                            );
+                            assert!(reopened
+                                .hf_ruler_paragraph(role, variant, 1)
+                                .unwrap()
+                                .runs
+                                .iter()
+                                .any(|run| matches!(
+                                    run.field.as_ref().map(|field| &field.kind),
+                                    Some(RunFieldKind::PageNumber)
+                                )));
+                            assert_eq!(
+                                reopened
+                                    .document
+                                    .as_ref()
+                                    .unwrap()
+                                    .bookmarks
+                                    .iter()
+                                    .find(|bookmark| bookmark.name == "参照先_1")
+                                    .map(|bookmark| reopened.bookmark_display_text(bookmark)),
+                                Some(target.clone())
+                            );
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn header_footer_inline_fields_preserve_semantics_ranges_and_package() {
+        use jade_docx_headless_api::HeadlessFieldKind;
+        let data = std::fs::read(fixture_path("hello.docx")).unwrap();
+        for role in [HeaderFooterRole::Header, HeaderFooterRole::Footer] {
+            for variant in [
+                HeaderFooterVariant::Default,
+                HeaderFooterVariant::First,
+                HeaderFooterVariant::Even,
+            ] {
+                for kind in [
+                    HeadlessFieldKind::Date,
+                    HeadlessFieldKind::Time,
+                    HeadlessFieldKind::Page,
+                    HeadlessFieldKind::NumPages,
+                    HeadlessFieldKind::FileName,
+                ] {
+                    for end in [
+                        TextPosition::new(0, 1),
+                        TextPosition::new(0, 7),
+                        TextPosition::new(1, 1),
+                    ] {
+                        for reverse in [false, true] {
+                            let mut doc =
+                                executor::block_on(WordDocument::load(&data, &Options::default()))
+                                    .unwrap();
+                            doc.ensure_hf_part_for_edit(role, variant).unwrap();
+                            let path = doc
+                                .resolve_header_footer_part_path_for(role, variant)
+                                .unwrap();
+                            let tag = if role == HeaderFooterRole::Header {
+                                "hdr"
+                            } else {
+                                "ftr"
+                            };
+                            doc.upsert_xml_part_content(&path, format!(r#"<w:{tag} xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:p w:rsidR="12345678"><w:pPr><w:spacing w:after="120"/></w:pPr><w:r><w:rPr><w:b/></w:rPr><w:t>a日本z</w:t></w:r></w:p><w:p><w:r><w:t>uv</w:t></w:r></w:p><w:p><w:fldSimple w:instr="PAGE"><w:r><w:t>1</w:t></w:r></w:fldSimple></w:p></w:{tag}>"#));
+                            doc.refresh_header_footer_lines_for(role, variant, &path)
+                                .unwrap();
+                            let body = doc.raw_document.as_ref().unwrap().to_string().unwrap();
+                            let rels = doc.read_xml_part_content("word/_rels/document.xml.rels");
+                            let start = TextPosition::new(0, 1);
+                            let range = if reverse {
+                                SelectionRange::new(end, start)
+                            } else {
+                                SelectionRange::new(start, end)
+                            };
+                            let before = doc.export_docx().unwrap();
+                            for invalid in ["".to_owned(), "bad\nvalue".into(), "x".repeat(1025)] {
+                                assert!(doc
+                                    .insert_hf_story_field(role, variant, range, kind, &invalid)
+                                    .is_err());
+                                assert_eq!(doc.export_docx().unwrap(), before);
+                            }
+                            assert!(doc
+                                .insert_hf_story_field(
+                                    role,
+                                    variant,
+                                    SelectionRange::collapsed(TextPosition::new(0, 2)),
+                                    kind,
+                                    "cache"
+                                )
+                                .unwrap()
+                                .is_none());
+                            assert_eq!(doc.export_docx().unwrap(), before);
+                            let cached = "日本語値";
+                            let result = doc
+                                .insert_hf_story_field(role, variant, range, kind, cached)
+                                .unwrap()
+                                .unwrap();
+                            let display = match kind {
+                                HeadlessFieldKind::Page => crate::document::PAGE_FIELD_PLACEHOLDER,
+                                HeadlessFieldKind::NumPages => {
+                                    crate::document::PAGE_COUNT_FIELD_PLACEHOLDER
+                                }
+                                _ => cached,
+                            };
+                            assert_eq!(result, TextPosition::new(0, 1 + display.len()));
+                            let xml = doc.read_xml_part_content(&path).unwrap();
+                            for retained in [
+                                "w:rsidR=\"12345678\"",
+                                "w:after=\"120\"",
+                                "w:instr=\"PAGE\"",
+                            ] {
+                                assert!(xml.contains(retained), "{xml}");
+                            }
+                            assert_eq!(
+                                doc.read_xml_part_content("word/_rels/document.xml.rels"),
+                                rels
+                            );
+                            assert_eq!(
+                                doc.raw_document.as_ref().unwrap().to_string().unwrap(),
+                                body
+                            );
+                            let reopened = executor::block_on(WordDocument::load(
+                                &doc.export_docx().unwrap(),
+                                &Options::default(),
+                            ))
+                            .unwrap();
+                            let paragraph = reopened.hf_ruler_paragraph(role, variant, 0).unwrap();
+                            let fields: Vec<_> = paragraph
+                                .runs
+                                .iter()
+                                .filter_map(|run| run.field.as_ref())
+                                .collect();
+                            assert_eq!(fields.len(), 1, "{xml}");
+                            let expected_kind =
+                                crate::commands::insert_field::InsertFieldCommand::new(
+                                    range,
+                                    kind,
+                                    cached.into(),
+                                )
+                                .run_field_kind();
+                            assert_eq!(fields[0].kind, expected_kind);
+                            assert_eq!(fields[0].cached_text.as_deref(), Some(cached));
+                            let text: String = paragraph
+                                .runs
+                                .iter()
+                                .map(|run| {
+                                    run.field
+                                        .as_ref()
+                                        .and_then(|field| field.cached_text.as_deref())
+                                        .unwrap_or(&run.text)
+                                })
+                                .collect();
+                            let suffix = if end.paragraph == 1 {
+                                "v"
+                            } else if end.offset == 7 {
+                                "z"
+                            } else {
+                                "日本z"
+                            };
+                            assert_eq!(text, format!("a{cached}{suffix}"));
+                            let field_run = paragraph
+                                .runs
+                                .iter()
+                                .find(|run| run.field.is_some())
+                                .unwrap();
+                            assert_eq!(
+                                field_run
+                                    .properties
+                                    .as_ref()
+                                    .and_then(|properties| properties.bold),
+                                Some(true)
+                            );
+                            assert_eq!(
+                                reopened
+                                    .hf_ruler_paragraph(
+                                        role,
+                                        variant,
+                                        if end.paragraph == 1 { 1 } else { 2 }
+                                    )
+                                    .unwrap()
+                                    .runs
+                                    .iter()
+                                    .filter(|run| run.field.is_some())
+                                    .count(),
+                                1
+                            );
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn header_footer_hyperlinks_use_story_relationships_and_roundtrip() {
+        for trailing_table in [false, true] {
+            let table = r#"<w:tbl><w:tr><w:tc><w:p><w:r><w:t>TABLE_KEEP_日本</w:t></w:r></w:p></w:tc></w:tr></w:tbl>"#;
+            let suffix = if trailing_table {
+                format!("{table}<w:p><w:r><w:t>AFTER_TABLE</w:t></w:r></w:p>")
+            } else {
+                String::new()
+            };
+
+            let data = std::fs::read(fixture_path("hello.docx")).unwrap();
+            for role in [HeaderFooterRole::Header, HeaderFooterRole::Footer] {
+                for variant in [
+                    HeaderFooterVariant::Default,
+                    HeaderFooterVariant::First,
+                    HeaderFooterVariant::Even,
+                ] {
+                    for reverse in [false, true] {
+                        let mut doc =
+                            executor::block_on(WordDocument::load(&data, &Options::default()))
+                                .unwrap();
+                        doc.ensure_hf_part_for_edit(role, variant).unwrap();
+                        let path = doc
+                            .resolve_header_footer_part_path_for(role, variant)
+                            .unwrap();
+                        let tag = if role == HeaderFooterRole::Header {
+                            "hdr"
+                        } else {
+                            "ftr"
+                        };
+                        doc.upsert_xml_part_content(&path, format!(r#"<w:{tag} xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><w:p w:rsidR="12345678"><w:pPr><w:spacing w:after="120"/></w:pPr><w:r><w:rPr><w:b/></w:rPr><w:t>a日本z</w:t></w:r></w:p><w:p><w:r><w:t>tail</w:t></w:r></w:p><w:p><w:fldSimple w:instr="PAGE"><w:r><w:t>1</w:t></w:r></w:fldSimple></w:p>{suffix}</w:{tag}>"#));
+                        doc.refresh_header_footer_lines_for(role, variant, &path)
+                            .unwrap();
+                        if trailing_table {
+                            let before = doc.read_xml_part_content(&path);
+                            let crossing = SelectionRange::new(
+                                TextPosition::new(0, 0),
+                                TextPosition::new(5, 0),
+                            );
+                            assert!(doc
+                                .edit_hf_story_hyperlink(
+                                    role,
+                                    variant,
+                                    crossing,
+                                    Some((None, "https://example.com", None))
+                                )
+                                .unwrap()
+                                .is_none());
+                            assert!(!doc
+                                .set_hf_story_character_style(role, variant, crossing, None)
+                                .unwrap());
+                            assert_eq!(doc.read_xml_part_content(&path), before);
+                        }
+                        let body = doc.raw_document.as_ref().unwrap().to_string().unwrap();
+                        let main_relationships =
+                            doc.read_xml_part_content("word/_rels/document.xml.rels");
+                        let start = TextPosition::new(0, 1);
+                        let end = TextPosition::new(1, 2);
+                        let range = if reverse {
+                            SelectionRange::new(end, start)
+                        } else {
+                            SelectionRange::new(start, end)
+                        };
+                        assert_eq!(
+                            doc.edit_hf_story_hyperlink(
+                                role,
+                                variant,
+                                range,
+                                Some((None, "https://example.com/a?x=1&y=2", Some("日本語")))
+                            )
+                            .unwrap(),
+                            Some(range)
+                        );
+                        assert_eq!(
+                            doc.read_xml_part_content("word/_rels/document.xml.rels"),
+                            main_relationships
+                        );
+                        let rels_path = doc.get_relationships_path(&path);
+                        let rels = doc.read_xml_part_content(&rels_path).unwrap();
+                        assert!(rels.contains("TargetMode=\"External\""), "{rels}");
+                        assert!(rels.contains("example.com/a?x=1&amp;y=2"), "{rels}");
+                        let xml = doc.read_xml_part_content(&path).unwrap();
+                        if trailing_table {
+                            assert!(xml.contains(table));
+                            assert!(xml.contains("AFTER_TABLE"));
+                        }
+                        for retained in [
+                            "w:rsidR=\"12345678\"",
+                            "w:after=\"120\"",
+                            "w:instr=\"PAGE\"",
+                        ] {
+                            assert!(xml.contains(retained), "{xml}");
+                        }
+                        doc = executor::block_on(WordDocument::load(
+                            &doc.export_docx().unwrap(),
+                            &Options::default(),
+                        ))
+                        .unwrap();
+                        if trailing_table {
+                            let xml = doc.read_xml_part_content(&path).unwrap();
+                            assert!(xml.contains(table));
+                            assert!(xml.contains("AFTER_TABLE"));
+                        }
+                        for (index, expected) in [(0, "a日本z"), (1, "tail")] {
+                            let paragraph = doc.hf_ruler_paragraph(role, variant, index).unwrap();
+                            assert_eq!(
+                                paragraph
+                                    .runs
+                                    .iter()
+                                    .map(|run| run.text.as_str())
+                                    .collect::<String>(),
+                                expected
+                            );
+                            let mut offset = 0;
+                            for run in paragraph.runs {
+                                let selected = if index == 0 { offset >= 1 } else { offset < 2 };
+                                assert_eq!(run.hyperlink.is_some(), selected);
+                                if let Some(link) = run.hyperlink {
+                                    assert_eq!(
+                                        link.target.as_deref(),
+                                        Some("https://example.com/a?x=1&y=2")
+                                    );
+                                    assert_eq!(link.tooltip.as_deref(), Some("日本語"));
+                                }
+                                offset += run.text.len();
+                            }
+                        }
+                        assert_eq!(
+                            doc.edit_hf_story_hyperlink(role, variant, range, None)
+                                .unwrap(),
+                            Some(range)
+                        );
+                        assert!(!doc
+                            .read_xml_part_content(&path)
+                            .unwrap()
+                            .contains("<w:hyperlink"));
+                        let caret =
+                            SelectionRange::new(TextPosition::new(0, 1), TextPosition::new(0, 1));
+                        let inserted = doc
+                            .edit_hf_story_hyperlink(
+                                role,
+                                variant,
+                                caret,
+                                Some((Some("リンク"), "#bookmark", None)),
+                            )
+                            .unwrap()
+                            .unwrap();
+                        assert!(inserted.is_collapsed());
+                        assert_eq!(inserted.focus, TextPosition::new(0, 10));
+                        assert!(doc
+                            .read_xml_part_content(&path)
+                            .unwrap()
+                            .contains("w:anchor=\"bookmark\""));
+                        let outside =
+                            SelectionRange::new(TextPosition::new(0, 0), TextPosition::new(0, 0));
+                        let with_link = doc.export_docx().unwrap();
+                        assert!(doc
+                            .edit_hf_story_hyperlink(role, variant, outside, None)
+                            .is_err());
+                        assert_eq!(doc.export_docx().unwrap(), with_link);
+                        doc.edit_hf_story_hyperlink(role, variant, inserted, None)
+                            .unwrap();
+                        assert!(!doc
+                            .read_xml_part_content(&path)
+                            .unwrap()
+                            .contains("<w:hyperlink"));
+                        assert_eq!(
+                            doc.raw_document.as_ref().unwrap().to_string().unwrap(),
+                            body
+                        );
+                        let before = doc.export_docx().unwrap();
+                        assert!(doc
+                            .edit_hf_story_hyperlink(
+                                role,
+                                variant,
+                                caret,
+                                Some((Some("bad"), "javascript:alert(1)", None))
+                            )
+                            .is_err());
+                        assert!(doc
+                            .edit_hf_story_hyperlink(
+                                role,
+                                variant,
+                                SelectionRange::new(TextPosition::new(0, 2), end),
+                                Some((None, "https://example.com", None))
+                            )
+                            .unwrap()
+                            .is_none());
+                        assert!(doc
+                            .edit_hf_story_hyperlink(
+                                role,
+                                variant,
+                                SelectionRange::new(
+                                    TextPosition::new(2, 0),
+                                    TextPosition::new(2, 0)
+                                ),
+                                Some((Some("bad"), "https://example.com", None))
+                            )
+                            .unwrap()
+                            .is_none());
+                        assert_eq!(doc.export_docx().unwrap(), before);
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn header_footer_character_styles_preserve_ranges_marks_and_roundtrip() {
+        for trailing_table in [false, true] {
+            let table = r#"<w:tbl><w:tr><w:tc><w:p><w:r><w:t>TABLE_KEEP_日本</w:t></w:r></w:p></w:tc></w:tr></w:tbl>"#;
+            let suffix = if trailing_table {
+                format!("{table}<w:p><w:r><w:t>AFTER_TABLE</w:t></w:r></w:p>")
+            } else {
+                String::new()
+            };
+
+            let data = std::fs::read(fixture_path("hello.docx")).unwrap();
+            for role in [HeaderFooterRole::Header, HeaderFooterRole::Footer] {
+                for variant in [
+                    HeaderFooterVariant::Default,
+                    HeaderFooterVariant::First,
+                    HeaderFooterVariant::Even,
+                ] {
+                    for end in [
+                        TextPosition::new(0, 7),
+                        TextPosition::new(2, 0),
+                        TextPosition::new(2, 2),
+                    ] {
+                        for reverse in [false, true] {
+                            let mut doc =
+                                executor::block_on(WordDocument::load(&data, &Options::default()))
+                                    .unwrap();
+                            doc.ensure_hf_part_for_edit(role, variant).unwrap();
+                            let styles_path = doc.styles_part_path().unwrap();
+                            let styles = r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:docDefaults><w:rPrDefault><w:rPr><w:sz w:val="22"/></w:rPr></w:rPrDefault></w:docDefaults><w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/></w:style><w:style w:type="character" w:styleId="c1"><w:name w:val="強調"/><w:rPr><w:b/><w:sz w:val="32"/></w:rPr></w:style><w:style w:type="character" w:styleId="c2"><w:name w:val="別の強調"/><w:rPr><w:i/><w:sz w:val="20"/></w:rPr></w:style></w:styles>"#;
+                            doc.upsert_xml_part_content(&styles_path, styles.into());
+                            doc.styles_part = Some(StylesPart::from_xml(styles).unwrap());
+                            let path = doc
+                                .resolve_header_footer_part_path_for(role, variant)
+                                .unwrap();
+                            let tag = if role == HeaderFooterRole::Header {
+                                "hdr"
+                            } else {
+                                "ftr"
+                            };
+                            doc.upsert_xml_part_content(&path, format!(r#"<w:{tag} xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:test="urn:jade:test"><w:p w:rsidR="12345678"><w:pPr><w:spacing w:after="120"/></w:pPr><w:hyperlink w:anchor="keep"><w:r test:keep="yes"><w:rPr><w:color w:val="123456"/><w:b w:val="0"/></w:rPr><w:t>a日本z</w:t></w:r></w:hyperlink></w:p><w:p/><w:p><w:r><w:t>uv</w:t><w:tab/><w:t>w</w:t></w:r></w:p><w:p><w:fldSimple w:instr="PAGE"><w:r><w:t>1</w:t></w:r></w:fldSimple></w:p>{suffix}</w:{tag}>"#));
+                            doc.refresh_header_footer_lines_for(role, variant, &path)
+                                .unwrap();
+                            if trailing_table {
+                                let before = doc.read_xml_part_content(&path);
+                                let crossing = SelectionRange::new(
+                                    TextPosition::new(0, 0),
+                                    TextPosition::new(5, 0),
+                                );
+                                assert!(doc
+                                    .edit_hf_story_hyperlink(
+                                        role,
+                                        variant,
+                                        crossing,
+                                        Some((None, "https://example.com", None))
+                                    )
+                                    .unwrap()
+                                    .is_none());
+                                assert!(!doc
+                                    .set_hf_story_character_style(role, variant, crossing, None)
+                                    .unwrap());
+                                assert_eq!(doc.read_xml_part_content(&path), before);
+                            }
+                            let body = doc.raw_document.as_ref().unwrap().to_string().unwrap();
+                            let start = TextPosition::new(0, 1);
+                            let range = if reverse {
+                                SelectionRange::new(end, start)
+                            } else {
+                                SelectionRange::new(start, end)
+                            };
+                            for (requested, expected) in [
+                                (Some("強調"), Some("c1")),
+                                (Some("c2"), Some("c2")),
+                                (None, None),
+                            ] {
+                                assert!(doc
+                                    .set_hf_story_character_style(
+                                        role,
+                                        variant,
+                                        range,
+                                        requested.map(str::to_owned)
+                                    )
+                                    .unwrap());
+                                let xml = doc.read_xml_part_content(&path).unwrap();
+                                if trailing_table {
+                                    assert!(xml.contains(table));
+                                    assert!(xml.contains("AFTER_TABLE"));
+                                }
+                                for retained in [
+                                    "w:rsidR=\"12345678\"",
+                                    "w:anchor=\"keep\"",
+                                    "w:after=\"120\"",
+                                    "w:instr=\"PAGE\"",
+                                    "w:val=\"123456\"",
+                                    "test:keep=\"yes\"",
+                                ] {
+                                    assert!(xml.contains(retained), "{retained}: {xml}");
+                                }
+                                assert_eq!(
+                                    doc.raw_document.as_ref().unwrap().to_string().unwrap(),
+                                    body
+                                );
+                                let reopened = executor::block_on(WordDocument::load(
+                                    &doc.export_docx().unwrap(),
+                                    &Options::default(),
+                                ))
+                                .unwrap();
+                                if trailing_table {
+                                    let xml = reopened.read_xml_part_content(&path).unwrap();
+                                    assert!(xml.contains(table));
+                                    assert!(xml.contains("AFTER_TABLE"));
+                                }
+                                for index in 0..=2 {
+                                    let paragraph =
+                                        reopened.hf_ruler_paragraph(role, variant, index).unwrap();
+                                    let text: String = paragraph
+                                        .runs
+                                        .iter()
+                                        .map(|run| run.text.as_str())
+                                        .collect();
+                                    assert_eq!(text, ["a日本z", "", "uv\tw"][index]);
+                                    let mut offset = 0;
+                                    for run in &paragraph.runs {
+                                        let selected = TextPosition::new(index, offset) >= start
+                                            && TextPosition::new(index, offset) < end;
+                                        if !run.text.is_empty() {
+                                            let actual = run
+                                                .properties
+                                                .as_ref()
+                                                .and_then(|props| props.style.as_deref());
+                                            assert_eq!(
+                                                actual,
+                                                if selected { expected } else { None },
+                                                "{index} {offset}: {xml}"
+                                            );
+                                            if index == 0 {
+                                                let props = run.properties.as_ref().unwrap();
+                                                assert_eq!(props.bold, Some(false));
+                                                assert_eq!(props.color.as_deref(), Some("#123456"));
+                                                assert_eq!(
+                                                    props.font_size,
+                                                    Some(if selected {
+                                                        match expected {
+                                                            Some("c1") => 16.0,
+                                                            Some("c2") => 10.0,
+                                                            _ => 11.0,
+                                                        }
+                                                    } else {
+                                                        11.0
+                                                    })
+                                                );
+                                            }
+                                        }
+                                        offset += run.text.len();
+                                    }
+                                    let mark = paragraph
+                                        .properties
+                                        .as_ref()
+                                        .and_then(|props| props.mark_run_properties.as_ref())
+                                        .and_then(|props| props.style.as_deref());
+                                    assert_eq!(
+                                        mark,
+                                        if index < end.paragraph {
+                                            expected
+                                        } else {
+                                            None
+                                        }
+                                    );
+                                }
+                                let saved = doc.export_docx().unwrap();
+                                assert!(!doc
+                                    .set_hf_story_character_style(
+                                        role,
+                                        variant,
+                                        range,
+                                        requested.map(str::to_owned)
+                                    )
+                                    .unwrap());
+                                assert_eq!(doc.export_docx().unwrap(), saved);
+                                for invalid in [Some("missing"), Some("Normal")] {
+                                    assert!(doc
+                                        .set_hf_story_character_style(
+                                            role,
+                                            variant,
+                                            range,
+                                            invalid.map(str::to_owned)
+                                        )
+                                        .is_err());
+                                    assert_eq!(doc.export_docx().unwrap(), saved);
+                                }
+                                for invalid in [
+                                    SelectionRange::new(TextPosition::new(0, 2), end),
+                                    SelectionRange::new(start, TextPosition::new(3, 1)),
+                                    SelectionRange::new(start, TextPosition::new(99, 0)),
+                                ] {
+                                    assert!(!doc
+                                        .set_hf_story_character_style(
+                                            role,
+                                            variant,
+                                            invalid,
+                                            Some("c1".into())
+                                        )
+                                        .unwrap());
+                                    assert_eq!(doc.export_docx().unwrap(), saved);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn header_footer_field_edits_preserve_a_later_table() {
+        use jade_docx_headless_api::HeadlessFieldKind;
+        let data = include_bytes!("../../../public/fixtures/hello.docx");
+        for role in [HeaderFooterRole::Header, HeaderFooterRole::Footer] {
+            for variant in [
+                HeaderFooterVariant::Default,
+                HeaderFooterVariant::First,
+                HeaderFooterVariant::Even,
+            ] {
+                for complex in [false, true] {
+                    let mut source =
+                        executor::block_on(WordDocument::load(data, &Options::default())).unwrap();
+                    source.ensure_hf_part_for_edit(role, variant).unwrap();
+                    let path = source
+                        .resolve_header_footer_part_path_for(role, variant)
+                        .unwrap();
+                    let tag = if role == HeaderFooterRole::Header {
+                        "hdr"
+                    } else {
+                        "ftr"
+                    };
+                    let field = if complex {
+                        r#"<w:r><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:instrText> PAGE </w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r><w:r><w:t>7</w:t></w:r><w:r><w:fldChar w:fldCharType="end"/></w:r>"#
+                    } else {
+                        r#"<w:fldSimple w:instr=" PAGE "><w:r><w:t>7</w:t></w:r></w:fldSimple>"#
+                    };
+                    let table = r#"<w:tbl><w:tblPr><w:tblW w:w="2400" w:type="dxa"/></w:tblPr><w:tblGrid><w:gridCol w:w="2400"/></w:tblGrid><w:tr><w:tc><w:tcPr><w:tcW w:w="2400" w:type="dxa"/></w:tcPr><w:p><w:r><w:t>TABLE_KEEP_日本</w:t></w:r></w:p></w:tc></w:tr></w:tbl>"#;
+                    let xml = format!(
+                        r#"<w:{tag} xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:p><w:r><w:t>A</w:t></w:r>{field}<w:r><w:t>Z</w:t></w:r></w:p><w:p><w:r><w:t>SECOND</w:t></w:r></w:p>{table}<w:p><w:r><w:t>AFTER_TABLE</w:t></w:r></w:p></w:{tag}>"#
+                    );
+                    let canonical = DocxXmlDocument::parse(&xml).unwrap().to_string().unwrap();
+                    let table_start = canonical.find("<w:tbl>").unwrap();
+                    let table_end = canonical.find("</w:tbl>").unwrap() + "</w:tbl>".len();
+                    let expected_table = &canonical[table_start..table_end];
+                    source.upsert_xml_part_content(&path, xml);
+                    source
+                        .refresh_header_footer_lines_for(role, variant, &path)
+                        .unwrap();
+                    let body = source.raw_document.as_ref().unwrap().to_string().unwrap();
+                    let page = crate::document::PAGE_FIELD_PLACEHOLDER;
+                    for operation in 0..4 {
+                        let mut edited = source.clone();
+                        let (expected, page_count) = match operation {
+                            0 => {
+                                assert!(edited
+                                    .edit_hf_paragraph_range(
+                                        role,
+                                        variant,
+                                        0,
+                                        1 + page.len(),
+                                        1 + page.len(),
+                                        "追加"
+                                    )
+                                    .unwrap());
+                                (format!("A{page}追加Z"), 1)
+                            }
+                            1 => {
+                                assert_eq!(
+                                    edited
+                                        .delete_hf_story_selection(
+                                            role,
+                                            variant,
+                                            SelectionRange::new(
+                                                TextPosition::new(0, 1),
+                                                TextPosition::new(1, 3)
+                                            )
+                                        )
+                                        .unwrap(),
+                                    Some(TextPosition::new(0, 1))
+                                );
+                                ("AOND".to_owned(), 0)
+                            }
+                            2 => {
+                                assert!(edited
+                                    .insert_hf_story_field(
+                                        role,
+                                        variant,
+                                        SelectionRange::new(
+                                            TextPosition::new(0, 1),
+                                            TextPosition::new(0, 1 + page.len())
+                                        ),
+                                        HeadlessFieldKind::Date,
+                                        "日付"
+                                    )
+                                    .unwrap()
+                                    .is_some());
+                                ("A日付Z".to_owned(), 0)
+                            }
+                            _ => {
+                                assert!(edited
+                                    .insert_hf_story_field(
+                                        role,
+                                        variant,
+                                        SelectionRange::collapsed(TextPosition::new(1, 0)),
+                                        HeadlessFieldKind::Date,
+                                        "日付"
+                                    )
+                                    .unwrap()
+                                    .is_some());
+                                (format!("A{page}Z"), 1)
+                            }
+                        };
+                        let reopened = executor::block_on(WordDocument::load(
+                            &edited.export_docx().unwrap(),
+                            &Options::default(),
+                        ))
+                        .unwrap();
+                        assert_eq!(
+                            WordDocument::hf_field_edit_paragraph_text(
+                                &reopened.hf_ruler_paragraph(role, variant, 0).unwrap()
+                            )
+                            .unwrap(),
+                            expected,
+                            "complex={complex} operation={operation}"
+                        );
+                        let xml = reopened.read_xml_part_content(&path).unwrap();
+                        assert!(
+                            xml.contains(expected_table),
+                            "later table changed: complex={complex} operation={operation}"
+                        );
+                        assert_eq!(xml.matches(" PAGE ").count(), page_count);
+                        if page_count > 0 {
+                            assert!(xml.contains(">7<"));
+                        }
+                        assert!(xml.contains("AFTER_TABLE"));
+                        assert_eq!(
+                            reopened.raw_document.as_ref().unwrap().to_string().unwrap(),
+                            body
+                        );
+                        if operation == 3 {
+                            assert_eq!(
+                                WordDocument::hf_field_edit_paragraph_text(
+                                    &reopened.hf_ruler_paragraph(role, variant, 1).unwrap()
+                                )
+                                .unwrap(),
+                                "日付SECOND"
+                            );
+                        }
+                    }
+                    let before = source.read_xml_part_content(&path);
+                    // A selection through the table still requires a table-aware edit.
+                    assert!(source
+                        .delete_hf_story_selection(
+                            role,
+                            variant,
+                            SelectionRange::new(TextPosition::new(0, 1), TextPosition::new(3, 0))
+                        )
+                        .unwrap()
+                        .is_none());
+                    assert_eq!(source.read_xml_part_content(&path), before);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn header_footer_list_definitions_roundtrip_and_remove_without_changing_body() {
+        use jade_docx_headless_api::{HeadlessCommand, HeadlessMultilevelListPreset};
+        let data = std::fs::read(fixture_path("hello.docx")).unwrap();
+        for role in [HeaderFooterRole::Header, HeaderFooterRole::Footer] {
+            for variant in [
+                HeaderFooterVariant::Default,
+                HeaderFooterVariant::First,
+                HeaderFooterVariant::Even,
+            ] {
+                let mut doc =
+                    executor::block_on(WordDocument::load(&data, &Options::default())).unwrap();
+                doc.ensure_hf_part_for_edit(role, variant).unwrap();
+                let path = doc
+                    .resolve_header_footer_part_path_for(role, variant)
+                    .unwrap();
+                let tag = if role == HeaderFooterRole::Header {
+                    "hdr"
+                } else {
+                    "ftr"
+                };
+                let xml = format!(
+                    r#"<w:{tag} xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:p><w:r><w:t>Before</w:t></w:r></w:p><w:p w:rsidR="12345678"><w:pPr><w:spacing w:after="120"/></w:pPr><w:r><w:rPr><w:b/></w:rPr><w:t>日</w:t></w:r><w:fldSimple w:instr="PAGE"><w:r><w:t>1</w:t></w:r></w:fldSimple></w:p><w:p><w:r><w:t>Second</w:t></w:r></w:p><w:p><w:r><w:t>After</w:t></w:r></w:p></w:{tag}>"#
+                );
+                doc.upsert_xml_part_content(&path, xml);
+                doc.refresh_header_footer_lines_for(role, variant, &path)
+                    .unwrap();
+                let body = doc.raw_document.as_ref().unwrap().to_string().unwrap();
+                let baseline = executor::block_on(WordDocument::load(
+                    &doc.export_docx().unwrap(),
+                    &Options::default(),
+                ))
+                .unwrap();
+                let exported_body = baseline.raw_document.as_ref().unwrap().to_string().unwrap();
+                for preset in [
+                    HeadlessMultilevelListPreset::BulletHierarchy,
+                    HeadlessMultilevelListPreset::DecimalHierarchy,
+                    HeadlessMultilevelListPreset::ChineseOfficial,
+                ] {
+                    let existing_numbering = doc.numbering_part.clone();
+                    let command = HeadlessCommand::ApplyMultilevelList {
+                        start_paragraph: 99,
+                        end_paragraph: 99,
+                        preset,
+                        level: 2,
+                    };
+                    assert!(doc
+                        .apply_hf_paragraph_commands_to_range(role, variant, 1, 2, &[command])
+                        .unwrap());
+                    assert_eq!(
+                        doc.raw_document.as_ref().unwrap().to_string().unwrap(),
+                        body
+                    );
+                    let xml = doc.read_xml_part_content(&path).unwrap();
+                    assert!(xml.contains("w:rsidR=\"12345678\""));
+                    assert!(xml.contains("<w:fldSimple w:instr=\"PAGE\""));
+                    assert!(xml.contains("<w:spacing w:after=\"120\""));
+                    let reopened = executor::block_on(WordDocument::load(
+                        &doc.export_docx().unwrap(),
+                        &Options::default(),
+                    ))
+                    .unwrap();
+                    assert_eq!(
+                        reopened.raw_document.as_ref().unwrap().to_string().unwrap(),
+                        exported_body
+                    );
+                    for index in [1, 2] {
+                        let numbering = reopened
+                            .hf_paragraph_properties(role, variant, index)
+                            .unwrap()
+                            .numbering
+                            .unwrap();
+                        assert_eq!(numbering.level, Some(2));
+                        assert!(reopened
+                            .numbering_part
+                            .as_ref()
+                            .unwrap()
+                            .get_level_info(numbering.id.as_deref().unwrap(), 2)
+                            .is_some());
+                    }
+                    if let Some(existing) = &existing_numbering {
+                        for id in existing.numbering_instances.keys() {
+                            assert!(reopened
+                                .numbering_part
+                                .as_ref()
+                                .unwrap()
+                                .numbering_instances
+                                .contains_key(id));
+                        }
+                    }
+                    for index in [0, 3] {
+                        assert!(reopened
+                            .hf_paragraph_properties(role, variant, index)
+                            .unwrap()
+                            .numbering
+                            .is_none());
+                    }
+                }
+                let before = doc.export_docx().unwrap();
+                assert!(doc
+                    .apply_hf_paragraph_commands_to_range(
+                        role,
+                        variant,
+                        1,
+                        2,
+                        &[HeadlessCommand::ApplyMultilevelList {
+                            start_paragraph: 0,
+                            end_paragraph: 0,
+                            preset: HeadlessMultilevelListPreset::BulletHierarchy,
+                            level: 9,
+                        }]
+                    )
+                    .is_err());
+                assert_eq!(doc.export_docx().unwrap(), before);
+                assert!(doc
+                    .apply_hf_paragraph_commands_to_range(
+                        role,
+                        variant,
+                        1,
+                        2,
+                        &[HeadlessCommand::SetNumbering {
+                            start_paragraph: 0,
+                            end_paragraph: 0,
+                            num_id: None,
+                            level: None,
+                        }]
+                    )
+                    .unwrap());
+                let reopened = executor::block_on(WordDocument::load(
+                    &doc.export_docx().unwrap(),
+                    &Options::default(),
+                ))
+                .unwrap();
+                for index in [1, 2] {
+                    let props = reopened
+                        .hf_paragraph_properties(role, variant, index)
+                        .unwrap();
+                    assert!(props
+                        .numbering
+                        .as_ref()
+                        .and_then(|numbering| numbering.list_id())
+                        .is_none());
+                }
+                assert_eq!(
+                    doc.raw_document.as_ref().unwrap().to_string().unwrap(),
+                    body
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn header_footer_paragraph_batch_toggles_and_indent_use_selection_and_document_settings() {
+        use jade_docx_headless_api::{
+            HeadlessCommand, HeadlessIndentDirection, HeadlessIndentTarget,
+        };
+        let data = std::fs::read(fixture_path("hello.docx")).unwrap();
+        for role in [HeaderFooterRole::Header, HeaderFooterRole::Footer] {
+            for variant in [
+                HeaderFooterVariant::Default,
+                HeaderFooterVariant::First,
+                HeaderFooterVariant::Even,
+            ] {
+                let mut doc =
+                    futures::executor::block_on(WordDocument::load(&data, &Options::default()))
+                        .unwrap();
+                doc.ensure_hf_part_for_edit(role, variant).unwrap();
+                Rc::make_mut(doc.document.as_mut().unwrap()).default_tab_stop = Some(24.0);
+                let path = doc
+                    .resolve_header_footer_part_path_for(role, variant)
+                    .unwrap();
+                let root = if role == HeaderFooterRole::Header {
+                    "hdr"
+                } else {
+                    "ftr"
+                };
+                doc.upsert_xml_part_content(&path, format!(r#"<w:{root} xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:p><w:r><w:t>Before</w:t></w:r></w:p><w:p><w:pPr w:custom="keep"><w:ind w:left="600"/><w:spacing w:before="0" w:after="80"/></w:pPr><w:r><w:t>Point</w:t></w:r></w:p><w:p><w:pPr><w:bidi/><w:ind w:right="600"/><w:spacing w:before="240"/></w:pPr><w:r><w:t>RTL</w:t></w:r></w:p><w:p><w:pPr><w:ind w:leftChars="150"/><w:spacing w:before="480"/></w:pPr><w:r><w:t>Chars</w:t></w:r></w:p><w:p><w:pPr><w:numPr><w:ilvl w:val="8"/><w:numId w:val="1"/></w:numPr></w:pPr><w:fldSimple w:instr="PAGE"><w:r><w:t>1</w:t></w:r></w:fldSimple></w:p><w:p><w:r><w:t>After</w:t></w:r></w:p></w:{root}>"#));
+                doc.refresh_header_footer_lines_for(role, variant, &path)
+                    .unwrap();
+                let original = DocxXmlDocument::parse(&doc.read_xml_part_content(&path).unwrap())
+                    .unwrap()
+                    .to_string()
+                    .unwrap();
+                let tail = original.split_once("<w:fldSimple").unwrap().1;
+                let step = |direction| HeadlessCommand::AdjustParagraphIndent {
+                    start_paragraph: 0,
+                    end_paragraph: 0,
+                    direction,
+                    target: HeadlessIndentTarget::Start,
+                };
+                // The deepest list level is a true no-op, including its raw XML.
+                assert!(!doc
+                    .apply_hf_paragraph_commands(
+                        role,
+                        variant,
+                        4,
+                        &[step(HeadlessIndentDirection::Increase)]
+                    )
+                    .unwrap());
+                let toggle = HeadlessCommand::ToggleParagraphSpaceBefore {
+                    start_paragraph: 0,
+                    end_paragraph: 0,
+                };
+                for (iteration, before) in [12.0, 0.0, 12.0].into_iter().enumerate() {
+                    let mut commands = vec![toggle.clone()];
+                    if iteration == 0 {
+                        commands.push(step(HeadlessIndentDirection::Increase));
+                    }
+                    if iteration == 1 {
+                        commands.push(step(HeadlessIndentDirection::Decrease));
+                    }
+                    assert!(doc
+                        .apply_hf_paragraph_commands_to_range(role, variant, 1, 4, &commands)
+                        .unwrap());
+                    let reopened = futures::executor::block_on(WordDocument::load(
+                        &doc.export_docx().unwrap(),
+                        &Options::default(),
+                    ))
+                    .unwrap();
+                    for index in 1..=4 {
+                        assert_eq!(
+                            reopened
+                                .hf_paragraph_properties(role, variant, index)
+                                .unwrap()
+                                .spacing
+                                .unwrap()
+                                .before,
+                            Some(before)
+                        );
+                    }
+                    let point = reopened.hf_paragraph_properties(role, variant, 1).unwrap();
+                    assert_eq!(
+                        point.indent.unwrap().left,
+                        Some(if iteration == 0 { 48.0 } else { 24.0 })
+                    );
+                    assert_eq!(point.spacing.unwrap().after, Some(4.0));
+                    let rtl = reopened.hf_paragraph_properties(role, variant, 2).unwrap();
+                    assert_eq!(
+                        rtl.indent.unwrap().right,
+                        Some(if iteration == 0 { 48.0 } else { 24.0 })
+                    );
+                    let chars = reopened.hf_paragraph_properties(role, variant, 3).unwrap();
+                    assert_eq!(
+                        chars.indent.unwrap().left_chars,
+                        Some(if iteration == 0 { 200 } else { 100 })
+                    );
+                    assert_eq!(
+                        reopened
+                            .hf_paragraph_properties(role, variant, 4)
+                            .unwrap()
+                            .numbering
+                            .unwrap()
+                            .level,
+                        Some(if iteration == 0 { 8 } else { 7 })
+                    );
+                    let xml = doc.read_xml_part_content(&path).unwrap();
+                    assert!(xml.ends_with(tail));
+                    assert!(xml.contains("w:custom=\"keep\""));
+                }
+                let unchanged = doc.read_xml_part_content(&path).unwrap();
+                assert!(doc
+                    .apply_hf_paragraph_commands_to_range(role, variant, 1, 99, &[toggle])
+                    .is_err());
+                assert_eq!(doc.read_xml_part_content(&path).unwrap(), unchanged);
+            }
+        }
+    }
+
+    #[test]
+    fn header_footer_paragraph_options_preserve_fields_styles_and_unrelated_xml() {
+        use jade_docx_headless_api::{HeadlessCommand, HeadlessParagraphBorderBox};
+        let data = std::fs::read(fixture_path("hello.docx")).unwrap();
+        for role in [HeaderFooterRole::Header, HeaderFooterRole::Footer] {
+            for variant in [
+                HeaderFooterVariant::Default,
+                HeaderFooterVariant::First,
+                HeaderFooterVariant::Even,
+            ] {
+                let mut doc =
+                    futures::executor::block_on(WordDocument::load(&data, &Options::default()))
+                        .unwrap();
+                doc.ensure_hf_part_for_edit(role, variant).unwrap();
+                // Materialize new variant references before comparing the body.
+                doc = futures::executor::block_on(WordDocument::load(
+                    &doc.export_docx().unwrap(),
+                    &Options::default(),
+                ))
+                .unwrap();
+                let path = doc
+                    .resolve_header_footer_part_path_for(role, variant)
+                    .unwrap();
+                let root = if role == HeaderFooterRole::Header {
+                    "hdr"
+                } else {
+                    "ftr"
+                };
+                let styles = r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:style w:type="paragraph" w:styleId="HfOptions"><w:name w:val="HfOptions"/><w:pPr><w:bidi/><w:keepNext/><w:keepLines/><w:pageBreakBefore/><w:widowControl/><w:contextualSpacing/><w:suppressLineNumbers/><w:suppressAutoHyphens/><w:tabs><w:tab w:val="left" w:pos="1440"/></w:tabs><w:shd w:val="clear" w:fill="FFFF00"/><w:pBdr><w:top w:val="single" w:sz="8"/></w:pBdr></w:pPr></w:style></w:styles>"#;
+                let styles_path = doc.styles_part_path().unwrap();
+                doc.upsert_xml_part_content(&styles_path, styles.to_string());
+                assert!(doc.reparse_styles_part(styles));
+                doc.upsert_xml_part_content(&path, format!(r#"<w:{root} xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:p><w:r><w:t>Before</w:t></w:r></w:p><w:p w:rsidR="12345678"><w:pPr w:custom="keep"><w:pStyle w:val="HfOptions"/><w:spacing w:after="120"/><w:jc w:val="center"/><w:rPr><w:i/></w:rPr></w:pPr><w:r><w:rPr><w:b/></w:rPr><w:t>Text</w:t></w:r><w:fldSimple w:instr="PAGE"><w:r><w:t>1</w:t></w:r></w:fldSimple></w:p><w:p><w:r><w:t>After</w:t></w:r></w:p></w:{root}>"#));
+                doc.refresh_header_footer_lines_for(role, variant, &path)
+                    .unwrap();
+                assert_eq!(
+                    doc.hf_paragraph_properties(role, variant, 1).unwrap().bidi,
+                    Some(true)
+                );
+                let original = DocxXmlDocument::parse(&doc.read_xml_part_content(&path).unwrap())
+                    .unwrap()
+                    .to_string()
+                    .unwrap();
+                let protected_tail = original.split_once("</w:pPr>").unwrap().1;
+                let body = doc.read_xml_part_content("word/document.xml").unwrap();
+                for on in [false, true, false] {
+                    let commands = [
+                        HeadlessCommand::SetParagraphDirection {
+                            start_paragraph: 0,
+                            end_paragraph: 0,
+                            bidi: on,
+                        },
+                        HeadlessCommand::SetParagraphPagination {
+                            start_paragraph: 0,
+                            end_paragraph: 0,
+                            keep_next: Some(on),
+                            keep_lines: Some(on),
+                            page_break_before: Some(on),
+                            widow_control: Some(on),
+                        },
+                        HeadlessCommand::SetParagraphOptions {
+                            start_paragraph: 0,
+                            end_paragraph: 0,
+                            contextual_spacing: Some(on),
+                            suppress_line_numbers: Some(on),
+                            suppress_auto_hyphens: Some(on),
+                            tabs: Some(Vec::new()),
+                            borders: Some(HeadlessParagraphBorderBox::default()),
+                            shading: Some(None),
+                        },
+                    ];
+                    assert!(doc
+                        .apply_hf_paragraph_commands(role, variant, 1, &commands)
+                        .unwrap());
+                    let xml = doc.read_xml_part_content(&path).unwrap();
+                    assert!(xml.ends_with(protected_tail));
+                    for keep in [
+                        "w:custom=\"keep\"",
+                        "w:after=\"120\"",
+                        "w:val=\"center\"",
+                        "<w:rPr><w:i/>",
+                    ] {
+                        assert!(xml.contains(keep), "missing {keep}: {xml}");
+                    }
+                    assert!(xml.contains("w:val=\"clear\" w:pos=\"1440\""));
+                    assert!(xml.contains("w:val=\"nil\""));
+                    assert!(xml.contains("<w:shd w:val=\"nil\"/>"));
+                    let reopened = futures::executor::block_on(WordDocument::load(
+                        &doc.export_docx().unwrap(),
+                        &Options::default(),
+                    ))
+                    .unwrap();
+                    let props = reopened.hf_paragraph_properties(role, variant, 1).unwrap();
+                    assert_eq!(props.bidi, Some(on));
+                    assert_eq!(props.keep_next, Some(on));
+                    assert_eq!(props.keep_lines, Some(on));
+                    assert_eq!(props.page_break_before, Some(on));
+                    assert_eq!(props.widow_control, Some(on));
+                    assert_eq!(props.contextual_spacing, Some(on));
+                    assert_eq!(props.suppress_line_numbers, Some(on));
+                    assert_eq!(props.suppress_auto_hyphens, Some(on));
+                    assert_eq!(
+                        doc.read_xml_part_content("word/document.xml").unwrap(),
+                        body
+                    );
+                    assert_eq!(
+                        DocxXmlDocument::parse(
+                            &reopened.read_xml_part_content("word/document.xml").unwrap()
+                        )
+                        .unwrap()
+                        .to_string()
+                        .unwrap(),
+                        DocxXmlDocument::parse(&body).unwrap().to_string().unwrap()
+                    );
+                    assert!(!doc
+                        .apply_hf_paragraph_commands(role, variant, 1, &commands)
+                        .unwrap());
+                }
+                let before_invalid = doc.read_xml_part_content(&path).unwrap();
+                assert!(doc
+                    .apply_hf_paragraph_commands(
+                        role,
+                        variant,
+                        1,
+                        &[
+                            HeadlessCommand::SetParagraphDirection {
+                                start_paragraph: 0,
+                                end_paragraph: 0,
+                                bidi: true
+                            },
+                            HeadlessCommand::SetParagraphPagination {
+                                start_paragraph: 0,
+                                end_paragraph: 0,
+                                keep_next: None,
+                                keep_lines: None,
+                                page_break_before: None,
+                                widow_control: None
+                            },
+                        ]
+                    )
+                    .is_err());
+                assert_eq!(doc.read_xml_part_content(&path).unwrap(), before_invalid);
+                assert_eq!(doc.read_xml_part_content(&styles_path).unwrap(), styles);
+            }
+        }
+    }
+
+    #[test]
     fn header_footer_paragraph_metrics_preserve_xml_and_reset_direct_formatting() {
         use jade_docx_headless_api::HeadlessCommand;
         let data = std::fs::read(fixture_path("header-footer-sections.docx")).unwrap();
@@ -47704,6 +52788,7 @@ mod tests {
                     "w:endChars=\"200\"",
                     "w:hanging=\"240\"",
                     "w:before=\"120\"",
+                    "w:beforeAutospacing=\"0\"",
                     "w:afterLines=\"480\"",
                     "w:afterAutospacing=\"1\"",
                     "w:line=\"360\"",
@@ -47716,7 +52801,6 @@ mod tests {
                     "w:startChars=",
                     "w:firstLineChars=",
                     "w:beforeLines=",
-                    "w:beforeAutospacing=",
                 ] {
                     assert!(!xml.contains(attr), "competing {attr}: {xml}");
                 }
@@ -47797,7 +52881,7 @@ mod tests {
                 );
                 assert!(xml.contains("w:after=\"180\""));
                 assert!(!xml.contains("w:afterLines="));
-                assert!(!xml.contains("w:afterAutospacing="));
+                assert!(xml.contains("w:afterAutospacing=\"0\""));
                 assert!(doc
                     .apply_hf_paragraph_commands(
                         role,
@@ -47882,6 +52966,166 @@ mod tests {
                     body_before
                 );
             }
+        }
+    }
+
+    #[test]
+    fn header_footer_multiline_case_preserves_selection_unicode_and_formatting() {
+        for role in [HeaderFooterRole::Header, HeaderFooterRole::Footer] {
+            for variant in [
+                HeaderFooterVariant::Default,
+                HeaderFooterVariant::First,
+                HeaderFooterVariant::Even,
+            ] {
+                for reverse in [false, true] {
+                    for end_offset in [0, 4] {
+                        for (mode, first, last) in [
+                            (HeadlessChangeCaseMode::Upper, "İ STRASSE", "İSS"),
+                            (
+                                HeadlessChangeCaseMode::Lower,
+                                "i\u{307} straße",
+                                "i\u{307}ß",
+                            ),
+                            (HeadlessChangeCaseMode::Title, "İ Straße", "İß"),
+                            (HeadlessChangeCaseMode::Sentence, "İ straße", "İß"),
+                            (
+                                HeadlessChangeCaseMode::Toggle,
+                                "i\u{307} STRASSE",
+                                "i\u{307}SS",
+                            ),
+                        ] {
+                            let mut doc = futures::executor::block_on(WordDocument::load(
+                                &build_font_size_fallback_docx(),
+                                &Options::default(),
+                            ))
+                            .unwrap();
+                            doc.ensure_hf_part_for_edit(role, variant).unwrap();
+                            let path = doc
+                                .resolve_header_footer_part_path_for(role, variant)
+                                .unwrap();
+                            let root = if role == HeaderFooterRole::Header {
+                                "hdr"
+                            } else {
+                                "ftr"
+                            };
+                            doc.upsert_xml_part_content(&path, format!(r#"<w:{root} xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:test="urn:jade:test">
+                                <w:p><w:r w:rsidR="12345678"><w:rPr><w:b/></w:rPr><w:t>pre İ stra</w:t></w:r><w:hyperlink w:anchor="keep"><w:r><w:rPr><w:i/></w:rPr><w:t>ße</w:t></w:r></w:hyperlink></w:p>
+                                <w:p><w:r test:marker="empty"><w:rPr><w:i/></w:rPr></w:r></w:p>
+                                <w:p><w:r><w:rPr><w:u w:val="double"/></w:rPr><w:t>İß post</w:t></w:r></w:p>
+                                <w:p><w:r><w:t>tail</w:t></w:r></w:p>
+                            </w:{root}>"#));
+                            doc.refresh_header_footer_lines_for(role, variant, &path)
+                                .unwrap();
+                            let body_before =
+                                doc.read_xml_part_content("word/document.xml").unwrap();
+                            let start = TextPosition::new(0, 4);
+                            let end = TextPosition::new(2, end_offset);
+                            let selection = if reverse {
+                                SelectionRange::new(end, start)
+                            } else {
+                                SelectionRange::new(start, end)
+                            };
+                            let transformed_end =
+                                TextPosition::new(2, if end_offset == 0 { 0 } else { last.len() });
+                            let expected = if reverse {
+                                SelectionRange::new(transformed_end, start)
+                            } else {
+                                SelectionRange::new(start, transformed_end)
+                            };
+                            assert_eq!(
+                                doc.change_hf_story_case(role, variant, selection, mode)
+                                    .unwrap(),
+                                Some(expected)
+                            );
+                            assert_eq!(
+                                doc.read_xml_part_content("word/document.xml").unwrap(),
+                                body_before
+                            );
+                            let reopened = futures::executor::block_on(WordDocument::load(
+                                &doc.export_docx().unwrap(),
+                                &Options::default(),
+                            ))
+                            .unwrap();
+                            for checked in [&doc, &reopened] {
+                                let content = checked.read_xml_part_content(&path).unwrap();
+                                assert!(content.contains("w:anchor=\"keep\""));
+                                assert_eq!(content.matches("test:marker=\"empty\"").count(), 1);
+                                assert_eq!(content.matches("w:rsidR=\"12345678\"").count(), 2);
+                                let xml = DocxXmlDocument::parse(&content).unwrap();
+                                let mut paragraphs = Vec::new();
+                                WordDocument::collect_story_paragraph_ids(
+                                    xml.root(),
+                                    &mut paragraphs,
+                                );
+                                assert_eq!(paragraphs.len(), 4);
+                                let expected_texts = [
+                                    format!("pre {first}"),
+                                    String::new(),
+                                    format!("{} post", if end_offset == 0 { "İß" } else { last }),
+                                    "tail".into(),
+                                ];
+                                for (index, id) in paragraphs.into_iter().enumerate() {
+                                    let runs = WordDocument::hf_text_runs(&xml, id).unwrap();
+                                    assert_eq!(
+                                        runs.iter()
+                                            .map(|run| run.text.as_str())
+                                            .collect::<String>(),
+                                        expected_texts[index]
+                                    );
+                                    if index == 1 {
+                                        assert_eq!(runs.len(), 1);
+                                    }
+                                    for (run_index, run) in runs.into_iter().enumerate() {
+                                        let props = xml
+                                            .element(run.id)
+                                            .and_then(WordDocument::run_properties_element);
+                                        let has = |name| {
+                                            props.is_some_and(|p| p.children.iter().any(|c| matches!(c, XmlNode::Element(e) if e.name == name)))
+                                        };
+                                        assert_eq!(has("w:b"), index == 0 && run_index < 2);
+                                        assert_eq!(
+                                            has("w:i"),
+                                            index == 1 || index == 0 && run_index == 2
+                                        );
+                                        assert_eq!(has("w:u"), index == 2);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn header_footer_multiline_case_rejects_unmappable_ranges_atomically() {
+        let mut doc = futures::executor::block_on(WordDocument::load(
+            &build_font_size_fallback_docx(),
+            &Options::default(),
+        ))
+        .unwrap();
+        let role = HeaderFooterRole::Header;
+        let variant = HeaderFooterVariant::Default;
+        doc.ensure_hf_part_for_edit(role, variant).unwrap();
+        let path = doc
+            .resolve_header_footer_part_path_for(role, variant)
+            .unwrap();
+        doc.upsert_xml_part_content(&path, r#"<w:hdr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:p><w:r><w:t>A日本</w:t></w:r></w:p><w:p><w:fldSimple w:instr="PAGE"><w:r><w:t>1</w:t></w:r></w:fldSimple></w:p></w:hdr>"#.into());
+        let original = doc.read_xml_part_content(&path).unwrap();
+        for range in [
+            SelectionRange::new(TextPosition::new(0, 2), TextPosition::new(0, 4)),
+            SelectionRange::new(TextPosition::new(0, 0), TextPosition::new(0, 99)),
+            SelectionRange::new(TextPosition::new(0, 0), TextPosition::new(2, 0)),
+            SelectionRange::new(TextPosition::new(0, 0), TextPosition::new(1, 1)),
+            SelectionRange::collapsed(TextPosition::new(0, 0)),
+        ] {
+            assert_eq!(
+                doc.change_hf_story_case(role, variant, range, HeadlessChangeCaseMode::Upper)
+                    .unwrap(),
+                None
+            );
+            assert_eq!(doc.read_xml_part_content(&path).unwrap(), original);
         }
     }
 
@@ -48095,6 +53339,705 @@ mod tests {
     }
 
     #[test]
+    fn header_footer_multiline_format_toggles_selection_and_round_trips() {
+        let data = build_font_size_fallback_docx();
+        for role in [HeaderFooterRole::Header, HeaderFooterRole::Footer] {
+            for variant in [
+                HeaderFooterVariant::Default,
+                HeaderFooterVariant::First,
+                HeaderFooterVariant::Even,
+            ] {
+                for end_offset in [0, 2] {
+                    for reverse in [false, true] {
+                        let mut doc = futures::executor::block_on(WordDocument::load(
+                            &data,
+                            &Options::default(),
+                        ))
+                        .unwrap();
+                        doc.ensure_hf_part_for_edit(role, variant).unwrap();
+                        let path = doc
+                            .resolve_header_footer_part_path_for(role, variant)
+                            .unwrap();
+                        let root = if role == HeaderFooterRole::Header {
+                            "hdr"
+                        } else {
+                            "ftr"
+                        };
+                        doc.upsert_xml_part_content(&path, format!(r#"<w:{root} xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:test="urn:jade:test">
+                          <w:p><w:hyperlink w:anchor="keep"><w:r w:rsidR="12345678"><w:rPr><w:b/><w:i/></w:rPr><w:t>ab日本z</w:t></w:r></w:hyperlink></w:p>
+                          <w:p><w:r test:marker="empty"><w:rPr><w:b/><w:i/></w:rPr></w:r></w:p>
+                          <w:p><w:r><w:rPr><w:i/></w:rPr><w:t>uvw</w:t></w:r></w:p>
+                          <w:p><w:r><w:t>tail</w:t></w:r></w:p>
+                        </w:{root}>"#));
+                        doc.refresh_header_footer_lines_for(role, variant, &path)
+                            .unwrap();
+                        let body_before = doc.read_xml_part_content("word/document.xml").unwrap();
+                        let saved_before = futures::executor::block_on(WordDocument::load(
+                            &doc.export_docx().unwrap(),
+                            &Options::default(),
+                        ))
+                        .unwrap()
+                        .read_xml_part_content("word/document.xml")
+                        .unwrap();
+                        let (start, end) =
+                            (TextPosition::new(0, 1), TextPosition::new(2, end_offset));
+                        let range = if reverse {
+                            SelectionRange::new(end, start)
+                        } else {
+                            SelectionRange::new(start, end)
+                        };
+                        let before = doc
+                            .hf_story_range_run_state(role, variant, range)
+                            .unwrap()
+                            .unwrap();
+                        assert_eq!(before.all_bold, end_offset == 0);
+                        assert!(before.all_italic);
+                        let enabled = !before.all_bold;
+                        assert!(doc
+                            .apply_hf_story_run_format(
+                                role,
+                                variant,
+                                range,
+                                &HfRunFormat {
+                                    bold: Some(enabled),
+                                    ..Default::default()
+                                }
+                            )
+                            .unwrap());
+                        let mut reopened = futures::executor::block_on(WordDocument::load(
+                            &doc.export_docx().unwrap(),
+                            &Options::default(),
+                        ))
+                        .unwrap();
+                        for (checked, expected_body) in
+                            [(&mut doc, &body_before), (&mut reopened, &saved_before)]
+                        {
+                            assert_eq!(
+                                checked.read_xml_part_content("word/document.xml").unwrap(),
+                                *expected_body
+                            );
+                            let state = checked
+                                .hf_story_range_run_state(role, variant, range)
+                                .unwrap()
+                                .unwrap();
+                            assert_eq!(state.all_bold, enabled);
+                            assert!(state.all_italic);
+                            let xml = checked.read_xml_part_content(&path).unwrap();
+                            assert!(xml.contains("w:anchor=\"keep\""), "{xml}");
+                            assert_eq!(xml.matches("test:marker=\"empty\"").count(), 1);
+                            let raw = DocxXmlDocument::parse(&xml).unwrap();
+                            for (index, expected_text) in
+                                ["ab日本z", "", "uvw", "tail"].iter().enumerate()
+                            {
+                                let (paragraph, ids) =
+                                    WordDocument::hf_paragraph_run_ids(&raw, index).unwrap();
+                                let runs = WordDocument::hf_text_runs(&raw, paragraph).unwrap();
+                                assert_eq!(
+                                    runs.iter().map(|run| run.text.as_str()).collect::<String>(),
+                                    *expected_text
+                                );
+                                if index == 1 {
+                                    assert_eq!(ids.len(), 1);
+                                }
+                                for run in runs {
+                                    let props = WordDocument::run_properties_element(
+                                        raw.element(run.id).unwrap(),
+                                    );
+                                    let selected = match index {
+                                        0 => run.start >= 1,
+                                        1 => true,
+                                        2 => run.end <= end_offset,
+                                        _ => false,
+                                    };
+                                    assert_eq!(
+                                        WordDocument::run_property_child_enabled(props, "w:b"),
+                                        if selected { enabled } else { index < 2 },
+                                        "{index} {range:?}: {xml}"
+                                    );
+                                    assert_eq!(
+                                        WordDocument::run_property_child_enabled(props, "w:i"),
+                                        index < 3
+                                    );
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn header_footer_multiline_format_rejects_unmappable_ranges_atomically() {
+        let data = build_font_size_fallback_docx();
+        let mut doc =
+            futures::executor::block_on(WordDocument::load(&data, &Options::default())).unwrap();
+        let (role, variant) = (HeaderFooterRole::Header, HeaderFooterVariant::Default);
+        doc.ensure_hf_part_for_edit(role, variant).unwrap();
+        let path = doc
+            .resolve_header_footer_part_path_for(role, variant)
+            .unwrap();
+        for content in [
+            "<w:r><w:t>end</w:t></w:r>",
+            "<w:fldSimple w:instr=\"PAGE\"><w:r><w:t>1</w:t></w:r></w:fldSimple>",
+        ] {
+            doc.upsert_xml_part_content(&path, format!(r#"<w:hdr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:p><w:r><w:t>A日本</w:t></w:r></w:p><w:p>{content}</w:p></w:hdr>"#));
+            doc.refresh_header_footer_lines_for(role, variant, &path)
+                .unwrap();
+            let before = doc.read_xml_part_content(&path).unwrap();
+            let mut ranges = vec![
+                SelectionRange::new(TextPosition::new(0, 2), TextPosition::new(1, 1)),
+                SelectionRange::new(TextPosition::new(0, 0), TextPosition::new(1, 99)),
+                SelectionRange::new(TextPosition::new(0, 0), TextPosition::new(99, 0)),
+                SelectionRange::collapsed(TextPosition::new(0, 0)),
+            ];
+            if content.contains("fldSimple") {
+                ranges.push(SelectionRange::new(
+                    TextPosition::new(0, 0),
+                    TextPosition::new(1, 1),
+                ));
+            }
+            for range in ranges {
+                assert!(!doc
+                    .apply_hf_story_run_format(
+                        role,
+                        variant,
+                        range,
+                        &HfRunFormat {
+                            bold: Some(true),
+                            ..Default::default()
+                        }
+                    )
+                    .unwrap());
+                assert_eq!(doc.read_xml_part_content(&path).unwrap(), before);
+            }
+        }
+    }
+    #[test]
+    fn header_footer_text_edits_keep_run_attributes_and_wrappers() {
+        let data = build_font_size_fallback_docx();
+        for role in [HeaderFooterRole::Header, HeaderFooterRole::Footer] {
+            for variant in [
+                HeaderFooterVariant::Default,
+                HeaderFooterVariant::First,
+                HeaderFooterVariant::Even,
+            ] {
+                for (text, expected) in [
+                    ("aXb日本ef", [Some("aXb"), Some("日本"), Some("ef")]),
+                    ("ab日X本ef", [Some("ab"), Some("日X本"), Some("ef")]),
+                    ("a本ef", [Some("a"), Some("本"), Some("ef")]),
+                    ("aXf", [Some("aX"), None, Some("f")]),
+                    ("abX日本ef", [Some("abX"), Some("日本"), Some("ef")]),
+                    ("", [Some(""), None, None]),
+                    ("ab日本ef", [Some("ab"), Some("日本"), Some("ef")]),
+                ] {
+                    let mut doc =
+                        futures::executor::block_on(WordDocument::load(&data, &Options::default()))
+                            .unwrap();
+                    doc.ensure_hf_part_for_edit(role, variant).unwrap();
+                    let path = doc
+                        .resolve_header_footer_part_path_for(role, variant)
+                        .unwrap();
+                    let root = if role == HeaderFooterRole::Header {
+                        "hdr"
+                    } else {
+                        "ftr"
+                    };
+                    doc.upsert_xml_part_content(&path, format!(r#"<w:{root} xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:test="urn:jade:test"><w:p>
+                        <w:r w:rsidR="00000001" w:rsidRPr="00000011" test:marker="0"><w:rPr><w:b/></w:rPr><w:t>ab</w:t></w:r>
+                        <w:hyperlink w:anchor="target" test:wrapper="keep"><w:r w:rsidR="00000002" w:rsidRPr="00000012" test:marker="1"><w:rPr><w:i/></w:rPr><w:t>日本</w:t></w:r></w:hyperlink>
+                        <w:r w:rsidR="00000003" w:rsidRPr="00000013" test:marker="2"><w:rPr><w:u w:val="single"/></w:rPr><w:t>ef</w:t></w:r>
+                    </w:p></w:{root}>"#));
+                    doc.refresh_header_footer_lines_for(role, variant, &path)
+                        .unwrap();
+                    doc.replace_hf_paragraph_text(role, variant, 0, text)
+                        .unwrap();
+                    let reopened = futures::executor::block_on(WordDocument::load(
+                        &doc.export_docx().unwrap(),
+                        &Options::default(),
+                    ))
+                    .unwrap();
+                    for checked in [&doc, &reopened] {
+                        let xml = checked.read_xml_part_content(&path).unwrap();
+                        let raw = DocxXmlDocument::parse(&xml).unwrap();
+                        let (paragraph, ids) = WordDocument::hf_paragraph_run_ids(&raw, 0).unwrap();
+                        assert_eq!(
+                            ids.len(),
+                            expected.iter().flatten().count(),
+                            "{text}: {xml}"
+                        );
+                        let actual_text = WordDocument::hf_text_runs(&raw, paragraph)
+                            .unwrap()
+                            .iter()
+                            .map(|run| run.text.as_str())
+                            .collect::<String>();
+                        assert_eq!(actual_text, text);
+                        for (id, (index, expected_text)) in ids.iter().zip(
+                            expected
+                                .iter()
+                                .enumerate()
+                                .filter_map(|(index, text)| text.map(|text| (index, text))),
+                        ) {
+                            let run = raw.element(*id).unwrap();
+                            let attr = |name: &str| {
+                                run.attributes
+                                    .iter()
+                                    .find(|attr| attr.name == name)
+                                    .map(|attr| attr.value.as_str())
+                            };
+                            assert_eq!(
+                                attr("test:marker"),
+                                Some(index.to_string().as_str()),
+                                "{text}: {xml}"
+                            );
+                            assert_eq!(
+                                attr("w:rsidR"),
+                                Some(format!("{:08X}", index + 1).as_str()),
+                                "{text}: {xml}"
+                            );
+                            assert_eq!(
+                                attr("w:rsidRPr"),
+                                Some(format!("{:08X}", index + 17).as_str()),
+                                "{text}: {xml}"
+                            );
+                            assert_eq!(
+                                WordDocument::hf_run_text(run).as_deref(),
+                                Some(expected_text)
+                            );
+                            let properties = WordDocument::run_properties_element(run);
+                            assert!(
+                                WordDocument::run_property_child_enabled(
+                                    properties,
+                                    ["w:b", "w:i", "w:u"][index]
+                                ),
+                                "{text}: {xml}"
+                            );
+                        }
+                        assert!(xml.contains("w:anchor=\"target\""), "{xml}");
+                        assert!(xml.contains("test:wrapper=\"keep\""), "{xml}");
+                    }
+                }
+            }
+        }
+    }
+    #[test]
+    fn header_footer_hyphens_preserve_selection_and_text_edits() {
+        let data = build_font_size_fallback_docx();
+        for role in [HeaderFooterRole::Header, HeaderFooterRole::Footer] {
+            for variant in [
+                HeaderFooterVariant::Default,
+                HeaderFooterVariant::First,
+                HeaderFooterVariant::Even,
+            ] {
+                for (tag, hyphen) in [
+                    ("w:noBreakHyphen", '\u{2011}'),
+                    ("w:softHyphen", '\u{00ad}'),
+                ] {
+                    let text = format!("a{hyphen}bc");
+                    let hyphen_end = 1 + hyphen.len_utf8();
+                    for selected in [0..1, 1..hyphen_end, hyphen_end..hyphen_end + 1] {
+                        let mut doc = futures::executor::block_on(WordDocument::load(
+                            &data,
+                            &Options::default(),
+                        ))
+                        .unwrap();
+                        doc.ensure_hf_part_for_edit(role, variant).unwrap();
+                        let path = doc
+                            .resolve_header_footer_part_path_for(role, variant)
+                            .unwrap();
+                        let root = if role == HeaderFooterRole::Header {
+                            "hdr"
+                        } else {
+                            "ftr"
+                        };
+                        doc.upsert_xml_part_content(&path, format!(r#"<w:{root} xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:p><w:r><w:rPr><w:i/></w:rPr><w:t>a</w:t><{tag}/><w:t>bc</w:t></w:r></w:p></w:{root}>"#));
+                        doc.refresh_header_footer_lines_for(role, variant, &path)
+                            .unwrap();
+                        assert!(
+                            doc.apply_hf_range_run_format(
+                                role,
+                                variant,
+                                0,
+                                selected.start,
+                                selected.end,
+                                &HfRunFormat {
+                                    bold: Some(true),
+                                    ..Default::default()
+                                }
+                            )
+                            .unwrap(),
+                            "{tag}: {selected:?}"
+                        );
+                        // Editing elsewhere must keep both the special character and the selected formatting.
+                        doc.replace_hf_paragraph_text(role, variant, 0, &format!("{text}!"))
+                            .unwrap();
+                        let reopened = futures::executor::block_on(WordDocument::load(
+                            &doc.export_docx().unwrap(),
+                            &Options::default(),
+                        ))
+                        .unwrap();
+                        for checked in [&doc, &reopened] {
+                            let xml = checked.read_xml_part_content(&path).unwrap();
+                            assert_eq!(xml.matches(&format!("<{tag}")).count(), 1, "{xml}");
+                            let raw = DocxXmlDocument::parse(&xml).unwrap();
+                            let (paragraph, _) =
+                                WordDocument::hf_paragraph_run_ids(&raw, 0).unwrap();
+                            let runs = WordDocument::hf_text_runs(&raw, paragraph).unwrap();
+                            assert_eq!(
+                                runs.iter().map(|run| run.text.as_str()).collect::<String>(),
+                                format!("{text}!")
+                            );
+                            for run in runs {
+                                let properties = WordDocument::run_properties_element(
+                                    raw.element(run.id).unwrap(),
+                                );
+                                assert!(
+                                    WordDocument::run_property_child_enabled(properties, "w:i"),
+                                    "{xml}"
+                                );
+                                assert_eq!(
+                                    WordDocument::run_property_child_enabled(properties, "w:b"),
+                                    run.start >= selected.start && run.end <= selected.end,
+                                    "{selected:?}: {xml}"
+                                );
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    #[test]
+    fn header_footer_ribbon_font_preserves_other_scripts() {
+        let data = build_font_size_fallback_docx();
+        for role in [HeaderFooterRole::Header, HeaderFooterRole::Footer] {
+            for variant in [
+                HeaderFooterVariant::Default,
+                HeaderFooterVariant::First,
+                HeaderFooterVariant::Even,
+            ] {
+                for partial in [false, true] {
+                    for family in ["Arial", "游ゴシック"] {
+                        let mut doc = futures::executor::block_on(WordDocument::load(
+                            &data,
+                            &Options::default(),
+                        ))
+                        .unwrap();
+                        doc.ensure_hf_part_for_edit(role, variant).unwrap();
+                        let path = doc
+                            .resolve_header_footer_part_path_for(role, variant)
+                            .unwrap();
+                        let root = if role == HeaderFooterRole::Header {
+                            "hdr"
+                        } else {
+                            "ftr"
+                        };
+                        let fonts = r#"<w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:eastAsia="ＭＳ 明朝" w:cs="Arial Unicode MS" w:asciiTheme="minorHAnsi" w:hAnsiTheme="minorHAnsi" w:eastAsiaTheme="minorEastAsia" w:cstheme="minorBidi" w:hint="eastAsia" test:tracking="keep"/>"#;
+                        doc.upsert_xml_part_content(&path, format!(r#"<w:{root} xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:test="urn:jade:test"><w:p><w:r><w:rPr>{fonts}</w:rPr><w:t>abcde</w:t></w:r></w:p></w:{root}>"#));
+                        doc.refresh_header_footer_lines_for(role, variant, &path)
+                            .unwrap();
+                        let format = HfRunFormat {
+                            font_family: Some(family.into()),
+                            ..Default::default()
+                        };
+                        if partial {
+                            assert!(doc
+                                .apply_hf_range_run_format(role, variant, 0, 1, 4, &format)
+                                .unwrap());
+                        } else {
+                            doc.apply_hf_paragraph_run_format(role, variant, 0, &format)
+                                .unwrap();
+                        }
+                        let reopened = futures::executor::block_on(WordDocument::load(
+                            &doc.export_docx().unwrap(),
+                            &Options::default(),
+                        ))
+                        .unwrap();
+                        for checked in [&doc, &reopened] {
+                            let xml = checked.read_xml_part_content(&path).unwrap();
+                            let raw = DocxXmlDocument::parse(&xml).unwrap();
+                            let mut runs = Vec::new();
+                            WordDocument::collect_element_ids_by_name(raw.root(), "w:r", &mut runs);
+                            assert_eq!(runs.len(), if partial { 3 } else { 1 });
+                            for id in runs {
+                                let run = raw.element(id).unwrap();
+                                let text = WordDocument::hf_run_text(run).unwrap();
+                                let selected = !partial || text == "bcd";
+                                let rpr = WordDocument::run_properties_element(run).unwrap();
+                                let fonts = rpr
+                                    .children
+                                    .iter()
+                                    .find_map(|node| match node {
+                                        XmlNode::Element(child) if child.name == "w:rFonts" => {
+                                            Some(child)
+                                        }
+                                        _ => None,
+                                    })
+                                    .unwrap();
+                                let attr = |name: &str| {
+                                    fonts
+                                        .attributes
+                                        .iter()
+                                        .find(|attr| attr.name == name)
+                                        .map(|attr| attr.value.as_str())
+                                };
+                                for name in ["w:ascii", "w:hAnsi"] {
+                                    assert_eq!(
+                                        attr(name),
+                                        Some(if selected { family } else { "Calibri" }),
+                                        "{xml}"
+                                    );
+                                }
+                                for name in ["w:asciiTheme", "w:hAnsiTheme"] {
+                                    assert_eq!(
+                                        attr(name),
+                                        if selected { None } else { Some("minorHAnsi") },
+                                        "{xml}"
+                                    );
+                                }
+                                let all_scripts = selected && family == "游ゴシック";
+                                assert_eq!(
+                                    attr("w:eastAsia"),
+                                    Some(if all_scripts { family } else { "ＭＳ 明朝" }),
+                                    "{xml}"
+                                );
+                                assert_eq!(
+                                    attr("w:cs"),
+                                    Some(if all_scripts {
+                                        family
+                                    } else {
+                                        "Arial Unicode MS"
+                                    }),
+                                    "{xml}"
+                                );
+                                assert_eq!(
+                                    attr("w:eastAsiaTheme"),
+                                    if all_scripts {
+                                        None
+                                    } else {
+                                        Some("minorEastAsia")
+                                    },
+                                    "{xml}"
+                                );
+                                assert_eq!(
+                                    attr("w:cstheme"),
+                                    if all_scripts { None } else { Some("minorBidi") },
+                                    "{xml}"
+                                );
+                                assert_eq!(attr("w:hint"), Some("eastAsia"), "{xml}");
+                                assert_eq!(attr("test:tracking"), Some("keep"), "{xml}");
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn header_footer_format_edits_keep_authored_revision_last() {
+        let data = build_font_size_fallback_docx();
+        let revision = r#"<w:rPrChange w:id="27" w:author="Reviewer" w:date="2026-01-02T03:04:05Z"><w:rPr><w:i w:val="0"/><w:sz w:val="22"/><w:lang w:val="ja-JP"/></w:rPr></w:rPrChange>"#;
+        // Splitting a run assigns fresh revision IDs; the authored metadata
+        // and previous properties must remain identical on every split.
+        let revision_payload = revision.split_once(" w:author").unwrap().1;
+        for role in [HeaderFooterRole::Header, HeaderFooterRole::Footer] {
+            for variant in [
+                HeaderFooterVariant::Default,
+                HeaderFooterVariant::First,
+                HeaderFooterVariant::Even,
+            ] {
+                for partial in [false, true] {
+                    for patch in [false, true] {
+                        let mut doc = futures::executor::block_on(WordDocument::load(
+                            &data,
+                            &Options::default(),
+                        ))
+                        .unwrap();
+                        doc.ensure_hf_part_for_edit(role, variant).unwrap();
+                        let path = doc
+                            .resolve_header_footer_part_path_for(role, variant)
+                            .unwrap();
+                        let root = if role == HeaderFooterRole::Header {
+                            "hdr"
+                        } else {
+                            "ftr"
+                        };
+                        let xml = format!(
+                            r#"<w:{root} xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:p><w:r><w:rPr><w:i/><w:sz w:val="32"/>{revision}</w:rPr><w:t>abcde</w:t></w:r></w:p></w:{root}>"#
+                        );
+                        doc.upsert_xml_part_content(&path, xml);
+                        doc.refresh_header_footer_lines_for(role, variant, &path)
+                            .unwrap();
+                        let format = if patch {
+                            HfRunFormat {
+                                patch: Some(jade_docx_headless_api::HeadlessRunFormat {
+                                    bold: Some(true),
+                                    ..Default::default()
+                                }),
+                                ..Default::default()
+                            }
+                        } else {
+                            HfRunFormat {
+                                bold: Some(true),
+                                ..Default::default()
+                            }
+                        };
+                        if partial {
+                            assert!(doc
+                                .apply_hf_range_run_format(role, variant, 0, 1, 4, &format)
+                                .unwrap());
+                        } else {
+                            doc.apply_hf_paragraph_run_format(role, variant, 0, &format)
+                                .unwrap();
+                        }
+                        let reopened = futures::executor::block_on(WordDocument::load(
+                            &doc.export_docx().unwrap(),
+                            &Options::default(),
+                        ))
+                        .unwrap();
+                        for checked in [&doc, &reopened] {
+                            let xml = checked.read_xml_part_content(&path).unwrap();
+                            assert_eq!(
+                                xml.matches(revision_payload).count(),
+                                if partial { 3 } else { 1 },
+                                "revision preserved: {xml}"
+                            );
+                            let raw = DocxXmlDocument::parse(&xml).unwrap();
+                            let mut runs = Vec::new();
+                            WordDocument::collect_element_ids_by_name(raw.root(), "w:r", &mut runs);
+                            for id in runs {
+                                let run = raw.element(id).unwrap();
+                                let properties = WordDocument::run_properties_element(run).unwrap();
+                                let last = properties
+                                    .children
+                                    .iter()
+                                    .filter_map(|node| match node {
+                                        XmlNode::Element(child) => Some(child),
+                                        _ => None,
+                                    })
+                                    .last()
+                                    .unwrap();
+                                assert_eq!(
+                                    last.name, "w:rPrChange",
+                                    "revision must remain last: {xml}"
+                                );
+                            }
+                            let parsed = DocumentParser::new().parse_document_xml(&xml).unwrap();
+                            for run in &parsed.body.unwrap().elements[0]
+                                .as_paragraph()
+                                .unwrap()
+                                .runs
+                            {
+                                let properties = run.properties.as_ref().unwrap();
+                                assert!(properties.change.is_some());
+                                assert_eq!(
+                                    properties.bold,
+                                    if !partial || run.text == "bcd" {
+                                        Some(true)
+                                    } else {
+                                        None
+                                    }
+                                );
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn header_footer_ribbon_preserves_underline_color_and_theme() {
+        let data = build_font_size_fallback_docx();
+        for role in [HeaderFooterRole::Header, HeaderFooterRole::Footer] {
+            for variant in [
+                HeaderFooterVariant::Default,
+                HeaderFooterVariant::First,
+                HeaderFooterVariant::Even,
+            ] {
+                for partial in [false, true] {
+                    for initial_kind in [None, Some("wave")] {
+                        let mut doc = futures::executor::block_on(WordDocument::load(
+                            &data,
+                            &Options::default(),
+                        ))
+                        .unwrap();
+                        doc.ensure_hf_part_for_edit(role, variant).unwrap();
+                        let path = doc
+                            .resolve_header_footer_part_path_for(role, variant)
+                            .unwrap();
+                        let root = if role == HeaderFooterRole::Header {
+                            "hdr"
+                        } else {
+                            "ftr"
+                        };
+                        let kind_attribute = initial_kind
+                            .map(|kind| format!(" w:val=\"{kind}\""))
+                            .unwrap_or_default();
+                        doc.upsert_xml_part_content(&path, format!(r#"<w:{root} xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:p><w:r><w:rPr><w:u{kind_attribute} w:color="ABCDEF" w:themeColor="accent1" w:themeTint="80" w:themeShade="BF"/></w:rPr><w:t>abcde</w:t></w:r></w:p></w:{root}>"#));
+                        doc.refresh_header_footer_lines_for(role, variant, &path)
+                            .unwrap();
+                        for (format, expected_kind) in [
+                            (
+                                HfRunFormat {
+                                    bold: Some(true),
+                                    ..Default::default()
+                                },
+                                initial_kind,
+                            ),
+                            (
+                                HfRunFormat {
+                                    underline: Some(true),
+                                    underline_kind: Some("wavyDouble".into()),
+                                    ..Default::default()
+                                },
+                                Some("wavyDouble"),
+                            ),
+                        ] {
+                            if partial {
+                                assert!(doc
+                                    .apply_hf_range_run_format(role, variant, 0, 1, 4, &format)
+                                    .unwrap());
+                            } else {
+                                doc.apply_hf_paragraph_run_format(role, variant, 0, &format)
+                                    .unwrap();
+                            }
+                            let exported = doc.export_docx().unwrap();
+                            let reopened = futures::executor::block_on(WordDocument::load(
+                                &exported,
+                                &Options::default(),
+                            ))
+                            .unwrap();
+                            for checked in [&doc, &reopened] {
+                                let xml = checked.read_xml_part_content(&path).unwrap();
+                                let parsed =
+                                    DocumentParser::new().parse_document_xml(&xml).unwrap();
+                                let body = parsed.body.unwrap();
+                                for run in &body.elements[0].as_paragraph().unwrap().runs {
+                                    let props = run.properties.as_ref().unwrap();
+                                    assert_eq!(props.underline_color.as_deref(), Some("ABCDEF"));
+                                    let theme = props.underline_theme_color.as_ref().unwrap();
+                                    assert_eq!(theme.name.as_ref(), "accent1");
+                                    assert_eq!(theme.tint.as_deref(), Some("80"));
+                                    assert_eq!(theme.shade.as_deref(), Some("BF"));
+                                    let expected = if !partial || run.text == "bcd" {
+                                        expected_kind
+                                    } else {
+                                        initial_kind
+                                    };
+                                    assert_eq!(props.underline, expected.map(|_| true));
+                                    assert_eq!(props.underline_kind.as_deref(), expected);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
     fn header_footer_advanced_formats_preserve_ranges_and_round_trip() {
         let data = std::fs::read(fixture_path("header-footer-sections.docx"))
             .expect("read header/footer fixture");
@@ -48250,6 +54193,948 @@ mod tests {
     }
 
     #[test]
+    fn header_footer_multiline_deletion_preserves_surviving_inline_xml() {
+        let data = build_font_size_fallback_docx();
+        for role in [HeaderFooterRole::Header, HeaderFooterRole::Footer] {
+            for variant in [
+                HeaderFooterVariant::Default,
+                HeaderFooterVariant::First,
+                HeaderFooterVariant::Even,
+            ] {
+                for reverse in [false, true] {
+                    for end_offset in [0, "消す".len()] {
+                        let mut doc = futures::executor::block_on(WordDocument::load(
+                            &data,
+                            &Options::default(),
+                        ))
+                        .unwrap();
+                        doc.ensure_hf_part_for_edit(role, variant).unwrap();
+                        let path = doc
+                            .resolve_header_footer_part_path_for(role, variant)
+                            .unwrap();
+                        let root = if role == HeaderFooterRole::Header {
+                            "hdr"
+                        } else {
+                            "ftr"
+                        };
+                        doc.upsert_xml_part_content(&path, format!(r#"<w:{root} xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:p w:rsidR="11111111"><w:pPr><w:spacing w:after="180"/></w:pPr><w:hyperlink w:anchor="left"><w:r w:rsidR="12345678"><w:rPr><w:b/></w:rPr><w:t>a日</w:t><w:noBreakHyphen/><w:t>消す</w:t></w:r></w:hyperlink></w:p><w:p><w:r><w:rPr><w:i/></w:rPr></w:r></w:p><w:p><w:pPr><w:spacing w:after="240"/></w:pPr><w:hyperlink w:anchor="right"><w:r w:rsidR="87654321"><w:rPr><w:i/></w:rPr><w:t>消す</w:t><w:softHyphen/><w:t>tail</w:t></w:r></w:hyperlink></w:p><w:p><w:r><w:t>untouched</w:t></w:r></w:p></w:{root}>"#));
+                        doc.refresh_header_footer_lines_for(role, variant, &path)
+                            .unwrap();
+                        let before = doc.clone();
+                        let start = TextPosition::new(0, "a日\u{2011}".len());
+                        let end = TextPosition::new(2, end_offset);
+                        let range = if reverse {
+                            SelectionRange::new(end, start)
+                        } else {
+                            SelectionRange::new(start, end)
+                        };
+                        assert_eq!(
+                            doc.delete_hf_story_selection(role, variant, range).unwrap(),
+                            Some(start)
+                        );
+                        assert_eq!(
+                            doc.read_xml_part_content("word/document.xml"),
+                            before.read_xml_part_content("word/document.xml")
+                        );
+                        let expected = format!(
+                            "a日\u{2011}{}\u{ad}tail",
+                            if end_offset == 0 { "消す" } else { "" }
+                        );
+                        let reopened = futures::executor::block_on(WordDocument::load(
+                            &doc.export_docx().unwrap(),
+                            &Options::default(),
+                        ))
+                        .unwrap();
+                        for current in [&doc, &reopened] {
+                            assert_eq!(
+                                current.hf_plain_paragraph_text(role, variant, 0).as_deref(),
+                                Some(expected.as_str())
+                            );
+                            assert_eq!(
+                                current.hf_plain_paragraph_text(role, variant, 1).as_deref(),
+                                Some("untouched")
+                            );
+                            assert!(current.hf_plain_paragraph_text(role, variant, 2).is_none());
+                            assert_eq!(
+                                current.hf_run_format_at(role, variant, 0, 0).bold,
+                                Some(true)
+                            );
+                            assert_eq!(
+                                current
+                                    .hf_run_format_at(role, variant, 0, start.offset)
+                                    .italic,
+                                Some(true)
+                            );
+                            let xml = current.read_xml_part_content(&path).unwrap();
+                            for preserved in [
+                                "w:anchor=\"left\"",
+                                "w:anchor=\"right\"",
+                                "w:rsidR=\"12345678\"",
+                                "w:rsidR=\"87654321\"",
+                                "w:after=\"180\"",
+                                "w:noBreakHyphen",
+                                "w:softHyphen",
+                            ] {
+                                assert!(xml.contains(preserved), "{preserved}: {xml}");
+                            }
+                            assert!(!xml.contains("w:after=\"240\""));
+                        }
+                        // The source snapshot remains unchanged.
+                        assert_eq!(
+                            before.hf_plain_paragraph_text(role, variant, 0).as_deref(),
+                            Some("a日\u{2011}消す")
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn header_footer_caret_dialog_matches_input_at_run_boundaries() {
+        let data = build_font_size_fallback_docx();
+        for role in [HeaderFooterRole::Header, HeaderFooterRole::Footer] {
+            for variant in [
+                HeaderFooterVariant::Default,
+                HeaderFooterVariant::First,
+                HeaderFooterVariant::Even,
+            ] {
+                for offset in [0, 3, 6, 9, 12] {
+                    let mut doc =
+                        futures::executor::block_on(WordDocument::load(&data, &Options::default()))
+                            .unwrap();
+                    doc.ensure_hf_part_for_edit(role, variant).unwrap();
+                    let path = doc
+                        .resolve_header_footer_part_path_for(role, variant)
+                        .unwrap();
+                    let root = if role == HeaderFooterRole::Header {
+                        "hdr"
+                    } else {
+                        "ftr"
+                    };
+                    doc.upsert_xml_part_content(&path, format!(r#"<w:{root} xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:p><w:r><w:rPr><w:b/><w:sz w:val="40"/></w:rPr><w:t>日日</w:t></w:r><w:r><w:rPr><w:i/><w:sz w:val="28"/></w:rPr><w:t>日日</w:t></w:r></w:p><w:p><w:pPr><w:rPr><w:b/><w:sz w:val="48"/></w:rPr></w:pPr></w:p></w:{root}>"#));
+                    let before = doc.read_xml_part_content(&path).unwrap();
+                    let caret = doc.hf_caret_run_format_at(role, variant, 0, offset);
+                    assert_eq!(caret.font_size, Some(if offset <= 6 { 20.0 } else { 14.0 }));
+                    // Selection lookup still describes the following visible run.
+                    assert_eq!(
+                        doc.hf_run_format_at(role, variant, 0, 6).font_size,
+                        Some(14.0)
+                    );
+                    let empty = doc.hf_caret_run_format_at(role, variant, 1, 0);
+                    assert_eq!(empty.bold, Some(true));
+                    assert_eq!(empty.font_size, Some(24.0));
+                    assert_eq!(doc.read_xml_part_content(&path).unwrap(), before);
+                    assert!(doc
+                        .edit_hf_paragraph_range(role, variant, 0, offset, offset, "X")
+                        .unwrap());
+                    assert!(doc
+                        .edit_hf_paragraph_range(role, variant, 1, 0, 0, "Y")
+                        .unwrap());
+                    let reopened = futures::executor::block_on(WordDocument::load(
+                        &doc.export_docx().unwrap(),
+                        &Options::default(),
+                    ))
+                    .unwrap();
+                    let inserted = reopened.hf_run_format_at(role, variant, 0, offset);
+                    assert_eq!(inserted.font_size, caret.font_size);
+                    assert_eq!(inserted.bold, caret.bold);
+                    assert_eq!(inserted.italic, caret.italic);
+                    let inserted_empty = reopened.hf_run_format_at(role, variant, 1, 0);
+                    assert_eq!(inserted_empty.bold, empty.bold);
+                    assert_eq!(inserted_empty.font_size, empty.font_size);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn header_footer_caret_size_changes_only_subsequent_input() {
+        use crate::commands::adjust_font_size::{step_font_size, FontSizeDirection, FontSizeStep};
+        let data = build_font_size_fallback_docx();
+        for role in [HeaderFooterRole::Header, HeaderFooterRole::Footer] {
+            for variant in [
+                HeaderFooterVariant::Default,
+                HeaderFooterVariant::First,
+                HeaderFooterVariant::Even,
+            ] {
+                for direction in [FontSizeDirection::Grow, FontSizeDirection::Shrink] {
+                    for step in [FontSizeStep::Ladder, FontSizeStep::Point] {
+                        for offset in [0, 3, 6, 9, 12] {
+                            let mut doc = futures::executor::block_on(WordDocument::load(
+                                &data,
+                                &Options::default(),
+                            ))
+                            .unwrap();
+                            doc.ensure_hf_part_for_edit(role, variant).unwrap();
+                            let path = doc
+                                .resolve_header_footer_part_path_for(role, variant)
+                                .unwrap();
+                            let root = if role == HeaderFooterRole::Header {
+                                "hdr"
+                            } else {
+                                "ftr"
+                            };
+                            doc.upsert_xml_part_content(&path, format!(r#"<w:{root} xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:p><w:r w:rsidR="11111111"><w:rPr><w:b/><w:sz w:val="40"/></w:rPr><w:t>日日</w:t></w:r><w:hyperlink w:anchor="target"><w:r w:rsidR="22222222"><w:rPr><w:i/><w:szCs w:val="28"/></w:rPr><w:t>日日</w:t></w:r></w:hyperlink></w:p><w:p><w:pPr><w:rPr><w:sz w:val="48"/></w:rPr></w:pPr></w:p></w:{root}>"#));
+                            let initial = if offset <= 6 { 20.0 } else { 14.0 };
+                            let expected = step_font_size(
+                                step_font_size(initial, direction, step),
+                                direction,
+                                step,
+                            );
+                            for _ in 0..2 {
+                                assert!(doc
+                                    .adjust_hf_caret_font_size(
+                                        role, variant, 0, offset, direction, step
+                                    )
+                                    .unwrap());
+                            }
+                            let before = doc.read_xml_part_content(&path).unwrap();
+                            assert!(!doc
+                                .adjust_hf_caret_font_size(role, variant, 0, 1, direction, step)
+                                .unwrap());
+                            assert_eq!(doc.read_xml_part_content(&path).unwrap(), before);
+                            let xml = DocxXmlDocument::parse(&before).unwrap();
+                            let (paragraph, _) =
+                                WordDocument::hf_paragraph_run_ids(&xml, 0).unwrap();
+                            let runs = WordDocument::hf_text_runs(&xml, paragraph).unwrap();
+                            assert_eq!(runs.iter().filter(|run| run.text.is_empty()).count(), 1);
+                            for run in runs.iter().filter(|run| !run.text.is_empty()) {
+                                let properties = xml
+                                    .element(run.id)
+                                    .and_then(WordDocument::run_properties_element);
+                                let (name, size) = if run.start < 6 {
+                                    ("w:sz", "40")
+                                } else {
+                                    ("w:szCs", "28")
+                                };
+                                assert_eq!(
+                                    WordDocument::run_property_child_value(properties, name)
+                                        .as_deref(),
+                                    Some(size)
+                                );
+                            }
+                            assert!(doc
+                                .edit_hf_paragraph_range(role, variant, 0, offset, offset, "X")
+                                .unwrap());
+                            assert!(doc
+                                .adjust_hf_caret_font_size(role, variant, 1, 0, direction, step)
+                                .unwrap());
+                            assert!(doc
+                                .edit_hf_paragraph_range(role, variant, 1, 0, 0, "Y")
+                                .unwrap());
+                            let reopened = futures::executor::block_on(WordDocument::load(
+                                &doc.export_docx().unwrap(),
+                                &Options::default(),
+                            ))
+                            .unwrap();
+                            let mut text = "日日日日".to_string();
+                            text.insert_str(offset, "X");
+                            assert_eq!(
+                                reopened.hf_plain_paragraph_text(role, variant, 0),
+                                Some(text)
+                            );
+                            assert_eq!(
+                                reopened
+                                    .hf_run_format_at(role, variant, 0, offset)
+                                    .font_size,
+                                Some(expected)
+                            );
+                            assert_eq!(
+                                reopened.hf_run_format_at(role, variant, 1, 0).font_size,
+                                Some(step_font_size(24.0, direction, step))
+                            );
+                            let saved = reopened.read_xml_part_content(&path).unwrap();
+                            assert!(
+                                saved.contains("target")
+                                    && saved.contains("11111111")
+                                    && saved.contains("22222222")
+                            );
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn header_footer_caret_format_changes_only_subsequent_input() {
+        let data = build_font_size_fallback_docx();
+        for role in [HeaderFooterRole::Header, HeaderFooterRole::Footer] {
+            for variant in [
+                HeaderFooterVariant::Default,
+                HeaderFooterVariant::First,
+                HeaderFooterVariant::Even,
+            ] {
+                for offset in [0, 3, 6, 9, 12] {
+                    let mut doc =
+                        futures::executor::block_on(WordDocument::load(&data, &Options::default()))
+                            .unwrap();
+                    doc.ensure_hf_part_for_edit(role, variant).unwrap();
+                    let path = doc
+                        .resolve_header_footer_part_path_for(role, variant)
+                        .unwrap();
+                    let root = if role == HeaderFooterRole::Header {
+                        "hdr"
+                    } else {
+                        "ftr"
+                    };
+                    doc.upsert_xml_part_content(&path, format!(r#"<w:{root} xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:p><w:r w:rsidR="11111111"><w:rPr><w:b/></w:rPr><w:t>日日</w:t></w:r><w:hyperlink w:anchor="target"><w:r w:rsidR="22222222"><w:rPr><w:i/></w:rPr><w:t>日日</w:t></w:r></w:hyperlink></w:p></w:{root}>"#));
+                    let format = HfRunFormat {
+                        bold: Some(false),
+                        underline: Some(true),
+                        underline_kind: Some("wave".into()),
+                        font_size: Some(26.0),
+                        ..HfRunFormat::default()
+                    };
+                    // Repeated patches reuse the same pending run.
+                    for _ in 0..2 {
+                        assert!(doc
+                            .apply_hf_caret_run_format(role, variant, 0, offset, &format)
+                            .unwrap());
+                    }
+                    assert_eq!(
+                        doc.hf_plain_paragraph_text(role, variant, 0).as_deref(),
+                        Some("日日日日")
+                    );
+                    let pending = doc.hf_caret_run_state(role, variant, 0, offset).unwrap();
+                    assert!(pending.all_underline && !pending.all_bold);
+                    assert_eq!(pending.font_size, Some(26.0));
+                    let xml =
+                        DocxXmlDocument::parse(&doc.read_xml_part_content(&path).unwrap()).unwrap();
+                    let (paragraph, _) = WordDocument::hf_paragraph_run_ids(&xml, 0).unwrap();
+                    let runs = WordDocument::hf_text_runs(&xml, paragraph).unwrap();
+                    assert_eq!(runs.iter().filter(|run| run.text.is_empty()).count(), 1);
+                    let pending_run = runs.iter().find(|run| run.text.is_empty()).unwrap();
+                    let parent = xml.element(xml.parent_id(pending_run.id).unwrap()).unwrap();
+                    assert_eq!(parent.name == "w:hyperlink", offset > 6);
+                    for run in runs.iter().filter(|run| !run.text.is_empty()) {
+                        let properties = xml
+                            .element(run.id)
+                            .and_then(WordDocument::run_properties_element);
+                        assert!(!WordDocument::run_property_child_enabled(properties, "w:u"));
+                        assert_eq!(
+                            WordDocument::run_property_child_enabled(properties, "w:b"),
+                            run.start < 6
+                        );
+                        assert_eq!(
+                            WordDocument::run_property_child_enabled(properties, "w:i"),
+                            run.start >= 6
+                        );
+                    }
+                    // Invalid UTF-8 offsets do not alter the pending run or visible text.
+                    let before = doc.read_xml_part_content(&path).unwrap();
+                    assert!(!doc
+                        .apply_hf_caret_run_format(role, variant, 0, 1, &format)
+                        .unwrap());
+                    assert_eq!(doc.read_xml_part_content(&path).unwrap(), before);
+                    assert!(doc
+                        .edit_hf_paragraph_range(role, variant, 0, offset, offset, "X")
+                        .unwrap());
+                    let mut expected = "日日日日".to_string();
+                    expected.insert_str(offset, "X");
+                    let reopened = futures::executor::block_on(WordDocument::load(
+                        &doc.export_docx().unwrap(),
+                        &Options::default(),
+                    ))
+                    .unwrap();
+                    assert_eq!(
+                        reopened.hf_plain_paragraph_text(role, variant, 0),
+                        Some(expected)
+                    );
+                    let inserted = reopened.hf_run_format_at(role, variant, 0, offset);
+                    assert_eq!(inserted.bold, Some(false));
+                    assert_eq!(inserted.font_size, Some(26.0));
+                    let saved = reopened.read_xml_part_content(&path).unwrap();
+                    assert!(
+                        saved.contains("target")
+                            && saved.contains("11111111")
+                            && saved.contains("22222222")
+                    );
+                }
+            }
+        }
+    }
+    #[test]
+    fn header_footer_multiline_replacement_keeps_start_format_before_suffix() {
+        let data = build_font_size_fallback_docx();
+        for role in [HeaderFooterRole::Header, HeaderFooterRole::Footer] {
+            for variant in [
+                HeaderFooterVariant::Default,
+                HeaderFooterVariant::First,
+                HeaderFooterVariant::Even,
+            ] {
+                for reverse in [false, true] {
+                    for empty_first in [false, true] {
+                        for end_offset in [0, "後".len()] {
+                            let mut doc = futures::executor::block_on(WordDocument::load(
+                                &data,
+                                &Options::default(),
+                            ))
+                            .unwrap();
+                            doc.ensure_hf_part_for_edit(role, variant).unwrap();
+                            let path = doc
+                                .resolve_header_footer_part_path_for(role, variant)
+                                .unwrap();
+                            let root = if role == HeaderFooterRole::Header {
+                                "hdr"
+                            } else {
+                                "ftr"
+                            };
+                            let first = if empty_first {
+                                "<w:p><w:pPr><w:rPr><w:b/><w:color w:val=\"123456\"/></w:rPr></w:pPr></w:p>"
+                            } else {
+                                "<w:p><w:r><w:rPr><w:b/><w:color w:val=\"123456\"/></w:rPr><w:t>前</w:t></w:r></w:p>"
+                            };
+                            doc.upsert_xml_part_content(&path, format!(r#"<w:{root} xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">{first}<w:p><w:hyperlink w:anchor="suffix"><w:r w:rsidR="12345678"><w:rPr><w:i/></w:rPr><w:t>後続</w:t></w:r></w:hyperlink></w:p><w:p><w:r><w:t>untouched</w:t></w:r></w:p></w:{root}>"#));
+                            let start = TextPosition::new(0, 0);
+                            let end = TextPosition::new(1, end_offset);
+                            let selection = if reverse {
+                                SelectionRange::new(end, start)
+                            } else {
+                                SelectionRange::new(start, end)
+                            };
+                            assert_eq!(
+                                doc.delete_hf_story_selection(role, variant, selection)
+                                    .unwrap(),
+                                Some(start)
+                            );
+                            let suffix = if end_offset == 0 { "後続" } else { "続" };
+                            assert_eq!(
+                                doc.hf_plain_paragraph_text(role, variant, 0).as_deref(),
+                                Some(suffix)
+                            );
+                            // The caret uses the deleted start's format even with visible suffix text.
+                            assert_eq!(doc.hf_run_format_at(role, variant, 0, 0).bold, Some(true));
+                            assert!(doc
+                                .edit_hf_paragraph_range(role, variant, 0, 0, 0, "X")
+                                .unwrap());
+                            let exported = doc.export_docx().unwrap();
+                            let reopened = futures::executor::block_on(WordDocument::load(
+                                &exported,
+                                &Options::default(),
+                            ))
+                            .unwrap();
+                            assert_eq!(
+                                reopened.hf_plain_paragraph_text(role, variant, 0),
+                                Some(format!("X{suffix}"))
+                            );
+                            assert_eq!(
+                                reopened.hf_run_format_at(role, variant, 0, 0).bold,
+                                Some(true)
+                            );
+                            assert_eq!(
+                                reopened.hf_run_format_at(role, variant, 0, 1).italic,
+                                Some(true)
+                            );
+                            assert_eq!(
+                                reopened
+                                    .hf_plain_paragraph_text(role, variant, 1)
+                                    .as_deref(),
+                                Some("untouched")
+                            );
+                            let saved = reopened.read_xml_part_content(&path).unwrap();
+                            assert!(
+                                saved.contains("123456")
+                                    && saved.contains("12345678")
+                                    && saved.contains("suffix")
+                            );
+                        }
+                    }
+                }
+            }
+        }
+    }
+    #[test]
+    fn header_footer_exact_edits_preserve_repeated_text_run_boundaries() {
+        let data = build_font_size_fallback_docx();
+        for role in [HeaderFooterRole::Header, HeaderFooterRole::Footer] {
+            for variant in [
+                HeaderFooterVariant::Default,
+                HeaderFooterVariant::First,
+                HeaderFooterVariant::Even,
+            ] {
+                for (start, end, insert, expected_runs) in [
+                    (0, 0, "日", vec!["日日日", "日日"]),
+                    (3, 3, "日", vec!["日日日", "日日"]),
+                    (6, 6, "日", vec!["日日日", "日日"]),
+                    (9, 9, "日", vec!["日日", "日日日"]),
+                    (0, 3, "", vec!["日", "日日"]),
+                    (6, 9, "", vec!["日日", "日"]),
+                    (3, 9, "X", vec!["日X", "日"]),
+                ] {
+                    let mut doc =
+                        futures::executor::block_on(WordDocument::load(&data, &Options::default()))
+                            .unwrap();
+                    doc.ensure_hf_part_for_edit(role, variant).unwrap();
+                    let path = doc
+                        .resolve_header_footer_part_path_for(role, variant)
+                        .unwrap();
+                    let root = if role == HeaderFooterRole::Header {
+                        "hdr"
+                    } else {
+                        "ftr"
+                    };
+                    doc.upsert_xml_part_content(&path, format!(r#"<w:{root} xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:p><w:r w:rsidR="11111111"><w:rPr><w:b/></w:rPr><w:t>日日</w:t></w:r><w:hyperlink w:anchor="target"><w:r w:rsidR="22222222"><w:rPr><w:i/></w:rPr><w:t>日日</w:t></w:r></w:hyperlink></w:p></w:{root}>"#));
+                    assert!(doc
+                        .edit_hf_paragraph_range(role, variant, 0, start, end, insert)
+                        .unwrap());
+                    let saved = doc.read_xml_part_content(&path).unwrap();
+                    let xml = DocxXmlDocument::parse(&saved).unwrap();
+                    let (paragraph, _) = WordDocument::hf_paragraph_run_ids(&xml, 0).unwrap();
+                    let runs = WordDocument::hf_text_runs(&xml, paragraph).unwrap();
+                    assert_eq!(
+                        runs.iter().map(|run| run.text.as_str()).collect::<Vec<_>>(),
+                        expected_runs,
+                        "{start}..{end}: {insert}"
+                    );
+                    assert!(saved.contains("11111111") && saved.contains("22222222"));
+                    assert!(
+                        saved.contains("target")
+                            && saved.contains("<w:b/>")
+                            && saved.contains("<w:i/>")
+                    );
+                    let reopened = futures::executor::block_on(WordDocument::load(
+                        &doc.export_docx().unwrap(),
+                        &Options::default(),
+                    ))
+                    .unwrap();
+                    assert_eq!(
+                        reopened.hf_plain_paragraph_text(role, variant, 0),
+                        Some(expected_runs.concat())
+                    );
+                    let before = doc.read_xml_part_content(&path).unwrap();
+                    assert!(!doc
+                        .edit_hf_paragraph_range(role, variant, 0, 1, 2, "X")
+                        .unwrap());
+                    assert_eq!(doc.read_xml_part_content(&path).unwrap(), before);
+                }
+            }
+        }
+    }
+    #[test]
+    fn header_footer_multiline_deletion_handles_whole_story_and_paragraph_boundary() {
+        let data = build_font_size_fallback_docx();
+        for role in [HeaderFooterRole::Header, HeaderFooterRole::Footer] {
+            for variant in [
+                HeaderFooterVariant::Default,
+                HeaderFooterVariant::First,
+                HeaderFooterVariant::Even,
+            ] {
+                for whole in [false, true] {
+                    let mut doc =
+                        futures::executor::block_on(WordDocument::load(&data, &Options::default()))
+                            .unwrap();
+                    doc.ensure_hf_part_for_edit(role, variant).unwrap();
+                    let path = doc
+                        .resolve_header_footer_part_path_for(role, variant)
+                        .unwrap();
+                    let root = if role == HeaderFooterRole::Header {
+                        "hdr"
+                    } else {
+                        "ftr"
+                    };
+                    doc.upsert_xml_part_content(&path, format!("<w:{root} xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\">\n<w:p><w:r><w:rPr><w:b/></w:rPr><w:t>前</w:t></w:r></w:p>\n<w:p><w:r><w:rPr><w:i/></w:rPr><w:t>後</w:t></w:r></w:p>\n</w:{root}>"));
+                    doc.refresh_header_footer_lines_for(role, variant, &path)
+                        .unwrap();
+                    let start = TextPosition::new(0, if whole { 0 } else { "前".len() });
+                    let end = TextPosition::new(1, if whole { "後".len() } else { 0 });
+                    assert_eq!(
+                        doc.delete_hf_story_selection(
+                            role,
+                            variant,
+                            SelectionRange::new(start, end)
+                        )
+                        .unwrap(),
+                        Some(start)
+                    );
+                    let expected = if whole { "" } else { "前後" };
+                    assert_eq!(
+                        doc.hf_plain_paragraph_text(role, variant, 0).as_deref(),
+                        Some(expected)
+                    );
+                    assert!(doc.hf_plain_paragraph_text(role, variant, 1).is_none());
+                    assert_eq!(doc.hf_run_format_at(role, variant, 0, 0).bold, Some(true));
+                    // Replacing the selection reuses the surviving paragraph and caret format.
+                    let replacement = if whole { "X" } else { "前X後" };
+                    doc.replace_hf_paragraph_text(role, variant, 0, replacement)
+                        .unwrap();
+                    let reopened = futures::executor::block_on(WordDocument::load(
+                        &doc.export_docx().unwrap(),
+                        &Options::default(),
+                    ))
+                    .unwrap();
+                    assert_eq!(
+                        reopened
+                            .hf_plain_paragraph_text(role, variant, 0)
+                            .as_deref(),
+                        Some(replacement)
+                    );
+                    assert_eq!(
+                        reopened
+                            .hf_run_format_at(role, variant, 0, start.offset)
+                            .bold,
+                        Some(true)
+                    );
+                    if !whole {
+                        assert_eq!(
+                            reopened
+                                .hf_run_format_at(role, variant, 0, "前X".len())
+                                .italic,
+                            Some(true)
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn header_footer_multiline_deletion_rejects_invalid_scopes_atomically() {
+        let data = build_font_size_fallback_docx();
+        let mut doc =
+            futures::executor::block_on(WordDocument::load(&data, &Options::default())).unwrap();
+        let role = HeaderFooterRole::Header;
+        let variant = HeaderFooterVariant::Default;
+        doc.ensure_hf_part_for_edit(role, variant).unwrap();
+        let path = doc
+            .resolve_header_footer_part_path_for(role, variant)
+            .unwrap();
+        for middle in [
+            "<w:p/>",
+            "<w:p><w:fldSimple w:instr=\"PAGE\"><w:r><w:t>1</w:t></w:r></w:fldSimple></w:p>",
+            "<w:tbl><w:tr><w:tc><w:p><w:r><w:t>x</w:t></w:r></w:p></w:tc></w:tr></w:tbl>",
+        ] {
+            let xml = format!(
+                r#"<w:hdr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:p><w:r><w:t>a日</w:t></w:r></w:p>{middle}<w:p><w:r><w:t>tail</w:t></w:r></w:p></w:hdr>"#
+            );
+            doc.upsert_xml_part_content(&path, xml.clone());
+            for (start, end) in [
+                (TextPosition::new(0, 2), TextPosition::new(2, 1)),
+                (TextPosition::new(0, 0), TextPosition::new(8, 0)),
+                (TextPosition::new(0, 0), TextPosition::new(2, 9)),
+            ] {
+                assert_eq!(
+                    doc.delete_hf_story_selection(role, variant, SelectionRange::new(start, end))
+                        .unwrap(),
+                    None
+                );
+                assert_eq!(
+                    doc.read_xml_part_content(&path).as_deref(),
+                    Some(xml.as_str())
+                );
+            }
+            if middle != "<w:p/>" {
+                assert_eq!(
+                    doc.delete_hf_story_selection(
+                        role,
+                        variant,
+                        SelectionRange::new(TextPosition::new(0, 1), TextPosition::new(2, 0))
+                    )
+                    .unwrap(),
+                    None
+                );
+                assert_eq!(
+                    doc.read_xml_part_content(&path).as_deref(),
+                    Some(xml.as_str())
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn header_footer_multiline_font_dialog_tracks_mixed_formats_and_patch_scope() {
+        use crate::word::font::FontDialog;
+        let data = build_font_size_fallback_docx();
+        for role in [HeaderFooterRole::Header, HeaderFooterRole::Footer] {
+            for variant in [
+                HeaderFooterVariant::Default,
+                HeaderFooterVariant::First,
+                HeaderFooterVariant::Even,
+            ] {
+                for reverse in [false, true] {
+                    for end_offset in [0, 2] {
+                        let mut doc = futures::executor::block_on(WordDocument::load(
+                            &data,
+                            &Options::default(),
+                        ))
+                        .unwrap();
+                        doc.styles_part = Some(StylesPart::from_xml(r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:style w:type="paragraph" w:styleId="Base"><w:rPr><w:b/><w:sz w:val="24"/></w:rPr></w:style></w:styles>"#).unwrap());
+                        doc.upsert_xml_part_content("word/styles.xml", r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:style w:type="paragraph" w:styleId="Base"><w:rPr><w:b/><w:sz w:val="24"/></w:rPr></w:style></w:styles>"#.to_string());
+                        doc.ensure_hf_part_for_edit(role, variant).unwrap();
+                        let path = doc
+                            .resolve_header_footer_part_path_for(role, variant)
+                            .unwrap();
+                        let root = if role == HeaderFooterRole::Header {
+                            "hdr"
+                        } else {
+                            "ftr"
+                        };
+                        doc.upsert_xml_part_content(&path, format!(r#"<w:{root} xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:p><w:pPr><w:pStyle w:val="Base"/></w:pPr><w:r><w:t>a日</w:t></w:r><w:hyperlink w:anchor="keep"><w:r w:rsidR="12345678"><w:rPr><w:b/><w:i/><w:sz w:val="36"/></w:rPr><w:t>bc</w:t></w:r></w:hyperlink></w:p><w:p><w:r test:marker="empty" xmlns:test="urn:test"><w:rPr><w:b/><w:sz w:val="36"/></w:rPr></w:r><w:r><w:rPr><w:b/><w:i/><w:sz w:val="36"/></w:rPr></w:r></w:p><w:p><w:r><w:rPr><w:b w:val="0"/><w:sz w:val="40"/></w:rPr><w:t>tail</w:t></w:r></w:p></w:{root}>"#));
+                        doc.refresh_header_footer_lines_for(role, variant, &path)
+                            .unwrap();
+                        let start = TextPosition::new(0, "a日".len());
+                        let end = TextPosition::new(2, end_offset);
+                        let selection = if reverse {
+                            SelectionRange::new(end, start)
+                        } else {
+                            SelectionRange::new(start, end)
+                        };
+                        let formats = doc
+                            .hf_run_formats_in_story_range(role, variant, selection)
+                            .unwrap();
+                        // Include both empty formatting runs, even though their offsets coincide.
+                        assert_eq!(formats.len(), if end_offset == 0 { 3 } else { 4 });
+                        let mut dialog = FontDialog::open_selection(formats);
+                        assert!(dialog.is_mixed("italic"));
+                        assert_eq!(dialog.is_mixed("bold"), end_offset != 0);
+                        assert_eq!(dialog.is_mixed("font_size"), end_offset != 0);
+                        assert!(dialog.change().is_empty());
+                        dialog.format.bold = Some(false);
+                        assert!(doc
+                            .apply_hf_story_run_format(
+                                role,
+                                variant,
+                                selection,
+                                &HfRunFormat {
+                                    patch: Some(dialog.change()),
+                                    ..Default::default()
+                                }
+                            )
+                            .unwrap());
+                        let saved = doc.export_docx().unwrap();
+                        let reopened = futures::executor::block_on(WordDocument::load(
+                            &saved,
+                            &Options::default(),
+                        ))
+                        .unwrap();
+                        for current in [&doc, &reopened] {
+                            let formats = current
+                                .hf_run_formats_in_story_range(role, variant, selection)
+                                .unwrap();
+                            assert!(formats.iter().all(|format| format.bold == Some(false)));
+                            let dialog = FontDialog::open_selection(formats);
+                            assert!(dialog.is_mixed("italic"));
+                            assert_eq!(dialog.is_mixed("font_size"), end_offset != 0);
+                            assert!(dialog.change().is_empty());
+                            assert_eq!(
+                                current.hf_run_format_at(role, variant, 0, 0).bold,
+                                Some(true)
+                            );
+                            assert_eq!(
+                                current.hf_run_format_at(role, variant, 0, 0).font_size,
+                                Some(12.0)
+                            );
+                            assert_eq!(
+                                current
+                                    .hf_run_format_at(role, variant, 0, "a日".len())
+                                    .font_size,
+                                Some(18.0)
+                            );
+                            assert_eq!(
+                                current.hf_run_format_at(role, variant, 2, 3).font_size,
+                                Some(20.0)
+                            );
+                            let xml = current.read_xml_part_content(&path).unwrap();
+                            assert!(xml.contains("test:marker=\"empty\""));
+                            assert!(xml.contains("w:rsidR=\"12345678\""));
+                            assert!(xml.contains("w:anchor=\"keep\""));
+                        }
+                        let invalid = SelectionRange::new(TextPosition::new(0, 2), end);
+                        assert!(doc
+                            .hf_run_formats_in_story_range(role, variant, invalid)
+                            .is_none());
+                        let invalid = SelectionRange::new(start, TextPosition::new(5, 0));
+                        assert!(doc
+                            .hf_run_formats_in_story_range(role, variant, invalid)
+                            .is_none());
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn header_footer_mixed_selection_formats_follow_the_edit_scope() {
+        use crate::word::font::FontDialog;
+        let data = build_font_size_fallback_docx();
+        for role in [HeaderFooterRole::Header, HeaderFooterRole::Footer] {
+            for variant in [
+                HeaderFooterVariant::Default,
+                HeaderFooterVariant::First,
+                HeaderFooterVariant::Even,
+            ] {
+                let mut doc =
+                    futures::executor::block_on(WordDocument::load(&data, &Options::default()))
+                        .unwrap();
+                doc.styles_part = Some(StylesPart::from_xml(r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:style w:type="paragraph" w:styleId="Base"><w:rPr><w:b/><w:sz w:val="24"/></w:rPr></w:style></w:styles>"#).unwrap());
+                doc.ensure_hf_part_for_edit(role, variant).unwrap();
+                let path = doc
+                    .resolve_header_footer_part_path_for(role, variant)
+                    .unwrap();
+                let root = if role == HeaderFooterRole::Header {
+                    "hdr"
+                } else {
+                    "ftr"
+                };
+                doc.upsert_xml_part_content(&path, format!(r#"<w:{root} xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:p><w:pPr><w:pStyle w:val="Base"/></w:pPr><w:r><w:t>前半</w:t></w:r><w:r><w:rPr><w:b w:val="0"/><w:sz w:val="36"/></w:rPr><w:t>後半</w:t></w:r></w:p><w:p><w:r><w:rPr><w:i/></w:rPr></w:r></w:p><w:p><w:fldSimple w:instr="PAGE"><w:r><w:rPr><w:b/></w:rPr><w:t>1</w:t></w:r></w:fldSimple><w:r><w:rPr><w:b w:val="0"/></w:rPr><w:t>頁</w:t></w:r></w:p></w:{root}>"#));
+                doc.refresh_header_footer_lines_for(role, variant, &path)
+                    .unwrap();
+                let end = "前半後半".len();
+                let formats = doc.hf_run_formats_in_range(role, variant, 0, end, 0);
+                assert_eq!(formats.len(), 2);
+                let mut dialog = FontDialog::open_selection(formats);
+                assert!(dialog.is_mixed("bold"));
+                assert!(dialog.is_mixed("font_size"));
+                assert!(dialog.change().is_empty());
+                let first = doc.hf_run_formats_in_range(role, variant, 0, 0, "前半".len());
+                assert_eq!(first.len(), 1);
+                assert_eq!(first[0].bold, Some(true));
+                assert_eq!(first[0].font_size, Some(12.0));
+                let caret = doc.hf_run_formats_in_range(role, variant, 0, end, end);
+                assert_eq!(caret[0].bold, Some(false));
+                assert_eq!(
+                    doc.hf_run_formats_in_range(role, variant, 1, 0, 1)[0].italic,
+                    Some(true)
+                );
+                // Fields are edited as a whole paragraph, even for a partial selection.
+                let field =
+                    FontDialog::open_selection(doc.hf_run_formats_in_range(role, variant, 2, 0, 1));
+                assert!(field.is_mixed("bold"));
+                dialog.format.bold = Some(false);
+                doc.apply_hf_range_run_format(
+                    role,
+                    variant,
+                    0,
+                    0,
+                    end,
+                    &HfRunFormat {
+                        patch: Some(dialog.change()),
+                        ..Default::default()
+                    },
+                )
+                .unwrap();
+                assert_eq!(doc.hf_run_format_at(role, variant, 0, 0).bold, Some(false));
+                assert_eq!(
+                    doc.hf_run_format_at(role, variant, 0, 0).font_size,
+                    Some(12.0)
+                );
+                assert_eq!(
+                    doc.hf_run_format_at(role, variant, 0, "前半".len())
+                        .font_size,
+                    Some(18.0)
+                );
+                let reopened = futures::executor::block_on(WordDocument::load(
+                    &doc.export_docx().unwrap(),
+                    &Options::default(),
+                ))
+                .unwrap();
+                let saved = FontDialog::open_selection(
+                    reopened.hf_run_formats_in_range(role, variant, 0, 0, end),
+                );
+                assert_eq!(saved.format.bold, Some(false));
+                assert!(saved.is_mixed("font_size"));
+                assert!(saved.change().is_empty());
+            }
+        }
+    }
+
+    #[test]
+    fn header_footer_partial_effect_edits_preserve_style_settings() {
+        use jade_docx_headless_api::HeadlessRunFormat;
+        let data = build_font_size_fallback_docx();
+        for role in [HeaderFooterRole::Header, HeaderFooterRole::Footer] {
+            for variant in [
+                HeaderFooterVariant::Default,
+                HeaderFooterVariant::First,
+                HeaderFooterVariant::Even,
+            ] {
+                let mut doc =
+                    futures::executor::block_on(WordDocument::load(&data, &Options::default()))
+                        .unwrap();
+                doc.styles_part = Some(StylesPart::from_xml(r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:w14="http://schemas.microsoft.com/office/word/2010/wordml"><w:style w:type="paragraph" w:styleId="Effects"><w:rPr><w14:glow w14:rad="63500"><w14:srgbClr w14:val="FF0000"><w14:alpha w14:val="40000"/></w14:srgbClr></w14:glow><w14:textOutline w14:w="12700"><w14:solidFill><w14:srgbClr w14:val="00FF00"/></w14:solidFill></w14:textOutline></w:rPr></w:style><w:style w:type="character" w:styleId="Blue"><w:rPr><w14:glow w14:rad="76200"><w14:srgbClr w14:val="0000FF"><w14:alpha w14:val="80000"/></w14:srgbClr></w14:glow></w:rPr></w:style></w:styles>"#).unwrap());
+                doc.ensure_hf_part_for_edit(role, variant).unwrap();
+                let path = doc
+                    .resolve_header_footer_part_path_for(role, variant)
+                    .unwrap();
+                let root = if role == HeaderFooterRole::Header {
+                    "hdr"
+                } else {
+                    "ftr"
+                };
+                doc.upsert_xml_part_content(&path, format!(r#"<w:{root} xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:p><w:pPr><w:pStyle w:val="Effects"/></w:pPr><w:r><w:t>abcd</w:t></w:r><w:r><w:rPr><w:rStyle w:val="Blue"/></w:rPr><w:t>efgh</w:t></w:r></w:p><w:p><w:pPr><w:pStyle w:val="Effects"/></w:pPr></w:p><w:p><w:pPr><w:pStyle w:val="Effects"/></w:pPr><w:r><w:rPr><w:i/></w:rPr></w:r></w:p></w:{root}>"#));
+                doc.refresh_header_footer_lines_for(role, variant, &path)
+                    .unwrap();
+                assert_eq!(
+                    doc.hf_run_format_at(role, variant, 1, 0).glow_radius,
+                    Some(5.0)
+                );
+                let empty = doc.hf_run_format_at(role, variant, 2, 0);
+                assert_eq!(empty.glow_radius, Some(5.0));
+                assert_eq!(empty.italic, Some(true));
+                let inherited = doc.hf_run_format_at(role, variant, 0, 0);
+                assert_eq!(inherited.glow_color.as_deref(), Some("FF0000"));
+                assert_eq!(inherited.glow_radius, Some(5.0));
+                assert_eq!(inherited.text_outline_width, Some(1.0));
+                let character = doc.hf_run_format_at(role, variant, 0, 4);
+                assert_eq!(character.glow_color.as_deref(), Some("0000FF"));
+                assert_eq!(character.glow_radius, Some(6.0));
+                assert_eq!(character.text_outline_width, Some(1.0));
+                assert!(doc
+                    .apply_hf_range_run_format(
+                        role,
+                        variant,
+                        0,
+                        1,
+                        7,
+                        &HfRunFormat {
+                            patch: Some(HeadlessRunFormat {
+                                glow_radius: Some(7.0),
+                                text_outline_width: Some(2.0),
+                                ..Default::default()
+                            }),
+                            ..Default::default()
+                        }
+                    )
+                    .unwrap());
+                let reopened = futures::executor::block_on(WordDocument::load(
+                    &doc.export_docx().unwrap(),
+                    &Options::default(),
+                ))
+                .unwrap();
+                let parsed = DocumentParser::new()
+                    .parse_document_xml(&reopened.read_xml_part_content(&path).unwrap())
+                    .unwrap();
+                let body = parsed.body.unwrap();
+                let paragraph = body.elements[0].as_paragraph().unwrap();
+                let mut offset = 0;
+                for run in &paragraph.runs {
+                    let start = offset;
+                    offset += run.text.len();
+                    let properties = run.properties.clone().unwrap_or_default();
+                    if start >= 1 && offset <= 7 {
+                        let effects = properties.text_effects.unwrap();
+                        let blue = start >= 4;
+                        assert_eq!(
+                            effects.glow_color.as_deref(),
+                            Some(if blue { "#0000FF" } else { "#FF0000" })
+                        );
+                        assert_eq!(effects.glow_alpha, Some(if blue { 0.8 } else { 0.4 }));
+                        assert_eq!(effects.glow_radius, Some(7.0));
+                        assert_eq!(effects.outline_color.as_deref(), Some("#00FF00"));
+                        assert_eq!(effects.outline_width, Some(2.0));
+                    } else {
+                        assert!(
+                            properties.text_effects.is_none(),
+                            "unselected text retains inheritance"
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
     fn header_footer_font_dialog_patches_only_selected_properties() {
         use jade_docx_headless_api::{HeadlessEastAsianLayout, HeadlessRunFormat};
         let data = build_font_size_fallback_docx();
@@ -48300,7 +55185,7 @@ mod tests {
                         ligatures: Some("standard".into()),
                         number_spacing: Some("tabular".into()),
                         number_form: Some("oldStyle".into()),
-                        stylistic_set: Some(3),
+                        stylistic_sets: Some(vec![3, 4, 20]),
                         contextual_alternates: Some(true),
                         glow_color: Some("FF0000".into()),
                         glow_radius: Some(6.0),
@@ -48356,6 +55241,8 @@ mod tests {
                     "<w14:numSpacing",
                     "<w14:numForm",
                     "w14:id=\"3\"",
+                    "w14:id=\"4\"",
+                    "w14:id=\"20\"",
                     "<w14:cntxtAlts",
                     "w14:rad=\"76200\"",
                     "w14:w=\"19050\"",
@@ -48374,6 +55261,7 @@ mod tests {
                 assert_eq!(state.latin_font.as_deref(), Some("Calibri"));
                 assert_eq!(state.complex_font_size, Some(30.0));
                 assert_eq!(state.spacing, Some(1.5));
+                assert_eq!(state.stylistic_sets, Some(vec![3, 4, 20]));
                 assert_eq!(state.glow_radius, Some(6.0));
                 assert_eq!(state.language.as_deref(), Some("fr-FR"));
                 assert_eq!(
@@ -48382,7 +55270,7 @@ mod tests {
                         .as_deref(),
                     Some("Arial")
                 );
-                // Reset paths must remove old XML, and a radius-only patch keeps its colour.
+                // Resets preserve explicit inheritance overrides; a radius-only patch keeps its colour.
                 doc.apply_hf_range_run_format(
                     role,
                     variant,
@@ -48407,7 +55295,7 @@ mod tests {
                             ligatures: Some("none".into()),
                             number_spacing: Some("default".into()),
                             number_form: Some("default".into()),
-                            stylistic_set: Some(0),
+                            stylistic_sets: Some(vec![]),
                             contextual_alternates: Some(false),
                             glow_radius: Some(7.0),
                             text_outline_color: Some("none".into()),
@@ -48424,32 +55312,35 @@ mod tests {
                     .split("</w:r>")
                     .find(|run| run.contains(">beta<"))
                     .unwrap();
-                for tag in [
-                    "w:dstrike",
-                    "w:vertAlign",
-                    "w:smallCaps",
-                    "w:em",
-                    "w:shd",
-                    "w:bdr",
-                    "w:spacing",
-                    "w:position",
-                    "w:outline",
-                    "w:shadow",
-                    "w:emboss",
-                    "w14:ligatures",
-                    "w14:numSpacing",
-                    "w14:numForm",
-                    "w14:stylisticSets",
-                    "w14:cntxtAlts",
-                    "w14:textOutline",
-                    "w:eastAsianLayout",
+                assert!(selected.contains("<w:b w:val=\"0\""), "{selected}");
+                for reset in [
+                    "<w:dstrike w:val=\"0\"/>",
+                    "<w:vertAlign w:val=\"baseline\"/>",
+                    "<w:smallCaps w:val=\"0\"/>",
+                    "<w:outline w:val=\"0\"/>",
+                    "<w:shadow w:val=\"0\"/>",
+                    "<w:emboss w:val=\"0\"/>",
+                    "<w14:cntxtAlts w14:val=\"0\"/>",
+                    "<w14:ligatures w14:val=\"none\"/>",
+                    "<w14:numSpacing w14:val=\"default\"/>",
+                    "<w14:numForm w14:val=\"default\"/>",
+                    "<w:em w:val=\"none\"/>",
+                    "<w:shd w:val=\"nil\"/>",
+                    "<w:bdr w:val=\"nil\"/>",
+                    "<w:spacing w:val=\"0\"/>",
+                    "<w:position w:val=\"0\"/>",
+                    "<w14:stylisticSets/>",
+                    "<w14:textOutline w14:w=\"0\"><w14:noFill/></w14:textOutline>",
                 ] {
                     assert!(
-                        !selected.contains(&format!("<{tag}")),
-                        "stale {tag}: {selected}"
+                        selected.contains(reset),
+                        "missing reset {reset}: {selected}"
                     );
                 }
-                assert!(selected.contains("<w:b w:val=\"0\""), "{selected}");
+                assert_eq!(
+                    doc.hf_run_format_at(role, variant, 0, 4).stylistic_sets,
+                    Some(vec![])
+                );
                 assert!(selected.contains("w:val=\"none\""), "{selected}");
                 assert!(selected.contains("w14:rad=\"88900\""), "{selected}");
                 assert!(selected.contains("w14:val=\"FF0000\""), "{selected}");
@@ -48482,6 +55373,21 @@ mod tests {
                 let reopened =
                     futures::executor::block_on(WordDocument::load(&bytes, &Options::default()))
                         .unwrap();
+                let reset = reopened.hf_run_format_at(role, variant, 0, 4);
+                assert_eq!(
+                    reset.east_asian_layout,
+                    Some(HeadlessEastAsianLayout::default())
+                );
+                assert_eq!(reset.double_strike, Some(false));
+                assert_eq!(reset.vertical_align.as_deref(), Some("baseline"));
+                assert_eq!(reset.small_caps, Some(false));
+                assert_eq!(reset.outline, Some(false));
+                assert_eq!(reset.shadow, Some(false));
+                assert_eq!(reset.emboss, Some(false));
+                assert_eq!(reset.contextual_alternates, Some(false));
+                assert_eq!(reset.ligatures.as_deref(), Some("none"));
+                assert_eq!(reset.number_spacing.as_deref(), Some("default"));
+                assert_eq!(reset.number_form.as_deref(), Some("default"));
                 assert_eq!(
                     reopened.hf_run_format_at(role, variant, 0, 4).glow_radius,
                     Some(7.0)
@@ -49165,6 +56071,1532 @@ mod tests {
     /// Typing into a header of a document whose sections own several header
     /// parts must land in the part of the edited page's section and variant,
     /// and survive the export.
+    #[test]
+    fn header_footer_edits_refresh_every_variant_sharing_the_part() {
+        let data = std::fs::read(fixture_path("header-footer-sections.docx")).unwrap();
+        let mut archive = ZipArchive::new(Cursor::new(data)).unwrap();
+        let mut writer = zip::ZipWriter::new(Cursor::new(Vec::new()));
+        for index in 0..archive.len() {
+            let mut part = archive.by_index(index).unwrap();
+            let name = part.name().unwrap().to_string();
+            writer
+                .start_file(&name, SimpleFileOptions::default())
+                .unwrap();
+            if name == "word/document.xml" {
+                let mut xml = String::new();
+                part.read_to_string(&mut xml).unwrap();
+                xml = xml.replace(
+                    r#"<w:headerReference w:type="default" r:id="rIdH2"/>"#,
+                    concat!(
+                        r#"<w:headerReference w:type="default" r:id="rIdH2"/>"#,
+                        r#"<w:headerReference w:type="first" r:id="rIdH2"/>"#,
+                        r#"<w:headerReference w:type="even" r:id="rIdH2"/>"#,
+                        r#"<w:footerReference w:type="default" r:id="rIdF1"/>"#,
+                        r#"<w:footerReference w:type="first" r:id="rIdF1"/>"#,
+                        r#"<w:footerReference w:type="even" r:id="rIdF1"/>"#,
+                    ),
+                );
+                writer.write_all(xml.as_bytes()).unwrap();
+            } else {
+                std::io::copy(&mut part, &mut writer).unwrap();
+            }
+        }
+        let data = writer.finish().unwrap().into_inner();
+        for role in [HeaderFooterRole::Header, HeaderFooterRole::Footer] {
+            for variant in [
+                HeaderFooterVariant::Default,
+                HeaderFooterVariant::First,
+                HeaderFooterVariant::Even,
+            ] {
+                let mut doc =
+                    executor::block_on(WordDocument::load(&data, &Options::default())).unwrap();
+                doc.hf_edit_section = Some(1);
+                let body_before = exported_document_xml(&doc);
+                doc.replace_hf_paragraph_text(role, variant, 0, "共有ヘッダー更新")
+                    .unwrap();
+                assert_eq!(exported_document_xml(&doc), body_before);
+                let reopened = executor::block_on(WordDocument::load(
+                    &doc.export_docx().unwrap(),
+                    &Options::default(),
+                ))
+                .unwrap();
+                for document in [&doc, &reopened] {
+                    for shared in [
+                        HeaderFooterVariant::Default,
+                        HeaderFooterVariant::First,
+                        HeaderFooterVariant::Even,
+                    ] {
+                        let lines = document.document_wide_hf_lines(role, shared).unwrap();
+                        assert_eq!(hf_text(&Some(lines.clone())), "共有ヘッダー更新");
+                    }
+                    let sections = document.section_header_footers();
+                    if role == HeaderFooterRole::Header {
+                        assert!(hf_text(&sections[0].header).contains("SECTION ONE HEADER"));
+                        assert!(hf_text(&sections[0].header_first).contains("TITLE PAGE HEADER"));
+                        assert!(hf_text(&sections[1].footer).contains("SHARED FOOTER"));
+                    } else {
+                        assert_eq!(hf_text(&sections[0].footer), "共有ヘッダー更新");
+                        assert!(hf_text(&sections[1].header).contains("SECTION TWO HEADER"));
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn header_footer_story_isolates_document_defaults_and_preserves_toggle_cascade() {
+        fn package(mode: usize, named: bool, cycle: usize) -> Vec<u8> {
+            let mut archive =
+                ZipArchive::new(Cursor::new(build_font_size_fallback_docx())).unwrap();
+            let mut files = HashMap::new();
+            for index in 0..archive.len() {
+                let mut entry = archive.by_index(index).unwrap();
+                let mut bytes = Vec::new();
+                entry.read_to_end(&mut bytes).unwrap();
+                files.insert(entry.name().unwrap().into_owned(), bytes);
+            }
+            let (run, paragraph) = match mode {
+                0 => (
+                    r#"<w:b/><w:color w:val="112233"/><w:sz w:val="22"/><w:u w:val="double"/><w:highlight w:val="yellow"/><w:vertAlign w:val="superscript"/>"#,
+                    r#"<w:spacing w:before="120" w:after="240" w:line="360" w:lineRule="exact"/>"#,
+                ),
+                1 => (
+                    r#"<w:b/><w:i/><w:color w:val="AABBCC"/><w:sz w:val="32"/><w:u w:val="dotted"/><w:highlight w:val="green"/><w:vertAlign w:val="subscript"/>"#,
+                    r#"<w:spacing w:before="60" w:line="200"/>"#,
+                ),
+                _ => (r#"<w:sz w:val="22"/>"#, ""),
+            };
+            let styles = format!(
+                r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:docDefaults><w:rPrDefault><w:rPr>{run}</w:rPr></w:rPrDefault><w:pPrDefault><w:pPr>{paragraph}</w:pPr></w:pPrDefault></w:docDefaults>{}<w:style w:type="character" w:styleId="Strong"><w:name w:val="Strong"/><w:rPr><w:b/></w:rPr></w:style></w:styles>"#,
+                if named {
+                    let parent = match cycle {
+                        1 => r#"<w:basedOn w:val="Normal"/>"#,
+                        2 => r#"<w:basedOn w:val="Bridge"/>"#,
+                        3 => r#"<w:basedOn w:val="Override"/>"#,
+                        _ => "",
+                    };
+                    let normal_run = if cycle == 0 {
+                        ""
+                    } else {
+                        r#"<w:rPr><w:i/><w:highlight w:val="red"/></w:rPr>"#
+                    };
+                    format!(
+                        r#"<w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/>{parent}{normal_run}</w:style><w:style w:type="paragraph" w:styleId="Override"><w:name w:val="Override"/><w:basedOn w:val="Normal"/><w:rPr><w:b/><w:color w:val="445566"/><w:u w:val="wave"/><w:highlight w:val="cyan"/><w:vertAlign w:val="superscript"/></w:rPr></w:style>{}"#,
+                        if cycle == 2 {
+                            r#"<w:style w:type="paragraph" w:styleId="Bridge"><w:name w:val="Bridge"/><w:basedOn w:val="Override"/><w:rPr><w:i/><w:u w:val="dash"/></w:rPr></w:style>"#
+                        } else {
+                            ""
+                        }
+                    )
+                } else {
+                    String::new()
+                }
+            );
+            files.insert("word/styles.xml".into(), styles.into_bytes());
+            files.insert("word/document.xml".into(), format!(r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:t>Default</w:t></w:r></w:p><w:p>{}<w:r><w:rPr><w:rStyle w:val="Strong"/></w:rPr><w:t>Character style</w:t></w:r></w:p>{}<w:sectPr/></w:body></w:document>"#, if named { r#"<w:pPr><w:pStyle w:val="Override"/></w:pPr>"# } else { "" }, if cycle == 2 { r#"<w:p><w:pPr><w:pStyle w:val="Bridge"/></w:pPr><w:r><w:t>Third cycle entry</w:t></w:r></w:p>"# } else { "" }).into_bytes());
+            files.insert("word/_rels/document.xml.rels".into(), br#"<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="styles" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>"#.to_vec());
+            let mut writer = zip::ZipWriter::new(Cursor::new(Vec::new()));
+            let mut paths: Vec<_> = files.keys().collect();
+            paths.sort();
+            for path in paths {
+                writer
+                    .start_file(path, SimpleFileOptions::default())
+                    .unwrap();
+                writer.write_all(&files[path]).unwrap();
+            }
+            writer.finish().unwrap().into_inner()
+        }
+        for role in ["header", "footer"] {
+            for variant in ["default", "first", "even"] {
+                for (named, cycle) in [(false, 0), (true, 0), (true, 1), (true, 2), (true, 3)] {
+                    for mode in [1, 2] {
+                        let original = package(0, named, cycle);
+                        let mut host =
+                            executor::block_on(WordDocument::load(&original, &Options::default()))
+                                .unwrap();
+                        assert!(host
+                            .replace_story_from_docx(0, role, variant, &original)
+                            .unwrap());
+                        let baseline = host.export_docx().unwrap();
+                        host =
+                            executor::block_on(WordDocument::load(&baseline, &Options::default()))
+                                .unwrap();
+                        let body = host.read_xml_part_content("word/document.xml").unwrap();
+                        let old_defaults = format!(
+                            "{:?}",
+                            host.styles_part
+                                .as_ref()
+                                .unwrap()
+                                .doc_default_run_properties()
+                        );
+                        let old_body_properties = format!(
+                            "{:?}",
+                            host.styles_part
+                                .as_ref()
+                                .unwrap()
+                                .resolve_effective_run_properties(None, None)
+                        );
+                        let old_styles_xml = host
+                            .read_xml_part_content(&host.styles_part_path().unwrap())
+                            .unwrap();
+                        let edited = package(mode, named, cycle);
+                        let source =
+                            executor::block_on(WordDocument::load(&edited, &Options::default()))
+                                .unwrap();
+                        assert!(host
+                            .replace_story_from_docx(0, role, variant, &edited)
+                            .unwrap());
+                        assert_eq!(
+                            host.read_xml_part_content("word/document.xml").unwrap(),
+                            body
+                        );
+                        let new_styles_xml = host
+                            .read_xml_part_content(&host.styles_part_path().unwrap())
+                            .unwrap();
+                        let old_raw = DocxXmlDocument::parse(&old_styles_xml).unwrap();
+                        let new_raw = DocxXmlDocument::parse(&new_styles_xml).unwrap();
+                        for node in &old_raw.root().children {
+                            let XmlNode::Element(old) = node else {
+                                continue;
+                            };
+                            let Some(id) = crate::drawing_xml::get_attr(old, "w:styleId") else {
+                                continue;
+                            };
+                            let new = new_raw
+                                .root()
+                                .children
+                                .iter()
+                                .find_map(|node| match node {
+                                    XmlNode::Element(value)
+                                        if crate::drawing_xml::get_attr(value, "w:styleId")
+                                            == Some(id) =>
+                                    {
+                                        Some(value)
+                                    }
+                                    _ => None,
+                                })
+                                .unwrap();
+                            assert_eq!(
+                                format!("{:?}", old.attributes),
+                                format!("{:?}", new.attributes),
+                                "attributes of {id}"
+                            );
+                            assert_eq!(
+                                crate::drawing_xml::child(old, "w:basedOn")
+                                    .and_then(|base| crate::drawing_xml::get_attr(base, "w:val")),
+                                crate::drawing_xml::child(new, "w:basedOn")
+                                    .and_then(|base| crate::drawing_xml::get_attr(base, "w:val")),
+                                "base of {id}"
+                            );
+                        }
+                        let styles = host.styles_part.as_ref().unwrap();
+                        assert_eq!(
+                            format!("{:?}", styles.doc_default_run_properties()),
+                            old_defaults
+                        );
+                        let body_properties =
+                            styles.resolve_effective_run_properties(None, None).unwrap();
+                        assert_eq!(format!("{:?}", Some(body_properties)), old_body_properties);
+                        let reference = host
+                            .active_hf_reference(
+                                header_footer_story::parse_role(role).unwrap(),
+                                header_footer_story::parse_variant(variant).unwrap(),
+                            )
+                            .unwrap();
+                        let path = host.hf_part_path_for_reference(&reference).unwrap();
+                        let xml = host.read_xml_part_content(&path).unwrap();
+                        let ids = attribute_values_of(&xml, "pStyle", "val");
+                        assert_eq!(ids.len(), if cycle == 2 { 3 } else { 2 });
+                        for (index, id) in ids.iter().enumerate() {
+                            for direct in [
+                                None,
+                                Some(RunProperties {
+                                    style: Some("Strong".into()),
+                                    ..Default::default()
+                                }),
+                                Some(RunProperties {
+                                    bold: Some(false),
+                                    color: Some("#778899".into()),
+                                    underline: Some(true),
+                                    underline_kind: Some("dash".into()),
+                                    highlight: Some("magenta".into()),
+                                    baseline: Some("subscript".into()),
+                                    ..Default::default()
+                                }),
+                            ] {
+                                let expected = source
+                                    .styles_part
+                                    .as_ref()
+                                    .unwrap()
+                                    .resolve_effective_run_properties(
+                                        match (named, index) {
+                                            (true, 1) => Some("Override"),
+                                            (true, 2) => Some("Bridge"),
+                                            _ => None,
+                                        },
+                                        direct.as_ref(),
+                                    )
+                                    .unwrap();
+                                let actual = styles
+                                    .resolve_effective_run_properties(Some(id), direct.as_ref())
+                                    .unwrap();
+                                assert_eq!(
+                                    actual.bold.unwrap_or(false),
+                                    expected.bold.unwrap_or(false)
+                                );
+                                assert_eq!(
+                                    actual.italic.unwrap_or(false),
+                                    expected.italic.unwrap_or(false)
+                                );
+                                assert_eq!(actual.font_size, expected.font_size);
+                                assert_eq!(
+                                    actual.underline.unwrap_or(false),
+                                    expected.underline.unwrap_or(false)
+                                );
+                                assert_eq!(
+                                    actual.underline_kind.as_deref().unwrap_or("none"),
+                                    expected.underline_kind.as_deref().unwrap_or("none")
+                                );
+                                assert_eq!(
+                                    actual.highlight.as_deref().unwrap_or("none"),
+                                    expected.highlight.as_deref().unwrap_or("none")
+                                );
+                                assert_eq!(
+                                    actual.baseline.as_deref().unwrap_or("baseline"),
+                                    expected.baseline.as_deref().unwrap_or("baseline")
+                                );
+                                assert_eq!(
+                                    actual.color.as_deref().unwrap_or("#auto"),
+                                    expected.color.as_deref().unwrap_or("#auto")
+                                );
+                            }
+                            let paragraph = styles.resolve_paragraph_properties(id).unwrap();
+                            let spacing = paragraph.spacing.unwrap();
+                            assert_eq!(spacing.before, Some(if mode == 1 { 3.0 } else { 0.0 }));
+                            assert_eq!(spacing.after, Some(0.0));
+                            assert_eq!(
+                                spacing.line,
+                                Some(if mode == 1 { 200.0 / 240.0 } else { 1.0 })
+                            );
+                            assert_eq!(spacing.line_rule.as_deref(), Some("auto"));
+                        }
+                        let saved = host.export_docx().unwrap();
+                        let mut reopened =
+                            executor::block_on(WordDocument::load(&saved, &Options::default()))
+                                .unwrap();
+                        let editor = reopened.story_docx(0, role, variant, 1).unwrap();
+                        assert!(!reopened
+                            .replace_story_from_docx(0, role, variant, &editor)
+                            .unwrap());
+                        assert_eq!(reopened.export_docx().unwrap(), saved);
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn header_footer_story_preserves_implicit_default_styles_and_missing_references() {
+        fn package(edited: bool, new_default: bool) -> Vec<u8> {
+            let mut archive =
+                ZipArchive::new(Cursor::new(build_font_size_fallback_docx())).unwrap();
+            let mut files = HashMap::new();
+            for index in 0..archive.len() {
+                let mut entry = archive.by_index(index).unwrap();
+                let mut bytes = Vec::new();
+                entry.read_to_end(&mut bytes).unwrap();
+                files.insert(entry.name().unwrap().into_owned(), bytes);
+            }
+            let color = if edited { "AABBCC" } else { "112233" };
+            let paragraph = if edited && new_default {
+                "NewParagraphDefault"
+            } else {
+                "ParagraphDefault"
+            };
+            let table = if edited && new_default {
+                "NewTableDefault"
+            } else {
+                "TableDefault"
+            };
+            files.insert("word/styles.xml".into(), format!(r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:style w:type="paragraph" w:styleId="Base"><w:name w:val="Base"/><w:rPr><w:color w:val="{color}"/></w:rPr></w:style><w:style w:type="paragraph" w:default="1" w:styleId="{paragraph}"><w:name w:val="Default paragraph"/><w:basedOn w:val="Base"/></w:style><w:style w:type="paragraph" w:styleId="Valid"><w:name w:val="Explicit paragraph"/><w:rPr><w:color w:val="445566"/></w:rPr></w:style><w:style w:type="table" w:default="1" w:styleId="{table}"><w:name w:val="Default table"/><w:tblPr><w:shd w:fill="{color}"/></w:tblPr></w:style>{}</w:styles>"#, if edited { "" } else { r#"<w:style w:type="paragraph" w:styleId="Missing"><w:name w:val="Host-only style"/><w:rPr><w:color w:val="FF0000"/></w:rPr></w:style>"# }).into_bytes());
+            files.insert("word/document.xml".into(), br#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:t>Implicit paragraph</w:t></w:r></w:p><w:p><w:pPr><w:pStyle w:val="Missing"/></w:pPr><w:r><w:t>Missing source style</w:t></w:r></w:p><w:p><w:pPr><w:pStyle w:val="Valid"/></w:pPr><w:r><w:t>Explicit paragraph</w:t></w:r></w:p><w:tbl><w:tblPr/><w:tblGrid><w:gridCol w:w="2000"/></w:tblGrid><w:tr><w:tc><w:tcPr/><w:p><w:r><w:t>Implicit cell paragraph</w:t></w:r></w:p></w:tc></w:tr></w:tbl><w:sectPr/></w:body></w:document>"#.to_vec());
+            files.insert("word/_rels/document.xml.rels".into(), br#"<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="styles" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>"#.to_vec());
+            let mut writer = zip::ZipWriter::new(Cursor::new(Vec::new()));
+            let mut paths: Vec<_> = files.keys().collect();
+            paths.sort();
+            for path in paths {
+                writer
+                    .start_file(path, SimpleFileOptions::default())
+                    .unwrap();
+                writer.write_all(&files[path]).unwrap();
+            }
+            writer.finish().unwrap().into_inner()
+        }
+        for role in ["header", "footer"] {
+            for variant in ["default", "first", "even"] {
+                for new_default in [false, true] {
+                    let original = package(false, false);
+                    let mut host =
+                        executor::block_on(WordDocument::load(&original, &Options::default()))
+                            .unwrap();
+                    assert!(host
+                        .replace_story_from_docx(0, role, variant, &original)
+                        .unwrap());
+                    let baseline = host.export_docx().unwrap();
+                    host = executor::block_on(WordDocument::load(&baseline, &Options::default()))
+                        .unwrap();
+                    let body = host.read_xml_part_content("word/document.xml").unwrap();
+                    let editor = host.story_docx(0, role, variant, 1).unwrap();
+                    assert!(!host
+                        .replace_story_from_docx(0, role, variant, &editor)
+                        .unwrap());
+                    assert_eq!(host.export_docx().unwrap(), baseline);
+                    assert!(host
+                        .replace_story_from_docx(0, role, variant, &package(true, new_default))
+                        .unwrap());
+                    assert_eq!(
+                        host.read_xml_part_content("word/document.xml").unwrap(),
+                        body
+                    );
+                    let reference = host
+                        .active_hf_reference(
+                            header_footer_story::parse_role(role).unwrap(),
+                            header_footer_story::parse_variant(variant).unwrap(),
+                        )
+                        .unwrap();
+                    let path = host.hf_part_path_for_reference(&reference).unwrap();
+                    let xml = host.read_xml_part_content(&path).unwrap();
+                    let paragraph_ids = attribute_values_of(&xml, "pStyle", "val");
+                    assert_eq!(paragraph_ids.len(), 4);
+                    assert_eq!(paragraph_ids[0], paragraph_ids[1]);
+                    assert_eq!(paragraph_ids[0], paragraph_ids[3]);
+                    assert_ne!(paragraph_ids[0], "ParagraphDefault");
+                    assert_eq!(paragraph_ids[2], "Valid");
+                    let styles = host.styles_part.as_ref().unwrap();
+                    assert_eq!(
+                        styles.default_paragraph_style_id(),
+                        Some("ParagraphDefault")
+                    );
+                    for (id, color) in [
+                        (&paragraph_ids[0], "AABBCC"),
+                        (&"ParagraphDefault".to_owned(), "112233"),
+                        (&"Missing".to_owned(), "FF0000"),
+                        (&paragraph_ids[2], "445566"),
+                    ] {
+                        let properties = styles.resolve_run_properties(id).unwrap();
+                        assert_eq!(
+                            properties.color.as_deref().unwrap().trim_start_matches('#'),
+                            color
+                        );
+                    }
+                    let table_ids = attribute_values_of(&xml, "tblStyle", "val");
+                    assert_eq!(table_ids.len(), 1);
+                    assert_ne!(table_ids[0], "TableDefault");
+                    let styles_xml = host
+                        .read_xml_part_content(&host.styles_part_path().unwrap())
+                        .unwrap();
+                    let raw = DocxXmlDocument::parse(&styles_xml).unwrap();
+                    for (id, color) in [
+                        (&table_ids[0], "AABBCC"),
+                        (&"TableDefault".to_owned(), "112233"),
+                    ] {
+                        let definition =
+                            raw.root()
+                                .children
+                                .iter()
+                                .find_map(|node| match node {
+                                    XmlNode::Element(style)
+                                        if style.name == "w:style"
+                                            && style.attributes.iter().any(|a| {
+                                                a.name == "w:styleId" && a.value == *id
+                                            }) =>
+                                    {
+                                        Some(style)
+                                    }
+                                    _ => None,
+                                })
+                                .unwrap();
+                        assert!(format!("{definition:?}").contains(color));
+                    }
+                    let saved = host.export_docx().unwrap();
+                    let mut reopened =
+                        executor::block_on(WordDocument::load(&saved, &Options::default()))
+                            .unwrap();
+                    let editor = reopened.story_docx(0, role, variant, 1).unwrap();
+                    assert!(!reopened
+                        .replace_story_from_docx(0, role, variant, &editor)
+                        .unwrap());
+                    assert_eq!(reopened.export_docx().unwrap(), saved);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn header_footer_story_preserves_theme_fonts_colors_and_color_mapping() {
+        fn package(accent: &str, font: &str, swap: bool) -> Vec<u8> {
+            let mut archive =
+                ZipArchive::new(Cursor::new(build_font_size_fallback_docx())).unwrap();
+            let mut files = HashMap::new();
+            for index in 0..archive.len() {
+                let mut entry = archive.by_index(index).unwrap();
+                let mut bytes = Vec::new();
+                entry.read_to_end(&mut bytes).unwrap();
+                files.insert(entry.name().unwrap().into_owned(), bytes);
+            }
+            files.insert("word/document.xml".into(), br#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:pPr><w:pStyle w:val="Themed"/><w:numPr><w:numId w:val="9"/></w:numPr></w:pPr><w:r><w:rPr><w:rFonts w:asciiTheme="minorHAnsi"/><w:color w:themeColor="accent1"/></w:rPr><w:t>Themed story</w:t></w:r></w:p><w:sectPr/></w:body></w:document>"#.to_vec());
+            files.insert("word/styles.xml".into(), br#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:style w:type="paragraph" w:styleId="Themed"><w:name w:val="Themed"/><w:rPr><w:rFonts w:asciiTheme="majorHAnsi"/><w:color w:themeColor="accent1"/></w:rPr></w:style></w:styles>"#.to_vec());
+            files.insert("word/numbering.xml".into(), br#"<w:numbering xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:abstractNum w:abstractNumId="7"><w:lvl w:ilvl="0"><w:start w:val="1"/><w:numFmt w:val="decimal"/><w:lvlText w:val="%1."/><w:rPr><w:rFonts w:asciiTheme="minorHAnsi"/><w:color w:themeColor="accent1"/></w:rPr></w:lvl></w:abstractNum><w:num w:numId="9"><w:abstractNumId w:val="7"/></w:num></w:numbering>"#.to_vec());
+            files.insert("word/theme/theme1.xml".into(), format!(r#"<a:theme xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" name="Story theme"><a:themeElements><a:clrScheme name="Story colors"><a:accent1><a:srgbClr val="{accent}"/></a:accent1><a:accent2><a:srgbClr val="ABCDEF"/></a:accent2></a:clrScheme><a:fontScheme name="Story fonts"><a:majorFont><a:latin typeface="{font} Head"/></a:majorFont><a:minorFont><a:latin typeface="{font} Body"/></a:minorFont></a:fontScheme></a:themeElements></a:theme>"#).into_bytes());
+            files.insert("word/settings.xml".into(), format!(r#"<w:settings xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">{}</w:settings>"#, if swap { r#"<w:clrSchemeMapping w:accent1="accent2"/>"# } else { "" }).into_bytes());
+            files.insert("word/_rels/document.xml.rels".into(), br#"<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="styles" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/><Relationship Id="numbering" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/numbering" Target="numbering.xml"/><Relationship Id="theme" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme" Target="theme/theme1.xml"/><Relationship Id="settings" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/settings" Target="settings.xml"/></Relationships>"#.to_vec());
+            let types = String::from_utf8(files["[Content_Types].xml"].clone()).unwrap();
+            files.insert("[Content_Types].xml".into(), types.replace("</Types>", r#"<Override PartName="/word/numbering.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.numbering+xml"/><Override PartName="/word/settings.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.settings+xml"/><Override PartName="/word/theme/theme1.xml" ContentType="application/vnd.openxmlformats-officedocument.theme+xml"/></Types>"#).into_bytes());
+            let mut writer = zip::ZipWriter::new(Cursor::new(Vec::new()));
+            let mut paths: Vec<_> = files.keys().collect();
+            paths.sort();
+            for path in paths {
+                writer
+                    .start_file(path, SimpleFileOptions::default())
+                    .unwrap();
+                writer.write_all(&files[path]).unwrap();
+            }
+            writer.finish().unwrap().into_inner()
+        }
+        for role in ["header", "footer"] {
+            for variant in ["default", "first", "even"] {
+                let original = package("112233", "Original", false);
+                let mut host =
+                    executor::block_on(WordDocument::load(&original, &Options::default())).unwrap();
+                let theme = host.loaded_theme_part();
+                assert!(host
+                    .replace_story_from_docx(0, role, variant, &original)
+                    .unwrap());
+                let baseline = host.export_docx().unwrap();
+                host =
+                    executor::block_on(WordDocument::load(&baseline, &Options::default())).unwrap();
+                let body = host.read_xml_part_content("word/document.xml").unwrap();
+                let editor = host.story_docx(0, role, variant, 1).unwrap();
+                assert!(!host
+                    .replace_story_from_docx(0, role, variant, &editor)
+                    .unwrap());
+                assert_eq!(host.export_docx().unwrap(), baseline);
+                for (swap, color) in [(false, "445566"), (true, "ABCDEF")] {
+                    // In the second case the theme is identical to the host;
+                    // only the source color mapping differs.
+                    let (accent, font) = if swap {
+                        ("112233", "Original")
+                    } else {
+                        ("445566", "Edited")
+                    };
+                    let edited = package(accent, font, swap);
+                    let body_font = format!("{font} Body");
+                    let heading_font = format!("{font} Head");
+                    assert!(host
+                        .replace_story_from_docx(0, role, variant, &edited)
+                        .unwrap());
+                    assert_eq!(host.loaded_theme_part(), theme);
+                    assert_eq!(
+                        host.read_xml_part_content("word/document.xml").unwrap(),
+                        body
+                    );
+                    assert!(host
+                        .loaded_document_settings()
+                        .color_scheme_mapping
+                        .is_empty());
+                    let reference = host
+                        .active_hf_reference(
+                            header_footer_story::parse_role(role).unwrap(),
+                            header_footer_story::parse_variant(variant).unwrap(),
+                        )
+                        .unwrap();
+                    let path = host.hf_part_path_for_reference(&reference).unwrap();
+                    let xml = host.read_xml_part_content(&path).unwrap();
+                    assert_eq!(attribute_values_of(&xml, "color", "val"), [color]);
+                    assert_eq!(
+                        attribute_values_of(&xml, "rFonts", "ascii"),
+                        [body_font.as_str()]
+                    );
+                    assert!(!xml.contains("themeColor"));
+                    assert!(!xml.contains("asciiTheme"));
+                    let style = attribute_values_of(&xml, "pStyle", "val")[0].clone();
+                    assert_ne!(style, "Themed");
+                    let props = host
+                        .styles_part
+                        .as_ref()
+                        .unwrap()
+                        .resolve_run_properties(&style)
+                        .unwrap();
+                    assert_eq!(
+                        props.color.as_deref().unwrap().trim_start_matches('#'),
+                        color
+                    );
+                    assert_eq!(props.font_family.as_deref(), Some(heading_font.as_str()));
+                    let id = attribute_values_of(&xml, "numId", "val")[0].clone();
+                    assert_ne!(id, "9");
+                    let props = host
+                        .numbering_part
+                        .as_ref()
+                        .unwrap()
+                        .get_level_info(&id, 0)
+                        .unwrap()
+                        .run_props
+                        .as_ref()
+                        .unwrap();
+                    assert_eq!(
+                        props.color.as_deref().unwrap().trim_start_matches('#'),
+                        color
+                    );
+                    assert_eq!(props.font_family.as_deref(), Some(body_font.as_str()));
+                    let saved = host.export_docx().unwrap();
+                    host = executor::block_on(WordDocument::load(&saved, &Options::default()))
+                        .unwrap();
+                    let editor = host.story_docx(0, role, variant, 1).unwrap();
+                    assert!(!host
+                        .replace_story_from_docx(0, role, variant, &editor)
+                        .unwrap());
+                    assert_eq!(host.export_docx().unwrap(), saved);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn header_footer_story_preserves_numbering_styles_and_picture_bullets() {
+        fn package(start: u32, picture: &[u8], styled: bool) -> Vec<u8> {
+            let mut archive =
+                ZipArchive::new(Cursor::new(build_font_size_fallback_docx())).unwrap();
+            let mut files = HashMap::new();
+            for index in 0..archive.len() {
+                let mut entry = archive.by_index(index).unwrap();
+                let name = entry.name().unwrap().into_owned();
+                let mut bytes = Vec::new();
+                entry.read_to_end(&mut bytes).unwrap();
+                files.insert(name, bytes);
+            }
+            files.insert("word/_rels/document.xml.rels".into(), br#"<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="styles" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/><Relationship Id="numbering" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/numbering" Target="lists/numbering.xml"/></Relationships>"#.to_vec());
+            files.insert("word/styles.xml".into(), br#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:style w:type="paragraph" w:styleId="List"><w:name w:val="List"/><w:pPr><w:numPr><w:ilvl w:val="0"/><w:numId w:val="9"/></w:numPr></w:pPr></w:style></w:styles>"#.to_vec());
+            files.insert("word/lists/numbering.xml".into(), format!(r#"<w:numbering xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:v="urn:schemas-microsoft-com:vml"><w:numPicBullet w:numPicBulletId="3"><w:pict><v:shape style="width:10pt;height:10pt"><v:imagedata r:id="bullet"/></v:shape></w:pict></w:numPicBullet><w:abstractNum w:abstractNumId="7"><w:lvl w:ilvl="0"><w:start w:val="{start}"/><w:numFmt w:val="decimal"/><w:pStyle w:val="List"/><w:lvlText w:val="%1."/><w:lvlPicBulletId w:val="3"/></w:lvl></w:abstractNum><w:num w:numId="9"><w:abstractNumId w:val="7"/><w:lvlOverride w:ilvl="0"><w:startOverride w:val="{start}"/></w:lvlOverride></w:num></w:numbering>"#).into_bytes());
+            files.insert("word/lists/_rels/numbering.xml.rels".into(), br#"<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="bullet" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/bullet.png"/></Relationships>"#.to_vec());
+            files.insert("word/media/bullet.png".into(), picture.to_vec());
+            files.insert("word/document.xml".into(), format!(r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:pPr>{}</w:pPr><w:r><w:t>Numbered story</w:t></w:r></w:p><w:sectPr/></w:body></w:document>"#,
+                if styled { r#"<w:pStyle w:val="List"/>"# } else { r#"<w:numPr><w:ilvl w:val="0"/><w:numId w:val="9"/></w:numPr>"# }).into_bytes());
+            let types = String::from_utf8(files["[Content_Types].xml"].clone()).unwrap();
+            files.insert("[Content_Types].xml".into(), types.replace("</Types>", r#"<Override PartName="/word/lists/numbering.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.numbering+xml"/><Default Extension="png" ContentType="image/png"/></Types>"#).into_bytes());
+            let mut writer = zip::ZipWriter::new(Cursor::new(Vec::new()));
+            let mut paths: Vec<_> = files.keys().collect();
+            paths.sort();
+            for path in paths {
+                writer
+                    .start_file(path, SimpleFileOptions::default())
+                    .unwrap();
+                writer.write_all(&files[path]).unwrap();
+            }
+            writer.finish().unwrap().into_inner()
+        }
+        for role in ["header", "footer"] {
+            for variant in ["default", "first", "even"] {
+                for styled in [false, true] {
+                    let original = package(1, b"original picture", styled);
+                    let mut host =
+                        executor::block_on(WordDocument::load(&original, &Options::default()))
+                            .unwrap();
+                    let body = host.read_xml_part_content("word/document.xml").unwrap();
+                    assert!(host
+                        .replace_story_from_docx(0, role, variant, &original)
+                        .unwrap());
+                    let edited = package(5, b"edited picture", styled);
+                    assert!(host
+                        .replace_story_from_docx(0, role, variant, &edited)
+                        .unwrap());
+                    assert_eq!(
+                        host.read_xml_part_content("word/document.xml").unwrap(),
+                        body
+                    );
+                    let reference = host
+                        .active_hf_reference(
+                            header_footer_story::parse_role(role).unwrap(),
+                            header_footer_story::parse_variant(variant).unwrap(),
+                        )
+                        .unwrap();
+                    let path = host.hf_part_path_for_reference(&reference).unwrap();
+                    let xml = host.read_xml_part_content(&path).unwrap();
+                    let id = if styled {
+                        let ids = attribute_values_of(&xml, "pStyle", "val");
+                        assert_ne!(ids[0], "List");
+                        host.styles_part
+                            .as_ref()
+                            .unwrap()
+                            .resolve_numbering(&ids[0])
+                            .unwrap()
+                            .id
+                            .unwrap()
+                    } else {
+                        attribute_values_of(&xml, "numId", "val")[0].clone()
+                    };
+                    assert_ne!(id, "9");
+                    let numbering = host.numbering_part.as_ref().unwrap();
+                    assert_eq!(numbering.start_value("9", 0), Some(1));
+                    assert_eq!(numbering.start_value(&id, 0), Some(5));
+                    let image = numbering.level_picture_bullet(&id, 0).unwrap();
+                    assert_eq!(
+                        image.data_uri.as_deref(),
+                        Some(
+                            format!("data:image/png;base64,{}", BASE64.encode(b"edited picture"))
+                                .as_str()
+                        )
+                    );
+                    let saved = host.export_docx().unwrap();
+                    let mut reopened =
+                        executor::block_on(WordDocument::load(&saved, &Options::default()))
+                            .unwrap();
+                    let editor = reopened.story_docx(0, role, variant, 1).unwrap();
+                    assert!(!reopened
+                        .replace_story_from_docx(0, role, variant, &editor)
+                        .unwrap());
+                    assert_eq!(reopened.export_docx().unwrap(), saved);
+                    assert_eq!(
+                        reopened
+                            .numbering_part
+                            .as_ref()
+                            .unwrap()
+                            .start_value(&id, 0),
+                        Some(5)
+                    );
+                    // Only the image bytes change: the numbered XML stays the same.
+                    let mut zip = ZipArchive::new(Cursor::new(editor)).unwrap();
+                    let mut writer = zip::ZipWriter::new(Cursor::new(Vec::new()));
+                    for index in 0..zip.len() {
+                        let mut entry = zip.by_index(index).unwrap();
+                        let name = entry.name().unwrap().into_owned();
+                        writer
+                            .start_file(&name, SimpleFileOptions::default())
+                            .unwrap();
+                        let mut bytes = Vec::new();
+                        entry.read_to_end(&mut bytes).unwrap();
+                        if bytes == b"edited picture" {
+                            bytes = b"updated picture only".to_vec();
+                        }
+                        writer.write_all(&bytes).unwrap();
+                    }
+                    let editor = writer.finish().unwrap().into_inner();
+                    assert!(reopened
+                        .replace_story_from_docx(0, role, variant, &editor)
+                        .unwrap());
+                    assert_eq!(
+                        reopened
+                            .numbering_part
+                            .as_ref()
+                            .unwrap()
+                            .start_value("9", 0),
+                        Some(1)
+                    );
+                    let saved = reopened.export_docx().unwrap();
+                    let reopened =
+                        executor::block_on(WordDocument::load(&saved, &Options::default()))
+                            .unwrap();
+                    let reference = reopened
+                        .active_hf_reference(
+                            header_footer_story::parse_role(role).unwrap(),
+                            header_footer_story::parse_variant(variant).unwrap(),
+                        )
+                        .unwrap();
+                    let path = reopened.hf_part_path_for_reference(&reference).unwrap();
+                    let xml = reopened.read_xml_part_content(&path).unwrap();
+                    let updated_id = if styled {
+                        let style = &attribute_values_of(&xml, "pStyle", "val")[0];
+                        reopened
+                            .styles_part
+                            .as_ref()
+                            .unwrap()
+                            .resolve_numbering(style)
+                            .unwrap()
+                            .id
+                            .unwrap()
+                    } else {
+                        attribute_values_of(&xml, "numId", "val")[0].clone()
+                    };
+                    assert_ne!(updated_id, id);
+                    let numbering = reopened.numbering_part.as_ref().unwrap();
+                    assert_eq!(numbering.start_value(&updated_id, 0), Some(5));
+                    for (number_id, bytes) in [
+                        (&id, b"edited picture".as_slice()),
+                        (&updated_id, b"updated picture only".as_slice()),
+                    ] {
+                        assert_eq!(
+                            numbering
+                                .level_picture_bullet(number_id, 0)
+                                .unwrap()
+                                .data_uri
+                                .as_deref(),
+                            Some(
+                                format!("data:image/png;base64,{}", BASE64.encode(bytes)).as_str()
+                            )
+                        );
+                    }
+                    assert!(reopened
+                        .package
+                        .as_ref()
+                        .unwrap()
+                        .files
+                        .values()
+                        .any(|bytes| bytes == b"original picture"));
+                    assert!(reopened
+                        .package
+                        .as_ref()
+                        .unwrap()
+                        .files
+                        .values()
+                        .any(|bytes| bytes == b"edited picture"));
+                    assert!(reopened
+                        .package
+                        .as_ref()
+                        .unwrap()
+                        .files
+                        .values()
+                        .any(|bytes| bytes == b"updated picture only"));
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn header_footer_story_preserves_style_edits_and_inheritance_without_changing_body() {
+        fn package(color: &str, extra: bool) -> Vec<u8> {
+            let mut archive =
+                ZipArchive::new(Cursor::new(build_font_size_fallback_docx())).unwrap();
+            let mut files = HashMap::new();
+            for index in 0..archive.len() {
+                let mut entry = archive.by_index(index).unwrap();
+                let mut bytes = Vec::new();
+                entry.read_to_end(&mut bytes).unwrap();
+                files.insert(entry.name().unwrap().into_owned(), bytes);
+            }
+            let styles = format!(
+                r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+                <w:style w:type="paragraph" w:styleId="StoryBase"><w:name w:val="Story base"/><w:next w:val="StoryChild"/><w:rPr><w:color w:val="{color}"/></w:rPr></w:style>
+                <w:style w:type="paragraph" w:styleId="StoryChild"><w:name w:val="Story child"/><w:basedOn w:val="StoryBase"/></w:style>
+                {}<w:style w:type="paragraph" w:styleId="Unused"><w:name w:val="Unused"/><w:rPr><w:color w:val="{color}"/></w:rPr></w:style>
+                </w:styles>"#,
+                if extra {
+                    r#"<w:style w:type="character" w:styleId="StoryEmphasis"><w:name w:val="Story emphasis"/><w:rPr><w:b/></w:rPr></w:style>"#
+                } else {
+                    ""
+                }
+            );
+            files.insert("word/styles.xml".into(), styles.into_bytes());
+            files.insert("word/_rels/document.xml.rels".into(), br#"<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rIdStyles" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>"#.to_vec());
+            files.insert("word/document.xml".into(), format!(r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:pPr><w:pStyle w:val="StoryChild"/></w:pPr><w:r>{}<w:t>Styled story</w:t></w:r></w:p><w:sectPr/></w:body></w:document>"#,
+                if extra { r#"<w:rPr><w:rStyle w:val="StoryEmphasis"/></w:rPr>"# } else { "" }).into_bytes());
+            let mut writer = zip::ZipWriter::new(Cursor::new(Vec::new()));
+            let mut paths: Vec<_> = files.keys().collect();
+            paths.sort();
+            for path in paths {
+                writer
+                    .start_file(path, SimpleFileOptions::default())
+                    .unwrap();
+                writer.write_all(&files[path]).unwrap();
+            }
+            writer.finish().unwrap().into_inner()
+        }
+        for role in ["header", "footer"] {
+            for variant in ["default", "first", "even"] {
+                let mut host = executor::block_on(WordDocument::load(
+                    &package("112233", false),
+                    &Options::default(),
+                ))
+                .unwrap();
+                let body = host.read_xml_part_content("word/document.xml").unwrap();
+                assert!(host
+                    .replace_story_from_docx(0, role, variant, &package("112233", false))
+                    .unwrap());
+                // Same body XML, changed ancestor: must still save and refresh.
+                assert!(host
+                    .replace_story_from_docx(0, role, variant, &package("AABBCC", false))
+                    .unwrap());
+                assert!(host
+                    .replace_story_from_docx(0, role, variant, &package("AABBCC", true))
+                    .unwrap());
+                assert_eq!(
+                    host.read_xml_part_content("word/document.xml").unwrap(),
+                    body
+                );
+                let reference = host
+                    .active_hf_reference(
+                        header_footer_story::parse_role(role).unwrap(),
+                        header_footer_story::parse_variant(variant).unwrap(),
+                    )
+                    .unwrap();
+                let path = host.hf_part_path_for_reference(&reference).unwrap();
+                let xml = host.read_xml_part_content(&path).unwrap();
+                let style_ids = attribute_values_of(&xml, "pStyle", "val");
+                assert_eq!(style_ids.len(), 1);
+                assert_ne!(style_ids[0], "StoryChild");
+                assert!(xml.contains("StoryEmphasis"));
+                let styles = host
+                    .read_xml_part_content(&host.styles_part_path().unwrap())
+                    .unwrap();
+                let parsed = DocxXmlDocument::parse(&styles).unwrap();
+                let definition = |id: &str| {
+                    parsed
+                        .root()
+                        .children
+                        .iter()
+                        .find_map(|node| match node {
+                            XmlNode::Element(element)
+                                if element.name == "w:style"
+                                    && element
+                                        .attributes
+                                        .iter()
+                                        .any(|a| a.name == "w:styleId" && a.value == id) =>
+                            {
+                                Some(element)
+                            }
+                            _ => None,
+                        })
+                        .unwrap()
+                };
+                let base = definition("StoryBase");
+                assert!(format!("{base:?}").contains("112233"));
+                assert!(format!("{:?}", definition("Unused")).contains("112233"));
+                let child = definition(&style_ids[0]);
+                let base_id = child
+                    .children
+                    .iter()
+                    .find_map(|node| match node {
+                        XmlNode::Element(element) if element.name == "w:basedOn" => element
+                            .attributes
+                            .iter()
+                            .find(|a| a.name == "w:val")
+                            .map(|a| a.value.clone()),
+                        _ => None,
+                    })
+                    .unwrap();
+                assert_ne!(base_id, "StoryBase");
+                assert!(format!("{:?}", definition(&base_id)).contains("AABBCC"));
+                // The cyclic next/basedOn references must use the same aliases.
+                assert!(format!("{:?}", definition(&base_id)).contains(&style_ids[0]));
+                let exported = host.export_docx().unwrap();
+                let mut reopened =
+                    executor::block_on(WordDocument::load(&exported, &Options::default())).unwrap();
+                let editor = reopened.story_docx(0, role, variant, 1).unwrap();
+                assert!(!reopened
+                    .replace_story_from_docx(0, role, variant, &editor)
+                    .unwrap());
+                assert_eq!(reopened.export_docx().unwrap(), exported);
+                assert_eq!(reopened.read_xml_part_content(&path).unwrap(), xml);
+            }
+        }
+    }
+
+    #[test]
+    fn header_footer_story_imports_recursive_assets_without_overwriting_shared_parts() {
+        fn parse_asset_relationships(xml: &str) -> Vec<Relationship> {
+            let xml = DocxXmlDocument::parse(xml).unwrap();
+            xml.root()
+                .children
+                .iter()
+                .filter_map(|node| {
+                    let XmlNode::Element(element) = node else {
+                        return None;
+                    };
+                    let attr = |name: &str| {
+                        element
+                            .attributes
+                            .iter()
+                            .find(|attr| attr.name == name)
+                            .map(|attr| attr.value.clone())
+                    };
+                    Some(Relationship {
+                        id: attr("Id")?,
+                        r#type: attr("Type")?,
+                        target: attr("Target")?,
+                        target_mode: attr("TargetMode"),
+                    })
+                })
+                .collect()
+        }
+        let package = |payload: &[u8]| {
+            let base = build_font_size_fallback_docx();
+            let mut archive = ZipArchive::new(Cursor::new(base)).unwrap();
+            let mut writer = zip::ZipWriter::new(Cursor::new(Vec::new()));
+            for index in 0..archive.len() {
+                let mut part = archive.by_index(index).unwrap();
+                let name = part.name().unwrap().to_string();
+                writer
+                    .start_file(&name, SimpleFileOptions::default())
+                    .unwrap();
+                if name == "word/_rels/document.xml.rels" {
+                    let mut xml = String::new();
+                    part.read_to_string(&mut xml).unwrap();
+                    let rel = r#"<Relationship Id="rIdAsset" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/chart" Target="charts/chart1.xml"/>"#;
+                    writer
+                        .write_all(
+                            xml.replace("</Relationships>", &format!("{rel}</Relationships>"))
+                                .as_bytes(),
+                        )
+                        .unwrap();
+                } else if name == "[Content_Types].xml" {
+                    let mut xml = String::new();
+                    part.read_to_string(&mut xml).unwrap();
+                    let types = r#"<Override PartName="/word/charts/chart1.xml" ContentType="application/vnd.openxmlformats-officedocument.drawingml.chart+xml"/><Default Extension="bin" ContentType="application/vnd.openxmlformats-officedocument.oleObject"/>"#;
+                    writer
+                        .write_all(
+                            xml.replace("</Types>", &format!("{types}</Types>"))
+                                .as_bytes(),
+                        )
+                        .unwrap();
+                } else {
+                    std::io::copy(&mut part, &mut writer).unwrap();
+                }
+            }
+            for (name, bytes) in [
+                ("word/charts/chart1.xml", br#"<c:chartSpace xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart"><c:chart/></c:chartSpace>"#.as_slice()),
+                ("word/charts/_rels/chart1.xml.rels", br#"<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="data" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/package" Target="../embeddings/data.bin"/><Relationship Id="alias" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/package" Target="../embeddings/data.bin"/><Relationship Id="web" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink" Target="https://example.com/data" TargetMode="External"/></Relationships>"#.as_slice()),
+                ("word/embeddings/data.bin", payload),
+                ("word/embeddings/_rels/data.bin.rels", br#"<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="cycle" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/chart" Target="../charts/chart1.xml"/></Relationships>"#.as_slice()),
+            ] {
+                writer.start_file(name, SimpleFileOptions::default()).unwrap();
+                writer.write_all(bytes).unwrap();
+            }
+            writer.finish().unwrap().into_inner()
+        };
+        let original = package(b"original embedded object");
+        let incoming = package(b"edited embedded object");
+        for role in [HeaderFooterRole::Header, HeaderFooterRole::Footer] {
+            for variant in [
+                HeaderFooterVariant::Default,
+                HeaderFooterVariant::First,
+                HeaderFooterVariant::Even,
+            ] {
+                for collides in [false, true] {
+                    let source = if collides {
+                        original.clone()
+                    } else {
+                        build_font_size_fallback_docx()
+                    };
+                    let mut doc =
+                        executor::block_on(WordDocument::load(&source, &Options::default()))
+                            .unwrap();
+                    assert!(doc
+                        .replace_story_from_docx(0, role.as_label(), variant.as_w_type(), &incoming)
+                        .unwrap());
+                    let bytes = doc.export_docx().unwrap();
+                    let reopened =
+                        executor::block_on(WordDocument::load(&bytes, &Options::default()))
+                            .unwrap();
+                    let reference = reopened.active_hf_reference(role, variant).unwrap();
+                    let story_path = reopened.hf_part_path_for_reference(&reference).unwrap();
+                    let asset = reopened.parts[&story_path]
+                        .relationships
+                        .iter()
+                        .find(|rel| rel.id == "rIdAsset")
+                        .unwrap();
+                    let chart = WordDocument::resolve_target_path(&story_path, &asset.target);
+                    if collides {
+                        assert_ne!(chart, "word/charts/chart1.xml");
+                    }
+                    let files = &reopened.package.as_ref().unwrap().files;
+                    let rels = reopened.get_relationships_path(&chart);
+                    let relationships =
+                        parse_asset_relationships(&String::from_utf8_lossy(&files[&rels]));
+                    let data = WordDocument::resolve_target_path(&chart, &relationships[0].target);
+                    assert_eq!(files[&data], b"edited embedded object");
+                    assert_eq!(relationships[0].target, relationships[1].target);
+                    assert_eq!(relationships[2].target, "https://example.com/data");
+                    assert_eq!(relationships[2].target_mode.as_deref(), Some("External"));
+                    let back = reopened.get_relationships_path(&data);
+                    let back_rels =
+                        parse_asset_relationships(&String::from_utf8_lossy(&files[&back]));
+                    assert_eq!(
+                        WordDocument::resolve_target_path(&data, &back_rels[0].target),
+                        chart
+                    );
+                    if collides {
+                        assert_eq!(
+                            files["word/embeddings/data.bin"],
+                            b"original embedded object"
+                        );
+                        assert!(files.contains_key("word/charts/chart1.xml"));
+                    }
+                    let types = String::from_utf8_lossy(&files["[Content_Types].xml"]);
+                    assert!(types.contains(&format!("PartName=\"/{chart}\"")));
+                    assert!(types.contains(&format!("PartName=\"/{data}\"")));
+                    let unchanged = reopened
+                        .story_docx(0, role.as_label(), variant.as_w_type(), 1)
+                        .unwrap();
+                    assert!(!doc
+                        .replace_story_from_docx(
+                            0,
+                            role.as_label(),
+                            variant.as_w_type(),
+                            &unchanged
+                        )
+                        .unwrap());
+                    assert_eq!(doc.export_docx().unwrap(), bytes);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn header_footer_story_images_fork_conflicting_media_and_detect_byte_only_edits() {
+        let old_png: &[u8] = b"\x89PNG\r\n\x1a\noriginal image";
+        let new_png: &[u8] = b"\x89PNG\r\n\x1a\nnew story image";
+        let replacement_png: &[u8] = b"\x89PNG\r\n\x1a\nreplacement image";
+        let with_image = |bytes: &[u8]| {
+            let mut document = executor::block_on(WordDocument::load(
+                &build_font_size_fallback_docx(),
+                &Options::default(),
+            ))
+            .unwrap();
+            document
+                .insert_inline_image_at(0, 0, bytes, "image/png", 10.0, 10.0, None, None)
+                .unwrap();
+            document
+        };
+        let editor = with_image(new_png).export_docx().unwrap();
+        let media_path = "word/media/jade-image1.png";
+        for role in [HeaderFooterRole::Header, HeaderFooterRole::Footer] {
+            for variant in [
+                HeaderFooterVariant::Default,
+                HeaderFooterVariant::First,
+                HeaderFooterVariant::Even,
+            ] {
+                let mut document = with_image(old_png);
+                assert!(document
+                    .replace_story_from_docx(0, role.as_label(), variant.as_w_type(), &editor)
+                    .unwrap());
+                let reference = document.active_hf_reference(role, variant).unwrap();
+                let story_path = document.hf_part_path_for_reference(&reference).unwrap();
+                let image_path = |document: &WordDocument| {
+                    let relationship = document
+                        .parts
+                        .get(&story_path)
+                        .unwrap()
+                        .relationships
+                        .iter()
+                        .find(|relationship| {
+                            relationship.r#type == RelationshipTypes::Image.as_str()
+                        })
+                        .unwrap();
+                    WordDocument::resolve_target_path(&story_path, &relationship.target)
+                };
+                let copied = image_path(&document);
+                assert_ne!(copied, media_path);
+                assert_eq!(document.binary_parts.get(media_path).unwrap(), old_png);
+                assert_eq!(document.binary_parts.get(&copied).unwrap(), new_png);
+                // The editor replaces only the image bytes, keeping story XML and IDs.
+                let story = document
+                    .story_docx(0, role.as_label(), variant.as_w_type(), 1)
+                    .unwrap();
+                let mut archive = ZipArchive::new(Cursor::new(story)).unwrap();
+                let mut writer = zip::ZipWriter::new(Cursor::new(Vec::new()));
+                for index in 0..archive.len() {
+                    let mut part = archive.by_index(index).unwrap();
+                    let name = part.name().unwrap().to_string();
+                    writer
+                        .start_file(&name, SimpleFileOptions::default())
+                        .unwrap();
+                    if name == copied {
+                        writer.write_all(replacement_png).unwrap();
+                    } else {
+                        std::io::copy(&mut part, &mut writer).unwrap();
+                    }
+                }
+                let edited = writer.finish().unwrap().into_inner();
+                let body_before = exported_document_xml(&document);
+                assert!(document
+                    .replace_story_from_docx(0, role.as_label(), variant.as_w_type(), &edited)
+                    .unwrap());
+                assert_eq!(exported_document_xml(&document), body_before);
+                let replaced = image_path(&document);
+                assert_ne!(replaced, copied);
+                assert_eq!(
+                    document.binary_parts.get(&replaced).unwrap(),
+                    replacement_png
+                );
+                let reopened = executor::block_on(WordDocument::load(
+                    &document.export_docx().unwrap(),
+                    &Options::default(),
+                ))
+                .unwrap();
+                assert_eq!(image_path(&reopened), replaced);
+                let files = &reopened.package.as_ref().unwrap().files;
+                assert_eq!(files.get(media_path).unwrap(), old_png);
+                assert_eq!(files.get(&copied).unwrap(), new_png);
+                assert_eq!(files.get(&replaced).unwrap(), replacement_png);
+                let unchanged = document
+                    .story_docx(0, role.as_label(), variant.as_w_type(), 1)
+                    .unwrap();
+                assert!(!document
+                    .replace_story_from_docx(0, role.as_label(), variant.as_w_type(), &unchanged)
+                    .unwrap());
+            }
+        }
+    }
+
+    #[test]
+    fn header_footer_nested_story_relationships_survive_unlink_and_editor_round_trip() {
+        for role in [HeaderFooterRole::Header, HeaderFooterRole::Footer] {
+            for variant in [
+                HeaderFooterVariant::Default,
+                HeaderFooterVariant::First,
+                HeaderFooterVariant::Even,
+            ] {
+                let mut original = executor::block_on(WordDocument::load(
+                    &build_font_size_fallback_docx(),
+                    &Options::default(),
+                ))
+                .unwrap();
+                original
+                    .insert_section_break_at(0, 0, SectionBreakType::NextPage)
+                    .unwrap();
+                original.hf_edit_section = Some(0);
+                original.ensure_hf_part_for_edit(role, variant).unwrap();
+                original
+                    .replace_hf_paragraph_text(role, variant, 0, "ORIGINAL")
+                    .unwrap();
+                let reference = original.active_hf_reference(role, variant).unwrap();
+                let source = original.hf_part_path_for_reference(&reference).unwrap();
+                let filename = source.rsplit('/').next().unwrap();
+                let nested = format!("word/stories/{filename}");
+                let data = original.export_docx().unwrap();
+                let mut archive = ZipArchive::new(Cursor::new(data)).unwrap();
+                let mut writer = zip::ZipWriter::new(Cursor::new(Vec::new()));
+                for index in 0..archive.len() {
+                    let mut part = archive.by_index(index).unwrap();
+                    let name = part.name().unwrap().to_string();
+                    writer
+                        .start_file(
+                            if name == source { &nested } else { &name },
+                            SimpleFileOptions::default(),
+                        )
+                        .unwrap();
+                    if name == "word/_rels/document.xml.rels" {
+                        let mut xml = String::new();
+                        part.read_to_string(&mut xml).unwrap();
+                        writer
+                            .write_all(
+                                xml.replace(
+                                    &format!("Target=\"{filename}\""),
+                                    &format!("Target=\"stories/{filename}\""),
+                                )
+                                .as_bytes(),
+                            )
+                            .unwrap();
+                    } else {
+                        std::io::copy(&mut part, &mut writer).unwrap();
+                    }
+                }
+                let relationships = format!(
+                    r#"<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+<Relationship Id="picture" Type="{}" Target="../media/story.png"/>
+<Relationship Id="object" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/oleObject" Target="../embeddings/story.bin"/>
+<Relationship Id="absolute" Type="{}" Target="/word/media/story.png"/>
+<Relationship Id="link" Type="{}" Target="https://example.com/path?q=1" TargetMode="External"/>
+</Relationships>"#,
+                    RelationshipTypes::Image.as_str(),
+                    RelationshipTypes::Image.as_str(),
+                    RelationshipTypes::Hyperlink.as_str()
+                );
+                for (name, bytes) in [
+                    (
+                        format!("word/stories/_rels/{filename}.rels"),
+                        relationships.as_bytes(),
+                    ),
+                    (
+                        "word/media/story.png".to_string(),
+                        b"image bytes".as_slice(),
+                    ),
+                    (
+                        "word/embeddings/story.bin".to_string(),
+                        b"object bytes".as_slice(),
+                    ),
+                ] {
+                    writer
+                        .start_file(name, SimpleFileOptions::default())
+                        .unwrap();
+                    writer.write_all(bytes).unwrap();
+                }
+                let data = writer.finish().unwrap().into_inner();
+                let mut doc =
+                    executor::block_on(WordDocument::load(&data, &Options::default())).unwrap();
+                let source_xml = doc.read_xml_part_content(&nested).unwrap();
+                let assert_targets =
+                    |document: &WordDocument, base: &str, relationships: &[Relationship]| {
+                        for relationship in relationships {
+                            match relationship.id.trim_start_matches("jStory") {
+                                "picture" | "absolute" => assert_eq!(
+                                    WordDocument::resolve_target_path(base, &relationship.target),
+                                    "word/media/story.png"
+                                ),
+                                "object" => assert_eq!(
+                                    WordDocument::resolve_target_path(base, &relationship.target),
+                                    "word/embeddings/story.bin"
+                                ),
+                                "link" => {
+                                    assert_eq!(relationship.target, "https://example.com/path?q=1");
+                                    assert_eq!(
+                                        relationship.target_mode.as_deref(),
+                                        Some("External")
+                                    );
+                                }
+                                _ => continue,
+                            }
+                            if relationship.target_mode.as_deref() != Some("External") {
+                                let path =
+                                    WordDocument::resolve_target_path(base, &relationship.target);
+                                assert!(
+                                    document.package.as_ref().unwrap().files.contains_key(&path),
+                                    "missing {path}"
+                                );
+                            }
+                        }
+                    };
+                // Opening a nested story rebases its relationships to the temporary body.
+                let editor_bytes = doc
+                    .story_docx(1, role.as_label(), variant.as_w_type(), 2)
+                    .unwrap();
+                let editor =
+                    executor::block_on(WordDocument::load(&editor_bytes, &Options::default()))
+                        .unwrap();
+                let main = editor.document_part.as_ref().unwrap();
+                assert_targets(&editor, &main.path, &main.relationships);
+                // Saving into the original nested part must retain the same package resources.
+                assert!(
+                    !doc.replace_story_from_docx(
+                        1,
+                        role.as_label(),
+                        variant.as_w_type(),
+                        &editor_bytes
+                    )
+                    .unwrap(),
+                    "opening and saving an unchanged nested story is a no-op"
+                );
+                assert_targets(
+                    &doc,
+                    &nested,
+                    &doc.parts.get(&nested).unwrap().relationships,
+                );
+                // Independently test unlinking the untouched nested story.
+                let mut doc =
+                    executor::block_on(WordDocument::load(&data, &Options::default())).unwrap();
+                assert!(doc
+                    .set_header_footer_link(1, role.as_label(), variant.as_w_type(), false)
+                    .unwrap());
+                doc.hf_edit_section = Some(1);
+                let copied = doc
+                    .hf_part_path_for_reference(&doc.active_hf_reference(role, variant).unwrap())
+                    .unwrap();
+                assert_ne!(copied, nested);
+                assert_eq!(doc.read_xml_part_content(&nested).unwrap(), source_xml);
+                assert_targets(
+                    &doc,
+                    &copied,
+                    &doc.parts.get(&copied).unwrap().relationships,
+                );
+                doc.replace_hf_paragraph_text(role, variant, 0, "INDEPENDENT")
+                    .unwrap();
+                let mut reopened = executor::block_on(WordDocument::load(
+                    &doc.export_docx().unwrap(),
+                    &Options::default(),
+                ))
+                .unwrap();
+                assert_targets(
+                    &reopened,
+                    &copied,
+                    &reopened.parts.get(&copied).unwrap().relationships,
+                );
+                reopened.hf_edit_section = Some(0);
+                assert_eq!(
+                    hf_text(&reopened.hf_lines_for_edit(role, variant)),
+                    "ORIGINAL"
+                );
+                reopened.hf_edit_section = Some(1);
+                assert_eq!(
+                    hf_text(&reopened.hf_lines_for_edit(role, variant)),
+                    "INDEPENDENT"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn header_footer_link_to_empty_previous_clears_every_variant() {
+        let data = build_font_size_fallback_docx();
+        for role in [HeaderFooterRole::Header, HeaderFooterRole::Footer] {
+            for variant in [
+                HeaderFooterVariant::Default,
+                HeaderFooterVariant::First,
+                HeaderFooterVariant::Even,
+            ] {
+                let mut doc =
+                    executor::block_on(WordDocument::load(&data, &Options::default())).unwrap();
+                doc.insert_section_break_at(0, 0, SectionBreakType::NextPage)
+                    .unwrap();
+                doc.hf_edit_section = Some(1);
+                doc.ensure_hf_part_for_edit(role, variant).unwrap();
+                doc.replace_hf_paragraph_text(role, variant, 0, "SECOND STORY")
+                    .unwrap();
+                assert!(doc.document_wide_hf_lines(role, variant).is_some());
+                assert!(doc
+                    .set_header_footer_link(1, role.as_label(), variant.as_w_type(), true)
+                    .unwrap());
+                assert_eq!(doc.hf_edit_section, Some(1));
+                assert!(doc
+                    .header_footer_linked(1, role.as_label(), variant.as_w_type())
+                    .unwrap());
+                assert!(doc.active_hf_reference(role, variant).is_none());
+                let reopened = executor::block_on(WordDocument::load(
+                    &doc.export_docx().unwrap(),
+                    &Options::default(),
+                ))
+                .unwrap();
+                for document in [&doc, &reopened] {
+                    assert!(document.document_wide_hf_lines(role, variant).is_none());
+                }
+                let xml = exported_document_xml(&doc);
+                assert!(!doc
+                    .set_header_footer_link(1, role.as_label(), variant.as_w_type(), true)
+                    .unwrap());
+                assert_eq!(exported_document_xml(&doc), xml);
+            }
+        }
+    }
+
+    #[test]
+    fn header_footer_relink_restores_inherited_story_after_independent_edit() {
+        let data = std::fs::read(fixture_path("header-footer-sections.docx")).unwrap();
+        for variant in [HeaderFooterVariant::Default, HeaderFooterVariant::First] {
+            let mut doc =
+                executor::block_on(WordDocument::load(&data, &Options::default())).unwrap();
+            doc.hf_edit_section = Some(0);
+            let original = hf_text(&doc.hf_lines_for_edit(HeaderFooterRole::Header, variant));
+            assert!(!original.is_empty());
+            doc.set_header_footer_link(1, "header", variant.as_w_type(), false)
+                .unwrap();
+            doc.hf_edit_section = Some(1);
+            doc.replace_hf_paragraph_text(HeaderFooterRole::Header, variant, 0, "INDEPENDENT")
+                .unwrap();
+            doc.set_header_footer_link(1, "header", variant.as_w_type(), true)
+                .unwrap();
+            let mut reopened = executor::block_on(WordDocument::load(
+                &doc.export_docx().unwrap(),
+                &Options::default(),
+            ))
+            .unwrap();
+            reopened.hf_edit_section = Some(1);
+            for document in [&doc, &reopened] {
+                assert_eq!(
+                    hf_text(&document.hf_lines_for_edit(HeaderFooterRole::Header, variant)),
+                    original
+                );
+                if variant == HeaderFooterVariant::First {
+                    assert!(document.header_lines_first.is_none());
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn header_footer_story_rejects_missing_sections_without_package_mutation() {
+        let single_section = build_font_size_fallback_docx();
+        let multiple_sections = std::fs::read(fixture_path("header-footer-sections.docx")).unwrap();
+        let mut story =
+            executor::block_on(WordDocument::load(&single_section, &Options::default())).unwrap();
+        story
+            .insert_inline_image_at(
+                0,
+                0,
+                &[137, 80, 78, 71, 13, 10, 26, 10, 42],
+                "image/png",
+                24.0,
+                24.0,
+                None,
+                None,
+            )
+            .unwrap();
+        let payload = story.export_docx().unwrap();
+        for source in [&single_section, &multiple_sections] {
+            let mut doc =
+                executor::block_on(WordDocument::load(source, &Options::default())).unwrap();
+            doc.hf_edit_section = Some(0);
+            let count = doc.document.as_deref().unwrap().sections.len().max(1);
+            let before = doc.export_docx().unwrap();
+            for role in ["header", "footer"] {
+                for variant in ["default", "first", "even"] {
+                    assert!(doc.story_docx(0, role, variant, 1).is_ok());
+                    for section in [count, usize::MAX] {
+                        assert_eq!(
+                            doc.story_docx(section, role, variant, 1).unwrap_err(),
+                            "section index is out of range"
+                        );
+                        assert_eq!(
+                            doc.replace_story_from_docx(section, role, variant, &payload)
+                                .unwrap_err(),
+                            "section index is out of range"
+                        );
+                        assert_eq!(doc.hf_edit_section, Some(0));
+                        assert_eq!(doc.export_docx().unwrap(), before);
+                    }
+                }
+            }
+            doc.document = None;
+            assert_eq!(
+                doc.story_docx(0, "header", "default", 1).unwrap_err(),
+                "document is unavailable"
+            );
+            assert_eq!(
+                doc.replace_story_from_docx(0, "header", "default", &payload)
+                    .unwrap_err(),
+                "document is unavailable"
+            );
+            assert_eq!(doc.hf_edit_section, Some(0));
+        }
+    }
+
+    #[test]
+    fn header_footer_link_rejects_missing_sections_without_mutation() {
+        let data = build_font_size_fallback_docx();
+        let mut doc = executor::block_on(WordDocument::load(&data, &Options::default())).unwrap();
+        let xml = exported_document_xml(&doc);
+        for section in [1, usize::MAX] {
+            assert!(doc
+                .header_footer_linked(section, "header", "default")
+                .is_err());
+            for linked in [false, true] {
+                assert!(doc
+                    .set_header_footer_link(section, "header", "default", linked)
+                    .is_err());
+                assert_eq!(doc.hf_edit_section, None);
+                assert_eq!(exported_document_xml(&doc), xml);
+            }
+        }
+    }
+
+    #[test]
+    fn editing_an_earlier_header_keeps_absent_document_wide_variants_absent() {
+        let data = std::fs::read(fixture_path("header-footer-sections.docx")).unwrap();
+        let mut doc = executor::block_on(WordDocument::load(&data, &Options::default())).unwrap();
+        doc.hf_edit_section = Some(0);
+        doc.replace_header_first_paragraph_text(0, "先頭ページ更新")
+            .unwrap();
+        assert!(doc.header_lines_first.is_none());
+        assert!(doc.header_lines_even.is_none());
+        assert!(doc.footer_lines_first.is_none());
+        assert!(doc.footer_lines_even.is_none());
+        assert!(hf_text(&doc.header_lines).contains("SECTION TWO HEADER"));
+        assert_eq!(
+            hf_text(&doc.hf_lines_for_edit(HeaderFooterRole::Header, HeaderFooterVariant::First)),
+            "先頭ページ更新"
+        );
+        assert_eq!(
+            hf_text(&doc.section_header_footers()[1].header_first),
+            "先頭ページ更新"
+        );
+    }
+
     #[test]
     fn header_edit_in_a_multi_part_document_reaches_the_edited_part() {
         let data = std::fs::read(fixture_path("header-footer-sections.docx"))
@@ -50044,6 +58476,840 @@ mod tests {
     }
 
     #[test]
+    fn header_footer_list_levels_step_ranges_and_keep_bounds() {
+        let data = build_font_size_fallback_docx();
+        for role in [HeaderFooterRole::Header, HeaderFooterRole::Footer] {
+            for variant in [
+                HeaderFooterVariant::Default,
+                HeaderFooterVariant::First,
+                HeaderFooterVariant::Even,
+            ] {
+                let mut doc =
+                    executor::block_on(WordDocument::load(&data, &Options::default())).unwrap();
+                doc.ensure_hf_part_for_edit(role, variant).unwrap();
+                let path = doc
+                    .resolve_header_footer_part_path_for(role, variant)
+                    .unwrap();
+                let tag = if role == HeaderFooterRole::Header {
+                    "hdr"
+                } else {
+                    "ftr"
+                };
+                let xml = format!(
+                    r#"<w:{tag} xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:p><w:pPr><w:numPr><w:ilvl w:val="0"/><w:numId w:val="7"/></w:numPr></w:pPr><w:r><w:t>A</w:t></w:r></w:p><w:p><w:pPr><w:numPr><w:ilvl w:val="8"/><w:numId w:val="9"/></w:numPr></w:pPr><w:r><w:t>B</w:t></w:r></w:p><w:p><w:r><w:t>Plain</w:t></w:r></w:p></w:{tag}>"#
+                );
+                doc.upsert_xml_part_content(&path, xml.clone());
+                // A mixed selection is rejected atomically, without indenting plain text.
+                assert!(!doc
+                    .adjust_hf_list_level(role, variant, 0, 2, false)
+                    .unwrap());
+                assert_eq!(doc.read_xml_part_content(&path).unwrap(), xml);
+                assert!(doc
+                    .adjust_hf_list_level(role, variant, 1, 0, false)
+                    .unwrap());
+                assert!(!doc
+                    .adjust_hf_list_level(role, variant, 1, 1, false)
+                    .unwrap());
+                let reopened = executor::block_on(WordDocument::load(
+                    &doc.export_docx().unwrap(),
+                    &Options::default(),
+                ))
+                .unwrap();
+                for (index, id, level) in [(0, "7", 1), (1, "9", 8)] {
+                    let paragraph = reopened.hf_ruler_paragraph(role, variant, index).unwrap();
+                    let numbering = paragraph
+                        .properties
+                        .as_ref()
+                        .unwrap()
+                        .numbering
+                        .as_ref()
+                        .unwrap();
+                    assert_eq!(numbering.list_id(), Some(id));
+                    assert_eq!(numbering.level, Some(level));
+                }
+                assert!(doc.adjust_hf_list_level(role, variant, 0, 1, true).unwrap());
+                assert!(!doc.adjust_hf_list_level(role, variant, 0, 0, true).unwrap());
+                let reopened = executor::block_on(WordDocument::load(
+                    &doc.export_docx().unwrap(),
+                    &Options::default(),
+                ))
+                .unwrap();
+                for (index, level) in [(0, 0), (1, 7)] {
+                    assert_eq!(
+                        reopened
+                            .hf_ruler_paragraph(role, variant, index)
+                            .unwrap()
+                            .properties
+                            .as_ref()
+                            .unwrap()
+                            .numbering
+                            .as_ref()
+                            .unwrap()
+                            .level,
+                        Some(level)
+                    );
+                }
+                assert_eq!(
+                    reopened
+                        .hf_plain_paragraph_text(role, variant, 2)
+                        .as_deref(),
+                    Some("Plain")
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn header_footer_empty_list_enter_removes_direct_style_and_tracked_numbering() {
+        fn without_direct_numbering(xml: &str) -> String {
+            let mut raw = DocxXmlDocument::parse(xml).unwrap();
+            let (id, _) = WordDocument::hf_paragraph_run_ids(&raw, 0).unwrap();
+            for node in &mut raw.element_mut(id).unwrap().children {
+                if let XmlNode::Element(properties) = node {
+                    if properties.name == "w:pPr" {
+                        properties.children.retain(|node| !matches!(node, XmlNode::Element(element) if element.name == "w:numPr"));
+                    }
+                }
+            }
+            raw.to_string().unwrap()
+        }
+        let data = build_font_size_fallback_docx();
+        for role in [HeaderFooterRole::Header, HeaderFooterRole::Footer] {
+            for variant in [
+                HeaderFooterVariant::Default,
+                HeaderFooterVariant::First,
+                HeaderFooterVariant::Even,
+            ] {
+                for source in [
+                    "direct", "style", "tracked", "history", "default", "off", "plain",
+                ] {
+                    for content in ["", " ", "text", "field", "break", "drawing", "link"] {
+                        let mut doc =
+                            executor::block_on(WordDocument::load(&data, &Options::default()))
+                                .unwrap();
+                        let styles = r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:style w:type="paragraph" w:styleId="List"><w:pPr><w:numPr><w:ilvl w:val="0"/><w:numId w:val="7"/></w:numPr></w:pPr></w:style></w:styles>"#;
+                        let styles = if source == "default" {
+                            styles
+                                .replace("w:styleId=\"List\"", "w:styleId=\"List\" w:default=\"1\"")
+                        } else {
+                            styles.to_string()
+                        };
+                        doc.styles_part = Some(StylesPart::from_xml(&styles).unwrap());
+                        doc.upsert_xml_part_content("word/styles.xml", styles.into());
+                        doc.ensure_hf_part_for_edit(role, variant).unwrap();
+                        let path = doc
+                            .resolve_header_footer_part_path_for(role, variant)
+                            .unwrap();
+                        let root = if role == HeaderFooterRole::Header {
+                            "hdr"
+                        } else {
+                            "ftr"
+                        };
+                        let numbering = match source {
+                            "direct" => {
+                                r#"<w:numPr><w:ilvl w:val="0"/><w:numId w:val="7"/></w:numPr>"#
+                            }
+                            "style" => r#"<w:pStyle w:val="List"/>"#,
+                            "tracked" => {
+                                r#"<w:numPr><w:numId w:val="7"/></w:numPr><w:pPrChange w:id="2" w:author="Author"><w:pPr><w:numPr><w:numId w:val="7"/></w:numPr></w:pPr></w:pPrChange>"#
+                            }
+                            "history" => {
+                                r#"<w:pPrChange w:id="2" w:author="Author"><w:pPr><w:numPr><w:numId w:val="7"/></w:numPr></w:pPr></w:pPrChange>"#
+                            }
+                            "off" => {
+                                r#"<w:pStyle w:val="List"/><w:numPr><w:numId w:val="0"/></w:numPr>"#
+                            }
+                            _ => "",
+                        };
+                        let text = match content {
+                            "field" => {
+                                r#"<w:fldSimple w:instr="PAGE"><w:r><w:t/></w:r></w:fldSimple>"#
+                                    .to_string()
+                            }
+                            "link" => r#"<w:hyperlink w:anchor="Target"><w:r><w:rPr><w:i/></w:rPr><w:t>Link</w:t></w:r></w:hyperlink>"#.to_string(),
+                            "break" => "<w:r><w:br/></w:r>".to_string(),
+                            "drawing" => "<w:r><w:drawing/></w:r>".to_string(),
+                            text => format!(
+                                r#"<w:r w:rsidR="11111111"><w:rPr><w:b/><w:sz w:val="40"/></w:rPr><w:t xml:space="preserve">{text}</w:t></w:r>"#
+                            ),
+                        };
+                        doc.upsert_xml_part_content(&path, format!(r#"<w:{root} xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:p><w:pPr>{numbering}<w:spacing w:after="120"/></w:pPr>{text}</w:p><w:p><w:r><w:t>Keep</w:t></w:r></w:p></w:{root}>"#));
+                        let before = doc.read_xml_part_content(&path).unwrap();
+                        let mut levels = doc.clone();
+                        let numbered = ["direct", "style", "tracked", "default"].contains(&source);
+                        assert_eq!(
+                            levels
+                                .adjust_hf_list_level(role, variant, 0, 0, false)
+                                .unwrap(),
+                            numbered,
+                            "Tab {source}/{content}"
+                        );
+                        if numbered {
+                            let changed = levels.read_xml_part_content(&path).unwrap();
+                            assert_eq!(
+                                without_direct_numbering(&changed),
+                                without_direct_numbering(&before)
+                            );
+                            let reopened = executor::block_on(WordDocument::load(
+                                &levels.export_docx().unwrap(),
+                                &Options::default(),
+                            ))
+                            .unwrap();
+                            let paragraph = reopened.hf_ruler_paragraph(role, variant, 0).unwrap();
+                            let numbering = paragraph
+                                .properties
+                                .as_ref()
+                                .unwrap()
+                                .numbering
+                                .as_ref()
+                                .unwrap();
+                            assert_eq!(numbering.list_id(), Some("7"));
+                            assert_eq!(numbering.level, Some(1));
+                            assert!(levels
+                                .adjust_hf_list_level(role, variant, 0, 0, true)
+                                .unwrap());
+                            assert!(!levels
+                                .adjust_hf_list_level(role, variant, 0, 0, true)
+                                .unwrap());
+                            assert_eq!(
+                                without_direct_numbering(
+                                    &levels.read_xml_part_content(&path).unwrap()
+                                ),
+                                without_direct_numbering(&before)
+                            );
+                        } else {
+                            assert_eq!(levels.read_xml_part_content(&path).unwrap(), before);
+                        }
+                        let mut backspace = doc.clone();
+                        let numbered = ["direct", "style", "tracked", "default"].contains(&source);
+                        assert_eq!(
+                            backspace
+                                .remove_hf_list_numbering(role, variant, 0, false)
+                                .unwrap(),
+                            numbered,
+                            "Backspace {source}/{content}"
+                        );
+                        let updated = backspace.read_xml_part_content(&path).unwrap();
+                        if numbered {
+                            assert_eq!(
+                                without_direct_numbering(&updated),
+                                without_direct_numbering(&before)
+                            );
+                            assert!(!backspace
+                                .remove_hf_list_numbering(role, variant, 0, false)
+                                .unwrap());
+                            let reopened = executor::block_on(WordDocument::load(
+                                &backspace.export_docx().unwrap(),
+                                &Options::default(),
+                            ))
+                            .unwrap();
+                            assert!(reopened
+                                .hf_ruler_paragraph(role, variant, 0)
+                                .unwrap()
+                                .properties
+                                .as_ref()
+                                .and_then(|props| props.numbering.as_ref())
+                                .and_then(|numbering| numbering.list_id())
+                                .is_none());
+                            assert_eq!(
+                                without_direct_numbering(
+                                    &reopened.read_xml_part_content(&path).unwrap()
+                                ),
+                                without_direct_numbering(&before)
+                            );
+                        } else {
+                            assert_eq!(updated, before);
+                        }
+                        let expected = content.is_empty()
+                            && ["direct", "style", "tracked", "default"].contains(&source);
+                        assert_eq!(
+                            doc.exit_hf_empty_list_item(role, variant, 0).unwrap(),
+                            expected,
+                            "{source}/{content}"
+                        );
+                        if !expected {
+                            assert_eq!(doc.read_xml_part_content(&path).unwrap(), before);
+                            continue;
+                        }
+                        assert!(!doc.exit_hf_empty_list_item(role, variant, 0).unwrap());
+                        let reopened = executor::block_on(WordDocument::load(
+                            &doc.export_docx().unwrap(),
+                            &Options::default(),
+                        ))
+                        .unwrap();
+                        let paragraph = reopened.hf_ruler_paragraph(role, variant, 0).unwrap();
+                        assert!(paragraph
+                            .properties
+                            .as_ref()
+                            .and_then(|props| props.numbering.as_ref())
+                            .and_then(|n| n.list_id())
+                            .is_none());
+                        let xml = reopened.read_xml_part_content(&path).unwrap();
+                        assert!(
+                            xml.contains("Keep")
+                                && xml.contains("11111111")
+                                && xml.contains("w:after=\"120\"")
+                        );
+                        assert_eq!(xml.matches("<w:p>").count(), 2);
+                        if source == "tracked" {
+                            assert!(
+                                xml.contains("w:pPrChange")
+                                    && xml.contains("Author")
+                                    && xml.contains("w:numId w:val=\"7\"")
+                            );
+                        }
+                        if source != "direct" {
+                            assert!(xml.contains("w:numId w:val=\"0\""));
+                        }
+                        assert_eq!(
+                            reopened
+                                .hf_caret_run_format_at(role, variant, 0, 0)
+                                .font_size,
+                            Some(20.0)
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn header_footer_enter_applies_next_style_and_keeps_terminal_style() {
+        let data = build_font_size_fallback_docx();
+        for role in [HeaderFooterRole::Header, HeaderFooterRole::Footer] {
+            for variant in [
+                HeaderFooterVariant::Default,
+                HeaderFooterVariant::First,
+                HeaderFooterVariant::Even,
+            ] {
+                for terminal_next in ["", r#"<w:next w:val="C"/>"#, r#"<w:next w:val="Missing"/>"#]
+                {
+                    for offset in [1, 2] {
+                        let mut doc =
+                            executor::block_on(WordDocument::load(&data, &Options::default()))
+                                .unwrap();
+                        let styles = format!(
+                            r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:style w:type="paragraph" w:default="1" w:styleId="A"><w:next w:val="B"/><w:rPr><w:b/><w:sz w:val="40"/></w:rPr></w:style><w:style w:type="paragraph" w:styleId="B"><w:next w:val="C"/><w:rPr><w:sz w:val="28"/></w:rPr></w:style><w:style w:type="paragraph" w:styleId="C">{terminal_next}<w:rPr><w:sz w:val="24"/></w:rPr></w:style></w:styles>"#
+                        );
+                        doc.styles_part = Some(StylesPart::from_xml(&styles).unwrap());
+                        doc.upsert_xml_part_content("word/styles.xml", styles);
+                        doc.ensure_hf_part_for_edit(role, variant).unwrap();
+                        let path = doc
+                            .resolve_header_footer_part_path_for(role, variant)
+                            .unwrap();
+                        let root = if role == HeaderFooterRole::Header {
+                            "hdr"
+                        } else {
+                            "ftr"
+                        };
+                        doc.upsert_xml_part_content(&path, format!(r#"<w:{root} xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:p><w:pPr><w:pStyle w:val="A"/><w:spacing w:after="120"/></w:pPr><w:r><w:rPr><w:b/><w:sz w:val="40"/></w:rPr><w:t>日日</w:t></w:r></w:p></w:{root}>"#));
+                        doc.split_hf_paragraph_at_display_offset(role, variant, 0, offset, 3)
+                            .unwrap();
+                        for paragraph in 1..=3 {
+                            doc.edit_hf_paragraph_range(role, variant, paragraph, 0, 0, "X")
+                                .unwrap();
+                        }
+                        let reopened = executor::block_on(WordDocument::load(
+                            &doc.export_docx().unwrap(),
+                            &Options::default(),
+                        ))
+                        .unwrap();
+                        let xml = reopened.read_xml_part_content(&path).unwrap();
+                        let raw = DocxXmlDocument::parse(&xml).unwrap();
+                        let mut ids = Vec::new();
+                        WordDocument::collect_story_paragraph_ids(raw.root(), &mut ids);
+                        assert_eq!(ids.len(), 4);
+                        assert_eq!(xml.matches("w:after=\"120\"").count(), 4);
+                        for paragraph in 0..4 {
+                            let expected_style = if offset == 1 || paragraph == 0 {
+                                "A"
+                            } else if paragraph == 1 {
+                                "B"
+                            } else {
+                                "C"
+                            };
+                            let element = raw.element(ids[paragraph]).unwrap();
+                            let properties = element
+                                .children
+                                .iter()
+                                .find_map(|node| match node {
+                                    XmlNode::Element(e) if e.name == "w:pPr" => Some(e),
+                                    _ => None,
+                                })
+                                .unwrap();
+                            let style = properties.children.iter().find_map(|node| match node {
+                                XmlNode::Element(e) if e.name == "w:pStyle" => e
+                                    .attributes
+                                    .iter()
+                                    .find(|attribute| attribute.name == "w:val")
+                                    .map(|attribute| attribute.value.as_str()),
+                                _ => None,
+                            });
+                            assert_eq!(style, Some(expected_style));
+                            let format = reopened.hf_run_format_at(role, variant, paragraph, 0);
+                            assert_eq!(
+                                format.font_size,
+                                Some(match expected_style {
+                                    "A" => 20.0,
+                                    "B" => 14.0,
+                                    _ => 12.0,
+                                })
+                            );
+                            if expected_style != "A" {
+                                assert_ne!(format.bold, Some(true));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn header_footer_split_handles_field_boundaries_sharing_runs() {
+        let data = build_font_size_fallback_docx();
+        let begin = r#"<w:fldChar w:fldCharType="begin"/>"#;
+        let separator = r#"<w:fldChar w:fldCharType="separate"/>"#;
+        let end = r#"<w:fldChar w:fldCharType="end"/>"#;
+        let run = |content: &str| {
+            format!(
+                r#"<w:r w:rsidR="12345678"><w:rPr><w:b/><w:sz w:val="28"/></w:rPr>{content}</w:r>"#
+            )
+        };
+        for (code, cache, display) in [
+            ("PAGE", "12345", crate::document::PAGE_FIELD_PLACEHOLDER),
+            ("DATE", "2030", "2030"),
+        ] {
+            let instruction = format!("<w:instrText> {code} </w:instrText>");
+            let result = format!("<w:t>{cache}</w:t>");
+            for field in [
+                run(&format!("{begin}{instruction}{separator}{result}{end}")),
+                format!(
+                    "{}{}{}{}",
+                    run(&format!("{begin}{instruction}")),
+                    run(separator),
+                    run(&result),
+                    run(end)
+                ),
+                format!(
+                    "{}{}{}{}",
+                    run(begin),
+                    run(&instruction),
+                    run(&format!("{separator}{result}")),
+                    run(end)
+                ),
+                format!(
+                    "{}{}{}{}",
+                    run(begin),
+                    run(&instruction),
+                    run(separator),
+                    run(&format!("{result}{end}"))
+                ),
+            ] {
+                let raw = DocxXmlDocument::parse(&format!("<w:p>{field}</w:p>")).unwrap();
+                assert_eq!(
+                    WordDocument::grouped_display_len(&raw.root().children),
+                    display.chars().count()
+                );
+                for role in [HeaderFooterRole::Header, HeaderFooterRole::Footer] {
+                    for variant in [
+                        HeaderFooterVariant::Default,
+                        HeaderFooterVariant::First,
+                        HeaderFooterVariant::Even,
+                    ] {
+                        for offset in [1, 1 + display.chars().count()] {
+                            let mut doc =
+                                executor::block_on(WordDocument::load(&data, &Options::default()))
+                                    .unwrap();
+                            doc.ensure_hf_part_for_edit(role, variant).unwrap();
+                            let path = doc
+                                .resolve_header_footer_part_path_for(role, variant)
+                                .unwrap();
+                            let root = if role == HeaderFooterRole::Header {
+                                "hdr"
+                            } else {
+                                "ftr"
+                            };
+                            doc.upsert_xml_part_content(&path, format!(r#"<w:{root} xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:p><w:r><w:t>日</w:t></w:r>{field}<w:r><w:t>末</w:t></w:r></w:p></w:{root}>"#));
+                            doc.refresh_header_footer_lines_for(role, variant, &path)
+                                .unwrap();
+                            doc.split_hf_paragraph_at_display_offset(role, variant, 0, offset, 1)
+                                .unwrap();
+                            let reopened = executor::block_on(WordDocument::load(
+                                &doc.export_docx().unwrap(),
+                                &Options::default(),
+                            ))
+                            .unwrap();
+                            let xml = reopened.read_xml_part_content(&path).unwrap();
+                            let raw = DocxXmlDocument::parse(&xml).unwrap();
+                            let mut ids = Vec::new();
+                            WordDocument::collect_story_paragraph_ids(raw.root(), &mut ids);
+                            assert_eq!(ids.len(), 2);
+                            let field_index = usize::from(offset == 1);
+                            for (index, id) in ids.iter().enumerate() {
+                                let paragraph = raw.element(*id).unwrap();
+                                for kind in ["begin", "separate", "end"] {
+                                    assert_eq!(paragraph.children.iter().filter(|node| matches!(node, XmlNode::Element(e) if WordDocument::run_has_field_char(e, kind))).count(), usize::from(index == field_index));
+                                }
+                                let text = WordDocument::hf_field_edit_paragraph_text(
+                                    &reopened.hf_ruler_paragraph(role, variant, index).unwrap(),
+                                )
+                                .unwrap();
+                                let expected = if offset == 1 {
+                                    if index == 0 {
+                                        "日".to_string()
+                                    } else {
+                                        format!("{display}末")
+                                    }
+                                } else if index == 0 {
+                                    format!("日{display}")
+                                } else {
+                                    "末".to_string()
+                                };
+                                assert_eq!(text, expected);
+                            }
+                            let paragraph = reopened
+                                .hf_ruler_paragraph(role, variant, field_index)
+                                .unwrap();
+                            let field_run = paragraph
+                                .runs
+                                .iter()
+                                .find(|run| run.field.is_some())
+                                .unwrap();
+                            assert_eq!(
+                                field_run.field.as_ref().unwrap().cached_text.as_deref(),
+                                Some(cache)
+                            );
+                            let properties = field_run.properties.as_ref().unwrap();
+                            assert_eq!(properties.bold, Some(true));
+                            assert_eq!(properties.font_size, Some(14.0));
+                            assert!(xml.contains("12345678"));
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn split_nested_field_groups_measure_only_outer_results() {
+        let field = |code: &str, result: &str| {
+            format!(
+                r#"<w:r><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:instrText>{code}</w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r>{result}<w:r><w:fldChar w:fldCharType="end"/></w:r>"#
+            )
+        };
+        let page = field(" PAGE ", "<w:r><w:t>12345</w:t></w:r>");
+        let date = field(
+            " DATE ",
+            &format!("<w:r><w:t>日</w:t></w:r>{page}<w:r><w:t>末</w:t></w:r>"),
+        );
+        for (xml, expected) in [
+            (
+                date.clone(),
+                2 + crate::document::PAGE_FIELD_PLACEHOLDER.chars().count(),
+            ),
+            (
+                field(" DATE ", &date),
+                2 + crate::document::PAGE_FIELD_PLACEHOLDER.chars().count(),
+            ),
+            (
+                field(" PAGE ", &date),
+                crate::document::PAGE_FIELD_PLACEHOLDER.chars().count(),
+            ),
+        ] {
+            let raw = DocxXmlDocument::parse(&format!("<w:p>{xml}</w:p>")).unwrap();
+            let children = &raw.root().children;
+            let (_, len, consumed) = WordDocument::take_field_group(children).unwrap();
+            assert_eq!(len, expected);
+            assert_eq!(consumed, children.len());
+            assert_eq!(WordDocument::grouped_display_len(children), expected);
+            assert!(WordDocument::take_field_group(&children[..children.len() - 1]).is_none());
+            for offset in [0, expected] {
+                let (before, after) = WordDocument::split_paragraph_children_at_display_offset(
+                    children.clone(),
+                    offset,
+                );
+                assert_eq!(before.len(), if offset == 0 { 0 } else { children.len() });
+                assert_eq!(after.len(), if offset == 0 { children.len() } else { 0 });
+            }
+        }
+    }
+
+    #[test]
+    fn header_footer_split_keeps_nested_complex_fields_together() {
+        let data = build_font_size_fallback_docx();
+        let inner = r#"<w:r><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:instrText> PAGE </w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r><w:r><w:t>7</w:t></w:r><w:r><w:fldChar w:fldCharType="end"/></w:r>"#;
+        let field = format!(
+            r#"<w:r><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:instrText> DATE </w:instrText></w:r>{inner}<w:r><w:instrText> \@ yyyy </w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r><w:r><w:t>2030</w:t></w:r><w:r><w:fldChar w:fldCharType="end"/></w:r>"#
+        );
+        let raw = DocxXmlDocument::parse(&format!("<w:p>{field}</w:p>")).unwrap();
+        let (group, len, consumed) = WordDocument::take_field_group(&raw.root().children).unwrap();
+        assert_eq!(consumed, raw.root().children.len());
+        assert_eq!(group.len(), raw.root().children.len());
+        assert_eq!(len, 4);
+        for role in [HeaderFooterRole::Header, HeaderFooterRole::Footer] {
+            for variant in [
+                HeaderFooterVariant::Default,
+                HeaderFooterVariant::First,
+                HeaderFooterVariant::Even,
+            ] {
+                for offset in [1, 5] {
+                    let mut doc =
+                        executor::block_on(WordDocument::load(&data, &Options::default())).unwrap();
+                    doc.ensure_hf_part_for_edit(role, variant).unwrap();
+                    let path = doc
+                        .resolve_header_footer_part_path_for(role, variant)
+                        .unwrap();
+                    let root = if role == HeaderFooterRole::Header {
+                        "hdr"
+                    } else {
+                        "ftr"
+                    };
+                    doc.upsert_xml_part_content(&path, format!(r#"<w:{root} xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:p><w:r><w:t>日</w:t></w:r>{field}<w:r><w:t>末</w:t></w:r></w:p></w:{root}>"#));
+                    doc.refresh_header_footer_lines_for(role, variant, &path)
+                        .unwrap();
+                    assert_eq!(
+                        WordDocument::hf_field_edit_paragraph_text(
+                            &doc.hf_ruler_paragraph(role, variant, 0).unwrap()
+                        )
+                        .unwrap(),
+                        "日2030末"
+                    );
+                    doc.split_hf_paragraph_at_display_offset(role, variant, 0, offset, 1)
+                        .unwrap();
+                    let reopened = executor::block_on(WordDocument::load(
+                        &doc.export_docx().unwrap(),
+                        &Options::default(),
+                    ))
+                    .unwrap();
+                    let xml = reopened.read_xml_part_content(&path).unwrap();
+                    let raw = DocxXmlDocument::parse(&xml).unwrap();
+                    let mut ids = Vec::new();
+                    WordDocument::collect_story_paragraph_ids(raw.root(), &mut ids);
+                    assert_eq!(ids.len(), 2);
+                    for (index, id) in ids.iter().enumerate() {
+                        let paragraph = raw.element(*id).unwrap();
+                        let expected_fields = if index == usize::from(offset == 1) {
+                            2
+                        } else {
+                            0
+                        };
+                        for kind in ["begin", "separate", "end"] {
+                            assert_eq!(paragraph.children.iter().filter(|node| matches!(node, XmlNode::Element(e) if WordDocument::run_has_field_char(e, kind))).count(), expected_fields);
+                        }
+                    }
+                    let expected = if offset == 1 {
+                        ["日", "2030末"]
+                    } else {
+                        ["日2030", "末"]
+                    };
+                    for (index, text) in expected.into_iter().enumerate() {
+                        assert_eq!(
+                            WordDocument::hf_field_edit_paragraph_text(
+                                &reopened.hf_ruler_paragraph(role, variant, index).unwrap()
+                            )
+                            .unwrap(),
+                            text
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn header_footer_enter_with_tab_stops_counts_only_visible_content() {
+        let data = build_font_size_fallback_docx();
+        for role in [HeaderFooterRole::Header, HeaderFooterRole::Footer] {
+            for variant in [
+                HeaderFooterVariant::Default,
+                HeaderFooterVariant::First,
+                HeaderFooterVariant::Even,
+            ] {
+                let page = crate::document::PAGE_FIELD_PLACEHOLDER;
+                for (content, display) in [
+                    (r#"<w:r><w:t>日日</w:t></w:r>"#.to_owned(), "日日".to_owned()),
+                    (r#"<w:r><w:t>日</w:t><w:tab/><w:t>日</w:t></w:r>"#.to_owned(), "日\t日".to_owned()),
+                    (r#"<w:r><w:t>日</w:t></w:r><w:fldSimple w:instr=" PAGE "><w:r><w:t>7</w:t></w:r></w:fldSimple>"#.to_owned(), format!("日{page}")),
+                    (r#"<w:r><w:t>日</w:t></w:r><w:r><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:instrText> PAGE </w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r><w:r><w:t>7</w:t></w:r><w:r><w:fldChar w:fldCharType="end"/></w:r>"#.to_owned(), format!("日{page}")),
+                ] {
+                    let terminal_next = "";
+                    for offset in [1, display.chars().count()] {
+                        let mut doc =
+                            executor::block_on(WordDocument::load(&data, &Options::default()))
+                                .unwrap();
+                        let styles = format!(
+                            r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:style w:type="paragraph" w:default="1" w:styleId="A"><w:next w:val="B"/><w:rPr><w:b/><w:sz w:val="40"/></w:rPr></w:style><w:style w:type="paragraph" w:styleId="B"><w:next w:val="C"/><w:rPr><w:sz w:val="28"/></w:rPr></w:style><w:style w:type="paragraph" w:styleId="C">{terminal_next}<w:rPr><w:sz w:val="24"/></w:rPr></w:style></w:styles>"#
+                        );
+                        doc.styles_part = Some(StylesPart::from_xml(&styles).unwrap());
+                        doc.upsert_xml_part_content("word/styles.xml", styles);
+                        doc.ensure_hf_part_for_edit(role, variant).unwrap();
+                        let path = doc
+                            .resolve_header_footer_part_path_for(role, variant)
+                            .unwrap();
+                        let root = if role == HeaderFooterRole::Header {
+                            "hdr"
+                        } else {
+                            "ftr"
+                        };
+                        doc.upsert_xml_part_content(&path, format!(r#"<w:{root} xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:p><w:pPr><w:pStyle w:val="A"/><w:spacing w:after="120"/><w:tabs><w:tab w:val="center" w:pos="4320"/><w:tab w:val="right" w:pos="8640"/></w:tabs></w:pPr>{content}</w:p></w:{root}>"#));
+                        doc.split_hf_paragraph_at_display_offset(role, variant, 0, offset, 3)
+                            .unwrap();
+                        for paragraph in 1..=3 {
+                            doc.edit_hf_paragraph_range(role, variant, paragraph, 0, 0, "X")
+                                .unwrap();
+                        }
+                        let reopened = executor::block_on(WordDocument::load(
+                            &doc.export_docx().unwrap(),
+                            &Options::default(),
+                        ))
+                        .unwrap();
+                        let xml = reopened.read_xml_part_content(&path).unwrap();
+                        assert_eq!(xml.matches("w:pos=\"4320\"").count(), 4);
+                        let mut joined = String::new();
+                        for index in 0..4 {
+                            joined.push_str(&WordDocument::hf_field_edit_paragraph_text(&reopened.hf_ruler_paragraph(role, variant, index).unwrap()).unwrap());
+                        }
+                        let split_byte = display.char_indices().nth(offset).map_or(display.len(), |(index, _)| index);
+                        assert_eq!(joined, format!("{}XXX{}", &display[..split_byte], &display[split_byte..]));
+                        assert_eq!(xml.matches(" PAGE ").count(), usize::from(content.contains(" PAGE ")));
+                        if content.contains(" PAGE ") { assert!(xml.contains(">7<")); }
+                        let raw = DocxXmlDocument::parse(&xml).unwrap();
+                        let mut ids = Vec::new();
+                        WordDocument::collect_story_paragraph_ids(raw.root(), &mut ids);
+                        assert_eq!(ids.len(), 4);
+                        assert_eq!(xml.matches("w:after=\"120\"").count(), 4);
+                        for paragraph in 0..4 {
+                            let expected_style = if offset == 1 || paragraph == 0 {
+                                "A"
+                            } else if paragraph == 1 {
+                                "B"
+                            } else {
+                                "C"
+                            };
+                            let element = raw.element(ids[paragraph]).unwrap();
+                            let properties = element
+                                .children
+                                .iter()
+                                .find_map(|node| match node {
+                                    XmlNode::Element(e) if e.name == "w:pPr" => Some(e),
+                                    _ => None,
+                                })
+                                .unwrap();
+                            let style = properties.children.iter().find_map(|node| match node {
+                                XmlNode::Element(e) if e.name == "w:pStyle" => e
+                                    .attributes
+                                    .iter()
+                                    .find(|attribute| attribute.name == "w:val")
+                                    .map(|attribute| attribute.value.as_str()),
+                                _ => None,
+                            });
+                            assert_eq!(style, Some(expected_style));
+                            let format = reopened.hf_run_format_at(role, variant, paragraph, 0);
+                            assert_eq!(
+                                format.font_size,
+                                Some(match expected_style {
+                                    "A" => 20.0,
+                                    "B" => 14.0,
+                                    _ => 12.0,
+                                })
+                            );
+                            if expected_style != "A" {
+                                assert_ne!(format.bold, Some(true));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn header_footer_enter_preserves_caret_format_before_existing_suffix() {
+        let data = build_font_size_fallback_docx();
+        for role in [HeaderFooterRole::Header, HeaderFooterRole::Footer] {
+            for variant in [
+                HeaderFooterVariant::Default,
+                HeaderFooterVariant::First,
+                HeaderFooterVariant::Even,
+            ] {
+                for offset in [0, 3, 6, 9, 12] {
+                    for pending in [false, true] {
+                        let mut doc =
+                            executor::block_on(WordDocument::load(&data, &Options::default()))
+                                .unwrap();
+                        doc.ensure_hf_part_for_edit(role, variant).unwrap();
+                        let path = doc
+                            .resolve_header_footer_part_path_for(role, variant)
+                            .unwrap();
+                        let root = if role == HeaderFooterRole::Header {
+                            "hdr"
+                        } else {
+                            "ftr"
+                        };
+                        doc.upsert_xml_part_content(&path, format!(r#"<w:{root} xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:p><w:pPr><w:spacing w:after="120"/></w:pPr><w:r w:rsidR="11111111"><w:rPr><w:b/><w:sz w:val="40"/></w:rPr><w:t>日日</w:t></w:r><w:hyperlink w:anchor="target"><w:r w:rsidR="22222222"><w:rPr><w:i/><w:sz w:val="28"/></w:rPr><w:t>日日</w:t></w:r></w:hyperlink></w:p></w:{root}>"#));
+                        if pending {
+                            assert!(doc
+                                .apply_hf_caret_run_format(
+                                    role,
+                                    variant,
+                                    0,
+                                    offset,
+                                    &HfRunFormat {
+                                        font_size: Some(26.0),
+                                        underline: Some(true),
+                                        ..Default::default()
+                                    }
+                                )
+                                .unwrap());
+                        }
+                        let caret = doc.hf_caret_run_format_at(role, variant, 0, offset);
+                        doc.split_hf_paragraph_at_display_offset(role, variant, 0, offset / 3, 2)
+                            .unwrap();
+                        assert_eq!(
+                            doc.hf_plain_paragraph_text(role, variant, 0).as_deref(),
+                            Some(&"日日日日"[..offset])
+                        );
+                        assert_eq!(
+                            doc.hf_plain_paragraph_text(role, variant, 2).as_deref(),
+                            Some(&"日日日日"[offset..])
+                        );
+                        for paragraph in [1, 2] {
+                            let format = doc.hf_caret_run_format_at(role, variant, paragraph, 0);
+                            assert_eq!(format.font_size, caret.font_size);
+                            assert_eq!(format.bold, caret.bold);
+                            assert_eq!(format.italic, caret.italic);
+                            assert_eq!(format.underline, caret.underline);
+                            assert!(doc
+                                .edit_hf_paragraph_range(role, variant, paragraph, 0, 0, "X")
+                                .unwrap());
+                        }
+                        let reopened = executor::block_on(WordDocument::load(
+                            &doc.export_docx().unwrap(),
+                            &Options::default(),
+                        ))
+                        .unwrap();
+                        for paragraph in [1, 2] {
+                            let format = reopened.hf_run_format_at(role, variant, paragraph, 0);
+                            assert_eq!(format.font_size, caret.font_size);
+                            assert_eq!(format.bold, caret.bold);
+                            assert_eq!(format.italic, caret.italic);
+                            assert_eq!(format.underline, caret.underline);
+                        }
+                        let saved = reopened.read_xml_part_content(&path).unwrap();
+                        assert_eq!(saved.matches("w:after=\"120\"").count(), 3);
+                        assert!(
+                            saved.contains("target")
+                                && saved.contains("11111111")
+                                && saved.contains("22222222")
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
     fn header_footer_paragraph_break_inherits_formatting_at_empty_edges() {
         let data = std::fs::read(fixture_path("header-footer-sections.docx")).unwrap();
         for role in [HeaderFooterRole::Header, HeaderFooterRole::Footer] {
@@ -50663,6 +59929,166 @@ mod tests {
     }
 
     #[test]
+    fn remove_page_numbers_visits_all_sections_independent_of_edit_focus() {
+        let data = std::fs::read(fixture_path("header-footer-sections.docx")).unwrap();
+        for focus in [None, Some(0), Some(1)] {
+            let mut doc =
+                executor::block_on(WordDocument::load(&data, &Options::default())).unwrap();
+            let slots = [
+                (HeaderFooterRole::Header, HeaderFooterVariant::Default),
+                (HeaderFooterRole::Header, HeaderFooterVariant::First),
+                (HeaderFooterRole::Header, HeaderFooterVariant::Even),
+                (HeaderFooterRole::Footer, HeaderFooterVariant::Default),
+                (HeaderFooterRole::Footer, HeaderFooterVariant::First),
+                (HeaderFooterRole::Footer, HeaderFooterVariant::Even),
+            ];
+            let mut paths = Vec::new();
+            for section in 0..2 {
+                doc.hf_edit_section = Some(section);
+                for (role, variant) in slots {
+                    if doc.active_hf_reference(role, variant).is_none() {
+                        continue;
+                    }
+                    let path = doc
+                        .resolve_header_footer_part_path_for(role, variant)
+                        .unwrap();
+                    if paths.contains(&path) {
+                        continue;
+                    }
+                    let root = if role == HeaderFooterRole::Header {
+                        "hdr"
+                    } else {
+                        "ftr"
+                    };
+                    let label = format!("STORY {}", paths.len());
+                    doc.upsert_xml_part_content(&path, format!(r#"<w:{root} xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:x="urn:jade:test"><w:p><w:r><w:t>{label}</w:t></w:r><w:fldSimple w:instr=" PAGE "><w:r><w:t>7</w:t></w:r></w:fldSimple><w:fldSimple w:instr=" NUMPAGES "><w:r><w:t>9</w:t></w:r></w:fldSimple></w:p><x:keep/></w:{root}>"#));
+                    doc.refresh_header_footer_lines_for(role, variant, &path)
+                        .unwrap();
+                    paths.push(path);
+                }
+            }
+            assert_eq!(
+                paths.len(),
+                4,
+                "two default headers, one inherited first header and footer"
+            );
+            let orphan = r#"<w:hdr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:p><w:fldSimple w:instr=" PAGE "/></w:p></w:hdr>"#;
+            doc.upsert_xml_part_content("word/unreferencedHeader.xml", orphan.to_string());
+            doc.hf_edit_section = focus;
+            let body_before = exported_document_xml(&doc);
+            assert_eq!(doc.remove_page_numbers().unwrap(), 4, "focus {focus:?}");
+            assert!(doc.header_lines_first.is_none());
+            assert!(doc.header_lines_even.is_none());
+            assert!(doc.footer_lines_first.is_none());
+            assert!(doc.footer_lines_even.is_none());
+            assert_eq!(doc.hf_edit_section, focus);
+            assert_eq!(exported_document_xml(&doc), body_before);
+            assert_eq!(
+                doc.read_xml_part_content("word/unreferencedHeader.xml")
+                    .unwrap(),
+                orphan
+            );
+            for document in [
+                &doc,
+                &executor::block_on(WordDocument::load(
+                    &doc.export_docx().unwrap(),
+                    &Options::default(),
+                ))
+                .unwrap(),
+            ] {
+                for path in &paths {
+                    let xml = document.read_xml_part_content(path).unwrap();
+                    assert!(!xml.contains(" PAGE "), "{path}");
+                    assert!(xml.contains(" NUMPAGES "));
+                    assert!(xml.contains("keep"));
+                }
+                let sections = document.section_header_footers();
+                assert_eq!(sections.len(), 2);
+                assert_ne!(hf_text(&sections[0].header), hf_text(&sections[1].header));
+                assert_eq!(
+                    hf_text(&sections[0].header_first),
+                    hf_text(&sections[1].header_first)
+                );
+                assert_eq!(hf_text(&sections[0].footer), hf_text(&sections[1].footer));
+                for section in sections {
+                    for lines in [&section.header, &section.header_first, &section.footer] {
+                        let text = hf_text(lines);
+                        assert!(text.contains("STORY"));
+                        assert!(!text.contains(crate::document::PAGE_FIELD_PLACEHOLDER));
+                    }
+                }
+            }
+            assert_eq!(doc.remove_page_numbers().unwrap(), 0);
+        }
+    }
+
+    #[test]
+    fn remove_page_numbers_preserves_text_around_compact_fields_in_every_story() {
+        let data = build_font_size_fallback_docx();
+        let begin = r#"<w:fldChar w:fldCharType="begin"/>"#;
+        let separator = r#"<w:fldChar w:fldCharType="separate"/>"#;
+        let end = r#"<w:fldChar w:fldCharType="end"/>"#;
+        let run = |content: &str| {
+            format!(
+                r#"<w:r w:rsidR="12345678"><w:rPr><w:b/><w:sz w:val="28"/></w:rPr>{content}</w:r>"#
+            )
+        };
+        let page = format!("{begin}<w:instrText> PAGE </w:instrText>{separator}<w:t>7</w:t>{end}");
+        let date =
+            format!("{begin}<w:instrText> DATE </w:instrText>{separator}<w:t>2030</w:t>{end}");
+        let count =
+            format!("{begin}<w:instrText> NUMPAGES </w:instrText>{separator}<w:t>9</w:t>{end}");
+        for (content, page_count) in [
+            (run(&format!("<w:t>前</w:t>{page}<w:t>後</w:t>")), 1),
+            (format!("{}{}{}", run(&format!("<w:t>前</w:t>{begin}<w:instrText> PAGE </w:instrText>")), run(&format!("{separator}<w:t>7</w:t>")), run(&format!("{end}<w:t>後</w:t>"))), 1),
+            (run(&format!("<w:t>前</w:t>{page}{page}<w:t>後</w:t>")), 2),
+            (run(&format!("<w:t>前</w:t>{begin}<w:instrText> PAGE </w:instrText>{date}{separator}<w:t>7</w:t>{end}<w:t>後</w:t>")), 1),
+        ] {
+            let mut doc = executor::block_on(WordDocument::load(&data, &Options::default())).unwrap();
+            let mut stories = Vec::new();
+            for role in [HeaderFooterRole::Header, HeaderFooterRole::Footer] {
+                for variant in [HeaderFooterVariant::Default, HeaderFooterVariant::First, HeaderFooterVariant::Even] {
+                    doc.ensure_hf_part_for_edit(role, variant).unwrap();
+                    let path = doc.resolve_header_footer_part_path_for(role, variant).unwrap();
+                    let root = if role == HeaderFooterRole::Header { "hdr" } else { "ftr" };
+                    doc.upsert_xml_part_content(&path, format!(r#"<w:{root} xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:x="urn:jade:test"><w:p>{content}{}{}</w:p><w:tbl><w:tblPr><w:tblW w:w="2400" w:type="dxa"/></w:tblPr><w:tr><w:tc><w:p>{}</w:p></w:tc></w:tr></w:tbl><x:keep x:value="preserved"/></w:{root}>"#, run(&count), run(&date), run(&format!("<w:t>表前</w:t>{page}<w:t>表後</w:t>"))));
+                    doc.refresh_header_footer_lines_for(role, variant, &path).unwrap();
+                    stories.push((role, variant, path));
+                }
+            }
+            let body_before = exported_document_xml(&doc);
+            assert_eq!(doc.remove_page_numbers().unwrap(), 6 * (page_count + 1));
+            assert_eq!(exported_document_xml(&doc), body_before);
+            let mut reopened = executor::block_on(WordDocument::load(&doc.export_docx().unwrap(), &Options::default())).unwrap();
+            for (role, variant, path) in &stories {
+                let xml = reopened.read_xml_part_content(path).unwrap();
+                assert!(!xml.contains(" PAGE "));
+                assert_eq!(xml.matches(" NUMPAGES ").count(), 1);
+                assert_eq!(xml.matches(" DATE ").count(), 1);
+                assert!(xml.contains("preserved"));
+                assert!(xml.contains("w:w=\"2400\""));
+                assert!(xml.contains("表前"));
+                assert!(xml.contains("表後"));
+                let paragraph = reopened.hf_ruler_paragraph(*role, *variant, 0).unwrap();
+                assert_eq!(WordDocument::hf_field_edit_paragraph_text(&paragraph).unwrap(), format!("前後{}2030", crate::document::PAGE_COUNT_FIELD_PLACEHOLDER));
+                for run in paragraph.runs.iter().filter(|run| !run.text.is_empty() || run.field.is_some()) {
+                    let properties = run.properties.as_ref().unwrap();
+                    assert_eq!(properties.bold, Some(true));
+                    assert_eq!(properties.font_size, Some(14.0));
+                }
+                for field in paragraph.runs.iter().filter_map(|run| run.field.as_ref()) {
+                    assert!(matches!(field.cached_text.as_deref(), Some("9" | "2030")));
+                }
+            }
+            let before_repeat: Vec<_> = stories.iter().map(|(_, _, path)| reopened.read_xml_part_content(path).unwrap()).collect();
+            assert_eq!(reopened.remove_page_numbers().unwrap(), 0);
+            for ((_, _, path), expected) in stories.iter().zip(before_repeat) {
+                assert_eq!(reopened.read_xml_part_content(path).unwrap(), expected);
+            }
+        }
+    }
+
+    #[test]
     fn remove_page_numbers_visits_every_existing_header_footer_variant() {
         let data = std::fs::read(fixture_path("hello.docx")).expect("read hello fixture");
         let mut doc = executor::block_on(WordDocument::load(&data, &Options::default()))
@@ -51072,6 +60498,1293 @@ mod tests {
     }
 
     #[test]
+    fn conditional_table_paragraph_tabs_refresh_without_stale_inheritance() {
+        use crate::commands::set_paragraph_style::SetParagraphStyleCommand;
+        use crate::commands::split_table::SplitTableCommand;
+        use jade_docx_layout::line_wrap::{resolve_tab_stops, TabAlignment, TabLeader};
+        let styles = r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:style w:type="paragraph" w:default="1" w:styleId="Normal"/>
+          <w:style w:type="paragraph" w:styleId="Override"><w:pPr><w:tabs><w:tab w:val="decimal" w:pos="1440" w:leader="dot"/></w:tabs></w:pPr></w:style>
+          <w:style w:type="table" w:styleId="Base"><w:pPr><w:tabs><w:tab w:val="left" w:pos="720"/></w:tabs></w:pPr>
+            <w:tblStylePr w:type="firstRow"><w:pPr><w:tabs><w:tab w:val="right" w:pos="1440"/></w:tabs></w:pPr></w:tblStylePr></w:style>
+          <w:style w:type="table" w:styleId="Child"><w:basedOn w:val="Base"/>
+            <w:tblStylePr w:type="firstRow"><w:pPr><w:tabs><w:tab w:val="clear" w:pos="720"/><w:tab w:val="center" w:pos="1440"/></w:tabs></w:pPr></w:tblStylePr></w:style>
+        </w:styles>"#;
+        let document = r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>
+          <w:tbl><w:tblPr><w:tblStyle w:val="Child"/></w:tblPr>
+            <w:tr><w:tc><w:p><w:r><w:t>Inherited</w:t></w:r></w:p></w:tc>
+              <w:tc><w:p><w:pPr><w:tabs><w:tab w:val="clear" w:pos="1440"/><w:tab w:val="right" w:pos="2160" w:leader="dot"/></w:tabs></w:pPr><w:r><w:t>Direct</w:t></w:r></w:p></w:tc></w:tr>
+            <w:tr><w:tc><w:p><w:pPr><w:pStyle w:val="Override"/></w:pPr><w:r><w:t>Styled</w:t></w:r></w:p></w:tc>
+              <w:tc><w:p><w:r><w:t>Body</w:t></w:r></w:p></w:tc></w:tr>
+          </w:tbl>
+        </w:body></w:document>"#;
+        let data = build_docx_from_parts(&[
+            (
+                "[Content_Types].xml",
+                r#"<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/></Types>"#,
+            ),
+            (
+                "_rels/.rels",
+                r#"<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="doc" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>"#,
+            ),
+            (
+                "word/_rels/document.xml.rels",
+                r#"<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="styles" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>"#,
+            ),
+            ("word/document.xml", document),
+            ("word/styles.xml", styles),
+        ]);
+        let mut doc = executor::block_on(WordDocument::load(&data, &Options::default())).unwrap();
+        let left = (36.0, TabAlignment::Left, TabLeader::None);
+        let center = (72.0, TabAlignment::Center, TabLeader::None);
+        let right = (72.0, TabAlignment::Right, TabLeader::None);
+        let decimal = (72.0, TabAlignment::Decimal, TabLeader::Dot);
+        let direct = (108.0, TabAlignment::Right, TabLeader::Dot);
+        let check = |doc: &WordDocument, expected: Vec<Vec<_>>| {
+            let bytes = doc.export_docx().unwrap();
+            let reopened =
+                executor::block_on(WordDocument::load(&bytes, &Options::default())).unwrap();
+            for candidate in [doc, &reopened] {
+                for (text, expected) in ["Inherited", "Direct", "Styled", "Body"]
+                    .into_iter()
+                    .zip(&expected)
+                {
+                    let p = (0..candidate.paragraph_count())
+                        .filter_map(|i| candidate.paragraph(i))
+                        .find(|p| {
+                            p.runs.iter().map(|r| r.text.as_str()).collect::<String>() == text
+                        })
+                        .unwrap();
+                    let actual = resolve_tab_stops(&p.properties.as_ref().unwrap().tabs)
+                        .into_iter()
+                        .map(|tab| (tab.position_pt, tab.alignment, tab.leader))
+                        .collect::<Vec<_>>();
+                    assert_eq!(&actual, expected, "{text}");
+                }
+            }
+            let xml = exported_part_xml(&reopened, "word/document.xml");
+            assert_eq!(xml.matches("<w:tabs").count(), 1);
+            assert!(!xml.contains("w:pos=\"720\""));
+            assert_eq!(exported_part_xml(&reopened, "word/styles.xml"), styles);
+        };
+        let original = vec![vec![center], vec![direct], vec![left, decimal], vec![left]];
+        check(&doc, original.clone());
+        doc.apply_table_named_style(0, Some("Base")).unwrap();
+        check(
+            &doc,
+            vec![
+                vec![left, right],
+                vec![left, direct],
+                vec![left, decimal],
+                vec![left],
+            ],
+        );
+        doc.apply_table_named_style(0, Some("Child")).unwrap();
+        check(&doc, original.clone());
+        let mut commands = CommandExecutor::new();
+        let mut selection = None;
+        commands
+            .execute(
+                Box::new(SetParagraphStyleCommand::new(1, 1, Some("Override".into()))),
+                &mut CommandContext::new(&mut doc, &mut selection),
+            )
+            .unwrap();
+        check(&doc, original.clone());
+        commands
+            .undo(&mut CommandContext::new(&mut doc, &mut selection))
+            .unwrap();
+        check(&doc, original.clone());
+        commands
+            .execute(
+                Box::new(SetParagraphStyleCommand::new(0, 0, Some("Override".into()))),
+                &mut CommandContext::new(&mut doc, &mut selection),
+            )
+            .unwrap();
+        check(
+            &doc,
+            vec![vec![decimal], vec![direct], vec![left, decimal], vec![left]],
+        );
+        commands
+            .undo(&mut CommandContext::new(&mut doc, &mut selection))
+            .unwrap();
+        let before_xml = exported_part_xml(&doc, "word/document.xml");
+        let before_model = format!("{:?}", doc.document);
+        commands
+            .execute(
+                Box::new(SplitTableCommand::new(0, 1)),
+                &mut CommandContext::new(&mut doc, &mut selection),
+            )
+            .unwrap();
+        let split = vec![vec![center], vec![direct], vec![decimal], vec![center]];
+        check(&doc, split.clone());
+        commands
+            .undo(&mut CommandContext::new(&mut doc, &mut selection))
+            .unwrap();
+        assert_eq!(exported_part_xml(&doc, "word/document.xml"), before_xml);
+        assert_eq!(format!("{:?}", doc.document), before_model);
+        check(&doc, original);
+        commands
+            .redo(&mut CommandContext::new(&mut doc, &mut selection))
+            .unwrap();
+        check(&doc, split);
+    }
+
+    #[test]
+    fn conditional_table_paragraph_decoration_refreshes_per_edge_without_authoring_inheritance() {
+        use crate::commands::set_paragraph_style::SetParagraphStyleCommand;
+        use crate::commands::split_table::SplitTableCommand;
+        let styles = r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:style w:type="paragraph" w:default="1" w:styleId="Normal"/>
+          <w:style w:type="paragraph" w:styleId="Override"><w:pPr><w:shd w:fill="999999"/><w:pBdr><w:top w:val="double" w:color="999999"/></w:pBdr></w:pPr></w:style>
+          <w:style w:type="paragraph" w:styleId="Bottom"><w:pPr><w:pBdr><w:bottom w:val="single" w:color="777777"/></w:pBdr></w:pPr></w:style>
+          <w:style w:type="table" w:styleId="Base"><w:pPr><w:shd w:fill="111111"/><w:pBdr><w:top w:val="single" w:color="111111"/><w:bottom w:val="single" w:color="222222"/></w:pBdr></w:pPr>
+            <w:tblStylePr w:type="firstRow"><w:pPr><w:shd w:fill="333333"/><w:pBdr><w:top w:val="single" w:color="333333"/><w:bottom w:val="single" w:color="444444"/></w:pBdr></w:pPr></w:tblStylePr>
+          </w:style>
+          <w:style w:type="table" w:styleId="Child"><w:basedOn w:val="Base"/>
+            <w:tblStylePr w:type="firstRow"><w:pPr><w:shd w:val="nil"/><w:pBdr><w:top w:val="nil"/><w:bottom w:val="single" w:color="555555"/></w:pBdr></w:pPr></w:tblStylePr>
+          </w:style>
+        </w:styles>"#;
+        let document = r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>
+          <w:tbl><w:tblPr><w:tblStyle w:val="Child"/></w:tblPr>
+            <w:tr><w:tc><w:p><w:r><w:t>Inherited</w:t></w:r></w:p></w:tc>
+              <w:tc><w:p><w:pPr><w:shd w:fill="999999"/><w:pBdr><w:top w:val="double" w:color="999999"/></w:pBdr></w:pPr><w:r><w:t>Direct</w:t></w:r></w:p></w:tc></w:tr>
+            <w:tr><w:tc><w:p><w:pPr><w:pStyle w:val="Override"/></w:pPr><w:r><w:t>Styled</w:t></w:r></w:p></w:tc>
+              <w:tc><w:p><w:r><w:t>Body</w:t></w:r></w:p></w:tc></w:tr>
+          </w:tbl>
+        </w:body></w:document>"#;
+        let data = build_docx_from_parts(&[
+            (
+                "[Content_Types].xml",
+                r#"<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/></Types>"#,
+            ),
+            (
+                "_rels/.rels",
+                r#"<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="doc" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>"#,
+            ),
+            (
+                "word/_rels/document.xml.rels",
+                r#"<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="styles" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>"#,
+            ),
+            ("word/document.xml", document),
+            ("word/styles.xml", styles),
+        ]);
+        let mut doc = executor::block_on(WordDocument::load(&data, &Options::default())).unwrap();
+        let check = |doc: &WordDocument, expected: [[&str; 4]; 4]| {
+            let bytes = doc.export_docx().unwrap();
+            let reopened =
+                executor::block_on(WordDocument::load(&bytes, &Options::default())).unwrap();
+            for candidate in [doc, &reopened] {
+                for (text, expected) in ["Inherited", "Direct", "Styled", "Body"]
+                    .into_iter()
+                    .zip(expected)
+                {
+                    let p = (0..candidate.paragraph_count())
+                        .filter_map(|i| candidate.paragraph(i))
+                        .find(|p| {
+                            p.runs.iter().map(|r| r.text.as_str()).collect::<String>() == text
+                        })
+                        .unwrap();
+                    let props = p.properties.as_ref().unwrap();
+                    let shading = props.shading.as_ref().unwrap();
+                    let borders = props.borders.as_ref().unwrap();
+                    let top = borders.top.as_ref().unwrap();
+                    let bottom = borders.bottom.as_ref().unwrap();
+                    assert_eq!(
+                        [
+                            shading.fill.as_deref().unwrap_or(""),
+                            top.val.as_deref().unwrap_or(""),
+                            top.color.as_deref().unwrap_or(""),
+                            bottom.color.as_deref().unwrap_or("")
+                        ],
+                        expected,
+                        "{text}"
+                    );
+                }
+            }
+            let xml = exported_part_xml(&reopened, "word/document.xml");
+            assert_eq!(xml.matches("<w:shd").count(), 1);
+            assert_eq!(xml.matches("<w:pBdr").count(), 1);
+            assert!(!xml.contains("<w:bottom"));
+            assert_eq!(exported_part_xml(&reopened, "word/styles.xml"), styles);
+        };
+        let original = [
+            ["", "nil", "", "#555555"],
+            ["#999999", "double", "#999999", "#555555"],
+            ["#999999", "double", "#999999", "#222222"],
+            ["#111111", "single", "#111111", "#222222"],
+        ];
+        check(&doc, original);
+        doc.apply_table_named_style(0, Some("Base")).unwrap();
+        check(
+            &doc,
+            [
+                ["#333333", "single", "#333333", "#444444"],
+                ["#999999", "double", "#999999", "#444444"],
+                original[2],
+                original[3],
+            ],
+        );
+        doc.apply_table_named_style(0, Some("Child")).unwrap();
+        check(&doc, original);
+        let mut commands = CommandExecutor::new();
+        let mut selection = None;
+        commands
+            .execute(
+                Box::new(SetParagraphStyleCommand::new(0, 0, Some("Override".into()))),
+                &mut CommandContext::new(&mut doc, &mut selection),
+            )
+            .unwrap();
+        check(
+            &doc,
+            [
+                ["#999999", "double", "#999999", "#555555"],
+                original[1],
+                original[2],
+                original[3],
+            ],
+        );
+        commands
+            .undo(&mut CommandContext::new(&mut doc, &mut selection))
+            .unwrap();
+        check(&doc, original);
+        commands
+            .execute(
+                Box::new(SetParagraphStyleCommand::new(1, 1, Some("Bottom".into()))),
+                &mut CommandContext::new(&mut doc, &mut selection),
+            )
+            .unwrap();
+        check(
+            &doc,
+            [
+                original[0],
+                ["#999999", "double", "#999999", "#777777"],
+                original[2],
+                original[3],
+            ],
+        );
+        commands
+            .undo(&mut CommandContext::new(&mut doc, &mut selection))
+            .unwrap();
+        check(&doc, original);
+        let before_xml = exported_part_xml(&doc, "word/document.xml");
+        let before_model = format!("{:?}", doc.document);
+        commands
+            .execute(
+                Box::new(SplitTableCommand::new(0, 1)),
+                &mut CommandContext::new(&mut doc, &mut selection),
+            )
+            .unwrap();
+        let split = [
+            original[0],
+            original[1],
+            ["#999999", "double", "#999999", "#555555"],
+            original[0],
+        ];
+        check(&doc, split);
+        commands
+            .undo(&mut CommandContext::new(&mut doc, &mut selection))
+            .unwrap();
+        assert_eq!(exported_part_xml(&doc, "word/document.xml"), before_xml);
+        assert_eq!(format!("{:?}", doc.document), before_model);
+        check(&doc, original);
+        commands
+            .redo(&mut CommandContext::new(&mut doc, &mut selection))
+            .unwrap();
+        check(&doc, split);
+    }
+
+    #[test]
+    fn conditional_table_text_alignment_refreshes_without_authoring_inheritance() {
+        use crate::commands::set_paragraph_style::SetParagraphStyleCommand;
+        use crate::commands::split_table::SplitTableCommand;
+        let styles = r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:docDefaults><w:pPrDefault><w:pPr><w:textAlignment w:val="bottom"/></w:pPr></w:pPrDefault></w:docDefaults>
+          <w:style w:type="paragraph" w:default="1" w:styleId="Normal"/>
+          <w:style w:type="paragraph" w:styleId="Override"><w:pPr><w:textAlignment w:val="auto"/></w:pPr></w:style>
+          <w:style w:type="table" w:styleId="Base"><w:pPr><w:textAlignment w:val="center"/></w:pPr>
+            <w:tblStylePr w:type="firstRow"><w:pPr><w:textAlignment w:val="top"/></w:pPr></w:tblStylePr>
+          </w:style>
+          <w:style w:type="table" w:styleId="Child"><w:basedOn w:val="Base"/>
+            <w:tblStylePr w:type="firstRow"><w:pPr><w:textAlignment w:val="baseline"/></w:pPr></w:tblStylePr>
+          </w:style>
+        </w:styles>"#;
+        let document = r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>
+          <w:tbl><w:tblPr><w:tblStyle w:val="Child"/></w:tblPr>
+            <w:tr><w:tc><w:p><w:r><w:t>Inherited</w:t></w:r></w:p></w:tc>
+              <w:tc><w:p><w:pPr><w:textAlignment w:val="bottom"/></w:pPr><w:r><w:t>Direct</w:t></w:r></w:p></w:tc></w:tr>
+            <w:tr><w:tc><w:p><w:pPr><w:pStyle w:val="Override"/></w:pPr><w:r><w:t>Styled</w:t></w:r></w:p></w:tc>
+              <w:tc><w:p><w:r><w:t>Body</w:t></w:r></w:p></w:tc></w:tr>
+          </w:tbl><w:p><w:r><w:t>Outside</w:t></w:r></w:p>
+        </w:body></w:document>"#;
+        let data = build_docx_from_parts(&[
+            (
+                "[Content_Types].xml",
+                r#"<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/></Types>"#,
+            ),
+            (
+                "_rels/.rels",
+                r#"<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="doc" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>"#,
+            ),
+            (
+                "word/_rels/document.xml.rels",
+                r#"<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="styles" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>"#,
+            ),
+            ("word/document.xml", document),
+            ("word/styles.xml", styles),
+        ]);
+        let mut doc = executor::block_on(WordDocument::load(&data, &Options::default())).unwrap();
+        let check = |doc: &WordDocument, expected: [&str; 4]| {
+            let bytes = doc.export_docx().unwrap();
+            let reopened =
+                executor::block_on(WordDocument::load(&bytes, &Options::default())).unwrap();
+            for candidate in [doc, &reopened] {
+                for (text, expected) in ["Inherited", "Direct", "Styled", "Body"]
+                    .into_iter()
+                    .zip(expected)
+                {
+                    let p = (0..candidate.paragraph_count())
+                        .filter_map(|i| candidate.paragraph(i))
+                        .find(|p| {
+                            p.runs.iter().map(|r| r.text.as_str()).collect::<String>() == text
+                        })
+                        .unwrap();
+                    let props = p.properties.as_ref().unwrap();
+                    assert_eq!(props.text_alignment.as_deref(), Some(expected), "{text}");
+                }
+            }
+            let xml = exported_part_xml(&reopened, "word/document.xml");
+            assert_eq!(xml.matches("<w:textAlignment").count(), 1);
+            assert_eq!(exported_part_xml(&reopened, "word/styles.xml"), styles);
+            let outside = (0..reopened.paragraph_count())
+                .filter_map(|i| reopened.paragraph(i))
+                .find(|p| p.runs.iter().any(|r| r.text == "Outside"))
+                .unwrap();
+            assert_eq!(
+                outside
+                    .properties
+                    .as_ref()
+                    .unwrap()
+                    .text_alignment
+                    .as_deref(),
+                Some("bottom")
+            );
+        };
+        let original = ["baseline", "bottom", "auto", "center"];
+        check(&doc, original);
+        doc.apply_table_named_style(0, Some("Base")).unwrap();
+        check(&doc, ["top", "bottom", "auto", "center"]);
+        doc.apply_table_named_style(0, Some("Child")).unwrap();
+        check(&doc, original);
+        let mut commands = CommandExecutor::new();
+        let mut selection = None;
+        commands
+            .execute(
+                Box::new(SetParagraphStyleCommand::new(0, 0, Some("Override".into()))),
+                &mut CommandContext::new(&mut doc, &mut selection),
+            )
+            .unwrap();
+        check(&doc, ["auto", "bottom", "auto", "center"]);
+        commands
+            .undo(&mut CommandContext::new(&mut doc, &mut selection))
+            .unwrap();
+        check(&doc, original);
+        let before_xml = exported_part_xml(&doc, "word/document.xml");
+        let before_model = format!("{:?}", doc.document);
+        commands
+            .execute(
+                Box::new(SplitTableCommand::new(0, 1)),
+                &mut CommandContext::new(&mut doc, &mut selection),
+            )
+            .unwrap();
+        let split = [original[0], original[1], "auto", original[0]];
+        check(&doc, split);
+        commands
+            .undo(&mut CommandContext::new(&mut doc, &mut selection))
+            .unwrap();
+        assert_eq!(exported_part_xml(&doc, "word/document.xml"), before_xml);
+        assert_eq!(format!("{:?}", doc.document), before_model);
+        check(&doc, original);
+        commands
+            .redo(&mut CommandContext::new(&mut doc, &mut selection))
+            .unwrap();
+        check(&doc, split);
+    }
+
+    #[test]
+    fn conditional_table_grid_controls_refresh_without_authoring_inheritance() {
+        use crate::commands::set_paragraph_style::SetParagraphStyleCommand;
+        use crate::commands::split_table::SplitTableCommand;
+        let styles = r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:style w:type="paragraph" w:default="1" w:styleId="Normal"/>
+          <w:style w:type="paragraph" w:styleId="Override"><w:pPr><w:contextualSpacing w:val="0"/><w:suppressAutoHyphens w:val="0"/><w:suppressLineNumbers w:val="0"/></w:pPr></w:style>
+          <w:style w:type="table" w:styleId="Base"><w:pPr><w:snapToGrid w:val="0"/><w:mirrorIndents w:val="0"/></w:pPr>
+            <w:tblStylePr w:type="firstRow"><w:pPr><w:contextualSpacing/><w:suppressAutoHyphens/><w:snapToGrid/><w:adjustRightInd/><w:mirrorIndents/><w:suppressLineNumbers/></w:pPr></w:tblStylePr>
+          </w:style>
+          <w:style w:type="table" w:styleId="Child"><w:basedOn w:val="Base"/>
+            <w:tblStylePr w:type="firstRow"><w:pPr><w:snapToGrid w:val="0"/><w:adjustRightInd w:val="0"/></w:pPr></w:tblStylePr>
+          </w:style>
+        </w:styles>"#;
+        let document = r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>
+          <w:tbl><w:tblPr><w:tblStyle w:val="Child"/></w:tblPr>
+            <w:tr><w:tc><w:p><w:r><w:t>Inherited</w:t></w:r></w:p></w:tc>
+              <w:tc><w:p><w:pPr><w:contextualSpacing w:val="0"/><w:suppressAutoHyphens w:val="0"/><w:suppressLineNumbers w:val="0"/></w:pPr><w:r><w:t>Direct</w:t></w:r></w:p></w:tc></w:tr>
+            <w:tr><w:tc><w:p><w:pPr><w:pStyle w:val="Override"/></w:pPr><w:r><w:t>Styled</w:t></w:r></w:p></w:tc>
+              <w:tc><w:p><w:r><w:t>Body</w:t></w:r></w:p></w:tc></w:tr>
+          </w:tbl>
+        </w:body></w:document>"#;
+        let data = build_docx_from_parts(&[
+            (
+                "[Content_Types].xml",
+                r#"<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/></Types>"#,
+            ),
+            (
+                "_rels/.rels",
+                r#"<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="doc" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>"#,
+            ),
+            (
+                "word/_rels/document.xml.rels",
+                r#"<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="styles" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>"#,
+            ),
+            ("word/document.xml", document),
+            ("word/styles.xml", styles),
+        ]);
+        let mut doc = executor::block_on(WordDocument::load(&data, &Options::default())).unwrap();
+        let check = |doc: &WordDocument, expected: [[Option<bool>; 5]; 4]| {
+            let bytes = doc.export_docx().unwrap();
+            let reopened =
+                executor::block_on(WordDocument::load(&bytes, &Options::default())).unwrap();
+            for candidate in [doc, &reopened] {
+                for (text, expected) in ["Inherited", "Direct", "Styled", "Body"]
+                    .into_iter()
+                    .zip(expected)
+                {
+                    let p = (0..candidate.paragraph_count())
+                        .filter_map(|i| candidate.paragraph(i))
+                        .find(|p| {
+                            p.runs.iter().map(|r| r.text.as_str()).collect::<String>() == text
+                        })
+                        .unwrap();
+                    let props = p.properties.as_ref().unwrap();
+                    assert_eq!(props.suppress_auto_hyphens, expected[0], "{text} hyphens");
+                    assert_eq!(
+                        [
+                            props.contextual_spacing,
+                            props.snap_to_grid,
+                            props.adjust_right_indent,
+                            props.mirror_indents,
+                            props.suppress_line_numbers
+                        ],
+                        expected,
+                        "{text}"
+                    );
+                }
+            }
+            let xml = exported_part_xml(&reopened, "word/document.xml");
+            assert_eq!(xml.matches("<w:contextualSpacing").count(), 1);
+            assert_eq!(xml.matches("<w:suppressLineNumbers").count(), 1);
+            assert!(!xml.contains("<w:adjustRightInd"));
+            assert_eq!(exported_part_xml(&reopened, "word/styles.xml"), styles);
+        };
+        let yes = Some(true);
+        let no = Some(false);
+        let original = [
+            [yes, no, no, yes, yes],
+            [no, no, no, yes, no],
+            [no, no, None, no, no],
+            [None, no, None, no, None],
+        ];
+        check(&doc, original);
+        doc.apply_table_named_style(0, Some("Base")).unwrap();
+        check(
+            &doc,
+            [
+                [yes, yes, yes, yes, yes],
+                [no, yes, yes, yes, no],
+                original[2],
+                original[3],
+            ],
+        );
+        doc.apply_table_named_style(0, Some("Child")).unwrap();
+        check(&doc, original);
+        let mut commands = CommandExecutor::new();
+        let mut selection = None;
+        commands
+            .execute(
+                Box::new(SetParagraphStyleCommand::new(0, 0, Some("Override".into()))),
+                &mut CommandContext::new(&mut doc, &mut selection),
+            )
+            .unwrap();
+        check(
+            &doc,
+            [[no, no, no, yes, no], original[1], original[2], original[3]],
+        );
+        commands
+            .undo(&mut CommandContext::new(&mut doc, &mut selection))
+            .unwrap();
+        check(&doc, original);
+        let before_xml = exported_part_xml(&doc, "word/document.xml");
+        let before_model = format!("{:?}", doc.document);
+        commands
+            .execute(
+                Box::new(SplitTableCommand::new(0, 1)),
+                &mut CommandContext::new(&mut doc, &mut selection),
+            )
+            .unwrap();
+        let split = [original[0], original[1], [no, no, no, yes, no], original[0]];
+        check(&doc, split);
+        commands
+            .undo(&mut CommandContext::new(&mut doc, &mut selection))
+            .unwrap();
+        assert_eq!(exported_part_xml(&doc, "word/document.xml"), before_xml);
+        assert_eq!(format!("{:?}", doc.document), before_model);
+        check(&doc, original);
+        commands
+            .redo(&mut CommandContext::new(&mut doc, &mut selection))
+            .unwrap();
+        check(&doc, split);
+    }
+
+    #[test]
+    fn conditional_table_paragraph_controls_refresh_without_authoring_inheritance() {
+        use crate::commands::set_paragraph_style::SetParagraphStyleCommand;
+        use crate::commands::split_table::SplitTableCommand;
+        let styles = r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:style w:type="paragraph" w:default="1" w:styleId="Normal"/>
+          <w:style w:type="paragraph" w:styleId="Override"><w:pPr><w:keepNext w:val="0"/><w:bidi w:val="0"/></w:pPr></w:style>
+          <w:style w:type="table" w:styleId="Base"><w:pPr><w:keepLines w:val="0"/><w:widowControl w:val="0"/></w:pPr>
+            <w:tblStylePr w:type="firstRow"><w:pPr><w:keepNext/><w:keepLines/><w:pageBreakBefore/><w:widowControl/><w:bidi/></w:pPr></w:tblStylePr>
+          </w:style>
+          <w:style w:type="table" w:styleId="Child"><w:basedOn w:val="Base"/>
+            <w:tblStylePr w:type="firstRow"><w:pPr><w:keepLines w:val="0"/><w:pageBreakBefore w:val="0"/></w:pPr></w:tblStylePr>
+          </w:style>
+        </w:styles>"#;
+        let document = r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>
+          <w:tbl><w:tblPr><w:tblStyle w:val="Child"/></w:tblPr>
+            <w:tr><w:tc><w:p><w:r><w:t>Inherited</w:t></w:r></w:p></w:tc>
+              <w:tc><w:p><w:pPr><w:keepNext w:val="0"/><w:bidi w:val="0"/></w:pPr><w:r><w:t>Direct</w:t></w:r></w:p></w:tc></w:tr>
+            <w:tr><w:tc><w:p><w:pPr><w:pStyle w:val="Override"/></w:pPr><w:r><w:t>Styled</w:t></w:r></w:p></w:tc>
+              <w:tc><w:p><w:r><w:t>Body</w:t></w:r></w:p></w:tc></w:tr>
+          </w:tbl>
+        </w:body></w:document>"#;
+        let data = build_docx_from_parts(&[
+            (
+                "[Content_Types].xml",
+                r#"<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/></Types>"#,
+            ),
+            (
+                "_rels/.rels",
+                r#"<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="doc" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>"#,
+            ),
+            (
+                "word/_rels/document.xml.rels",
+                r#"<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="styles" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>"#,
+            ),
+            ("word/document.xml", document),
+            ("word/styles.xml", styles),
+        ]);
+        let mut doc = executor::block_on(WordDocument::load(&data, &Options::default())).unwrap();
+        let check = |doc: &WordDocument, expected: [[Option<bool>; 5]; 4]| {
+            let bytes = doc.export_docx().unwrap();
+            let reopened =
+                executor::block_on(WordDocument::load(&bytes, &Options::default())).unwrap();
+            for candidate in [doc, &reopened] {
+                for (text, expected) in ["Inherited", "Direct", "Styled", "Body"]
+                    .into_iter()
+                    .zip(expected)
+                {
+                    let p = (0..candidate.paragraph_count())
+                        .filter_map(|i| candidate.paragraph(i))
+                        .find(|p| {
+                            p.runs.iter().map(|r| r.text.as_str()).collect::<String>() == text
+                        })
+                        .unwrap();
+                    let props = p.properties.as_ref().unwrap();
+                    assert_eq!(
+                        [
+                            props.keep_next,
+                            props.keep_lines,
+                            props.page_break_before,
+                            props.widow_control,
+                            props.bidi
+                        ],
+                        expected,
+                        "{text}"
+                    );
+                }
+            }
+            let xml = exported_part_xml(&reopened, "word/document.xml");
+            assert_eq!(xml.matches("<w:keepNext").count(), 1);
+            assert_eq!(xml.matches("<w:bidi").count(), 1);
+            assert!(!xml.contains("<w:pageBreakBefore"));
+            assert_eq!(exported_part_xml(&reopened, "word/styles.xml"), styles);
+        };
+        let yes = Some(true);
+        let no = Some(false);
+        let original = [
+            [yes, no, no, yes, yes],
+            [no, no, no, yes, no],
+            [no, no, None, no, no],
+            [None, no, None, no, None],
+        ];
+        check(&doc, original);
+        doc.apply_table_named_style(0, Some("Base")).unwrap();
+        check(
+            &doc,
+            [
+                [yes, yes, yes, yes, yes],
+                [no, yes, yes, yes, no],
+                original[2],
+                original[3],
+            ],
+        );
+        doc.apply_table_named_style(0, Some("Child")).unwrap();
+        check(&doc, original);
+        let mut commands = CommandExecutor::new();
+        let mut selection = None;
+        commands
+            .execute(
+                Box::new(SetParagraphStyleCommand::new(0, 0, Some("Override".into()))),
+                &mut CommandContext::new(&mut doc, &mut selection),
+            )
+            .unwrap();
+        check(
+            &doc,
+            [[no, no, no, yes, no], original[1], original[2], original[3]],
+        );
+        commands
+            .undo(&mut CommandContext::new(&mut doc, &mut selection))
+            .unwrap();
+        check(&doc, original);
+        let before_xml = exported_part_xml(&doc, "word/document.xml");
+        let before_model = format!("{:?}", doc.document);
+        commands
+            .execute(
+                Box::new(SplitTableCommand::new(0, 1)),
+                &mut CommandContext::new(&mut doc, &mut selection),
+            )
+            .unwrap();
+        let split = [original[0], original[1], [no, no, no, yes, no], original[0]];
+        check(&doc, split);
+        commands
+            .undo(&mut CommandContext::new(&mut doc, &mut selection))
+            .unwrap();
+        assert_eq!(exported_part_xml(&doc, "word/document.xml"), before_xml);
+        assert_eq!(format!("{:?}", doc.document), before_model);
+        check(&doc, original);
+        commands
+            .redo(&mut CommandContext::new(&mut doc, &mut selection))
+            .unwrap();
+        check(&doc, split);
+    }
+
+    #[test]
+    fn conditional_table_spacing_and_indents_refresh_without_authoring_inheritance() {
+        use crate::commands::set_paragraph_style::SetParagraphStyleCommand;
+        use crate::commands::split_table::SplitTableCommand;
+        let styles = r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:style w:type="paragraph" w:default="1" w:styleId="Normal"/>
+          <w:style w:type="paragraph" w:styleId="Override"><w:pPr><w:spacing w:after="900"/><w:ind w:end="1200"/></w:pPr></w:style>
+          <w:style w:type="table" w:styleId="Base"><w:pPr><w:spacing w:before="40" w:after="60"/><w:ind w:start="80" w:end="100"/></w:pPr>
+            <w:tblStylePr w:type="firstRow"><w:pPr><w:spacing w:before="200" w:after="240"/><w:ind w:start="300" w:end="400"/></w:pPr></w:tblStylePr>
+          </w:style>
+          <w:style w:type="table" w:styleId="Child"><w:basedOn w:val="Base"/>
+            <w:tblStylePr w:type="firstRow"><w:pPr><w:spacing w:after="0"/><w:ind w:end="0"/></w:pPr></w:tblStylePr>
+          </w:style>
+        </w:styles>"#;
+        let document = r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>
+          <w:tbl><w:tblPr><w:tblStyle w:val="Child"/></w:tblPr>
+            <w:tr><w:tc><w:p><w:r><w:t>Inherited</w:t></w:r></w:p></w:tc>
+              <w:tc><w:p><w:pPr><w:spacing w:before="700"/><w:ind w:start="800"/></w:pPr><w:r><w:t>Direct</w:t></w:r></w:p></w:tc></w:tr>
+            <w:tr><w:tc><w:p><w:pPr><w:pStyle w:val="Override"/></w:pPr><w:r><w:t>Styled</w:t></w:r></w:p></w:tc>
+              <w:tc><w:p><w:r><w:t>Body</w:t></w:r></w:p></w:tc></w:tr>
+          </w:tbl>
+        </w:body></w:document>"#;
+        let data = build_docx_from_parts(&[
+            (
+                "[Content_Types].xml",
+                r#"<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/></Types>"#,
+            ),
+            (
+                "_rels/.rels",
+                r#"<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="doc" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>"#,
+            ),
+            (
+                "word/_rels/document.xml.rels",
+                r#"<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="styles" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>"#,
+            ),
+            ("word/document.xml", document),
+            ("word/styles.xml", styles),
+        ]);
+        let mut doc = executor::block_on(WordDocument::load(&data, &Options::default())).unwrap();
+        let check = |doc: &WordDocument, expected: [[f32; 4]; 4]| {
+            let bytes = doc.export_docx().unwrap();
+            let reopened =
+                executor::block_on(WordDocument::load(&bytes, &Options::default())).unwrap();
+            for candidate in [doc, &reopened] {
+                for (text, expected) in ["Inherited", "Direct", "Styled", "Body"]
+                    .into_iter()
+                    .zip(expected)
+                {
+                    let p = (0..candidate.paragraph_count())
+                        .filter_map(|i| candidate.paragraph(i))
+                        .find(|p| {
+                            p.runs.iter().map(|r| r.text.as_str()).collect::<String>() == text
+                        })
+                        .unwrap();
+                    let props = p.properties.as_ref().unwrap();
+                    let spacing = props.spacing.as_ref().unwrap();
+                    let indent = props.indent.as_ref().unwrap();
+                    assert_eq!(
+                        [
+                            spacing.before.unwrap(),
+                            spacing.after.unwrap(),
+                            indent.start.unwrap(),
+                            indent.end.unwrap()
+                        ],
+                        expected,
+                        "{text}"
+                    );
+                }
+            }
+            let xml = exported_part_xml(&reopened, "word/document.xml");
+            assert_eq!(xml.matches("<w:spacing").count(), 1);
+            assert_eq!(xml.matches("<w:ind ").count(), 1);
+            assert_eq!(exported_part_xml(&reopened, "word/styles.xml"), styles);
+        };
+        let original = [
+            [10., 0., 15., 0.],
+            [35., 0., 40., 0.],
+            [2., 45., 4., 60.],
+            [2., 3., 4., 5.],
+        ];
+        check(&doc, original);
+        doc.apply_table_named_style(0, Some("Base")).unwrap();
+        check(
+            &doc,
+            [
+                [10., 12., 15., 20.],
+                [35., 12., 40., 20.],
+                [2., 45., 4., 60.],
+                [2., 3., 4., 5.],
+            ],
+        );
+        doc.apply_table_named_style(0, Some("Child")).unwrap();
+        check(&doc, original);
+        let mut commands = CommandExecutor::new();
+        let mut selection = None;
+        commands
+            .execute(
+                Box::new(SetParagraphStyleCommand::new(0, 0, Some("Override".into()))),
+                &mut CommandContext::new(&mut doc, &mut selection),
+            )
+            .unwrap();
+        check(
+            &doc,
+            [[10., 45., 15., 60.], original[1], original[2], original[3]],
+        );
+        commands
+            .undo(&mut CommandContext::new(&mut doc, &mut selection))
+            .unwrap();
+        check(&doc, original);
+        let before_xml = exported_part_xml(&doc, "word/document.xml");
+        let before_model = format!("{:?}", doc.document);
+        commands
+            .execute(
+                Box::new(SplitTableCommand::new(0, 1)),
+                &mut CommandContext::new(&mut doc, &mut selection),
+            )
+            .unwrap();
+        let split = [
+            original[0],
+            original[1],
+            [10., 45., 15., 60.],
+            [10., 0., 15., 0.],
+        ];
+        check(&doc, split);
+        commands
+            .undo(&mut CommandContext::new(&mut doc, &mut selection))
+            .unwrap();
+        assert_eq!(exported_part_xml(&doc, "word/document.xml"), before_xml);
+        assert_eq!(format!("{:?}", doc.document), before_model);
+        check(&doc, original);
+        commands
+            .redo(&mut CommandContext::new(&mut doc, &mut selection))
+            .unwrap();
+        check(&doc, split);
+    }
+
+    #[test]
+    fn conditional_table_paragraph_alignment_survives_style_changes_and_roundtrip() {
+        use crate::commands::set_paragraph_style::SetParagraphStyleCommand;
+        let styles = r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:pPr><w:jc w:val="left"/></w:pPr></w:style>
+          <w:style w:type="paragraph" w:styleId="Heading"><w:pPr><w:jc w:val="right"/></w:pPr></w:style>
+          <w:style w:type="table" w:styleId="Outer"><w:tblStylePr w:type="firstRow"><w:pPr><w:jc w:val="center"/></w:pPr></w:tblStylePr></w:style>
+          <w:style w:type="table" w:styleId="Inner"><w:tblStylePr w:type="firstRow"><w:pPr><w:jc w:val="end"/></w:pPr></w:tblStylePr></w:style>
+        </w:styles>"#;
+        let document = r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>
+          <w:tbl><w:tblPr><w:tblStyle w:val="Outer"/></w:tblPr><w:tr><w:tc><w:p><w:r><w:t>Outer</w:t></w:r></w:p>
+            <w:tbl><w:tblPr><w:tblStyle w:val="Inner"/></w:tblPr><w:tr><w:tc><w:p><w:r><w:t>Inner</w:t></w:r></w:p></w:tc></w:tr></w:tbl>
+          </w:tc></w:tr></w:tbl>
+        </w:body></w:document>"#;
+        let data = build_docx_from_parts(&[
+            (
+                "[Content_Types].xml",
+                r#"<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/></Types>"#,
+            ),
+            (
+                "_rels/.rels",
+                r#"<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="doc" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>"#,
+            ),
+            (
+                "word/_rels/document.xml.rels",
+                r#"<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="styles" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>"#,
+            ),
+            ("word/document.xml", document),
+            ("word/styles.xml", styles),
+        ]);
+        let mut doc = executor::block_on(WordDocument::load(&data, &Options::default())).unwrap();
+        for (index, expected) in [(0, "center"), (1, "end")] {
+            assert_eq!(
+                doc.paragraph(index)
+                    .unwrap()
+                    .properties
+                    .as_ref()
+                    .unwrap()
+                    .alignment
+                    .as_deref(),
+                Some(expected)
+            );
+            assert_eq!(
+                doc.inherited_paragraph_properties(index, None)
+                    .unwrap()
+                    .alignment
+                    .as_deref(),
+                Some(expected)
+            );
+            let mut selection = None;
+            let mut commands = CommandExecutor::new();
+            for (style, alignment) in [(Some("Heading"), "right"), (None, expected)] {
+                let mut context = CommandContext::new(&mut doc, &mut selection);
+                commands
+                    .execute(
+                        Box::new(SetParagraphStyleCommand::new(
+                            index,
+                            index,
+                            style.map(str::to_string),
+                        )),
+                        &mut context,
+                    )
+                    .unwrap();
+                assert_eq!(
+                    doc.paragraph(index)
+                        .unwrap()
+                        .properties
+                        .as_ref()
+                        .unwrap()
+                        .alignment
+                        .as_deref(),
+                    Some(alignment)
+                );
+            }
+        }
+        let exported = doc.export_docx().unwrap();
+        let reopened =
+            executor::block_on(WordDocument::load(&exported, &Options::default())).unwrap();
+        for (index, expected) in [(0, "center"), (1, "end")] {
+            assert_eq!(
+                reopened
+                    .paragraph(index)
+                    .unwrap()
+                    .properties
+                    .as_ref()
+                    .unwrap()
+                    .alignment
+                    .as_deref(),
+                Some(expected)
+            );
+        }
+        assert_eq!(exported_part_xml(&reopened, "word/styles.xml"), styles);
+        assert!(!exported_part_xml(&reopened, "word/document.xml").contains("w:jc"));
+    }
+
+    #[test]
+    fn table_alignment_refreshes_after_style_look_and_structure_edits() {
+        let styles = r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:pPr><w:jc w:val="left"/></w:pPr></w:style>
+          <w:style w:type="paragraph" w:styleId="Heading"><w:pPr><w:jc w:val="right"/></w:pPr></w:style>
+          <w:style w:type="table" w:default="1" w:styleId="DefaultTable"><w:pPr><w:jc w:val="end"/></w:pPr></w:style>
+          <w:style w:type="table" w:styleId="A"><w:pPr><w:jc w:val="right"/></w:pPr><w:tblStylePr w:type="firstRow"><w:pPr><w:jc w:val="center"/></w:pPr></w:tblStylePr><w:tblStylePr w:type="lastCol"><w:pPr><w:jc w:val="end"/></w:pPr></w:tblStylePr></w:style>
+          <w:style w:type="table" w:styleId="B"><w:pPr><w:jc w:val="both"/></w:pPr><w:tblStylePr w:type="firstRow"><w:pPr><w:jc w:val="start"/></w:pPr></w:tblStylePr><w:tblStylePr w:type="lastCol"><w:pPr><w:jc w:val="right"/></w:pPr></w:tblStylePr></w:style>
+        </w:styles>"#;
+        let document = r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>
+          <w:tbl><w:tblPr><w:tblStyle w:val="A"/><w:tblLook w:firstRow="1" w:lastColumn="1"/></w:tblPr>
+          <w:tr><w:tc><w:p><w:r><w:t>Inherited</w:t></w:r></w:p></w:tc><w:tc><w:p><w:pPr><w:jc w:val="left"/></w:pPr><w:r><w:t>Direct</w:t></w:r></w:p></w:tc></w:tr>
+          <w:tr><w:tc><w:p><w:pPr><w:pStyle w:val="Heading"/></w:pPr><w:r><w:t>Styled</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>Last</w:t></w:r></w:p></w:tc></w:tr>
+          </w:tbl></w:body></w:document>"#;
+        let data = build_docx_from_parts(&[
+            (
+                "[Content_Types].xml",
+                r#"<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/></Types>"#,
+            ),
+            (
+                "_rels/.rels",
+                r#"<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="doc" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>"#,
+            ),
+            (
+                "word/_rels/document.xml.rels",
+                r#"<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="styles" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>"#,
+            ),
+            ("word/document.xml", document),
+            ("word/styles.xml", styles),
+        ]);
+        let mut doc = executor::block_on(WordDocument::load(&data, &Options::default())).unwrap();
+        let check = |doc: &WordDocument, expected: &[&str]| {
+            let reopened = executor::block_on(WordDocument::load(
+                &doc.export_docx().unwrap(),
+                &Options::default(),
+            ))
+            .unwrap();
+            for source in [doc, &reopened] {
+                assert_eq!(source.paragraph_surfaces.len(), expected.len());
+                for (index, alignment) in expected.iter().enumerate() {
+                    assert_eq!(
+                        source
+                            .paragraph(index)
+                            .unwrap()
+                            .properties
+                            .as_ref()
+                            .unwrap()
+                            .alignment
+                            .as_deref(),
+                        Some(*alignment),
+                        "paragraph {index}"
+                    );
+                }
+            }
+        };
+        check(&doc, &["center", "left", "right", "end"]);
+        doc.apply_table_named_style(0, Some("B")).unwrap();
+        check(&doc, &["start", "left", "right", "right"]);
+        doc.set_table_look(0, Some(false), None).unwrap();
+        check(&doc, &["both", "left", "right", "right"]);
+        doc.insert_table_row(0, 0, Some(0)).unwrap();
+        check(&doc, &["both", "left", "both", "left", "right", "right"]);
+        doc.set_table_look(0, Some(true), None).unwrap();
+        check(&doc, &["start", "left", "both", "left", "right", "right"]);
+        doc.delete_table_row(0, 0).unwrap();
+        check(&doc, &["start", "left", "right", "right"]);
+        doc.insert_table_column(0, 0, None, Some(0)).unwrap();
+        check(&doc, &["start", "start", "left", "right", "right", "right"]);
+        doc.delete_table_column(0, 0).unwrap();
+        check(&doc, &["start", "left", "right", "right"]);
+        doc.apply_table_named_style(0, None).unwrap();
+        check(&doc, &["end", "left", "right", "end"]);
+        assert_eq!(
+            exported_part_xml(&doc, "word/document.xml")
+                .matches("<w:jc")
+                .count(),
+            1
+        );
+    }
+
+    #[test]
+    fn split_tables_refresh_conditional_alignment_with_exact_undo_and_redo() {
+        use crate::commands::insert_section_break::InsertSectionBreakCommand;
+        use crate::commands::split_table::SplitTableCommand;
+        use crate::commands::Command;
+        use jade_docx_layout::selection::{SelectionRange, TextPosition};
+
+        let styles = r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:pPr><w:jc w:val="left"/></w:pPr></w:style>
+          <w:style w:type="paragraph" w:styleId="Heading"><w:pPr><w:jc w:val="right"/></w:pPr></w:style>
+          <w:style w:type="table" w:styleId="Outer"><w:tblPr><w:tblStyleRowBandSize w:val="1"/></w:tblPr><w:tblStylePr w:type="band1Horz"><w:pPr><w:jc w:val="both"/></w:pPr></w:tblStylePr><w:tblStylePr w:type="band2Horz"><w:pPr><w:jc w:val="start"/></w:pPr></w:tblStylePr><w:tblStylePr w:type="firstRow"><w:pPr><w:jc w:val="center"/></w:pPr></w:tblStylePr><w:tblStylePr w:type="lastRow"><w:pPr><w:jc w:val="end"/></w:pPr></w:tblStylePr></w:style>
+          <w:style w:type="table" w:styleId="Inner"><w:pPr><w:jc w:val="distribute"/></w:pPr></w:style>
+        </w:styles>"#;
+        let document = r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>
+          <w:tbl><w:tblPr><w:tblStyle w:val="Outer"/><w:tblLook w:firstRow="1" w:lastRow="1" w:firstColumn="0" w:lastColumn="0" w:noHBand="0" w:noVBand="1"/></w:tblPr>
+          <w:tr><w:tc><w:p><w:r><w:t>A</w:t></w:r></w:p></w:tc><w:tc><w:p><w:pPr><w:jc w:val="left"/></w:pPr><w:r><w:t>Direct</w:t></w:r></w:p></w:tc></w:tr>
+          <w:tr><w:tc><w:p><w:r><w:t>B</w:t></w:r></w:p><w:tbl><w:tblPr><w:tblStyle w:val="Inner"/></w:tblPr><w:tr><w:tc><w:p><w:r><w:t>Nested</w:t></w:r></w:p></w:tc></w:tr></w:tbl></w:tc><w:tc><w:p><w:r><w:t>B2</w:t></w:r></w:p></w:tc></w:tr>
+          <w:tr><w:tc><w:p><w:r><w:t>C</w:t></w:r></w:p></w:tc><w:tc><w:p><w:pPr><w:pStyle w:val="Heading"/></w:pPr><w:r><w:t>Styled</w:t></w:r></w:p></w:tc></w:tr>
+          <w:tr><w:tc><w:p><w:r><w:t>D</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>D2</w:t></w:r></w:p></w:tc></w:tr>
+          </w:tbl><w:tbl><w:tblPr><w:tblStyle w:val="Inner"/></w:tblPr><w:tr><w:tc><w:p><w:r><w:t>Untouched</w:t></w:r></w:p></w:tc></w:tr></w:tbl>
+        </w:body></w:document>"#;
+        let data = build_docx_from_parts(&[
+            (
+                "[Content_Types].xml",
+                r#"<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/></Types>"#,
+            ),
+            (
+                "_rels/.rels",
+                r#"<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="doc" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>"#,
+            ),
+            (
+                "word/_rels/document.xml.rels",
+                r#"<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="styles" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>"#,
+            ),
+            ("word/document.xml", document),
+            ("word/styles.xml", styles),
+        ]);
+        let check = |doc: &WordDocument, rows: [&str; 4]| {
+            let reopened = executor::block_on(WordDocument::load(
+                &doc.export_docx().unwrap(),
+                &Options::default(),
+            ))
+            .unwrap();
+            for source in [doc, &reopened] {
+                for (text, expected) in [
+                    ("A", rows[0]),
+                    ("Direct", "left"),
+                    ("B", rows[1]),
+                    ("B2", rows[1]),
+                    ("C", rows[2]),
+                    ("Styled", "right"),
+                    ("D", rows[3]),
+                    ("D2", rows[3]),
+                    ("Nested", "distribute"),
+                    ("Untouched", "distribute"),
+                ] {
+                    let paragraph = (0..source.paragraph_count())
+                        .filter_map(|index| source.paragraph(index))
+                        .find(|paragraph| {
+                            paragraph
+                                .runs
+                                .iter()
+                                .map(|run| run.text.as_str())
+                                .collect::<String>()
+                                == text
+                        })
+                        .unwrap();
+                    assert_eq!(
+                        paragraph
+                            .properties
+                            .as_ref()
+                            .and_then(|props| props.alignment.as_deref()),
+                        Some(expected),
+                        "{text}"
+                    );
+                }
+                assert_eq!(
+                    exported_part_xml(source, "word/document.xml")
+                        .matches("<w:jc")
+                        .count(),
+                    1
+                );
+                assert_eq!(exported_part_xml(source, "word/styles.xml"), styles);
+            }
+        };
+        for section in [false, true] {
+            for (row, expected) in [
+                (0, ["center", "both", "start", "end"]),
+                (1, ["end", "center", "both", "end"]),
+                (2, ["center", "end", "center", "end"]),
+                (3, ["center", "both", "end", "end"]),
+            ] {
+                let mut doc =
+                    executor::block_on(WordDocument::load(&data, &Options::default())).unwrap();
+                check(&doc, ["center", "both", "start", "end"]);
+                let original_xml = exported_part_xml(&doc, "word/document.xml");
+                let original_model = format!("{:?}", doc.document);
+                let text = ["A", "B", "C", "D"][row];
+                let paragraph = (0..doc.paragraph_count())
+                    .find(|index| {
+                        doc.paragraph(*index)
+                            .unwrap()
+                            .runs
+                            .iter()
+                            .map(|run| run.text.as_str())
+                            .collect::<String>()
+                            == text
+                    })
+                    .unwrap();
+                let range = SelectionRange::collapsed(TextPosition::new(paragraph, 0));
+                let mut selection = Some(range);
+                let mut commands = CommandExecutor::new();
+                let command: Box<dyn Command> = if section {
+                    Box::new(InsertSectionBreakCommand::new(
+                        range,
+                        SectionBreakType::Continuous,
+                    ))
+                } else {
+                    Box::new(SplitTableCommand::new(0, row))
+                };
+                commands
+                    .execute(command, &mut CommandContext::new(&mut doc, &mut selection))
+                    .unwrap();
+                check(&doc, expected);
+                let applied_xml = exported_part_xml(&doc, "word/document.xml");
+                commands
+                    .undo(&mut CommandContext::new(&mut doc, &mut selection))
+                    .unwrap();
+                assert_eq!(exported_part_xml(&doc, "word/document.xml"), original_xml);
+                assert_eq!(format!("{:?}", doc.document), original_model);
+                assert_eq!(selection, Some(range));
+                check(&doc, ["center", "both", "start", "end"]);
+                commands
+                    .redo(&mut CommandContext::new(&mut doc, &mut selection))
+                    .unwrap();
+                assert_eq!(exported_part_xml(&doc, "word/document.xml"), applied_xml);
+                check(&doc, expected);
+            }
+        }
+    }
+
+    #[test]
+    fn conditional_table_paragraph_alignment_respects_regions_styles_and_direct_formatting() {
+        let styles_xml = r#"<w:styles xmlns:w="urn:w">
+          <w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:pPr><w:jc w:val="left"/></w:pPr></w:style>
+          <w:style w:type="paragraph" w:styleId="Heading"><w:pPr><w:jc w:val="end"/></w:pPr></w:style>
+          <w:style w:type="table" w:default="1" w:styleId="Base">
+            <w:pPr><w:jc w:val="right"/></w:pPr>
+            <w:tblPr><w:tblStyleRowBandSize w:val="1"/></w:tblPr>
+            <w:tblStylePr w:type="band1Horz"><w:pPr><w:jc w:val="both"/></w:pPr></w:tblStylePr>
+            <w:tblStylePr w:type="band2Horz"><w:pPr><w:jc w:val="start"/></w:pPr></w:tblStylePr>
+            <w:tblStylePr w:type="firstCol"><w:pPr><w:jc w:val="end"/></w:pPr></w:tblStylePr>
+            <w:tblStylePr w:type="lastCol"><w:pPr><w:jc w:val="left"/></w:pPr></w:tblStylePr>
+            <w:tblStylePr w:type="firstRow"><w:pPr><w:jc w:val="center"/></w:pPr></w:tblStylePr>
+            <w:tblStylePr w:type="lastRow"><w:pPr><w:jc w:val="right"/></w:pPr></w:tblStylePr>
+            <w:tblStylePr w:type="nwCell"><w:pPr><w:jc w:val="distribute"/></w:pPr></w:tblStylePr>
+          </w:style>
+          <w:style w:type="table" w:styleId="Child"><w:basedOn w:val="Base"/></w:style>
+        </w:styles>"#;
+        let styles = StylesPart::from_xml(styles_xml).unwrap();
+        for table_id in [None, Some("Child"), Some("Missing")] {
+            for override_default in [false, true] {
+                for (paragraph_properties, paragraph_alignment) in [
+                    ("", None),
+                    (r#"<w:pStyle w:val="Heading"/>"#, Some("end")),
+                    (r#"<w:jc w:val="left"/>"#, Some("left")),
+                ] {
+                    let paragraph = format!(
+                        r#"<w:p><w:pPr>{paragraph_properties}</w:pPr><w:r><w:t>Text</w:t></w:r></w:p>"#
+                    );
+                    let row = format!(
+                        "<w:tr>{}</w:tr>",
+                        format!("<w:tc>{paragraph}</w:tc>").repeat(3)
+                    );
+                    let table_style = table_id
+                        .map(|id| format!(r#"<w:tblStyle w:val="{id}"/>"#))
+                        .unwrap_or_default();
+                    let xml = format!(
+                        r#"<w:document xmlns:w="urn:w"><w:body><w:tbl><w:tblPr>{table_style}<w:tblLook w:firstRow="1" w:lastRow="1" w:firstColumn="1" w:lastColumn="1" w:noHBand="0"/></w:tblPr>{}</w:tbl></w:body></w:document>"#,
+                        row.repeat(4)
+                    );
+                    let mut document = DocumentParser::new().parse_document_xml(&xml).unwrap();
+                    WordDocument::apply_style_paragraph_defaults_to_document(
+                        &mut document,
+                        &styles,
+                        override_default,
+                    );
+                    let BodyElement::Table(table) = &document.body.as_ref().unwrap().elements[0]
+                    else {
+                        panic!("table")
+                    };
+                    let expected = [
+                        ["distribute", "center", "center"],
+                        ["end", "both", "left"],
+                        ["end", "start", "left"],
+                        ["right", "right", "right"],
+                    ];
+                    for (r, row) in table.rows.iter().enumerate() {
+                        for (c, cell) in row.cells.iter().enumerate() {
+                            let alignment = cell.blocks[0]
+                                .as_paragraph()
+                                .unwrap()
+                                .properties
+                                .as_ref()
+                                .unwrap()
+                                .alignment
+                                .as_deref();
+                            let expected = paragraph_alignment.unwrap_or(if override_default {
+                                "left"
+                            } else {
+                                expected[r][c]
+                            });
+                            assert_eq!(
+                                alignment,
+                                Some(expected),
+                                "table={table_id:?}, compat={override_default}, row={r}, cell={c}"
+                            );
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn apply_style_paragraph_defaults_table_justification_keeps_compat_and_direct_overrides() {
+        for normal_alignment in ["left", "center", "start"] {
+            let styles = StylesPart::from_xml(&format!(r#"<w:styles xmlns:w="urn:w">
+                  <w:docDefaults><w:pPrDefault><w:pPr><w:jc w:val="both"/></w:pPr></w:pPrDefault></w:docDefaults>
+                  <w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:pPr><w:jc w:val="{normal_alignment}"/></w:pPr></w:style>
+                  <w:style w:type="paragraph" w:styleId="Heading"><w:pPr><w:jc w:val="left"/></w:pPr></w:style>
+                  <w:style w:type="table" w:default="1" w:styleId="Base"><w:pPr><w:jc w:val="right"/></w:pPr></w:style>
+                  <w:style w:type="table" w:styleId="Child"><w:basedOn w:val="Base"/></w:style>
+                </w:styles>"#)).unwrap();
+            for override_default in [false, true] {
+                for style_id in [None, Some("Normal"), Some("Heading")] {
+                    for direct in [None, Some("left"), Some("both")] {
+                        let pstyle = style_id
+                            .map(|id| format!(r#"<w:pStyle w:val="{id}"/>"#))
+                            .unwrap_or_default();
+                        let jc = direct
+                            .map(|val| format!(r#"<w:jc w:val="{val}"/>"#))
+                            .unwrap_or_default();
+                        let paragraph = format!(
+                            r#"<w:p><w:pPr>{pstyle}{jc}</w:pPr><w:r><w:t>Text</w:t></w:r></w:p>"#
+                        );
+                        for table_id in [None, Some("Child")] {
+                            let tblstyle = table_id
+                                .map(|id| format!(r#"<w:tblStyle w:val="{id}"/>"#))
+                                .unwrap_or_default();
+                            let xml = format!(
+                                r#"<w:document xmlns:w="urn:w"><w:body>{paragraph}<w:tbl><w:tblPr>{tblstyle}</w:tblPr><w:tr><w:tc>{paragraph}</w:tc></w:tr></w:tbl></w:body></w:document>"#
+                            );
+                            let mut document =
+                                DocumentParser::new().parse_document_xml(&xml).unwrap();
+                            WordDocument::apply_style_paragraph_defaults_to_document(
+                                &mut document,
+                                &styles,
+                                override_default,
+                            );
+                            let body = &document.body.as_ref().unwrap().elements;
+                            let alignment =
+                                |p: &Paragraph| p.properties.as_ref().unwrap().alignment.clone();
+                            // The document parser normalizes OOXML both to justify.
+                            let direct =
+                                direct.map(|value| if value == "both" { "justify" } else { value });
+                            let named = if style_id == Some("Heading") {
+                                "left"
+                            } else {
+                                normal_alignment
+                            };
+                            assert_eq!(
+                                alignment(body[0].as_paragraph().unwrap()).as_deref(),
+                                Some(direct.unwrap_or(named))
+                            );
+                            let BodyElement::Table(table) = &body[1] else {
+                                panic!("table")
+                            };
+                            let cell = table.rows[0].cells[0].blocks[0].as_paragraph().unwrap();
+                            let inherited = if !override_default
+                                && style_id != Some("Heading")
+                                && normal_alignment == "left"
+                            {
+                                "right"
+                            } else {
+                                named
+                            };
+                            assert_eq!(alignment(cell).as_deref(), Some(direct.unwrap_or(inherited)),
+                                    "normal={normal_alignment}, compat={override_default}, style={style_id:?}, direct={direct:?}, table={table_id:?}");
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
     fn apply_style_paragraph_defaults_propagates_style_shading_and_borders() {
         // A paragraph that only references a style (no direct `w:shd`/`w:pBdr`)
         // must inherit the style's shading and borders so the renderer—which
@@ -51106,7 +61819,7 @@ mod tests {
             .expect("parse document");
         let styles = crate::styles::StylesPart::from_xml(styles_xml).expect("parse styles");
 
-        WordDocument::apply_style_paragraph_defaults_to_document(&mut document, &styles);
+        WordDocument::apply_style_paragraph_defaults_to_document(&mut document, &styles, false);
 
         let paragraph = document
             .body
@@ -51159,7 +61872,7 @@ mod tests {
             .expect("parse document");
         let styles = crate::styles::StylesPart::from_xml(styles_xml).expect("parse styles");
 
-        WordDocument::apply_style_paragraph_defaults_to_document(&mut document, &styles);
+        WordDocument::apply_style_paragraph_defaults_to_document(&mut document, &styles, false);
 
         let elements = document
             .body
@@ -51221,7 +61934,7 @@ mod tests {
             .expect("parse document");
         let styles = crate::styles::StylesPart::from_xml(styles_xml).expect("parse styles");
 
-        WordDocument::apply_style_paragraph_defaults_to_document(&mut document, &styles);
+        WordDocument::apply_style_paragraph_defaults_to_document(&mut document, &styles, false);
 
         let body = document.body.as_ref().expect("body");
         let styled = body.elements[0].as_paragraph().expect("styled paragraph");
@@ -51277,7 +61990,7 @@ mod tests {
             .expect("parse document");
         let styles = crate::styles::StylesPart::from_xml(styles_xml).expect("parse styles");
 
-        WordDocument::apply_style_paragraph_defaults_to_document(&mut document, &styles);
+        WordDocument::apply_style_paragraph_defaults_to_document(&mut document, &styles, false);
 
         let body = document.body.as_ref().expect("body");
         let styled = body.elements[0].as_paragraph().expect("styled paragraph");
@@ -51328,7 +62041,7 @@ mod tests {
             .expect("parse document");
         let styles = crate::styles::StylesPart::from_xml(styles_xml).expect("parse styles");
 
-        WordDocument::apply_style_paragraph_defaults_to_document(&mut document, &styles);
+        WordDocument::apply_style_paragraph_defaults_to_document(&mut document, &styles, false);
 
         let body = document.body.as_ref().expect("body");
         let styled = body.elements[0].as_paragraph().expect("styled paragraph");
@@ -51385,7 +62098,7 @@ mod tests {
             .expect("parse document");
         let styles = crate::styles::StylesPart::from_xml(styles_xml).expect("parse styles");
 
-        WordDocument::apply_style_paragraph_defaults_to_document(&mut document, &styles);
+        WordDocument::apply_style_paragraph_defaults_to_document(&mut document, &styles, false);
 
         let paragraph = document
             .body
@@ -51433,7 +62146,7 @@ mod tests {
             .expect("parse document");
         let styles = crate::styles::StylesPart::from_xml(styles_xml).expect("parse styles");
 
-        WordDocument::apply_style_paragraph_defaults_to_document(&mut document, &styles);
+        WordDocument::apply_style_paragraph_defaults_to_document(&mut document, &styles, false);
 
         let paragraph_props = document
             .body
@@ -52993,6 +63706,41 @@ mod tests {
             raw.contains(r#"<w:br w:type="textWrapping"/>"#),
             "soft break should be serialized as w:br"
         );
+    }
+
+    #[test]
+    fn run_grid_switch_serializes_explicit_off_and_can_be_enabled_again() {
+        let mut raw = DocxXmlDocument::parse("<root/>").unwrap();
+        let mut props = RunProperties {
+            snap_to_grid: Some(false),
+            ..RunProperties::default()
+        };
+        let off = WordDocument::sync_run_properties_element(&mut raw, Some(&props), None).unwrap();
+        let switch = |element: &XmlElement| {
+            element
+                .children
+                .iter()
+                .find_map(|node| match node {
+                    XmlNode::Element(child) if child.name == "w:snapToGrid" => Some(child.clone()),
+                    _ => None,
+                })
+                .unwrap()
+        };
+        assert!(switch(&off)
+            .attributes
+            .iter()
+            .any(|a| a.name == "w:val" && a.value == "0"));
+        props.snap_to_grid = Some(true);
+        let on =
+            WordDocument::sync_run_properties_element(&mut raw, Some(&props), Some(off)).unwrap();
+        assert!(!switch(&on).attributes.iter().any(|a| a.name == "w:val"));
+        props.snap_to_grid = Some(false);
+        let off =
+            WordDocument::sync_run_properties_element(&mut raw, Some(&props), Some(on)).unwrap();
+        assert!(switch(&off)
+            .attributes
+            .iter()
+            .any(|a| a.name == "w:val" && a.value == "0"));
     }
 
     #[test]
@@ -54917,7 +65665,7 @@ mod tests {
             .collect(),
             ..ThemePart::default()
         };
-        WordDocument::apply_theme_to_document(&mut document, &theme);
+        WordDocument::apply_theme_to_document(&mut document, &theme, &HashMap::new());
 
         let shape = document.body.as_ref().expect("body").elements[0]
             .as_paragraph()
@@ -56679,6 +67427,82 @@ mod tests {
     }
 
     #[test]
+    fn explicit_clear_table_shading_survives_export_reopen_and_history() {
+        use crate::headless_api::apply_headless_commands_with_executor_to_document;
+        use jade_docx_headless_api::{HeadlessCommand, HeadlessEditRequest};
+        for initial_shading in ["", r#"<w:shd w:val="clear" w:fill="FF0000"/>"#] {
+            let xml = format!(
+                r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:tbl><w:tblPr><w:tblStyle w:val="T"/></w:tblPr><w:tblGrid><w:gridCol w:w="2400"/></w:tblGrid><w:tr><w:tc><w:tcPr>{initial_shading}</w:tcPr><w:p/></w:tc></w:tr></w:tbl></w:body></w:document>"#
+            );
+            let styles = r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:style w:type="table" w:styleId="T"><w:tcPr><w:shd w:val="clear" w:fill="123456"/></w:tcPr></w:style></w:styles>"#;
+            let bytes = build_docx_from_parts(&[
+                (
+                    "[Content_Types].xml",
+                    r#"<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/></Types>"#,
+                ),
+                (
+                    "_rels/.rels",
+                    r#"<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>"#,
+                ),
+                (
+                    "word/_rels/document.xml.rels",
+                    r#"<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="styles" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>"#,
+                ),
+                ("word/document.xml", &xml),
+                ("word/styles.xml", styles),
+            ]);
+            let mut doc =
+                executor::block_on(WordDocument::load(&bytes, &Options::default())).unwrap();
+            let baseline = exported_document_xml(&doc);
+            let mut commands = CommandExecutor::new();
+            let mut selection = apply_headless_commands_with_executor_to_document(
+                &mut doc,
+                &mut commands,
+                None,
+                &HeadlessEditRequest {
+                    commands: vec![HeadlessCommand::SetTableCellShading {
+                        table_order_index: 0,
+                        row: 0,
+                        column: 0,
+                        color: None,
+                    }],
+                },
+            )
+            .unwrap();
+            let check = |doc: &WordDocument| {
+                let table = doc.table_by_order(0).unwrap();
+                assert_eq!(
+                    table.resolved_style.as_ref().unwrap().fill.as_deref(),
+                    Some("#123456")
+                );
+                assert_eq!(
+                    table.rows[0].cells[0]
+                        .style
+                        .get("background-color")
+                        .map(String::as_str),
+                    Some("transparent")
+                );
+                let xml = exported_document_xml(doc);
+                assert!(xml.contains(r#"w:fill="auto""#), "{xml}");
+                assert!(!xml.contains(r#"w:fill="FF0000""#), "{xml}");
+            };
+            check(&doc);
+            let applied = doc.export_docx().unwrap();
+            let reopened =
+                executor::block_on(WordDocument::load(&applied, &Options::default())).unwrap();
+            check(&reopened);
+            assert!(commands
+                .undo(&mut CommandContext::new(&mut doc, &mut selection))
+                .unwrap());
+            assert_eq!(exported_document_xml(&doc), baseline);
+            assert!(commands
+                .redo(&mut CommandContext::new(&mut doc, &mut selection))
+                .unwrap());
+            check(&doc);
+        }
+    }
+
+    #[test]
     fn table_properties_preserve_unknown_xml_and_reset_merged_logical_margins() {
         let xml = r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:x="urn:test"><w:body><w:tbl>
         <w:tblPr><w:tblCellMar><w:left w:w="100" w:type="dxa"/></w:tblCellMar></w:tblPr>
@@ -58417,7 +69241,7 @@ mod tests {
 
         let raw_page = heading_page(&raw_document);
 
-        WordDocument::apply_style_paragraph_defaults_to_document(&mut raw_document, &styles);
+        WordDocument::apply_style_paragraph_defaults_to_document(&mut raw_document, &styles, false);
         let style_page = heading_page(&raw_document);
 
         WordDocument::apply_run_font_defaults_to_document(&mut raw_document, &styles);

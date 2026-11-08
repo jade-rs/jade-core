@@ -613,13 +613,23 @@ impl WordDocument {
             }
         }
         if let Some(styles) = self.styles_part.as_ref() {
-            Self::apply_style_paragraph_defaults_to_document(&mut parsed, styles);
+            Self::apply_style_paragraph_defaults_to_document(
+                &mut parsed,
+                styles,
+                self.loaded_document_settings()
+                    .compat
+                    .setting_on("overrideTableStyleFontSizeAndJustification"),
+            );
             Self::apply_table_styles_to_document(&mut parsed, styles);
             Self::apply_style_numbering_to_document(&mut parsed, styles);
             Self::apply_run_font_defaults_to_document(&mut parsed, styles);
         }
         if let Some(theme) = self.loaded_theme_part() {
-            Self::apply_theme_to_document(&mut parsed, &theme);
+            Self::apply_theme_to_document(
+                &mut parsed,
+                &theme,
+                &self.loaded_document_settings().color_scheme_mapping,
+            );
         }
         let original = self.document.replace(Rc::new(parsed));
         self.rebuild_paragraph_surfaces();
