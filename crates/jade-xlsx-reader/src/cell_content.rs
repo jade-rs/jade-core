@@ -18,6 +18,7 @@ pub struct WorksheetSource {
     cell_references: Vec<(usize, CellRef)>,
     processed_starts: Vec<usize>,
     alternate_starts: Vec<usize>,
+    branch_starts: Vec<(usize, bool)>,
     drawing_links: [Vec<Option<String>>; 2],
     /// Every row after the one before it and every cell after the one
     /// before it in its row, with no compatibility branches to reorder.
@@ -74,6 +75,19 @@ impl WorksheetSource {
     /// An actual MC AlternateContent start in the compatible structure view.
     pub fn has_alternate_content_at(&self, offset: usize) -> bool {
         self.alternate_starts.binary_search(&offset).is_ok()
+    }
+    /// Whether an actual MC AlternateContent starts in the half-open range.
+    pub fn has_alternate_content_between(&self, start: usize, end: usize) -> bool {
+        let index = self.alternate_starts.partition_point(|&at| at < start);
+        self.alternate_starts.get(index).is_some_and(|&at| at < end)
+    }
+    /// An understood Choice (`Some(false)`) or Fallback (`Some(true)`) at this
+    /// start in the compatible structure view. Opaque branches return None.
+    pub fn compatible_branch_at(&self, offset: usize) -> Option<bool> {
+        self.branch_starts
+            .binary_search_by_key(&offset, |&(at, _)| at)
+            .ok()
+            .map(|i| self.branch_starts[i].1)
     }
 }
 
@@ -509,6 +523,9 @@ fn project(
                         (false, false)
                     };
                     if include {
+                        if structure_only {
+                            source.branch_starts.push((start, name == "Fallback"));
+                        }
                         let local = current_cell.is_some()
                             && path.last().is_some_and(|n| n == "c")
                             && frames.iter().skip(cell_frame + 1).all(|f| {
@@ -875,6 +892,18 @@ mod process_content_tests {
         let xml = format!("{}<sheetData><row r=\"1\"><mc:AlternateContent><mc:Choice Requires=\"m\"><c r=\"A1\"><f>1+1</f></c></mc:Choice><mc:Choice Requires=\"u\"><c r=\"B1\"><f>2+2</f></c></mc:Choice><mc:Fallback><u:wrap><c r=\"C1\"><f>3+3</f></c></u:wrap></mc:Fallback></mc:AlternateContent><u:c r=\"D1\"><f>4+4</f></u:c></row></sheetData></worksheet>", HEAD.replace("<worksheet ", "<worksheet xmlns:m=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\" "));
         let source = compatible_worksheet_source(&xml).unwrap();
         assert!(source.cells.is_empty());
+        assert_eq!(
+            source.compatible_branch_at(xml.find("<mc:Choice Requires=\"m\"").unwrap()),
+            Some(false)
+        );
+        assert_eq!(
+            source.compatible_branch_at(xml.find("<mc:Choice Requires=\"u\"").unwrap()),
+            None
+        );
+        assert_eq!(
+            source.compatible_branch_at(xml.find("<mc:Fallback>").unwrap()),
+            Some(true)
+        );
         assert!(source.processes_content_at(xml.find("<u:wrap>").unwrap()));
         assert_eq!(source.row_index_at(xml.find("<row ").unwrap()), Some(0));
         assert_eq!(
