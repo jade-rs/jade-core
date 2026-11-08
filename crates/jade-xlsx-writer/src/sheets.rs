@@ -1309,9 +1309,8 @@ pub fn copy_sheet(original: &[u8], source: &str, name: &str) -> Result<(Vec<u8>,
         .clone()
         .ok_or_else(|| WriteError::NoSuchSheet(name.to_string()))?;
     // The copy is not the selected tab.
-    parts
-        .package
-        .replace(&copy_part, rewrite_selected_tabs(&xml)?.into_bytes());
+    let copied = crate::copy_feature_ids::rewrite(&rewrite_selected_tabs(&xml)?, &parts.package)?;
+    parts.package.replace(&copy_part, copied.into_bytes());
     if let Some(rels) = source_rels {
         let book = jade_xlsx_reader::read_xlsx(original)?;
         let mut tables = crate::copy_objects::TableNames::of(&parts.package, &book)?;

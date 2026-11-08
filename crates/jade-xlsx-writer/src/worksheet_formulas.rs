@@ -99,7 +99,7 @@ fn validations(xml: &str, rewrite: &Rewrite<'_>) -> Result<BTreeMap<usize, Strin
     Ok(result)
 }
 
-fn conditional(
+pub(crate) fn conditional(
     xml: &str,
     main: &[u8],
     extended: bool,

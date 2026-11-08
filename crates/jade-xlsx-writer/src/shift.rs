@@ -850,7 +850,7 @@ pub fn shift_sheet(
     }
     let moved = apply(xml, splices);
     if changed {
-        crate::protected_ranges::cleanup(&moved)
+        crate::protected_ranges::cleanup(&crate::conditional_cleanup::after_structure(xml, &moved)?)
     } else {
         Ok(moved)
     }

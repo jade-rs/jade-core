@@ -87,15 +87,6 @@ pub(crate) fn children_ns(
     select(xml, name, Some(ns), false)
 }
 
-/// Non-overlapping descendants with an explicitly identified namespace.
-pub(crate) fn descendants_ns(
-    xml: &str,
-    name: &[u8],
-    ns: &[u8],
-) -> Result<Vec<(usize, usize, ContextXml)>> {
-    select(xml, name, Some(ns), true)
-}
-
 fn select(
     xml: &str,
     name: &[u8],
@@ -273,6 +264,41 @@ pub(crate) fn new_child(xml: &str, name: &[u8]) -> Result<ContextXml> {
             }
             Event::Eof => return Err(WriteError::NoRoot("XML")),
             _ => {}
+        }
+    }
+}
+
+pub(crate) fn plain_empty(xml: &str, allowed: &[&[u8]]) -> Result<bool> {
+    let mut r = quick_xml::Reader::from_str(xml);
+    let mut depth = 0;
+    loop {
+        match r.read_event()? {
+            event @ (Event::Start(_) | Event::Empty(_)) => {
+                let empty = matches!(event, Event::Empty(_));
+                let e = match event {
+                    Event::Start(e) | Event::Empty(e) => e,
+                    _ => unreachable!(),
+                };
+                if depth != 0 {
+                    return Ok(false);
+                }
+                for a in e.attributes() {
+                    let a = a?;
+                    if a.key.as_ref() != b"xmlns"
+                        && !a.key.as_ref().starts_with(b"xmlns:")
+                        && !allowed.contains(&a.key.as_ref())
+                    {
+                        return Ok(false);
+                    }
+                }
+                if !empty {
+                    depth += 1;
+                }
+            }
+            Event::End(_) => depth -= 1,
+            Event::Text(t) if t.decode()?.trim().is_empty() => {}
+            Event::Eof => return Ok(true),
+            _ => return Ok(false),
         }
     }
 }
