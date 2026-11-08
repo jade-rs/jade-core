@@ -22129,6 +22129,7 @@ where
 
         struct PreparedSegment<'segment, 'arena> {
             segment: &'segment TextSegment,
+            // Clone into the line layout to share glyphs without allocating an empty replacement.
             fragment: SelectionFragmentLayout,
             style: Rc<AppliedRunStyle>,
             width: f64,
@@ -23342,7 +23343,7 @@ where
                         .copied()
                         .unwrap_or(cursor_x);
                     prepared.fragment.x = position;
-                    fragments.push(std::mem::take(&mut prepared.fragment));
+                    fragments.push(prepared.fragment.clone());
                     positions.push(position);
                 }
                 fragments.extend(inline_object_fragments);
@@ -23422,7 +23423,7 @@ where
                 for (idx, prepared) in prepared_segments.iter_mut().enumerate() {
                     cursor_x += prepared.segment.leading_width;
                     prepared.fragment.x = cursor_x;
-                    fragments.push(std::mem::take(&mut prepared.fragment));
+                    fragments.push(prepared.fragment.clone());
                     positions.push(cursor_x);
                     cursor_x += prepared.width;
                     if justify && idx + 1 < segment_count {
