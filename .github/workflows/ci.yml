@@ -356,6 +356,8 @@ jobs:
         with:
           workspaces: |
             . -> target/xlsx-native
+      - name: Prepare pinned Mac Skia binaries
+        uses: ./.github/actions/prepare-macos-skia
       - name: Verify the vendored formula engine
         run: |
           cargo fmt --manifest-path third_party/ironcalc-base/Cargo.toml -- --check

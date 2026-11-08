@@ -151,8 +151,14 @@ class NativeMacosWorkflowTest < Minitest::Test
   end
 
   def test_mac_jobs_prepare_verified_binaries_before_any_cargo_command
-    %w[native-macos word-mac-coordinates].each do |name|
-      steps = @workflow.fetch("jobs").fetch(name).fetch("steps")
+    mac_cargo_jobs = @workflow.fetch("jobs").select do |_name, job|
+      Array(job.fetch("runs-on")).any? { |runner| runner.start_with?("macos-") } &&
+        job.fetch("steps").any? { |step| step.fetch("run", "").include?("cargo ") }
+    end
+    refute_empty mac_cargo_jobs
+    assert_includes mac_cargo_jobs.keys, "xlsx-native"
+    mac_cargo_jobs.each do |name, job|
+      steps = job.fetch("steps")
       prepare = steps.index { |step| step["uses"] == "./.github/actions/prepare-macos-skia" }
       refute_nil prepare, "#{name} must prepare the pinned Skia archive"
       step = steps.fetch(prepare)
