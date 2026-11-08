@@ -67,3 +67,27 @@ fn assert_payload(bytes: &[u8], payload: &str) {
         "unprocessed extension was changed: {sheet}"
     );
 }
+
+#[test]
+fn unknown_extension_uri_keeps_standard_named_payloads_opaque() {
+    for namespace in [
+        "http://schemas.openxmlformats.org/spreadsheetml/2006/main",
+        "http://schemas.microsoft.com/office/excel/2006/main",
+        "http://schemas.microsoft.com/office/spreadsheetml/2009/9/main",
+    ] {
+        let payload = format!(
+            r#"<q:mergeCells xmlns:q="{namespace}" count="1"><q:mergeCell ref="D4:E5"/></q:mergeCells>"#
+        );
+        let sheet = format!(
+            r#"<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData/><mergeCells count="1"><mergeCell ref="D4:E5"/></mergeCells><extLst><ext uri="urn:unknown-extension">{payload}</ext></extLst></worksheet>"#
+        );
+        let mut book =
+            HeadlessWorkbook::open_for_editing(&common::workbook_with_sheet(&sheet)).unwrap();
+        book.insert_rows("Sheet1", 1, 1).unwrap();
+        assert_eq!(
+            book.workbook().sheets[0].merges,
+            [CellRange::parse("D5:E6").unwrap()]
+        );
+        assert_payload(&book.save_bytes().unwrap(), &payload);
+    }
+}
