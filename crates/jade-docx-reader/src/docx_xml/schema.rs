@@ -24,26 +24,41 @@ enum Unlisted {
 }
 
 struct Sequence {
+    lookup_rank: fn(&str) -> Option<u16>,
+    #[cfg(test)]
     children: &'static [&'static [&'static str]],
     unlisted: Unlisted,
 }
 
 impl Sequence {
     fn rank(&self, name: &str) -> Option<u16> {
-        self.children
-            .iter()
-            .position(|group| group.contains(&name))
-            .map(|position| position as u16)
-            .or(match self.unlisted {
-                Unlisted::Follow => None,
-                Unlisted::Rank(rank) => Some(rank),
-            })
+        (self.lookup_rank)(name).or(match self.unlisted {
+            Unlisted::Follow => None,
+            Unlisted::Rank(rank) => Some(rank),
+        })
     }
 }
 
 macro_rules! sequence {
-    ($unlisted:expr; $($group:expr),* $(,)?) => {
-        Some(&Sequence { children: &[$(&$group),*], unlisted: $unlisted })
+    (@lookup $name:ident, $rank:expr, [$($arms:tt)*];) => {
+        match $name { $($arms)* _ => None }
+    };
+    // Empty groups still reserve a rank (the body pins sectPr after rank 0).
+    (@lookup $name:ident, $rank:expr, [$($arms:tt)*]; [] $(, $rest:tt)*) => {
+        sequence!(@lookup $name, ($rank + 1), [$($arms)*]; $($rest),*)
+    };
+    (@lookup $name:ident, $rank:expr, [$($arms:tt)*]; [$($child:literal),+ $(,)?] $(, $rest:tt)*) => {
+        sequence!(@lookup $name, ($rank + 1), [
+            $($arms)* $($child)|+ => Some($rank),
+        ]; $($rest),*)
+    };
+    ($unlisted:expr; $($group:tt),* $(,)?) => {
+        Some(&Sequence {
+            lookup_rank: |name| sequence!(@lookup name, 0u16, []; $($group),*),
+            #[cfg(test)]
+            children: &[$(&$group),*],
+            unlisted: $unlisted,
+        })
     };
 }
 
@@ -517,10 +532,141 @@ impl<'a> Walk<'a> {
 
 #[cfg(test)]
 mod tests {
-    use super::super::DocxXmlDocument;
+    use super::super::{DocxXmlDocument, XmlElement, XmlNode, XmlNodeId};
     use proptest::prelude::*;
 
+    fn schema_contexts() -> impl Iterator<Item = (&'static str, Option<&'static str>)> {
+        [
+            "w:pPr",
+            "w:rPr",
+            "w:sectPr",
+            "w:pBdr",
+            "w:pgBorders",
+            "w:tblBorders",
+            "w:tcBorders",
+            "w:tblCellMar",
+            "w:tcMar",
+            "w:tblPr",
+            "w:trPr",
+            "w:tcPr",
+            "w:p",
+            "w:r",
+            "w:tbl",
+            "w:tr",
+            "w:tc",
+            "w:body",
+            "w:numPr",
+            "w:numbering",
+            "w:abstractNum",
+            "w:lvl",
+            "w:num",
+            "w:style",
+            "w:docDefaults",
+            "w:footnotePr",
+            "w:endnotePr",
+            "w:settings",
+        ]
+        .into_iter()
+        .map(|name| (name, None))
+        .chain(
+            [
+                "w:style",
+                "w:lvl",
+                "w:pPrDefault",
+                "w:tblStylePr",
+                "w:p",
+                "custom",
+            ]
+            .into_iter()
+            .map(|parent| ("w:pPr", Some(parent))),
+        )
+    }
+
+    fn schema_names() -> Vec<&'static str> {
+        let mut names = vec!["", "w:unknown", "custom:sz", "w:szExtra", "w:漢", "w:\0"];
+        for (name, parent) in schema_contexts() {
+            let sequence = super::sequence(name, parent).expect("schema context");
+            names.extend(
+                sequence
+                    .children
+                    .iter()
+                    .flat_map(|group| group.iter().copied()),
+            );
+        }
+        names
+    }
+
+    fn reference_rank(sequence: &super::Sequence, name: &str) -> Option<u16> {
+        sequence
+            .children
+            .iter()
+            .position(|group| group.contains(&name))
+            .map(|index| index as u16)
+            .or(match sequence.unlisted {
+                super::Unlisted::Follow => None,
+                super::Unlisted::Rank(rank) => Some(rank),
+            })
+    }
+
+    #[test]
+    fn schema_ranks_match_linear_reference_for_all_sequences() {
+        let names = schema_names();
+        for (name, parent) in schema_contexts() {
+            let sequence = super::sequence(name, parent).unwrap();
+            for child in &names {
+                assert_eq!(
+                    sequence.rank(child),
+                    reference_rank(sequence, child),
+                    "{name} in {parent:?}, child {child:?}"
+                );
+            }
+        }
+    }
+
     proptest! {
+        #[test]
+        fn schema_order_matches_reference_with_unknown_and_non_element_children(
+            context in 0..schema_contexts().count(),
+            children in prop::collection::vec((any::<u16>(), 0u8..6), 0..96),
+        ) {
+            let (name, parent) = schema_contexts().nth(context).unwrap();
+            let sequence = super::sequence(name, parent).unwrap();
+            let names = schema_names();
+            let element = XmlElement {
+                id: XmlNodeId::new(0),
+                name: name.to_owned(),
+                attributes: Vec::new(),
+                children: children.into_iter().map(|(index, kind)| match kind {
+                    0..=2 => XmlNode::Element(XmlElement {
+                        id: XmlNodeId::new(0),
+                        name: names[index as usize % names.len()].to_owned(),
+                        attributes: Vec::new(),
+                        children: Vec::new(),
+                    }),
+                    3 => XmlNode::Text("text".to_owned()),
+                    4 => XmlNode::Comment("comment".to_owned()),
+                    _ => XmlNode::CData("data".to_owned()),
+                }).collect(),
+            };
+            let mut preceding_rank = 0;
+            let keys: Vec<_> = element.children.iter().map(|child| {
+                if let XmlNode::Element(child) = child {
+                    if let Some(rank) = reference_rank(sequence, &child.name) {
+                        preceding_rank = rank;
+                    }
+                }
+                preceding_rank
+            }).collect();
+            let mut expected: Vec<_> = (0..keys.len()).collect();
+            expected.sort_by_key(|&index| keys[index]);
+            let order = super::schema_order(&element, parent);
+            if keys.windows(2).all(|pair| pair[0] <= pair[1]) {
+                prop_assert!(order.is_none(), "already ordered children must not allocate");
+            }
+            let actual = order.unwrap_or_else(|| (0..keys.len()).collect());
+            prop_assert_eq!(actual, expected);
+        }
+
         #[test]
         fn namespace_prefix_cache_matches_reference(
             names in prop::collection::vec(
