@@ -175,6 +175,9 @@ pub(crate) fn children_ns(
 
 /// Direct foreign children nominated by the active expanded MCE context.
 pub(crate) fn processed_children(xml: &str) -> Result<Vec<(usize, usize, ContextXml)>> {
+    if !xml.contains("ProcessContent") {
+        return Ok(Vec::new());
+    }
     select(xml, b"", None, true)
 }
 
