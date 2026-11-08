@@ -17,8 +17,36 @@ use std::sync::OnceLock;
 
 use crate::document::FontFace;
 
-/// The face Word sets equations in.
+/// The default equation face when a document does not specify `m:mathFont`.
 pub const MATH_FAMILY: &str = "Cambria Math";
+
+/// Selects upright faces for the document's math family and the default
+/// fallback. Register under the requested names, including their casing, so
+/// the renderer can find the same family it read from the document.
+pub fn math_faces_for(faces: &[FontFace], configured_family: Option<&str>) -> Vec<FontFace> {
+    let configured = configured_family
+        .filter(|family| !family.trim().is_empty())
+        .unwrap_or(MATH_FAMILY);
+    let mut selected = Vec::new();
+    for family in [configured, MATH_FAMILY] {
+        if selected
+            .iter()
+            .any(|face: &FontFace| face.family.eq_ignore_ascii_case(family))
+        {
+            continue;
+        }
+        if let Some(face) = faces
+            .iter()
+            .filter(|face| face.family.eq_ignore_ascii_case(family))
+            .min_by_key(|face| (face.italic, face.weight.abs_diff(400)))
+        {
+            let mut face = face.clone();
+            face.family = family.to_string();
+            selected.push(face);
+        }
+    }
+    selected
+}
 
 /// Where Office keeps the faces it ships, in the order they are searched.
 /// `JADE_OFFICE_FONT_DIR` (a platform path list: `;` on Windows, `:` elsewhere) comes first.
@@ -252,7 +280,7 @@ pub fn word_document_faces(package: &[u8], fallback: &[FontFace]) -> Vec<FontFac
 }
 
 /// Every font family an Office package's parts name: Word's `w:rFonts`
-/// slots and font table, DrawingML's typefaces (theme fonts among them, a
+/// slots, math settings and font table, DrawingML's typefaces (theme fonts among them, a
 /// theme's per-script list only for Japanese), and SpreadsheetML's font and
 /// rich-run names.
 pub fn families_named_in(package: &[u8]) -> BTreeSet<String> {
@@ -293,8 +321,7 @@ pub fn word_families(package: &[u8]) -> BTreeSet<String> {
     ] {
         stack_families(stack, &mut families);
     }
-    // Equations are set in Cambria Math whatever the document names, and its
-    // MATH table is what lays them out.
+    // Retain the default math face as well as a document's named math font.
     families.insert(MATH_FAMILY.to_string());
     // Word for Mac measures a numbering label's suffix space in Arial, named
     // or not; without it the space takes the fallback face's width.
@@ -361,6 +388,7 @@ fn font_names_in_xml(xml: &str, font_table: bool, out: &mut BTreeSet<String>) {
         let local = name.rsplit(':').next().unwrap_or(name);
         let attributes: &[&str] = match local {
             "rFonts" => &["ascii", "hAnsi", "eastAsia", "cs"],
+            "mathFont" => &["val"],
             "font" if name.starts_with("w:") && font_table => &["name"],
             // A theme lists a face for each of some thirty scripts; only the
             // Japanese one is drawn here.
@@ -426,6 +454,39 @@ mod tests {
     use super::*;
 
     #[test]
+    fn math_faces_keep_the_requested_name_and_prefer_regular_upright() {
+        let face = |family: &str, weight, italic| FontFace {
+            family: family.to_string(),
+            weight,
+            italic,
+            path: PathBuf::from("unused.ttf"),
+            index: 0,
+        };
+        let faces = [
+            face("host math", 400, true),
+            face("host math", 700, false),
+            face("host math", 400, false),
+            face(MATH_FAMILY, 400, false),
+            face("Arial", 400, false),
+        ];
+        let selected = math_faces_for(&faces, Some("Host Math"));
+        assert_eq!(selected.len(), 2);
+        assert_eq!(selected[0].family, "Host Math");
+        assert_eq!(selected[0].weight, 400);
+        assert!(!selected[0].italic);
+        assert_eq!(selected[1].family, MATH_FAMILY);
+        for family in [
+            None,
+            Some(""),
+            Some("  "),
+            Some(MATH_FAMILY),
+            Some("Missing"),
+        ] {
+            assert_eq!(math_faces_for(&faces, family), [faces[3].clone()]);
+        }
+    }
+
+    #[test]
     fn names_in_word_drawingml_and_spreadsheetml_parts() {
         let mut out = BTreeSet::new();
         font_names_in_xml(
@@ -456,6 +517,28 @@ mod tests {
         assert!(out.is_empty());
         font_names_in_xml(r#"<w:font w:name="Cambria"/>"#, true, &mut out);
         assert!(out.contains("Cambria"));
+    }
+
+    #[test]
+    fn a_settings_only_math_font_is_discovered() {
+        use std::io::Write;
+        let mut bytes = std::io::Cursor::new(Vec::new());
+        {
+            let mut zip = zip::ZipWriter::new(&mut bytes);
+            zip.start_file(
+                "word/settings.xml",
+                zip::write::SimpleFileOptions::default(),
+            )
+            .unwrap();
+            zip.write_all(br#"<w:settings xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><m:mathPr><m:mathFont m:val="Host Math"/></m:mathPr></w:settings>"#)
+                .unwrap();
+            zip.finish().unwrap();
+        }
+        let bytes = bytes.into_inner();
+        assert!(families_named_in(&bytes).contains("Host Math"));
+        let families = word_families(&bytes);
+        assert!(families.contains("Host Math"));
+        assert!(families.contains(MATH_FAMILY));
     }
 
     /// `alt-chunk-html` names Times New Roman and Arial Unicode MS only, and
