@@ -15,6 +15,7 @@ const MC: &[u8] = b"http://schemas.openxmlformats.org/markup-compatibility/2006"
 pub struct ProcessedElements {
     starts: Vec<usize>,
     ends: Vec<usize>,
+    opaque: Vec<usize>,
 }
 impl ProcessedElements {
     pub fn processes_content_at(&self, offset: usize) -> bool {
@@ -23,14 +24,26 @@ impl ProcessedElements {
     pub fn processes_content_end_at(&self, offset: usize) -> bool {
         self.ends.binary_search(&offset).is_ok()
     }
+    pub(crate) fn opaque_starts(&self) -> impl Iterator<Item = usize> + '_ {
+        self.opaque.iter().copied()
+    }
 }
 
 /// Visit every understood alternative without treating ignored opaque parents
 /// as transparent. Unlike the grid projection this includes worksheet metadata.
 pub fn processed_elements(xml: &str) -> Result<ProcessedElements> {
+    elements(xml, false)
+}
+
+/// Ownership guards also need opaque positions inside understood payload roots.
+pub(crate) fn elements_with_opacity(xml: &str) -> Result<ProcessedElements> {
+    elements(xml, true)
+}
+
+fn elements(xml: &str, collect_opaque: bool) -> Result<ProcessedElements> {
     use quick_xml::events::Event;
     let mut result = ProcessedElements::default();
-    if !xml.contains("ProcessContent") {
+    if !collect_opaque && !xml.contains("ProcessContent") {
         return Ok(result);
     }
     let mut reader = NsReader::from_str(xml);
@@ -62,6 +75,9 @@ pub fn processed_elements(xml: &str) -> Result<ProcessedElements> {
                     && !crate::data_validations::supported_namespace(&namespace)
                     && !processed;
                 if opaque || unsupported_choice {
+                    if collect_opaque {
+                        result.opaque.push(offset);
+                    }
                     if matches!(event, Event::Start(_)) {
                         reader.read_to_end(e.name())?;
                     }
