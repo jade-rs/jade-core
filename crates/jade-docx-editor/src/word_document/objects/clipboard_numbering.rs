@@ -1,5 +1,7 @@
 use super::*;
 
+type ObjectFormatting = (Vec<XmlElement>, Vec<XmlElement>, Vec<Relationship>);
+
 // A number has three independent ID spaces: instances, abstract definitions,
 // and picture bullets. Zero is reserved for removing numbering on a paragraph.
 const KINDS: [(&str, &str, &str); 3] = [
@@ -77,7 +79,7 @@ impl WordDocument {
     pub(super) fn copy_object_formatting(
         &self,
         drawing: &XmlElement,
-    ) -> Result<(Vec<XmlElement>, Vec<XmlElement>, Vec<Relationship>), String> {
+    ) -> Result<ObjectFormatting, String> {
         let path = self.object_numbering_path();
         let raw = path
             .as_ref()

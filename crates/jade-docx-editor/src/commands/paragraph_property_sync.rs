@@ -823,16 +823,6 @@ fn upsert_paragraph_property_child_with_value(
         .insert(0, XmlNode::Element(child));
 }
 
-pub(crate) fn set_paragraph_indent_xml(
-    raw: &mut DocxXmlDocument,
-    paragraph_properties: &mut XmlElement,
-    indent: Option<&Indent>,
-    _replace_logical_start: bool,
-    _replace_logical_end: bool,
-) {
-    set_paragraph_indent_xml_inner(raw, paragraph_properties, indent, None);
-}
-
 fn set_paragraph_indent_xml_inner(
     raw: &mut DocxXmlDocument,
     paragraph_properties: &mut XmlElement,

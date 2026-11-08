@@ -2673,6 +2673,7 @@ impl OffscreenDocumentView {
     }
 
     /// Use actual caret offsets when the rendered line maps to ordinary story text.
+    #[allow(clippy::too_many_arguments)]
     fn edit_hf_line_range(
         word_doc: &mut WordDocument,
         mode: EditingMode,
@@ -5058,17 +5059,15 @@ impl OffscreenDocumentView {
                                 doc.hf_ruler_paragraph(role, variant, cursor.line_index)
                                     .is_some()
                             })
-                        {
-                            if state
+                            && state
                                 .word_doc
                                 .as_mut()
                                 .unwrap()
                                 .exit_hf_empty_list_item(role, variant, cursor.line_index)
                                 .map_err(|error| JsValue::from_str(&error))?
-                            {
-                                state.hf_selection_anchor = None;
-                                return Ok(Some(cursor));
-                            }
+                        {
+                            state.hf_selection_anchor = None;
+                            return Ok(Some(cursor));
                         }
                     }
                 }
@@ -24114,7 +24113,7 @@ mod tests {
                                         page_index: 1,
                                         ..anchor
                                     }),
-                                    &[command.clone()]
+                                    std::slice::from_ref(&command)
                                 )
                                 .unwrap()
                                 .is_none());
@@ -24179,7 +24178,6 @@ mod tests {
                                                 .as_ref()
                                                 .unwrap()
                                                 .resolve_paragraph_style_id("Heading1")
-                                                .as_deref()
                                         ),
                                         2 => assert_eq!(props.indent.unwrap().left, Some(36.0)),
                                         3 => {
@@ -24990,9 +24988,9 @@ mod tests {
                                 _ => "2026年",
                             };
                             let mut expected = ["前日本".to_owned(), "後本文".to_owned()];
-                            for index in 0..=1 {
+                            for (index, expected_text) in expected.iter_mut().enumerate() {
                                 if placement == 2 || placement == index {
-                                    let offset = if index == 0 { expected[index].len() } else { 0 };
+                                    let offset = if index == 0 { expected_text.len() } else { 0 };
                                     doc.insert_hf_story_field(
                                         role,
                                         hf_variant,
@@ -25001,7 +24999,7 @@ mod tests {
                                         "2026年",
                                     )
                                     .unwrap();
-                                    expected[index].insert_str(offset, shown);
+                                    expected_text.insert_str(offset, shown);
                                 }
                             }
                             let segment = |alignment| match alignment {

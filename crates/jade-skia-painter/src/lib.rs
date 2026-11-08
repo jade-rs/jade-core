@@ -741,7 +741,7 @@ impl SkiaPainter {
         let mut builder = skia_safe::TextBlobBuilder::new();
         let (run, utf8, clusters) =
             builder.alloc_run_text(font, glyphs.len(), (0.0, 0.0), text.len(), None);
-        run.copy_from_slice(&glyphs);
+        run.copy_from_slice(glyphs);
         utf8.copy_from_slice(text.as_bytes());
         for (cluster, (offset, _)) in clusters.iter_mut().zip(text.char_indices()) {
             *cluster = offset as u32;
@@ -774,7 +774,7 @@ impl SkiaPainter {
             // Skia omits missing glyphs' Unicode. Preserve the same glyph paths
             // and advances alongside an invisible original-Unicode text layer.
             let mut widths = vec![0.0; glyphs.len()];
-            font.get_widths(&glyphs, &mut widths);
+            font.get_widths(glyphs, &mut widths);
             let (_, metrics) = font.metrics();
             let [a, b, c, d, e, f] = canvas
                 .local_to_device_as_3x3()

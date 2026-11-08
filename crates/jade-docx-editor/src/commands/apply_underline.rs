@@ -367,7 +367,7 @@ mod tests {
     #[test]
     fn all_word_underline_styles_round_trip_and_support_undo_redo() {
         let data = std::fs::read(fixture_path("hello.docx")).expect("read fixture");
-        for kind in crate::word::font::UNDERLINE_STYLES {
+        for kind in crate::font_format::UNDERLINE_STYLES {
             let mut document =
                 executor::block_on(WordDocument::load(&data, &Options::default())).unwrap();
             let range = SelectionRange::new(TextPosition::new(0, 0), TextPosition::new(0, 5));

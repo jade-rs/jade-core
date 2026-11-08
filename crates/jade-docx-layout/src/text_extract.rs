@@ -2865,7 +2865,12 @@ pub fn layout_docx_lines_from_package_with_oracle_advances<C: LineWrapContext>(
     );
     layout_document_lines_with_styles_and_oracle(
         &document,
-        if needs_style_defaults {
+        // Explicit East Asian faces still inherit omitted sizes on Windows.
+        // Keep the Windows metric path at the document's authored font size.
+        if needs_style_defaults
+            || crate::line_metrics::word_layout_platform()
+                == crate::line_metrics::WordLayoutPlatform::Windows
+        {
             styles.as_ref()
         } else {
             None

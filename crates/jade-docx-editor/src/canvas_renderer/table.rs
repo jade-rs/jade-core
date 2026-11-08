@@ -1447,19 +1447,21 @@ impl LayoutConfig {
             self.document_snap_to_grid_default,
             self.doc_grid.as_ref(),
         );
-        let mut style = ParagraphStyle::default();
-        style.exact_line_spacing = matches!(
-            paragraph
+        let mut style = ParagraphStyle {
+            exact_line_spacing: matches!(
+                paragraph
+                    .properties
+                    .as_ref()
+                    .and_then(|properties| properties.spacing.as_ref())
+                    .and_then(|spacing| spacing.line_rule.as_deref()),
+                Some("exact" | "exactly")
+            ),
+            text_alignment: paragraph
                 .properties
                 .as_ref()
-                .and_then(|properties| properties.spacing.as_ref())
-                .and_then(|spacing| spacing.line_rule.as_deref()),
-            Some("exact" | "exactly")
-        );
-        style.text_alignment = paragraph
-            .properties
-            .as_ref()
-            .and_then(|properties| properties.text_alignment.clone());
+                .and_then(|properties| properties.text_alignment.clone()),
+            ..Default::default()
+        };
         if let Some(alignment) = paragraph
             .properties
             .as_ref()
@@ -4242,7 +4244,7 @@ where
             };
             let column = &paragraph.lines[column_range.clone()];
             if draw_enabled && draw_rotated_columns {
-                if let Some(line) = rotated_column_line(paragraph, column, &vertical_cell_advance) {
+                if let Some(line) = rotated_column_line(paragraph, column, vertical_cell_advance) {
                     let top = match axis {
                         VerticalAxis::TopToBottom => -column_width,
                         VerticalAxis::BottomToTop => 0.0,
@@ -11868,10 +11870,11 @@ fn apply_table_style_fonts(
             paragraph_style.as_ref().and_then(|p| p.fonts.as_ref()),
             character.as_ref().and_then(|p| p.fonts.as_ref()),
             direct.as_ref(),
-        ] {
-            if let Some(layer) = layer {
-                fonts.merge_from(layer);
-            }
+        ]
+        .into_iter()
+        .flatten()
+        {
+            fonts.merge_from(layer);
         }
         // Match body text: an authored rFonts without a hint or an EA name
         // selects the default hint, even when lower layers supply eastAsia.
@@ -17848,7 +17851,7 @@ mod tests {
                 40.0,
                 &style,
                 0,
-                &[wrapped.clone()],
+                std::slice::from_ref(&wrapped),
             );
             assert!(paragraph.lines[0].text_alignment_shifts.is_empty());
         }
@@ -21736,7 +21739,7 @@ mod tests {
                         }];
                         apply_table_style_fonts(&mut runs, &format, &paragraph, None, None);
                         let props = runs[0].properties.as_ref().unwrap();
-                        let expected = hint.clone().unwrap_or_else(|| {
+                        let expected = hint.clone().unwrap_or({
                             if authored && !names_ea {
                                 FontHint::Default
                             } else {

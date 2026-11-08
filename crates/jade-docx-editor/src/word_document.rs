@@ -1,3 +1,5 @@
+type PreparedCrossReference = (String, CrossReferenceKind, Option<(NoteKind, String)>);
+
 #[path = "formatting_revisions.rs"]
 mod formatting_revisions;
 use crate::chart::{
@@ -17028,7 +17030,7 @@ impl WordDocument {
         &mut self,
         target: &CrossReferenceTarget,
         kind: CrossReferenceKind,
-    ) -> Result<(String, CrossReferenceKind, Option<(NoteKind, String)>), String> {
+    ) -> Result<PreparedCrossReference, String> {
         // Resolve the descriptor again in the worker. A stale or forged target
         // must not create an orphan bookmark or add a history entry.
         if !self.cross_reference_targets().iter().any(|candidate| {
@@ -53918,7 +53920,7 @@ mod tests {
                                         XmlNode::Element(child) => Some(child),
                                         _ => None,
                                     })
-                                    .last()
+                                    .next_back()
                                     .unwrap();
                                 assert_eq!(
                                     last.name, "w:rPrChange",
@@ -54431,7 +54433,7 @@ mod tests {
                             ))
                             .unwrap();
                             let mut text = "日日日日".to_string();
-                            text.insert_str(offset, "X");
+                            text.insert(offset, 'X');
                             assert_eq!(
                                 reopened.hf_plain_paragraph_text(role, variant, 0),
                                 Some(text)
@@ -54534,7 +54536,7 @@ mod tests {
                         .edit_hf_paragraph_range(role, variant, 0, offset, offset, "X")
                         .unwrap());
                     let mut expected = "日日日日".to_string();
-                    expected.insert_str(offset, "X");
+                    expected.insert(offset, 'X');
                     let reopened = futures::executor::block_on(WordDocument::load(
                         &doc.export_docx().unwrap(),
                         &Options::default(),
@@ -54846,7 +54848,7 @@ mod tests {
 
     #[test]
     fn header_footer_multiline_font_dialog_tracks_mixed_formats_and_patch_scope() {
-        use crate::word::font::FontDialog;
+        use crate::font_format::FontDialog;
         let data = build_font_size_fallback_docx();
         for role in [HeaderFooterRole::Header, HeaderFooterRole::Footer] {
             for variant in [
@@ -54958,7 +54960,7 @@ mod tests {
 
     #[test]
     fn header_footer_mixed_selection_formats_follow_the_edit_scope() {
-        use crate::word::font::FontDialog;
+        use crate::font_format::FontDialog;
         let data = build_font_size_fallback_docx();
         for role in [HeaderFooterRole::Header, HeaderFooterRole::Footer] {
             for variant in [
@@ -58597,7 +58599,7 @@ mod tests {
                             styles.to_string()
                         };
                         doc.styles_part = Some(StylesPart::from_xml(&styles).unwrap());
-                        doc.upsert_xml_part_content("word/styles.xml", styles.into());
+                        doc.upsert_xml_part_content("word/styles.xml", styles);
                         doc.ensure_hf_part_for_edit(role, variant).unwrap();
                         let path = doc
                             .resolve_header_footer_part_path_for(role, variant)
@@ -58822,7 +58824,7 @@ mod tests {
                         WordDocument::collect_story_paragraph_ids(raw.root(), &mut ids);
                         assert_eq!(ids.len(), 4);
                         assert_eq!(xml.matches("w:after=\"120\"").count(), 4);
-                        for paragraph in 0..4 {
+                        for (paragraph, id) in ids.iter().enumerate().take(4) {
                             let expected_style = if offset == 1 || paragraph == 0 {
                                 "A"
                             } else if paragraph == 1 {
@@ -58830,7 +58832,7 @@ mod tests {
                             } else {
                                 "C"
                             };
-                            let element = raw.element(ids[paragraph]).unwrap();
+                            let element = raw.element(*id).unwrap();
                             let properties = element
                                 .children
                                 .iter()
@@ -59181,7 +59183,7 @@ mod tests {
                         WordDocument::collect_story_paragraph_ids(raw.root(), &mut ids);
                         assert_eq!(ids.len(), 4);
                         assert_eq!(xml.matches("w:after=\"120\"").count(), 4);
-                        for paragraph in 0..4 {
+                        for (paragraph, id) in ids.iter().enumerate().take(4) {
                             let expected_style = if offset == 1 || paragraph == 0 {
                                 "A"
                             } else if paragraph == 1 {
@@ -59189,7 +59191,7 @@ mod tests {
                             } else {
                                 "C"
                             };
-                            let element = raw.element(ids[paragraph]).unwrap();
+                            let element = raw.element(*id).unwrap();
                             let properties = element
                                 .children
                                 .iter()

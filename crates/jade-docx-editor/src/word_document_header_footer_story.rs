@@ -738,8 +738,8 @@ impl WordDocument {
         let mut taken = HashSet::new();
         for relationship in story_relationships
             .iter()
-            .cloned()
             .filter(|relationship| !is_infrastructure_relationship(&relationship.r#type))
+            .cloned()
         {
             let plain = relationship
                 .id
@@ -969,6 +969,7 @@ impl WordDocument {
         Ok(true)
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn write_story_part(
         &mut self,
         section: usize,

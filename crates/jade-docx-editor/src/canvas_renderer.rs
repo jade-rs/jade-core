@@ -28978,17 +28978,16 @@ where
                     Cow::Borrowed(wrapped_line.segments.as_slice())
                 };
                 let mut fragments: Vec<SelectionFragmentLayout> = Vec::new();
-                let mut draw_segments: BumpVec<
-                    '_,
-                    (
-                        &TextSegment,
-                        f64,
-                        BumpVec<'_, PlannedGlyphLayoutStep>,
-                        f64,
-                        f64,
-                        f64,
-                    ),
-                > = BumpVec::with_capacity_in(wrapped_line.segments.len(), &render_pass_arena);
+                type DrawSegment<'a> = (
+                    &'a TextSegment,
+                    f64,
+                    BumpVec<'a, PlannedGlyphLayoutStep>,
+                    f64,
+                    f64,
+                    f64,
+                );
+                let mut draw_segments: BumpVec<'_, DrawSegment<'_>> =
+                    BumpVec::with_capacity_in(wrapped_line.segments.len(), &render_pass_arena);
                 let mut cursor_x = line_origin;
                 let mut min_top_offset: f64 = 0.0;
                 let mut max_bottom_offset: f64 = 0.0;
@@ -34135,6 +34134,7 @@ where
         Ok(-ascent - border)
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn draw_ruby_text(
         &self,
         ruby: &ResolvedRuby,
@@ -34578,7 +34578,8 @@ where
     ) -> Result<(), JsValue> {
         // Each mark in the font of the run it marks, found through the
         // segment the glyph belongs to.
-        let mut marks: Vec<(&'static str, f64, f64, Option<Rc<RunProperties>>, f64)> = Vec::new();
+        type EmphasisMark = (&'static str, f64, f64, Option<Rc<RunProperties>>, f64);
+        let mut marks: Vec<EmphasisMark> = Vec::new();
         let mut segment_lookup = WhitespaceSegmentLookup::new(segments);
         for fragment in line.fragments.iter() {
             for glyph in fragment.glyphs.iter() {
@@ -44030,11 +44031,13 @@ mod tests {
             ("", Some("#ABCDEF")),
         ] {
             let numbering = NumberingPart::from_xml(&format!(r#"<w:numbering xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:abstractNum w:abstractNumId="1"><w:lvl w:ilvl="0"><w:rPr><w:sz w:val="24"/>{property}</w:rPr></w:lvl></w:abstractNum><w:num w:numId="1"><w:abstractNumId w:val="1"/></w:num></w:numbering>"#)).unwrap();
-            let mut fallback = RunProperties::default();
-            fallback.shading = Some(jade_docx_reader::document::Shading {
-                fill: Some("#ABCDEF".into()),
+            let fallback = RunProperties {
+                shading: Some(jade_docx_reader::document::Shading {
+                    fill: Some("#ABCDEF".into()),
+                    ..Default::default()
+                }),
                 ..Default::default()
-            });
+            };
             let props = <CanvasRenderer>::merge_numbering_run_props(
                 numbering.get_level_info("1", 0).unwrap().run_props.clone(),
                 Some(&fallback),
@@ -50269,7 +50272,7 @@ mod tests {
             val: Some("clear".to_string()),
             color: None,
             fill: Some("#FFFF00".to_string()),
-            ..Default::default()..Default::default()
+            ..Default::default()
         };
 
         // Shading alone drives the highlight band.

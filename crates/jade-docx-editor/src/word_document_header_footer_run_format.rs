@@ -84,6 +84,8 @@ impl WordDocument {
     }
 
     /// Match the run used by insertion, including pending and empty-paragraph formatting.
+    // Used by the canvas editor; shared with the renderer-independent core.
+    #[allow(dead_code)]
     pub(crate) fn hf_caret_run_format_at(
         &self,
         role: HeaderFooterRole,

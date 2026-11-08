@@ -661,6 +661,7 @@ impl WordDocument {
                     pending.extend(dependencies);
                 }
             }
+            #[allow(clippy::too_many_arguments)]
             fn assign(
                 element: &mut XmlElement,
                 name: &str,

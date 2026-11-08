@@ -271,10 +271,7 @@ impl WordDocument {
                 next += 1;
                 if !self.parts.contains_key(&path)
                     && !self.binary_parts.contains_key(&path)
-                    && !self
-                        .package
-                        .as_ref()
-                        .is_some_and(|p| p.get(&path).is_some())
+                    && self.package.as_ref().is_none_or(|p| p.get(&path).is_none())
                 {
                     break path;
                 }

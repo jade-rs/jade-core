@@ -275,7 +275,7 @@ fn paragraph_typography_overrides_inherited_values_after_reopening() {
 }
 
 fn styled_typography_docx(body: &str, inherited_xml: &str, child_xml: &str) -> Vec<u8> {
-    let bytes = common::package(&body, &[]);
+    let bytes = common::package(body, &[]);
     let mut input = zip::ZipArchive::new(std::io::Cursor::new(bytes)).unwrap();
     let mut output = zip::ZipWriter::new(std::io::Cursor::new(Vec::new()));
     let options = zip::write::SimpleFileOptions::default();
