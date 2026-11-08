@@ -19011,6 +19011,101 @@ mod tests {
     }
 
     #[test]
+    fn fixed_cell_font_guard_preserves_host_emoji_and_oracle_fallbacks() {
+        use crate::line_metrics::{set_word_layout_platform, WordLayoutPlatform};
+        for platform in [WordLayoutPlatform::Windows, WordLayoutPlatform::Mac] {
+            set_word_layout_platform(platform);
+            for fixed in [false, true] {
+                let descriptor: Rc<str> = Rc::from(if fixed {
+                    "10.50pt 'MS Mincho', serif"
+                } else {
+                    "10.50pt 'MS PMincho', serif"
+                });
+                let style = ResolvedRunStyle::new(
+                    descriptor.clone(),
+                    descriptor.clone(),
+                    descriptor.clone(),
+                    descriptor.clone(),
+                    0.0,
+                    1.0,
+                    false,
+                    None,
+                );
+                for oracle in [None, Some(false), Some(true)] {
+                    let paragraph = ParagraphStyle {
+                        word_platform: platform,
+                        oracle_advance_px_by_text_offset: oracle.map(|mapped| {
+                            Rc::new(if mapped {
+                                FxHashMap::from_iter([(0, 37.0)])
+                            } else {
+                                FxHashMap::default()
+                            })
+                        }),
+                        ..ParagraphStyle::default()
+                    };
+                    for (grapheme, cell, emoji) in [
+                        ("日", Some(1.0), false),
+                        ("a", Some(0.5), false),
+                        (" ", Some(0.5), false),
+                        ("ｱ", Some(0.5), false),
+                        ("。", Some(1.0), false),
+                        ("𠀀", Some(1.0), false),
+                        ("é", None, false),
+                        ("e\u{301}", None, false),
+                        ("🎯", None, true),
+                        ("❤\u{fe0f}", None, true),
+                    ] {
+                        let ctx = TestContext::new(9.0);
+                        let step = compute_text_advance_step_with_descriptor(
+                            &ctx,
+                            grapheme,
+                            &style,
+                            Some(&paragraph),
+                            &TextAdvanceState::default(),
+                            None,
+                            true,
+                            None,
+                            &mut PairMeasureCache::default(),
+                            classify_script(grapheme),
+                            &descriptor,
+                            style.font_descriptor_east_asia_hash,
+                            style.font_descriptor_east_asia_id,
+                            Some(0),
+                        )
+                        .unwrap();
+                        let fixed_width = cell.filter(|_| fixed).map(|cell| 14.0 * cell);
+                        let emoji_width =
+                            (emoji && platform == WordLayoutPlatform::Mac).then_some(14.0);
+                        let word_width = fixed_width.or(emoji_width);
+                        let expected = if oracle == Some(true) {
+                            37.0
+                        } else {
+                            word_width.unwrap_or(9.0)
+                        };
+                        assert_eq!(
+                            step.measured_glyph_width, expected,
+                            "{platform:?} fixed={fixed} oracle={oracle:?} {grapheme:?}"
+                        );
+                        assert_eq!(step.measured_width_is_oracle, oracle == Some(true));
+                        assert_eq!(
+                            step.monospace_cell,
+                            oracle != Some(true) && word_width.is_some()
+                        );
+                        let expected_measurements = if oracle != Some(true) && word_width.is_none()
+                        {
+                            vec![grapheme.to_owned()]
+                        } else {
+                            vec![]
+                        };
+                        assert_eq!(ctx.recorded_measurements(), expected_measurements);
+                    }
+                }
+            }
+        }
+        set_word_layout_platform(WordLayoutPlatform::Windows);
+    }
+
+    #[test]
     fn mac_ms_mincho_ascii_advance_uses_requested_half_em_with_fallback_fonts() {
         use crate::line_metrics::WordLayoutPlatform;
         for (platform, oracle, descriptor, scale, expected) in [
