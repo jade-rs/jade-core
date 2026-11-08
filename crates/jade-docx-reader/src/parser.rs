@@ -11187,6 +11187,40 @@ fn parse_underline(attributes: Attributes<'_>) -> ParsedUnderline {
     }
 }
 
+/// Reads a well-formed, quoted attribute without allocating or decoding it.
+/// Other syntax stays with quick-xml so its errors and recovery are preserved.
+fn plain_inline_attribute(raw: &[u8]) -> Option<(Attribute<'_>, &[u8])> {
+    let eq = raw.iter().position(|&byte| byte == b'=')?;
+    let name = quick_xml::utils::trim_xml_end(&raw[..eq]);
+    if name.is_empty()
+        || name
+            .iter()
+            .any(|&byte| byte.is_ascii_whitespace() || byte == b'"' || byte == b'\'')
+    {
+        return None;
+    }
+    let after = quick_xml::utils::trim_xml_start(&raw[eq + 1..]);
+    let quote = *after
+        .first()
+        .filter(|&&byte| byte == b'"' || byte == b'\'')?;
+    let body = &after[1..];
+    let end = body.iter().position(|&byte| byte == quote)?;
+    let rest = &body[end + 1..];
+    if rest
+        .first()
+        .is_some_and(|&byte| !quick_xml::utils::is_whitespace(byte))
+    {
+        return None;
+    }
+    Some((
+        Attribute {
+            key: quick_xml::name::QName(name),
+            value: Cow::Borrowed(&body[..end]),
+        },
+        rest,
+    ))
+}
+
 /// Checks short attribute lists without allocating quick-xml's key vector.
 /// Replay through its checked iterator for errors, duplicates or longer lists
 /// so error offsets, recovery and duplicate handling remain identical.
@@ -11194,8 +11228,7 @@ fn inline_attributes<'a>(
     element: &'a BytesStart<'_>,
 ) -> impl Iterator<Item = Result<Attribute<'a>, AttrError>> {
     let mut checked = element.attributes();
-    let mut unchecked = element.attributes();
-    unchecked.with_checks(false);
+    let mut rest = element.attributes_raw();
     let mut keys: [Option<&[u8]>; 8] = [None; 8];
     let mut consumed = 0;
     let mut fallback = false;
@@ -11203,13 +11236,18 @@ fn inline_attributes<'a>(
         if fallback {
             return checked.next();
         }
-        match unchecked.next()? {
-            Ok(attr)
-                if consumed < keys.len()
-                    && !keys[..consumed].contains(&Some(attr.key.as_ref())) =>
-            {
+        rest = quick_xml::utils::trim_xml_start(rest);
+        if rest.is_empty() {
+            return None;
+        }
+        let plain = (consumed < keys.len())
+            .then(|| plain_inline_attribute(rest))
+            .flatten();
+        match plain {
+            Some((attr, next)) if !keys[..consumed].contains(&Some(attr.key.as_ref())) => {
                 keys[consumed] = Some(attr.key.0);
                 consumed += 1;
+                rest = next;
                 Some(Ok(attr))
             }
             _ => {
@@ -12574,6 +12612,78 @@ mod tests {
             ),
         ) {
             let element = BytesStart::from_content(format!("tag {}", fragments.join(" ")), 3);
+            assert_inline_attributes_match_checked(&element);
+        }
+    }
+
+    #[test]
+    fn inline_attributes_keep_raw_bytes_and_fallback_recovery_at_every_prefix() {
+        for byte in u8::MIN..=u8::MAX {
+            for prefix in 0..=9 {
+                let mut element = BytesStart::new("tag");
+                for index in 0..prefix {
+                    let key = format!("prefix{index}");
+                    element.push_attribute((key.as_bytes(), b"value".as_slice()));
+                }
+                let key = [b'k', byte, b'x'];
+                let value = [b'v', byte, b'&', b'\r', b'\n', b'\t'];
+                element.push_attribute((key.as_slice(), value.as_slice()));
+                element.push_attribute((b"tail".as_slice(), b"&amp;".as_slice()));
+                element.push_attribute((key.as_slice(), b"duplicate".as_slice()));
+                assert_inline_attributes_match_checked(&element);
+            }
+        }
+    }
+
+    #[test]
+    fn inline_attributes_keep_xml_whitespace_and_unusual_quoted_names() {
+        for prefix in 0..=9 {
+            let before = (0..prefix)
+                .map(|index| format!(" p{index}='value'"))
+                .collect::<String>();
+            for fragment in [
+                " a \t\r\n = \n\t 'v' tail='ok'",
+                " a='v'\u{b}tail='ok'",
+                " a='v'\u{c}tail='ok'",
+                " a\u{c}='v' tail='ok'",
+                " 'key'='v' tail='ok'",
+                " \"key\"='v' tail='ok'",
+                " a='v'tail='ok'",
+                " a='v' missing tail='ok'",
+                " a='v' a=invalid tail='ok'",
+                " a='v' b='unterminated",
+            ] {
+                let element = BytesStart::from_content(format!("tag{before}{fragment}"), 3);
+                assert_inline_attributes_match_checked(&element);
+            }
+        }
+    }
+
+    proptest::proptest! {
+        #![proptest_config(proptest::test_runner::Config::with_cases(512))]
+
+        #[test]
+        fn inline_attributes_match_checked_for_arbitrary_raw_byte_attributes(
+            attributes in proptest::collection::vec(
+                (
+                    proptest::prop_oneof![
+                        proptest::strategy::Just(b"w:ascii".to_vec()),
+                        proptest::strategy::Just(b"w:hint".to_vec()),
+                        proptest::collection::vec(proptest::prelude::any::<u8>(), 0..16),
+                    ],
+                    proptest::prop_oneof![
+                        proptest::strategy::Just(b"Face &amp; raw\r\n".to_vec()),
+                        proptest::strategy::Just(b"x\" tail='next'".to_vec()),
+                        proptest::collection::vec(proptest::prelude::any::<u8>(), 0..48),
+                    ],
+                ),
+                0..20,
+            ),
+        ) {
+            let mut element = BytesStart::new("tag");
+            for (key, value) in &attributes {
+                element.push_attribute((key.as_slice(), value.as_slice()));
+            }
             assert_inline_attributes_match_checked(&element);
         }
     }
