@@ -283,12 +283,11 @@ impl NumberingDefinitions {
     }
 
     pub fn start_value(&self, num_id: &str, level: u32) -> Option<u32> {
-        if let Some(instance) = self.instances.get(num_id) {
-            if let Some(override_level) = instance.overrides.get(&level)
-                && override_level.start.is_some()
-            {
-                return override_level.start;
-            }
+        if let Some(instance) = self.instances.get(num_id)
+            && let Some(override_level) = instance.overrides.get(&level)
+            && override_level.start.is_some()
+        {
+            return override_level.start;
         }
         self.abstract_level_info(num_id, level)
             .and_then(|info| info.start)

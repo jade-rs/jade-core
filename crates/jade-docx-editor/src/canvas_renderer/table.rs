@@ -17259,7 +17259,15 @@ mod tests {
                 renderer.current_page_number = page;
                 renderer.page_offset_y = (page - 1) as f64 * (renderer.page_height + PAGE_GAP_PX);
                 renderer
-                    .draw_cell_text_visual_only(&cell, 50.0, 80.0, 200.0, cell.height, 16.0, 500.0)
+                    .draw_cell_text_visual_only(
+                        &cell,
+                        50.0,
+                        80.0,
+                        200.0,
+                        cell.height,
+                        16.0,
+                        HorizontalBorderBands::default(),
+                    )
                     .unwrap();
                 let guides = painter
                     .ops()
@@ -19154,7 +19162,13 @@ mod tests {
                 if repeated {
                     renderer
                         .draw_cell_text_visual_only_inner(
-                            &cell, 20.0, 40.0, 300.0, 120.0, 24.0, 0.0,
+                            &cell,
+                            20.0,
+                            40.0,
+                            300.0,
+                            120.0,
+                            24.0,
+                            HorizontalBorderBands::default(),
                         )
                         .unwrap();
                     assert!(renderer.layout_debug_lines().is_empty());
@@ -19170,7 +19184,7 @@ mod tests {
                             None,
                             &mut NumberingCounter::default(),
                             None,
-                            0.0,
+                            HorizontalBorderBands::default(),
                         )
                         .unwrap();
                     let lines = renderer.layout_debug_lines();
@@ -19271,6 +19285,7 @@ mod tests {
                     direction,
                     Some(30.0),
                     24.0,
+                    None,
                 )
                 .unwrap()
             } else {
@@ -22267,7 +22282,8 @@ mod tests {
         };
         let widths = [100.0, 200.0, 300.0];
         let signature = |table: &Table| {
-            table_autofit_cache_signature(table, &widths, 600.0, 5.0, &|_| 16.0, &|_| None).unwrap()
+            table_autofit_cache_signature(table, &widths, 600.0, 5.0, &|_| 16.0, &|_| None, None)
+                .unwrap()
         };
         let key = signature(&table);
         let measured = autofit_content_widths(
@@ -22277,6 +22293,7 @@ mod tests {
             5.0,
             &|_| 16.0,
             &|_| None,
+            None,
         )
         .unwrap();
         let original = measured.positive_spacing_grid.clone().unwrap();
@@ -22304,6 +22321,7 @@ mod tests {
             5.0,
             &|_| 16.0,
             &|_| None,
+            None,
         )
         .unwrap();
         assert!(mac.positive_spacing_grid.is_none());

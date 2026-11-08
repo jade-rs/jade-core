@@ -1117,10 +1117,10 @@ impl NumberingPart {
                     if idx >= 1 {
                         let placeholder_level = idx - 1;
                         let mut value = counters.get_counter(num_id, placeholder_level);
-                        if counters.counter_value(num_id, placeholder_level).is_none() {
-                            if self.get_level_info(num_id, placeholder_level).is_some() {
-                                value = self.start_value(num_id, placeholder_level).unwrap_or(1);
-                            }
+                        if counters.counter_value(num_id, placeholder_level).is_none()
+                            && self.get_level_info(num_id, placeholder_level).is_some()
+                        {
+                            value = self.start_value(num_id, placeholder_level).unwrap_or(1);
                         }
                         if let Some(offsets) = offsets {
                             if let Some(level_offsets) = offsets.get(num_id) {

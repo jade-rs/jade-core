@@ -24054,6 +24054,7 @@ mod tests {
                                     7 => HeadlessCommand::SetParagraphOptions {
                                         start_paragraph: 0,
                                         end_paragraph: 0,
+                                        mirror_indents: None,
                                         contextual_spacing: Some(true),
                                         suppress_line_numbers: Some(true),
                                         suppress_auto_hyphens: Some(true),

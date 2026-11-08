@@ -25144,6 +25144,7 @@ impl WordDocument {
                 }
                 BorderSide::Left => resolved.left = current.left.clone(),
                 BorderSide::Right => resolved.right = current.right.clone(),
+                BorderSide::Tl2br | BorderSide::Tr2bl => continue,
             }
         }
         self.sync_borders_xml(table_id, "w:tblPr", "w:tblBorders", &resolved, bidi_visual)
@@ -52616,6 +52617,7 @@ mod tests {
                         HeadlessCommand::SetParagraphOptions {
                             start_paragraph: 0,
                             end_paragraph: 0,
+                            mirror_indents: None,
                             contextual_spacing: Some(on),
                             suppress_line_numbers: Some(on),
                             suppress_auto_hyphens: Some(on),

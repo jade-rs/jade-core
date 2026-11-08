@@ -46123,6 +46123,7 @@ mod tests {
                     val: Some(value.to_ascii_lowercase()),
                     color: Some("#C00000".to_string()),
                     fill: Some("#FFFF00".to_string()),
+                    ..Default::default()
                 });
             }
             let (mut renderer, painter) = recording_renderer();
@@ -50268,7 +50269,7 @@ mod tests {
             val: Some("clear".to_string()),
             color: None,
             fill: Some("#FFFF00".to_string()),
-            ..Default::default()
+            ..Default::default()..Default::default()
         };
 
         // Shading alone drives the highlight band.

@@ -120,7 +120,15 @@ fn edit(part: &mut NumberingPart, kind: u8, seed: u32, mask: u16) {
                     id: format!("instance-{seed}"),
                     abstract_num_id: (seed % 3).to_string(),
                     overrides: (0..seed % 4)
-                        .map(|n| (n, LevelOverride { start: Some(seed) }))
+                        .map(|n| {
+                            (
+                                n,
+                                LevelOverride {
+                                    start: Some(seed),
+                                    level: None,
+                                },
+                            )
+                        })
                         .collect(),
                 },
             );
@@ -174,6 +182,7 @@ fn edit(part: &mut NumberingPart, kind: u8, seed: u32, mask: u16) {
                         seed % 12,
                         LevelOverride {
                             start: (mask & 1 != 0).then_some(seed),
+                            level: None,
                         },
                     );
                 }
