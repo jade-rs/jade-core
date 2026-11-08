@@ -1050,6 +1050,17 @@ fn shifted_content(
 ) -> Result<Option<Splice>> {
     let raw = &xml[content_start..content_end];
     if raw.contains('<') {
+        if let Some(source) =
+            grid.filter(|source| source.has_alternate_content_between(content_start, content_end))
+        {
+            let next =
+                crate::formula_text::rewrite(raw, content_start, source, formula_sheet, change)?;
+            return Ok((next != raw).then_some(Splice {
+                start: content_start,
+                end: content_end,
+                text: next,
+            }));
+        }
         // Decode actual XML text, including CDATA and character references.
         // Comments/PIs and nominated wrappers retain their original bytes.
         let framed = format!("<f>{raw}</f>");

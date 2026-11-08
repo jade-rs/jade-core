@@ -52,6 +52,7 @@ pub mod drawing;
 mod filter;
 pub mod filter_state;
 pub mod format_axes;
+mod formula_text;
 pub mod freeze_panes;
 pub mod header_footer;
 pub mod hyperlinks;
@@ -120,6 +121,8 @@ use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum WriteError {
+    #[error("formula markup: {0}")]
+    FormulaMarkup(&'static str),
     #[error("array metadata: {0}")]
     ArrayMetadata(&'static str),
     #[error("pivot table: {0}")]
