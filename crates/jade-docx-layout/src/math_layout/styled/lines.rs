@@ -2,11 +2,11 @@
 //! runs out of width, its continuation lines aligned as Word aligns them, and
 //! the lines of an `m:oMathPara` stacked and justified.
 use super::{
-    shapes, AtomClass, BreakBinary, BreakBinarySubtraction, Builder, Mark, MathGlyph,
+    is_skipped, shapes, AtomClass, BreakBinary, BreakBinarySubtraction, Builder, Mark, MathGlyph,
     MathJustification, MathLine, StyledMathMeasure,
 };
 use crate::math_layout::MathMetrics;
-use jade_docx_reader::document::MathElement;
+use jade_docx_reader::document::{MathElement, MathElementKind};
 use std::collections::HashMap;
 
 /// A place a display line may break: before an operator at the top level of
@@ -52,7 +52,19 @@ pub(crate) fn math_lines<'a, C: StyledMathMeasure>(
     let saved = (b.depth, b.prev.take(), b.breaks.take());
     b.depth = 0;
     b.breaks = Some(Vec::new());
-    let metrics = b.sequence(&math.children)?;
+    // A standalone display array can use the formatting width. Arrays in
+    // arguments or alongside other atoms do not own that width.
+    let max_array_width = b.options.max_width.filter(|_| {
+        if !b.display || b.options.uniform {
+            return false;
+        }
+        let mut content = math.children.iter().filter(|child| !is_skipped(child));
+        content
+            .next()
+            .is_some_and(|child| child.kind == MathElementKind::EquationArray)
+            && content.next().is_none()
+    });
+    let metrics = b.sequence_with_array_width(&math.children, max_array_width)?;
     let breaks = b.breaks.take().unwrap_or_default();
     b.depth = saved.0;
     b.prev = saved.1;
