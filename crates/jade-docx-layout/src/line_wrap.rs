@@ -1471,11 +1471,11 @@ fn compute_grapheme_advance_with_ascii_width(
     let core_advance = (adjusted_glyph_width + extra_spacing + grid_spacing).max(0.0);
     let balance_extra = if measured_width_is_oracle
         || (script == ScriptCategory::Latin
-            && !grapheme.bytes().all(|b| b.is_ascii_alphabetic())
             && paragraph_style.is_some_and(|p| {
                 p.word_platform == crate::line_metrics::WordLayoutPlatform::Windows
                     && p.east_asian_rules.balance_single_byte_double_byte_width
             })
+            && !grapheme.bytes().all(|b| b.is_ascii_alphabetic())
             && (requested_ascii_width.is_some()
                 || font_descriptor
                     .and_then(crate::line_metrics::word_latin_font_line_height_pt)

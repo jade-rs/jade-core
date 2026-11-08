@@ -32249,6 +32249,7 @@ where
         self.cmd_text_style_on_background(properties, style, None)
     }
 
+    #[inline]
     fn cmd_text_style_on_background(
         &self,
         properties: Option<&RunProperties>,
@@ -32275,6 +32276,7 @@ where
         Self::cmd_text_style_with_colors(style, fill, highlight)
     }
 
+    #[inline(always)]
     fn cmd_text_style_with_colors(
         style: &AppliedRunStyle,
         fill_color: Rc<str>,
@@ -32303,7 +32305,7 @@ where
         }
     }
 
-    #[inline]
+    #[inline(always)]
     fn resolved_style_fill_color(
         &self,
         style: &AppliedRunStyle,
