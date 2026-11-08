@@ -11,6 +11,51 @@ const MC: &str = "http://schemas.openxmlformats.org/markup-compatibility/2006";
 const AC: &str = "http://schemas.microsoft.com/office/spreadsheetml/2011/1/ac";
 
 #[test]
+fn processed_validation_wrappers_named_like_sheet_elements_keep_inner_edits() {
+    let opaque = "<u:payload keep=\"exact\">A99</u:payload>";
+    for wrapper in [
+        "dataValidations",
+        "dataValidation",
+        "sheetData",
+        "row",
+        "c",
+        "f",
+    ] {
+        let tail = format!(
+            r#"<u:{wrapper} mc:Ignorable="u" mc:ProcessContent="u:{wrapper}">{opaque}<s:dataValidations count="1"><s:dataValidation type="custom" sqref="B1:B3"><s:formula1>$C1&gt;0</s:formula1></s:dataValidation></s:dataValidations></u:{wrapper}>"#
+        );
+        let mut b = open(&tail);
+        assert_eq!(rules(&b).len(), 1);
+        let name = b.workbook().sheets[0].name.clone();
+        let before = b.bytes().to_vec();
+        b.insert_rows(&name, 1, 1).unwrap();
+        assert_eq!(coverage(&rules(&b)[0]), ranges(&["B2:B4"]), "{wrapper}");
+        assert_eq!(rules(&b)[0].formula1.as_deref(), Some("$C2>0"));
+        assert!(xml(&b).contains(opaque));
+        saved_and_history(&mut b, &before);
+
+        let mut b = open(&tail);
+        let before = b.bytes().to_vec();
+        b.shift_cells(&name, CellRange::parse("B2").unwrap(), Axis::Rows, true)
+            .unwrap();
+        assert_eq!(rules(&b).len(), 3, "{wrapper}");
+        assert_eq!(
+            rules(&b).iter().flat_map(coverage).collect::<Vec<_>>(),
+            ranges(&["B1", "B2", "B3:B4"])
+        );
+        assert_eq!(
+            rules(&b)
+                .iter()
+                .map(|r| r.formula1.as_deref())
+                .collect::<Vec<_>>(),
+            [Some("$C1>0"), Some("$C2>0"), Some("$C2>0")]
+        );
+        assert!(xml(&b).contains(opaque));
+        saved_and_history(&mut b, &before);
+    }
+}
+
+#[test]
 fn whole_validation_container_choices_follow_edits_without_touching_opaque_branches() {
     for processed in [false, true] {
         let opaque = r#"<mc:Choice Requires="u"><s:dataValidations count="1"><s:dataValidation sqref="Z9"><s:formula1>A99</s:formula1></s:dataValidation></s:dataValidations></mc:Choice>"#;

@@ -235,7 +235,9 @@ pub fn shift_sheet(
                     }
                     continue;
                 }
-                if matches!(local(&name), b"dataValidations" | b"dataValidation") {
+                if matches!(local(&name), b"dataValidations" | b"dataValidation")
+                    && !grid.processes_content_at(start)
+                {
                     let end = whole_end(&mut reader)?;
                     if let Some(text) = validations.remove(&start) {
                         if text != xml[start..end] {
