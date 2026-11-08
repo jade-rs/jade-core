@@ -1471,33 +1471,41 @@ impl XmlAttribute {
     /// hanging on whether the optimizer inlines quick-xml's attribute
     /// iterator here. Anything else returns `None` for the checked path.
     fn parse_plain_attributes(raw: &[u8]) -> Option<Vec<Self>> {
+        // Validate once; ASCII delimiter offsets below are character boundaries.
+        let raw = std::str::from_utf8(raw).ok()?;
         // Each attribute has an '='. Values may contain it too, so this is
         // only a bounded capacity hint.
-        let capacity = raw.iter().filter(|&&byte| byte == b'=').count().min(8);
+        let capacity = raw
+            .as_bytes()
+            .iter()
+            .filter(|&&byte| byte == b'=')
+            .count()
+            .min(8);
         let mut attributes = Vec::<Self>::with_capacity(capacity);
         // XML whitespace excludes form feed, unlike trim_ascii_*.
-        let mut rest = quick_xml::utils::trim_xml_start(raw);
+        let mut rest = raw.trim_start_matches([' ', '\t', '\r', '\n']);
         while !rest.is_empty() {
-            let eq = rest.iter().position(|&byte| byte == b'=')?;
-            let name = quick_xml::utils::trim_xml_end(&rest[..eq]);
+            let eq = rest.as_bytes().iter().position(|&byte| byte == b'=')?;
+            let name = rest[..eq].trim_end_matches([' ', '\t', '\r', '\n']);
             if name.is_empty()
                 || name
+                    .as_bytes()
                     .iter()
                     .any(|&byte| byte.is_ascii_whitespace() || byte == b'"' || byte == b'\'')
-                || attributes
-                    .iter()
-                    .any(|previous| previous.name.as_bytes() == name)
+                || attributes.iter().any(|previous| previous.name == name)
             {
                 return None;
             }
-            let after = quick_xml::utils::trim_xml_start(&rest[eq + 1..]);
+            let after = rest[eq + 1..].trim_start_matches([' ', '\t', '\r', '\n']);
             let quote = *after
+                .as_bytes()
                 .first()
                 .filter(|&&byte| byte == b'"' || byte == b'\'')?;
             let body = &after[1..];
-            let end = body.iter().position(|&byte| byte == quote)?;
+            let end = body.as_bytes().iter().position(|&byte| byte == quote)?;
             let value = &body[..end];
             if value
+                .as_bytes()
                 .iter()
                 .any(|&byte| matches!(byte, b'&' | b'\t' | b'\r' | b'\n'))
             {
@@ -1506,20 +1514,20 @@ impl XmlAttribute {
             rest = &body[end + 1..];
             // Attributes are separated by whitespace.
             if rest
+                .as_bytes()
                 .first()
                 .is_some_and(|&byte| !quick_xml::utils::is_whitespace(byte))
             {
                 return None;
             }
             attributes.push(Self {
-                name: String::from_utf8(name.to_vec()).ok()?,
-                value: String::from_utf8(value.to_vec()).ok()?,
+                name: name.to_owned(),
+                value: value.to_owned(),
             });
-            rest = quick_xml::utils::trim_xml_start(rest);
+            rest = rest.trim_start_matches([' ', '\t', '\r', '\n']);
         }
         Some(attributes)
     }
-
     fn from_attribute(attr: Attribute<'_>) -> Result<Self, DocxXmlError> {
         let name = String::from_utf8(attr.key.as_ref().to_vec())
             .map_err(|err| DocxXmlError::Malformed(err.to_string()))?;
@@ -1880,6 +1888,100 @@ pub(crate) mod tests {
             normalized_xml_text(&document.to_string().unwrap()),
             "a\rb\r\nc\td\ne"
         );
+    }
+
+    #[test]
+    fn plain_attribute_utf8_boundaries_match_checked_iterator() {
+        for name in ["a", "w:名前", "é😀"] {
+            for value in [
+                "",
+                "\0",
+                "\u{7f}",
+                "\u{80}",
+                "\u{7ff}",
+                "\u{800}",
+                "\u{d7ff}",
+                "\u{e000}",
+                "\u{ffff}",
+                "\u{10000}",
+                "\u{10ffff}",
+                "e\u{301}",
+                "日本語😀",
+            ] {
+                for separator in [" ", "\t", "\r\n"] {
+                    for quote in ['\'', '"'] {
+                        let content = format!(
+                            "r before=\"B\"{separator}{name}={quote}{value}{quote}{separator}after=\"A\"",
+                        );
+                        let element = quick_xml::events::BytesStart::from_content(&content, 1);
+                        assert!(
+                            XmlAttribute::parse_plain_attributes(element.attributes_raw())
+                                .is_some()
+                        );
+                        let actual = attribute_result(XmlAttribute::parse_attributes(&element));
+                        assert_eq!(
+                            actual,
+                            Ok(vec![
+                                ("before".to_owned(), "B".to_owned()),
+                                (name.to_owned(), value.to_owned()),
+                                ("after".to_owned(), "A".to_owned()),
+                            ]),
+                            "{content:?}"
+                        );
+                        assert_eq!(
+                            actual,
+                            attribute_result(checked_attributes(&element)),
+                            "{content:?}"
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn invalid_attribute_utf8_keeps_checked_error_precedence() {
+        for invalid in [
+            b"\x80".as_slice(),
+            b"\xc0\xaf",
+            b"\xc2",
+            b"\xe0\x80\x80",
+            b"\xed\xa0\x80",
+            b"\xf0\x80\x80\x80",
+            b"\xf4\x90\x80\x80",
+            b"\xf4\x8f\xbf",
+        ] {
+            for prior in [
+                b" good=\"valid\" ".as_slice(),
+                b" a=\"x\" a=unquoted ",
+                b" a=\"&unknown;\" ",
+            ] {
+                for in_name in [false, true] {
+                    let mut xml = b"<r".to_vec();
+                    xml.extend_from_slice(prior);
+                    if in_name {
+                        xml.extend_from_slice(invalid);
+                        xml.extend_from_slice(b"=\"v\"");
+                    } else {
+                        xml.extend_from_slice(b"bad=\"");
+                        xml.extend_from_slice(invalid);
+                        xml.push(b'"');
+                    }
+                    xml.extend_from_slice(b" tail=\"ok\"/>");
+                    let mut reader = Reader::from_reader(xml.as_slice());
+                    let Event::Empty(element) = reader.read_event().unwrap() else {
+                        panic!("expected empty element: {xml:?}");
+                    };
+                    let expected = attribute_result(checked_attributes(&element));
+                    assert!(expected.is_err(), "{xml:?}");
+                    assert_eq!(
+                        attribute_result(XmlAttribute::parse_attributes(&element)),
+                        expected,
+                        "{xml:?}"
+                    );
+                }
+            }
+        }
     }
 
     #[test]
