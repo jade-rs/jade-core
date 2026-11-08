@@ -24,6 +24,7 @@ use jade_painter::{Painter, TextMetrics};
 use lopdf::dictionary;
 use skia_safe::RoundOut;
 use std::collections::HashMap;
+use unicode_segmentation::UnicodeSegmentation;
 mod pdf_text;
 #[cfg(target_os = "windows")]
 mod windows_typefaces;
@@ -716,10 +717,31 @@ impl SkiaPainter {
             return;
         }
         let glyphs = font.str_to_glyphs_vec(text);
+        self.draw_glyphs(text, &glyphs, font, x, y, paint);
+    }
+
+    fn upright_glyph(font: &Font, text: &str) -> Option<u16> {
+        if text.graphemes(true).count() != 1 {
+            return None;
+        }
+        let data = Self::shaping_data(&font.typeface())?;
+        let face = rustybuzz::Face::from_slice(&data.0, data.1)?;
+        let mut buffer = rustybuzz::UnicodeBuffer::new();
+        buffer.push_str(text);
+        buffer.guess_segment_properties();
+        buffer.set_direction(rustybuzz::Direction::TopToBottom);
+        let shaped = rustybuzz::shape(&face, &[], buffer);
+        let [info] = shaped.glyph_infos() else {
+            return None;
+        };
+        (info.glyph_id != 0).then_some(info.glyph_id as u16)
+    }
+
+    fn draw_glyphs(&self, text: &str, glyphs: &[u16], font: &Font, x: f32, y: f32, paint: &Paint) {
         let mut builder = skia_safe::TextBlobBuilder::new();
         let (run, utf8, clusters) =
             builder.alloc_run_text(font, glyphs.len(), (0.0, 0.0), text.len(), None);
-        run.copy_from_slice(&glyphs);
+        run.copy_from_slice(glyphs);
         utf8.copy_from_slice(text.as_bytes());
         for (cluster, (offset, _)) in clusters.iter_mut().zip(text.char_indices()) {
             *cluster = offset as u32;
@@ -737,6 +759,9 @@ impl SkiaPainter {
                 PaintSurface::Recording { .. }
             )
             && (glyphs.contains(&0)
+                // Skia's PDF cmap can map a substituted glyph back to its
+                // presentation character instead of the original Unicode.
+                || glyphs != font.str_to_glyphs_vec(text).as_slice()
                 || paint.style() != skia_safe::paint::Style::Fill
                 || paint.image_filter().is_some()
                 || paint.mask_filter().is_some());
@@ -749,7 +774,7 @@ impl SkiaPainter {
             // Skia omits missing glyphs' Unicode. Preserve the same glyph paths
             // and advances alongside an invisible original-Unicode text layer.
             let mut widths = vec![0.0; glyphs.len()];
-            font.get_widths(&glyphs, &mut widths);
+            font.get_widths(glyphs, &mut widths);
             let (_, metrics) = font.metrics();
             let [a, b, c, d, e, f] = canvas
                 .local_to_device_as_3x3()
@@ -762,7 +787,13 @@ impl SkiaPainter {
                 .push(pdf_text::RecordedText {
                     text: text.to_string(),
                     font_size: font.size(),
-                    widths: widths.clone(),
+                    widths: if glyphs.len() == 1 && text.chars().count() > 1 {
+                        let mut scalar_widths = vec![0.0; text.chars().count()];
+                        scalar_widths[0] = widths[0];
+                        scalar_widths
+                    } else {
+                        widths.clone()
+                    },
                     ascent: -metrics.ascent,
                     descent: metrics.descent,
                     transform: [a, b, c, d, a * x + c * y + e, b * x + d * y + f],
@@ -809,7 +840,7 @@ impl SkiaPainter {
             }
             let mut path = Path::new();
             let mut advance = 0.0;
-            for (glyph, width) in glyphs.into_iter().zip(widths) {
+            for (glyph, width) in glyphs.iter().copied().zip(widths) {
                 if let Some(glyph_path) = font.get_path(glyph) {
                     path.add_path(&glyph_path, (advance, 0.0), None);
                 }
@@ -1739,6 +1770,29 @@ impl Painter for SkiaPainter {
         Ok(())
     }
 
+    fn fill_upright_text(&self, text: &str, x: f64, y: f64) -> Result<(), Self::Error> {
+        // Single-grapheme cells that shape to one glyph retain layout's column origin.
+        if text.graphemes(true).count() != 1 {
+            return self.fill_text(text, x, y);
+        }
+        let font = self.font_covering(text);
+        let Some(glyph) = Self::upright_glyph(&font, text) else {
+            return self.fill_text(text, x, y);
+        };
+        self.shared
+            .fill_text_calls
+            .set(self.shared.fill_text_calls.get() + 1);
+        self.draw_glyphs(
+            text,
+            &[glyph],
+            &font,
+            x as f32,
+            self.baseline_y(&font, y),
+            &self.fill_paint(),
+        );
+        Ok(())
+    }
+
     fn try_fill_shaped_text(
         &self,
         text: &str,
@@ -1764,6 +1818,25 @@ impl Painter for SkiaPainter {
             .iter()
             .map(|(font, run)| font.measure_str(run, Some(&paint)).0 as f64)
             .sum())
+    }
+
+    fn measure_upright_vertical_advance(&self, text: &str) -> Result<Option<f64>, Self::Error> {
+        if text.graphemes(true).count() != 1 {
+            return Ok(None);
+        }
+        let font = self.font_covering(text);
+        let Some(data) = Self::shaping_data(&font.typeface()) else {
+            return Ok(None);
+        };
+        let Ok(face) = rustybuzz::ttf_parser::Face::parse(&data.0, data.1) else {
+            return Ok(None);
+        };
+        let advance = Self::upright_glyph(&font, text)
+            .map(rustybuzz::ttf_parser::GlyphId)
+            .and_then(|glyph| face.glyph_ver_advance(glyph));
+        Ok(advance.filter(|advance| *advance > 0).map(|advance| {
+            f64::from(advance) * f64::from(font.size()) / f64::from(face.units_per_em())
+        }))
     }
 
     /// Mirrors what Chromium's canvas reports.

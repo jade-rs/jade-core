@@ -312,24 +312,46 @@ impl Command for InsertParagraphBreakCommand {
 /// cloned from the source, and the `w:pStyle` in the package. Undo merges
 /// the paragraph back, which drops these with it.
 fn apply_next_style(document: &mut WordDocument, paragraph_index: usize) {
+    apply_next_style_from(document, paragraph_index, None);
+}
+
+pub(crate) fn apply_next_style_from(
+    document: &mut WordDocument,
+    paragraph_index: usize,
+    source_style: Option<&str>,
+) {
     let Some(styles) = document.styles_part.as_ref() else {
         return;
     };
-    let current_style = document
-        .paragraph(paragraph_index)
-        .and_then(|paragraph| paragraph.properties.as_ref())
-        .and_then(|props| props.style.as_deref().map(str::to_string));
+    let current_style = source_style
+        .or_else(|| {
+            document
+                .paragraph(paragraph_index)
+                .and_then(|paragraph| paragraph.properties.as_ref())
+                .and_then(|props| props.style.as_deref())
+        })
+        // Loading resolves absent/undefined paragraph styles through the
+        // document's default. Enter must use that same effective style's next.
+        .filter(|id| styles.get_style(id).is_some())
+        .or_else(|| styles.default_paragraph_style_id())
+        .map(str::to_string);
     let Some(current_style) = current_style else {
         return;
     };
-    let Some(next_style) = styles
+    let target_style = document
+        .paragraph(paragraph_index)
+        .and_then(|paragraph| paragraph.properties.as_ref())
+        .and_then(|props| props.style.as_deref());
+    let next_style = styles
         .get_style(&current_style)
         .and_then(|style| style.next_style.clone())
-        .filter(|next| *next != current_style)
-    else {
-        return;
-    };
-    if styles.get_style(&next_style).is_none() {
+        .filter(|next| styles.get_style(next).is_some())
+        .unwrap_or_else(|| current_style.clone());
+    // A batch split initially clones the original style into every paragraph.
+    // Once a chain ends, subsequent paragraphs still inherit its terminal style.
+    if next_style == current_style
+        && (source_style.is_none() || target_style == Some(current_style.as_str()))
+    {
         return;
     }
     // What the paragraph inherits, docDefaults and table style included, as
@@ -418,6 +440,7 @@ const CHARACTER_FORMATTING_TAGS: &[&str] = &[
     "w:vertAlign",
     "w:position",
     "w:spacing",
+    "w:snapToGrid",
     "w:kern",
     "w:w",
     "w:fitText",

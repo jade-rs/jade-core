@@ -1,11 +1,11 @@
 use crate::document::{
-    BorderEdge, EastAsianLineBreakingSettings, FontHint, Indent, Numbering, ParagraphBorders,
-    ParagraphProperties, RunFitText, RunFonts, RunProperties, Spacing, TabStop, TableBorders,
-    TableCellMargins, TableStyleCondition, TableStyleConditionalFormat, TableStyleDisplay,
-    TableStyleFirstRow,
+    BorderEdge, EastAsianLayout, EastAsianLineBreakingSettings, FontHint, Indent, Numbering,
+    ParagraphBorders, ParagraphProperties, RunFitText, RunFonts, RunProperties, Spacing, TabStop,
+    TableBorders, TableCellMargins, TableStyleCondition, TableStyleConditionalFormat,
+    TableStyleDisplay, TableStyleFirstRow,
 };
 use crate::numbering::NumberingPart;
-use crate::parser::DocumentParser;
+use crate::parser::{parse_character_spacing_points, parse_text_position_points, DocumentParser};
 use quick_xml::events::{BytesStart, Event};
 use quick_xml::Reader;
 use serde::{Deserialize, Serialize};
@@ -32,6 +32,7 @@ struct StyleParseState {
     in_paragraph_border: bool,
     in_tabs: bool,
     in_style_run_properties: bool,
+    in_stylistic_sets: bool,
     in_doc_defaults: bool,
     in_doc_default_run_properties: bool,
     in_doc_default_paragraph_properties: bool,
@@ -43,6 +44,11 @@ struct StyleParseState {
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct StylesPart {
     paragraph_styles: HashMap<String, StyleDefinition>,
+    /// Paragraph styles in XML order, for last-declared default precedence.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    paragraph_style_order: Vec<String>,
+    #[serde(skip)]
+    default_paragraph_style_id_cache: std::sync::OnceLock<Option<String>>,
     character_styles: HashMap<String, StyleDefinition>,
     /// Table styles, for the paragraph properties they give cell paragraphs.
     #[serde(default, skip_serializing_if = "HashMap::is_empty")]
@@ -136,6 +142,23 @@ impl StylesPart {
         }
     }
 
+    /// XML for the implicit styles used when a package has no styles part.
+    /// Editors creating that part must retain these defaults for existing text.
+    pub fn word_default_xml() -> &'static str {
+        WORD_DEFAULT_STYLES_XML
+    }
+
+    /// XML matching the implicit Normal used by the active Word platform.
+    pub fn word_default_xml_for_platform() -> String {
+        if crate::word_platform::word_layout_platform()
+            == crate::word_platform::WordLayoutPlatform::Windows
+        {
+            WORD_DEFAULT_STYLES_XML.replace("<w:jc w:val=\"both\"/>", "<w:jc w:val=\"left\"/>")
+        } else {
+            WORD_DEFAULT_STYLES_XML.to_owned()
+        }
+    }
+
     pub fn from_xml(xml: &str) -> ParseResult<Self> {
         let mut part = Self::new();
         part.parse(xml)?;
@@ -144,6 +167,7 @@ impl StylesPart {
 
     /// Parses style information and stores the result in `self`.
     pub fn parse(&mut self, xml: &str) -> ParseResult<()> {
+        self.default_paragraph_style_id_cache.take();
         let mut reader = Reader::from_str(xml);
         reader.config_mut().trim_text(true);
 
@@ -159,6 +183,21 @@ impl StylesPart {
         loop {
             match reader.read_event() {
                 Ok(Event::Start(ref e)) => {
+                    if matches!(e.name().as_ref(), b"w14:glow" | b"w14:textOutline")
+                        && (state.in_style_run_properties || state.in_doc_default_run_properties)
+                    {
+                        let (color, alpha, _) =
+                            DocumentParser::parse_text_effect(&mut reader, e.name().as_ref())?;
+                        apply_to_active_run_properties(self, &mut current_style, &state, |props| {
+                            DocumentParser::apply_visual_text_effect(
+                                props,
+                                e,
+                                color.as_deref(),
+                                alpha,
+                            );
+                        });
+                        continue;
+                    }
                     self.handle_start_event(e, &mut current_style, &mut state);
                     if e.name().as_ref() == b"w:style" {
                         initialize_table_style_metadata(
@@ -388,16 +427,18 @@ impl StylesPart {
     /// terminates.
     pub fn resolve_numbering(&self, style_id: &str) -> Option<Numbering> {
         let mut current = Some(self.paragraph_style_or_default(style_id));
-        let mut visited = HashSet::new();
-
-        while let Some(id) = current {
-            if !visited.insert(id) {
-                break;
-            }
+        // A basedOn chain can visit at most this many distinct definitions.
+        // Bound cycles without allocating a visited set for every paragraph.
+        for _ in 0..self.paragraph_styles.len() {
+            let Some(id) = current else { break };
 
             if let Some(style) = self.paragraph_styles.get(id) {
-                if let Some(numbering) = style.numbering.clone() {
-                    return Some(numbering);
+                if let Some(numbering) = style.numbering.as_ref() {
+                    // Word treats an empty numPr as absent, so basedOn still
+                    // supplies numbering. A nonempty numPr remains an override.
+                    if numbering.id.is_some() || numbering.level.is_some() {
+                        return Some(numbering.clone());
+                    }
                 }
                 current = style.based_on.as_deref();
             } else {
@@ -423,15 +464,30 @@ impl StylesPart {
 
     /// Returns the paragraph style id Word treats as the default style.
     pub fn default_paragraph_style_id(&self) -> Option<&str> {
-        self.paragraph_styles
-            .values()
-            .find(|style| style.is_default)
-            .map(|style| style.style_id.as_str())
-            .or_else(|| {
-                self.paragraph_styles
-                    .get("Normal")
+        self.default_paragraph_style_id_cache
+            .get_or_init(|| {
+                self.paragraph_style_order
+                    .iter()
+                    .rev()
+                    .filter_map(|id| self.paragraph_styles.get(id))
+                    .find(|style| style.is_default)
                     .map(|style| style.style_id.as_str())
+                    // Older serialized metadata has no XML order. Retain its default
+                    // rather than dropping all default formatting on restoration.
+                    .or_else(|| {
+                        self.paragraph_styles
+                            .values()
+                            .find(|style| style.is_default)
+                            .map(|style| style.style_id.as_str())
+                    })
+                    .or_else(|| {
+                        self.paragraph_styles
+                            .get("Normal")
+                            .map(|style| style.style_id.as_str())
+                    })
+                    .map(str::to_owned)
             })
+            .as_deref()
     }
 
     /// Resolves a paragraph style token supplied by UI/API callers to the
@@ -615,6 +671,9 @@ impl StylesPart {
         self.paragraph_styles.len() + self.character_styles.len() + self.table_styles.len()
     }
 
+    /// Composes a paragraph style's based-on chain. Toggle fields represent
+    /// parity within that chain; use `resolve_effective_run_properties` for
+    /// absolute formatting after defaults, character styles and direct values.
     pub fn resolve_run_properties(&self, style_id: &str) -> Option<RunProperties> {
         self.resolve_style_run_properties(
             self.paragraph_style_or_default(style_id),
@@ -622,13 +681,15 @@ impl StylesPart {
         )
     }
 
+    /// Composes a character style's based-on chain, retaining toggle parity.
     pub fn resolve_character_run_properties(&self, style_id: &str) -> Option<RunProperties> {
         self.resolve_style_run_properties(style_id, &self.character_styles)
     }
 
     /// Resolves the effective run properties for text in a paragraph using
     /// Word's style cascade: document defaults, paragraph style, character
-    /// style, then direct run formatting. Later layers override earlier ones.
+    /// style, then direct run formatting. Toggle properties declared in styles
+    /// invert the inherited state; direct formatting sets an absolute state.
     pub fn resolve_effective_run_properties(
         &self,
         paragraph_style_id: Option<&str>,
@@ -646,7 +707,7 @@ impl StylesPart {
         if let Some(paragraph_props) =
             paragraph_style_id.and_then(|style_id| self.resolve_run_properties(style_id))
         {
-            merge_run_properties_override(&mut resolved, &paragraph_props);
+            merge_style_run_properties(&mut resolved, &paragraph_props);
             has_any = true;
         }
 
@@ -654,7 +715,7 @@ impl StylesPart {
             .and_then(|props| props.style.as_deref())
             .and_then(|style_id| self.resolve_character_run_properties(style_id))
         {
-            merge_run_properties_override(&mut resolved, &character_props);
+            merge_style_run_properties(&mut resolved, &character_props);
             has_any = true;
         }
 
@@ -664,6 +725,26 @@ impl StylesPart {
             has_any = true;
         }
 
+        // Guide runs are not editable paragraph runs, but their rStyle still
+        // refers to the same character-style catalogue. Keep ruby's own size
+        // fallback: paragraph/doc-default sizes must not overwrite w:hps.
+        if let Some(ruby) = resolved.ruby.as_mut() {
+            for run in &mut ruby.guide_runs {
+                let Some(direct) = run.properties.as_deref() else {
+                    continue;
+                };
+                let Some(mut properties) = direct
+                    .style
+                    .as_deref()
+                    .and_then(|id| self.resolve_character_run_properties(id))
+                else {
+                    continue;
+                };
+                merge_run_properties_override(&mut properties, direct);
+                properties.style = direct.style.clone();
+                run.properties = Some(Box::new(properties));
+            }
+        }
         has_any.then_some(resolved)
     }
 
@@ -719,7 +800,7 @@ impl StylesPart {
             .chain(inline_chain[..inline_len].iter().rev().flatten().copied())
         {
             if let Some(run_props) = style.run_properties.as_ref() {
-                merge_run_properties_override(&mut resolved, run_props);
+                merge_style_run_properties(&mut resolved, run_props);
                 has_any = true;
             }
         }
@@ -807,9 +888,20 @@ impl StylesPart {
     /// `<w:numPr>` が含まれない場合でも段落スタイルに番号付けを付与できる。
     pub fn merge_numbering_from_part(&mut self, numbering_part: &NumberingPart) {
         for instance in numbering_part.numbering_instances.values() {
-            if let Some(abstract_num) = numbering_part.abstract_nums.get(&instance.abstract_num_id)
+            let abstract_num = numbering_part.abstract_nums.get(&instance.abstract_num_id);
             {
-                for level in &abstract_num.levels {
+                for level in (0..9).filter_map(|index| {
+                    instance
+                        .overrides
+                        .get(&index)
+                        .and_then(|value| value.level.as_ref())
+                        .or_else(|| {
+                            abstract_num?
+                                .levels
+                                .iter()
+                                .find(|level| level.ilvl == index)
+                        })
+                }) {
                     if let Some(style_id) = &level.paragraph_style {
                         let style_entry = self
                             .paragraph_styles
@@ -1032,16 +1124,64 @@ impl StylesPart {
                     }
                 }
             }
+            b"w14:glow" | b"w14:textOutline"
+                if state.in_style_run_properties || state.in_doc_default_run_properties =>
+            {
+                apply_to_active_run_properties(self, current_style, state, |props| {
+                    DocumentParser::apply_visual_text_effect(props, element, None, None);
+                });
+            }
+            b"w14:stylisticSets"
+                if state.in_style_run_properties || state.in_doc_default_run_properties =>
+            {
+                state.in_stylistic_sets = true;
+                apply_to_active_run_properties(self, current_style, state, |props| {
+                    let effects = props.text_effects.get_or_insert_with(Default::default);
+                    effects.stylistic_set = None;
+                    effects.stylistic_sets = Some(Vec::new());
+                });
+            }
+            b"w14:styleSet" if state.in_stylistic_sets => {
+                if let Some(id) = DocumentParser::enabled_stylistic_set(element) {
+                    apply_to_active_run_properties(self, current_style, state, |props| {
+                        let effects = props.text_effects.get_or_insert_with(Default::default);
+                        let sets = effects.stylistic_sets.get_or_insert_with(Default::default);
+                        if !sets.contains(&id) {
+                            sets.push(id);
+                        }
+                        effects.stylistic_set = sets.first().copied();
+                    });
+                }
+            }
+            b"w14:ligatures" | b"w14:numForm" | b"w14:numSpacing" | b"w14:cntxtAlts"
+                if state.in_style_run_properties || state.in_doc_default_run_properties =>
+            {
+                let value = attr_value(element, b"w14:val");
+                let name = element.name();
+                apply_to_active_run_properties(self, current_style, state, |props| {
+                    let effects = props.text_effects.get_or_insert_with(Default::default);
+                    let token = value.as_deref().map(str::trim).map(Rc::from);
+                    match name.as_ref() {
+                        b"w14:ligatures" => effects.ligatures = token,
+                        b"w14:numForm" => effects.number_form = token,
+                        b"w14:numSpacing" => effects.number_spacing = token,
+                        _ => {
+                            effects.contextual_alternates = Some(!matches!(
+                                value.as_deref().map(str::trim),
+                                Some("0" | "false" | "off")
+                            ))
+                        }
+                    }
+                });
+            }
             b"w:spacing"
                 if state.in_style_run_properties || state.in_doc_default_run_properties =>
             {
                 // Character spacing (`w:rPr/w:spacing`, ECMA-376 §17.3.2.35),
                 // in twentieths of a point, as direct run formatting reads it.
-                if let Some(twips) =
-                    attr_value(element, b"w:val").and_then(|value| value.parse::<f32>().ok())
-                {
+                if let Some(points) = parse_character_spacing_points(element.attributes()) {
                     apply_to_active_run_properties(self, current_style, state, |props| {
-                        props.char_spacing = Some(twips / 20.0);
+                        props.char_spacing = Some(points);
                     });
                 }
             }
@@ -1081,11 +1221,31 @@ impl StylesPart {
                     }
                 }
             }
+            b"w:em" => {
+                let value = element
+                    .attributes()
+                    .flatten()
+                    .find(|attr| attr.key.as_ref() == b"w:val")
+                    .map(|attr| String::from_utf8_lossy(&attr.value).to_string());
+                if let Some(mark) = crate::parser::normalize_emphasis_mark(value) {
+                    apply_to_active_run_properties(self, current_style, state, |props| {
+                        props.emphasis = Some(Rc::from(mark.as_str()));
+                    });
+                }
+            }
+            b"w:bdr" => {
+                let edge = DocumentParser::build_border_edge(element.attributes());
+                apply_to_active_run_properties(self, current_style, state, |props| {
+                    props.border = Some(edge.clone());
+                });
+            }
             b"w:shd" => {
-                // Paragraph shading carried by a style (ECMA-376 §17.3.5). Only
-                // honor `w:shd` directly under the paragraph `w:pPr`, not the one
-                // nested inside `w:rPr` (run shading) which we do not model here.
-                if state.in_paragraph_properties && !state.in_style_run_properties {
+                if state.in_style_run_properties || state.in_doc_default_run_properties {
+                    let shading = DocumentParser::parse_shading(element.attributes());
+                    apply_to_active_run_properties(self, current_style, state, |props| {
+                        props.shading = Some(shading.clone());
+                    });
+                } else if state.in_paragraph_properties {
                     if let Some(style) = current_style.as_mut() {
                         let props = style
                             .paragraph_properties
@@ -1244,7 +1404,12 @@ impl StylesPart {
                 }
             }
             b"w:snapToGrid" => {
-                if state.in_paragraph_properties {
+                if state.in_style_run_properties || state.in_doc_default_run_properties {
+                    let flag = parse_on_off_attr(element, b"w:val");
+                    apply_to_active_run_properties(self, current_style, state, |props| {
+                        props.snap_to_grid = Some(flag);
+                    });
+                } else if state.in_paragraph_properties {
                     if let Some(style) = current_style.as_mut() {
                         let props = style
                             .paragraph_properties
@@ -1387,14 +1552,18 @@ impl StylesPart {
                 }
             }
             b"w:textAlignment" => {
-                if state.in_paragraph_properties {
-                    if let Some(style) = current_style.as_mut() {
-                        if let Some(token) = attr_value(element, b"w:val") {
-                            let token = token.trim().to_ascii_lowercase();
-                            if !token.is_empty() {
-                                let props = style
+                if let Some(token) = attr_value(element, b"w:val") {
+                    let token = token.trim().to_ascii_lowercase();
+                    if !token.is_empty() {
+                        if state.in_paragraph_properties {
+                            if let Some(style) = current_style.as_mut() {
+                                style
                                     .paragraph_properties
-                                    .get_or_insert_with(ParagraphProperties::default);
+                                    .get_or_insert_with(ParagraphProperties::default)
+                                    .text_alignment = Some(token.into());
+                            }
+                        } else if state.in_doc_default_paragraph_properties {
+                            if let Some(props) = self.doc_default_paragraph_properties.as_mut() {
                                 props.text_alignment = Some(token.into());
                             }
                         }
@@ -1407,6 +1576,10 @@ impl StylesPart {
                         let props = style
                             .paragraph_properties
                             .get_or_insert_with(ParagraphProperties::default);
+                        props.mirror_indents = Some(parse_on_off_attr(element, b"w:val"));
+                    }
+                } else if state.in_doc_default_paragraph_properties {
+                    if let Some(props) = self.doc_default_paragraph_properties.as_mut() {
                         props.mirror_indents = Some(parse_on_off_attr(element, b"w:val"));
                     }
                 }
@@ -1434,13 +1607,53 @@ impl StylesPart {
                         .get_or_insert_with(RunProperties::default);
                 }
             }
-            b"w:b" | b"w:i" | b"w:strike" => {
+            b"w:position" => {
+                if let Some(points) = parse_text_position_points(element.attributes()) {
+                    apply_to_active_run_properties(self, current_style, state, |props| {
+                        props.text_position = Some(points);
+                    });
+                }
+            }
+            b"w:dstrike" => {
+                let value = parse_on_off_attr(element, b"w:val");
+                apply_to_active_run_properties(self, current_style, state, |props| {
+                    // Unlike strike, double strike is an absolute style value.
+                    props.double_strike = Some(value);
+                });
+            }
+            b"w:highlight" | b"w:vertAlign" => {
+                if let Some(value) = attr_value(element, b"w:val") {
+                    apply_to_active_run_properties(self, current_style, state, |props| {
+                        if element.name().as_ref() == b"w:highlight" {
+                            props.highlight = Some(value.into());
+                        } else {
+                            props.baseline = Some(value.to_ascii_lowercase().as_str().into());
+                        }
+                    });
+                }
+            }
+            b"w:vanish" => {
+                let value = parse_on_off_attr(element, b"w:val");
+                apply_to_active_run_properties(self, current_style, state, |props| {
+                    props.vanish = Some(value);
+                });
+            }
+            b"w:b" | b"w:bCs" | b"w:i" | b"w:iCs" | b"w:strike" | b"w:caps" | b"w:smallCaps"
+            | b"w:outline" | b"w:shadow" | b"w:emboss" | b"w:imprint" => {
                 let value = parse_on_off_attr(element, b"w:val");
                 apply_to_active_run_properties(self, current_style, state, |props| {
                     match element.name().as_ref() {
                         b"w:b" => props.bold = Some(value),
                         b"w:i" => props.italic = Some(value),
                         b"w:strike" => props.strike = Some(value),
+                        b"w:bCs" => props.bold_complex = Some(value),
+                        b"w:iCs" => props.italic_complex = Some(value),
+                        b"w:caps" => props.caps = Some(value),
+                        b"w:smallCaps" => props.small_caps = Some(value),
+                        b"w:outline" => props.outline = Some(value),
+                        b"w:shadow" => props.shadow = Some(value),
+                        b"w:emboss" => props.emboss = Some(value),
+                        b"w:imprint" => props.imprint = Some(value),
                         _ => unreachable!(),
                     }
                 });
@@ -1456,26 +1669,37 @@ impl StylesPart {
                     let kind =
                         (value && raw != "single" && raw != "1" && raw != "true" && raw != "on")
                             .then_some(raw);
-                    let color = attr_value(element, b"w:color").filter(|value| !value.is_empty());
                     apply_to_active_run_properties(self, current_style, state, |props| {
                         props.underline = Some(value);
                         props.underline_kind = kind.as_deref().map(Into::into);
+                    });
+                }
+                let theme = crate::parser::DocumentParser::run_theme_color(element.attributes());
+                let color = theme
+                    .as_ref()
+                    .and_then(|theme| {
+                        crate::theme::underline_theme_color(
+                            &theme.name,
+                            theme.tint.as_deref(),
+                            theme.shade.as_deref(),
+                        )
+                    })
+                    .or_else(|| {
+                        attr_value(element, b"w:color")
+                            .filter(|value| !value.is_empty())
+                            .map(|value| value.into_owned())
+                    });
+                if color.is_some() || theme.is_some() {
+                    apply_to_active_run_properties(self, current_style, state, |props| {
                         props.underline_color = color.as_deref().map(Into::into);
+                        props.underline_theme_color = theme.clone().map(Box::new);
                     });
                 }
             }
             b"w:color" => {
                 // A theme colour in the scheme being read (see
                 // `theme::ThemeColorScope`), else the cached value.
-                let color = attr_value(element, b"w:themeColor")
-                    .and_then(|theme| {
-                        crate::theme::text_theme_color(
-                            &theme,
-                            attr_value(element, b"w:themeTint").as_deref(),
-                            attr_value(element, b"w:themeShade").as_deref(),
-                        )
-                    })
-                    .or_else(|| attr_value(element, b"w:val").and_then(normalize_ooxml_color));
+                let color = resolve_style_text_color(element);
                 let theme = attr_value(element, b"w:themeColor")
                     .filter(|name| !name.is_empty())
                     .map(|name| crate::document::RunThemeColor {
@@ -1548,6 +1772,22 @@ impl StylesPart {
                     }
                 }
             }
+            b"w:eastAsianLayout" => {
+                let names: [&[u8]; 5] = [
+                    b"w:id",
+                    b"w:combine",
+                    b"w:combineBrackets",
+                    b"w:vert",
+                    b"w:vertCompress",
+                ];
+                let layout =
+                    EastAsianLayout::from_attributes(names.iter().copied().filter_map(|name| {
+                        attr_value(element, name).map(|value| (name, value.into_owned()))
+                    }));
+                apply_to_active_run_properties(self, current_style, state, |props| {
+                    props.east_asian_layout = Some(Box::new(layout.clone()));
+                });
+            }
             b"w:fitText" => {
                 if let Some(fit_text) = parse_fit_text(element) {
                     if state.in_style_run_properties {
@@ -1598,6 +1838,7 @@ impl StylesPart {
         state: &mut StyleParseState,
     ) {
         match name {
+            b"w14:stylisticSets" => state.in_stylistic_sets = false,
             b"w:style" => {
                 if let Some(style) = current_style.take() {
                     if !style.style_id.is_empty() {
@@ -1615,6 +1856,7 @@ impl StylesPart {
                                 self.normal_named_paragraph_styles
                                     .push(style.style_id.clone());
                             }
+                            self.paragraph_style_order.push(style.style_id.clone());
                             self.paragraph_styles.insert(style.style_id.clone(), style);
                         } else if state.in_character_style {
                             self.character_styles.insert(style.style_id.clone(), style);
@@ -1681,8 +1923,11 @@ struct TableStyleParseState {
 enum TableStyleAncestor {
     Other,
     CellProperties,
+    ParagraphProperties,
     RunProperties,
     CellBorders,
+    ParagraphBorders,
+    ParagraphTabs,
     TableBorders,
     TableCellMargins,
 }
@@ -1691,13 +1936,36 @@ impl TableStyleAncestor {
     fn from_name(name: &[u8]) -> Self {
         match name {
             b"w:tcPr" => Self::CellProperties,
+            b"w:pPr" => Self::ParagraphProperties,
             b"w:rPr" => Self::RunProperties,
             b"w:tcBorders" => Self::CellBorders,
+            b"w:pBdr" => Self::ParagraphBorders,
+            b"w:tabs" => Self::ParagraphTabs,
             b"w:tblBorders" => Self::TableBorders,
             b"w:tblCellMar" => Self::TableCellMargins,
             _ => Self::Other,
         }
     }
+}
+
+fn resolve_style_text_color(element: &BytesStart) -> Option<String> {
+    attr_value(element, b"w:themeColor")
+        .and_then(|theme| {
+            crate::theme::text_theme_color(
+                &theme,
+                attr_value(element, b"w:themeTint").as_deref(),
+                attr_value(element, b"w:themeShade").as_deref(),
+            )
+        })
+        .or_else(|| {
+            attr_value(element, b"w:val").and_then(|value| {
+                if value.eq_ignore_ascii_case("auto") {
+                    Some("#auto".into())
+                } else {
+                    normalize_ooxml_color(value)
+                }
+            })
+        })
 }
 
 fn normalize_ooxml_color(value: Cow<'_, str>) -> Option<String> {
@@ -1741,10 +2009,7 @@ fn active_conditional_format(
     )
 }
 
-fn set_table_style_fill(state: &mut TableStyleParseState, fill: Cow<'_, str>) {
-    let Some(fill) = normalize_ooxml_color(fill) else {
-        return;
-    };
+fn set_table_style_fill(state: &mut TableStyleParseState, fill: String) {
     if let Some(format) = active_conditional_format(state) {
         format.fill = Some(fill.clone());
     }
@@ -1775,6 +2040,7 @@ fn set_table_borders_edge(borders: &mut TableBorders, element: &BytesStart) {
         size_eighths: size.and_then(|value| value.parse().ok()),
         space: space.and_then(|value| value.parse().ok()),
         color: color.and_then(normalize_ooxml_color),
+        theme_color: None,
     };
     match element.name().as_ref() {
         b"w:top" => borders.top = Some(edge),
@@ -1854,16 +2120,198 @@ fn handle_table_style_start(element: &BytesStart, state: &mut TableStyleParseSta
                 state.condition = attr_value(element, b"w:type").map(Cow::into_owned);
             }
         }
-        b"w:shd" if state.path.contains(&TableStyleAncestor::CellProperties) => {
-            if let Some(fill) = attr_value(element, b"w:fill") {
-                set_table_style_fill(state, fill);
+        b"w:tab"
+            if state.path.ends_with(&[
+                TableStyleAncestor::ParagraphProperties,
+                TableStyleAncestor::ParagraphTabs,
+            ]) =>
+        {
+            if let Some(tab) = parse_tab_definition(element) {
+                if let Some(format) = active_conditional_format(state) {
+                    format.paragraph_tabs.push(tab);
+                }
             }
         }
-        b"w:b"
-            if state.condition.is_some()
-                && state.path.contains(&TableStyleAncestor::RunProperties) =>
+        b"w:bidi" if state.path.last() == Some(&TableStyleAncestor::ParagraphProperties) => {
+            if let Some(format) = active_conditional_format(state) {
+                format.paragraph_bidi = Some(parse_on_off_attr(element, b"w:val"));
+            }
+        }
+        b"w:keepNext" if state.path.last() == Some(&TableStyleAncestor::ParagraphProperties) => {
+            if let Some(format) = active_conditional_format(state) {
+                format.paragraph_keep_next = Some(parse_on_off_attr(element, b"w:val"));
+            }
+        }
+        b"w:keepLines" if state.path.last() == Some(&TableStyleAncestor::ParagraphProperties) => {
+            if let Some(format) = active_conditional_format(state) {
+                format.paragraph_keep_lines = Some(parse_on_off_attr(element, b"w:val"));
+            }
+        }
+        b"w:pageBreakBefore"
+            if state.path.last() == Some(&TableStyleAncestor::ParagraphProperties) =>
         {
+            if let Some(format) = active_conditional_format(state) {
+                format.paragraph_page_break_before = Some(parse_on_off_attr(element, b"w:val"));
+            }
+        }
+        b"w:widowControl"
+            if state.path.last() == Some(&TableStyleAncestor::ParagraphProperties) =>
+        {
+            if let Some(format) = active_conditional_format(state) {
+                format.paragraph_widow_control = Some(parse_on_off_attr(element, b"w:val"));
+            }
+        }
+        b"w:textAlignment"
+            if state.path.last() == Some(&TableStyleAncestor::ParagraphProperties) =>
+        {
+            if let Some(token) = attr_value(element, b"w:val") {
+                let token = token.trim().to_ascii_lowercase();
+                if !token.is_empty() {
+                    if let Some(format) = active_conditional_format(state) {
+                        format.paragraph_text_alignment = Some(token);
+                    }
+                }
+            }
+        }
+        b"w:contextualSpacing"
+            if state.path.last() == Some(&TableStyleAncestor::ParagraphProperties) =>
+        {
+            if let Some(format) = active_conditional_format(state) {
+                format.paragraph_contextual_spacing = Some(parse_on_off_attr(element, b"w:val"));
+            }
+        }
+        b"w:snapToGrid" if state.path.last() == Some(&TableStyleAncestor::ParagraphProperties) => {
+            if let Some(format) = active_conditional_format(state) {
+                format.paragraph_snap_to_grid = Some(parse_on_off_attr(element, b"w:val"));
+            }
+        }
+        b"w:adjustRightInd"
+            if state.path.last() == Some(&TableStyleAncestor::ParagraphProperties) =>
+        {
+            if let Some(format) = active_conditional_format(state) {
+                format.paragraph_adjust_right_indent = Some(parse_on_off_attr(element, b"w:val"));
+            }
+        }
+        b"w:mirrorIndents"
+            if state.path.last() == Some(&TableStyleAncestor::ParagraphProperties) =>
+        {
+            if let Some(format) = active_conditional_format(state) {
+                format.paragraph_mirror_indents = Some(parse_on_off_attr(element, b"w:val"));
+            }
+        }
+        b"w:suppressLineNumbers"
+            if state.path.last() == Some(&TableStyleAncestor::ParagraphProperties) =>
+        {
+            if let Some(format) = active_conditional_format(state) {
+                format.paragraph_suppress_line_numbers = Some(parse_on_off_attr(element, b"w:val"));
+            }
+        }
+        b"w:suppressAutoHyphens"
+            if state.path.last() == Some(&TableStyleAncestor::ParagraphProperties) =>
+        {
+            if let Some(format) = active_conditional_format(state) {
+                format.paragraph_suppress_auto_hyphens = Some(parse_on_off_attr(element, b"w:val"));
+            }
+        }
+        b"w:spacing" if state.path.last() == Some(&TableStyleAncestor::ParagraphProperties) => {
+            if let Some(format) = active_conditional_format(state) {
+                format.paragraph_spacing = parse_spacing_definition(element);
+            }
+        }
+        b"w:ind" if state.path.last() == Some(&TableStyleAncestor::ParagraphProperties) => {
+            if let Some(format) = active_conditional_format(state) {
+                format.paragraph_indent = parse_indent_definition(element);
+            }
+        }
+        b"w:jc"
+            if state
+                .path
+                .contains(&TableStyleAncestor::ParagraphProperties) =>
+        {
+            if let Some(format) = active_conditional_format(state) {
+                format.paragraph_alignment = attr_value(element, b"w:val").map(Cow::into_owned);
+            }
+        }
+        b"w:shd" if state.path.last() == Some(&TableStyleAncestor::ParagraphProperties) => {
+            if let Some(format) = active_conditional_format(state) {
+                format.paragraph_shading =
+                    Some(DocumentParser::parse_shading(element.attributes()));
+            }
+        }
+        b"w:pBdr" if state.path.last() == Some(&TableStyleAncestor::ParagraphProperties) => {
+            if let Some(format) = active_conditional_format(state) {
+                format
+                    .paragraph_borders
+                    .get_or_insert_with(ParagraphBorders::default);
+            }
+        }
+        b"w:top" | b"w:bottom" | b"w:left" | b"w:right" | b"w:between" | b"w:bar"
+            if state.path.ends_with(&[
+                TableStyleAncestor::ParagraphProperties,
+                TableStyleAncestor::ParagraphBorders,
+            ]) =>
+        {
+            if let Some(format) = active_conditional_format(state) {
+                let borders = format
+                    .paragraph_borders
+                    .get_or_insert_with(ParagraphBorders::default);
+                let edge = DocumentParser::build_border_edge(element.attributes());
+                match element.name().as_ref() {
+                    b"w:top" => borders.top = Some(edge),
+                    b"w:bottom" => borders.bottom = Some(edge),
+                    b"w:left" => borders.left = Some(edge),
+                    b"w:right" => borders.right = Some(edge),
+                    b"w:between" => borders.between = Some(edge),
+                    b"w:bar" => borders.bar = Some(edge),
+                    _ => {}
+                }
+            }
+        }
+        b"w:shd" if state.path.contains(&TableStyleAncestor::CellProperties) => {
+            let fill = DocumentParser::parse_table_shading_color(element.attributes());
+            set_table_style_fill(state, fill);
+        }
+        b"w:rFonts" if state.path.contains(&TableStyleAncestor::RunProperties) => {
+            let mut props = RunProperties::default();
+            apply_run_fonts(&mut props, element);
+            let fonts = props.fonts.unwrap_or_default();
+            if state.condition.is_none() {
+                if let Some(style) = state.current.as_mut() {
+                    style.display.fonts.merge_from(&fonts);
+                }
+            }
+            if let Some(format) = active_conditional_format(state) {
+                format.fonts.merge_from(&fonts);
+            }
+        }
+        b"w:sz" | b"w:szCs" if state.path.contains(&TableStyleAncestor::RunProperties) => {
+            if let Some(size) = parse_font_size(element) {
+                let complex = element.name().as_ref() == b"w:szCs";
+                if state.condition.is_none() {
+                    if let Some(style) = state.current.as_mut() {
+                        if complex {
+                            style.display.font_size_complex = Some(size);
+                        } else {
+                            style.display.font_size = Some(size);
+                        }
+                    }
+                }
+                if let Some(format) = active_conditional_format(state) {
+                    if complex {
+                        format.font_size_complex = Some(size);
+                    } else {
+                        format.font_size = Some(size);
+                    }
+                }
+            }
+        }
+        b"w:b" if state.path.contains(&TableStyleAncestor::RunProperties) => {
             let bold = parse_on_off_attr(element, b"w:val");
+            if state.condition.is_none() {
+                if let Some(style) = state.current.as_mut() {
+                    style.display.bold = Some(bold);
+                }
+            }
             if let Some(format) = active_conditional_format(state) {
                 format.bold = Some(bold);
             }
@@ -1873,20 +2321,24 @@ fn handle_table_style_start(element: &BytesStart, state: &mut TableStyleParseSta
                 }
             }
         }
-        b"w:i"
-            if state.condition.is_some()
-                && state.path.contains(&TableStyleAncestor::RunProperties) =>
-        {
+        b"w:i" if state.path.contains(&TableStyleAncestor::RunProperties) => {
             let italic = parse_on_off_attr(element, b"w:val");
+            if state.condition.is_none() {
+                if let Some(style) = state.current.as_mut() {
+                    style.display.italic = Some(italic);
+                }
+            }
             if let Some(format) = active_conditional_format(state) {
                 format.italic = Some(italic);
             }
         }
-        b"w:color"
-            if state.condition.is_some()
-                && state.path.contains(&TableStyleAncestor::RunProperties) =>
-        {
-            if let Some(color) = attr_value(element, b"w:val").and_then(normalize_ooxml_color) {
+        b"w:color" if state.path.contains(&TableStyleAncestor::RunProperties) => {
+            if let Some(color) = resolve_style_text_color(element) {
+                if state.condition.is_none() {
+                    if let Some(style) = state.current.as_mut() {
+                        style.display.color = Some(color.clone());
+                    }
+                }
                 if let Some(format) = active_conditional_format(state) {
                     format.color = Some(color.clone());
                 }
@@ -1996,7 +2448,15 @@ fn merge_table_style_display(
         };
         conditional.insert(condition, inherited);
     }
+    let mut fonts = parent.fonts;
+    fonts.merge_from(&child.fonts);
     TableStyleDisplay {
+        fonts,
+        font_size: child.font_size.or(parent.font_size),
+        font_size_complex: child.font_size_complex.or(parent.font_size_complex),
+        bold: child.bold.or(parent.bold),
+        italic: child.italic.or(parent.italic),
+        color: child.color.or(parent.color),
         conditional,
         row_band_size: child.row_band_size.or(parent.row_band_size),
         col_band_size: child.col_band_size.or(parent.col_band_size),
@@ -2342,7 +2802,7 @@ fn parse_spacing_definition(element: &BytesStart) -> Option<Spacing> {
     let mut spacing = Spacing::default();
     let mut line_raw: Option<f32> = None;
     let mut updated = false;
-    let (mut before_auto, mut after_auto) = (false, false);
+    let (mut before_auto, mut after_auto) = (None, None);
 
     for attr in element.attributes().flatten() {
         match attr.key.as_ref() {
@@ -2384,15 +2844,15 @@ fn parse_spacing_definition(element: &BytesStart) -> Option<Spacing> {
                 updated = true;
             }
             b"w:beforeAutospacing" => {
-                before_auto = crate::document::ooxml_on(&attr.value);
+                before_auto = Some(crate::document::ooxml_on(&attr.value));
             }
             b"w:afterAutospacing" => {
-                after_auto = crate::document::ooxml_on(&attr.value);
+                after_auto = Some(crate::document::ooxml_on(&attr.value));
             }
             _ => {}
         }
     }
-    if before_auto || after_auto {
+    if before_auto.is_some() || after_auto.is_some() {
         spacing.apply_autospacing(before_auto, after_auto);
         updated = true;
     }
@@ -2495,6 +2955,63 @@ fn apply_run_fonts(props: &mut RunProperties, element: &BytesStart) {
     }
 }
 
+// Resolved style toggle values record parity, so a composed style can still
+// invert document defaults and the preceding paragraph style. Non-toggle
+// properties (including underline and double strike) retain override semantics.
+fn merge_style_run_properties(target: &mut RunProperties, source: &RunProperties) {
+    let toggles = [
+        source
+            .bold
+            .map(|toggle| target.bold.unwrap_or(false) ^ toggle),
+        source
+            .bold_complex
+            .map(|toggle| target.bold_complex.unwrap_or(false) ^ toggle),
+        source
+            .italic
+            .map(|toggle| target.italic.unwrap_or(false) ^ toggle),
+        source
+            .italic_complex
+            .map(|toggle| target.italic_complex.unwrap_or(false) ^ toggle),
+        source
+            .caps
+            .map(|toggle| target.caps.unwrap_or(false) ^ toggle),
+        source
+            .small_caps
+            .map(|toggle| target.small_caps.unwrap_or(false) ^ toggle),
+        source
+            .strike
+            .map(|toggle| target.strike.unwrap_or(false) ^ toggle),
+        source
+            .outline
+            .map(|toggle| target.outline.unwrap_or(false) ^ toggle),
+        source
+            .shadow
+            .map(|toggle| target.shadow.unwrap_or(false) ^ toggle),
+        source
+            .emboss
+            .map(|toggle| target.emboss.unwrap_or(false) ^ toggle),
+        source
+            .imprint
+            .map(|toggle| target.imprint.unwrap_or(false) ^ toggle),
+        source
+            .vanish
+            .map(|toggle| target.vanish.unwrap_or(false) ^ toggle),
+    ];
+    merge_run_properties_override(target, source);
+    target.bold = toggles[0].or(target.bold);
+    target.bold_complex = toggles[1].or(target.bold_complex);
+    target.italic = toggles[2].or(target.italic);
+    target.italic_complex = toggles[3].or(target.italic_complex);
+    target.caps = toggles[4].or(target.caps);
+    target.small_caps = toggles[5].or(target.small_caps);
+    target.strike = toggles[6].or(target.strike);
+    target.outline = toggles[7].or(target.outline);
+    target.shadow = toggles[8].or(target.shadow);
+    target.emboss = toggles[9].or(target.emboss);
+    target.imprint = toggles[10].or(target.imprint);
+    target.vanish = toggles[11].or(target.vanish);
+}
+
 /// Merges `source` run properties into `target`, with `source` values taking
 /// precedence over existing `target` values when both are present.
 pub fn merge_run_properties_override(target: &mut RunProperties, source: &RunProperties) {
@@ -2512,10 +3029,12 @@ pub fn merge_run_properties_override(target: &mut RunProperties, source: &RunPro
     }
     if source.underline.is_some() {
         target.underline = source.underline;
-        // The kind/color travel with the `w:u` declaration that set on/off:
-        // a style that re-declares underline replaces the inherited flavor.
         target.underline_kind = source.underline_kind.clone();
+    }
+    // Word inherits missing w:u attributes separately (MS-OI29500 §2.1.100).
+    if source.underline_color.is_some() || source.underline_theme_color.is_some() {
         target.underline_color = source.underline_color.clone();
+        target.underline_theme_color = source.underline_theme_color.clone();
     }
     if source.strike.is_some() {
         target.strike = source.strike;
@@ -2559,6 +3078,9 @@ pub fn merge_run_properties_override(target: &mut RunProperties, source: &RunPro
     if source.text_position.is_some() {
         target.text_position = source.text_position;
     }
+    if source.snap_to_grid.is_some() {
+        target.snap_to_grid = source.snap_to_grid;
+    }
     if source.char_spacing.is_some() {
         target.char_spacing = source.char_spacing;
     }
@@ -2601,8 +3123,11 @@ pub fn merge_run_properties_override(target: &mut RunProperties, source: &RunPro
     if source.authored_east_asia_font_name.is_some() {
         target.authored_east_asia_font_name = source.authored_east_asia_font_name;
     }
-    if source.color.is_some() {
+    if source.color.is_some() || source.theme_color.is_some() {
         target.color = source.color.clone();
+        // Color and its theme reference form one property. A later explicit
+        // RGB/automatic color also clears an earlier theme reference.
+        target.theme_color = source.theme_color.clone();
     }
     if source.highlight.is_some() {
         target.highlight = source.highlight.clone();
@@ -2612,6 +3137,9 @@ pub fn merge_run_properties_override(target: &mut RunProperties, source: &RunPro
     }
     if source.border.is_some() {
         target.border = source.border.clone();
+    }
+    if source.east_asian_layout.is_some() {
+        target.east_asian_layout = source.east_asian_layout.clone();
     }
     if source.ruby.is_some() {
         target.ruby = source.ruby.clone();
@@ -2627,23 +3155,35 @@ pub fn merge_run_properties_override(target: &mut RunProperties, source: &RunPro
                 })*
             };
         }
+        if source_effects.stylistic_sets.is_some() || source_effects.stylistic_set.is_some() {
+            effects.stylistic_sets = source_effects.stylistic_sets.clone();
+            effects.stylistic_set = source_effects.stylistic_set;
+        }
         inherit!(
             ligatures,
             number_form,
             number_spacing,
-            stylistic_set,
             contextual_alternates,
-            glow_color,
-            glow_radius,
-            glow_alpha,
-            outline_color,
-            outline_width,
             enclosure
         );
+        // An effect element replaces the whole effect. Omitted attributes
+        // use its defaults, rather than values from an earlier style.
+        if source_effects.glow_color.is_some()
+            || source_effects.glow_radius.is_some()
+            || source_effects.glow_alpha.is_some()
+        {
+            effects.glow_color = source_effects.glow_color.clone();
+            effects.glow_radius = source_effects.glow_radius;
+            effects.glow_alpha = source_effects.glow_alpha;
+        }
+        if source_effects.outline_color.is_some() || source_effects.outline_width.is_some() {
+            effects.outline_color = source_effects.outline_color.clone();
+            effects.outline_width = source_effects.outline_width;
+        }
     }
 }
 
-fn merge_indent_override(target: &mut Indent, source: &Indent) {
+pub(crate) fn merge_indent_override(target: &mut Indent, source: &Indent) {
     if source.left.is_some() {
         target.left = source.left;
     }
@@ -2682,23 +3222,19 @@ fn merge_indent_override(target: &mut Indent, source: &Indent) {
     }
 }
 
-fn merge_spacing_override(target: &mut Spacing, source: &Spacing) {
-    if source.before.is_some() {
-        target.before = source.before;
-        target.before_auto = source.before_auto;
-    }
-    if source.after.is_some() {
-        target.after = source.after;
-        target.after_auto = source.after_auto;
-    }
-    if source.before_lines.is_some() {
-        target.before_lines = source.before_lines;
-        target.before_auto = false;
-    }
-    if source.after_lines.is_some() {
-        target.after_lines = source.after_lines;
-        target.after_auto = false;
-    }
+pub(crate) fn merge_spacing_override(target: &mut Spacing, source: &Spacing) {
+    let mut resolved = source.clone();
+    resolved.inherit_spacing_sides_from(target);
+    target.before = resolved.before;
+    target.before_lines = resolved.before_lines;
+    target.before_auto = resolved.before_auto;
+    target.before_auto_setting = resolved.before_auto_setting;
+    target.before_auto_fallback = resolved.before_auto_fallback;
+    target.after = resolved.after;
+    target.after_lines = resolved.after_lines;
+    target.after_auto = resolved.after_auto;
+    target.after_auto_setting = resolved.after_auto_setting;
+    target.after_auto_fallback = resolved.after_auto_fallback;
     if source.line.is_some() {
         target.line = source.line;
     }
@@ -2778,9 +3314,9 @@ pub fn merge_paragraph_properties_override(
         }
         _ => {}
     }
-    if !source.tabs.is_empty() {
-        target.tabs = source.tabs.clone();
-    }
+    // Tab stops accumulate from parent to child. Keep clears and same-position
+    // replacements in cascade order for the layout's tab resolver.
+    target.tabs.extend(source.tabs.iter().cloned());
     if source.adjust_right_indent.is_some() {
         target.adjust_right_indent = source.adjust_right_indent;
     }
@@ -2820,8 +3356,12 @@ pub fn merge_paragraph_properties_override(
     if source.shading.is_some() {
         target.shading = source.shading.clone();
     }
-    if source.borders.is_some() {
-        target.borders = source.borders.clone();
+    if let Some(source_borders) = source.borders.as_ref() {
+        let mut borders = source_borders.clone();
+        if let Some(inherited) = target.borders.as_ref() {
+            borders.inherit_missing_from(inherited);
+        }
+        target.borders = Some(borders);
     }
     if source.numbering.is_some() {
         target.numbering = source.numbering.clone();
@@ -2879,6 +3419,26 @@ fn parse_tab_definition(element: &BytesStart) -> Option<TabStop> {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn numbering_inheritance_handles_full_chains_and_cycles() {
+        let mut part = StylesPart::from_xml(r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:style w:type="paragraph" w:styleId="A"><w:basedOn w:val="B"/><w:pPr><w:numPr/></w:pPr></w:style>
+          <w:style w:type="paragraph" w:styleId="B"><w:basedOn w:val="C"/></w:style>
+          <w:style w:type="paragraph" w:styleId="C"><w:pPr><w:numPr><w:numId w:val="7"/></w:numPr></w:pPr></w:style>
+        </w:styles>"#).unwrap();
+        assert_eq!(
+            part.resolve_numbering("A").unwrap().id.as_deref(),
+            Some("7")
+        );
+        let last = part.paragraph_styles.get_mut("C").unwrap();
+        last.numbering = None;
+        last.based_on = Some("A".into());
+        assert!(part.resolve_numbering("A").is_none());
+        part.paragraph_styles.get_mut("C").unwrap().based_on = Some("Missing".into());
+        assert!(part.resolve_numbering("A").is_none());
+        assert!(StylesPart::default().resolve_numbering("Missing").is_none());
+    }
+
     #[test]
     fn windows_unstyled_normal_does_not_inherit_mac_justification() {
         let mac = StylesPart::word_default();
@@ -3521,6 +4081,47 @@ mod tests {
     }
 
     #[test]
+    fn run_grid_switch_inherits_and_overrides_independently_of_paragraph_grid() {
+        let xml = r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+    <w:docDefaults><w:rPrDefault><w:rPr><w:snapToGrid w:val="off"/></w:rPr></w:rPrDefault></w:docDefaults>
+    <w:style w:type="paragraph" w:styleId="Base"><w:pPr><w:snapToGrid/></w:pPr><w:rPr><w:snapToGrid w:val="0"/></w:rPr></w:style>
+    <w:style w:type="paragraph" w:styleId="Inherited"><w:basedOn w:val="Base"/></w:style>
+    <w:style w:type="paragraph" w:styleId="On"><w:basedOn w:val="Base"/><w:rPr><w:snapToGrid></w:snapToGrid></w:rPr></w:style>
+    <w:style w:type="character" w:styleId="Off"><w:rPr><w:snapToGrid w:val="false"/></w:rPr></w:style>
+    </w:styles>"#;
+        let styles = StylesPart::from_xml(xml).unwrap();
+        assert_eq!(
+            styles.doc_default_run_properties().unwrap().snap_to_grid,
+            Some(false)
+        );
+        assert_eq!(
+            styles
+                .resolve_run_properties("Inherited")
+                .unwrap()
+                .snap_to_grid,
+            Some(false)
+        );
+        assert_eq!(
+            styles.resolve_run_properties("On").unwrap().snap_to_grid,
+            Some(true)
+        );
+        assert_eq!(
+            styles
+                .resolve_character_run_properties("Off")
+                .unwrap()
+                .snap_to_grid,
+            Some(false)
+        );
+        assert_eq!(
+            styles
+                .resolve_paragraph_properties("Base")
+                .unwrap()
+                .snap_to_grid,
+            Some(true)
+        );
+    }
+
+    #[test]
     fn style_run_properties_read_character_spacing() {
         let xml = r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
 <w:style w:type="paragraph" w:styleId="Title"><w:pPr><w:spacing w:after="300"/></w:pPr>
@@ -3921,6 +4522,117 @@ mod tests {
     }
 
     #[test]
+    fn ruby_guide_character_styles_keep_chain_toggles_and_direct_overrides() {
+        use crate::document::{RubyAnnotation, RubyGuideRun};
+        let styles = StylesPart::from_xml(r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+            <w:docDefaults><w:rPrDefault><w:rPr><w:sz w:val="30"/></w:rPr></w:rPrDefault></w:docDefaults>
+            <w:style w:type="character" w:styleId="Parent"><w:rPr><w:b/><w:i/><w:color w:val="FF0000"/><w:sz w:val="16"/></w:rPr></w:style>
+            <w:style w:type="character" w:styleId="Child"><w:basedOn w:val="Parent"/><w:rPr><w:b/></w:rPr></w:style>
+            </w:styles>"#).unwrap();
+        let direct = RunProperties {
+            ruby: Some(Box::new(RubyAnnotation {
+                text: "ABCD".into(),
+                size_pt: Some(5.0),
+                guide_runs: [Some("Child"), Some("Parent"), None, Some("Missing")]
+                    .into_iter()
+                    .enumerate()
+                    .map(|(i, style)| RubyGuideRun {
+                        text: "A".into(),
+                        properties: Some(Box::new(RunProperties {
+                            style: style.map(Into::into),
+                            italic: (i == 1).then_some(false),
+                            color: (i == 1).then(|| "#0000FF".into()),
+                            font_size: (i == 1).then_some(4.0),
+                            ..Default::default()
+                        })),
+                    })
+                    .collect(),
+                ..Default::default()
+            })),
+            ..Default::default()
+        };
+        let original = direct.clone();
+        let resolved = styles
+            .resolve_effective_run_properties(None, Some(&direct))
+            .unwrap();
+        let guide = &resolved.ruby.as_ref().unwrap().guide_runs;
+        let first = guide[0].properties.as_deref().unwrap();
+        assert_eq!(
+            (
+                first.bold,
+                first.italic,
+                first.font_size,
+                first.color.as_deref()
+            ),
+            (Some(false), Some(true), Some(8.0), Some("#FF0000"))
+        );
+        assert_eq!(first.style.as_deref(), Some("Child"));
+        let second = guide[1].properties.as_deref().unwrap();
+        assert_eq!(
+            (
+                second.bold,
+                second.italic,
+                second.font_size,
+                second.color.as_deref()
+            ),
+            (Some(true), Some(false), Some(4.0), Some("#0000FF"))
+        );
+        for run in &guide[2..] {
+            assert!(run.properties.as_ref().unwrap().font_size.is_none());
+        }
+        assert_eq!(resolved.ruby.as_ref().unwrap().size_pt, Some(5.0));
+        assert_eq!(
+            direct, original,
+            "authored guide properties remain editable"
+        );
+        assert_eq!(
+            styles.resolve_effective_run_properties(None, Some(&resolved)),
+            Some(resolved)
+        );
+    }
+
+    #[test]
+    fn east_asian_layout_inherits_through_styles_and_direct_overrides() {
+        let xml = r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:docDefaults><w:rPrDefault><w:rPr><w:eastAsianLayout w:id="-1" w:combine="1" w:combineBrackets="round"/></w:rPr></w:rPrDefault></w:docDefaults>
+          <w:style w:type="paragraph" w:styleId="base"><w:rPr><w:eastAsianLayout w:id="2" w:vert="true"></w:eastAsianLayout></w:rPr></w:style>
+          <w:style w:type="paragraph" w:styleId="child"><w:basedOn w:val="base"/></w:style>
+          <w:style w:type="character" w:styleId="combined"><w:rPr><w:eastAsianLayout w:id="3" w:combine="on" w:combineBrackets="square"/></w:rPr></w:style>
+          <w:style w:type="character" w:styleId="off"><w:basedOn w:val="combined"/><w:rPr><w:eastAsianLayout w:combine="0" w:vert="off"/></w:rPr></w:style>
+        </w:styles>"#;
+        let part = StylesPart::from_xml(xml).unwrap();
+        let defaults = part.resolve_effective_run_properties(None, None).unwrap();
+        let layout = defaults.east_asian_layout.unwrap();
+        assert!(layout.combine);
+        assert_eq!(layout.id, Some(-1));
+        assert_eq!(layout.combine_brackets.as_deref(), Some("round"));
+        let paragraph = part
+            .resolve_effective_run_properties(Some("child"), None)
+            .unwrap();
+        let layout = paragraph.east_asian_layout.unwrap();
+        assert_eq!(layout.id, Some(2));
+        assert!(layout.vert);
+        assert!(!layout.combine);
+        assert_eq!(layout.combine_brackets, None);
+        for (style, enabled) in [("combined", true), ("off", false)] {
+            let mut direct = RunProperties {
+                style: Some(style.into()),
+                ..Default::default()
+            };
+            let effective = part
+                .resolve_effective_run_properties(Some("child"), Some(&direct))
+                .unwrap();
+            let layout = effective.east_asian_layout.unwrap();
+            assert_eq!(layout.combine, enabled);
+            assert!(!layout.vert);
+            direct.east_asian_layout = Some(Box::new(crate::document::EastAsianLayout::default()));
+            let effective = part
+                .resolve_effective_run_properties(Some("child"), Some(&direct))
+                .unwrap();
+            assert_eq!(effective.east_asian_layout, direct.east_asian_layout);
+        }
+    }
+    #[test]
     fn fit_text_preserves_signed_group_ids_in_defaults_and_styles() {
         let xml = r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
           <w:docDefaults><w:rPrDefault><w:rPr><w:fitText w:id="-1" w:val="840"/></w:rPr></w:rPrDefault></w:docDefaults>
@@ -4039,6 +4751,115 @@ mod tests {
         assert_eq!(hyperlink.underline, Some(true));
     }
 
+    #[test]
+    fn shading_theme_colors_cascade_and_direct_rgb_replaces_reference() {
+        let mut theme = crate::theme::ThemePart::default();
+        theme.colors.insert("accent1".into(), "#4472C4".into());
+        let _scope = crate::theme::ThemeColorScope::enter(Some(&theme));
+        let part = StylesPart::from_xml(r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:docDefaults><w:rPrDefault><w:rPr><w:shd w:val="solid" w:themeColor="accent1" w:themeShade="BF"/></w:rPr></w:rPrDefault></w:docDefaults>
+          <w:style w:type="paragraph" w:styleId="Base"><w:pPr><w:shd w:val="clear" w:themeFill="accent1" w:themeFillShade="BF"/></w:pPr></w:style>
+          <w:style w:type="paragraph" w:styleId="Child"><w:basedOn w:val="Base"/></w:style>
+        </w:styles>"#).unwrap();
+        let paragraph = part.resolve_paragraph_properties("Child").unwrap();
+        let shading = paragraph.shading.unwrap();
+        assert_eq!(shading.fill.as_deref(), Some("#2F5496"));
+        assert_eq!(shading.theme_fill.unwrap().name.as_ref(), "accent1");
+        let inherited = part
+            .resolve_effective_run_properties(Some("Child"), None)
+            .unwrap();
+        assert_eq!(
+            inherited.shading.as_ref().unwrap().color.as_deref(),
+            Some("#2F5496")
+        );
+        let direct = RunProperties {
+            shading: Some(crate::document::Shading {
+                fill: Some("#ABCDEF".into()),
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+        let effective = part
+            .resolve_effective_run_properties(Some("Child"), Some(&direct))
+            .unwrap();
+        assert_eq!(effective.shading.unwrap(), direct.shading.unwrap());
+    }
+
+    #[test]
+    fn underline_theme_color_cascades_and_plain_color_clears_reference() {
+        let mut theme = crate::theme::ThemePart::default();
+        theme.colors.insert("accent1".into(), "#4472C4".into());
+        let _scope = crate::theme::ThemeColorScope::enter(Some(&theme));
+        let part = StylesPart::from_xml(r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:docDefaults><w:rPrDefault><w:rPr><w:u w:val="wave" w:themeColor="accent1" w:themeShade="BF"/></w:rPr></w:rPrDefault></w:docDefaults>
+          <w:style w:type="paragraph" w:styleId="Value"><w:rPr><w:u w:val="double"/></w:rPr></w:style>
+          <w:style w:type="character" w:styleId="Tint"><w:rPr><w:u w:themeColor="accent1" w:themeTint="00" w:themeShade="00"></w:u></w:rPr></w:style>
+        </w:styles>"#).unwrap();
+        let effective = part
+            .resolve_effective_run_properties(Some("Value"), None)
+            .unwrap();
+        assert_eq!(effective.underline_kind.as_deref(), Some("double"));
+        assert_eq!(effective.underline_color.as_deref(), Some("#2F5496"));
+        assert_eq!(
+            effective
+                .underline_theme_color
+                .as_ref()
+                .unwrap()
+                .shade
+                .as_deref(),
+            Some("BF")
+        );
+        let direct = RunProperties {
+            style: Some("Tint".into()),
+            ..Default::default()
+        };
+        let effective = part
+            .resolve_effective_run_properties(Some("Value"), Some(&direct))
+            .unwrap();
+        assert_eq!(effective.underline_kind.as_deref(), Some("double"));
+        assert_eq!(effective.underline_color.as_deref(), Some("#FFFFFF"));
+        for color in ["FF0000", "auto"] {
+            let direct = RunProperties {
+                underline_color: Some(color.into()),
+                ..direct.clone()
+            };
+            let effective = part
+                .resolve_effective_run_properties(Some("Value"), Some(&direct))
+                .unwrap();
+            assert_eq!(effective.underline_color.as_deref(), Some(color));
+            assert!(effective.underline_theme_color.is_none());
+        }
+    }
+
+    #[test]
+    fn underline_style_attributes_inherit_independently() {
+        let xml = r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:docDefaults><w:rPrDefault><w:rPr><w:u w:val="wave" w:color="00B050"/></w:rPr></w:rPrDefault></w:docDefaults>
+          <w:style w:type="paragraph" w:styleId="Value"><w:rPr><w:u w:val="double"/></w:rPr></w:style>
+          <w:style w:type="paragraph" w:styleId="Color"><w:basedOn w:val="Value"/><w:rPr><w:u w:color="FF0000"/></w:rPr></w:style>
+          <w:style w:type="character" w:styleId="Auto"><w:rPr><w:u w:color="auto"></w:u></w:rPr></w:style>
+        </w:styles>"#;
+        let part = StylesPart::from_xml(xml).unwrap();
+        for (style, color) in [("Value", "00B050"), ("Color", "FF0000")] {
+            let effective = part
+                .resolve_effective_run_properties(Some(style), None)
+                .unwrap();
+            assert_eq!(effective.underline, Some(true));
+            assert_eq!(effective.underline_kind.as_deref(), Some("double"));
+            assert_eq!(effective.underline_color.as_deref(), Some(color));
+        }
+        let direct = RunProperties {
+            style: Some(Rc::from("Auto")),
+            ..Default::default()
+        };
+        let effective = part
+            .resolve_effective_run_properties(Some("Color"), Some(&direct))
+            .unwrap();
+        assert_eq!(effective.underline, Some(true));
+        assert_eq!(effective.underline_kind.as_deref(), Some("double"));
+        assert_eq!(effective.underline_color.as_deref(), Some("auto"));
+    }
+
     /// A style-declared `w:u` carries its kind and color through effective
     /// resolution (§17.3.2.40) — a wave-underlined character style must not
     /// flatten to a plain single rule.
@@ -4121,7 +4942,64 @@ mod tests {
         let automatic = part
             .resolve_character_run_properties("Automatic")
             .expect("automatic character properties");
-        assert_eq!(automatic.color, None);
+        assert_eq!(automatic.color.as_deref(), Some("#auto"));
+        let direct = RunProperties {
+            style: Some("Automatic".into()),
+            ..Default::default()
+        };
+        let effective = part
+            .resolve_effective_run_properties(None, Some(&direct))
+            .unwrap();
+        assert_eq!(effective.color.as_deref(), Some("#auto"));
+        let direct_rgb = RunProperties {
+            color: Some("#112233".into()),
+            ..direct
+        };
+        let effective = part
+            .resolve_effective_run_properties(None, Some(&direct_rgb))
+            .unwrap();
+        assert_eq!(effective.color.as_deref(), Some("#112233"));
+    }
+
+    #[test]
+    fn color_overrides_replace_theme_metadata_through_the_style_cascade() {
+        let xml = r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:docDefaults><w:rPrDefault><w:rPr><w:color w:val="112233" w:themeColor="accent1" w:themeTint="80"/></w:rPr></w:rPrDefault></w:docDefaults>
+          <w:style w:type="paragraph" w:styleId="Inherited"/>
+          <w:style w:type="paragraph" w:styleId="Automatic"><w:basedOn w:val="Inherited"/><w:rPr><w:color w:val="AUTO"/></w:rPr></w:style>
+          <w:style w:type="character" w:styleId="Fixed"><w:rPr><w:color w:val="445566"/></w:rPr></w:style>
+        </w:styles>"#;
+        let styles = StylesPart::from_xml(xml).unwrap();
+        let inherited = styles
+            .resolve_effective_run_properties(Some("Inherited"), None)
+            .unwrap();
+        let theme = inherited.theme_color.as_ref().unwrap();
+        assert_eq!(theme.name.as_ref(), "accent1");
+        assert_eq!(theme.tint.as_deref(), Some("80"));
+        let automatic = styles
+            .resolve_effective_run_properties(Some("Automatic"), None)
+            .unwrap();
+        assert_eq!(automatic.color.as_deref(), Some("#auto"));
+        assert!(automatic.theme_color.is_none());
+        let direct = RunProperties {
+            style: Some("Fixed".into()),
+            ..Default::default()
+        };
+        let fixed = styles
+            .resolve_effective_run_properties(Some("Inherited"), Some(&direct))
+            .unwrap();
+        assert_eq!(fixed.color.as_deref(), Some("#445566"));
+        assert!(fixed.theme_color.is_none());
+        let themed_direct = RunProperties {
+            color: Some("#778899".into()),
+            theme_color: inherited.theme_color.clone(),
+            ..direct
+        };
+        let themed = styles
+            .resolve_effective_run_properties(Some("Automatic"), Some(&themed_direct))
+            .unwrap();
+        assert_eq!(themed.color.as_deref(), Some("#778899"));
+        assert_eq!(themed.theme_color, inherited.theme_color);
     }
 
     #[test]
@@ -4289,6 +5167,46 @@ mod tests {
     }
 
     #[test]
+    fn last_default_paragraph_style_wins_in_document_order() {
+        let style = |id: &str| {
+            format!(
+                r#"<w:style w:type="paragraph" w:default="1" w:styleId="{id}"><w:name w:val="{id}"/><w:pPr><w:numPr><w:numId w:val="{id}"/></w:numPr></w:pPr></w:style>"#
+            )
+        };
+        // Reparse to expose the old HashMap iteration dependency reliably.
+        for (first, last) in [("10", "20"), ("20", "10")] {
+            let xml = format!(
+                r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">{}{}<w:style w:type="character" w:default="1" w:styleId="Character"/><w:style w:type="paragraph" w:default="0" w:styleId="NotDefault"/></w:styles>"#,
+                style(first),
+                style(last)
+            );
+            for _ in 0..32 {
+                let part = StylesPart::from_xml(&xml).unwrap();
+                assert_eq!(part.default_paragraph_style_id(), Some(last));
+                assert_eq!(
+                    part.resolve_numbering("Missing").unwrap().id.as_deref(),
+                    Some(last)
+                );
+                // Persisted style metadata must retain the selection order too.
+                let restored: StylesPart =
+                    serde_json::from_str(&serde_json::to_string(&part).unwrap()).unwrap();
+                assert_eq!(restored.default_paragraph_style_id(), Some(last));
+            }
+        }
+    }
+
+    #[test]
+    fn reparsing_invalidates_cached_default_paragraph_style() {
+        let mut part = StylesPart::from_xml(
+            r#"<w:styles><w:style w:type="paragraph" w:default="1" w:styleId="First"/></w:styles>"#,
+        )
+        .unwrap();
+        assert_eq!(part.default_paragraph_style_id(), Some("First"));
+        part.parse(r#"<w:styles><w:style w:type="paragraph" w:default="1" w:styleId="Second"/></w:styles>"#).unwrap();
+        assert_eq!(part.default_paragraph_style_id(), Some("Second"));
+    }
+
+    #[test]
     fn resolves_default_paragraph_style_id_from_flag() {
         let xml = r#"
 <w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
@@ -4390,6 +5308,229 @@ mod tests {
     }
 
     #[test]
+    fn conditional_table_paragraph_tabs_accumulate_and_stay_in_scope() {
+        let xml = r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:style w:type="table" w:styleId="Base"><w:tblStylePr w:type="firstRow"><w:pPr><w:tabs><w:tab w:val="left" w:pos="720"/></w:tabs></w:pPr></w:tblStylePr></w:style>
+          <w:style w:type="table" w:styleId="Child"><w:basedOn w:val="Base"/><w:tblStylePr w:type="firstRow"><w:pPr><w:tabs><w:tab w:val="clear" w:pos="720"/><w:tab w:val="right" w:pos="1440" w:leader="dot"></w:tab></w:tabs><w:rPr><w:tabs><w:tab w:pos="9999"/></w:tabs></w:rPr></w:pPr><w:tcPr><w:tabs><w:tab w:pos="8888"/></w:tabs></w:tcPr></w:tblStylePr></w:style>
+        </w:styles>"#;
+        let styles = StylesPart::from_xml(xml).unwrap();
+        let display = styles.resolve_table_style("Child").unwrap();
+        let format = &display.conditional[&TableStyleCondition::FirstRow];
+        assert!(!format.is_empty());
+        assert_eq!(
+            format
+                .paragraph_tabs
+                .iter()
+                .map(|tab| (tab.kind.as_deref(), tab.position, tab.leader.as_deref()))
+                .collect::<Vec<_>>(),
+            vec![
+                (Some("left"), Some(36.0), None),
+                (Some("clear"), Some(36.0), None),
+                (Some("right"), Some(72.0), Some("dot")),
+            ]
+        );
+        assert!(styles
+            .resolve_table_paragraph_properties("Child")
+            .is_none_or(|props| props.tabs.is_empty()));
+    }
+
+    #[test]
+    fn conditional_table_paragraph_decoration_inherits_each_edge_and_stays_in_scope() {
+        let xml = r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:style w:type="table" w:styleId="Base"><w:tblStylePr w:type="firstRow"><w:pPr>
+            <w:shd w:fill="112233"/><w:pBdr><w:top w:val="double" w:color="123456"/>
+              <w:bottom w:val="single"/><w:left w:val="dashed"/><w:right w:val="dotted"/>
+              <w:between w:val="single"/><w:bar w:val="double"/></w:pBdr>
+          </w:pPr></w:tblStylePr></w:style>
+          <w:style w:type="table" w:styleId="Child"><w:basedOn w:val="Base"/>
+            <w:tblStylePr w:type="firstRow"><w:pPr><w:shd w:val="nil"/><w:pBdr><w:top w:val="nil"/></w:pBdr>
+              <w:rPr><w:shd w:fill="FFFFFF"/><w:pBdr><w:bottom w:val="nil"/></w:pBdr></w:rPr>
+            </w:pPr><w:tcPr><w:shd w:fill="ABCDEF"/><w:tcBorders><w:top w:val="dotted"/></w:tcBorders></w:tcPr></w:tblStylePr>
+          </w:style>
+        </w:styles>"#;
+        let styles = StylesPart::from_xml(xml).unwrap();
+        let display = styles.resolve_table_style("Child").unwrap();
+        let format = &display.conditional[&TableStyleCondition::FirstRow];
+        let shading = format.paragraph_shading.as_ref().unwrap();
+        assert_eq!(shading.val.as_deref(), Some("nil"));
+        assert!(shading.fill.is_none());
+        let borders = format.paragraph_borders.as_ref().unwrap();
+        assert_eq!(borders.top.as_ref().unwrap().val.as_deref(), Some("nil"));
+        assert_eq!(
+            borders.bottom.as_ref().unwrap().val.as_deref(),
+            Some("single")
+        );
+        assert_eq!(
+            borders.left.as_ref().unwrap().val.as_deref(),
+            Some("dashed")
+        );
+        assert_eq!(
+            borders.right.as_ref().unwrap().val.as_deref(),
+            Some("dotted")
+        );
+        assert_eq!(
+            borders.between.as_ref().unwrap().val.as_deref(),
+            Some("single")
+        );
+        assert_eq!(borders.bar.as_ref().unwrap().val.as_deref(), Some("double"));
+        assert_eq!(format.fill.as_deref(), Some("#ABCDEF"));
+        assert_eq!(
+            format
+                .borders
+                .as_ref()
+                .unwrap()
+                .top
+                .as_ref()
+                .unwrap()
+                .val
+                .as_deref(),
+            Some("dotted")
+        );
+    }
+
+    #[test]
+    fn conditional_table_text_alignment_inherits_without_scope_leaks() {
+        let xml = r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:docDefaults><w:pPrDefault><w:pPr><w:textAlignment w:val="bottom"/></w:pPr></w:pPrDefault></w:docDefaults>
+          <w:style w:type="table" w:styleId="Base"><w:pPr><w:textAlignment w:val="center"/></w:pPr>
+            <w:tblStylePr w:type="firstRow"><w:pPr><w:textAlignment w:val="top"/></w:pPr></w:tblStylePr>
+          </w:style>
+          <w:style w:type="table" w:styleId="Child"><w:basedOn w:val="Base"/>
+            <w:tblStylePr w:type="firstRow"><w:pPr><w:textAlignment w:val="BASELINE"/>
+              <w:rPr><w:textAlignment w:val="bottom"/></w:rPr></w:pPr>
+              <w:tcPr><w:textAlignment w:val="bottom"/></w:tcPr>
+            </w:tblStylePr>
+          </w:style>
+        </w:styles>"#;
+        let styles = StylesPart::from_xml(xml).unwrap();
+        assert_eq!(
+            styles
+                .doc_default_paragraph_properties()
+                .unwrap()
+                .text_alignment
+                .as_deref(),
+            Some("bottom")
+        );
+        assert_eq!(
+            styles
+                .resolve_table_paragraph_properties("Child")
+                .unwrap()
+                .text_alignment
+                .as_deref(),
+            Some("center")
+        );
+        for (id, expected) in [("Base", "top"), ("Child", "baseline")] {
+            let display = styles.resolve_table_style(id).unwrap();
+            let format = &display.conditional[&TableStyleCondition::FirstRow];
+            assert_eq!(format.paragraph_text_alignment.as_deref(), Some(expected));
+            assert!(!format.is_empty());
+        }
+    }
+
+    #[test]
+    fn mirror_indent_document_default_and_explicit_style_override() {
+        let xml = r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:docDefaults><w:pPrDefault><w:pPr><w:mirrorIndents/></w:pPr></w:pPrDefault></w:docDefaults>
+          <w:style w:type="paragraph" w:styleId="Base"/>
+          <w:style w:type="paragraph" w:styleId="Off"><w:basedOn w:val="Base"/><w:pPr><w:mirrorIndents w:val="0"/></w:pPr></w:style>
+        </w:styles>"#;
+        let styles = StylesPart::from_xml(xml).unwrap();
+        assert_eq!(
+            styles
+                .doc_default_paragraph_properties()
+                .unwrap()
+                .mirror_indents,
+            Some(true)
+        );
+        assert_eq!(
+            styles
+                .resolve_paragraph_properties("Off")
+                .unwrap()
+                .mirror_indents,
+            Some(false)
+        );
+    }
+
+    #[test]
+    fn conditional_table_grid_controls_inherit_explicit_false_and_stay_in_scope() {
+        let xml = r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:style w:type="table" w:styleId="Base"><w:tblStylePr w:type="firstRow"><w:pPr>
+            <w:suppressLineNumbers/><w:contextualSpacing/><w:suppressAutoHyphens/><w:snapToGrid/><w:adjustRightInd/><w:mirrorIndents/>
+          </w:pPr></w:tblStylePr></w:style>
+          <w:style w:type="table" w:styleId="Child"><w:basedOn w:val="Base"/>
+            <w:tblStylePr w:type="firstRow"><w:pPr><w:contextualSpacing w:val="off"/><w:suppressAutoHyphens w:val="off"/><w:mirrorIndents w:val="false"/>
+              <w:rPr><w:suppressLineNumbers w:val="0"/><w:snapToGrid w:val="0"/></w:rPr>
+            </w:pPr><w:tcPr><w:adjustRightInd w:val="0"/></w:tcPr></w:tblStylePr>
+          </w:style>
+        </w:styles>"#;
+        let styles = StylesPart::from_xml(xml).unwrap();
+        let display = styles.resolve_table_style("Child").unwrap();
+        let format = &display.conditional[&TableStyleCondition::FirstRow];
+        assert_eq!(format.paragraph_suppress_line_numbers, Some(true));
+        assert_eq!(format.paragraph_contextual_spacing, Some(false));
+        assert_eq!(format.paragraph_snap_to_grid, Some(true));
+        assert_eq!(format.paragraph_adjust_right_indent, Some(true));
+        assert_eq!(format.paragraph_mirror_indents, Some(false));
+        assert_eq!(format.paragraph_suppress_auto_hyphens, Some(false));
+        assert!(!format.is_empty());
+    }
+
+    #[test]
+    fn conditional_table_paragraph_controls_inherit_explicit_false_and_stay_in_scope() {
+        let xml = r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:style w:type="table" w:styleId="Base"><w:tblStylePr w:type="firstRow"><w:pPr>
+            <w:bidi/><w:keepNext/><w:keepLines/><w:pageBreakBefore/><w:widowControl/>
+          </w:pPr></w:tblStylePr></w:style>
+          <w:style w:type="table" w:styleId="Child"><w:basedOn w:val="Base"/>
+            <w:tblStylePr w:type="firstRow"><w:pPr><w:keepNext w:val="off"/><w:widowControl w:val="false"/>
+              <w:rPr><w:bidi w:val="0"/><w:keepLines w:val="0"/></w:rPr>
+            </w:pPr><w:tcPr><w:pageBreakBefore w:val="0"/></w:tcPr></w:tblStylePr>
+          </w:style>
+        </w:styles>"#;
+        let styles = StylesPart::from_xml(xml).unwrap();
+        let display = styles.resolve_table_style("Child").unwrap();
+        let format = &display.conditional[&TableStyleCondition::FirstRow];
+        assert_eq!(format.paragraph_bidi, Some(true));
+        assert_eq!(format.paragraph_keep_next, Some(false));
+        assert_eq!(format.paragraph_keep_lines, Some(true));
+        assert_eq!(format.paragraph_page_break_before, Some(true));
+        assert_eq!(format.paragraph_widow_control, Some(false));
+        assert!(!format.is_empty());
+    }
+
+    #[test]
+    fn conditional_table_spacing_and_indents_merge_per_attribute() {
+        let xml = r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:style w:type="table" w:styleId="Base">
+            <w:tblStylePr w:type="firstRow"><w:pPr>
+              <w:spacing w:before="120" w:after="240" w:line="360"/>
+              <w:ind w:start="200" w:end="400" w:firstLineChars="100"/>
+            </w:pPr></w:tblStylePr>
+          </w:style>
+          <w:style w:type="table" w:styleId="Child"><w:basedOn w:val="Base"/>
+            <w:tblStylePr w:type="firstRow"><w:pPr>
+              <w:spacing w:after="0" w:beforeAutospacing="1"/>
+              <w:ind w:end="0"/>
+              <w:rPr><w:spacing w:val="900"/><w:ind w:start="9999"/></w:rPr>
+            </w:pPr><w:tcPr><w:spacing w:after="9999"/><w:ind w:start="9999"/></w:tcPr></w:tblStylePr>
+          </w:style>
+        </w:styles>"#;
+        let styles = StylesPart::from_xml(xml).unwrap();
+        let display = styles.resolve_table_style("Child").unwrap();
+        let format = &display.conditional[&TableStyleCondition::FirstRow];
+        let spacing = format.paragraph_spacing.as_ref().unwrap();
+        assert_eq!(spacing.after, Some(0.0));
+        assert_eq!(spacing.line, Some(1.5));
+        assert!(spacing.before_auto);
+        assert_eq!(spacing.before_auto_fallback.unwrap().points, Some(6.0));
+        let indent = format.paragraph_indent.as_ref().unwrap();
+        assert_eq!(indent.start, Some(10.0));
+        assert_eq!(indent.end, Some(0.0));
+        assert_eq!(indent.first_line_chars, Some(100));
+        assert!(!format.is_empty());
+    }
+
+    #[test]
     fn table_style_paragraph_properties_skip_conditional_formats() {
         let xml = r#"
 <w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
@@ -4461,6 +5602,50 @@ mod tests {
                 .as_deref(),
             Some("dashed")
         );
+    }
+
+    #[test]
+    fn explicit_clear_table_style_shading_overrides_base_and_conditions() {
+        let xml = r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:style w:type="table" w:styleId="Base"><w:tcPr><w:shd w:val="clear" w:fill="123456"/></w:tcPr><w:tblStylePr w:type="firstRow"><w:tcPr><w:shd w:val="clear" w:fill="ABCDEF"/></w:tcPr></w:tblStylePr></w:style>
+          <w:style w:type="table" w:styleId="Child"><w:basedOn w:val="Base"/><w:tcPr><w:shd w:val="clear" w:fill="auto"/></w:tcPr><w:tblStylePr w:type="firstRow"><w:tcPr><w:shd w:val="clear"></w:shd></w:tcPr></w:tblStylePr><w:tblStylePr w:type="band1Horz"><w:tcPr><w:shd w:val="clear" w:fill="auto"/></w:tcPr></w:tblStylePr></w:style>
+          <w:style w:type="table" w:styleId="Omitted"><w:basedOn w:val="Base"/></w:style>
+        </w:styles>"#;
+        let styles = StylesPart::from_xml(xml).unwrap();
+        let child = styles.resolve_table_style("Child").unwrap();
+        assert_eq!(child.fill.as_deref(), Some("transparent"));
+        assert_eq!(
+            child.first_row.unwrap().fill.as_deref(),
+            Some("transparent")
+        );
+        assert_eq!(child.band1_fill.as_deref(), Some("transparent"));
+        assert!(child
+            .conditional
+            .values()
+            .all(|format| format.fill.as_deref() == Some("transparent")));
+        let omitted = styles.resolve_table_style("Omitted").unwrap();
+        assert_eq!(omitted.fill.as_deref(), Some("#123456"));
+        assert_eq!(omitted.first_row.unwrap().fill.as_deref(), Some("#ABCDEF"));
+    }
+
+    #[test]
+    fn table_style_shading_resolves_themes_patterns_and_inheritance() {
+        let mut theme = crate::theme::ThemePart::default();
+        theme.colors.insert("accent1".into(), "#4472C4".into());
+        let _scope = crate::theme::ThemeColorScope::enter(Some(&theme));
+        let xml = r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:style w:type="table" w:styleId="Base">
+            <w:tcPr><w:shd w:val="clear" w:fill="FF0000" w:themeFill="accent1" w:themeFillShade="BF"/></w:tcPr>
+            <w:tblStylePr w:type="firstRow"><w:tcPr><w:shd w:val="solid" w:themeColor="accent1" w:themeShade="BF"></w:shd></w:tcPr></w:tblStylePr>
+            <w:tblStylePr w:type="band1Horz"><w:tcPr><w:shd w:val="pct12" w:color="000000" w:fill="FFFFFF"/></w:tcPr></w:tblStylePr>
+          </w:style>
+          <w:style w:type="table" w:styleId="Child"><w:basedOn w:val="Base"/></w:style>
+        </w:styles>"#;
+        let part = StylesPart::from_xml(xml).unwrap();
+        let child = part.resolve_table_style("Child").unwrap();
+        assert_eq!(child.fill.as_deref(), Some("#2F5496"));
+        assert_eq!(child.first_row.unwrap().fill.as_deref(), Some("#2F5496"));
+        assert_eq!(child.band1_fill.as_deref(), Some("#DFDFDF"));
     }
 
     #[test]
@@ -4682,6 +5867,221 @@ mod tests {
             Some("#0000FF")
         );
         assert_eq!(style.conditional.len(), 2);
+    }
+
+    #[test]
+    fn table_style_conditional_text_colors_resolve_auto_and_themes() {
+        let mut theme = crate::theme::ThemePart::default();
+        theme.colors.insert("accent1".into(), "#4472C4".into());
+        let _scope = crate::theme::ThemeColorScope::enter(Some(&theme));
+        let xml = r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:style w:type="table" w:styleId="Base">
+            <w:tblStylePr w:type="firstRow"><w:rPr><w:color w:val="FF0000"/></w:rPr></w:tblStylePr>
+            <w:tblStylePr w:type="lastCol"><w:rPr><w:color w:val="00FF00"/></w:rPr></w:tblStylePr>
+          </w:style>
+          <w:style w:type="table" w:styleId="Child"><w:basedOn w:val="Base"/>
+            <w:tblStylePr w:type="firstRow"><w:rPr><w:color w:val="auto"/></w:rPr></w:tblStylePr>
+            <w:tblStylePr w:type="lastCol"><w:rPr><w:color w:val="FF0000" w:themeColor="accent1" w:themeShade="BF"/></w:rPr></w:tblStylePr>
+            <w:tblStylePr w:type="band1Horz"><w:rPr><w:color w:themeColor="accent1" w:themeTint="80"/></w:rPr></w:tblStylePr>
+            <w:tblStylePr w:type="seCell"><w:rPr><w:color w:val="123456" w:themeColor="missing"/></w:rPr></w:tblStylePr>
+          </w:style>
+          <w:style w:type="table" w:styleId="Inherited"><w:basedOn w:val="Child"/></w:style>
+        </w:styles>"#;
+        let part = StylesPart::from_xml(xml).unwrap();
+        for id in ["Child", "Inherited"] {
+            let style = part.resolve_table_style(id).unwrap();
+            for (condition, expected) in [
+                (TableStyleCondition::FirstRow, "#auto"),
+                (TableStyleCondition::LastCol, "#2F5496"),
+                (TableStyleCondition::Band1Horz, "#A1B8E1"),
+                (TableStyleCondition::SeCell, "#123456"),
+            ] {
+                assert_eq!(
+                    style.conditional[&condition].color.as_deref(),
+                    Some(expected),
+                    "{id}: {condition:?}"
+                );
+            }
+            assert_eq!(
+                style.first_row.as_ref().unwrap().color.as_deref(),
+                Some("#auto")
+            );
+        }
+        let base = part.resolve_table_style("Base").unwrap();
+        assert_eq!(base.first_row.unwrap().color.as_deref(), Some("#FF0000"));
+    }
+    #[test]
+    fn table_style_base_text_format_applies_before_conditional_regions() {
+        use crate::document::{Table, TableStyleCellPosition};
+        let xml = r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:style w:type="table" w:styleId="Base"><w:rPr><w:b/><w:i/><w:color w:val="112233"/></w:rPr></w:style>
+          <w:style w:type="table" w:styleId="Inherited"><w:basedOn w:val="Base"/></w:style>
+          <w:style w:type="table" w:styleId="Child"><w:basedOn w:val="Inherited"/>
+            <w:rPr><w:b w:val="0"/><w:color w:val="auto"/></w:rPr>
+            <w:tblStylePr w:type="firstRow"><w:rPr><w:b/><w:i w:val="0"/><w:color w:val="445566"/></w:rPr></w:tblStylePr>
+            <w:tblStylePr w:type="wholeTable"><w:rPr><w:b/><w:i w:val="0"/><w:color w:val="FF0000"/></w:rPr></w:tblStylePr>
+          </w:style>
+        </w:styles>"#;
+        let styles = StylesPart::from_xml(xml).unwrap();
+        let cell_format = |id: &str, row| {
+            Table {
+                resolved_style: styles.resolve_table_style(id),
+                ..Default::default()
+            }
+            .table_style_cell_format(TableStyleCellPosition {
+                row,
+                row_count: 3,
+                cell: 1,
+                cell_count: 3,
+            })
+        };
+        for id in ["Base", "Inherited"] {
+            for row in [0, 1, 2] {
+                let format = cell_format(id, row);
+                assert_eq!(format.bold, Some(true), "{id} row {row}");
+                assert_eq!(format.italic, Some(true));
+                assert_eq!(format.color.as_deref(), Some("#112233"));
+            }
+        }
+        let header = cell_format("Child", 0);
+        assert_eq!(header.bold, Some(true));
+        assert_eq!(header.italic, Some(false));
+        assert_eq!(header.color.as_deref(), Some("#445566"));
+        let body = cell_format("Child", 1);
+        assert_eq!(body.bold, Some(false));
+        assert_eq!(body.italic, Some(true));
+        assert_eq!(body.color.as_deref(), Some("#auto"));
+    }
+    #[test]
+    fn table_style_fonts_inherit_per_slot_and_conditional_region() {
+        use crate::document::{Table, TableStyleCellPosition};
+        let styles = StylesPart::from_xml(r#"<w:styles xmlns:w="urn:w">
+          <w:style w:type="table" w:styleId="Base"><w:rPr><w:rFonts w:ascii="Base Latin" w:hAnsi="Base ANSI" w:eastAsia="Base EA" w:cs="Base CS" w:hint="eastAsia"/></w:rPr>
+            <w:tblStylePr w:type="firstRow"><w:rPr><w:rFonts w:cs="Header CS"/></w:rPr></w:tblStylePr></w:style>
+          <w:style w:type="table" w:styleId="Child"><w:basedOn w:val="Base"/><w:rPr><w:rFonts w:ascii="Ignored" w:asciiTheme="majorHAnsi" w:eastAsia="Child EA"/></w:rPr>
+            <w:tblStylePr w:type="firstRow"><w:rPr><w:rFonts w:hAnsiTheme="minorHAnsi"/></w:rPr></w:tblStylePr>
+            <w:tblStylePr w:type="wholeTable"><w:rPr><w:rFonts w:ascii="Ignored Whole"/></w:rPr></w:tblStylePr></w:style>
+          <w:style w:type="table" w:styleId="Grandchild"><w:basedOn w:val="Child"/></w:style>
+          <w:style w:type="table" w:styleId="Named"><w:basedOn w:val="Child"/><w:rPr><w:rFonts w:ascii="Named Latin"/></w:rPr></w:style>
+        </w:styles>"#).unwrap();
+        for id in ["Child", "Grandchild", "Named"] {
+            let table = Table {
+                resolved_style: styles.resolve_table_style(id),
+                ..Default::default()
+            };
+            for row in [0, 1] {
+                let format = table.table_style_cell_format(TableStyleCellPosition {
+                    row,
+                    row_count: 2,
+                    cell: 1,
+                    cell_count: 3,
+                });
+                let fonts = format.fonts;
+                assert_eq!(fonts.east_asia.as_deref(), Some("Child EA"));
+                assert_eq!(
+                    fonts.complex.as_deref(),
+                    Some(if row == 0 { "Header CS" } else { "Base CS" })
+                );
+                assert_eq!(fonts.hint, Some(FontHint::EastAsia));
+                if id == "Named" {
+                    assert_eq!(fonts.ascii.as_deref(), Some("Named Latin"));
+                    assert_eq!(fonts.ascii_theme, None);
+                } else {
+                    assert_eq!(fonts.ascii, None);
+                    assert_eq!(fonts.ascii_theme.as_deref(), Some("majorHAnsi"));
+                }
+                assert_eq!(
+                    fonts.h_ansi.as_deref(),
+                    if row == 0 { None } else { Some("Base ANSI") }
+                );
+                assert_eq!(
+                    fonts.h_ansi_theme.as_deref(),
+                    if row == 0 { Some("minorHAnsi") } else { None }
+                );
+            }
+        }
+        let serialized = serde_json::to_string(&TableStyleDisplay::default()).unwrap();
+        assert!(!serialized.contains("fonts"));
+    }
+
+    #[test]
+    fn conditional_paragraph_alignment_inherits_without_leaking_from_other_containers() {
+        use crate::document::{Table, TableStyleCellPosition, TableStyleCondition};
+        let styles = StylesPart::from_xml(
+            r#"<w:styles xmlns:w="urn:w">
+          <w:style w:type="table" w:styleId="Base">
+            <w:tblStylePr w:type="firstRow"><w:pPr><w:jc w:val="center"/></w:pPr></w:tblStylePr>
+            <w:tblStylePr w:type="lastRow"><w:pPr><w:jc w:val="right"/></w:pPr></w:tblStylePr>
+          </w:style>
+          <w:style w:type="table" w:styleId="Child"><w:basedOn w:val="Base"/>
+            <w:tblStylePr w:type="firstRow"><w:rPr><w:b/><w:jc w:val="left"/></w:rPr></w:tblStylePr>
+            <w:tblStylePr w:type="lastRow"><w:pPr><w:jc w:val="both"/></w:pPr></w:tblStylePr>
+            <w:tblStylePr w:type="wholeTable"><w:pPr><w:jc w:val="end"/></w:pPr></w:tblStylePr>
+          </w:style>
+        </w:styles>"#,
+        )
+        .unwrap();
+        let display = styles.resolve_table_style("Child").unwrap();
+        let header = &display.conditional[&TableStyleCondition::FirstRow];
+        assert_eq!(header.paragraph_alignment.as_deref(), Some("center"));
+        assert_eq!(header.bold, Some(true));
+        assert!(!header.is_empty());
+        let table = Table {
+            resolved_style: Some(display),
+            ..Default::default()
+        };
+        for (row, expected) in [(0, Some("center")), (1, None), (2, Some("both"))] {
+            let mut table = table.clone();
+            table.look.last_row = Some(true);
+            let format = table.table_style_cell_format(TableStyleCellPosition {
+                row,
+                row_count: 3,
+                cell: 1,
+                cell_count: 3,
+            });
+            assert_eq!(format.paragraph_alignment.as_deref(), expected);
+        }
+    }
+
+    #[test]
+    fn table_style_font_sizes_inherit_and_resolve_per_script_and_region() {
+        use crate::document::{Table, TableStyleCellPosition};
+        let styles = StylesPart::from_xml(r#"<w:styles xmlns:w="urn:w">
+          <w:style w:type="table" w:styleId="Base"><w:rPr><w:sz w:val="18"/><w:szCs w:val="22"/></w:rPr>
+            <w:tblStylePr w:type="firstRow"><w:rPr><w:sz w:val="28"/></w:rPr></w:tblStylePr>
+          </w:style>
+          <w:style w:type="table" w:styleId="Child"><w:basedOn w:val="Base"/>
+            <w:rPr><w:szCs w:val="25"/></w:rPr>
+            <w:tblStylePr w:type="firstRow"><w:rPr><w:szCs w:val="32"/></w:rPr></w:tblStylePr>
+            <w:tblStylePr w:type="wholeTable"><w:rPr><w:sz w:val="90"/><w:szCs w:val="92"/></w:rPr></w:tblStylePr>
+          </w:style>
+          <w:style w:type="table" w:styleId="Grandchild"><w:basedOn w:val="Child"/></w:style>
+        </w:styles>"#).unwrap();
+        for id in ["Base", "Child", "Grandchild"] {
+            let table = Table {
+                resolved_style: styles.resolve_table_style(id),
+                ..Default::default()
+            };
+            for row in [0, 1] {
+                let format = table.table_style_cell_format(TableStyleCellPosition {
+                    row,
+                    row_count: 3,
+                    cell: 1,
+                    cell_count: 3,
+                });
+                assert_eq!(format.font_size, Some(if row == 0 { 14.0 } else { 9.0 }));
+                assert_eq!(
+                    format.font_size_complex,
+                    Some(if id == "Base" {
+                        11.0
+                    } else if row == 0 {
+                        16.0
+                    } else {
+                        12.5
+                    })
+                );
+            }
+        }
     }
 
     #[test]

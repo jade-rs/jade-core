@@ -1,20 +1,13 @@
-//! Italic formatting command implementation.
-//!
-//! Mirrors the behaviour of the bold command but targets the `italic`
-//! run property so that selections can be emphasised with slanted text.
+//! Italic formatting for selected text and paragraph marks.
 
-use super::run_backup::{capture_paragraph_runs, restore_paragraph_runs, ParagraphRunsBackup};
-use super::text_edit::apply_run_properties;
-use super::{Command, CommandContext, CommandError, CommandResult};
-use crate::document::{Paragraph, RunProperties};
+use super::set_run_format::SetRunFormatCommand;
+use super::{Command, CommandContext, CommandResult};
+use jade_docx_headless_api::HeadlessRunFormat;
 use jade_docx_layout::selection::SelectionRange;
 
-/// Applies italic styling to the current selection.
+/// Applies italic styling to the current selection, including complex script.
 pub struct ApplyItalicCommand {
-    range: SelectionRange,
-    enabled: bool,
-    previous_runs: Option<Vec<ParagraphRunsBackup>>,
-    previous_selection: Option<SelectionRange>,
+    inner: SetRunFormatCommand,
 }
 
 impl ApplyItalicCommand {
@@ -24,10 +17,14 @@ impl ApplyItalicCommand {
 
     pub fn new_with_enabled(range: SelectionRange, enabled: bool) -> Self {
         Self {
-            range,
-            enabled,
-            previous_runs: None,
-            previous_selection: None,
+            inner: SetRunFormatCommand::new(
+                range,
+                HeadlessRunFormat {
+                    italic: Some(enabled),
+                    complex_italic: Some(enabled),
+                    ..Default::default()
+                },
+            ),
         }
     }
 }
@@ -36,89 +33,25 @@ impl Command for ApplyItalicCommand {
     fn tracks_formatting(&self) -> bool {
         true
     }
+
     fn name(&self) -> &'static str {
         "apply_italic"
     }
 
     fn apply(&mut self, ctx: &mut CommandContext<'_>) -> CommandResult<()> {
-        if self.range.is_collapsed() {
-            return Err(CommandError::InvalidSelection);
-        }
-
-        let (start, end) = self.range.normalized();
-        let paragraph_count = ctx.document.paragraph_count();
-        if paragraph_count == 0
-            || start.paragraph >= paragraph_count
-            || end.paragraph >= paragraph_count
-        {
-            return Err(CommandError::ParagraphUnavailable);
-        }
-        self.previous_runs = Some(capture_paragraph_runs(ctx, start.paragraph, end.paragraph)?);
-        self.previous_selection = *ctx.selection;
-
-        let italic_props = RunProperties {
-            italic: Some(self.enabled),
-            italic_complex: Some(self.enabled),
-            ..Default::default()
-        };
-
-        for paragraph_index in start.paragraph..=end.paragraph {
-            let zero_width = ctx.document.zero_width_runs(paragraph_index);
-            let paragraph = ctx
-                .document
-                .paragraph_mut(paragraph_index)
-                .ok_or(CommandError::ParagraphUnavailable)?;
-            let paragraph_len = paragraph_len(paragraph);
-            let range_start = if paragraph_index == start.paragraph {
-                start.offset.min(paragraph_len)
-            } else {
-                0
-            };
-            let range_end = if paragraph_index == end.paragraph {
-                end.offset.min(paragraph_len)
-            } else {
-                paragraph_len
-            };
-
-            if range_start >= range_end {
-                continue;
-            }
-
-            let restyled = apply_run_properties(
-                &mut paragraph.runs,
-                range_start,
-                range_end,
-                &italic_props,
-                &zero_width,
-            );
-            ctx.document
-                .sync_paragraph_run_properties(paragraph_index, &restyled);
-        }
-
-        *ctx.selection = Some(self.range);
-        Ok(())
+        self.inner.apply(ctx)
     }
 
     fn undo(&mut self, ctx: &mut CommandContext<'_>) -> CommandResult<()> {
-        let backups = self
-            .previous_runs
-            .take()
-            .ok_or_else(|| CommandError::Custom("missing backup for undo".into()))?;
-        restore_paragraph_runs(ctx, &backups)?;
-        *ctx.selection = self.previous_selection;
-        Ok(())
+        self.inner.undo(ctx)
     }
-}
-
-fn paragraph_len(paragraph: &Paragraph) -> usize {
-    paragraph.runs.iter().map(|run| run.text.len()).sum()
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::commands::{CommandContext, CommandExecutor};
-    use crate::document::{Body, BodyElement, Document, Paragraph, Run};
+    use crate::commands::{CommandContext, CommandError, CommandExecutor};
+    use crate::document::{Body, BodyElement, Document, Paragraph, Run, RunProperties};
     use crate::word_document::WordDocument;
     use crate::Options;
     use futures::executor;

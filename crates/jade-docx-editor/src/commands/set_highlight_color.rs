@@ -3,15 +3,16 @@
 use super::run_backup::{capture_paragraph_runs, restore_paragraph_runs, ParagraphRunsBackup};
 use super::text_edit::apply_run_properties;
 use super::{Command, CommandContext, CommandError, CommandResult};
-use crate::document::{Paragraph, RunProperties};
+use crate::document::{Paragraph, ParagraphProperties, RunProperties};
 use jade_docx_layout::selection::SelectionRange;
 
-/// Assigns the provided highlight color to the selected runs.
+/// Assigns the provided highlight color to selected text and paragraph marks.
 pub struct SetHighlightColorCommand {
     range: SelectionRange,
     color: String,
     previous_runs: Option<Vec<ParagraphRunsBackup>>,
     previous_selection: Option<SelectionRange>,
+    previous_mark_properties: Vec<(usize, Option<ParagraphProperties>)>,
 }
 
 impl SetHighlightColorCommand {
@@ -21,6 +22,7 @@ impl SetHighlightColorCommand {
             color: color.into(),
             previous_runs: None,
             previous_selection: None,
+            previous_mark_properties: Vec::new(),
         }
     }
 }
@@ -48,6 +50,7 @@ impl Command for SetHighlightColorCommand {
         }
         self.previous_runs = Some(capture_paragraph_runs(ctx, start.paragraph, end.paragraph)?);
         self.previous_selection = *ctx.selection;
+        self.previous_mark_properties.clear();
 
         let highlight_props = RunProperties {
             highlight: Some(self.color.as_str().into()),
@@ -73,7 +76,24 @@ impl Command for SetHighlightColorCommand {
                 paragraph_len
             };
 
+            let selects_mark = paragraph_index < end.paragraph;
+            if selects_mark {
+                self.previous_mark_properties
+                    .push((paragraph_index, paragraph.properties.clone()));
+                let properties = paragraph
+                    .properties
+                    .get_or_insert_with(Default::default)
+                    .mark_run_properties
+                    .get_or_insert_with(Default::default);
+                super::text_edit::merge_run_properties(properties, &highlight_props);
+            }
             if range_start >= range_end {
+                if selects_mark {
+                    super::paragraph_property_sync::sync_paragraph_mark_run_properties_xml(
+                        ctx.document,
+                        paragraph_index,
+                    );
+                }
                 continue;
             }
 
@@ -86,6 +106,12 @@ impl Command for SetHighlightColorCommand {
             );
             ctx.document
                 .sync_paragraph_run_properties(paragraph_index, &restyled);
+            if selects_mark {
+                super::paragraph_property_sync::sync_paragraph_mark_run_properties_xml(
+                    ctx.document,
+                    paragraph_index,
+                );
+            }
         }
 
         *ctx.selection = Some(self.range);
@@ -98,6 +124,16 @@ impl Command for SetHighlightColorCommand {
             .take()
             .ok_or_else(|| CommandError::Custom("missing backup for undo".into()))?;
         restore_paragraph_runs(ctx, &backups)?;
+        for (index, properties) in self.previous_mark_properties.drain(..) {
+            ctx.document
+                .paragraph_mut(index)
+                .ok_or(CommandError::ParagraphUnavailable)?
+                .properties = properties;
+            super::paragraph_property_sync::sync_paragraph_mark_run_properties_xml(
+                ctx.document,
+                index,
+            );
+        }
         *ctx.selection = self.previous_selection;
         Ok(())
     }

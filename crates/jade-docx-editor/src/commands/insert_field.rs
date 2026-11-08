@@ -45,7 +45,7 @@ impl InsertFieldCommand {
         command
     }
 
-    fn run_field_kind(&self) -> RunFieldKind {
+    pub(crate) fn run_field_kind(&self) -> RunFieldKind {
         if let Some(kind) = self.kind_override.clone() {
             return kind;
         }

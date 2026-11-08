@@ -152,12 +152,14 @@ impl Command for SetParagraphLineSpacingCommand {
                 });
             let before_changed = self.before.is_some_and(|before| {
                 current_spacing.and_then(|spacing| spacing.before) != Some(before)
+                    || current_spacing.is_some_and(|spacing| spacing.before_auto)
                     || current_spacing
                         .and_then(|spacing| spacing.before_lines)
                         .is_some()
             });
             let after_changed = self.after.is_some_and(|after| {
                 current_spacing.and_then(|spacing| spacing.after) != Some(after)
+                    || current_spacing.is_some_and(|spacing| spacing.after_auto)
                     || current_spacing
                         .and_then(|spacing| spacing.after_lines)
                         .is_some()
@@ -183,15 +185,11 @@ impl Command for SetParagraphLineSpacingCommand {
                     // A rule on its own re-reads the existing line height.
                     spacing.line_rule = spacing.line.map(|_| rule);
                 }
-                if self.before.is_some() {
-                    spacing.before = self.before;
-                    spacing.before_lines = None;
-                    spacing.before_auto = false;
+                if let Some(before) = self.before {
+                    spacing.set_before_points(before);
                 }
-                if self.after.is_some() {
-                    spacing.after = self.after;
-                    spacing.after_lines = None;
-                    spacing.after_auto = false;
+                if let Some(after) = self.after {
+                    spacing.set_after_points(after);
                 }
             }
 
@@ -201,7 +199,14 @@ impl Command for SetParagraphLineSpacingCommand {
                 .and_then(|paragraph| paragraph.properties.as_ref())
                 .and_then(|props| props.spacing.as_ref())
                 .cloned();
-            sync_paragraph_spacing_xml(ctx.document, paragraph_index, spacing.as_ref());
+            sync_paragraph_spacing_xml(
+                ctx.document,
+                paragraph_index,
+                spacing.as_ref(),
+                self.line.is_some() || self.line_rule.is_some(),
+                self.before.is_some(),
+                self.after.is_some(),
+            );
         }
 
         Ok(())
@@ -569,8 +574,8 @@ mod tests {
             .expect("serialize");
         assert!(xml.contains("w:before=\"240\""), "{xml}");
         assert!(xml.contains("w:after=\"360\""), "{xml}");
-        assert!(!xml.contains("w:beforeAutospacing"), "{xml}");
-        assert!(!xml.contains("w:afterAutospacing"), "{xml}");
+        assert!(xml.contains("w:beforeAutospacing=\"0\""), "{xml}");
+        assert!(xml.contains("w:afterAutospacing=\"0\""), "{xml}");
 
         {
             let mut ctx = CommandContext::new(&mut document, &mut selection);

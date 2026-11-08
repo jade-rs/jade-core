@@ -46,23 +46,19 @@ pub(crate) fn sync_paragraph_bidi_xml(
     );
 }
 
-/// `w:snapToGrid`: absent (on, the default) or `w:val="0"` (off).
+/// Store an explicit value so enabling overrides an inherited off setting.
 pub(crate) fn sync_paragraph_snap_to_grid_xml(
     word_doc: &mut WordDocument,
     paragraph_index: usize,
     snap: bool,
 ) {
     sync_paragraph_properties_xml(word_doc, paragraph_index, |raw, paragraph_properties| {
-        if snap {
-            remove_paragraph_property_child(paragraph_properties, "w:snapToGrid")
-        } else {
-            upsert_paragraph_property_child_with_value(
-                raw,
-                paragraph_properties,
-                "w:snapToGrid",
-                "0",
-            )
-        }
+        upsert_paragraph_property_child_with_value(
+            raw,
+            paragraph_properties,
+            "w:snapToGrid",
+            if snap { "1" } else { "0" },
+        );
     });
 }
 
@@ -299,6 +295,69 @@ pub(crate) fn sync_paragraph_child_xml(
     });
 }
 
+/// Clearing a visual property must also suppress a value supplied by the style.
+/// Removing its XML alone would reveal that inherited value on the next load.
+pub(crate) fn paragraph_shading_override(
+    document: &WordDocument,
+    index: usize,
+    shading: Option<Shading>,
+) -> Option<Shading> {
+    shading.or_else(|| {
+        inherited_visual_properties(document, index)
+            .shading
+            .map(|_| Shading {
+                val: Some("nil".into()),
+                color: None,
+                fill: None,
+                ..Default::default()
+            })
+    })
+}
+
+pub(crate) fn paragraph_borders_override(
+    document: &WordDocument,
+    index: usize,
+    borders: Option<ParagraphBorders>,
+) -> Option<ParagraphBorders> {
+    let borders = borders.filter(|borders| !borders.is_empty());
+    if inherited_visual_properties(document, index)
+        .borders
+        .is_none()
+    {
+        return borders;
+    }
+    let nil = Some(BorderEdge {
+        val: Some("nil".into()),
+        ..Default::default()
+    });
+    let disabled = ParagraphBorders {
+        top: nil.clone(),
+        bottom: nil.clone(),
+        left: nil.clone(),
+        right: nil.clone(),
+        between: nil.clone(),
+        bar: nil,
+    };
+    // The command accepts a complete effective box, not a partial style patch.
+    // Suppress omitted edges so Word cannot recover them from the style.
+    let mut borders = borders.unwrap_or_default();
+    borders.inherit_missing_from(&disabled);
+    Some(borders)
+}
+
+fn inherited_visual_properties(
+    document: &WordDocument,
+    index: usize,
+) -> crate::document::ParagraphProperties {
+    let style = document
+        .paragraph(index)
+        .and_then(|paragraph| paragraph.properties.as_ref())
+        .and_then(|properties| properties.style.as_deref());
+    document
+        .inherited_paragraph_properties(index, style)
+        .unwrap_or_default()
+}
+
 pub(crate) fn sync_paragraph_shading_xml(
     word_doc: &mut WordDocument,
     paragraph_index: usize,
@@ -336,6 +395,12 @@ pub(crate) fn set_paragraph_shading_xml(
         attributes.push(XmlAttribute {
             name: "w:fill".to_string(),
             value: fill.trim_start_matches('#').to_string(),
+        });
+    }
+    for (name, value) in shading.theme_attributes() {
+        attributes.push(XmlAttribute {
+            name: name.to_string(),
+            value: value.to_string(),
         });
     }
     if attributes.is_empty() {
@@ -608,6 +673,12 @@ fn create_border_edge(raw: &mut DocxXmlDocument, name: &str, edge: &BorderEdge) 
             value: value.trim_start_matches('#').to_string(),
         });
     }
+    for (name, value) in edge.theme_attributes() {
+        attributes.push(XmlAttribute {
+            name: name.to_string(),
+            value: value.to_string(),
+        });
+    }
     raw.create_element(name, attributes, Vec::new())
 }
 
@@ -750,16 +821,6 @@ fn upsert_paragraph_property_child_with_value(
     paragraph_properties
         .children
         .insert(0, XmlNode::Element(child));
-}
-
-pub(crate) fn set_paragraph_indent_xml(
-    raw: &mut DocxXmlDocument,
-    paragraph_properties: &mut XmlElement,
-    indent: Option<&Indent>,
-    _replace_logical_start: bool,
-    _replace_logical_end: bool,
-) {
-    set_paragraph_indent_xml_inner(raw, paragraph_properties, indent, None);
 }
 
 fn set_paragraph_indent_xml_inner(
@@ -906,9 +967,19 @@ pub(crate) fn sync_paragraph_spacing_xml(
     word_doc: &mut WordDocument,
     paragraph_index: usize,
     spacing: Option<&Spacing>,
+    update_line: bool,
+    update_before: bool,
+    update_after: bool,
 ) {
     sync_paragraph_properties_xml(word_doc, paragraph_index, |raw, paragraph_properties| {
-        set_paragraph_spacing_xml(raw, paragraph_properties, spacing, true, true, true);
+        set_paragraph_spacing_xml(
+            raw,
+            paragraph_properties,
+            spacing,
+            update_line,
+            update_before,
+            update_after,
+        );
     });
 }
 
@@ -922,10 +993,34 @@ pub(crate) fn set_paragraph_spacing_xml(
 ) {
     let line = spacing.and_then(|value| value.line);
     let line_rule = spacing.and_then(|value| value.line_rule.as_deref());
-    let before = spacing.and_then(|value| value.before);
-    let after = spacing.and_then(|value| value.after);
-    let before_lines = spacing.and_then(|value| value.before_lines);
-    let after_lines = spacing.and_then(|value| value.after_lines);
+    let before = spacing.and_then(|s| {
+        if s.before_auto {
+            s.before_auto_fallback.as_ref().and_then(|v| v.points)
+        } else {
+            s.before
+        }
+    });
+    let after = spacing.and_then(|s| {
+        if s.after_auto {
+            s.after_auto_fallback.as_ref().and_then(|v| v.points)
+        } else {
+            s.after
+        }
+    });
+    let before_lines = spacing.and_then(|s| {
+        if s.before_auto {
+            s.before_auto_fallback.as_ref().and_then(|v| v.lines)
+        } else {
+            s.before_lines
+        }
+    });
+    let after_lines = spacing.and_then(|s| {
+        if s.after_auto {
+            s.after_auto_fallback.as_ref().and_then(|v| v.lines)
+        } else {
+            s.after_lines
+        }
+    });
     let mut managed: Vec<XmlAttribute> = Vec::new();
     let points_to_twips = |value: f32| (value * 20.0).round().max(0.0) as i32;
     if let Some(value) = before.filter(|v| update_before && v.is_finite() && *v >= 0.0) {
@@ -953,6 +1048,28 @@ pub(crate) fn set_paragraph_spacing_xml(
             managed.push(XmlAttribute {
                 name: "w:afterLines".to_string(),
                 value: (value * 100.0).round().to_string(),
+            });
+        }
+    }
+    // A fixed value must explicitly disable auto spacing inherited from a style.
+    // Only write sides requested by the caller; untouched attributes retain their
+    // original spelling and style inheritance.
+    for (update, setting, name) in [
+        (
+            update_before,
+            spacing.and_then(|s| s.before_auto_setting.or(s.before_auto.then_some(true))),
+            "w:beforeAutospacing",
+        ),
+        (
+            update_after,
+            spacing.and_then(|s| s.after_auto_setting.or(s.after_auto.then_some(true))),
+            "w:afterAutospacing",
+        ),
+    ] {
+        if let Some(setting) = setting.filter(|_| update) {
+            managed.push(XmlAttribute {
+                name: name.to_string(),
+                value: if setting { "1" } else { "0" }.to_string(),
             });
         }
     }
@@ -986,9 +1103,8 @@ pub(crate) fn set_paragraph_spacing_xml(
                 let managed = (update_line && matches!(a.name.as_str(), "w:line" | "w:lineRule"))
                     || (update_before && matches!(a.name.as_str(), "w:before" | "w:beforeLines"))
                     || (update_after && matches!(a.name.as_str(), "w:after" | "w:afterLines"));
-                let competing_auto_spacing =
-                    (update_before && before.is_some() && a.name == "w:beforeAutospacing")
-                        || (update_after && after.is_some() && a.name == "w:afterAutospacing");
+                let competing_auto_spacing = (update_before && a.name == "w:beforeAutospacing")
+                    || (update_after && a.name == "w:afterAutospacing");
                 !managed && !competing_auto_spacing
             });
             el.attributes.extend(managed);
@@ -1134,4 +1250,42 @@ fn remove_paragraph_property_child(paragraph_properties: &mut XmlElement, tag_na
     ) {
         paragraph_properties.children.remove(index);
     }
+}
+
+/// Rebuild only the paragraph mark's direct character properties. Keep the
+/// paragraph's layout properties, section break and revision wrappers intact.
+pub(crate) fn sync_paragraph_mark_run_properties_xml(
+    word_doc: &mut WordDocument,
+    paragraph_index: usize,
+) {
+    let properties = word_doc
+        .paragraph(paragraph_index)
+        .and_then(|p| p.properties.as_ref())
+        .and_then(|p| p.mark_run_properties.clone());
+    sync_paragraph_properties_xml(word_doc, paragraph_index, |raw, paragraph_properties| {
+        // Mark insertions/deletions are paragraph revisions, separate from
+        // RunProperties. Keep them and extension attributes while rebuilding
+        // character formatting, including when Undo removes direct properties.
+        let existing = paragraph_properties.children.iter().find_map(|node| match node {
+            XmlNode::Element(child) if child.name == "w:rPr" => {
+                let mut element = child.clone();
+                element.children.retain(|node| {
+                    matches!(node, XmlNode::Element(child) if matches!(child.name.as_str(), "w:ins" | "w:del" | "w:moveFrom" | "w:moveTo"))
+                });
+                Some(element)
+            }
+            _ => None,
+        });
+        remove_paragraph_property_child(paragraph_properties, "w:rPr");
+        if let Some(element) =
+            WordDocument::sync_run_properties_element(raw, properties.as_ref(), existing)
+        {
+            let index = paragraph_properties.children.iter().position(|node| {
+                matches!(node, XmlNode::Element(child) if matches!(child.name.as_str(), "w:sectPr" | "w:pPrChange"))
+            }).unwrap_or(paragraph_properties.children.len());
+            paragraph_properties
+                .children
+                .insert(index, XmlNode::Element(element));
+        }
+    });
 }

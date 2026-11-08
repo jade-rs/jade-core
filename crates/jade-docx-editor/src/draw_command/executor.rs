@@ -956,13 +956,63 @@ fn draw_combined_characters<P: Painter>(
     glyphs: &[crate::draw_command::GlyphRunStep],
     font_state: &mut FontStateTracker,
 ) -> Result<(), P::Error> {
-    let split = glyphs.len().div_ceil(2);
+    // Word keeps a single half-size character on the surrounding baseline.
+    let split = if glyphs.len() == 1 {
+        0
+    } else {
+        glyphs.len().div_ceil(2)
+    };
     let mut start_x = x + glyphs.first().map_or(0.0, |glyph| glyph.x_offset);
     font_state.set_fill_style_rc_if_changed(context, &style.fill_color);
     font_state.ensure_text_baseline_alphabetic(context);
     let first_font = glyphs
         .first()
         .and_then(|glyph| fonts.get(glyph.font_index as usize));
+    // The glyph offsets already include the layout's compression into two
+    // lines and the authored w:w scale. Recover the allocated advance before
+    // stacking the glyphs, then fit the stacked drawing to that advance.
+    // Applying text_scale_x directly would compress the two halves twice.
+    let mut widths = Vec::with_capacity(glyphs.len());
+    for glyph in glyphs {
+        let width = match (fonts.get(glyph.font_index as usize), glyph.text(text)) {
+            (Some(font), Some(value)) => {
+                font_state.set_font_rc_if_changed(context, font);
+                context.measure_text_width(value)?
+            }
+            _ => 0.0,
+        };
+        widths.push(width);
+    }
+    let allocated_width = glyphs.last().map_or(0.0, |last| {
+        last.x_offset - glyphs[0].x_offset
+            + widths.last().copied().unwrap_or(0.0) * style.text_scale_x
+    });
+    let mut bracket_width = 0.0;
+    if let (Some((open, close)), Some(font)) = (combine.brackets.as_ref(), first_font) {
+        font_state.set_font_rc_if_changed(context, font);
+        bracket_width =
+            (context.measure_text_width(open)? + context.measure_text_width(close)?) * 2.0;
+    }
+    // Layout scales both glyphs and tracking when flattening the group.
+    // Dividing tracking by that scale recovers its distance in the raw
+    // half-size font coordinates; the outer transform restores w:w alone.
+    let spacing = if style.text_scale_x.is_finite() && style.text_scale_x > 0.0 {
+        style.letter_spacing_px / style.text_scale_x
+    } else {
+        0.0
+    };
+    let row_width =
+        |row: &[f64]| row.iter().sum::<f64>() + row.len().saturating_sub(1) as f64 * spacing;
+    let stacked_width =
+        row_width(&widths[..split]).max(row_width(&widths[split..])) + bracket_width;
+    let scale = allocated_width / stacked_width;
+    let scaled = scale.is_finite() && scale > 0.0 && (scale - 1.0).abs() > 1e-9;
+    if scaled {
+        context.save();
+        context.translate(start_x, 0.0)?;
+        context.scale(scale, 1.0)?;
+        start_x = 0.0;
+    }
     // A bracket at twice the run's size, sitting on the line's baseline.
     let bracket =
         |mark: &str, at: f64, font_state: &mut FontStateTracker| -> Result<f64, P::Error> {
@@ -971,7 +1021,7 @@ fn draw_combined_characters<P: Painter>(
             }
             let width = context.measure_text_width(mark)? * 2.0;
             context.save();
-            context.translate(at, y + combine.lower)?;
+            context.translate(at, y)?;
             context.scale(2.0, 2.0)?;
             context.fill_text(mark, 0.0, 0.0)?;
             context.restore();
@@ -982,12 +1032,23 @@ fn draw_combined_characters<P: Painter>(
         start_x += bracket(open, start_x, font_state)?;
     }
     let mut widest = start_x;
-    for (line, baseline) in [
-        (&glyphs[..split], y - combine.raise),
-        (&glyphs[split..], y + combine.lower),
+    for (line, line_widths, baseline) in [
+        (&glyphs[..split], &widths[..split], y - combine.raise),
+        (
+            &glyphs[split..],
+            &widths[split..],
+            if glyphs.len() == 1 {
+                y
+            } else {
+                y + combine.lower
+            },
+        ),
     ] {
         let mut pen = start_x;
-        for glyph in line {
+        for (index, (glyph, width)) in line.iter().zip(line_widths).enumerate() {
+            if index > 0 {
+                pen += spacing;
+            }
             let (Some(font_descriptor), Some(glyph_text)) =
                 (fonts.get(glyph.font_index as usize), glyph.text(text))
             else {
@@ -995,12 +1056,15 @@ fn draw_combined_characters<P: Painter>(
             };
             font_state.set_font_rc_if_changed(context, font_descriptor);
             context.fill_text(glyph_text, pen, baseline)?;
-            pen += context.measure_text_width(glyph_text)?;
+            pen += width;
         }
         widest = widest.max(pen);
     }
     if let Some((_, close)) = combine.brackets.as_ref() {
         bracket(close, widest, font_state)?;
+    }
+    if scaled {
+        context.restore();
     }
     font_state.invalidate();
     Ok(())
@@ -1207,26 +1271,8 @@ fn draw_text_run_glyphs<P: Painter>(
     // individually measured glyphs used during layout. This mismatch causes
     // visible paragraph expansion/contraction when cache-replayed commands are
     // drawn at positions computed from individual glyph measurements.
-    let characters: Vec<PlacedCharacter<'_>> =
-        if fonts.iter().any(|font| font_state.font_has_features(font)) {
-            glyphs
-                .iter()
-                .filter_map(|glyph| {
-                    Some(PlacedCharacter {
-                        start: glyph.text_start as usize,
-                        end: glyph.text_end as usize,
-                        font: fonts.get(glyph.font_index as usize)?.as_ref(),
-                        x_offset: glyph.x_offset,
-                    })
-                })
-                .collect()
-        } else {
-            Vec::new()
-        };
-    if !characters.is_empty()
-        && try_fill_featured_text(context, text, x, y, &characters, &mut |context, font| {
-            font_state.set_font_if_changed(context, font);
-        })?
+    if fonts.iter().any(|font| font_state.font_has_features(font))
+        && try_fill_featured_glyph_run(context, text, x, y, fonts, glyphs, font_state)?
     {
         record_replay_batch_run(glyphs.len() as u64);
         return Ok(());
@@ -1247,6 +1293,37 @@ fn draw_text_run_glyphs<P: Painter>(
         context.fill_text(glyph_text, x + glyph.x_offset, y)?;
     }
     Ok(())
+}
+
+// Keep the temporary shaping buffer out of the ordinary glyph replay path.
+#[allow(clippy::too_many_arguments)]
+#[inline(never)]
+fn try_fill_featured_glyph_run<P: Painter>(
+    context: &P,
+    text: &str,
+    x: f64,
+    y: f64,
+    fonts: &[Rc<str>],
+    glyphs: &[crate::draw_command::GlyphRunStep],
+    font_state: &mut FontStateTracker,
+) -> Result<bool, P::Error> {
+    let characters: Vec<PlacedCharacter<'_>> = glyphs
+        .iter()
+        .filter_map(|glyph| {
+            Some(PlacedCharacter {
+                start: glyph.text_start as usize,
+                end: glyph.text_end as usize,
+                font: fonts.get(glyph.font_index as usize)?.as_ref(),
+                x_offset: glyph.x_offset,
+            })
+        })
+        .collect();
+    if characters.is_empty() {
+        return Ok(false);
+    }
+    try_fill_featured_text(context, text, x, y, &characters, &mut |context, font| {
+        font_state.set_font_if_changed(context, font);
+    })
 }
 
 /// One character of a text run as layout placed it: its byte range in the

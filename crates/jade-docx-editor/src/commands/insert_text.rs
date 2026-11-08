@@ -1974,6 +1974,8 @@ mod tests {
         for tracking in [false, true] {
             let mut doc =
                 executor::block_on(WordDocument::load(&data, &Options::default())).unwrap();
+            // Choose the test mode explicitly; this fixture enables recording.
+            doc.set_revision_session(None);
             doc.insert_table_after_paragraph(0, 1, 1, &[]).unwrap();
             apply_text_edit(
                 &mut doc.paragraph_mut(1).unwrap().runs,
@@ -2418,6 +2420,8 @@ mod tests {
         for offset in [0, 2, 5] {
             let mut word_doc = executor::block_on(WordDocument::load(&data, &Options::default()))
                 .expect("load docx");
+            // Choose the test mode explicitly; this fixture enables recording.
+            word_doc.set_revision_session(None);
             let range = SelectionRange::collapsed(TextPosition::new(0, offset));
             let mut selection = Some(range);
             let mut executor = CommandExecutor::new();
@@ -2471,6 +2475,8 @@ mod tests {
             std::fs::read(fixture_path("numbering-with-review.docx")).expect("read review fixture");
         let mut word_doc =
             executor::block_on(WordDocument::load(&data, &Options::default())).expect("load docx");
+        // Choose the test mode explicitly; this fixture enables recording.
+        word_doc.set_revision_session(None);
         let range = SelectionRange::new(TextPosition::new(0, 0), TextPosition::new(0, 2));
         let mut selection = Some(range);
         let mut executor = CommandExecutor::new();
@@ -2540,6 +2546,8 @@ mod tests {
             std::fs::read(fixture_path("numbering-with-review.docx")).expect("read review fixture");
         let mut word_doc =
             executor::block_on(WordDocument::load(&data, &Options::default())).expect("load docx");
+        // Choose the test mode explicitly; this fixture enables recording.
+        word_doc.set_revision_session(None);
         let paragraph = word_doc.paragraph_mut(0).expect("first paragraph");
         apply_text_edit(&mut paragraph.runs, 5, 5, "next", &ZeroWidthRuns::default());
         word_doc.sync_paragraph_text_preserving_drawings(0);
@@ -2584,6 +2592,8 @@ mod tests {
         for track_changes in [false, true] {
             let mut word_doc = executor::block_on(WordDocument::load(&data, &Options::default()))
                 .expect("load docx");
+            // Choose the test mode explicitly; this fixture enables recording.
+            word_doc.set_revision_session(None);
             {
                 let paragraph = word_doc.paragraph_mut(0).expect("first paragraph");
                 apply_text_edit(&mut paragraph.runs, 0, 0, "A", &ZeroWidthRuns::default());

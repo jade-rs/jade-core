@@ -1,6 +1,6 @@
 use super::paragraph_property_sync::{
-    restore_paragraph_properties_xml, snapshot_paragraph_properties_xml,
-    sync_paragraph_borders_xml, sync_paragraph_shading_xml,
+    paragraph_borders_override, paragraph_shading_override, restore_paragraph_properties_xml,
+    snapshot_paragraph_properties_xml, sync_paragraph_borders_xml, sync_paragraph_shading_xml,
 };
 use super::{Command, CommandContext, CommandError, CommandResult};
 use crate::document::{ParagraphBorders, ParagraphProperties, Shading};
@@ -27,6 +27,7 @@ impl SetParagraphVisualsCommand {
                 val: Some("clear".to_string()),
                 color: None,
                 fill: Some(fill),
+                ..Default::default()
             })),
             borders: None,
             previous_properties: Vec::new(),
@@ -98,6 +99,14 @@ impl Command for SetParagraphVisualsCommand {
             self.previous_properties
                 .push((paragraph_index, previous, previous_xml));
 
+            let requested_shading = self
+                .shading
+                .clone()
+                .map(|value| paragraph_shading_override(ctx.document, paragraph_index, value));
+            let requested_borders = self
+                .borders
+                .clone()
+                .map(|value| paragraph_borders_override(ctx.document, paragraph_index, value));
             let (shading, borders, shading_changed, borders_changed) = {
                 let paragraph = ctx
                     .document
@@ -111,23 +120,21 @@ impl Command for SetParagraphVisualsCommand {
                     .properties
                     .as_ref()
                     .and_then(|properties| properties.borders.clone());
-                let shading_changed = self
-                    .shading
+                let shading_changed = requested_shading
                     .as_ref()
                     .is_some_and(|shading| current_shading != *shading);
-                let borders_changed = self
-                    .borders
+                let borders_changed = requested_borders
                     .as_ref()
                     .is_some_and(|borders| current_borders != *borders);
-                let next_shading = self.shading.clone().unwrap_or(current_shading);
-                let next_borders = self.borders.clone().unwrap_or(current_borders);
+                let next_shading = requested_shading.clone().unwrap_or(current_shading);
+                let next_borders = requested_borders.clone().unwrap_or(current_borders);
                 if shading_changed || borders_changed {
                     let properties = paragraph.properties.get_or_insert_with(Default::default);
                     if shading_changed {
-                        properties.shading = self.shading.clone().flatten();
+                        properties.shading = requested_shading.flatten();
                     }
                     if borders_changed {
-                        properties.borders = self.borders.clone().flatten();
+                        properties.borders = requested_borders.flatten();
                     }
                 }
                 (next_shading, next_borders, shading_changed, borders_changed)
@@ -229,6 +236,7 @@ mod tests {
             size_eighths: Some(size_eighths),
             space: Some(1),
             color: Some(color),
+            theme_color: None,
         }
     }
 
@@ -284,6 +292,7 @@ mod tests {
                 val: Some("clear".to_string()),
                 color: None,
                 fill: Some(old_color.clone()),
+                ..Default::default()
             };
             let old_borders = ParagraphBorders {
                 between: Some(edge(old_color.clone(), 4)),

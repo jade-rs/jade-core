@@ -4,7 +4,7 @@
 use super::run_backup::{capture_paragraph_runs, restore_paragraph_runs, ParagraphRunsBackup};
 use super::text_edit::mutate_run_properties;
 use super::{Command, CommandContext, CommandError, CommandResult};
-use crate::document::{Paragraph, RunProperties};
+use crate::document::{Paragraph, ParagraphProperties, RunProperties};
 use crate::docx_xml::{XmlElement, XmlNode};
 use jade_docx_layout::selection::SelectionRange;
 
@@ -12,6 +12,7 @@ pub struct ClearFormattingCommand {
     range: SelectionRange,
     previous_runs: Option<Vec<ParagraphRunsBackup>>,
     previous_selection: Option<SelectionRange>,
+    previous_mark_properties: Vec<(usize, Option<ParagraphProperties>)>,
 }
 
 impl ClearFormattingCommand {
@@ -20,6 +21,7 @@ impl ClearFormattingCommand {
             range,
             previous_runs: None,
             previous_selection: None,
+            previous_mark_properties: Vec::new(),
         }
     }
 }
@@ -46,6 +48,7 @@ impl Command for ClearFormattingCommand {
 
         self.previous_runs = Some(capture_paragraph_runs(ctx, start.paragraph, end.paragraph)?);
         self.previous_selection = *ctx.selection;
+        self.previous_mark_properties.clear();
 
         let theme = ctx.document.loaded_theme_part();
         for paragraph_index in start.paragraph..=end.paragraph {
@@ -65,7 +68,25 @@ impl Command for ClearFormattingCommand {
             } else {
                 paragraph_len
             };
+            let selects_mark = paragraph_index < end.paragraph;
+            if selects_mark {
+                self.previous_mark_properties
+                    .push((paragraph_index, paragraph.properties.clone()));
+                if let Some(properties) = paragraph
+                    .properties
+                    .as_mut()
+                    .and_then(|p| p.mark_run_properties.as_mut())
+                {
+                    clear_visual_formatting(properties);
+                }
+            }
             if range_start >= range_end {
+                if selects_mark {
+                    super::paragraph_property_sync::sync_paragraph_mark_run_properties_xml(
+                        ctx.document,
+                        paragraph_index,
+                    );
+                }
                 continue;
             }
 
@@ -78,6 +99,12 @@ impl Command for ClearFormattingCommand {
             );
             ctx.document
                 .sync_paragraph_run_properties(paragraph_index, &restyled);
+            if selects_mark {
+                super::paragraph_property_sync::sync_paragraph_mark_run_properties_xml(
+                    ctx.document,
+                    paragraph_index,
+                );
+            }
             // Run properties hold the fonts the styles give as well, filled in
             // at load; cleared, the text would draw in the renderer's fallback
             // font until a reload fills them again.
@@ -97,6 +124,16 @@ impl Command for ClearFormattingCommand {
             .take()
             .ok_or_else(|| CommandError::Custom("missing backup for undo".into()))?;
         restore_paragraph_runs(ctx, &backups)?;
+        for (index, properties) in self.previous_mark_properties.drain(..) {
+            ctx.document
+                .paragraph_mut(index)
+                .ok_or(CommandError::ParagraphUnavailable)?
+                .properties = properties;
+            super::paragraph_property_sync::sync_paragraph_mark_run_properties_xml(
+                ctx.document,
+                index,
+            );
+        }
         *ctx.selection = self.previous_selection;
         Ok(())
     }
@@ -117,6 +154,7 @@ fn clear_visual_formatting(props: &mut RunProperties) {
     props.underline = None;
     props.underline_kind = None;
     props.underline_color = None;
+    props.underline_theme_color = None;
     props.strike = None;
     props.double_strike = None;
     props.caps = None;
@@ -130,6 +168,7 @@ fn clear_visual_formatting(props: &mut RunProperties) {
     props.baseline = None;
     props.text_position = None;
     props.char_spacing = None;
+    props.snap_to_grid = None;
     props.kerning = None;
     props.text_scale = None;
     props.fit_text = None;
@@ -138,6 +177,7 @@ fn clear_visual_formatting(props: &mut RunProperties) {
     props.font_family = None;
     props.fonts = None;
     props.color = None;
+    props.theme_color = None;
     props.shading = None;
     props.border = None;
     props.clear_direct_font_properties();
@@ -152,7 +192,7 @@ pub(crate) fn clear_visual_formatting_xml(properties: &mut XmlElement) {
             "w:rStyle" | "w:b" | "w:bCs" | "w:i" | "w:iCs" | "w:u" |
             "w:strike" | "w:dstrike" | "w:caps" | "w:smallCaps" | "w:shadow" |
             "w:outline" | "w:emboss" | "w:imprint" | "w:em" | "w:effect" |
-            "w:vertAlign" | "w:position" | "w:spacing" | "w:kern" | "w:w" |
+            "w:snapToGrid" | "w:vertAlign" | "w:position" | "w:spacing" | "w:kern" | "w:w" |
             "w:fitText" | "w:sz" | "w:szCs" | "w:rFonts" | "w:color" |
             "w:shd" | "w:bdr"))
     });
@@ -199,6 +239,10 @@ mod tests {
             underline: Some(true),
             underline_kind: Some(Rc::from("wave")),
             underline_color: Some(Rc::from("FF0000")),
+            underline_theme_color: Some(Box::new(jade_docx_reader::RunThemeColor {
+                name: Rc::from("accent1"),
+                ..Default::default()
+            })),
             font_size: Some(24.0),
             color: Some(Rc::from("#112233")),
             language: Some(Rc::from("ja-JP")),
@@ -217,6 +261,7 @@ mod tests {
         assert!(props.underline.is_none());
         assert!(props.underline_kind.is_none());
         assert!(props.underline_color.is_none());
+        assert!(props.underline_theme_color.is_none());
         assert!(props.font_size.is_none());
         assert!(props.color.is_none());
         assert_eq!(props.language.as_deref(), Some("ja-JP"));

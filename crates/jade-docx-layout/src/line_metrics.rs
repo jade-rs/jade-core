@@ -2575,6 +2575,13 @@ fn is_emoji_presentation_cluster(grapheme: &str) -> bool {
         .any(|ch| matches!(ch as u32, 0x1F000..=0x1FAFF) || ch == '\u{FE0F}')
 }
 
+/// The em square in CSS pixels, independent of a glyph's horizontal advance.
+pub fn font_em_px(font_descriptor: &str) -> Option<f64> {
+    let (size_pt, _) = split_font_descriptor(font_descriptor)?;
+    let em = f64::from(size_pt) * 96.0 / 72.0;
+    (em.is_finite() && em > 0.0).then_some(em)
+}
+
 /// Glyph ascent/descent without the paragraph leading used by horizontal lines.
 /// Upright vertical glyphs occupy an em cell; its baseline uses the face's hhea.
 pub fn word_vertical_glyph_metrics_px(font_descriptor: &str) -> Option<(f64, f64)> {
@@ -4170,6 +4177,7 @@ mod tests {
             size_eighths: Some(8),
             space: Some(space),
             color: None,
+            theme_color: None,
         };
         ParagraphProperties {
             borders: Some(jade_docx_reader::document::ParagraphBorders {
@@ -4205,6 +4213,7 @@ mod tests {
             size_eighths: Some(8),
             space: Some(2),
             color: None,
+            theme_color: None,
         };
         assert_eq!(word_paragraph_between_border_extent_pt(Some(&between)), 5.0);
         let nil = BorderEdge {
@@ -4674,6 +4683,7 @@ mod tests {
                 size_eighths: Some(size_eighths),
                 space: Some(space),
                 color: None,
+                theme_color: None,
             }),
             ..RunProperties::default()
         };

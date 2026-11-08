@@ -996,3 +996,5 @@ mod author_name_tests {
         assert_eq!(options.author_name_or_default(), DEFAULT_AUTHOR_NAME);
     }
 }
+
+pub(crate) mod font_format;

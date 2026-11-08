@@ -1,6 +1,7 @@
 use super::paragraph_property_sync::{
     restore_paragraph_properties_xml, snapshot_paragraph_properties_xml, sync_paragraph_tabs_xml,
 };
+use super::set_paragraph_options::{direct_tabs, effective_tabs};
 use super::{Command, CommandContext, CommandError, CommandResult};
 use crate::document::{ParagraphProperties, TabStop};
 use crate::docx_xml::XmlElement;
@@ -87,23 +88,32 @@ impl Command for SetParagraphTabsCommand {
                 .properties
                 .clone();
             let raw = snapshot_paragraph_properties_xml(ctx.document, index);
-            let unchanged = previous
-                .as_ref()
-                .map(|p| p.tabs.as_slice())
-                .unwrap_or_default()
-                == tabs;
+            let unchanged = effective_tabs(
+                previous
+                    .as_ref()
+                    .map(|p| p.tabs.as_slice())
+                    .unwrap_or_default(),
+            ) == effective_tabs(&tabs);
+            let style_id = previous.as_ref().and_then(|props| props.style.as_deref());
+            let inherited = ctx
+                .document
+                .inherited_paragraph_properties(index, style_id)
+                .unwrap_or_default();
+            let direct = direct_tabs(&inherited.tabs, &effective_tabs(&tabs));
             self.previous.push((index, previous, raw));
             if unchanged {
                 continue;
             }
             self.changed = true;
+            let mut effective = inherited.tabs;
+            effective.extend(direct.iter().cloned());
             ctx.document
                 .paragraph_mut(index)
                 .ok_or(CommandError::ParagraphUnavailable)?
                 .properties
                 .get_or_insert_with(Default::default)
-                .tabs = tabs.clone();
-            sync_paragraph_tabs_xml(ctx.document, index, &tabs);
+                .tabs = effective;
+            sync_paragraph_tabs_xml(ctx.document, index, &direct);
         }
         Ok(())
     }

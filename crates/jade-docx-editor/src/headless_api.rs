@@ -459,6 +459,7 @@ fn paragraph_border_edge(
         size_eighths: Some((width * 8.0).round().max(1.0) as u32),
         space: Some(1),
         color,
+        theme_color: None,
     })
 }
 
@@ -600,6 +601,8 @@ fn document_protection_info(protection: &HeadlessDocumentProtection) -> Document
         salt: protection.salt.clone(),
         spin_count: protection.spin_count,
         algorithm_sid: protection.algorithm_sid,
+        algorithm_name: protection.algorithm_name.clone(),
+        formatting: protection.formatting,
     }
 }
 
@@ -611,6 +614,8 @@ fn headless_document_protection(protection: DocumentProtectionInfo) -> HeadlessD
         salt: protection.salt,
         spin_count: protection.spin_count,
         algorithm_sid: protection.algorithm_sid,
+        algorithm_name: protection.algorithm_name.clone(),
+        formatting: protection.formatting,
     }
 }
 
@@ -3585,10 +3590,7 @@ pub fn apply_headless_commands_with_executor_to_document(
                     index,
                     "start_change_tracking",
                     EditScope::Document,
-                    move |doc| {
-                        doc.set_revision_session(Some(session.clone()));
-                        Ok(())
-                    },
+                    move |doc| doc.set_saved_revision_session(Some(session.clone())),
                 )?;
             }
             HeadlessCommand::StopChangeTracking => {
@@ -3599,10 +3601,7 @@ pub fn apply_headless_commands_with_executor_to_document(
                     index,
                     "stop_change_tracking",
                     EditScope::Document,
-                    |doc| {
-                        doc.set_revision_session(None);
-                        Ok(())
-                    },
+                    |doc| doc.set_saved_revision_session(None),
                 )?;
             }
             HeadlessCommand::AcceptRevisions {
@@ -4039,12 +4038,10 @@ pub fn apply_headless_commands_with_executor_to_document(
                 let mut ctx = CommandContext::new(word_doc, &mut selection);
                 command_executor
                     .execute(
-                        Box::new(SnapshotEditCommand::new(
+                        Box::new(SnapshotEditCommand::new_if_changed(
                             "set_header_footer_link",
                             move |document| {
-                                document
-                                    .set_header_footer_link(section, &role, &variant, linked)
-                                    .map(|_| ())
+                                document.set_header_footer_link(section, &role, &variant, linked)
                             },
                         )),
                         &mut ctx,
@@ -10617,6 +10614,8 @@ mod tests {
             salt: None,
             spin_count: None,
             algorithm_sid: None,
+            algorithm_name: None,
+            formatting: None,
         };
         apply_headless_commands_to_document(
             &mut word_doc,

@@ -418,10 +418,7 @@ impl OffscreenDocumentView {
         })
     }
 
-    /// 保護の中止: with the restriction's password when it has one. A
-    /// protection Word wrote with its older hash cannot be checked here and
-    /// is lifted as Word lifts one without a password. The choices stay for
-    /// the next 保護の開始.
+    /// 保護の中止: verify the password; retain the choices for next time.
     #[wasm_bindgen(js_name = stopEditingRestriction)]
     pub fn stop_editing_restriction(&self, password: String) -> Result<JsValue, JsValue> {
         let Some(restriction) = self
@@ -434,9 +431,8 @@ impl OffscreenDocumentView {
             return Ok(JsValue::NULL);
         };
         if let Some(hash) = &restriction.password {
-            if hash.verifies(&password) == Some(false) {
-                return Err(JsValue::from_str("the password is wrong"));
-            }
+            hash.verify_for_unlock(&password)
+                .map_err(|error| JsValue::from_str(&error))?;
         }
         let stopped = EditingRestriction {
             enforced: false,

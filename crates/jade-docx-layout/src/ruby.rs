@@ -64,18 +64,84 @@ pub fn ruby_run_properties(
     }
     if let Some(guide) = ruby.fonts.as_ref() {
         let fonts = properties.fonts.get_or_insert_with(Default::default);
-        for (target, source) in [
-            (&mut fonts.ascii, &guide.ascii),
-            (&mut fonts.h_ansi, &guide.h_ansi),
-            (&mut fonts.east_asia, &guide.east_asia),
-            (&mut fonts.complex, &guide.complex),
-        ] {
-            if source.is_some() {
-                *target = source.clone();
-            }
-        }
+        fonts.merge_from(guide);
     }
     properties
+}
+
+/// Canvas-coordinate baseline shift of a guide interval, before ruby raise.
+/// Script sizing is resolved separately by the ordinary run style resolver.
+/// Unlike ordinary text, Word ignores explicit w:position in ruby guides.
+pub fn ruby_guide_baseline_shift_px(properties: &RunProperties) -> f64 {
+    let size = properties.font_size.unwrap_or(1.0);
+    let script_shift = match properties.baseline.as_deref() {
+        Some("superscript" | "super" | "subscript" | "sub") => {
+            let superscript = matches!(
+                properties.baseline.as_deref(),
+                Some("superscript" | "super")
+            );
+            let families = crate::font_resolver::resolve_font_families(Some(properties));
+            let offset = crate::line_metrics::word_script_baseline_offset_pt(
+                size,
+                families.latin_ascii_stack(),
+                superscript,
+            );
+            if superscript {
+                -offset
+            } else {
+                offset
+            }
+        }
+        _ => 0.0,
+    };
+    f64::from(script_shift) * 96.0 / 72.0
+}
+
+/// Guide intervals with effective formatting, shared by measurement and paint.
+/// A guide's direct formatting overrides the inherited base face/language/color;
+/// base decorations are not copied into the small phonetic text.
+pub fn ruby_guide_runs<'a>(
+    base: Option<&RunProperties>,
+    base_font_size_pt: f32,
+    ruby: &'a RubyAnnotation,
+) -> Vec<(&'a str, RunProperties)> {
+    if ruby.guide_runs.is_empty() {
+        return vec![(
+            &ruby.text,
+            ruby_run_properties(base, base_font_size_pt, ruby),
+        )];
+    }
+    ruby.guide_runs
+        .iter()
+        .map(|run| {
+            let mut properties = run.properties.as_deref().cloned().unwrap_or_default();
+            properties.ruby = None;
+            // Word for Mac 16.114.3 ignores w:position inside w:rt, even
+            // when it moves ordinary runs. Keep the parsed value for saving.
+            properties.text_position = None;
+            properties.font_size = Some(ruby_font_size_pt(
+                base_font_size_pt,
+                properties.font_size.or(ruby.size_pt),
+            ));
+            if let Some(base) = base {
+                let mut fonts = base.fonts.clone().unwrap_or_default();
+                if let Some(direct) = properties.fonts.as_ref() {
+                    fonts.merge_from(direct);
+                }
+                if properties.fonts.is_some() || base.fonts.is_some() {
+                    properties.fonts = Some(fonts);
+                }
+                properties.font_family =
+                    properties.font_family.or_else(|| base.font_family.clone());
+                properties.language = properties.language.or_else(|| base.language.clone());
+                properties.east_asia_language = properties
+                    .east_asia_language
+                    .or_else(|| base.east_asia_language.clone());
+                properties.color = properties.color.or_else(|| base.color.clone());
+            }
+            (run.text.as_str(), properties)
+        })
+        .collect()
 }
 
 #[cfg(test)]
@@ -83,6 +149,103 @@ mod tests {
     use super::*;
     use jade_docx_reader::document::RunFonts;
     use std::rc::Rc;
+
+    #[test]
+    fn mixed_ruby_guide_sizes_and_formatting_stay_in_their_intervals() {
+        use jade_docx_reader::document::RubyGuideRun;
+        let base = RunProperties {
+            font_size: Some(12.0),
+            bold: Some(true),
+            font_family: Some("Base".into()),
+            color: Some("112233".into()),
+            ..Default::default()
+        };
+        let ruby = RubyAnnotation {
+            size_pt: Some(5.0),
+            guide_runs: vec![
+                RubyGuideRun {
+                    text: "A".into(),
+                    properties: Some(Box::new(RunProperties {
+                        font_size: Some(8.0),
+                        bold: Some(false),
+                        color: Some("FF0000".into()),
+                        ..Default::default()
+                    })),
+                },
+                RubyGuideRun {
+                    text: "B".into(),
+                    properties: None,
+                },
+            ],
+            ..Default::default()
+        };
+        let runs = ruby_guide_runs(Some(&base), 12.0, &ruby);
+        assert_eq!(runs[0].1.font_size, Some(8.0));
+        assert_eq!(runs[0].1.bold, Some(false));
+        assert_eq!(runs[0].1.color.as_deref(), Some("FF0000"));
+        assert_eq!(runs[1].1.font_size, Some(5.0));
+        assert_eq!(runs[1].1.bold, None);
+        assert_eq!(runs[1].1.color.as_deref(), Some("112233"));
+        assert_eq!(runs[1].1.font_family.as_deref(), Some("Base"));
+    }
+
+    #[test]
+    fn guide_position_is_preserved_in_source_but_ignored_for_layout() {
+        use jade_docx_reader::document::RubyGuideRun;
+        for position in [2.0, -3.0, -30.0] {
+            let ruby = RubyAnnotation {
+                guide_runs: vec![RubyGuideRun {
+                    text: "ABC".into(),
+                    properties: Some(Box::new(RunProperties {
+                        font_size: Some(8.0),
+                        text_position: Some(position),
+                        ..Default::default()
+                    })),
+                }],
+                ..Default::default()
+            };
+            let runs = ruby_guide_runs(None, 12.0, &ruby);
+            assert_eq!(runs[0].1.text_position, None);
+            assert_eq!(ruby_guide_baseline_shift_px(&runs[0].1), 0.0);
+            assert_eq!(
+                ruby.guide_runs[0]
+                    .properties
+                    .as_ref()
+                    .unwrap()
+                    .text_position,
+                Some(position)
+            );
+        }
+    }
+
+    #[test]
+    fn guide_fonts_override_inherited_theme_slots_and_hint() {
+        use jade_docx_reader::document::FontHint;
+        let base = RunProperties {
+            fonts: Some(RunFonts {
+                ascii_theme: Some("majorHAnsi".into()),
+                h_ansi: Some("Base Latin".into()),
+                east_asia: Some("Base Japanese".into()),
+                complex_theme: Some("majorBidi".into()),
+                hint: Some(FontHint::Complex),
+                ..RunFonts::default()
+            }),
+            ..RunProperties::default()
+        };
+        let ruby = RubyAnnotation {
+            fonts: Some(RunFonts {
+                ascii: Some("Guide Latin".into()),
+                h_ansi_theme: Some("minorHAnsi".into()),
+                east_asia_theme: Some("minorEastAsia".into()),
+                complex: Some("Guide Arabic".into()),
+                hint: Some(FontHint::EastAsia),
+                ..RunFonts::default()
+            }),
+            ..RubyAnnotation::default()
+        };
+        let result = ruby_run_properties(Some(&base), 12.0, &ruby);
+        assert_eq!(result.fonts, ruby.fonts);
+    }
 
     #[test]
     fn distribution_matches_word_for_every_alignment() {

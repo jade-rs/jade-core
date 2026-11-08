@@ -108,6 +108,7 @@ struct PendingRuby {
     raise_half_points: Option<u32>,
     /// The guide run's own `w:rFonts`.
     fonts: Option<RunFonts>,
+    guide_runs: Vec<RubyGuideRun>,
 }
 
 mod diagram;
@@ -512,9 +513,14 @@ impl DocumentParser {
                         }
                         // A tracked change to a run's formatting: what the
                         // run's formatting was before it, for review.
-                        b"w:rPrChange" if parsing_run_props && !parsing_paragraph_run_props => {
+                        b"w:rPrChange" if parsing_run_props || parsing_paragraph_run_props => {
                             if let Ok(raw) = Self::capture_element_xml(reader, e.to_owned()) {
-                                if let Some(props) = current_run_props.as_mut() {
+                                let props = if parsing_paragraph_run_props {
+                                    current_paragraph_run_props.as_mut()
+                                } else {
+                                    current_run_props.as_mut()
+                                };
+                                if let Some(props) = props {
                                     props.change =
                                         self.parse_run_properties_change(&raw).map(Box::new);
                                 }
@@ -612,10 +618,40 @@ impl DocumentParser {
                             }
                         }
                         b"w:spacing" => {
-                            if parsing_paragraph_props {
+                            if parsing_run_props {
+                                if let Some(spacing) =
+                                    parse_character_spacing_points(e.attributes())
+                                {
+                                    Self::apply_to_active_run_props(
+                                        parsing_paragraph_run_props,
+                                        &mut current_paragraph_run_props,
+                                        &mut current_run_props,
+                                        |props| props.char_spacing = Some(spacing),
+                                    );
+                                }
+                            } else if parsing_paragraph_props {
                                 Self::apply_paragraph_spacing(
                                     e.attributes(),
                                     current_paragraph_props.as_mut(),
+                                );
+                            }
+                        }
+                        b"w:shd" => {
+                            if parsing_run_props {
+                                // Run-level character shading (`w:rPr/w:shd`).
+                                let shading = Self::parse_shading(e.attributes());
+                                Self::apply_to_active_run_props(
+                                    parsing_paragraph_run_props,
+                                    &mut current_paragraph_run_props,
+                                    &mut current_run_props,
+                                    |props| {
+                                        props.shading = Some(shading.clone());
+                                    },
+                                );
+                            } else if parsing_paragraph_props {
+                                Self::apply_paragraph_shading(
+                                    e.attributes(),
+                                    &mut current_paragraph_props,
                                 );
                             }
                         }
@@ -670,6 +706,22 @@ impl DocumentParser {
                                     e.attributes(),
                                     &mut current_paragraph_props,
                                     "topLinePunct",
+                                );
+                            }
+                        }
+                        b"w:snapToGrid" => {
+                            if parsing_run_props {
+                                let flag = Self::parse_on_off_attr(e.attributes());
+                                Self::apply_to_active_run_props(
+                                    parsing_paragraph_run_props,
+                                    &mut current_paragraph_run_props,
+                                    &mut current_run_props,
+                                    |props| props.snap_to_grid = Some(flag),
+                                );
+                            } else if parsing_paragraph_props {
+                                Self::apply_paragraph_snap_to_grid(
+                                    e.attributes(),
+                                    &mut current_paragraph_props,
                                 );
                             }
                         }
@@ -1089,36 +1141,24 @@ impl DocumentParser {
                             if parsing_run_props =>
                         {
                             let name = e.name().as_ref().to_vec();
-                            let size = e
-                                .attributes()
-                                .flatten()
-                                .find(|attr| matches!(attr.key.as_ref(), b"w14:rad" | b"w14:w"))
-                                .and_then(|attr| {
-                                    String::from_utf8_lossy(&attr.value)
-                                        .trim()
-                                        .parse::<f32>()
-                                        .ok()
-                                })
-                                .map(|emu| emu / 12_700.0);
                             let (color, alpha, set) = Self::parse_text_effect(reader, &name)?;
                             Self::apply_to_active_run_props(
                                 parsing_paragraph_run_props,
                                 &mut current_paragraph_run_props,
                                 &mut current_run_props,
                                 |props| {
-                                    let effects =
-                                        props.text_effects.get_or_insert_with(Default::default);
-                                    match name.as_slice() {
-                                        b"w14:glow" => {
-                                            effects.glow_color = color.as_deref().map(Rc::from);
-                                            effects.glow_radius = size;
-                                            effects.glow_alpha = alpha;
-                                        }
-                                        b"w14:textOutline" => {
-                                            effects.outline_color = color.as_deref().map(Rc::from);
-                                            effects.outline_width = size;
-                                        }
-                                        _ => effects.stylistic_set = set,
+                                    if name.as_slice() == b"w14:stylisticSets" {
+                                        let effects =
+                                            props.text_effects.get_or_insert_with(Default::default);
+                                        effects.stylistic_set = set.first().copied();
+                                        effects.stylistic_sets = Some(set.clone());
+                                    } else {
+                                        Self::apply_visual_text_effect(
+                                            props,
+                                            e,
+                                            color.as_deref(),
+                                            alpha,
+                                        );
                                     }
                                 },
                             );
@@ -1134,6 +1174,7 @@ impl DocumentParser {
                                 align: None,
                                 raise_half_points: None,
                                 fonts: None,
+                                guide_runs: Vec::new(),
                             });
                         }
                         b"w:rubyPr" => {
@@ -1148,15 +1189,18 @@ impl DocumentParser {
                             }
                         }
                         b"w:rt" => {
-                            let (text, size_pt, fonts) = Self::parse_ruby_text(reader)?;
+                            let xml = Self::capture_element_xml(reader, e.to_owned())?;
+                            let (text, size_pt, fonts, guide_runs) = self.parse_ruby_text(&xml)?;
                             if let Some(pending) = pending_ruby.as_mut() {
                                 pending.text.push_str(&text);
+                                let single_run = guide_runs.len() == 1;
+                                pending.guide_runs.extend(guide_runs);
                                 if fonts.is_some() {
                                     pending.fonts = fonts;
                                 }
                                 // The rt run's own `w:sz` wins over the
                                 // `w:rubyPr/w:hps` fallback.
-                                if size_pt.is_some() {
+                                if single_run && size_pt.is_some() {
                                     pending.size_pt = size_pt;
                                 }
                             }
@@ -1568,6 +1612,7 @@ impl DocumentParser {
                                 if parsed.on_off.is_some()
                                     || parsed.kind.is_some()
                                     || parsed.color.is_some()
+                                    || parsed.theme.is_some()
                                 {
                                     Self::apply_to_active_run_props(
                                         parsing_paragraph_run_props,
@@ -1581,6 +1626,8 @@ impl DocumentParser {
                                                 parsed.kind.as_deref().map(Rc::from);
                                             props.underline_color =
                                                 parsed.color.as_deref().map(Rc::from);
+                                            props.underline_theme_color =
+                                                parsed.theme.clone().map(Box::new);
                                         },
                                     );
                                 }
@@ -1686,7 +1733,7 @@ impl DocumentParser {
                         }
                         b"w:color" => {
                             if parsing_run_props {
-                                let theme = Self::run_theme_color(e.attributes());
+                                let (formatted, theme) = Self::run_color_with_theme(e);
                                 Self::apply_to_active_run_props(
                                     parsing_paragraph_run_props,
                                     &mut current_paragraph_run_props,
@@ -1695,7 +1742,7 @@ impl DocumentParser {
                                         props.theme_color = theme.clone().map(Box::new);
                                     },
                                 );
-                                if let Some(formatted) = Self::run_color(e) {
+                                if let Some(formatted) = formatted {
                                     Self::apply_to_active_run_props(
                                         parsing_paragraph_run_props,
                                         &mut current_paragraph_run_props,
@@ -2795,6 +2842,27 @@ impl DocumentParser {
                             );
                         }
                     }
+                    b"w14:glow" | b"w14:textOutline" if parsing_run_props => {
+                        Self::apply_to_active_run_props(
+                            parsing_paragraph_run_props,
+                            &mut current_paragraph_run_props,
+                            &mut current_run_props,
+                            |props| Self::apply_visual_text_effect(props, e, None, None),
+                        );
+                    }
+                    b"w14:stylisticSets" if parsing_run_props => {
+                        Self::apply_to_active_run_props(
+                            parsing_paragraph_run_props,
+                            &mut current_paragraph_run_props,
+                            &mut current_run_props,
+                            |props| {
+                                let effects =
+                                    props.text_effects.get_or_insert_with(Default::default);
+                                effects.stylistic_set = None;
+                                effects.stylistic_sets = Some(Vec::new());
+                            },
+                        );
+                    }
                     b"w14:ligatures" | b"w14:numForm" | b"w14:numSpacing" | b"w14:cntxtAlts"
                         if parsing_run_props =>
                     {
@@ -2974,6 +3042,7 @@ impl DocumentParser {
                             if parsed.on_off.is_some()
                                 || parsed.kind.is_some()
                                 || parsed.color.is_some()
+                                || parsed.theme.is_some()
                             {
                                 Self::apply_to_active_run_props(
                                     parsing_paragraph_run_props,
@@ -2986,6 +3055,8 @@ impl DocumentParser {
                                         props.underline_kind = parsed.kind.as_deref().map(Rc::from);
                                         props.underline_color =
                                             parsed.color.as_deref().map(Rc::from);
+                                        props.underline_theme_color =
+                                            parsed.theme.clone().map(Box::new);
                                     },
                                 );
                             }
@@ -3091,7 +3162,7 @@ impl DocumentParser {
                     }
                     b"w:color" => {
                         if parsing_run_props {
-                            let theme = Self::run_theme_color(e.attributes());
+                            let (formatted, theme) = Self::run_color_with_theme(e);
                             Self::apply_to_active_run_props(
                                 parsing_paragraph_run_props,
                                 &mut current_paragraph_run_props,
@@ -3100,7 +3171,7 @@ impl DocumentParser {
                                     props.theme_color = theme.clone().map(Box::new);
                                 },
                             );
-                            if let Some(formatted) = Self::run_color(e) {
+                            if let Some(formatted) = formatted {
                                 Self::apply_to_active_run_props(
                                     parsing_paragraph_run_props,
                                     &mut current_paragraph_run_props,
@@ -3142,29 +3213,20 @@ impl DocumentParser {
                         }
                     }
                     b"w:spacing" => {
-                        if parsing_paragraph_props {
+                        if parsing_run_props {
+                            if let Some(spacing) = parse_character_spacing_points(e.attributes()) {
+                                Self::apply_to_active_run_props(
+                                    parsing_paragraph_run_props,
+                                    &mut current_paragraph_run_props,
+                                    &mut current_run_props,
+                                    |props| props.char_spacing = Some(spacing),
+                                );
+                            }
+                        } else if parsing_paragraph_props {
                             Self::apply_paragraph_spacing(
                                 e.attributes(),
                                 current_paragraph_props.as_mut(),
                             );
-                        } else if parsing_run_props {
-                            for attr in e.attributes().flatten() {
-                                if attr.key.as_ref() == b"w:val" {
-                                    if let Ok(val) =
-                                        String::from_utf8_lossy(&attr.value).parse::<f32>()
-                                    {
-                                        let spacing = val / 20.0;
-                                        Self::apply_to_active_run_props(
-                                            parsing_paragraph_run_props,
-                                            &mut current_paragraph_run_props,
-                                            &mut current_run_props,
-                                            |props| {
-                                                props.char_spacing = Some(spacing);
-                                            },
-                                        );
-                                    }
-                                }
-                            }
                         }
                     }
                     b"w:shd" => {
@@ -3187,10 +3249,18 @@ impl DocumentParser {
                         }
                     }
                     b"w:snapToGrid" => {
-                        if parsing_paragraph_props {
+                        if parsing_run_props {
+                            let flag = Self::parse_on_off_attr(e.attributes());
+                            Self::apply_to_active_run_props(
+                                parsing_paragraph_run_props,
+                                &mut current_paragraph_run_props,
+                                &mut current_run_props,
+                                |props| props.snap_to_grid = Some(flag),
+                            );
+                        } else if parsing_paragraph_props {
                             Self::apply_paragraph_snap_to_grid(
                                 e.attributes(),
-                                current_paragraph_props.as_mut(),
+                                &mut current_paragraph_props,
                             );
                         }
                     }
@@ -3629,6 +3699,7 @@ impl DocumentParser {
                                         align: pending.align.clone(),
                                         raise_half_points: pending.raise_half_points,
                                         fonts: pending.fonts.clone(),
+                                        guide_runs: pending.guide_runs.clone(),
                                         continuation: index > 0,
                                     }));
                                 }
@@ -4511,93 +4582,51 @@ impl DocumentParser {
     }
 
     /// Consumes a `w:rt` subtree (ruby guide text, ECMA-376 Part 1 §17.3.3.24)
-    /// and returns `(text, size_pt, fonts)` — the concatenated `w:t` contents,
-    /// the guide run's `w:sz` (half-points → pt) and its `w:rFonts`. The guide
-    /// runs are intentionally not turned into body runs: Word draws them above
-    /// the base text, so letting them flow inline would corrupt the body text
-    /// and offsets.
+    /// and retains its individual runs without adding them to editable body text.
     #[allow(clippy::type_complexity)]
     fn parse_ruby_text(
-        reader: &mut dyn XmlEventSource,
-    ) -> Result<(String, Option<f32>, Option<RunFonts>), Box<dyn std::error::Error>> {
+        &self,
+        xml: &str,
+    ) -> Result<
+        (String, Option<f32>, Option<RunFonts>, Vec<RubyGuideRun>),
+        Box<dyn std::error::Error>,
+    > {
+        // Reuse ordinary run parsing, including explicit false toggles, theme
+        // colors, escaped text, complex-script formatting and preserved rPr.
+        let start = xml.find('>').ok_or("missing ruby guide start")? + 1;
+        let end = xml.rfind("</").ok_or("missing ruby guide end")?;
+        let document = self.parse_document_xml(&format!(
+            r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p>{}</w:p></w:body></w:document>"#,
+            &xml[start..end],
+        ))?;
         let mut text = String::new();
         let mut size_pt = None;
-        let mut fonts: Option<RunFonts> = None;
-        let read_fonts = |attrs: Attributes<'_>, fonts: &mut Option<RunFonts>| {
-            for attr in attrs.flatten() {
-                let value = Some(Rc::from(String::from_utf8_lossy(&attr.value).as_ref()));
-                let target = fonts.get_or_insert_with(RunFonts::default);
-                match attr.key.as_ref() {
-                    b"w:ascii" => target.ascii = value,
-                    b"w:hAnsi" => target.h_ansi = value,
-                    b"w:eastAsia" => target.east_asia = value,
-                    b"w:cs" => target.complex = value,
-                    b"w:asciiTheme" => target.ascii_theme = value,
-                    b"w:hAnsiTheme" => target.h_ansi_theme = value,
-                    b"w:eastAsiaTheme" => target.east_asia_theme = value,
-                    b"w:cstheme" => target.complex_theme = value,
-                    _ => {}
+        let mut fonts = None;
+        let mut guide_runs = Vec::new();
+        for paragraph in document.body.into_iter().flat_map(|body| body.elements) {
+            let BodyElement::Paragraph(paragraph) = paragraph else {
+                continue;
+            };
+            for run in paragraph.runs {
+                if run.text.is_empty() {
+                    continue;
                 }
+                text.push_str(&run.text);
+                if let Some(props) = run.properties.as_ref() {
+                    if props.font_size.is_some() {
+                        size_pt = props.font_size;
+                    }
+                    if props.fonts.is_some() {
+                        fonts = props.fonts.clone();
+                    }
+                }
+                guide_runs.push(RubyGuideRun {
+                    text: run.text,
+                    properties: run.properties.map(Box::new),
+                });
             }
-        };
-        let mut in_text = false;
-        let mut buf = Vec::new();
-
-        let read_size = |attrs: Attributes<'_>| {
-            attrs.flatten().find_map(|attr| {
-                if attr.key.as_ref() == b"w:val" {
-                    String::from_utf8_lossy(&attr.value)
-                        .trim()
-                        .parse::<f32>()
-                        .ok()
-                        .map(|half_points| half_points / 2.0)
-                } else {
-                    None
-                }
-            })
-        };
-
-        loop {
-            match reader.next_event(&mut buf) {
-                Ok(Event::End(ref e)) => match e.name().as_ref() {
-                    b"w:rt" => break,
-                    b"w:t" => in_text = false,
-                    _ => {}
-                },
-                Ok(Event::Start(ref e)) => match e.name().as_ref() {
-                    b"w:t" => in_text = true,
-                    b"w:sz" => {
-                        if let Some(size) = read_size(e.attributes()) {
-                            size_pt = Some(size);
-                        }
-                    }
-                    b"w:rFonts" => read_fonts(e.attributes(), &mut fonts),
-                    _ => {}
-                },
-                Ok(Event::Empty(ref e)) => match e.name().as_ref() {
-                    b"w:sz" => {
-                        if let Some(size) = read_size(e.attributes()) {
-                            size_pt = Some(size);
-                        }
-                    }
-                    b"w:rFonts" => read_fonts(e.attributes(), &mut fonts),
-                    _ => {}
-                },
-                Ok(Event::Text(ref t)) => {
-                    if in_text {
-                        if let Some(value) = text_event_to_cow(t) {
-                            text.push_str(&value);
-                        }
-                    }
-                }
-                Ok(Event::Eof) => break,
-                Ok(_) => {}
-                Err(err) => return Err(Box::new(err)),
-            }
-            buf.clear();
         }
-
-        Ok((text, size_pt, fonts))
+        Ok((text, size_pt, fonts, guide_runs))
     }
 
     fn parse_doc_grid_attributes(attributes: Attributes<'_>, doc_grid: &mut DocGrid) {
@@ -8371,7 +8400,7 @@ impl DocumentParser {
             let mut updated = false;
             let mut line_value: Option<f32> = None;
             let mut line_rule_value: Option<String> = None;
-            let (mut before_auto, mut after_auto) = (false, false);
+            let (mut before_auto, mut after_auto) = (None, None);
 
             for attr in attributes.flatten() {
                 match attr.key.as_ref() {
@@ -8409,15 +8438,15 @@ impl DocumentParser {
                         line_rule_value = Some(rule);
                     }
                     b"w:beforeAutospacing" => {
-                        before_auto = crate::document::ooxml_on(&attr.value);
+                        before_auto = Some(crate::document::ooxml_on(&attr.value));
                     }
                     b"w:afterAutospacing" => {
-                        after_auto = crate::document::ooxml_on(&attr.value);
+                        after_auto = Some(crate::document::ooxml_on(&attr.value));
                     }
                     _ => {}
                 }
             }
-            if before_auto || after_auto {
+            if before_auto.is_some() || after_auto.is_some() {
                 spacing.apply_autospacing(before_auto, after_auto);
                 updated = true;
             }
@@ -8460,6 +8489,8 @@ impl DocumentParser {
     /// `#RRGGBB`; the `auto` sentinel becomes `None`.
     pub(crate) fn parse_shading(attributes: Attributes<'_>) -> Shading {
         let mut shading = Shading::default();
+        let mut foreground = None;
+        let mut background = None;
         for attr in attributes.flatten() {
             match attr.key.as_ref() {
                 b"w:val" => {
@@ -8477,7 +8508,44 @@ impl DocumentParser {
                 b"w:fill" => {
                     shading.fill = Self::normalize_shading_color(&attr.value);
                 }
+                name @ (b"w:themeColor" | b"w:themeTint" | b"w:themeShade" | b"w:themeFill"
+                | b"w:themeFillTint" | b"w:themeFillShade") => {
+                    let reference = if matches!(
+                        name,
+                        b"w:themeFill" | b"w:themeFillTint" | b"w:themeFillShade"
+                    ) {
+                        &mut background
+                    } else {
+                        &mut foreground
+                    }
+                    .get_or_insert_with(crate::document::RunThemeColor::default);
+                    let value = String::from_utf8_lossy(&attr.value).trim().to_string();
+                    match name {
+                        b"w:themeColor" => reference.name = Rc::from(value),
+                        b"w:themeTint" => reference.tint = Some(Rc::from(value)),
+                        b"w:themeShade" => reference.shade = Some(Rc::from(value)),
+                        b"w:themeFill" => reference.name = Rc::from(value),
+                        b"w:themeFillTint" => reference.tint = Some(Rc::from(value)),
+                        b"w:themeFillShade" => reference.shade = Some(Rc::from(value)),
+                        _ => unreachable!(),
+                    }
+                }
                 _ => {}
+            }
+        }
+        for (reference, color, original) in [
+            (foreground, &mut shading.color, &mut shading.theme_color),
+            (background, &mut shading.fill, &mut shading.theme_fill),
+        ] {
+            if let Some(reference) = reference.filter(|reference| !reference.name.is_empty()) {
+                if let Some(resolved) = crate::theme::text_theme_color(
+                    &reference.name,
+                    reference.tint.as_deref(),
+                    reference.shade.as_deref(),
+                ) {
+                    *color = Some(resolved);
+                }
+                *original = Some(Box::new(reference));
             }
         }
         shading
@@ -8485,26 +8553,48 @@ impl DocumentParser {
 
     /// A run's `w:color`, as `#RRGGBB` (or `#auto`): the theme colour it
     /// names in the scheme being read, else its `w:val`.
-    fn run_color(e: &BytesStart) -> Option<String> {
+    pub(crate) fn run_color(e: &BytesStart) -> Option<String> {
+        Self::run_color_with_theme(e).0
+    }
+
+    /// Read the rendered color and its preserved theme reference in one pass.
+    fn run_color_with_theme(e: &BytesStart) -> (Option<String>, Option<RunThemeColor>) {
         let mut value = None;
-        let mut theme = None;
-        let mut tint = None;
-        let mut shade = None;
+        let mut theme: Option<String> = None;
+        let mut tint: Option<String> = None;
+        let mut shade: Option<String> = None;
         for attr in e.attributes().flatten() {
-            let text = String::from_utf8_lossy(&attr.value).to_string();
             match attr.key.as_ref() {
-                b"w:val" => value = Some(text),
-                b"w:themeColor" => theme = Some(text),
-                b"w:themeTint" => tint = Some(text),
-                b"w:themeShade" => shade = Some(text),
+                b"w:val" => value = Some(String::from_utf8_lossy(&attr.value).into_owned()),
+                b"w:themeColor" => theme = Some(String::from_utf8_lossy(&attr.value).into_owned()),
+                b"w:themeTint" => tint = Some(String::from_utf8_lossy(&attr.value).into_owned()),
+                b"w:themeShade" => shade = Some(String::from_utf8_lossy(&attr.value).into_owned()),
                 _ => {}
             }
         }
-        theme
+        let preserved = theme
+            .as_deref()
+            .map(str::trim)
+            .filter(|name| !name.is_empty())
+            .map(|name| RunThemeColor {
+                name: Rc::from(name),
+                tint: tint
+                    .as_deref()
+                    .map(str::trim)
+                    .filter(|v| !v.is_empty())
+                    .map(Rc::from),
+                shade: shade
+                    .as_deref()
+                    .map(str::trim)
+                    .filter(|v| !v.is_empty())
+                    .map(Rc::from),
+            });
+        let color = theme
             .and_then(|theme| {
                 crate::theme::text_theme_color(&theme, tint.as_deref(), shade.as_deref())
             })
-            .or_else(|| value.map(|value| format!("#{value}")))
+            .or_else(|| value.map(|value| format!("#{value}")));
+        (color, preserved)
     }
 
     /// Normalizes an OOXML hex color (`RRGGBB` or `#RRGGBB`) to `#RRGGBB`.
@@ -8613,20 +8703,12 @@ impl DocumentParser {
 
     fn apply_paragraph_snap_to_grid(
         attributes: Attributes<'_>,
-        props: Option<&mut ParagraphProperties>,
+        props: &mut Option<ParagraphProperties>,
     ) {
-        if let Some(props) = props {
-            let mut value = true;
-            for attr in attributes.flatten() {
-                if attr.key.as_ref() == b"w:val" {
-                    let raw = String::from_utf8_lossy(&attr.value);
-                    let raw = raw.trim();
-                    value = raw != "0" && !raw.eq_ignore_ascii_case("false");
-                    break;
-                }
-            }
-            props.snap_to_grid = Some(value);
-        }
+        let value = Self::parse_on_off_attr(attributes);
+        props
+            .get_or_insert_with(ParagraphProperties::default)
+            .snap_to_grid = Some(value);
     }
 
     fn apply_paragraph_adjust_right_indent(
@@ -8858,7 +8940,7 @@ impl DocumentParser {
         }
     }
 
-    fn parse_on_off_attr(attributes: Attributes<'_>) -> bool {
+    pub(crate) fn parse_on_off_attr(attributes: Attributes<'_>) -> bool {
         for attr in attributes.flatten() {
             if attr.key.as_ref() == b"w:val" {
                 let raw = String::from_utf8_lossy(&attr.value);
@@ -9010,15 +9092,32 @@ impl DocumentParser {
         Ok(borders)
     }
 
+    pub(crate) fn enabled_stylistic_set(element: &BytesStart<'_>) -> Option<u8> {
+        let value = |key: &[u8]| {
+            element
+                .attributes()
+                .flatten()
+                .find(|attr| attr.key.as_ref() == key)
+                .map(|attr| String::from_utf8_lossy(&attr.value).trim().to_string())
+        };
+        if matches!(value(b"w14:val").as_deref(), Some("0" | "false" | "off")) {
+            return None;
+        }
+        value(b"w14:id")?
+            .parse::<u8>()
+            .ok()
+            .filter(|id| (1..=20).contains(id))
+    }
+
     /// Reads a `w14` text effect's subtree: its first `w14:srgbClr` (as
     /// `#RRGGBB`), that colour's `w14:alpha` (as opacity, 0–1), and for
-    /// `w14:stylisticSets` the first set's id. `w14:noFill` leaves no colour.
+    /// `w14:stylisticSets` all enabled set ids. `w14:noFill` leaves no colour.
     #[allow(clippy::type_complexity)]
-    fn parse_text_effect(
+    pub(crate) fn parse_text_effect(
         reader: &mut dyn XmlEventSource,
         tag: &[u8],
-    ) -> Result<(Option<String>, Option<f32>, Option<u8>), Box<dyn std::error::Error>> {
-        let (mut color, mut alpha, mut set) = (None, None, None);
+    ) -> Result<(Option<String>, Option<f32>, Vec<u8>), Box<dyn std::error::Error>> {
+        let (mut color, mut alpha, mut set) = (None, None, Vec::new());
         let mut depth = 1usize;
         let mut buf = Vec::new();
         loop {
@@ -9040,12 +9139,15 @@ impl DocumentParser {
                         b"w14:alpha" if alpha.is_none() => {
                             alpha = value(b"w14:val")
                                 .and_then(|val| val.parse::<f32>().ok())
-                                .map(|transparency| {
-                                    (1.0 - transparency / 100_000.0).clamp(0.0, 1.0)
-                                });
+                                .filter(|opacity| opacity.is_finite())
+                                .map(|opacity| (opacity / 100_000.0).clamp(0.0, 1.0));
                         }
-                        b"w14:styleSet" if set.is_none() => {
-                            set = value(b"w14:id").and_then(|id| id.parse::<u8>().ok());
+                        b"w14:styleSet" => {
+                            if let Some(id) = Self::enabled_stylistic_set(e) {
+                                if !set.contains(&id) {
+                                    set.push(id);
+                                }
+                            }
                         }
                         name if name == tag && is_start => depth += 1,
                         _ => {}
@@ -9064,6 +9166,43 @@ impl DocumentParser {
             buf.clear();
         }
         Ok((color, alpha, set))
+    }
+
+    /// Materialize the defaults on a declared effect so it replaces an
+    /// inherited effect, including an empty declaration that disables it.
+    pub(crate) fn apply_visual_text_effect(
+        props: &mut RunProperties,
+        element: &BytesStart<'_>,
+        color: Option<&str>,
+        alpha: Option<f32>,
+    ) {
+        let size_attribute: &[u8] = if element.name().as_ref() == b"w14:glow" {
+            b"w14:rad"
+        } else {
+            b"w14:w"
+        };
+        let size = element
+            .attributes()
+            .flatten()
+            .find(|attr| attr.key.as_ref() == size_attribute)
+            .and_then(|attr| {
+                String::from_utf8_lossy(&attr.value)
+                    .trim()
+                    .parse::<f32>()
+                    .ok()
+            })
+            .filter(|size| size.is_finite() && *size >= 0.0)
+            .map(|emu| emu / 12_700.0)
+            .unwrap_or(0.0);
+        let effects = props.text_effects.get_or_insert_with(Default::default);
+        if element.name().as_ref() == b"w14:glow" {
+            effects.glow_color = color.map(Rc::from);
+            effects.glow_radius = Some(size);
+            effects.glow_alpha = Some(alpha.unwrap_or(1.0));
+        } else {
+            effects.outline_color = color.map(Rc::from);
+            effects.outline_width = Some(size);
+        }
     }
 
     /// The theme colour a `w:color` names, if it names one.
@@ -9101,9 +9240,10 @@ impl DocumentParser {
     /// Builds a single [`BorderEdge`] from an edge element's attributes. `w:val`
     /// is lowercased so renderers compare case-insensitively; `w:color` is
     /// normalized to `#RRGGBB` (`auto` → `None`) reusing the shading color
-    /// normalizer.
+    /// normalizer. A resolvable theme color, including tint/shade, takes precedence.
     pub(crate) fn build_border_edge(attributes: Attributes<'_>) -> crate::document::BorderEdge {
         let mut edge = crate::document::BorderEdge::default();
+        let (mut theme_name, mut tint, mut shade) = (None, None, None);
         for attr in attributes.flatten() {
             match attr.key.as_ref() {
                 b"w:val" => {
@@ -9122,8 +9262,30 @@ impl DocumentParser {
                 b"w:color" => {
                     edge.color = Self::normalize_shading_color(&attr.value);
                 }
+                b"w:themeColor" | b"w:themeTint" | b"w:themeShade" => {
+                    let value = String::from_utf8_lossy(&attr.value);
+                    let value = value.trim();
+                    if !value.is_empty() {
+                        let value = Some(Rc::from(value));
+                        match attr.key.as_ref() {
+                            b"w:themeColor" => theme_name = value,
+                            b"w:themeTint" => tint = value,
+                            _ => shade = value,
+                        }
+                    }
+                }
                 _ => {}
             }
+        }
+        if let Some(name) = theme_name {
+            let theme = Box::new(RunThemeColor { name, tint, shade });
+            edge.color = crate::theme::text_theme_color(
+                &theme.name,
+                theme.tint.as_deref(),
+                theme.shade.as_deref(),
+            )
+            .or(edge.color);
+            edge.theme_color = Some(theme);
         }
         edge
     }
@@ -11115,11 +11277,11 @@ fn parse_on_off(value: Option<impl AsRef<str>>, default: bool) -> bool {
 
 /// Normalizes a `w:em` (emphasis mark, ECMA-376 Part 1 §17.3.2.12) `w:val`
 /// token. Returns the lowercased token (e.g. "dot" / "comma" / "circle" /
-/// "underdot") or `None` when the attribute is missing, empty, or "none"
-/// (the explicit "no mark" value).
-fn normalize_emphasis_mark(value: Option<String>) -> Option<String> {
+/// "underdot"). The explicit "none" token cancels inherited marks; only
+/// missing or empty attributes remain unspecified.
+pub(crate) fn normalize_emphasis_mark(value: Option<String>) -> Option<String> {
     let token = value?.trim().to_ascii_lowercase();
-    if token.is_empty() || token == "none" {
+    if token.is_empty() {
         None
     } else {
         Some(token)
@@ -11144,13 +11306,15 @@ fn normalize_text_effect(value: Option<String>) -> Option<String> {
 /// and color the run declares. `kind` stays `None` for plain "single" so the
 /// common case round-trips without extra tokens. A `w:u` without `w:val`
 /// keeps the on/off unspecified, matching the previous behavior.
-struct ParsedUnderline {
-    on_off: Option<bool>,
-    kind: Option<String>,
-    color: Option<String>,
+pub(crate) struct ParsedUnderline {
+    pub(crate) on_off: Option<bool>,
+    pub(crate) kind: Option<String>,
+    pub(crate) color: Option<String>,
+    pub(crate) theme: Option<RunThemeColor>,
 }
 
-fn parse_underline(attributes: Attributes<'_>) -> ParsedUnderline {
+pub(crate) fn parse_underline(attributes: Attributes<'_>) -> ParsedUnderline {
+    let theme = DocumentParser::run_theme_color(attributes.clone());
     let mut value = None;
     let mut color = None;
 
@@ -11180,10 +11344,19 @@ fn parse_underline(attributes: Attributes<'_>) -> ParsedUnderline {
         }
         None => (None, None),
     };
+    if let Some(theme) = theme.as_ref() {
+        color = crate::theme::underline_theme_color(
+            &theme.name,
+            theme.tint.as_deref(),
+            theme.shade.as_deref(),
+        )
+        .or(color);
+    }
     ParsedUnderline {
         on_off,
         kind,
         color,
+        theme,
     }
 }
 
@@ -11220,7 +11393,7 @@ fn inline_attributes<'a>(
     })
 }
 
-fn parse_kerning_points(element: &BytesStart<'_>) -> Option<f32> {
+pub(crate) fn parse_kerning_points(element: &BytesStart<'_>) -> Option<f32> {
     for attr in inline_attributes(element).flatten() {
         if attr.key.as_ref() == b"w:val" {
             if let Ok(value) = String::from_utf8_lossy(&attr.value).parse::<f32>() {
@@ -11234,17 +11407,28 @@ fn parse_kerning_points(element: &BytesStart<'_>) -> Option<f32> {
     None
 }
 
+/// Character pitch in points, stored in XML as twentieths of a point.
+/// Zero is an explicit reset of inherited character spacing.
+pub(crate) fn parse_character_spacing_points(attributes: Attributes<'_>) -> Option<f32> {
+    for attr in attributes.flatten() {
+        if attr.key.as_ref() == b"w:val" {
+            let points = String::from_utf8_lossy(&attr.value).parse::<f32>().ok()? / 20.0;
+            return points.is_finite().then_some(points);
+        }
+    }
+    None
+}
+
 /// Parses the `w:val` of `w:position` (ECMA-376 Part 1 §17.3.2.24). The value
 /// is a signed measurement in half-points; positive raises the text above the
 /// baseline and negative lowers it. Returns the value in points (half-points /
-/// 2). A zero value is treated as "no shift" and yields `None` so empty
-/// positions don't bloat the model.
-fn parse_text_position_points(attributes: Attributes<'_>) -> Option<f32> {
+/// 2). Zero is retained to explicitly reset an inherited style shift.
+pub(crate) fn parse_text_position_points(attributes: Attributes<'_>) -> Option<f32> {
     for attr in attributes.flatten() {
         if attr.key.as_ref() == b"w:val" {
             if let Ok(value) = String::from_utf8_lossy(&attr.value).parse::<f32>() {
                 let points = value / 2.0;
-                if points.is_finite() && points != 0.0 {
+                if points.is_finite() {
                     return Some(points);
                 }
             }
@@ -11253,7 +11437,7 @@ fn parse_text_position_points(attributes: Attributes<'_>) -> Option<f32> {
     None
 }
 
-fn parse_text_scale_percent(attributes: Attributes<'_>) -> Option<f32> {
+pub(crate) fn parse_text_scale_percent(attributes: Attributes<'_>) -> Option<f32> {
     for attr in attributes.flatten() {
         if attr.key.as_ref() == b"w:val" {
             if let Ok(value) = String::from_utf8_lossy(&attr.value).parse::<f32>() {
@@ -11668,16 +11852,113 @@ mod tests {
     }
 
     #[test]
+    fn run_grid_switch_accepts_all_on_off_values_and_element_forms() {
+        for (token, expected) in [
+            (None, true),
+            (Some("1"), true),
+            (Some("true"), true),
+            (Some("on"), true),
+            (Some("0"), false),
+            (Some("false"), false),
+            (Some("off"), false),
+        ] {
+            for expanded in [false, true] {
+                let attr = token.map(|v| format!(" w:val=\"{v}\"")).unwrap_or_default();
+                let switch = if expanded {
+                    format!("<w:snapToGrid{attr}></w:snapToGrid>")
+                } else {
+                    format!("<w:snapToGrid{attr}/>")
+                };
+                let body = format!(
+                    "<w:p><w:pPr><w:rPr>{switch}</w:rPr></w:pPr><w:r><w:rPr>{switch}</w:rPr><w:t>grid</w:t></w:r></w:p>"
+                );
+                let document = parse_document_from_body(&body);
+                let BodyElement::Paragraph(paragraph) =
+                    &document.body.as_ref().unwrap().elements[0]
+                else {
+                    panic!("paragraph")
+                };
+                assert_eq!(
+                    paragraph.runs[0].properties.as_ref().unwrap().snap_to_grid,
+                    Some(expected)
+                );
+                let props = paragraph.properties.as_ref().unwrap();
+                assert_eq!(props.snap_to_grid, None);
+                assert_eq!(
+                    props.mark_run_properties.as_ref().unwrap().snap_to_grid,
+                    Some(expected)
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn paragraph_grid_switch_accepts_all_on_off_values_and_element_forms() {
+        for (token, expected) in [
+            (None, true),
+            (Some("1"), true),
+            (Some("true"), true),
+            (Some("on"), true),
+            (Some("0"), false),
+            (Some("false"), false),
+            (Some("off"), false),
+        ] {
+            for expanded in [false, true] {
+                let attr = token.map(|v| format!(" w:val=\"{v}\"")).unwrap_or_default();
+                let switch = if expanded {
+                    format!("<w:snapToGrid{attr}></w:snapToGrid>")
+                } else {
+                    format!("<w:snapToGrid{attr}/>")
+                };
+                let body = format!("<w:p><w:pPr>{switch}</w:pPr><w:r><w:t>grid</w:t></w:r></w:p>");
+                let document = parse_document_from_body(&body);
+                assert_eq!(
+                    first_paragraph_props(&document).snap_to_grid,
+                    Some(expected),
+                    "token={token:?}, expanded={expanded}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn run_grid_switches_do_not_override_the_paragraph_grid_switch() {
+        for expanded in [false, true] {
+            let switch = if expanded {
+                "<w:snapToGrid></w:snapToGrid>"
+            } else {
+                "<w:snapToGrid/>"
+            };
+            for direct in ["", "<w:snapToGrid w:val=\"off\"/>"] {
+                let body = format!(
+                    "<w:p><w:pPr>{direct}<w:rPr>{switch}</w:rPr></w:pPr><w:r><w:rPr>{switch}</w:rPr><w:t>grid</w:t></w:r></w:p>"
+                );
+                let document = parse_document_from_body(&body);
+                assert_eq!(
+                    document.body.as_ref().unwrap().elements[0]
+                        .as_paragraph()
+                        .unwrap()
+                        .properties
+                        .as_ref()
+                        .and_then(|props| props.snap_to_grid),
+                    if direct.is_empty() { None } else { Some(false) },
+                    "direct={direct:?}, expanded={expanded}"
+                );
+            }
+        }
+    }
+
+    #[test]
     fn on_off_properties_preserve_their_distinct_token_rules() {
         for (token, run, paragraph, snap) in [
             (None, true, true, true),
             (Some(""), false, true, true),
             (Some("0"), false, false, false),
             (Some("FaLsE"), false, false, false),
-            (Some("OFF"), false, false, true),
+            (Some("OFF"), false, false, false),
             (Some("NoNe"), false, true, true),
             (Some(" false "), true, false, false),
-            (Some("\u{2003}Off\u{3000}"), true, false, true),
+            (Some("\u{2003}Off\u{3000}"), true, false, false),
             (Some("true"), true, true, true),
             (Some("unknown"), true, true, true),
             (Some("false\u{fffd}"), true, true, true),
@@ -11761,8 +12042,7 @@ mod tests {
                 );
                 let props = p.properties.as_ref().unwrap();
                 assert_eq!(props.mark_run_properties.as_ref(), Some(&expected));
-                // The parser currently handles snapToGrid only as an empty element.
-                assert_eq!(props.snap_to_grid, (!expanded).then_some(snap));
+                assert_eq!(props.snap_to_grid, Some(snap));
                 for actual in [
                     props.adjust_right_indent,
                     props.widow_control,
@@ -11816,6 +12096,158 @@ mod tests {
                 expected_paragraph
             );
         }
+    }
+
+    #[test]
+    fn shading_theme_colors_override_cached_rgb_and_apply_transforms() {
+        let mut theme = crate::theme::ThemePart::default();
+        theme.colors.insert("accent1".into(), "#4472C4".into());
+        theme.colors.insert("dk1".into(), "#000000".into());
+        let _scope = crate::theme::ThemeColorScope::enter(Some(&theme));
+        for attrs in [
+            r#"w:color="FF0000" w:fill="00FF00" w:themeColor="accent1" w:themeShade="BF" w:themeFill="text1" w:themeFillTint="80""#,
+            r#"w:themeFillTint="80" w:themeFill="text1" w:themeShade="BF" w:themeColor="accent1" w:fill="00FF00" w:color="FF0000""#,
+        ] {
+            let xml = format!("<w:shd {attrs}/>");
+            let mut reader = Reader::from_str(&xml);
+            let Event::Empty(element) = reader.read_event().unwrap() else {
+                panic!("shading")
+            };
+            let shading = DocumentParser::parse_shading(element.attributes());
+            assert_eq!(shading.color.as_deref(), Some("#2F5496"));
+            assert_eq!(shading.fill.as_deref(), Some("#7F7F7F"));
+        }
+    }
+
+    #[test]
+    fn shading_theme_references_survive_without_theme_or_cached_rgb() {
+        let _scope = crate::theme::ThemeColorScope::enter(None);
+        for (cached, expected) in [
+            ("", None),
+            (
+                r#"w:color="123456" w:fill="ABCDEF""#,
+                Some(("#123456", "#ABCDEF")),
+            ),
+        ] {
+            let doc = parse_document_from_body(&format!(
+                r#"<w:p><w:pPr><w:shd {cached} w:themeColor="accent1" w:themeTint="80" w:themeShade="BF" w:themeFill="accent2" w:themeFillTint="40" w:themeFillShade="C0"/></w:pPr><w:r><w:rPr><w:shd w:themeFill="unknown"/></w:rPr><w:t>A</w:t></w:r></w:p>"#
+            ));
+            let BodyElement::Paragraph(paragraph) = &doc.body.as_ref().unwrap().elements[0] else {
+                panic!("paragraph")
+            };
+            let shading = paragraph
+                .properties
+                .as_ref()
+                .unwrap()
+                .shading
+                .as_ref()
+                .unwrap();
+            assert!(!shading.is_empty());
+            assert_eq!(shading.color.as_deref(), expected.map(|colors| colors.0));
+            assert_eq!(shading.fill.as_deref(), expected.map(|colors| colors.1));
+            assert_eq!(
+                shading.theme_attributes().collect::<Vec<_>>(),
+                vec![
+                    ("w:themeColor", "accent1"),
+                    ("w:themeTint", "80"),
+                    ("w:themeShade", "BF"),
+                    ("w:themeFill", "accent2"),
+                    ("w:themeFillTint", "40"),
+                    ("w:themeFillShade", "C0"),
+                ]
+            );
+            let run = paragraph.runs[0].properties.as_ref().unwrap();
+            assert!(!run.is_empty());
+            assert_eq!(
+                run.shading
+                    .as_ref()
+                    .unwrap()
+                    .theme_fill
+                    .as_ref()
+                    .unwrap()
+                    .name
+                    .as_ref(),
+                "unknown"
+            );
+        }
+    }
+
+    #[test]
+    fn shading_theme_mapping_and_tint_precedence_reach_paragraphs_and_runs() {
+        let mut theme = crate::theme::ThemePart::default();
+        theme.colors.insert("accent1".into(), "#000000".into());
+        theme.colors.insert("accent2".into(), "#FFFFFF".into());
+        let mapping = std::collections::HashMap::from([("t1".into(), "accent1".into())]);
+        let _scope = crate::theme::ThemeColorScope::enter_with_mapping(Some(&theme), &mapping);
+        for expanded in [false, true] {
+            let end = if expanded { "></w:shd>" } else { "/>" };
+            let shading = format!(
+                r#"<w:shd w:val="solid" w:themeColor="text1" w:themeTint="80" w:themeShade="00" w:themeFill="accent2" w:themeFillShade="80"{end}"#
+            );
+            let doc = parse_document_from_body(&format!("<w:p><w:pPr>{shading}</w:pPr><w:r><w:rPr>{shading}</w:rPr><w:t>A</w:t></w:r></w:p>"));
+            let BodyElement::Paragraph(paragraph) = &doc.body.as_ref().unwrap().elements[0] else {
+                panic!("paragraph")
+            };
+            for shading in [
+                paragraph
+                    .properties
+                    .as_ref()
+                    .unwrap()
+                    .shading
+                    .as_ref()
+                    .unwrap(),
+                paragraph.runs[0]
+                    .properties
+                    .as_ref()
+                    .unwrap()
+                    .shading
+                    .as_ref()
+                    .unwrap(),
+            ] {
+                assert_eq!(shading.color.as_deref(), Some("#7F7F7F"));
+                assert_eq!(shading.fill.as_deref(), Some("#808080"));
+                assert_eq!(
+                    shading.resolved_background_color().as_deref(),
+                    Some("#7F7F7F")
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn parses_color_only_underline_theme_without_cached_color() {
+        let mut theme = crate::theme::ThemePart::default();
+        theme.colors.insert("accent1".into(), "#4472C4".into());
+        let _scope = crate::theme::ThemeColorScope::enter(Some(&theme));
+        for expanded in [false, true] {
+            let end = if expanded { "></w:u>" } else { "/>" };
+            let doc = parse_document_from_body(&format!(
+                r#"<w:p><w:r><w:rPr><w:u w:themeColor="accent1" w:themeShade="BF"{end}</w:rPr><w:t>A</w:t></w:r></w:p>"#
+            ));
+            let BodyElement::Paragraph(paragraph) = &doc.body.as_ref().unwrap().elements[0] else {
+                panic!("paragraph");
+            };
+            let props = paragraph.runs[0].properties.as_ref().unwrap();
+            assert_eq!(props.underline, None);
+            assert_eq!(props.underline_color.as_deref(), Some("#2F5496"));
+            let reference = props.underline_theme_color.as_ref().unwrap();
+            assert_eq!(reference.name.as_ref(), "accent1");
+            assert_eq!(reference.shade.as_deref(), Some("BF"));
+        }
+        // Preserve unresolved references too, even with no cached color or value.
+        let doc = parse_document_from_body(
+            r#"<w:p><w:r><w:rPr><w:u w:themeColor="unknown"/></w:rPr><w:t>A</w:t></w:r></w:p>"#,
+        );
+        let BodyElement::Paragraph(paragraph) = &doc.body.as_ref().unwrap().elements[0] else {
+            panic!("paragraph");
+        };
+        let props = paragraph.runs[0].properties.as_ref().unwrap();
+        assert_eq!(props.underline_color, None);
+        assert_eq!(
+            props.underline_theme_color.as_ref().unwrap().name.as_ref(),
+            "unknown"
+        );
+        assert!(!props.is_empty());
     }
 
     /// `w:u` carries a kind and color beyond on/off (§17.3.2.40). The kind
@@ -12024,6 +12456,7 @@ mod tests {
                 val: val.clone(),
                 color: expected_color,
                 fill: expected_fill,
+                ..Shading::default()
             };
 
             let actual = match &document.body.as_ref().unwrap().elements[0] {
@@ -12040,6 +12473,84 @@ mod tests {
             } else {
                 proptest::prop_assert_eq!(actual, Some(expected));
             }
+        }
+    }
+
+    #[test]
+    fn border_theme_references_survive_without_a_theme_or_cached_rgb() {
+        let _scope = crate::theme::ThemeColorScope::enter(None);
+        let doc = parse_document_from_body(
+            r#"<w:p><w:pPr><w:pBdr><w:top w:val="single" w:themeColor="accent1" w:themeTint="80" w:themeShade="BF"/></w:pBdr></w:pPr></w:p>"#,
+        );
+        let edge = first_paragraph_props(&doc)
+            .borders
+            .as_ref()
+            .unwrap()
+            .top
+            .as_ref()
+            .unwrap();
+        let value = serde_json::to_value(edge).unwrap();
+        assert_eq!(
+            value["themeColor"],
+            serde_json::json!({"name":"accent1", "tint":"80", "shade":"BF"})
+        );
+        assert!(edge.color.is_none());
+        assert_eq!(
+            serde_json::from_value::<crate::document::BorderEdge>(value).unwrap(),
+            *edge
+        );
+    }
+
+    #[test]
+    fn border_theme_colors_override_cached_rgb_and_apply_transforms() {
+        let mut theme = crate::theme::ThemePart::default();
+        theme.colors.insert("accent1".into(), "#4472C4".into());
+        theme.colors.insert("dk1".into(), "#000000".into());
+        let _scope = crate::theme::ThemeColorScope::enter(Some(&theme));
+        for (attrs, expected) in [
+            (
+                r#"w:color="FF0000" w:themeColor="accent1" w:themeShade="BF""#,
+                Some("#2F5496"),
+            ),
+            (
+                r#"w:themeTint="80" w:themeColor="text1" w:color="FF0000""#,
+                Some("#7F7F7F"),
+            ),
+            (
+                r#"w:themeColor="text1" w:themeShade="00" w:themeTint="80""#,
+                Some("#7F7F7F"),
+            ),
+            (
+                r#"w:color="ABCDEF" w:themeColor="unknown""#,
+                Some("#ABCDEF"),
+            ),
+            (r#"w:color="auto" w:themeColor="unknown""#, None),
+        ] {
+            let doc = parse_document_from_body(&format!(
+                r#"<w:p><w:pPr><w:pBdr><w:top w:val="single" {attrs}/></w:pBdr></w:pPr></w:p>"#
+            ));
+            let edge = first_paragraph_props(&doc)
+                .borders
+                .as_ref()
+                .unwrap()
+                .top
+                .as_ref()
+                .unwrap();
+            assert_eq!(edge.color.as_deref(), expected, "{attrs}");
+            let doc = parse_document_from_body(&format!(
+                r#"<w:tbl><w:tr><w:tc><w:tcPr><w:tcBorders><w:top w:val="single" {attrs}/></w:tcBorders></w:tcPr><w:p/></w:tc></w:tr></w:tbl>"#
+            ));
+            let BodyElement::Table(table) = &doc.body.as_ref().unwrap().elements[0] else {
+                panic!("table")
+            };
+            assert_eq!(
+                table.rows[0].cells[0]
+                    .style
+                    .get("border-top-color")
+                    .map(String::as_str),
+                expected,
+                "{attrs}"
+            );
         }
     }
 
@@ -12180,6 +12691,7 @@ mod tests {
                 size_eighths: sz,
                 space,
                 color: expected_color,
+                theme_color: None,
             };
 
             let actual = match &document.body.as_ref().unwrap().elements[0] {
@@ -14256,8 +14768,8 @@ mod tests {
                 .properties
                 .as_ref()
                 .and_then(|p| p.text_position),
-            None,
-            "w:val=0 must be treated as no baseline shift",
+            Some(0.0),
+            "w:val=0 must explicitly reset an inherited baseline shift",
         );
         assert_eq!(
             paragraph.runs[3]
@@ -14334,6 +14846,103 @@ mod tests {
                 .and_then(|p| p.ruby.clone()),
             None,
             "runs after the ruby must stay unannotated",
+        );
+    }
+
+    #[test]
+    fn parses_mixed_ruby_guide_runs_without_spilling_formatting() {
+        let document = parse_document_from_body(
+            r#"<w:p><w:r><w:ruby>
+            <w:rubyPr><w:hps w:val="10"/></w:rubyPr><w:rt>
+            <w:r><w:rPr><w:sz w:val="8"/><w:b/><w:color w:val="FF0000"/></w:rPr><w:t>か&amp;</w:t></w:r>
+            <w:r><w:rPr><w:sz w:val="16"/><w:b w:val="0"/><w:i/><w:color w:val="0000FF"/></w:rPr><w:t>な</w:t></w:r>
+            <w:r><w:t>よ</w:t></w:r></w:rt>
+            <w:rubyBase><w:r><w:t>仮名</w:t></w:r></w:rubyBase></w:ruby></w:r>
+            <w:r><w:t>後</w:t></w:r></w:p>"#,
+        );
+        let body = document.body.unwrap();
+        let BodyElement::Paragraph(paragraph) = &body.elements[0] else {
+            panic!("paragraph")
+        };
+        assert_eq!(
+            paragraph
+                .runs
+                .iter()
+                .map(|r| r.text.as_str())
+                .collect::<String>(),
+            "仮名後"
+        );
+        let ruby = paragraph.runs[0]
+            .properties
+            .as_ref()
+            .unwrap()
+            .ruby
+            .as_ref()
+            .unwrap();
+        assert_eq!(ruby.text, "か&なよ");
+        assert_eq!(ruby.size_pt, Some(5.0));
+        assert_eq!(ruby.guide_runs.len(), 3);
+        let first = ruby.guide_runs[0].properties.as_deref().unwrap();
+        let second = ruby.guide_runs[1].properties.as_deref().unwrap();
+        assert_eq!(
+            (first.font_size, first.bold, first.color.as_deref()),
+            (Some(4.0), Some(true), Some("#FF0000"))
+        );
+        assert_eq!(
+            (
+                second.font_size,
+                second.bold,
+                second.italic,
+                second.color.as_deref()
+            ),
+            (Some(8.0), Some(false), Some(true), Some("#0000FF"))
+        );
+        assert!(ruby.guide_runs[2]
+            .properties
+            .as_ref()
+            .is_none_or(|p| p.font_size.is_none() && p.bold.is_none()));
+        let serialized = serde_json::to_string(ruby).unwrap();
+        assert_eq!(
+            serde_json::from_str::<RubyAnnotation>(&serialized).unwrap(),
+            **ruby
+        );
+    }
+
+    #[test]
+    fn parses_ruby_theme_font_precedence_and_hint() {
+        let document = parse_document_from_body(
+            r#"<w:p><w:r><w:ruby>
+          <w:rt><w:r><w:rPr><w:rFonts w:ascii="Cached" w:asciiTheme="minorHAnsi"
+          w:hAnsi="Cached" w:hAnsiTheme="majorHAnsi" w:eastAsia="Cached"
+          w:eastAsiaTheme="minorEastAsia" w:cs="Cached" w:cstheme="minorBidi"
+          w:hint="eastAsia"/></w:rPr><w:t>かな</w:t></w:r></w:rt>
+          <w:rubyBase><w:r><w:t>仮名</w:t></w:r></w:rubyBase>
+          </w:ruby></w:r></w:p>"#,
+        );
+        let body = document.body.unwrap();
+        let BodyElement::Paragraph(paragraph) = &body.elements[0] else {
+            panic!("paragraph");
+        };
+        let fonts = paragraph.runs[0]
+            .properties
+            .as_ref()
+            .unwrap()
+            .ruby
+            .as_ref()
+            .unwrap()
+            .fonts
+            .as_ref()
+            .unwrap();
+        assert_eq!(
+            fonts,
+            &RunFonts {
+                ascii_theme: Some("minorHAnsi".into()),
+                h_ansi_theme: Some("majorHAnsi".into()),
+                east_asia_theme: Some("minorEastAsia".into()),
+                complex_theme: Some("minorBidi".into()),
+                hint: Some(FontHint::EastAsia),
+                ..RunFonts::default()
+            }
         );
     }
 
@@ -14543,9 +15152,9 @@ mod tests {
             paragraph.runs[2]
                 .properties
                 .as_ref()
-                .and_then(|p| p.emphasis.clone()),
-            None,
-            "<w:em w:val=\"none\"/> must leave emphasis unset",
+                .and_then(|p| p.emphasis.as_deref()),
+            Some("none"),
+            "explicit none must cancel inherited emphasis",
         );
         assert_eq!(
             paragraph.runs[3]
@@ -17998,6 +18607,81 @@ mod tests {
         let doc_settings = document.page_settings.expect("document page settings");
         assert!((doc_settings.width.unwrap() - first_settings.width.unwrap()).abs() < 0.1);
         assert!((doc_settings.height.unwrap() - first_settings.height.unwrap()).abs() < 0.1);
+    }
+
+    #[test]
+    fn explicit_clear_table_shading_is_distinct_from_omitted_shading() {
+        for attrs in [
+            r#"w:val="clear""#,
+            r#"w:val="clear" w:color="auto" w:fill="auto""#,
+            r#"w:val="clear" w:color="FF0000" w:fill="auto""#,
+            r#"w:val="clear" w:color="FF0000""#,
+        ] {
+            for end in ["/>", "></w:shd>"] {
+                let shd = format!("<w:shd {attrs}{end}");
+                let doc = parse_document_from_body(&format!("<w:tbl><w:tblPr>{shd}</w:tblPr><w:tr><w:tblPrEx>{shd}</w:tblPrEx><w:tc><w:tcPr>{shd}</w:tcPr><w:p/></w:tc><w:tc><w:p/></w:tc></w:tr></w:tbl>"));
+                let body = doc.body.unwrap();
+                let BodyElement::Table(table) = &body.elements[0] else {
+                    panic!("table")
+                };
+                for style in [
+                    &table.cell_style,
+                    &table.rows[0].style,
+                    &table.rows[0].cells[0].style,
+                ] {
+                    assert_eq!(
+                        style.get("background-color").map(String::as_str),
+                        Some("transparent")
+                    );
+                }
+                assert!(!table.rows[0].cells[1]
+                    .style
+                    .contains_key("background-color"));
+            }
+        }
+    }
+
+    #[test]
+    fn table_shading_theme_colors_reach_each_property_scope() {
+        let mut theme = crate::theme::ThemePart::default();
+        theme.colors.insert("accent1".into(), "#4472C4".into());
+        let _scope = crate::theme::ThemeColorScope::enter(Some(&theme));
+        for expanded in [false, true] {
+            for (attrs, expected) in [
+                (
+                    r#"w:val="clear" w:fill="FF0000" w:themeFill="accent1" w:themeFillShade="BF""#,
+                    "#2F5496",
+                ),
+                (
+                    r#"w:val="solid" w:themeColor="accent1" w:themeShade="BF""#,
+                    "#2F5496",
+                ),
+                (
+                    r#"w:val="pct12" w:color="000000" w:fill="FFFFFF""#,
+                    "#DFDFDF",
+                ),
+            ] {
+                let end = if expanded { "></w:shd>" } else { "/>" };
+                let shading = format!("<w:shd {attrs}{end}");
+                let doc = parse_document_from_body(&format!(
+                    "<w:tbl><w:tblPr>{shading}</w:tblPr><w:tr><w:tblPrEx>{shading}</w:tblPrEx><w:tc><w:tcPr>{shading}</w:tcPr><w:p/></w:tc></w:tr></w:tbl>"
+                ));
+                let body = doc.body.unwrap();
+                let BodyElement::Table(table) = &body.elements[0] else {
+                    panic!("table")
+                };
+                for style in [
+                    &table.cell_style,
+                    &table.rows[0].style,
+                    &table.rows[0].cells[0].style,
+                ] {
+                    assert_eq!(
+                        style.get("background-color").map(String::as_str),
+                        Some(expected)
+                    );
+                }
+            }
+        }
     }
 
     #[test]

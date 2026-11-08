@@ -164,6 +164,22 @@ impl<H: LineWrapContext> LineWrapContext for WrapBackend<H> {
         }
     }
 
+    fn measure_upright_vertical_advance(
+        &self,
+        text: &str,
+        font_descriptor: &str,
+    ) -> Result<Option<f64>, Self::Error> {
+        match self {
+            Self::Host(host) => host
+                .measure_upright_vertical_advance(text, font_descriptor)
+                .map_err(MeasureBackendError::Host),
+            #[cfg(feature = "native-shaping")]
+            Self::Shaping(context) => context
+                .measure_upright_vertical_advance(text, font_descriptor)
+                .map_err(MeasureBackendError::Shaping),
+        }
+    }
+
     // Every `LineWrapContext` method is forwarded explicitly rather than left to
     // its default. The defaults delegate to `measure_text`, which for the `Host`
     // arm would silently discard the host's own specialisation — its vertical

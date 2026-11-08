@@ -30,6 +30,23 @@ thread_local! {
 fn default_table_run_style() -> Rc<ResolvedRunStyle> {
     DEFAULT_TABLE_RUN_STYLE.with(Rc::clone)
 }
+/// Match body text precedence: marker highlight covers character shading.
+fn table_run_background(properties: Option<&RunProperties>) -> Option<Cow<'_, str>> {
+    let properties = properties?;
+    properties
+        .highlight
+        .as_deref()
+        .and_then(word_highlight_to_css)
+        .map(Cow::Borrowed)
+        .or_else(|| {
+            properties
+                .shading
+                .as_ref()
+                .and_then(|shading| shading.resolved_background_color())
+                .map(Cow::Owned)
+        })
+}
+
 /// セルの 1 行をどこに置くか。
 ///
 /// `start_x` / `top` / `height` をまとめて渡すためのもの。ばらばらに引数で
@@ -45,7 +62,14 @@ struct CellLinePlacement {
     height: f64,
 }
 
+/// Geometry returned by the paint pass, separate from editable base offsets.
+struct CellRubyGuide {
+    baseline: f64,
+    glyphs: Vec<RubyGuideGlyph>,
+}
+
 /// Fallback text color when neither the cell nor the table specifies one.
+#[cfg(test)]
 const DEFAULT_TEXT_COLOR: &str = "#000000";
 /// Stroke color for table borders.
 const BORDER_COLOR: &str = "#000000";
@@ -72,9 +96,6 @@ const DARK_MODE_HIDDEN_BORDER_COLOR: &str = "#94A3B8";
 const CELL_HORIZONTAL_PADDING_PT: f32 = 6.0;
 /// Vertical padding (in points) applied above and below table cell content.
 const CELL_VERTICAL_PADDING_PT: f32 = DEFAULT_VERTICAL_CELL_MARGIN_PT;
-const VERTICAL_TABLE_TEXT_TOP_INSET_FACTOR: f64 = 0.25;
-const VERTICAL_TABLE_ROTATED_BASELINE_INSET_FACTOR: f64 = 0.8;
-const VERTICAL_TABLE_ROTATED_RIGHT_INSET_FACTOR: f64 = 0.15;
 /// Word leaves a tiny visual gap between a table border and following paragraph.
 /// Apply this only when no explicit table margin-bottom is provided.
 const DEFAULT_TABLE_AFTER_GAP_PX: f64 = 1.25;
@@ -262,6 +283,8 @@ struct LineLayout {
     /// the text is drawn on that baseline, as in body paragraphs, instead of
     /// hanging from the line top in whatever face draws it.
     word_baseline_offset: Option<f64>,
+    /// Character ranges whose baseline differs to align mixed font boxes.
+    text_alignment_shifts: Vec<(usize, usize, f64)>,
     /// The height a line holding an inline picture needs at least: the
     /// picture stands on the baseline and the text's descent hangs below it.
     /// Zero for a line of text only.
@@ -272,6 +295,45 @@ struct LineLayout {
 }
 
 impl LineLayout {
+    fn text_alignment_shift(&self, offset: usize) -> f64 {
+        self.text_alignment_shifts
+            .iter()
+            .find(|(start, end, _)| *start <= offset && offset < *end)
+            .map_or(0.0, |(_, _, shift)| *shift)
+    }
+
+    /// Split only where vertical placement changes, preserving shaping context
+    /// for adjoining characters that share a font box and a baseline.
+    fn styled_spans(&self, runs: &[StyledRunRange]) -> Vec<LineStyleSpan> {
+        let spans = line_style_spans(self.start, self.end, runs);
+        if self.text_alignment_shifts.is_empty() {
+            return spans;
+        }
+        spans
+            .into_iter()
+            .flat_map(|span| {
+                let mut boundaries = vec![span.start, span.end];
+                for (start, end, _) in &self.text_alignment_shifts {
+                    boundaries.extend(
+                        [*start, *end]
+                            .into_iter()
+                            .filter(|offset| span.start < *offset && *offset < span.end),
+                    );
+                }
+                boundaries.sort_unstable();
+                boundaries.dedup();
+                boundaries
+                    .windows(2)
+                    .map(|pair| LineStyleSpan {
+                        start: pair[0],
+                        end: pair[1],
+                        run_index: span.run_index,
+                    })
+                    .collect::<Vec<_>>()
+            })
+            .collect()
+    }
+
     fn aligned_start_x(&self, cell_start: f64, content_width: f64, align: TextAlign) -> f64 {
         let alignment_width = if !matches!(align, TextAlign::Left)
             && jade_docx_layout::line_metrics::word_layout_platform()
@@ -380,6 +442,7 @@ pub(super) struct CellParagraph {
     spacing_after: f64,
     /// Resolved paragraph formatting takes precedence over the cell fallback.
     align: Option<TextAlign>,
+    background: Option<Rc<str>>,
     lines: Rc<Vec<LineLayout>>,
     styled_runs: Vec<StyledRunRange>,
     max_line_width: f64,
@@ -389,7 +452,10 @@ pub(super) struct CellParagraph {
     /// drawing has to advance by too. The table-wide empty-paragraph line is
     /// only the fallback for cells without a paragraph.
     line_height: f64,
-    vertical_layout: Option<VerticalTextLayout>,
+    /// Authored fixed pitch also applies to inline pictures and page fragments.
+    exact_line_spacing: bool,
+    // Keep uncommon column geometry out of every cached paragraph.
+    vertical_layout: Option<Box<VerticalTextLayout>>,
     /// Byte boundary already painted by an earlier page of this paragraph.
     segment_start: usize,
     keep_lines: bool,
@@ -411,7 +477,11 @@ impl CellParagraph {
     /// How far `line` advances: the paragraph's line, or more for a line
     /// holding an inline picture.
     fn line_advance(&self, line: &LineLayout) -> f64 {
-        self.line_height.max(line.min_advance)
+        if self.exact_line_spacing {
+            self.line_height
+        } else {
+            self.line_height.max(line.min_advance)
+        }
     }
 
     /// The height of `lines` laid out in this paragraph.
@@ -490,11 +560,13 @@ impl CellParagraph {
                 0.0
             },
             align: self.align,
+            background: self.background.clone(),
             lines: Rc::new(lines),
             styled_runs: self.styled_runs.clone(),
             max_line_width: self.max_line_width,
             height,
             line_height: self.line_height,
+            exact_line_spacing: self.exact_line_spacing,
             vertical_layout: self.vertical_layout.clone(),
             segment_start,
             keep_lines: self.keep_lines,
@@ -993,6 +1065,90 @@ enum CellBlockKind {
     Table(NestedTableLayout),
 }
 
+/// Vertical paragraphs share the writing axis and advance across columns.
+/// A nested table or page-fragment spacing starts a new block band.
+fn cell_content_height(blocks: &[CellBlock], direction: Option<TextDirection>) -> f64 {
+    if !direction.is_some_and(direction_requires_vertical_stack) {
+        return blocks.iter().map(|block| block.height).sum();
+    }
+    let mut height = 0.0;
+    let mut paragraph_height: f64 = 0.0;
+    for block in blocks {
+        if matches!(block.kind, CellBlockKind::Paragraph(_)) {
+            paragraph_height = paragraph_height.max(block.height);
+        } else {
+            height += paragraph_height + block.height;
+            paragraph_height = 0.0;
+        }
+    }
+    height + paragraph_height
+}
+
+#[derive(Clone, Copy, Debug)]
+struct VerticalBlockPlacement {
+    top: f64,
+    left: f64,
+    width: f64,
+}
+
+fn vertical_block_placements(
+    blocks: &[CellBlock],
+    direction: Option<TextDirection>,
+    content_width: f64,
+) -> Option<Vec<VerticalBlockPlacement>> {
+    let direction = direction.filter(|direction| direction_requires_vertical_stack(*direction))?;
+    let mut placements = Vec::with_capacity(blocks.len());
+    let mut top = 0.0;
+    let mut index = 0;
+    while index < blocks.len() {
+        if !matches!(blocks[index].kind, CellBlockKind::Paragraph(_)) {
+            placements.push(VerticalBlockPlacement {
+                top,
+                left: 0.0,
+                width: content_width,
+            });
+            top += blocks[index].height;
+            index += 1;
+            continue;
+        }
+        let mut cursor = match direction_column_flow(direction) {
+            ColumnFlow::LeftToRight => 0.0,
+            ColumnFlow::RightToLeft => content_width,
+        };
+        let mut height: f64 = 0.0;
+        while let Some(block) = blocks.get(index) {
+            let CellBlockKind::Paragraph(paragraph) = &block.kind else {
+                break;
+            };
+            let count = paragraph
+                .vertical_layout
+                .as_ref()
+                .map_or(1, |layout| layout.column_ranges.len().max(1));
+            let width = if block.height <= f64::EPSILON {
+                0.0
+            } else {
+                count as f64 * paragraph.max_line_width.max(paragraph.line_height).max(1.0)
+            };
+            let left = match direction_column_flow(direction) {
+                ColumnFlow::LeftToRight => {
+                    let left = cursor;
+                    cursor += width;
+                    left
+                }
+                ColumnFlow::RightToLeft => {
+                    cursor -= width;
+                    cursor
+                }
+            };
+            placements.push(VerticalBlockPlacement { top, left, width });
+            height = height.max(block.height);
+            index += 1;
+        }
+        top += height;
+    }
+    Some(placements)
+}
+
 /// Cached layout for a nested table so that it can be rendered within a parent
 /// cell without recomputing widths and heights.
 #[derive(Clone, Debug)]
@@ -1209,6 +1365,7 @@ struct LayoutConfig {
     note_markers: NoteMarkers,
     doc_grid: Option<DocGrid>,
     styles_part: Option<Rc<StylesPart>>,
+    theme_part: Option<Rc<ThemePart>>,
     document_snap_to_grid_default: bool,
     /// The document's `w:useFELayout`.
     document_uses_east_asian_layout: bool,
@@ -1216,6 +1373,7 @@ struct LayoutConfig {
     /// Auto paragraph spacing collapses like HTML margins (no
     /// `doNotUseHTMLParagraphAutoSpacing`).
     html_auto_spacing: bool,
+    override_table_style_font_size: bool,
     /// The document's automatic hyphenation, which cell text takes too.
     hyphenation: jade_docx_reader::HyphenationSettings,
 }
@@ -1289,7 +1447,21 @@ impl LayoutConfig {
             self.document_snap_to_grid_default,
             self.doc_grid.as_ref(),
         );
-        let mut style = ParagraphStyle::default();
+        let mut style = ParagraphStyle {
+            exact_line_spacing: matches!(
+                paragraph
+                    .properties
+                    .as_ref()
+                    .and_then(|properties| properties.spacing.as_ref())
+                    .and_then(|spacing| spacing.line_rule.as_deref()),
+                Some("exact" | "exactly")
+            ),
+            text_alignment: paragraph
+                .properties
+                .as_ref()
+                .and_then(|properties| properties.text_alignment.clone()),
+            ..Default::default()
+        };
         if let Some(alignment) = paragraph
             .properties
             .as_ref()
@@ -1328,6 +1500,15 @@ impl LayoutConfig {
             .properties
             .as_ref()
             .and_then(|props| props.text_alignment.as_deref());
+        // Explicit placement needs ascent/descent for Latin-only cells too.
+        // This flag also keys the wrap cache's font-metric policy.
+        style.word_east_asian_font_line_box |= style.exact_line_spacing
+            || matches!(text_alignment, Some("top" | "center" | "bottom"))
+            || paragraph.runs.iter().any(|run| {
+                run.properties
+                    .as_ref()
+                    .is_some_and(|props| props.ruby.is_some())
+            });
         if matches!(text_alignment, None | Some("auto" | "baseline"))
             && jade_docx_layout::line_metrics::word_grid_line_centres_text(
                 enabled,
@@ -1399,6 +1580,7 @@ struct TableLineWrapContext<'a, P: Painter> {
     context: &'a P,
     style: Rc<ResolvedRunStyle>,
     cache: Rc<RefCell<TextMeasureCache>>,
+
     /// Memoizes trailing ink overhang (keyed by a hash of font descriptor + text)
     /// so repeated graphemes in a table cell avoid redundant `measureText`
     /// boundary calls during wrapping.
@@ -1486,8 +1668,7 @@ impl<P: Painter<Error: PainterError>> TableLineWrapContext<'_, P> {
             let mut writer = TableWrapHashWriter(FxHasher::default());
             text.hash(&mut writer.0);
             for run in run_styles {
-                if serde_json::to_writer(
-                    &mut writer,
+                if ciborium::ser::into_writer(
                     &(
                         run.start,
                         run.end,
@@ -1495,6 +1676,7 @@ impl<P: Painter<Error: PainterError>> TableLineWrapContext<'_, P> {
                         run.revision.as_ref(),
                         run.hyperlink.as_ref(),
                     ),
+                    &mut writer,
                 )
                 .is_err()
                 {
@@ -1631,6 +1813,17 @@ where
         } else {
             Ok(self.style.clone())
         }
+    }
+
+    fn measure_upright_vertical_advance(
+        &self,
+        text: &str,
+        font_descriptor: &str,
+    ) -> Result<Option<f64>, Self::Error> {
+        self.set_font(font_descriptor);
+        self.context
+            .measure_upright_vertical_advance(text)
+            .map_err(PainterError::into_js_value)
     }
 
     fn measure_text(&self, text: &str, font_descriptor: &str) -> Result<f64, Self::Error> {
@@ -2086,12 +2279,14 @@ where
             note_markers,
             doc_grid: table_doc_grid,
             styles_part: self.styles_part.clone(),
+            theme_part: self.theme_part.clone(),
             document_snap_to_grid_default: self.document_snap_to_grid_default,
             document_uses_east_asian_layout: self.document_east_asian_rules.use_east_asian_layout,
             word_modern_border_insets: word_modern_nested_border_frame_enabled(
                 self.document_east_asian_rules.compatibility_mode,
             ),
             html_auto_spacing: self.document_html_auto_spacing,
+            override_table_style_font_size: self.document_override_table_style_font_size,
             hyphenation: self.document_hyphenation,
         };
 
@@ -2113,6 +2308,7 @@ where
                 (self.table_autofit_cache_enabled && table_autofit_cache_supported(table))
                     .then_some(&self.table_autofit_cache),
                 &|field| self.resolve_run_field(field),
+                Some(&layout_config),
             )?;
 
         adjust_windows_negative_spacing_columns(table, &mut column_widths);
@@ -3386,6 +3582,14 @@ where
         let tagged = self.begin_structure_cell(cell.column_index);
         // Authored cell shading stays in the document colour in dark mode.
         // Its text (including an unfilled nested table) must do the same.
+        let previous_background = self.automatic_text_background.clone();
+        if let Some(background) = cell
+            .background
+            .as_deref()
+            .filter(|color| automatic_text_color_on_background(color).is_some())
+        {
+            self.automatic_text_background = Some(Rc::from(background));
+        }
         let previous_suppression = self.dark_mode_text_suppressed;
         self.dark_mode_text_suppressed = previous_suppression
             || cell
@@ -3405,6 +3609,7 @@ where
             bands,
         );
         self.dark_mode_text_suppressed = previous_suppression;
+        self.automatic_text_background = previous_background;
         self.end_structure(tagged);
         result
     }
@@ -3468,7 +3673,7 @@ where
         // leftover space is the cell's inner height minus the total content
         // height; `vertical_align_share` decides how much of it sits above the
         // content (top=0.0, center=0.5, bottom=1.0). See ECMA-376 §17.4.84.
-        let content_height: f64 = cell.blocks.iter().map(|block| block.height).sum();
+        let content_height = cell_content_height(&cell.blocks, cell.text_direction);
         let (text_top_border, text_bottom_border) =
             if !cell_ink_projection_is_horizontal(cell.text_direction)
                 && !cell.has_separate_borders()
@@ -3494,17 +3699,36 @@ where
             y_top + cell.cell_spacing + padding.top + text_top_border + vertical_align_offset;
         let mut consumed_height = 0.0;
 
-        for block in &mut cell.blocks {
+        let content_top = block_top;
+        let placements = vertical_block_placements(
+            &cell.blocks,
+            cell.text_direction,
+            cell_width - pad_horizontal,
+        );
+        for (block_index, block) in cell.blocks.iter_mut().enumerate() {
+            let placement = placements.as_ref().map(|items| items[block_index]);
+            if let Some(placement) = placement {
+                block_top = content_top + placement.top;
+            }
             match &mut block.kind {
                 CellBlockKind::Spacing => {
                     block_top += block.height;
                     consumed_height += block.height;
                 }
                 CellBlockKind::Paragraph(paragraph) => {
+                    if draw_enabled {
+                        self.paint_cell_paragraph_background(
+                            &clip_painter,
+                            paragraph,
+                            x_start + pad_left,
+                            block_top,
+                            cell_width - pad_horizontal,
+                        );
+                    }
                     // Lines advance by the paragraph's own line, as laid out.
                     let line_height = paragraph.line_height;
                     let align = paragraph.align.unwrap_or(cell.align);
-                    let text_color = cell.text_color.as_deref().unwrap_or(DEFAULT_TEXT_COLOR);
+                    let text_color = cell.text_color.as_deref().unwrap_or("auto");
                     let paragraph_index = match block.paragraph_indices.first() {
                         Some(index) => *index,
                         None => {
@@ -3600,18 +3824,19 @@ where
                                 paragraph_index,
                                 direction,
                                 align,
-                                x_start,
+                                placement.map_or(x_start, |p| x_start + p.left),
                                 block_top + paragraph.spacing_before,
-                                cell_width,
+                                placement.map_or(cell_width, |p| p.width + 2.0 * pad_left),
                                 pad_left,
                                 line_height,
                                 0,
+                                text_color,
                                 &decorations,
                                 false,
                             )?;
                             let consumed = consumed.max(block.height);
-                            block_top += consumed;
-                            consumed_height += consumed;
+                            consumed_height =
+                                consumed_height.max(block_top - content_top + consumed);
                             continue;
                         }
                     }
@@ -3685,7 +3910,7 @@ where
                                         &decorations,
                                     )?;
                                 } else if draw_enabled {
-                                    self.draw_horizontal_line_with_run_styles(
+                                    let guides = self.draw_horizontal_line_with_run_styles(
                                         paragraph,
                                         line,
                                         CellLinePlacement {
@@ -3696,6 +3921,21 @@ where
                                         text_color,
                                         &decorations,
                                     )?;
+                                    let line_index = self
+                                        .selection
+                                        .paragraphs()
+                                        .get(paragraph_index)
+                                        .map_or(0, |p| p.lines.len());
+                                    self.capture_cell_ruby_guides(
+                                        &guides,
+                                        paragraph_index,
+                                        line_index,
+                                        CellLinePlacement {
+                                            start_x: text_x,
+                                            top: line_top,
+                                            height: line_height,
+                                        },
+                                    );
                                 }
                             }
                             if draw_enabled
@@ -3861,6 +4101,7 @@ where
         padding_x: f64,
         line_height: f64,
         base_offset: usize,
+        default_color: &str,
         decorations: &[crate::plugins::DecoratedRange],
         section: bool,
     ) -> Result<f64, JsValue> {
@@ -3874,6 +4115,7 @@ where
             cell_width,
             padding_x,
             line_height,
+            default_color,
             decorations,
             section,
         )
@@ -3891,6 +4133,7 @@ where
         cell_width: f64,
         padding_x: f64,
         line_height: f64,
+        default_color: &str,
         decorations: &[crate::plugins::DecoratedRange],
         section: bool,
     ) -> Result<f64, JsValue> {
@@ -3904,7 +4147,7 @@ where
         let axis = direction_vertical_axis(direction);
 
         let mut fallback_layout_holder: Option<VerticalTextLayout> = None;
-        let layout = if let Some(layout) = paragraph.vertical_layout.as_ref() {
+        let layout = if let Some(layout) = paragraph.vertical_layout.as_deref() {
             layout
         } else {
             fallback_layout_holder = Some(VerticalTextLayout {
@@ -3930,8 +4173,10 @@ where
         }
 
         let column_height = layout.column_height.max(line_height);
-        let draw_rotated_visual = direction_draws_rotated_table_visual(direction, section);
-        let turned_angle = if section {
+        let draw_rotated_columns = direction_uses_rotated_columns(direction, section);
+        let turned_angle = if draw_rotated_columns {
+            Some(direction_rotation_angle(direction))
+        } else if section {
             None
         } else {
             match direction {
@@ -3940,51 +4185,6 @@ where
                 _ => None,
             }
         };
-        if draw_enabled && draw_rotated_visual && !paragraph.text.is_empty() {
-            context.save();
-            let font = paragraph_primary_font_descriptor(paragraph);
-            context.set_font(font.as_deref().unwrap_or(TABLE_FONT));
-            let text_scale = paragraph_primary_text_scale(paragraph);
-            let rotated_x = rotated_visual_anchor_x(direction, base_x, content_right, line_height);
-            let rotated_baseline_y =
-                rotated_visual_baseline_y(direction, block_top, column_height, line_height);
-            let _ = context.translate(rotated_x, rotated_baseline_y);
-            let _ = context.rotate(direction_rotation_angle(direction));
-            if (text_scale - 1.0).abs() > f64::EPSILON {
-                let _ = context.scale(text_scale, 1.0);
-            }
-            context
-                .fill_text(&paragraph.text, 0.0, 0.0)
-                .map_err(PainterError::into_js_value)?;
-            context.restore();
-        }
-        if draw_enabled && draw_rotated_visual && !decorations.is_empty() {
-            let _guard = StateGuard::new(context);
-            context
-                .translate(
-                    rotated_visual_anchor_x(direction, base_x, content_right, line_height),
-                    rotated_visual_baseline_y(direction, block_top, column_height, line_height),
-                )
-                .map_err(PainterError::into_js_value)?;
-            context
-                .rotate(direction_rotation_angle(direction))
-                .map_err(PainterError::into_js_value)?;
-            // The rotated visual paints the full string; concatenate the shared
-            // grapheme advances in that same order, including multibyte prefixes.
-            let mut advance = 0.0;
-            for line in paragraph.lines.iter() {
-                self.draw_table_line_squiggles(
-                    line,
-                    CellLinePlacement {
-                        start_x: advance,
-                        top: 0.0,
-                        height: line_height,
-                    },
-                    decorations,
-                )?;
-                advance += line.visual_width();
-            }
-        }
         let oracle_advances = selection_context.and_then(|(paragraph_index, _)| {
             self.word_oracle_paragraph_advances
                 .borrow()
@@ -3999,6 +4199,14 @@ where
                 .unwrap_or_else(|| line.visual_width())
         };
 
+        let vertical_cell_advance = |line: &LineLayout| {
+            if line.text.is_empty() {
+                line_height.max(1.0)
+            } else {
+                oracle_line_width(line).max(1.0)
+            }
+        };
+
         for (col_idx, column_range) in layout.column_ranges.iter().enumerate() {
             let selection_column_start = selection_context.and_then(|(index, _)| {
                 self.selection
@@ -4011,6 +4219,12 @@ where
                 ColumnFlow::RightToLeft => column_count - 1 - col_idx,
             };
             let column_x = base_x + (effective_index as f64) * column_width;
+            if draw_enabled {
+                if let Some(background) = paragraph.background.as_deref() {
+                    context.set_fill_style_str(background);
+                    context.fill_rect(column_x, block_top, column_width, column_height);
+                }
+            }
             // Turn the column once; per-glyph origins and font baselines stay
             // local to that transform, avoiding a save/rotate/restore per glyph.
             let _turned_column_guard = if let Some(angle) = turned_angle.filter(|_| draw_enabled) {
@@ -4029,6 +4243,38 @@ where
                 None
             };
             let column = &paragraph.lines[column_range.clone()];
+            if draw_enabled && draw_rotated_columns {
+                if let Some(line) = rotated_column_line(paragraph, column, vertical_cell_advance) {
+                    let top = match axis {
+                        VerticalAxis::TopToBottom => -column_width,
+                        VerticalAxis::BottomToTop => 0.0,
+                    };
+                    context.set_text_baseline("top");
+                    self.draw_horizontal_line_text(
+                        context,
+                        paragraph,
+                        &line,
+                        CellLinePlacement {
+                            start_x: 0.0,
+                            top,
+                            height: column_width,
+                        },
+                        top,
+                        default_color,
+                        decorations,
+                    )?;
+                    self.draw_table_line_squiggles(
+                        &line,
+                        CellLinePlacement {
+                            start_x: 0.0,
+                            top,
+                            height: column_width,
+                        },
+                        decorations,
+                    )?;
+                    context.set_text_baseline("alphabetic");
+                }
+            }
             let mut consumed_before = column.first().map_or(0.0, |line| line.left_inset);
 
             for line in column {
@@ -4037,16 +4283,9 @@ where
                 // caret must walk the identical Y geometry; applying separate
                 // visual/selection multipliers leaves the caret detached from
                 // the final glyph.
-                let vertical_cell_advance = |line: &LineLayout| {
-                    if line.text.is_empty() {
-                        line_height.max(1.0)
-                    } else {
-                        oracle_line_width(line).max(1.0)
-                    }
-                };
                 let visual_width = oracle_line_width(line);
                 let line_advance = vertical_cell_advance(line);
-                let center_glyphs = !draw_rotated_visual
+                let center_glyphs = !draw_rotated_columns
                     && turned_angle.is_none()
                     && line.word_baseline_offset.is_some();
                 let visual_consumed_before = consumed_before;
@@ -4103,40 +4342,68 @@ where
                     visual_text_top
                 };
 
-                // 縦中横: the group upright and across the column, centred,
-                // and with 行の幅に合わせる squeezed to the column's width.
+                // 縦中横: the group upright and across the column, centred
+                // at its measured width (Word ignores w:vertCompress).
                 let tate_chu_yoko = turned_angle
                     .is_none()
                     .then(|| paragraph_line_tate_chu_yoko(paragraph, line))
                     .flatten();
-                if let Some((compress, font)) = tate_chu_yoko.as_ref() {
-                    if !line.text.is_empty() && draw_enabled && !draw_rotated_visual {
+                if draw_enabled && !draw_rotated_columns {
+                    let properties = paragraph
+                        .styled_runs
+                        .iter()
+                        .find(|run| run.start <= line.start && line.start < run.end)
+                        .and_then(|run| run.properties.as_ref());
+                    let background = table_run_background(properties);
+                    if let Some(background) = background.as_deref() {
+                        context.set_fill_style_str(background);
+                        if turned_angle.is_some() {
+                            let local_y = match axis {
+                                VerticalAxis::TopToBottom => -column_width,
+                                VerticalAxis::BottomToTop => 0.0,
+                            };
+                            context.fill_rect(
+                                visual_consumed_before,
+                                local_y,
+                                line_advance,
+                                column_width,
+                            );
+                        } else {
+                            context.fill_rect(column_x, line_top, column_width, line_advance);
+                        }
+                    }
+                    let requested = properties
+                        .and_then(|props| props.color.as_deref())
+                        .unwrap_or(default_color);
+                    context.set_fill_style_str(
+                        self.resolve_text_fill_color_on_background(
+                            requested,
+                            background.as_deref().or(paragraph.background.as_deref()),
+                        )
+                        .as_ref(),
+                    );
+                    self.reset_fill_style_state();
+                }
+                if let Some(font) = tate_chu_yoko.as_ref() {
+                    if !line.text.is_empty() && draw_enabled && !draw_rotated_columns {
                         context.set_font(font.as_deref().unwrap_or(TABLE_FONT));
                         context.set_text_baseline(if center_glyphs { "alphabetic" } else { "top" });
                         let width = context
                             .measure_text_width(&line.text)
                             .map_err(PainterError::into_js_value)?
                             .max(0.01);
-                        // One character's width: the cell the group takes.
-                        let fit = line_advance.max(1.0);
-                        let squeeze = if *compress && width > fit {
-                            fit / width
-                        } else {
-                            1.0
-                        };
-                        let drawn = width * squeeze;
+                        // Word ignores w:vertCompress (MS-OI29500 §2.1.75).
+                        // Keep the horizontal group at its measured width even
+                        // when it extends beyond the surrounding vertical column.
                         let _guard = StateGuard::new(context);
                         context
-                            .translate(column_x + (column_width - drawn) * 0.5, paint_y)
-                            .map_err(PainterError::into_js_value)?;
-                        context
-                            .scale(squeeze, 1.0)
+                            .translate(column_x + (column_width - width) * 0.5, paint_y)
                             .map_err(PainterError::into_js_value)?;
                         context
                             .fill_text(&line.text, 0.0, 0.0)
                             .map_err(PainterError::into_js_value)?;
                     }
-                } else if !line.text.is_empty() && draw_enabled && !draw_rotated_visual {
+                } else if !line.text.is_empty() && draw_enabled && !draw_rotated_columns {
                     let font = paragraph_line_font_descriptor(paragraph, line);
                     context.set_font(font.as_deref().unwrap_or(TABLE_FONT));
                     if turned_angle.is_none() {
@@ -4177,7 +4444,7 @@ where
                             .scale(1.0, text_scale)
                             .map_err(PainterError::into_js_value)?;
                         context
-                            .fill_text(&line.text, 0.0, 0.0)
+                            .fill_upright_text(&line.text, 0.0, 0.0)
                             .map_err(PainterError::into_js_value)?;
                         context.restore();
                     } else if !fill_vertical_form(
@@ -4192,12 +4459,12 @@ where
                     .map_err(PainterError::into_js_value)?
                     {
                         context
-                            .fill_text(&line.text, draw_text_x, paint_y)
+                            .fill_upright_text(&line.text, draw_text_x, paint_y)
                             .map_err(PainterError::into_js_value)?;
                     }
                 }
 
-                if draw_enabled && !draw_rotated_visual && !decorations.is_empty() {
+                if draw_enabled && !draw_rotated_columns && !decorations.is_empty() {
                     let _guard = StateGuard::new(context);
                     if turned_angle.is_some() {
                         let local_y = match axis {
@@ -4466,6 +4733,14 @@ where
         line_height: f64,
         bands: HorizontalBorderBands,
     ) -> Result<(), JsValue> {
+        let previous_background = self.automatic_text_background.clone();
+        if let Some(background) = cell
+            .background
+            .as_deref()
+            .filter(|color| automatic_text_color_on_background(color).is_some())
+        {
+            self.automatic_text_background = Some(Rc::from(background));
+        }
         let previous_suppression = self.dark_mode_text_suppressed;
         self.dark_mode_text_suppressed = previous_suppression
             || cell
@@ -4482,6 +4757,7 @@ where
             bands,
         );
         self.dark_mode_text_suppressed = previous_suppression;
+        self.automatic_text_background = previous_background;
         result
     }
 
@@ -4502,11 +4778,11 @@ where
         let pad_horizontal = padding.horizontal();
         let clip_painter = self.host.painter();
         let _clip_guard = ClipGuard::new(&clip_painter, x_start, y_top, cell_width, row_height);
-        let text_color = cell.text_color.as_deref().unwrap_or(DEFAULT_TEXT_COLOR);
+        let text_color = cell.text_color.as_deref().unwrap_or("auto");
         #[allow(deprecated)]
-        clip_painter.set_fill_style_str(text_color);
+        clip_painter.set_fill_style_str(self.resolve_text_fill_color(text_color).as_ref());
 
-        let content_height: f64 = cell.blocks.iter().map(|block| block.height).sum();
+        let content_height = cell_content_height(&cell.blocks, cell.text_direction);
         let inner_height =
             (row_height - padding.top - padding.bottom - 2.0 * cell.cell_spacing - bottom_band)
                 .max(0.0);
@@ -4514,7 +4790,17 @@ where
             ((inner_height - content_height) * cell.vertical_align_share).max(0.0);
         let mut block_top = y_top + cell.cell_spacing + padding.top + vertical_align_offset;
 
-        for block in &cell.blocks {
+        let content_top = block_top;
+        let placements = vertical_block_placements(
+            &cell.blocks,
+            cell.text_direction,
+            cell_width - pad_horizontal,
+        );
+        for (block_index, block) in cell.blocks.iter().enumerate() {
+            let placement = placements.as_ref().map(|items| items[block_index]);
+            if let Some(placement) = placement {
+                block_top = content_top + placement.top;
+            }
             if let CellBlockKind::Table(nested) = &block.kind {
                 // Word repeats the whole header row, including a table nested
                 // in one of its cells.
@@ -4537,10 +4823,17 @@ where
                 }
                 block_top += block.height.max(line_height);
                 #[allow(deprecated)]
-                clip_painter.set_fill_style_str(text_color);
+                clip_painter.set_fill_style_str(self.resolve_text_fill_color(text_color).as_ref());
                 continue;
             }
             if let CellBlockKind::Paragraph(paragraph) = &block.kind {
+                self.paint_cell_paragraph_background(
+                    &clip_painter,
+                    paragraph,
+                    x_start + pad_left,
+                    block_top,
+                    cell_width - pad_horizontal,
+                );
                 let line_height = paragraph.line_height;
                 let align = paragraph.align.unwrap_or(cell.align);
                 // 繰り返しの見出し行にも装飾を乗せる。段落番号はここでは
@@ -4567,11 +4860,12 @@ where
                         None,
                         direction,
                         align,
-                        x_start,
+                        placement.map_or(x_start, |p| x_start + p.left),
                         block_top + paragraph.spacing_before,
-                        cell_width,
+                        placement.map_or(cell_width, |p| p.width + 2.0 * pad_left),
                         pad_left,
                         line_height,
+                        text_color,
                         &repeat_decorations,
                         false,
                     )?;
@@ -4604,7 +4898,7 @@ where
                                 &repeat_decorations,
                             )?;
                         } else {
-                            self.draw_horizontal_line_with_run_styles(
+                            let guides = self.draw_horizontal_line_with_run_styles(
                                 paragraph,
                                 line,
                                 CellLinePlacement {
@@ -4615,6 +4909,16 @@ where
                                 text_color,
                                 &repeat_decorations,
                             )?;
+                            self.capture_cell_ruby_guides(
+                                &guides,
+                                capture_paragraph,
+                                line_index,
+                                CellLinePlacement {
+                                    start_x: text_x,
+                                    top: line_top,
+                                    height: line_height,
+                                },
+                            );
                         }
                     }
                     if !matches!(cell.text_direction, Some(TextDirection::LrTbV)) {
@@ -5021,7 +5325,7 @@ where
         let spans = if empty_clip {
             Vec::new()
         } else {
-            line_style_spans(line.start, line.end, &paragraph.styled_runs)
+            line.styled_spans(&paragraph.styled_runs)
         };
         // Effects can extend ink beyond measureText's box. Keep those glyphs
         // conservatively until their full effect bounds are available.
@@ -5262,13 +5566,14 @@ where
         placement: CellLinePlacement,
         default_color: &str,
         decorations: &[crate::plugins::DecoratedRange],
-    ) -> Result<(), JsValue> {
+    ) -> Result<Vec<CellRubyGuide>, JsValue> {
         if line.text.is_empty() {
-            return Ok(());
+            return Ok(Vec::new());
         }
         let line_top = placement.top;
-        self.draw_table_line_squiggles(line, placement, decorations)?;
         let painter = self.host.painter();
+        let _line_clip = self.clip_exact_cell_line(&painter, paragraph, line, placement);
+        self.draw_table_line_squiggles(line, placement, decorations)?;
         let context = &painter;
         // Table text otherwise hangs from the line top (`textBaseline` "top").
         let text_y = match line.word_baseline_offset {
@@ -5292,6 +5597,73 @@ where
             context.restore();
         }
         result
+    }
+
+    fn capture_cell_ruby_guides(
+        &mut self,
+        guides: &[CellRubyGuide],
+        paragraph_index: usize,
+        line_index: usize,
+        placement: CellLinePlacement,
+    ) {
+        if guides.is_empty() {
+            return;
+        }
+        let absolute_top = self.page_offset_y + placement.top;
+        let line = SelectionLineLayout {
+            top: placement.top,
+            absolute_top,
+            height: placement.height,
+            baseline: placement.top,
+            start_x: placement.start_x,
+            cursor_end_x: placement.start_x,
+            allowed_trailing_overflow_width: 0.0,
+            content_top: placement.top,
+            absolute_content_top: absolute_top,
+            content_height: placement.height,
+            fragments: Rc::from([]),
+            break_range: None,
+            tab_leaders: Rc::from([]),
+            tab_stops: Rc::from([]),
+            column_index: self.column_index,
+            vertical: false,
+            vertical_reversed: false,
+        };
+        for guide in guides {
+            self.capture_ruby_guide(
+                guide.baseline,
+                &guide.glyphs,
+                paragraph_index,
+                line_index,
+                &line,
+            );
+        }
+    }
+
+    /// Keep fixed-height lines inside their physical pitch, in addition to
+    /// the surrounding cell/row clip. The same guard covers repeated headers.
+    fn clip_exact_cell_line<'a, Q: Painter>(
+        &self,
+        painter: &'a Q,
+        paragraph: &CellParagraph,
+        line: &LineLayout,
+        placement: CellLinePlacement,
+    ) -> Option<StateGuard<'a, Q>> {
+        if !paragraph.exact_line_spacing {
+            return None;
+        }
+        let guard = StateGuard::new(painter);
+        let dpr = self.host.device_pixel_ratio().max(1.0);
+        let top = (placement.top * dpr).floor() / dpr;
+        let bottom = ((placement.top + placement.height) * dpr).ceil() / dpr;
+        let left = placement.start_x.min(0.0);
+        let right = self
+            .page_width
+            .max(placement.start_x + line.visual_width() + 1.0);
+        painter.begin_path();
+        painter.rect(left, top, right - left, bottom - top);
+        painter.clip();
+        Some(guard)
     }
 
     fn table_run_baseline_shift(
@@ -5323,6 +5695,17 @@ where
         if line.min_advance <= 0.0 {
             return Ok(());
         }
+        let painter = self.host.painter();
+        let _line_clip = self.clip_exact_cell_line(
+            &painter,
+            paragraph,
+            line,
+            CellLinePlacement {
+                start_x: text_x,
+                top: line_top,
+                height: line_height,
+            },
+        );
         let baseline = line_top + line.word_baseline_offset.unwrap_or(line_height);
         for run in &paragraph.styled_runs {
             let Some(picture) = run.picture.as_ref() else {
@@ -5335,7 +5718,7 @@ where
             let image = picture.image.as_ref();
             let draw_spec = ImageDrawSpec {
                 x: text_x + glyph.x,
-                y: baseline - object.height,
+                y: baseline + line.text_alignment_shift(glyph.start) - object.height,
                 width: object.width,
                 height: object.height,
                 rotation_deg: image.layout.rotation_deg.unwrap_or(0.0),
@@ -5370,13 +5753,14 @@ where
         text_x: f64,
     ) -> Vec<SelectionFragmentLayout> {
         if line.word_baseline_offset.is_none()
-            || !paragraph.styled_runs.iter().any(|run| {
-                run.start < line.end
-                    && run.end > line.start
-                    && run.properties.as_ref().is_some_and(|props| {
-                        props.baseline.is_some() || props.text_position.is_some()
-                    })
-            })
+            || (line.text_alignment_shifts.is_empty()
+                && !paragraph.styled_runs.iter().any(|run| {
+                    run.start < line.end
+                        && run.end > line.start
+                        && run.properties.as_ref().is_some_and(|props| {
+                            props.baseline.is_some() || props.text_position.is_some()
+                        })
+                }))
         {
             return vec![SelectionFragmentLayout {
                 baseline_shift_px: 0.0,
@@ -5387,7 +5771,7 @@ where
                 glyphs: line.glyphs.clone().into(),
             }];
         }
-        line_style_spans(line.start, line.end, &paragraph.styled_runs)
+        line.styled_spans(&paragraph.styled_runs)
             .into_iter()
             .map(|span| {
                 let properties = span
@@ -5402,7 +5786,8 @@ where
                     .collect();
                 let origin = glyphs.first().map_or(0.0, |glyph| glyph.x);
                 SelectionFragmentLayout {
-                    baseline_shift_px: self.table_run_baseline_shift(line, properties),
+                    baseline_shift_px: self.table_run_baseline_shift(line, properties)
+                        + line.text_alignment_shift(span.start),
                     start: span.start,
                     end: span.end,
                     x: text_x + origin,
@@ -5420,6 +5805,33 @@ where
             .collect()
     }
 
+    fn paint_cell_paragraph_background<P: Painter<Error: PainterError>>(
+        &self,
+        painter: &P,
+        paragraph: &CellParagraph,
+        x: f64,
+        top: f64,
+        width: f64,
+    ) {
+        // Vertical paragraphs paint their bands in column coordinates.
+        if paragraph.vertical_layout.is_some() {
+            return;
+        }
+        let Some(background) = paragraph.background.as_deref() else {
+            return;
+        };
+        let _state = StateGuard::new(painter);
+        painter.set_fill_style_str(background);
+        let mut y = top + paragraph.spacing_before;
+        for line in paragraph.lines.iter() {
+            let height = paragraph.line_advance(line);
+            let band_width = (width - line.left_inset - line.right_inset).max(0.0);
+            painter.fill_rect(x + line.left_inset, y, band_width, height);
+            y += height;
+        }
+        self.reset_fill_style_state();
+    }
+
     #[allow(clippy::too_many_arguments)]
     fn draw_horizontal_line_text<P: Painter<Error: PainterError>>(
         &self,
@@ -5430,13 +5842,13 @@ where
         text_y: f64,
         default_color: &str,
         decorations: &[crate::plugins::DecoratedRange],
-    ) -> Result<(), JsValue> {
+    ) -> Result<Vec<CellRubyGuide>, JsValue> {
         let CellLinePlacement {
             start_x,
             top: line_top,
             height: line_height,
         } = placement;
-        let spans = line_style_spans(line.start, line.end, &paragraph.styled_runs);
+        let spans = line.styled_spans(&paragraph.styled_runs);
         let mut pen_x = start_x;
         for span in spans {
             if span.end <= span.start {
@@ -5476,8 +5888,135 @@ where
                 decorations,
             )?;
         }
+        let guides =
+            self.draw_horizontal_cell_ruby(paragraph, line, start_x, text_y, default_color)?;
         self.draw_line_hyphen(context, paragraph, line, start_x, text_y, default_color)?;
-        Ok(())
+        Ok(guides)
+    }
+
+    /// Paint one guide across all runs of its base, using the shared ruby
+    /// placement and the same glyph positions as the editable cell text.
+    fn draw_horizontal_cell_ruby(
+        &self,
+        paragraph: &CellParagraph,
+        line: &LineLayout,
+        start_x: f64,
+        text_y: f64,
+        default_color: &str,
+    ) -> Result<Vec<CellRubyGuide>, JsValue> {
+        let mut guides = Vec::new();
+        for (index, run) in paragraph.styled_runs.iter().enumerate() {
+            if !run
+                .properties
+                .as_ref()
+                .and_then(|p| p.ruby.as_ref())
+                .is_some_and(|ruby| !ruby.continuation && !ruby.text.is_empty())
+            {
+                continue;
+            }
+            let style = self.resolve_applied_run_style_cached(run.properties.as_ref());
+            let Some(ruby) = style.ruby.as_ref() else {
+                continue;
+            };
+            if run.start < line.start || run.start >= line.end {
+                continue;
+            }
+            let mut base_end = run.end;
+            for next in &paragraph.styled_runs[index + 1..] {
+                if !next
+                    .properties
+                    .as_ref()
+                    .and_then(|p| p.ruby.as_ref())
+                    .is_some_and(|ruby| ruby.continuation)
+                {
+                    break;
+                }
+                base_end = next.end;
+            }
+            let glyphs = line
+                .glyphs
+                .iter()
+                .filter(|glyph| glyph.start >= run.start && glyph.end <= base_end)
+                .collect::<Vec<_>>();
+            if glyphs.is_empty() {
+                continue;
+            }
+            let left = glyphs.iter().map(|g| g.x).fold(f64::INFINITY, f64::min);
+            let right = glyphs
+                .iter()
+                .map(|g| g.x + g.width)
+                .fold(f64::NEG_INFINITY, f64::max);
+            let baseline = text_y
+                + self.table_run_baseline_shift(line, run.properties.as_ref())
+                + line.text_alignment_shift(run.start);
+            let mut base_top = f64::INFINITY;
+            for base in paragraph.styled_runs[index..]
+                .iter()
+                .take_while(|r| r.start < base_end)
+            {
+                let start = base.start.max(line.start);
+                let end = base.end.min(line.end);
+                if end <= start {
+                    continue;
+                }
+                let applied = self.resolve_applied_run_style_cached(base.properties.as_ref());
+                let segment = TextSegment {
+                    text: paragraph.text[start..end].to_string(),
+                    start,
+                    end,
+                    properties: base.properties.clone().map(Rc::new),
+                    revision: None,
+                    hyperlink: None,
+                    leading_width: 0.0,
+                };
+                let steps = glyphs
+                    .iter()
+                    .filter(|g| g.start >= start && g.end <= end)
+                    .map(|g| PlannedGlyphLayoutStep {
+                        text_start: (g.start - start) as u32,
+                        text_end: (g.end - start) as u32,
+                        font_slot: applied.resolved.font_slot_for_grapheme(
+                            &paragraph.text[g.start..g.end],
+                            classify_script(&paragraph.text[g.start..g.end]),
+                        ),
+                        x_offset: g.x - left,
+                    })
+                    .collect::<Vec<_>>();
+                let top = self.ruby_base_top_offset(&segment, &applied, &steps, true)?;
+                base_top = base_top.min(
+                    text_y
+                        + self.table_run_baseline_shift(line, base.properties.as_ref())
+                        + line.text_alignment_shift(start)
+                        + top,
+                );
+            }
+            let requested = run
+                .properties
+                .as_ref()
+                .and_then(|p| p.color.as_deref())
+                .unwrap_or(default_color);
+            let background = table_run_background(run.properties.as_ref());
+            let color = self.resolve_text_fill_color_on_background(
+                requested,
+                background.as_deref().or(paragraph.background.as_deref()),
+            );
+            let (baseline, glyphs) = self.draw_ruby_text(
+                ruby,
+                start_x + left,
+                right - left,
+                baseline,
+                base_top - baseline,
+                color.as_ref(),
+                None,
+            )?;
+            if self.auxiliary_story_capture_mode.enabled() {
+                guides.push(CellRubyGuide { baseline, glyphs });
+            }
+            // Ruby changes the painter's font and colour before the next cell.
+            self.reset_font_state();
+            self.reset_fill_style_state();
+        }
+        Ok(guides)
     }
 
     /// The hyphen automatic hyphenation ended `line` with, after its last
@@ -5504,10 +6043,16 @@ where
         let requested = run_props
             .and_then(|props| props.color.as_deref())
             .unwrap_or(default_color);
-        let color = self.resolve_text_fill_color(requested);
+        let background = table_run_background(run_props);
+        let color = self.resolve_text_fill_color_on_background(
+            requested,
+            background.as_deref().or(paragraph.background.as_deref()),
+        );
         context.set_fill_style_str(color.as_ref());
         let x = start_x + last.x + (last.width - hyphen).max(0.0);
-        let y = text_y + self.table_run_baseline_shift(line, run_props);
+        let y = text_y
+            + self.table_run_baseline_shift(line, run_props)
+            + line.text_alignment_shift(last.start);
         context
             .fill_text("-", x, y)
             .map_err(PainterError::into_js_value)?;
@@ -5543,7 +6088,9 @@ where
             return Ok(0.0);
         }
 
-        let text_y = text_y + self.table_run_baseline_shift(line, run_props);
+        let text_y = text_y
+            + self.table_run_baseline_shift(line, run_props)
+            + line.text_alignment_shift(start);
 
         let font = table_font_descriptor_for_text(run_props, text);
         context.set_font(font.as_deref().unwrap_or(TABLE_FONT));
@@ -5555,7 +6102,11 @@ where
         let requested = run_props
             .and_then(|props| props.color.as_deref())
             .unwrap_or(default_color);
-        let resolved = self.resolve_text_fill_color(requested);
+        let background = table_run_background(run_props);
+        let resolved = self.resolve_text_fill_color_on_background(
+            requested,
+            background.as_deref().or(paragraph.background.as_deref()),
+        );
 
         // 変更履歴の帯。本文側と同じ色で、文字の下に敷く。
         //
@@ -5576,10 +6127,50 @@ where
             }
         }
 
+        if let Some(background) = background.as_deref() {
+            let font_size = run_props.and_then(|props| props.font_size).unwrap_or(12.0);
+            // `text_y` already includes superscript/subscript positioning.
+            let baseline = if line.word_baseline_offset.is_some() {
+                text_y
+            } else {
+                text_y + points_to_px(font_size) * 0.8
+            };
+            let (top, height) = Self::text_highlight_vertical_bounds(
+                y,
+                line_height,
+                baseline,
+                0.0,
+                font_size,
+                None,
+                None,
+            );
+            context.save();
+            context.set_fill_style_str(background);
+            context.fill_rect(x, top, width, height);
+            context.restore();
+            self.reset_fill_style_state();
+        }
+
         // 装飾は文字の下。ここまでで「この span をどこに、どれだけの幅で描くか」が
         // 決まっているので、その値をそのまま使う。
         self.draw_span_decorations(context, text, start, x, width, y, line_height, decorations);
         context.set_fill_style_str(resolved.as_ref());
+        let combined_properties = match run_props {
+            Some(properties)
+                if properties.fit_text.is_none()
+                    && properties
+                        .east_asian_layout
+                        .as_ref()
+                        .is_some_and(|layout| layout.combine) =>
+            {
+                jade_docx_layout::combined_characters::combined_run_properties(
+                    &TableLineWrapContext::new(context),
+                    text,
+                    properties,
+                )?
+            }
+            _ => None,
+        };
         let text_scale_x = run_props
             .and_then(|props| props.text_scale)
             .filter(|scale| scale.is_finite() && *scale > 0.0)
@@ -5597,7 +6188,7 @@ where
         let origin = glyphs.first().map_or(0.0, |glyph| glyph.x);
         let steps = glyphs
             .iter()
-            .filter(|_| !contextual_shaping)
+            .filter(|_| combined_properties.is_some() || !contextual_shaping)
             .map(|glyph| {
                 let glyph_text = &paragraph.text[glyph.start..glyph.end];
                 PlannedGlyphLayoutStep {
@@ -5610,7 +6201,20 @@ where
             })
             .collect::<Vec<_>>();
         self.reset_font_state();
-        if steps.is_empty() {
+        if let Some(properties) = combined_properties.as_ref() {
+            let applied = self.resolve_applied_run_style_uncached(Some(properties));
+            let mut command_style = self.cmd_text_style(Some(properties), &applied);
+            command_style.fill_color = Rc::from(resolved.as_ref());
+            self.draw_planned_text(
+                context,
+                x,
+                text_y,
+                &command_style,
+                (text, &applied.resolved),
+                &steps,
+            )
+            .map_err(PainterError::into_js_value)?;
+        } else if steps.is_empty() {
             if (text_scale_x - 1.0).abs() > f64::EPSILON {
                 context.save();
                 context
@@ -5783,7 +6387,13 @@ where
             line_top
         };
         if line.glyphs.is_empty() {
-            context.set_fill_style_str(self.resolve_text_fill_color(default_color).as_ref());
+            context.set_fill_style_str(
+                self.resolve_text_fill_color_on_background(
+                    default_color,
+                    paragraph.background.as_deref(),
+                )
+                .as_ref(),
+            );
             context
                 .fill_text(&line.text, start_x, text_y)
                 .map_err(PainterError::into_js_value)?;
@@ -5799,14 +6409,27 @@ where
                 paragraph_range_font_descriptor(paragraph, glyph.start, glyph.end, glyph_text);
             let descriptor = font.as_deref().unwrap_or(TABLE_FONT);
             context.set_font(descriptor);
-            let requested = paragraph
+            let run_props = paragraph
                 .styled_runs
                 .iter()
                 .find(|run| run.start <= glyph.start && glyph.start < run.end)
-                .and_then(|run| run.properties.as_ref())
+                .and_then(|run| run.properties.as_ref());
+            let background = table_run_background(run_props);
+            if let Some(background) = background.as_deref() {
+                context.set_fill_style_str(background);
+                context.fill_rect(glyph_x, line_top, width, line_height);
+                self.reset_fill_style_state();
+            }
+            let requested = run_props
                 .and_then(|properties| properties.color.as_deref())
                 .unwrap_or(default_color);
-            context.set_fill_style_str(self.resolve_text_fill_color(requested).as_ref());
+            context.set_fill_style_str(
+                self.resolve_text_fill_color_on_background(
+                    requested,
+                    background.as_deref().or(paragraph.background.as_deref()),
+                )
+                .as_ref(),
+            );
             if is_east_asian {
                 context.save();
                 context.set_text_baseline("alphabetic");
@@ -5866,6 +6489,7 @@ where
                 break_range: Some((0, 0)),
                 break_properties: None,
                 word_baseline_offset: None,
+                text_alignment_shifts: Vec::new(),
             }]
         } else {
             paragraph.lines.as_ref().clone()
@@ -8495,6 +9119,7 @@ fn apply_table_layout_width_for_table_with_content<C: LineWrapContext>(
     line_height_for: &dyn Fn(&Paragraph) -> f64,
     cache: Option<&RefCell<TableAutofitCache>>,
     field_value_for: &dyn Fn(&RunField) -> Option<String>,
+    config: Option<&LayoutConfig>,
 ) -> Result<(f64, NaturalParagraphLayoutCache), C::Error> {
     let mode = resolve_table_layout_mode(table);
     if matches!(mode, TableLayoutMode::Fixed) {
@@ -8522,6 +9147,7 @@ fn apply_table_layout_width_for_table_with_content<C: LineWrapContext>(
             default_padding_x,
             line_height_for,
             field_value_for,
+            config,
         )
     });
     let cached = cache
@@ -8537,6 +9163,7 @@ fn apply_table_layout_width_for_table_with_content<C: LineWrapContext>(
             default_padding_x,
             line_height_for,
             field_value_for,
+            config,
         )?;
         if let (Some(cache), Some(signature)) = (cache, cache_signature) {
             cache.borrow_mut().insert(signature, measured.clone());
@@ -8911,16 +9538,22 @@ fn table_autofit_cache_signature(
     default_padding_x: f64,
     line_height_for: &dyn Fn(&Paragraph) -> f64,
     field_value_for: &dyn Fn(&RunField) -> Option<String>,
+    config: Option<&LayoutConfig>,
 ) -> Option<TableAutofitCacheSignature> {
     // A table's key runs to kilobytes: start there rather than growing from
-    // serde_json's 128 bytes on every paint.
+    // a small serializer buffer on every paint.
     let mut bytes = Vec::with_capacity(4096);
     // Cached gutter metrics are Windows-specific; switching policy must miss.
     bytes.push(u8::from(
         jade_docx_layout::line_metrics::word_layout_platform()
             == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows,
     ));
-    serde_json::to_writer(&mut bytes, table).ok()?;
+    ciborium::ser::into_writer(table, &mut bytes).ok()?;
+    if let Some(config) = config {
+        bytes.push(u8::from(config.override_table_style_font_size));
+        ciborium::ser::into_writer(&config.styles_part, &mut bytes).ok()?;
+        ciborium::ser::into_writer(&config.theme_part, &mut bytes).ok()?;
+    }
     // `resolved_style` is intentionally skipped by the document serializer but
     // affects table and first-row typography, so retain it in the cache key.
     std::io::Write::write_fmt(&mut bytes, format_args!("{:?}", table.resolved_style)).ok()?;
@@ -8935,6 +9568,17 @@ fn table_autofit_cache_signature(
                 if let BodyElement::Paragraph(paragraph) = block {
                     bytes.extend_from_slice(&line_height_for(paragraph).to_bits().to_le_bytes());
                     for run in &paragraph.runs {
+                        if let Some(props) = &run.properties {
+                            let direct = &props.direct_font_properties;
+                            bytes.push(u8::from(direct.known));
+                            ciborium::ser::into_writer(&direct.fonts, &mut bytes).ok()?;
+                            for size in [direct.font_size, direct.font_size_complex] {
+                                bytes.push(u8::from(size.is_some()));
+                                if let Some(size) = size {
+                                    bytes.extend_from_slice(&size.to_bits().to_le_bytes());
+                                }
+                            }
+                        }
                         if let Some(field) = &run.field {
                             let value = field_value_for(field);
                             bytes.push(u8::from(value.is_some()));
@@ -9006,6 +9650,7 @@ fn autofit_content_widths<C: LineWrapContext>(
     default_padding_x: f64,
     line_height_for: &dyn Fn(&Paragraph) -> f64,
     field_value_for: &dyn Fn(&RunField) -> Option<String>,
+    config: Option<&LayoutConfig>,
 ) -> Result<AutofitContentWidths, C::Error> {
     let mut minimums = no_wrap_absolute_minimum_widths(table, column_widths);
     let mut preferred = vec![0.0_f64; column_widths.len()];
@@ -9013,9 +9658,18 @@ fn autofit_content_widths<C: LineWrapContext>(
     // Widest piece of content that cannot wrap, per column.
     let mut unbreakable_widths = vec![0.0_f64; column_widths.len()];
     let mut natural_paragraph_layouts = Vec::new();
+    let row_count = table
+        .rows
+        .iter()
+        .filter(|row| !table_row_is_hidden(row))
+        .count();
+    let mut row_index = 0;
     for row in &table.rows {
         let mut column_index = row.grid_before.unwrap_or(0) as usize;
-        for cell in &row.cells {
+        for (cell_index, cell) in row.cells.iter().enumerate() {
+            let style_format = table.table_style_cell_format(table_style_cell_position(
+                row, row_index, row_count, cell_index,
+            ));
             let span = cell.span.unwrap_or(1).max(1) as usize;
             let start = column_index.min(column_widths.len());
             let end = (start + span).min(column_widths.len());
@@ -9042,7 +9696,7 @@ fn autofit_content_widths<C: LineWrapContext>(
                 let BodyElement::Paragraph(paragraph) = block else {
                     continue;
                 };
-                let (text, styled_runs, _) = collect_paragraph_text(
+                let (text, mut styled_runs, _) = collect_paragraph_text(
                     paragraph,
                     true,
                     false,
@@ -9052,6 +9706,23 @@ fn autofit_content_widths<C: LineWrapContext>(
                 if text.is_empty() {
                     continue;
                 }
+                let styles = config.and_then(|config| config.styles_part.as_deref());
+                apply_paragraph_style_runs(&mut styled_runs, paragraph, styles);
+                apply_table_style_conditional_runs(&mut styled_runs, &style_format);
+                apply_table_style_fonts(
+                    &mut styled_runs,
+                    &style_format,
+                    paragraph,
+                    styles,
+                    config.and_then(|config| config.theme_part.as_deref()),
+                );
+                apply_table_style_font_sizes(
+                    &mut styled_runs,
+                    &style_format,
+                    paragraph,
+                    styles,
+                    config.is_some_and(|config| config.override_table_style_font_size),
+                );
                 let run_styles = styled_run_styles(&text, &styled_runs);
                 let natural = layout_horizontal_paragraph_with_run_styles_context(
                     context,
@@ -9118,6 +9789,9 @@ fn autofit_content_widths<C: LineWrapContext>(
                     minimums[index] = minimums[index].max(share);
                 }
             }
+        }
+        if !table_row_is_hidden(row) {
+            row_index += 1;
         }
     }
     // Word wraps the content of a column whose cells give an absolute
@@ -10636,7 +11310,7 @@ fn compute_split_cell_height(cell: &PreparedCell, line_height: f64) -> f64 {
         return vertical_padding;
     }
 
-    let content_height = cell.blocks.iter().map(|block| block.height).sum::<f64>();
+    let content_height = cell_content_height(&cell.blocks, cell.text_direction);
     if content_height <= ROW_SPLIT_EPSILON {
         line_height + vertical_padding
     } else {
@@ -11121,12 +11795,16 @@ fn apply_paragraph_style_runs(
             small_caps,
             color,
             char_spacing,
+            snap_to_grid,
             baseline,
         );
         if properties.underline.is_none() {
             properties.underline = style.underline;
             properties.underline_kind = style.underline_kind.clone();
+        }
+        if properties.underline_color.is_none() && properties.underline_theme_color.is_none() {
             properties.underline_color = style.underline_color.clone();
+            properties.underline_theme_color = style.underline_theme_color.clone();
         }
     }
 }
@@ -11145,6 +11823,159 @@ fn apply_table_style_conditional_runs(
         }
         if properties.italic.is_none() {
             properties.italic = style_format.italic;
+        }
+    }
+}
+
+/// Table fonts sit above document defaults and below paragraph, character,
+/// and direct formatting. Merge each script's name/theme as one choice.
+fn apply_table_style_fonts(
+    runs: &mut [StyledRunRange],
+    format: &TableStyleCellFormat,
+    paragraph: &Paragraph,
+    styles: Option<&StylesPart>,
+    theme: Option<&ThemePart>,
+) {
+    if format.fonts.is_empty() {
+        return;
+    }
+    let paragraph_id = paragraph
+        .properties
+        .as_ref()
+        .and_then(|p| p.style.as_deref())
+        .or_else(|| styles.and_then(StylesPart::default_paragraph_style_id));
+    let paragraph_style =
+        styles.and_then(|s| paragraph_id.and_then(|id| s.resolve_run_properties(id)));
+    for run in runs {
+        let props = run.properties.get_or_insert_with(RunProperties::default);
+        let character = styles.and_then(|s| {
+            props
+                .style
+                .as_deref()
+                .and_then(|id| s.resolve_character_run_properties(id))
+        });
+        let direct = if props.direct_font_properties.known {
+            props.direct_font_properties.fonts.clone()
+        } else {
+            let mut fonts = props.fonts.clone().unwrap_or_default();
+            if fonts.preferred_latin().is_none()
+                && fonts.ascii_theme.is_none()
+                && fonts.h_ansi_theme.is_none()
+            {
+                if let Some(family) = props.font_family.as_ref() {
+                    fonts.ascii = Some(family.clone());
+                    fonts.h_ansi = Some(family.clone());
+                }
+            }
+            Some(fonts)
+        };
+        let mut fonts = styles
+            .and_then(StylesPart::doc_default_run_properties)
+            .and_then(|p| p.fonts.clone())
+            .unwrap_or_default();
+        fonts.merge_from(&format.fonts);
+        for layer in [
+            paragraph_style.as_ref().and_then(|p| p.fonts.as_ref()),
+            character.as_ref().and_then(|p| p.fonts.as_ref()),
+            direct.as_ref(),
+        ]
+        .into_iter()
+        .flatten()
+        {
+            fonts.merge_from(layer);
+        }
+        // Match body text: an authored rFonts without a hint or an EA name
+        // selects the default hint, even when lower layers supply eastAsia.
+        // Use the direct snapshot: loaded fonts may already contain that
+        // inherited hint, so their merged value cannot establish run intent.
+        if direct
+            .as_ref()
+            .and_then(|fonts| fonts.hint.as_ref())
+            .is_none()
+            && props.authored_east_asia_font_hint == Some(false)
+            && !props.authored_east_asia_font_name.unwrap_or(false)
+        {
+            fonts.hint = Some(FontHint::Default);
+        }
+        props.font_family = None;
+        props.fonts = Some(fonts);
+        if let Some(theme) = theme {
+            theme.apply_to_run_properties(props);
+        }
+        props.font_family = props
+            .fonts
+            .as_ref()
+            .and_then(|fonts| fonts.preferred_latin())
+            .map(Rc::from);
+    }
+}
+
+/// Resolve table sizes below paragraph/character/direct formatting. Loaded
+/// runs already contain effective default sizes: consult their direct snapshot
+/// rather than mistaking those fallback values for authored formatting.
+fn apply_table_style_font_sizes(
+    runs: &mut [StyledRunRange],
+    format: &TableStyleCellFormat,
+    paragraph: &Paragraph,
+    styles: Option<&StylesPart>,
+    override_default: bool,
+) {
+    if format.font_size.is_none() && format.font_size_complex.is_none() {
+        return;
+    }
+    let default_id = styles.and_then(StylesPart::default_paragraph_style_id);
+    let paragraph_id = paragraph
+        .properties
+        .as_ref()
+        .and_then(|p| p.style.as_deref())
+        .or(default_id);
+    let mut paragraph_style =
+        styles.and_then(|s| paragraph_id.and_then(|id| s.resolve_run_properties(id)));
+    // MS-DOCX 2.3.1: by default, Normal's 11pt/12pt does not override tables.
+    if !override_default && paragraph_id == default_id {
+        if let Some(style) = paragraph_style.as_mut() {
+            if matches!(style.font_size, Some(11.0 | 12.0)) {
+                style.font_size = None;
+            }
+            if matches!(style.font_size_complex, Some(11.0 | 12.0)) {
+                style.font_size_complex = None;
+            }
+        }
+    }
+    for run in runs {
+        let props = run.properties.get_or_insert_with(RunProperties::default);
+        let character = styles.and_then(|s| {
+            props
+                .style
+                .as_deref()
+                .and_then(|id| s.resolve_character_run_properties(id))
+        });
+        let known = props.direct_font_properties.known;
+        let direct_size = if known {
+            props.direct_font_properties.font_size
+        } else {
+            props.font_size
+        };
+        let direct_complex = if known {
+            props.direct_font_properties.font_size_complex
+        } else {
+            props.font_size_complex
+        };
+        if let Some(size) = format.font_size {
+            props.font_size = Some(
+                direct_size
+                    .or_else(|| character.as_ref().and_then(|p| p.font_size))
+                    .or_else(|| paragraph_style.as_ref().and_then(|p| p.font_size))
+                    .unwrap_or(size),
+            );
+        }
+        if let Some(size) = format.font_size_complex {
+            props.font_size_complex = Some(
+                direct_complex
+                    .or_else(|| character.as_ref().and_then(|p| p.font_size_complex))
+                    .or_else(|| paragraph_style.as_ref().and_then(|p| p.font_size_complex))
+                    .unwrap_or(size),
+            );
         }
     }
 }
@@ -12391,6 +13222,20 @@ fn prepare_row_layout<P: Painter<Error: PainterError>>(
                             config.styles_part.as_deref(),
                         );
                         apply_table_style_conditional_runs(&mut styled_runs, &style_format);
+                        apply_table_style_fonts(
+                            &mut styled_runs,
+                            &style_format,
+                            paragraph,
+                            config.styles_part.as_deref(),
+                            config.theme_part.as_deref(),
+                        );
+                        apply_table_style_font_sizes(
+                            &mut styled_runs,
+                            &style_format,
+                            paragraph,
+                            config.styles_part.as_deref(),
+                            config.override_table_style_font_size,
+                        );
                         let fit_text = cell_fit_text_enabled(cell);
                         let vertical_fit_target = if fit_text
                             && cell
@@ -12496,6 +13341,10 @@ fn prepare_row_layout<P: Painter<Error: PainterError>>(
                             && !paragraph_style.doc_grid_snap_to_chars
                             && !paragraph_style.enable_line_break_rules
                             && !paragraph_style.word_east_asian_font_line_box
+                            && !matches!(
+                                paragraph_style.text_alignment.as_deref(),
+                                Some("top" | "center" | "bottom")
+                            )
                             && left_inset == 0.0
                             && paragraph_style.first_line_indent == 0.0
                             && paragraph_style.right_indent == 0.0)
@@ -12542,6 +13391,12 @@ fn prepare_row_layout<P: Painter<Error: PainterError>>(
                                 line.left_inset += left_inset;
                             }
                         }
+                        cell_paragraph.background = paragraph
+                            .properties
+                            .as_ref()
+                            .and_then(|properties| properties.shading.as_ref())
+                            .and_then(|shading| shading.resolved_background_color())
+                            .map(Rc::from);
                         cell_paragraph.styled_runs = styled_runs;
                         cell_paragraph.note_anchors = note_anchors;
                         cell_paragraph.keep_lines = paragraph
@@ -12665,7 +13520,7 @@ fn prepare_row_layout<P: Painter<Error: PainterError>>(
         let mut content_height = if skip_render {
             0.0
         } else {
-            blocks.iter().map(|block| block.height).sum::<f64>()
+            cell_content_height(&blocks, cell.text_direction)
         };
         if content_height <= 0.0 && !skip_render && !contains_only_hidden_end_marker {
             content_height = config.line_height;
@@ -12791,6 +13646,7 @@ fn layout_nested_table<P: Painter<Error: PainterError>>(
         &|paragraph| config.line_height_for(paragraph),
         None,
         field_value_for,
+        Some(config),
     )?;
 
     adjust_windows_negative_spacing_columns(table, &mut column_widths);
@@ -13333,29 +14189,11 @@ fn table_font_descriptor_for_text(
     }
 }
 
-fn paragraph_primary_font_descriptor(paragraph: &CellParagraph) -> Option<Rc<str>> {
-    let run = paragraph
-        .styled_runs
-        .iter()
-        .find(|run| run.end > run.start && run.properties.is_some())?;
-    let text = paragraph.text.get(run.start..run.end).unwrap_or("");
-    table_font_descriptor_for_text(run.properties.as_ref(), text)
-}
-
 fn run_text_scale(properties: Option<&RunProperties>) -> f64 {
     properties
         .and_then(|properties| properties.text_scale)
         .filter(|scale| scale.is_finite() && *scale > 0.0)
         .map(|scale| (scale as f64 / 100.0).clamp(0.01, 10.0))
-        .unwrap_or(1.0)
-}
-
-fn paragraph_primary_text_scale(paragraph: &CellParagraph) -> f64 {
-    paragraph
-        .styled_runs
-        .iter()
-        .find(|run| run.end > run.start)
-        .map(|run| run_text_scale(run.properties.as_ref()))
         .unwrap_or(1.0)
 }
 
@@ -13369,23 +14207,22 @@ fn paragraph_line_text_scale(paragraph: &CellParagraph, line: &LineLayout) -> f6
 }
 
 /// Whether a vertical line is a 縦中横 group (`w:eastAsianLayout w:vert`),
-/// with whether it is fitted to the line (`w:vertCompress`) and the font of
-/// the run it starts in.
+/// with the optional font of the run it starts in.
 fn paragraph_line_tate_chu_yoko(
     paragraph: &CellParagraph,
     line: &LineLayout,
-) -> Option<(bool, Option<Rc<str>>)> {
+) -> Option<Option<Rc<str>>> {
     let run = paragraph
         .styled_runs
         .iter()
         .find(|run| run.start <= line.start && line.start < run.end)?;
-    let layout = run.properties.as_ref()?.east_asian_layout.as_deref()?;
-    layout.vert.then(|| {
-        (
-            layout.vert_compress,
-            table_font_descriptor_for_text(run.properties.as_ref(), &line.text),
-        )
-    })
+    let properties = run.properties.as_ref()?;
+    if properties.fit_text.is_some() {
+        return None;
+    }
+    let layout = properties.east_asian_layout.as_deref()?;
+    (layout.vert && !layout.combine)
+        .then(|| table_font_descriptor_for_text(run.properties.as_ref(), &line.text))
 }
 
 /// Paints `text`, one character of an upright column, in its vertical form
@@ -13583,6 +14420,7 @@ fn build_line_layout_from_wrapped_line(line: &WrappedLine) -> LineLayout {
         break_range: line.break_range,
         break_properties: line.break_properties.clone(),
         word_baseline_offset,
+        text_alignment_shifts: Vec::new(),
         min_advance,
     }
 }
@@ -13636,6 +14474,32 @@ fn styled_run_styles(text: &str, styled_runs: &[StyledRunRange]) -> Vec<RunStyle
         run_styles = plain_text_run_styles(text);
     }
     run_styles
+}
+
+// Keep table advances in step with the shared body layout and painter.
+// Retain authored styled_runs separately for painting; these properties are
+// only the half-size, compressed representation used for line measurement.
+fn combined_table_run_styles<C: LineWrapContext>(
+    context: &C,
+    text: &str,
+    mut runs: Vec<RunStyle>,
+) -> Result<Vec<RunStyle>, C::Error> {
+    for run in &mut runs {
+        if run.inline_object.is_some() {
+            continue;
+        }
+        let (Some(value), Some(properties)) =
+            (text.get(run.start..run.end), run.properties.as_deref())
+        else {
+            continue;
+        };
+        if let Some(combined) = jade_docx_layout::combined_characters::combined_run_properties(
+            context, value, properties,
+        )? {
+            run.properties = Some(Rc::new(combined));
+        }
+    }
+    Ok(runs)
 }
 
 pub(super) fn layout_paragraph<P: Painter<Error: PainterError>>(
@@ -13715,7 +14579,7 @@ fn layout_paragraph_with_table_context<P: Painter<Error: PainterError>>(
                 .iter()
                 .map(|wrapped| {
                     let mut line = build_line_layout_from_wrapped_line(wrapped);
-                    if dir == TextDirection::TbRlV {
+                    if matches!(dir, TextDirection::TbRlV | TextDirection::TbLrV) {
                         line.word_baseline_offset =
                             jade_docx_layout::line_wrap::wrapped_line_max_font_ascent(wrapped);
                         for (glyph, cluster) in line.glyphs.iter_mut().zip(&wrapped.clusters) {
@@ -13748,10 +14612,10 @@ fn layout_paragraph_with_table_context<P: Painter<Error: PainterError>>(
                 max_line_width: result.layout.max_line_width,
                 height: result.layout.column_height,
                 line_height,
-                vertical_layout: Some(VerticalTextLayout {
+                vertical_layout: Some(Box::new(VerticalTextLayout {
                     column_ranges: result.layout.column_ranges,
                     column_height: result.layout.column_height,
-                }),
+                })),
                 ..CellParagraph::default()
             });
         }
@@ -13759,27 +14623,19 @@ fn layout_paragraph_with_table_context<P: Painter<Error: PainterError>>(
             return layout_rotated_paragraph(context.context, text, max_width, line_height);
         }
         if direction_requires_vertical_stack(dir) {
-            let capacity_height = available_height.map(|height| height + line_height);
-            let mut paragraph = layout_vertical_paragraph_with_run_styles_context(
+            return layout_vertical_paragraph_with_run_styles_context(
                 context,
                 text,
                 dir,
-                capacity_height,
+                available_height,
                 line_height,
                 &run_styles,
                 false,
-            )?;
-            if let Some(height) = available_height {
-                let visible_height = height.max(line_height);
-                paragraph.height = visible_height;
-                if let Some(layout) = paragraph.vertical_layout.as_mut() {
-                    layout.column_height = visible_height;
-                }
-            }
-            return Ok(paragraph);
+            );
         }
     }
 
+    let run_styles = combined_table_run_styles(context, text, run_styles)?;
     layout_cached_horizontal_table_paragraph(
         context,
         text,
@@ -13947,7 +14803,7 @@ fn layout_vertical_paragraph_on_grid<C: LineWrapContext>(
         max_line_width: wrapped.max_line_width,
         height: wrapped.column_height,
         line_height,
-        vertical_layout: Some(vertical_layout),
+        vertical_layout: Some(Box::new(vertical_layout)),
         ..CellParagraph::default()
     })
 }
@@ -14008,10 +14864,11 @@ fn layout_horizontal_paragraph_with_run_styles_context_offset<C: LineWrapContext
     paragraph_style: &ParagraphStyle,
     base_offset: usize,
 ) -> Result<CellParagraph, C::Error> {
+    let run_styles = combined_table_run_styles(context, text, run_styles.to_vec())?;
     let mut wrapped = jade_docx_layout::line_wrap::wrap_text_into_lines(
         context,
         text,
-        run_styles,
+        &run_styles,
         0.0,
         paragraph_style,
         base_offset,
@@ -14039,9 +14896,83 @@ fn horizontal_cell_paragraph_from_wrapped_lines(
         .enumerate()
         .map(|(index, wrapped)| {
             let mut line = build_line_layout_from_wrapped_line(wrapped);
+            let has_ruby = wrapped.segments.iter().any(|segment| {
+                segment
+                    .properties
+                    .as_ref()
+                    .is_some_and(|props| props.ruby.is_some())
+            });
+            if has_ruby && !paragraph_style.exact_line_spacing {
+                if let Some((ascent, descent)) = wrapped.font_box_px() {
+                    line.min_advance = line.min_advance.max(ascent + descent);
+                }
+            }
             line.left_inset = paragraph_style.line_indent(index);
             line.right_inset = paragraph_style.right_indent;
-            if paragraph_style.word_east_asian_font_line_box && line.min_advance <= 0.0 {
+            let leading_share = match paragraph_style.text_alignment.as_deref() {
+                Some("top") => Some(0.0),
+                Some("center") => Some(0.5),
+                Some("bottom") => Some(1.0),
+                _ => None,
+            };
+            if let Some((share, (ascent, descent))) =
+                leading_share.zip(wrapped.content_box_px_with_paragraph_mark(None))
+            {
+                // Inline pictures already contribute to this shared baseline.
+                // Keep their minimum advance while positioning spare leading.
+                let advance = if paragraph_style.exact_line_spacing {
+                    line_height
+                } else {
+                    line_height.max(line.min_advance)
+                };
+                line.word_baseline_offset =
+                    Some(ascent + (advance - ascent - descent).max(0.0) * share);
+                let mut shifts = wrapped
+                    .clusters
+                    .iter()
+                    .filter_map(|cluster| {
+                        let (a, d) = if cluster.inline_object.is_some() {
+                            let (top, bottom) = cluster.inline_object_bounds_px()?;
+                            ((-top).max(0.0), bottom.max(0.0))
+                        } else {
+                            let metrics = cluster.layout.as_ref()?;
+                            (metrics.font_ascent?, metrics.font_descent?)
+                        };
+                        if !a.is_finite() || !d.is_finite() || a < 0.0 || d < 0.0 {
+                            return None;
+                        }
+                        // Align the character's top, centre, or bottom with the
+                        // shared content box, independently of extra line leading.
+                        let shift = (a - ascent) * (1.0 - share) + (descent - d) * share;
+                        (shift.abs() > f64::EPSILON).then_some((cluster.start, cluster.end, shift))
+                    })
+                    .collect::<Vec<_>>();
+                shifts.sort_unstable_by_key(|(start, _, _)| *start);
+                for (start, end, shift) in shifts {
+                    if let Some(last) = line.text_alignment_shifts.last_mut() {
+                        if last.1 == start && last.2 == shift {
+                            last.1 = end;
+                            continue;
+                        }
+                    }
+                    line.text_alignment_shifts.push((start, end, shift));
+                }
+            } else if paragraph_style.exact_line_spacing {
+                line.word_baseline_offset = if paragraph_style.word_platform
+                    == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
+                {
+                    Some(line_height * 0.8)
+                } else {
+                    wrapped
+                        .content_box_px_with_paragraph_mark(None)
+                        .map(|(ascent, descent)| {
+                            let spare = line_height - ascent - descent;
+                            ascent + if spare < 0.0 { spare } else { spare * 0.5 }
+                        })
+                };
+            } else if has_ruby {
+                line.word_baseline_offset = wrapped.font_box_px().map(|(ascent, _)| ascent);
+            } else if paragraph_style.word_east_asian_font_line_box && line.min_advance <= 0.0 {
                 line.word_baseline_offset =
                     jade_docx_layout::line_wrap::wrapped_line_grid_baseline_offset(
                         wrapped,
@@ -14068,6 +14999,7 @@ fn horizontal_cell_paragraph_from_wrapped_lines(
             break_range: Some((base_offset, base_offset)),
             break_properties: None,
             word_baseline_offset: None,
+            text_alignment_shifts: Vec::new(),
         });
     }
 
@@ -14086,7 +15018,13 @@ fn horizontal_cell_paragraph_from_wrapped_lines(
 
     let height = lines
         .iter()
-        .map(|line| line_height.max(line.min_advance))
+        .map(|line| {
+            if paragraph_style.exact_line_spacing {
+                line_height
+            } else {
+                line_height.max(line.min_advance)
+            }
+        })
         .sum::<f64>()
         .max(line_height);
 
@@ -14101,6 +15039,7 @@ fn horizontal_cell_paragraph_from_wrapped_lines(
         max_line_width: max_line_width.max(line_height),
         height,
         line_height,
+        exact_line_spacing: paragraph_style.exact_line_spacing,
         vertical_layout: None,
         ..CellParagraph::default()
     }
@@ -14143,6 +15082,7 @@ fn empty_cell_paragraph(line_height: f64) -> CellParagraph {
             break_range: Some((0, 0)),
             break_properties: None,
             word_baseline_offset: None,
+            text_alignment_shifts: Vec::new(),
         }]),
         styled_runs: Vec::new(),
         max_line_width: 0.0,
@@ -14168,7 +15108,7 @@ fn direction_requires_vertical_stack(direction: TextDirection) -> bool {
     )
 }
 
-fn direction_draws_rotated_table_visual(direction: TextDirection, section: bool) -> bool {
+fn direction_uses_rotated_columns(direction: TextDirection, section: bool) -> bool {
     matches!(direction, TextDirection::BtLrV) || section && direction == TextDirection::TbRlV
 }
 
@@ -14198,30 +15138,38 @@ fn direction_rotation_angle(direction: TextDirection) -> f64 {
     }
 }
 
-fn rotated_visual_anchor_x(
-    direction: TextDirection,
-    base_x: f64,
-    content_right: f64,
-    line_height: f64,
-) -> f64 {
-    match direction {
-        TextDirection::TbRlV => {
-            content_right - line_height * VERTICAL_TABLE_ROTATED_RIGHT_INSET_FACTOR
-        }
-        _ => base_x,
+/// Reassemble only one laid-out column in its horizontal drawing coordinates.
+/// Keeping source ranges and glyph origins lets the shared span painter retain
+/// run formatting, shaping, and spacing without painting across column breaks.
+fn rotated_column_line(
+    paragraph: &CellParagraph,
+    column: &[LineLayout],
+    advance_for_line: impl Fn(&LineLayout) -> f64,
+) -> Option<LineLayout> {
+    let mut line = column.first()?.clone();
+    let last = column.last()?;
+    line.end = last.end;
+    line.text = paragraph.text.get(line.start..line.end)?.to_string();
+    line.glyphs.clear();
+    let mut advance = column[0].left_inset;
+    for source in column {
+        line.glyphs
+            .extend(source.glyphs.iter().cloned().map(|mut glyph| {
+                glyph.x += advance;
+                glyph
+            }));
+        advance += advance_for_line(source);
     }
-}
-
-fn rotated_visual_baseline_y(
-    direction: TextDirection,
-    block_top: f64,
-    column_height: f64,
-    line_height: f64,
-) -> f64 {
-    match direction {
-        TextDirection::TbRlV => block_top + line_height * VERTICAL_TABLE_TEXT_TOP_INSET_FACTOR,
-        _ => block_top + column_height - line_height * VERTICAL_TABLE_ROTATED_BASELINE_INSET_FACTOR,
-    }
+    line.visual_width = advance;
+    line.left_inset = 0.0;
+    line.right_inset = 0.0;
+    line.word_baseline_offset = None;
+    line.text_alignment_shifts.clear();
+    line.hyphen = last.hyphen;
+    line.break_kind = last.break_kind;
+    line.break_range = last.break_range;
+    line.break_properties = last.break_properties.clone();
+    Some(line)
 }
 
 fn default_align_for_direction(direction: Option<TextDirection>) -> TextAlign {
@@ -14398,6 +15346,7 @@ mod tests {
                 &|_| 16.0,
                 Some(&cache),
                 &|field| renderer.resolve_run_field(field),
+                None,
             )
             .unwrap();
             assert_eq!(layouts[0].layout.text, expected);
@@ -14442,6 +15391,7 @@ mod tests {
             &|_| 16.0,
             Some(&RefCell::new(TableAutofitCache::default())),
             &|_| panic!("ordinary cell must retain the plain text path"),
+            None,
         )
         .unwrap();
         assert_eq!(layouts[0].layout.text, "Ordinary cell");
@@ -14800,6 +15750,7 @@ mod tests {
             0.0,
             &|_| 16.0,
             &|_| None,
+            None,
         )
         .unwrap()
     }
@@ -14960,8 +15911,10 @@ mod tests {
                 document_uses_east_asian_layout: false,
                 word_modern_border_insets: false,
                 html_auto_spacing: true,
+                override_table_style_font_size: false,
                 hyphenation: Default::default(),
                 styles_part: None,
+                theme_part: None,
             };
             let marks = if footnote {
                 &mut config.note_markers.footnotes
@@ -15069,8 +16022,10 @@ mod tests {
             document_uses_east_asian_layout: false,
             word_modern_border_insets: false,
             html_auto_spacing: true,
+            override_table_style_font_size: false,
             hyphenation: Default::default(),
             styles_part: None,
+            theme_part: None,
         };
         let context = FixedWidthWrapContext::new().with_recording_font();
         let text = "ab cd ef gh";
@@ -15582,9 +16537,10 @@ mod tests {
         };
         let mut widths = vec![300.0, 300.0];
         let context = FixedWidthWrapContext::new();
-        let minimums = autofit_content_widths(&context, &table, &widths, 0.0, &|_| 16.0, &|_| None)
-            .expect("measure noWrap contents")
-            .minimums;
+        let minimums =
+            autofit_content_widths(&context, &table, &widths, 0.0, &|_| 16.0, &|_| None, None)
+                .expect("measure noWrap contents")
+                .minimums;
 
         let total = apply_table_layout_width_with_minimums(
             &mut widths,
@@ -15652,7 +16608,7 @@ mod tests {
         let context = FixedWidthWrapContext::new();
         let mut widths = vec![300.0, 300.0];
         let constraints =
-            autofit_content_widths(&context, &table, &widths, 0.0, &|_| 16.0, &|_| None)
+            autofit_content_widths(&context, &table, &widths, 0.0, &|_| 16.0, &|_| None, None)
                 .expect("measure ordinary cell contents");
 
         let total = apply_table_layout_width_with_content_constraints(
@@ -15733,7 +16689,7 @@ mod tests {
         };
         let widths = vec![240.0];
         let signature =
-            table_autofit_cache_signature(&table, &widths, 240.0, 8.0, &|_| 16.0, &|_| None)
+            table_autofit_cache_signature(&table, &widths, 240.0, 8.0, &|_| 16.0, &|_| None, None)
                 .expect("serializable table cache key");
         let measured = AutofitContentWidths {
             positive_spacing_grid: None,
@@ -15761,7 +16717,7 @@ mod tests {
 
         table.rows[0].cells[0].blocks = vec![BodyElement::from_paragraph(paragraph_with("edited"))];
         let edited =
-            table_autofit_cache_signature(&table, &widths, 240.0, 8.0, &|_| 16.0, &|_| None)
+            table_autofit_cache_signature(&table, &widths, 240.0, 8.0, &|_| 16.0, &|_| None, None)
                 .expect("edited table cache key");
         assert!(cache.get(&edited).is_none());
         assert_eq!(cache.stats().hits, 2);
@@ -15818,6 +16774,7 @@ mod tests {
             &|_| 16.0,
             Some(&cache),
             &|_| None,
+            None,
         )
         .expect("first layout");
         let first_measure_calls = context.measure_calls();
@@ -15833,6 +16790,7 @@ mod tests {
             &|_| 16.0,
             Some(&cache),
             &|_| None,
+            None,
         )
         .expect("second layout");
 
@@ -15980,6 +16938,7 @@ mod tests {
             &|_| 16.0,
             None,
             &|_| None,
+            None,
         )
         .unwrap();
         // Ten per glyph and five per space, plus 8px padding on each side.
@@ -16054,6 +17013,10 @@ mod tests {
 
     /// Lays out `runs` as one table cell paragraph 500px wide on 16px lines.
     fn cell_paragraph_with_runs(runs: Vec<Run>) -> CellParagraph {
+        cell_paragraph_with_runs_and_style(runs, ParagraphStyle::default())
+    }
+
+    fn cell_paragraph_with_runs_and_style(runs: Vec<Run>, style: ParagraphStyle) -> CellParagraph {
         let paragraph = Paragraph {
             runs,
             properties: None,
@@ -16065,7 +17028,6 @@ mod tests {
             collect_paragraph_text(&paragraph, true, false, &NoteMarkers::default(), &|_| None);
         let painter = RecordingPainter::with_width_per_char(7.0);
         let context = TableLineWrapContext::new(&painter);
-        let style = ParagraphStyle::default();
         let lines = context
             .wrap_horizontal(
                 &text,
@@ -16096,6 +17058,449 @@ mod tests {
         // A short picture keeps the paragraph's own line.
         let short = cell_paragraph_with_runs(vec![picture_run(10.0, 8.0)]);
         assert_eq!(short.height, 16.0);
+    }
+
+    #[test]
+    fn explicit_cell_line_alignment_keeps_picture_bounds_and_minimum_height() {
+        for (alignment, baseline) in [("top", 8.0), ("center", 12.0), ("bottom", 16.0)] {
+            let style = ParagraphStyle {
+                text_alignment: Some(alignment.into()),
+                ..Default::default()
+            };
+            let short =
+                cell_paragraph_with_runs_and_style(vec![picture_run(10.0, 8.0)], style.clone());
+            assert_eq!(short.lines[0].word_baseline_offset, Some(baseline));
+            assert_eq!(short.height, 16.0);
+            let mixed = cell_paragraph_with_runs_and_style(
+                vec![picture_run(10.0, 16.0), picture_run(10.0, 8.0)],
+                style.clone(),
+            );
+            assert_eq!(mixed.height, 16.0);
+            let small = &mixed.styled_runs[1];
+            assert_eq!(
+                mixed.lines[0].word_baseline_offset.unwrap()
+                    + mixed.lines[0].text_alignment_shift(small.start),
+                baseline
+            );
+            let tall = cell_paragraph_with_runs_and_style(vec![picture_run(10.0, 118.8)], style);
+            assert_eq!(tall.lines[0].word_baseline_offset, Some(118.8));
+            assert_eq!(tall.height, 118.8);
+        }
+    }
+
+    #[test]
+    fn table_ruby_paints_once_across_formatted_base_runs_and_repaints() {
+        for mode in [TableLayoutMode::Fixed, TableLayoutMode::Autofit] {
+            for alignment in [None, Some("top"), Some("center"), Some("bottom")] {
+                for raise in [None, Some(24)] {
+                    for exact in [false, true] {
+                        let painter = RecordingPainter::with_width_per_char(7.0);
+                        let mut renderer = CanvasRenderer::with_host(
+                            Box::new(super::super::recording_host::RecordingHost {
+                                painter: painter.clone(),
+                            }),
+                            false,
+                        )
+                        .unwrap();
+                        let runs = [false, true]
+                            .into_iter()
+                            .map(|continuation| {
+                                let mut run = picture_run(0.0, 0.0);
+                                run.image = None;
+                                run.text = if continuation { "字" } else { "漢" }.into();
+                                run.properties = Some(RunProperties {
+                                    font_size: Some(if continuation { 18.0 } else { 12.0 }),
+                                    bold: Some(continuation),
+                                    color: Some("#ab1234".into()),
+                                    ruby: Some(Box::new(
+                                        jade_docx_reader::document::RubyAnnotation {
+                                            text: "かんじ".into(),
+                                            size_pt: Some(8.0),
+                                            align: Some("center".into()),
+                                            raise_half_points: raise,
+                                            continuation,
+                                            ..Default::default()
+                                        },
+                                    )),
+                                    ..Default::default()
+                                });
+                                run
+                            })
+                            .collect();
+                        let paragraph = Paragraph {
+                            runs,
+                            properties: Some(ParagraphProperties {
+                                text_alignment: alignment.map(Rc::from),
+                                spacing: exact.then(|| jade_docx_reader::Spacing {
+                                    line: Some(12.0),
+                                    line_rule: Some("exact".into()),
+                                    ..Default::default()
+                                }),
+                                ..Default::default()
+                            }),
+                            node_id: None,
+                            comment_ranges: Vec::new(),
+                            comment_markers: Vec::new(),
+                        };
+                        let table = Table {
+                            rows: vec![TableRow {
+                                cells: vec![TableCell {
+                                    blocks: vec![BodyElement::from_paragraph(paragraph)],
+                                    ..Default::default()
+                                }],
+                                ..Default::default()
+                            }],
+                            table_layout: Some(mode),
+                            ..Default::default()
+                        };
+                        let document = crate::document::Document {
+                            body: Some(crate::document::Body {
+                                elements: vec![BodyElement::from_table(table)],
+                            }),
+                            ..Default::default()
+                        };
+                        let mut previous = None;
+                        for capture in [
+                            AuxiliaryStoryCaptureMode::Disabled,
+                            AuxiliaryStoryCaptureMode::Auxiliary,
+                            AuxiliaryStoryCaptureMode::Full,
+                        ] {
+                            renderer.auxiliary_story_capture_mode = capture;
+                            painter.clear();
+                            renderer
+                                .render(&document, &crate::Options::default())
+                                .unwrap();
+                            let ops = painter.ops();
+                            let guides = ops
+                                .iter()
+                                .filter_map(|op| match op {
+                                    Op::FillText(text, x, y)
+                                        if ["か", "ん", "じ"].contains(&text.as_str()) =>
+                                    {
+                                        Some((text.clone(), *x, *y))
+                                    }
+                                    _ => None,
+                                })
+                                .collect::<Vec<_>>();
+                            assert_eq!(guides.len(), 3, "{mode:?} {alignment:?} {raise:?} {exact}");
+                            assert!(guides
+                                .windows(2)
+                                .all(|pair| pair[0].1 < pair[1].1 && pair[0].2 == pair[1].2));
+                            let captured = renderer
+                                .auxiliary_story_debug_lines
+                                .iter()
+                                .filter(|record| record.story == "ruby")
+                                .collect::<Vec<_>>();
+                            assert_eq!(captured.len(), usize::from(capture.enabled()));
+                            if let Some(record) = captured.first() {
+                                assert_eq!(record.line.paragraph, 0);
+                                assert_eq!(record.line.line, 0);
+                                assert_eq!(record.line.text, "かんじ");
+                                assert_eq!(record.line.baseline, guides[0].2);
+                                let fragment = &record.line.fragments[0];
+                                assert_eq!(fragment.glyphs.len(), guides.len());
+                                for (glyph, (text, x, _)) in fragment.glyphs.iter().zip(&guides) {
+                                    assert_eq!(&glyph.text, text);
+                                    assert!((fragment.x + glyph.x - x).abs() < 1e-6);
+                                }
+                            }
+                            let lines = &renderer.selection.paragraphs()[0].lines;
+                            assert_eq!(lines.len(), 1);
+                            if exact {
+                                assert!((lines[0].height - 16.0).abs() < 1e-6);
+                            } else {
+                                assert!(
+                                    lines[0].height > 24.0,
+                                    "ruby and the larger base need room"
+                                );
+                                assert!(
+                                    guides[0].2 > lines[0].top,
+                                    "guide baseline must lie inside its line"
+                                );
+                            }
+                            if let Some(previous) = &previous {
+                                assert_eq!(&guides, previous);
+                            }
+                            previous = Some(guides);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn repeated_table_header_captures_ruby_without_editable_duplicates() {
+        let mut run = picture_run(0.0, 0.0);
+        run.image = None;
+        run.text = "漢字".into();
+        run.properties = Some(RunProperties {
+            ruby: Some(Box::new(jade_docx_reader::document::RubyAnnotation {
+                text: "かんじ".into(),
+                size_pt: Some(8.0),
+                ..Default::default()
+            })),
+            ..Default::default()
+        });
+        let paragraph = cell_paragraph_with_runs_and_style(
+            vec![run],
+            ParagraphStyle {
+                word_east_asian_font_line_box: true,
+                ..Default::default()
+            },
+        );
+        let mut cell = make_prepared_cell(0, 1, None, false);
+        cell.height = paragraph.height + cell.padding.vertical();
+        cell.blocks.push(CellBlock {
+            height: paragraph.height,
+            kind: CellBlockKind::Paragraph(paragraph),
+            paragraph_indices: vec![0],
+            source_index: 0,
+        });
+        for capture in [
+            AuxiliaryStoryCaptureMode::Disabled,
+            AuxiliaryStoryCaptureMode::Auxiliary,
+            AuxiliaryStoryCaptureMode::Full,
+        ] {
+            let painter = RecordingPainter::with_width_per_char(7.0);
+            let mut renderer = super::super::tests::recording_table_renderer(painter.clone());
+            renderer.auxiliary_story_capture_mode = capture;
+            for page in [2, 3] {
+                painter.clear();
+                renderer.current_page_number = page;
+                renderer.page_offset_y = (page - 1) as f64 * (renderer.page_height + PAGE_GAP_PX);
+                renderer
+                    .draw_cell_text_visual_only(
+                        &cell,
+                        50.0,
+                        80.0,
+                        200.0,
+                        cell.height,
+                        16.0,
+                        HorizontalBorderBands::default(),
+                    )
+                    .unwrap();
+                let guides = painter
+                    .ops()
+                    .into_iter()
+                    .filter_map(|op| match op {
+                        Op::FillText(text, x, y) if ["か", "ん", "じ"].contains(&text.as_str()) => {
+                            Some((text, x, y))
+                        }
+                        _ => None,
+                    })
+                    .collect::<Vec<_>>();
+                assert_eq!(guides.len(), 3);
+                let records = renderer
+                    .auxiliary_story_debug_lines
+                    .iter()
+                    .filter(|r| r.story == "ruby")
+                    .collect::<Vec<_>>();
+                assert_eq!(records.len(), if capture.enabled() { page - 1 } else { 0 });
+                if let Some(record) = records.last() {
+                    assert_eq!(record.page, page - 1);
+                    assert_eq!(record.line.page, page - 1);
+                    assert_eq!(record.line.line, 0);
+                    assert_eq!(record.line.text, "かんじ");
+                    assert_eq!(record.line.baseline, guides[0].2);
+                    assert_eq!(
+                        record.line.absolute_baseline,
+                        guides[0].2 + renderer.page_offset_y
+                    );
+                    assert_eq!(
+                        record.line.absolute_top,
+                        record.line.top + renderer.page_offset_y
+                    );
+                    let fragment = &record.line.fragments[0];
+                    for (glyph, (text, x, _)) in fragment.glyphs.iter().zip(&guides) {
+                        assert_eq!(&glyph.text, text);
+                        assert!((fragment.x + glyph.x - x).abs() < 1e-6);
+                    }
+                }
+                assert!(renderer.selection.paragraphs().is_empty());
+                assert_eq!(renderer.paragraph_counter, 0);
+            }
+        }
+    }
+
+    #[test]
+    fn table_exact_line_spacing_keeps_picture_pitch_and_split_height() {
+        use jade_docx_layout::line_metrics::WordLayoutPlatform;
+        for platform in [WordLayoutPlatform::Windows, WordLayoutPlatform::Mac] {
+            let style = ParagraphStyle {
+                exact_line_spacing: true,
+                word_platform: platform,
+                ..Default::default()
+            };
+            let mut text = picture_run(0.0, 0.0);
+            text.image = None;
+            text.text = "\nA\nB".into();
+            let mut paragraph =
+                cell_paragraph_with_runs_and_style(vec![picture_run(10.0, 80.0), text], style);
+            assert_eq!(paragraph.lines.len(), 3);
+            assert_eq!(paragraph.height, 48.0);
+            assert_eq!(paragraph.lines[0].min_advance, 80.0);
+            assert_eq!(paragraph.line_advance(&paragraph.lines[0]), 16.0);
+            let baseline = if platform == WordLayoutPlatform::Mac {
+                12.8
+            } else {
+                16.0
+            };
+            assert_eq!(paragraph.lines[0].word_baseline_offset, Some(baseline));
+            paragraph.widow_control = false;
+            let block = CellBlock {
+                height: paragraph.height,
+                kind: CellBlockKind::Paragraph(paragraph),
+                paragraph_indices: vec![0],
+                source_index: 0,
+            };
+            let (head, tail) = split_cell_paragraph(&block, 16.0, 100.0).unwrap();
+            assert_eq!((head.height, tail.height), (16.0, 32.0));
+            let CellBlockKind::Paragraph(tail) = tail.kind else {
+                panic!("paragraph")
+            };
+            assert!(tail.exact_line_spacing);
+        }
+    }
+
+    #[test]
+    fn table_exact_line_spacing_reaches_fixed_and_autofit_paint() {
+        for mode in [TableLayoutMode::Fixed, TableLayoutMode::Autofit] {
+            for rule in ["exact", "exactly"] {
+                let painter = RecordingPainter::with_width_per_char(7.0);
+                let mut renderer = CanvasRenderer::with_host(
+                    Box::new(super::super::recording_host::RecordingHost {
+                        painter: painter.clone(),
+                    }),
+                    false,
+                )
+                .unwrap();
+                let mut text = picture_run(0.0, 0.0);
+                text.image = None;
+                text.text = "Ag\nAg".into();
+                text.properties = Some(RunProperties {
+                    font_family: Some("Arial".into()),
+                    font_size: Some(30.0),
+                    ..Default::default()
+                });
+                let paragraph = Paragraph {
+                    runs: vec![picture_run(10.0, 80.0), text],
+                    properties: Some(ParagraphProperties {
+                        spacing: Some(jade_docx_reader::Spacing {
+                            line: Some(12.0),
+                            line_rule: Some(rule.into()),
+                            ..Default::default()
+                        }),
+                        ..Default::default()
+                    }),
+                    node_id: None,
+                    comment_ranges: Vec::new(),
+                    comment_markers: Vec::new(),
+                };
+                let table = Table {
+                    rows: vec![TableRow {
+                        cells: vec![TableCell {
+                            blocks: vec![BodyElement::from_paragraph(paragraph)],
+                            ..Default::default()
+                        }],
+                        ..Default::default()
+                    }],
+                    table_layout: Some(mode),
+                    ..Default::default()
+                };
+                let document = crate::document::Document {
+                    body: Some(crate::document::Body {
+                        elements: vec![BodyElement::from_table(table)],
+                    }),
+                    ..Default::default()
+                };
+                renderer
+                    .render(&document, &crate::Options::default())
+                    .unwrap();
+                let ops = painter.ops();
+                let clips = ops.iter().filter(|op| matches!(op, Op::Rect(_, _, _, height) if (*height - 16.0).abs() < 1e-6)).count();
+                assert!(
+                    clips >= 3,
+                    "each text line and the picture receive a fixed-height clip: {clips}"
+                );
+                let lines = &renderer.selection.paragraphs()[0].lines;
+                assert_eq!(lines.len(), 2);
+                assert!((lines[1].top - lines[0].top - 16.0).abs() < 1e-6);
+                assert!(lines.iter().all(|line| (line.height - 16.0).abs() < 1e-6));
+            }
+        }
+    }
+
+    #[test]
+    fn autofit_cell_line_alignment_reaches_rendered_text() {
+        let mut positions = Vec::new();
+        for alignment in ["top", "center", "bottom"] {
+            let painter = RecordingPainter::with_width_per_char(7.0);
+            let mut renderer = CanvasRenderer::with_host(
+                Box::new(super::super::recording_host::RecordingHost {
+                    painter: painter.clone(),
+                }),
+                false,
+            )
+            .unwrap();
+            let paragraph = Paragraph {
+                runs: vec![Run {
+                    text: "A".into(),
+                    properties: Some(RunProperties {
+                        font_family: Some("Arial".into()),
+                        font_size: Some(12.0),
+                        ..Default::default()
+                    }),
+                    ..serde_json::from_value(serde_json::json!({"text": ""})).unwrap()
+                }],
+                properties: Some(ParagraphProperties {
+                    text_alignment: Some(alignment.into()),
+                    spacing: Some(jade_docx_reader::Spacing {
+                        line: Some(36.0),
+                        line_rule: Some("exact".into()),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                }),
+                node_id: None,
+                comment_ranges: Vec::new(),
+                comment_markers: Vec::new(),
+            };
+            let table = Table {
+                rows: vec![TableRow {
+                    cells: vec![TableCell {
+                        blocks: vec![BodyElement::from_paragraph(paragraph)],
+                        ..Default::default()
+                    }],
+                    ..Default::default()
+                }],
+                table_layout: Some(TableLayoutMode::Autofit),
+                ..Default::default()
+            };
+            let document = crate::document::Document {
+                body: Some(crate::document::Body {
+                    elements: vec![BodyElement::from_table(table)],
+                }),
+                ..Default::default()
+            };
+            renderer
+                .render(&document, &crate::Options::default())
+                .unwrap();
+            let y = painter
+                .ops()
+                .iter()
+                .find_map(|op| match op {
+                    Op::FillText(text, _, y) if text == "A" => Some(*y),
+                    _ => None,
+                })
+                .expect("cell text was drawn");
+            positions.push(y);
+        }
+        assert!(
+            positions[0] < positions[1] && positions[1] < positions[2],
+            "{positions:?}"
+        );
+        assert!((positions[1] * 2.0 - positions[0] - positions[2]).abs() < 1e-6);
     }
 
     #[test]
@@ -16311,6 +17716,199 @@ mod tests {
     }
 
     #[test]
+    fn mixed_font_cell_line_alignment_matches_drawing_and_selection() {
+        use jade_docx_layout::font_resolver::ResolvedFontSlot;
+        use jade_docx_layout::line_wrap::{
+            InlineCluster, InlineClusterLayout, LineBreakKind, TextSegment,
+        };
+        let clusters = [("A", 24.0, 6.0), ("b", 12.0, 4.0), ("b", 12.0, 4.0)]
+            .into_iter()
+            .enumerate()
+            .map(|(index, (text, ascent, descent))| {
+                let mut cluster =
+                    InlineCluster::grapheme(index, index + 1, 10.0, text, false, false, false);
+                cluster.layout = Some(InlineClusterLayout {
+                    character_border_edges: 0,
+                    script: ScriptCategory::Latin,
+                    font_slot: ResolvedFontSlot::LatinAscii,
+                    leading_advance: 0.0,
+                    glyph_box_width: 10.0,
+                    measured_glyph_width: 10.0,
+                    adjusted_glyph_width: 10.0,
+                    font_descriptor_hash: 0,
+                    font_ascent: Some(ascent),
+                    font_descent: Some(descent),
+                });
+                cluster
+            })
+            .collect();
+        let wrapped = WrappedLine {
+            segments: vec![TextSegment {
+                text: "Abb".into(),
+                start: 0,
+                end: 3,
+                properties: None,
+                revision: None,
+                hyperlink: None,
+                leading_width: 0.0,
+            }],
+            clusters,
+            break_kind: LineBreakKind::ParagraphEnd,
+            break_range: None,
+            break_properties: None,
+            leaders: Vec::new(),
+            tab_stops: Vec::new(),
+            hyphen: Some(jade_docx_layout::line_wrap::LineHyphen { width: 4.0 }),
+        };
+        for (alignment, baseline, shift) in [
+            ("top", 24.0, -12.0),
+            ("center", 29.0, -5.0),
+            ("bottom", 34.0, 2.0),
+        ] {
+            let style = ParagraphStyle {
+                text_alignment: Some(alignment.into()),
+                ..Default::default()
+            };
+            let paragraph = horizontal_cell_paragraph_from_wrapped_lines(
+                "Abb",
+                40.0,
+                &style,
+                0,
+                std::slice::from_ref(&wrapped),
+            );
+            let line = &paragraph.lines[0];
+            assert_eq!(line.word_baseline_offset, Some(baseline));
+            assert_eq!(line.text_alignment_shifts, vec![(1, 3, shift)]);
+            assert_eq!(
+                line.styled_spans(&[]),
+                vec![
+                    LineStyleSpan {
+                        start: 0,
+                        end: 1,
+                        run_index: None
+                    },
+                    LineStyleSpan {
+                        start: 1,
+                        end: 3,
+                        run_index: None
+                    }
+                ]
+            );
+            let painter = RecordingPainter::with_width_per_char(10.0);
+            let renderer = CanvasRenderer::with_host(
+                Box::new(super::super::recording_host::RecordingHost {
+                    painter: painter.clone(),
+                }),
+                false,
+            )
+            .unwrap();
+            renderer
+                .draw_horizontal_line_with_run_styles(
+                    &paragraph,
+                    line,
+                    CellLinePlacement {
+                        start_x: 20.0,
+                        top: 30.0,
+                        height: 40.0,
+                    },
+                    "#000000",
+                    &[],
+                )
+                .unwrap();
+            let drawn: Vec<_> = painter
+                .ops()
+                .into_iter()
+                .filter_map(|op| match op {
+                    Op::FillText(text, _, y) => Some((text, y)),
+                    _ => None,
+                })
+                .collect();
+            assert!(
+                drawn
+                    .iter()
+                    .any(|(text, y)| text == "A" && *y == 30.0 + baseline),
+                "{alignment}: {drawn:?}"
+            );
+            assert!(
+                drawn
+                    .iter()
+                    .filter(|(text, _)| text.contains('b'))
+                    .all(|(_, y)| *y == 30.0 + baseline + shift),
+                "{alignment}: {drawn:?}"
+            );
+            assert!(drawn.iter().any(|(text, _)| text.contains('b')));
+            assert!(
+                drawn
+                    .iter()
+                    .any(|(text, y)| text == "-" && *y == 30.0 + baseline + shift),
+                "{alignment}: {drawn:?}"
+            );
+            let fragments = renderer.table_line_selection_fragments(&paragraph, line, 20.0);
+            assert_eq!(fragments.len(), 2);
+            assert_eq!(fragments[0].baseline_shift_px, 0.0);
+            assert_eq!(fragments[1].baseline_shift_px, shift);
+            assert_eq!((fragments[1].start, fragments[1].end), (1, 3));
+        }
+        for alignment in ["auto", "baseline"] {
+            let style = ParagraphStyle {
+                text_alignment: Some(alignment.into()),
+                ..Default::default()
+            };
+            let paragraph = horizontal_cell_paragraph_from_wrapped_lines(
+                "Abb",
+                40.0,
+                &style,
+                0,
+                std::slice::from_ref(&wrapped),
+            );
+            assert!(paragraph.lines[0].text_alignment_shifts.is_empty());
+        }
+    }
+
+    #[test]
+    fn mixed_font_cell_line_alignment_uses_measured_font_boxes() {
+        let font_box = |size| {
+            jade_docx_layout::line_metrics::word_font_vertical_metrics_px(&format!(
+                "{size}.00pt Arial"
+            ))
+            .unwrap()
+        };
+        let (small_a, small_d) = font_box(9);
+        let (large_a, large_d) = font_box(18);
+        let run = |text: &str, size| {
+            let mut run: Run = serde_json::from_value(serde_json::json!({"text": text})).unwrap();
+            run.properties = Some(RunProperties {
+                font_family: Some("Arial".into()),
+                font_size: Some(size),
+                ..Default::default()
+            });
+            run
+        };
+        for (alignment, share) in [("top", 0.0), ("center", 0.5), ("bottom", 1.0)] {
+            // Font descriptors use points; returned vertical metrics use pixels.
+            let paragraph = cell_paragraph_with_runs_and_style(
+                vec![run("A", 18.0), run("b", 9.0)],
+                ParagraphStyle {
+                    text_alignment: Some(alignment.into()),
+                    word_east_asian_font_line_box: true,
+                    ..Default::default()
+                },
+            );
+            let line = &paragraph.lines[0];
+            let baseline = line.word_baseline_offset.unwrap();
+            let large = baseline + line.text_alignment_shift(0);
+            let small = baseline + line.text_alignment_shift(1);
+            let anchor = |baseline: f64, ascent: f64, descent: f64| {
+                baseline - ascent * (1.0 - share) + descent * share
+            };
+            assert!(
+                (anchor(large, large_a, large_d) - anchor(small, small_a, small_d)).abs() < 1e-6,
+                "{alignment}: {line:?}"
+            );
+        }
+    }
+
+    #[test]
     fn table_grid_baseline_centres_the_shared_font_box() {
         use jade_docx_layout::font_resolver::ResolvedFontSlot;
         use jade_docx_layout::line_metrics::{
@@ -16337,7 +17935,15 @@ mod tests {
             font_descent: Some(4.0),
         });
         let mut wrapped = WrappedLine {
-            segments: Vec::new(),
+            segments: vec![jade_docx_layout::line_wrap::TextSegment {
+                text: "A".into(),
+                start: 0,
+                end: 1,
+                properties: None,
+                revision: None,
+                hyperlink: None,
+                leading_width: 0.0,
+            }],
             clusters: vec![cluster],
             break_kind: LineBreakKind::ParagraphEnd,
             break_range: None,
@@ -16363,6 +17969,50 @@ mod tests {
                 .word_baseline_offset
         };
         assert_eq!(layout(&wrapped, &style), Some(16.0));
+        let painter = RecordingPainter::with_width_per_char(10.0);
+        let renderer = CanvasRenderer::with_host(
+            Box::new(super::super::recording_host::RecordingHost {
+                painter: painter.clone(),
+            }),
+            false,
+        )
+        .unwrap();
+        for (alignment, expected) in [("top", 12.0), ("center", 16.0), ("bottom", 20.0)] {
+            style.text_alignment = Some(alignment.into());
+            let paragraph = horizontal_cell_paragraph_from_wrapped_lines(
+                "A",
+                24.0,
+                &style,
+                0,
+                std::slice::from_ref(&wrapped),
+            );
+            assert_eq!(paragraph.lines[0].word_baseline_offset, Some(expected));
+            assert_eq!(paragraph.height, 24.0);
+            renderer
+                .draw_horizontal_line_with_run_styles(
+                    &paragraph,
+                    &paragraph.lines[0],
+                    CellLinePlacement {
+                        start_x: 20.0,
+                        top: 30.0,
+                        height: 24.0,
+                    },
+                    "#000000",
+                    &[],
+                )
+                .unwrap();
+            assert!(
+                painter
+                    .ops()
+                    .contains(&jade_painter::recording::Op::FillText(
+                        "A".into(),
+                        20.0,
+                        30.0 + expected,
+                    )),
+                "{alignment}"
+            );
+        }
+        style.text_alignment = None;
         let mut space = InlineCluster::grapheme(1, 2, 10.0, " ", true, false, false);
         space.layout = wrapped.clusters[0].layout.clone();
         space.layout.as_mut().unwrap().font_ascent = Some(80.0);
@@ -16381,6 +18031,11 @@ mod tests {
             Some(22.0),
             "an oversized box gets no negative leading"
         );
+        for alignment in ["top", "center", "bottom"] {
+            style.text_alignment = Some(alignment.into());
+            assert_eq!(layout(&wrapped, &style), Some(22.0));
+        }
+        style.text_alignment = None;
         wrapped.clusters[0].layout.as_mut().unwrap().font_ascent = Some(12.0);
         wrapped.clusters[0].layout.as_mut().unwrap().font_descent = Some(4.0);
         style.word_grid_line_sizing = None;
@@ -16413,8 +18068,10 @@ mod tests {
             document_uses_east_asian_layout: false,
             word_modern_border_insets: false,
             html_auto_spacing: true,
+            override_table_style_font_size: false,
             hyphenation: Default::default(),
             styles_part: None,
+            theme_part: None,
         };
         let paragraph = |text: &str| -> Paragraph {
             serde_json::from_value(serde_json::json!({"runs": [{"text": text}]})).unwrap()
@@ -16851,6 +18508,7 @@ mod tests {
             break_range: Some((2, 2)),
             break_properties: None,
             word_baseline_offset: None,
+            text_alignment_shifts: Vec::new(),
         };
 
         assert!((line_range_width(&line, 0, 1) - 4.0).abs() < f64::EPSILON);
@@ -16896,6 +18554,7 @@ mod tests {
             break_range: None,
             break_properties: None,
             word_baseline_offset: None,
+            text_alignment_shifts: Vec::new(),
         };
         let previous = word_layout_platform();
         set_word_layout_platform(WordLayoutPlatform::Mac);
@@ -16931,6 +18590,7 @@ mod tests {
             break_range: Some((2, 2)),
             break_properties: None,
             word_baseline_offset: None,
+            text_alignment_shifts: Vec::new(),
         };
 
         assert!((line.visual_end_x(24.0) - 34.0).abs() < f64::EPSILON);
@@ -17039,32 +18699,6 @@ mod tests {
         assert_eq!(paragraph.column_count(), 1);
     }
 
-    #[test]
-    fn rotated_table_text_baseline_follows_text_direction_axis() {
-        let block_top = 20.0;
-        let column_height = 80.0;
-        let line_height = 10.0;
-        let base_x = 40.0;
-        let content_right = 100.0;
-
-        assert!(
-            rotated_visual_baseline_y(TextDirection::TbRlV, block_top, column_height, line_height)
-                < block_top + line_height
-        );
-        assert!(
-            rotated_visual_baseline_y(TextDirection::BtLr, block_top, column_height, line_height)
-                > block_top + column_height - line_height
-        );
-        assert!(
-            rotated_visual_anchor_x(TextDirection::TbRlV, base_x, content_right, line_height)
-                > base_x
-        );
-        assert_eq!(
-            rotated_visual_anchor_x(TextDirection::BtLr, base_x, content_right, line_height),
-            base_x
-        );
-    }
-
     /// A shaded cell set in 縦書き draws its text in the text colour: the
     /// shading's fill used to stay on the painter, and the text vanished
     /// into it.
@@ -17137,6 +18771,96 @@ mod tests {
     }
 
     #[test]
+    fn upright_latin_cells_keep_ink_width_with_font_or_fallback_pitch_in_both_directions() {
+        use jade_painter::recording::Op;
+        let text = "iiii";
+        for (font_advance, pitch) in [(None, 32.0), (Some(24.0), 24.0)] {
+            for direction in [TextDirection::TbRlV, TextDirection::TbLrV] {
+                let mut painter = RecordingPainter::with_width_per_char(3.0);
+                if let Some(advance) = font_advance {
+                    painter = painter.with_upright_vertical_advance(advance);
+                }
+                let mut renderer = CanvasRenderer::with_host(
+                    Box::new(super::super::recording_host::RecordingHost {
+                        painter: painter.clone(),
+                    }),
+                    false,
+                )
+                .unwrap();
+                let runs = vec![StyledRunRange {
+                    picture: None,
+                    start: 0,
+                    end: text.len(),
+                    revision: None,
+                    properties: Some(RunProperties {
+                        font_family: Some("Arial".into()),
+                        font_size: Some(24.0),
+                        ..Default::default()
+                    }),
+                }];
+                let mut paragraph = {
+                    let context = TableLineWrapContext::new(&painter);
+                    layout_paragraph_with_table_context(
+                        &context,
+                        text,
+                        100.0,
+                        40.0,
+                        Some(direction),
+                        Some(pitch * 2.0),
+                        &runs,
+                        &ParagraphStyle::default(),
+                        0.0,
+                    )
+                    .unwrap()
+                };
+                paragraph.styled_runs = runs;
+                assert_eq!(paragraph.column_count(), 2);
+                for line in paragraph.lines.iter() {
+                    assert_eq!(line.visual_width, pitch);
+                    assert_eq!(line.glyphs[0].width, 3.0);
+                    assert!(line.word_baseline_offset.is_some());
+                }
+                renderer.selection.append_paragraph_text(0, text);
+                renderer
+                    .render_vertical_paragraph(
+                        &paragraph,
+                        0,
+                        direction,
+                        TextAlign::Right,
+                        20.0,
+                        30.0,
+                        100.0,
+                        0.0,
+                        40.0,
+                        0,
+                        "auto",
+                        &[],
+                        false,
+                    )
+                    .unwrap();
+                let lines = renderer.layout_debug_lines();
+                assert_eq!(lines.len(), 4);
+                assert_eq!(lines[1].top - lines[0].top, pitch);
+                assert_eq!(lines[3].top - lines[2].top, pitch);
+                assert_eq!(lines[0].top, lines[2].top);
+                let ops = painter.ops();
+                let paints: Vec<_> = ops
+                    .iter()
+                    .filter_map(|op| match op {
+                        Op::FillText(_, x, y) => Some((*x, *y)),
+                        _ => None,
+                    })
+                    .collect();
+                assert_eq!(paints.len(), 4);
+                for ((x, y), line) in paints.iter().zip(lines) {
+                    assert_eq!(*x, line.start_x);
+                    assert_eq!(*y, line.baseline);
+                }
+            }
+        }
+    }
+
+    #[test]
     fn upright_vertical_cell_paint_and_selection_share_indented_columns() {
         use jade_docx_layout::line_metrics::{set_word_layout_platform, WordLayoutPlatform};
         use jade_painter::recording::Op;
@@ -17195,6 +18919,7 @@ mod tests {
                 0.0,
                 24.0,
                 0,
+                "auto",
                 &[],
                 false,
             )
@@ -17222,18 +18947,9 @@ mod tests {
 
     #[test]
     fn upright_table_cell_direction_does_not_change_section_rotation() {
-        assert!(!direction_draws_rotated_table_visual(
-            TextDirection::TbRl,
-            true
-        ));
-        assert!(direction_draws_rotated_table_visual(
-            TextDirection::TbRlV,
-            true
-        ));
-        assert!(!direction_draws_rotated_table_visual(
-            TextDirection::TbRlV,
-            false
-        ));
+        assert!(!direction_uses_rotated_columns(TextDirection::TbRl, true));
+        assert!(direction_uses_rotated_columns(TextDirection::TbRlV, true));
+        assert!(!direction_uses_rotated_columns(TextDirection::TbRlV, false));
         assert_eq!(direction_rotation_angle(TextDirection::TbRl), 0.0);
         assert_eq!(direction_rotation_angle(TextDirection::TbRlV), FRAC_PI_2);
     }
@@ -17333,6 +19049,7 @@ mod tests {
                         0.0,
                         24.0,
                         0,
+                        "auto",
                         &[],
                         false,
                     )
@@ -17394,6 +19111,279 @@ mod tests {
                     }
                     assert_eq!(rectangles, 1);
                 }
+            }
+        }
+    }
+
+    #[test]
+    fn vertical_cell_paragraphs_flow_across_columns_in_body_and_repeated_headers() {
+        use jade_painter::recording::Op;
+        for direction in [
+            TextDirection::TbRl,
+            TextDirection::TbRlV,
+            TextDirection::BtLr,
+            TextDirection::BtLrV,
+            TextDirection::TbLrV,
+        ] {
+            let painter = RecordingPainter::with_width_per_char(10.0);
+            let mut cell = make_prepared_cell(0, 1, None, false);
+            cell.padding = CellPadding {
+                left: 7.0,
+                right: 11.0,
+                top: 3.0,
+                bottom: 5.0,
+            };
+            cell.text_direction = Some(direction);
+            cell.vertical_align_share = 0.5;
+            cell.blocks = ["ABCDEFGH", "IJKLMNOP"]
+                .iter()
+                .enumerate()
+                .map(|(index, text)| {
+                    let mut paragraph = layout_paragraph(
+                        &painter,
+                        text,
+                        300.0,
+                        24.0,
+                        Some(direction),
+                        Some(48.0),
+                        &[],
+                    )
+                    .unwrap();
+                    paragraph.background =
+                        Some(if index == 0 { "#000080" } else { "#FFFF00" }.into());
+                    CellBlock {
+                        height: paragraph.height,
+                        kind: CellBlockKind::Paragraph(paragraph),
+                        paragraph_indices: vec![index],
+                        source_index: index,
+                    }
+                })
+                .collect();
+            let height = cell.blocks[0].height.max(cell.blocks[1].height);
+            assert_eq!(cell_content_height(&cell.blocks, Some(direction)), height);
+            assert_eq!(compute_split_cell_height(&cell, 24.0), height + 8.0);
+            assert_eq!(
+                cell_content_height(&cell.blocks, None),
+                cell.blocks.iter().map(|b| b.height).sum::<f64>()
+            );
+            let mut copies = Vec::new();
+            for repeated in [false, true] {
+                let painter = RecordingPainter::with_width_per_char(10.0);
+                let mut renderer = super::super::tests::recording_table_renderer(painter.clone());
+                if repeated {
+                    renderer
+                        .draw_cell_text_visual_only_inner(
+                            &cell,
+                            20.0,
+                            40.0,
+                            300.0,
+                            120.0,
+                            24.0,
+                            HorizontalBorderBands::default(),
+                        )
+                        .unwrap();
+                    assert!(renderer.layout_debug_lines().is_empty());
+                } else {
+                    renderer
+                        .render_cell_blocks_untagged(
+                            &mut cell.clone(),
+                            20.0,
+                            40.0,
+                            300.0,
+                            120.0,
+                            24.0,
+                            None,
+                            &mut NumberingCounter::default(),
+                            None,
+                            HorizontalBorderBands::default(),
+                        )
+                        .unwrap();
+                    let lines = renderer.layout_debug_lines();
+                    assert_eq!(lines.len(), 16);
+                    let mut bounds = Vec::new();
+                    for index in 0..2 {
+                        let paragraph_lines: Vec<_> = lines
+                            .iter()
+                            .filter(|line| line.paragraph == index)
+                            .collect();
+                        assert_eq!(paragraph_lines.len(), 8);
+                        bounds.push((
+                            paragraph_lines
+                                .iter()
+                                .map(|line| line.start_x)
+                                .fold(f64::INFINITY, f64::min),
+                            paragraph_lines
+                                .iter()
+                                .map(|line| line.end_x)
+                                .fold(f64::NEG_INFINITY, f64::max),
+                            paragraph_lines
+                                .iter()
+                                .map(|line| line.top)
+                                .fold(f64::INFINITY, f64::min),
+                        ));
+                    }
+                    assert!((bounds[0].2 - bounds[1].2).abs() < 1e-9);
+                    match direction_column_flow(direction) {
+                        ColumnFlow::LeftToRight => assert!(bounds[0].1 <= bounds[1].0 + 1e-9),
+                        ColumnFlow::RightToLeft => assert!(bounds[1].1 <= bounds[0].0 + 1e-9),
+                    }
+                }
+                let rectangles: Vec<_> = painter
+                    .ops()
+                    .into_iter()
+                    .filter_map(|op| match op {
+                        Op::FillRect(x, y, width, height) => Some((x, y, width, height)),
+                        _ => None,
+                    })
+                    .collect();
+                assert!(rectangles.len() >= 4);
+                let top = rectangles[0].1;
+                for rect in &rectangles {
+                    assert!((rect.1 - top).abs() < 1e-9, "{direction:?}: {rectangles:?}");
+                }
+                for pair in rectangles.windows(2) {
+                    match direction_column_flow(direction) {
+                        ColumnFlow::LeftToRight => {
+                            assert!(pair[0].0 + pair[0].2 <= pair[1].0 + 1e-9)
+                        }
+                        ColumnFlow::RightToLeft => {
+                            assert!(pair[1].0 + pair[1].2 <= pair[0].0 + 1e-9)
+                        }
+                    }
+                }
+                copies.push(rectangles);
+            }
+            assert_eq!(copies[0], copies[1], "{direction:?}");
+            let mut blocks = cell.blocks.clone();
+            blocks.insert(
+                1,
+                CellBlock {
+                    kind: CellBlockKind::Spacing,
+                    height: 9.0,
+                    paragraph_indices: Vec::new(),
+                    source_index: 1,
+                },
+            );
+            let placements = vertical_block_placements(&blocks, Some(direction), 300.0).unwrap();
+            assert_eq!(placements[2].top, blocks[0].height + 9.0);
+            assert_eq!(
+                cell_content_height(&blocks, Some(direction)),
+                height * 2.0 + 9.0
+            );
+        }
+    }
+    #[test]
+    fn rotated_columns_keep_ink_and_selection_inside_each_wrap() {
+        use jade_painter::recording::Op;
+        for (direction, section, angle) in [
+            (TextDirection::BtLrV, false, -FRAC_PI_2),
+            (TextDirection::TbRlV, true, FRAC_PI_2),
+        ] {
+            let painter = RecordingPainter::with_width_per_char(10.0);
+            let mut renderer = CanvasRenderer::with_host(
+                Box::new(super::super::recording_host::RecordingHost {
+                    painter: painter.clone(),
+                }),
+                false,
+            )
+            .unwrap();
+            let text = "ABCDEFGH";
+            let paragraph = if section {
+                layout_vertical_paragraph_with_wrap_context(
+                    &FixedWidthWrapContext::new(),
+                    text,
+                    &plain_text_run_styles(text),
+                    direction,
+                    Some(30.0),
+                    24.0,
+                    None,
+                )
+                .unwrap()
+            } else {
+                layout_paragraph(
+                    &painter,
+                    text,
+                    1000.0,
+                    24.0,
+                    Some(direction),
+                    Some(30.0),
+                    &[],
+                )
+                .unwrap()
+            };
+            let layout = paragraph.vertical_layout.as_ref().unwrap();
+            assert!(layout.column_ranges.len() > 1);
+            renderer.selection.append_paragraph_text(0, text);
+            painter.clear();
+            renderer
+                .render_vertical_paragraph(
+                    &paragraph,
+                    0,
+                    direction,
+                    TextAlign::Left,
+                    40.0,
+                    30.0,
+                    300.0,
+                    0.0,
+                    24.0,
+                    0,
+                    "auto",
+                    &[],
+                    section,
+                )
+                .unwrap();
+            let ops = painter.ops();
+            assert_eq!(
+                ops.iter()
+                    .filter(|op| matches!(op,
+                        Op::Rotate(a) if (*a-angle).abs()<1e-9))
+                    .count(),
+                layout.column_ranges.len()
+            );
+            let mut painted = String::new();
+            let mut column_text = String::new();
+            let mut columns = Vec::new();
+            for op in &ops {
+                match op {
+                    Op::Rotate(_) => {
+                        if !column_text.is_empty() {
+                            columns.push(std::mem::take(&mut column_text));
+                        }
+                    }
+                    Op::FillText(value, x, _) => {
+                        assert!(
+                            *x >= 0.0 && *x < layout.column_height,
+                            "{direction:?}: glyph outside its column: {x}"
+                        );
+                        painted.push_str(value);
+                        column_text.push_str(value);
+                    }
+                    _ => {}
+                }
+            }
+            if !column_text.is_empty() {
+                columns.push(column_text);
+            }
+            assert_eq!(painted, text);
+            let expected: Vec<_> = layout
+                .column_ranges
+                .iter()
+                .map(|range| {
+                    paragraph.lines[range.clone()]
+                        .iter()
+                        .map(|line| line.text.as_str())
+                        .collect::<String>()
+                })
+                .collect();
+            assert_eq!(columns, expected);
+            let lines = renderer.layout_debug_lines();
+            assert_eq!(lines.len(), text.len());
+            for line in lines {
+                assert!(line.top >= 30.0 - 1e-9);
+                assert!(
+                    line.top + line.height <= 30.0 + layout.column_height + 1e-9,
+                    "{direction:?}: selection outside its column"
+                );
             }
         }
     }
@@ -17511,8 +19501,10 @@ mod tests {
             document_uses_east_asian_layout: false,
             word_modern_border_insets: false,
             html_auto_spacing: true,
+            override_table_style_font_size: false,
             hyphenation: Default::default(),
             styles_part: None,
+            theme_part: None,
         };
         for exact_middle in [false, true] {
             let table = Table {
@@ -18596,6 +20588,7 @@ mod tests {
             size_eighths: Some(24),
             space: None,
             color: Some("#FF0000".into()),
+            theme_color: None,
         };
         let spec = border_edge_to_spec(&visible);
         assert_eq!(spec.kind, BorderKind::Double);
@@ -18608,6 +20601,7 @@ mod tests {
             size_eighths: Some(24),
             space: None,
             color: Some("#FF0000".into()),
+            theme_color: None,
         };
         let hidden_spec = border_edge_to_spec(&hidden);
         assert_eq!(hidden_spec.kind, BorderKind::None);
@@ -18630,6 +20624,7 @@ mod tests {
             size_eighths: None,
             space: None,
             color: None,
+            theme_color: None,
         };
         let borders = TableBorders {
             top: Some(edge("top")),
@@ -18672,6 +20667,7 @@ mod tests {
             size_eighths: Some(8),
             space: None,
             color: Some(color.to_string()),
+            theme_color: None,
         };
         let borders = TableBorders {
             left: Some(edge("#LEGACY-L")),
@@ -18789,6 +20785,7 @@ mod tests {
                 size_eighths: Some(8),
                 space: None,
                 color: Some(color.to_string()),
+                theme_color: None,
             }),
             ..TableBorders::default()
         };
@@ -19085,8 +21082,10 @@ mod tests {
             document_uses_east_asian_layout: false,
             word_modern_border_insets: false,
             html_auto_spacing: true,
+            override_table_style_font_size: false,
             hyphenation: Default::default(),
             styles_part: None,
+            theme_part: None,
         };
         let row = TableRow {
             cells: vec![TableCell::default()],
@@ -19351,6 +21350,120 @@ mod tests {
     }
 
     #[test]
+    fn explicit_clear_table_shading_blocks_style_in_cell_and_gap() {
+        let xml = r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:tbl><w:tblPr><w:shd w:val="clear" w:fill="FF0000"/><w:tblCellSpacing w:w="120" w:type="dxa"/></w:tblPr><w:tblGrid><w:gridCol w:w="2400"/><w:gridCol w:w="2400"/></w:tblGrid><w:tr><w:tblPrEx><w:shd w:val="clear" w:fill="auto"/></w:tblPrEx><w:tc><w:tcPr><w:shd w:val="clear" w:fill="auto"/></w:tcPr><w:p/></w:tc><w:tc><w:p/></w:tc></w:tr></w:tbl></w:body></w:document>"#;
+        let mut document = jade_docx_reader::DocumentParser::new()
+            .parse_document_xml(xml)
+            .unwrap();
+        let BodyElement::Table(table) = &mut document.body.as_mut().unwrap().elements[0] else {
+            panic!("table")
+        };
+        table.resolved_style = Some(crate::document::TableStyleDisplay {
+            fill: Some("#123456".into()),
+            ..Default::default()
+        });
+        let format = TableStyleCellFormat::default();
+        assert_eq!(
+            resolve_cell_background(&table.rows[0].cells[0], table, &format).as_deref(),
+            Some("transparent")
+        );
+        assert_eq!(
+            resolve_cell_background(&table.rows[0].cells[1], table, &format).as_deref(),
+            Some("#123456")
+        );
+        assert_eq!(
+            table_spacing_background(&table.rows[0], table),
+            Some("transparent")
+        );
+        let painter = RecordingPainter::with_width_per_char(10.0);
+        let mut renderer = CanvasRenderer::with_host(
+            Box::new(super::super::recording_host::RecordingHost {
+                painter: painter.clone(),
+            }),
+            false,
+        )
+        .unwrap();
+        renderer
+            .render(&document, &crate::Options::default())
+            .unwrap();
+        let mut fill = String::new();
+        let mut style_rects = 0;
+        for op in painter.ops() {
+            match op {
+                Op::SetFillStyle(value) => fill = value,
+                Op::FillRect(_, _, width, height) if width > 0.0 && height > 0.0 => {
+                    assert_ne!(
+                        fill, "#FF0000",
+                        "row exception clears table spacing shading"
+                    );
+                    if fill == "#123456" {
+                        style_rects += 1;
+                    }
+                }
+                _ => {}
+            }
+        }
+        assert_eq!(style_rects, 1, "only the cell that omits shading inherits");
+    }
+
+    #[test]
+    fn table_theme_shading_reaches_cell_and_spacing_paint() {
+        let mut theme = jade_docx_reader::ThemePart::default();
+        theme.colors.insert("accent1".into(), "#4472C4".into());
+        let _scope = jade_docx_reader::theme::ThemeColorScope::enter(Some(&theme));
+        for direct_cell in [false, true] {
+            let shading = r#"<w:shd w:val="clear" w:fill="FF0000" w:themeFill="accent1" w:themeFillShade="BF"/>"#;
+            let tc_pr = if direct_cell {
+                format!("<w:tcPr>{shading}</w:tcPr>")
+            } else {
+                String::new()
+            };
+            let xml = format!(
+                r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:tbl><w:tblPr><w:tblCellSpacing w:w="120" w:type="dxa"/>{shading}</w:tblPr><w:tblGrid><w:gridCol w:w="2400"/></w:tblGrid><w:tr><w:tc>{tc_pr}<w:p/></w:tc></w:tr></w:tbl></w:body></w:document>"#
+            );
+            let mut document = jade_docx_reader::DocumentParser::new()
+                .parse_document_xml(&xml)
+                .unwrap();
+            let BodyElement::Table(table) = &mut document.body.as_mut().unwrap().elements[0] else {
+                panic!("table")
+            };
+            if !direct_cell {
+                let styles = jade_docx_reader::styles::StylesPart::from_xml(&format!(r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:style w:type="table" w:styleId="T"><w:tcPr>{shading}</w:tcPr></w:style></w:styles>"#)).unwrap();
+                table.resolved_style = styles.resolve_table_style("T");
+            }
+            let painter = RecordingPainter::with_width_per_char(10.0);
+            let mut renderer = CanvasRenderer::with_host(
+                Box::new(super::super::recording_host::RecordingHost {
+                    painter: painter.clone(),
+                }),
+                false,
+            )
+            .unwrap();
+            renderer
+                .render(&document, &crate::Options::default())
+                .unwrap();
+            let mut fill = String::new();
+            let mut theme_rects = 0;
+            for op in painter.ops() {
+                match op {
+                    Op::SetFillStyle(value) => fill = value,
+                    Op::FillRect(_, _, width, height) if width > 0.0 && height > 0.0 => {
+                        assert_ne!(fill, "#FF0000", "cached RGB must not be painted");
+                        if fill == "#2F5496" {
+                            theme_rects += 1;
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            assert!(
+                theme_rects >= 2,
+                "cell and spacing use the resolved theme: {theme_rects}"
+            );
+        }
+    }
+
+    #[test]
     fn table_and_row_shading_do_not_replace_the_cell_style() {
         let mut table = Table::default();
         table
@@ -19499,6 +21612,285 @@ mod tests {
     }
 
     #[test]
+    fn table_font_cascade_resolves_themes_and_preserves_direct_slots() {
+        use crate::document::RunFonts;
+        let styles = StylesPart::from_xml(r#"<w:styles xmlns:w="urn:w">
+          <w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="Doc Latin" w:hAnsi="Doc ANSI" w:eastAsia="Doc EA" w:cs="Doc CS"/></w:rPr></w:rPrDefault></w:docDefaults>
+          <w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:rPr><w:rFonts w:eastAsia="Normal EA"/></w:rPr></w:style>
+          <w:style w:type="paragraph" w:styleId="Heading"><w:basedOn w:val="Normal"/><w:rPr><w:rFonts w:hAnsi="Heading ANSI"/></w:rPr></w:style>
+          <w:style w:type="character" w:styleId="Emphasis"><w:rPr><w:rFonts w:cstheme="majorBidi"/></w:rPr></w:style>
+        </w:styles>"#).unwrap();
+        let theme = ThemePart {
+            major: jade_docx_reader::theme::ThemeFonts {
+                latin: Some("Theme Latin".into()),
+                complex: Some("Theme CS".into()),
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        let format = TableStyleCellFormat {
+            fonts: RunFonts {
+                ascii_theme: Some("majorHAnsi".into()),
+                east_asia: Some("Table EA".into()),
+                complex: Some("Table CS".into()),
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        for paragraph_id in [None, Some("Heading")] {
+            let paragraph: Paragraph = serde_json::from_value(serde_json::json!({
+                "properties": {"style": paragraph_id}, "runs": []
+            }))
+            .unwrap();
+            for direct in [None, Some("Direct CS")] {
+                let mut props = RunProperties {
+                    style: Some("Emphasis".into()),
+                    fonts: direct.map(|name| RunFonts {
+                        complex: Some(name.into()),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                };
+                props.capture_direct_font_properties();
+                let snapshot = props.direct_font_properties.fonts.clone();
+                props.fonts = Some(RunFonts {
+                    ascii: Some("Loaded default".into()),
+                    ..Default::default()
+                });
+                props.font_family = Some("Loaded default".into());
+                let mut runs = vec![StyledRunRange {
+                    start: 0,
+                    end: 1,
+                    properties: Some(props),
+                    picture: None,
+                    revision: None,
+                }];
+                apply_table_style_fonts(
+                    &mut runs,
+                    &format,
+                    &paragraph,
+                    Some(&styles),
+                    Some(&theme),
+                );
+                let props = runs[0].properties.as_ref().unwrap();
+                let fonts = props.fonts.as_ref().unwrap();
+                assert_eq!(fonts.ascii.as_deref(), Some("Theme Latin"));
+                assert_eq!(fonts.ascii_theme.as_deref(), Some("majorHAnsi"));
+                assert_eq!(props.font_family.as_deref(), Some("Theme Latin"));
+                assert_eq!(
+                    fonts.h_ansi.as_deref(),
+                    Some(if paragraph_id.is_some() {
+                        "Heading ANSI"
+                    } else {
+                        "Doc ANSI"
+                    })
+                );
+                assert_eq!(fonts.east_asia.as_deref(), Some("Normal EA"));
+                assert_eq!(fonts.complex.as_deref(), Some(direct.unwrap_or("Theme CS")));
+                assert_eq!(
+                    fonts.complex_theme.as_deref(),
+                    if direct.is_some() {
+                        None
+                    } else {
+                        Some("majorBidi")
+                    }
+                );
+                assert_eq!(props.direct_font_properties.fonts, snapshot);
+            }
+        }
+    }
+
+    #[test]
+    fn table_font_hint_preserves_direct_intent_for_symbol_selection() {
+        let paragraph: Paragraph = serde_json::from_value(serde_json::json!({"runs": []})).unwrap();
+        let format = TableStyleCellFormat {
+            fonts: RunFonts {
+                h_ansi: Some("Table ANSI".into()),
+                east_asia: Some("Table EA".into()),
+                hint: Some(FontHint::EastAsia),
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        for known in [false, true] {
+            for authored in [false, true] {
+                for names_ea in [false, true] {
+                    for hint in [
+                        None,
+                        Some(FontHint::Default),
+                        Some(FontHint::EastAsia),
+                        Some(FontHint::Complex),
+                    ] {
+                        let mut props = RunProperties {
+                            fonts: Some(RunFonts {
+                                east_asia: names_ea.then(|| "Direct EA".into()),
+                                hint: hint.clone(),
+                                ..Default::default()
+                            }),
+                            authored_east_asia_font_hint: authored
+                                .then_some(hint == Some(FontHint::EastAsia)),
+                            authored_east_asia_font_name: authored.then_some(names_ea),
+                            ..Default::default()
+                        };
+                        if known {
+                            props.capture_direct_font_properties();
+                            // Simulate effective font filling during document loading.
+                            props.fonts.as_mut().unwrap().hint = Some(FontHint::EastAsia);
+                        }
+                        let snapshot = props.direct_font_properties.fonts.clone();
+                        let mut runs = vec![StyledRunRange {
+                            start: 0,
+                            end: 1,
+                            properties: Some(props),
+                            picture: None,
+                            revision: None,
+                        }];
+                        apply_table_style_fonts(&mut runs, &format, &paragraph, None, None);
+                        let props = runs[0].properties.as_ref().unwrap();
+                        let expected = hint.clone().unwrap_or({
+                            if authored && !names_ea {
+                                FontHint::Default
+                            } else {
+                                FontHint::EastAsia
+                            }
+                        });
+                        assert_eq!(
+                            props.fonts.as_ref().unwrap().hint,
+                            Some(expected.clone()),
+                            "known={known}, authored={authored}, names_ea={names_ea}, hint={hint:?}"
+                        );
+                        assert_eq!(props.direct_font_properties.fonts, snapshot);
+                        let resolved = resolve_run_style_for_wrap(Some(props), None);
+                        let descriptor =
+                            resolved.descriptor_for_grapheme("§", classify_script("§"));
+                        let family = if expected == FontHint::EastAsia {
+                            if names_ea {
+                                "Direct EA"
+                            } else {
+                                "Table EA"
+                            }
+                        } else {
+                            "Table ANSI"
+                        };
+                        assert!(descriptor.contains(family), "{expected:?}: {descriptor}");
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn table_font_size_cascade_keeps_direct_character_and_paragraph_overrides() {
+        let format = TableStyleCellFormat {
+            font_size: Some(9.0),
+            font_size_complex: Some(15.0),
+            ..Default::default()
+        };
+        for normal_size in [10, 11, 12, 13] {
+            let styles = StylesPart::from_xml(&format!(r#"<w:styles xmlns:w="urn:w">
+              <w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:rPr><w:sz w:val="{}"/><w:szCs w:val="{}"/></w:rPr></w:style>
+              <w:style w:type="paragraph" w:styleId="Heading"><w:basedOn w:val="Normal"/><w:rPr><w:sz w:val="36"/></w:rPr></w:style>
+              <w:style w:type="character" w:styleId="Emphasis"><w:rPr><w:szCs w:val="40"/></w:rPr></w:style>
+            </w:styles>"#, normal_size * 2, normal_size * 2)).unwrap();
+            for override_default in [false, true] {
+                for paragraph_id in [None, Some("Normal"), Some("Heading")] {
+                    let paragraph: Paragraph = serde_json::from_value(serde_json::json!({
+                        "properties": {"style": paragraph_id}, "runs": []
+                    }))
+                    .unwrap();
+                    let loaded = |character, direct| {
+                        let mut props = RunProperties {
+                            style: character,
+                            font_size: direct,
+                            font_size_complex: direct,
+                            ..Default::default()
+                        };
+                        props.capture_direct_font_properties();
+                        // Simulate font defaults already materialized while loading.
+                        props.font_size = Some(28.0);
+                        props.font_size_complex = Some(29.0);
+                        props
+                    };
+                    let mut runs: Vec<StyledRunRange> = [
+                        Some(loaded(None, None)),
+                        Some(loaded(Some("Emphasis".into()), None)),
+                        Some(loaded(Some("Emphasis".into()), Some(7.0))),
+                        Some(RunProperties {
+                            font_size: Some(8.0),
+                            ..Default::default()
+                        }),
+                        None,
+                    ]
+                    .into_iter()
+                    .map(|properties| StyledRunRange {
+                        picture: None,
+                        start: 0,
+                        end: 1,
+                        properties,
+                        revision: None,
+                    })
+                    .collect();
+                    apply_table_style_font_sizes(
+                        &mut runs,
+                        &format,
+                        &paragraph,
+                        Some(&styles),
+                        override_default,
+                    );
+                    let normal_wins = override_default || !matches!(normal_size, 11 | 12);
+                    let expected = if paragraph_id == Some("Heading") {
+                        18.0
+                    } else if normal_wins {
+                        normal_size as f32
+                    } else {
+                        9.0
+                    };
+                    assert_eq!(
+                        runs[0].properties.as_ref().unwrap().font_size,
+                        Some(expected)
+                    );
+                    assert_eq!(
+                        runs[1].properties.as_ref().unwrap().font_size,
+                        Some(expected)
+                    );
+                    assert_eq!(
+                        runs[1].properties.as_ref().unwrap().font_size_complex,
+                        Some(20.0)
+                    );
+                    assert_eq!(runs[2].properties.as_ref().unwrap().font_size, Some(7.0));
+                    assert_eq!(
+                        runs[2].properties.as_ref().unwrap().font_size_complex,
+                        Some(7.0)
+                    );
+                    assert_eq!(runs[3].properties.as_ref().unwrap().font_size, Some(8.0));
+                    assert_eq!(
+                        runs[4].properties.as_ref().unwrap().font_size,
+                        Some(expected)
+                    );
+                    assert_eq!(
+                        runs[0]
+                            .properties
+                            .as_ref()
+                            .unwrap()
+                            .direct_font_properties
+                            .font_size,
+                        None
+                    );
+                    let complex = if normal_wins || paragraph_id == Some("Heading") {
+                        normal_size as f32
+                    } else {
+                        15.0
+                    };
+                    assert_eq!(
+                        runs[0].properties.as_ref().unwrap().font_size_complex,
+                        Some(complex)
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
     fn document_table_style_is_fallback_for_margins_borders_and_header_bold() {
         use crate::document::{
             BorderEdge, TableBorders, TableCellMargins, TableStyleCondition,
@@ -19516,6 +21908,7 @@ mod tests {
                 size_eighths: Some(12),
                 space: None,
                 color: Some("#123456".to_string()),
+                theme_color: None,
             }),
             ..TableBorders::default()
         };
@@ -19900,7 +22293,8 @@ mod tests {
         };
         let widths = [100.0, 200.0, 300.0];
         let signature = |table: &Table| {
-            table_autofit_cache_signature(table, &widths, 600.0, 5.0, &|_| 16.0, &|_| None).unwrap()
+            table_autofit_cache_signature(table, &widths, 600.0, 5.0, &|_| 16.0, &|_| None, None)
+                .unwrap()
         };
         let key = signature(&table);
         let measured = autofit_content_widths(
@@ -19910,6 +22304,7 @@ mod tests {
             5.0,
             &|_| 16.0,
             &|_| None,
+            None,
         )
         .unwrap();
         let original = measured.positive_spacing_grid.clone().unwrap();
@@ -19937,6 +22332,7 @@ mod tests {
             5.0,
             &|_| 16.0,
             &|_| None,
+            None,
         )
         .unwrap();
         assert!(mac.positive_spacing_grid.is_none());
@@ -20228,8 +22624,10 @@ mod tests {
             document_uses_east_asian_layout: false,
             word_modern_border_insets: true,
             html_auto_spacing: true,
+            override_table_style_font_size: false,
             hyphenation: Default::default(),
             styles_part: None,
+            theme_part: None,
         };
         for bidi in [false, true] {
             let mut row = TableRow::default();
@@ -20348,8 +22746,10 @@ mod tests {
             document_uses_east_asian_layout: false,
             word_modern_border_insets: false,
             html_auto_spacing: true,
+            override_table_style_font_size: false,
             hyphenation: Default::default(),
             styles_part: None,
+            theme_part: None,
         };
         let paragraph = |text: &str| {
             BodyElement::from_paragraph(
@@ -20366,7 +22766,7 @@ mod tests {
             }],
             ..Default::default()
         };
-        for background in [None, Some("#D9E2F3"), Some("transparent")] {
+        for background in [None, Some("#D9E2F3"), Some("transparent"), Some("#000080")] {
             let mut shaded = TableCell {
                 blocks: vec![paragraph("Shaded"), BodyElement::from_table(nested.clone())],
                 ..Default::default()
@@ -20436,7 +22836,9 @@ mod tests {
                         _ => {}
                     }
                 }
-                let expected = if background == Some("#D9E2F3") {
+                let expected = if background == Some("#000080") {
+                    "#FFFFFF"
+                } else if background == Some("#D9E2F3") {
                     DEFAULT_TEXT_COLOR
                 } else {
                     super::super::DARK_MODE_TEXT_COLOR
@@ -20452,6 +22854,567 @@ mod tests {
                 assert!(text_colors.iter().any(|(t,c)| t.contains("Bare") && c == super::super::DARK_MODE_TEXT_COLOR),
                     "the next cell still uses dark-mode contrast: {text_colors:?}");
                 assert!(!renderer.dark_mode_text_suppressed);
+            }
+        }
+    }
+
+    #[test]
+    fn table_style_text_colors_and_sizes_reach_normal_and_repeated_rows() {
+        use jade_painter::recording::Op;
+        let painter = RecordingPainter::with_width_per_char(7.0);
+        let context = TableLineWrapContext::new(&painter);
+        let mut config = LayoutConfig {
+            padding_x: 7.2,
+            padding_y: 0.0,
+            line_height: 20.0,
+            paragraph_line_heights: FxHashMap::default(),
+            paragraph_east_asian_rules: FxHashMap::default(),
+            available_width: 200.0,
+            render_changes: false,
+            render_original: false,
+            note_markers: NoteMarkers::default(),
+            doc_grid: None,
+            document_snap_to_grid_default: false,
+            document_uses_east_asian_layout: false,
+            word_modern_border_insets: false,
+            html_auto_spacing: true,
+            override_table_style_font_size: false,
+            hyphenation: Default::default(),
+            styles_part: None,
+            theme_part: Some(Rc::new(ThemePart {
+                major: jade_docx_reader::theme::ThemeFonts {
+                    latin: Some("Table Latin".into()),
+                    ..Default::default()
+                },
+                ..Default::default()
+            })),
+        };
+        let paragraph = |text: &str| {
+            BodyElement::from_paragraph(
+                serde_json::from_value(serde_json::json!({"runs": [{"text": text}]})).unwrap(),
+            )
+        };
+        let mut theme = crate::theme::ThemePart::default();
+        theme.colors.insert("accent1".into(), "#4472C4".into());
+        let _scope = crate::theme::ThemeColorScope::enter(Some(&theme));
+        for conditional in [false, true] {
+            let (open, close) = if conditional {
+                (r#"<w:tblStylePr w:type="firstRow">"#, "</w:tblStylePr>")
+            } else {
+                ("", "")
+            };
+            for (color_xml, background, expected) in [
+                (r#"w:val="auto""#, "#FFFFFF", DEFAULT_TEXT_COLOR),
+                (r#"w:val="auto""#, "#000080", "#FFFFFF"),
+                (
+                    r#"w:val="FF0000" w:themeColor="accent1" w:themeShade="BF""#,
+                    "#FFFFFF",
+                    "#2F5496",
+                ),
+            ] {
+                let styles = crate::styles::StylesPart::from_xml(&format!(r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+              <w:style w:type="table" w:styleId="Base">{open}<w:rPr><w:rFonts w:ascii="Base Latin"/><w:color w:val="FF0000"/><w:sz w:val="18"/></w:rPr>{close}</w:style>
+              <w:style w:type="table" w:styleId="Child"><w:basedOn w:val="Base"/>{open}<w:rPr><w:rFonts w:asciiTheme="majorHAnsi"/><w:color {color_xml}/><w:sz w:val="24"/></w:rPr>{close}</w:style>
+            </w:styles>"#)).unwrap();
+                let mut shaded = TableCell {
+                blocks: vec![paragraph("Shaded"), BodyElement::from_paragraph(
+                    serde_json::from_value(serde_json::json!({"runs": [{"text": "Direct", "properties": {"color": "#123456", "font_size": 8.0, "font_family": "Direct Latin"}}]})).unwrap(),
+                )],
+                ..Default::default()
+            };
+                shaded
+                    .style
+                    .insert("background-color".into(), background.into());
+                let table = Table {
+                    resolved_style: styles.resolve_table_style("Child"),
+                    rows: vec![TableRow {
+                        cells: vec![
+                            shaded,
+                            TableCell {
+                                blocks: vec![paragraph("Bare")],
+                                ..Default::default()
+                            },
+                        ],
+                        ..Default::default()
+                    }],
+                    ..Default::default()
+                };
+                let layout =
+                    layout_nested_table(&context, &table, 200.0, &config, &|_| None).unwrap();
+                let natural = autofit_content_widths(
+                    &context,
+                    &table,
+                    &[100.0, 100.0],
+                    7.2,
+                    &|_| 20.0,
+                    &|_| None,
+                    Some(&config),
+                )
+                .unwrap();
+                for (layout, expected) in natural
+                    .natural_paragraph_layouts
+                    .iter()
+                    .zip([12.0, 8.0, 12.0])
+                {
+                    assert_eq!(
+                        layout.styled_runs[0].properties.as_ref().unwrap().font_size,
+                        Some(expected)
+                    );
+                }
+                assert_eq!(
+                    natural.natural_paragraph_layouts[0].styled_runs[0]
+                        .properties
+                        .as_ref()
+                        .unwrap()
+                        .font_family
+                        .as_deref(),
+                    Some("Table Latin")
+                );
+                let signature = |config: &LayoutConfig| {
+                    table_autofit_cache_signature(
+                        &table,
+                        &[100.0, 100.0],
+                        200.0,
+                        7.2,
+                        &|_| 20.0,
+                        &|_| None,
+                        Some(config),
+                    )
+                    .unwrap()
+                    .bytes
+                };
+                let initial_key = signature(&config);
+                config.override_table_style_font_size = true;
+                assert_ne!(initial_key, signature(&config));
+                config.override_table_style_font_size = false;
+                config.styles_part = Some(Rc::new(styles.clone()));
+                assert_ne!(initial_key, signature(&config));
+                config.styles_part = None;
+                let theme = config.theme_part.take();
+                assert_ne!(initial_key, signature(&config));
+                config.theme_part = theme;
+                for repeated in [false, true] {
+                    let painter = RecordingPainter::with_width_per_char(7.0);
+                    let mut renderer =
+                        super::super::tests::recording_table_renderer(painter.clone());
+                    renderer.dark_mode_text = false;
+                    if repeated {
+                        renderer
+                            .draw_repeated_header_rows(
+                                &[layout.rows[0].cells.clone()],
+                                &[layout.rows[0].height],
+                                &table,
+                                TableVisualGrid {
+                                    table_x: 100.0,
+                                    column_positions: &layout.column_positions,
+                                    column_widths: &layout.column_widths,
+                                    bidi_visual: false,
+                                },
+                                20.0,
+                            )
+                            .unwrap();
+                    } else {
+                        renderer
+                            .render_nested_table(
+                                &mut layout.clone(),
+                                None,
+                                &mut NumberingCounter::default(),
+                                100.0,
+                                40.0,
+                                200.0,
+                                None,
+                            )
+                            .unwrap();
+                    }
+                    let mut font = String::new();
+                    let mut text_fonts: Vec<(String, String)> = Vec::new();
+                    let mut color = String::new();
+                    let mut text_colors: Vec<(String, String)> = Vec::new();
+                    for op in painter.ops() {
+                        match op {
+                            Op::SetFont(value) => font = value,
+                            Op::SetFillStyle(value) => color = value,
+                            Op::FillText(text, ..) => {
+                                match text_fonts.last_mut() {
+                                    Some((previous, previous_font)) if previous_font == &font => {
+                                        previous.push_str(&text)
+                                    }
+                                    _ => text_fonts.push((text.clone(), font.clone())),
+                                }
+                                match text_colors.last_mut() {
+                                    Some((previous, previous_color))
+                                        if previous_color == &color =>
+                                    {
+                                        previous.push_str(&text)
+                                    }
+                                    _ => text_colors.push((text, color.clone())),
+                                }
+                            }
+                            _ => {}
+                        }
+                    }
+                    for (text, expected) in [("Shaded", expected), ("Direct", "#123456")] {
+                        assert!(
+                            text_colors
+                                .iter()
+                                .any(|(t, c)| t.contains(text) && c == expected),
+                            "{text} on {background:?}, repeated={repeated}: {text_colors:?}"
+                        );
+                    }
+                    for (text, points) in [("Shaded", 12.0), ("Direct", 8.0)] {
+                        let fonts: Vec<_> = text_fonts
+                            .iter()
+                            .filter(|(part, _)| part.contains(text))
+                            .collect();
+                        assert!(!fonts.is_empty(), "missing {text}: {text_fonts:?}");
+                        for (_, font) in fonts {
+                            assert!(
+                                font.contains(if text == "Shaded" {
+                                    "Table Latin"
+                                } else {
+                                    "Direct Latin"
+                                }),
+                                "{text}: {font}"
+                            );
+                            let size = font
+                                .split_whitespace()
+                                .find_map(|part| {
+                                    part.strip_suffix("px")
+                                        .and_then(|value| value.parse::<f64>().ok())
+                                        .or_else(|| {
+                                            part.strip_suffix("pt")
+                                                .and_then(|value| value.parse::<f64>().ok())
+                                                .map(|points| points_to_px(points as f32))
+                                        })
+                                })
+                                .expect("font size in px");
+                            assert!(
+                                (size - points_to_px(points)).abs() < 0.02,
+                                "{text}, repeated={repeated}: {font}"
+                            );
+                        }
+                    }
+                    assert!(!renderer.dark_mode_text_suppressed);
+                }
+            }
+        }
+    }
+    #[test]
+    fn paragraph_shading_overrides_cell_background_in_normal_and_repeated_rows() {
+        use jade_painter::recording::Op;
+        let painter = RecordingPainter::with_width_per_char(7.0);
+        let context = TableLineWrapContext::new(&painter);
+        let config = LayoutConfig {
+            padding_x: 7.2,
+            padding_y: 0.0,
+            line_height: 20.0,
+            paragraph_line_heights: FxHashMap::default(),
+            paragraph_east_asian_rules: FxHashMap::default(),
+            available_width: 200.0,
+            render_changes: false,
+            render_original: false,
+            note_markers: NoteMarkers::default(),
+            doc_grid: None,
+            document_snap_to_grid_default: false,
+            document_uses_east_asian_layout: false,
+            word_modern_border_insets: false,
+            html_auto_spacing: true,
+            override_table_style_font_size: false,
+            hyphenation: Default::default(),
+            styles_part: None,
+            theme_part: None,
+        };
+        let paragraph = |text: &str, background: Option<&str>| {
+            BodyElement::from_paragraph(
+                serde_json::from_value(serde_json::json!({"properties": {"shading": background.map(|fill| serde_json::json!({"fill": fill}))}, "runs": [{"text": text}, {"text": "Fixed", "properties": {"color": "#000000"}}]})).unwrap(),
+            )
+        };
+        let nested = Table {
+            rows: vec![TableRow {
+                cells: vec![TableCell {
+                    blocks: vec![paragraph("Nested", None)],
+                    ..Default::default()
+                }],
+                ..Default::default()
+            }],
+            ..Default::default()
+        };
+        for background in [Some("#000080"), Some("#FFFF00")] {
+            let mut shaded = TableCell {
+                blocks: vec![
+                    paragraph("Shaded", background),
+                    BodyElement::from_table(nested.clone()),
+                ],
+                ..Default::default()
+            };
+            if let Some(background) = Some("#D9E2F3") {
+                shaded
+                    .style
+                    .insert("background-color".into(), background.into());
+            }
+            let table = Table {
+                rows: vec![TableRow {
+                    cells: vec![
+                        shaded,
+                        TableCell {
+                            blocks: vec![paragraph("Bare", None)],
+                            ..Default::default()
+                        },
+                    ],
+                    ..Default::default()
+                }],
+                ..Default::default()
+            };
+            let layout = layout_nested_table(&context, &table, 200.0, &config, &|_| None).unwrap();
+            for repeated in [false, true] {
+                let painter = RecordingPainter::with_width_per_char(7.0);
+                let mut renderer = super::super::tests::recording_table_renderer(painter.clone());
+                renderer.dark_mode_text = true;
+                if repeated {
+                    renderer
+                        .draw_repeated_header_rows(
+                            &[layout.rows[0].cells.clone()],
+                            &[layout.rows[0].height],
+                            &table,
+                            TableVisualGrid {
+                                table_x: 100.0,
+                                column_positions: &layout.column_positions,
+                                column_widths: &layout.column_widths,
+                                bidi_visual: false,
+                            },
+                            20.0,
+                        )
+                        .unwrap();
+                } else {
+                    renderer
+                        .render_nested_table(
+                            &mut layout.clone(),
+                            None,
+                            &mut NumberingCounter::default(),
+                            100.0,
+                            40.0,
+                            200.0,
+                            None,
+                        )
+                        .unwrap();
+                }
+                let mut color = String::new();
+                let mut text_colors: Vec<(String, String)> = Vec::new();
+                for op in painter.ops() {
+                    match op {
+                        Op::SetFillStyle(value) => color = value,
+                        Op::FillText(text, ..) => match text_colors.last_mut() {
+                            Some((previous, previous_color)) if previous_color == &color => {
+                                previous.push_str(&text)
+                            }
+                            _ => text_colors.push((text, color.clone())),
+                        },
+                        _ => {}
+                    }
+                }
+                let expected = if background == Some("#000080") {
+                    "#FFFFFF"
+                } else {
+                    "#000000"
+                };
+                for (text, expected) in [
+                    ("Shaded", expected),
+                    ("Nested", "#000000"),
+                    ("Fixed", "#000000"),
+                ] {
+                    assert!(
+                        text_colors
+                            .iter()
+                            .any(|(t, c)| t.contains(text) && c == expected),
+                        "{text} on {background:?}, repeated={repeated}: {text_colors:?}"
+                    );
+                }
+                assert!(painter.ops().windows(2).any(|ops| matches!(
+                    (&ops[0], &ops[1]), (Op::SetFillStyle(color), Op::FillRect(_, _, width, height))
+                    if Some(color.as_str()) == background && *width > 0.0 && *height > 0.0
+                )), "paragraph background must actually be painted");
+                assert!(text_colors.iter().any(|(t,c)| t.contains("Bare") && c == super::super::DARK_MODE_TEXT_COLOR),
+                    "the next cell still uses dark-mode contrast: {text_colors:?}");
+                assert!(!renderer.dark_mode_text_suppressed);
+            }
+        }
+    }
+
+    #[test]
+    fn run_backgrounds_override_paragraph_and_cell_fills_in_normal_and_repeated_rows() {
+        use jade_painter::recording::Op;
+        let painter = RecordingPainter::with_width_per_char(7.0);
+        let context = TableLineWrapContext::new(&painter);
+        let config = LayoutConfig {
+            padding_x: 7.2,
+            padding_y: 0.0,
+            line_height: 20.0,
+            paragraph_line_heights: FxHashMap::default(),
+            paragraph_east_asian_rules: FxHashMap::default(),
+            available_width: 200.0,
+            render_changes: false,
+            render_original: false,
+            note_markers: NoteMarkers::default(),
+            doc_grid: None,
+            document_snap_to_grid_default: false,
+            document_uses_east_asian_layout: false,
+            word_modern_border_insets: false,
+            html_auto_spacing: true,
+            override_table_style_font_size: false,
+            hyphenation: Default::default(),
+            styles_part: None,
+            theme_part: None,
+        };
+        let paragraph = |text: &str, run_properties: Option<serde_json::Value>| {
+            let shaded = run_properties.is_some();
+            let mut fixed = run_properties.clone().unwrap_or(serde_json::json!({}));
+            fixed["color"] = serde_json::json!("#000000");
+            BodyElement::from_paragraph(serde_json::from_value(serde_json::json!({
+                "properties": {"shading": if shaded { Some(serde_json::json!({"fill": "#112233"})) } else { None }},
+                "runs": [{"text": text, "properties": run_properties}, {"text": "Fixed", "properties": fixed}]
+            })).unwrap())
+        };
+        let nested = Table {
+            rows: vec![TableRow {
+                cells: vec![TableCell {
+                    blocks: vec![paragraph("Nested", None)],
+                    ..Default::default()
+                }],
+                ..Default::default()
+            }],
+            ..Default::default()
+        };
+        for (highlight, fill, expected_background) in [
+            (Some("yellow"), Some("#000080"), "#FFFF00"),
+            (None, Some("#000080"), "#000080"),
+            (Some("none"), Some("#000080"), "#000080"),
+            (Some("none"), None, "#112233"),
+        ] {
+            let background = Some(expected_background);
+            let properties = serde_json::json!({"highlight": highlight, "shading": {"fill": fill}});
+            let mut shaded = TableCell {
+                blocks: vec![
+                    paragraph("Shaded", Some(properties)),
+                    BodyElement::from_table(nested.clone()),
+                ],
+                ..Default::default()
+            };
+            if let Some(background) = Some("#D9E2F3") {
+                shaded
+                    .style
+                    .insert("background-color".into(), background.into());
+            }
+            let table = Table {
+                rows: vec![TableRow {
+                    cells: vec![
+                        shaded,
+                        TableCell {
+                            blocks: vec![paragraph("Bare", None)],
+                            ..Default::default()
+                        },
+                    ],
+                    ..Default::default()
+                }],
+                ..Default::default()
+            };
+            for repeated in [false, true] {
+                for direction in [
+                    None,
+                    Some(TextDirection::LrTbV),
+                    Some(TextDirection::TbRl),
+                    Some(TextDirection::TbRlV),
+                    Some(TextDirection::BtLr),
+                    Some(TextDirection::BtLrV),
+                    Some(TextDirection::TbLrV),
+                ] {
+                    let mut table = table.clone();
+                    table.rows[0].cells[0].text_direction = direction;
+                    let layout =
+                        layout_nested_table(&context, &table, 200.0, &config, &|_| None).unwrap();
+                    let painter = RecordingPainter::with_width_per_char(7.0);
+                    let mut renderer =
+                        super::super::tests::recording_table_renderer(painter.clone());
+                    renderer.dark_mode_text = true;
+                    if repeated {
+                        renderer
+                            .draw_repeated_header_rows(
+                                &[layout.rows[0].cells.clone()],
+                                &[layout.rows[0].height],
+                                &table,
+                                TableVisualGrid {
+                                    table_x: 100.0,
+                                    column_positions: &layout.column_positions,
+                                    column_widths: &layout.column_widths,
+                                    bidi_visual: false,
+                                },
+                                20.0,
+                            )
+                            .unwrap();
+                    } else {
+                        renderer
+                            .render_nested_table(
+                                &mut layout.clone(),
+                                None,
+                                &mut NumberingCounter::default(),
+                                100.0,
+                                40.0,
+                                200.0,
+                                None,
+                            )
+                            .unwrap();
+                    }
+                    let mut color = String::new();
+                    let mut text_colors: Vec<(String, String)> = Vec::new();
+                    for op in painter.ops() {
+                        match op {
+                            Op::SetFillStyle(value) => color = value,
+                            Op::FillText(text, ..) => match text_colors.last_mut() {
+                                Some((previous, previous_color)) if previous_color == &color => {
+                                    previous.push_str(&text)
+                                }
+                                _ => text_colors.push((text, color.clone())),
+                            },
+                            _ => {}
+                        }
+                    }
+                    let expected = if background != Some("#FFFF00") {
+                        "#FFFFFF"
+                    } else {
+                        "#000000"
+                    };
+                    for (text, expected) in [
+                        ("Shaded", expected),
+                        ("Nested", "#000000"),
+                        ("Fixed", "#000000"),
+                    ] {
+                        assert!(
+                            text_colors
+                                .iter()
+                                .any(|(t, c)| t.contains(text) && c == expected),
+                            "{text} on {background:?}, repeated={repeated}: {text_colors:?}"
+                        );
+                    }
+                    for (text, color) in text_colors
+                        .iter()
+                        .take_while(|(text, _)| !text.contains("Bare"))
+                    {
+                        if text.contains("Fixed") {
+                            assert_eq!(color, "#000000", "fixed color on {background:?}");
+                        }
+                    }
+                    assert!(painter.ops().windows(2).any(|ops| matches!(
+                    (&ops[0], &ops[1]), (Op::SetFillStyle(color), Op::FillRect(_, _, width, height))
+                    if background.is_some_and(|bg| color.eq_ignore_ascii_case(bg)) && *width > 0.0 && *height > 0.0
+                )), "run background must actually be painted: {background:?}, repeated={repeated}, direction={direction:?}");
+                    assert!(
+                        text_colors
+                            .iter()
+                            .any(|(t, c)| t.contains("Bare")
+                                && c == super::super::DARK_MODE_TEXT_COLOR),
+                        "the next cell still uses dark-mode contrast: {text_colors:?}"
+                    );
+                    assert!(!renderer.dark_mode_text_suppressed);
+                }
             }
         }
     }
@@ -20475,8 +23438,10 @@ mod tests {
             document_uses_east_asian_layout: false,
             word_modern_border_insets: false,
             html_auto_spacing: true,
+            override_table_style_font_size: false,
             hyphenation: Default::default(),
             styles_part: None,
+            theme_part: None,
         };
         let table = Table {
             rows: vec![TableRow {
@@ -21627,6 +24592,7 @@ mod tests {
             document_uses_east_asian_layout: false,
             word_modern_border_insets: false,
             html_auto_spacing: true,
+            override_table_style_font_size: false,
             hyphenation: Default::default(),
             available_width: 120.0,
             render_changes: false,
@@ -21634,6 +24600,7 @@ mod tests {
             note_markers: NoteMarkers::default(),
             doc_grid: None,
             styles_part: None,
+            theme_part: None,
             document_snap_to_grid_default: false,
         };
         let paragraph = Paragraph {
@@ -21642,6 +24609,7 @@ mod tests {
             comment_ranges: Vec::new(),
             comment_markers: Vec::new(),
             properties: Some(ParagraphProperties {
+                text_alignment: Some("bottom".into()),
                 indent: Some(jade_docx_reader::Indent {
                     left: Some(12.0),
                     right: Some(6.0),
@@ -21655,6 +24623,7 @@ mod tests {
         assert_eq!(left, 16.0);
         assert_eq!(style.first_line_indent, -8.0);
         assert_eq!(style.right_indent, 8.0);
+        assert_eq!(style.text_alignment.as_deref(), Some("bottom"));
         let context = FixedWidthWrapContext::new();
         let text = "あいうえおかきくけこさしすせそたちつてとなにぬねの";
         let mut layout = layout_horizontal_paragraph_with_run_styles_context(

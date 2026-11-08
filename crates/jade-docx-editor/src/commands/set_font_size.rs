@@ -1,12 +1,11 @@
 //! Font size adjustment command implementation.
 //!
-//! Applies an explicit point size to the current selection, ensuring both the
-//! in-memory document model and the serialized DOCX output stay in sync.
+//! Applies an explicit point size to selected text and paragraph marks,
+//! keeping the document model and serialized DOCX output in sync.
 
-use super::run_backup::{capture_paragraph_runs, restore_paragraph_runs, ParagraphRunsBackup};
-use super::text_edit::apply_run_properties;
+use super::set_run_format::SetRunFormatCommand;
 use super::{Command, CommandContext, CommandError, CommandResult};
-use crate::document::{Paragraph, RunProperties};
+use jade_docx_headless_api::HeadlessRunFormat;
 use jade_docx_layout::selection::SelectionRange;
 
 /// Word's font size box accepts 1-1638pt.
@@ -19,31 +18,33 @@ pub fn word_font_size_points(font_size: f32) -> f32 {
     ((font_size * 2.0).round() / 2.0).clamp(1.0, WORD_MAX_FONT_SIZE_PT)
 }
 
-/// Assigns the provided font size (in points) to the selected runs.
+/// Assigns the provided font size (in points) to selected text and marks.
 pub struct SetFontSizeCommand {
-    range: SelectionRange,
     font_size: f32,
-    previous_runs: Option<Vec<ParagraphRunsBackup>>,
-    previous_selection: Option<SelectionRange>,
+    inner: SetRunFormatCommand,
 }
 
 impl SetFontSizeCommand {
     pub fn new(range: SelectionRange, font_size: f32) -> Self {
         Self {
-            range,
             font_size,
-            previous_runs: None,
-            previous_selection: None,
+            inner: SetRunFormatCommand::new(
+                range,
+                HeadlessRunFormat {
+                    font_size: Some(word_font_size_points(font_size)),
+                    ..Default::default()
+                },
+            ),
         }
     }
 
-    fn validate_font_size(font_size: f32) -> Result<f32, CommandError> {
+    fn validate_font_size(font_size: f32) -> Result<(), CommandError> {
         if !font_size.is_finite() || font_size <= 0.0 {
             return Err(CommandError::Custom(
                 "font size must be a positive finite value".into(),
             ));
         }
-        Ok(word_font_size_points(font_size))
+        Ok(())
     }
 }
 
@@ -51,84 +52,19 @@ impl Command for SetFontSizeCommand {
     fn tracks_formatting(&self) -> bool {
         true
     }
+
     fn name(&self) -> &'static str {
         "set_font_size"
     }
 
     fn apply(&mut self, ctx: &mut CommandContext<'_>) -> CommandResult<()> {
-        let font_size = Self::validate_font_size(self.font_size)?;
-
-        if self.range.is_collapsed() {
-            return Err(CommandError::InvalidSelection);
-        }
-
-        let (start, end) = self.range.normalized();
-        let paragraph_count = ctx.document.paragraph_count();
-        if paragraph_count == 0
-            || start.paragraph >= paragraph_count
-            || end.paragraph >= paragraph_count
-        {
-            return Err(CommandError::ParagraphUnavailable);
-        }
-        self.previous_runs = Some(capture_paragraph_runs(ctx, start.paragraph, end.paragraph)?);
-        self.previous_selection = *ctx.selection;
-
-        let font_props = RunProperties {
-            font_size: Some(font_size),
-            ..Default::default()
-        };
-
-        for paragraph_index in start.paragraph..=end.paragraph {
-            let zero_width = ctx.document.zero_width_runs(paragraph_index);
-            let paragraph = ctx
-                .document
-                .paragraph_mut(paragraph_index)
-                .ok_or(CommandError::ParagraphUnavailable)?;
-            let paragraph_len = paragraph_len(paragraph);
-
-            let range_start = if paragraph_index == start.paragraph {
-                start.offset.min(paragraph_len)
-            } else {
-                0
-            };
-            let range_end = if paragraph_index == end.paragraph {
-                end.offset.min(paragraph_len)
-            } else {
-                paragraph_len
-            };
-
-            if range_start >= range_end {
-                continue;
-            }
-
-            let restyled = apply_run_properties(
-                &mut paragraph.runs,
-                range_start,
-                range_end,
-                &font_props,
-                &zero_width,
-            );
-            ctx.document
-                .sync_paragraph_run_properties(paragraph_index, &restyled);
-        }
-
-        *ctx.selection = Some(self.range);
-        Ok(())
+        Self::validate_font_size(self.font_size)?;
+        self.inner.apply(ctx)
     }
 
     fn undo(&mut self, ctx: &mut CommandContext<'_>) -> CommandResult<()> {
-        let backups = self
-            .previous_runs
-            .take()
-            .ok_or_else(|| CommandError::Custom("missing backup for undo".into()))?;
-        restore_paragraph_runs(ctx, &backups)?;
-        *ctx.selection = self.previous_selection;
-        Ok(())
+        self.inner.undo(ctx)
     }
-}
-
-fn paragraph_len(paragraph: &Paragraph) -> usize {
-    paragraph.runs.iter().map(|run| run.text.len()).sum()
 }
 
 #[cfg(test)]

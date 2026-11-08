@@ -201,6 +201,8 @@ pub struct ParagraphStyle {
     /// rules do not consult the thread-local platform for every grapheme.
     pub word_platform: crate::line_metrics::WordLayoutPlatform,
     pub alignment: String,
+    /// Vertical placement of text inside a horizontal line (`w:textAlignment`).
+    pub text_alignment: Option<Rc<str>>,
     /// Paragraph base direction from `w:bidi`. The wrapper owns visual-order
     /// resolution so renderers consume the same cluster order as selection.
     pub bidi: bool,
@@ -248,7 +250,13 @@ pub struct ParagraphStyle {
     /// rather than the drawing face's ink extents. Callers enable it where
     /// `line_metrics::word_east_asian_font_metrics_apply`.
     pub word_east_asian_font_line_box: bool,
+    /// Authored exact spacing fixes the physical pitch even when text,
+    /// annotations or inline objects extend beyond it.
+    pub exact_line_spacing: bool,
     pub word_grid_line_sizing: Option<crate::line_metrics::WordGridLineSizing>,
+    /// Natural ascent/descent of a framed list label on the first physical
+    /// band. Exact-spaced paragraphs leave this unset.
+    pub numbering_border_box: Option<(f64, f64)>,
     pub word_proportional_line_sizing: Option<crate::line_metrics::WordProportionalLineSizing>,
     /// Prepared first-letter drop-cap geometry. Its occupied width is consumed
     /// by this shared wrapper for every affected line; renderers must not
@@ -313,6 +321,7 @@ impl Default for ParagraphStyle {
         Self {
             word_platform: crate::line_metrics::word_layout_platform(),
             alignment: String::new(),
+            text_alignment: None,
             bidi: false,
             first_line_indent: 0.0,
             first_line_available_adjustment: 0.0,
@@ -332,7 +341,9 @@ impl Default for ParagraphStyle {
             inline_note_separator_offsets: Vec::new(),
             east_asian_advance_scale: 1.0,
             word_east_asian_font_line_box: false,
+            exact_line_spacing: false,
             word_grid_line_sizing: None,
+            numbering_border_box: None,
             word_proportional_line_sizing: None,
             drop_cap: None,
             float_line_segments: Vec::new(),
@@ -1022,13 +1033,14 @@ pub fn merge_east_asian_rules(
 
 fn resolve_snap_to_chars_cell_width<C: LineWrapContext>(
     ctx: &C,
+    snap_to_grid: bool,
     paragraph_style: &ParagraphStyle,
     east_asia_font_descriptor: &str,
     east_asia_font_descriptor_hash: u64,
     text_scale_x: f64,
     cache: &mut FxHashMap<SnapToCharsCacheKey, f64>,
 ) -> Result<Option<f64>, C::Error> {
-    if !paragraph_style.doc_grid_snap_to_chars {
+    if !snap_to_grid || !paragraph_style.doc_grid_snap_to_chars {
         return Ok(None);
     }
 
@@ -1121,6 +1133,8 @@ pub fn adjusted_glyph_advance_width(
 }
 
 pub struct GraphemeAdvanceContext<'a> {
+    /// Whether the run participates in character-grid spacing and snapping.
+    pub snap_to_grid: bool,
     pub paragraph_style: Option<&'a ParagraphStyle>,
     pub grapheme: &'a str,
     pub script: ScriptCategory,
@@ -1216,6 +1230,7 @@ fn uses_requested_ascii_width(context: &GraphemeAdvanceContext<'_>) -> bool {
                 })))
 }
 
+#[inline]
 fn compute_resolved_grapheme_advance(
     context: GraphemeAdvanceContext<'_>,
     style: &ResolvedRunStyle,
@@ -1323,12 +1338,28 @@ fn balanced_space_width_px(
     crate::line_metrics::word_balanced_space_advance_px(paragraph.word_platform, font_descriptor)
 }
 
+// Specialize the run's grid switch once instead of branching at every
+// adjustment of every grapheme. Both paths use the same width algorithm.
+#[inline]
 fn compute_grapheme_advance_with_ascii_width(
     context: GraphemeAdvanceContext<'_>,
     requested_ascii_width: Option<f64>,
     resolved_style: Option<&ResolvedRunStyle>,
 ) -> GraphemeAdvance {
+    if context.snap_to_grid {
+        compute_grapheme_advance_for_grid::<true>(context, requested_ascii_width, resolved_style)
+    } else {
+        compute_grapheme_advance_for_grid::<false>(context, requested_ascii_width, resolved_style)
+    }
+}
+
+fn compute_grapheme_advance_for_grid<const SNAP_TO_GRID: bool>(
+    context: GraphemeAdvanceContext<'_>,
+    requested_ascii_width: Option<f64>,
+    resolved_style: Option<&ResolvedRunStyle>,
+) -> GraphemeAdvance {
     let GraphemeAdvanceContext {
+        snap_to_grid: _,
         paragraph_style,
         grapheme,
         script,
@@ -1410,7 +1441,7 @@ fn compute_grapheme_advance_with_ascii_width(
             .map(|style| punctuation_compression_adjustment(style, grapheme, script, glyph_width))
             .unwrap_or(0.0)
     };
-    let top_line_adjustment = if measured_width_is_oracle {
+    let top_line_adjustment = if measured_width_is_oracle || !is_line_start {
         0.0
     } else {
         paragraph_style
@@ -1425,7 +1456,7 @@ fn compute_grapheme_advance_with_ascii_width(
         0.0
     } else {
         paragraph_style
-            .filter(|style| !style.doc_grid_snap_to_chars)
+            .filter(|style| SNAP_TO_GRID && !style.doc_grid_snap_to_chars)
             .and_then(|style| style.doc_grid_char_space_px)
             .unwrap_or(0.0)
             * if full_grid_cell { 1.0 } else { 0.5 }
@@ -1437,7 +1468,8 @@ fn compute_grapheme_advance_with_ascii_width(
     // zero extra_spacing. Cell snapping and non-grid paths retain
     // their ordinary between-character tracking. Windows fixed faces use
     // the same two tracking intervals inside a full grid cell.
-    let extra_spacing = if extra_spacing != 0.0
+    let extra_spacing = if SNAP_TO_GRID
+        && extra_spacing != 0.0
         && full_grid_cell
         && paragraph_style.is_some_and(|style| {
             (style.word_platform == crate::line_metrics::WordLayoutPlatform::Mac
@@ -1454,11 +1486,11 @@ fn compute_grapheme_advance_with_ascii_width(
     let core_advance = (adjusted_glyph_width + extra_spacing + grid_spacing).max(0.0);
     let balance_extra = if measured_width_is_oracle
         || (script == ScriptCategory::Latin
-            && !grapheme.bytes().all(|b| b.is_ascii_alphabetic())
             && paragraph_style.is_some_and(|p| {
                 p.word_platform == crate::line_metrics::WordLayoutPlatform::Windows
                     && p.east_asian_rules.balance_single_byte_double_byte_width
             })
+            && !grapheme.bytes().all(|b| b.is_ascii_alphabetic())
             && (requested_ascii_width.is_some()
                 || font_descriptor
                     .and_then(crate::line_metrics::word_latin_font_line_height_pt)
@@ -1480,23 +1512,24 @@ fn compute_grapheme_advance_with_ascii_width(
             .unwrap_or(0.0)
             .max(0.0)
     };
-    let (implicit_latin_gap, implicit_latin_trailing_gap) = if measured_width_is_oracle {
-        (0.0, 0.0)
-    } else {
-        paragraph_style
-            .map(|style| {
-                implicit_latin_east_asian_gap_width(
-                    style,
-                    grapheme,
-                    script,
-                    adjusted_glyph_width,
-                    prev_grapheme,
-                    next_grapheme,
-                    font_descriptor,
-                )
-            })
-            .unwrap_or((0.0, 0.0))
-    };
+    let (implicit_latin_gap, implicit_latin_trailing_gap) =
+        if measured_width_is_oracle || script != ScriptCategory::Latin {
+            (0.0, 0.0)
+        } else {
+            paragraph_style
+                .map(|style| {
+                    implicit_latin_east_asian_gap_width(
+                        style,
+                        grapheme,
+                        script,
+                        adjusted_glyph_width,
+                        prev_grapheme,
+                        next_grapheme,
+                        font_descriptor,
+                    )
+                })
+                .unwrap_or((0.0, 0.0))
+        };
     // The gap only sits at a digit/East Asian boundary, so most graphemes
     // skip the call: this runs for every grapheme measured.
     let implicit_numeric_gap = if measured_width_is_oracle
@@ -1534,7 +1567,8 @@ fn compute_grapheme_advance_with_ascii_width(
     } else {
         paragraph_style
             .filter(|style| {
-                style.word_platform == crate::line_metrics::WordLayoutPlatform::Mac
+                SNAP_TO_GRID
+                    && style.word_platform == crate::line_metrics::WordLayoutPlatform::Mac
                     && !style.doc_grid_snap_to_chars
             })
             .and_then(|style| style.doc_grid_char_space_px)
@@ -1552,6 +1586,7 @@ fn compute_grapheme_advance_with_ascii_width(
     let implicit_latin_trailing_gap = widen(implicit_latin_trailing_gap);
     let implicit_numeric_gap = widen(implicit_numeric_gap);
     let (snap_leading, snap_trailing) = snap_cell_width
+        .filter(|_| SNAP_TO_GRID)
         .map(|cell_width| snap_to_chars_cell_span_adjustment(grapheme, core_advance, cell_width))
         .unwrap_or((0.0, 0.0));
     let glyph_box_width =
@@ -2043,7 +2078,7 @@ pub fn top_line_punctuation_adjustment(
     glyph_width: f64,
     is_line_start: bool,
 ) -> f64 {
-    if !paragraph_style.applies_top_line_punctuation_half_width() || !is_line_start {
+    if !is_line_start || !paragraph_style.applies_top_line_punctuation_half_width() {
         return 0.0;
     }
     if script != ScriptCategory::EastAsia || !is_top_line_half_width_target(grapheme) {
@@ -2927,6 +2962,7 @@ fn compute_text_advance_step_with_descriptor<'a, C: LineWrapContext>(
     };
     let mut advance = compute_resolved_grapheme_advance(
         GraphemeAdvanceContext {
+            snap_to_grid: style.snap_to_grid,
             paragraph_style,
             grapheme,
             script,
@@ -3047,6 +3083,7 @@ where
     let snap_cell_width = if let Some(paragraph_style) = paragraph_style {
         resolve_snap_to_chars_cell_width(
             ctx,
+            style.snap_to_grid,
             paragraph_style,
             &style.font_descriptor_east_asia,
             style.font_descriptor_east_asia_hash,
@@ -3337,6 +3374,9 @@ impl WrappedLine {
         fallback_px: f64,
         mark_font_box: Option<(f64, f64)>,
     ) -> Option<Vec<f64>> {
+        if style.exact_line_spacing {
+            return None;
+        }
         let Some(mark_font_box) = Self::valid_mac_mark_box(mark_font_box)
             .filter(|_| lines.last().is_some_and(Self::is_object_only_paragraph_end))
         else {
@@ -3365,8 +3405,9 @@ impl WrappedLine {
         )
     }
 
-    /// Extend only the first physical line for a list label's ascent. Existing
-    /// grid plans are reused; unchanged constant heights allocate nothing.
+    /// Extend the first physical band for a list label. A framed label has
+    /// both ascent and descent; a bare label retains the existing Mac ascent
+    /// rule and requires a grid/proportional plan.
     pub fn line_heights_px_with_numbering_ascent(
         lines: &[Self],
         style: &ParagraphStyle,
@@ -3374,29 +3415,41 @@ impl WrappedLine {
         mark_font_box: Option<(f64, f64)>,
         label_ascent: Option<f64>,
     ) -> Option<Vec<f64>> {
+        if style.exact_line_spacing {
+            return None;
+        }
         let mut heights =
             Self::line_heights_px_with_paragraph_mark(lines, style, fallback_px, mark_font_box);
-        // Without a shared grid/auto plan the paragraph's resolved spacing
-        // owns the height, including authored exact spacing.
-        if style.word_grid_line_sizing.is_none() && style.word_proportional_line_sizing.is_none() {
+        let border_box = style.numbering_border_box;
+        if border_box.is_none()
+            && style.word_grid_line_sizing.is_none()
+            && style.word_proportional_line_sizing.is_none()
+        {
             return heights;
         }
-        let Some(label_ascent) = label_ascent.filter(|ascent| ascent.is_finite() && *ascent >= 0.0)
-        else {
+        let label_ascent = label_ascent.filter(|ascent| ascent.is_finite() && *ascent >= 0.0);
+        if border_box.is_none() && label_ascent.is_none() {
             return heights;
-        };
+        }
         let first_band_end = (1..lines.len())
             .find(|&index| !style.line_shares_float_band(index))
             .unwrap_or(lines.len());
         for (index, line) in lines[..first_band_end].iter().enumerate() {
-            let Some(body) = line.content_box_px_with_paragraph_mark(mark_font_box) else {
+            let Some(body) = line
+                .content_box_px_with_paragraph_mark(mark_font_box)
+                .or_else(|| border_box.map(|_| (fallback_px * 0.8, fallback_px * 0.2)))
+            else {
                 continue;
             };
-            if label_ascent <= body.0 {
+            let (mut ascent, mut descent) =
+                crate::line_metrics::line_font_box_with_numbering_ascent(body, label_ascent);
+            if let Some((label_ascent, label_descent)) = border_box {
+                ascent = ascent.max(label_ascent);
+                descent = descent.max(label_descent);
+            }
+            if ascent <= body.0 && descent <= body.1 {
                 continue;
             }
-            let (ascent, descent) =
-                crate::line_metrics::line_font_box_with_numbering_ascent(body, Some(label_ascent));
             let natural = Some(ascent + descent);
             let height = if let Some(grid) = style.word_grid_line_sizing {
                 grid.line_height_px(natural, fallback_px)
@@ -3406,6 +3459,7 @@ impl WrappedLine {
                 fallback_px.max(ascent + descent)
             };
             let previous = heights.as_ref().map_or(fallback_px, |plan| plan[index]);
+            let height = height.max(previous);
             if (height - previous).abs() > 0.000001 {
                 let plan = heights.get_or_insert_with(|| vec![fallback_px; lines.len()]);
                 plan[index] = height;
@@ -3481,11 +3535,21 @@ impl WrappedLine {
                     (ascent, descent),
                     label_ascent,
                 );
+                if let Some((label_ascent, label_descent)) = style.numbering_border_box {
+                    ascent = ascent.max(label_ascent);
+                    descent = descent.max(label_descent);
+                }
             }
             let content_height = (ascent + descent).max(1.0);
-            let advance = match extra {
-                Some(extra) if objects_only || content_height > height => content_height + extra,
-                _ => height.max(content_height),
+            let advance = if style.exact_line_spacing {
+                height
+            } else {
+                match extra {
+                    Some(extra) if objects_only || content_height > height => {
+                        content_height + extra
+                    }
+                    _ => height.max(content_height),
+                }
             };
             if !style.line_shares_float_band(index) {
                 total += band_height + style.skipped_float_height_before(index, height);
@@ -3561,6 +3625,9 @@ impl WrappedLine {
     }
 
     pub fn line_height_px(&self, style: &ParagraphStyle, fallback_px: f64) -> f64 {
+        if style.exact_line_spacing {
+            return fallback_px;
+        }
         if let Some(grid) = style.word_grid_line_sizing {
             return grid.line_height_px(self.line_box_px(true).map(|(a, d)| a + d), fallback_px);
         }
@@ -3580,6 +3647,9 @@ impl WrappedLine {
         style: &ParagraphStyle,
         fallback_px: f64,
     ) -> Option<Vec<f64>> {
+        if style.exact_line_spacing {
+            return None;
+        }
         if style.word_grid_line_sizing.is_some() {
             return Some(
                 lines
@@ -4796,11 +4866,14 @@ fn layout_text_vertically_on_grid<C: LineWrapContext>(
         // 縦中横 (`w:eastAsianLayout w:vert`, ECMA-376 Part 1 §17.3.2.10):
         // the run is one upright horizontal group taking one character's
         // height in the column. Runs of the same group (one `w:id`) join it.
+        // Word ignores eastAsianLayout when fitText is present, and vert
+        // when combine is enabled (MS-OI29500 §2.1.75).
         let tate_chu_yoko = run_style
             .properties
             .as_deref()
+            .filter(|props| props.fit_text.is_none())
             .and_then(|props| props.east_asian_layout.as_deref())
-            .filter(|layout| layout.vert);
+            .filter(|layout| layout.vert && !layout.combine);
         if let Some(layout) = tate_chu_yoko {
             let group_start = base_offset + start_aligned;
             let group_end = base_offset + end;
@@ -4811,8 +4884,11 @@ fn layout_text_vertically_on_grid<C: LineWrapContext>(
                             && segment
                                 .properties
                                 .as_deref()
+                                .filter(|props| props.fit_text.is_none())
                                 .and_then(|props| props.east_asian_layout.as_deref())
-                                .is_some_and(|previous| previous.vert && previous.id == layout.id)
+                                .is_some_and(|previous| {
+                                    previous.vert && !previous.combine && previous.id == layout.id
+                                })
                     })
             }) && pending_ascii.is_none();
             if joins {
@@ -5282,6 +5358,67 @@ pub fn layout_cell_text_vertically<C: LineWrapContext>(
         None,
         line_height,
     )?;
+    // Prefer font vertical advances, keeping horizontal ink separate for paint.
+    // Without vertical metrics, use an em for Latin and existing CJK advances.
+    // Explicit tate-chu-yoko groups retain their combined cell geometry.
+    let mut resolved_index = None;
+    let mut resolved = None;
+    let mut run_index = 0;
+    for line in &mut layout.lines {
+        for cluster in &mut line.clusters {
+            while run_index + 1 < run_styles.len()
+                && base_offset + run_styles[run_index].end <= cluster.start
+            {
+                run_index += 1;
+            }
+            let Some(run) = run_styles.get(run_index) else {
+                continue;
+            };
+            if cluster.start < base_offset + run.start
+                || cluster.end > base_offset + run.end
+                || run
+                    .properties
+                    .as_deref()
+                    .filter(|props| props.fit_text.is_none())
+                    .and_then(|props| props.east_asian_layout.as_deref())
+                    .is_some_and(|layout| layout.vert && !layout.combine)
+            {
+                continue;
+            }
+            if resolved_index != Some(run_index) {
+                resolved = Some(ctx.resolve_run_style(run.properties.as_deref())?);
+                resolved_index = Some(run_index);
+            }
+            let style = resolved.as_ref().expect("resolved upright cell run");
+            let script = classify_script(&cluster.text);
+            let (descriptor, hash, _) = style.descriptor_key_for_grapheme(&cluster.text, script);
+            let advance = ctx
+                .measure_upright_vertical_advance(&cluster.text, descriptor)?
+                .filter(|advance| advance.is_finite() && *advance > 0.0)
+                .or_else(|| {
+                    if script == ScriptCategory::Latin {
+                        crate::line_metrics::font_em_px(descriptor)
+                    } else {
+                        None
+                    }
+                });
+            let Some(advance) = advance else { continue };
+            let glyph_width = cluster.width;
+            cluster.layout.get_or_insert(InlineClusterLayout {
+                character_border_edges: 0,
+                script,
+                font_slot: style.font_slot_for_grapheme(&cluster.text, script),
+                leading_advance: 0.0,
+                glyph_box_width: glyph_width,
+                measured_glyph_width: glyph_width,
+                adjusted_glyph_width: glyph_width,
+                font_descriptor_hash: hash,
+                font_ascent: None,
+                font_descent: None,
+            });
+            cluster.width = (advance * style.text_scale_x.max(0.01)).max(1.0);
+        }
+    }
     let finite = |value: f64| if value.is_finite() { value } else { 0.0 };
     let start_indent = finite(start_indent);
     let end_indent = finite(style.right_indent);
@@ -5815,6 +5952,14 @@ pub trait LineWrapContext {
     ) -> Result<Rc<ResolvedRunStyle>, Self::Error>;
     /// Measures a text fragment using the provided font descriptor.
     fn measure_text(&self, text: &str, font_descriptor: &str) -> Result<f64, Self::Error>;
+    /// Optional font-provided advance for an upright glyph, before text scaling.
+    fn measure_upright_vertical_advance(
+        &self,
+        _text: &str,
+        _font_descriptor: &str,
+    ) -> Result<Option<f64>, Self::Error> {
+        Ok(None)
+    }
     /// Measures a glyph cell used along the vertical stacking axis. Horizontal
     /// oracle advances and shaping adjustments are not necessarily valid
     /// vertical advances, so specialized contexts can opt out while normal
@@ -6418,6 +6563,9 @@ struct RubyAdjustment {
     gap_px: f64,
     trailing_px: f64,
     ascent_px: Option<f64>,
+    extra_ascent_px: Option<f64>,
+    descent_px: Option<f64>,
+    bottom_from_base_top_px: Option<f64>,
 }
 
 impl RubyAdjustment {
@@ -6515,22 +6663,52 @@ fn ruby_group_adjustment<C: LineWrapContext>(
     };
 
     let base_size = properties.font_size.unwrap_or(12.0);
-    let guide_properties = crate::ruby::ruby_run_properties(Some(properties), base_size, ruby);
-    let guide_style = ctx.resolve_run_style(Some(&guide_properties))?;
     let mut guide_width = 0.0;
-    walk_text_advance_steps(
-        ctx,
-        &ruby.text,
-        &guide_style,
-        Some(paragraph_style),
-        &TextAdvanceState::default(),
-        None,
-        &mut cache,
-        |step| {
-            guide_width += step.advance.total_advance;
-            Ok(())
-        },
-    )?;
+    let mut guide_ascent: Option<f64> = None;
+    let mut guide_descent: Option<f64> = None;
+    let mut guide_clearance = 1.0_f64;
+    for (text, guide_properties) in crate::ruby::ruby_guide_runs(Some(properties), base_size, ruby)
+    {
+        if text.is_empty() {
+            continue;
+        }
+        let guide_style = ctx.resolve_run_style(Some(&guide_properties))?;
+        walk_text_advance_steps(
+            ctx,
+            text,
+            &guide_style,
+            Some(paragraph_style),
+            &TextAdvanceState::default(),
+            None,
+            &mut cache,
+            |step| {
+                guide_width += step.advance.total_advance;
+                Ok(())
+            },
+        )?;
+        let shift = crate::ruby::ruby_guide_baseline_shift_px(&guide_properties);
+        guide_clearance =
+            guide_clearance.max(points_to_px(guide_properties.font_size.unwrap_or(1.0)) * 0.2);
+        for grapheme in text.graphemes(true) {
+            let descriptor =
+                guide_style.descriptor_for_grapheme(grapheme, classify_script(grapheme));
+            let metrics = match paragraph_style
+                .word_east_asian_font_line_box
+                .then(|| crate::line_metrics::word_font_vertical_metrics_px(descriptor))
+                .flatten()
+            {
+                Some(metrics) => Some(metrics),
+                None => ctx.measure_font_vertical_metrics(descriptor)?,
+            };
+            if let Some((ascent, descent)) = metrics {
+                guide_ascent =
+                    Some(guide_ascent.map_or(ascent - shift, |old| old.max(ascent - shift)));
+                guide_descent =
+                    Some(guide_descent.map_or(descent + shift, |old| old.max(descent + shift)));
+            }
+        }
+    }
+
     let slack = guide_width - base_width;
     let (leading_px, gap_px) =
         crate::ruby::ruby_distribution(ruby.align.as_deref(), visible, slack);
@@ -6540,25 +6718,14 @@ fn ruby_group_adjustment<C: LineWrapContext>(
         0.0
     };
 
-    let ascent_px = match ruby.raise_half_points {
-        Some(raise) => {
-            let descriptor = if crate::line_metrics::text_font_slots(&ruby.text).1 {
-                &guide_style.font_descriptor_east_asia
-            } else {
-                &guide_style.font_descriptor_latin_ascii
-            };
-            let metrics = match paragraph_style
-                .word_east_asian_font_line_box
-                .then(|| crate::line_metrics::word_font_vertical_metrics_px(descriptor))
-                .flatten()
-            {
-                Some(metrics) => Some(metrics),
-                None => ctx.measure_font_vertical_metrics(descriptor)?,
-            };
-            metrics.map(|(ascent, _)| points_to_px(crate::ruby::ruby_raise_pt(raise)) + ascent)
-        }
-        None => None,
-    };
+    let ascent_px = ruby.raise_half_points.and_then(|raise| {
+        guide_ascent.map(|ascent| points_to_px(crate::ruby::ruby_raise_pt(raise)) + ascent)
+    });
+    let extra_ascent_px = ruby
+        .raise_half_points
+        .is_none()
+        .then_some(guide_ascent.map(|ascent| (ascent + guide_clearance).max(0.0)))
+        .flatten();
 
     Ok((
         end,
@@ -6569,6 +6736,16 @@ fn ruby_group_adjustment<C: LineWrapContext>(
             gap_px,
             trailing_px,
             ascent_px,
+            extra_ascent_px,
+            descent_px: ruby.raise_half_points.and_then(|raise| {
+                guide_descent
+                    .map(|descent| descent - points_to_px(crate::ruby::ruby_raise_pt(raise)))
+            }),
+            bottom_from_base_top_px: ruby
+                .raise_half_points
+                .is_none()
+                .then_some(guide_descent.map(|descent| descent - guide_clearance))
+                .flatten(),
         }),
     ))
 }
@@ -7174,6 +7351,7 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
             }
             let snap_cell_width = resolve_snap_to_chars_cell_width(
                 ctx,
+                style.snap_to_grid,
                 paragraph_style,
                 &style.font_descriptor_east_asia,
                 style.font_descriptor_east_asia_hash,
@@ -7484,14 +7662,26 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
                     adjusted_glyph_width: computed.advance.adjusted_glyph_width,
                     font_descriptor_hash: computed.font_descriptor_hash,
                     font_ascent: font_vertical_metrics.map(|metrics| {
-                        let ascent = metrics.0 + border_extent_px;
+                        let ascent = metrics.0
+                            + border_extent_px
+                            + ruby_group
+                                .and_then(|ruby| ruby.extra_ascent_px)
+                                .unwrap_or(0.0);
                         // A ruby guide raises the line above its base.
                         ruby_group
                             .and_then(|ruby| ruby.ascent_px)
                             .map_or(ascent, |guide| ascent.max(guide))
                     }),
-                    font_descent: font_vertical_metrics
-                        .map(|metrics| metrics.1.max(underline_depth_px) + border_extent_px),
+                    font_descent: font_vertical_metrics.map(|metrics| {
+                        let descent = metrics.1.max(underline_depth_px) + border_extent_px;
+                        let guide_bottom =
+                            ruby_group.and_then(|ruby| ruby.descent_px).or_else(|| {
+                                ruby_group
+                                    .and_then(|ruby| ruby.bottom_from_base_top_px)
+                                    .map(|bottom| bottom - metrics.0)
+                            });
+                        guide_bottom.map_or(descent, |bottom| descent.max(bottom))
+                    }),
                 };
             };
 
@@ -8493,6 +8683,7 @@ fn measure_tab_segment<C: LineWrapContext>(
         let initial_offset = initial_offset.min(run_text.len());
         let snap_cell_width = resolve_snap_to_chars_cell_width(
             ctx,
+            style.snap_to_grid,
             paragraph_style,
             &style.font_descriptor_east_asia,
             style.font_descriptor_east_asia_hash,
@@ -10883,6 +11074,7 @@ mod tests {
         style: ResolvedRunStyle,
         width_per_grapheme: f64,
         vertical_width_per_grapheme: Option<f64>,
+        upright_advance: Option<f64>,
         measurements: Rc<RefCell<Vec<String>>>,
     }
 
@@ -10902,6 +11094,7 @@ mod tests {
                 style,
                 width_per_grapheme,
                 vertical_width_per_grapheme: None,
+                upright_advance: None,
                 measurements: Rc::new(RefCell::new(Vec::new())),
             }
         }
@@ -10930,6 +11123,14 @@ mod tests {
             self.measurements.borrow_mut().push(text.to_string());
             let grapheme_count = text.graphemes(true).count() as f64;
             Ok(grapheme_count * self.width_per_grapheme)
+        }
+
+        fn measure_upright_vertical_advance(
+            &self,
+            _text: &str,
+            _font_descriptor: &str,
+        ) -> Result<Option<f64>, Self::Error> {
+            Ok(self.upright_advance)
         }
 
         fn measure_text_for_vertical_stack(
@@ -11264,6 +11465,7 @@ mod tests {
             0.0
         };
         let advance = compute_grapheme_advance(GraphemeAdvanceContext {
+            snap_to_grid: style.snap_to_grid,
             paragraph_style,
             grapheme,
             script,
@@ -11312,6 +11514,7 @@ mod tests {
         let snap_cell_width = if let Some(paragraph_style) = paragraph_style {
             resolve_snap_to_chars_cell_width(
                 ctx,
+                style.snap_to_grid,
                 paragraph_style,
                 &style.font_descriptor_east_asia,
                 style.font_descriptor_east_asia_hash,
@@ -12468,6 +12671,83 @@ mod tests {
     }
 
     #[test]
+    fn numbering_border_sizes_both_sides_of_first_float_band_only() {
+        use crate::line_metrics::{
+            set_word_layout_platform, WordGridLineSizing, WordLayoutPlatform,
+        };
+        for platform in [WordLayoutPlatform::Windows, WordLayoutPlatform::Mac] {
+            set_word_layout_platform(platform);
+            for snapped in [false, true] {
+                let grid = jade_docx_reader::DocGrid {
+                    grid_type: Some("lines".into()),
+                    line_pitch: Some(18.0),
+                    char_space: None,
+                };
+                let mut style = ParagraphStyle {
+                    word_platform: platform,
+                    numbering_border_box: Some((40.0, 30.0)),
+                    word_grid_line_sizing: snapped
+                        .then(|| WordGridLineSizing::new(None, true, Some(&grid), None, 10.5))
+                        .flatten(),
+                    ..Default::default()
+                };
+                let runs = [RunStyle {
+                    start: 0,
+                    end: 5,
+                    properties: Some(Rc::new(RunProperties {
+                        font_family: Some("Arial".into()),
+                        font_size: Some(10.5),
+                        ..Default::default()
+                    })),
+                    revision: None,
+                    hyperlink: None,
+                    inline_object: None,
+                }];
+                let mut lines = wrap_text_into_lines(
+                    &TestContext::new(10.0),
+                    "a\nb\nc",
+                    &runs,
+                    0.0,
+                    &style,
+                    0,
+                    100.0,
+                )
+                .unwrap();
+                assert_eq!(lines.len(), 3);
+                for cluster in lines.iter_mut().flat_map(|line| &mut line.clusters) {
+                    let metrics = cluster.layout.as_mut().unwrap();
+                    metrics.font_ascent = Some(12.0);
+                    metrics.font_descent = Some(4.0);
+                }
+                style.float_line_segments = (0..3)
+                    .map(|index| FloatLineSegment {
+                        start_x: 0.0,
+                        width: 100.0,
+                        skipped_lines_before: 0,
+                        exact_clearance_height: 0.0,
+                        shares_band_with_previous: index == 1,
+                    })
+                    .collect();
+                let heights = WrappedLine::line_heights_px_with_numbering_ascent(
+                    &lines, &style, 24.0, None, None,
+                )
+                .unwrap();
+                let first = if style.word_grid_line_sizing.is_some() {
+                    72.0
+                } else {
+                    70.0
+                };
+                assert_eq!(heights, vec![first, first, 24.0]);
+                assert_eq!(
+                    WrappedLine::physical_height_px(&lines, &style, 24.0, None, None, None),
+                    first + 24.0
+                );
+            }
+        }
+        set_word_layout_platform(WordLayoutPlatform::Windows);
+    }
+
+    #[test]
     fn numbering_ascent_covers_both_segments_of_first_float_band_only() {
         use crate::line_metrics::{
             set_word_layout_platform, WordGridLineSizing, WordLayoutPlatform,
@@ -12658,6 +12938,44 @@ mod tests {
             500.0,
         )
         .unwrap();
+        let exact = ParagraphStyle {
+            exact_line_spacing: true,
+            numbering_border_box: Some((80.0, 20.0)),
+            ..paragraph.clone()
+        };
+        let pitch = 16.0;
+        assert_eq!(lines[0].line_height_px(&exact, pitch), pitch);
+        assert_eq!(WrappedLine::line_heights_px(&lines, &exact, pitch), None);
+        assert_eq!(
+            WrappedLine::line_heights_px_with_paragraph_mark(
+                &lines,
+                &exact,
+                pitch,
+                Some((60.0, 20.0)),
+            ),
+            None
+        );
+        assert_eq!(
+            WrappedLine::line_heights_px_with_numbering_ascent(
+                &lines,
+                &exact,
+                pitch,
+                Some((60.0, 20.0)),
+                Some(80.0),
+            ),
+            None
+        );
+        assert_eq!(
+            WrappedLine::physical_height_px(
+                &lines,
+                &exact,
+                pitch,
+                Some((60.0, 20.0)),
+                Some(10.0),
+                Some(80.0),
+            ),
+            pitch
+        );
         let height = lines[0].line_height_px(&paragraph, points_to_px(18.0));
         set_word_layout_platform(WordLayoutPlatform::Windows);
         assert!(
@@ -13256,6 +13574,64 @@ mod tests {
     }
 
     #[test]
+    fn fit_text_disables_tate_chu_yoko_in_vertical_layout() {
+        let mut ctx = TestContext::new(10.0);
+        ctx.upright_advance = Some(14.0);
+        let text = "株式会社";
+        let mut run = make_run(text);
+        run.properties = Some(Rc::new(RunProperties {
+            fit_text: Some(RunFitText {
+                val: 960,
+                id: Some(1),
+            }),
+            east_asian_layout: Some(Box::new(jade_docx_reader::document::EastAsianLayout {
+                vert: true,
+                ..Default::default()
+            })),
+            ..Default::default()
+        }));
+        let section =
+            layout_section_text_vertically(&ctx, text, &[run.clone()], false, 0, Some(25.0), 10.0)
+                .unwrap();
+        assert_eq!(
+            collect_line_infos(&section.lines)
+                .iter()
+                .map(|line| line.text.as_str())
+                .collect::<Vec<_>>(),
+            vec!["株", "式", "会", "社"]
+        );
+        assert!(section
+            .lines
+            .iter()
+            .flat_map(|line| &line.clusters)
+            .all(|cluster| cluster.width == 10.0));
+        let cell = layout_cell_text_vertically(
+            &ctx,
+            text,
+            &[run],
+            0,
+            Some(25.0),
+            10.0,
+            0.0,
+            &ParagraphStyle::default(),
+        )
+        .unwrap();
+        assert_eq!(
+            collect_line_infos(&cell.layout.lines)
+                .iter()
+                .map(|line| line.text.as_str())
+                .collect::<Vec<_>>(),
+            vec!["株", "式", "会", "社"]
+        );
+        // fitText disables the explicit group, so the cell must use the
+        // font's ordinary vertical advance while preserving horizontal ink.
+        for cluster in cell.layout.lines.iter().flat_map(|line| &line.clusters) {
+            assert_eq!(cluster.width, 14.0);
+            assert_eq!(cluster.layout.as_ref().unwrap().glyph_box_width, 10.0);
+        }
+    }
+
+    #[test]
     fn vertical_layout_groups_lines_into_columns() {
         let ctx = TestContext::new(10.0);
         let text = "あいう";
@@ -13474,6 +13850,84 @@ mod tests {
             wrapped_line_turned_baseline_offset(&line, 8.0, false),
             Some(12.0)
         );
+    }
+
+    #[test]
+    fn upright_cell_font_advance_controls_wrap_without_changing_ink() {
+        for text in ["iiii", "あいうえ"] {
+            let mut ctx = TestContext::new(3.0);
+            ctx.upright_advance = Some(24.0);
+            ctx.style.text_scale_x = 0.5;
+            let result = layout_cell_text_vertically(
+                &ctx,
+                text,
+                &[make_run(text)],
+                0,
+                Some(24.0),
+                30.0,
+                0.0,
+                &ParagraphStyle::default(),
+            )
+            .unwrap();
+            assert_eq!(result.layout.column_ranges, vec![0..2, 2..4]);
+            for line in &result.layout.lines {
+                assert_eq!(line.clusters[0].width, 12.0);
+                assert_eq!(
+                    line.clusters[0].layout.as_ref().unwrap().glyph_box_width,
+                    1.5
+                );
+            }
+        }
+        for advance in [f64::NAN, f64::INFINITY, 0.0, -1.0] {
+            let mut ctx = TestContext::new(3.0);
+            ctx.upright_advance = Some(advance);
+            let result = layout_cell_text_vertically(
+                &ctx,
+                "i",
+                &[make_run("i")],
+                0,
+                None,
+                30.0,
+                0.0,
+                &ParagraphStyle::default(),
+            )
+            .unwrap();
+            assert_eq!(result.layout.lines[0].clusters[0].width, 16.0);
+        }
+    }
+
+    #[test]
+    fn upright_cell_latin_pitch_is_independent_of_horizontal_ink_width() {
+        for (ink_width, scale, expected_pitch) in
+            [(3.0, 1.0, 16.0), (20.0, 1.0, 16.0), (3.0, 0.5, 8.0)]
+        {
+            let mut ctx = TestContext::new(ink_width);
+            ctx.style.text_scale_x = scale;
+            let text = "iiii";
+            let result = layout_cell_text_vertically(
+                &ctx,
+                text,
+                &[make_run(text)],
+                7,
+                Some(expected_pitch * 2.0),
+                24.0,
+                0.0,
+                &ParagraphStyle::default(),
+            )
+            .unwrap();
+            assert_eq!(result.layout.column_ranges, vec![0..2, 2..4]);
+            for (index, line) in result.layout.lines.iter().enumerate() {
+                let cluster = &line.clusters[0];
+                assert_eq!((cluster.start, cluster.end), (7 + index, 8 + index));
+                assert_eq!(cluster.width, expected_pitch);
+                assert_eq!(
+                    cluster.layout.as_ref().unwrap().glyph_box_width,
+                    ink_width * scale
+                );
+            }
+            assert_eq!(result.layout.max_line_width, ink_width * scale);
+            assert_eq!(ctx.recorded_measurements().len(), 4);
+        }
     }
 
     #[test]
@@ -16152,6 +16606,104 @@ mod tests {
     }
 
     #[test]
+    fn ruby_guide_positions_do_not_change_line_bounds() {
+        use jade_docx_reader::document::RubyGuideRun;
+        let pt = |px: f64| px * 72.0 / 96.0;
+        for positions in [[12.0_f32, -30.0], [-30.0, -30.0]] {
+            for explicit_raise in [false, true] {
+                let text = "か漢字さ";
+                let mut runs = ruby_runs(text, 3..9, "AB", "center");
+                let ruby = Rc::make_mut(runs[1].properties.as_mut().unwrap())
+                    .ruby
+                    .as_mut()
+                    .unwrap();
+                ruby.raise_half_points = explicit_raise.then_some(21);
+                ruby.guide_runs = positions
+                    .into_iter()
+                    .map(|position| RubyGuideRun {
+                        text: if position > 0.0 { "A" } else { "B" }.into(),
+                        properties: Some(Box::new(RunProperties {
+                            font_size: Some(8.0),
+                            text_position: Some(position),
+                            ..Default::default()
+                        })),
+                    })
+                    .collect();
+                let lines = wrap_text_into_lines(
+                    &EmWidthContext,
+                    text,
+                    &runs,
+                    0.0,
+                    &ParagraphStyle::default(),
+                    0,
+                    400.0,
+                )
+                .unwrap();
+                let guide_raise: f64 = if explicit_raise {
+                    10.0
+                } else {
+                    10.5 * 0.859 + 8.0 * 0.2
+                };
+                for cluster in &lines[0].clusters[1..3] {
+                    let layout = cluster.layout.as_ref().unwrap();
+                    let expected_ascent = (guide_raise + 8.0 * 0.859).max(10.5 * 0.859);
+                    let expected_descent = 10.5 * 0.141;
+                    assert!((pt(layout.font_ascent.unwrap()) - expected_ascent).abs() < 1e-5);
+                    assert!((pt(layout.font_descent.unwrap()) - expected_descent).abs() < 1e-5);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn mixed_ruby_uses_each_guide_width_and_the_tallest_guide_ascent() {
+        use jade_docx_reader::document::RubyGuideRun;
+        let text = "か漢字さ";
+        let mut runs = ruby_runs(text, 3..9, "ABCDE", "center");
+        let ruby = Rc::make_mut(runs[1].properties.as_mut().unwrap())
+            .ruby
+            .as_mut()
+            .unwrap();
+        ruby.guide_runs = vec![
+            RubyGuideRun {
+                text: "AB".into(),
+                properties: Some(Box::new(RunProperties {
+                    font_size: Some(4.0),
+                    ..Default::default()
+                })),
+            },
+            RubyGuideRun {
+                text: "CD".into(),
+                properties: Some(Box::new(RunProperties {
+                    font_size: Some(8.0),
+                    ..Default::default()
+                })),
+            },
+            RubyGuideRun {
+                text: "E".into(),
+                properties: None,
+            },
+        ];
+        let lines = wrap_text_into_lines(
+            &EmWidthContext,
+            text,
+            &runs,
+            0.0,
+            &ParagraphStyle::default(),
+            0,
+            400.0,
+        )
+        .unwrap();
+        let pt = |px: f64| px * 72.0 / 96.0;
+        let clusters = &lines[0].clusters;
+        assert!((pt(clusters[1].width + clusters[2].width) - 29.5).abs() < 1e-6);
+        for cluster in &clusters[1..3] {
+            let ascent = pt(cluster.layout.as_ref().unwrap().font_ascent.unwrap());
+            assert!((ascent - (10.0 + 8.0 * 0.859)).abs() < 1e-6, "{ascent}");
+        }
+    }
+
+    #[test]
     fn ruby_widens_its_base_and_raises_the_line_ascent() {
         // Word for Mac (ruby2 probe): 漢字 under the 33pt guide かんじかんじ
         // takes the guide's width; distributeSpace gives each base character
@@ -16183,6 +16735,56 @@ mod tests {
             assert!((ascent - ruby_ascent).abs() < 1e-6, "{ascent}");
         }
         assert!((pt(layout(0).font_ascent.unwrap()) - 10.5 * 0.859).abs() < 1e-6);
+    }
+
+    #[test]
+    fn implicit_ruby_adds_guide_height_to_each_base_font_box() {
+        let text = "か漢字さ";
+        let mut runs = ruby_runs(text, 3..9, "かんじ", "center");
+        Rc::make_mut(runs[1].properties.as_mut().unwrap())
+            .ruby
+            .as_mut()
+            .unwrap()
+            .raise_half_points = None;
+        for word_metrics in [false, true] {
+            let paragraph = ParagraphStyle {
+                word_east_asian_font_line_box: word_metrics,
+                ..ParagraphStyle::default()
+            };
+            let lines =
+                wrap_text_into_lines(&EmWidthContext, text, &runs, 0.0, &paragraph, 0, 400.0)
+                    .unwrap();
+            let base_style = resolve_run_style_for_wrap(runs[1].properties.as_deref(), None);
+            let guide_properties = crate::ruby::ruby_run_properties(
+                runs[1].properties.as_deref(),
+                10.5,
+                runs[1].properties.as_ref().unwrap().ruby.as_ref().unwrap(),
+            );
+            let guide_style = resolve_run_style_for_wrap(Some(&guide_properties), None);
+            let ascent = |descriptor: &str| {
+                if word_metrics {
+                    if let Some((ascent, _)) =
+                        crate::line_metrics::word_font_vertical_metrics_px(descriptor)
+                    {
+                        return ascent;
+                    }
+                }
+                EmWidthContext
+                    .measure_font_vertical_metrics(descriptor)
+                    .unwrap()
+                    .unwrap()
+                    .0
+            };
+            let expected = ascent(&base_style.font_descriptor_east_asia)
+                + ascent(&guide_style.font_descriptor_east_asia)
+                + (points_to_px(5.5) * 0.2).max(1.0);
+            for cluster in &lines[0].clusters[1..3] {
+                assert!(
+                    (cluster.layout.as_ref().unwrap().font_ascent.unwrap() - expected).abs() < 1e-6
+                );
+            }
+            assert!(lines[0].font_box_px().unwrap().0 >= expected);
+        }
     }
 
     #[test]
@@ -16712,6 +17314,7 @@ mod tests {
                 size_eighths: Some(4),
                 space: Some(0),
                 color: None,
+                theme_color: None,
             }),
             ..RunProperties::default()
         });
@@ -16789,6 +17392,7 @@ mod tests {
                 size_eighths: Some(4),
                 space: Some(0),
                 color: Some("808080".into()),
+                theme_color: None,
             }),
             ..RunProperties::default()
         });
@@ -16857,6 +17461,7 @@ mod tests {
                             size_eighths: Some(12),
                             space: Some(2),
                             color: Some(color.into()),
+                            theme_color: None,
                         }),
                         ..RunProperties::default()
                     })),
@@ -18040,6 +18645,7 @@ mod tests {
                     };
                 let snap_cell_width = resolve_snap_to_chars_cell_width(
                     ctx,
+                    style.snap_to_grid,
                     paragraph_style,
                     &style.font_descriptor_east_asia,
                     style.font_descriptor_east_asia_hash,
@@ -18047,6 +18653,7 @@ mod tests {
                     snap_to_chars_cell_width_cache,
                 )?;
                 let advance = compute_grapheme_advance(GraphemeAdvanceContext {
+                    snap_to_grid: style.snap_to_grid,
                     paragraph_style: Some(paragraph_style),
                     grapheme,
                     script,
@@ -18919,6 +19526,7 @@ mod tests {
                 ("q", 0.0),
             ] {
                 let advance = compute_grapheme_advance(GraphemeAdvanceContext {
+                    snap_to_grid: true,
                     paragraph_style: Some(&paragraph),
                     grapheme,
                     script: ScriptCategory::Latin,
@@ -19151,6 +19759,7 @@ mod tests {
             };
             for grapheme in ["1", "0", "(", ")", ",", "A", "i", " "] {
                 let advance = compute_grapheme_advance(GraphemeAdvanceContext {
+                    snap_to_grid: true,
                     paragraph_style: Some(&paragraph),
                     grapheme,
                     script: ScriptCategory::Latin,
@@ -19193,6 +19802,7 @@ mod tests {
             };
             let script = classify_script(grapheme);
             compute_grapheme_advance(GraphemeAdvanceContext {
+                snap_to_grid: true,
                 paragraph_style: Some(&paragraph),
                 grapheme,
                 script,
@@ -19245,6 +19855,7 @@ mod tests {
             ..ParagraphStyle::default()
         };
         let advance = compute_grapheme_advance(GraphemeAdvanceContext {
+            snap_to_grid: true,
             paragraph_style: Some(&paragraph),
             grapheme: "項",
             script: ScriptCategory::EastAsia,
@@ -19286,6 +19897,7 @@ mod tests {
             ..ParagraphStyle::default()
         };
         let advance = compute_grapheme_advance(GraphemeAdvanceContext {
+            snap_to_grid: true,
             paragraph_style: Some(&paragraph),
             grapheme: "。",
             script: ScriptCategory::EastAsia,
@@ -19327,6 +19939,7 @@ mod tests {
             ..ParagraphStyle::default()
         };
         let advance = compute_grapheme_advance(GraphemeAdvanceContext {
+            snap_to_grid: true,
             paragraph_style: Some(&paragraph),
             grapheme: "1",
             script: ScriptCategory::Latin,
@@ -19359,6 +19972,7 @@ mod tests {
         assert_eq!(advance.total_advance, 5.25);
 
         let punctuation = compute_grapheme_advance(GraphemeAdvanceContext {
+            snap_to_grid: true,
             paragraph_style: Some(&paragraph),
             grapheme: "、",
             script: ScriptCategory::EastAsia,
@@ -22109,6 +22723,7 @@ mod tests {
             let mut cache = FxHashMap::default();
             let width = resolve_snap_to_chars_cell_width(
                 &ctx,
+                style.snap_to_grid,
                 &paragraph_style,
                 &style.font_descriptor_east_asia,
                 style.font_descriptor_east_asia_hash,
@@ -22120,6 +22735,7 @@ mod tests {
                 black_box(
                     resolve_snap_to_chars_cell_width(
                         &ctx,
+                        style.snap_to_grid,
                         &paragraph_style,
                         &style.font_descriptor_east_asia,
                         style.font_descriptor_east_asia_hash,
@@ -22888,6 +23504,7 @@ mod tests {
                 ..ParagraphStyle::default()
             };
             compute_grapheme_advance(GraphemeAdvanceContext {
+                snap_to_grid: true,
                 paragraph_style: Some(&paragraph),
                 grapheme: "○",
                 script: ScriptCategory::Latin,
@@ -22945,6 +23562,7 @@ mod tests {
         };
         let advance = |paragraph: &ParagraphStyle, descriptor, oracle, scale, tracking| {
             compute_grapheme_advance(GraphemeAdvanceContext {
+                snap_to_grid: true,
                 paragraph_style: Some(paragraph),
                 grapheme: "…",
                 script: ScriptCategory::Latin,
@@ -23110,6 +23728,78 @@ mod tests {
             // Explicit tracking applies between glyphs; the terminal grid
             // character still receives the section's full character pitch.
             assert!((clusters[3].width - (10.0 * EAST_ASIA_ADVANCE_SCALE + 2.0)).abs() < 0.01);
+        }
+    }
+
+    #[test]
+    fn run_grid_opt_out_is_respected_in_mixed_runs_and_advance_measurement() {
+        let ctx = FontAwareVariableWidthContext::new(6.0, 10.0);
+        for (text, pair) in [("AAAAAA", "AA"), ("ああああああ", "ああ")] {
+            let runs: Vec<_> = [None, Some(false), Some(true)]
+                .into_iter()
+                .enumerate()
+                .map(|(i, snap_to_grid)| RunStyle {
+                    start: i * pair.len(),
+                    end: (i + 1) * pair.len(),
+                    properties: Some(Rc::new(RunProperties {
+                        snap_to_grid,
+                        ..RunProperties::default()
+                    })),
+                    ..make_run(pair)
+                })
+                .collect();
+            for platform in [
+                crate::line_metrics::WordLayoutPlatform::Mac,
+                crate::line_metrics::WordLayoutPlatform::Windows,
+            ] {
+                for snap in [false, true] {
+                    let paragraph = ParagraphStyle {
+                        word_platform: platform,
+                        doc_grid_snap_to_chars: snap,
+                        doc_grid_char_space_px: Some(4.0),
+                        ..ParagraphStyle::default()
+                    };
+                    let lines =
+                        wrap_text_into_lines(&ctx, text, &runs, 0.0, &paragraph, 0, 400.0).unwrap();
+                    let no_grid = ParagraphStyle {
+                        doc_grid_snap_to_chars: false,
+                        doc_grid_char_space_px: None,
+                        ..paragraph.clone()
+                    };
+                    let baseline =
+                        wrap_text_into_lines(&ctx, text, &runs, 0.0, &no_grid, 0, 400.0).unwrap();
+                    let clusters = &lines[0].clusters;
+                    assert_eq!(clusters.len(), 6);
+                    for i in [2, 3] {
+                        assert!(
+                            (clusters[i].width - baseline[0].clusters[i].width).abs() < 1e-6,
+                            "off run, platform={platform:?}, snap={snap}"
+                        );
+                    }
+                    for i in [0, 1, 4, 5] {
+                        assert!(
+                            clusters[i].width > clusters[2].width,
+                            "on run, platform={platform:?}, snap={snap}"
+                        );
+                    }
+                    for (run, chunk) in runs.iter().zip(clusters.chunks(2)) {
+                        let style = ctx.resolve_run_style(run.properties.as_deref()).unwrap();
+                        let (steps, _) = collect_text_advance_steps(
+                            &ctx,
+                            pair,
+                            &style,
+                            Some(&paragraph),
+                            &TextAdvanceState::default(),
+                            None,
+                            &mut FxHashMap::default(),
+                        )
+                        .unwrap();
+                        for (step, cluster) in steps.iter().zip(chunk) {
+                            assert!((step.advance.total_advance - cluster.width).abs() < 1e-6);
+                        }
+                    }
+                }
+            }
         }
     }
 

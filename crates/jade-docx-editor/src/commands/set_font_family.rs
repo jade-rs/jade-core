@@ -4,10 +4,14 @@
 //! latin/east-asia/complex slots so that the renderer can resolve per-script
 //! fonts while keeping the DOCX export in sync.
 
+use super::paragraph_property_sync::{
+    restore_paragraph_properties_xml, snapshot_paragraph_properties_xml,
+};
 use super::run_backup::{capture_paragraph_runs, restore_paragraph_runs, ParagraphRunsBackup};
 use super::text_edit::{apply_run_properties, mutate_run_properties};
 use super::{Command, CommandContext, CommandError, CommandResult};
-use crate::document::{RunFonts, RunProperties};
+use crate::document::{ParagraphProperties, RunFonts, RunProperties};
+use crate::docx_xml::XmlElement;
 use jade_docx_layout::selection::SelectionRange;
 
 /// Whether a ribbon font choice targets the East Asian slot. Word's ribbon
@@ -88,6 +92,7 @@ pub struct SetFontFamilyCommand {
     font_family: String,
     previous_runs: Option<Vec<ParagraphRunsBackup>>,
     previous_selection: Option<SelectionRange>,
+    previous_mark_properties: Vec<(usize, Option<ParagraphProperties>, Option<XmlElement>)>,
 }
 
 impl SetFontFamilyCommand {
@@ -97,6 +102,7 @@ impl SetFontFamilyCommand {
             font_family: font_family.into(),
             previous_runs: None,
             previous_selection: None,
+            previous_mark_properties: Vec::new(),
         }
     }
 
@@ -135,6 +141,7 @@ impl Command for SetFontFamilyCommand {
         }
         self.previous_runs = Some(capture_paragraph_runs(ctx, start.paragraph, end.paragraph)?);
         self.previous_selection = *ctx.selection;
+        self.previous_mark_properties.clear();
 
         let font: std::rc::Rc<str> = std::rc::Rc::from(normalized.as_str());
         let targets_east_asia = font_family_targets_east_asia(&font);
@@ -146,6 +153,12 @@ impl Command for SetFontFamilyCommand {
 
         for paragraph_index in start.paragraph..=end.paragraph {
             let zero_width = ctx.document.zero_width_runs(paragraph_index);
+            let selects_mark = paragraph_index < end.paragraph;
+            let mark_xml = if selects_mark {
+                snapshot_paragraph_properties_xml(ctx.document, paragraph_index)
+            } else {
+                None
+            };
             let paragraph = ctx
                 .document
                 .paragraph_mut(paragraph_index)
@@ -163,7 +176,27 @@ impl Command for SetFontFamilyCommand {
                 paragraph_len
             };
 
+            if selects_mark {
+                self.previous_mark_properties.push((
+                    paragraph_index,
+                    paragraph.properties.clone(),
+                    mark_xml,
+                ));
+                let properties = paragraph
+                    .properties
+                    .get_or_insert_with(Default::default)
+                    .mark_run_properties
+                    .get_or_insert_with(Default::default);
+                super::text_edit::merge_run_properties(properties, &font_props);
+                clear_font_themes(properties, targets_east_asia);
+            }
             if range_start >= range_end {
+                if selects_mark {
+                    super::paragraph_property_sync::sync_paragraph_mark_run_properties_xml(
+                        ctx.document,
+                        paragraph_index,
+                    );
+                }
                 continue;
             }
 
@@ -180,25 +213,17 @@ impl Command for SetFontFamilyCommand {
                 range_end,
                 &zero_width,
                 |properties| {
-                    if let Some(fonts) = properties.fonts.as_mut() {
-                        // A concrete family replaces Word theme slots. Keeping the
-                        // old theme attributes beside w:ascii/w:eastAsia makes the
-                        // saved run ambiguous to consumers that prefer theme data.
-                        // A Latin-only pick leaves the East Asian pair alone: the
-                        // Japanese glyphs keep their current (possibly theme-
-                        // driven) face, like Word's ribbon.
-                        fonts.ascii_theme = None;
-                        fonts.h_ansi_theme = None;
-                        if targets_east_asia {
-                            fonts.east_asia_theme = None;
-                            fonts.complex_theme = None;
-                        }
-                    }
-                    properties.clear_direct_font_themes(targets_east_asia);
+                    clear_font_themes(properties, targets_east_asia);
                 },
             ));
             ctx.document
                 .sync_paragraph_run_properties(paragraph_index, &restyled);
+            if selects_mark {
+                super::paragraph_property_sync::sync_paragraph_mark_run_properties_xml(
+                    ctx.document,
+                    paragraph_index,
+                );
+            }
         }
 
         *ctx.selection = Some(self.range);
@@ -211,9 +236,30 @@ impl Command for SetFontFamilyCommand {
             .take()
             .ok_or_else(|| CommandError::Custom("missing backup for undo".into()))?;
         restore_paragraph_runs(ctx, &backups)?;
+        for (index, properties, xml) in self.previous_mark_properties.drain(..) {
+            ctx.document
+                .paragraph_mut(index)
+                .ok_or(CommandError::ParagraphUnavailable)?
+                .properties = properties;
+            restore_paragraph_properties_xml(ctx.document, index, xml.as_ref());
+        }
         *ctx.selection = self.previous_selection;
         Ok(())
     }
+}
+
+fn clear_font_themes(properties: &mut RunProperties, targets_east_asia: bool) {
+    if let Some(fonts) = properties.fonts.as_mut() {
+        // A concrete family replaces the matching theme slots. A Latin-only
+        // pick preserves the East Asian and complex-script faces and themes.
+        fonts.ascii_theme = None;
+        fonts.h_ansi_theme = None;
+        if targets_east_asia {
+            fonts.east_asia_theme = None;
+            fonts.complex_theme = None;
+        }
+    }
+    properties.clear_direct_font_themes(targets_east_asia);
 }
 
 fn paragraph_len(paragraph: &crate::document::Paragraph) -> usize {
