@@ -427,12 +427,10 @@ impl StylesPart {
     /// terminates.
     pub fn resolve_numbering(&self, style_id: &str) -> Option<Numbering> {
         let mut current = Some(self.paragraph_style_or_default(style_id));
-        let mut visited = HashSet::new();
-
-        while let Some(id) = current {
-            if !visited.insert(id) {
-                break;
-            }
+        // A basedOn chain can visit at most this many distinct definitions.
+        // Bound cycles without allocating a visited set for every paragraph.
+        for _ in 0..self.paragraph_styles.len() {
+            let Some(id) = current else { break };
 
             if let Some(style) = self.paragraph_styles.get(id) {
                 if let Some(numbering) = style.numbering.as_ref() {
@@ -890,10 +888,20 @@ impl StylesPart {
     /// `<w:numPr>` が含まれない場合でも段落スタイルに番号付けを付与できる。
     pub fn merge_numbering_from_part(&mut self, numbering_part: &NumberingPart) {
         for instance in numbering_part.numbering_instances.values() {
+            let abstract_num = numbering_part.abstract_nums.get(&instance.abstract_num_id);
             {
-                for level in
-                    (0..9).filter_map(|index| numbering_part.get_level_info(&instance.id, index))
-                {
+                for level in (0..9).filter_map(|index| {
+                    instance
+                        .overrides
+                        .get(&index)
+                        .and_then(|value| value.level.as_ref())
+                        .or_else(|| {
+                            abstract_num?
+                                .levels
+                                .iter()
+                                .find(|level| level.ilvl == index)
+                        })
+                }) {
                     if let Some(style_id) = &level.paragraph_style {
                         let style_entry = self
                             .paragraph_styles
@@ -3411,6 +3419,26 @@ fn parse_tab_definition(element: &BytesStart) -> Option<TabStop> {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn numbering_inheritance_handles_full_chains_and_cycles() {
+        let mut part = StylesPart::from_xml(r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:style w:type="paragraph" w:styleId="A"><w:basedOn w:val="B"/><w:pPr><w:numPr/></w:pPr></w:style>
+          <w:style w:type="paragraph" w:styleId="B"><w:basedOn w:val="C"/></w:style>
+          <w:style w:type="paragraph" w:styleId="C"><w:pPr><w:numPr><w:numId w:val="7"/></w:numPr></w:pPr></w:style>
+        </w:styles>"#).unwrap();
+        assert_eq!(
+            part.resolve_numbering("A").unwrap().id.as_deref(),
+            Some("7")
+        );
+        let last = part.paragraph_styles.get_mut("C").unwrap();
+        last.numbering = None;
+        last.based_on = Some("A".into());
+        assert!(part.resolve_numbering("A").is_none());
+        part.paragraph_styles.get_mut("C").unwrap().based_on = Some("Missing".into());
+        assert!(part.resolve_numbering("A").is_none());
+        assert!(StylesPart::default().resolve_numbering("Missing").is_none());
+    }
+
     #[test]
     fn windows_unstyled_normal_does_not_inherit_mac_justification() {
         let mac = StylesPart::word_default();

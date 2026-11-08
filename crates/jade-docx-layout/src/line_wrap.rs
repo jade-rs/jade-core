@@ -1230,6 +1230,7 @@ fn uses_requested_ascii_width(context: &GraphemeAdvanceContext<'_>) -> bool {
                 })))
 }
 
+#[inline]
 fn compute_resolved_grapheme_advance(
     context: GraphemeAdvanceContext<'_>,
     style: &ResolvedRunStyle,

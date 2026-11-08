@@ -545,7 +545,6 @@ impl DocumentSettings {
     pub fn from_xml(xml: &str) -> Result<Self, Box<dyn std::error::Error>> {
         let mut reader = Reader::from_str(xml);
         reader.config_mut().trim_text(true);
-        let mut buf = Vec::new();
         let mut settings = DocumentSettings::default();
         let mut depth = 0usize;
         let mut endnote_properties_depth = None;
@@ -555,11 +554,11 @@ impl DocumentSettings {
         let mut inside_no_line_break_after = false;
 
         loop {
-            match reader.read_event_into(&mut buf) {
+            match reader.read_event() {
                 Ok(Event::Start(ref e)) => {
                     depth += 1;
-                    let raw = e.name().as_ref().to_vec();
-                    let name = local_name(&raw);
+                    let raw = e.name();
+                    let name = local_name(raw.as_ref());
                     if depth == 2 && name == b"clrSchemeMapping" {
                         for attr in e.attributes().flatten() {
                             settings.color_scheme_mapping.insert(
@@ -747,8 +746,8 @@ impl DocumentSettings {
                     }
                 }
                 Ok(Event::Empty(ref e)) => {
-                    let raw = e.name().as_ref().to_vec();
-                    let name = local_name(&raw);
+                    let raw = e.name();
+                    let name = local_name(raw.as_ref());
                     if depth == 1 && name == b"clrSchemeMapping" {
                         for attr in e.attributes().flatten() {
                             settings.color_scheme_mapping.insert(
@@ -952,8 +951,8 @@ impl DocumentSettings {
                     }
                 }
                 Ok(Event::End(ref e)) => {
-                    let raw = e.name().as_ref().to_vec();
-                    let name = local_name(&raw);
+                    let raw = e.name();
+                    let name = local_name(raw.as_ref());
                     if endnote_properties_depth == Some(depth) {
                         endnote_properties_depth = None;
                     }

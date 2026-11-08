@@ -150,6 +150,7 @@ impl FontStateTracker {
         Self::default()
     }
 
+    #[inline]
     fn font_has_features(&mut self, font: &Rc<str>) -> bool {
         if let Some((previous, has_features)) = &self.last_font_features {
             if Rc::ptr_eq(previous, font) {
@@ -1224,26 +1225,8 @@ fn draw_text_run_glyphs<P: Painter>(
     // individually measured glyphs used during layout. This mismatch causes
     // visible paragraph expansion/contraction when cache-replayed commands are
     // drawn at positions computed from individual glyph measurements.
-    let characters: Vec<PlacedCharacter<'_>> =
-        if fonts.iter().any(|font| font_state.font_has_features(font)) {
-            glyphs
-                .iter()
-                .filter_map(|glyph| {
-                    Some(PlacedCharacter {
-                        start: glyph.text_start as usize,
-                        end: glyph.text_end as usize,
-                        font: fonts.get(glyph.font_index as usize)?.as_ref(),
-                        x_offset: glyph.x_offset,
-                    })
-                })
-                .collect()
-        } else {
-            Vec::new()
-        };
-    if !characters.is_empty()
-        && try_fill_featured_text(context, text, x, y, &characters, &mut |context, font| {
-            font_state.set_font_if_changed(context, font);
-        })?
+    if fonts.iter().any(|font| font_state.font_has_features(font))
+        && try_fill_featured_glyph_run(context, text, x, y, fonts, glyphs, font_state)?
     {
         record_replay_batch_run(glyphs.len() as u64);
         return Ok(());
@@ -1264,6 +1247,37 @@ fn draw_text_run_glyphs<P: Painter>(
         context.fill_text(glyph_text, x + glyph.x_offset, y)?;
     }
     Ok(())
+}
+
+// Keep the temporary shaping buffer out of the ordinary glyph replay path.
+#[allow(clippy::too_many_arguments)]
+#[inline(never)]
+fn try_fill_featured_glyph_run<P: Painter>(
+    context: &P,
+    text: &str,
+    x: f64,
+    y: f64,
+    fonts: &[Rc<str>],
+    glyphs: &[crate::draw_command::GlyphRunStep],
+    font_state: &mut FontStateTracker,
+) -> Result<bool, P::Error> {
+    let characters: Vec<PlacedCharacter<'_>> = glyphs
+        .iter()
+        .filter_map(|glyph| {
+            Some(PlacedCharacter {
+                start: glyph.text_start as usize,
+                end: glyph.text_end as usize,
+                font: fonts.get(glyph.font_index as usize)?.as_ref(),
+                x_offset: glyph.x_offset,
+            })
+        })
+        .collect();
+    if characters.is_empty() {
+        return Ok(false);
+    }
+    try_fill_featured_text(context, text, x, y, &characters, &mut |context, font| {
+        font_state.set_font_if_changed(context, font);
+    })
 }
 
 /// One character of a text run as layout placed it: its byte range in the

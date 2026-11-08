@@ -389,7 +389,18 @@ impl ThemePart {
     }
 
     pub fn resolve_theme_token(&self, token: &str) -> Option<&str> {
+        // Concrete Latin face names cannot become a '+' token after trimming.
+        if token
+            .as_bytes()
+            .first()
+            .is_some_and(u8::is_ascii_alphanumeric)
+        {
+            return None;
+        }
         let token = token.trim();
+        if !token.starts_with('+') {
+            return None;
+        }
         for (key, fonts, slot) in [
             ("+mn-lt", &self.minor, 0),
             ("+mj-lt", &self.major, 0),
@@ -435,7 +446,7 @@ impl ThemePart {
         ]
         .into_iter()
         .any(|(face, theme)| match face.as_deref() {
-            Some(face) => face.trim().starts_with('+') && self.resolve_theme_token(face).is_some(),
+            Some(face) => self.resolve_theme_token(face).is_some(),
             None => theme
                 .as_deref()
                 .is_some_and(|key| self.resolve_theme_font(key).is_some()),
@@ -510,27 +521,22 @@ impl ThemePart {
             .iter_mut()
             .chain(props.ruby.iter_mut().filter_map(|ruby| ruby.fonts.as_mut()))
         {
-            let resolve_slot =
-                |slot: &mut Option<std::rc::Rc<str>>, theme_key: Option<&std::rc::Rc<str>>| {
-                    if let Some(value) = slot.as_deref() {
-                        if let Some(font) = self.resolve_theme_token(value) {
-                            *slot = Some(std::rc::Rc::from(font));
-                        }
-                    } else if let Some(theme_key) = theme_key {
-                        if let Some(font) = self.resolve_theme_font(theme_key) {
-                            *slot = Some(std::rc::Rc::from(font));
-                        }
+            let resolve_slot = |slot: &mut Option<std::rc::Rc<str>>, theme_key: Option<&str>| {
+                if let Some(value) = slot.as_deref() {
+                    if let Some(font) = self.resolve_theme_token(value) {
+                        *slot = Some(std::rc::Rc::from(font));
                     }
-                };
+                } else if let Some(theme_key) = theme_key {
+                    if let Some(font) = self.resolve_theme_font(theme_key) {
+                        *slot = Some(std::rc::Rc::from(font));
+                    }
+                }
+            };
 
-            let ascii_theme = fonts.ascii_theme.clone();
-            let h_ansi_theme = fonts.h_ansi_theme.clone();
-            let east_asia_theme = fonts.east_asia_theme.clone();
-            let complex_theme = fonts.complex_theme.clone();
-            resolve_slot(&mut fonts.ascii, ascii_theme.as_ref());
-            resolve_slot(&mut fonts.h_ansi, h_ansi_theme.as_ref());
-            resolve_slot(&mut fonts.east_asia, east_asia_theme.as_ref());
-            resolve_slot(&mut fonts.complex, complex_theme.as_ref());
+            resolve_slot(&mut fonts.ascii, fonts.ascii_theme.as_deref());
+            resolve_slot(&mut fonts.h_ansi, fonts.h_ansi_theme.as_deref());
+            resolve_slot(&mut fonts.east_asia, fonts.east_asia_theme.as_deref());
+            resolve_slot(&mut fonts.complex, fonts.complex_theme.as_deref());
         }
 
         if let Some(ruby) = props.ruby.as_mut() {
@@ -545,9 +551,9 @@ impl ThemePart {
             if let Some(family) = props
                 .fonts
                 .as_ref()
-                .and_then(|fonts| fonts.preferred_latin())
+                .and_then(|fonts| fonts.ascii.as_ref().or(fonts.h_ansi.as_ref()))
             {
-                props.font_family = Some(std::rc::Rc::from(family));
+                props.font_family = Some(family.clone());
             }
         }
     }
@@ -1055,6 +1061,13 @@ mod tests {
         );
         assert_eq!(theme.resolve_theme_font("MiNoReAsTaSiA"), Some("MS Mincho"));
         assert_eq!(theme.resolve_theme_token("  +MN-LT  "), Some("Aptos"));
+        assert_eq!(
+            theme.resolve_theme_token("\u{2003}+mN-lT\u{2003}"),
+            Some("Aptos")
+        );
+        for face in ["Aptos", "  Aptos  ", "ＭＳ 明朝", "", "+unknown"] {
+            assert_eq!(theme.resolve_theme_token(face), None, "{face}");
+        }
         assert_eq!(theme.resolve_theme_token("+mn-cs"), None);
         let mut inherited = RunProperties {
             fonts: Some(RunFonts {
