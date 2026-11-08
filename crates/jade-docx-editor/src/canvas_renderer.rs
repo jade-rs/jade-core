@@ -11561,23 +11561,31 @@ where
             }
 
             if let Some(props) = run.properties.as_ref() {
-                props.bold.hash(&mut hasher);
-                props.italic.hash(&mut hasher);
-                props.bold_complex.hash(&mut hasher);
-                props.italic_complex.hash(&mut hasher);
-                props.underline.hash(&mut hasher);
+                // Encode the three states separately, then hash the switches as
+                // one byte stream instead of mixing a usize per Option<bool>.
+                // Run switches are visited for every unchanged rendered run.
+                [
+                    props.bold,
+                    props.italic,
+                    props.bold_complex,
+                    props.italic_complex,
+                    props.underline,
+                    props.strike,
+                    props.double_strike,
+                    props.caps,
+                    props.small_caps,
+                    props.vanish,
+                    props.spec_vanish,
+                    props.shadow,
+                    props.outline,
+                    props.emboss,
+                    props.imprint,
+                    props.snap_to_grid,
+                ]
+                .map(|value| value.map_or(2, u8::from))
+                .hash(&mut hasher);
                 props.underline_kind.hash(&mut hasher);
                 props.underline_color.hash(&mut hasher);
-                props.strike.hash(&mut hasher);
-                props.double_strike.hash(&mut hasher);
-                props.caps.hash(&mut hasher);
-                props.small_caps.hash(&mut hasher);
-                props.vanish.hash(&mut hasher);
-                props.spec_vanish.hash(&mut hasher);
-                props.shadow.hash(&mut hasher);
-                props.outline.hash(&mut hasher);
-                props.emboss.hash(&mut hasher);
-                props.imprint.hash(&mut hasher);
                 props.east_asian_layout.hash(&mut hasher);
                 props
                     .text_effects
@@ -11602,7 +11610,6 @@ where
                 props.baseline.as_deref().hash(&mut hasher);
                 props.text_position.map(|v| v.to_bits()).hash(&mut hasher);
                 props.char_spacing.map(|v| v.to_bits()).hash(&mut hasher);
-                props.snap_to_grid.hash(&mut hasher);
                 props.kerning.map(|v| v.to_bits()).hash(&mut hasher);
                 props.text_scale.map(|v| v.to_bits()).hash(&mut hasher);
                 props.font_size.map(|v| v.to_bits()).hash(&mut hasher);
@@ -66696,6 +66703,56 @@ mod tests {
         assert_ne!(
             base,
             renderer.compute_paragraph_render_hash(&changed_geometry, &options, None)
+        );
+    }
+
+    #[test]
+    fn paragraph_render_hash_distinguishes_every_run_switch_state() {
+        let renderer = test_renderer();
+        let options = Options::default();
+        let paragraph = |properties| Paragraph {
+            runs: vec![build_run(Some(properties))],
+            properties: None,
+            node_id: None,
+            comment_ranges: Vec::new(),
+            comment_markers: Vec::new(),
+        };
+        let mut keys = std::collections::HashSet::new();
+        keys.insert(renderer.compute_paragraph_render_hash(
+            &paragraph(RunProperties::default()),
+            &options,
+            None,
+        ));
+        macro_rules! check_switches {
+            ($($field:ident),+ $(,)?) => {$(
+                for value in [false, true] {
+                    let properties = RunProperties {
+                        $field: Some(value),
+                        ..Default::default()
+                    };
+                    assert!(keys.insert(renderer.compute_paragraph_render_hash(
+                        &paragraph(properties), &options, None,
+                    )), "{}={value}", stringify!($field));
+                }
+            )+};
+        }
+        check_switches!(
+            bold,
+            italic,
+            bold_complex,
+            italic_complex,
+            underline,
+            strike,
+            double_strike,
+            caps,
+            small_caps,
+            vanish,
+            spec_vanish,
+            shadow,
+            outline,
+            emboss,
+            imprint,
+            snap_to_grid,
         );
     }
 
