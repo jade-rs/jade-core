@@ -214,6 +214,8 @@ where
         measurer.active_section_index = section;
         measurer.last_document = self.last_document.clone();
         measurer.styles_part = self.styles_part.clone();
+        measurer.math_settings = self.math_settings;
+        measurer.math_family = Rc::clone(&self.math_family);
         measurer.theme_part = self.theme_part.clone();
         measurer.current_doc_grid = self.current_doc_grid.clone();
         measurer.current_doc_grid_char_spacing_px = self.current_doc_grid_char_spacing_px;

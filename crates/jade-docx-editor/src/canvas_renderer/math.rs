@@ -173,6 +173,7 @@ where
 /// editor that needs to know where everything went.
 #[derive(Debug, Clone)]
 pub struct OwnedMathPlan {
+    pub alignment: jade_docx_layout::math_layout::MathParagraphAlignment,
     pub metrics: MathMetrics,
     /// The paragraph box display math reserves (font leading included).
     pub line_metrics: MathMetrics,
@@ -211,6 +212,7 @@ pub struct OwnedMathShape {
 impl OwnedMathPlan {
     pub fn from_plan(plan: &StyledMathLayout<'_>) -> Self {
         Self {
+            alignment: plan.alignment,
             metrics: plan.metrics,
             line_metrics: plan.line_metrics,
             text: plan.text.clone(),
