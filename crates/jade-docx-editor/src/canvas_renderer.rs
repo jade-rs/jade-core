@@ -23043,33 +23043,31 @@ where
                     content_height: line_height,
                     fragments: Rc::from([]),
                     break_range: wrapped_line.break_range,
-                    tab_leaders: Rc::from([]),
-                    tab_stops: Rc::from([]),
+                    tab_leaders: wrapped_line
+                        .leaders
+                        .iter()
+                        .map(|leader| TabLeaderLayout {
+                            start_x: leader.start_x,
+                            end_x: leader.end_x,
+                            leader: Self::tab_leader_name(leader.leader).to_string(),
+                        })
+                        .collect::<Vec<_>>()
+                        .into(),
+                    tab_stops: wrapped_line
+                        .tab_stops
+                        .iter()
+                        .map(|tab| TabStopLayout {
+                            start_offset: tab.start_offset,
+                            end_offset: tab.end_offset,
+                            start_x: tab.start_x,
+                            end_x: tab.end_x,
+                        })
+                        .collect::<Vec<_>>()
+                        .into(),
                     column_index: self.column_index,
                     vertical: false,
                     vertical_reversed: false,
                 };
-                line_layout.tab_leaders = wrapped_line
-                    .leaders
-                    .iter()
-                    .map(|leader| TabLeaderLayout {
-                        start_x: leader.start_x,
-                        end_x: leader.end_x,
-                        leader: Self::tab_leader_name(leader.leader).to_string(),
-                    })
-                    .collect::<Vec<_>>()
-                    .into();
-                line_layout.tab_stops = wrapped_line
-                    .tab_stops
-                    .iter()
-                    .map(|tab| TabStopLayout {
-                        start_offset: tab.start_offset,
-                        end_offset: tab.end_offset,
-                        start_x: tab.start_x,
-                        end_x: tab.end_x,
-                    })
-                    .collect::<Vec<_>>()
-                    .into();
                 Self::remap_line_selection_offsets_for_inline_objects(
                     &mut line_layout,
                     inline_images,
@@ -23172,8 +23170,27 @@ where
                 content_height,
                 fragments: Rc::from([]),
                 break_range: None,
-                tab_leaders: Rc::from([]),
-                tab_stops: Rc::from([]),
+                tab_leaders: wrapped_line
+                    .leaders
+                    .iter()
+                    .map(|leader| TabLeaderLayout {
+                        start_x: leader.start_x,
+                        end_x: leader.end_x,
+                        leader: Self::tab_leader_name(leader.leader).to_string(),
+                    })
+                    .collect::<Vec<_>>()
+                    .into(),
+                tab_stops: wrapped_line
+                    .tab_stops
+                    .iter()
+                    .map(|tab| TabStopLayout {
+                        start_offset: tab.start_offset,
+                        end_offset: tab.end_offset,
+                        start_x: tab.start_x,
+                        end_x: tab.end_x,
+                    })
+                    .collect::<Vec<_>>()
+                    .into(),
                 column_index: self.column_index,
                 vertical: false,
                 vertical_reversed: false,
@@ -23188,27 +23205,6 @@ where
                 })
                 .map(|cluster| cluster.width)
                 .unwrap_or(0.0);
-            line_layout.tab_leaders = wrapped_line
-                .leaders
-                .iter()
-                .map(|leader| TabLeaderLayout {
-                    start_x: leader.start_x,
-                    end_x: leader.end_x,
-                    leader: Self::tab_leader_name(leader.leader).to_string(),
-                })
-                .collect::<Vec<_>>()
-                .into();
-            line_layout.tab_stops = wrapped_line
-                .tab_stops
-                .iter()
-                .map(|tab| TabStopLayout {
-                    start_offset: tab.start_offset,
-                    end_offset: tab.end_offset,
-                    start_x: tab.start_x,
-                    end_x: tab.end_x,
-                })
-                .collect::<Vec<_>>()
-                .into();
 
             if !wrapped_line.leaders.is_empty() {
                 let context = self.host.painter();
