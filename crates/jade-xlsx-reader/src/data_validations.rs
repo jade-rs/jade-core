@@ -26,7 +26,8 @@ pub struct ValidationRecord {
     pub container: Range<usize>,
     pub index: usize,
     pub extended: bool,
-    /// The container is reached through markup compatibility alternatives.
+    /// The container is reached through compatibility alternatives or a
+    /// nominated ignorable ProcessContent wrapper.
     pub conditional: bool,
 }
 struct Container {
@@ -82,12 +83,14 @@ fn records(xml: &str, all_containers: bool) -> Result<Vec<ValidationRecord>> {
     let mut records = Vec::new();
     let mut alternates: Vec<(usize, bool)> = Vec::new();
     let mut transparent = BTreeSet::new();
+    let mut scope = crate::process_content::Scope::for_xml(xml);
     loop {
         let start = reader.buffer_position() as usize;
         let event = reader.read_event()?;
         match event {
             Event::Start(ref e) | Event::Empty(ref e) => {
                 let empty = matches!(event, Event::Empty(_));
+                scope.push(&reader, e)?;
                 let ns = match reader.resolver().resolve_element(e.name()).0 {
                     ResolveResult::Unbound => Vec::new(),
                     ResolveResult::Bound(n) => n.as_ref().to_vec(),
@@ -95,6 +98,17 @@ fn records(xml: &str, all_containers: bool) -> Result<Vec<ValidationRecord>> {
                 };
                 let name = local_name(e.name().as_ref()).to_vec();
                 let depth = stack.len();
+                let processed = container.is_none()
+                    && ns != MC_NAMESPACE
+                    && !ns.is_empty()
+                    && !supported_namespace(&ns)
+                    && scope.processes(&ns, &name);
+                if empty {
+                    scope.pop();
+                }
+                if processed && !empty {
+                    transparent.insert(depth);
+                }
                 if (container.is_none() || rule.is_some()) && ns == MC_NAMESPACE {
                     if name == b"AlternateContent" && !empty {
                         alternates.push((depth, false));
@@ -110,6 +124,7 @@ fn records(xml: &str, all_containers: bool) -> Result<Vec<ValidationRecord>> {
                         if (state.1 && !(all_containers && container.is_none())) || !supported {
                             if !empty {
                                 reader.read_to_end(e.name())?;
+                                scope.pop();
                             }
                             continue;
                         }
@@ -254,6 +269,7 @@ fn records(xml: &str, all_containers: bool) -> Result<Vec<ValidationRecord>> {
                 }
             }
             Event::End(_) => {
+                scope.pop();
                 if text.as_ref().is_some_and(|t| t.depth == stack.len()) {
                     let t = text.take().unwrap();
                     if let Some(r) = rule.as_mut() {
