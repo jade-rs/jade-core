@@ -24264,8 +24264,8 @@ where
                 } {
                     let properties_ref = prepared_segments
                         .last()
-                        .and_then(|prepared| prepared.segment.properties.as_deref());
-                    let style = self.apply_run_style(properties_ref)?;
+                        .and_then(|prepared| prepared.segment.properties.as_ref());
+                    let style = self.apply_run_style_rc(properties_ref)?;
                     let context = self.host.painter();
                     let mark_x = if cursor_x > line_start_x {
                         cursor_x + CONTROL_MARK_GAP_PX
