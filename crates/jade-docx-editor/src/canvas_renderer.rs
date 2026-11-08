@@ -2676,22 +2676,30 @@ fn paragraph_has_horizontal_float_wrap(paragraph: &Paragraph) -> bool {
     })
 }
 
-fn document_has_horizontal_float_wrap(document: &Document) -> bool {
-    document.body.as_ref().is_some_and(|body| {
-        body.elements.iter().any(|element| match element {
-            BodyElement::Paragraph(paragraph) => paragraph_has_horizontal_float_wrap(paragraph),
-            BodyElement::Table(table) => table::table_floats(table),
-            BodyElement::Math(_) => false,
-        })
-    })
+fn body_element_has_horizontal_float_wrap(element: &BodyElement) -> bool {
+    match element {
+        BodyElement::Paragraph(paragraph) => paragraph_has_horizontal_float_wrap(paragraph),
+        BodyElement::Table(table) => table::table_floats(table),
+        BodyElement::Math(_) => false,
+    }
 }
 
-/// Negative feature facts from the snapshot immediately before a local text
+fn horizontal_float_wrap_witness(document: &Document) -> Option<usize> {
+    document
+        .body
+        .as_ref()?
+        .elements
+        .iter()
+        .position(body_element_has_horizontal_float_wrap)
+}
+
+/// Feature facts from the snapshot immediately before a local text
 /// edit. Contains no document references, so it does not make `Rc::make_mut`
 /// copy or relocate the document.
 pub struct LocalTextEditCache {
     no_comment_anchors: bool,
     no_horizontal_float_wrap: bool,
+    horizontal_float_wrap_witness: Option<usize>,
 }
 
 /// Cache both answers for an immutable snapshot without retaining it. Release
@@ -2699,7 +2707,7 @@ pub struct LocalTextEditCache {
 #[derive(Default)]
 struct HorizontalFloatWrapCache {
     document: std::rc::Weak<Document>,
-    value: bool,
+    witness: Option<usize>,
     #[cfg(test)]
     scans: usize,
 }
@@ -2708,14 +2716,14 @@ impl HorizontalFloatWrapCache {
     fn get(&mut self, document: &Rc<Document>) -> bool {
         let identity = Rc::downgrade(document);
         if !self.document.ptr_eq(&identity) {
-            self.value = document_has_horizontal_float_wrap(document);
+            self.witness = horizontal_float_wrap_witness(document);
             self.document = identity;
             #[cfg(test)]
             {
                 self.scans += 1;
             }
         }
-        self.value
+        self.witness.is_some()
     }
 }
 
@@ -12973,22 +12981,25 @@ where
     /// this to `restore_local_text_edit_cache` after the recorded command proves
     /// it changed the text of one existing paragraph and no other story/part.
     pub fn local_text_edit_cache(&self) -> LocalTextEditCache {
+        let float_cache = self.last_document.as_ref().and_then(|document| {
+            self.horizontal_float_wrap_cache
+                .document
+                .ptr_eq(&Rc::downgrade(document))
+                .then_some(&self.horizontal_float_wrap_cache)
+        });
         LocalTextEditCache {
             no_comment_anchors: self.last_document.is_some()
                 && self.last_document_comment_anchors == Some(false),
-            no_horizontal_float_wrap: self.last_document.as_ref().is_some_and(|document| {
-                self.horizontal_float_wrap_cache
-                    .document
-                    .ptr_eq(&Rc::downgrade(document))
-                    && !self.horizontal_float_wrap_cache.value
-            }),
+            no_horizontal_float_wrap: float_cache.is_some_and(|cache| cache.witness.is_none()),
+            horizontal_float_wrap_witness: float_cache.and_then(|cache| cache.witness),
         }
     }
 
-    /// Reuse absence scans after a proven single-paragraph text edit, on this
+    /// Reuse feature scans after a proven single-paragraph text edit, on this
     /// same renderer with unchanged auxiliary stories. Recheck the new paragraph
     /// (including nested text boxes) before carrying either negative fact to the
-    /// edited immutable snapshot. Positive/unknown answers still rescan normally.
+    /// edited immutable snapshot. A positive float answer is reusable only if
+    /// its body element still wraps horizontally in the edited document.
     pub fn restore_local_text_edit_cache(
         &mut self,
         cache: LocalTextEditCache,
@@ -13004,13 +13015,22 @@ where
             self.last_document_comment_anchors = Some(false);
             self.last_document = Some(Rc::clone(document));
         }
-        if cache.no_horizontal_float_wrap && !paragraph_has_horizontal_float_wrap(paragraph) {
+        let witness = cache.horizontal_float_wrap_witness.filter(|&index| {
+            document
+                .body
+                .as_ref()
+                .and_then(|body| body.elements.get(index))
+                .is_some_and(body_element_has_horizontal_float_wrap)
+        });
+        if witness.is_some()
+            || (cache.no_horizontal_float_wrap && !paragraph_has_horizontal_float_wrap(paragraph))
+        {
             self.horizontal_float_wrap_cache.document = Rc::downgrade(document);
-            self.horizontal_float_wrap_cache.value = false;
+            self.horizontal_float_wrap_cache.witness = witness;
         }
     }
 
-    /// Carry negative feature facts across a newly recorded local command.
+    /// Carry feature facts across a newly recorded local command.
     /// The caller must submit only one text command, with no auxiliary-story
     /// edits between capture and restore. A stale undo entry is not proof that
     /// the current request changed this paragraph.
@@ -38708,6 +38728,7 @@ mod tests {
     use super::*;
 
     mod decoration_histories;
+    mod float_wrap_witness_tests;
     mod numbering_snapshot_histories;
     mod numbering_width_histories;
     mod paragraph_render_hash_tests;
@@ -40490,17 +40511,25 @@ mod tests {
     }
 
     #[test]
-    fn recorded_text_command_reuses_absence_scans_only_for_its_paragraph() {
+    fn recorded_text_command_reuses_feature_scans_only_for_its_paragraph() {
         use crate::commands::CommandExecutor;
         use crate::headless_api::apply_headless_commands_with_executor_to_document;
         use jade_docx_headless_api::{HeadlessCommand, HeadlessEditRequest};
 
         // A stale history entry must not authorize reuse after no new command;
         // paragraph splits and a different paragraph must keep fresh scans too.
-        for kind in 0..4 {
+        for (kind, has_float) in (0..4).flat_map(|kind| [(kind, false), (kind, true)]) {
             let (mut renderer, _) = recording_renderer();
-            let mut model =
-                WordDocument::from_document(doc_with_paragraph_texts(&vec!["plain"; 3000]));
+            let mut document = doc_with_paragraph_texts(&vec!["plain"; 3000]);
+            if has_float {
+                document.body.as_mut().unwrap().elements.extend(
+                    horizontal_wrap_textbox_document(WrapMode::Square)
+                        .body
+                        .unwrap()
+                        .elements,
+                );
+            }
+            let mut model = WordDocument::from_document(document);
             let options = Options::default();
             renderer
                 .render_with_numbering_rc(
@@ -40572,11 +40601,11 @@ mod tests {
             assert_eq!(
                 renderer.comment_anchor_document_scans.get(),
                 scans + expected_new_scans,
-                "kind={kind}"
+                "kind={kind} has_float={has_float}"
             );
             assert_eq!(
                 renderer.horizontal_float_wrap_cache.scans, expected_new_scans,
-                "kind={kind}"
+                "kind={kind} has_float={has_float}"
             );
             assert!(renderer
                 .layout_debug_lines()
@@ -40651,7 +40680,7 @@ mod tests {
     }
 
     #[test]
-    fn local_text_edit_cache_does_not_reuse_positive_or_unknown_answers() {
+    fn local_text_edit_cache_rechecks_positive_and_unknown_answers() {
         let (mut renderer, _) = recording_renderer();
         let mut document = horizontal_wrap_textbox_document(WrapMode::Square);
         document.body.as_mut().unwrap().elements[0]
@@ -40710,7 +40739,7 @@ mod tests {
             }),
             ..Document::default()
         };
-        assert!(document_has_horizontal_float_wrap(&drawing_document));
+        assert_eq!(horizontal_float_wrap_witness(&drawing_document), Some(0));
 
         let mut floating_table = jade_docx_reader::document::Table::default();
         floating_table
@@ -40722,10 +40751,11 @@ mod tests {
             }),
             ..Document::default()
         };
-        assert!(document_has_horizontal_float_wrap(&table_document));
-        assert!(!document_has_horizontal_float_wrap(
-            &doc_with_paragraph_texts(&["plain"])
-        ));
+        assert_eq!(horizontal_float_wrap_witness(&table_document), Some(0));
+        assert_eq!(
+            horizontal_float_wrap_witness(&doc_with_paragraph_texts(&["plain"])),
+            None
+        );
     }
 
     #[test]
