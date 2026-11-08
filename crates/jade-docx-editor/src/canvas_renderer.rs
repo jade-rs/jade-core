@@ -15923,7 +15923,7 @@ where
             display: true,
             max_width: Some(column_width),
             text_family: Some(self.math_text_family()),
-            settings: self.math_settings,
+            settings: self.display_math_settings(math),
             uniform: false,
             script_scales: Some(jade_docx_layout::math_layout::styled::WORD_SCRIPT_SCALES),
         };
@@ -28483,7 +28483,7 @@ where
                     let options = jade_docx_layout::math_layout::styled::MathLayoutOptions {
                         max_width: Some(width),
                         text_family: Some(self.math_text_family()),
-                        settings: self.math_settings,
+                        settings: self.display_math_settings(math),
                         script_scales: Some(
                             jade_docx_layout::math_layout::styled::WORD_SCRIPT_SCALES,
                         ),
@@ -28796,6 +28796,47 @@ where
             }
         }
         style
+    }
+
+    fn display_math_settings(
+        &self,
+        math: &MathParagraph,
+    ) -> jade_docx_layout::math_layout::styled::MathSettings {
+        use jade_docx_layout::math_layout::styled::MathJustification;
+        let mut settings = self.math_settings;
+        if !settings.use_display_defaults {
+            // dispDef=false uses text paragraph settings instead of defJc,
+            // wrapIndent and wrapRight. Explicit m:jc still wins in the planner.
+            let properties = math.properties.as_deref();
+            let styles = self.styles_part.as_deref();
+            let inherited = styles.and_then(|styles| {
+                styles.resolve_paragraph_properties(
+                    properties.and_then(|p| p.style.as_deref()).unwrap_or(""),
+                )
+            });
+            let defaults = styles.and_then(StylesPart::doc_default_paragraph_properties);
+            let bidi = properties
+                .and_then(|p| p.bidi)
+                .or_else(|| inherited.as_ref().and_then(|p| p.bidi))
+                .or_else(|| defaults.and_then(|p| p.bidi))
+                .unwrap_or(false);
+            let alignment = properties
+                .and_then(|p| p.alignment.as_deref())
+                .or_else(|| inherited.as_ref().and_then(|p| p.alignment.as_deref()))
+                .or_else(|| defaults.and_then(|p| p.alignment.as_deref()));
+            settings.default_justification = match alignment {
+                Some("center") => MathJustification::Center,
+                Some("right") => MathJustification::Right,
+                Some("left") => MathJustification::Left,
+                Some("end") if !bidi => MathJustification::Right,
+                Some("end") => MathJustification::Left,
+                _ if bidi => MathJustification::Right,
+                _ => MathJustification::Left,
+            };
+            settings.wrap_indent_px = 0.0;
+            settings.wrap_right = false;
+        }
+        settings
     }
 
     fn boxed_math_content_box(&self, math: &MathParagraph, left: f64, right: f64) -> (f64, f64) {
@@ -46666,6 +46707,148 @@ mod tests {
                 assert!((lines[0].fragments[0].x - drawn_x).abs() < 1e-9);
             }
         }
+    }
+
+    #[test]
+    fn display_math_without_special_defaults_uses_paragraph_alignment_in_body_and_boxes() {
+        use jade_docx_layout::math_layout::styled::MathJustification;
+        use jade_docx_layout::math_layout::MathParagraphAlignment;
+        for (paragraph_alignment, bidi, expected) in [
+            ("left", false, MathParagraphAlignment::Left),
+            ("center", false, MathParagraphAlignment::Center),
+            ("right", false, MathParagraphAlignment::Right),
+            ("start", true, MathParagraphAlignment::Right),
+            ("end", true, MathParagraphAlignment::Left),
+        ] {
+            for explicit in [false, true] {
+                let math_jc = if explicit {
+                    r#"<m:jc m:val="center"/>"#
+                } else {
+                    ""
+                };
+                let bidi = if bidi { "<w:bidi/>" } else { "" };
+                let xml = format!(
+                    r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><w:body><w:p><w:pPr><w:jc w:val="{paragraph_alignment}"/>{bidi}</w:pPr><m:oMathPara><m:oMathParaPr>{math_jc}</m:oMathParaPr><m:oMath><m:r><m:t>x</m:t></m:r></m:oMath></m:oMathPara></w:p></w:body></w:document>"#
+                );
+                let document = jade_docx_reader::DocumentParser::new()
+                    .parse_document_xml(&xml)
+                    .unwrap();
+                let blocks = &document.body.as_ref().unwrap().elements;
+                let BodyElement::Math(math) = &blocks[0] else {
+                    panic!("missing math")
+                };
+                let (mut renderer, _) = recording_renderer();
+                renderer.math_settings =
+                    math::settings_from(&jade_docx_reader::settings::MathProperties {
+                        display_default: Some(false),
+                        default_justification: Some("right".into()),
+                        wrap_indent: Some(1440.0),
+                        wrap_right: Some(true),
+                        ..Default::default()
+                    });
+                let settings = renderer.display_math_settings(math);
+                assert_eq!(settings.wrap_indent_px, 0.0);
+                assert!(!settings.wrap_right);
+                if paragraph_alignment == "center" {
+                    assert_eq!(settings.default_justification, MathJustification::Center);
+                }
+                let measured = renderer
+                    .measure_text_box_blocks(blocks, 10.0, 210.0, &mut NumberingCounter::new())
+                    .unwrap();
+                let expected = if explicit {
+                    MathParagraphAlignment::Center
+                } else {
+                    expected
+                };
+                assert_eq!(measured.math_plans[0].alignment, expected);
+                renderer.current_y = 100.0;
+                let left = renderer.current_column_x();
+                let width = renderer.current_column_width();
+                renderer.render_math_block(math).unwrap();
+                let lines = renderer.layout_debug_lines();
+                let advance = lines[0].fragments[0].width;
+                assert!((lines[0].start_x - expected.x(left, width, advance)).abs() < 1e-5);
+            }
+        }
+    }
+
+    #[test]
+    fn display_math_paragraph_alignment_inherits_styles_and_document_defaults() {
+        use jade_docx_layout::math_layout::MathParagraphAlignment;
+        for (styles, style_id, direct, expected) in [
+            (
+                r#"<w:docDefaults><w:pPrDefault><w:pPr><w:jc w:val="center"/></w:pPr></w:pPrDefault></w:docDefaults>"#,
+                None,
+                None,
+                MathParagraphAlignment::Center,
+            ),
+            (
+                r#"<w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:pPr><w:jc w:val="right"/></w:pPr></w:style>"#,
+                None,
+                None,
+                MathParagraphAlignment::Right,
+            ),
+            (
+                r#"<w:style w:type="paragraph" w:styleId="Base"><w:pPr><w:bidi/><w:jc w:val="end"/></w:pPr></w:style><w:style w:type="paragraph" w:styleId="Child"><w:basedOn w:val="Base"/></w:style>"#,
+                Some("Child"),
+                None,
+                MathParagraphAlignment::Left,
+            ),
+            (
+                r#"<w:style w:type="paragraph" w:styleId="Base"><w:pPr><w:bidi/><w:jc w:val="end"/></w:pPr></w:style><w:style w:type="paragraph" w:styleId="Child"><w:basedOn w:val="Base"/></w:style>"#,
+                Some("Child"),
+                Some("right"),
+                MathParagraphAlignment::Right,
+            ),
+        ] {
+            let mut math = jade_docx_reader::parser::math::parse_math_paragraph(
+                r#"<m:oMath xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><m:r><m:t>x</m:t></m:r></m:oMath>"#.into(),
+            ).unwrap();
+            math.properties = Some(Box::new(jade_docx_reader::ParagraphProperties {
+                style: style_id.map(Rc::from),
+                alignment: direct.map(Rc::from),
+                ..Default::default()
+            }));
+            let blocks = [BodyElement::Math(Box::new(math))];
+            let (mut renderer, _) = recording_renderer();
+            renderer.styles_part = Some(Rc::new(StylesPart::from_xml(&format!(
+                r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">{styles}</w:styles>"#
+            )).unwrap()));
+            renderer.math_settings =
+                math::settings_from(&jade_docx_reader::settings::MathProperties {
+                    display_default: Some(false),
+                    ..Default::default()
+                });
+            let measured = renderer
+                .measure_text_box_blocks(&blocks, 10.0, 210.0, &mut NumberingCounter::new())
+                .unwrap();
+            assert_eq!(measured.math_plans[0].alignment, expected);
+        }
+    }
+
+    #[test]
+    fn display_math_wrapping_ignores_disabled_math_indent_and_flush_right() {
+        let math = jade_docx_reader::parser::math::parse_math_paragraph(
+            r#"<m:oMath xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><m:r><m:t>a=b+c+d+e+f+g+h</m:t></m:r></m:oMath>"#.into(),
+        ).unwrap();
+        let blocks = [BodyElement::Math(Box::new(math))];
+        let painter = jade_painter::recording::RecordingPainter::with_width_per_char(8.0);
+        let mut renderer =
+            CanvasRenderer::with_host(Box::new(NonCanvasHost { painter }), true).unwrap();
+        renderer.math_settings = math::settings_from(&jade_docx_reader::settings::MathProperties {
+            display_default: Some(false),
+            wrap_indent: Some(3000.0),
+            wrap_right: Some(true),
+            default_justification: Some("centerGroup".into()),
+            ..Default::default()
+        });
+        let measured = renderer
+            .measure_text_box_blocks(&blocks, 10.0, 74.0, &mut NumberingCounter::new())
+            .unwrap();
+        let lines = &measured.math_plans[0].lines;
+        assert!(lines.len() > 1);
+        assert!(lines.iter().all(|line| line.x.abs() < 1e-9));
+        assert!(lines.iter().all(|line| line.width <= 64.0));
     }
 
     #[test]

@@ -402,6 +402,14 @@ fn display_math_margins_narrow_wrapping_and_drop_an_excess_left_margin() {
     assert_eq!(settings.display_content_box(10.0, 140.0), (50.0, 80.0));
     assert_eq!(settings.display_content_box(10.0, 50.0), (10.0, 30.0));
     assert_eq!(settings.display_content_box(10.0, 10.0), (10.0, 1.0));
+    assert_eq!(
+        MathSettings {
+            use_display_defaults: false,
+            ..settings
+        }
+        .display_content_box(10.0, 140.0),
+        (10.0, 140.0)
+    );
     let math = parse("<m:r><m:t>a=b+c+d+e+f+g+h</m:t></m:r>");
     let options = MathLayoutOptions {
         max_width: Some(400.0),

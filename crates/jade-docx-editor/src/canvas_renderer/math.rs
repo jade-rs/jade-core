@@ -82,8 +82,11 @@ pub(super) fn settings_from(
     properties: &jade_docx_reader::settings::MathProperties,
 ) -> jade_docx_layout::math_layout::styled::MathSettings {
     use jade_docx_layout::math_layout::styled::{BreakBinary, MathJustification, MathSettings};
-    let mut settings = MathSettings::default();
-    if properties.display_default != Some(false) {
+    let mut settings = MathSettings {
+        use_display_defaults: properties.display_default != Some(false),
+        ..Default::default()
+    };
+    if settings.use_display_defaults {
         let px = |twips: Option<f32>| f64::from(twips.unwrap_or(0.0)) / 15.0;
         settings.display_margins_px = (px(properties.left_margin), px(properties.right_margin));
     }
