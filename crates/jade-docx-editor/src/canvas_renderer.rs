@@ -88,6 +88,19 @@ use web_sys::{
     WorkerGlobalScope,
 };
 
+fn append_style_reference_text(text: &mut String, run_text: &str) {
+    // ASCII controls, DEL and the C2 prefix cover every Unicode control
+    // character. Ordinary runs can copy UTF-8 without re-encoding it.
+    if run_text
+        .bytes()
+        .any(|byte| byte < 0x20 || byte == 0x7f || byte == 0xc2)
+    {
+        text.extend(run_text.chars().filter(|ch| !ch.is_control()));
+    } else {
+        text.push_str(run_text);
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 struct SectionSeekGeometry {
     size_and_top: (f64, f64, f64),
@@ -18600,12 +18613,11 @@ where
                 .as_ref()
                 .and_then(|properties| properties.style.clone());
             if style.is_some() {
-                let text: String = paragraph
-                    .runs
-                    .iter()
-                    .flat_map(|run| run.text.chars())
-                    .filter(|ch| !ch.is_control())
-                    .collect();
+                let mut text =
+                    String::with_capacity(paragraph.runs.iter().map(|run| run.text.len()).sum());
+                for run in &paragraph.runs {
+                    append_style_reference_text(&mut text, &run.text);
+                }
                 self.styled_paragraphs.insert(
                     paragraph_index,
                     (self.current_page_number.max(1), style, text),
@@ -32279,6 +32291,7 @@ where
         }
     }
 
+    #[inline]
     fn resolved_style_fill_color(
         &self,
         style: &AppliedRunStyle,
@@ -39855,6 +39868,27 @@ fn continues_field(runs: &[Run], previous_index: Option<usize>, index: usize) ->
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn style_reference_text_filters_controls_and_preserves_unicode() {
+        let mut actual = String::new();
+        let runs = [
+            "見出し 😀",
+            "A\tB\nC\r\u{7f}D",
+            "\u{80}x\u{9f}\u{a0}é",
+            "\u{200d}終",
+        ];
+        for run in runs {
+            append_style_reference_text(&mut actual, run);
+        }
+        let expected: String = runs
+            .into_iter()
+            .flat_map(str::chars)
+            .filter(|ch| !ch.is_control())
+            .collect();
+        assert_eq!(actual, expected);
+        assert_eq!(actual, "見出し 😀ABCDx\u{a0}é\u{200d}終");
+    }
 
     mod decoration_histories;
     mod numbering_snapshot_histories;

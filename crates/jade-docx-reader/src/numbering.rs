@@ -1263,18 +1263,41 @@ fn multilevel_preset_levels(preset: MultilevelListPreset) -> Vec<NumberingLevel>
 // numbering model need an owned String; escaped or invalid values retain the
 // same unescaping and lossy fallback behavior as before.
 fn attr_value<'a>(e: &'a BytesStart<'_>, key: &[u8]) -> Option<Cow<'a, str>> {
-    for attr in e.attributes().flatten() {
-        if attr.key.as_ref() == key {
-            return Some(
-                attr.normalized_value(quick_xml::XmlVersion::Implicit1_0)
-                    .unwrap_or_else(|_| {
-                        Cow::Owned(String::from_utf8_lossy(&attr.value).into_owned())
-                    }),
-            );
+    // Avoid the checked iterator's per-lookup allocation on ordinary short
+    // attribute lists. Replay malformed or duplicate lists with its original
+    // recovery behavior before accepting a later key.
+    let mut seen = [b"".as_slice(); 8];
+    let mut seen_len = 0;
+    let mut attributes = e.attributes();
+    attributes.with_checks(false);
+    let attr = loop {
+        match attributes.next() {
+            Some(Ok(attr)) if !seen[..seen_len].contains(&attr.key.into_inner()) => {
+                if attr.key.as_ref() == key {
+                    break attr;
+                }
+                if seen_len == seen.len() {
+                    break e
+                        .attributes()
+                        .flatten()
+                        .find(|attr| attr.key.as_ref() == key)?;
+                }
+                seen[seen_len] = attr.key.into_inner();
+                seen_len += 1;
+            }
+            Some(_) => {
+                break e
+                    .attributes()
+                    .flatten()
+                    .find(|attr| attr.key.as_ref() == key)?
+            }
+            None => return None,
         }
-    }
-
-    None
+    };
+    Some(
+        attr.normalized_value(quick_xml::XmlVersion::Implicit1_0)
+            .unwrap_or_else(|_| Cow::Owned(String::from_utf8_lossy(&attr.value).into_owned())),
+    )
 }
 
 fn ensure_run_props(level: &mut NumberingLevel) -> &mut RunProperties {
@@ -1940,6 +1963,40 @@ mod additional_word_number_format_tests {
 #[cfg(test)]
 mod tests {
     use super::{NumberingCounter, NumberingPart};
+
+    #[test]
+    fn attribute_fast_path_preserves_checked_lookup_recovery_and_normalization() {
+        use quick_xml::events::BytesStart;
+        for source in [
+            r#"lvl a="1" w:val="&#x32;""#,
+            r#"lvl a="1" a="2" w:val="&#x32;""#,
+            r#"lvl w:val="1" w:val="2""#,
+            r#"lvl a="1" invalid w:val="2""#,
+            r#"lvl a="1" b="2" c="3" d="4" e="5" f="6" g="7" h="8" i="9" w:val="2""#,
+            r#"lvl w:val="a&#x9;b&amp;c""#,
+            r#"lvl w:val="&invalid;""#,
+        ] {
+            let event = BytesStart::from_content(source, 3);
+            for key in [b"w:val".as_slice(), b"a", b"missing"] {
+                let checked = event
+                    .attributes()
+                    .flatten()
+                    .find(|attr| attr.key.as_ref() == key)
+                    .map(|attr| {
+                        attr.normalized_value(quick_xml::XmlVersion::Implicit1_0)
+                            .unwrap_or_else(|_| {
+                                String::from_utf8_lossy(&attr.value).into_owned().into()
+                            })
+                            .into_owned()
+                    });
+                assert_eq!(
+                    super::attr_value(&event, key).map(|value| value.into_owned()),
+                    checked,
+                    "{source}"
+                );
+            }
+        }
+    }
 
     #[test]
     fn original_toc_child_first_list_retains_the_implicit_parent_number() {

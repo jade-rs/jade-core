@@ -1668,8 +1668,7 @@ impl<P: Painter<Error: PainterError>> TableLineWrapContext<'_, P> {
             let mut writer = TableWrapHashWriter(FxHasher::default());
             text.hash(&mut writer.0);
             for run in run_styles {
-                if serde_json::to_writer(
-                    &mut writer,
+                if ciborium::ser::into_writer(
                     &(
                         run.start,
                         run.end,
@@ -1677,6 +1676,7 @@ impl<P: Painter<Error: PainterError>> TableLineWrapContext<'_, P> {
                         run.revision.as_ref(),
                         run.hyperlink.as_ref(),
                     ),
+                    &mut writer,
                 )
                 .is_err()
                 {
@@ -9541,18 +9541,18 @@ fn table_autofit_cache_signature(
     config: Option<&LayoutConfig>,
 ) -> Option<TableAutofitCacheSignature> {
     // A table's key runs to kilobytes: start there rather than growing from
-    // serde_json's 128 bytes on every paint.
+    // a small serializer buffer on every paint.
     let mut bytes = Vec::with_capacity(4096);
     // Cached gutter metrics are Windows-specific; switching policy must miss.
     bytes.push(u8::from(
         jade_docx_layout::line_metrics::word_layout_platform()
             == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows,
     ));
-    serde_json::to_writer(&mut bytes, table).ok()?;
+    ciborium::ser::into_writer(table, &mut bytes).ok()?;
     if let Some(config) = config {
         bytes.push(u8::from(config.override_table_style_font_size));
-        bytes.extend_from_slice(&serde_json::to_vec(&config.styles_part).ok()?);
-        bytes.extend_from_slice(&serde_json::to_vec(&config.theme_part).ok()?);
+        ciborium::ser::into_writer(&config.styles_part, &mut bytes).ok()?;
+        ciborium::ser::into_writer(&config.theme_part, &mut bytes).ok()?;
     }
     // `resolved_style` is intentionally skipped by the document serializer but
     // affects table and first-row typography, so retain it in the cache key.
@@ -9571,7 +9571,7 @@ fn table_autofit_cache_signature(
                         if let Some(props) = &run.properties {
                             let direct = &props.direct_font_properties;
                             bytes.push(u8::from(direct.known));
-                            bytes.extend_from_slice(&serde_json::to_vec(&direct.fonts).ok()?);
+                            ciborium::ser::into_writer(&direct.fonts, &mut bytes).ok()?;
                             for size in [direct.font_size, direct.font_size_complex] {
                                 bytes.push(u8::from(size.is_some()));
                                 if let Some(size) = size {

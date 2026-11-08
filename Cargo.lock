@@ -1928,6 +1928,7 @@ dependencies = [
  "base64",
  "bumpalo",
  "cfb",
+ "ciborium",
  "console_error_panic_hook",
  "emf-core",
  "encoding_rs",

@@ -422,6 +422,27 @@ impl DocumentSettings {
         name: &[u8],
         attributes: impl Iterator<Item = quick_xml::events::attributes::Attribute<'a>>,
     ) {
+        if !matches!(
+            name,
+            b"mathFont"
+                | b"brkBin"
+                | b"brkBinSub"
+                | b"smallFrac"
+                | b"dispDef"
+                | b"lMargin"
+                | b"rMargin"
+                | b"defJc"
+                | b"preSp"
+                | b"postSp"
+                | b"interSp"
+                | b"intraSp"
+                | b"wrapIndent"
+                | b"wrapRight"
+                | b"intLim"
+                | b"naryLim"
+        ) {
+            return;
+        }
         let value = attributes
             .filter(|attr| local_name(attr.key.as_ref()) == b"val")
             .map(|attr| String::from_utf8_lossy(&attr.value).to_string())

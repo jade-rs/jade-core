@@ -2594,7 +2594,7 @@ impl WordDocument {
             }
             Self::resolve_hyperlinks(&mut parsed_doc, &doc_part);
 
-            let mut theme_part: Option<ThemePart> = None;
+            let theme_part = reading_theme.clone();
             let mut font_table_part: Option<jade_docx_reader::FontTablePart> = None;
 
             // `parsed_doc.header_reference` / `footer_reference` only track the
@@ -2679,7 +2679,7 @@ impl WordDocument {
 
             let mut footnotes_map: BTreeMap<String, crate::document::Note> = BTreeMap::new();
             let mut endnotes_map: BTreeMap<String, crate::document::Note> = BTreeMap::new();
-            let mut doc_settings = DocumentSettings::default();
+            let doc_settings = reading_settings.clone();
             let mut loaded_comments_part: Option<CommentsPart> = None;
             let mut comments_extended_xml: Option<String> = None;
 
@@ -2777,24 +2777,11 @@ impl WordDocument {
                             .map(|note| (note.id.clone(), note))
                             .collect();
                     }
-                } else if rel_type == RelationshipTypes::Settings.as_str() {
-                    let target_path = Self::resolve_target_path(&doc_part.path, &rel.target);
-                    document.load_part(&target_path)?;
-
-                    if let Some(part) = document.parts.get(&target_path) {
-                        if let Ok(settings) = DocumentSettings::from_xml(&part.content) {
-                            doc_settings = settings;
-                        }
-                    }
-                } else if rel_type == RelationshipTypes::Theme.as_str() {
-                    let target_path = Self::resolve_target_path(&doc_part.path, &rel.target);
-                    document.load_part(&target_path)?;
-
-                    if let Some(part) = document.parts.get(&target_path) {
-                        if let Ok(theme) = ThemePart::from_xml(&part.content) {
-                            theme_part = Some(theme);
-                        }
-                    }
+                } else if rel_type == RelationshipTypes::Settings.as_str()
+                    || rel_type == RelationshipTypes::Theme.as_str()
+                {
+                    // Loaded before the main story so color mapping is already
+                    // active. Reuse that parse for the resulting document.
                 } else if rel_type == RelationshipTypes::FontTable.as_str() {
                     let target_path = Self::resolve_target_path(&doc_part.path, &rel.target);
                     document.load_part(&target_path)?;
@@ -8383,6 +8370,18 @@ impl WordDocument {
             return target.to_string();
         }
 
+        if !target.is_empty() && !target.contains('/') && target != "." && target != ".." {
+            return match base_path.rsplit_once('/') {
+                Some((directory, _)) => {
+                    let mut path = String::with_capacity(directory.len() + 1 + target.len());
+                    path.push_str(directory);
+                    path.push('/');
+                    path.push_str(target);
+                    path
+                }
+                _ => target.to_owned(),
+            };
+        }
         let mut base_segments: Vec<&str> = base_path.split('/').collect();
         if !base_segments.is_empty() {
             base_segments.pop(); // remove file name
