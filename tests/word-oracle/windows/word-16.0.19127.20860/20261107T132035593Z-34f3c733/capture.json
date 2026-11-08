@@ -1,0 +1,55 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261107T132035593Z-34f3c733",
+  "captured_at_utc": "2026-11-07T13:20:35.6109798Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20860",
+    "file_version": "16.0.19127.20860",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "9bafe09d0c458006744b9edce767a328ba2da1bb5d9a460e5830c47bf6d7f1d1"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-edge-table-negative-spacing-autofit-unequal-3-compat14",
+      "source": "..\\decimal-anchor-core\\public\\fixtures\\word-windows-edge-table-negative-spacing-autofit-unequal-3-compat14.docx",
+      "sha256": "8b55c2e136e2cfc2d9f2870f53ad86f9cf6053d8db81641e629453e4c23385d2",
+      "pdf": "word-windows-edge-table-negative-spacing-autofit-unequal-3-compat14.pdf",
+      "pdf_sha256": "25faee28b0ca8e752f4a229cd894017e3c76d2ca23f14a1709a33f042287a58a",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-negative-spacing-autofit-unequal-3-compat14.page-001.emf",
+          "sha256": "e014ca183a7eb47a63befdde9f37906d6b263f82964e75fd479255899785df64",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-negative-spacing-bidi-unequal-3-compat14",
+      "source": "..\\decimal-anchor-core\\public\\fixtures\\word-windows-edge-table-negative-spacing-bidi-unequal-3-compat14.docx",
+      "sha256": "aa656c0bb32c8f11d9004246135445276ed0db25c672c61355d23ba5ec83a0ff",
+      "pdf": "word-windows-edge-table-negative-spacing-bidi-unequal-3-compat14.pdf",
+      "pdf_sha256": "5a8005a16ff1e68ec21cbfa0d23f92a8ee3ff79a08f2c04a3637f962a655a637",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-negative-spacing-bidi-unequal-3-compat14.page-001.emf",
+          "sha256": "5c7aae3df51f01d3cc9cad9148903dd514c014f2513d2600c4550c94313a4248",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    }
+  ],
+  "table_glyph_projection": "unclipped"
+}

@@ -48,6 +48,27 @@ class NativeMacosWorkflowTest < Minitest::Test
     assert_includes cached_workspaces, ". -> target/native-macos"
   end
 
+  def test_every_native_mac_job_prepares_verified_skia_before_cargo
+    %w[word-mac-coordinates native-macos xlsx-native].each do |name|
+      job = @workflow.fetch("jobs").fetch(name)
+      assert_equal "macos-latest", job.fetch("runs-on")
+      steps = job.fetch("steps")
+      preparation = steps.index { |step| step["name"] == "Prepare verified macOS Skia binaries" }
+      refute_nil preparation, name
+      step = steps.fetch(preparation)
+      refute step.key?("if"), name
+      refute step.fetch("continue-on-error", false), name
+      assert_equal "${{ github.token }}", step.fetch("env").fetch("GH_TOKEN"), name
+      assert_includes step.fetch("run"), "scripts/ci/prepare_macos_skia.py"
+      assert_includes step.fetch("run"), '--output "$RUNNER_TEMP/'
+      first_cargo = steps.index do |item|
+        item.fetch("run", "").lines.any? { |line| line.strip.start_with?("cargo ") }
+      end
+      refute_nil first_cargo, name
+      assert_operator preparation, :<, first_cargo, name
+    end
+  end
+
   def test_mac_coordinate_gate_is_unconditional_and_uses_locked_dependencies
     step = @steps.find { |item| item["name"] == "Verify unadjusted Word for Mac probe coordinates" }
     refute_nil step
@@ -87,6 +108,78 @@ class NativeMacosWorkflowTest < Minitest::Test
     refute step.fetch("continue-on-error", false)
     assert_includes step.fetch("run"), "--locked --test word_windows_coordinates windows_word_baselines_with_bundled_standins"
     assert_includes step.fetch("run"), "--exact"
+    origins = job.fetch("steps").find do |item|
+      item["name"] == "Compare Windows Word paragraph and script origins with installed Arial"
+    end
+    refute_nil origins
+    refute origins.key?("if")
+    refute origins.fetch("continue-on-error", false)
+    assert_includes origins.fetch("run"), "--locked --test word_windows_coordinates windows_word_arial_edge_origins"
+    assert_includes origins.fetch("run"), "--exact"
+    refute_includes origins.fetch("run"), "--skip"
+    refute_includes origins.fetch("run"), "--ignored"
+    editing = job.fetch("steps").find do |item|
+      item["name"] == "Preserve spaced table geometry through editing and export"
+    end
+    refute_nil editing
+    refute editing.key?("if")
+    refute editing.fetch("continue-on-error", false)
+    assert_includes editing.fetch("run"), "--locked --test word_windows_coordinates spaced_tables_preserve_origins_after_edit_export_and_undo"
+    assert_includes editing.fetch("run"), "--exact"
+    refute_includes editing.fetch("run"), "--skip"
+    refute_includes editing.fetch("run"), "--ignored"
+  end
+
+  def test_windows_editing_and_font_reuse_cannot_silently_stop_running
+    job = @workflow.fetch("jobs").fetch("windows-native-editing")
+    assert_equal "windows-latest", job.fetch("runs-on")
+    refute job.key?("if")
+    refute job.key?("needs")
+    refute job.fetch("continue-on-error", false)
+    steps = job.fetch("steps")
+    {
+      "Verify Windows font reuse and rendering" => %w[windows_font_reuse font_styles opentype_features],
+      "Verify Windows native editing histories" => %w[native_document tables typing_differential]
+    }.each do |name, suites|
+      step = steps.find { |item| item["name"] == name }
+      refute_nil step, "missing #{name}"
+      refute step.key?("if")
+      refute step.fetch("continue-on-error", false)
+      command = step.fetch("run")
+      assert_includes command, "--locked"
+      assert_includes command, "--test-threads=1"
+      suites.each { |suite| assert_includes command, "--test #{suite}" }
+      refute_includes command, "--skip"
+      refute_includes command, "--ignored"
+    end
+  end
+
+  def test_windows_vector_border_comparison_is_required
+    job = @workflow.fetch("jobs").fetch("windows-word-baselines")
+    {
+      "Install pinned vector border verifier" => "requirements-borders.txt",
+      "Verify border displacement and missing-paint rejection cases" => "test_windows_borders.py",
+      "Build vector drawing probe" => "--locked --example word_coordinates",
+      "Compare Windows table borders with every registered Word version" => "compare_windows_borders.py --index tests/word-oracle/windows/index.json"
+    }.each do |name, command|
+      step = job.fetch("steps").find { |item| item["name"] == name }
+      refute_nil step, "missing #{name}"
+      refute step.key?("if")
+      refute step.fetch("continue-on-error", false)
+      assert_includes step.fetch("run"), command
+      refute_includes step.fetch("run"), "--skip"
+    end
+  end
+
+  def test_lean_api_download_retains_the_pinned_checksum
+    step = @workflow.fetch("jobs").fetch("crdt-worker-proof").fetch("steps").find do |item|
+      item["name"] == "Install pinned Lean toolchain manager"
+    end
+    assert_equal "${{ github.token }}", step.fetch("env").fetch("GH_TOKEN")
+    command = step.fetch("run")
+    assert_includes command, "releases/assets/529114798"
+    assert_includes command, "42b94d4244e8353142c456ec0e4ca6528fd898a6c604d4059f494e706e431f63  elan.tar.gz"
+    assert_includes command, "sha256sum --check"
   end
 
   private

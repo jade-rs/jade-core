@@ -44,6 +44,8 @@ pub struct SheetSpills {
 /// `withdraw_recalculation` — the values are a complete recalculation's
 /// own — the workbook stops asking for a full calculation on load, which
 /// writing cells would otherwise request.
+/// Declared dynamic arrays require a proven metadata link; unsupported
+/// existing metadata returns `WriteError::ArrayMetadata`.
 pub fn write_spills(
     original: &[u8],
     sheets: &[SheetSpills],
@@ -76,12 +78,14 @@ pub fn write_spills(
     if !marks {
         return Ok(package.write()?);
     }
-    let cm = dynamic_array_metadata(&mut package)?;
+    let cm = dynamic_array_metadata(&mut package)?.ok_or(crate::WriteError::ArrayMetadata(
+        "existing metadata cannot represent this dynamic array",
+    ))?;
     for sheet in sheets.iter().filter(|sheet| !sheet.ranges.is_empty()) {
         let Some(xml) = package.part_str(&sheet.part_name)? else {
             continue;
         };
-        let marked = mark_array_formulas(&xml, &sheet.ranges, cm)?;
+        let marked = mark_array_formulas(&xml, &sheet.ranges, Some(cm))?;
         package.replace(&sheet.part_name, marked.into_bytes());
     }
     Ok(package.write()?)
@@ -91,6 +95,7 @@ pub fn write_spills(
 /// the cell when given. An anchor without a formula, or with a shared one,
 /// is left as it is.
 pub fn mark_array_formulas(xml: &str, ranges: &[ArrayRange], cm: Option<u32>) -> Result<String> {
+    let owned = jade_xlsx_reader::cell_content::worksheet_source(xml)?;
     let mut reader = Reader::from_str(xml);
     reader.config_mut().trim_text(false);
     let mut buf = Vec::new();
@@ -102,7 +107,9 @@ pub fn mark_array_formulas(xml: &str, ranges: &[ArrayRange], cm: Option<u32>) ->
         let event = reader.read_event_into(&mut buf)?;
         let end = reader.buffer_position() as usize;
         match event {
-            Event::Start(ref element) if local(element.name().as_ref()) == b"c" => {
+            Event::Start(ref element)
+                if owned.owns_start(start) && local(element.name().as_ref()) == b"c" =>
+            {
                 let reference = attribute(element, b"r")?;
                 open = ranges
                     .iter()
@@ -119,7 +126,7 @@ pub fn mark_array_formulas(xml: &str, ranges: &[ArrayRange], cm: Option<u32>) ->
                     .transpose()?;
             }
             Event::Start(ref element) | Event::Empty(ref element)
-                if local(element.name().as_ref()) == b"f" =>
+                if owned.owns_start(start) && local(element.name().as_ref()) == b"f" =>
             {
                 if let Some((range, head)) = open.take() {
                     let shared = attribute(element, b"t")?.as_deref() == Some("shared");
@@ -138,7 +145,11 @@ pub fn mark_array_formulas(xml: &str, ranges: &[ArrayRange], cm: Option<u32>) ->
                     }
                 }
             }
-            Event::End(ref element) if local(element.name().as_ref()) == b"c" => open = None,
+            Event::End(ref element)
+                if owned.owns_end(start) && local(element.name().as_ref()) == b"c" =>
+            {
+                open = None
+            }
             Event::Eof => break,
             _ => {}
         }
@@ -149,8 +160,8 @@ pub fn mark_array_formulas(xml: &str, ranges: &[ArrayRange], cm: Option<u32>) ->
 
 /// The 1-based cell-metadata index that marks a dynamic array: the
 /// workbook's own `XLDAPR` entry, or a metadata part added with one. A
-/// metadata part without one gives `None`, and the formula is written as a
-/// fixed-size array.
+/// existing metadata part can gain new records without renumbering its old
+/// entries. Unsupported ambiguous/dangling metadata gives `None`.
 pub fn dynamic_array_metadata(package: &mut OpcPackage) -> Result<Option<u32>> {
     let workbook = crate::workbook_part_name(package)?;
     let rels_name = jade_opc::rels_part_name(&workbook);
@@ -162,57 +173,48 @@ pub fn dynamic_array_metadata(package: &mut OpcPackage) -> Result<Option<u32>> {
         None => None,
     };
     if let Some(part) = existing {
-        return Ok(match package.part_str(&part)? {
-            Some(xml) => dynamic_array_index(&xml)?,
-            None => None,
-        });
+        let Some(xml) = package.part_str(&part)? else {
+            return Ok(None);
+        };
+        if let Some(index) = dynamic_array_index(&xml)? {
+            return Ok(Some(index));
+        }
+        if let Some((xml, index)) = crate::array_metadata::append_dynamic(&xml, package, &workbook)?
+        {
+            package.replace(&part, xml.into_bytes());
+            return Ok(Some(index));
+        }
+        return Ok(None);
     }
-    let part = jade_opc::resolve_target(&workbook, "metadata.xml");
+    let Some(index) = crate::array_metadata::unused_cell_metadata_index(package, &workbook)? else {
+        return Err(crate::WriteError::ArrayMetadata(
+            "cannot create metadata without reinterpreting existing unresolved cell links",
+        ));
+    };
+    let mut target = "metadata.xml".to_string();
+    let mut suffix = 0u64;
+    while package
+        .part(&jade_opc::resolve_target(&workbook, &target))
+        .is_some()
+    {
+        suffix += 1;
+        target = format!("metadata{suffix}.xml");
+    }
+    let part = jade_opc::resolve_target(&workbook, &target);
     package.replace(&part, METADATA.as_bytes().to_vec());
-    let (rels, _) = add_relationship(rels.as_deref(), SHEET_METADATA, "metadata.xml")?;
+    let (rels, _) = add_relationship(rels.as_deref(), SHEET_METADATA, &target)?;
     package.replace(&rels_name, rels.into_bytes());
     ensure_override(package, &part, METADATA_CONTENT_TYPE)?;
-    Ok(Some(1))
+    Ok(Some(index))
 }
 
-/// Which cell-metadata block of `xml` (1-based) points at the `XLDAPR`
-/// metadata type.
+/// Resolves the referenced dynamic-array flag, not merely its metadata type.
 fn dynamic_array_index(xml: &str) -> Result<Option<u32>> {
-    let mut reader = Reader::from_str(xml);
-    let mut buf = Vec::new();
-    let mut types = 0u32;
-    let mut dynamic_type: Option<u32> = None;
-    let mut in_cell_metadata = false;
-    let mut blocks = 0u32;
-    loop {
-        match reader.read_event_into(&mut buf)? {
-            Event::Start(ref element) | Event::Empty(ref element) => {
-                match local(element.name().as_ref()) {
-                    b"metadataType" => {
-                        types += 1;
-                        if attribute(element, b"name")?.as_deref() == Some("XLDAPR") {
-                            dynamic_type = Some(types);
-                        }
-                    }
-                    b"cellMetadata" => in_cell_metadata = true,
-                    b"bk" if in_cell_metadata => blocks += 1,
-                    b"rc" if in_cell_metadata => {
-                        let kind = attribute(element, b"t")?.and_then(|t| t.parse::<u32>().ok());
-                        if kind.is_some() && kind == dynamic_type {
-                            return Ok(Some(blocks));
-                        }
-                    }
-                    _ => {}
-                }
-            }
-            Event::End(ref element) if local(element.name().as_ref()) == b"cellMetadata" => {
-                in_cell_metadata = false;
-            }
-            Event::Eof => return Ok(None),
-            _ => {}
-        }
-        buf.clear();
+    let common = jade_xlsx_reader::array_metadata::common_dynamic_array_cell_metadata(xml)?;
+    if common.is_some() {
+        return Ok(common);
     }
+    Ok(None)
 }
 
 /// The metadata part Excel writes for a workbook whose only cell metadata
@@ -226,7 +228,7 @@ mod tests {
 
     #[test]
     fn an_anchor_gains_its_range_and_metadata_link() {
-        let xml = r#"<sheetData><row r="1"><c r="A1" s="2"><f>SEQUENCE(3)</f><v>1</v></c><c r="B1"><f>A1</f></c></row></sheetData>"#;
+        let xml = r#"<worksheet><sheetData><row r="1"><c r="A1" s="2"><f>SEQUENCE(3)</f><v>1</v></c><c r="B1"><f>A1</f></c></row></sheetData></worksheet>"#;
         let marked = mark_array_formulas(
             xml,
             &[ArrayRange {
@@ -238,7 +240,7 @@ mod tests {
         .unwrap();
         assert_eq!(
             marked,
-            r#"<sheetData><row r="1"><c r="A1" s="2" cm="1"><f t="array" ref="A1:A3">SEQUENCE(3)</f><v>1</v></c><c r="B1"><f>A1</f></c></row></sheetData>"#
+            r#"<worksheet><sheetData><row r="1"><c r="A1" s="2" cm="1"><f t="array" ref="A1:A3">SEQUENCE(3)</f><v>1</v></c><c r="B1"><f>A1</f></c></row></sheetData></worksheet>"#
         );
     }
 }

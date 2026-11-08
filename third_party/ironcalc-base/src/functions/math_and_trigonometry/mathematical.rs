@@ -1,13 +1,62 @@
-use crate::cast::NumberOrArray;
 use crate::constants::{EXCEL_PRECISION, LAST_COLUMN, LAST_ROW};
 use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
-use crate::number_format::{to_excel_precision, to_precision};
+use crate::number_format::to_excel_precision;
 use crate::single_number_fn;
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
 use std::f64::consts::PI;
+
+// Parse up to 255 base-36 digits exactly, then round once to binary64.
+// This avoids imposing i64 limits or accumulating per-digit float rounding.
+fn decimal_integer(text: &str, radix: u32) -> Result<f64, Error> {
+    if !(2..=36).contains(&radix) || text.chars().count() > 255 {
+        return Err(Error::NUM);
+    }
+    // Preserve the existing signed-text parsing policy pending native captures.
+    let (negative, digits) = if let Some(digits) = text.strip_prefix('-') {
+        (true, digits)
+    } else {
+        (false, text.strip_prefix('+').unwrap_or(text))
+    };
+    if digits.is_empty() {
+        return Err(Error::VALUE);
+    }
+    let mut limbs = vec![0_u32];
+    for digit in digits.chars() {
+        let mut carry = u64::from(digit.to_digit(radix).ok_or(Error::VALUE)?);
+        for limb in &mut limbs {
+            let value = u64::from(*limb) * u64::from(radix) + carry;
+            *limb = value as u32;
+            carry = value >> 32;
+        }
+        if carry != 0 {
+            limbs.push(carry as u32);
+        }
+    }
+    let bits = (limbs.len() - 1) * 32 + (32 - limbs[limbs.len() - 1].leading_zeros()) as usize;
+    if bits > 1024 {
+        return Err(Error::NUM);
+    }
+    let bit = |index: usize| (limbs[index / 32] >> (index % 32)) & 1 != 0;
+    let discarded = bits.saturating_sub(53);
+    let mut mantissa = (discarded..bits)
+        .rev()
+        .fold(0_u64, |value, index| (value << 1) | u64::from(bit(index)));
+    if discarded > 0 && bit(discarded - 1) && ((0..discarded - 1).any(bit) || mantissa & 1 != 0) {
+        mantissa += 1;
+    }
+    let number = mantissa as f64 * 2.0_f64.powi(discarded as i32);
+    if !number.is_finite() {
+        return Err(Error::NUM);
+    }
+    Ok(if negative && number != 0.0 {
+        -number
+    } else {
+        number
+    })
+}
 
 impl<'a> Model<'a> {
     pub(crate) fn fn_min(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -131,115 +180,74 @@ impl<'a> Model<'a> {
     }
 
     pub(crate) fn fn_base(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        let arg_count = args.len();
-        if !(2..=3).contains(&arg_count) {
+        if !(2..=3).contains(&args.len()) {
             return CalcResult::new_args_number_error(cell);
         }
-
-        // number to convert
-        let mut value = match self.get_number(&args[0], cell) {
-            Ok(f) => f.trunc() as i64,
-            Err(s) => return s,
-        };
-        // radix
-        let radix = match self.get_number(&args[1], cell) {
-            Ok(f) => f.trunc() as i64,
-            Err(s) => return s,
-        };
-        // optional min_length
-        let min_length = if arg_count == 3 {
-            match self.get_number(&args[2], cell) {
-                Ok(f) => {
-                    if f < 0.0 {
-                        return CalcResult::Error {
-                            error: Error::NUM,
-                            origin: cell,
-                            message: "Minimum length must be non-negative".to_string(),
-                        };
-                    }
-                    f.trunc() as usize
-                }
-                Err(s) => return s,
-            }
-        } else {
-            0
-        };
-
-        if !(2..=36).contains(&radix) {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "Radix must be between 2 and 36".to_string(),
-            };
-        }
-
-        // number must be >= 0
-        if value < 0 {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "Number must be non-negative".to_string(),
-            };
-        }
-
-        let mut buf = String::new();
-        if value == 0 {
-            buf.push('0');
-        } else {
-            while value > 0 {
-                let digit = (value % radix) as u8;
-                let ch = match digit {
-                    0..=9 => (b'0' + digit) as char,
-                    10..=35 => (b'A' + (digit - 10)) as char,
-                    _ => unreachable!(),
+        self.map_scalar_arguments(args, cell, |model, values| {
+            let mut numbers = [0.0; 3];
+            for (number, value) in numbers.iter_mut().zip(values) {
+                *number = match model.cast_to_number(value.clone(), cell) {
+                    Ok(number) => number.trunc(),
+                    Err(error) => return error,
                 };
-                buf.push(ch);
-                value /= radix;
             }
-            // we built it in reverse
-            buf = buf.chars().rev().collect();
-        }
-
-        // pad with leading zeros if needed
-        if buf.len() < min_length {
-            let mut padded = String::with_capacity(min_length);
-            for _ in 0..(min_length - buf.len()) {
-                padded.push('0');
+            let [number, radix, min_length] = numbers;
+            if numbers.iter().any(|number| !number.is_finite())
+                || !(0.0..9007199254740992.0).contains(&number)
+                || !(2.0..=36.0).contains(&radix)
+                || !(0.0..=255.0).contains(&min_length)
+            {
+                return CalcResult::new_error(Error::NUM, cell, "Invalid BASE parameters".into());
             }
-            padded.push_str(&buf);
-            buf = padded;
-        }
-
-        CalcResult::String(buf)
+            let mut number = number as u64;
+            let radix = radix as u64;
+            // At most 53 binary digits; padding is bounded to 255 characters.
+            let mut digits = Vec::with_capacity(53);
+            loop {
+                let digit = (number % radix) as u8;
+                digits.push(if digit < 10 {
+                    b'0' + digit
+                } else {
+                    b'A' + digit - 10
+                });
+                number /= radix;
+                if number == 0 {
+                    break;
+                }
+            }
+            let min_length = min_length as usize;
+            let mut result = String::with_capacity(digits.len().max(min_length));
+            for _ in digits.len()..min_length {
+                result.push('0');
+            }
+            result.extend(digits.iter().rev().map(|digit| *digit as char));
+            CalcResult::String(result)
+        })
     }
 
     pub(crate) fn fn_decimal(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 2 {
             return CalcResult::new_args_number_error(cell);
         }
-        let text = match self.get_string(&args[0], cell) {
-            Ok(s) => s,
-            Err(s) => return s,
-        };
-        let radix = match self.get_number(&args[1], cell) {
-            Ok(f) => f.trunc() as i32,
-            Err(s) => return s,
-        };
-        if !(2..=36).contains(&radix) {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "Radix must be between 2 and 36".to_string(),
+        self.map_scalar_arguments(args, cell, |model, values| {
+            let text = match model.cast_to_string(values[0].clone(), cell) {
+                Ok(text) => text,
+                Err(error) => return error,
             };
-        }
-        match i64::from_str_radix(&text, radix as u32) {
-            Ok(n) => CalcResult::Number(n as f64),
-            Err(_) => CalcResult::Error {
-                error: Error::VALUE,
-                origin: cell,
-                message: format!("'{}' is not a valid number in base {}", text, radix),
-            },
-        }
+            let radix = match model.cast_to_number(values[1].clone(), cell) {
+                Ok(radix) if radix.is_finite() && (2.0..=36.0).contains(&radix.trunc()) => {
+                    radix.trunc() as u32
+                }
+                Ok(_) => {
+                    return CalcResult::new_error(Error::NUM, cell, "Invalid DECIMAL radix".into())
+                }
+                Err(error) => return error,
+            };
+            match decimal_integer(&text, radix) {
+                Ok(number) => CalcResult::Number(number),
+                Err(error) => CalcResult::new_error(error, cell, "Invalid DECIMAL text".into()),
+            }
+        })
     }
 
     /// SUM(number1, [number2], ...)
@@ -621,82 +629,50 @@ impl<'a> Model<'a> {
     }
 
     pub(crate) fn fn_round(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 2 {
-            // Incorrect number of arguments
-            return CalcResult::new_args_number_error(cell);
-        }
-        let value = match self.get_number(&args[0], cell) {
-            Ok(f) => to_precision(f, 15),
-            Err(s) => return s,
-        };
-        let number_of_digits = match self.get_number(&args[1], cell) {
-            Ok(f) => {
-                if f > 0.0 {
-                    f.floor()
-                } else {
-                    f.ceil()
-                }
-            }
-            Err(s) => return s,
-        };
-        let scale = 10.0_f64.powf(number_of_digits);
-        // Excel scales at 15 significant digits too: 1.005 is stored as
-        // 1.00499…, and ROUND(1.005, 2) is still 1.01.
-        CalcResult::Number(to_precision(value * scale, 15).round() / scale)
+        self.round_arguments(args, cell, crate::number_format::DecimalRounding::Nearest)
     }
 
     pub(crate) fn fn_roundup(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 2 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let value = match self.get_number(&args[0], cell) {
-            Ok(f) => to_precision(f, 15),
-            Err(s) => return s,
-        };
-        let number_of_digits = match self.get_number(&args[1], cell) {
-            Ok(f) => {
-                if f > 0.0 {
-                    f.floor()
-                } else {
-                    f.ceil()
-                }
-            }
-            Err(s) => return s,
-        };
-        let scale = 10.0_f64.powf(number_of_digits);
-        let scaled = to_precision(value * scale, 15);
-        if value > 0.0 {
-            CalcResult::Number(scaled.ceil() / scale)
-        } else {
-            CalcResult::Number(scaled.floor() / scale)
-        }
+        self.round_arguments(
+            args,
+            cell,
+            crate::number_format::DecimalRounding::AwayFromZero,
+        )
     }
 
     pub(crate) fn fn_rounddown(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.round_arguments(
+            args,
+            cell,
+            crate::number_format::DecimalRounding::TowardZero,
+        )
+    }
+
+    fn round_arguments(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+        mode: crate::number_format::DecimalRounding,
+    ) -> CalcResult {
         if args.len() != 2 {
             return CalcResult::new_args_number_error(cell);
         }
-        let value = match self.get_number(&args[0], cell) {
-            Ok(f) => to_precision(f, 15),
-            Err(s) => return s,
-        };
-        let number_of_digits = match self.get_number(&args[1], cell) {
-            Ok(f) => {
-                if f > 0.0 {
-                    f.floor()
-                } else {
-                    f.ceil()
+        self.map_scalar_arguments(args, cell, |model, values| {
+            let value = match model.cast_to_number(values[0].clone(), cell) {
+                Ok(number) => number,
+                Err(error) => return error,
+            };
+            let decimals = match model.cast_to_number(values[1].clone(), cell) {
+                Ok(number) => number,
+                Err(error) => return error,
+            };
+            match crate::number_format::round_decimal(value, decimals, mode) {
+                Some(number) => CalcResult::Number(number),
+                None => {
+                    CalcResult::new_error(Error::NUM, cell, "Rounding result out of range".into())
                 }
             }
-            Err(s) => return s,
-        };
-        let scale = 10.0_f64.powf(number_of_digits);
-        let scaled = to_precision(value * scale, 15);
-        if value > 0.0 {
-            CalcResult::Number(scaled.floor() / scale)
-        } else {
-            CalcResult::Number(scaled.ceil() / scale)
-        }
+        })
     }
 
     // (number, divisor)
@@ -704,165 +680,119 @@ impl<'a> Model<'a> {
         if args.len() != 2 {
             return CalcResult::new_args_number_error(cell);
         }
-        let value = match self.get_number(&args[0], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let divisor = match self.get_number(&args[1], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        if divisor == 0.0 {
-            return CalcResult::Error {
-                error: Error::DIV,
-                origin: cell,
-                message: "Divide by 0".to_string(),
+        self.map_scalar_arguments(args, cell, |model, values| {
+            let value = match model.cast_to_number(values[0].clone(), cell) {
+                Ok(f) => f,
+                Err(s) => return s,
             };
-        }
-        let result = value - divisor * (value / divisor).floor();
-        CalcResult::Number(result)
+            let divisor = match model.cast_to_number(values[1].clone(), cell) {
+                Ok(f) => f,
+                Err(s) => return s,
+            };
+            if divisor == 0.0 {
+                return CalcResult::Error {
+                    error: Error::DIV,
+                    origin: cell,
+                    message: "Divide by 0".to_string(),
+                };
+            }
+            let result = value - divisor * (value / divisor).floor();
+            if value.is_finite() && divisor.is_finite() && result.is_finite() {
+                CalcResult::Number(result)
+            } else {
+                CalcResult::new_error(Error::NUM, cell, "Remainder out of range".into())
+            }
+        })
     }
 
     pub(crate) fn fn_quotient(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 2 {
             return CalcResult::new_args_number_error(cell);
         }
-        let value = match self.get_number_no_bools(&args[0], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let divisor = match self.get_number_no_bools(&args[1], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        if divisor == 0.0 {
-            return CalcResult::Error {
-                error: Error::DIV,
-                origin: cell,
-                message: "Divide by 0".to_string(),
+        self.map_scalar_arguments(args, cell, |model, values| {
+            let number = |model: &mut Self, value: &CalcResult| {
+                if matches!(value, CalcResult::Boolean(_)) {
+                    Err(CalcResult::new_error(
+                        Error::VALUE,
+                        cell,
+                        "Expecting number".into(),
+                    ))
+                } else {
+                    model.cast_to_number(value.clone(), cell)
+                }
             };
-        }
+            let value = match number(model, &values[0]) {
+                Ok(f) => f,
+                Err(s) => return s,
+            };
+            let divisor = match number(model, &values[1]) {
+                Ok(f) => f,
+                Err(s) => return s,
+            };
+            if divisor == 0.0 {
+                return CalcResult::Error {
+                    error: Error::DIV,
+                    origin: cell,
+                    message: "Divide by 0".to_string(),
+                };
+            }
 
-        let result = value / divisor;
-        CalcResult::Number(result.signum() * result.abs().floor())
+            let result = value / divisor;
+            if value.is_finite() && divisor.is_finite() && result.is_finite() {
+                CalcResult::Number(result.trunc())
+            } else {
+                CalcResult::new_error(Error::NUM, cell, "Quotient out of range".into())
+            }
+        })
     }
 
     pub(crate) fn fn_floor(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 2 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let value = match self.get_number(&args[0], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let significance = match self.get_number(&args[1], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        if significance == 0.0 {
-            if value == 0.0 {
-                return CalcResult::Number(0.0);
-            }
-            return CalcResult::Error {
-                error: Error::DIV,
-                origin: cell,
-                message: "Divide by 0".to_string(),
-            };
-        }
-        if significance < 0.0 && value > 0.0 {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "Significance must be positive when value is positive".to_string(),
-            };
-        }
-
-        // Apply Excel precision to the ratio to handle floating-point rounding errors
-        let ratio = to_excel_precision(value / significance, EXCEL_PRECISION);
-        let result = f64::floor(ratio) * significance;
-        CalcResult::Number(result)
+        self.round_legacy_multiple(args, cell, false)
     }
 
     pub(crate) fn fn_ceiling(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.round_legacy_multiple(args, cell, true)
+    }
+
+    fn round_legacy_multiple(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+        ceiling: bool,
+    ) -> CalcResult {
         if args.len() != 2 {
             return CalcResult::new_args_number_error(cell);
         }
-        let value = match self.get_number_or_array(&args[0], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let significance = match self.get_number_or_array(&args[1], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let ceiling = |value: f64, significance: f64| -> Result<f64, Error> {
+        self.map_scalar_arguments(args, cell, |model, values| {
+            let value = match model.cast_to_number(values[0].clone(), cell) {
+                Ok(number) => number,
+                Err(error) => return error,
+            };
+            let significance = match model.cast_to_number(values[1].clone(), cell) {
+                Ok(number) => number,
+                Err(error) => return error,
+            };
             if !value.is_finite()
                 || !significance.is_finite()
-                || (significance < 0.0 && value > 0.0)
+                || (value > 0.0 && significance < 0.0)
             {
-                return Err(Error::NUM);
+                return CalcResult::new_error(Error::NUM, cell, "Invalid rounding operands".into());
             }
             if significance == 0.0 {
-                return Ok(0.0);
+                return if ceiling || value == 0.0 {
+                    CalcResult::Number(0.0)
+                } else {
+                    CalcResult::new_error(Error::DIV, cell, "Divide by 0".into())
+                };
             }
             let ratio = to_excel_precision(value / significance, EXCEL_PRECISION);
-            let result = ratio.ceil() * significance;
+            let result = if ceiling { ratio.ceil() } else { ratio.floor() } * significance;
             if result.is_finite() {
-                Ok(result)
+                CalcResult::Number(result)
             } else {
-                Err(Error::NUM)
+                CalcResult::new_error(Error::NUM, cell, "Rounded multiple out of range".into())
             }
-        };
-        if let (NumberOrArray::Number(a), NumberOrArray::Number(b)) = (&value, &significance) {
-            return match ceiling(*a, *b) {
-                Ok(n) => CalcResult::Number(n),
-                Err(e) => CalcResult::new_error(e, cell, "Invalid ceiling operands".into()),
-            };
-        }
-        let shape = |value: &NumberOrArray| match value {
-            NumberOrArray::Number(_) => (1, 1),
-            NumberOrArray::Array(a) => (a.len(), a.first().map_or(0, |r| r.len())),
-        };
-        let (a, b) = (shape(&value), shape(&significance));
-        let (rows, columns) = (a.0.max(b.0), a.1.max(b.1));
-        if let Some((error, message)) = super::array_size::check_array_size(rows, columns) {
-            return CalcResult::new_error(error, cell, message);
-        }
-        let number = |value: &NumberOrArray, row: usize, column: usize| -> Result<f64, Error> {
-            let array = match value {
-                NumberOrArray::Number(n) => return Ok(*n),
-                NumberOrArray::Array(a) => a,
-            };
-            let r = array
-                .get(if array.len() == 1 { 0 } else { row })
-                .ok_or(Error::NA)?;
-            match r
-                .get(if r.len() == 1 { 0 } else { column })
-                .ok_or(Error::NA)?
-            {
-                ArrayNode::Number(n) => Ok(*n),
-                ArrayNode::Boolean(b) => Ok(if *b { 1.0 } else { 0.0 }),
-                ArrayNode::Empty => Ok(0.0),
-                ArrayNode::String(s) => self.cast_number(s).ok_or(Error::VALUE),
-                ArrayNode::Error(e) => Err(e.clone()),
-            }
-        };
-        CalcResult::Array(
-            (0..rows)
-                .map(|r| {
-                    (0..columns)
-                        .map(|c| {
-                            match number(&value, r, c).and_then(|a| {
-                                number(&significance, r, c).and_then(|b| ceiling(a, b))
-                            }) {
-                                Ok(n) => ArrayNode::Number(n),
-                                Err(e) => ArrayNode::Error(e),
-                            }
-                        })
-                        .collect()
-                })
-                .collect(),
-        )
+        })
     }
 
     pub(crate) fn fn_ceiling_math(
@@ -870,44 +800,7 @@ impl<'a> Model<'a> {
         args: &[Node],
         cell: CellReferenceIndex,
     ) -> CalcResult {
-        let arg_count = args.len();
-        if !(1..=3).contains(&arg_count) {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let value = match self.get_number(&args[0], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let significance = if arg_count > 1 {
-            match self.get_number(&args[1], cell) {
-                Ok(f) => f.abs(),
-                Err(s) => return s,
-            }
-        } else {
-            1.0
-        };
-        let mode = if arg_count > 2 {
-            match self.get_number(&args[2], cell) {
-                Ok(f) => f,
-                Err(s) => return s,
-            }
-        } else {
-            0.0
-        };
-        if significance == 0.0 {
-            return CalcResult::Number(0.0);
-        }
-        if value < 0.0 && mode != 0.0 {
-            // Apply Excel precision fix
-            let ratio = to_excel_precision(value / significance, EXCEL_PRECISION);
-            let result = f64::floor(ratio) * significance;
-            CalcResult::Number(result)
-        } else {
-            // Apply Excel precision fix
-            let ratio = to_excel_precision(value / significance, EXCEL_PRECISION);
-            let result = f64::ceil(ratio) * significance;
-            CalcResult::Number(result)
-        }
+        self.round_modern_multiple(args, cell, true, true)
     }
 
     pub(crate) fn fn_ceiling_precise(
@@ -915,76 +808,15 @@ impl<'a> Model<'a> {
         args: &[Node],
         cell: CellReferenceIndex,
     ) -> CalcResult {
-        let arg_count = args.len();
-        if !(1..=2).contains(&arg_count) {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let value = match self.get_number(&args[0], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let significance = if arg_count > 1 {
-            match self.get_number(&args[1], cell) {
-                Ok(f) => f.abs(),
-                Err(s) => return s,
-            }
-        } else {
-            1.0
-        };
-        if significance == 0.0 {
-            return CalcResult::Number(0.0);
-        }
-        // Apply Excel precision fix
-        let ratio = to_excel_precision(value / significance, EXCEL_PRECISION);
-        let result = f64::ceil(ratio) * significance;
-        CalcResult::Number(result)
+        self.round_modern_multiple(args, cell, true, false)
     }
 
     pub(crate) fn fn_iso_ceiling(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        // ISO.CEILING is equivalent to CEILING.PRECISE
         self.fn_ceiling_precise(args, cell)
     }
 
     pub(crate) fn fn_floor_math(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        let arg_count = args.len();
-        if !(1..=3).contains(&arg_count) {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let value = match self.get_number(&args[0], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let significance = if arg_count > 1 {
-            match self.get_number(&args[1], cell) {
-                Ok(f) => f,
-                Err(s) => return s,
-            }
-        } else {
-            1.0
-        };
-        let mode = if arg_count > 2 {
-            match self.get_number(&args[2], cell) {
-                Ok(f) => f,
-                Err(s) => return s,
-            }
-        } else {
-            0.0
-        };
-        if significance == 0.0 {
-            return CalcResult::Number(0.0);
-        }
-        let significance = significance.abs();
-        if value < 0.0 && mode != 0.0 {
-            // Apply Excel precision to handle floating-point rounding errors
-            let ratio = to_excel_precision(value / significance, EXCEL_PRECISION);
-            let result = f64::ceil(ratio) * significance;
-            CalcResult::Number(result)
-        } else {
-            // Apply Excel precision to handle floating-point rounding errors
-            let ratio = to_excel_precision(value / significance, EXCEL_PRECISION);
-            let result = f64::floor(ratio) * significance;
-            CalcResult::Number(result)
-        }
+        self.round_modern_multiple(args, cell, false, true)
     }
 
     pub(crate) fn fn_floor_precise(
@@ -992,30 +824,48 @@ impl<'a> Model<'a> {
         args: &[Node],
         cell: CellReferenceIndex,
     ) -> CalcResult {
-        let arg_count = args.len();
-        if !(1..=2).contains(&arg_count) {
+        self.round_modern_multiple(args, cell, false, false)
+    }
+
+    fn round_modern_multiple(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+        ceiling: bool,
+        allow_mode: bool,
+    ) -> CalcResult {
+        if !(1..=if allow_mode { 3 } else { 2 }).contains(&args.len()) {
             return CalcResult::new_args_number_error(cell);
         }
-        let value = match self.get_number(&args[0], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let significance = if arg_count > 1 {
-            match self.get_number(&args[1], cell) {
-                Ok(f) => f.abs(),
-                Err(s) => return s,
+        self.map_scalar_arguments(args, cell, |model, values| {
+            let mut numbers = [0.0, 1.0, 0.0];
+            for (index, value) in values.iter().enumerate() {
+                numbers[index] = match model.cast_to_number(value.clone(), cell) {
+                    Ok(number) => number,
+                    Err(error) => return error,
+                };
             }
-        } else {
-            1.0
-        };
-        if significance == 0.0 {
-            return CalcResult::Number(0.0);
-        }
-
-        // Apply Excel precision to handle floating-point rounding errors
-        let ratio = to_excel_precision(value / significance, EXCEL_PRECISION);
-        let result = f64::floor(ratio) * significance;
-        CalcResult::Number(result)
+            if numbers.iter().any(|number| !number.is_finite()) {
+                return CalcResult::new_error(Error::NUM, cell, "Invalid rounding operands".into());
+            }
+            let [value, significance, mode] = numbers;
+            let significance = significance.abs();
+            if significance == 0.0 {
+                return CalcResult::Number(0.0);
+            }
+            let ratio = to_excel_precision(value / significance, EXCEL_PRECISION);
+            let round_up = ceiling ^ (value < 0.0 && mode != 0.0);
+            let result = if round_up {
+                ratio.ceil()
+            } else {
+                ratio.floor()
+            } * significance;
+            if result.is_finite() {
+                CalcResult::Number(result)
+            } else {
+                CalcResult::new_error(Error::NUM, cell, "Rounded multiple out of range".into())
+            }
+        })
     }
 
     pub(crate) fn fn_mround(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -1024,84 +874,83 @@ impl<'a> Model<'a> {
             return CalcResult::new_args_number_error(cell);
         }
 
-        let value = self.evaluate_node_in_context(&args[0], cell);
+        self.map_scalar_arguments(args, cell, |model, values| {
+            let value = values[0].clone();
+            let multiple = values[1].clone();
 
-        let multiple = self.evaluate_node_in_context(&args[1], cell);
+            // if either is empty => #N/A
+            if matches!(value, CalcResult::EmptyArg) || matches!(multiple, CalcResult::EmptyArg) {
+                return CalcResult::Error {
+                    error: Error::NA,
+                    origin: cell,
+                    message: "Bad argument for MROUND".to_string(),
+                };
+            }
 
-        // if either is empty => #N/A
-        if matches!(value, CalcResult::EmptyArg) || matches!(multiple, CalcResult::EmptyArg) {
-            return CalcResult::Error {
-                error: Error::NA,
-                origin: cell,
-                message: "Bad argument for MROUND".to_string(),
+            // Booleans are not cast
+            if matches!(value, CalcResult::Boolean(_)) {
+                return CalcResult::new_error(Error::VALUE, cell, "Expecting number".to_string());
+            }
+
+            if matches!(multiple, CalcResult::Boolean(_)) {
+                return CalcResult::new_error(Error::VALUE, cell, "Expecting number".to_string());
+            }
+
+            let value = match model.cast_to_number(value, cell) {
+                Ok(f) => f,
+                Err(s) => return s,
             };
-        }
-
-        // Booleans are not cast
-        if matches!(value, CalcResult::Boolean(_)) {
-            return CalcResult::new_error(Error::VALUE, cell, "Expecting number".to_string());
-        }
-
-        if matches!(multiple, CalcResult::Boolean(_)) {
-            return CalcResult::new_error(Error::VALUE, cell, "Expecting number".to_string());
-        }
-
-        let value = match self.cast_to_number(value, cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let multiple = match self.cast_to_number(multiple, cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        if multiple == 0.0 {
-            return CalcResult::Number(0.0);
-        }
-        if (value > 0.0 && multiple < 0.0) || (value < 0.0 && multiple > 0.0) {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "number and multiple must have the same sign".to_string(),
+            let multiple = match model.cast_to_number(multiple, cell) {
+                Ok(f) => f,
+                Err(s) => return s,
             };
-        }
-        let result = (value / multiple).round() * multiple;
-        CalcResult::Number(result)
+            if multiple == 0.0 {
+                return CalcResult::Number(0.0);
+            }
+            if (value > 0.0 && multiple < 0.0) || (value < 0.0 && multiple > 0.0) {
+                return CalcResult::Error {
+                    error: Error::NUM,
+                    origin: cell,
+                    message: "number and multiple must have the same sign".to_string(),
+                };
+            }
+            let result = (value / multiple).round() * multiple;
+            if value.is_finite() && multiple.is_finite() && result.is_finite() {
+                CalcResult::Number(result)
+            } else {
+                CalcResult::new_error(Error::NUM, cell, "Rounded multiple out of range".into())
+            }
+        })
     }
 
     pub(crate) fn fn_trunc(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if !(1..=2).contains(&args.len()) {
             return CalcResult::new_args_number_error(cell);
         }
-        let value = match self.get_number(&args[0], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let num_digits = if args.len() == 2 {
-            match self.get_number(&args[1], cell) {
-                Ok(f) => {
-                    if f > 0.0 {
-                        f.floor()
-                    } else {
-                        f.ceil()
-                    }
+        self.map_scalar_arguments(args, cell, |model, values| {
+            let value = match model.cast_to_number(values[0].clone(), cell) {
+                Ok(number) => number,
+                Err(error) => return error,
+            };
+            let digits = if values.len() == 2 {
+                match model.cast_to_number(values[1].clone(), cell) {
+                    Ok(number) => number,
+                    Err(error) => return error,
                 }
-                Err(s) => return s,
+            } else {
+                0.0
+            };
+            match crate::number_format::round_decimal(
+                value,
+                digits,
+                crate::number_format::DecimalRounding::TowardZero,
+            ) {
+                Some(number) => CalcResult::Number(number),
+                None => {
+                    CalcResult::new_error(Error::NUM, cell, "Truncation result out of range".into())
+                }
             }
-        } else {
-            0.0
-        };
-        if !(-15.0..=15.0).contains(&num_digits) {
-            return CalcResult::Number(value);
-        }
-        let v = if value >= 0.0 {
-            f64::floor(value * 10f64.powf(num_digits)) / 10f64.powf(num_digits)
-        } else {
-            f64::ceil(value * 10f64.powf(num_digits)) / 10f64.powf(num_digits)
-        };
-        if value.is_finite() && v.is_infinite() {
-            return CalcResult::Number(value);
-        }
-        CalcResult::Number(v)
+        })
     }
 
     single_number_fn!(fn_log10, |f| if f <= 0.0 {
@@ -1179,35 +1028,51 @@ impl<'a> Model<'a> {
     single_number_fn!(fn_sec, |f| Ok(1.0 / f64::cos(f)));
     single_number_fn!(fn_sech, |f| Ok(1.0 / f64::cosh(f)));
     single_number_fn!(fn_exp, |f: f64| Ok(f64::exp(f)));
-    single_number_fn!(fn_fact, |x: f64| {
-        let x = x.floor();
-        if x < 0.0 {
-            return Err(Error::NUM);
+    pub(crate) fn fn_fact(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.factorial_argument(args, cell, false)
+    }
+
+    pub(crate) fn fn_factdouble(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.factorial_argument(args, cell, true)
+    }
+
+    fn factorial_argument(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+        double: bool,
+    ) -> CalcResult {
+        if args.len() != 1 {
+            return CalcResult::new_args_number_error(cell);
         }
-        let mut acc = 1.0;
-        let mut k = 2.0;
-        while k <= x {
-            acc *= k;
-            k += 1.0;
-        }
-        Ok(acc)
-    });
-    single_number_fn!(fn_factdouble, |x: f64| {
-        let x = x.floor();
-        if x < -1.0 {
-            return Err(Error::NUM);
-        }
-        if x < 0.0 {
-            return Ok(1.0);
-        }
-        let mut acc = 1.0;
-        let mut k = if x % 2.0 == 0.0 { 2.0 } else { 1.0 };
-        while k <= x {
-            acc *= k;
-            k += 2.0;
-        }
-        Ok(acc)
-    });
+        self.map_scalar_values(&args[0], cell, |model, value| {
+            let number = match model.cast_to_number(value, cell) {
+                Ok(number) => number.floor(),
+                Err(error) => return error,
+            };
+            // 170! and 300!! are finite; the next respective integers overflow.
+            let maximum = if double { 300.0 } else { 170.0 };
+            if !number.is_finite() || !(0.0..=maximum).contains(&number) {
+                return CalcResult::new_error(
+                    Error::NUM,
+                    cell,
+                    "Invalid or overflowing factorial".into(),
+                );
+            }
+            let mut result = 1.0;
+            let step = if double { 2 } else { 1 };
+            let first = if double && number as u32 % 2 == 1 {
+                1
+            } else {
+                2
+            };
+            for factor in (first..=number as u32).step_by(step) {
+                result *= factor as f64;
+            }
+            CalcResult::Number(result)
+        })
+    }
+
     single_number_fn!(fn_sign, |f| {
         if f == 0.0 {
             Ok(0.0)
@@ -1237,22 +1102,29 @@ impl<'a> Model<'a> {
         if args.len() != 2 {
             return CalcResult::new_args_number_error(cell);
         }
-        let x = match self.get_number(&args[0], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let y = match self.get_number(&args[1], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        if x == 0.0 && y == 0.0 {
-            return CalcResult::Error {
-                error: Error::DIV,
-                origin: cell,
-                message: "Arguments can't be both zero".to_string(),
+        self.map_scalar_arguments(args, cell, |model, values| {
+            let x = match model.cast_to_number(values[0].clone(), cell) {
+                Ok(f) => f,
+                Err(s) => return s,
             };
-        }
-        CalcResult::Number(f64::atan2(y, x))
+            let y = match model.cast_to_number(values[1].clone(), cell) {
+                Ok(f) => f,
+                Err(s) => return s,
+            };
+            if !x.is_finite() || !y.is_finite() {
+                return CalcResult::new_error(Error::NUM, cell, "Invalid coordinates".into());
+            }
+            if x == 0.0 && y == 0.0 {
+                return CalcResult::Error {
+                    error: Error::DIV,
+                    origin: cell,
+                    message: "Arguments can't be both zero".to_string(),
+                };
+            }
+            let angle = f64::atan2(y, x);
+            // Excel's principal interval excludes -pi, including signed-zero y.
+            CalcResult::Number(if angle == -PI { PI } else { angle })
+        })
     }
 
     pub(crate) fn fn_log(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -1260,116 +1132,198 @@ impl<'a> Model<'a> {
         if !(1..=2).contains(&n_args) {
             return CalcResult::new_args_number_error(cell);
         }
-        let x = match self.get_number(&args[0], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let y = if n_args == 1 {
-            10.0
-        } else {
-            match self.get_number(&args[1], cell) {
+        self.map_scalar_arguments(args, cell, |model, values| {
+            let x = match model.cast_to_number(values[0].clone(), cell) {
                 Ok(f) => f,
                 Err(s) => return s,
+            };
+            let y = if n_args == 1 {
+                10.0
+            } else {
+                match model.cast_to_number(values[1].clone(), cell) {
+                    Ok(f) => f,
+                    Err(s) => return s,
+                }
+            };
+            if !x.is_finite() || !y.is_finite() || x <= 0.0 {
+                return CalcResult::Error {
+                    error: Error::NUM,
+                    origin: cell,
+                    message: "Number must be positive".to_string(),
+                };
             }
-        };
-        if x <= 0.0 {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "Number must be positive".to_string(),
-            };
-        }
-        if y == 1.0 {
-            return CalcResult::Error {
-                error: Error::DIV,
-                origin: cell,
-                message: "Logarithm base cannot be 1".to_string(),
-            };
-        }
-        if y <= 0.0 {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "Logarithm base must be positive".to_string(),
-            };
-        }
-        CalcResult::Number(f64::log(x, y))
+            if y == 1.0 {
+                return CalcResult::Error {
+                    error: Error::DIV,
+                    origin: cell,
+                    message: "Logarithm base cannot be 1".to_string(),
+                };
+            }
+            if y <= 0.0 {
+                return CalcResult::Error {
+                    error: Error::NUM,
+                    origin: cell,
+                    message: "Logarithm base must be positive".to_string(),
+                };
+            }
+            let result = f64::log(x, y);
+            if result.is_finite() {
+                CalcResult::Number(result)
+            } else {
+                CalcResult::new_error(Error::NUM, cell, "Logarithm out of range".into())
+            }
+        })
     }
 
     pub(crate) fn fn_power(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 2 {
             return CalcResult::new_args_number_error(cell);
         }
-        let x = match self.get_number(&args[0], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let y = match self.get_number(&args[1], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        if x == 0.0 && y == 0.0 {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "Arguments can't be both zero".to_string(),
+        self.map_scalar_arguments(args, cell, |model, values| {
+            let x = match model.cast_to_number(values[0].clone(), cell) {
+                Ok(f) => f,
+                Err(s) => return s,
             };
-        }
-        if y == 0.0 {
-            return CalcResult::Number(1.0);
-        }
-        let result = x.powf(y);
-        if result.is_infinite() {
-            return CalcResult::Error {
-                error: Error::DIV,
-                origin: cell,
-                message: "POWER returned infinity".to_string(),
+            let y = match model.cast_to_number(values[1].clone(), cell) {
+                Ok(f) => f,
+                Err(s) => return s,
             };
-        }
-        if result.is_nan() {
-            // This might happen for some combinations of negative base and exponent
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "Invalid arguments for POWER".to_string(),
-            };
-        }
-        CalcResult::Number(result)
+            if !x.is_finite() || !y.is_finite() {
+                return CalcResult::new_error(
+                    Error::NUM,
+                    cell,
+                    "Invalid arguments for POWER".into(),
+                );
+            }
+            if x == 0.0 && y < 0.0 {
+                return CalcResult::new_error(
+                    Error::DIV,
+                    cell,
+                    "Zero raised to a negative power".into(),
+                );
+            }
+            if x == 0.0 && y == 0.0 {
+                return CalcResult::Error {
+                    error: Error::NUM,
+                    origin: cell,
+                    message: "Arguments can't be both zero".to_string(),
+                };
+            }
+            if y == 0.0 {
+                return CalcResult::Number(1.0);
+            }
+            let result = x.powf(y);
+            if result.is_infinite() {
+                return CalcResult::Error {
+                    error: Error::NUM,
+                    origin: cell,
+                    message: "POWER returned infinity".to_string(),
+                };
+            }
+            if result.is_nan() {
+                // This might happen for some combinations of negative base and exponent
+                return CalcResult::Error {
+                    error: Error::NUM,
+                    origin: cell,
+                    message: "Invalid arguments for POWER".to_string(),
+                };
+            }
+            CalcResult::Number(result)
+        })
     }
 
     pub(crate) fn fn_combin(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.combination_arguments(args, cell, false)
+    }
+
+    fn combination_arguments(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+        repetitions: bool,
+    ) -> CalcResult {
         if args.len() != 2 {
             return CalcResult::new_args_number_error(cell);
         }
-        let n = match self.get_number(&args[0], cell) {
-            Ok(f) => f.floor(),
-            Err(s) => return s,
-        };
-        let k = match self.get_number(&args[1], cell) {
-            Ok(f) => f.floor(),
-            Err(s) => return s,
-        };
-        if n < 0.0 || k < 0.0 {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "Arguments must be non-negative integers".to_string(),
+        self.map_scalar_arguments(args, cell, |model, values| {
+            let n = match model.cast_to_number(values[0].clone(), cell) {
+                Ok(number) => number.floor(),
+                Err(error) => return error,
             };
-        }
-        if k > n {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "k cannot be greater than n".to_string(),
+            let k = match model.cast_to_number(values[1].clone(), cell) {
+                Ok(number) => number.floor(),
+                Err(error) => return error,
             };
-        }
-        let k = k as usize;
-        let mut result = 1.0;
-        for i in 0..k {
-            let t = i as f64;
-            result *= (n - t) / (t + 1.0);
-        }
-        CalcResult::Number(result)
+            let invalid = || {
+                CalcResult::new_error(
+                    Error::NUM,
+                    cell,
+                    "Invalid or overflowing combination".into(),
+                )
+            };
+            if !n.is_finite()
+                || !k.is_finite()
+                || n < 0.0
+                || k < 0.0
+                || (!repetitions && k > n)
+                || (repetitions && n == 0.0 && k > 0.0)
+            {
+                return invalid();
+            }
+            if k == 0.0 || (repetitions && n == 1.0) {
+                return CalcResult::Number(1.0);
+            }
+            if k == 1.0 {
+                return CalcResult::Number(n);
+            }
+            // Keep exactly representable integer inputs in integer arithmetic.
+            // For repetitions, form n+k-1 before converting back to f64.
+            let exact_total = if n <= 9_007_199_254_740_992.0 && k <= 9_007_199_254_740_992.0 {
+                Some(if repetitions {
+                    n as u128 + k as u128 - 1
+                } else {
+                    n as u128
+                })
+            } else {
+                None
+            };
+            let (total, steps) = if repetitions {
+                (n + k - 1.0, k.min(n - 1.0))
+            } else {
+                (n, k.min(n - k))
+            };
+            // Symmetry makes steps <= total/2, so C(total, steps) >= 2^steps.
+            // At 1024 steps even that lower bound exceeds finite f64 range.
+            if !total.is_finite() || steps >= 1024.0 {
+                return invalid();
+            }
+            let mut result = 1.0;
+            let mut exact_result = exact_total.map(|_| 1_u128);
+            for index in 0..steps as usize {
+                let next_exact = exact_total.zip(exact_result).and_then(|(total, previous)| {
+                    let mut numerator = total - index as u128;
+                    let mut denominator = index as u128 + 1;
+                    let (mut a, mut b) = (numerator, denominator);
+                    while b != 0 {
+                        (a, b) = (b, a % b);
+                    }
+                    numerator /= a;
+                    denominator /= a;
+                    // The remaining denominator divides the previous binomial.
+                    (previous / denominator).checked_mul(numerator)
+                });
+                if let Some(integer) = next_exact {
+                    result = integer as f64;
+                } else {
+                    result *= (total - index as f64) / (index as f64 + 1.0);
+                }
+                exact_result = next_exact;
+                if !result.is_finite() {
+                    return invalid();
+                }
+            }
+            CalcResult::Number(result)
+        })
     }
 
     // PERCENTOF(part, total) — returns SUM(part) / SUM(total) as a decimal fraction.
@@ -1392,30 +1346,84 @@ impl<'a> Model<'a> {
     }
 
     pub(crate) fn fn_combina(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 2 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let n = match self.get_number(&args[0], cell) {
-            Ok(f) => f.floor(),
-            Err(s) => return s,
+        self.combination_arguments(args, cell, true)
+    }
+}
+
+#[cfg(test)]
+mod decimal_tests {
+    use super::*;
+
+    #[test]
+    fn decimal_accepts_unsigned_values_beyond_i64() {
+        let mut model = crate::test::util::new_empty_model();
+        let cell = CellReferenceIndex {
+            sheet: 0,
+            row: 1,
+            column: 1,
         };
-        let k = match self.get_number(&args[1], cell) {
-            Ok(f) => f.floor(),
-            Err(s) => return s,
-        };
-        if n < 0.0 || k < 0.0 || (n == 0.0 && k > 0.0) {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "Arguments must be non-negative integers".to_string(),
-            };
+        let result = model.fn_decimal(
+            &[
+                Node::StringKind("FFFFFFFFFFFFFFFF".into()),
+                Node::NumberKind(16.0),
+            ],
+            cell,
+        );
+        assert!(matches!(result, CalcResult::Number(number) if number == 2.0_f64.powi(64)));
+    }
+    #[test]
+    fn decimal_integer_rounds_exactly_across_all_radices() {
+        let mut values = vec![
+            0,
+            1,
+            (1_u128 << 53) - 1,
+            (1_u128 << 53) + 1,
+            (1_u128 << 53) + 3,
+            u64::MAX as u128,
+            (1_u128 << 127) - 1,
+            u128::MAX,
+        ];
+        let mut state = 0x123456789abcdef_u128;
+        for _ in 0..128 {
+            state = state.wrapping_mul(6364136223846793005).wrapping_add(1);
+            values.push(state);
         }
-        let k = k as usize;
-        let mut result = 1.0;
-        for i in 0..k {
-            let t = i as f64;
-            result *= (n + t) / (t + 1.0);
+        for radix in 2..=36_u32 {
+            for &value in &values {
+                let mut number = value;
+                let mut digits = Vec::new();
+                loop {
+                    let digit = (number % u128::from(radix)) as u32;
+                    digits.push(char::from_digit(digit, radix).unwrap_or('0'));
+                    number /= u128::from(radix);
+                    if number == 0 {
+                        break;
+                    }
+                }
+                let text: String = digits.into_iter().rev().collect();
+                let actual = decimal_integer(&text, radix);
+                assert!(
+                    matches!(actual, Ok(number) if number.to_bits()==(value as f64).to_bits()),
+                    "base={radix}, text={text}"
+                );
+            }
         }
-        CalcResult::Number(result)
+    }
+
+    #[test]
+    fn decimal_integer_checks_length_overflow_and_wide_values() {
+        assert_eq!(
+            decimal_integer(&format!("1{}", "0".repeat(64)), 16),
+            Ok(2.0_f64.powi(256))
+        );
+        assert_eq!(
+            decimal_integer(&"F".repeat(255), 16),
+            Ok(2.0_f64.powi(1020))
+        );
+        assert_eq!(decimal_integer(&"Z".repeat(255), 36), Err(Error::NUM));
+        assert_eq!(decimal_integer(&"0".repeat(256), 2), Err(Error::NUM));
+        assert_eq!(decimal_integer("-FF", 16), Ok(-255.0));
+        assert_eq!(decimal_integer("G", 16), Err(Error::VALUE));
+        assert_eq!(decimal_integer("", 16), Err(Error::VALUE));
     }
 }

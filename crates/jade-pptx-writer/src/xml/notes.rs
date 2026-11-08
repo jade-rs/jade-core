@@ -283,3 +283,28 @@ fn update_notes(
     jade_pptx_reader::read_deck(&result)?;
     Ok(result)
 }
+/// Applies `edit` (given the notes XML and the notes body's shape id) to
+/// slide `index`'s notes part: how the notes' text is formatted.
+pub(crate) fn edit_notes_body(
+    bytes: &[u8],
+    index: usize,
+    edit: impl FnOnce(&str, u32) -> Result<String>,
+) -> Result<Vec<u8>> {
+    let (mut package, _, part) = locate(bytes, index)?;
+    let Some(part) = part else {
+        return Ok(bytes.to_vec());
+    };
+    let xml = package.required_part_str(&part)?;
+    let nodes = parse_document_nodes(&xml)?;
+    let Some(id) = body_id(&nodes)? else {
+        return Ok(bytes.to_vec());
+    };
+    let changed = edit(&xml, id)?;
+    if changed == xml {
+        return Ok(bytes.to_vec());
+    }
+    package.replace(&part, changed.into_bytes());
+    let result = package.write()?;
+    jade_pptx_reader::read_deck(&result)?;
+    Ok(result)
+}

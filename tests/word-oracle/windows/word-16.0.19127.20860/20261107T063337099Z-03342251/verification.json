@@ -1,0 +1,14 @@
+{
+  "engine_commit": "6bedd8c7b0666392e53568982037b9a37f4e5523",
+  "word_product_version": "16.0.19127.20860",
+  "capture_id": "20261107T063337099Z-03342251",
+  "reference_kind": "emf",
+  "engine_source_worktree_dirty": false,
+  "strict_fixtures": [],
+  "matching_fixtures": [],
+  "pending_fixtures": [
+    "word-windows-edge-table-spacing-continuation-compat12",
+    "word-windows-edge-table-spacing-continuation-compat14",
+    "word-windows-edge-table-spacing-continuation-compat15"
+  ]
+}

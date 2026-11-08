@@ -39,6 +39,43 @@ fn pieces(formula: &str) -> Vec<Piece<'_>> {
     while index < chars.len() {
         let (start, ch) = chars[index];
         let next = match ch {
+            ch if ch.is_ascii_digit()
+                || (ch == '.'
+                    && chars
+                        .get(index + 1)
+                        .is_some_and(|(_, ch)| ch.is_ascii_digit())) =>
+            {
+                let mut cursor = index + 1;
+                while chars
+                    .get(cursor)
+                    .is_some_and(|(_, ch)| ch.is_ascii_digit() || *ch == '.')
+                {
+                    cursor += 1;
+                }
+                if chars
+                    .get(cursor)
+                    .is_some_and(|(_, ch)| matches!(ch, 'e' | 'E'))
+                {
+                    let mut exponent = cursor + 1;
+                    if chars
+                        .get(exponent)
+                        .is_some_and(|(_, ch)| matches!(ch, '+' | '-'))
+                    {
+                        exponent += 1;
+                    }
+                    let digits = exponent;
+                    while chars
+                        .get(exponent)
+                        .is_some_and(|(_, ch)| ch.is_ascii_digit())
+                    {
+                        exponent += 1;
+                    }
+                    if exponent > digits {
+                        cursor = exponent;
+                    }
+                }
+                cursor
+            }
             '"' | '\'' => {
                 let mut cursor = index + 1;
                 loop {
@@ -61,6 +98,16 @@ fn pieces(formula: &str) -> Vec<Piece<'_>> {
                 loop {
                     match chars.get(cursor) {
                         None => break cursor,
+                        Some((_, '\''))
+                            if chars.get(cursor + 1).is_some_and(|(_, ch)| {
+                                matches!(ch, '[' | ']' | '#' | '@' | '\'')
+                            }) =>
+                        {
+                            // Escaped header characters do not open or close
+                            // a structured reference.
+                            cursor += 2;
+                            continue;
+                        }
                         Some((_, '[')) => depth += 1,
                         Some((_, ']')) => {
                             depth -= 1;
@@ -104,17 +151,18 @@ fn is_call(pieces: &[Piece<'_>], index: usize) -> bool {
 fn bare(name: &str) -> &str {
     let mut name = name;
     for prefix in ["_xlfn._xlws.", "_xlfn.", "_xlpm."] {
-        if name.len() >= prefix.len() && name[..prefix.len()].eq_ignore_ascii_case(prefix) {
+        if name
+            .get(..prefix.len())
+            .is_some_and(|head| head.eq_ignore_ascii_case(prefix))
+        {
             name = &name[prefix.len()..];
         }
     }
     name
 }
 
-/// The names `LET` and `LAMBDA` bind anywhere in the formula, upper-cased:
-/// every other argument of a LET but its last, every argument of a LAMBDA
-/// but its last.
-fn bound_names(pieces: &[Piece<'_>]) -> HashSet<String> {
+/// Identifier positions bound by LET and LAMBDA within their lexical scope.
+fn bound_names(pieces: &[Piece<'_>]) -> HashSet<usize> {
     let mut names = HashSet::new();
     for (index, piece) in pieces.iter().enumerate() {
         let Piece::Identifier(name) = piece else {
@@ -125,10 +173,12 @@ fn bound_names(pieces: &[Piece<'_>]) -> HashSet<String> {
             continue;
         }
         // The call's arguments, as the identifiers that make each one up.
-        let mut arguments: Vec<Vec<&str>> = vec![Vec::new()];
+        let mut arguments: Vec<Vec<(usize, &str)>> = vec![Vec::new()];
+        let mut starts = vec![index + 1];
+        let mut end = pieces.len();
         let mut depth = 0usize;
         let mut open = false;
-        for piece in &pieces[index + 1..] {
+        for (at, piece) in pieces.iter().enumerate().skip(index + 1) {
             match piece {
                 Piece::Other("(") | Piece::Other("{") => {
                     depth += 1;
@@ -140,11 +190,13 @@ fn bound_names(pieces: &[Piece<'_>]) -> HashSet<String> {
                 Piece::Other(")") | Piece::Other("}") => {
                     depth = depth.saturating_sub(1);
                     if depth == 0 {
+                        end = at;
                         break;
                     }
                 }
                 Piece::Other(",") if depth == 1 => {
                     arguments.push(Vec::new());
+                    starts.push(at + 1);
                     continue;
                 }
                 _ => {}
@@ -153,10 +205,12 @@ fn bound_names(pieces: &[Piece<'_>]) -> HashSet<String> {
                 continue;
             }
             match piece {
-                Piece::Identifier(identifier) => arguments.last_mut().unwrap().push(identifier),
+                Piece::Identifier(identifier) => {
+                    arguments.last_mut().unwrap().push((at, identifier))
+                }
                 Piece::Other(text) if text.trim().is_empty() => {}
                 // Anything else in an argument: it is not a lone name.
-                Piece::Other(_) => arguments.last_mut().unwrap().push(""),
+                Piece::Other(_) => arguments.last_mut().unwrap().push((at, "")),
             }
         }
         let last = arguments.len().saturating_sub(1);
@@ -166,9 +220,45 @@ fn bound_names(pieces: &[Piece<'_>]) -> HashSet<String> {
             } else {
                 position < last
             };
-            if let ([identifier], true) = (argument.as_slice(), binds) {
+            if let ([(declaration, identifier)], true) = (argument.as_slice(), binds) {
                 if !identifier.is_empty() {
-                    names.insert(bare(identifier).to_uppercase());
+                    names.insert(*declaration);
+                    // LET values are evaluated before their own name is bound.
+                    // LAMBDA parameters are visible only in its body.
+                    let start = if function == "LET" {
+                        starts.get(position + 2).copied().unwrap_or(end)
+                    } else {
+                        starts[last]
+                    };
+                    for at in start..end {
+                        if let Piece::Identifier(candidate) = pieces[at] {
+                            let next = pieces[at + 1..].iter().find(|piece| {
+                                !matches!(piece, Piece::Other(text) if text.trim().is_empty())
+                            });
+                            let previous = pieces[..at].iter().rev().find(|piece| {
+                                !matches!(piece, Piece::Other(text) if text.trim().is_empty())
+                            });
+                            let mut tail = pieces[at + 1..].iter().filter(|piece| {
+                                !matches!(piece, Piece::Other(text) if text.trim().is_empty())
+                            });
+                            let three_d_sheet = matches!(tail.next(), Some(Piece::Other(":")))
+                                && matches!(
+                                    tail.next(),
+                                    Some(Piece::Identifier(_)) | Some(Piece::Other(_))
+                                )
+                                && matches!(tail.next(), Some(Piece::Other("!")));
+                            // A sheet or table name belongs to its reference,
+                            // even when a local variable has the same spelling.
+                            if bare(candidate).to_uppercase() == bare(identifier).to_uppercase()
+                                && !matches!(next, Some(Piece::Other("!")))
+                                && !matches!(previous, Some(Piece::Other("!")))
+                                && !three_d_sheet
+                                && !matches!(next, Some(Piece::Other(text)) if text.starts_with('['))
+                            {
+                                names.insert(at);
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -186,7 +276,7 @@ pub fn to_file_formula(formula: &str) -> String {
             Piece::Other(text) => out.push_str(text),
             Piece::Identifier(name) => {
                 let name_bare = bare(name);
-                if bound.contains(&name_bare.to_uppercase()) {
+                if bound.contains(&index) {
                     out.push_str("_xlpm.");
                     out.push_str(name_bare);
                 } else if is_call(&pieces, index) {
@@ -209,7 +299,11 @@ pub fn to_file_formula(formula: &str) -> String {
 /// `formula` as a file stores it, the way Excel shows it: without the
 /// `_xlfn.`, `_xlws.` and `_xlpm.` prefixes.
 pub fn to_display_formula(formula: &str) -> String {
-    if !formula.contains("_xl") {
+    if !formula
+        .as_bytes()
+        .windows(3)
+        .any(|part| part.eq_ignore_ascii_case(b"_xl"))
+    {
         return formula.to_string();
     }
     pieces(formula)
@@ -262,6 +356,79 @@ pub fn wrong_argument_count(formula: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn exponent_markers_are_numbers_rather_than_local_names() {
+        for value in ["1e-3", "1E+3", ".5e-2", "2.5E3"] {
+            assert_eq!(
+                to_file_formula(&format!("LET(e,2,{value}+e)")),
+                format!("_xlfn.LET(_xlpm.e,2,{value}+_xlpm.e)")
+            );
+        }
+    }
+
+    #[test]
+    fn local_names_do_not_rewrite_workbook_names_or_reference_owners() {
+        assert_eq!(
+            to_file_formula("LET(rate,A1:A3,SUM(rate:Sheet3!A1)+SUM(rate:A3))"),
+            "_xlfn.LET(_xlpm.rate,A1:A3,SUM(rate:Sheet3!A1)+SUM(_xlpm.rate:A3))"
+        );
+        assert_eq!(
+            to_file_formula("LET(rate,2,SUM(rate:'Last Sheet'!A1)+rate)"),
+            "_xlfn.LET(_xlpm.rate,2,SUM(rate:'Last Sheet'!A1)+_xlpm.rate)"
+        );
+        assert_eq!(
+            to_file_formula("LET(rate,2,Sheet2!rate+'売上'!rate+rate)"),
+            "_xlfn.LET(_xlpm.rate,2,Sheet2!rate+'売上'!rate+_xlpm.rate)"
+        );
+        assert_eq!(
+            to_file_formula("rate+LET(rate,rate+1,rate)+rate"),
+            "rate+_xlfn.LET(_xlpm.rate,rate+1,_xlpm.rate)+rate"
+        );
+        assert_eq!(
+            to_file_formula("LET(rate,2,total,rate*3,total)+total"),
+            "_xlfn.LET(_xlpm.rate,2,_xlpm.total,_xlpm.rate*3,_xlpm.total)+total"
+        );
+        assert_eq!(
+            to_file_formula("LAMBDA(rate,rate+1)(rate)+rate"),
+            "_xlfn.LAMBDA(_xlpm.rate,_xlpm.rate+1)(rate)+rate"
+        );
+        assert_eq!(
+            to_file_formula("LET(data,2,data+data!A1+SUM(data[Value]))"),
+            "_xlfn.LET(_xlpm.data,2,_xlpm.data+data!A1+SUM(data[Value]))"
+        );
+        assert_eq!(
+            to_file_formula("LET(rate,2,LET(rate,rate+1,rate))"),
+            "_xlfn.LET(_xlpm.rate,2,_xlfn.LET(_xlpm.rate,_xlpm.rate+1,_xlpm.rate))"
+        );
+    }
+
+    #[test]
+    fn display_prefix_matching_is_case_insensitive() {
+        assert_eq!(
+            to_display_formula("_XLFN.LET(_XLPM.rate,2,_XLPM.rate)"),
+            "LET(rate,2,rate)"
+        );
+        assert_eq!(
+            to_display_formula("_XLFN._XLWS.FILTER(A1:A3,A1:A3>0)"),
+            "FILTER(A1:A3,A1:A3>0)"
+        );
+    }
+
+    #[test]
+    fn unicode_names_survive_prefix_conversion() {
+        for formula in [
+            "売上高合計+1",
+            "SUM(売上高合計)",
+            "日本語!A1",
+            "_xlfn.売上高合計(A1)",
+        ] {
+            let displayed = to_display_formula(formula);
+            assert_eq!(to_display_formula(&to_file_formula(&displayed)), displayed);
+        }
+        assert_eq!(to_file_formula("売上高合計+1"), "売上高合計+1");
+        assert_eq!(to_display_formula("_xlpm.売上高合計"), "売上高合計");
+    }
 
     #[test]
     fn newer_functions_gain_their_prefix_and_older_ones_do_not() {
@@ -319,6 +486,21 @@ mod tests {
             to_file_formula("SUM(Table1[IFS])+\"say \"\"SORT(\"\"\""),
             "SUM(Table1[IFS])+\"say \"\"SORT(\"\"\""
         );
+    }
+
+    #[test]
+    fn escaped_table_headers_do_not_hide_or_expose_function_calls() {
+        for reference in [
+            "Table1[[part']IFS(A1)]]",
+            "Table1[[part'[name]]",
+            "Table1[[part''name]]",
+            "Table1[[part']_xlfn.FILTER(A1)]]",
+        ] {
+            let formula = format!("SUM({reference})+FILTER(A1:A3,A1:A3>0)");
+            let stored = format!("SUM({reference})+_xlfn._xlws.FILTER(A1:A3,A1:A3>0)");
+            assert_eq!(to_file_formula(&formula), stored);
+            assert_eq!(to_display_formula(&stored), formula);
+        }
     }
 
     #[test]

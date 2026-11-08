@@ -1,0 +1,127 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261107T161153795Z-80e52f6f",
+  "captured_at_utc": "2026-11-07T16:11:53.8146190Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20860",
+    "file_version": "16.0.19127.20860",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "9bafe09d0c458006744b9edce767a328ba2da1bb5d9a460e5830c47bf6d7f1d1"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-edge-table-positive-spacing-sizing-autofit-bidi-compat14",
+      "source": "..\\positive-spacing-sizing-inputs\\public\\fixtures\\word-windows-edge-table-positive-spacing-sizing-autofit-bidi-compat14.docx",
+      "sha256": "3ef7f3200585a42edc34917c8af6dcb1a71910dcd96369491fd3e307d7623fae",
+      "pdf": "word-windows-edge-table-positive-spacing-sizing-autofit-bidi-compat14.pdf",
+      "pdf_sha256": "1d59bc84e794018eb34769021b711d973272bc99e9574b93177d65e1106e55a5",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-positive-spacing-sizing-autofit-bidi-compat14.page-001.emf",
+          "sha256": "8a6f7fb3e9afd9d0a9403150fb383a6d91522510a01877a28c51d5e6be729e27",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-positive-spacing-sizing-autofit-bidi-short-compat14",
+      "source": "..\\positive-spacing-sizing-inputs\\public\\fixtures\\word-windows-edge-table-positive-spacing-sizing-autofit-bidi-short-compat14.docx",
+      "sha256": "e028f635ca087b8e0be980a9160ba8db5648a24b4162f772e5347f758e7f977a",
+      "pdf": "word-windows-edge-table-positive-spacing-sizing-autofit-bidi-short-compat14.pdf",
+      "pdf_sha256": "12315958b645e54293dc7c68eb44f5029523b8f497b8154f10a9ed57eef22949",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-positive-spacing-sizing-autofit-bidi-short-compat14.page-001.emf",
+          "sha256": "21364e8dc95bc0aaf10cb7c108f38bc1e6cc3b88d1995aa8b0658a0d87523520",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-positive-spacing-sizing-autofit-ltr-compat14",
+      "source": "..\\positive-spacing-sizing-inputs\\public\\fixtures\\word-windows-edge-table-positive-spacing-sizing-autofit-ltr-compat14.docx",
+      "sha256": "16953b45e46afcda186adc78b2ba3f6b037726e3d933f13412de3bc021ed93f8",
+      "pdf": "word-windows-edge-table-positive-spacing-sizing-autofit-ltr-compat14.pdf",
+      "pdf_sha256": "c483e4583f79b70d9e42a13681a5447f1b1b5b1c36b62e9170fc11069b892696",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-positive-spacing-sizing-autofit-ltr-compat14.page-001.emf",
+          "sha256": "6f668e21ed1a9d1fa0b0f5fc31543141e2c8810cd1b5bc95b0a8315958c324fa",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-positive-spacing-sizing-autofit-ltr-short-compat14",
+      "source": "..\\positive-spacing-sizing-inputs\\public\\fixtures\\word-windows-edge-table-positive-spacing-sizing-autofit-ltr-short-compat14.docx",
+      "sha256": "8124cd0fd85009ecee29b2df74b19b17ced7e60bffed953032721e5263000786",
+      "pdf": "word-windows-edge-table-positive-spacing-sizing-autofit-ltr-short-compat14.pdf",
+      "pdf_sha256": "41c3f5f1d03e725cea6b71ef1dea62170b5dd3c23218528e466f4e2be9c9aff3",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-positive-spacing-sizing-autofit-ltr-short-compat14.page-001.emf",
+          "sha256": "dd9df97ed95c32eb49d0c21b6493721d12020a78f6819cae56f09f6cf2d00e40",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-positive-spacing-sizing-fixed-bidi-compat14",
+      "source": "..\\positive-spacing-sizing-inputs\\public\\fixtures\\word-windows-edge-table-positive-spacing-sizing-fixed-bidi-compat14.docx",
+      "sha256": "f4362bfdb73a1c3f820b3fd5460b81b5c17be1a94aeb36d6bac788f397feba9e",
+      "pdf": "word-windows-edge-table-positive-spacing-sizing-fixed-bidi-compat14.pdf",
+      "pdf_sha256": "51222081cac318f667e85050b7ee87b072a727c3c9b5405152108e222c2cd3ba",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-positive-spacing-sizing-fixed-bidi-compat14.page-001.emf",
+          "sha256": "d7e8f5f6e39f5549f1434e96536e0b6164725287e8d569dcecabb799495c698d",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-positive-spacing-sizing-fixed-bidi-short-compat14",
+      "source": "..\\positive-spacing-sizing-inputs\\public\\fixtures\\word-windows-edge-table-positive-spacing-sizing-fixed-bidi-short-compat14.docx",
+      "sha256": "1937bc5a3bac4b75f00c16351e4ceed4fafdf6a91ed30b480777e5de4d2740e2",
+      "pdf": "word-windows-edge-table-positive-spacing-sizing-fixed-bidi-short-compat14.pdf",
+      "pdf_sha256": "0b12cf30aeba79ca1267de1d8f586833d8e5f947e55976e3c7bf4d99ce4a19ce",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-positive-spacing-sizing-fixed-bidi-short-compat14.page-001.emf",
+          "sha256": "30d492f4ce3aea9796eea7015fad160bddc8889ed8528e5ad476435be7757384",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    }
+  ],
+  "table_glyph_projection": "unclipped"
+}
