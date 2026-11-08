@@ -55,7 +55,7 @@ impl IdPool {
         }
         pool
     }
-    fn fresh(&mut self) -> String {
+    pub(crate) fn fresh(&mut self) -> String {
         loop {
             // Derive stable identities from the package, with UUID version
             // and variant bits. Always check all XML parts for collisions.

@@ -45,6 +45,7 @@ pub mod clipboard;
 mod conditional_cleanup;
 pub mod conditional_formats;
 mod copy_objects;
+mod copy_sparkline_ids;
 pub mod data_tables;
 pub mod data_validations;
 pub mod defined_names;
