@@ -1,0 +1,47 @@
+[
+  {
+    "fixture": "word-windows-edge-arial-script-sweep-bold-italic",
+    "word_pages": 5,
+    "native_pages": 5,
+    "word_glyphs": 1911,
+    "native_glyphs": 1911,
+    "matched": 1911,
+    "within_0_375pt": 1911,
+    "x_p50": 0.05448150634765625,
+    "x_p95": 0.15552856445313523,
+    "y_p50": 0.04559326171875,
+    "y_p95": 0.1409912109375,
+    "first_errors": [],
+    "pdf_sha256": "8263253bb10c4b4905f38fd46954741ab3c54cb6c91258062585cc788f6551c3"
+  },
+  {
+    "fixture": "word-windows-edge-arial-script-sweep-bold",
+    "word_pages": 5,
+    "native_pages": 5,
+    "word_glyphs": 1911,
+    "native_glyphs": 1911,
+    "matched": 1911,
+    "within_0_375pt": 1911,
+    "x_p50": 0.06063049316406932,
+    "x_p95": 0.16610534667967158,
+    "y_p50": 0.0439453125,
+    "y_p95": 0.14324951171875,
+    "first_errors": [],
+    "pdf_sha256": "4daf3592685d266725467d69c7837b0a06a356123adf6dcd9e69c49884b1e271"
+  },
+  {
+    "fixture": "word-windows-edge-arial-script-sweep-italic",
+    "word_pages": 5,
+    "native_pages": 5,
+    "word_glyphs": 1911,
+    "native_glyphs": 1911,
+    "matched": 1911,
+    "within_0_375pt": 1911,
+    "x_p50": 0.06077178955078466,
+    "x_p95": 0.15665283203122726,
+    "y_p50": 0.0428466796875,
+    "y_p95": 0.1409912109375,
+    "first_errors": [],
+    "pdf_sha256": "4a9103e5e9dd2020f01fcf283b930b8ae083c46ba108456092006d8d1183138c"
+  }
+]

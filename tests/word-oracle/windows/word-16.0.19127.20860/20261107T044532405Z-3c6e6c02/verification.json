@@ -1,0 +1,15 @@
+{
+  "engine_commit": "d248974676b38ac49355ce3a7692b2f5a78365b8",
+  "word_product_version": "16.0.19127.20860",
+  "capture_id": "20261107T044532405Z-3c6e6c02",
+  "reference_kind": "emf",
+  "engine_source_worktree_dirty": false,
+  "strict_fixtures": [],
+  "matching_fixtures": [],
+  "pending_fixtures": [
+    "word-windows-edge-table-alignment-compat12",
+    "word-windows-edge-table-alignment-compat14",
+    "word-windows-edge-table-borders-compat12",
+    "word-windows-edge-table-borders-compat14"
+  ]
+}

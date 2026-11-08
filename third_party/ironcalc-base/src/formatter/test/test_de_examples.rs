@@ -179,14 +179,12 @@ fn format_0_hashhash_percent_de() {
     assert_eq!(r3.text, "0,43%");
 }
 
-// skip: not implemented correctly
 #[test]
-#[ignore]
 fn format_millions_scale_decimal_de() {
     let locale = get_de_locale();
-    let r1 = format_number(1_234_567.0, "#,##0,.0#", locale);
-    let r2 = format_number(12_000_000.0, "#,##0,.0#", locale);
-    let r3 = format_number(987_654_321.0, "#,##0,.0#", locale);
+    let r1 = format_number(1_234_567.0, "#,##0,,.0#", locale);
+    let r2 = format_number(12_000_000.0, "#,##0,,.0#", locale);
+    let r3 = format_number(987_654_321.0, "#,##0,,.0#", locale);
 
     assert_eq!(r1.text, "1,23");
     assert_eq!(r2.text, "12,0");

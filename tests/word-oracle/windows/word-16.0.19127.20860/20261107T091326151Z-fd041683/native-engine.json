@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "native_source_commit": "2b8815ede7a1706bff8121e28c19c7b93977d39f",
+  "native_executable_sha256": "17cbbc995b1ed79da877bdf37124ceb18fe5f182781271442b0c214962ebb3e7",
+  "capture_tools_commit": "07a946f57d4dee358490a89162341ae1a09861eb",
+  "provenance_note": "Original traces before nonuniform collapsed minimum-row corrections. Diagnostic capture only; no fixtures promoted."
+}

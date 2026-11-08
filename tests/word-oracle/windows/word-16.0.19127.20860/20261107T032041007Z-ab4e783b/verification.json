@@ -1,0 +1,18 @@
+{
+  "engine_commit": "cb529bdb12441cf0df75b8e3245c0e34447d2572",
+  "word_product_version": "16.0.19127.20860",
+  "capture_id": "20261107T032041007Z-ab4e783b",
+  "reference_kind": "emf",
+  "engine_source_worktree_dirty": false,
+  "strict_fixtures": [
+    "word-windows-edge-arial-script-sweep-bold-italic",
+    "word-windows-edge-arial-script-sweep-bold",
+    "word-windows-edge-arial-script-sweep-italic"
+  ],
+  "matching_fixtures": [
+    "word-windows-edge-arial-script-sweep-bold",
+    "word-windows-edge-arial-script-sweep-bold-italic",
+    "word-windows-edge-arial-script-sweep-italic"
+  ],
+  "pending_fixtures": []
+}

@@ -1,0 +1,35 @@
+{
+  "engine_commit": "f41d7e73d356dc703a4ea2e8c6da64a1ac733c1b",
+  "word_product_version": "16.0.19127.20860",
+  "capture_id": "20261107T123422628Z-6990d43d",
+  "reference_kind": "emf",
+  "engine_source_worktree_dirty": false,
+  "strict_fixtures": [
+    "word-windows-edge-table-negative-spacing-columns-2-compat14",
+    "word-windows-edge-table-negative-spacing-columns-3-compat14",
+    "word-windows-edge-table-negative-spacing-columns-4-compat14",
+    "word-windows-edge-table-negative-spacing-columns-5-compat14",
+    "word-windows-edge-table-negative-spacing-row-scopes-compat14",
+    "word-windows-edge-table-negative-spacing-unequal-2-compat14",
+    "word-windows-edge-table-negative-spacing-unequal-3-compat14",
+    "word-windows-edge-table-negative-spacing-unequal-4-compat14",
+    "word-windows-edge-table-spacing-negative-mixed-borders-compat12",
+    "word-windows-edge-table-spacing-negative-mixed-borders-compat14",
+    "word-windows-edge-table-spacing-negative-mixed-borders-compat15"
+  ],
+  "matching_fixtures": [
+    "word-windows-edge-table-negative-spacing-columns-2-compat14",
+    "word-windows-edge-table-negative-spacing-columns-3-compat14",
+    "word-windows-edge-table-negative-spacing-columns-4-compat14",
+    "word-windows-edge-table-negative-spacing-columns-5-compat14",
+    "word-windows-edge-table-negative-spacing-row-scopes-compat14",
+    "word-windows-edge-table-negative-spacing-unequal-2-compat14",
+    "word-windows-edge-table-negative-spacing-unequal-3-compat14",
+    "word-windows-edge-table-negative-spacing-unequal-4-compat14",
+    "word-windows-edge-table-spacing-negative-mixed-borders-compat12",
+    "word-windows-edge-table-spacing-negative-mixed-borders-compat14",
+    "word-windows-edge-table-spacing-negative-mixed-borders-compat15"
+  ],
+  "pending_fixtures": [],
+  "table_glyph_projection": "unclipped"
+}

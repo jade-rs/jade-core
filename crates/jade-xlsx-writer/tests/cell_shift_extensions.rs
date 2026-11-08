@@ -65,7 +65,7 @@ fn attrs(xml: &str, ns: &str, element: &[u8], key: &[u8]) -> Vec<String> {
 #[test]
 fn extended_validation_splits_relative_anchors_counts_and_revision_ids() {
     let mut b = custom(
-        r#"<extLst><ext uri="validation"><x:dataValidations count="1" disablePrompts="1"><x:dataValidation type="custom" rev:uid="{4A414445-584C-4000-8000-000000000001}" u:uid="keep"><x:formula1><m:f>B1&gt;0</m:f></x:formula1><m:sqref>B1:B5</m:sqref><u:formula1><u:f>B3</u:f></u:formula1></x:dataValidation></x:dataValidations><u:dataValidations count="9"><u:dataValidation><m:sqref>B3</m:sqref></u:dataValidation></u:dataValidations></ext><ext uri="opaque"><u:content>B3</u:content></ext></extLst>"#,
+        r#"<extLst><ext uri="{CCE6A557-97BC-4B89-ADB6-D9C93CAAB3DF}"><x:dataValidations count="1" disablePrompts="1"><x:dataValidation type="custom" rev:uid="{4A414445-584C-4000-8000-000000000001}" u:uid="keep"><x:formula1><m:f>B1&gt;0</m:f></x:formula1><m:sqref>B1:B5</m:sqref><u:formula1><u:f>B3</u:f></u:formula1></x:dataValidation></x:dataValidations><u:dataValidations count="9"><u:dataValidation><m:sqref>B3</m:sqref></u:dataValidation></u:dataValidations></ext><ext uri="opaque"><u:content>B3</u:content></ext></extLst>"#,
     );
     let s = b.workbook().sheets[0].name.clone();
     let before = b.bytes().to_vec();
@@ -94,7 +94,7 @@ fn extended_validation_splits_relative_anchors_counts_and_revision_ids() {
 #[test]
 fn sparklines_move_display_cells_but_never_fill_new_cells_and_remove_deleted_records() {
     let mut b = custom(
-        r#"<extLst><ext uri="sparklines"><x:sparklineGroups><x:sparklineGroup type="line" u:option="keep"><m:f>'売上'!B1:B5</m:f><x:colorSeries rgb="FF123456"/><x:sparklines><x:sparkline><m:f>'売上'!B1:B5</m:f><m:sqref>B3</m:sqref></x:sparkline><x:sparkline><m:f>'売上'!C1:C5</m:f><m:sqref>D3</m:sqref></x:sparkline></x:sparklines></x:sparklineGroup></x:sparklineGroups></ext></extLst>"#,
+        r#"<extLst><ext uri="{05C60535-1F16-4FD2-B633-F4F36F0B64E0}"><x:sparklineGroups><x:sparklineGroup type="line" u:option="keep"><m:f>'売上'!B1:B5</m:f><x:colorSeries rgb="FF123456"/><x:sparklines><x:sparkline><m:f>'売上'!B1:B5</m:f><m:sqref>B3</m:sqref></x:sparkline><x:sparkline><m:f>'売上'!C1:C5</m:f><m:sqref>D3</m:sqref></x:sparkline></x:sparklines></x:sparklineGroup></x:sparklineGroups></ext></extLst>"#,
     );
     let s = b.workbook().sheets[0].name.clone();
     // Use the real current worksheet name so a structural rewrite applies.
@@ -119,7 +119,7 @@ fn sparklines_move_display_cells_but_never_fill_new_cells_and_remove_deleted_rec
 #[test]
 fn aggregate_thresholds_keep_one_union_while_expression_priorities_include_x14() {
     let mut b = custom(
-        r#"<conditionalFormatting sqref="A1:C5" rev:uid="{AAAAAAAA-0000-4000-8000-000000000001}"><cfRule type="dataBar" priority="1"><dataBar><cfvo type="formula" val="$B$3"/><cfvo type="max"/><color rgb="FF123456"/></dataBar></cfRule><cfRule type="expression" priority="2"><formula>B1&gt;0</formula></cfRule></conditionalFormatting><extLst><ext uri="modern"><x:conditionalFormattings><x:conditionalFormatting><x:cfRule type="expression" priority="3" id="{AAAAAAAA-0000-4000-8000-000000000002}"><m:f>B1&gt;0</m:f></x:cfRule><m:sqref>B1:B5</m:sqref></x:conditionalFormatting></x:conditionalFormattings></ext></extLst>"#,
+        r#"<conditionalFormatting sqref="A1:C5" rev:uid="{AAAAAAAA-0000-4000-8000-000000000001}"><cfRule type="dataBar" priority="1"><dataBar><cfvo type="formula" val="$B$3"/><cfvo type="max"/><color rgb="FF123456"/></dataBar></cfRule><cfRule type="expression" priority="2"><formula>B1&gt;0</formula></cfRule></conditionalFormatting><extLst><ext uri="{78C0D931-6437-407D-A8EE-F0AAD7539E65}"><x:conditionalFormattings><x:conditionalFormatting><x:cfRule type="expression" priority="3" id="{AAAAAAAA-0000-4000-8000-000000000002}"><m:f>B1&gt;0</m:f></x:cfRule><m:sqref>B1:B5</m:sqref></x:conditionalFormatting></x:conditionalFormattings></ext></extLst>"#,
     );
     let s = b.workbook().sheets[0].name.clone();
     b.shift_cells(&s, range("B3"), Axis::Rows, true).unwrap();
@@ -146,7 +146,7 @@ fn aggregate_thresholds_keep_one_union_while_expression_priorities_include_x14()
 #[test]
 fn deleting_all_covered_cells_removes_paired_extensions_and_validation() {
     let mut b = custom(
-        r#"<conditionalFormatting sqref="B3"><cfRule type="dataBar" priority="1"><dataBar><cfvo type="min"/><cfvo type="max"/><color rgb="FF123456"/></dataBar><extLst><ext uri="link"><x:id>{AAAAAAAA-0000-4000-8000-000000000001}</x:id></ext></extLst></cfRule></conditionalFormatting><extLst><ext uri="cf"><x:conditionalFormattings><x:conditionalFormatting><x:cfRule type="dataBar" id="{AAAAAAAA-0000-4000-8000-000000000001}"><x:dataBar><x:cfvo type="autoMin"/><x:cfvo type="autoMax"/></x:dataBar></x:cfRule><m:sqref>B3</m:sqref></x:conditionalFormatting></x:conditionalFormattings></ext><ext uri="dv"><x:dataValidations count="1"><x:dataValidation type="whole"><x:formula1><m:f>1</m:f></x:formula1><m:sqref>B3</m:sqref></x:dataValidation></x:dataValidations></ext></extLst>"#,
+        r#"<conditionalFormatting sqref="B3"><cfRule type="dataBar" priority="1"><dataBar><cfvo type="min"/><cfvo type="max"/><color rgb="FF123456"/></dataBar><extLst><ext uri="link"><x:id>{AAAAAAAA-0000-4000-8000-000000000001}</x:id></ext></extLst></cfRule></conditionalFormatting><extLst><ext uri="{78C0D931-6437-407D-A8EE-F0AAD7539E65}"><x:conditionalFormattings><x:conditionalFormatting><x:cfRule type="dataBar" id="{AAAAAAAA-0000-4000-8000-000000000001}"><x:dataBar><x:cfvo type="autoMin"/><x:cfvo type="autoMax"/></x:dataBar></x:cfRule><m:sqref>B3</m:sqref></x:conditionalFormatting></x:conditionalFormattings></ext><ext uri="{CCE6A557-97BC-4B89-ADB6-D9C93CAAB3DF}"><x:dataValidations count="1"><x:dataValidation type="whole"><x:formula1><m:f>1</m:f></x:formula1><m:sqref>B3</m:sqref></x:dataValidation></x:dataValidations></ext></extLst>"#,
     );
     let s = b.workbook().sheets[0].name.clone();
     b.shift_cells(&s, range("B3"), Axis::Rows, false).unwrap();
@@ -160,7 +160,7 @@ fn deleting_all_covered_cells_removes_paired_extensions_and_validation() {
 #[test]
 fn an_explicit_extended_priority_makes_its_id_independent_of_a_legacy_link() {
     let mut b = custom(
-        r#"<conditionalFormatting sqref="B1:B5"><cfRule type="dataBar" priority="1"><dataBar><cfvo type="min"/><cfvo type="max"/><color rgb="FF123456"/></dataBar><extLst><ext uri="link"><x:id>{AAAAAAAA-0000-4000-8000-000000000001}</x:id></ext></extLst></cfRule></conditionalFormatting><extLst><ext uri="cf"><x:conditionalFormattings><x:conditionalFormatting><x:cfRule type="dataBar" priority="2" id="{AAAAAAAA-0000-4000-8000-000000000001}"><x:dataBar><x:cfvo type="autoMin"/><x:cfvo type="autoMax"/></x:dataBar></x:cfRule><m:sqref>C1:C5</m:sqref></x:conditionalFormatting></x:conditionalFormattings></ext></extLst>"#,
+        r#"<conditionalFormatting sqref="B1:B5"><cfRule type="dataBar" priority="1"><dataBar><cfvo type="min"/><cfvo type="max"/><color rgb="FF123456"/></dataBar><extLst><ext uri="link"><x:id>{AAAAAAAA-0000-4000-8000-000000000001}</x:id></ext></extLst></cfRule></conditionalFormatting><extLst><ext uri="{78C0D931-6437-407D-A8EE-F0AAD7539E65}"><x:conditionalFormattings><x:conditionalFormatting><x:cfRule type="dataBar" priority="2" id="{AAAAAAAA-0000-4000-8000-000000000001}"><x:dataBar><x:cfvo type="autoMin"/><x:cfvo type="autoMax"/></x:dataBar></x:cfRule><m:sqref>C1:C5</m:sqref></x:conditionalFormatting></x:conditionalFormattings></ext></extLst>"#,
     );
     let s = b.workbook().sheets[0].name.clone();
     b.shift_cells(&s, range("B3"), Axis::Rows, true).unwrap();
@@ -177,7 +177,7 @@ fn another_sheets_sparkline_source_follows_the_edit_without_moving_its_display()
     let s = b.workbook().sheets[0].name.clone();
     let other = b.workbook().sheets[1].part_name.clone();
     let mut p = OpcPackage::open(b.bytes()).unwrap();
-    p.replace(&other,format!(r#"<worksheet xmlns="{MAIN}" xmlns:x="{X14}" xmlns:m="{XM}"><sheetData/><extLst><ext uri="spark"><x:sparklineGroups><x:sparklineGroup><x:sparklines><x:sparkline><m:f>'{s}'!B1:B5</m:f><m:sqref>B3</m:sqref></x:sparkline></x:sparklines></x:sparklineGroup></x:sparklineGroups></ext></extLst></worksheet>"#).into_bytes());
+    p.replace(&other,format!(r#"<worksheet xmlns="{MAIN}" xmlns:x="{X14}" xmlns:m="{XM}"><sheetData/><extLst><ext uri="{{05C60535-1F16-4FD2-B633-F4F36F0B64E0}}"><x:sparklineGroups><x:sparklineGroup><x:sparklines><x:sparkline><m:f>'{s}'!B1:B5</m:f><m:sqref>B3</m:sqref></x:sparkline></x:sparklines></x:sparklineGroup></x:sparklineGroups></ext></extLst></worksheet>"#).into_bytes());
     b = HeadlessWorkbook::open(&p.write().unwrap()).unwrap();
     b.shift_cells(&s, range("B3"), Axis::Rows, true).unwrap();
     let out = OpcPackage::open(b.bytes())
@@ -191,7 +191,7 @@ fn another_sheets_sparkline_source_follows_the_edit_without_moving_its_display()
 #[test]
 fn horizontal_extended_validation_keeps_both_bounds_and_perpendicular_regions() {
     let mut b = custom(
-        r#"<extLst><ext uri="dv"><x:dataValidations count="1"><x:dataValidation type="decimal" operator="between"><x:formula1><m:f>$B$3</m:f></x:formula1><x:formula2><m:f>B3+10</m:f></x:formula2><m:sqref>A2:E4</m:sqref></x:dataValidation></x:dataValidations></ext></extLst>"#,
+        r#"<extLst><ext uri="{CCE6A557-97BC-4B89-ADB6-D9C93CAAB3DF}"><x:dataValidations count="1"><x:dataValidation type="decimal" operator="between"><x:formula1><m:f>$B$3</m:f></x:formula1><x:formula2><m:f>B3+10</m:f></x:formula2><m:sqref>A2:E4</m:sqref></x:dataValidation></x:dataValidations></ext></extLst>"#,
     );
     let s = b.workbook().sheets[0].name.clone();
     b.shift_cells(&s, range("C3"), Axis::Columns, true).unwrap();
@@ -210,7 +210,7 @@ fn horizontal_extended_validation_keeps_both_bounds_and_perpendicular_regions() 
 #[test]
 fn default_namespaced_extensions_work_with_a_strict_worksheet_and_foreign_lookalikes() {
     let mut b = custom(&format!(
-        r#"<extLst><ext uri="dv"><dataValidations xmlns="{X14}" xmlns:q="{XM}" count="1"><dataValidation type="whole"><formula1><q:f>$B$3</q:f></formula1><q:sqref>B3:B5</q:sqref></dataValidation></dataValidations><dataValidations xmlns="urn:foreign"><dataValidation><sqref>B3</sqref></dataValidation></dataValidations></ext></extLst>"#
+        r#"<extLst><ext uri="{{CCE6A557-97BC-4B89-ADB6-D9C93CAAB3DF}}"><dataValidations xmlns="{X14}" xmlns:q="{XM}" count="1"><dataValidation type="whole"><formula1><q:f>$B$3</q:f></formula1><q:sqref>B3:B5</q:sqref></dataValidation></dataValidations><dataValidations xmlns="urn:foreign"><dataValidation><sqref>B3</sqref></dataValidation></dataValidations></ext></extLst>"#
     ));
     let mut p = OpcPackage::open(b.bytes()).unwrap();
     p.replace(

@@ -2121,7 +2121,7 @@ fn parse_text_body(tx_body: &XmlElement) -> TextBody {
 }
 
 /// Reads the `<a:lvlNpPr>` children of any list-style container.
-fn parse_list_style(container: &XmlElement) -> ListStyle {
+pub(crate) fn parse_list_style(container: &XmlElement) -> ListStyle {
     let mut levels: Vec<Option<LevelStyle>> = Vec::new();
     for child in &container.children {
         let Some(level) = child
