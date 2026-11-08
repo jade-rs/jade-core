@@ -1427,13 +1427,15 @@ pub fn apply_hint_to_script(
     hint: Option<&FontHint>,
     grapheme: &str,
 ) -> ScriptCategory {
-    if grapheme.is_ascii() {
-        return script;
-    }
-    match (script, hint) {
+    let hinted_script = match (script, hint) {
         (ScriptCategory::Latin, Some(FontHint::EastAsia)) => ScriptCategory::EastAsia,
         (ScriptCategory::Latin, Some(FontHint::Complex)) => ScriptCategory::Complex,
-        _ => script,
+        _ => return script,
+    };
+    if grapheme.is_ascii() {
+        script
+    } else {
+        hinted_script
     }
 }
 
@@ -2183,5 +2185,253 @@ mod tests {
         assert!(!jade_painter::font_features::has_features(
             &without.font_descriptor_latin_ascii
         ));
+    }
+}
+
+#[cfg(test)]
+mod font_hint_tests {
+    use super::*;
+
+    const SCRIPTS: [ScriptCategory; 3] = [
+        ScriptCategory::Latin,
+        ScriptCategory::EastAsia,
+        ScriptCategory::Complex,
+    ];
+    // Columns are absent, default, eastAsia, and cs hints. An ASCII string
+    // always retains its supplied script, even when that disagrees with text.
+    const NON_ASCII_SCRIPTS: [[ScriptCategory; 4]; 3] = [
+        [
+            ScriptCategory::Latin,
+            ScriptCategory::Latin,
+            ScriptCategory::EastAsia,
+            ScriptCategory::Complex,
+        ],
+        [ScriptCategory::EastAsia; 4],
+        [ScriptCategory::Complex; 4],
+    ];
+    const DESCRIPTORS: [&str; 4] = ["ascii", "hansi", "east-asia", "complex"];
+
+    fn styles() -> [ResolvedRunStyle; 4] {
+        [
+            None,
+            Some(FontHint::Default),
+            Some(FontHint::EastAsia),
+            Some(FontHint::Complex),
+        ]
+        .map(|hint| {
+            ResolvedRunStyle::new(
+                DESCRIPTORS[0],
+                DESCRIPTORS[1],
+                DESCRIPTORS[2],
+                DESCRIPTORS[3],
+                0.0,
+                1.0,
+                false,
+                hint,
+            )
+            .with_font_descriptor_ids(11, 22, 33, 44)
+        })
+    }
+
+    fn descriptors() -> FontDescriptorSet {
+        FontDescriptorSet {
+            latin_ascii: Rc::from(DESCRIPTORS[0]),
+            latin_hansi: Rc::from(DESCRIPTORS[1]),
+            east_asia: Rc::from(DESCRIPTORS[2]),
+            complex: Rc::from(DESCRIPTORS[3]),
+        }
+    }
+
+    fn assert_selection(
+        text: &str,
+        script: ScriptCategory,
+        expected_script: ScriptCategory,
+        ascii: bool,
+        style: &ResolvedRunStyle,
+        descriptors: &FontDescriptorSet,
+        hashes: &[u64; 4],
+    ) {
+        let (slot, index) = match (expected_script, ascii) {
+            (ScriptCategory::Latin, true) => (ResolvedFontSlot::LatinAscii, 0),
+            (ScriptCategory::Latin, false) => (ResolvedFontSlot::LatinHansi, 1),
+            (ScriptCategory::EastAsia, _) => (ResolvedFontSlot::EastAsia, 2),
+            (ScriptCategory::Complex, _) => (ResolvedFontSlot::Complex, 3),
+        };
+        let hint = style.font_hint.as_ref();
+        assert_eq!(
+            apply_hint_to_script(script, hint, text),
+            expected_script,
+            "{text:?}, {script:?}, {hint:?}"
+        );
+        assert_eq!(style.font_slot_for_grapheme(text, script), slot);
+        assert_eq!(
+            style.font_key_for_grapheme(text, script),
+            (
+                slot,
+                DESCRIPTORS[index],
+                hashes[index],
+                Some((index as u32 + 1) * 11)
+            )
+        );
+        assert_eq!(
+            style.descriptor_key_for_grapheme(text, script),
+            (
+                DESCRIPTORS[index],
+                hashes[index],
+                Some((index as u32 + 1) * 11)
+            )
+        );
+        assert_eq!(
+            style.descriptor_for_grapheme(text, script),
+            DESCRIPTORS[index]
+        );
+        assert_eq!(
+            style.descriptor_for_grapheme_rc(text, script).as_ref(),
+            DESCRIPTORS[index]
+        );
+        assert_eq!(
+            descriptors.descriptor_for_grapheme(text, script, hint),
+            DESCRIPTORS[index]
+        );
+    }
+
+    #[test]
+    fn font_hints_match_slot_table_for_every_unicode_scalar() {
+        let styles = styles();
+        let descriptors = descriptors();
+        let hashes = DESCRIPTORS.map(hash_font_descriptor);
+        let mut encoded = [0; 4];
+        let mut count = 0;
+        for scalar in 0..=0x10ffff {
+            let Some(ch) = char::from_u32(scalar) else {
+                continue;
+            };
+            count += 1;
+            let text = ch.encode_utf8(&mut encoded);
+            // The oracle uses the scalar value, independently of byte scanning.
+            let ascii = scalar <= 0x7f;
+            for (script_index, script) in SCRIPTS.into_iter().enumerate() {
+                for (hint_index, style) in styles.iter().enumerate() {
+                    let expected_script = if ascii {
+                        script
+                    } else {
+                        NON_ASCII_SCRIPTS[script_index][hint_index]
+                    };
+                    assert_selection(
+                        text,
+                        script,
+                        expected_script,
+                        ascii,
+                        style,
+                        &descriptors,
+                        &hashes,
+                    );
+                }
+            }
+        }
+        assert_eq!(count, 1_112_064);
+    }
+
+    fn assert_mixed_text(text: &str) {
+        let styles = styles();
+        let descriptors = descriptors();
+        let hashes = DESCRIPTORS.map(hash_font_descriptor);
+        let ascii = text.chars().all(|ch| u32::from(ch) <= 0x7f);
+        // Reuse a single allocation and mutate hints after cloning, so neither
+        // previous input nor a previous hint can determine the next selection.
+        let mut changing = styles[0].clone();
+        let mut reused = String::with_capacity(text.len() + 1);
+        for value in [text, "A", text, "", text] {
+            reused.clear();
+            reused.push_str(value);
+            let value_ascii = if value == text { ascii } else { true };
+            for (hint_index, source) in styles.iter().enumerate() {
+                let previous = changing.clone();
+                let previous_index = styles
+                    .iter()
+                    .position(|s| s.font_hint == previous.font_hint)
+                    .unwrap();
+                changing.font_hint = source.font_hint.clone();
+                for (script_index, script) in SCRIPTS.into_iter().enumerate() {
+                    let expected_script = if value_ascii {
+                        script
+                    } else {
+                        NON_ASCII_SCRIPTS[script_index][hint_index]
+                    };
+                    assert_selection(
+                        &reused,
+                        script,
+                        expected_script,
+                        value_ascii,
+                        &changing,
+                        &descriptors,
+                        &hashes,
+                    );
+                    let previous_expected = if value_ascii {
+                        script
+                    } else {
+                        NON_ASCII_SCRIPTS[script_index][previous_index]
+                    };
+                    assert_selection(
+                        &reused,
+                        script,
+                        previous_expected,
+                        value_ascii,
+                        &previous,
+                        &descriptors,
+                        &hashes,
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn font_hints_keep_whole_string_ascii_and_hint_history_semantics() {
+        for text in [
+            "",
+            "\0\x7f\t\r\n",
+            "é",
+            "漢",
+            "ش",
+            "😀",
+            "A漢",
+            "漢A",
+            "a\u{301}",
+            "\u{301}a",
+            "A\u{200d}😀",
+            "\u{a0}",
+        ] {
+            assert_mixed_text(text);
+        }
+        for size in [
+            0, 1, 7, 8, 9, 15, 16, 17, 31, 32, 33, 63, 64, 65, 127, 128, 129,
+        ] {
+            let ascii = "a".repeat(size);
+            for text in [
+                ascii.clone(),
+                format!("{ascii}漢"),
+                format!("漢{ascii}"),
+                format!("{ascii}é{ascii}"),
+                format!("{ascii}😀"),
+            ] {
+                assert_mixed_text(&text);
+            }
+        }
+    }
+
+    proptest::proptest! {
+        #![proptest_config(proptest::test_runner::Config {
+            cases: 256,
+            rng_seed: proptest::test_runner::RngSeed::Fixed(20261108),
+            ..proptest::test_runner::Config::default()
+        })]
+        #[test]
+        fn font_hints_match_slot_table_for_arbitrary_text(
+            characters in proptest::collection::vec(proptest::char::any(), 0..256)
+        ) {
+            let text: String = characters.into_iter().collect();
+            assert_mixed_text(&text);
+        }
     }
 }
