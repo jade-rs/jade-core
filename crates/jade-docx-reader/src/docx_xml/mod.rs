@@ -1314,8 +1314,7 @@ impl XmlElement {
         fn push_attribute(buffer: &mut String, name: &str, value: &str) {
             buffer.push(' ');
             buffer.push_str(name);
-            buffer.push('=');
-            buffer.push('"');
+            buffer.push_str("=\"");
             push_escaped_attribute(buffer, value);
             buffer.push('"');
         }
@@ -2125,6 +2124,44 @@ pub(crate) mod tests {
             DocxXmlDocument::parse(""),
             Err(DocxXmlError::Malformed(_))
         ));
+    }
+
+    #[test]
+    fn writing_attributes_preserves_bytes_across_buffer_capacities() {
+        let fix = schema::RootNamespaceFix {
+            declarations: vec![("xmlns:x".to_owned(), "urn:test&stuff".to_owned())],
+            ignorable: Some("x extra".to_owned()),
+        };
+        for value in ["", "plain", "&<>\"'\n\r\t", "日本語😀e\u{301}"] {
+            for has_ignorable in [false, true] {
+                let mut document =
+                    DocxXmlDocument::parse(r#"<root a="" w:id="41"><child/></root>"#).unwrap();
+                document.root.attributes[0].value = value.to_owned();
+                if has_ignorable {
+                    document.root.attributes.push(XmlAttribute {
+                        name: "mc:Ignorable".to_owned(),
+                        value: "old".to_owned(),
+                    });
+                }
+                let renumbered = HashMap::from([(document.root.id, "7".to_owned())]);
+                let ignorable = r#" mc:Ignorable="x extra""#;
+                let expected = format!(
+                    "buffer:<root a=\"{}\" w:id=\"7\"{} xmlns:x=\"urn:test&amp;stuff\"{}><child/></root>",
+                    reference_escape(value, true),
+                    if has_ignorable { ignorable } else { "" },
+                    if has_ignorable { "" } else { ignorable },
+                );
+                for capacity in 0..=expected.len() + 2 {
+                    let mut buffer = String::with_capacity(capacity);
+                    buffer.push_str("buffer:");
+                    document
+                        .root
+                        .write_with(&mut buffer, Some(&fix), &renumbered, None)
+                        .unwrap();
+                    assert_eq!(buffer, expected, "capacity={capacity}, value={value:?}");
+                }
+            }
+        }
     }
 
     #[test]
