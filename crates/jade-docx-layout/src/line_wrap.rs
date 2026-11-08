@@ -9532,25 +9532,18 @@ pub fn classify_script(grapheme: &str) -> ScriptCategory {
         }
     }
 
-    // Fast path for the most common East Asian letters (CJK ideographs + kana),
-    // which dominate Japanese/Chinese text. These ranges are unambiguously
-    // Han/Hiragana/Katakana per Unicode, so they always classify as East Asian
-    // and we can skip the general script-property lookup. Punctuation, prolonged
-    // sound marks and iteration marks live in the kana blocks but have the
-    // Unicode Script value `Common`. Word nevertheless selects the East Asian
-    // font slot for them in Japanese text, so classify the complete Hiragana
-    // and Katakana blocks here rather than losing their Script_Extensions
-    // context in the slow `char::script()` fallback.
-    if let Some(ch) = grapheme.chars().next() {
-        let cp = ch as u32;
-        if (0x4E00..=0x9FFF).contains(&cp)   // CJK Unified Ideographs
-            || (0x3040..=0x309F).contains(&cp)  // Hiragana block
-            || (0x30A0..=0x30FF).contains(&cp)  // Katakana block
-            || (0x3400..=0x4DBF).contains(&cp)
-        // CJK Extension A
-        {
-            return ScriptCategory::EastAsia;
-        }
+    // Valid UTF-8 prefixes identify these common East Asian ranges without
+    // decoding a scalar or looking up its script. U+3000..U+303F punctuation
+    // already returns EastAsia in the fallback; the entire kana blocks keep
+    // their existing Word font-slot classification, including Common marks.
+    // Exclude U+4DC0..U+4DFF (E4 B7): those retain the general lookup.
+    if matches!(
+        bytes,
+        [0xE3, 0x80..=0x83 | 0x90..=0xBF, ..] // U+3000..U+30FF, U+3400..U+3FFF
+            | [0xE4, 0x80..=0xB6 | 0xB8..=0xBF, ..] // U+4000..U+4DBF, U+4E00..U+4FFF
+            | [0xE5..=0xE9, _, ..] // U+5000..U+9FFF
+    ) {
+        return ScriptCategory::EastAsia;
     }
 
     classify_script_slow(grapheme)
@@ -9616,6 +9609,9 @@ fn is_east_asian_punctuation(ch: char) -> bool {
 }
 
 mod hyphenate;
+
+#[cfg(test)]
+mod script_classification_tests;
 
 #[cfg(test)]
 mod float_exclusion_tests {
