@@ -92,7 +92,7 @@ fn observe(part: &NumberingPart) -> Observation {
 
 fn edit(part: &mut NumberingPart, kind: u8, seed: u32, mask: u16) {
     let key = (seed % 3).to_string();
-    match kind % 10 {
+    match kind % 16 {
         0..=2 => {
             part.abstract_nums.insert(
                 key,
@@ -143,7 +143,7 @@ fn edit(part: &mut NumberingPart, kind: u8, seed: u32, mask: u16) {
             part.picture_bullets.remove(&key);
         }
         8 => *part = NumberingPart::new(),
-        _ => {
+        9 => {
             // New hash seed / insertion order, including unchanged keys.
             part.abstract_nums = part
                 .abstract_nums
@@ -151,6 +151,127 @@ fn edit(part: &mut NumberingPart, kind: u8, seed: u32, mask: u16) {
                 .map(|(id, definition)| (id.clone(), definition.clone()))
                 .collect();
         }
+        10..=14 => {
+            let instance =
+                part.numbering_instances
+                    .entry(key)
+                    .or_insert_with(|| NumberingInstance {
+                        id: "instance".into(),
+                        abstract_num_id: "abstract".into(),
+                        overrides: Default::default(),
+                    });
+            match kind % 16 {
+                10 => {
+                    instance.id.clear();
+                    instance.id.push_str(&format!("id-{seed}"));
+                }
+                11 => {
+                    instance.abstract_num_id.clear();
+                    instance.abstract_num_id.push_str(&format!("ref-{seed}"));
+                }
+                12 => {
+                    instance.overrides.insert(
+                        seed % 12,
+                        LevelOverride {
+                            start: (mask & 1 != 0).then_some(seed),
+                        },
+                    );
+                }
+                13 => {
+                    instance.overrides.remove(&(seed % 12));
+                }
+                _ => instance.overrides.clear(),
+            }
+        }
+        _ => {
+            part.numbering_instances = part
+                .numbering_instances
+                .iter()
+                .map(|(id, instance)| (id.clone(), instance.clone()))
+                .collect();
+        }
+    }
+}
+
+fn text_field(level: &mut NumberingLevel, field: usize) -> &mut Option<String> {
+    match field {
+        0 => &mut level.num_fmt,
+        1 => &mut level.lvl_text,
+        2 => &mut level.lvl_jc,
+        3 => &mut level.suffix,
+        4 => &mut level.paragraph_style,
+        5 => &mut level.language,
+        6 => &mut level.picture_bullet,
+        _ => unreachable!(),
+    }
+}
+
+#[test]
+fn numbering_snapshot_refreshes_each_text_field_after_in_place_edits() {
+    let mut source = NumberingPart::new();
+    edit(&mut source, 0, 1, u16::MAX);
+    let mut cached = source.clone();
+    let long = "税😀".repeat(256);
+    for field in 0..7 {
+        *text_field(
+            &mut source.abstract_nums.get_mut("1").unwrap().levels[0],
+            field,
+        ) = Some(String::with_capacity(4096));
+        for value in [
+            Some("abc"),
+            Some("abc"),
+            Some("xbc"),
+            Some("xby"),
+            Some("日本語"),
+            Some("日本税"),
+            Some("a\0b"),
+            Some(long.as_str()),
+            Some(""),
+            None,
+            None,
+            Some(""),
+            Some("restored"),
+        ] {
+            let text = text_field(
+                &mut source.abstract_nums.get_mut("1").unwrap().levels[0],
+                field,
+            );
+            if let Some(value) = value {
+                let text = text.get_or_insert_with(|| String::with_capacity(4096));
+                let address = text.as_ptr();
+                text.clear();
+                text.push_str(value);
+                assert_eq!(text.as_ptr(), address);
+            } else {
+                *text = None;
+            }
+            let expected = observe(&source);
+            super::super::numbering_snapshot::refresh(&mut cached, &source);
+            assert_eq!(observe(&cached), expected, "field {field}, value {value:?}");
+        }
+    }
+}
+
+#[test]
+fn numbering_snapshot_refreshes_instance_fields_independently_of_map_keys() {
+    let mut source = NumberingPart::new();
+    edit(&mut source, 4, 1, 0);
+    let mut cached = source.clone();
+    for (kind, seed, mask) in [
+        (10, 4, 0),
+        (11, 7, 0),
+        (12, 10, 1),
+        (12, 10, 0),
+        (12, 13, 1),
+        (13, 10, 0),
+        (14, 4, 0),
+        (12, 16, 1),
+        (15, 0, 0),
+    ] {
+        edit(&mut source, kind, seed, mask);
+        let expected = observe(&source);
+        super::super::numbering_snapshot::refresh(&mut cached, &source);
+        assert_eq!(observe(&cached), expected, "kind {kind}, seed {seed}");
     }
 }
 
@@ -272,8 +393,8 @@ enum Action {
 
 fn action() -> impl Strategy<Value = Action> {
     prop_oneof![
-        8 => (0u8..10, any::<u32>(), any::<u16>()).prop_map(|(kind, seed, mask)| Action::Edit(kind, seed, mask)),
-        2 => (0u8..10, any::<u32>(), any::<u16>()).prop_map(|(kind, seed, mask)| Action::EditWithoutRefresh(kind, seed, mask)),
+        8 => (0u8..16, any::<u32>(), any::<u16>()).prop_map(|(kind, seed, mask)| Action::Edit(kind, seed, mask)),
+        2 => (0u8..16, any::<u32>(), any::<u16>()).prop_map(|(kind, seed, mask)| Action::EditWithoutRefresh(kind, seed, mask)),
         3 => Just(Action::Refresh),
         1 => Just(Action::Clear),
         2 => Just(Action::Save),
@@ -288,7 +409,7 @@ proptest! {
     #![proptest_config(ProptestConfig::with_cases(96))]
     #[test]
     fn numbering_snapshot_refresh_histories_match_complete_input_snapshots(
-        actions in proptest::collection::vec((0u8..10, any::<u32>(), any::<u16>()), 1..80),
+        actions in proptest::collection::vec((0u8..16, any::<u32>(), any::<u16>()), 1..80),
     ) {
         let mut source = NumberingPart::new();
         let mut cached = source.clone();
