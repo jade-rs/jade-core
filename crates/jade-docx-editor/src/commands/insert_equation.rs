@@ -100,9 +100,15 @@ mod tests {
     }
 
     fn build_docx(text: &str) -> Vec<u8> {
-        let document_xml = format!(
-            r#"<?xml version="1.0" encoding="UTF-8"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:t xml:space="preserve">{}</w:t></w:r></w:p></w:body></w:document>"#,
+        build_docx_body(&format!(
+            r#"<w:p><w:r><w:t xml:space="preserve">{}</w:t></w:r></w:p>"#,
             escape_text(text)
+        ))
+    }
+
+    fn build_docx_body(body: &str) -> Vec<u8> {
+        let document_xml = format!(
+            r#"<?xml version="1.0" encoding="UTF-8"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>{body}</w:body></w:document>"#
         );
         let mut cursor = std::io::Cursor::new(Vec::new());
         {
@@ -155,6 +161,101 @@ mod tests {
         )
     }
 
+    #[test]
+    fn inline_equation_in_a_text_box_preserves_both_copies_and_history() {
+        let content =
+            r#"<w:p><w:pPr><w:jc w:val="right"/></w:pPr><w:r><w:t>日本語after</w:t></w:r></w:p>"#;
+        let body = format!(
+            r#"<w:p><w:r><w:t>outside-before</w:t></w:r></w:p>
+            <w:p><w:r><mc:AlternateContent xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" xmlns:wps="http://schemas.microsoft.com/office/word/2010/wordprocessingShape" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:v="urn:schemas-microsoft-com:vml">
+            <mc:Choice Requires="wps"><w:drawing><wp:inline><wp:extent cx="2286000" cy="1143000"/><wp:docPr id="1" name="keep-drawing"/>
+            <a:graphic><a:graphicData uri="http://schemas.microsoft.com/office/word/2010/wordprocessingShape"><wps:wsp><wps:cNvSpPr txBox="1"/><wps:spPr><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></wps:spPr><wps:txbx><w:txbxContent>{content}</w:txbxContent></wps:txbx><wps:bodyPr/></wps:wsp></a:graphicData></a:graphic></wp:inline></w:drawing></mc:Choice>
+            <mc:Fallback><w:pict><v:shape id="keep-fallback" style="width:180pt;height:90pt"><v:textbox><w:txbxContent>{content}</w:txbxContent></v:textbox></v:shape></w:pict></mc:Fallback>
+            </mc:AlternateContent></w:r></w:p><w:p><w:r><w:t>outside-after</w:t></w:r></w:p>"#
+        );
+        let mut document = executor::block_on(WordDocument::load(
+            &build_docx_body(&body),
+            &Options::default(),
+        ))
+        .unwrap();
+        let target = (0..document.paragraph_count())
+            .find(|&index| {
+                document.paragraph(index).is_some_and(|paragraph| {
+                    paragraph.runs.iter().any(|run| run.text == "日本語after")
+                })
+            })
+            .unwrap();
+        let original = part(&document.export_docx().unwrap(), "word/document.xml");
+        let original_selection = Some(SelectionRange::collapsed(TextPosition::new(
+            target,
+            "日本語".len(),
+        )));
+        let mut selection = original_selection;
+        let mut history = CommandExecutor::new();
+        apply(
+            &mut document,
+            &mut history,
+            &mut selection,
+            INLINE,
+            EquationPlacement::Inline,
+        )
+        .unwrap();
+        assert_eq!(
+            selection.unwrap().focus,
+            TextPosition::new(target, "日本語".len() + '\u{fffc}'.len_utf8())
+        );
+        let saved = document.export_docx().unwrap();
+        let changed = part(&saved, "word/document.xml");
+        assert_eq!(changed.matches("<m:f>").count(), 2, "{changed}");
+        for preserved in [
+            "outside-before",
+            "outside-after",
+            "keep-drawing",
+            "keep-fallback",
+            "日本語",
+            "after",
+            r#"w:val="right""#,
+        ] {
+            assert!(changed.contains(preserved), "{changed}");
+        }
+        let reopened = executor::block_on(WordDocument::load(&saved, &Options::default())).unwrap();
+        let paragraph = reopened.paragraph(target).unwrap();
+        assert_eq!(
+            paragraph
+                .runs
+                .iter()
+                .filter(|run| run.math.is_some())
+                .count(),
+            1
+        );
+        assert_eq!(
+            paragraph
+                .runs
+                .iter()
+                .map(|run| run.text.as_str())
+                .collect::<String>(),
+            "日本語after"
+        );
+        let mut context = CommandContext::new(&mut document, &mut selection);
+        history.undo(&mut context).unwrap();
+        assert_eq!(*context.selection, original_selection);
+        assert_eq!(
+            part(
+                &context.document.export_docx().unwrap(),
+                "word/document.xml"
+            ),
+            original
+        );
+        history.redo(&mut context).unwrap();
+        assert_eq!(
+            part(
+                &context.document.export_docx().unwrap(),
+                "word/document.xml"
+            ),
+            changed
+        );
+    }
+
     proptest! {
         #![proptest_config(ProptestConfig { cases: 64, ..ProptestConfig::default() })]
 
@@ -179,6 +280,7 @@ mod tests {
 
             apply(&mut document, &mut command_executor, &mut selection, INLINE, EquationPlacement::Inline)
                 .expect("insert inline equation");
+            prop_assert_eq!(selection.unwrap().focus, TextPosition::new(0, offset + '\u{fffc}'.len_utf8()));
             let paragraph = document.paragraph(0).expect("paragraph");
             prop_assert_eq!(paragraph.runs.iter().map(|run| run.text.as_str()).collect::<String>(), text);
             prop_assert_eq!(paragraph.runs.iter().filter(|run| run.math.is_some()).count(), 1);
