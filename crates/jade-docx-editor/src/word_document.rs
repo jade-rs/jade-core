@@ -15312,14 +15312,17 @@ impl WordDocument {
         raw_omml: &str,
         placement: EquationPlacement,
     ) -> Result<TextPosition, String> {
-        let story_inline = placement == EquationPlacement::Inline
+        let text_box_inline = placement == EquationPlacement::Inline
             && matches!(
                 self.paragraph_surfaces.get(position.paragraph),
-                Some(ParagraphSurface::TextBox { .. } | ParagraphSurface::Note { .. })
+                Some(ParagraphSurface::TextBox { .. })
             );
-        if !self.is_body_paragraph_surface(position.paragraph) && !story_inline {
+        if !self.is_body_paragraph_surface(position.paragraph)
+            && !text_box_inline
+            && !self.is_note_paragraph_surface(position.paragraph)
+        {
             return Err(
-                "equations can only be inserted in body paragraphs or inline in text boxes and notes"
+                "equations can only be inserted in body paragraphs and notes, or inline in text boxes"
                     .to_string(),
             );
         }
@@ -15377,6 +15380,37 @@ impl WordDocument {
                 ))
             }
             EquationPlacement::Block => {
+                if let Some(ParagraphSurface::Note {
+                    kind,
+                    note_id,
+                    path,
+                }) = self
+                    .paragraph_surfaces
+                    .get(model_position.paragraph)
+                    .cloned()
+                {
+                    Self::validate_authored_omml(raw_omml, "m:oMathPara")?;
+                    let math =
+                        crate::parser::math::parse_math_paragraph(raw_omml.trim().to_string())
+                            .map_err(|error| error.to_string())?;
+                    if math.elements.is_empty() {
+                        return Err("equation OMML must contain a math paragraph".to_string());
+                    }
+                    let ordinal = self
+                        .document
+                        .as_ref()
+                        .and_then(|document| kind.notes(document).get(&note_id))
+                        .and_then(|note| Self::paragraph_ordinal_for_path(&note.body, &path))
+                        .ok_or_else(|| "the note paragraph is missing".to_string())?;
+                    if !self.split_paragraph_at(model_position.paragraph, model_position.offset) {
+                        return Err("failed to split the target note paragraph".to_string());
+                    }
+                    self.insert_note_math_paragraph_after(model_position.paragraph, math)?;
+                    let tail = self
+                        .surface_index_for_story(kind.story(), ordinal + 1, None, Some(&note_id))
+                        .ok_or_else(|| "equation tail note paragraph is unavailable".to_string())?;
+                    return Ok(self.model_to_rendered_text_position(TextPosition::new(tail, 0)));
+                }
                 let body_index = self
                     .body_index_for_surface(model_position.paragraph)
                     .ok_or_else(|| "target body paragraph is unavailable".to_string())?;
@@ -15778,6 +15812,57 @@ impl WordDocument {
             }
             _ => None,
         }
+    }
+
+    fn insert_note_math_paragraph_after(
+        &mut self,
+        surface: usize,
+        math: MathParagraph,
+    ) -> Result<(), String> {
+        let Some(ParagraphSurface::Note {
+            kind,
+            note_id,
+            path,
+        }) = self.paragraph_surfaces.get(surface).cloned()
+        else {
+            return Err("target note paragraph is unavailable".to_string());
+        };
+        let (part, mut raw, paragraph_id) = self
+            .note_paragraph_xml(surface)
+            .ok_or_else(|| "the note paragraph XML is missing".to_string())?;
+        let parent = raw
+            .parent_id(paragraph_id)
+            .ok_or_else(|| "the note paragraph parent is missing".to_string())?;
+        let raw_path = raw
+            .path(paragraph_id)
+            .ok_or_else(|| "the note paragraph path is missing".to_string())?;
+        let insert_index = raw_path
+            .as_slice()
+            .last()
+            .copied()
+            .ok_or_else(|| "the note paragraph index is missing".to_string())?
+            + 1;
+        let equation = Self::import_authored_omml_element(&mut raw, &math.raw_omml, "m:oMathPara")?;
+        let wrapper = raw.create_element("w:p", Vec::new(), vec![XmlNode::Element(equation)]);
+        raw.insert_node(parent, insert_index, XmlNode::Element(wrapper))
+            .map_err(|error| error.to_string())?;
+        let xml = raw.to_string().map_err(|error| error.to_string())?;
+        let document = self
+            .document_mut()
+            .ok_or_else(|| "document is unavailable".to_string())?;
+        let notes = match kind {
+            NoteKind::Footnote => &mut document.footnotes,
+            NoteKind::Endnote => &mut document.endnotes,
+        };
+        let note = notes
+            .get_mut(&note_id)
+            .ok_or_else(|| "the note is missing".to_string())?;
+        let (container, index) = Self::locate_paragraph_container_mut(&mut note.body, &path)
+            .ok_or_else(|| "the note paragraph is missing".to_string())?;
+        container.insert(index + 1, BodyElement::from_math_paragraph(math));
+        self.upsert_xml_part_content(&part, xml);
+        self.rebuild_paragraph_surfaces();
+        Ok(())
     }
 
     fn insert_math_paragraph_after(
@@ -33262,6 +33347,48 @@ impl WordDocument {
         )
     }
 
+    /// Bind the note model to its fresh XML before counting editable paragraphs.
+    /// Display equations have `w:p` wrappers but no editable paragraph surface.
+    fn note_paragraph_element_ids(
+        &self,
+        kind: NoteKind,
+        note_id: &str,
+        note_xml: &XmlElement,
+        raw: &DocxXmlDocument,
+    ) -> Vec<XmlNodeId> {
+        fn collect(blocks: &[BodyElement], ids: &mut Vec<XmlNodeId>) -> Option<()> {
+            for block in blocks {
+                match block {
+                    BodyElement::Paragraph(paragraph) => ids.push(paragraph.node_id?),
+                    BodyElement::Table(table) => {
+                        for row in &table.rows {
+                            for cell in &row.cells {
+                                collect(&cell.blocks, ids)?;
+                            }
+                        }
+                    }
+                    BodyElement::Math(_) => {}
+                }
+            }
+            Some(())
+        }
+        let Some(note) = self
+            .document
+            .as_ref()
+            .and_then(|document| kind.notes(document).get(note_id))
+        else {
+            return Vec::new();
+        };
+        let mut blocks = note.body.clone();
+        clear_block_xml_ids(&mut blocks);
+        attach_block_xml_ids(&mut blocks, note_xml, raw);
+        let mut ids = Vec::new();
+        if collect(&blocks, &mut ids).is_none() {
+            return Vec::new();
+        }
+        ids
+    }
+
     pub(crate) fn note_paragraph_xml(
         &self,
         index: usize,
@@ -33290,8 +33417,7 @@ impl WordDocument {
             }
             _ => None,
         })?;
-        let mut ids = Vec::new();
-        Self::collect_story_paragraph_ids(note, &mut ids);
+        let ids = self.note_paragraph_element_ids(*kind, note_id, note, &raw);
         let id = *ids.get(ordinal)?;
         Some((part, raw, id))
     }
@@ -36650,8 +36776,7 @@ impl WordDocument {
                 _ => None,
             })
             .ok_or("note is missing")?;
-        let mut paragraphs = Vec::new();
-        Self::collect_story_paragraph_ids(note, &mut paragraphs);
+        let paragraphs = self.note_paragraph_element_ids(kind, note_id, note, &raw);
         let id = *paragraphs.get(ordinal).ok_or("note paragraph is missing")?;
         let path = raw.path(id).ok_or("note paragraph path is missing")?;
         if let Some(offset) = split_offset {
@@ -36720,7 +36845,8 @@ impl WordDocument {
 
         let mut paragraph_ids = Vec::new();
         if let Some(note_element) = notes_doc.element(note_element_id) {
-            Self::collect_story_paragraph_ids(note_element, &mut paragraph_ids);
+            paragraph_ids =
+                self.note_paragraph_element_ids(kind, note_id, note_element, &notes_doc);
         }
         let paragraph_id = paragraph_ids
             .get(paragraph_ordinal)
