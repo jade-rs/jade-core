@@ -46,6 +46,7 @@ pub mod model;
 pub mod object_protection;
 pub mod phonetic;
 pub mod pivot;
+pub mod process_content;
 pub mod protected_ranges;
 pub mod rich_text;
 pub mod scenarios;

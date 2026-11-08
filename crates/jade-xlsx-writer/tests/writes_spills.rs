@@ -11,6 +11,119 @@ use jade_xlsx_writer::{write_xlsx, CellEdit, NewValue, SheetEdits};
 mod common;
 
 #[test]
+fn processed_formula_caches_and_dynamic_marks_stay_in_their_original_wrappers() {
+    let sheet = r#"<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:m="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" xmlns:u="urn:future" mc:Ignorable="u" mc:ProcessContent="u:wrap"><sheetData><row r="1"><c r="A1"><v>1</v></c></row><row r="2"><u:wrap><c r="A2"><u:wrap xmlns="urn:future"><m:f>A1+1</m:f></u:wrap></c></u:wrap></row></sheetData></worksheet>"#;
+    let bytes = common::workbook_with_sheet(sheet);
+    let mut book = jade_xlsx_headless_editor::HeadlessWorkbook::open_for_editing(&bytes).unwrap();
+    assert_eq!(book.cell("Sheet1", "A2").unwrap().display, "2");
+    book.set(
+        "Sheet1",
+        "A1",
+        jade_xlsx_headless_api::CellInput::Number(5.0),
+    )
+    .unwrap();
+    let saved = book.save_bytes().unwrap();
+    let parsed = read_xlsx(&saved).unwrap();
+    assert_eq!(
+        parsed.sheets[0].rows[1].cells[0].value,
+        CellValue::Number(6.0)
+    );
+    let package = OpcPackage::open(&saved).unwrap();
+    let updated = package
+        .part_str("xl/worksheets/sheet1.xml")
+        .unwrap()
+        .unwrap();
+    assert!(updated.contains(r#"<m:f>A1+1</m:f><m:v>6</m:v>"#));
+    assert_eq!(updated.matches("<u:wrap").count(), 2);
+    book.undo().unwrap();
+    assert_eq!(book.cell("Sheet1", "A2").unwrap().display, "2");
+
+    let sheet = sheet.replace("<m:f>A1+1</m:f>", "<m:f>SEQUENCE(3)</m:f>");
+    let bytes = common::workbook_with_sheet(&sheet);
+    let saved = write_spills(
+        &bytes,
+        &[SheetSpills {
+            part_name: "xl/worksheets/sheet1.xml".into(),
+            values: vec![CellEdit {
+                reference: at("A3"),
+                value: NewValue::Number(2.0),
+                style_index: None,
+            }],
+            ranges: vec![ArrayRange {
+                anchor: at("A2"),
+                range: range("A2:A4"),
+            }],
+        }],
+        false,
+    )
+    .unwrap();
+    let parsed = read_xlsx(&saved).unwrap();
+    assert_eq!(
+        parsed.sheets[0].array_formulas[0].kind,
+        jade_xlsx_reader::ArrayFormulaKind::Dynamic
+    );
+    assert_eq!(parsed.sheets[0].array_formulas[0].range, range("A2:A4"));
+    let package = OpcPackage::open(&saved).unwrap();
+    assert_eq!(
+        package
+            .part_str("xl/worksheets/sheet1.xml")
+            .unwrap()
+            .unwrap()
+            .matches("<u:wrap")
+            .count(),
+        2
+    );
+}
+
+#[test]
+fn processed_ignorable_grid_content_reserves_existing_metadata_links() {
+    let sheet = r#"<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" xmlns:u="urn:future" mc:Ignorable="u" mc:ProcessContent="u:wrap"><sheetData><row r="1"><u:wrap><c r="A1" cm="1"><v>7</v></c></u:wrap></row></sheetData></worksheet>"#;
+    let mut package = OpcPackage::open(&common::workbook_with_sheet(sheet)).unwrap();
+    assert!(
+        matches!(
+            jade_xlsx_writer::spills::dynamic_array_metadata(&mut package),
+            Err(jade_xlsx_writer::WriteError::ArrayMetadata(_))
+        ),
+        "an unresolved processed cm link became the new dynamic record"
+    );
+    assert!(package.part("xl/metadata.xml").is_none());
+    assert_eq!(
+        package
+            .part_str("xl/worksheets/sheet1.xml")
+            .unwrap()
+            .as_deref(),
+        Some(sheet)
+    );
+}
+
+#[test]
+fn processed_link_reservation_obeys_namespace_scope_and_grid_ownership() {
+    let cell = "<c r=\"A1\" cm=\"1\"/>";
+    let mut nested = cell.to_string();
+    for _ in 0..256 {
+        nested = format!("<u:wrap>{nested}</u:wrap>");
+    }
+    for (grid, blocked) in [
+        (format!("<u:wrap><sheetData><row>{cell}</row></sheetData></u:wrap>"), true),
+        (format!("<sheetData><u:wrap><row>{cell}</row></u:wrap></sheetData>"), true),
+        (format!("<sheetData><row>{nested}</row></sheetData>"), true),
+        (format!("<sheetData><row><mc:AlternateContent><mc:Choice Requires=\"u\"><u:wrap>{cell}</u:wrap></mc:Choice><mc:Fallback/></mc:AlternateContent></row></sheetData>"), true),
+        (format!("<sheetData><row><u:wrap xmlns:u=\"urn:other\">{cell}</u:wrap></row></sheetData>"), false),
+        (format!("<extLst><ext><u:wrap><sheetData><row>{cell}</row></sheetData></u:wrap></ext></extLst>"), false),
+    ] {
+        let sheet = format!("<worksheet xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\" xmlns:mc=\"http://schemas.openxmlformats.org/markup-compatibility/2006\" xmlns:u=\"urn:future\" mc:Ignorable=\"u\" mc:ProcessContent=\"u:wrap\">{grid}</worksheet>");
+        let mut package = OpcPackage::open(&common::workbook_with_sheet(&sheet)).unwrap();
+        let result = jade_xlsx_writer::spills::dynamic_array_metadata(&mut package);
+        if blocked {
+            assert!(matches!(result, Err(jade_xlsx_writer::WriteError::ArrayMetadata(_))));
+            assert!(package.part("xl/metadata.xml").is_none());
+        } else {
+            assert!(result.unwrap().is_some());
+        }
+    }
+}
+
+#[test]
 fn metadata_checks_opaque_wrappers_at_every_grid_level_and_nested_depth() {
     fn alternate(content: &str) -> String {
         format!(

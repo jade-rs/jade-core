@@ -18,6 +18,7 @@ struct Node {
     head_end: usize,
     close: usize,
     empty: bool,
+    process_content: bool,
 }
 impl Node {
     fn attr(&self, key: &str) -> Option<&str> {
@@ -37,6 +38,7 @@ fn nodes(xml: &str) -> Result<Vec<Node>> {
     let mut reader = NsReader::from_str(xml);
     let mut nodes = vec![Node::default()];
     let mut stack = vec![0];
+    let mut scope = jade_xlsx_reader::process_content::Scope::for_xml(xml);
     loop {
         let start = reader.buffer_position() as usize;
         let event = reader.read_event()?;
@@ -44,12 +46,19 @@ fn nodes(xml: &str) -> Result<Vec<Node>> {
         let empty = matches!(event, Event::Empty(_));
         match event {
             Event::Start(element) | Event::Empty(element) => {
+                scope.push(&reader, &element)?;
                 let namespace = match reader.resolver().resolve_element(element.name()).0 {
                     ResolveResult::Bound(ns) => String::from_utf8_lossy(ns.as_ref()).into_owned(),
                     ResolveResult::Unbound => String::new(),
                     ResolveResult::Unknown(_) => "!unresolved".into(),
                 };
                 let mut attributes = Vec::new();
+                let process_content = scope
+                    .processes(namespace.as_bytes(), element.local_name().as_ref())
+                    && !valid_namespace(&namespace)
+                    && namespace != "http://schemas.openxmlformats.org/markup-compatibility/2006"
+                    && namespace
+                        != "http://schemas.microsoft.com/office/spreadsheetml/2017/dynamicarray";
                 for attr in element.attributes() {
                     let attr = attr?;
                     if !attr.key.as_ref().contains(&b':') {
@@ -71,13 +80,17 @@ fn nodes(xml: &str) -> Result<Vec<Node>> {
                     head_end,
                     close: head_end,
                     empty,
+                    process_content,
                 });
                 nodes[*stack.last().unwrap()].children.push(index);
                 if !empty {
                     stack.push(index);
+                } else {
+                    scope.pop();
                 }
             }
             Event::End(_) => {
+                scope.pop();
                 if let Some(index) = stack.pop().filter(|&i| i != 0) {
                     nodes[index].close = start;
                 }
@@ -116,6 +129,9 @@ pub(crate) fn conditional_indexes(xml: &str) -> Result<bool> {
         }
         for &child in &node.children {
             let next = &tree[child];
+            if next.process_content {
+                return Ok(true);
+            }
             if next.namespace == "http://schemas.openxmlformats.org/markup-compatibility/2006"
                 && next.name == "AlternateContent"
             {
@@ -189,6 +205,8 @@ fn grid_children(tree: &[Node], parent: usize, namespace: &str, name: &str) -> V
         let node = &tree[index];
         if node.namespace == namespace && node.name == name {
             result.push(index);
+        } else if node.process_content {
+            pending.extend_from_slice(&node.children);
         } else if node.namespace == MC && node.name == "AlternateContent" {
             for &branch in &node.children {
                 if tree[branch].namespace == MC

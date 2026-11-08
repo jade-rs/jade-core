@@ -91,6 +91,7 @@ impl CellSource {
 
 type Coordinates = (u32, u32, u32);
 enum Frame {
+    ProcessContent,
     Element {
         record: bool,
         cell: bool,
@@ -360,6 +361,7 @@ fn project(
     let mut writer = Writer::new(Vec::new());
     let mut source = WorksheetSource::default();
     let mut frames: Vec<Frame> = Vec::new();
+    let mut scope = crate::process_content::Scope::for_xml(xml);
     let mut path: Vec<Cow<'static, str>> = Vec::new();
     let mut namespace = None::<Vec<u8>>;
     let mut coordinates: Coordinates = (0, 0, 0);
@@ -371,7 +373,12 @@ fn project(
     // Looking for given cells in a sheet without compatibility branches,
     // where each cell is written once: done once all are found.
     let stop_when_found = references
-        .filter(|wanted| all_known && !wanted.is_empty() && !xml.contains("AlternateContent"))
+        .filter(|wanted| {
+            all_known
+                && !wanted.is_empty()
+                && !xml.contains("AlternateContent")
+                && !xml.contains("ProcessContent")
+        })
         .map(HashSet::len);
     loop {
         if stop_when_found.is_some_and(|wanted| source.cells.len() >= wanted)
@@ -382,13 +389,17 @@ fn project(
         let start = reader.buffer_position() as usize;
         let event = reader.read_event()?;
         let end = reader.buffer_position() as usize;
+        if matches!(event, Event::End(_)) {
+            scope.pop();
+        }
         match event {
             Event::Start(ref e) | Event::Empty(ref e) => {
                 let empty = matches!(event, Event::Empty(_));
+                scope.push(&reader, e)?;
                 let name = element_name(e.local_name().as_ref());
                 // The element's namespace, compared where it is resolved; it
                 // is copied only where it is kept: the root's, and a cell's.
-                let (is_mc, is_main, in_namespace, kept_ns) = {
+                let (is_mc, is_main, in_namespace, kept_ns, process_content) = {
                     let ns: &[u8] = match reader.resolver().resolve_element(e.name()).0 {
                         ResolveResult::Unbound => b"",
                         ResolveResult::Bound(n) => n.0,
@@ -401,9 +412,23 @@ fn project(
                         // A cell's namespace is kept only where the cell
                         // is recorded.
                         (path.is_empty() || (all_known && name == "c")).then(|| ns.to_vec()),
+                        scope.processes(ns, e.local_name().as_ref())
+                            && ns != MC_NAMESPACE
+                            && !main_namespace(ns)
+                            && !crate::data_validations::supported_namespace(ns),
                     )
                 };
+                if empty {
+                    scope.pop();
+                }
                 let ns = kept_ns.as_deref().unwrap_or_default();
+                if process_content {
+                    source.ordered = false;
+                    if !empty {
+                        frames.push(Frame::ProcessContent);
+                    }
+                    continue;
+                }
                 if is_mc && name == "AlternateContent" && !path.is_empty() {
                     source.ordered = false;
                     if !empty {
@@ -470,6 +495,7 @@ fn project(
                         }
                     } else if !empty {
                         reader.read_to_end(e.name())?;
+                        scope.pop();
                     }
                     continue;
                 }
@@ -486,6 +512,7 @@ fn project(
                 if !owned {
                     if !empty {
                         reader.read_to_end(e.name())?;
+                        scope.pop();
                     }
                     continue;
                 }
@@ -787,4 +814,46 @@ fn project(
         String::from_utf8(writer.into_inner()).expect("UTF-8 input and ASCII element names"),
         source,
     ))
+}
+
+#[cfg(test)]
+mod process_content_tests {
+    use super::*;
+    const HEAD: &str = r#"<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" xmlns:u="urn:future" mc:Ignorable="u" mc:ProcessContent="u:wrap">"#;
+
+    #[test]
+    fn processed_grid_wrappers_supply_values_and_original_cell_formula_offsets() {
+        for grid in [
+            "<u:wrap><sheetData><row r=\"1\"><c r=\"A1\"><f>1+2</f><v>3</v></c></row></sheetData></u:wrap>",
+            "<sheetData><u:wrap><row r=\"1\"><c r=\"A1\"><f>1+2</f><v>3</v></c></row></u:wrap></sheetData>",
+            "<sheetData><row r=\"1\"><u:wrap><c r=\"A1\"><u:wrap><f>1+2</f><v>3</v></u:wrap></c></u:wrap></row></sheetData>",
+        ] {
+            let xml = format!("{HEAD}{grid}</worksheet>");
+            let sheet = crate::sheet::parse_sheet("Sheet1", "sheet.xml", &xml, &[]).unwrap();
+            assert_eq!(sheet.rows[0].cells[0].value, crate::CellValue::Number(3.0));
+            assert_eq!(sheet.rows[0].cells[0].formula.as_deref(), Some("1+2"));
+            let refs = HashSet::from([CellRef::parse("A1").unwrap()]);
+            let cells = compatible_cells(&xml, &refs).unwrap();
+            assert_eq!(cells.len(), 1);
+            assert_eq!(&xml[cells[0].preferred_formula.clone().unwrap()], "<f>1+2</f>");
+            assert_eq!(&xml[cells[0].values[0].clone()], "<v>3</v>");
+            assert!(!worksheet_source(&xml).unwrap().is_ordered());
+        }
+    }
+
+    #[test]
+    fn skipped_subtrees_and_local_rules_do_not_leak_into_later_siblings() {
+        let xml = HEAD.replace("mc:ProcessContent=\"u:wrap\"", "");
+        let xml = format!("{xml}<sheetData><row r=\"1\" mc:ProcessContent=\"u:wrap\"><u:wrap><c r=\"A1\"><v>1</v></c></u:wrap></row><row r=\"2\"><u:wrap><c r=\"A2\"><v>9</v></c></u:wrap><c r=\"B2\"><v>2</v></c></row></sheetData><extLst mc:ProcessContent=\"u:wrap\"><ext><u:wrap><c r=\"C2\"><v>9</v></c></u:wrap></ext></extLst></worksheet>");
+        let sheet = crate::sheet::parse_sheet("Sheet1", "sheet.xml", &xml, &[]).unwrap();
+        assert_eq!(
+            sheet.rows[0].cells[0].reference,
+            CellRef::parse("A1").unwrap()
+        );
+        assert_eq!(sheet.rows[1].cells.len(), 1);
+        assert_eq!(
+            sheet.rows[1].cells[0].reference,
+            CellRef::parse("B2").unwrap()
+        );
+    }
 }
