@@ -10,6 +10,86 @@ use quick_xml::{
 
 const MC: &[u8] = b"http://schemas.openxmlformats.org/markup-compatibility/2006";
 
+/// Source positions of transparent foreign wrappers, including inside extensions.
+#[derive(Default)]
+pub struct ProcessedElements {
+    starts: Vec<usize>,
+    ends: Vec<usize>,
+}
+impl ProcessedElements {
+    pub fn processes_content_at(&self, offset: usize) -> bool {
+        self.starts.binary_search(&offset).is_ok()
+    }
+    pub fn processes_content_end_at(&self, offset: usize) -> bool {
+        self.ends.binary_search(&offset).is_ok()
+    }
+}
+
+/// Visit every understood alternative without treating ignored opaque parents
+/// as transparent. Unlike the grid projection this includes worksheet metadata.
+pub fn processed_elements(xml: &str) -> Result<ProcessedElements> {
+    use quick_xml::events::Event;
+    let mut result = ProcessedElements::default();
+    if !xml.contains("ProcessContent") {
+        return Ok(result);
+    }
+    let mut reader = NsReader::from_str(xml);
+    let mut scope = Scope::for_xml(xml);
+    let mut frames: Vec<(bool, bool)> = Vec::new();
+    loop {
+        let offset = reader.buffer_position() as usize;
+        let event = reader.read_event()?;
+        match event {
+            Event::Start(ref e) | Event::Empty(ref e) => {
+                scope.push(&reader, e)?;
+                let (ns, local) = reader.resolver().resolve_element(e.name());
+                let namespace = match ns {
+                    ResolveResult::Bound(ns) => ns.as_ref().to_vec(),
+                    _ => Vec::new(),
+                };
+                let name = local.as_ref();
+                let mc = namespace == MC;
+                let processed = !namespace.is_empty()
+                    && !mc
+                    && !crate::data_validations::supported_namespace(&namespace)
+                    && scope.processes(&namespace, name);
+                let unsupported_choice = mc
+                    && name == b"Choice"
+                    && frames.last().is_some_and(|frame| frame.0)
+                    && !crate::data_validations::choice_supported(&reader, e)?;
+                let opaque = !namespace.is_empty()
+                    && !mc
+                    && !crate::data_validations::supported_namespace(&namespace)
+                    && !processed;
+                if opaque || unsupported_choice {
+                    if matches!(event, Event::Start(_)) {
+                        reader.read_to_end(e.name())?;
+                    }
+                    scope.pop();
+                    continue;
+                }
+                if processed {
+                    result.starts.push(offset);
+                }
+                if matches!(event, Event::Empty(_)) {
+                    scope.pop();
+                } else {
+                    frames.push((mc && name == b"AlternateContent", processed));
+                }
+            }
+            Event::End(_) => {
+                if frames.pop().is_some_and(|frame| frame.1) {
+                    result.ends.push(offset);
+                }
+                scope.pop();
+            }
+            Event::Eof => break,
+            _ => {}
+        }
+    }
+    Ok(result)
+}
+
 pub struct Scope {
     enabled: bool,
     ignorable: Vec<String>,
@@ -119,6 +199,23 @@ fn resolve(reader: &NsReader<&[u8]>, prefix: &str) -> Option<String> {
 mod tests {
     use super::*;
     use quick_xml::events::Event;
+
+    #[test]
+    fn metadata_wrappers_keep_offsets_without_leaking_from_opaque_branches() {
+        let xml = r#"<s:worksheet xmlns:s="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" xmlns:u="urn:future"><s:extLst><s:ext uri="test"><u:wrap mc:Ignorable="u" mc:ProcessContent="u:*"><u:empty/><u:nested></u:nested></u:wrap><u:opaque><u:hidden mc:Ignorable="u" mc:ProcessContent="u:*"/></u:opaque><mc:AlternateContent><mc:Choice Requires="u"><u:skipped mc:Ignorable="u" mc:ProcessContent="u:*"/></mc:Choice><mc:Choice Requires="s"><u:known mc:Ignorable="u" mc:ProcessContent="u:*"/></mc:Choice><mc:Fallback><u:fallback mc:Ignorable="u" mc:ProcessContent="u:*"/></mc:Fallback></mc:AlternateContent><u:outside/></s:ext></s:extLst></s:worksheet>"#;
+        let positions = processed_elements(xml).unwrap();
+        for name in ["wrap", "empty", "nested", "known", "fallback"] {
+            assert!(positions.processes_content_at(xml.find(&format!("<u:{name}")).unwrap()));
+        }
+        for name in ["opaque", "hidden", "skipped", "outside"] {
+            assert!(!positions.processes_content_at(xml.find(&format!("<u:{name}")).unwrap()));
+        }
+        for name in ["wrap", "nested"] {
+            assert!(positions.processes_content_end_at(xml.find(&format!("</u:{name}>")).unwrap()));
+        }
+        assert_eq!(positions.starts.len(), 5);
+        assert_eq!(positions.ends.len(), 2);
+    }
 
     #[test]
     fn expanded_names_inherit_additively_and_leave_with_their_scope() {
