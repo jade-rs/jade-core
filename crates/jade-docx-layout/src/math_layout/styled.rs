@@ -1258,8 +1258,18 @@ impl<'a, C: StyledMathMeasure> Builder<'_, 'a, C> {
         let saved = (self.style, self.script, self.normal_text);
         let run = run_properties(e, self.style, self.options.text_family);
         if let Some(align_at) = run.manual_break {
-            let class = first_char(e).map_or(AtomClass::Ord, alphabet::char_class);
-            self.break_candidate(class, true, align_at, false);
+            // Word ignores m:brk unless the run starts with an operator.
+            let first = e
+                .children
+                .iter()
+                .filter(|child| child.kind == MathElementKind::Text && !is_skipped(child))
+                .filter_map(|child| child.text.as_deref())
+                .find_map(|text| text.chars().next());
+            if let Some(class @ (AtomClass::Bin | AtomClass::Rel | AtomClass::Op)) =
+                first.map(alphabet::char_class)
+            {
+                self.break_candidate(class, true, align_at, false);
+            }
         }
         if run.align_point {
             self.align_point();
