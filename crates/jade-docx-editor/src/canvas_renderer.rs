@@ -1441,10 +1441,10 @@ struct NumberingTextContext<'a> {
     margin_line_number: bool,
 }
 
-struct TextBoxBlockLayout<'a> {
+struct TextBoxBlockLayout {
     height: f64,
     line_count: usize,
-    math_plans: Vec<jade_docx_layout::math_layout::styled::StyledMathLayout<'a>>,
+    math_plans: Vec<math::OwnedMathPlan>,
 }
 
 /// Paragraph-level formatting of one text box paragraph: the style the wrap
@@ -3527,6 +3527,7 @@ where
     math_zones: Vec<math::MathZone>,
     /// `m:mathPr` from the settings part.
     math_settings: jade_docx_layout::math_layout::styled::MathSettings,
+    math_family: Rc<str>,
     pageless_mode: bool,
     page_width: f64,
     page_height: f64,
@@ -8659,6 +8660,7 @@ where
             math_fonts: std::collections::HashMap::new(),
             math_zones: Vec::new(),
             math_settings: Default::default(),
+            math_family: Rc::from("Cambria Math"),
             pageless_mode,
             page_width,
             page_height,
@@ -14605,6 +14607,16 @@ where
         // built-in default for every document.
         self.document_default_tab_width = document.default_tab_stop.map(points_to_px);
         self.math_settings = math::settings_from(&document.math_properties);
+        let math_family = document
+            .math_properties
+            .math_font
+            .as_deref()
+            .filter(|name| !name.trim().is_empty())
+            .unwrap_or("Cambria Math");
+        if self.math_family.as_ref() != math_family {
+            self.math_family = Rc::from(math_family);
+            self.clear_paragraph_wrap_cache();
+        }
         self.document_no_tab_hanging_indent = document.no_tab_hanging_indent;
         self.document_expands_shift_return = !document.compat.do_not_expand_shift_return();
         self.document_underlines_trailing_spaces = document.compat.underline_trailing_spaces();
@@ -15925,7 +15937,8 @@ where
             self.current_page_number.is_multiple_of(2),
         );
         let (_, column_width) = self.math_settings.display_content_box(0.0, column_width);
-        let style = self.body_math_style(math);
+        let math_family = Rc::clone(&self.math_family);
+        let style = self.body_math_style(math, &math_family);
         let options = jade_docx_layout::math_layout::styled::MathLayoutOptions {
             display: true,
             max_width: Some(column_width),
@@ -15970,7 +15983,7 @@ where
         properties: Option<&RunProperties>,
         display: bool,
     ) -> Result<math::OwnedMathPlan, JsValue> {
-        let mut style = self.boxed_math_style();
+        let mut style = self.boxed_math_style(&self.math_family);
         if let Some(size) = properties
             .and_then(|p| p.font_size)
             .filter(|size| size.is_finite() && *size > 0.0)
@@ -15998,7 +16011,7 @@ where
         let families = jade_docx_layout::font_resolver::resolve_font_families(properties);
         let stack = families.latin_ascii_stack();
         let family = first_family(stack);
-        let mut style = self.boxed_math_style();
+        let mut style = self.boxed_math_style(&self.math_family);
         style.family = &family;
         style.variant = jade_docx_layout::math_layout::styled::MathVariant::Plain;
         if let Some(size) = properties
@@ -28439,17 +28452,18 @@ where
         Ok((layout.height, layout.line_count))
     }
 
-    fn measure_text_box_blocks<'a>(
+    fn measure_text_box_blocks(
         &mut self,
-        blocks: &'a [BodyElement],
+        blocks: &[BodyElement],
         content_left: f64,
         content_right: f64,
         numbering_counter: &mut NumberingCounter,
-    ) -> Result<TextBoxBlockLayout<'a>, JsValue> {
+    ) -> Result<TextBoxBlockLayout, JsValue> {
         let mut height = 0.0;
         let mut preceding_after = 0.0;
         let mut line_count = 0;
         let mut math_plans = Vec::new();
+        let math_family = Rc::clone(&self.math_family);
         for element in blocks {
             match element {
                 BodyElement::Paragraph(paragraph) => {
@@ -28496,11 +28510,14 @@ where
                         ),
                         ..Default::default()
                     };
-                    let plan =
-                        self.math_plan(&math.elements, self.body_math_style(math), &options)?;
+                    let plan = self.math_plan(
+                        &math.elements,
+                        self.body_math_style(math, &math_family),
+                        &options,
+                    )?;
                     height += plan.metrics.ascent + plan.metrics.descent;
                     line_count += 1;
-                    math_plans.push(plan);
+                    math_plans.push(math::OwnedMathPlan::from_plan(&plan));
                 }
             }
         }
@@ -28703,10 +28720,7 @@ where
         numbering_counter: &mut NumberingCounter,
         line_gap: f64,
         remaining_line_gaps: &mut usize,
-        math_plans: &mut std::slice::Iter<
-            '_,
-            jade_docx_layout::math_layout::styled::StyledMathLayout<'_>,
-        >,
+        math_plans: &mut std::slice::Iter<'_, math::OwnedMathPlan>,
     ) -> Result<bool, JsValue> {
         let mut rendered = false;
         let mut preceding_after = 0.0;
@@ -28778,8 +28792,9 @@ where
     fn body_math_style<'a>(
         &self,
         math: &'a MathParagraph,
+        family: &'a str,
     ) -> jade_docx_layout::math_layout::styled::MathTextStyle<'a> {
-        let mut style = self.boxed_math_style();
+        let mut style = self.boxed_math_style(family);
         if let Some(properties) = math.properties.as_deref() {
             let mark = properties.mark_run_properties.as_ref();
             if let Some(size) = mark
@@ -28863,7 +28878,10 @@ where
         self.math_settings.display_content_box(left, width)
     }
 
-    fn boxed_math_style(&self) -> jade_docx_layout::math_layout::styled::MathTextStyle<'static> {
+    fn boxed_math_style<'a>(
+        &self,
+        family: &'a str,
+    ) -> jade_docx_layout::math_layout::styled::MathTextStyle<'a> {
         use jade_docx_layout::math_layout::styled::{MathTextStyle, MathVariant};
         let size = self
             .styles_part
@@ -28871,7 +28889,7 @@ where
             .and_then(|s| s.doc_default_font_size())
             .unwrap_or(10.5);
         MathTextStyle {
-            family: "Cambria Math",
+            family,
             size_px: points_to_px(size),
             color: if self.dark_mode_text {
                 DARK_MODE_TEXT_COLOR
@@ -28885,7 +28903,7 @@ where
     #[allow(clippy::too_many_arguments)]
     fn render_boxed_math(
         &mut self,
-        plan: &jade_docx_layout::math_layout::styled::StyledMathLayout<'_>,
+        plan: &math::OwnedMathPlan,
         content_left: f64,
         content_right: f64,
         cursor_y: &mut f64,
@@ -28946,7 +28964,7 @@ where
             self.draw_selection_highlight(paragraph_index, &line)?;
             self.selection.record_line(paragraph_index, line);
             if self.should_draw_current_page_for_render() {
-                math::paint_boxed_math(&painter, plan, x, baseline)
+                plan.paint(&painter, x, baseline)
                     .map_err(PainterError::into_js_value)?;
                 self.reset_fill_style_state();
             }
@@ -46570,6 +46588,52 @@ mod tests {
 
     #[cfg(feature = "opentype-math")]
     #[test]
+    fn document_math_font_applies_to_display_inline_and_boxed_equations() {
+        let xml = r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><w:body><w:p><m:oMathPara><m:oMath><m:r><m:t>x</m:t></m:r></m:oMath></m:oMathPara></w:p><w:p><w:r><w:t>before </w:t></w:r><m:oMath><m:r><m:t>y</m:t></m:r></m:oMath></w:p></w:body></w:document>"#;
+        let mut document = jade_docx_reader::DocumentParser::new()
+            .parse_document_xml(xml)
+            .unwrap();
+        document.math_properties.math_font = Some("Host Math".into());
+        let (mut renderer, _) = recording_renderer();
+        renderer
+            .register_math_font(
+                "Host Math".into(),
+                include_bytes!("../../jade-docx-layout/tests/fixtures/math-font.ttf").to_vec(),
+            )
+            .unwrap();
+        renderer.render(&document, &Options::default()).unwrap();
+        let zones = renderer.math_zones();
+        assert!(zones.iter().any(|z| z.display));
+        assert!(zones.iter().any(|z| !z.display));
+        for zone in zones {
+            assert!(zone.plan.glyphs.iter().all(|g| g.family == "Host Math"));
+        }
+        let blocks = &document.body.as_ref().unwrap().elements;
+        let measured = renderer
+            .measure_text_box_blocks(blocks, 0.0, 400.0, &mut NumberingCounter::new())
+            .unwrap();
+        assert_eq!(measured.math_plans.len(), 1);
+        assert!(measured.math_plans[0]
+            .glyphs
+            .iter()
+            .all(|g| g.family == "Host Math"));
+        assert!(
+            renderer.math_font_stats()["fonts"][0]["layouts"]
+                .as_u64()
+                .unwrap()
+                >= 3
+        );
+
+        // Rendering a new document must not inherit the preceding document's font.
+        document.math_properties.math_font = None;
+        renderer.render(&document, &Options::default()).unwrap();
+        for zone in renderer.math_zones() {
+            assert!(zone.plan.glyphs.iter().all(|g| g.family == "Cambria Math"));
+        }
+    }
+
+    #[cfg(feature = "opentype-math")]
+    #[test]
     fn boxed_math_inherits_paragraph_font_size_and_word_script_scales() {
         let xml = r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><w:body><w:p><w:pPr><w:rPr><w:rFonts w:ascii="Host Math"/><w:sz w:val="30"/></w:rPr></w:pPr><m:oMathPara><m:oMath><m:sSup><m:e><m:r><m:t>x</m:t></m:r></m:e><m:sup><m:r><m:t>x</m:t></m:r></m:sup></m:sSup></m:oMath></m:oMathPara></w:p></w:body></w:document>"#;
         let document = jade_docx_reader::DocumentParser::new()
@@ -46588,9 +46652,9 @@ mod tests {
             .unwrap();
         let glyphs = &measured.math_plans[0].glyphs;
         assert_eq!(glyphs.len(), 2);
-        assert_eq!(glyphs[0].style.family, "Host Math");
-        assert!((glyphs[0].style.size_px - 20.0).abs() < 1e-9);
-        assert!((glyphs[1].style.size_px - 14.0).abs() < 1e-9);
+        assert_eq!(glyphs[0].family, "Host Math");
+        assert!((glyphs[0].size_px - 20.0).abs() < 1e-9);
+        assert!((glyphs[1].size_px - 14.0).abs() < 1e-9);
         assert_eq!(renderer.math_font_stats()["fonts"][0]["layouts"], 1);
     }
 
