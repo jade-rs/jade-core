@@ -32271,6 +32271,15 @@ where
                     .and_then(|s| s.resolved_background_color())
                     .map(Rc::<str>::from)
             });
+        let fill = self.resolved_style_fill_color(style, highlight.as_deref().or(background));
+        Self::cmd_text_style_with_colors(style, fill, highlight)
+    }
+
+    fn cmd_text_style_with_colors(
+        style: &AppliedRunStyle,
+        fill_color: Rc<str>,
+        highlight_color: Option<Rc<str>>,
+    ) -> CmdTextStyle {
         CmdTextStyle {
             font_size_pt: style.font_size_pt,
             letter_spacing_px: style.letter_spacing_px,
@@ -32287,8 +32296,8 @@ where
             font_descriptor_latin_hansi: style.descriptor_for_latin_hansi_rc(),
             font_descriptor_east_asia: style.descriptor_for_rc(ScriptCategory::EastAsia),
             font_descriptor_complex: style.descriptor_for_rc(ScriptCategory::Complex),
-            fill_color: self.resolved_style_fill_color(style, highlight.as_deref().or(background)),
-            highlight_color: highlight,
+            fill_color,
+            highlight_color,
             font_hint: style.font_hint.clone(),
             effects: style.effects.clone(),
         }
@@ -32330,10 +32339,9 @@ where
     }
 
     fn cmd_control_mark_style(&self, style: &AppliedRunStyle) -> CmdTextStyle {
-        // Marks never paint the run's highlight or shading background.
-        let mut command_style = self.cmd_text_style(None, style);
-        command_style.fill_color = Rc::from(CONTROL_MARK_COLOR);
-        command_style.highlight_color = None;
+        // Marks use a fixed color, so skip automatic color/background resolution.
+        let mut command_style =
+            Self::cmd_text_style_with_colors(style, Rc::from(CONTROL_MARK_COLOR), None);
         command_style.strike = false;
         command_style.underline = false;
         command_style

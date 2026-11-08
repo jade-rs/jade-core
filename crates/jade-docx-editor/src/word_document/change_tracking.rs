@@ -21,12 +21,10 @@ impl WordDocument {
         let target = part
             .relationships
             .iter()
-            .find(|rel| {
-                // Relationship types share a long namespace prefix. Reject
-                // other kinds by their suffix before comparing the full URI.
-                rel.r#type.ends_with("/settings")
-                    && rel.r#type == RelationshipTypes::Settings.as_str()
-            })
+            // Full equality rejects different-length relationship kinds before
+            // reading their shared namespace prefix. Settings can follow hundreds
+            // of hyperlinks, so a suffix comparison here adds work per keystroke.
+            .find(|rel| rel.r#type == RelationshipTypes::Settings.as_str())
             .map(|rel| rel.target.as_str())
             .unwrap_or("settings.xml");
         if target == "settings.xml" && part.path == "word/document.xml" {
