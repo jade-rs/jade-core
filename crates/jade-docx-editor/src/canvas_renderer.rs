@@ -30451,13 +30451,6 @@ where
         let fallback_descent = (font_px * 0.25).max(0.0);
         let mut min_top_offset = f64::INFINITY;
         let mut max_bottom_offset = f64::NEG_INFINITY;
-        // Track cluster indices instead of cloning String per iteration.
-        // We only materialise the final prev/prev_prev grapheme strings at the end.
-        let mut prev_prev_cluster_idx: Option<usize> = None;
-        let mut prev_cluster_idx: Option<usize> = None;
-        let mut prev_adjusted_glyph_width: Option<f64> = None;
-        let mut prev_raw_glyph_width: Option<f64> = None;
-        let mut prev_font_descriptor_hash: Option<u64> = None;
 
         for (cluster_i, cluster) in segment_clusters.iter().enumerate() {
             if let Some(object) = cluster.inline_object {
@@ -30473,11 +30466,6 @@ where
                 min_top_offset = min_top_offset.min(top);
                 max_bottom_offset = max_bottom_offset.max(bottom);
                 cursor += object.width.max(1.0);
-                prev_prev_cluster_idx = prev_cluster_idx;
-                prev_cluster_idx = Some(cluster_i);
-                prev_adjusted_glyph_width = Some(object.width.max(1.0));
-                prev_raw_glyph_width = Some(object.width.max(1.0));
-                prev_font_descriptor_hash = None;
                 continue;
             }
 
@@ -30533,12 +30521,27 @@ where
                 });
             }
             cursor += layout.glyph_box_width;
-            prev_prev_cluster_idx = prev_cluster_idx;
-            prev_cluster_idx = Some(cluster_i);
-            prev_adjusted_glyph_width = Some(layout.adjusted_glyph_width);
-            prev_raw_glyph_width = Some(layout.measured_glyph_width);
-            prev_font_descriptor_hash = Some(layout.font_descriptor_hash);
         }
+
+        // All clusters have been validated. Only the final cluster contributes
+        // widths and font identity to the context used by the following fragment.
+        let (last_cluster, preceding_clusters) = segment_clusters
+            .split_last()
+            .expect("empty cluster list returned above");
+        let (prev_adjusted_glyph_width, prev_raw_glyph_width, prev_font_descriptor_hash) =
+            if let Some(object) = last_cluster.inline_object {
+                let width = object.width.max(1.0);
+                (Some(width), Some(width), None)
+            } else {
+                let Some(layout) = last_cluster.layout.as_ref() else {
+                    return Ok(None);
+                };
+                (
+                    Some(layout.adjusted_glyph_width),
+                    Some(layout.measured_glyph_width),
+                    Some(layout.font_descriptor_hash),
+                )
+            };
 
         // When visuals are requested, every slot is written exactly once. Early returns
         // drop the MaybeUninit slice without observing a partially initialized value.
@@ -30566,18 +30569,17 @@ where
             top_offset: min_top_offset,
             bottom_offset: max_bottom_offset,
             end_state: TextAdvanceState {
-                prev_prev_grapheme: prev_prev_cluster_idx
-                    .map(|i| CompactString::new(&segment_clusters[i].text)),
-                prev_grapheme: prev_cluster_idx
-                    .map(|i| CompactString::new(&segment_clusters[i].text)),
+                prev_prev_grapheme: preceding_clusters
+                    .last()
+                    .map(|cluster| CompactString::new(&cluster.text)),
+                prev_grapheme: Some(CompactString::new(&last_cluster.text)),
                 prev_adjusted_glyph_width,
                 prev_raw_glyph_width,
                 prev_font_descriptor_hash,
-                prev_auto_space: prev_cluster_idx.and_then(|i| {
-                    let cluster = &segment_clusters[i];
-                    let font_slot = cluster.layout.as_ref()?.font_slot;
+                prev_auto_space: last_cluster.layout.as_ref().and_then(|layout| {
+                    let font_slot = layout.font_slot;
                     jade_docx_layout::line_wrap::digit_auto_space_with_balance(
-                        &cluster.text,
+                        &last_cluster.text,
                         self.resolved_run_style(style)
                             .descriptor_for_slot(font_slot),
                         balance_single_byte_double_byte_width,
@@ -63251,6 +63253,186 @@ mod tests {
             assert!(extent.glyph_steps.is_empty());
         }
         assert!(renderer.font_vertical_metrics_cache.borrow().is_empty());
+        jade_docx_layout::line_metrics::set_word_layout_platform(WordLayoutPlatform::Windows);
+    }
+
+    #[test]
+    fn cluster_plan_terminal_state_matches_reference_for_mixed_clusters() {
+        use jade_docx_layout::line_metrics::WordLayoutPlatform;
+        use jade_docx_layout::line_wrap::InlineObject;
+
+        jade_docx_layout::line_metrics::set_word_layout_platform(WordLayoutPlatform::Mac);
+        let renderer = test_renderer();
+        let mut style = test_applied_style(1.0);
+        let descriptor = "12.00pt 'Bookman Old Style', serif";
+        style.resolved = Rc::new(ResolvedRunStyle::new(
+            descriptor, descriptor, descriptor, descriptor, 0.0, 1.0, false, None,
+        ));
+        let resolved = renderer.resolved_run_style(&style);
+        let layout_for = |variant: usize| InlineClusterLayout {
+            character_border_edges: 0,
+            script: if variant == 1 {
+                ScriptCategory::EastAsia
+            } else {
+                ScriptCategory::Latin
+            },
+            font_slot: if variant == 1 {
+                ResolvedFontSlot::EastAsia
+            } else {
+                ResolvedFontSlot::LatinAscii
+            },
+            leading_advance: variant as f64 * 0.25,
+            glyph_box_width: 6.0 + variant as f64,
+            measured_glyph_width: 4.0 + variant as f64,
+            adjusted_glyph_width: 5.0 + variant as f64,
+            font_descriptor_hash: 1000 + variant as u64,
+            font_ascent: Some(8.0),
+            font_descent: Some(2.0),
+        };
+        let mut object_digit_cases = 0;
+        // Exhaust every sequence up to three clusters. Distinct widths and hashes
+        // expose accidentally retaining the preceding cluster's advance context.
+        for len in 0..=3_u32 {
+            for pattern in 0..8_usize.pow(len) {
+                let mut code = pattern;
+                let mut text = String::new();
+                let mut clusters = Vec::new();
+                for _ in 0..len {
+                    let variant = code % 8;
+                    code /= 8;
+                    let grapheme = match variant {
+                        0 => "A",
+                        1 => "漢",
+                        2 | 6 => "0",
+                        _ => "\u{fffc}",
+                    };
+                    let start = 13 + text.len();
+                    text.push_str(grapheme);
+                    let end = 13 + text.len();
+                    let cluster = if variant < 3 {
+                        InlineCluster::grapheme_with_layout(
+                            start,
+                            end,
+                            6.0 + variant as f64,
+                            grapheme,
+                            false,
+                            false,
+                            false,
+                            layout_for(variant),
+                        )
+                    } else {
+                        let width = match variant {
+                            3 => 0.0,
+                            4 => -3.0,
+                            5 => f64::NAN,
+                            6 => 8.0,
+                            _ => f64::INFINITY,
+                        };
+                        let mut cluster = InlineCluster::inline_object(
+                            start,
+                            end,
+                            InlineObject {
+                                width,
+                                height: 12.0,
+                                descent: 3.0,
+                            },
+                        );
+                        if variant == 6 {
+                            // An object takes width/hash priority, but its optional
+                            // layout still contributes the existing digit spacing.
+                            cluster.text = grapheme.into();
+                            cluster.layout = Some(layout_for(variant));
+                        }
+                        cluster
+                    };
+                    clusters.push(cluster);
+                }
+                let segment = TextSegment {
+                    start: 13,
+                    end: 13 + text.len(),
+                    text,
+                    properties: None,
+                    revision: None,
+                    hyperlink: None,
+                    leading_width: 0.0,
+                };
+                for balanced in [false, true] {
+                    // Keep the original streaming transition as an independent
+                    // oracle for any implementation that derives the tail directly.
+                    let mut expected = TextAdvanceState::default();
+                    for cluster in &clusters {
+                        expected.prev_prev_grapheme = expected.prev_grapheme.take();
+                        expected.prev_grapheme = Some(cluster.text.clone());
+                        if let Some(object) = cluster.inline_object {
+                            expected.prev_adjusted_glyph_width = Some(object.width.max(1.0));
+                            expected.prev_raw_glyph_width = Some(object.width.max(1.0));
+                            expected.prev_font_descriptor_hash = None;
+                        } else {
+                            let layout = cluster.layout.as_ref().unwrap();
+                            expected.prev_adjusted_glyph_width = Some(layout.adjusted_glyph_width);
+                            expected.prev_raw_glyph_width = Some(layout.measured_glyph_width);
+                            expected.prev_font_descriptor_hash = Some(layout.font_descriptor_hash);
+                        }
+                        expected.prev_auto_space = cluster.layout.as_ref().and_then(|layout| {
+                            jade_docx_layout::line_wrap::digit_auto_space_with_balance(
+                                &cluster.text,
+                                resolved.descriptor_for_slot(layout.font_slot),
+                                balanced,
+                            )
+                        });
+                    }
+                    let arena = Bump::new();
+                    let full = renderer
+                        .build_fragment_layout_from_clusters_with_visuals::<true>(
+                            &arena, &segment, &clusters, &style, balanced,
+                        )
+                        .unwrap();
+                    let extent = renderer
+                        .build_fragment_layout_from_clusters_with_visuals::<false>(
+                            &arena, &segment, &clusters, &style, balanced,
+                        )
+                        .unwrap();
+                    if clusters.is_empty() {
+                        assert!(full.is_none());
+                        assert!(extent.is_none());
+                        continue;
+                    }
+                    let full = full.unwrap();
+                    let extent = extent.unwrap();
+                    assert_eq!(full.end_state, expected, "{len}/{pattern}/{balanced}");
+                    assert_eq!(extent.end_state, expected, "{len}/{pattern}/{balanced}");
+                    assert_eq!(
+                        (full.width, full.top_offset, full.bottom_offset),
+                        (extent.width, extent.top_offset, extent.bottom_offset)
+                    );
+                    assert_eq!(full.fragment.glyphs.len(), clusters.len());
+                    assert_eq!(
+                        full.glyph_steps.len(),
+                        clusters
+                            .iter()
+                            .filter(|c| c.inline_object.is_none())
+                            .count()
+                    );
+                    assert!(extent.fragment.glyphs.is_empty());
+                    assert!(extent.glyph_steps.is_empty());
+                    if balanced
+                        && clusters.last().unwrap().inline_object.is_some()
+                        && clusters.last().unwrap().layout.is_some()
+                    {
+                        object_digit_cases += 1;
+                        assert_eq!(expected.prev_adjusted_glyph_width, Some(8.0));
+                        assert_eq!(expected.prev_font_descriptor_hash, None);
+                        assert_eq!(
+                            expected
+                                .prev_auto_space
+                                .map(|m| m.trailing_gap_px(balanced)),
+                            Some(4.0)
+                        );
+                    }
+                }
+            }
+        }
+        assert_eq!(object_digit_cases, 73);
         jade_docx_layout::line_metrics::set_word_layout_platform(WordLayoutPlatform::Windows);
     }
 
