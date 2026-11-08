@@ -351,6 +351,7 @@ pub(crate) fn supported_namespace(namespace: &[u8]) -> bool {
             | XM_NAMESPACE
             | b"http://schemas.openxmlformats.org/spreadsheetml/2006/main"
             | b"http://purl.oclc.org/ooxml/spreadsheetml/main"
+            | b"http://schemas.microsoft.com/office/spreadsheetml/2017/dynamicarray"
     )
 }
 pub(crate) fn choice_supported(reader: &NsReader<&[u8]>, e: &BytesStart<'_>) -> Result<bool> {
