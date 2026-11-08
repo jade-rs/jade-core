@@ -2472,10 +2472,7 @@ pub struct OwnedTextAdvanceStep {
     pub advance: GraphemeAdvance,
 }
 
-struct ComputedTextAdvanceStep<'a> {
-    script: ScriptCategory,
-    font_descriptor: &'a str,
-    font_descriptor_hash: u64,
+struct ComputedTextAdvanceStep {
     measured_glyph_width: f64,
     measured_width_is_oracle: bool,
     /// The advance came from a fixed-pitch face's cell, not the host.
@@ -2613,39 +2610,6 @@ fn measure_text_pair<C: LineWrapContext>(
     Ok(width)
 }
 
-#[allow(clippy::too_many_arguments)]
-fn compute_text_advance_step<'a, C: LineWrapContext>(
-    ctx: &C,
-    grapheme: &'a str,
-    style: &'a ResolvedRunStyle,
-    paragraph_style: Option<&ParagraphStyle>,
-    state: &TextAdvanceState,
-    next_grapheme: Option<&'a str>,
-    is_line_start: bool,
-    snap_cell_width: Option<f64>,
-    pair_cache: &mut PairMeasureCache,
-) -> Result<ComputedTextAdvanceStep<'a>, C::Error> {
-    let script = classify_script(grapheme);
-    let (font_descriptor, font_descriptor_hash, font_descriptor_id) =
-        style.descriptor_key_for_grapheme(grapheme, script);
-    compute_text_advance_step_with_descriptor(
-        ctx,
-        grapheme,
-        style,
-        paragraph_style,
-        state,
-        next_grapheme,
-        is_line_start,
-        snap_cell_width,
-        pair_cache,
-        script,
-        font_descriptor,
-        font_descriptor_hash,
-        font_descriptor_id,
-        None,
-    )
-}
-
 // Wide/fullwidth scalar ranges with fixed defaults in the known CJK faces.
 // Halfwidth, combining sequences and unclassified ranges retain host shaping.
 #[inline]
@@ -2751,27 +2715,26 @@ fn fixed_punctuation_pair_adjustment(
     Some(-0.5 * em)
 }
 
-/// Like [`compute_text_advance_step`], but the caller supplies the already
-/// classified script and resolved font descriptor/hash. The hot wrap loop
-/// computes these once per grapheme, so this avoids re-classifying the script
-/// and re-resolving the descriptor a second time inside the advance step.
+/// Computes an advance using the caller's classified script and resolved font
+/// descriptor/hash. The caller retains that metadata rather than copying it
+/// through the result for every grapheme.
 #[allow(clippy::too_many_arguments)]
-fn compute_text_advance_step_with_descriptor<'a, C: LineWrapContext>(
+fn compute_text_advance_step_with_descriptor<C: LineWrapContext>(
     ctx: &C,
-    grapheme: &'a str,
-    style: &'a ResolvedRunStyle,
+    grapheme: &str,
+    style: &ResolvedRunStyle,
     paragraph_style: Option<&ParagraphStyle>,
     state: &TextAdvanceState,
-    next_grapheme: Option<&'a str>,
+    next_grapheme: Option<&str>,
     is_line_start: bool,
     snap_cell_width: Option<f64>,
     pair_cache: &mut PairMeasureCache,
     script: ScriptCategory,
-    font_descriptor: &'a str,
+    font_descriptor: &str,
     font_descriptor_hash: u64,
     font_descriptor_id: Option<u32>,
     text_offset: Option<usize>,
-) -> Result<ComputedTextAdvanceStep<'a>, C::Error> {
+) -> Result<ComputedTextAdvanceStep, C::Error> {
     let oracle_measured_glyph_width = text_offset.and_then(|offset| {
         paragraph_style
             .and_then(|style| style.oracle_advance_px_by_text_offset.as_ref())
@@ -2981,9 +2944,6 @@ fn compute_text_advance_step_with_descriptor<'a, C: LineWrapContext>(
         advance.implicit_numeric_gap = 0.0;
     }
     Ok(ComputedTextAdvanceStep {
-        script,
-        font_descriptor,
-        font_descriptor_hash,
         measured_glyph_width,
         measured_width_is_oracle,
         monospace_cell: monospace_width.is_some(),
@@ -3066,45 +3026,31 @@ where
             .peek()
             .map(|(_, value)| *value)
             .or(next_grapheme_after_text);
-        let computed = if let Some(text_offset_base) = text_offset_base {
-            let script = classify_script(grapheme);
-            let (font_descriptor, font_descriptor_hash, font_descriptor_id) =
-                style.descriptor_key_for_grapheme(grapheme, script);
-            compute_text_advance_step_with_descriptor(
-                ctx,
-                grapheme,
-                style,
-                paragraph_style,
-                &state,
-                next_grapheme,
-                is_line_start,
-                snap_cell_width,
-                &mut pair_cache,
-                script,
-                font_descriptor,
-                font_descriptor_hash,
-                font_descriptor_id,
-                Some(text_offset_base + rel_offset),
-            )?
-        } else {
-            compute_text_advance_step(
-                ctx,
-                grapheme,
-                style,
-                paragraph_style,
-                &state,
-                next_grapheme,
-                is_line_start,
-                snap_cell_width,
-                &mut pair_cache,
-            )?
-        };
+        let script = classify_script(grapheme);
+        let (font_descriptor, font_descriptor_hash, font_descriptor_id) =
+            style.descriptor_key_for_grapheme(grapheme, script);
+        let computed = compute_text_advance_step_with_descriptor(
+            ctx,
+            grapheme,
+            style,
+            paragraph_style,
+            &state,
+            next_grapheme,
+            is_line_start,
+            snap_cell_width,
+            &mut pair_cache,
+            script,
+            font_descriptor,
+            font_descriptor_hash,
+            font_descriptor_id,
+            text_offset_base.map(|base| base + rel_offset),
+        )?;
         visitor(TextAdvanceStep {
             rel_offset,
             grapheme,
-            script: computed.script,
-            font_descriptor: computed.font_descriptor,
-            font_descriptor_hash: computed.font_descriptor_hash,
+            script,
+            font_descriptor,
+            font_descriptor_hash,
             measured_glyph_width: computed.measured_glyph_width,
             advance: computed.advance,
         })?;
@@ -3113,7 +3059,7 @@ where
             grapheme,
             computed.measured_glyph_width,
             computed.advance.adjusted_glyph_width,
-            computed.font_descriptor_hash,
+            font_descriptor_hash,
             computed.advance.trailing_auto_space,
         );
         is_line_start = false;
@@ -7285,7 +7231,7 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
                         (
                             grapheme,
                             script,
-                            computed.font_descriptor_hash,
+                            font_desc_hash,
                             computed.advance.adjusted_glyph_width,
                         ),
                         candidate_width,
@@ -7333,7 +7279,7 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
                                 (
                                     grapheme,
                                     script,
-                                    computed.font_descriptor_hash,
+                                    font_desc_hash,
                                     computed.advance.adjusted_glyph_width,
                                 ),
                                 candidate_width,
@@ -7418,7 +7364,7 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
                     grapheme,
                     computed.measured_glyph_width,
                     computed.advance.adjusted_glyph_width,
-                    computed.font_descriptor_hash,
+                    font_desc_hash,
                     computed.advance.trailing_auto_space,
                 );
                 let font_vertical_metrics = if let Some(metrics) =
@@ -7475,7 +7421,7 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
                     glyph_box_width: computed.advance.glyph_box_width + fitted_gap + ruby_trailing,
                     measured_glyph_width: computed.measured_glyph_width,
                     adjusted_glyph_width: computed.advance.adjusted_glyph_width,
-                    font_descriptor_hash: computed.font_descriptor_hash,
+                    font_descriptor_hash: font_desc_hash,
                     font_ascent: font_vertical_metrics.map(|metrics| {
                         let ascent = metrics.0 + border_extent_px;
                         // A ruby guide raises the line above its base.
@@ -8541,7 +8487,7 @@ fn measure_tab_segment<C: LineWrapContext>(
                 grapheme,
                 computed.measured_glyph_width,
                 computed.advance.adjusted_glyph_width,
-                computed.font_descriptor_hash,
+                font_desc_hash,
                 computed.advance.trailing_auto_space,
             );
         }
@@ -10235,6 +10181,10 @@ mod float_exclusion_tests {
         assert_eq!(plan, vec![(250.0, 250.0); 2]);
     }
 }
+
+#[cfg(test)]
+#[path = "line_wrap/advance_result_tests.rs"]
+mod advance_result_tests;
 
 #[cfg(test)]
 mod tests {
