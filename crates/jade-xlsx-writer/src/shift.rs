@@ -165,6 +165,17 @@ pub fn shift_sheet(
     if changed {
         guard_legacy_array_structure(sheet, change)?;
     }
+    let feature_formulas =
+        if xml.contains("conditionalFormatting") || xml.contains("sparklineGroup") {
+            Some(crate::worksheet_formulas::rewrite_structural_features(
+                xml,
+                &|formula, _| shift_formula(formula, &sheet.name, change),
+                changed.then_some(change),
+            )?)
+        } else {
+            None
+        };
+    let xml = feature_formulas.as_deref().unwrap_or(xml);
     let grid = jade_xlsx_reader::cell_content::compatible_worksheet_source(xml)?;
     let processed = jade_xlsx_reader::process_content::processed_elements(xml)?;
     let extensions = jade_xlsx_reader::worksheet_extensions::sources(xml)?;
@@ -590,7 +601,9 @@ pub fn shift_sheet(
                             let kept = sqref
                                 .split_whitespace()
                                 .filter_map(|text| CellRange::parse(text).ok())
-                                .filter_map(|range| change.map_range(range))
+                                .filter_map(|range| {
+                                    crate::validation_structure::map_range(range, change)
+                                })
                                 .map(range_text)
                                 .collect::<Vec<_>>();
                             if kept.is_empty() {
@@ -635,7 +648,7 @@ pub fn shift_sheet(
                     b"mergeCells" | b"hyperlinks" | b"ignoredErrors" if changed && !empty => {
                         list = Some((start, head_end, 0, name.clone()));
                     }
-                    b"formula" | b"formula1" | b"formula2" => {
+                    b"formula1" | b"formula2" => {
                         if !empty {
                             formula_content = Some(head_end);
                         }
@@ -721,10 +734,19 @@ pub fn shift_sheet(
                 }
                 b"sqref" => {
                     if let Some(content_start) = sqref_content.take() {
+                        let conditional = ext_containers.last().is_some_and(|(_, name, _)| {
+                            name.as_slice() == b"conditionalFormatting"
+                        });
                         let kept = xml[content_start..start]
                             .split_whitespace()
                             .filter_map(|text| CellRange::parse(text).ok())
-                            .filter_map(|range| change.map_range(range))
+                            .filter_map(|range| {
+                                if conditional {
+                                    crate::validation_structure::map_range(range, change)
+                                } else {
+                                    change.map_range(range)
+                                }
+                            })
                             .map(range_text)
                             .collect::<Vec<_>>();
                         if kept.is_empty() {

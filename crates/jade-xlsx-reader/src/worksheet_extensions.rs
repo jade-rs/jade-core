@@ -1,5 +1,6 @@
-//! Worksheet extension ownership includes its URI, expanded root name and path.
-//! Unsupported extension payloads remain source XML rather than worksheet roles.
+//! Source ownership for worksheet extension and conditional-format roots.
+//! Extension URIs, expanded payload names and logical worksheet paths agree.
+//! Unprocessed root payloads and ignored worksheet parents remain opaque.
 use crate::{data_validations, process_content, Result};
 use quick_xml::{events::Event, name::ResolveResult, NsReader};
 
@@ -41,9 +42,14 @@ impl Kind {
 #[derive(Default)]
 pub struct Sources {
     payloads: Vec<(usize, Kind)>,
+    conditionals: Vec<usize>,
     opaque: Vec<usize>,
 }
 impl Sources {
+    /// Main-namespace containers under compatible logical worksheet parents.
+    pub fn owns_conditional_at(&self, offset: usize) -> bool {
+        self.conditionals.binary_search(&offset).is_ok()
+    }
     pub fn owns_payload_at(&self, offset: usize, kind: Kind) -> bool {
         self.payloads
             .binary_search_by_key(&offset, |(at, _)| *at)
@@ -64,7 +70,7 @@ enum Role {
 /// wrappers do not change logical parentage; unsupported choices remain opaque.
 pub fn sources(xml: &str) -> Result<Sources> {
     let mut result = Sources::default();
-    if !xml.contains("ext") {
+    if !xml.contains("ext") && !xml.contains("conditionalFormatting") {
         return Ok(result);
     }
     let processed = process_content::processed_elements(xml)?;
@@ -118,6 +124,14 @@ pub fn sources(xml: &str) -> Result<Sources> {
                         Some(Role::Worksheet)
                     }
                     [Role::Worksheet] if own && name == b"extLst" => Some(Role::List),
+                    [Role::Worksheet] if own && name == b"conditionalFormatting" => {
+                        result.conditionals.push(start);
+                        None
+                    }
+                    [Role::Worksheet] if !own => {
+                        result.opaque.push(start);
+                        None
+                    }
                     [Role::Worksheet, Role::List] if own && name == b"ext" => {
                         let mut kind = None;
                         for attr in e.attributes() {
@@ -167,6 +181,26 @@ pub fn sources(xml: &str) -> Result<Sources> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn conditional_roots_require_compatible_logical_worksheet_parents() {
+        let xml = r#"<s:worksheet xmlns:s="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" xmlns:u="urn:future" mc:Ignorable="u" mc:ProcessContent="u:wrap"><u:wrap><s:conditionalFormatting id="processed"/></u:wrap><u:opaque><s:conditionalFormatting id="hidden"/></u:opaque><mc:AlternateContent><mc:Choice Requires="u"><s:conditionalFormatting id="unknown"/></mc:Choice><mc:Choice Requires="s"><s:conditionalFormatting id="choice"/></mc:Choice><mc:Fallback><s:conditionalFormatting id="fallback"/></mc:Fallback></mc:AlternateContent></s:worksheet>"#;
+        let sources = sources(xml).unwrap();
+        for id in ["processed", "choice", "fallback"] {
+            assert!(sources.owns_conditional_at(
+                xml.find(&format!("<s:conditionalFormatting id=\"{id}\""))
+                    .unwrap()
+            ));
+        }
+        for id in ["hidden", "unknown"] {
+            assert!(!sources.owns_conditional_at(
+                xml.find(&format!("<s:conditionalFormatting id=\"{id}\""))
+                    .unwrap()
+            ));
+        }
+        assert_eq!(sources.conditionals.len(), 3);
+        assert!(sources.opaque_at(xml.find("<u:opaque>").unwrap()));
+        assert!(sources.opaque_at(xml.find("<mc:Choice Requires=\"u\"").unwrap()));
+    }
     #[test]
     fn uri_expanded_name_and_logical_parent_jointly_own_a_payload() {
         let xml = r#"<s:worksheet xmlns:s="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:x="http://schemas.microsoft.com/office/spreadsheetml/2009/9/main" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" xmlns:u="urn:future"><s:extLst><s:ext uri="unknown"><x:dataValidations/></s:ext><s:ext uri="{cce6a557-97bc-4b89-adb6-d9c93caab3df}"><u:wrap mc:Ignorable="u" mc:ProcessContent="u:wrap"><mc:AlternateContent><mc:Choice Requires="u"><x:dataValidations id="skip"/></mc:Choice><mc:Choice Requires="s"><x:dataValidations id="choice"/></mc:Choice><mc:Fallback><x:dataValidations id="fallback"/></mc:Fallback></mc:AlternateContent></u:wrap><s:dataValidations/><x:mergeCells/></s:ext></s:extLst><s:ext uri="{CCE6A557-97BC-4B89-ADB6-D9C93CAAB3DF}"><x:dataValidations id="misplaced"/></s:ext></s:worksheet>"#;

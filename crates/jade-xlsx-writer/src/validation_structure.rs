@@ -140,7 +140,7 @@ pub(crate) fn containers(
     Ok(result)
 }
 
-fn surviving_start(range: CellRange, change: &StructureChange) -> CellRef {
+pub(crate) fn surviving_start(range: CellRange, change: &StructureChange) -> CellRef {
     let mut source = range.start;
     if !change.inserted {
         let index = match change.axis {
