@@ -150,6 +150,39 @@ class NativeMacosWorkflowTest < Minitest::Test
     end
   end
 
+  def test_mac_jobs_prepare_verified_binaries_before_any_cargo_command
+    %w[native-macos word-mac-coordinates].each do |name|
+      steps = @workflow.fetch("jobs").fetch(name).fetch("steps")
+      prepare = steps.index { |step| step["uses"] == "./.github/actions/prepare-macos-skia" }
+      refute_nil prepare, "#{name} must prepare the pinned Skia archive"
+      step = steps.fetch(prepare)
+      refute step.key?("if")
+      refute step.fetch("continue-on-error", false)
+      first_cargo = steps.index { |item| item.fetch("run", "").include?("cargo ") }
+      refute_nil first_cargo
+      assert_operator prepare, :<, first_cargo
+    end
+    action = YAML.safe_load(File.read(File.join(REPOSITORY_ROOT, ".github/actions/prepare-macos-skia/action.yml")))
+    step = action.fetch("runs").fetch("steps").fetch(0)
+    assert_equal "${{ github.token }}", step.fetch("env").fetch("GH_TOKEN")
+    command = step.fetch("run")
+    assert_includes command, "releases/assets/266267944"
+    assert_includes command, "f15a955e61503f77d57d3cfee7362aabe93ea934d6580065a96de5519f2e7019"
+    assert_includes command, "shasum -a 256 --check"
+    assert_includes command, 'SKIA_BINARIES_URL=file://$archive'
+  end
+
+  def test_lean_api_download_retains_the_pinned_checksum
+    step = @workflow.fetch("jobs").fetch("crdt-worker-proof").fetch("steps").find do |item|
+      item["name"] == "Install pinned Lean toolchain manager"
+    end
+    assert_equal "${{ github.token }}", step.fetch("env").fetch("GH_TOKEN")
+    command = step.fetch("run")
+    assert_includes command, "releases/assets/529114798"
+    assert_includes command, "42b94d4244e8353142c456ec0e4ca6528fd898a6c604d4059f494e706e431f63  elan.tar.gz"
+    assert_includes command, "sha256sum --check"
+  end
+
   private
 
   def run_command(step_name)
