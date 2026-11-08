@@ -341,7 +341,13 @@ pub fn write_run_format(rpr: &mut Element, format: &StyleFormat) {
 /// Writes the paragraph part of `format` into `ppr`.
 pub fn write_paragraph_format(ppr: &mut Element, format: &StyleFormat) {
     if let Some(keep) = format.keep_next {
-        ppr.set_flag("w:keepNext", keep, PPR_ORDER);
+        // An explicit off must override an enabled base style.
+        let flag = ppr.ensure("w:keepNext", PPR_ORDER);
+        if keep {
+            flag.remove_attr("w:val");
+        } else {
+            flag.set_attr("w:val", "0");
+        }
     }
     if let Some(border) = format.bottom_border {
         if border {
@@ -1624,6 +1630,51 @@ fn character_span<S: WordSession + ?Sized>(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn imported_style_flags_can_be_enabled_and_disabled() {
+        for off in ["0", "false", "off"] {
+            let source = format!(
+                r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:style w:type="paragraph" w:styleId="Base"><w:name w:val="Base"/><w:pPr><w:keepNext/></w:pPr></w:style><w:style w:type="paragraph" w:styleId="Imported"><w:name w:val="Imported"/><w:basedOn w:val="Base"/><w:qFormat w:val="{off}"/><w:autoRedefine w:val="{off}"/><w:pPr><w:keepNext w:val="{off}"/><w:spacing w:after="240"/></w:pPr><w:rPr><w:color w:val="CC0000"/></w:rPr></w:style></w:styles>"#
+            );
+            let mut document = Document::parse(&source).unwrap();
+            for enabled in [true, false, true] {
+                change_style(
+                    &mut document.root,
+                    "Imported",
+                    &StyleChange {
+                        quick: Some(enabled),
+                        auto_update: Some(enabled),
+                        format: StyleFormat {
+                            keep_next: Some(enabled),
+                            ..StyleFormat::default()
+                        },
+                        ..StyleChange::default()
+                    },
+                )
+                .unwrap();
+                let saved = document.to_xml();
+                document = Document::parse(&saved).unwrap();
+                let catalog = catalog_of(&saved);
+                let imported = catalog.iter().find(|style| style.id == "Imported").unwrap();
+                assert_eq!(imported.quick, enabled, "quick: {off}, {enabled}");
+                assert_eq!(
+                    imported.auto_update, enabled,
+                    "auto update: {off}, {enabled}"
+                );
+                assert_eq!(
+                    imported.format.keep_next,
+                    Some(enabled),
+                    "keep next: {off}, {enabled}"
+                );
+                assert_eq!(imported.based_on.as_deref(), Some("Base"));
+                assert_eq!(imported.format.space_after, Some(12.0));
+                assert_eq!(imported.format.color.as_deref(), Some("CC0000"));
+                let base = catalog.iter().find(|style| style.id == "Base").unwrap();
+                assert_eq!(base.format.keep_next, Some(true));
+            }
+        }
+    }
 
     const STYLES: &str = r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:style w:type="paragraph" w:default="1" w:styleId="a"><w:name w:val="Normal"/><w:qFormat/></w:style><w:style w:type="paragraph" w:styleId="1"><w:name w:val="heading 1"/><w:basedOn w:val="a"/><w:next w:val="a"/><w:link w:val="10"/><w:uiPriority w:val="9"/><w:qFormat/><w:pPr><w:keepNext/><w:outlineLvl w:val="0"/></w:pPr><w:rPr><w:sz w:val="32"/></w:rPr></w:style><w:style w:type="character" w:customStyle="1" w:styleId="10"><w:name w:val="見出し 1 (文字)"/><w:link w:val="1"/><w:rPr><w:sz w:val="32"/></w:rPr></w:style><w:style w:type="paragraph" w:styleId="Quote"><w:name w:val="Quote"/><w:basedOn w:val="a"/><w:uiPriority w:val="29"/><w:qFormat/></w:style><w:style w:type="paragraph" w:styleId="Title"><w:name w:val="Title"/><w:uiPriority w:val="10"/><w:qFormat/></w:style><w:style w:type="character" w:styleId="Strong"><w:name w:val="Strong"/><w:uiPriority w:val="22"/><w:qFormat/><w:rPr><w:b/></w:rPr></w:style></w:styles>"#;

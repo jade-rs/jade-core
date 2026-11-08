@@ -1048,7 +1048,7 @@ pub struct HeadlessCitationSource {
 }
 
 /// `w:documentProtection` credentials. `None` in the command removes the
-/// restriction; the supported authored mode is enforced `readOnly`.
+/// restriction. Supports editing modes and independent formatting restrictions.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct HeadlessDocumentProtection {
@@ -1062,6 +1062,12 @@ pub struct HeadlessDocumentProtection {
     pub spin_count: Option<u32>,
     #[serde(default)]
     pub algorithm_sid: Option<u32>,
+    /// ISO attribute form; absent values use the legacy algorithm SID.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub algorithm_name: Option<String>,
+    /// Restrict direct formatting independently of the editing mode.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub formatting: Option<bool>,
 }
 
 /// The ハイフネーション dialog's settings; each one left out is kept.

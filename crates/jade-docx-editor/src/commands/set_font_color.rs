@@ -1,28 +1,36 @@
-//! Font color command implementation.
-//!
-//! Applies an explicit text color to the current selection.
+//! Explicit text color for selected text and paragraph marks.
 
-use super::run_backup::{capture_paragraph_runs, restore_paragraph_runs, ParagraphRunsBackup};
-use super::text_edit::apply_run_properties;
-use super::{Command, CommandContext, CommandError, CommandResult};
-use crate::document::{Paragraph, RunProperties};
+use super::set_run_format::SetRunFormatCommand;
+use super::{Command, CommandContext, CommandResult};
+use jade_docx_headless_api::HeadlessRunFormat;
 use jade_docx_layout::selection::SelectionRange;
 
-/// Assigns the provided font color to the selected runs.
+/// Assigns the provided font color to selected text and paragraph marks.
 pub struct SetFontColorCommand {
-    range: SelectionRange,
-    color: String,
-    previous_runs: Option<Vec<ParagraphRunsBackup>>,
-    previous_selection: Option<SelectionRange>,
+    inner: SetRunFormatCommand,
 }
 
 impl SetFontColorCommand {
     pub fn new(range: SelectionRange, color: impl Into<String>) -> Self {
+        let color = color.into();
+        // The document model also accepts #auto; keep the OOXML enum lowercase.
+        let color = if color
+            .trim()
+            .trim_start_matches('#')
+            .eq_ignore_ascii_case("auto")
+        {
+            "auto".to_string()
+        } else {
+            color
+        };
         Self {
-            range,
-            color: color.into(),
-            previous_runs: None,
-            previous_selection: None,
+            inner: SetRunFormatCommand::new(
+                range,
+                HeadlessRunFormat {
+                    color: Some(color),
+                    ..Default::default()
+                },
+            ),
         }
     }
 }
@@ -31,82 +39,18 @@ impl Command for SetFontColorCommand {
     fn tracks_formatting(&self) -> bool {
         true
     }
+
     fn name(&self) -> &'static str {
         "set_font_color"
     }
 
     fn apply(&mut self, ctx: &mut CommandContext<'_>) -> CommandResult<()> {
-        if self.range.is_collapsed() {
-            return Err(CommandError::InvalidSelection);
-        }
-
-        let (start, end) = self.range.normalized();
-        let paragraph_count = ctx.document.paragraph_count();
-        if paragraph_count == 0
-            || start.paragraph >= paragraph_count
-            || end.paragraph >= paragraph_count
-        {
-            return Err(CommandError::ParagraphUnavailable);
-        }
-        self.previous_runs = Some(capture_paragraph_runs(ctx, start.paragraph, end.paragraph)?);
-        self.previous_selection = *ctx.selection;
-
-        let color_props = RunProperties {
-            color: Some(self.color.as_str().into()),
-            ..Default::default()
-        };
-
-        for paragraph_index in start.paragraph..=end.paragraph {
-            let zero_width = ctx.document.zero_width_runs(paragraph_index);
-            let paragraph = ctx
-                .document
-                .paragraph_mut(paragraph_index)
-                .ok_or(CommandError::ParagraphUnavailable)?;
-            let paragraph_len = paragraph_len(paragraph);
-
-            let range_start = if paragraph_index == start.paragraph {
-                start.offset.min(paragraph_len)
-            } else {
-                0
-            };
-            let range_end = if paragraph_index == end.paragraph {
-                end.offset.min(paragraph_len)
-            } else {
-                paragraph_len
-            };
-
-            if range_start >= range_end {
-                continue;
-            }
-
-            let restyled = apply_run_properties(
-                &mut paragraph.runs,
-                range_start,
-                range_end,
-                &color_props,
-                &zero_width,
-            );
-            ctx.document
-                .sync_paragraph_run_properties(paragraph_index, &restyled);
-        }
-
-        *ctx.selection = Some(self.range);
-        Ok(())
+        self.inner.apply(ctx)
     }
 
     fn undo(&mut self, ctx: &mut CommandContext<'_>) -> CommandResult<()> {
-        let backups = self
-            .previous_runs
-            .take()
-            .ok_or_else(|| CommandError::Custom("missing backup for undo".into()))?;
-        restore_paragraph_runs(ctx, &backups)?;
-        *ctx.selection = self.previous_selection;
-        Ok(())
+        self.inner.undo(ctx)
     }
-}
-
-fn paragraph_len(paragraph: &Paragraph) -> usize {
-    paragraph.runs.iter().map(|run| run.text.len()).sum()
 }
 
 #[cfg(test)]

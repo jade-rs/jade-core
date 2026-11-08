@@ -1255,6 +1255,9 @@ pub(crate) fn merge_run_properties(target: &mut RunProperties, source: &RunPrope
     if let Some(value) = source.char_spacing {
         target.char_spacing = Some(value);
     }
+    if let Some(value) = source.snap_to_grid {
+        target.snap_to_grid = Some(value);
+    }
     if let Some(value) = source.kerning {
         target.kerning = Some(value);
     }

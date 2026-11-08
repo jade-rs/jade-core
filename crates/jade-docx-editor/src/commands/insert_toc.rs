@@ -94,12 +94,13 @@ impl Command for UpdateTableOfContentsCommand {
         let previous_selection = *ctx.selection;
         let snapshot = ctx
             .document
-            .snapshot_including_package()
+            .snapshot_for_replacement()
             .ok_or_else(|| CommandError::Custom("document is unavailable".into()))?;
 
-        ctx.document
-            .update_table_of_contents()
-            .map_err(CommandError::Custom)?;
+        if let Err(error) = ctx.document.update_table_of_contents() {
+            ctx.document.restore_snapshot(snapshot);
+            return Err(CommandError::Custom(error));
+        }
 
         self.snapshot = Some(snapshot);
         self.previous_selection = previous_selection;
@@ -1052,6 +1053,26 @@ mod tests {
             executor.undo(&mut ctx).expect("undo insert");
         }
         assert_eq!(count(&word_doc), before_insert);
+    }
+
+    #[test]
+    fn mixed_paragraph_toc_update_undo_restores_the_source_archive() {
+        let data = std::fs::read(fixture_path("toc.docx")).unwrap();
+        let mut document =
+            executor::block_on(WordDocument::load(&data, &Options::default())).unwrap();
+        let before = document.export_docx().unwrap();
+        let mut selection = Some(SelectionRange::collapsed(TextPosition::new(0, 0)));
+        let mut executor = CommandExecutor::new();
+        let mut context = CommandContext::new(&mut document, &mut selection);
+        executor
+            .execute(Box::new(UpdateTableOfContentsCommand::new()), &mut context)
+            .unwrap();
+        let after = context.document.export_docx().unwrap();
+        assert_ne!(after, before);
+        executor.undo(&mut context).unwrap();
+        assert_eq!(context.document.export_docx().unwrap(), before);
+        executor.redo(&mut context).unwrap();
+        assert_eq!(context.document.export_docx().unwrap(), after);
     }
 
     #[test]

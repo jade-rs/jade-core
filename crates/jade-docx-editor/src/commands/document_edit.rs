@@ -35,7 +35,9 @@ impl Command for DocumentEditCommand {
         let selection = *ctx.selection;
         let snapshot = ctx
             .document
-            .snapshot_including_package()
+            // Host edits may reload a rewritten XML package. Keep its source
+            // archive too, so undo and failed edits restore untouched members.
+            .snapshot_for_replacement()
             .ok_or_else(|| CommandError::Custom("document is unavailable".into()))?;
         match (self.edit)(ctx.document, ctx.selection) {
             Ok(()) => {

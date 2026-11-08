@@ -426,6 +426,7 @@ fn hash_run_properties(properties: Option<&RunProperties>, hasher: &mut FxHasher
         props.strike.hash(hasher);
         props.baseline.hash(hasher);
         props.char_spacing.map(f32::to_bits).hash(hasher);
+        props.snap_to_grid.hash(hasher);
         props.kerning.map(f32::to_bits).hash(hasher);
         props.text_scale.map(f32::to_bits).hash(hasher);
         props
@@ -814,7 +815,15 @@ pub fn opentype_features_token(props: &RunProperties, pair_kerning: bool) -> Opt
         Some("tabular") => features.push(on(b"tnum")),
         _ => {}
     }
-    if let Some(set) = effects.stylistic_set.filter(|set| (1..=20).contains(set)) {
+    let sets = effects
+        .stylistic_sets
+        .clone()
+        .unwrap_or_else(|| effects.stylistic_set.into_iter().collect());
+    let mut seen = [false; 20];
+    for set in sets.into_iter().filter(|set| (1..=20).contains(set)) {
+        if std::mem::replace(&mut seen[usize::from(set - 1)], true) {
+            continue;
+        }
         let tag = format!("ss{set:02}");
         let bytes = tag.as_bytes();
         features.push(on(&[bytes[0], bytes[1], bytes[2], bytes[3]]));
@@ -943,7 +952,11 @@ fn resolve_run_style_for_wrap_uncached(
         }
     }
 
-    if letter_spacing_px.abs() < f64::EPSILON {
+    if properties
+        .and_then(|props| props.snap_to_grid)
+        .unwrap_or(true)
+        && letter_spacing_px.abs() < f64::EPSILON
+    {
         if let Some(spacing) = doc_grid_char_spacing_px {
             letter_spacing_px = spacing;
         }
@@ -969,6 +982,11 @@ fn resolve_run_style_for_wrap_uncached(
             .as_ref()
             .and_then(|props| props.fonts.as_ref())
             .and_then(|fonts| fonts.hint.clone()),
+    )
+    .with_snap_to_grid(
+        properties
+            .and_then(|props| props.snap_to_grid)
+            .unwrap_or(true),
     )
 }
 
@@ -1020,6 +1038,7 @@ pub struct ResolvedRunStyle {
     pub font_descriptor_latin_hansi_id: Option<u32>,
     pub font_descriptor_east_asia_id: Option<u32>,
     pub font_descriptor_complex_id: Option<u32>,
+    pub snap_to_grid: bool,
     pub letter_spacing_px: f64,
     pub text_scale_x: f64,
     pub enable_pair_kerning: bool,
@@ -1040,6 +1059,11 @@ pub struct ResolvedRunStyle {
 }
 
 impl ResolvedRunStyle {
+    pub fn with_snap_to_grid(mut self, enabled: bool) -> Self {
+        self.snap_to_grid = enabled;
+        self
+    }
+
     /// Whether adjacent letters are measured as a pair: for `w:kern`, or for
     /// OpenType features that join letters.
     #[inline]
@@ -1118,6 +1142,7 @@ impl ResolvedRunStyle {
             font_descriptor_latin_hansi_id: None,
             font_descriptor_east_asia_id: None,
             font_descriptor_complex_id: None,
+            snap_to_grid: true,
             letter_spacing_px,
             text_scale_x,
             enable_pair_kerning,
@@ -1839,6 +1864,22 @@ mod tests {
             "expected hAnsi font stack to include AnsiFont: {}",
             resolved.latin_hansi_stack()
         );
+    }
+
+    #[test]
+    fn run_grid_opt_out_changes_cached_style_without_removing_tracking() {
+        let mut props = RunProperties::default();
+        let on = resolve_run_style_for_wrap(Some(&props), Some(3.0));
+        props.snap_to_grid = Some(false);
+        let off = resolve_run_style_for_wrap(Some(&props), Some(3.0));
+        assert!(on.snap_to_grid);
+        assert!(!off.snap_to_grid);
+        assert_eq!(on.letter_spacing_px, 3.0);
+        assert_eq!(off.letter_spacing_px, 0.0);
+        props.char_spacing = Some(1.5);
+        let tracked = resolve_run_style_for_wrap(Some(&props), Some(3.0));
+        assert!(!tracked.snap_to_grid);
+        assert_eq!(tracked.letter_spacing_px, 2.0);
     }
 
     #[test]

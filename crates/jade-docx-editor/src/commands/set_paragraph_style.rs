@@ -183,6 +183,10 @@ impl Command for SetParagraphStyleCommand {
             let inherited_props = ctx
                 .document
                 .inherited_paragraph_properties(paragraph_index, style_id.as_deref());
+            let effective_tabs = inherited_props.as_ref().map(|props| {
+                ctx.document
+                    .paragraph_tabs_with_direct(paragraph_index, props.tabs.clone())
+            });
             let declared: Vec<String> = ctx
                 .document
                 .paragraph_declared_property_tags(paragraph_index);
@@ -254,7 +258,11 @@ impl Command for SetParagraphStyleCommand {
                 }
                 let before = props.clone();
                 if let Some(style_props) = style_paragraph_props.as_ref() {
-                    merge_paragraph_properties_override(props, style_props);
+                    let mut style_props = style_props.clone();
+                    if let Some(inherited) = inherited_props.as_ref() {
+                        style_props.alignment = inherited.alignment.clone();
+                    }
+                    merge_paragraph_properties_override(props, &style_props);
                 }
                 // What a partly declared `w:spacing` or `w:ind` does not
                 // declare comes from the new style alone; the merge above
@@ -269,6 +277,9 @@ impl Command for SetParagraphStyleCommand {
                     }
                     if declared.iter().any(|tag| tag == "w:ind") {
                         props.indent = new.indent.clone();
+                        if declared.iter().any(|tag| tag == "w:pBdr") {
+                            props.borders = new.borders.clone();
+                        }
                     }
                 }
                 keep_declared_paragraph_properties(
@@ -281,6 +292,9 @@ impl Command for SetParagraphStyleCommand {
                             .any(|(declared, name)| declared == tag && name == attribute)
                     },
                 );
+                if let Some(tabs) = effective_tabs {
+                    props.tabs = tabs;
+                }
                 if let Some(run_style_props) = style_run_props.as_ref() {
                     for (run, character) in paragraph.runs.iter_mut().zip(&character_style_props) {
                         match run.properties.as_mut() {
@@ -467,16 +481,25 @@ fn forget_style_owned_run_properties(run: &mut RunProperties, style: &RunPropert
         baseline,
         text_position,
         char_spacing,
+        snap_to_grid,
         fit_text,
-        color,
         highlight,
         shading,
         border,
+        east_asian_layout,
     );
+    // The resolved colour and its theme reference are one declaration.
+    // Leaving the reference behind makes later edits treat a style colour
+    // as direct formatting, even though its w:color was removed below.
+    if style.color.is_some() || style.theme_color.is_some() {
+        run.color = None;
+        run.theme_color = None;
+    }
     if style.underline.is_some() {
         run.underline = None;
         run.underline_kind = None;
         run.underline_color = None;
+        run.underline_theme_color = None;
     }
 }
 
@@ -509,6 +532,7 @@ fn run_property_tags(style: &RunProperties) -> Vec<&'static str> {
     add(style.baseline.is_some(), &["w:vertAlign"]);
     add(style.text_position.is_some(), &["w:position"]);
     add(style.char_spacing.is_some(), &["w:spacing"]);
+    add(style.snap_to_grid.is_some(), &["w:snapToGrid"]);
     add(style.kerning.is_some(), &["w:kern"]);
     add(style.text_scale.is_some(), &["w:w"]);
     add(style.fit_text.is_some(), &["w:fitText"]);
@@ -522,10 +546,14 @@ fn run_property_tags(style: &RunProperties) -> Vec<&'static str> {
         style.language.is_some() || style.east_asia_language.is_some(),
         &["w:lang"],
     );
-    add(style.color.is_some(), &["w:color"]);
+    add(
+        style.color.is_some() || style.theme_color.is_some(),
+        &["w:color"],
+    );
     add(style.highlight.is_some(), &["w:highlight"]);
     add(style.shading.is_some(), &["w:shd"]);
     add(style.border.is_some(), &["w:bdr"]);
+    add(style.east_asian_layout.is_some(), &["w:eastAsianLayout"]);
     tags
 }
 

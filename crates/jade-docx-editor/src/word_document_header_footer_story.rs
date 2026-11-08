@@ -59,6 +59,45 @@ pub(crate) fn parse_variant(variant: &str) -> Result<HeaderFooterVariant, String
     }
 }
 
+/// Keep package targets stable when a story moves to another directory.
+/// External links and absolute package references already have a stable base.
+fn rebase_story_relationships(
+    source: &str,
+    destination: &str,
+    mut relationships: Vec<Relationship>,
+) -> Vec<Relationship> {
+    if source.rsplit_once('/').map(|(directory, _)| directory)
+        != destination.rsplit_once('/').map(|(directory, _)| directory)
+    {
+        for relationship in &mut relationships {
+            if relationship.target_mode.as_deref() != Some("External")
+                && !relationship.target.starts_with('/')
+                && !relationship.target.contains(':')
+            {
+                let target = WordDocument::resolve_target_path(source, &relationship.target);
+                let target_segments: Vec<_> = target.split('/').collect();
+                let destination_directory = destination
+                    .rsplit_once('/')
+                    .map(|(directory, _)| directory)
+                    .unwrap_or("");
+                let destination_segments: Vec<_> = destination_directory
+                    .split('/')
+                    .filter(|segment| !segment.is_empty())
+                    .collect();
+                let common = target_segments
+                    .iter()
+                    .zip(&destination_segments)
+                    .take_while(|(left, right)| left == right)
+                    .count();
+                let mut relative = vec![".."; destination_segments.len() - common];
+                relative.extend_from_slice(&target_segments[common..]);
+                relationship.target = relative.join("/");
+            }
+        }
+    }
+    relationships
+}
+
 fn twips(points: f32) -> String {
     ((points * 20.0).round() as i64).max(0).to_string()
 }
@@ -179,6 +218,17 @@ fn image_content_type(extension: &str) -> Option<&'static str> {
 }
 
 impl WordDocument {
+    fn validate_story_section_index(&self, section: usize) -> Result<(), String> {
+        let document = self
+            .document
+            .as_deref()
+            .ok_or_else(|| "document is unavailable".to_string())?;
+        if section >= document.sections.len().max(1) {
+            return Err("section index is out of range".to_string());
+        }
+        Ok(())
+    }
+
     /// Whether `section`'s story is linked to the previous section's — it has
     /// no reference of its own. The first section is never linked.
     pub fn header_footer_linked(
@@ -189,13 +239,11 @@ impl WordDocument {
     ) -> Result<bool, String> {
         let role = parse_role(role)?;
         let variant = parse_variant(variant)?;
+        self.validate_story_section_index(section)?;
+        let document = self.document.as_deref().expect("validated document");
         if section == 0 {
             return Ok(false);
         }
-        let document = self
-            .document
-            .as_deref()
-            .ok_or_else(|| "document is unavailable".to_string())?;
         Ok(document
             .sections
             .get(section)
@@ -272,10 +320,10 @@ impl WordDocument {
                 if let Some(sect_pr) = raw.element_mut(sect_pr_id) {
                     sect_pr.children.retain(|child| {
                         !matches!(child, XmlNode::Element(element)
-                            if element.name == name
-                                && element.attributes.iter().any(|attribute| {
-                                    attribute.name == "w:type" && attribute.value == kind
-                                }))
+                        if element.name == name
+                            && element.attributes.iter().any(|attribute| {
+                                attribute.name == "w:type" && attribute.value == kind
+                            }))
                     });
                 }
                 raw.rebuild_index_for_subtree(sect_pr_id);
@@ -284,6 +332,25 @@ impl WordDocument {
         // The final section's references are also the document-wide ones
         // the flattened lines and the default header follow.
         if targets_default {
+            // Removing the final section's explicit reference invalidates its
+            // old flattened story, including when there is nothing to inherit.
+            let lines = match (role, variant) {
+                (HeaderFooterRole::Header, HeaderFooterVariant::Default) => &mut self.header_lines,
+                (HeaderFooterRole::Header, HeaderFooterVariant::First) => {
+                    &mut self.header_lines_first
+                }
+                (HeaderFooterRole::Header, HeaderFooterVariant::Even) => {
+                    &mut self.header_lines_even
+                }
+                (HeaderFooterRole::Footer, HeaderFooterVariant::Default) => &mut self.footer_lines,
+                (HeaderFooterRole::Footer, HeaderFooterVariant::First) => {
+                    &mut self.footer_lines_first
+                }
+                (HeaderFooterRole::Footer, HeaderFooterVariant::Even) => {
+                    &mut self.footer_lines_even
+                }
+            };
+            *lines = None;
             if let Some(document) = self.document_mut() {
                 match (role, variant) {
                     (HeaderFooterRole::Header, HeaderFooterVariant::Default) => {
@@ -327,6 +394,8 @@ impl WordDocument {
             .get(&source_path)
             .map(|part| part.relationships.clone())
             .unwrap_or_default();
+        let destination = self.next_header_footer_part_path(role);
+        let relationships = rebase_story_relationships(&source_path, &destination, relationships);
         self.create_story_part(role, variant, content, relationships)?;
         Ok(())
     }
@@ -475,6 +544,7 @@ impl WordDocument {
         variant: &str,
         page_number: usize,
     ) -> Result<Vec<u8>, String> {
+        self.validate_story_section_index(section)?;
         let role = parse_role(role)?;
         let variant = parse_variant(variant)?;
         let exported = self.export_docx().map_err(|err| format!("{err:?}"))?;
@@ -519,6 +589,11 @@ impl WordDocument {
                 )
             }
         };
+        let story_relationships = rebase_story_relationships(
+            part_path.as_deref().unwrap_or("word/document.xml"),
+            "word/document.xml",
+            story_relationships,
+        );
         let renamed: HashMap<String, String> = story_relationships
             .iter()
             .map(|relationship| {
@@ -528,10 +603,14 @@ impl WordDocument {
                 )
             })
             .collect();
-        relationships.extend(story_relationships.into_iter().map(|relationship| Relationship {
-            id: renamed[&relationship.id].clone(),
-            ..relationship
-        }));
+        relationships.extend(
+            story_relationships
+                .into_iter()
+                .map(|relationship| Relationship {
+                    id: renamed[&relationship.id].clone(),
+                    ..relationship
+                }),
+        );
 
         let mut story = DocxXmlDocument::parse(&content).map_err(|err| err.to_string())?;
         let layout = self.section_layout(Some(section));
@@ -593,18 +672,19 @@ impl WordDocument {
             matches!(node, XmlNode::Element(element) if matches!(element.name.as_str(), "w:p" | "w:tbl" | "w:sdt"))
         });
         if !has_block {
-            blocks.push(XmlNode::Element(story.create_element("w:p", Vec::new(), Vec::new())));
+            blocks.push(XmlNode::Element(story.create_element(
+                "w:p",
+                Vec::new(),
+                Vec::new(),
+            )));
         }
         for block in &mut blocks {
             if let XmlNode::Element(element) = block {
                 remap_relationship_ids(element, &renamed);
             }
         }
-        let section_properties = story.create_element(
-            "w:sectPr",
-            Vec::new(),
-            section_xml.root().children.clone(),
-        );
+        let section_properties =
+            story.create_element("w:sectPr", Vec::new(), section_xml.root().children.clone());
         blocks.push(XmlNode::Element(section_properties));
         let body = story.create_element("w:body", Vec::new(), blocks);
         let root = story
@@ -639,6 +719,7 @@ impl WordDocument {
         variant: &str,
         bytes: &[u8],
     ) -> Result<bool, String> {
+        self.validate_story_section_index(section)?;
         let role = parse_role(role)?;
         let variant = parse_variant(variant)?;
         let files = read_zip(bytes)?;
@@ -656,8 +737,9 @@ impl WordDocument {
         let mut renamed = HashMap::new();
         let mut taken = HashSet::new();
         for relationship in story_relationships
-            .into_iter()
+            .iter()
             .filter(|relationship| !is_infrastructure_relationship(&relationship.r#type))
+            .cloned()
         {
             let plain = relationship
                 .id
@@ -699,15 +781,195 @@ impl WordDocument {
         root.name = role.part_root_name().to_string();
         root.children = blocks;
         story.rebuild_index();
+        let root_id = story.root().id;
+        let formatting_changed = self.import_story_formatting(
+            story.element_mut(root_id).unwrap(),
+            &files,
+            &story_relationships,
+        )?;
         let content = story.to_string().map_err(|err| err.to_string())?;
 
         let previous_edit_section = self.hf_edit_section;
         self.hf_edit_section = Some(section);
-        let result = self.write_story_part(section, role, variant, content, carried, &files);
+        let result = self.write_story_part(
+            section,
+            role,
+            variant,
+            content,
+            carried,
+            &files,
+            formatting_changed,
+        );
         self.hf_edit_section = previous_edit_section;
         result
     }
 
+    /// Copy complete dependency graphs, including opaque OLE/package parts
+    /// and charts' own relationships. Fork changed graphs before writing so
+    /// body content and other stories can keep sharing their original assets.
+    pub(in crate::word_document) fn import_story_assets(
+        &mut self,
+        destination: &str,
+        relationships: &mut [Relationship],
+        files: &HashMap<String, Vec<u8>>,
+    ) -> Result<bool, String> {
+        fn collect(
+            document: &WordDocument,
+            path: &str,
+            files: &HashMap<String, Vec<u8>>,
+            visited: &mut HashSet<String>,
+        ) -> Result<(), String> {
+            if !files.contains_key(path) || !visited.insert(path.to_string()) {
+                return Ok(());
+            }
+            let rels_path = document.get_relationships_path(path);
+            if let Some(bytes) = files.get(&rels_path) {
+                for relationship in parse_relationships_xml(&String::from_utf8_lossy(bytes))? {
+                    if relationship.target_mode.as_deref() != Some("External") {
+                        let target = WordDocument::resolve_target_path(path, &relationship.target);
+                        collect(document, &target, files, visited)?;
+                    }
+                }
+            }
+            Ok(())
+        }
+
+        // Plain text and external-link-only stories need no package scan.
+        if !relationships.iter().any(|relationship| {
+            relationship.target_mode.as_deref() != Some("External")
+                && files.contains_key(&Self::resolve_target_path(
+                    destination,
+                    &relationship.target,
+                ))
+        }) {
+            return Ok(false);
+        }
+        let current = read_zip(&self.export_docx().map_err(|error| error.to_string())?)?;
+        let mut changed = HashSet::new();
+        for relationship in relationships.iter() {
+            if relationship.target_mode.as_deref() == Some("External") {
+                continue;
+            }
+            let path = Self::resolve_target_path(destination, &relationship.target);
+            let mut graph = HashSet::new();
+            collect(self, &path, files, &mut graph)?;
+            if graph.iter().any(|path| {
+                let rels_path = self.get_relationships_path(path);
+                current.get(path) != files.get(path)
+                    || current.get(&rels_path) != files.get(&rels_path)
+            }) {
+                changed.extend(graph);
+            }
+        }
+        if changed.is_empty() {
+            return Ok(false);
+        }
+
+        // Allocate every destination before rewriting relationships, including
+        // cyclic graphs and multiple references to the same asset.
+        let mut paths: Vec<_> = changed.into_iter().collect();
+        paths.sort();
+        let mut imported = HashMap::new();
+        let mut reserved: HashSet<_> = current.keys().chain(files.keys()).cloned().collect();
+        for path in &paths {
+            let target = if current.contains_key(path) {
+                let (directory, filename) = path.rsplit_once('/').unwrap_or(("", path));
+                let extension = filename.rsplit_once('.').map(|(_, ext)| ext);
+                let prefix = if directory == "word/media" {
+                    "jade-story-image"
+                } else {
+                    "jade-story-part"
+                };
+                let mut index = 1usize;
+                loop {
+                    let name = match extension {
+                        Some(ext) => format!("{prefix}{index}.{ext}"),
+                        None => format!("{prefix}{index}"),
+                    };
+                    let candidate = if directory.is_empty() {
+                        name
+                    } else {
+                        format!("{directory}/{name}")
+                    };
+                    if reserved.insert(candidate.clone()) {
+                        break candidate;
+                    }
+                    index += 1;
+                }
+            } else {
+                path.clone()
+            };
+            imported.insert(path.clone(), target);
+        }
+        let content_types = files
+            .get("[Content_Types].xml")
+            .map(|bytes| DocxXmlDocument::parse(&String::from_utf8_lossy(bytes)))
+            .transpose()
+            .map_err(|error| error.to_string())?;
+        for path in &paths {
+            let target = &imported[path];
+            if let Some(types) = &content_types {
+                let part_name = format!("/{path}");
+                let extension = path.rsplit_once('.').map(|(_, ext)| ext).unwrap_or("");
+                let attribute = |element: &XmlElement, name: &str| {
+                    element
+                        .attributes
+                        .iter()
+                        .find(|attr| attr.name == name)
+                        .map(|attr| attr.value.clone())
+                };
+                let mut default = None;
+                let mut override_type = None;
+                for node in &types.root().children {
+                    if let XmlNode::Element(element) = node {
+                        if element.name == "Override"
+                            && attribute(element, "PartName").as_deref() == Some(&part_name)
+                        {
+                            override_type = attribute(element, "ContentType");
+                        } else if element.name == "Default"
+                            && attribute(element, "Extension")
+                                .is_some_and(|value| value.eq_ignore_ascii_case(extension))
+                        {
+                            default = attribute(element, "ContentType");
+                        }
+                    }
+                }
+                if let Some(content_type) = override_type.or(default) {
+                    self.ensure_content_types_has_override(target, &content_type)?;
+                }
+            }
+            self.removed_parts.remove(target);
+            self.binary_parts
+                .insert(target.clone(), files[path].clone());
+            let rels_path = self.get_relationships_path(path);
+            if let Some(bytes) = files.get(&rels_path) {
+                let mut dependencies = parse_relationships_xml(&String::from_utf8_lossy(bytes))?;
+                for dependency in &mut dependencies {
+                    if dependency.target_mode.as_deref() != Some("External") {
+                        let source = Self::resolve_target_path(path, &dependency.target);
+                        // Unchanged dependencies still need a stable base if
+                        // the parent moved or the target used a relative path.
+                        dependency.target =
+                            format!("/{}", imported.get(&source).unwrap_or(&source));
+                    }
+                }
+                let target_rels = self.get_relationships_path(target);
+                self.removed_parts.remove(&target_rels);
+                self.upsert_xml_part_content(&target_rels, relationships_xml(&dependencies)?);
+            }
+        }
+        for relationship in relationships {
+            if relationship.target_mode.as_deref() != Some("External") {
+                let source = Self::resolve_target_path(destination, &relationship.target);
+                if let Some(target) = imported.get(&source) {
+                    relationship.target = format!("/{target}");
+                }
+            }
+        }
+        Ok(true)
+    }
+
+    #[allow(clippy::too_many_arguments)]
     fn write_story_part(
         &mut self,
         section: usize,
@@ -716,62 +978,42 @@ impl WordDocument {
         content: String,
         relationships: Vec<Relationship>,
         files: &HashMap<String, Vec<u8>>,
+        formatting_changed: bool,
     ) -> Result<bool, String> {
         let existing = self.story_part_path(section, role, variant);
+        let destination = existing
+            .clone()
+            .unwrap_or_else(|| self.next_header_footer_part_path(role));
+        let mut relationships =
+            rebase_story_relationships("word/document.xml", &destination, relationships);
+        let assets_changed = self.import_story_assets(&destination, &mut relationships, files)?;
         if let Some(path) = existing.as_deref() {
-            let unchanged_relationships = self
-                .parts
-                .get(path)
-                .is_some_and(|part| {
-                    let key = |relationship: &Relationship| {
-                        (
-                            relationship.id.clone(),
-                            relationship.r#type.clone(),
-                            relationship.target.clone(),
-                            relationship.target_mode.clone(),
-                        )
-                    };
-                    part.relationships.iter().map(key).eq(relationships.iter().map(key))
-                });
+            let unchanged_relationships = self.parts.get(path).is_some_and(|part| {
+                let key = |relationship: &Relationship| {
+                    (
+                        relationship.id.clone(),
+                        relationship.r#type.clone(),
+                        relationship.target.clone(),
+                        relationship.target_mode.clone(),
+                    )
+                };
+                part.relationships
+                    .iter()
+                    .map(key)
+                    .eq(relationships.iter().map(key))
+            });
             let unchanged_content = self
                 .read_xml_part_content(path)
                 .and_then(|old| DocxXmlDocument::parse(&old).ok())
                 .and_then(|old| old.to_string().ok())
                 .is_some_and(|old| old == content);
-            if unchanged_content && unchanged_relationships {
+            if unchanged_content
+                && unchanged_relationships
+                && !assets_changed
+                && !formatting_changed
+            {
                 return Ok(false);
             }
-        }
-
-        // Pictures added while the story was edited: their media go into
-        // the package beside it.
-        let base = existing
-            .clone()
-            .unwrap_or_else(|| format!("word/{}1.xml", role.part_stem()));
-        for relationship in &relationships {
-            if relationship.r#type != RelationshipTypes::Image.as_str()
-                || relationship.target_mode.as_deref() == Some("External")
-            {
-                continue;
-            }
-            let path = Self::resolve_target_path(&base, &relationship.target);
-            let known = self.binary_parts.contains_key(&path)
-                || self
-                    .package
-                    .as_ref()
-                    .is_some_and(|package| package.files.contains_key(&path));
-            if known {
-                continue;
-            }
-            let Some(bytes) = files.get(&path) else {
-                continue;
-            };
-            let extension = path.rsplit('.').next().unwrap_or_default().to_string();
-            if let Some(mime) = image_content_type(&extension) {
-                self.ensure_content_types_has_image(&path, &extension, mime)?;
-            }
-            self.removed_parts.remove(&path);
-            self.binary_parts.insert(path, bytes.clone());
         }
 
         match existing {

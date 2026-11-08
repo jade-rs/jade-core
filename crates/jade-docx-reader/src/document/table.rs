@@ -2,7 +2,7 @@ use super::table_conditional::{
     table_style_condition_matches, TableLook, TableStyleBandSizes, TableStyleCellFormat,
     TableStyleCellPosition, TableStyleCondition, TableStyleConditionalFormat,
 };
-use super::{BodyElement, BorderEdge, RevisionMark};
+use super::{BodyElement, BorderEdge, RevisionMark, RunFonts};
 use crate::docx_xml::XmlNodeId;
 use serde::{Deserialize, Serialize};
 use std::{collections::BTreeMap, str::FromStr};
@@ -30,6 +30,20 @@ pub struct TableStyleFirstRow {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct TableStyleDisplay {
+    #[serde(default, skip_serializing_if = "RunFonts::is_empty")]
+    pub fonts: RunFonts,
+    /// Whole-table font sizes in points (`w:sz` / `w:szCs`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub font_size: Option<f32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub font_size_complex: Option<f32>,
+    /// Whole-table `w:rPr` text formatting, below conditional regions.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub bold: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub italic: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub color: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub fill: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -130,12 +144,9 @@ impl Table {
         let Some(style) = self.resolved_style.as_ref() else {
             return TableStyleCellFormat::default();
         };
-        if style.conditional.is_empty() {
-            return TableStyleCellFormat::default();
-        }
         let matches =
             table_style_condition_matches(&self.look, self.table_style_band_sizes(), position);
-        TableStyleCellFormat::resolve(
+        let mut format = TableStyleCellFormat::resolve(
             matches.into_iter().filter_map(|matched| {
                 style
                     .conditional
@@ -143,7 +154,16 @@ impl Table {
                     .map(|format| (format, matched.edges))
             }),
             self.bidi_visual,
-        )
+        );
+        let mut fonts = style.fonts.clone();
+        fonts.merge_from(&format.fonts);
+        format.fonts = fonts;
+        format.font_size = format.font_size.or(style.font_size);
+        format.font_size_complex = format.font_size_complex.or(style.font_size_complex);
+        format.bold = format.bold.or(style.bold);
+        format.italic = format.italic.or(style.italic);
+        format.color = format.color.or_else(|| style.color.clone());
+        format
     }
 
     /// Returns the effective table-level cell margins after applying the

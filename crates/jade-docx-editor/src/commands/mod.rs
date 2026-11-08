@@ -192,6 +192,16 @@ impl<'a> CommandContext<'a> {
 
 /// Core trait implemented by every editing command.
 pub trait Command {
+    /// Appends an already-applied edit to a history group, or returns it when
+    /// this command is not a group. Used to join consecutive typing events
+    /// without building recursively nested composite commands.
+    fn append_history_command(
+        &mut self,
+        command: Box<dyn Command>,
+    ) -> Result<(), Box<dyn Command>> {
+        Err(command)
+    }
+
     /// Human readable identifier (useful for debugging and telemetry).
     fn name(&self) -> &'static str;
 
@@ -498,6 +508,30 @@ impl CommandExecutor {
     /// Changes whenever an edit is recorded in the history.
     pub fn history_revision(&self) -> u64 {
         self.recorded
+    }
+
+    /// Joins the newly recorded entry to its predecessor only if exactly one
+    /// entry has been recorded since `previous_revision`. The caller must
+    /// establish that both edits belong to the same user action (typing).
+    pub fn join_latest_undo(&mut self, previous_revision: u64) -> bool {
+        if self.recorded != previous_revision.saturating_add(1)
+            || self.group.is_some()
+            || !self.redo_stack.is_empty()
+            || self.provisional_recording
+            || self.undo_stack.len() < 2
+        {
+            return false;
+        }
+        let newest = self.undo_stack.pop().expect("two history entries");
+        let previous = self.undo_stack.last_mut().expect("previous history entry");
+        if let Err(newest) = previous.append_history_command(newest) {
+            let previous = self.undo_stack.pop().expect("previous history entry");
+            self.undo_stack
+                .push(Box::new(composite::CompositeCommand::from_applied(vec![
+                    previous, newest,
+                ])));
+        }
+        true
     }
 
     pub fn can_redo(&self) -> bool {
@@ -1094,3 +1128,5 @@ mod tests {
         assert!(!executor.can_redo());
     }
 }
+
+pub mod paste_object;

@@ -165,6 +165,7 @@ impl Command for SetRubyCommand {
                     .filter(|raise| raise.is_finite() && *raise >= 0.0)
                     .map(|raise| (raise * 2.0).round() as u32),
                 fonts,
+                guide_runs: Vec::new(),
                 continuation: false,
             };
             for (index, run) in paragraph.runs[first_middle..after_middle]

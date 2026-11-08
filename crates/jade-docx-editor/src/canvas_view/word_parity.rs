@@ -528,43 +528,43 @@ impl OffscreenDocumentView {
         )
     }
 
-    /// What the フォント dialog opens on: the direct formatting of the run
-    /// at the start of the selection.
+    /// Common effective formatting over the active story's selection. Mixed
+    /// fields are unset; a caret keeps the surrounding run's effective state.
     #[wasm_bindgen(js_name = runFormatAtSelection)]
     pub fn run_format_at_selection(&self) -> JsValue {
-        let selection_start = self.hf_selection().map(|(start, _)| start);
+        let selection = self.hf_selection();
+        let selection_start = selection.map(|(start, _)| start);
         let state = self.state.borrow();
         if let Some((role, variant)) = Self::hf_role_variant(state.editing_mode, state.hf_variant) {
             let Some(cursor) = selection_start.or(state.hf_edit_cursor) else {
                 return JsValue::NULL;
             };
             return state.word_doc.as_ref().map_or(JsValue::NULL, |document| {
-                let prefix = Self::variant_lines(document, state.editing_mode, state.hf_variant)
-                    .and_then(|lines| lines.get(cursor.line_index).cloned())
-                    .map_or(0, |line| {
-                        if Self::hf_plain_line_segment(
-                            document,
-                            state.editing_mode,
-                            state.hf_variant,
-                            cursor.line_index,
-                            &line,
+                if let Some(range) = Self::hf_multiline_selection_range(&state) {
+                    return document
+                        .hf_run_formats_in_story_range(role, variant, range)
+                        .map_or(JsValue::NULL, |formats| {
+                            to_js(&crate::word::font::FontDialog::open_selection(formats).format)
+                        });
+                }
+                if let Some((paragraph, start, end)) =
+                    self.hf_selection_paragraph_range(state.editing_mode)
+                {
+                    return to_js(
+                        &crate::word::font::FontDialog::open_selection(
+                            document.hf_run_formats_in_range(role, variant, paragraph, start, end),
                         )
-                        .is_some()
-                        {
-                            return 0;
-                        }
-                        match cursor.segment {
-                            HfSegment::Left => 0,
-                            HfSegment::Center => line.left.as_deref().unwrap_or("").len() + 1,
-                            HfSegment::Right => {
-                                line.left.as_deref().unwrap_or("").len()
-                                    + 1
-                                    + line.center.as_deref().unwrap_or("").len()
-                                    + 1
-                            }
-                        }
-                    });
-                to_js(&document.hf_run_format_at(
+                        .format,
+                    );
+                }
+                let prefix = Self::hf_line_segment_mapping(
+                    document,
+                    state.editing_mode,
+                    state.hf_variant,
+                    cursor,
+                )
+                .map_or(0, |(_, _, prefix)| prefix);
+                to_js(&document.hf_caret_run_format_at(
                     role,
                     variant,
                     cursor.line_index,
@@ -573,10 +573,20 @@ impl OffscreenDocumentView {
             });
         }
         drop(state);
-        let (start, _) = self.current_selection().normalized();
+        let (start, end) = self.current_selection().normalized();
         let state = self.state.borrow();
         state.word_doc.as_ref().map_or(JsValue::NULL, |document| {
-            to_js(&document.run_format_at(start.paragraph, start.offset))
+            if start != end {
+                to_js(
+                    &crate::word::font::FontDialog::open_selection(document.run_formats_in_range(
+                        (start.paragraph, start.offset),
+                        (end.paragraph, end.offset),
+                    ))
+                    .format,
+                )
+            } else {
+                to_js(&document.run_format_at(start.paragraph, start.offset))
+            }
         })
     }
 
@@ -904,17 +914,17 @@ impl OffscreenDocumentView {
     ) -> Result<JsValue, JsValue> {
         let section = self.ribbon_target_section().unwrap_or(0);
         self.apply_document_command(move |_| {
-            Box::new(crate::commands::snapshot_edit::SnapshotEditCommand::new(
-                "word_replace_header_footer_story",
-                move |document| {
-                    document
-                        .ensure_roundtrip_xml()
-                        .map_err(|error| error.to_string())?;
-                    document
-                        .replace_story_from_docx(section, &role, &variant, &bytes)
-                        .map(|_| ())
-                },
-            ))
+            Box::new(
+                crate::commands::snapshot_edit::SnapshotEditCommand::new_if_changed(
+                    "word_replace_header_footer_story",
+                    move |document| {
+                        document
+                            .ensure_roundtrip_xml()
+                            .map_err(|error| error.to_string())?;
+                        document.replace_story_from_docx(section, &role, &variant, &bytes)
+                    },
+                ),
+            )
         })
     }
 

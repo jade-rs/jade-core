@@ -862,6 +862,7 @@ impl WordDocument {
             .paragraph_mut(index)
             .and_then(|paragraph| paragraph.properties.as_mut())
         {
+            let before = props.clone();
             rebase_paragraph_style_properties(
                 props,
                 &old,
@@ -873,6 +874,19 @@ impl WordDocument {
                         .any(|(element, name)| element == tag && name == attribute)
                 },
             );
+            if declared.iter().any(|tag| tag == "w:spacing") {
+                props.spacing = new.spacing.clone();
+                keep_declared_paragraph_properties(
+                    props,
+                    &before,
+                    |tag| tag == "w:spacing",
+                    |tag, attribute| {
+                        attributes
+                            .iter()
+                            .any(|(element, name)| element == tag && name == attribute)
+                    },
+                );
+            }
         }
     }
 
