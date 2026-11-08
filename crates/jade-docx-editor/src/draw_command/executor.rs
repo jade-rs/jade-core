@@ -1315,14 +1315,24 @@ fn try_execute_bmp_glyph_run_batch<P: Painter>(
     let text_start = glyphs.first().map_or(0, |glyph| glyph.text_start as usize);
     let mut text_end = text_start;
     let mut copied_text: Option<String> = None;
-    let mut x_positions = Vec::with_capacity(glyphs.len());
+    // Runs up to 64 glyphs use a stack buffer. Longer runs keep the
+    // same exact positions in a heap buffer rather than truncating the batch.
+    let mut local_positions = [0.0; 64];
+    let mut heap_positions;
+    let x_positions = if glyphs.len() <= local_positions.len() {
+        &mut local_positions[..glyphs.len()]
+    } else {
+        heap_positions = vec![0.0; glyphs.len()];
+        &mut heap_positions[..]
+    };
     // Most replayed runs use one font and take the single-font JS path. Allocate
     // indexes only after discovering a font change that requires the multi-font path.
     let mut font_indexes = Vec::new();
     let mut single_font_index: Option<u16> = None;
     let mut single_font_run = true;
 
-    for glyph in glyphs {
+    for (glyph_index, (glyph, x_position)) in glyphs.iter().zip(x_positions.iter_mut()).enumerate()
+    {
         if fonts.get(glyph.font_index as usize).is_none() {
             return Ok(false);
         }
@@ -1347,12 +1357,12 @@ fn try_execute_bmp_glyph_run_batch<P: Painter>(
             Some(index) if index != glyph.font_index && single_font_run => {
                 single_font_run = false;
                 font_indexes.reserve(glyphs.len());
-                font_indexes.resize(x_positions.len(), index);
+                font_indexes.resize(glyph_index, index);
             }
             None => single_font_index = Some(glyph.font_index),
             _ => {}
         }
-        x_positions.push(x + glyph.x_offset);
+        *x_position = x + glyph.x_offset;
         if !single_font_run {
             font_indexes.push(glyph.font_index);
         }
@@ -1368,13 +1378,13 @@ fn try_execute_bmp_glyph_run_batch<P: Painter>(
             return Ok(false);
         };
         font_state.set_font_rc_if_changed(context, font_descriptor);
-        if !context.try_fill_glyph_run_batch(text, &x_positions, y)? {
+        if !context.try_fill_glyph_run_batch(text, x_positions, y)? {
             return Ok(false);
         }
     } else {
         if !context.try_fill_glyph_run_batch_multi_font(
             text,
-            &x_positions,
+            x_positions,
             &font_indexes,
             fonts,
             y,
