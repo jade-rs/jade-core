@@ -2643,6 +2643,7 @@ fn compute_text_advance_step<'a, C: LineWrapContext>(
         font_descriptor_hash,
         font_descriptor_id,
         None,
+        None,
     )
 }
 
@@ -2755,6 +2756,7 @@ fn fixed_punctuation_pair_adjustment(
 /// classified script and resolved font descriptor/hash. The hot wrap loop
 /// computes these once per grapheme, so this avoids re-classifying the script
 /// and re-resolving the descriptor a second time inside the advance step.
+/// It can also reuse the same grapheme's whitespace classification when known.
 #[allow(clippy::too_many_arguments)]
 fn compute_text_advance_step_with_descriptor<'a, C: LineWrapContext>(
     ctx: &C,
@@ -2771,6 +2773,7 @@ fn compute_text_advance_step_with_descriptor<'a, C: LineWrapContext>(
     font_descriptor_hash: u64,
     font_descriptor_id: Option<u32>,
     text_offset: Option<usize>,
+    known_whitespace: Option<bool>,
 ) -> Result<ComputedTextAdvanceStep<'a>, C::Error> {
     let oracle_measured_glyph_width = text_offset.and_then(|offset| {
         paragraph_style
@@ -2781,7 +2784,9 @@ fn compute_text_advance_step_with_descriptor<'a, C: LineWrapContext>(
     // A space has no ink to embolden: Word for Mac sets scroll-offset-repro's
     // bold `第６章　賃金` ideographic space at its plain width. (A bold ASCII
     // space takes its advance from `word_ascii_metrics` before this.)
-    let synthetic_bold_extra = if measured_width_is_oracle || is_whitespace_text(grapheme) {
+    let synthetic_bold_extra = if measured_width_is_oracle
+        || known_whitespace.unwrap_or_else(|| is_whitespace_text(grapheme))
+    {
         0.0
     } else if script == ScriptCategory::EastAsia
         && paragraph_style.is_some_and(|p| {
@@ -3085,6 +3090,7 @@ where
                 font_descriptor_hash,
                 font_descriptor_id,
                 Some(text_offset_base + rel_offset),
+                None,
             )?
         } else {
             compute_text_advance_step(
@@ -7194,6 +7200,7 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
                     font_desc_hash,
                     font_desc_id,
                     Some(grapheme_start_abs),
+                    Some(is_whitespace),
                 )?;
                 let marker_gap_ratio = marker_spacing_gap_ratio(
                     paragraph_style,
@@ -8534,6 +8541,7 @@ fn measure_tab_segment<C: LineWrapContext>(
                 font_desc_hash,
                 font_desc_id,
                 Some(grapheme_start_abs),
+                None,
             )?;
             width += computed.advance.total_advance;
             update_text_advance_state(
@@ -10235,6 +10243,10 @@ mod float_exclusion_tests {
         assert_eq!(plan, vec![(250.0, 250.0); 2]);
     }
 }
+
+#[cfg(test)]
+#[path = "line_wrap/whitespace_reuse_tests.rs"]
+mod whitespace_reuse_tests;
 
 #[cfg(test)]
 mod tests {
@@ -19074,6 +19086,7 @@ mod tests {
                             style.font_descriptor_east_asia_hash,
                             style.font_descriptor_east_asia_id,
                             Some(0),
+                            None,
                         )
                         .unwrap();
                         let fixed_width = cell.filter(|_| fixed).map(|cell| 14.0 * cell);
@@ -19430,6 +19443,7 @@ mod tests {
             style.font_descriptor_latin_ascii_hash,
             style.font_descriptor_latin_ascii_id,
             Some(0),
+            None,
         )
         .unwrap();
 
