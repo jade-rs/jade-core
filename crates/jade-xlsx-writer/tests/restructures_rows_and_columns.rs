@@ -17,6 +17,111 @@ const SHEET: &str = "xl/worksheets/sheet1.xml";
 const NAME: &str = "売上サマリ";
 
 #[test]
+fn moving_formula_text_decodes_cdata_and_keeps_comments_and_processed_wrappers() {
+    for (formula, original, shifted) in [
+        ("<![CDATA[A1+1]]>", "A1+1", "A2+1"),
+        ("A<!--keep-->1+1", "A1+1", "A2+1"),
+        ("A<?keep marker?>1+1", "A1+1", "A2+1"),
+        ("<u:wrap>A1</u:wrap>+1", "A1+1", "A2+1"),
+        ("<u:ignored>A99</u:ignored>A1+1", "A1+1", "A2+1"),
+        (
+            "A<u:wrap><!--keep--><![CDATA[1]]></u:wrap>+1",
+            "A1+1",
+            "A2+1",
+        ),
+        (
+            "<![CDATA[IF(A1<2,\"x&y\",A1)]]>",
+            "IF(A1<2,\"x&y\",A1)",
+            "IF(A2<2,\"x&y\",A2)",
+        ),
+        (
+            "IF(A<!--keep-->1&lt;2,&quot;x&amp;y&quot;,A1)",
+            "IF(A1<2,\"x&y\",A1)",
+            "IF(A2<2,\"x&y\",A2)",
+        ),
+    ] {
+        let xml = format!("<worksheet xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\" xmlns:mc=\"http://schemas.openxmlformats.org/markup-compatibility/2006\" xmlns:u=\"urn:future\" mc:Ignorable=\"u\" mc:ProcessContent=\"u:wrap\"><sheetData><row r=\"1\"><c r=\"A1\"><v>1</v></c><c r=\"B1\"><f>{formula}</f><v>2</v></c></row></sheetData></worksheet>");
+        let bytes = workbook_with_sheet(&xml);
+        let workbook = read_xlsx(&bytes).unwrap();
+        assert_eq!(
+            workbook.sheets[0].rows[0].cells[1].formula.as_deref(),
+            Some(original)
+        );
+        assert_eq!(
+            jade_xlsx_writer::shift::shift_sheet(
+                &xml,
+                &workbook.sheets[0],
+                false,
+                &change("Other", Axis::Rows, 0, 1, true)
+            )
+            .unwrap(),
+            xml
+        );
+        let updated = jade_xlsx_writer::shift::shift_sheet(
+            &xml,
+            &workbook.sheets[0],
+            true,
+            &change("Sheet1", Axis::Rows, 0, 1, true),
+        )
+        .unwrap();
+        let moved = read_xlsx(&workbook_with_sheet(&updated)).unwrap();
+        assert_eq!(
+            moved.sheets[0].rows[0].cells[1].formula.as_deref(),
+            Some(shifted),
+            "{updated}"
+        );
+        if formula.contains("<!--keep-->") {
+            assert!(updated.contains("<!--keep-->"));
+        }
+        if formula.contains("<u:wrap>") {
+            assert!(updated.contains("<u:wrap>"));
+        }
+        if formula.contains("<?keep marker?>") {
+            assert!(updated.contains("<?keep marker?>"));
+        }
+        if formula.contains("<u:ignored>") {
+            assert!(updated.contains("<u:ignored>A99</u:ignored>"));
+        }
+    }
+}
+
+#[test]
+fn defined_name_xml_text_moves_without_changing_comments_or_unrelated_names() {
+    let untouched = "<definedName name=\"Other\"><![CDATA[Other!$A$1]]></definedName>";
+    let xml = format!("<workbook xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\"><definedNames><definedName name=\"Example\"><![CDATA[Sheet1!$A$]]><!--keep-->1</definedName>{untouched}</definedNames></workbook>");
+    let moved = jade_xlsx_writer::shift::shift_defined_names(
+        &xml,
+        &change("Sheet1", Axis::Rows, 0, 1, true),
+    )
+    .unwrap();
+    let part = jade_xlsx_reader::workbook_part::parse_workbook(&moved).unwrap();
+    assert_eq!(part.defined_names[0].formula, "Sheet1!$A$2");
+    assert!(moved.contains("<!--keep-->"));
+    assert!(moved.contains(untouched));
+}
+
+#[test]
+fn a_cdata_defined_name_still_calculates_after_structure_history_and_reopen() {
+    let source = workbook_with_sheet(
+        r#"<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData><row r="1"><c r="A1"><v>1</v></c><c r="B1"><f>Price+1</f><v>2</v></c></row></sheetData></worksheet>"#,
+    );
+    let mut package = OpcPackage::open(&source).unwrap();
+    let workbook = package.part_str("xl/workbook.xml").unwrap().unwrap().replace("</sheets>", "</sheets><definedNames><definedName name=\"Price\"><![CDATA[Sheet1!$A$1]]></definedName></definedNames>");
+    package.replace("xl/workbook.xml", workbook.into_bytes());
+    let mut book = HeadlessWorkbook::open_for_editing(&package.write().unwrap()).unwrap();
+    assert_eq!(book.cell("Sheet1", "B1").unwrap().display, "2");
+    book.insert_rows("Sheet1", 1, 1).unwrap();
+    assert_eq!(book.cell("Sheet1", "B2").unwrap().display, "2");
+    assert_eq!(book.workbook().defined_names[0].formula, "Sheet1!$A$2");
+    book.undo().unwrap();
+    assert_eq!(book.workbook().defined_names[0].formula, "Sheet1!$A$1");
+    book.redo().unwrap();
+    let reopened = HeadlessWorkbook::open_for_editing(&book.save_bytes().unwrap()).unwrap();
+    assert_eq!(reopened.cell("Sheet1", "B2").unwrap().display, "2");
+    assert_eq!(reopened.workbook().defined_names[0].formula, "Sheet1!$A$2");
+}
+
+#[test]
 fn implicit_cells_in_alternatives_shift_from_their_logical_coordinates() {
     let xml = r#"<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:m="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"><sheetData><row><c><v>1</v></c><mc:AlternateContent><mc:Choice Requires="m"><c><f>A1+1</f><v>2</v></c></mc:Choice><mc:Fallback><c><f>A1+2</f><v>3</v></c></mc:Fallback></mc:AlternateContent><c><v>4</v></c></row></sheetData></worksheet>"#;
     let workbook = read_xlsx(&workbook_with_sheet(xml)).unwrap();

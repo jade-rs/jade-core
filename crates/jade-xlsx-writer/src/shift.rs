@@ -697,9 +697,14 @@ pub fn shift_sheet(
                 b"c" => cell = None,
                 b"f" | b"formula" | b"formula1" | b"formula2" => {
                     if let Some(content_start) = formula_content.take() {
-                        if let Some(splice) =
-                            shifted_content(xml, content_start, start, &sheet.name, change)?
-                        {
+                        if let Some(splice) = shifted_content(
+                            xml,
+                            content_start,
+                            start,
+                            &sheet.name,
+                            change,
+                            grid.owns_end(start).then_some(&grid),
+                        )? {
                             splices.push(splice);
                         }
                     }
@@ -1018,7 +1023,9 @@ pub fn shift_defined_names(xml: &str, change: &StructureChange) -> Result<String
                 if let Some(content_start) = content.take() {
                     // A name has no sheet of its own: only qualified
                     // references can point at the changed sheet.
-                    if let Some(splice) = shifted_content(xml, content_start, start, "", change)? {
+                    if let Some(splice) =
+                        shifted_content(xml, content_start, start, "", change, None)?
+                    {
                         splices.push(splice);
                     }
                 }
@@ -1039,8 +1046,37 @@ fn shifted_content(
     content_end: usize,
     formula_sheet: &str,
     change: &StructureChange,
+    grid: Option<&jade_xlsx_reader::cell_content::WorksheetSource>,
 ) -> Result<Option<Splice>> {
     let raw = &xml[content_start..content_end];
+    if raw.contains('<') {
+        // Decode actual XML text, including CDATA and character references.
+        // Comments/PIs and nominated wrappers retain their original bytes.
+        let framed = format!("<f>{raw}</f>");
+        let next = crate::validation_sources::map_text_leaf_with_elements(
+            &framed,
+            &|at| {
+                use crate::validation_sources::TextElement;
+                let (Some(offset), Some(source)) = (at.checked_sub(3), grid) else {
+                    return TextElement::Opaque;
+                };
+                let offset = content_start + offset;
+                if source.has_alternate_content_at(offset) {
+                    TextElement::Opaque
+                } else if source.processes_content_at(offset) {
+                    TextElement::Process
+                } else {
+                    TextElement::Ignore
+                }
+            },
+            &|formula| shift_formula(formula, formula_sheet, change),
+        )?;
+        return Ok((next != framed).then(|| Splice {
+            start: content_start,
+            end: content_end,
+            text: next[3..next.len() - 4].to_string(),
+        }));
+    }
     let formula = quick_xml::escape::unescape(raw).map_err(quick_xml::Error::from)?;
     let shifted = shift_formula(&formula, formula_sheet, change);
     if shifted == formula {
