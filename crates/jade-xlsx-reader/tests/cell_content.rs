@@ -6,6 +6,75 @@ use std::collections::BTreeSet;
 const MAIN: &str = "http://schemas.openxmlformats.org/spreadsheetml/2006/main";
 const STRICT: &str = "http://purl.oclc.org/ooxml/spreadsheetml/main";
 const MC: &str = "http://schemas.openxmlformats.org/markup-compatibility/2006";
+
+#[test]
+fn dynamic_array_choices_resolve_aliases_locally_and_require_every_namespace() {
+    let dynamic = "http://schemas.microsoft.com/office/spreadsheetml/2017/dynamicarray";
+    for main in [MAIN, STRICT] {
+        for (declarations, requires, modern) in [
+            (String::new(), "Requires=\"d\"", true),
+            (String::new(), "Requires=\"d s\"", true),
+            (format!("xmlns:a=\"{dynamic}\""), "Requires=\"a\"", true),
+            ("xmlns:d=\"urn:future\"".into(), "Requires=\"d\"", false),
+            (
+                format!("xmlns:d=\"{dynamic}-lookalike\""),
+                "Requires=\"d\"",
+                false,
+            ),
+            (String::new(), "Requires=\"d u\"", false),
+            (String::new(), "Requires=\"missing\"", false),
+            (String::new(), "u:Requires=\"d\"", false),
+        ] {
+            let body = format!("<s:sheetData><s:row r=\"1\"><mc:AlternateContent><mc:Choice {declarations} {requires}><s:c r=\"A1\"><s:v>3</s:v></s:c></mc:Choice><mc:Fallback><s:c r=\"A1\"><s:v>2</s:v></s:c></mc:Fallback></mc:AlternateContent></s:row></s:sheetData>");
+            let xml = worksheet(&body).replace(MAIN, main).replace(
+                "<s:worksheet ",
+                &format!("<s:worksheet xmlns:d=\"{dynamic}\" "),
+            );
+            let sheet = parse(&xml);
+            assert_eq!(
+                at(&sheet, "A1").value,
+                CellValue::Number(if modern { 3.0 } else { 2.0 })
+            );
+            assert_eq!(sheet.rows[0].cells.len(), 1);
+        }
+    }
+}
+
+#[test]
+fn an_understood_dynamic_property_is_not_unwrapped_as_foreign_grid_content() {
+    let body = "<s:sheetData><s:row r=\"1\"><d:dynamicArrayProperties fDynamic=\"1\"><s:c r=\"A1\" cm=\"1\"><s:v>99</s:v></s:c></d:dynamicArrayProperties><s:c r=\"B1\"><s:v>2</s:v></s:c></s:row></s:sheetData>";
+    let xml = worksheet(body).replace("<s:worksheet ", "<s:worksheet xmlns:d=\"http://schemas.microsoft.com/office/spreadsheetml/2017/dynamicarray\" mc:Ignorable=\"d\" mc:ProcessContent=\"d:dynamicArrayProperties\" ");
+    let sheet = parse(&xml);
+    assert_eq!(sheet.rows[0].cells.len(), 1);
+    assert_eq!(
+        sheet.rows[0].cells[0].reference,
+        CellRef::parse("B1").unwrap()
+    );
+}
+
+#[test]
+fn validation_choices_share_the_grid_dynamic_array_capability() {
+    for namespace in [
+        "http://schemas.microsoft.com/office/spreadsheetml/2017/dynamicarray",
+        "urn:future",
+    ] {
+        let body = r#"<s:sheetData/><s:dataValidations count="1"><s:dataValidation type="whole" operator="equal" sqref="A1"><mc:AlternateContent><mc:Choice Requires="d"><s:formula1>3</s:formula1></mc:Choice><mc:Fallback><s:formula1>2</s:formula1></mc:Fallback></mc:AlternateContent></s:dataValidation></s:dataValidations>"#;
+        let xml = worksheet(body).replace(
+            "<s:worksheet ",
+            &format!("<s:worksheet xmlns:d=\"{namespace}\" "),
+        );
+        let rules = jade_xlsx_reader::data_validations::parse_data_validations(&xml).unwrap();
+        assert_eq!(rules.len(), 1);
+        assert_eq!(
+            rules[0].formula1.as_deref(),
+            Some(if namespace == "urn:future" { "2" } else { "3" })
+        );
+        assert_eq!(
+            read_xlsx(&package(&xml, &pool(""))).unwrap().sheets[0].data_validations,
+            rules
+        );
+    }
+}
 fn worksheet(body: &str) -> String {
     format!(
         r#"<s:worksheet xmlns:s="{MAIN}" xmlns:mc="{MC}" xmlns:u="urn:foreign">{body}</s:worksheet>"#

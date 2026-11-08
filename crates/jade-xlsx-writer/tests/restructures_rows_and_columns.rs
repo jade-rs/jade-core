@@ -77,6 +77,30 @@ fn selected_inline_formula(xml: &str, mask: usize) -> String {
 }
 
 #[test]
+fn dynamic_capability_inline_formula_branches_both_follow_structure_edits() {
+    let xml = inline_formula_sheet(&formula_alternative("d", "A1+1", "A1+2"))
+        .replace("<worksheet ", "<worksheet xmlns:d=\"http://schemas.microsoft.com/office/spreadsheetml/2017/dynamicarray\" ");
+    assert_eq!(selected_inline_formula(&xml, 0), "A1+1");
+    let workbook = read_xlsx(&workbook_with_sheet(&xml)).unwrap();
+    let updated = jade_xlsx_writer::shift::shift_sheet(
+        &xml,
+        &workbook.sheets[0],
+        true,
+        &change("Sheet1", Axis::Rows, 0, 1, true),
+    )
+    .unwrap();
+    assert!(updated.contains(">A2+1</mc:Choice>"), "{updated}");
+    assert!(updated.contains(">A2+2</mc:Fallback>"), "{updated}");
+    assert!(updated.contains("<u:opaque>A99</u:opaque>"));
+    assert_eq!(selected_inline_formula(&updated, 0), "A2+1");
+    let fallback = updated.replace(
+        "http://schemas.microsoft.com/office/spreadsheetml/2017/dynamicarray",
+        "urn:future-dynamic",
+    );
+    assert_eq!(selected_inline_formula(&fallback, 0), "A2+2");
+}
+
+#[test]
 fn split_coordinates_and_ranges_rebase_all_independent_inline_alternatives() {
     let column = formula_alternative("a", "<p:wrap><![CDATA[A]]></p:wrap><!--keep-->", "B");
     let row = formula_alternative("b", "9", "10");

@@ -11,6 +11,120 @@ use jade_xlsx_writer::{write_xlsx, CellEdit, NewValue, SheetEdits};
 mod common;
 
 #[test]
+fn a_dynamic_array_capability_choice_uses_the_supported_formula_and_keeps_editing() {
+    let (bytes, part) = with_sequence();
+    let bytes = write_spills(
+        &bytes,
+        &[spill(&part, "J1", "J1:J3", &[("J2", 2.0), ("J3", 3.0)])],
+        false,
+    )
+    .unwrap();
+    let mut package = OpcPackage::open(&bytes).unwrap();
+    let sheet = package.part_str(&part).unwrap().unwrap();
+    let cells = jade_xlsx_reader::cell_content::compatible_cells(
+        &sheet,
+        &std::collections::HashSet::from([at("J1")]),
+    )
+    .unwrap();
+    let cell = cells.into_iter().find(|cell| cell.selected).unwrap();
+    let wrapped = format!("<mc:AlternateContent xmlns:mc=\"http://schemas.openxmlformats.org/markup-compatibility/2006\" xmlns:d=\"http://schemas.microsoft.com/office/spreadsheetml/2017/dynamicarray\" xmlns:u=\"urn:future\"><mc:Choice Requires=\"d\">{}</mc:Choice><mc:Fallback><c r=\"J1\"><v>0</v></c></mc:Fallback></mc:AlternateContent>", &sheet[cell.range.clone()]);
+    let mut sheet = sheet.to_string();
+    sheet.replace_range(cell.range, &wrapped);
+    package.replace(&part, sheet.into_bytes());
+    let bytes = package.write().unwrap();
+    let parsed = read_xlsx(&bytes).unwrap();
+    assert_eq!(
+        parsed.sheets[0].array_formulas.len(),
+        1,
+        "a supported dynamic-array Choice was replaced by its fallback"
+    );
+    assert_eq!(
+        parsed.sheets[0].array_formulas[0].kind,
+        jade_xlsx_reader::ArrayFormulaKind::Dynamic
+    );
+    for (before, after) in [
+        (
+            "xmlns:d=\"http://schemas.microsoft.com/office/spreadsheetml/2017/dynamicarray\"",
+            "xmlns:d=\"urn:lookalike\"",
+        ),
+        ("Requires=\"d\"", "Requires=\"d u\""),
+    ] {
+        let mut unsupported = OpcPackage::open(&bytes).unwrap();
+        let xml = unsupported
+            .part_str(&part)
+            .unwrap()
+            .unwrap()
+            .replace(before, after);
+        unsupported.replace(&part, xml.into_bytes());
+        let unsupported = unsupported.write().unwrap();
+        assert!(read_xlsx(&unsupported).unwrap().sheets[0]
+            .array_formulas
+            .is_empty());
+        assert_eq!(value(&unsupported, "J1"), CellValue::Number(0.0));
+    }
+    let mut legacy = OpcPackage::open(&bytes).unwrap();
+    let metadata = legacy.part_str("xl/metadata.xml").unwrap().unwrap();
+    assert!(metadata.contains("fDynamic=\"1\""));
+    legacy.replace(
+        "xl/metadata.xml",
+        metadata
+            .replace("fDynamic=\"1\"", "fDynamic=\"0\"")
+            .into_bytes(),
+    );
+    assert_eq!(
+        read_xlsx(&legacy.write().unwrap()).unwrap().sheets[0].array_formulas[0].kind,
+        jade_xlsx_reader::ArrayFormulaKind::Legacy
+    );
+    let mut moved = jade_xlsx_headless_editor::HeadlessWorkbook::open_for_editing(&bytes).unwrap();
+    moved.insert_rows("Operations", 1, 1).unwrap();
+    assert_eq!(
+        moved.workbook().sheets[0].array_formulas[0].anchor,
+        at("J2")
+    );
+    assert_eq!(
+        moved.workbook().sheets[0].array_formulas[0].range,
+        range("J2:J4")
+    );
+    assert_eq!(moved.cell("Operations", "J4").unwrap().display, "3");
+    moved.undo().unwrap();
+    assert_eq!(moved.cell("Operations", "J1").unwrap().display, "1");
+    moved.redo().unwrap();
+    let saved_moved = moved.save_bytes().unwrap();
+    assert_eq!(
+        read_xlsx(&saved_moved).unwrap().sheets[0].array_formulas[0].range,
+        range("J2:J4")
+    );
+    let mut book = jade_xlsx_headless_editor::HeadlessWorkbook::open_for_editing(&bytes).unwrap();
+    assert_eq!(book.cell("Operations", "J1").unwrap().display, "1");
+    book.set(
+        "Operations",
+        "J1",
+        jade_xlsx_headless_api::CellInput::Formula("SEQUENCE(4)".into()),
+    )
+    .unwrap();
+    assert_eq!(book.cell("Operations", "J4").unwrap().display, "4");
+    book.undo().unwrap();
+    assert_eq!(book.cell("Operations", "J4").unwrap().display, "");
+    book.redo().unwrap();
+    let saved = book.save_bytes().unwrap();
+    let package = OpcPackage::open(&saved).unwrap();
+    let sheet = package.part_str(&part).unwrap().unwrap();
+    assert!(sheet.contains("<mc:Choice Requires=\"d\">"));
+    assert!(sheet.contains("<mc:Fallback>"));
+    let mut reopened =
+        jade_xlsx_headless_editor::HeadlessWorkbook::open_for_editing(&saved).unwrap();
+    assert_eq!(reopened.cell("Operations", "J4").unwrap().display, "4");
+    reopened
+        .set(
+            "Operations",
+            "J1",
+            jade_xlsx_headless_api::CellInput::Formula("SEQUENCE(5)".into()),
+        )
+        .unwrap();
+    assert_eq!(reopened.cell("Operations", "J5").unwrap().display, "5");
+}
+
+#[test]
 fn processed_formula_caches_and_dynamic_marks_stay_in_their_original_wrappers() {
     let sheet = r#"<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:m="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" xmlns:u="urn:future" mc:Ignorable="u" mc:ProcessContent="u:wrap"><sheetData><row r="1"><c r="A1"><v>1</v></c></row><row r="2"><u:wrap><c r="A2"><u:wrap xmlns="urn:future"><m:f>A1+1</m:f></u:wrap></c></u:wrap></row></sheetData></worksheet>"#;
     let bytes = common::workbook_with_sheet(sheet);
