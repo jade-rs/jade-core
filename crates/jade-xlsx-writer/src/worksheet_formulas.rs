@@ -3,7 +3,9 @@
 use std::collections::BTreeMap;
 
 use jade_xlsx_reader::{
-    data_validations::{validation_records, ValidationRecord, X14_NAMESPACE, XM_NAMESPACE},
+    data_validations::{
+        all_supported_validation_containers, ValidationRecord, X14_NAMESPACE, XM_NAMESPACE,
+    },
     CellRange, CellRef,
 };
 use quick_xml::{events::Event, name::ResolveResult, NsReader};
@@ -60,7 +62,7 @@ fn map_ns(
 
 fn validations(xml: &str, rewrite: &Rewrite<'_>) -> Result<BTreeMap<usize, String>> {
     let mut groups: BTreeMap<usize, Vec<ValidationRecord>> = BTreeMap::new();
-    for record in validation_records(xml)? {
+    for record in all_supported_validation_containers(xml)? {
         groups
             .entry(record.container.start)
             .or_default()
@@ -146,9 +148,10 @@ fn sparklines(xml: &str, rewrite: &Rewrite<'_>) -> Result<String> {
     })
 }
 
-/// Rewrites supported worksheet sources exactly once. General MCE around
-/// worksheet feature containers is outside this visitor; source alternatives
-/// inside a recognized cell/rule are handled by the shared leaf mapper.
+/// Rewrites supported worksheet sources exactly once. Validation container
+/// alternatives use original source locations; alternatives inside recognized
+/// cells/rules use the shared leaf mapper. Other feature containers keep their
+/// existing namespace and parent-path checks.
 pub(crate) fn rewrite(xml: &str, map: &Rewrite<'_>) -> Result<String> {
     let mut validations = validations(xml, map)?;
     let mut reader = NsReader::from_str(xml);
