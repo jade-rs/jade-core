@@ -48,6 +48,27 @@ class NativeMacosWorkflowTest < Minitest::Test
     assert_includes cached_workspaces, ". -> target/native-macos"
   end
 
+  def test_every_native_mac_job_prepares_verified_skia_before_cargo
+    %w[word-mac-coordinates native-macos xlsx-native].each do |name|
+      job = @workflow.fetch("jobs").fetch(name)
+      assert_equal "macos-latest", job.fetch("runs-on")
+      steps = job.fetch("steps")
+      preparation = steps.index { |step| step["name"] == "Prepare verified macOS Skia binaries" }
+      refute_nil preparation, name
+      step = steps.fetch(preparation)
+      refute step.key?("if"), name
+      refute step.fetch("continue-on-error", false), name
+      assert_equal "${{ github.token }}", step.fetch("env").fetch("GH_TOKEN"), name
+      assert_includes step.fetch("run"), "scripts/ci/prepare_macos_skia.py"
+      assert_includes step.fetch("run"), '--output "$RUNNER_TEMP/'
+      first_cargo = steps.index do |item|
+        item.fetch("run", "").lines.any? { |line| line.strip.start_with?("cargo ") }
+      end
+      refute_nil first_cargo, name
+      assert_operator preparation, :<, first_cargo, name
+    end
+  end
+
   def test_mac_coordinate_gate_is_unconditional_and_uses_locked_dependencies
     step = @steps.find { |item| item["name"] == "Verify unadjusted Word for Mac probe coordinates" }
     refute_nil step
@@ -148,6 +169,17 @@ class NativeMacosWorkflowTest < Minitest::Test
       assert_includes step.fetch("run"), command
       refute_includes step.fetch("run"), "--skip"
     end
+  end
+
+  def test_lean_api_download_retains_the_pinned_checksum
+    step = @workflow.fetch("jobs").fetch("crdt-worker-proof").fetch("steps").find do |item|
+      item["name"] == "Install pinned Lean toolchain manager"
+    end
+    assert_equal "${{ github.token }}", step.fetch("env").fetch("GH_TOKEN")
+    command = step.fetch("run")
+    assert_includes command, "releases/assets/529114798"
+    assert_includes command, "42b94d4244e8353142c456ec0e4ca6528fd898a6c604d4059f494e706e431f63  elan.tar.gz"
+    assert_includes command, "sha256sum --check"
   end
 
   private
