@@ -10,29 +10,32 @@ impl<'a> Model<'a> {
             return CalcResult::new_args_number_error(cell);
         }
 
-        let x = match self.get_number_no_bools(&args[0], cell) {
-            Ok(f) => f,
-            Err(e) => return e,
-        };
-        let mean = match self.get_number_no_bools(&args[1], cell) {
-            Ok(f) => f,
-            Err(e) => return e,
-        };
-        let std_dev = match self.get_number_no_bools(&args[2], cell) {
-            Ok(f) => f,
-            Err(e) => return e,
-        };
-
-        if std_dev <= 0.0 {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "standard_dev must be > 0 in STANDARDIZE".to_string(),
-            };
-        }
-
-        let z = (x - mean) / std_dev;
-
-        CalcResult::Number(z)
+        self.map_scalar_arguments(args, cell, |model, values| {
+            let mut numbers = [0.0; 3];
+            for (number, value) in numbers.iter_mut().zip(values) {
+                // Retain STANDARDIZE's existing no-Boolean numeric coercion.
+                if matches!(value, CalcResult::Boolean(_)) {
+                    return CalcResult::new_error(Error::VALUE, cell, "Expecting number".into());
+                }
+                *number = match model.cast_to_number(value.clone(), cell) {
+                    Ok(number) => number,
+                    Err(error) => return error,
+                };
+            }
+            let [x, mean, std_dev] = numbers;
+            if numbers.iter().any(|number| !number.is_finite()) || std_dev <= 0.0 {
+                return CalcResult::new_error(
+                    Error::NUM,
+                    cell,
+                    "Invalid STANDARDIZE parameters".into(),
+                );
+            }
+            let result = (x - mean) / std_dev;
+            if result.is_finite() {
+                CalcResult::Number(result)
+            } else {
+                CalcResult::new_error(Error::NUM, cell, "Invalid STANDARDIZE result".into())
+            }
+        })
     }
 }

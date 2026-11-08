@@ -1,0 +1,122 @@
+[
+  {
+    "fixture": "word-windows-edge-table-alignment-compat12",
+    "coordinate_source": "Word Page.EnhMetaFileBits / MS-EMF",
+    "word_pages": 2,
+    "native_pages": 2,
+    "word_glyphs": 495,
+    "native_glyphs": 495,
+    "matched": 495,
+    "within_0_375pt": 495,
+    "x_p50": 0.07281249999998352,
+    "x_p95": 0.15250000000003183,
+    "y_p50": 0.02882812500001819,
+    "y_p95": 0.06765624999997044,
+    "first_errors": [],
+    "pdf_sha256": "0eeb47acfe9f559f2ea1d9d989c8bcb9bb87d470dd68c5b715d4938371b4f5cc",
+    "metafile_sha256": [
+      "b07e45bf1bafb7c5dbe732f4e5f734930c89eecfdeca113d2995c120d616d2f8",
+      "b7323636c31c68823478c80656154e7e2e6de877a8aa5efb04e2a12b024d171f"
+    ]
+  },
+  {
+    "fixture": "word-windows-edge-table-alignment-compat14",
+    "coordinate_source": "Word Page.EnhMetaFileBits / MS-EMF",
+    "word_pages": 2,
+    "native_pages": 2,
+    "word_glyphs": 495,
+    "native_glyphs": 495,
+    "matched": 495,
+    "within_0_375pt": 495,
+    "x_p50": 0.07281249999998352,
+    "x_p95": 0.15250000000003183,
+    "y_p50": 0.02882812500001819,
+    "y_p95": 0.06765624999997044,
+    "first_errors": [],
+    "pdf_sha256": "55e2d7dd2b835b0ed2f667af40e592442354d2c634c35186618ac6934ae5a76d",
+    "metafile_sha256": [
+      "ef161f7796f97f77cd54cbfb81e30ccca983259046fed3e6bf8092b2396fb2dc",
+      "0e7b9a905b6563329cdbf1e0a05edbe49d5cb9484b1c81cdf8bc700cf8d8b35c"
+    ]
+  },
+  {
+    "fixture": "word-windows-edge-table-borders-compat12",
+    "coordinate_source": "Word Page.EnhMetaFileBits / MS-EMF",
+    "word_pages": 2,
+    "native_pages": 2,
+    "word_glyphs": 448,
+    "native_glyphs": 448,
+    "matched": 448,
+    "within_0_375pt": 448,
+    "x_p50": 0.040000000000020464,
+    "x_p95": 0.12421874999999716,
+    "y_p50": 0.025312499999984084,
+    "y_p95": 0.06999999999999318,
+    "first_errors": [],
+    "pdf_sha256": "ab1aa85632c360a9cd9b11f29e90a3ed7cfbd9a55c046890bbe06b94208e8abd",
+    "metafile_sha256": [
+      "675a08c66c0dd5c9150be6a9a8be9d6e7ac37bdbc61990e2805519a03ffc9d75",
+      "3b7a6ada9cf792d527d1b1e01b835fdfda6d8df1c7b3f5ecece4ac6aa20e4ca4"
+    ]
+  },
+  {
+    "fixture": "word-windows-edge-table-borders-compat14",
+    "coordinate_source": "Word Page.EnhMetaFileBits / MS-EMF",
+    "word_pages": 2,
+    "native_pages": 2,
+    "word_glyphs": 448,
+    "native_glyphs": 448,
+    "matched": 448,
+    "within_0_375pt": 448,
+    "x_p50": 0.040000000000020464,
+    "x_p95": 0.12421874999999716,
+    "y_p50": 0.025312499999984084,
+    "y_p95": 0.06999999999999318,
+    "first_errors": [],
+    "pdf_sha256": "dbb9db6b103df0087ae0cfb58b283d9b863a723bfe250d417a58716ee5da49dc",
+    "metafile_sha256": [
+      "c9d2e3768ba2768d751d770b5681d1e8819bb782230b7470bfc590910bc0d724",
+      "6599cfb4408f05e4780bc15f84cf3dadae438c81bcf99ee329474730db40e418"
+    ]
+  },
+  {
+    "fixture": "word-windows-edge-table-indents-compat12",
+    "coordinate_source": "Word Page.EnhMetaFileBits / MS-EMF",
+    "word_pages": 2,
+    "native_pages": 2,
+    "word_glyphs": 600,
+    "native_glyphs": 600,
+    "matched": 600,
+    "within_0_375pt": 600,
+    "x_p50": 0.0724999999999909,
+    "x_p95": 0.1528124999999818,
+    "y_p50": 0.024140625000001137,
+    "y_p95": 0.07234375000001592,
+    "first_errors": [],
+    "pdf_sha256": "e3c534d8bfb060b92d18f1808526d9e9f2e5350bf69d2cfb9a36a193dbc08575",
+    "metafile_sha256": [
+      "e568d471b9d5df4c55adeda3ff3200963b02e48c292dd7c9455f921b424e7258",
+      "2099127f4ceae43c04eb35664db6cda8610031b622fd73e738d5785e4ae9edb2"
+    ]
+  },
+  {
+    "fixture": "word-windows-edge-table-indents-compat14",
+    "coordinate_source": "Word Page.EnhMetaFileBits / MS-EMF",
+    "word_pages": 2,
+    "native_pages": 2,
+    "word_glyphs": 600,
+    "native_glyphs": 600,
+    "matched": 600,
+    "within_0_375pt": 600,
+    "x_p50": 0.0724999999999909,
+    "x_p95": 0.1528124999999818,
+    "y_p50": 0.024140625000001137,
+    "y_p95": 0.07234375000001592,
+    "first_errors": [],
+    "pdf_sha256": "49b8f1337e5990e5c15cc9798dc41866455abd8d67d66cf7af384a64172b3c24",
+    "metafile_sha256": [
+      "f34df62048b13422bc1215e6f0bb5b7057f8027b89353581bf84b6bab4e95683",
+      "2099127f4ceae43c04eb35664db6cda8610031b622fd73e738d5785e4ae9edb2"
+    ]
+  }
+]

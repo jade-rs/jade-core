@@ -1,0 +1,12 @@
+{
+  "engine_commit": "000d1f53cfbed0efff67ff38e5d156ba51f2aba5",
+  "word_product_version": "16.0.19127.20860",
+  "capture_id": "20261107T033559374Z-b51b160e",
+  "reference_kind": "emf",
+  "engine_source_worktree_dirty": false,
+  "strict_fixtures": [],
+  "matching_fixtures": [],
+  "pending_fixtures": [
+    "word-windows-edge-decimal-separators"
+  ]
+}

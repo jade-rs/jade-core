@@ -1010,9 +1010,8 @@ impl<'a> Model<'a> {
     }
 
     // FORMULATEXT(reference)
-    // Returns a formula as a string. Two differences with Excel:
-    // - It returns the formula in English
-    // - It formats the formula without spaces between elements
+    // Returns host-provided source text when available, with the canonical
+    // English formula as the fallback for engine-only cells.
     pub(crate) fn fn_formulatext(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
@@ -1028,7 +1027,48 @@ impl<'a> Model<'a> {
             }
             // A multi-cell reference uses its top-left cell, rather than
             // implicit intersection with the caller's row or column.
-            if let Ok(Some(f)) = self.get_english_cell_formula(left.sheet, left.row, left.column) {
+            if crate::host::cell_look(left.sheet, left.row, left.column)
+                .flatten()
+                .is_some_and(|look| look.formula_hidden)
+            {
+                return CalcResult::new_error(
+                    Error::NA,
+                    cell,
+                    "Formula is hidden by worksheet protection".into(),
+                );
+            }
+            let (formula_row, formula_column) =
+                self.formula_information_reference(left.sheet, left.row, left.column);
+            let formula = self
+                .source_formulas
+                .get(&(left.sheet, formula_row, formula_column))
+                .cloned()
+                .or_else(|| {
+                    self.get_english_cell_formula(left.sheet, formula_row, formula_column)
+                        .ok()
+                        .flatten()
+                        .map(|formula| {
+                            if self
+                                .workbook
+                                .worksheet(left.sheet)
+                                .ok()
+                                .is_some_and(|sheet| {
+                                    matches!(
+                                        sheet.cell(formula_row, formula_column),
+                                        Some(crate::types::Cell::ArrayFormula {
+                                            kind: crate::types::ArrayKind::Cse,
+                                            ..
+                                        })
+                                    )
+                                })
+                            {
+                                format!("{{{formula}}}")
+                            } else {
+                                formula
+                            }
+                        })
+                });
+            if let Some(f) = formula {
                 if f.encode_utf16().count() > 8192 {
                     CalcResult::new_error(Error::NA, cell, "Formula exceeds 8192 characters".into())
                 } else {

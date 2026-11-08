@@ -64,6 +64,116 @@
       "fixture_count": 2,
       "glyph_count": 960,
       "baseline_line_count": 0
+    },
+    {
+      "word_product_version": "16.0.19127.20860",
+      "directory": "word-16.0.19127.20860/20261107T031617995Z-72ef5045",
+      "reference": "strict-emf.json",
+      "fixture_count": 6,
+      "glyph_count": 5163,
+      "baseline_line_count": 0
+    },
+    {
+      "word_product_version": "16.0.19127.20860",
+      "directory": "word-16.0.19127.20860/20261107T032041007Z-ab4e783b",
+      "reference": "strict-emf.json",
+      "fixture_count": 3,
+      "glyph_count": 5733,
+      "baseline_line_count": 0
+    },
+    {
+      "word_product_version": "16.0.19127.20860",
+      "directory": "word-16.0.19127.20860/20261107T035930893Z-61ca197b",
+      "reference": "strict-emf.json",
+      "fixture_count": 5,
+      "glyph_count": 2303,
+      "baseline_line_count": 0
+    },
+    {
+      "word_product_version": "16.0.19127.20860",
+      "directory": "word-16.0.19127.20860/20261107T050204006Z-600bbfab",
+      "reference": "strict-emf.json",
+      "fixture_count": 6,
+      "glyph_count": 3086,
+      "baseline_line_count": 0
+    },
+    {
+      "word_product_version": "16.0.19127.20860",
+      "directory": "word-16.0.19127.20860/20261107T064640987Z-1b8aa884",
+      "reference": "strict-emf.json",
+      "fixture_count": 16,
+      "glyph_count": 11414,
+      "baseline_line_count": 0
+    },
+    {
+      "word_product_version": "16.0.19127.20860",
+      "directory": "word-16.0.19127.20860/20261107T071207802Z-32d1ef1a",
+      "reference": "strict-emf.json",
+      "fixture_count": 15,
+      "glyph_count": 10662,
+      "baseline_line_count": 0
+    },
+    {
+      "word_product_version": "16.0.19127.20860",
+      "directory": "word-16.0.19127.20860/20261107T083736578Z-61ba1645",
+      "reference": "strict-emf.json",
+      "fixture_count": 3,
+      "glyph_count": 3108,
+      "baseline_line_count": 0
+    },
+    {
+      "word_product_version": "16.0.19127.20860",
+      "directory": "word-16.0.19127.20860/20261107T090143788Z-8bbdd321",
+      "reference": "strict-emf.json",
+      "fixture_count": 6,
+      "glyph_count": 1584,
+      "baseline_line_count": 0
+    },
+    {
+      "word_product_version": "16.0.19127.20860",
+      "directory": "word-16.0.19127.20860/20261107T100425881Z-90da1943",
+      "reference": "strict-emf.json",
+      "fixture_count": 12,
+      "glyph_count": 6108,
+      "baseline_line_count": 0
+    },
+    {
+      "word_product_version": "16.0.19127.20860",
+      "directory": "word-16.0.19127.20860/20261107T104832151Z-b2b90731",
+      "reference": "strict-emf.json",
+      "fixture_count": 9,
+      "glyph_count": 4581,
+      "baseline_line_count": 0
+    },
+    {
+      "word_product_version": "16.0.19127.20860",
+      "directory": "word-16.0.19127.20860/20261107T123422628Z-6990d43d",
+      "reference": "strict-emf.json",
+      "fixture_count": 11,
+      "glyph_count": 3700,
+      "baseline_line_count": 0,
+      "visible_reference": "strict-visible.json",
+      "visible_glyph_count": 3696
+    },
+    {
+      "word_product_version": "16.0.19127.20860",
+      "directory": "word-16.0.19127.20860/20261107T132035593Z-34f3c733",
+      "reference": "strict-emf.json",
+      "fixture_count": 2,
+      "glyph_count": 514,
+      "baseline_line_count": 0,
+      "visible_reference": "strict-visible.json",
+      "visible_glyph_count": 514
+    },
+    {
+      "word_product_version": "16.0.19127.20860",
+      "directory": "word-16.0.19127.20860/20261107T171554485Z-a81ce639",
+      "reference": "strict-emf.json",
+      "fixture_count": 23,
+      "glyph_count": 10069,
+      "baseline_line_count": 0,
+      "visible_reference": "strict-visible.json",
+      "visible_glyph_count": 10063
     }
   ]
 }

@@ -386,6 +386,75 @@ fn word_mac_script_face(latin_ascii_stack: &str) -> Option<MacScriptFace> {
 const WINDOWS_SUPERSCRIPT_RAISE_EM: f32 = 0.35;
 const WINDOWS_SUBSCRIPT_LOWER_EM: f32 = 0.15;
 
+// Word for Windows 16.0.19127.20860, Arial, 6–30pt by half points.
+// The hinted moves are not a constant share of em (10pt: 3pt up / .5pt
+// down; 12pt: 4pt up / .5pt down). Keep this separate from Mac's traces.
+const WINDOWS_ARIAL_REGULAR_SCRIPT_MOVES: [[u8; 49]; 2] = [
+    [
+        5, 5, 5, 5, 6, 6, 6, 7, 6, 7, 8, 7, 8, 9, 9, 9, 10, 10, 11, 11, 11, 12, 12, 12, 13, 12, 13,
+        14, 14, 14, 15, 15, 15, 16, 16, 16, 17, 17, 17, 18, 18, 19, 19, 19, 20, 20, 20, 21, 21,
+    ],
+    [
+        1, 1, 1, 1, 2, 2, 1, 1, 1, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 3, 2, 2, 2, 3, 3, 3, 2, 2, 3, 3,
+        3, 3, 4, 4, 4, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 5, 5,
+    ],
+];
+
+// Regular, Bold, Italic, Bold Italic. Hinted clamping also depends on face.
+const WINDOWS_ARIAL_SCRIPT_MOVES: [[[u8; 49]; 2]; 4] = [
+    WINDOWS_ARIAL_REGULAR_SCRIPT_MOVES,
+    [
+        [
+            5, 5, 4, 5, 6, 6, 6, 7, 7, 7, 8, 8, 8, 9, 9, 9, 10, 10, 11, 12, 10, 12, 12, 13, 14, 13,
+            13, 14, 14, 15, 16, 15, 15, 16, 16, 16, 17, 17, 18, 18, 18, 19, 20, 20, 21, 21, 21, 22,
+            22,
+        ],
+        [
+            1, 1, 1, 2, 2, 1, 1, 1, 2, 2, 2, 1, 1, 2, 2, 2, 2, 2, 3, 2, 2, 2, 3, 3, 3, 3, 2, 2, 3,
+            3, 3, 3, 3, 4, 3, 3, 3, 4, 4, 4, 3, 4, 4, 4, 4, 4, 4, 5, 5,
+        ],
+    ],
+    [
+        [
+            5, 5, 5, 5, 6, 6, 6, 7, 6, 8, 9, 9, 7, 8, 9, 9, 10, 10, 11, 11, 11, 12, 12, 12, 13, 12,
+            13, 14, 14, 14, 15, 15, 15, 16, 16, 15, 17, 17, 17, 18, 18, 19, 19, 19, 20, 20, 20, 21,
+            21,
+        ],
+        [
+            1, 1, 1, 1, 2, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 2, 2, 2, 3,
+            3, 3, 3, 3, 4, 4, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 5, 5,
+        ],
+    ],
+    [
+        [
+            5, 5, 5, 5, 6, 6, 6, 7, 7, 7, 8, 8, 8, 9, 9, 10, 11, 11, 11, 11, 11, 13, 13, 13, 14,
+            13, 13, 14, 14, 14, 15, 15, 15, 16, 17, 17, 18, 18, 19, 19, 19, 20, 20, 19, 21, 20, 20,
+            21, 21,
+        ],
+        [
+            1, 1, 1, 1, 2, 2, 1, 1, 1, 2, 2, 2, 1, 2, 2, 2, 2, 2, 3, 3, 2, 2, 3, 3, 3, 3, 2, 2, 2,
+            3, 3, 3, 3, 4, 3, 3, 3, 3, 4, 4, 3, 3, 4, 4, 4, 4, 4, 5, 5,
+        ],
+    ],
+];
+
+fn is_windows_arial_script(latin_ascii_stack: &str) -> bool {
+    word_layout_platform() == WordLayoutPlatform::Windows
+        && latin_ascii_stack
+            .split(',')
+            .next()
+            .unwrap_or("")
+            .trim()
+            .trim_matches(['\'', '"'])
+            .eq_ignore_ascii_case("Arial")
+}
+
+/// The Windows Arial sweep keeps the same line pitch for ordinary, raised
+/// and lowered text. Explicit `w:position` still contributes to line height.
+pub fn word_ignores_script_shift_for_line_height(latin_ascii_stack: &str) -> bool {
+    word_layout_platform() == WordLayoutPlatform::Mac || is_windows_arial_script(latin_ascii_stack)
+}
+
 /// How far a superscript (`superscript`) or subscript run moves off the
 /// baseline, in points: up for a superscript, down for a subscript.
 /// `size_pt` is the run's size before [`word_shifted_script_size_pt`]
@@ -404,6 +473,29 @@ pub fn word_script_baseline_offset_pt(
     latin_ascii_stack: &str,
     superscript: bool,
 ) -> f32 {
+    word_script_baseline_offset_for_style_pt(size_pt, latin_ascii_stack, superscript, false, false)
+}
+
+/// Face-aware form: Windows Arial's hinted script moves differ by weight
+/// and slant. The existing Mac policy remains independent of these flags.
+pub fn word_script_baseline_offset_for_style_pt(
+    size_pt: f32,
+    latin_ascii_stack: &str,
+    superscript: bool,
+    bold: bool,
+    italic: bool,
+) -> f32 {
+    let half_points = size_pt * 2.0;
+    if is_windows_arial_script(latin_ascii_stack)
+        && (12.0..=60.0).contains(&half_points)
+        && (half_points - half_points.round()).abs() < 1e-4
+    {
+        let face = usize::from(bold) + 2 * usize::from(italic);
+        return f32::from(
+            WINDOWS_ARIAL_SCRIPT_MOVES[face][usize::from(!superscript)]
+                [half_points.round() as usize - 12],
+        ) / 2.0;
+    }
     match word_layout_platform() {
         WordLayoutPlatform::Mac => {
             if let Some(half_points) =
@@ -478,6 +570,11 @@ fn word_mac_clamped_script_move_half_points(
 /// face-dependent half-point size of [`word_mac_shifted_script_size_pt`] on
 /// Word for Mac.
 pub fn word_shifted_script_size_pt(size_pt: f32, latin_ascii_stack: &str) -> f32 {
+    if is_windows_arial_script(latin_ascii_stack) {
+        // Arial's 1331/2048 OS/2 script size, rounded to a half point, is
+        // shared by both Word platforms; their baseline moves differ.
+        return word_mac_shifted_script_size_pt(size_pt, latin_ascii_stack);
+    }
     match word_layout_platform() {
         WordLayoutPlatform::Mac => word_mac_shifted_script_size_pt(size_pt, latin_ascii_stack),
         _ => size_pt * 0.66,
@@ -3597,6 +3694,85 @@ mod tests {
             word_numbering_suffix_space_descriptor("10.50pt 'Courier New', monospace").as_deref(),
             Some("10.50pt Arial, 'Liberation Sans', sans-serif")
         );
+    }
+
+    #[test]
+    fn windows_arial_script_moves_match_all_four_word_drawing_sweeps() {
+        let previous = word_layout_platform();
+        set_word_layout_platform(WordLayoutPlatform::Windows);
+        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../tests/word-oracle/windows/word-16.0.19127.20860");
+        let mut faces = 0;
+        for capture in [
+            "20261107T031037551Z-1b5b89e9",
+            "20261107T031715590Z-f11f92de",
+        ] {
+            let reference: serde_json::Value = serde_json::from_slice(
+                &std::fs::read(root.join(capture).join("word-emf-reference.json")).unwrap(),
+            )
+            .unwrap();
+            assert_eq!(reference["word_product_version"], "16.0.19127.20860");
+            for fixture in reference["fixtures"].as_array().unwrap() {
+                let name = fixture["name"].as_str().unwrap();
+                let glyphs = fixture["glyphs"].as_array().unwrap();
+                assert_eq!(glyphs.len(), 49 * 3 * 13);
+                let bold = name.contains("-bold");
+                let italic = name.contains("-italic");
+                for (index, row) in glyphs.chunks_exact(13).enumerate() {
+                    assert_eq!(
+                        row.iter()
+                            .map(|g| g[1].as_str().unwrap())
+                            .collect::<String>(),
+                        "BaseShiftTail"
+                    );
+                    let script = index % 3;
+                    if script == 0 {
+                        continue;
+                    }
+                    let size = 6.0 + (index / 3) as f32 / 2.0;
+                    let expected =
+                        (row[0][3].as_f64().unwrap() - row[4][3].as_f64().unwrap()).abs();
+                    let actual = word_script_baseline_offset_for_style_pt(
+                        size,
+                        "Arial, sans-serif",
+                        script == 1,
+                        bold,
+                        italic,
+                    );
+                    assert!(
+                        (f64::from(actual) - expected).abs() <= 0.12,
+                        "{name} {size} script={script}: {actual} vs {expected}"
+                    );
+                }
+                faces += 1;
+            }
+        }
+        assert_eq!(faces, 4);
+        // The style-aware API must preserve the existing Mac policy.
+        set_word_layout_platform(WordLayoutPlatform::Mac);
+        for stack in ["Arial", "Calibri", "Century", "MS Mincho", "Yu Mincho"] {
+            for half_points in 12..=60 {
+                for superscript in [false, true] {
+                    let size = half_points as f32 / 2.0;
+                    let expected = word_script_baseline_offset_pt(size, stack, superscript);
+                    for (bold, italic) in
+                        [(false, false), (true, false), (false, true), (true, true)]
+                    {
+                        assert_eq!(
+                            word_script_baseline_offset_for_style_pt(
+                                size,
+                                stack,
+                                superscript,
+                                bold,
+                                italic
+                            ),
+                            expected
+                        );
+                    }
+                }
+            }
+        }
+        set_word_layout_platform(previous);
     }
 
     use super::*;
