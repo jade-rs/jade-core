@@ -84,6 +84,7 @@ fn records(xml: &str, all_containers: bool) -> Result<Vec<ValidationRecord>> {
     let mut records = Vec::new();
     let mut alternates: Vec<(usize, bool)> = Vec::new();
     let mut transparent = BTreeSet::new();
+    let mut processed_text = BTreeSet::new();
     let mut scope = crate::process_content::Scope::for_xml(xml);
     loop {
         let start = reader.buffer_position() as usize;
@@ -105,7 +106,7 @@ fn records(xml: &str, all_containers: bool) -> Result<Vec<ValidationRecord>> {
                 };
                 let name = local_name(e.name().as_ref()).to_vec();
                 let depth = stack.len();
-                let processed = container.is_none()
+                let processed = (container.is_none() || text.is_some())
                     && ns != MC_NAMESPACE
                     && !ns.is_empty()
                     && !supported_namespace(&ns)
@@ -115,6 +116,7 @@ fn records(xml: &str, all_containers: bool) -> Result<Vec<ValidationRecord>> {
                 }
                 if processed && !empty {
                     transparent.insert(depth);
+                    processed_text.insert(depth);
                 }
                 if (container.is_none() || rule.is_some()) && ns == MC_NAMESPACE {
                     if name == b"AlternateContent" && !empty {
@@ -263,17 +265,26 @@ fn records(xml: &str, all_containers: bool) -> Result<Vec<ValidationRecord>> {
                 }
             }
             Event::Text(e) => {
-                if let Some(t) = text.as_mut().filter(|t| t.depth == stack.len()) {
+                if let Some(t) = text
+                    .as_mut()
+                    .filter(|t| text_visible(t, stack.len(), &processed_text))
+                {
                     t.value.push_str(&e.decode()?);
                 }
             }
             Event::CData(e) => {
-                if let Some(t) = text.as_mut().filter(|t| t.depth == stack.len()) {
+                if let Some(t) = text
+                    .as_mut()
+                    .filter(|t| text_visible(t, stack.len(), &processed_text))
+                {
                     t.value.push_str(&e.decode()?);
                 }
             }
             Event::GeneralRef(e) => {
-                if let Some(t) = text.as_mut().filter(|t| t.depth == stack.len()) {
+                if let Some(t) = text
+                    .as_mut()
+                    .filter(|t| text_visible(t, stack.len(), &processed_text))
+                {
                     if let Some(s) = decoded_reference(&e) {
                         t.value.push_str(&s);
                     }
@@ -309,6 +320,7 @@ fn records(xml: &str, all_containers: bool) -> Result<Vec<ValidationRecord>> {
                 }
                 let closed = stack.len().saturating_sub(1);
                 transparent.remove(&closed);
+                processed_text.remove(&closed);
                 if alternates.last().is_some_and(|(at, _)| *at == closed) {
                     alternates.pop();
                 }
@@ -320,6 +332,9 @@ fn records(xml: &str, all_containers: bool) -> Result<Vec<ValidationRecord>> {
     }
     records.sort_by_key(|r| r.extended);
     Ok(records)
+}
+fn text_visible(text: &Text, depth: usize, processed: &BTreeSet<usize>) -> bool {
+    text.depth <= depth && (text.depth..depth).all(|at| processed.contains(&at))
 }
 fn assign(rule: &mut DataValidation, slot: u8, value: String) -> Result<()> {
     match slot {
