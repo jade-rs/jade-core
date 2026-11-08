@@ -88,6 +88,99 @@ fn break_repeat_places_the_same_operator_on_both_lines() {
     }
 }
 
+#[test]
+fn repeated_subtraction_displays_the_requested_signs_without_changing_the_equation() {
+    struct Signs;
+    impl StyledMathMeasure for Signs {
+        type Error = std::convert::Infallible;
+
+        fn measure_glyph(
+            &self,
+            text: &str,
+            _: MathTextStyle<'_>,
+        ) -> Result<MathMetrics, Self::Error> {
+            Ok(MathMetrics {
+                width: if text == "+" { 10.0 } else { 4.0 },
+                ascent: if text == "+" { 12.0 } else { 8.0 },
+                descent: 2.0,
+            })
+        }
+    }
+
+    let math = parse("<m:r><m:t>aa-bb−cc-dd-ee-ff+gg</m:t></m:r>");
+    for (setting, end_sign, start_sign) in [
+        (BreakBinarySubtraction::MinusMinus, "−", "−"),
+        (BreakBinarySubtraction::PlusMinus, "+", "−"),
+        (BreakBinarySubtraction::MinusPlus, "−", "+"),
+    ] {
+        let options = MathLayoutOptions {
+            max_width: Some(38.0),
+            settings: MathSettings {
+                break_binary: BreakBinary::Repeat,
+                break_binary_subtraction: setting,
+                wrap_indent_px: 2.0,
+                ..Default::default()
+            },
+            ..display()
+        };
+        let plan = layout_styled_math_with_options(&Signs, &math, style(), &options).unwrap();
+        assert_eq!(plan.text.matches('−').count(), 5);
+        assert_eq!(plan.text.matches('+').count(), 1);
+        let mut minus_breaks = 0;
+        for pair in plan.lines.windows(2) {
+            let [left, right] = pair else { unreachable!() };
+            let last = plan
+                .glyphs
+                .iter()
+                .filter(|g| g.baseline == left.baseline)
+                .max_by(|a, b| a.x.total_cmp(&b.x))
+                .unwrap();
+            let first = plan
+                .glyphs
+                .iter()
+                .filter(|g| g.baseline == right.baseline)
+                .min_by(|a, b| a.x.total_cmp(&b.x))
+                .unwrap();
+            assert_eq!(last.text_range, first.text_range);
+            if &plan.text[first.text_range.clone()] == "−" {
+                minus_breaks += 1;
+                assert_eq!(last.display_text(&plan.text), end_sign);
+                assert_eq!(first.display_text(&plan.text), start_sign);
+                for (glyph, line) in [(last, left), (first, right)] {
+                    if glyph.display_text(&plan.text) == "+" {
+                        assert_eq!(glyph.width, 10.0);
+                        assert!(line.ascent >= 12.0);
+                    }
+                }
+            } else {
+                assert_eq!(last.display_text(&plan.text), "+");
+                assert_eq!(first.display_text(&plan.text), "+");
+            }
+        }
+        assert!(minus_breaks > 0);
+        assert!(plan
+            .lines
+            .iter()
+            .all(|line| line.x + line.width <= 38.0 + 1e-9));
+
+        let unwrapped = layout_styled_math_with_options(
+            &Signs,
+            &math,
+            style(),
+            &MathLayoutOptions {
+                max_width: None,
+                ..options
+            },
+        )
+        .unwrap();
+        assert_eq!(unwrapped.lines.len(), 1);
+        assert!(unwrapped
+            .glyphs
+            .iter()
+            .all(|g| g.display_text(&unwrapped.text) == &unwrapped.text[g.text_range.clone()]));
+    }
+}
+
 #[derive(Default)]
 struct Measure {
     calls: RefCell<Vec<(String, f64)>>,
