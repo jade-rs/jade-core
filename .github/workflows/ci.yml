@@ -32,10 +32,18 @@ jobs:
           node-version: 24
       - name: Install pinned Lean toolchain manager
         shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           mkdir -p "$RUNNER_TEMP/elan-crdt"
           cd "$RUNNER_TEMP/elan-crdt"
-          curl --fail --location --retry 3 --output elan.tar.gz https://github.com/leanprover/elan/releases/download/v4.2.4/elan-x86_64-unknown-linux-gnu.tar.gz
+          for attempt in 1 2 3; do
+            if gh api repos/leanprover/elan/releases/assets/529114798 --header 'Accept: application/octet-stream' > elan.tar.gz; then
+              break
+            fi
+            [ "$attempt" -lt 3 ] || exit 1
+            sleep "$attempt"
+          done
           echo '42b94d4244e8353142c456ec0e4ca6528fd898a6c604d4059f494e706e431f63  elan.tar.gz' | sha256sum --check
           tar -xzf elan.tar.gz
           ./elan-init -y --default-toolchain none --no-modify-path
@@ -162,6 +170,8 @@ jobs:
           workspaces: |
             . -> target/word-mac-coordinates
       - name: Prepare verified macOS Skia binaries
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: python3 scripts/ci/prepare_macos_skia.py --output "$RUNNER_TEMP/jade-skia-0.87.0-macos.tar.gz"
       - name: Compare Mac drawing coordinates with committed Word references
         run: cargo test --manifest-path crates/jade-docx-native-render/Cargo.toml --locked --test word_mac_coordinates -- --test-threads=1
@@ -273,6 +283,8 @@ jobs:
           workspaces: |
             . -> target/native-macos
       - name: Prepare verified macOS Skia binaries
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: python3 scripts/ci/prepare_macos_skia.py --output "$RUNNER_TEMP/jade-skia-0.87.0-macos.tar.gz"
 
       - name: Cargo check native crates
@@ -350,6 +362,8 @@ jobs:
           workspaces: |
             . -> target/xlsx-native
       - name: Prepare verified macOS Skia binaries
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: python3 scripts/ci/prepare_macos_skia.py --output "$RUNNER_TEMP/jade-skia-0.87.0-macos.tar.gz"
       - name: Verify the vendored formula engine
         run: |
