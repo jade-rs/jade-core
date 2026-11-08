@@ -42,6 +42,7 @@ pub mod chart_cache;
 pub mod chart_format;
 pub mod charts;
 pub mod clipboard;
+mod conditional_cleanup;
 pub mod conditional_formats;
 mod copy_objects;
 pub mod data_tables;
