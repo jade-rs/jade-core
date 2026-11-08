@@ -1562,10 +1562,11 @@ enum ParagraphSurface {
     Body {
         path: Vec<PathEntry>,
     },
-    /// A display equation: its body path when it is in the main body (an
-    /// equation in a text box or a note has none).
+    /// A display equation in the body or a text box. Notes have neither
+    /// location until their separate XML parts support equation editing.
     Math {
         path: Option<Vec<PathEntry>>,
+        text_box: Option<TextBoxMathLocation>,
     },
     TextBox {
         host_path: Vec<PathEntry>,
@@ -1577,6 +1578,13 @@ enum ParagraphSurface {
         note_id: String,
         path: Vec<PathEntry>,
     },
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct TextBoxMathLocation {
+    host_path: Vec<PathEntry>,
+    run_index: usize,
+    block_path: Vec<PathEntry>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -5614,6 +5622,7 @@ impl WordDocument {
                     path.push(PathEntry::Element(idx));
                     out.push(ParagraphSurface::Math {
                         path: Some(path.clone()),
+                        text_box: None,
                     });
                     path.pop();
                 }
@@ -5665,7 +5674,10 @@ impl WordDocument {
                     }
                     path.pop();
                 }
-                BodyElement::Math(_) => out.push(ParagraphSurface::Math { path: None }),
+                BodyElement::Math(_) => out.push(ParagraphSurface::Math {
+                    path: None,
+                    text_box: None,
+                }),
             }
         }
     }
@@ -5727,7 +5739,18 @@ impl WordDocument {
                     }
                     path.pop();
                 }
-                BodyElement::Math(_) => out.push(ParagraphSurface::Math { path: None }),
+                BodyElement::Math(_) => {
+                    path.push(PathEntry::Element(idx));
+                    out.push(ParagraphSurface::Math {
+                        path: None,
+                        text_box: Some(TextBoxMathLocation {
+                            host_path: host_path.clone(),
+                            run_index,
+                            block_path: path.clone(),
+                        }),
+                    });
+                    path.pop();
+                }
             }
         }
     }
@@ -15357,9 +15380,19 @@ impl WordDocument {
         raw_omml: &str,
     ) -> Result<(), String> {
         match (self.paragraph_surfaces.get(paragraph).cloned(), run_index) {
-            (Some(ParagraphSurface::Math { path: Some(path) }), _) => {
-                self.replace_display_equation(paragraph, &path, raw_omml)
-            }
+            (
+                Some(ParagraphSurface::Math {
+                    path: Some(path), ..
+                }),
+                _,
+            ) => self.replace_display_equation(paragraph, &path, raw_omml),
+            (
+                Some(ParagraphSurface::Math {
+                    text_box: Some(location),
+                    ..
+                }),
+                _,
+            ) => self.replace_text_box_display_equation(&location, raw_omml),
             (
                 Some(ParagraphSurface::Body { .. } | ParagraphSurface::TextBox { .. }),
                 Some(run_index),
@@ -15437,7 +15470,7 @@ impl WordDocument {
         // of its XML.
         let ordinal = self.paragraph_surfaces[..surface]
             .iter()
-            .filter(|s| matches!(s, ParagraphSurface::Math { path: Some(_) }))
+            .filter(|s| matches!(s, ParagraphSurface::Math { path: Some(_), .. }))
             .count();
         let raw = self
             .raw_document
@@ -15459,6 +15492,70 @@ impl WordDocument {
             .ok_or_else(|| "document body is unavailable".to_string())?;
         let math = Self::locate_math_mut(&mut body.elements, path)
             .ok_or_else(|| "the equation is missing from the body".to_string())?;
+        math.raw_omml = replacement.raw_omml;
+        math.elements = replacement.elements;
+        Ok(())
+    }
+
+    fn replace_text_box_display_equation(
+        &mut self,
+        location: &TextBoxMathLocation,
+        raw_omml: &str,
+    ) -> Result<(), String> {
+        let root = Self::validate_authored_omml(raw_omml, "m:oMathPara")?;
+        let replacement = crate::parser::math::parse_math_paragraph(raw_omml.trim().to_string())
+            .map_err(|error| error.to_string())?;
+        if replacement.elements.is_empty() {
+            return Err("equation OMML must contain a math paragraph".to_string());
+        }
+        let run_id = self
+            .document
+            .as_ref()
+            .and_then(|document| document.body.as_ref())
+            .and_then(|body| Self::locate_paragraph(&body.elements, &location.host_path))
+            .and_then(|paragraph| paragraph.runs.get(location.run_index))
+            .and_then(|run| run.node_id)
+            .ok_or_else(|| "the text box host has no XML".to_string())?;
+        let raw = self
+            .raw_document
+            .as_mut()
+            .ok_or_else(|| "raw document xml is unavailable".to_string())?;
+        let host = raw
+            .element(run_id)
+            .ok_or_else(|| "the text box host XML is missing".to_string())?;
+        let mut contents = Vec::new();
+        Self::collect_text_box_content_ids(host, &mut contents);
+        let mut targets = Vec::new();
+        // Update each representation of this box, including a VML fallback,
+        // by its own block path rather than the main story's math ordinal.
+        for content in contents {
+            let paragraph = raw
+                .element(content)
+                .and_then(|content| {
+                    Self::locate_text_box_paragraph_element(content, &location.block_path)
+                })
+                .ok_or_else(|| "the text box equation paragraph XML is missing".to_string())?;
+            let mut equations = Vec::new();
+            Self::collect_equation_elements(raw, paragraph, true, &mut equations);
+            let target = equations
+                .first()
+                .copied()
+                .ok_or_else(|| "the text box equation XML is missing".to_string())?;
+            targets.push(target);
+        }
+        if targets.is_empty() {
+            return Err("the text box content XML is missing".to_string());
+        }
+        for target in targets {
+            Self::replace_xml_element(raw, target, root.clone())?;
+        }
+        let document = self
+            .document_mut()
+            .ok_or_else(|| "document is unavailable".to_string())?;
+        let text_box = Self::locate_text_box_mut(document, &location.host_path, location.run_index)
+            .ok_or_else(|| "the text box is missing".to_string())?;
+        let math = Self::locate_math_mut(&mut text_box.blocks, &location.block_path)
+            .ok_or_else(|| "the equation is missing from the text box".to_string())?;
         math.raw_omml = replacement.raw_omml;
         math.elements = replacement.elements;
         Ok(())
@@ -32965,15 +33062,23 @@ impl WordDocument {
         )
     }
 
-    /// The display equation at a math surface of the body.
+    /// The display equation at a math surface in the body or a text box.
     pub fn math_paragraph(&self, surface: usize) -> Option<&MathParagraph> {
-        let Some(ParagraphSurface::Math { path: Some(path) }) =
-            self.paragraph_surfaces.get(surface)
-        else {
-            return None;
-        };
-        let body = self.document.as_ref()?.body.as_ref()?;
-        Self::locate_math(&body.elements, path)
+        let document = self.document.as_ref()?;
+        match self.paragraph_surfaces.get(surface)? {
+            ParagraphSurface::Math {
+                path: Some(path), ..
+            } => Self::locate_math(&document.body.as_ref()?.elements, path),
+            ParagraphSurface::Math {
+                text_box: Some(location),
+                ..
+            } => {
+                let text_box =
+                    Self::locate_text_box(document, &location.host_path, location.run_index)?;
+                Self::locate_math(&text_box.blocks, &location.block_path)
+            }
+            _ => None,
+        }
     }
 
     fn locate_math<'a>(
