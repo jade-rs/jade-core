@@ -314,11 +314,27 @@ pub(crate) fn move_extensions(
                     return Ok(ext.into());
                 };
                 let mut moved = ext.to_owned();
-                for name in [
-                    b"conditionalFormattings".as_slice(),
-                    b"dataValidations",
-                    b"sparklineGroups",
+                for (name, kind) in [
+                    (
+                        b"conditionalFormattings".as_slice(),
+                        jade_xlsx_reader::worksheet_extensions::Kind::ConditionalFormats,
+                    ),
+                    (
+                        b"dataValidations".as_slice(),
+                        jade_xlsx_reader::worksheet_extensions::Kind::Validations,
+                    ),
+                    (
+                        b"sparklineGroups".as_slice(),
+                        jade_xlsx_reader::worksheet_extensions::Kind::Sparklines,
+                    ),
                 ] {
+                    if uri
+                        .as_deref()
+                        .and_then(jade_xlsx_reader::worksheet_extensions::Kind::from_uri)
+                        != Some(kind)
+                    {
+                        continue;
+                    }
                     let originals = xml_edit_ns::children_ns(&source.text, name, X14)?;
                     let mut index = 0;
                     moved = map_ns(&moved, name, X14, false, |_| {
@@ -350,14 +366,22 @@ pub(crate) fn move_extensions(
 // Priority is shared by standard and standalone extended rules. Paired x14
 // rules deliberately omit it; adding a priority would change their meaning.
 fn normalize_priorities_and_uids(xml: &str, ids: &mut IdPool) -> Result<String> {
+    let extensions = jade_xlsx_reader::worksheet_extensions::sources(xml)?;
     let mut reader = NsReader::from_str(xml);
     let mut edits = Vec::new();
     let mut rules = Vec::new();
     let mut seen_uids = BTreeSet::new();
     loop {
         let start = reader.buffer_position() as usize;
-        match reader.read_event()? {
-            Event::Start(e) | Event::Empty(e) => {
+        let event = reader.read_event()?;
+        match event {
+            Event::Start(ref e) | Event::Empty(ref e) => {
+                if extensions.opaque_at(start) {
+                    if matches!(event, Event::Start(_)) {
+                        reader.read_to_end(e.name())?;
+                    }
+                    continue;
+                }
                 let end = reader.buffer_position() as usize;
                 let (ns, _) = reader.resolver().resolve_element(e.name());
                 let known = matches!(ns,ResolveResult::Bound(ref n) if matches!(n.as_ref(),
