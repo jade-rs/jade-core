@@ -166,6 +166,7 @@ pub fn shift_sheet(
         guard_legacy_array_structure(sheet, change)?;
     }
     let grid = jade_xlsx_reader::cell_content::compatible_worksheet_source(xml)?;
+    let processed = jade_xlsx_reader::process_content::processed_elements(xml)?;
     let mut reader = Reader::from_str(xml);
     reader.config_mut().trim_text(false);
     let mut buf = Vec::new();
@@ -218,12 +219,15 @@ pub fn shift_sheet(
                     }
                     Ok(reader.buffer_position() as usize)
                 };
+                // A processed foreign wrapper contributes children, but its
+                // own name/attributes never participate in feature dispatch.
+                if processed.processes_content_at(start) {
+                    continue;
+                }
                 if matches!(local(&name), b"sheetData" | b"row" | b"c" | b"f")
                     && !grid.owns_start(start)
                 {
-                    if !grid.processes_content_at(start) {
-                        whole_end(&mut reader)?;
-                    }
+                    whole_end(&mut reader)?;
                     continue;
                 }
                 if matches!(local(&name), b"protectedRanges" | b"protectedRange") {
@@ -686,6 +690,7 @@ pub fn shift_sheet(
                     _ => {}
                 }
             }
+            Event::End(_) if processed.processes_content_end_at(start) => {}
             Event::End(ref element)
                 if matches!(
                     local(element.name().as_ref()),

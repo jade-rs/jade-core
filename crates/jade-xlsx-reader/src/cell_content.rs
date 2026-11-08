@@ -17,6 +17,7 @@ pub struct WorksheetSource {
     row_indexes: Vec<(usize, u32)>,
     cell_references: Vec<(usize, CellRef)>,
     processed_starts: Vec<usize>,
+    processed_ends: Vec<usize>,
     alternate_starts: Vec<usize>,
     branch_starts: Vec<(usize, bool)>,
     drawing_links: [Vec<Option<String>>; 2],
@@ -71,6 +72,11 @@ impl WorksheetSource {
     /// Its tag stays opaque while its owned descendants are processed.
     pub fn processes_content_at(&self, offset: usize) -> bool {
         self.processed_starts.binary_search(&offset).is_ok()
+    }
+    /// Start offset of an ignored wrapper's closing tag in the compatible
+    /// structure view. Its end tag must not close a standard worksheet feature.
+    pub fn processes_content_end_at(&self, offset: usize) -> bool {
+        self.processed_ends.binary_search(&offset).is_ok()
     }
     /// An actual MC AlternateContent start in the compatible structure view.
     pub fn has_alternate_content_at(&self, offset: usize) -> bool {
@@ -818,6 +824,7 @@ fn project(
                         !record_structure,
                     )?;
                 }
+                Some(Frame::ProcessContent) if structure_only => source.processed_ends.push(start),
                 Some(Frame::Branch { selected, head_end }) if all_known => {
                     let local = current_cell.is_some()
                         && path.last().is_some_and(|n| n == "c")

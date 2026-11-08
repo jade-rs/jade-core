@@ -11,43 +11,134 @@ const MC: &str = "http://schemas.openxmlformats.org/markup-compatibility/2006";
 const AC: &str = "http://schemas.microsoft.com/office/spreadsheetml/2011/1/ac";
 
 #[test]
+fn processed_wrappers_inside_extensions_keep_their_validation_edits() {
+    for wrapper in ["wrap", "dataValidations", "protectedRanges", "mergeCells"] {
+        let tail = format!(
+            r#"<s:extLst><s:ext uri="{{CCE6A557-97BC-4B89-ADB6-D9C93CAAB3DF}}"><u:{wrapper} mc:Ignorable="u" mc:ProcessContent="u:{wrapper}"><x:dataValidations count="1"><x:dataValidation type="custom"><x:formula1><m:f>Sheet1!$C1&gt;0</m:f></x:formula1><m:sqref>B1:B3</m:sqref></x:dataValidation></x:dataValidations></u:{wrapper}></s:ext></s:extLst>"#
+        );
+        let mut b = open(&tail);
+        assert_eq!(rules(&b).len(), 1);
+        let name = b.workbook().sheets[0].name.clone();
+        let mut package = OpcPackage::open(b.bytes()).unwrap();
+        package.replace(
+            PART,
+            xml(&b)
+                .replace("Sheet1!", &format!("'{name}'!"))
+                .into_bytes(),
+        );
+        b = HeadlessWorkbook::open(&package.write().unwrap()).unwrap();
+        let before = b.bytes().to_vec();
+        b.insert_rows(&name, 1, 1).unwrap();
+        assert_eq!(coverage(&rules(&b)[0]), ranges(&["B2:B4"]), "{wrapper}");
+        assert!(rules(&b)[0]
+            .formula1
+            .as_deref()
+            .unwrap()
+            .ends_with("!$C2>0"));
+        saved_and_history(&mut b, &before);
+        b.rename_sheet(&name, "Renamed").unwrap();
+        assert_eq!(rules(&b)[0].formula1.as_deref(), Some("Renamed!$C2>0"));
+        let reopened = HeadlessWorkbook::open(&b.save_bytes().unwrap()).unwrap();
+        assert_eq!(rules(&reopened), rules(&b));
+    }
+}
+
+#[test]
+fn processed_validation_wrappers_named_like_sheet_elements_keep_inner_edits() {
+    let opaque = "<u:payload keep=\"exact\">A99</u:payload>";
+    for wrapper in [
+        "dataValidations",
+        "dataValidation",
+        "sheetData",
+        "row",
+        "c",
+        "f",
+        "protectedRanges",
+        "mergeCells",
+        "rowBreaks",
+        "colBreaks",
+        "conditionalFormatting",
+        "extLst",
+    ] {
+        let tail = format!(
+            r#"<u:{wrapper} mc:Ignorable="u" mc:ProcessContent="u:{wrapper}">{opaque}<s:dataValidations count="1"><s:dataValidation type="custom" sqref="B1:B3"><s:formula1>$C1&gt;0</s:formula1></s:dataValidation></s:dataValidations></u:{wrapper}>"#
+        );
+        let mut b = open(&tail);
+        assert_eq!(rules(&b).len(), 1);
+        let name = b.workbook().sheets[0].name.clone();
+        let before = b.bytes().to_vec();
+        b.insert_rows(&name, 1, 1).unwrap();
+        assert_eq!(coverage(&rules(&b)[0]), ranges(&["B2:B4"]), "{wrapper}");
+        assert_eq!(rules(&b)[0].formula1.as_deref(), Some("$C2>0"));
+        assert!(xml(&b).contains(opaque));
+        saved_and_history(&mut b, &before);
+
+        let mut b = open(&tail);
+        let before = b.bytes().to_vec();
+        b.shift_cells(&name, CellRange::parse("B2").unwrap(), Axis::Rows, true)
+            .unwrap();
+        assert_eq!(rules(&b).len(), 3, "{wrapper}");
+        assert_eq!(
+            rules(&b).iter().flat_map(coverage).collect::<Vec<_>>(),
+            ranges(&["B1", "B2", "B3:B4"])
+        );
+        assert_eq!(
+            rules(&b)
+                .iter()
+                .map(|r| r.formula1.as_deref())
+                .collect::<Vec<_>>(),
+            [Some("$C1>0"), Some("$C2>0"), Some("$C2>0")]
+        );
+        assert!(xml(&b).contains(opaque));
+        saved_and_history(&mut b, &before);
+    }
+}
+
+#[test]
 fn whole_validation_container_choices_follow_edits_without_touching_opaque_branches() {
-    let opaque = r#"<mc:Choice Requires="u"><s:dataValidations count="1"><s:dataValidation sqref="Z9"><s:formula1>A99</s:formula1></s:dataValidation></s:dataValidations></mc:Choice>"#;
-    let tail = format!(
-        r#"<mc:AlternateContent>{opaque}<mc:Choice Requires="s"><s:dataValidations count="1"><s:dataValidation type="custom" sqref="B1:B3"><s:formula1>C1&gt;0</s:formula1></s:dataValidation></s:dataValidations></mc:Choice><mc:Fallback><s:dataValidations count="1"><s:dataValidation type="custom" sqref="D1:D3"><s:formula1>E1&gt;1</s:formula1></s:dataValidation></s:dataValidations></mc:Fallback></mc:AlternateContent>"#
-    );
-    let mut b = open(&tail);
-    assert_eq!(rules(&b).len(), 1);
-    let before = b.bytes().to_vec();
-    let name = b.workbook().sheets[0].name.clone();
-    b.insert_rows(&name, 1, 1).unwrap();
-    assert_eq!(coverage(&rules(&b)[0]), ranges(&["B2:B4"]));
-    assert_eq!(rules(&b)[0].formula1.as_deref(), Some("C2>0"));
-    let saved = xml(&b);
-    assert!(saved.contains(opaque));
-    assert!(saved.contains("sqref=\"D2:D4\""), "{saved}");
-    assert!(saved.contains(">E2&gt;1</s:formula1>"), "{saved}");
-    saved_and_history(&mut b, &before);
-    let mut authored = rules(&b)[0].clone();
-    authored.ranges = ranges(&["F2:F4"]);
-    let index = b.set_data_validation(&name, None, &authored).unwrap();
-    assert_eq!(index, 1);
-    assert_eq!(rules(&b)[index], authored);
-    let mut replacement = rules(&b)[0].clone();
-    replacement.formula1 = Some("C2>7".into());
-    b.set_data_validation(&name, Some(0), &replacement).unwrap();
-    assert_eq!(rules(&b)[0], replacement);
-    assert!(xml(&b).contains(">E2&gt;1</s:formula1>"));
-    b.delete_data_validation(&name, 0).unwrap();
-    assert_eq!(rules(&b), &[authored]);
-    assert!(xml(&b).contains(opaque));
-    let reopened = HeadlessWorkbook::open(&b.save_bytes().unwrap()).unwrap();
-    assert_eq!(rules(&reopened), rules(&b));
+    for processed in [false, true] {
+        let opaque = r#"<mc:Choice Requires="u"><s:dataValidations count="1"><s:dataValidation sqref="Z9"><s:formula1>A99</s:formula1></s:dataValidation></s:dataValidations></mc:Choice>"#;
+        let tail = format!(
+            r#"<mc:AlternateContent>{opaque}<mc:Choice Requires="s"><s:dataValidations count="1"><s:dataValidation type="custom" sqref="B1:B3"><s:formula1>C1&gt;0</s:formula1></s:dataValidation></s:dataValidations></mc:Choice><mc:Fallback><s:dataValidations count="1"><s:dataValidation type="custom" sqref="D1:D3"><s:formula1>E1&gt;1</s:formula1></s:dataValidation></s:dataValidations></mc:Fallback></mc:AlternateContent>"#
+        );
+        let tail = if processed {
+            format!(r#"<u:wrap mc:Ignorable="u" mc:ProcessContent="u:wrap">{tail}</u:wrap>"#)
+        } else {
+            tail
+        };
+        let mut b = open(&tail);
+        assert_eq!(rules(&b).len(), 1);
+        let before = b.bytes().to_vec();
+        let name = b.workbook().sheets[0].name.clone();
+        b.insert_rows(&name, 1, 1).unwrap();
+        assert_eq!(coverage(&rules(&b)[0]), ranges(&["B2:B4"]));
+        assert_eq!(rules(&b)[0].formula1.as_deref(), Some("C2>0"));
+        let saved = xml(&b);
+        assert!(saved.contains(opaque));
+        assert!(saved.contains("sqref=\"D2:D4\""), "{saved}");
+        assert!(saved.contains(">E2&gt;1</s:formula1>"), "{saved}");
+        saved_and_history(&mut b, &before);
+        let mut authored = rules(&b)[0].clone();
+        authored.ranges = ranges(&["F2:F4"]);
+        let index = b.set_data_validation(&name, None, &authored).unwrap();
+        assert_eq!(index, 1);
+        assert_eq!(rules(&b)[index], authored);
+        let mut replacement = rules(&b)[0].clone();
+        replacement.formula1 = Some("C2>7".into());
+        b.set_data_validation(&name, Some(0), &replacement).unwrap();
+        assert_eq!(rules(&b)[0], replacement);
+        assert!(xml(&b).contains(">E2&gt;1</s:formula1>"));
+        b.delete_data_validation(&name, 0).unwrap();
+        assert_eq!(rules(&b), &[authored]);
+        assert!(xml(&b).contains(opaque));
+        let reopened = HeadlessWorkbook::open(&b.save_bytes().unwrap()).unwrap();
+        assert_eq!(rules(&reopened), rules(&b));
+    }
 }
 
 #[test]
 fn conditional_standard_and_extended_containers_split_partial_edits_and_rename_sources() {
-    for extended in [false, true] {
+    for (extended, processed) in [(false, false), (false, true), (true, false), (true, true)] {
         let container = |column: &str, bound| {
             if extended {
                 format!(
@@ -68,6 +159,11 @@ fn conditional_standard_and_extended_containers_split_partial_edits_and_rename_s
             format!(r#"<s:extLst><s:ext uri="conditional">{branches}</s:ext></s:extLst>"#)
         } else {
             branches
+        };
+        let tail = if processed {
+            format!(r#"<u:wrap mc:Ignorable="u" mc:ProcessContent="u:wrap">{tail}</u:wrap>"#)
+        } else {
+            tail
         };
         let mut b = open(&tail);
         assert_eq!(rules(&b).len(), 1);

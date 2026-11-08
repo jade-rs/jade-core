@@ -160,6 +160,8 @@ pub(crate) fn rewrite(xml: &str, map: &Rewrite<'_>) -> Result<String> {
     let mut edits = Vec::new();
     let mut next_row = 0u32;
     let mut row = (0u32, 0u32);
+    let has_process_content = xml.contains("ProcessContent");
+    let mut compatibility = None;
     loop {
         let start = reader.buffer_position() as usize;
         let event = reader.read_event()?;
@@ -204,7 +206,17 @@ pub(crate) fn rewrite(xml: &str, map: &Rewrite<'_>) -> Result<String> {
                         b"conditionalFormattings" | b"sparklineGroups"
                     )
                     && owned_path(&[b"worksheet", b"extLst", b"ext"]);
-                let validation = matches!(name.as_slice(), b"dataValidations" | b"dataValidation");
+                let mut validation =
+                    matches!(name.as_slice(), b"dataValidations" | b"dataValidation");
+                // A nominated foreign wrapper can have the same local name.
+                // Traverse its children instead of consuming it as a rule.
+                if validation && has_process_content {
+                    if compatibility.is_none() {
+                        compatibility =
+                            Some(jade_xlsx_reader::process_content::processed_elements(xml)?);
+                    }
+                    validation = !compatibility.as_ref().unwrap().processes_content_at(start);
+                }
                 if cell || conditional || extension || validation {
                     let at = if cell {
                         let at = head_attr(&xml[start..reader.buffer_position() as usize], b"r")?

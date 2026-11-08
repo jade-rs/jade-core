@@ -8,6 +8,90 @@ const STRICT: &str = "http://purl.oclc.org/ooxml/spreadsheetml/main";
 const MC: &str = "http://schemas.openxmlformats.org/markup-compatibility/2006";
 
 #[test]
+fn compatible_structure_records_processed_closings_without_opaque_branch_offsets() {
+    let xml = worksheet(r#"<s:sheetData/><u:wrap><u:wrap/></u:wrap><mc:AlternateContent><mc:Choice Requires="u"><u:wrap></u:wrap></mc:Choice><mc:Fallback><u:wrap></u:wrap></mc:Fallback></mc:AlternateContent>"#)
+        .replace("<s:worksheet ", "<s:worksheet mc:Ignorable=\"u\" mc:ProcessContent=\"u:wrap\" ");
+    let source = jade_xlsx_reader::cell_content::compatible_worksheet_source(&xml).unwrap();
+    assert_eq!(
+        xml.match_indices("<u:wrap")
+            .map(|(at, _)| source.processes_content_at(at))
+            .collect::<Vec<_>>(),
+        [true, true, false, true]
+    );
+    assert_eq!(
+        xml.match_indices("</u:wrap>")
+            .map(|(at, _)| source.processes_content_end_at(at))
+            .collect::<Vec<_>>(),
+        [true, false, true]
+    );
+    assert!(!source.processes_content_end_at(xml.find("</s:worksheet>").unwrap()));
+}
+
+#[test]
+fn processed_validation_containers_use_expanded_names_and_scoped_ignorable_declarations() {
+    let rule = r#"<s:dataValidations count="1"><s:dataValidation type="whole" operator="equal" sqref="A1"><s:formula1>3</s:formula1></s:dataValidation></s:dataValidations>"#;
+    for main in [MAIN, STRICT] {
+        for (attributes, wrapper, visible) in [
+            (
+                "mc:Ignorable=\"u\" mc:ProcessContent=\"u:wrap\"",
+                "<u:wrap>RULE</u:wrap>",
+                true,
+            ),
+            (
+                "mc:Ignorable=\"u\" mc:ProcessContent=\"u:*\"",
+                "<u:other>RULE</u:other>",
+                true,
+            ),
+            (
+                "mc:Ignorable=\"u\" mc:ProcessContent=\"u:wrap\"",
+                "<u:wrap xmlns:u=\"urn:rebound\">RULE</u:wrap>",
+                false,
+            ),
+            (
+                "mc:Ignorable=\"u\" mc:ProcessContent=\"u:wrap\"",
+                "<v:wrap xmlns:v=\"urn:foreign\">RULE</v:wrap>",
+                true,
+            ),
+            (
+                "mc:ProcessContent=\"u:wrap\"",
+                "<u:wrap>RULE</u:wrap>",
+                false,
+            ),
+            (
+                "mc:Ignorable=\"u\" mc:ProcessContent=\"missing:wrap\"",
+                "<u:wrap>RULE</u:wrap>",
+                false,
+            ),
+            (
+                "u:Ignorable=\"u\" u:ProcessContent=\"u:wrap\"",
+                "<u:wrap>RULE</u:wrap>",
+                false,
+            ),
+            (
+                "mc:Ignorable=\"s\" mc:ProcessContent=\"s:wrapper\"",
+                "<s:wrapper>RULE</s:wrapper>",
+                false,
+            ),
+        ] {
+            let xml = worksheet(&format!("<s:sheetData/>{}", wrapper.replace("RULE", rule)))
+                .replace(MAIN, main)
+                .replace("<s:worksheet ", &format!("<s:worksheet {attributes} "));
+            let records = jade_xlsx_reader::data_validations::validation_records(&xml).unwrap();
+            assert_eq!(records.len(), usize::from(visible), "{xml}");
+            if visible {
+                assert!(records[0].conditional);
+                assert_eq!(records[0].rule.formula1.as_deref(), Some("3"));
+                assert!(xml[records[0].container.clone()].starts_with("<s:dataValidations"));
+                assert_eq!(
+                    read_xlsx(&package(&xml, &pool(""))).unwrap().sheets[0].data_validations,
+                    vec![records[0].rule.clone()]
+                );
+            }
+        }
+    }
+}
+
+#[test]
 fn validation_container_alternatives_select_one_owned_container_and_keep_source_offsets() {
     for main in [MAIN, STRICT] {
         for (requires, expected) in [("s", "3"), ("s u", "2"), ("missing", "2")] {
@@ -26,6 +110,23 @@ fn validation_container_alternatives_select_one_owned_container_and_keep_source_
             );
         }
     }
+}
+
+#[test]
+fn processed_validation_scopes_do_not_leak_from_skipped_or_closed_branches() {
+    let rule = r#"<s:dataValidations><s:dataValidation sqref="A1"><s:formula1>3</s:formula1></s:dataValidation></s:dataValidations>"#;
+    let body = format!(
+        r#"<s:sheetData/><mc:AlternateContent><mc:Choice Requires="u" mc:Ignorable="u" mc:ProcessContent="u:wrap"><u:wrap>{rule}</u:wrap></mc:Choice><mc:Fallback><u:wrap>{rule}</u:wrap></mc:Fallback></mc:AlternateContent><u:wrap>{rule}</u:wrap><u:wrap mc:Ignorable="u" mc:ProcessContent="u:wrap">{rule}</u:wrap><u:wrap>{rule}</u:wrap>"#
+    );
+    let xml = worksheet(&body);
+    let records = jade_xlsx_reader::data_validations::validation_records(&xml).unwrap();
+    assert_eq!(records.len(), 1);
+    assert_eq!(records[0].rule.formula1.as_deref(), Some("3"));
+    assert!(records[0].conditional);
+    let stored =
+        jade_xlsx_reader::data_validations::all_supported_validation_containers(&xml).unwrap();
+    assert_eq!(stored.len(), 1);
+    assert_eq!(stored[0].container, records[0].container);
 }
 
 #[test]
