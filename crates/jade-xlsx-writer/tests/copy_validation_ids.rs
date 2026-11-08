@@ -207,6 +207,10 @@ fn splitting_input_rules_assigns_independent_revision_ids() {
                             .required_part_str("xl/worksheets/sheet1.xml")
                             .unwrap();
                         let ids = owned_ids(&xml, alias);
+                        assert!(
+                            !xml.contains("xmlns:_jade_ctx"),
+                            "temporary context leaked: {xml}"
+                        );
                         assert!(ids.len() > 2, "{xml}");
                         assert_eq!(
                             ids.iter().collect::<BTreeSet<_>>().len(),
