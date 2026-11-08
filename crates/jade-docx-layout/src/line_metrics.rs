@@ -1913,13 +1913,15 @@ pub fn word_monospace_cell_em(grapheme: &str) -> Option<f64> {
     if chars.next().is_some() {
         return None;
     }
+    if matches!(ch, '\u{4e00}'..='\u{9fff}') {
+        return Some(1.0);
+    }
     match ch as u32 {
         0x20..=0x7E | 0xFF61..=0xFF9F => Some(0.5),
         0x3000..=0x30FF
         | 0x31F0..=0x31FF
         | 0x3200..=0x33FF
         | 0x3400..=0x4DBF
-        | 0x4E00..=0x9FFF
         | 0xF900..=0xFAFF
         | 0xFF01..=0xFF60
         | 0xFFE0..=0xFFE6
