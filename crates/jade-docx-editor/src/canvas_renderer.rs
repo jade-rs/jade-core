@@ -32302,7 +32302,7 @@ where
                 }
             }
         }
-        if authored_background.is_some() {
+        if authored_background.is_some() || !self.dark_mode_text || self.dark_mode_text_suppressed {
             return Rc::clone(&style.fill_color);
         }
         match self.resolve_text_fill_color(style.fill_color.as_ref()) {

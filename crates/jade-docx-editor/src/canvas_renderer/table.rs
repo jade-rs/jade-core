@@ -6156,12 +6156,20 @@ where
         self.draw_span_decorations(context, text, start, x, width, y, line_height, decorations);
         context.set_fill_style_str(resolved.as_ref());
         let combined_properties = match run_props {
-            Some(properties) => jade_docx_layout::combined_characters::combined_run_properties(
-                &TableLineWrapContext::new(context),
-                text,
-                properties,
-            )?,
-            None => None,
+            Some(properties)
+                if properties.fit_text.is_none()
+                    && properties
+                        .east_asian_layout
+                        .as_ref()
+                        .is_some_and(|layout| layout.combine) =>
+            {
+                jade_docx_layout::combined_characters::combined_run_properties(
+                    &TableLineWrapContext::new(context),
+                    text,
+                    properties,
+                )?
+            }
+            _ => None,
         };
         let text_scale_x = run_props
             .and_then(|props| props.text_scale)

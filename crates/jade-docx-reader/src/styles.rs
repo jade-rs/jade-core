@@ -47,6 +47,8 @@ pub struct StylesPart {
     /// Paragraph styles in XML order, for last-declared default precedence.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     paragraph_style_order: Vec<String>,
+    #[serde(skip)]
+    default_paragraph_style_id_cache: std::sync::OnceLock<Option<String>>,
     character_styles: HashMap<String, StyleDefinition>,
     /// Table styles, for the paragraph properties they give cell paragraphs.
     #[serde(default, skip_serializing_if = "HashMap::is_empty")]
@@ -165,6 +167,7 @@ impl StylesPart {
 
     /// Parses style information and stores the result in `self`.
     pub fn parse(&mut self, xml: &str) -> ParseResult<()> {
+        self.default_paragraph_style_id_cache.take();
         let mut reader = Reader::from_str(xml);
         reader.config_mut().trim_text(true);
 
@@ -463,25 +466,30 @@ impl StylesPart {
 
     /// Returns the paragraph style id Word treats as the default style.
     pub fn default_paragraph_style_id(&self) -> Option<&str> {
-        self.paragraph_style_order
-            .iter()
-            .rev()
-            .filter_map(|id| self.paragraph_styles.get(id))
-            .find(|style| style.is_default)
-            .map(|style| style.style_id.as_str())
-            // Older serialized metadata has no XML order. Retain its default
-            // rather than dropping all default formatting on restoration.
-            .or_else(|| {
-                self.paragraph_styles
-                    .values()
+        self.default_paragraph_style_id_cache
+            .get_or_init(|| {
+                self.paragraph_style_order
+                    .iter()
+                    .rev()
+                    .filter_map(|id| self.paragraph_styles.get(id))
                     .find(|style| style.is_default)
                     .map(|style| style.style_id.as_str())
+                    // Older serialized metadata has no XML order. Retain its default
+                    // rather than dropping all default formatting on restoration.
+                    .or_else(|| {
+                        self.paragraph_styles
+                            .values()
+                            .find(|style| style.is_default)
+                            .map(|style| style.style_id.as_str())
+                    })
+                    .or_else(|| {
+                        self.paragraph_styles
+                            .get("Normal")
+                            .map(|style| style.style_id.as_str())
+                    })
+                    .map(str::to_owned)
             })
-            .or_else(|| {
-                self.paragraph_styles
-                    .get("Normal")
-                    .map(|style| style.style_id.as_str())
-            })
+            .as_deref()
     }
 
     /// Resolves a paragraph style token supplied by UI/API callers to the
@@ -5157,6 +5165,17 @@ mod tests {
                 assert_eq!(restored.default_paragraph_style_id(), Some(last));
             }
         }
+    }
+
+    #[test]
+    fn reparsing_invalidates_cached_default_paragraph_style() {
+        let mut part = StylesPart::from_xml(
+            r#"<w:styles><w:style w:type="paragraph" w:default="1" w:styleId="First"/></w:styles>"#,
+        )
+        .unwrap();
+        assert_eq!(part.default_paragraph_style_id(), Some("First"));
+        part.parse(r#"<w:styles><w:style w:type="paragraph" w:default="1" w:styleId="Second"/></w:styles>"#).unwrap();
+        assert_eq!(part.default_paragraph_style_id(), Some("Second"));
     }
 
     #[test]

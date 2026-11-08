@@ -513,9 +513,14 @@ impl DocumentParser {
                         }
                         // A tracked change to a run's formatting: what the
                         // run's formatting was before it, for review.
-                        b"w:rPrChange" if parsing_run_props && !parsing_paragraph_run_props => {
+                        b"w:rPrChange" if parsing_run_props || parsing_paragraph_run_props => {
                             if let Ok(raw) = Self::capture_element_xml(reader, e.to_owned()) {
-                                if let Some(props) = current_run_props.as_mut() {
+                                let props = if parsing_paragraph_run_props {
+                                    current_paragraph_run_props.as_mut()
+                                } else {
+                                    current_run_props.as_mut()
+                                };
+                                if let Some(props) = props {
                                     props.change =
                                         self.parse_run_properties_change(&raw).map(Box::new);
                                 }
@@ -9212,11 +9217,8 @@ impl DocumentParser {
     /// normalized to `#RRGGBB` (`auto` → `None`) reusing the shading color
     /// normalizer. A resolvable theme color, including tint/shade, takes precedence.
     pub(crate) fn build_border_edge(attributes: Attributes<'_>) -> crate::document::BorderEdge {
-        let theme_color = Self::border_theme_color(attributes.clone());
-        let mut edge = crate::document::BorderEdge {
-            theme_color: Self::run_theme_color(attributes.clone()).map(Box::new),
-            ..Default::default()
-        };
+        let mut edge = crate::document::BorderEdge::default();
+        let (mut theme_name, mut tint, mut shade) = (None, None, None);
         for attr in attributes.flatten() {
             match attr.key.as_ref() {
                 b"w:val" => {
@@ -9235,10 +9237,31 @@ impl DocumentParser {
                 b"w:color" => {
                     edge.color = Self::normalize_shading_color(&attr.value);
                 }
+                b"w:themeColor" | b"w:themeTint" | b"w:themeShade" => {
+                    let value = String::from_utf8_lossy(&attr.value);
+                    let value = value.trim();
+                    if !value.is_empty() {
+                        let value = Some(Rc::from(value));
+                        match attr.key.as_ref() {
+                            b"w:themeColor" => theme_name = value,
+                            b"w:themeTint" => tint = value,
+                            _ => shade = value,
+                        }
+                    }
+                }
                 _ => {}
             }
         }
-        edge.color = theme_color.or(edge.color);
+        if let Some(name) = theme_name {
+            let theme = Box::new(RunThemeColor { name, tint, shade });
+            edge.color = crate::theme::text_theme_color(
+                &theme.name,
+                theme.tint.as_deref(),
+                theme.shade.as_deref(),
+            )
+            .or(edge.color);
+            edge.theme_color = Some(theme);
+        }
         edge
     }
 

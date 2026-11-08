@@ -31,18 +31,38 @@ impl WordDocument {
         let Some(xml) = self.read_xml_part_content(&self.tracking_settings_path()) else {
             return false;
         };
-        let Ok(doc) = DocxXmlDocument::parse(&xml) else {
-            return false;
-        };
-        doc.root().children.iter().any(|child| {
-            let XmlNode::Element(element) = child else {
-                return false;
-            };
-            Self::xml_local_name(&element.name) == "trackRevisions"
-                && !element.attributes.iter().any(|attr| {
-                    Self::xml_local_name(&attr.name) == "val"
-                        && matches!(attr.value.as_str(), "0" | "false" | "off")
-                })
+        // Only the direct setting is needed; avoid building a lossless XML
+        // tree for every document load just to read this recording switch.
+        let mut reader = quick_xml::Reader::from_str(&xml);
+        let mut depth = 0usize;
+        let mut enabled = false;
+        loop {
+            match reader.read_event() {
+                Ok(quick_xml::events::Event::Start(element)) => {
+                    if depth == 1 && element.local_name().as_ref() == b"trackRevisions" {
+                        enabled |= Self::tracking_setting_enabled(&element);
+                    }
+                    depth += 1;
+                }
+                Ok(quick_xml::events::Event::Empty(element)) => {
+                    if depth == 1 && element.local_name().as_ref() == b"trackRevisions" {
+                        enabled |= Self::tracking_setting_enabled(&element);
+                    }
+                }
+                Ok(quick_xml::events::Event::End(_)) => depth = depth.saturating_sub(1),
+                Ok(quick_xml::events::Event::Eof) => return enabled,
+                Err(_) => return false,
+                _ => {}
+            }
+        }
+    }
+
+    fn tracking_setting_enabled(element: &quick_xml::events::BytesStart<'_>) -> bool {
+        !element.attributes().flatten().any(|attr| {
+            attr.key.local_name().as_ref() == b"val"
+                && attr
+                    .normalized_value(quick_xml::XmlVersion::Implicit1_0)
+                    .is_ok_and(|value| matches!(value.as_ref(), "0" | "false" | "off"))
         })
     }
 
