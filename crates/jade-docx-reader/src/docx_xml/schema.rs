@@ -465,10 +465,10 @@ fn namespace_fix(root: &XmlElement, missing: &BTreeSet<&str>) -> Option<RootName
 }
 
 /// The walk behind [`write_plan`]. `scope` holds the prefixes declared at the
-/// current point; `checked` remembers prefixes already found in it, so the
-/// walk does not search `scope` (a root often declares thirty namespaces) for
-/// every `w:` name. Entries made inside a subtree that declares its own
-/// namespaces are dropped on leaving it.
+/// current point; `checked` remembers declared prefixes including their
+/// trailing colon, so repeated qualified names need no colon scan or scope
+/// search. Entries made inside a subtree that declares its own namespaces
+/// are dropped on leaving it.
 #[derive(Default)]
 struct Walk<'a> {
     scope: Vec<&'a str>,
@@ -514,16 +514,20 @@ impl<'a> Walk<'a> {
     }
 
     fn check_prefix(&mut self, name: &'a str) {
+        if self.checked.iter().any(|prefix| name.starts_with(*prefix)) {
+            return;
+        }
         let Some(colon) = name.as_bytes().iter().position(|&byte| byte == b':') else {
             return;
         };
         // ASCII ':' is a UTF-8 boundary, including in non-ASCII names.
         let prefix = &name[..colon];
-        if prefix == "xml" || prefix == "xmlns" || self.checked.contains(&prefix) {
+        if prefix == "xml" || prefix == "xmlns" {
             return;
         }
         if self.scope.contains(&prefix) {
-            self.checked.push(prefix);
+            // Include ':' so a cached "w:" cannot match "w14:" or "width".
+            self.checked.push(&name[..=colon]);
         } else {
             self.missing.insert(prefix);
         }
@@ -697,10 +701,98 @@ mod tests {
                     }
                 }
                 prop_assert_eq!(&walk.missing, &missing);
-                prop_assert_eq!(&walk.checked, &checked);
+                let actual_checked: Vec<_> = walk.checked.iter()
+                    .map(|prefix| prefix.strip_suffix(':').expect("cached separator"))
+                    .collect();
+                prop_assert_eq!(&actual_checked, &checked);
                 prop_assert_eq!(&walk.scope, &scope);
             }
         }
+    }
+
+    fn reference_missing_prefixes<'a>(
+        element: &'a XmlElement,
+        scope: &mut Vec<&'a str>,
+        missing: &mut std::collections::BTreeSet<&'a str>,
+    ) {
+        let depth = scope.len();
+        for attribute in &element.attributes {
+            if let Some(prefix) = attribute.name.strip_prefix("xmlns:") {
+                scope.push(prefix);
+            }
+        }
+        for name in std::iter::once(element.name.as_str()).chain(
+            element
+                .attributes
+                .iter()
+                .map(|attribute| attribute.name.as_str()),
+        ) {
+            if let Some((prefix, _)) = name.split_once(':') {
+                if !matches!(prefix, "xml" | "xmlns") && !scope.contains(&prefix) {
+                    missing.insert(prefix);
+                }
+            }
+        }
+        for child in &element.children {
+            if let XmlNode::Element(child) = child {
+                reference_missing_prefixes(child, scope, missing);
+            }
+        }
+        scope.truncate(depth);
+    }
+
+    proptest! {
+        #[test]
+        fn namespace_prefix_cache_preserves_descendant_scopes(
+            branches in prop::collection::vec((0u8..8, 0usize..8), 0..24),
+        ) {
+            let prefixes = ["w", "w14", "r", "custom", "名", "ww", "", "xml"];
+            let mut xml = String::from("<root>");
+            for (declarations, index) in branches {
+                xml.push_str("<group");
+                for (bit, prefix) in ["w", "w14", "r"].iter().enumerate() {
+                    if declarations & (1 << bit) != 0 {
+                        xml.push_str(&format!(" xmlns:{prefix}=\"urn:{prefix}\""));
+                    }
+                }
+                xml.push('>');
+                let prefix = prefixes[index];
+                // Repeat names within a scope, then use the same name outside it.
+                xml.push_str(&format!("<{prefix}:item/><nested><{prefix}:item/></nested></group><{prefix}:item/>"));
+            }
+            xml.push_str("</root>");
+            let document = DocxXmlDocument::parse(&xml).expect("test tree");
+            let root = document.root();
+            let mut walk = super::Walk::default();
+            walk.visit(root);
+            let mut expected = std::collections::BTreeSet::new();
+            reference_missing_prefixes(root, &mut Vec::new(), &mut expected);
+            prop_assert_eq!(walk.missing, expected);
+            prop_assert!(walk.scope.is_empty());
+            prop_assert!(walk.checked.is_empty());
+        }
+    }
+
+    #[test]
+    fn writing_redeclares_prefixes_used_after_their_descendant_scope() {
+        let xml = r#"<root><group xmlns:w="urn:local-word" xmlns:r="urn:local-rel"><w:p r:id="first"/><nested><w:p/></nested></group><w:p r:id="second"/><group xmlns:w14="urn:local-w14"><w14:item/></group><w14:item/><width/><w14extra:item/></root>"#;
+        let written = DocxXmlDocument::parse(xml).unwrap().to_string().unwrap();
+        let start = written.find("<root").unwrap();
+        let root = &written[start..start + written[start..].find('>').unwrap()];
+        assert!(root
+            .contains(r#"xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main""#));
+        assert!(root.contains(
+            r#"xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships""#
+        ));
+        assert!(
+            root.contains(r#"xmlns:w14="http://schemas.microsoft.com/office/word/2010/wordml""#)
+        );
+        assert!(root.contains(r#"mc:Ignorable="w14""#));
+        assert_eq!(written.matches("xmlns:w=").count(), 2);
+        assert_eq!(written.matches("xmlns:r=").count(), 2);
+        assert_eq!(written.matches("xmlns:w14=").count(), 2);
+        assert!(!root.contains("xmlns:w14extra="));
+        assert!(written.contains("<width/>") && written.contains("<w14extra:item/>"));
     }
 
     const W: &str = r#"xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main""#;
