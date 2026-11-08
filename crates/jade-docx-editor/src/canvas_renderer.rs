@@ -20070,7 +20070,7 @@ where
                         symbol: Rc::from(symbol),
                         x: line_start_x,
                         baseline,
-                        style: self.cmd_control_mark_style(default_properties.as_ref(), &style),
+                        style: self.cmd_control_mark_style(&style),
                     });
                 }
                 final_end_x = line_start_x + mark_width;
@@ -23144,8 +23144,7 @@ where
                                 symbol: Rc::from(symbol),
                                 x: line_start_x,
                                 baseline,
-                                style: self
-                                    .cmd_control_mark_style(mark_properties.as_deref(), &style),
+                                style: self.cmd_control_mark_style(&style),
                             });
                         }
                         placeholder_width = mark_width.max(placeholder_width);
@@ -24295,7 +24294,7 @@ where
                             symbol: Rc::from(symbol),
                             x: mark_x,
                             baseline,
-                            style: self.cmd_control_mark_style(properties_ref, &style),
+                            style: self.cmd_control_mark_style(&style),
                         });
                     }
                 }
@@ -31736,12 +31735,9 @@ where
         }
     }
 
-    fn cmd_control_mark_style(
-        &self,
-        properties: Option<&RunProperties>,
-        style: &AppliedRunStyle,
-    ) -> CmdTextStyle {
-        let mut command_style = self.cmd_text_style(properties, style);
+    fn cmd_control_mark_style(&self, style: &AppliedRunStyle) -> CmdTextStyle {
+        // Marks never paint the run's highlight or shading background.
+        let mut command_style = self.cmd_text_style(None, style);
         command_style.fill_color = Rc::from(CONTROL_MARK_COLOR);
         command_style.highlight_color = None;
         command_style.strike = false;
@@ -33535,7 +33531,7 @@ where
             }
         }
         for (symbol, x, width, properties) in marks {
-            let style = self.apply_run_style(properties.as_deref())?;
+            let style = self.apply_run_style_rc(properties.as_ref())?;
             let context = self.host.painter();
             // Centred in what it marks: measured first, then drawn.
             let mark_width = self.text_width_with_spacing(
@@ -33548,7 +33544,7 @@ where
                 symbol: Rc::from(symbol),
                 x: mark_x,
                 baseline,
-                style: self.cmd_control_mark_style(properties.as_deref(), &style),
+                style: self.cmd_control_mark_style(&style),
             };
             // Drawn as its command replays, so a painted line and a cached
             // one show the same mark.
@@ -43878,6 +43874,310 @@ mod tests {
         )
         .expect("build a renderer on the recording painter");
         (renderer, painter)
+    }
+
+    // Use uncached value resolution and the ordinary text style as the oracle:
+    // only these four fields differ between text and control marks.
+    fn expected_control_mark_style(
+        renderer: &CanvasRenderer<jade_painter::recording::RecordingPainter>,
+        properties: Option<&RunProperties>,
+    ) -> CmdTextStyle {
+        let style = renderer.resolve_applied_run_style_uncached(properties);
+        CmdTextStyle {
+            fill_color: Rc::from(CONTROL_MARK_COLOR),
+            highlight_color: None,
+            strike: false,
+            underline: false,
+            ..renderer.cmd_text_style(properties, &style)
+        }
+    }
+
+    #[test]
+    fn control_mark_styles_preserve_metrics_and_effects_without_text_decorations() {
+        let (mut renderer, _) = recording_renderer();
+        for dark_mode in [false, true] {
+            renderer.dark_mode_text = dark_mode;
+            for highlight in [None, Some("green"), Some("invalid")] {
+                for color in ["000000", "336699"] {
+                    let properties = RunProperties {
+                        font_size: Some(18.0),
+                        bold: Some(true),
+                        italic: Some(true),
+                        underline: Some(true),
+                        strike: Some(true),
+                        shadow: Some(true),
+                        outline: Some(true),
+                        emboss: Some(true),
+                        imprint: Some(true),
+                        char_spacing: Some(1.5),
+                        text_scale: Some(85.0),
+                        kerning: Some(8.0),
+                        baseline: Some("superscript".into()),
+                        color: Some(color.into()),
+                        highlight: highlight.map(Into::into),
+                        shading: Some(jade_docx_reader::document::Shading {
+                            fill: Some("#FFFF00".into()),
+                            ..Default::default()
+                        }),
+                        fonts: Some(RunFonts {
+                            ascii: Some("Arial".into()),
+                            h_ansi: Some("Calibri".into()),
+                            east_asia: Some("MS Mincho".into()),
+                            complex: Some("Times New Roman".into()),
+                            hint: Some(FontHint::EastAsia),
+                            ..Default::default()
+                        }),
+                        text_effects: Some(Box::new(crate::document::RunTextEffects {
+                            glow_color: Some("#FF0000".into()),
+                            glow_radius: Some(5.0),
+                            outline_color: Some("#0070C0".into()),
+                            outline_width: Some(0.75),
+                            ..Default::default()
+                        })),
+                        ..Default::default()
+                    };
+                    let applied = renderer.resolve_applied_run_style_uncached(Some(&properties));
+                    let text = renderer.cmd_text_style(Some(&properties), &applied);
+                    assert!(text.highlight_color.is_some());
+                    assert!(text.strike && text.underline);
+                    assert!(text.effects.is_some());
+                    assert_ne!(text.baseline_shift_px, 0.0);
+                    assert_eq!(
+                        renderer.cmd_control_mark_style(&applied),
+                        expected_control_mark_style(&renderer, Some(&properties)),
+                        "dark={dark_mode}, highlight={highlight:?}, color={color}"
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn control_mark_commands_and_paint_follow_shared_run_edits_and_visibility() {
+        use jade_painter::recording::{Op, RecordingPainter};
+        let painter = RecordingPainter::with_width_per_char(6.0);
+        let mut renderer = CanvasRenderer::with_host(
+            Box::new(NonCanvasHost {
+                painter: painter.clone(),
+            }),
+            true,
+        )
+        .unwrap();
+        let mut shared = Rc::new(RunProperties {
+            font_family: Some("Arial".into()),
+            font_size: Some(12.0),
+            underline: Some(true),
+            highlight: Some("green".into()),
+            ..Default::default()
+        });
+        let secondary = Rc::new(RunProperties {
+            font_family: Some("MS Mincho".into()),
+            font_size: Some(20.0),
+            strike: Some(true),
+            color: Some("336699".into()),
+            ..Default::default()
+        });
+        let original = Rc::clone(&shared);
+        let text = " \u{00a0}\u{3000}\u{00ad}x";
+        let line = SelectionLineLayout {
+            fragments: Rc::from([SelectionFragmentLayout {
+                start: 0,
+                end: text.len(),
+                x: 10.0,
+                width: 100.0,
+                glyphs: text
+                    .char_indices()
+                    .enumerate()
+                    .map(|(i, (start, ch))| GlyphBox {
+                        start,
+                        end: start + ch.len_utf8(),
+                        x: i as f64 * 20.0,
+                        // NonCanvasHost measures one mark as 10px.
+                        width: 14.0,
+                    })
+                    .collect::<Vec<_>>()
+                    .into(),
+                ..Default::default()
+            }]),
+            tab_stops: Rc::from([
+                TabStopLayout {
+                    start_x: 110.0,
+                    end_x: 130.0,
+                    ..Default::default()
+                },
+                TabStopLayout {
+                    start_x: 140.0,
+                    end_x: 138.0,
+                    ..Default::default()
+                },
+            ]),
+            ..Default::default()
+        };
+        for stage in 0..5 {
+            if stage == 1 {
+                // The warmed identity cache owns the old Rc, so editing must
+                // detach and retain the original cached style independently.
+                let edited = Rc::make_mut(&mut shared);
+                edited.font_family = Some("Calibri".into());
+                edited.font_size = Some(24.0);
+                edited.bold = Some(true);
+            } else if stage == 2 {
+                shared = Rc::new((*shared).clone());
+            } else if stage == 4 {
+                shared = Rc::clone(&original);
+            }
+            let primary = (stage != 3).then(|| Rc::clone(&shared));
+            let mut first = mark_lookup_segment(0, 3, " \u{00a0}".into());
+            first.properties = primary.clone();
+            let mut second = mark_lookup_segment(3, 8, "\u{3000}\u{00ad}".into());
+            second.properties = Some(Rc::clone(&secondary));
+            let segments = [&first, &second];
+            for mask in 0..8 {
+                renderer.mark_kinds = crate::FormattingMarkKinds {
+                    spaces: mask & 1 != 0,
+                    optional_hyphens: mask & 2 != 0,
+                    tabs: mask & 4 != 0,
+                    ..Default::default()
+                };
+                let expected: Vec<_> = [
+                    (mask & 1 != 0, "·", 12.0, primary.as_deref()),
+                    (mask & 1 != 0, "·", 32.0, primary.as_deref()),
+                    (mask & 1 != 0, "□", 52.0, Some(secondary.as_ref())),
+                    (mask & 2 != 0, "¬", 72.0, Some(secondary.as_ref())),
+                    (mask & 4 != 0, "→", 115.0, primary.as_deref()),
+                    (mask & 4 != 0, "→", 140.0, primary.as_deref()),
+                ]
+                .into_iter()
+                .filter(|(shown, ..)| *shown)
+                .map(|(_, symbol, x, properties)| DrawCommand::ControlMark {
+                    symbol: symbol.into(),
+                    x,
+                    baseline: 34.0,
+                    style: expected_control_mark_style(&renderer, properties),
+                })
+                .collect();
+                for _ in 0..2 {
+                    painter.clear();
+                    let mut commands = Vec::new();
+                    renderer
+                        .draw_whitespace_marks(&segments, &line, 34.0, Some(&mut commands))
+                        .unwrap();
+                    assert_eq!(commands, expected, "stage={stage}, mask={mask}");
+                    let replay = RecordingPainter::with_width_per_char(6.0);
+                    crate::draw_command::executor::execute_commands(&replay, &expected).unwrap();
+                    let painted = |ops: Vec<Op>| {
+                        ops.into_iter()
+                            .filter(|op| {
+                                matches!(
+                                    op,
+                                    Op::FillText(..)
+                                        | Op::StrokeText(..)
+                                        | Op::FillRect(..)
+                                        | Op::StrokeRect(..)
+                                )
+                            })
+                            .collect::<Vec<_>>()
+                    };
+                    assert_eq!(painted(painter.ops()), painted(replay.ops()));
+                    assert_eq!(
+                        effective_fill_text_fonts(&painter.ops()),
+                        effective_fill_text_fonts(&replay.ops())
+                    );
+                    assert_eq!(unbalanced_saves(&painter), 0);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn control_marks_repaint_matches_fresh_after_format_and_option_changes() {
+        use jade_painter::recording::Op;
+        let marks = |ops: Vec<Op>| {
+            let mut state = (String::new(), String::new());
+            let mut saved = Vec::new();
+            let mut painted = Vec::new();
+            for op in ops {
+                match op {
+                    Op::Save => saved.push(state.clone()),
+                    Op::Restore => state = saved.pop().expect("balanced painter state"),
+                    Op::SetFont(font) => state.0 = font,
+                    Op::SetFillStyle(fill) => state.1 = fill,
+                    Op::FillText(text, x, y)
+                        if ["·", "□", "¬", "→", "↓", "⇓", "↵"].contains(&text.as_str()) =>
+                    {
+                        painted.push((text, x, y, state.clone()));
+                    }
+                    _ => {}
+                }
+            }
+            assert!(saved.is_empty());
+            painted
+        };
+        let mut document =
+            doc_with_paragraph_texts(&["a b\u{00a0}c\u{3000}d\u{00ad}e\tf\nnext", ""]);
+        let properties = RunProperties {
+            font_family: Some("Arial".into()),
+            font_size: Some(14.0),
+            underline: Some(true),
+            strike: Some(true),
+            highlight: Some("green".into()),
+            color: Some("000000".into()),
+            ..Default::default()
+        };
+        document.body.as_mut().unwrap().elements[0]
+            .as_paragraph_mut()
+            .unwrap()
+            .runs[0]
+            .properties = Some(properties);
+        let (mut renderer, painter) = recording_renderer();
+        let mut options = Options::default();
+        for step in 0..5 {
+            options.show_formatting_marks = matches!(step, 0 | 1 | 4);
+            options.set_dark_mode(step % 2 != 0);
+            options.set_formatting_mark_kinds(crate::FormattingMarkKinds {
+                spaces: step != 3,
+                ..Default::default()
+            });
+            if step == 1 {
+                let run = &mut document.body.as_mut().unwrap().elements[0]
+                    .as_paragraph_mut()
+                    .unwrap()
+                    .runs[0];
+                run.text.push_str(" edited ");
+                let properties = run.properties.as_mut().unwrap();
+                properties.font_family = Some("Calibri".into());
+                properties.font_size = Some(22.0);
+                properties.bold = Some(true);
+                renderer.invalidate_layout_from(0);
+            }
+            let (mut fresh, fresh_painter) = recording_renderer();
+            fresh.render(&document, &options).unwrap();
+            let expected = marks(fresh_painter.ops());
+            assert_eq!(expected.is_empty(), step == 3);
+            assert!(expected
+                .iter()
+                .all(|(_, _, _, (_, color))| color == CONTROL_MARK_COLOR));
+            assert_eq!(
+                expected.iter().any(|(symbol, ..)| symbol == "↵"),
+                matches!(step, 0 | 1 | 4)
+            );
+            painter.clear();
+            renderer.render(&document, &options).unwrap();
+            assert_eq!(marks(painter.ops()), expected, "updated render step={step}");
+            painter.clear();
+            renderer.reset_paragraph_render_cache_stats();
+            renderer.mark_full_repaint();
+            renderer.render(&document, &options).unwrap();
+            // Formatting marks deliberately bypass the paragraph paint cache.
+            // Hiding all marks must exercise replay; showing them again must
+            // rebuild the marks instead of replaying the hidden-mark commands.
+            assert_eq!(
+                renderer.paragraph_render_cache_stats().hits > 0,
+                step == 3,
+                "paragraph replay policy step={step}"
+            );
+            assert_eq!(marks(painter.ops()), expected, "cached replay step={step}");
+        }
     }
 
     #[test]
