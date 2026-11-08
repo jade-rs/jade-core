@@ -46773,7 +46773,7 @@ mod tests {
                     painter.clear();
                     let mut commands = Vec::new();
                     renderer
-                        .draw_whitespace_marks(&segments, &line, 34.0, Some(&mut commands))
+                        .draw_whitespace_marks(&segments, &line, 34.0, false, Some(&mut commands))
                         .unwrap();
                     assert_eq!(commands, expected, "stage={stage}, mask={mask}");
                     let replay = RecordingPainter::with_width_per_char(6.0);
