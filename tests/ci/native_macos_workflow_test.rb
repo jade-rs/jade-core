@@ -58,6 +58,7 @@ class NativeMacosWorkflowTest < Minitest::Test
       step = steps.fetch(preparation)
       refute step.key?("if"), name
       refute step.fetch("continue-on-error", false), name
+      assert_equal "${{ github.token }}", step.fetch("env").fetch("GH_TOKEN"), name
       assert_includes step.fetch("run"), "scripts/ci/prepare_macos_skia.py"
       assert_includes step.fetch("run"), '--output "$RUNNER_TEMP/'
       first_cargo = steps.index do |item|

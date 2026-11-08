@@ -3,11 +3,13 @@ import argparse
 import hashlib
 import os
 from pathlib import Path
+import subprocess
 import tomllib
 import urllib.request
 
 VERSION = "0.87.0"
-ASSET_URL = "https://api.github.com/repos/rust-skia/skia-binaries/releases/assets/266267944?download=1"
+ASSET_API_PATH = "repos/rust-skia/skia-binaries/releases/assets/266267944"
+ASSET_URL = f"https://api.github.com/{ASSET_API_PATH}?download=1"
 ASSET_SHA256 = "f15a955e61503f77d57d3cfee7362aabe93ea934d6580065a96de5519f2e7019"
 LOCKS = (
     "crates/jade-skia-painter/Cargo.lock",
@@ -31,6 +33,13 @@ def prepare_archive(destination, expected_sha=ASSET_SHA256):
     destination = Path(destination)
     if destination.exists():
         data = destination.read_bytes()
+    elif os.environ.get("GH_TOKEN"):
+        # gh handles the authenticated asset request and its download redirect.
+        # Keep the token in the environment rather than command arguments.
+        data = subprocess.run(
+            ["gh", "api", ASSET_API_PATH, "--header", "Accept: application/octet-stream"],
+            check=True, stdout=subprocess.PIPE, timeout=60,
+        ).stdout
     else:
         request = urllib.request.Request(
             ASSET_URL,

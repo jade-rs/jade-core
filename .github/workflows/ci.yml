@@ -170,6 +170,8 @@ jobs:
           workspaces: |
             . -> target/word-mac-coordinates
       - name: Prepare verified macOS Skia binaries
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: python3 scripts/ci/prepare_macos_skia.py --output "$RUNNER_TEMP/jade-skia-0.87.0-macos.tar.gz"
       - name: Compare Mac drawing coordinates with committed Word references
         run: cargo test --manifest-path crates/jade-docx-native-render/Cargo.toml --locked --test word_mac_coordinates -- --test-threads=1
@@ -281,6 +283,8 @@ jobs:
           workspaces: |
             . -> target/native-macos
       - name: Prepare verified macOS Skia binaries
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: python3 scripts/ci/prepare_macos_skia.py --output "$RUNNER_TEMP/jade-skia-0.87.0-macos.tar.gz"
 
       - name: Cargo check native crates
@@ -358,6 +362,8 @@ jobs:
           workspaces: |
             . -> target/xlsx-native
       - name: Prepare verified macOS Skia binaries
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: python3 scripts/ci/prepare_macos_skia.py --output "$RUNNER_TEMP/jade-skia-0.87.0-macos.tar.gz"
       - name: Verify the vendored formula engine
         run: |
