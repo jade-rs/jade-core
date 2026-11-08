@@ -365,6 +365,7 @@ pub struct MathZone {
     pub plan: std::rc::Rc<OwnedMathPlan>,
 }
 
+#[cfg(feature = "opentype-math")]
 pub fn paint_boxed_math<P: Painter>(
     painter: &P,
     plan: &StyledMathLayout<'_>,
@@ -418,6 +419,7 @@ pub fn paint_boxed_math<P: Painter>(
 }
 
 /// Draws a stretched delimiter, a radical sign, a wide accent or a border.
+#[cfg(feature = "opentype-math")]
 fn paint_math_shape<P: Painter>(
     painter: &P,
     shape: &jade_docx_layout::math_layout::styled::MathShape<'_>,
