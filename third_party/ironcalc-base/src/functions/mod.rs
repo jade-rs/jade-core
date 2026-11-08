@@ -21,6 +21,7 @@ mod logical;
 mod lookup_and_reference;
 mod macros;
 mod math_and_trigonometry;
+pub(crate) use math_and_trigonometry::array_size::check_array_size;
 mod spill_functions;
 mod statistical;
 mod subtotal;

@@ -1,0 +1,17 @@
+{
+  "engine_commit": "2ef8f939509680fb21cc01213de0319a331bcb27",
+  "word_product_version": "16.0.19127.20860",
+  "capture_id": "20261107T132035593Z-34f3c733",
+  "reference_kind": "emf",
+  "engine_source_worktree_dirty": false,
+  "strict_fixtures": [
+    "word-windows-edge-table-negative-spacing-autofit-unequal-3-compat14",
+    "word-windows-edge-table-negative-spacing-bidi-unequal-3-compat14"
+  ],
+  "matching_fixtures": [
+    "word-windows-edge-table-negative-spacing-autofit-unequal-3-compat14",
+    "word-windows-edge-table-negative-spacing-bidi-unequal-3-compat14"
+  ],
+  "pending_fixtures": [],
+  "table_glyph_projection": "unclipped"
+}

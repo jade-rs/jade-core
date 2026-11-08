@@ -16,6 +16,33 @@ mod fn_unicode;
 
 use crate::test::util::new_empty_model;
 
+#[test]
+fn concat_requires_one_to_253_arguments() {
+    let mut model = new_empty_model();
+    model._set("A1", "=CONCAT()");
+    model._set("A2", &format!("=CONCAT({})", vec!["\"x\""; 254].join(",")));
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "#ERROR!");
+    assert_eq!(model._get_text("A2"), "#ERROR!");
+}
+
+#[test]
+fn a_circular_text_argument_does_not_become_a_successful_error_array() {
+    let mut model = new_empty_model();
+    model._set("A1", "=REPT(A1,{1,2})");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "#CIRC!");
+    assert_eq!(model._get_text("B1"), "");
+}
+
+#[test]
+fn substitute_missing_replacement_returns_an_arity_error_without_panicking() {
+    let mut model = new_empty_model();
+    model._set("A1", "=SUBSTITUTE(\"abc\",\"a\")");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "#ERROR!");
+}
+
 // ── ASC ───────────────────────────────────────────────────────────────────────
 
 #[test]
@@ -71,6 +98,36 @@ fn test_fixed_basic() {
 }
 
 // ── NUMBERVALUE ───────────────────────────────────────────────────────────────
+
+#[test]
+fn value_uses_the_locale_currency_symbol() {
+    let mut model = crate::model::Model::new_empty("currency", "en-GB", "UTC", "en").unwrap();
+    let currency = model.locale.currency.symbol.clone();
+    model._set("A1", &format!("=VALUE(\"{currency}1,234\")"));
+    model.evaluate();
+    let at = model._parse_reference("A1");
+    match model.evaluate_cell(at) {
+        crate::calc_result::CalcResult::Number(value) => assert_eq!(value, 1234.0),
+        _ => panic!("Expected currency conversion: {}", model._get_text("A1")),
+    }
+}
+
+#[test]
+fn numbervalue_uses_the_current_locale_when_separators_are_omitted() {
+    for (locale, text) in [("de", "2.500,27"), ("fr", "2 500,27")] {
+        let mut model = crate::model::Model::new_empty("locale", locale, "UTC", "en").unwrap();
+        model._set("A1", &format!("=NUMBERVALUE(\"{text}\")"));
+        model.evaluate();
+        let at = model._parse_reference("A1");
+        match model.evaluate_cell(at) {
+            crate::calc_result::CalcResult::Number(value) => assert_eq!(value, 2500.27),
+            _ => panic!(
+                "Expected numeric result for {locale}: {}",
+                model._get_text("A1")
+            ),
+        }
+    }
+}
 
 #[test]
 fn test_numbervalue_basic() {

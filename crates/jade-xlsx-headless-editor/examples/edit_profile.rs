@@ -8,6 +8,7 @@ use jade_xlsx_headless_api::CellInput;
 use jade_xlsx_headless_editor::HeadlessWorkbook;
 
 /// User plus system CPU time this process has used.
+#[cfg(unix)]
 fn cpu_time() -> Duration {
     let mut usage = std::mem::MaybeUninit::<libc::rusage>::zeroed();
     // SAFETY: getrusage fills the struct it is given.
@@ -19,6 +20,52 @@ fn cpu_time() -> Duration {
         Duration::from_secs(value.tv_sec as u64) + Duration::from_micros(value.tv_usec as u64)
     };
     time(usage.ru_utime) + time(usage.ru_stime)
+}
+
+#[cfg(windows)]
+fn cpu_time() -> Duration {
+    #[repr(C)]
+    #[derive(Default)]
+    struct FileTime {
+        low: u32,
+        high: u32,
+    }
+    #[link(name = "kernel32")]
+    unsafe extern "system" {
+        fn GetCurrentProcess() -> *mut std::ffi::c_void;
+        fn GetProcessTimes(
+            process: *mut std::ffi::c_void,
+            creation: *mut FileTime,
+            exit: *mut FileTime,
+            kernel: *mut FileTime,
+            user: *mut FileTime,
+        ) -> i32;
+    }
+    let (mut creation, mut exit, mut kernel, mut user) = (
+        FileTime::default(),
+        FileTime::default(),
+        FileTime::default(),
+        FileTime::default(),
+    );
+    // SAFETY: the pseudo-handle is valid for this process; all output pointers
+    // address distinct initialized FILETIME structures of the Win32 layout.
+    let success = unsafe {
+        GetProcessTimes(
+            GetCurrentProcess(),
+            &mut creation,
+            &mut exit,
+            &mut kernel,
+            &mut user,
+        )
+    };
+    assert_ne!(
+        success,
+        0,
+        "GetProcessTimes failed: {}",
+        std::io::Error::last_os_error()
+    );
+    let ticks = |time: FileTime| (u64::from(time.high) << 32) | u64::from(time.low);
+    Duration::from_nanos((ticks(kernel) + ticks(user)) * 100)
 }
 
 fn timed<T>(label: &str, body: impl FnOnce() -> T) -> T {
