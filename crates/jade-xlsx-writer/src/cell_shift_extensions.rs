@@ -79,14 +79,9 @@ fn map_ns(
     xml: &str,
     name: &[u8],
     ns: &[u8],
-    descend: bool,
     mut f: impl FnMut(&str) -> Result<String>,
 ) -> Result<String> {
-    let entries = if descend {
-        xml_edit_ns::descendants_ns(xml, name, ns)?
-    } else {
-        xml_edit_ns::children_ns(xml, name, ns)?
-    };
+    let entries = xml_edit_ns::children_ns(xml, name, ns)?;
     let mut edits = Vec::new();
     for (start, end, c) in entries {
         let moved = f(&c.text)?;
@@ -119,13 +114,13 @@ fn set_coverage(xml: &str, ranges: &[CellRange]) -> Result<String> {
         .map(range_text)
         .collect::<Vec<_>>()
         .join(" ");
-    map_ns(xml, b"sqref", XM, false, |s| text_content(s, &text))
+    map_ns(xml, b"sqref", XM, |s| text_content(s, &text))
 }
-fn formula_map(xml: &str, f: impl Fn(&str) -> String) -> Result<String> {
-    map_ns(xml, b"f", XM, true, |s| text_content(s, &f(&leaf_text(s)?)))
+fn conditional_formulas(xml: &str, f: impl Fn(&str) -> String) -> Result<String> {
+    crate::worksheet_formulas::conditional(xml, X14, true, &|formula, _| f(formula), None)
 }
-fn structural(xml: &str, change: &CellShift) -> Result<String> {
-    formula_map(xml, |f| shift_cells_formula(f, &change.sheet, change))
+fn structural_conditional(xml: &str, change: &CellShift) -> Result<String> {
+    conditional_formulas(xml, |f| shift_cells_formula(f, &change.sheet, change))
 }
 fn retain_nonempty(xml: String, name: &[u8]) -> Result<String> {
     Ok(
@@ -186,7 +181,10 @@ fn move_cf(
                 .filter(|id| old_pairs.contains_key(*id) && !standalone)
             {
                 if let Some(targets) = pairs.get(id) {
-                    result.push_str(&structural(&set_coverage(&one, targets)?, change)?);
+                    result.push_str(&structural_conditional(
+                        &set_coverage(&one, targets)?,
+                        change,
+                    )?);
                 }
                 continue;
             }
@@ -197,7 +195,10 @@ fn move_cf(
                     .flat_map(|r| change.map_regions(*r))
                     .collect::<Vec<_>>();
                 if !targets.is_empty() {
-                    result.push_str(&structural(&set_coverage(&one, &targets)?, change)?);
+                    result.push_str(&structural_conditional(
+                        &set_coverage(&one, &targets)?,
+                        change,
+                    )?);
                 }
             } else {
                 for (copies, piece) in ranges
@@ -211,7 +212,7 @@ fn move_cf(
                         ));
                     }
                     let mut moved = set_coverage(&one, &[piece.target])?;
-                    moved = formula_map(&moved, |f| rule_formula(f, base, piece, change))?;
+                    moved = conditional_formulas(&moved, |f| rule_formula(f, base, piece, change))?;
                     if copies > 0 && id.is_some() {
                         let id = ids.fresh();
                         moved = children_map(&moved, b"cfRule", |r| {
@@ -269,10 +270,12 @@ fn move_sparklines(xml: &str, change: &CellShift) -> Result<String> {
                 let Some(target) = change.map_cell(location.start) else {
                     return Ok(String::new());
                 };
-                let moved = map_ns(sparkline, b"sqref", XM, false, |s| {
+                let moved = map_ns(sparkline, b"sqref", XM, |s| {
                     text_content(s, &reference_text(target))
                 })?;
-                structural(&moved, change)
+                crate::validation_sources::map_source_level(&moved, XM, &[b"f"], false, &|f| {
+                    shift_cells_formula(f, &change.sheet, change)
+                })
             })?;
             retain_nonempty(moved, b"sparkline")
         })?;
@@ -281,11 +284,8 @@ fn move_sparklines(xml: &str, change: &CellShift) -> Result<String> {
         }
         // A group's optional date-axis formula has the same structural
         // semantics as a sparkline source, independent of the display cell.
-        map_ns(&group, b"f", XM, false, |f| {
-            text_content(
-                f,
-                &shift_cells_formula(&leaf_text(f)?, &change.sheet, change),
-            )
+        crate::validation_sources::map_source_level(&group, XM, &[b"f"], false, &|f| {
+            shift_cells_formula(f, &change.sheet, change)
         })
     })?;
     retain_nonempty(moved, b"sparklineGroup")
@@ -339,7 +339,7 @@ pub(crate) fn move_extensions(
                     }
                     let originals = xml_edit_ns::children_ns(&source.text, name, X14)?;
                     let mut index = 0;
-                    moved = map_ns(&moved, name, X14, false, |_| {
+                    moved = map_ns(&moved, name, X14, |_| {
                         let Some((_, _, source)) = originals.get(index) else {
                             return Ok(String::new());
                         };

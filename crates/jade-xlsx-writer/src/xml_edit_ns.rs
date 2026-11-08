@@ -87,15 +87,6 @@ pub(crate) fn children_ns(
     select(xml, name, Some(ns), false)
 }
 
-/// Non-overlapping descendants with an explicitly identified namespace.
-pub(crate) fn descendants_ns(
-    xml: &str,
-    name: &[u8],
-    ns: &[u8],
-) -> Result<Vec<(usize, usize, ContextXml)>> {
-    select(xml, name, Some(ns), true)
-}
-
 fn select(
     xml: &str,
     name: &[u8],
