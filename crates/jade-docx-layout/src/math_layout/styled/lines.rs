@@ -117,9 +117,15 @@ fn break_lines<C: StyledMathMeasure>(
     let mut indent = 0.0;
     let mut last_fit: Option<(BreakCandidate, f64)> = None;
     for c in &candidates {
-        let Some(x) = x_of(b, c.mark) else {
+        let Some(mut x) = x_of(b, c.mark) else {
             continue;
         };
+        // The operator stays on the preceding line for brkBin="after".
+        // Reserve its width when choosing a fitting break, using the same
+        // boundary as the glyph-range split below.
+        if settings.break_binary == BreakBinary::After && !c.manual && c.class == AtomClass::Bin {
+            x += b.plan.glyphs[c.mark.glyphs].width;
+        }
         if c.manual {
             chosen.push((*c, x));
             line_start_x = x;
