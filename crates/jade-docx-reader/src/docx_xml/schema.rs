@@ -668,6 +668,85 @@ mod tests {
         }
 
         #[test]
+        fn xml_writer_preserves_mixed_children_in_reference_schema_order(
+            context in 0..=schema_contexts().count(),
+            children in prop::collection::vec((any::<u16>(), 0u8..6), 0..64),
+        ) {
+            let (name, parent) = schema_contexts().nth(context).unwrap_or(("custom", None));
+            let sequence = super::sequence(name, parent);
+            let names: Vec<_> = schema_names().into_iter()
+                .filter(|name| !name.is_empty() && !name.contains('\0'))
+                .collect();
+            let mut nodes = Vec::new();
+            let mut expected_children = Vec::new();
+            let mut preceding_rank = 0;
+            for (index, (name_index, kind)) in children.into_iter().enumerate() {
+                let (node, serialized, rank) = match kind {
+                    0..=2 => {
+                        let child_name = names[name_index as usize % names.len()];
+                        let child = XmlElement {
+                            id: XmlNodeId::new(index as u32 + 1),
+                            name: child_name.to_owned(),
+                            attributes: vec![super::super::XmlAttribute {
+                                name: "data-id".to_owned(),
+                                value: index.to_string(),
+                            }],
+                            children: vec![
+                                XmlNode::CData(format!("raw{index}<&>漢")),
+                                XmlNode::Comment(format!("note{index}")),
+                                XmlNode::Text(format!("text{index}&<>\r漢")),
+                            ],
+                        };
+                        let serialized = format!(
+                            "<{child_name} data-id=\"{index}\"><![CDATA[raw{index}<&>漢]]><!--note{index}-->text{index}&amp;&lt;&gt;&#13;漢</{child_name}>"
+                        );
+                        (
+                            XmlNode::Element(child),
+                            serialized,
+                            sequence.and_then(|sequence| reference_rank(sequence, child_name)),
+                        )
+                    }
+                    3 => (
+                        XmlNode::Text(format!("text{index}&<>\r漢")),
+                        format!("text{index}&amp;&lt;&gt;&#13;漢"),
+                        None,
+                    ),
+                    4 => (
+                        XmlNode::Comment(format!("note{index}<&>漢")),
+                        format!("<!--note{index}<&>漢-->"),
+                        None,
+                    ),
+                    _ => (
+                        XmlNode::CData(format!("raw{index}<&>漢")),
+                        format!("<![CDATA[raw{index}<&>漢]]>"),
+                        None,
+                    ),
+                };
+                preceding_rank = rank.unwrap_or(preceding_rank);
+                expected_children.push((preceding_rank, serialized));
+                nodes.push(node);
+            }
+            expected_children.sort_by_key(|(rank, _)| *rank);
+            let expected_body: String = expected_children.into_iter()
+                .map(|(_, serialized)| serialized).collect();
+            let expected = if nodes.is_empty() {
+                format!("prefix:<{name}/>")
+            } else {
+                format!("prefix:<{name}>{expected_body}</{name}>")
+            };
+            let element = XmlElement {
+                id: XmlNodeId::new(0),
+                name: name.to_owned(),
+                attributes: Vec::new(),
+                children: nodes,
+            };
+            let mut actual = "prefix:".to_owned();
+            element.write_with(&mut actual, None, &std::collections::HashMap::new(), parent)
+                .expect("serialize mixed children");
+            prop_assert_eq!(actual, expected);
+        }
+
+        #[test]
         fn namespace_prefix_cache_matches_reference(
             names in prop::collection::vec(
                 prop_oneof![

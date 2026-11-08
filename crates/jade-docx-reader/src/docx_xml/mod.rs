@@ -1359,19 +1359,7 @@ impl XmlElement {
 
         buffer.push('>');
 
-        let order = schema::schema_order(self, parent);
-        let children = order
-            .iter()
-            .flatten()
-            .map(|&index| &self.children[index])
-            .chain(
-                order
-                    .is_none()
-                    .then_some(self.children.iter())
-                    .into_iter()
-                    .flatten(),
-            );
-        for child in children {
+        let mut write_child = |child: &XmlNode| -> Result<(), DocxXmlError> {
             match child {
                 XmlNode::Element(element) => {
                     element.write_with(buffer, None, renumbered, Some(&self.name))?
@@ -1386,6 +1374,19 @@ impl XmlElement {
                     buffer.push_str("<!--");
                     buffer.push_str(comment);
                     buffer.push_str("-->");
+                }
+            }
+            Ok(())
+        };
+        match schema::schema_order(self, parent) {
+            Some(order) => {
+                for index in order {
+                    write_child(&self.children[index])?;
+                }
+            }
+            None => {
+                for child in &self.children {
+                    write_child(child)?;
                 }
             }
         }
