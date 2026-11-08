@@ -859,7 +859,7 @@ fn regions(xml: &str, key: &[u8], change: &CellShift) -> Result<Vec<CellRange>> 
 }
 fn count_children(xml: &str, child: &[u8], attribute: &str) -> Result<String> {
     let count = xml_edit_ns::children(xml, child)?.len();
-    if count == 0 {
+    if count == 0 && xml_edit_ns::plain_empty(xml, &[attribute.as_bytes()])? {
         Ok(String::new())
     } else {
         xml_edit::root_attributes(xml, &[(attribute, Some(count.to_string()))])

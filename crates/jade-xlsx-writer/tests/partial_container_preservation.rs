@@ -58,3 +58,57 @@ fn deleting_last_partial_rule_preserves_opaque_container_siblings() {
         }
     }
 }
+
+#[test]
+fn deleting_last_merge_keeps_opaque_container_data() {
+    for namespace in [
+        "http://schemas.openxmlformats.org/spreadsheetml/2006/main",
+        "http://purl.oclc.org/ooxml/spreadsheetml/main",
+    ] {
+        for axis in [Axis::Rows, Axis::Columns] {
+            for (attrs, opaque) in [
+                ("", ""),
+                (" u:flag=\"keep\"", ""),
+                ("", "<!--keep-->"),
+                ("", "<u:payload>B2:C2</u:payload>"),
+                ("", "<u:mergeCell ref=\"B2:C2\"/>"),
+            ] {
+                let sheet = format!(
+                    r#"<worksheet xmlns="{namespace}" xmlns:u="urn:foreign"><sheetData/><mergeCells count="1"{attrs}><mergeCell ref="B2:C2"/>{opaque}</mergeCells></worksheet>"#
+                );
+                let mut book =
+                    HeadlessWorkbook::open_for_editing(&common::workbook_with_sheet(&sheet))
+                        .unwrap();
+                let before = book.bytes().to_vec();
+                book.shift_cells("Sheet1", CellRange::parse("B2:C2").unwrap(), axis, false)
+                    .unwrap();
+                let after = book.bytes().to_vec();
+                book.undo().unwrap();
+                assert_eq!(book.bytes(), before);
+                book.redo().unwrap();
+                assert_eq!(book.bytes(), after);
+                let bytes = book.save_bytes().unwrap();
+                let saved = OpcPackage::open(&bytes)
+                    .unwrap()
+                    .required_part_str("xl/worksheets/sheet1.xml")
+                    .unwrap();
+                if attrs.is_empty() && opaque.is_empty() {
+                    assert!(!saved.contains("mergeCells"), "{saved}");
+                } else {
+                    assert!(
+                        saved.contains(&format!(
+                            "<mergeCells count=\"0\"{attrs}>{opaque}</mergeCells>"
+                        )),
+                        "{saved}"
+                    );
+                }
+                let mut reopened = HeadlessWorkbook::open_for_editing(&bytes).unwrap();
+                let saved_again = OpcPackage::open(&reopened.save_bytes().unwrap())
+                    .unwrap()
+                    .required_part_str("xl/worksheets/sheet1.xml")
+                    .unwrap();
+                assert_eq!(saved_again, saved);
+            }
+        }
+    }
+}
