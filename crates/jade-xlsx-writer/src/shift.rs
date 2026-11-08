@@ -820,7 +820,7 @@ pub fn shift_sheet(
                 b"mergeCells" | b"hyperlinks" | b"ignoredErrors" => {
                     if let Some((list_start, head_end, kept, name)) = list.take() {
                         let end = reader.buffer_position() as usize;
-                        if kept == 0 {
+                        if kept == 0 && name != b"hyperlinks" {
                             splices.push(Splice {
                                 start: list_start,
                                 end,
@@ -850,6 +850,7 @@ pub fn shift_sheet(
     }
     let moved = apply(xml, splices);
     if changed {
+        let moved = crate::hyperlinks::after_structure(xml, &moved)?;
         crate::protected_ranges::cleanup(&crate::conditional_cleanup::after_structure(xml, &moved)?)
     } else {
         Ok(moved)
