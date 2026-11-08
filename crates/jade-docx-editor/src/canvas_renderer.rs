@@ -28479,16 +28479,15 @@ where
                     }
                 }
                 BodyElement::Math(math) => {
-                    let (_, width) = self
-                        .math_settings
-                        .display_content_box(content_left, content_right - content_left);
+                    let (_, width) = self.boxed_math_content_box(math, content_left, content_right);
                     let options = jade_docx_layout::math_layout::styled::MathLayoutOptions {
                         max_width: Some(width),
                         text_family: Some(self.math_text_family()),
                         settings: self.math_settings,
                         ..Default::default()
                     };
-                    let plan = self.math_plan(&math.elements, self.boxed_math_style(), &options)?;
+                    let plan =
+                        self.math_plan(&math.elements, self.body_math_style(math), &options)?;
                     height += plan.metrics.ascent + plan.metrics.descent;
                     line_count += 1;
                     math_plans.push(plan);
@@ -28744,15 +28743,17 @@ where
                         }
                     }
                 }
-                BodyElement::Math(_) => {
+                BodyElement::Math(math) => {
                     rendered = true;
+                    let (left, width) =
+                        self.boxed_math_content_box(math, content_left, content_right);
                     let plan = math_plans
                         .next()
                         .ok_or_else(|| JsValue::from_str("Missing text-box math plan"))?;
                     self.render_boxed_math(
                         plan,
-                        content_left,
-                        content_right,
+                        left,
+                        left + width,
                         cursor_y,
                         box_bottom,
                         line_gap,
@@ -28794,6 +28795,23 @@ where
         style
     }
 
+    fn boxed_math_content_box(&self, math: &MathParagraph, left: f64, right: f64) -> (f64, f64) {
+        let char_unit_pt = self
+            .styles_part
+            .as_ref()
+            .and_then(|styles| styles.doc_default_font_size())
+            .map(f64::from)
+            .unwrap_or(DEFAULT_INDENT_CHAR_UNIT_PT);
+        let (left, width) = jade_docx_layout::math_layout::math_block_content_box(
+            math.properties.as_deref(),
+            left,
+            right - left,
+            char_unit_pt,
+            self.current_page_number.is_multiple_of(2),
+        );
+        self.math_settings.display_content_box(left, width)
+    }
+
     fn boxed_math_style(&self) -> jade_docx_layout::math_layout::styled::MathTextStyle<'static> {
         use jade_docx_layout::math_layout::styled::{MathTextStyle, MathVariant};
         let size = self
@@ -28833,10 +28851,11 @@ where
         self.selection
             .append_paragraph_text(paragraph_index, &plan.text);
         if baseline <= box_bottom {
-            let (left, width) = self
-                .math_settings
-                .display_content_box(content_left, content_right - content_left);
-            let x = plan.alignment.x(left, width, plan.metrics.width);
+            let x = plan.alignment.x(
+                content_left,
+                content_right - content_left,
+                plan.metrics.width,
+            );
             let fragments = plan
                 .glyphs
                 .iter()
@@ -46501,9 +46520,17 @@ mod tests {
     #[test]
     fn boxed_math_margins_apply_to_wrapping_and_selection() {
         use jade_painter::recording::Op;
-        let math = jade_docx_reader::parser::math::parse_math_paragraph(
+        let mut math = jade_docx_reader::parser::math::parse_math_paragraph(
             r#"<m:oMath xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><m:r><m:t>a=b+c+d+e+f+g+h</m:t></m:r></m:oMath>"#.to_string(),
         ).unwrap();
+        math.properties = Some(Box::new(jade_docx_reader::ParagraphProperties {
+            indent: Some(jade_docx_reader::document::Indent {
+                left: Some(15.0),
+                right: Some(7.5),
+                ..Default::default()
+            }),
+            ..Default::default()
+        }));
         let blocks = [BodyElement::Math(Box::new(math))];
         let painter = jade_painter::recording::RecordingPainter::with_width_per_char(8.0);
         let mut renderer = CanvasRenderer::with_host(
@@ -46553,7 +46580,7 @@ mod tests {
                 _ => None,
             })
             .unwrap();
-        assert!((drawn_x - 50.0).abs() < 1e-9);
+        assert!((drawn_x - 70.0).abs() < 1e-9);
         let lines = renderer.layout_debug_lines();
         assert!((lines[0].fragments[0].x - drawn_x).abs() < 1e-9);
         assert!((y - 100.0 - narrow.height).abs() < 1e-9);
