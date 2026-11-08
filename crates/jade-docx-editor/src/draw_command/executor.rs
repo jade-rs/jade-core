@@ -208,6 +208,18 @@ impl FontStateTracker {
     /// came from the same source), then hash + length before full memcmp.
     #[inline]
     pub fn set_font_if_changed<P: Painter>(&mut self, context: &P, font: &str) -> bool {
+        self.set_font_value_if_changed(font, || context.set_font(font))
+    }
+
+    /// Preserves the borrowed setter's value equality and allocation identity
+    /// while allowing a capturing painter to retain the source descriptor.
+    #[inline]
+    fn set_font_value_rc_if_changed<P: Painter>(&mut self, context: &P, font: &Rc<str>) -> bool {
+        self.set_font_value_if_changed(font, || context.set_font_rc(font))
+    }
+
+    #[inline]
+    fn set_font_value_if_changed(&mut self, font: &str, set_font: impl FnOnce()) -> bool {
         // Fast path: data pointer + length comparison.
         // When `font` is a borrow from the same Rc<str>, its data pointer
         // matches the cached Rc's data pointer, making this O(1).
@@ -233,7 +245,7 @@ impl FontStateTracker {
                 }
             }
         }
-        context.set_font(font);
+        set_font();
         self.current_font = Some(Rc::from(font));
         self.current_font_hash = Some(new_hash);
         true
@@ -1994,7 +2006,7 @@ fn execute_tab_leader_with_font_state<P: Painter>(
 
     font_state.set_fill_style_rc_if_changed(context, &style.fill_color);
     let font = &style.font_descriptor_latin_ascii;
-    font_state.set_font_if_changed(context, font);
+    font_state.set_font_value_rc_if_changed(context, font);
 
     for &x in glyph_positions {
         context.fill_text(character, x, baseline + style.baseline_shift_px)?;
@@ -2035,7 +2047,7 @@ fn execute_control_mark_with_font_state<P: Painter>(
     let scaled_font_size_pt = (style.font_size_pt as f64 * CONTROL_MARK_FONT_SCALE).max(1.0) as f32;
     let scaled_descriptor =
         control_mark_font(&style.font_descriptor_latin_ascii, scaled_font_size_pt);
-    font_state.set_font_if_changed(context, &scaled_descriptor);
+    font_state.set_font_value_rc_if_changed(context, &scaled_descriptor);
 
     let reduction_points = style.font_size_pt * ((1.0 - CONTROL_MARK_FONT_SCALE) * 0.5) as f32;
     let baseline_lift = points_to_px(reduction_points);
@@ -2370,6 +2382,114 @@ mod tests {
                     Op::SetFont(descriptor.into()),
                 ]
             );
+        }
+    }
+
+    #[test]
+    fn shared_value_font_capture_preserves_later_identity_setters() {
+        use jade_painter::capture::{new_sink, PaintOp, RoutedPainter};
+        use jade_painter::recording::{Op, RecordingPainter};
+
+        let surface = RecordingPainter::new();
+        let sink = new_sink();
+        let painter = RoutedPainter::new(surface.clone(), Some(sink.clone()));
+        let mut tracker = FontStateTracker::new();
+        let font: Rc<str> = Rc::from("ot:liga 10pt '日本語😀'");
+        assert!(tracker.set_font_value_rc_if_changed(&painter, &font));
+        {
+            let ops = sink.borrow();
+            let [PaintOp::SetFont(captured)] = ops.as_slice() else {
+                panic!("unexpected captured operations: {ops:?}");
+            };
+            assert!(Rc::ptr_eq(captured, &font));
+        }
+        assert!(!Rc::ptr_eq(tracker.current_font.as_ref().unwrap(), &font));
+        assert!(!tracker.set_font_value_rc_if_changed(&painter, &Rc::from(font.as_ref())));
+        // The borrowed setter kept its own allocation, so a subsequent
+        // identity setter must still forward this equal descriptor.
+        assert!(tracker.set_font_rc_if_changed(&painter, &font));
+        assert!(!tracker.set_font_value_rc_if_changed(&painter, &font));
+        assert_eq!(surface.ops(), vec![Op::SetFont(font.to_string()); 2]);
+    }
+
+    #[derive(Clone, Debug)]
+    enum FontSetterCommand {
+        Borrowed(usize),
+        SharedValue(usize),
+        SharedIdentity(usize),
+        Replace(usize, usize),
+        Invalidate,
+        Clone,
+    }
+
+    fn font_setter_commands() -> impl proptest::strategy::Strategy<Value = FontSetterCommand> {
+        use proptest::prelude::*;
+        prop_oneof![
+            (0usize..6).prop_map(FontSetterCommand::Borrowed),
+            (0usize..6).prop_map(FontSetterCommand::SharedValue),
+            (0usize..6).prop_map(FontSetterCommand::SharedIdentity),
+            (0usize..6, 0usize..6)
+                .prop_map(|(slot, source)| FontSetterCommand::Replace(slot, source)),
+            Just(FontSetterCommand::Invalidate),
+            Just(FontSetterCommand::Clone),
+        ]
+    }
+
+    proptest::proptest! {
+        #![proptest_config(proptest::test_runner::Config::with_cases(192))]
+        #[test]
+        fn font_setter_histories_preserve_value_and_allocation_semantics(
+            commands in proptest::collection::vec(font_setter_commands(), 1..97)
+        ) {
+            use jade_painter::recording::{Op, RecordingPainter};
+
+            let painter = RecordingPainter::new();
+            let mut tracker = FontStateTracker::new();
+            let mut fonts: Vec<Rc<str>> = ["", "12pt Arial", "12pt Arial", "ot:liga 10pt '日本語😀'", "10pt Noto", ""]
+                .into_iter().map(Rc::from).collect();
+            let mut tokens: Vec<usize> = (0..fonts.len()).collect();
+            let mut next_token = tokens.len();
+            // A value setter owns a fresh private allocation; only identity
+            // setters retain an input token. No implementation hash is used.
+            let mut current: Option<(String, Option<usize>)> = None;
+            let mut expected = Vec::new();
+            for command in &commands {
+                match *command {
+                    FontSetterCommand::Borrowed(index) |
+                    FontSetterCommand::SharedValue(index) |
+                    FontSetterCommand::SharedIdentity(index) => {
+                        let font = &fonts[index];
+                        let identity = matches!(command, FontSetterCommand::SharedIdentity(_));
+                        let changed = match &current {
+                            None => true,
+                            Some((_, token)) if identity => *token != Some(tokens[index]),
+                            Some((text, _)) => text != font.as_ref(),
+                        };
+                        let actual = match command {
+                            FontSetterCommand::Borrowed(_) => tracker.set_font_if_changed(&painter, font),
+                            FontSetterCommand::SharedValue(_) => tracker.set_font_value_rc_if_changed(&painter, font),
+                            _ => tracker.set_font_rc_if_changed(&painter, font),
+                        };
+                        proptest::prop_assert_eq!(actual, changed, "command={:?}, history={:?}", command, commands);
+                        if changed {
+                            expected.push(Op::SetFont(font.to_string()));
+                            current = Some((font.to_string(), identity.then_some(tokens[index])));
+                        }
+                    }
+                    FontSetterCommand::Replace(slot, source) => {
+                        fonts[slot] = Rc::from(fonts[source].as_ref());
+                        tokens[slot] = next_token;
+                        next_token += 1;
+                    }
+                    FontSetterCommand::Invalidate => {
+                        tracker.invalidate();
+                        current = None;
+                    }
+                    FontSetterCommand::Clone => tracker = tracker.clone(),
+                }
+                proptest::prop_assert_eq!(tracker.current(), current.as_ref().map(|(text, _)| text.as_str()));
+                proptest::prop_assert_eq!(painter.ops(), &expected[..], "history={:?}", commands);
+            }
         }
     }
 
