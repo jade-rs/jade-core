@@ -181,6 +181,83 @@ mod tests {
     }
 
     #[test]
+    fn a_text_box_inline_equation_saves_reopens_undoes_and_redoes_in_its_story() {
+        let body = r#"<w:p><m:oMath><m:r><m:t>body</m:t></m:r></m:oMath><w:r><w:pict><v:shape xmlns:v="urn:schemas-microsoft-com:vml" id="keep-shape" style="width:180pt;height:90pt"><v:textbox><w:txbxContent><w:p><w:r><w:t>neighbor</w:t></w:r><m:oMath><m:r><m:t>other</m:t></m:r></m:oMath></w:p><w:p><w:pPr><w:jc w:val="right"/></w:pPr><w:r><w:t xml:space="preserve">inside </w:t></w:r><m:oMath><m:r><m:t>first</m:t></m:r></m:oMath><w:r><w:t xml:space="preserve"> between </w:t></w:r><m:oMath><m:r><m:t>target</m:t></m:r></m:oMath><w:r><w:t xml:space="preserve"> after</w:t></w:r></w:p></w:txbxContent></v:textbox></v:shape></w:pict></w:r></w:p><w:p><w:r><w:t>outside</w:t></w:r></w:p>"#;
+        let mut document =
+            executor::block_on(WordDocument::load(&build_docx(body), &Options::default())).unwrap();
+        let (paragraph, run_index) = (0..document.paragraph_count())
+            .find_map(|index| {
+                document
+                    .paragraph(index)?
+                    .runs
+                    .iter()
+                    .enumerate()
+                    .find(|(_, run)| {
+                        run.math
+                            .as_ref()
+                            .is_some_and(|math| math.raw_omml.contains("target"))
+                    })
+                    .map(|(run, _)| (index, run))
+            })
+            .expect("the box equation must be modeled");
+        let original = part(&document.export_docx().unwrap(), "word/document.xml");
+        let omml = format!(
+            r#"<m:oMath {M}><m:f><m:num><m:r><m:t>updated</m:t></m:r></m:num><m:den><m:r><m:t>denominator</m:t></m:r></m:den></m:f></m:oMath>"#
+        );
+        let mut history = CommandExecutor::new();
+        replace(
+            &mut document,
+            &mut history,
+            paragraph,
+            Some(run_index),
+            &omml,
+        )
+        .unwrap();
+        let saved = document.export_docx().unwrap();
+        let changed = part(&saved, "word/document.xml");
+        assert!(!changed.contains("<m:t>target</m:t>"), "{changed}");
+        for preserved in [
+            "<m:t>body</m:t>",
+            "<m:t>other</m:t>",
+            "<m:t>first</m:t>",
+            " between ",
+            " after",
+            "keep-shape",
+            "outside",
+            "w:val=\"right\"",
+        ] {
+            assert!(
+                changed.contains(preserved),
+                "missing {preserved}: {changed}"
+            );
+        }
+        let reopened = executor::block_on(WordDocument::load(&saved, &Options::default())).unwrap();
+        let math = reopened.paragraph(paragraph).unwrap().runs[run_index]
+            .math
+            .as_ref()
+            .unwrap();
+        assert!(math.raw_omml.contains("updated") && math.raw_omml.contains("denominator"));
+        let mut selection = None;
+        let mut context = CommandContext::new(&mut document, &mut selection);
+        history.undo(&mut context).unwrap();
+        assert_eq!(
+            part(
+                &context.document.export_docx().unwrap(),
+                "word/document.xml"
+            ),
+            original
+        );
+        history.redo(&mut context).unwrap();
+        assert_eq!(
+            part(
+                &context.document.export_docx().unwrap(),
+                "word/document.xml"
+            ),
+            changed
+        );
+    }
+
+    #[test]
     fn a_display_equation_is_replaced_in_its_wrapper_paragraph() {
         let body = r#"<w:p><w:r><w:t>before</w:t></w:r></w:p><w:p><m:oMathPara><m:oMath><m:r><m:t>x=1</m:t></m:r></m:oMath></m:oMathPara></w:p><w:p><w:r><w:t>after</w:t></w:r></w:p>"#;
         let source = build_docx(body);
