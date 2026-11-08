@@ -116,7 +116,7 @@ fn edit_record(xml: &str, index: usize, rule: Option<&DataValidation>) -> Result
     {
         String::new()
     } else {
-        list.finish(&changed)?
+        crate::empty_feature::finish(&list, &changed, b"dataValidation")?
     };
     Ok(apply(
         xml,

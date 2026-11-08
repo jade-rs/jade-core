@@ -114,7 +114,26 @@ fn sparklines_move_display_cells_but_never_fill_new_cells_and_remove_deleted_rec
     b.shift_cells(&s, range("D3"), Axis::Columns, false)
         .unwrap();
     assert!(texts(&xml(&b), XM, b"sqref").is_empty());
-    assert!(!xml(&b).contains("<x:sparklineGroups"));
+    let out = xml(&b);
+    assert!(out.contains("u:option=\"keep\""), "{out}");
+    let sources = jade_xlsx_reader::worksheet_extensions::sources(&out).unwrap();
+    let mut reader = NsReader::from_str(&out);
+    loop {
+        let start = reader.buffer_position() as usize;
+        match reader.read_event().unwrap() {
+            Event::Start(e) | Event::Empty(e) if e.local_name().as_ref() == b"sparklineGroups" => {
+                assert!(
+                    !sources.owns_payload_at(
+                        start,
+                        jade_xlsx_reader::worksheet_extensions::Kind::Sparklines
+                    ),
+                    "{out}"
+                );
+            }
+            Event::Eof => break,
+            _ => {}
+        }
+    }
 }
 #[test]
 fn aggregate_thresholds_keep_one_union_while_expression_priorities_include_x14() {

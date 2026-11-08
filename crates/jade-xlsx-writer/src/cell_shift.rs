@@ -50,7 +50,15 @@ pub(crate) fn children_map(
             end,
             text: if changed.is_empty() {
                 changed
+            } else if name != b"dataValidations" {
+                if let Some(required) = crate::empty_feature::required(name) {
+                    crate::empty_feature::finish(&context, &changed, required)?
+                } else {
+                    context.finish(&changed)?
+                }
             } else {
+                // Validation geometry is rebuilt from the original records
+                // later in move_rules; do not archive its temporary state.
                 context.finish(&changed)?
             },
         });
@@ -773,7 +781,7 @@ fn move_rules(
         let moved = if moved.is_empty() {
             moved
         } else {
-            container.finish(&moved)?
+            crate::empty_feature::finish(&container, &moved, b"dataValidation")?
         };
         result = xml_edit_ns::set_child(
             &result,
@@ -836,7 +844,7 @@ fn move_conditional_validations(
         let text = if moved.is_empty() {
             moved
         } else {
-            context.finish(&moved)?
+            crate::empty_feature::finish(&context, &moved, b"dataValidation")?
         };
         edits.push(Splice {
             start: target.start,
@@ -859,7 +867,7 @@ fn regions(xml: &str, key: &[u8], change: &CellShift) -> Result<Vec<CellRange>> 
 }
 fn count_children(xml: &str, child: &[u8], attribute: &str) -> Result<String> {
     let count = xml_edit_ns::children(xml, child)?.len();
-    if count == 0 {
+    if count == 0 && xml_edit_ns::plain_empty(xml, &[attribute.as_bytes()])? {
         Ok(String::new())
     } else {
         xml_edit::root_attributes(xml, &[(attribute, Some(count.to_string()))])
