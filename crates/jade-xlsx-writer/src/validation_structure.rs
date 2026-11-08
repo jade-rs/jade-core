@@ -123,7 +123,7 @@ pub(crate) fn containers(
             )?;
             // A foreign child or an unmodeled rule is still owned by this
             // container. Retain it even after all interpreted coverage goes.
-            if entries.len() == removed && !has_content(&moved)? {
+            if entries.len() == removed && xml_edit_ns::plain_empty(&moved, &[b"count"])? {
                 moved.clear();
             }
         }
@@ -175,24 +175,4 @@ pub(crate) fn map_range(range: CellRange, change: &StructureChange) -> Option<Ce
         }
     }
     Some(CellRange { start, end })
-}
-
-fn has_content(xml: &str) -> Result<bool> {
-    use quick_xml::{events::Event, Reader};
-    let mut reader = Reader::from_str(xml);
-    let mut root = true;
-    loop {
-        match reader.read_event()? {
-            Event::Start(_) | Event::Empty(_) if root => root = false,
-            Event::Start(_)
-            | Event::Empty(_)
-            | Event::Comment(_)
-            | Event::PI(_)
-            | Event::CData(_) => return Ok(true),
-            Event::Text(e) if !e.decode()?.trim().is_empty() => return Ok(true),
-            Event::GeneralRef(_) => return Ok(true),
-            Event::Eof => return Ok(false),
-            _ => {}
-        }
-    }
 }

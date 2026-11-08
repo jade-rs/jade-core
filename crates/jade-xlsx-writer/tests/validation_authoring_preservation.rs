@@ -5,6 +5,14 @@ const MAIN: &str = "http://schemas.openxmlformats.org/spreadsheetml/2006/main";
 const STRICT: &str = "http://purl.oclc.org/ooxml/spreadsheetml/main";
 #[test]
 fn deleting_last_rule_keeps_opaque_container_data_and_history() {
+    check_delete(0);
+}
+#[test]
+fn deleting_last_coverage_keeps_container_attributes() {
+    check_delete(1);
+    check_delete(2);
+}
+fn check_delete(operation: u8) {
     for ns in [MAIN, STRICT] {
         for extended in [false, true] {
             for (attrs, opaque) in [
@@ -30,7 +38,15 @@ fn deleting_last_rule_keeps_opaque_container_data_and_history() {
                 let mut book =
                     HeadlessWorkbook::open_for_editing(&common::workbook_with_sheet(&xml)).unwrap();
                 let before = book.bytes().to_vec();
-                book.delete_data_validation("Sheet1", 0).unwrap();
+                match operation {
+                    0 => book.delete_data_validation("Sheet1", 0).unwrap(),
+                    1 => {
+                        book.delete_rows("Sheet1", 2, 1).unwrap();
+                    }
+                    _ => {
+                        book.delete_columns("Sheet1", "B", 1).unwrap();
+                    }
+                }
                 let after = book.bytes().to_vec();
                 book.undo().unwrap();
                 assert_eq!(book.bytes(), before);
