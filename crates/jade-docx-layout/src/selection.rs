@@ -366,6 +366,9 @@ pub struct SelectionSuffix {
 #[derive(Clone, Debug, Default)]
 pub struct SelectionManager {
     paragraphs: Vec<ParagraphLayout>,
+    /// Empty allocations from the previous incremental pass. This never
+    /// retains line contents or exposes cleared paragraphs in the registry.
+    spare_paragraphs: Vec<ParagraphLayout>,
     selection: Option<SelectionRange>,
     /// The line a collapsed caret on a soft wrap is drawn on.
     caret_affinity: CaretAffinity,
@@ -472,6 +475,7 @@ impl SelectionManager {
         let selection = self.selection;
         self.render_pass = self.render_pass.wrapping_add(1);
         self.paragraphs.clear();
+        self.spare_paragraphs.clear();
         self.caret_x_overrides.clear();
         *self.paragraph_bounds_index.get_mut() = None;
         self.selection = selection;
@@ -562,6 +566,31 @@ impl SelectionManager {
         }
         let selection = self.selection;
         self.render_pass = self.render_pass.wrapping_add(1);
+        self.spare_paragraphs.clear();
+        if let Some(from) = dirty_from.filter(|&from| from <= self.paragraphs.len()) {
+            // Keep only the first few dirty paragraphs' allocations, which
+            // are normally registered again for the visible page. Drop all
+            // old line contents now, including their shared glyph layouts.
+            let mut remaining_bytes = 64 * 1024;
+            for mut paragraph in self.paragraphs.drain(from..).take(32) {
+                let bytes = paragraph.text.capacity().saturating_add(
+                    paragraph
+                        .lines
+                        .capacity()
+                        .saturating_mul(std::mem::size_of::<LineLayout>()),
+                );
+                if bytes == 0 || bytes > remaining_bytes {
+                    continue;
+                }
+                remaining_bytes -= bytes;
+                paragraph.text.clear();
+                paragraph.lines.clear();
+                paragraph.invalidate_bounding_box();
+                self.spare_paragraphs.push(paragraph);
+            }
+            // Registration grows the paragraph registry in source order.
+            self.spare_paragraphs.reverse();
+        }
 
         match dirty_from {
             Some(from) if from > 0 && from <= self.paragraphs.len() => {
@@ -704,9 +733,11 @@ impl SelectionManager {
         *self.paragraph_bounds_index.get_mut() = None;
         if self.paragraphs.len() <= index {
             let render_pass = self.render_pass;
-            self.paragraphs.resize_with(index + 1, || ParagraphLayout {
-                render_pass,
-                ..ParagraphLayout::default()
+            let spare_paragraphs = &mut self.spare_paragraphs;
+            self.paragraphs.resize_with(index + 1, || {
+                let mut paragraph = spare_paragraphs.pop().unwrap_or_default();
+                paragraph.render_pass = render_pass;
+                paragraph
             });
         }
         let paragraph = &mut self.paragraphs[index];
@@ -5991,6 +6022,211 @@ mod tests {
         assert!((lines[0].visual_end_x - text_end).abs() < f64::EPSILON);
         assert!((lines[0].end_x - text_end).abs() < f64::EPSILON);
         assert!((lines[0].cursor_end_x - (text_end - 4.0)).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn incremental_registration_reuses_allocations_but_drops_old_line_contents() {
+        let mut manager = SelectionManager::new();
+        manager.begin_render();
+        for (index, text) in ["prefix", "dirty", "tail"].into_iter().enumerate() {
+            manager.append_paragraph_text(index, text);
+            manager.record_line(index, make_line(text, 8.0, index as f64 * 20.0, 0.0));
+        }
+        let old_text = manager.paragraphs()[1].text.as_ptr();
+        let old_lines = manager.paragraphs()[1].lines.as_ptr();
+        let old_fragments = Rc::downgrade(&manager.paragraphs()[1].lines[0].fragments);
+        manager.paragraphs[1]
+            .bounding_box
+            .set(Some((20.0, 40.0, 8.0, 58.0)));
+
+        manager.begin_render_incremental(Some(1));
+        assert_eq!(manager.paragraph_debug_texts(), ["prefix"]);
+        assert!(old_fragments.upgrade().is_none());
+        manager.ensure_paragraph(1);
+        let paragraph = &manager.paragraphs()[1];
+        assert!(paragraph.text.is_empty());
+        assert!(paragraph.lines.is_empty());
+        assert_eq!(paragraph.bounding_box.get(), None);
+        assert_eq!(paragraph.text.as_ptr(), old_text);
+        assert_eq!(paragraph.lines.as_ptr(), old_lines);
+        manager.append_paragraph_text(1, "fresh");
+        manager.record_line(1, make_line("fresh", 8.0, 100.0, 100.0));
+        assert_eq!(manager.paragraphs()[1].text.as_ptr(), old_text);
+        assert_eq!(manager.paragraphs()[1].lines.as_ptr(), old_lines);
+        assert_eq!(manager.hit_test(9.0, 110.0).unwrap().paragraph, 1);
+    }
+
+    #[test]
+    fn incremental_spare_allocations_are_bounded_and_full_render_releases_them() {
+        let mut manager = SelectionManager::new();
+        manager.begin_render();
+        // A large first paragraph must not prevent small later ones from
+        // being recycled, nor retain an unbounded offscreen allocation.
+        manager.append_paragraph_text(0, &"x".repeat(128 * 1024));
+        for index in 1..100 {
+            manager.append_paragraph_text(index, "small");
+            manager.record_line(index, make_line("small", 8.0, 0.0, 0.0));
+        }
+        manager.begin_render_incremental(Some(0));
+        assert!(manager.paragraphs().is_empty());
+        assert!(!manager.spare_paragraphs.is_empty());
+        assert!(manager.spare_paragraphs.len() <= 32);
+        let bytes: usize = manager
+            .spare_paragraphs
+            .iter()
+            .map(|p| {
+                assert!(p.text.is_empty() && p.lines.is_empty());
+                p.text.capacity() + p.lines.capacity() * std::mem::size_of::<LineLayout>()
+            })
+            .sum();
+        assert!(bytes <= 64 * 1024);
+        manager.freeze();
+        let spare_count = manager.spare_paragraphs.len();
+        manager.begin_render();
+        manager.begin_render_incremental(Some(0));
+        manager.ensure_paragraph(50);
+        assert_eq!(manager.spare_paragraphs.len(), spare_count);
+        assert!(manager.paragraphs().is_empty());
+        manager.unfreeze();
+        // A new pass must not accumulate unused allocations from old passes.
+        manager.begin_render_incremental(Some(0));
+        assert!(manager.spare_paragraphs.is_empty());
+        manager.append_paragraph_text(0, "new");
+        manager.begin_render_incremental(Some(0));
+        assert!(!manager.spare_paragraphs.is_empty());
+        manager.begin_render();
+        assert!(manager.spare_paragraphs.is_empty());
+    }
+
+    #[derive(Clone, Debug)]
+    enum RegistrationCommand {
+        FullRender,
+        Incremental(Option<usize>),
+        Append(usize, String),
+        RecordLine(usize, u8),
+        Ensure(usize),
+        Reset(usize),
+        Freeze(bool),
+        Select(Option<(usize, usize)>),
+    }
+
+    fn registration_command() -> impl proptest::strategy::Strategy<Value = RegistrationCommand> {
+        use proptest::strategy::Strategy;
+        let text = proptest::collection::vec(
+            proptest::sample::select(vec!["", "a", "あ", "e\u{301}", "👩‍💻", "\t", "\r\n"]),
+            0..8,
+        )
+        .prop_map(|parts| parts.concat());
+        proptest::prop_oneof![
+            1 => proptest::strategy::Just(RegistrationCommand::FullRender),
+            3 => proptest::option::of(0usize..50).prop_map(RegistrationCommand::Incremental),
+            5 => (0usize..48, text).prop_map(|(i, s)| RegistrationCommand::Append(i, s)),
+            4 => (0usize..48, proptest::num::u8::ANY)
+                .prop_map(|(i, y)| RegistrationCommand::RecordLine(i, y)),
+            2 => (0usize..48).prop_map(RegistrationCommand::Ensure),
+            2 => (0usize..48).prop_map(RegistrationCommand::Reset),
+            1 => proptest::bool::ANY.prop_map(RegistrationCommand::Freeze),
+            2 => proptest::option::of((0usize..48, 0usize..48)).prop_map(RegistrationCommand::Select),
+        ]
+    }
+
+    proptest::proptest! {
+        #![proptest_config(proptest::test_runner::Config {
+            cases: 128,
+            rng_seed: proptest::test_runner::RngSeed::Fixed(20261109),
+            ..proptest::test_runner::Config::default()
+        })]
+
+        #[test]
+        fn incremental_registration_matches_a_command_model(
+            commands in proptest::collection::vec(registration_command(), 1..100),
+        ) {
+            let mut manager = SelectionManager::new();
+            // The model stores only observable contents and whether a
+            // paragraph has been touched in this pass, with no buffers,
+            // render-pass counters, or production transition helpers.
+            let mut model: Vec<(String, Vec<f64>, bool)> = Vec::new();
+            let mut frozen = false;
+            let mut prefix = 0;
+            let mut selection = None;
+            for (step, command) in commands.iter().enumerate() {
+                match command {
+                    RegistrationCommand::FullRender => manager.begin_render(),
+                    RegistrationCommand::Incremental(from) => manager.begin_render_incremental(*from),
+                    RegistrationCommand::Append(index, text) => manager.append_paragraph_text(*index, text),
+                    RegistrationCommand::RecordLine(index, y) => {
+                        manager.record_line(*index, make_line("x", 8.0, f64::from(*y), f64::from(*y)));
+                    }
+                    RegistrationCommand::Ensure(index) => manager.ensure_paragraph(*index),
+                    RegistrationCommand::Reset(index) => manager.reset_paragraph_registration(*index),
+                    RegistrationCommand::Freeze(true) => manager.freeze(),
+                    RegistrationCommand::Freeze(false) => manager.unfreeze(),
+                    RegistrationCommand::Select(value) => {
+                        let range = value.map(|(index, offset)| {
+                            let position = TextPosition::new(index, offset);
+                            SelectionRange::new(position, position)
+                        });
+                        let changed = manager.set_selection_for_render(range);
+                        proptest::prop_assert_eq!(changed, selection != *value);
+                    }
+                }
+                if let RegistrationCommand::Freeze(value) = command {
+                    frozen = *value;
+                } else if let RegistrationCommand::Select(value) = command {
+                    selection = *value;
+                } else if !frozen {
+                    match command {
+                        RegistrationCommand::FullRender => {
+                            model.clear();
+                            prefix = 0;
+                        }
+                        RegistrationCommand::Incremental(from) => {
+                            prefix = match from {
+                                Some(from) if *from > 0 && *from <= model.len() => *from,
+                                _ => 0,
+                            };
+                            model.truncate(prefix);
+                            for paragraph in &mut model {
+                                paragraph.2 = false;
+                            }
+                        }
+                        RegistrationCommand::Append(index, _)
+                        | RegistrationCommand::RecordLine(index, _)
+                        | RegistrationCommand::Ensure(index)
+                        | RegistrationCommand::Reset(index) => {
+                            while model.len() <= *index {
+                                model.push((String::new(), Vec::new(), true));
+                            }
+                            let (text, lines, touched) = &mut model[*index];
+                            if !*touched || matches!(command, RegistrationCommand::Reset(_)) {
+                                text.clear();
+                                lines.clear();
+                            }
+                            *touched = true;
+                            match command {
+                                RegistrationCommand::Append(_, part) => text.push_str(part),
+                                RegistrationCommand::RecordLine(_, y) => lines.push(f64::from(*y)),
+                                _ => {}
+                            }
+                        }
+                        RegistrationCommand::Freeze(_) | RegistrationCommand::Select(_) => unreachable!(),
+                    }
+                }
+                proptest::prop_assert_eq!(manager.is_frozen(), frozen, "step {}: {:?}", step, command);
+                proptest::prop_assert_eq!(manager.preserved_prefix_len(), prefix, "step {}: {:?}", step, command);
+                proptest::prop_assert_eq!(manager.paragraphs().len(), model.len(), "step {}: {:?}", step, command);
+                let expected_selection = selection.map(|(index, offset)| {
+                    let position = TextPosition::new(index, offset);
+                    SelectionRange::new(position, position)
+                });
+                proptest::prop_assert_eq!(manager.selection_range(), expected_selection, "step {}: {:?}", step, command);
+                for (actual, (text, lines, _)) in manager.paragraphs().iter().zip(&model) {
+                    proptest::prop_assert_eq!(&actual.text, text, "step {}: {:?}", step, command);
+                    let actual_lines: Vec<f64> = actual.lines.iter().map(|line| line.top).collect();
+                    proptest::prop_assert_eq!(&actual_lines, lines, "step {}: {:?}", step, command);
+                }
+            }
+        }
     }
 
     /// A paragraph kept across an incremental pass and then registered again
