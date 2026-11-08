@@ -38,7 +38,26 @@ struct ReplayGlyphBatchStats {
     text_glyphs: u64,
 }
 
+struct ControlMarkFont {
+    source: Rc<str>,
+    size_bits: u32,
+    scaled: Rc<str>,
+}
+
+struct ControlMarkFontCache {
+    recent: Option<ControlMarkFont>,
+    previous: Option<ControlMarkFont>,
+}
+
 thread_local! {
+    // Single-command mark replays use fresh trackers. Keep only the two most
+    // recent pure descriptor conversions across those trackers; owning each
+    // source prevents a reused allocation address from becoming a false hit.
+    static CONTROL_MARK_FONTS: std::cell::RefCell<ControlMarkFontCache> =
+        const { std::cell::RefCell::new(ControlMarkFontCache {
+            recent: None,
+            previous: None,
+        }) };
     static REPLAY_GLYPH_BATCH_STATS: std::cell::Cell<ReplayGlyphBatchStats> =
         const { std::cell::Cell::new(ReplayGlyphBatchStats {
             batch_runs: 0,
@@ -2004,11 +2023,8 @@ fn execute_control_mark_with_font_state<P: Painter>(
     font_state.set_fill_style_rc_if_changed(context, &style.fill_color);
 
     let scaled_font_size_pt = (style.font_size_pt as f64 * CONTROL_MARK_FONT_SCALE).max(1.0) as f32;
-    let scaled_descriptor = format!(
-        "{:0.2}pt {}",
-        scaled_font_size_pt,
-        extract_font_family(&style.font_descriptor_latin_ascii)
-    );
+    let scaled_descriptor =
+        control_mark_font(&style.font_descriptor_latin_ascii, scaled_font_size_pt);
     font_state.set_font_if_changed(context, &scaled_descriptor);
 
     let reduction_points = style.font_size_pt * ((1.0 - CONTROL_MARK_FONT_SCALE) * 0.5) as f32;
@@ -2020,6 +2036,37 @@ fn execute_control_mark_with_font_state<P: Painter>(
     context.fill_text(symbol, x, text_y)?;
 
     Ok(width)
+}
+
+fn control_mark_font(source: &Rc<str>, scaled_size: f32) -> Rc<str> {
+    // Release the cache borrow before calling any Painter methods, which may
+    // themselves replay commands. This cache contains no painter state.
+    CONTROL_MARK_FONTS.with_borrow_mut(|cache| {
+        let size_bits = scaled_size.to_bits();
+        if let Some(entry) = &cache.recent {
+            if entry.size_bits == size_bits && Rc::ptr_eq(&entry.source, source) {
+                return Rc::clone(&entry.scaled);
+            }
+        }
+        if let Some(entry) = &cache.previous {
+            if entry.size_bits == size_bits && Rc::ptr_eq(&entry.source, source) {
+                let scaled = Rc::clone(&entry.scaled);
+                std::mem::swap(&mut cache.recent, &mut cache.previous);
+                return scaled;
+            }
+        }
+        let scaled: Rc<str> = Rc::from(format!(
+            "{:0.2}pt {}",
+            scaled_size,
+            extract_font_family(source)
+        ));
+        cache.previous = cache.recent.replace(ControlMarkFont {
+            source: Rc::clone(source),
+            size_bits,
+            scaled: Rc::clone(&scaled),
+        });
+        scaled
+    })
 }
 
 /// Extracts font family from a font descriptor string.

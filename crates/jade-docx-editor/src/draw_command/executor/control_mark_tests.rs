@@ -340,4 +340,32 @@ proptest! {
     fn control_mark_replay_matches_value_model(actions in prop::collection::vec(action(), 1..97)) {
         check_replay(&actions)?;
     }
+
+    #[test]
+    fn control_mark_fonts_preserve_all_f32_size_bits(
+        inputs in prop::collection::vec((0usize..SOURCES.len(), any::<u32>()), 1..33)
+    ) {
+        let sources: Vec<Rc<str>> = SOURCES.iter().map(|source| Rc::from(*source)).collect();
+        for (source, bits) in inputs {
+            let mut style = mark_style(0, Rc::clone(&sources[source]), 0.0);
+            style.font_size_pt = f32::from_bits(bits);
+            // Reference the original uncached conversion. Literal matrix cases
+            // above independently cover its rounding, clamping and parsing.
+            let family = SOURCES[source].split_once("pt ")
+                .map_or(SOURCES[source], |(_, family)| family);
+            let size = (f64::from(style.font_size_pt) * 0.75).max(1.0) as f32;
+            let expected = format!("{size:0.2}pt {family}");
+            for _ in 0..3 {
+                // A fresh tracker must obtain the same font on both cache
+                // misses and hits, including non-finite and signed-zero sizes.
+                let painter = RecordingPainter::new();
+                execute_control_mark(&painter, "·", 3.0, 40.0, &style).unwrap();
+                let actual = painter.ops().into_iter().find_map(|op| match op {
+                    Op::SetFont(font) => Some(font),
+                    _ => None,
+                });
+                prop_assert_eq!(actual.as_deref(), Some(expected.as_str()));
+            }
+        }
+    }
 }
