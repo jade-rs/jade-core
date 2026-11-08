@@ -1,0 +1,33 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261107T033223519Z-b209d2f9",
+  "captured_at_utc": "2026-11-07T03:32:23.5548834Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20860",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "9bafe09d0c458006744b9edce767a328ba2da1bb5d9a460e5830c47bf6d7f1d1"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "documents": [
+    {
+      "name": "word-windows-edge-decimal-tracking",
+      "source": "tmp\\edge-next-root\\public\\fixtures\\word-windows-edge-decimal-tracking.docx",
+      "sha256": "8f615cd073d3e2fba137ba84744c3fa2dda1d7909ab207cd8c87575771126d64",
+      "pdf": "word-windows-edge-decimal-tracking.pdf",
+      "pdf_sha256": "54fc90d635aa646e1585b985152eae1e5dd2a3aefc506a9f6ab47741c7866fca",
+      "pages": 1,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-decimal-tracking.page-001.emf",
+          "sha256": "c4a73a9fc2719b723e8cf6f6df30eac2f7abb5512a08f2748932e739ccf39bed",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    }
+  ]
+}

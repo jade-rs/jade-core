@@ -9,6 +9,7 @@ pub use xml::layouts::{
 pub mod animation;
 pub mod media;
 mod picture_format;
+mod presenting;
 mod shape_insertion;
 pub use picture_format::{
     compress_pictures, convert_svg_to_shapes, format_picture, insert_svg_picture, picture_format,
@@ -16,6 +17,13 @@ pub use picture_format::{
 };
 mod smartart;
 mod xml;
+pub use presenting::{
+    ensure_handout_master, ensure_notes_master, format_notes_paragraphs, format_notes_range,
+    page_header_footer, print_what, set_custom_shows, set_notes_orientation,
+    set_page_header_footer, set_print_what, set_show_settings, set_slide_advances, set_view_props,
+    PageHeaderFooter,
+};
+pub use presenting::{insert_ink, insert_slide as insert_slide_at, InkPath};
 pub use shape_insertion::{insert_shape, validate_shape_insert, ShapeInsert, ShapePreset};
 pub use smartart::{
     convert_smartart_to_shapes, convert_text_to_smartart, edit_smartart, insert_smartart,

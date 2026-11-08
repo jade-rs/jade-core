@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "documents": [
+    {
+      "name": "word-windows-edge-table-negative-spacing-columns-2-compat14",
+      "file": "inputs/word-windows-edge-table-negative-spacing-columns-2-compat14.docx",
+      "sha256": "37bcf2fd5b23fe0bf575848103503f01b382203d6822c1a84005f782b3fe4900"
+    },
+    {
+      "name": "word-windows-edge-table-negative-spacing-columns-3-compat14",
+      "file": "inputs/word-windows-edge-table-negative-spacing-columns-3-compat14.docx",
+      "sha256": "e35ed97ba985216d4476fa168b010318bdac0e324e5c74f12bd57a6ce00fb32a"
+    },
+    {
+      "name": "word-windows-edge-table-negative-spacing-columns-4-compat14",
+      "file": "inputs/word-windows-edge-table-negative-spacing-columns-4-compat14.docx",
+      "sha256": "ea4a8323c7578e20ac66e31667c8d4a6d8ce100aeac26fac9e1f8bcb9b69afe5"
+    },
+    {
+      "name": "word-windows-edge-table-negative-spacing-columns-5-compat14",
+      "file": "inputs/word-windows-edge-table-negative-spacing-columns-5-compat14.docx",
+      "sha256": "23c3f84c0e5e72966f3565ce6c00437d3fa1ad13bcde1c0380d19374c7e1f063"
+    }
+  ]
+}

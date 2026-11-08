@@ -487,6 +487,16 @@ pub(crate) fn map_source_level(
             }
         }
     }
+    for (start, end, wrapper) in xml_edit_ns::processed_children(xml)? {
+        let moved = map_source_level(&wrapper.text, ns, names, wrapped, map)?;
+        if moved != wrapper.text {
+            edits.push(Splice {
+                start,
+                end,
+                text: wrapper.finish(&moved)?,
+            });
+        }
+    }
     for (start, end, wrapper) in xml_edit_ns::children_ns(xml, b"AlternateContent", MC_NAMESPACE)? {
         let mut changes = Vec::new();
         for (a, b, branch, is_fallback) in branches(&wrapper.text)? {
@@ -518,18 +528,60 @@ pub(crate) fn map_source_level(
 // Comments and processing instructions are not formula characters. Keep them
 // when a text leaf changes; a leaf containing element children is opaque.
 fn map_text_leaf(xml: &str, map: &impl Fn(&str) -> String) -> Result<String> {
+    let processed = jade_xlsx_reader::process_content::processed_elements(xml)?;
+    map_text_leaf_with_elements(
+        xml,
+        &|offset| {
+            if processed.processes_content_at(offset) {
+                TextElement::Process
+            } else {
+                TextElement::Opaque
+            }
+        },
+        map,
+    )
+}
+
+pub(crate) enum TextElement {
+    Process,
+    Ignore,
+    Opaque,
+}
+
+/// A caller with full-part ownership information may nominate transparent or
+/// ignored element starts. Opaque children keep the complete source unchanged.
+pub(crate) fn map_text_leaf_with_elements(
+    xml: &str,
+    element: &impl Fn(usize) -> TextElement,
+    map: &impl Fn(&str) -> String,
+) -> Result<String> {
     use quick_xml::{events::Event, Reader};
     let mut reader = Reader::from_str(xml);
     let mut root = true;
+    let mut depth = 0usize;
     let mut text = String::new();
     let mut spans = Vec::new();
     loop {
         let start = reader.buffer_position() as usize;
         let event = reader.read_event()?;
         match event {
-            Event::Start(_) if root => root = false,
+            Event::Start(_) if root => {
+                root = false;
+                depth = 1;
+            }
             Event::Empty(_) if root => break,
-            Event::Start(_) | Event::Empty(_) => return Ok(xml.into()),
+            Event::Start(e) => match element(start) {
+                TextElement::Process => depth += 1,
+                TextElement::Ignore => {
+                    reader.read_to_end(e.name())?;
+                }
+                TextElement::Opaque => return Ok(xml.into()),
+            },
+            Event::Empty(_) => {
+                if matches!(element(start), TextElement::Opaque) {
+                    return Ok(xml.into());
+                }
+            }
             Event::Text(e) => {
                 text.push_str(&e.decode()?);
                 spans.push((start, reader.buffer_position() as usize));
@@ -545,7 +597,13 @@ fn map_text_leaf(xml: &str, map: &impl Fn(&str) -> String) -> Result<String> {
                 );
                 spans.push((start, reader.buffer_position() as usize));
             }
-            Event::End(_) | Event::Eof => break,
+            Event::End(_) => {
+                depth = depth.saturating_sub(1);
+                if depth == 0 {
+                    break;
+                }
+            }
+            Event::Eof => break,
             _ => {}
         }
     }

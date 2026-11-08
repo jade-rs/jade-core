@@ -263,7 +263,11 @@ impl DocumentParser {
                         }
                     }
                     b"w:tblCellSpacing" => {
-                        table.cell_spacing = Self::table_cell_spacing_value(e.attributes());
+                        table.cell_spacing = Self::table_cell_spacing_value(
+                            e.attributes(),
+                            &mut table.style,
+                            "-jade-cell-spacing",
+                        );
                         self.skip_element(reader, b"w:tblCellSpacing")?;
                     }
                     b"w:tblLayout" => {
@@ -338,7 +342,11 @@ impl DocumentParser {
                         }
                     }
                     b"w:tblCellSpacing" => {
-                        table.cell_spacing = Self::table_cell_spacing_value(e.attributes());
+                        table.cell_spacing = Self::table_cell_spacing_value(
+                            e.attributes(),
+                            &mut table.style,
+                            "-jade-cell-spacing",
+                        );
                     }
                     b"w:tblLayout" => {
                         table.table_layout = Self::parse_table_layout_type(e.attributes());
@@ -464,7 +472,11 @@ impl DocumentParser {
                         self.skip_element(reader, b"w:wAfter")?;
                     }
                     b"w:tblCellSpacing" => {
-                        row.cell_spacing = Self::table_cell_spacing_value(e.attributes());
+                        row.cell_spacing = Self::table_cell_spacing_value(
+                            e.attributes(),
+                            &mut row.style,
+                            "-jade-cell-spacing",
+                        );
                         self.skip_element(reader, b"w:tblCellSpacing")?;
                     }
                     b"w:ins" | b"w:del" => {
@@ -527,7 +539,11 @@ impl DocumentParser {
                         row.width_after = Self::parse_table_width(e.attributes());
                     }
                     b"w:tblCellSpacing" => {
-                        row.cell_spacing = Self::table_cell_spacing_value(e.attributes());
+                        row.cell_spacing = Self::table_cell_spacing_value(
+                            e.attributes(),
+                            &mut row.style,
+                            "-jade-cell-spacing",
+                        );
                     }
                     b"w:ins" | b"w:del" => {
                         let kind = Self::revision_kind(e);
@@ -582,7 +598,11 @@ impl DocumentParser {
             match reader.next_event(&mut buf) {
                 Ok(Event::Start(ref e)) => match e.name().as_ref() {
                     b"w:tblCellSpacing" => {
-                        row.cell_spacing_exception = Self::table_cell_spacing_value(e.attributes());
+                        row.cell_spacing_exception = Self::table_cell_spacing_value(
+                            e.attributes(),
+                            &mut row.style,
+                            "-jade-cell-spacing-exception",
+                        );
                         self.skip_element(reader, b"w:tblCellSpacing")?;
                     }
                     b"w:tblCellMar" => {
@@ -607,7 +627,11 @@ impl DocumentParser {
                 },
                 Ok(Event::Empty(ref e)) => match e.name().as_ref() {
                     b"w:tblCellSpacing" => {
-                        row.cell_spacing_exception = Self::table_cell_spacing_value(e.attributes());
+                        row.cell_spacing_exception = Self::table_cell_spacing_value(
+                            e.attributes(),
+                            &mut row.style,
+                            "-jade-cell-spacing-exception",
+                        );
                     }
                     b"w:shd" => {
                         if let Some(color) = Self::read_color_attribute(e.attributes(), b"w:fill") {
@@ -1020,12 +1044,18 @@ impl DocumentParser {
     /// Converts `w:tblCellSpacing` to points. The element shares the common
     /// table-width attribute shape, but ECMA-376 explicitly ignores `pct` and
     /// `auto` here. An omitted type is DXA; `nil` is an explicit zero.
-    fn table_cell_spacing_value(attributes: Attributes<'_>) -> Option<f32> {
+    fn table_cell_spacing_value(
+        attributes: Attributes<'_>,
+        style: &mut crate::document::StyleMap,
+        key: &str,
+    ) -> Option<f32> {
         let mut width: Option<f32> = None;
+        let mut raw_width = String::new();
         let mut width_type: Option<String> = None;
         for attr in attributes.flatten() {
             match attr.key.as_ref() {
                 b"w:w" => {
+                    raw_width = String::from_utf8_lossy(&attr.value).trim().to_string();
                     width = String::from_utf8_lossy(&attr.value)
                         .trim()
                         .parse::<f32>()
@@ -1042,6 +1072,13 @@ impl DocumentParser {
             }
         }
 
+        // Keep the XML distinction without changing the legacy numeric value
+        // consumed by Mac. Windows Word separates an explicit DXA zero (also
+        // a missing DXA width), unlike nil or an omitted spacing element.
+        style.insert(
+            key.to_string(),
+            format!("{}:{}", width_type.as_deref().unwrap_or("dxa"), raw_width),
+        );
         match width_type.as_deref() {
             Some("nil") => Some(0.0),
             Some("pct" | "auto") => None,

@@ -4,42 +4,81 @@
 //! pads `?` with spaces and `0` with zeros, and drops a zero whole part under
 //! `#`.
 
+use crate::locale::Locale;
+
+use super::{
+    format::{format_number, select_conditional_section, Formatted},
+    lexer::{split_sections, Compare, Lexer, Token},
+};
+
 /// One section of `format` laid out for `value`, when the section that
 /// applies is a fraction; `None` sends the format to the general path.
-pub(crate) fn format_fraction(value: f64, format: &str) -> Option<String> {
+pub(crate) fn format_fraction(value: f64, format: &str, locale: &Locale) -> Option<Formatted> {
     let sections = split_sections(format);
-    let (section, magnitude, sign) = match sections.len() {
-        1 => (sections[0].as_str(), value.abs(), value < 0.0),
-        2..=4 if value < 0.0 => (sections[1].as_str(), value.abs(), false),
-        3 | 4 if value == 0.0 => (sections[2].as_str(), 0.0, false),
-        _ => (sections[0].as_str(), value.abs(), false),
+    if sections.len() > 4 {
+        return None;
+    }
+    let metadata = sections
+        .iter()
+        .map(|section| prefix(section))
+        .collect::<Vec<_>>();
+    let patterns = metadata
+        .iter()
+        .map(|(body, _, _)| Pattern::parse(body))
+        .collect::<Vec<_>>();
+    if !patterns.iter().take(3).any(Option::is_some) {
+        return None;
+    }
+    let conditional = sections.len() > 1
+        && metadata
+            .iter()
+            .take(2)
+            .any(|(_, condition, _)| condition.is_some());
+    let (index, signed_value) = if conditional {
+        let conditions = metadata
+            .iter()
+            .map(|(_, condition, _)| condition.as_ref())
+            .collect::<Vec<_>>();
+        let index = select_conditional_section(&conditions, value)?;
+        (index, value)
+    } else {
+        match sections.len() {
+            2..=4 if value < 0.0 => (1, -value),
+            3 | 4 if value == 0.0 => (2, 0.0),
+            _ => (0, value),
+        }
     };
-    let pattern = Pattern::parse(section)?;
-    let mut text = pattern.render(magnitude);
-    if sign {
+    let Some(pattern) = &patterns[index] else {
+        // A mixed format may select a decimal, date, literal or General section.
+        // Pass only that section so it cannot be selected again by sign.
+        return Some(format_number(signed_value, &sections[index], locale));
+    };
+    let mut text = pattern.render(signed_value.abs());
+    if signed_value < 0.0 {
         text.insert(0, '-');
     }
-    Some(text)
+    Some(Formatted {
+        text,
+        color: metadata[index].2,
+        error: None,
+    })
 }
 
-/// The `;`-separated sections, leaving quoted text and brackets alone.
-fn split_sections(format: &str) -> Vec<String> {
-    let mut sections = vec![String::new()];
-    let (mut quoted, mut bracketed) = (false, false);
-    for c in format.chars() {
-        match c {
-            '"' => quoted = !quoted,
-            '[' if !quoted => bracketed = true,
-            ']' if !quoted => bracketed = false,
-            ';' if !quoted && !bracketed => {
-                sections.push(String::new());
-                continue;
-            }
-            _ => {}
+/// Remove only recognized condition/color prefixes. Unknown bracket codes and
+/// quoted or escaped text remain part of the pattern and must not be discarded.
+fn prefix(mut section: &str) -> (&str, Option<(Compare, f64)>, Option<i32>) {
+    let (mut condition, mut color) = (None, None);
+    while section.starts_with('[') {
+        let Some(end) = section.find(']') else { break };
+        let mut lexer = Lexer::new(&section[..=end]);
+        match lexer.next_token() {
+            Token::Condition(compare, threshold) => condition = Some((compare, threshold)),
+            Token::Color(index) => color = Some(index),
+            _ => break,
         }
-        sections.last_mut().expect("a section").push(c);
+        section = &section[end + 1..];
     }
-    sections
+    (section, condition, color)
 }
 
 struct Pattern {

@@ -33,6 +33,7 @@
 //! stale cached value until the engine lands, which is why the headless API
 //! reports the formula alongside it.
 
+mod array_metadata;
 pub mod auto_filter;
 mod calc;
 pub mod cell_shift;
@@ -41,7 +42,9 @@ pub mod chart_cache;
 pub mod chart_format;
 pub mod charts;
 pub mod clipboard;
+mod conditional_cleanup;
 pub mod conditional_formats;
+mod copy_feature_ids;
 mod copy_objects;
 pub mod data_tables;
 pub mod data_validations;
@@ -51,6 +54,7 @@ pub mod drawing;
 mod filter;
 pub mod filter_state;
 pub mod format_axes;
+mod formula_text;
 pub mod freeze_panes;
 pub mod header_footer;
 pub mod hyperlinks;
@@ -119,6 +123,10 @@ use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum WriteError {
+    #[error("formula markup: {0}")]
+    FormulaMarkup(&'static str),
+    #[error("array metadata: {0}")]
+    ArrayMetadata(&'static str),
     #[error("pivot table: {0}")]
     Pivot(String),
     #[error("editable range: {0}")]
@@ -167,6 +175,8 @@ pub enum WriteError {
     InsertionWouldDiscardCells,
     #[error("rows or columns {at}+{count} are outside the sheet")]
     StructureOutOfBounds { at: u32, count: u32 },
+    #[error("cannot change part of the legacy array `{sheet}`!{range}")]
+    PartialLegacyArray { sheet: String, range: String },
     /// A `cellXfs`, font or fill index the styles part does not have.
     #[error("the styles part has no entry at index {index}")]
     NoSuchStyle { index: u32 },

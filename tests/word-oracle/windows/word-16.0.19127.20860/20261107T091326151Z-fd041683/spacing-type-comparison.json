@@ -1,0 +1,205 @@
+{
+  "word_product_version": "16.0.19127.20860",
+  "capture_id": "20261107T091326151Z-fd041683",
+  "control_capture_id": "20261107T090143788Z-8bbdd321",
+  "comparisons": [
+    {
+      "name": "word-windows-edge-table-spacing-auto-mixed-borders-compat12",
+      "explicit_zero": {
+        "glyphs_exactly_equal": false,
+        "paint_matches_at_0_375pt": false
+      },
+      "omitted": {
+        "glyphs_exactly_equal": true,
+        "paint_matches_at_0_375pt": true
+      }
+    },
+    {
+      "name": "word-windows-edge-table-spacing-auto-mixed-borders-compat14",
+      "explicit_zero": {
+        "glyphs_exactly_equal": false,
+        "paint_matches_at_0_375pt": false
+      },
+      "omitted": {
+        "glyphs_exactly_equal": true,
+        "paint_matches_at_0_375pt": true
+      }
+    },
+    {
+      "name": "word-windows-edge-table-spacing-auto-mixed-borders-compat15",
+      "explicit_zero": {
+        "glyphs_exactly_equal": false,
+        "paint_matches_at_0_375pt": false
+      },
+      "omitted": {
+        "glyphs_exactly_equal": true,
+        "paint_matches_at_0_375pt": true
+      }
+    },
+    {
+      "name": "word-windows-edge-table-spacing-missing-type-mixed-borders-compat12",
+      "explicit_zero": {
+        "glyphs_exactly_equal": true,
+        "paint_matches_at_0_375pt": true
+      },
+      "omitted": {
+        "glyphs_exactly_equal": false,
+        "paint_matches_at_0_375pt": false
+      }
+    },
+    {
+      "name": "word-windows-edge-table-spacing-missing-type-mixed-borders-compat14",
+      "explicit_zero": {
+        "glyphs_exactly_equal": true,
+        "paint_matches_at_0_375pt": true
+      },
+      "omitted": {
+        "glyphs_exactly_equal": false,
+        "paint_matches_at_0_375pt": false
+      }
+    },
+    {
+      "name": "word-windows-edge-table-spacing-missing-type-mixed-borders-compat15",
+      "explicit_zero": {
+        "glyphs_exactly_equal": true,
+        "paint_matches_at_0_375pt": true
+      },
+      "omitted": {
+        "glyphs_exactly_equal": false,
+        "paint_matches_at_0_375pt": false
+      }
+    },
+    {
+      "name": "word-windows-edge-table-spacing-missing-width-mixed-borders-compat12",
+      "explicit_zero": {
+        "glyphs_exactly_equal": true,
+        "paint_matches_at_0_375pt": true
+      },
+      "omitted": {
+        "glyphs_exactly_equal": false,
+        "paint_matches_at_0_375pt": false
+      }
+    },
+    {
+      "name": "word-windows-edge-table-spacing-missing-width-mixed-borders-compat14",
+      "explicit_zero": {
+        "glyphs_exactly_equal": true,
+        "paint_matches_at_0_375pt": true
+      },
+      "omitted": {
+        "glyphs_exactly_equal": false,
+        "paint_matches_at_0_375pt": false
+      }
+    },
+    {
+      "name": "word-windows-edge-table-spacing-missing-width-mixed-borders-compat15",
+      "explicit_zero": {
+        "glyphs_exactly_equal": true,
+        "paint_matches_at_0_375pt": true
+      },
+      "omitted": {
+        "glyphs_exactly_equal": false,
+        "paint_matches_at_0_375pt": false
+      }
+    },
+    {
+      "name": "word-windows-edge-table-spacing-negative-mixed-borders-compat12",
+      "explicit_zero": {
+        "glyphs_exactly_equal": false,
+        "paint_matches_at_0_375pt": false
+      },
+      "omitted": {
+        "glyphs_exactly_equal": false,
+        "paint_matches_at_0_375pt": false
+      }
+    },
+    {
+      "name": "word-windows-edge-table-spacing-negative-mixed-borders-compat14",
+      "explicit_zero": {
+        "glyphs_exactly_equal": false,
+        "paint_matches_at_0_375pt": false
+      },
+      "omitted": {
+        "glyphs_exactly_equal": false,
+        "paint_matches_at_0_375pt": false
+      }
+    },
+    {
+      "name": "word-windows-edge-table-spacing-negative-mixed-borders-compat15",
+      "explicit_zero": {
+        "glyphs_exactly_equal": false,
+        "paint_matches_at_0_375pt": false
+      },
+      "omitted": {
+        "glyphs_exactly_equal": false,
+        "paint_matches_at_0_375pt": false
+      }
+    },
+    {
+      "name": "word-windows-edge-table-spacing-nil-mixed-borders-compat12",
+      "explicit_zero": {
+        "glyphs_exactly_equal": false,
+        "paint_matches_at_0_375pt": false
+      },
+      "omitted": {
+        "glyphs_exactly_equal": true,
+        "paint_matches_at_0_375pt": true
+      }
+    },
+    {
+      "name": "word-windows-edge-table-spacing-nil-mixed-borders-compat14",
+      "explicit_zero": {
+        "glyphs_exactly_equal": false,
+        "paint_matches_at_0_375pt": false
+      },
+      "omitted": {
+        "glyphs_exactly_equal": true,
+        "paint_matches_at_0_375pt": true
+      }
+    },
+    {
+      "name": "word-windows-edge-table-spacing-nil-mixed-borders-compat15",
+      "explicit_zero": {
+        "glyphs_exactly_equal": false,
+        "paint_matches_at_0_375pt": false
+      },
+      "omitted": {
+        "glyphs_exactly_equal": true,
+        "paint_matches_at_0_375pt": true
+      }
+    },
+    {
+      "name": "word-windows-edge-table-spacing-percent-mixed-borders-compat12",
+      "explicit_zero": {
+        "glyphs_exactly_equal": false,
+        "paint_matches_at_0_375pt": false
+      },
+      "omitted": {
+        "glyphs_exactly_equal": true,
+        "paint_matches_at_0_375pt": true
+      }
+    },
+    {
+      "name": "word-windows-edge-table-spacing-percent-mixed-borders-compat14",
+      "explicit_zero": {
+        "glyphs_exactly_equal": false,
+        "paint_matches_at_0_375pt": false
+      },
+      "omitted": {
+        "glyphs_exactly_equal": true,
+        "paint_matches_at_0_375pt": true
+      }
+    },
+    {
+      "name": "word-windows-edge-table-spacing-percent-mixed-borders-compat15",
+      "explicit_zero": {
+        "glyphs_exactly_equal": false,
+        "paint_matches_at_0_375pt": false
+      },
+      "omitted": {
+        "glyphs_exactly_equal": true,
+        "paint_matches_at_0_375pt": true
+      }
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "engine_commit": "d248974676b38ac49355ce3a7692b2f5a78365b8",
+  "engine_source_worktree_dirty": true,
+  "engine_provenance_note": "Uncommitted legacy table prototype 2, based on this commit. Exact source changes were not archived. Original native coordinates and comparisons are retained as diagnostic evidence only.",
+  "word_product_version": "16.0.19127.20860",
+  "capture_id": "20261107T045236423Z-c4894eaa",
+  "reference_kind": "emf",
+  "strict_fixtures": [],
+  "matching_fixtures": [],
+  "pending_fixtures": [
+    "word-windows-edge-table-indents-compat12",
+    "word-windows-edge-table-indents-compat14"
+  ]
+}

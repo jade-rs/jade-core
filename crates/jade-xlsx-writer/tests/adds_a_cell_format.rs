@@ -29,6 +29,70 @@ fn bold() -> FormatChange {
 }
 
 #[test]
+fn custom_format_strings_round_trip_xstring_literals_and_control_characters() {
+    for code in [
+        "0\"_x0041_\"",
+        "0\"line\nnext\"",
+        "0\"tab\there\"",
+        "0\"carriage\rreturn\"",
+    ] {
+        let original = fixture_styles();
+        let change = FormatChange {
+            number_format: Some(code.into()),
+            ..Default::default()
+        };
+        let (once, index) = add_cell_format(&original, None, &change).unwrap();
+        let table = parse_styles_xml(&once).unwrap();
+        let id = table.cell_formats[index as usize].number_format_id.unwrap();
+        assert_eq!(
+            table.number_formats.get(&id).map(String::as_str),
+            Some(code)
+        );
+        let (twice, reused) = add_cell_format(&once, None, &change).unwrap();
+        assert_eq!(reused, index);
+        assert_eq!(twice, once);
+        let (imported, imported_index) =
+            jade_xlsx_writer::styles::import_cell_format(&original, &once, index).unwrap();
+        let imported_table = parse_styles_xml(&imported).unwrap();
+        let imported_id = imported_table.cell_formats[imported_index as usize]
+            .number_format_id
+            .unwrap();
+        assert_eq!(
+            imported_table
+                .number_formats
+                .get(&imported_id)
+                .map(String::as_str),
+            Some(code)
+        );
+    }
+}
+
+#[test]
+fn imported_number_formats_decode_xstrings_before_display_and_reuse() {
+    let original = fixture_styles();
+    let change = FormatChange {
+        number_format: Some("0\"A\"".into()),
+        ..Default::default()
+    };
+    let (xml, index) = add_cell_format(&original, None, &change).unwrap();
+    let encoded = xml.replace("0&quot;A&quot;", "0&quot;_x0041_&quot;");
+    assert_ne!(encoded, xml);
+    let table = parse_styles_xml(&encoded).unwrap();
+    let id = table.cell_formats[index as usize].number_format_id.unwrap();
+    assert_eq!(table.number_formats[&id], "0\"A\"");
+    let (reused, reused_index) = add_cell_format(&encoded, None, &change).unwrap();
+    assert_eq!(reused_index, index);
+    assert_eq!(reused, encoded);
+    let differential = jade_xlsx_reader::conditional_format::parse_differential_styles(
+        "<styleSheet><dxfs count=\"1\"><dxf><numFmt numFmtId=\"164\" formatCode=\"0&quot;_x0041_&quot;\"/></dxf></dxfs></styleSheet>"
+    ).unwrap();
+    assert_eq!(
+        differential[0].number_format_code.as_deref(),
+        Some("0\"A\"")
+    );
+}
+
+#[test]
 fn bold_adds_a_font_and_an_xf_and_touches_nothing_else() {
     let original = fixture_styles();
     let (xml, index) = add_cell_format(&original, None, &bold()).expect("add");
