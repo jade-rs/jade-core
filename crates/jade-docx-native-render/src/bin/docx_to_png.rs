@@ -97,13 +97,13 @@ fn main() -> Result<(), String> {
     let mut renderer = CanvasRenderer::<SkiaPainter>::with_host(Box::new(host), false)
         .map_err(|_| "renderer setup failed".to_string())?;
     if real_fonts {
-        // Equations as the app draws them: Cambria Math's MATH table.
-        for face in jade_docx_native_render::system_fonts::word_document_faces(&bytes, &[]) {
-            if face.family == jade_docx_native_render::system_fonts::MATH_FAMILY {
-                if let Ok(font) = std::fs::read(&face.path) {
-                    let _ = renderer.register_math_face(face.family.clone(), font, face.index);
-                }
-                break;
+        let faces = jade_docx_native_render::system_fonts::word_document_faces(&bytes, &[]);
+        for face in jade_docx_native_render::system_fonts::math_faces_for(
+            &faces,
+            document.math_properties.math_font.as_deref(),
+        ) {
+            if let Ok(font) = std::fs::read(&face.path) {
+                let _ = renderer.register_math_face(face.family, font, face.index);
             }
         }
     }
