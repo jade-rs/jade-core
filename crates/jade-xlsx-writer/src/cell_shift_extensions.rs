@@ -90,6 +90,8 @@ fn map_ns(
         }
         let text = if moved.is_empty() {
             moved
+        } else if let Some(required) = crate::empty_feature::required(name) {
+            crate::empty_feature::finish(&c, &moved, required)?
         } else {
             c.finish(&moved)?
         };
@@ -279,9 +281,6 @@ fn move_sparklines(xml: &str, change: &CellShift) -> Result<String> {
             })?;
             retain_nonempty(moved, b"sparkline")
         })?;
-        if xml_edit_ns::children(&group, b"sparklines")?.is_empty() {
-            return Ok(String::new());
-        }
         // A group's optional date-axis formula has the same structural
         // semantics as a sparkline source, independent of the display cell.
         crate::validation_sources::map_source_level(&group, XM, &[b"f"], false, &|f| {

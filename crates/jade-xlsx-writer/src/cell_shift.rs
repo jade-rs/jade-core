@@ -50,7 +50,15 @@ pub(crate) fn children_map(
             end,
             text: if changed.is_empty() {
                 changed
+            } else if name != b"dataValidations" {
+                if let Some(required) = crate::empty_feature::required(name) {
+                    crate::empty_feature::finish(&context, &changed, required)?
+                } else {
+                    context.finish(&changed)?
+                }
             } else {
+                // Validation geometry is rebuilt from the original records
+                // later in move_rules; do not archive its temporary state.
                 context.finish(&changed)?
             },
         });
@@ -773,7 +781,7 @@ fn move_rules(
         let moved = if moved.is_empty() {
             moved
         } else {
-            container.finish(&moved)?
+            crate::empty_feature::finish(&container, &moved, b"dataValidation")?
         };
         result = xml_edit_ns::set_child(
             &result,
@@ -836,7 +844,7 @@ fn move_conditional_validations(
         let text = if moved.is_empty() {
             moved
         } else {
-            context.finish(&moved)?
+            crate::empty_feature::finish(&context, &moved, b"dataValidation")?
         };
         edits.push(Splice {
             start: target.start,

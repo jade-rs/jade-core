@@ -133,7 +133,7 @@ pub(crate) fn containers(
         let replacement = if moved.is_empty() {
             moved
         } else {
-            container.finish(&moved)?
+            crate::empty_feature::finish(&container, &moved, b"dataValidation")?
         };
         result.insert(start, replacement);
     }

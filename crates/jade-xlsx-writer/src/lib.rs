@@ -51,6 +51,7 @@ pub mod data_validations;
 pub mod defined_names;
 pub mod dimensions;
 pub mod drawing;
+mod empty_feature;
 mod filter;
 pub mod filter_state;
 pub mod format_axes;

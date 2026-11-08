@@ -79,6 +79,29 @@ fn check_delete(operation: u8, wrapper: u8) {
                 book.redo().unwrap();
                 assert_eq!(book.bytes(), after);
                 let bytes = book.save_bytes().unwrap();
+                if let Some(directory) = std::env::var_os("JADE_SCHEMA_AUDIT_DIR") {
+                    let directory = std::path::PathBuf::from(directory);
+                    std::fs::create_dir_all(&directory).unwrap();
+                    let kind = if !attrs.is_empty() {
+                        "attribute"
+                    } else if opaque.is_empty() {
+                        "plain"
+                    } else if opaque.starts_with("<!--") {
+                        "comment"
+                    } else if opaque.contains("u:payload") {
+                        "payload"
+                    } else {
+                        "lookalike"
+                    };
+                    std::fs::write(
+                        directory.join(format!(
+                            "validation-{operation}-{}-{extended}-{wrapper}-{kind}.xlsx",
+                            ns == STRICT
+                        )),
+                        &bytes,
+                    )
+                    .unwrap();
+                }
                 let saved = OpcPackage::open(&bytes)
                     .unwrap()
                     .required_part_str("xl/worksheets/sheet1.xml")

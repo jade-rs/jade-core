@@ -34,6 +34,25 @@ fn deleting_last_partial_rule_preserves_opaque_container_siblings() {
                 book.shift_cells("Sheet1", CellRange::parse("B2").unwrap(), axis, false)
                     .unwrap();
                 let after = book.bytes().to_vec();
+                if let Some(directory) = std::env::var_os("JADE_SCHEMA_AUDIT_DIR") {
+                    let directory = std::path::PathBuf::from(directory);
+                    std::fs::create_dir_all(&directory).unwrap();
+                    let kind = if payload.contains("conditionalFormattings") {
+                        "conditional"
+                    } else if payload.contains("dataValidations") {
+                        "validation"
+                    } else {
+                        "sparkline"
+                    };
+                    std::fs::write(
+                        directory.join(format!(
+                            "partial-extension-{}-{axis:?}-{kind}.xlsx",
+                            namespace.contains("purl.oclc.org")
+                        )),
+                        book.save_bytes().unwrap(),
+                    )
+                    .unwrap();
+                }
                 book.undo().unwrap();
                 assert_eq!(book.bytes(), before);
                 book.redo().unwrap();
@@ -88,6 +107,29 @@ fn deleting_last_merge_keeps_opaque_container_data() {
                 book.redo().unwrap();
                 assert_eq!(book.bytes(), after);
                 let bytes = book.save_bytes().unwrap();
+                if let Some(directory) = std::env::var_os("JADE_SCHEMA_AUDIT_DIR") {
+                    let directory = std::path::PathBuf::from(directory);
+                    std::fs::create_dir_all(&directory).unwrap();
+                    let kind = if !attrs.is_empty() {
+                        "attribute"
+                    } else if opaque.is_empty() {
+                        "plain"
+                    } else if opaque.starts_with("<!--") {
+                        "comment"
+                    } else if opaque.contains("u:payload") {
+                        "payload"
+                    } else {
+                        "lookalike"
+                    };
+                    std::fs::write(
+                        directory.join(format!(
+                            "partial-merge-{}-{axis:?}-{kind}.xlsx",
+                            namespace.contains("purl.oclc.org")
+                        )),
+                        &bytes,
+                    )
+                    .unwrap();
+                }
                 let saved = OpcPackage::open(&bytes)
                     .unwrap()
                     .required_part_str("xl/worksheets/sheet1.xml")
