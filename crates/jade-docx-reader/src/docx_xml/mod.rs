@@ -1287,9 +1287,41 @@ pub struct XmlElement {
     pub children: Vec<XmlNode>,
 }
 
+// Exact byte matches below are known UTF-8; all other names retain the
+// original owned conversion, including its error bytes and diagnostics.
+fn owned_xml_name(bytes: &[u8]) -> Result<String, std::string::FromUtf8Error> {
+    let name = match bytes {
+        b"w14:paraId" => "w14:paraId",
+        b"w:ascii" => "w:ascii",
+        b"w:bdr" => "w:bdr",
+        b"w:color" => "w:color",
+        b"w:cs" => "w:cs",
+        b"w:eastAsia" => "w:eastAsia",
+        b"w:frame" => "w:frame",
+        b"w:hAnsi" => "w:hAnsi",
+        b"w:hint" => "w:hint",
+        b"w:jc" => "w:jc",
+        b"w:kern" => "w:kern",
+        b"w:p" => "w:p",
+        b"w:pPr" => "w:pPr",
+        b"w:r" => "w:r",
+        b"w:rFonts" => "w:rFonts",
+        b"w:rPr" => "w:rPr",
+        b"w:rsidRPr" => "w:rsidRPr",
+        b"w:space" => "w:space",
+        b"w:sz" => "w:sz",
+        b"w:szCs" => "w:szCs",
+        b"w:t" => "w:t",
+        b"w:val" => "w:val",
+        b"w:widowControl" => "w:widowControl",
+        _ => return String::from_utf8(bytes.to_vec()),
+    };
+    Ok(name.to_owned())
+}
+
 impl XmlElement {
     fn from_bytes_start(e: &quick_xml::events::BytesStart<'_>) -> Result<Self, DocxXmlError> {
-        let name = String::from_utf8(e.name().as_ref().to_vec())
+        let name = owned_xml_name(e.name().as_ref())
             .map_err(|err| DocxXmlError::Malformed(err.to_string()))?;
         let attributes = XmlAttribute::parse_attributes(e)?;
         Ok(Self {
@@ -1512,7 +1544,7 @@ impl XmlAttribute {
                 return None;
             }
             attributes.push(Self {
-                name: String::from_utf8(name.to_vec()).ok()?,
+                name: owned_xml_name(name).ok()?,
                 value: String::from_utf8(value.to_vec()).ok()?,
             });
             rest = quick_xml::utils::trim_xml_start(rest);
@@ -1521,7 +1553,7 @@ impl XmlAttribute {
     }
 
     fn from_attribute(attr: Attribute<'_>) -> Result<Self, DocxXmlError> {
-        let name = String::from_utf8(attr.key.as_ref().to_vec())
+        let name = owned_xml_name(attr.key.as_ref())
             .map_err(|err| DocxXmlError::Malformed(err.to_string()))?;
         let value = attr
             .normalized_value(quick_xml::XmlVersion::Implicit1_0)
@@ -1679,6 +1711,94 @@ fn push_escaped(buffer: &mut String, value: &str, entity: impl Fn(u8) -> Option<
 
 #[cfg(test)]
 pub(crate) mod tests {
+    #[test]
+    fn owned_xml_name_matches_original_for_known_names_and_byte_mutations() {
+        let names = [
+            "w14:paraId",
+            "w:ascii",
+            "w:bdr",
+            "w:color",
+            "w:cs",
+            "w:eastAsia",
+            "w:frame",
+            "w:hAnsi",
+            "w:hint",
+            "w:jc",
+            "w:kern",
+            "w:p",
+            "w:pPr",
+            "w:r",
+            "w:rFonts",
+            "w:rPr",
+            "w:rsidRPr",
+            "w:space",
+            "w:sz",
+            "w:szCs",
+            "w:t",
+            "w:val",
+            "w:widowControl",
+        ];
+        for name in names {
+            let original = name.as_bytes();
+            assert_eq!(
+                owned_xml_name(original),
+                String::from_utf8(original.to_vec())
+            );
+            for index in 0..original.len() {
+                for byte in 0..=u8::MAX {
+                    let mut bytes = original.to_vec();
+                    bytes[index] = byte;
+                    assert_eq!(
+                        owned_xml_name(&bytes),
+                        String::from_utf8(bytes.clone()),
+                        "{bytes:?}"
+                    );
+                    let attr = Attribute {
+                        key: quick_xml::name::QName(&bytes),
+                        value: std::borrow::Cow::Borrowed(b"ok"),
+                    };
+                    let actual = XmlAttribute::from_attribute(attr)
+                        .map(|attr| (attr.name, attr.value))
+                        .map_err(|error| error.to_string());
+                    let expected = String::from_utf8(bytes)
+                        .map(|name| (name, "ok".to_owned()))
+                        .map_err(|error| DocxXmlError::Malformed(error.to_string()).to_string());
+                    assert_eq!(actual, expected);
+                }
+            }
+            for value in ["plain", "日本語", "&amp;&#9;"] {
+                let xml = format!("<root><{name} {name}=\"{value}\"/></root>");
+                let doc = DocxXmlDocument::parse(&xml).unwrap();
+                let XmlNode::Element(element) = &doc.root().children[0] else {
+                    panic!("expected an element");
+                };
+                assert_eq!(element.name, name);
+                assert_eq!(element.attributes[0].name, name);
+                let expected = if value == "&amp;&#9;" { "&\t" } else { value };
+                assert_eq!(element.attributes[0].value, expected);
+                let serialized = doc.to_string().unwrap();
+                let roundtrip = DocxXmlDocument::parse(&serialized).unwrap();
+                assert_eq!(roundtrip.to_string().unwrap(), serialized);
+            }
+        }
+        for name in ["", "unknown", "w:rPrExtra", "日本語", "🦀", "w:色"] {
+            assert_eq!(
+                owned_xml_name(name.as_bytes()),
+                String::from_utf8(name.as_bytes().to_vec())
+            );
+        }
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(512))]
+        #[test]
+        fn owned_xml_name_matches_original_for_arbitrary_bytes(
+            bytes in proptest::collection::vec(any::<u8>(), 0..256),
+        ) {
+            prop_assert_eq!(owned_xml_name(&bytes), String::from_utf8(bytes));
+        }
+    }
+
     #[test]
     fn plain_attributes_read_as_quick_xml_reads_them() {
         use quick_xml::events::Event;
