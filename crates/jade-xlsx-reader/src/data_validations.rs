@@ -26,11 +26,14 @@ pub struct ValidationRecord {
     pub container: Range<usize>,
     pub index: usize,
     pub extended: bool,
+    /// The container is reached through markup compatibility alternatives.
+    pub conditional: bool,
 }
 struct Container {
     start: usize,
     depth: usize,
     extended: bool,
+    conditional: bool,
     next: usize,
     records: Vec<(usize, DataValidation)>,
 }
@@ -55,6 +58,17 @@ pub fn parse_data_validations(xml: &str) -> Result<Vec<DataValidation>> {
 /// Standard rules first, then recognized x14 extension containers in document
 /// order. Foreign/nested lookalikes and records without coverage are excluded.
 pub fn validation_records(xml: &str) -> Result<Vec<ValidationRecord>> {
+    records(xml, false)
+}
+
+/// Original locations in every supported container alternative, including stored
+/// fallbacks, for structural reference updates. Rule-internal alternatives still
+/// supply one interpreted rule; preserving writers map their formula sources.
+pub fn all_supported_validation_containers(xml: &str) -> Result<Vec<ValidationRecord>> {
+    records(xml, true)
+}
+
+fn records(xml: &str, all_containers: bool) -> Result<Vec<ValidationRecord>> {
     // Most sheets have no rules; the whole part need not be parsed to say so.
     if !xml.contains("dataValidation") {
         return Ok(Vec::new());
@@ -81,7 +95,7 @@ pub fn validation_records(xml: &str) -> Result<Vec<ValidationRecord>> {
                 };
                 let name = local_name(e.name().as_ref()).to_vec();
                 let depth = stack.len();
-                if rule.is_some() && ns == MC_NAMESPACE {
+                if (container.is_none() || rule.is_some()) && ns == MC_NAMESPACE {
                     if name == b"AlternateContent" && !empty {
                         alternates.push((depth, false));
                         transparent.insert(depth);
@@ -93,7 +107,7 @@ pub fn validation_records(xml: &str) -> Result<Vec<ValidationRecord>> {
                     {
                         let supported = name == b"Fallback" || choice_supported(&reader, e)?;
                         let state = alternates.last_mut().unwrap();
-                        if state.1 || !supported {
+                        if (state.1 && !(all_containers && container.is_none())) || !supported {
                             if !empty {
                                 reader.read_to_end(e.name())?;
                             }
@@ -117,19 +131,34 @@ pub fn validation_records(xml: &str) -> Result<Vec<ValidationRecord>> {
                     main = Some(ns.clone());
                 }
                 let own = main.as_ref() == Some(&ns);
-                let extended = ns == X14_NAMESPACE
-                    && depth == 3
-                    && main.as_ref().is_some_and(|m| {
-                        stack[1].0 == *m
-                            && stack[1].1 == b"extLst"
-                            && stack[2].0 == *m
-                            && stack[2].1 == b"ext"
-                    });
-                if !empty && name == b"dataValidations" && ((own && depth == 1) || extended) {
+                let (standard, extended) = if name == b"dataValidations" {
+                    let path = stack
+                        .iter()
+                        .enumerate()
+                        .filter(|(i, _)| !transparent.contains(i))
+                        .map(|(_, p)| p)
+                        .take(4)
+                        .collect::<Vec<_>>();
+                    (
+                        own && path.len() == 1,
+                        ns == X14_NAMESPACE
+                            && path.len() == 3
+                            && main.as_ref().is_some_and(|m| {
+                                path[1].0 == *m
+                                    && path[1].1 == b"extLst"
+                                    && path[2].0 == *m
+                                    && path[2].1 == b"ext"
+                            }),
+                    )
+                } else {
+                    (false, false)
+                };
+                if !empty && (standard || extended) {
                     container = Some(Container {
                         start,
                         depth,
                         extended,
+                        conditional: !transparent.is_empty(),
                         next: 0,
                         records: Vec::new(),
                     });
@@ -248,6 +277,7 @@ pub fn validation_records(xml: &str) -> Result<Vec<ValidationRecord>> {
                         container: c.start..end,
                         index,
                         extended: c.extended,
+                        conditional: c.conditional,
                     }));
                 }
                 let closed = stack.len().saturating_sub(1);
