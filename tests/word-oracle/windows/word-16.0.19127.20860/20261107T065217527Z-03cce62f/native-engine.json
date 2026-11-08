@@ -1,0 +1,6 @@
+{
+  "schema": 1,
+  "native_source_commit": "9b409e13b538aa5763711604e4fb21f38eb9e5fe",
+  "native_executable_sha256": "cbd86a2dbb23e57f6240576d69fe2a1603b823b37dda86b357e91e68d7341f69",
+  "provenance_note": "word_coordinates example built from clean 9b409e13. Compared against prior clean 6bedd8c7: all six fixtures retain identical vertical failures; horizontal origins improved separately."
+}

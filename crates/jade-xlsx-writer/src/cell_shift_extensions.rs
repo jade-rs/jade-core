@@ -224,7 +224,7 @@ fn move_cf(
     })?;
     retain_nonempty(moved, b"conditionalFormatting")
 }
-fn move_dv(xml: &str, change: &CellShift) -> Result<String> {
+pub(crate) fn move_dv(xml: &str, change: &CellShift) -> Result<String> {
     let moved = children_map(xml, b"dataValidation", |rule| {
         let ranges = coverage(rule)?;
         let Some(base) = ranges.first().map(|r| r.start) else {

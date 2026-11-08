@@ -14,6 +14,11 @@ pub struct WorksheetSource {
     starts: Vec<usize>,
     ends: Vec<usize>,
     cells: Vec<CellSource>,
+    row_indexes: Vec<(usize, u32)>,
+    cell_references: Vec<(usize, CellRef)>,
+    processed_starts: Vec<usize>,
+    alternate_starts: Vec<usize>,
+    branch_starts: Vec<(usize, bool)>,
     drawing_links: [Vec<Option<String>>; 2],
     /// Every row after the one before it and every cell after the one
     /// before it in its row, with no compatibility branches to reorder.
@@ -47,6 +52,42 @@ impl WorksheetSource {
     }
     pub fn owns_end(&self, offset: usize) -> bool {
         self.ends.binary_search(&offset).is_ok()
+    }
+    /// Zero-based row index at an owned start tag in the compatible structure view.
+    pub fn row_index_at(&self, offset: usize) -> Option<u32> {
+        self.row_indexes
+            .binary_search_by_key(&offset, |&(at, _)| at)
+            .ok()
+            .map(|i| self.row_indexes[i].1)
+    }
+    /// Logical cell reference at an owned start tag in the compatible structure view.
+    pub fn cell_reference_at(&self, offset: usize) -> Option<CellRef> {
+        self.cell_references
+            .binary_search_by_key(&offset, |&(at, _)| at)
+            .ok()
+            .map(|i| self.cell_references[i].1)
+    }
+    /// An ignored wrapper with ProcessContent in the compatible structure view.
+    /// Its tag stays opaque while its owned descendants are processed.
+    pub fn processes_content_at(&self, offset: usize) -> bool {
+        self.processed_starts.binary_search(&offset).is_ok()
+    }
+    /// An actual MC AlternateContent start in the compatible structure view.
+    pub fn has_alternate_content_at(&self, offset: usize) -> bool {
+        self.alternate_starts.binary_search(&offset).is_ok()
+    }
+    /// Whether an actual MC AlternateContent starts in the half-open range.
+    pub fn has_alternate_content_between(&self, start: usize, end: usize) -> bool {
+        let index = self.alternate_starts.partition_point(|&at| at < start);
+        self.alternate_starts.get(index).is_some_and(|&at| at < end)
+    }
+    /// An understood Choice (`Some(false)`) or Fallback (`Some(true)`) at this
+    /// start in the compatible structure view. Opaque branches return None.
+    pub fn compatible_branch_at(&self, offset: usize) -> Option<bool> {
+        self.branch_starts
+            .binary_search_by_key(&offset, |&(at, _)| at)
+            .ok()
+            .map(|i| self.branch_starts[i].1)
     }
 }
 
@@ -91,6 +132,7 @@ impl CellSource {
 
 type Coordinates = (u32, u32, u32);
 enum Frame {
+    ProcessContent,
     Element {
         record: bool,
         cell: bool,
@@ -130,6 +172,13 @@ pub(crate) fn shared_strings(xml: &str) -> Result<String> {
 /// as cell values, rich runs and phonetic readings.
 pub fn worksheet_source(xml: &str) -> Result<WorksheetSource> {
     Ok(project(xml, "worksheet", true, false, None, false, None)?.1)
+}
+/// Structure offsets in every understood Choice and Fallback, without
+/// allocating cell/cache records. Opaque alternatives and extension payloads
+/// retain their original bytes when a structural writer walks these offsets.
+pub fn compatible_worksheet_source(xml: &str) -> Result<WorksheetSource> {
+    let references = HashSet::new();
+    Ok(project(xml, "worksheet", true, true, Some(&references), false, None)?.1)
 }
 /// [`worksheet_source`] read only through the first row after `last_row`:
 /// enough for a writer placing cells no further down, in a sheet already
@@ -360,6 +409,8 @@ fn project(
     let mut writer = Writer::new(Vec::new());
     let mut source = WorksheetSource::default();
     let mut frames: Vec<Frame> = Vec::new();
+    let structure_only = record_structure && all_known && references.is_some_and(HashSet::is_empty);
+    let mut scope = crate::process_content::Scope::for_xml(xml);
     let mut path: Vec<Cow<'static, str>> = Vec::new();
     let mut namespace = None::<Vec<u8>>;
     let mut coordinates: Coordinates = (0, 0, 0);
@@ -371,7 +422,12 @@ fn project(
     // Looking for given cells in a sheet without compatibility branches,
     // where each cell is written once: done once all are found.
     let stop_when_found = references
-        .filter(|wanted| all_known && !wanted.is_empty() && !xml.contains("AlternateContent"))
+        .filter(|wanted| {
+            all_known
+                && !wanted.is_empty()
+                && !xml.contains("AlternateContent")
+                && !xml.contains("ProcessContent")
+        })
         .map(HashSet::len);
     loop {
         if stop_when_found.is_some_and(|wanted| source.cells.len() >= wanted)
@@ -382,13 +438,17 @@ fn project(
         let start = reader.buffer_position() as usize;
         let event = reader.read_event()?;
         let end = reader.buffer_position() as usize;
+        if matches!(event, Event::End(_)) {
+            scope.pop();
+        }
         match event {
             Event::Start(ref e) | Event::Empty(ref e) => {
                 let empty = matches!(event, Event::Empty(_));
+                scope.push(&reader, e)?;
                 let name = element_name(e.local_name().as_ref());
                 // The element's namespace, compared where it is resolved; it
                 // is copied only where it is kept: the root's, and a cell's.
-                let (is_mc, is_main, in_namespace, kept_ns) = {
+                let (is_mc, is_main, in_namespace, kept_ns, process_content) = {
                     let ns: &[u8] = match reader.resolver().resolve_element(e.name()).0 {
                         ResolveResult::Unbound => b"",
                         ResolveResult::Bound(n) => n.0,
@@ -401,11 +461,31 @@ fn project(
                         // A cell's namespace is kept only where the cell
                         // is recorded.
                         (path.is_empty() || (all_known && name == "c")).then(|| ns.to_vec()),
+                        scope.processes(ns, e.local_name().as_ref())
+                            && ns != MC_NAMESPACE
+                            && !main_namespace(ns)
+                            && !crate::data_validations::supported_namespace(ns),
                     )
                 };
+                if empty {
+                    scope.pop();
+                }
                 let ns = kept_ns.as_deref().unwrap_or_default();
+                if process_content {
+                    source.ordered = false;
+                    if structure_only {
+                        source.processed_starts.push(start);
+                    }
+                    if !empty {
+                        frames.push(Frame::ProcessContent);
+                    }
+                    continue;
+                }
                 if is_mc && name == "AlternateContent" && !path.is_empty() {
                     source.ordered = false;
+                    if structure_only {
+                        source.alternate_starts.push(start);
+                    }
                     if !empty {
                         frames.push(Frame::Alternate {
                             chosen: false,
@@ -443,6 +523,9 @@ fn project(
                         (false, false)
                     };
                     if include {
+                        if structure_only {
+                            source.branch_starts.push((start, name == "Fallback"));
+                        }
                         let local = current_cell.is_some()
                             && path.last().is_some_and(|n| n == "c")
                             && frames.iter().skip(cell_frame + 1).all(|f| {
@@ -470,6 +553,7 @@ fn project(
                         }
                     } else if !empty {
                         reader.read_to_end(e.name())?;
+                        scope.pop();
                     }
                     continue;
                 }
@@ -486,6 +570,7 @@ fn project(
                 if !owned {
                     if !empty {
                         reader.read_to_end(e.name())?;
+                        scope.pop();
                     }
                     continue;
                 }
@@ -546,6 +631,9 @@ fn project(
                         .unwrap_or(coordinates.0);
                     coordinates.0 = coordinates.1.saturating_add(1);
                     coordinates.2 = 0;
+                    if structure_only {
+                        source.row_indexes.push((start, coordinates.1));
+                    }
                     if last_row.is_some_and(|last| coordinates.1 <= last) {
                         source.ordered = false;
                     }
@@ -558,6 +646,9 @@ fn project(
                         .and_then(|v| CellRef::parse(v).ok())
                         .unwrap_or(CellRef::new(coordinates.2, coordinates.1));
                     coordinates.2 = cell.column.saturating_add(1);
+                    if structure_only {
+                        source.cell_references.push((start, cell));
+                    }
                     if last_column.is_some_and(|last| cell.column <= last) {
                         source.ordered = false;
                     }
@@ -637,8 +728,10 @@ fn project(
                 } else {
                     None
                 };
+                // An empty reference set asks for all understood structure
+                // spans while suppressing the larger per-cell/cache records.
                 let record = record_structure
-                    && !all_known
+                    && (!all_known || structure_only)
                     && matches!(
                         name.as_ref(),
                         "worksheet"
@@ -787,4 +880,77 @@ fn project(
         String::from_utf8(writer.into_inner()).expect("UTF-8 input and ASCII element names"),
         source,
     ))
+}
+
+#[cfg(test)]
+mod process_content_tests {
+    use super::*;
+    const HEAD: &str = r#"<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" xmlns:u="urn:future" mc:Ignorable="u" mc:ProcessContent="u:wrap">"#;
+
+    #[test]
+    fn compatible_structure_spans_cover_understood_branches_without_cell_records() {
+        let xml = format!("{}<sheetData><row r=\"1\"><mc:AlternateContent><mc:Choice Requires=\"m\"><c r=\"A1\"><f>1+1</f></c></mc:Choice><mc:Choice Requires=\"u\"><c r=\"B1\"><f>2+2</f></c></mc:Choice><mc:Fallback><u:wrap><c r=\"C1\"><f>3+3</f></c></u:wrap></mc:Fallback></mc:AlternateContent><u:c r=\"D1\"><f>4+4</f></u:c></row></sheetData></worksheet>", HEAD.replace("<worksheet ", "<worksheet xmlns:m=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\" "));
+        let source = compatible_worksheet_source(&xml).unwrap();
+        assert!(source.cells.is_empty());
+        assert_eq!(
+            source.compatible_branch_at(xml.find("<mc:Choice Requires=\"m\"").unwrap()),
+            Some(false)
+        );
+        assert_eq!(
+            source.compatible_branch_at(xml.find("<mc:Choice Requires=\"u\"").unwrap()),
+            None
+        );
+        assert_eq!(
+            source.compatible_branch_at(xml.find("<mc:Fallback>").unwrap()),
+            Some(true)
+        );
+        assert!(source.processes_content_at(xml.find("<u:wrap>").unwrap()));
+        assert_eq!(source.row_index_at(xml.find("<row ").unwrap()), Some(0));
+        assert_eq!(
+            source.cell_reference_at(xml.find("<c r=\"C1\"").unwrap()),
+            Some(CellRef::parse("C1").unwrap())
+        );
+        for (formula, owned) in [("1+1", true), ("2+2", false), ("3+3", true), ("4+4", false)] {
+            let text = format!("<f>{formula}</f>");
+            let start = xml.find(&text).unwrap();
+            assert_eq!(source.owns_start(start), owned);
+            assert_eq!(source.owns_end(start + text.find("</f>").unwrap()), owned);
+        }
+    }
+
+    #[test]
+    fn processed_grid_wrappers_supply_values_and_original_cell_formula_offsets() {
+        for grid in [
+            "<u:wrap><sheetData><row r=\"1\"><c r=\"A1\"><f>1+2</f><v>3</v></c></row></sheetData></u:wrap>",
+            "<sheetData><u:wrap><row r=\"1\"><c r=\"A1\"><f>1+2</f><v>3</v></c></row></u:wrap></sheetData>",
+            "<sheetData><row r=\"1\"><u:wrap><c r=\"A1\"><u:wrap><f>1+2</f><v>3</v></u:wrap></c></u:wrap></row></sheetData>",
+        ] {
+            let xml = format!("{HEAD}{grid}</worksheet>");
+            let sheet = crate::sheet::parse_sheet("Sheet1", "sheet.xml", &xml, &[]).unwrap();
+            assert_eq!(sheet.rows[0].cells[0].value, crate::CellValue::Number(3.0));
+            assert_eq!(sheet.rows[0].cells[0].formula.as_deref(), Some("1+2"));
+            let refs = HashSet::from([CellRef::parse("A1").unwrap()]);
+            let cells = compatible_cells(&xml, &refs).unwrap();
+            assert_eq!(cells.len(), 1);
+            assert_eq!(&xml[cells[0].preferred_formula.clone().unwrap()], "<f>1+2</f>");
+            assert_eq!(&xml[cells[0].values[0].clone()], "<v>3</v>");
+            assert!(!worksheet_source(&xml).unwrap().is_ordered());
+        }
+    }
+
+    #[test]
+    fn skipped_subtrees_and_local_rules_do_not_leak_into_later_siblings() {
+        let xml = HEAD.replace("mc:ProcessContent=\"u:wrap\"", "");
+        let xml = format!("{xml}<sheetData><row r=\"1\" mc:ProcessContent=\"u:wrap\"><u:wrap><c r=\"A1\"><v>1</v></c></u:wrap></row><row r=\"2\"><u:wrap><c r=\"A2\"><v>9</v></c></u:wrap><c r=\"B2\"><v>2</v></c></row></sheetData><extLst mc:ProcessContent=\"u:wrap\"><ext><u:wrap><c r=\"C2\"><v>9</v></c></u:wrap></ext></extLst></worksheet>");
+        let sheet = crate::sheet::parse_sheet("Sheet1", "sheet.xml", &xml, &[]).unwrap();
+        assert_eq!(
+            sheet.rows[0].cells[0].reference,
+            CellRef::parse("A1").unwrap()
+        );
+        assert_eq!(sheet.rows[1].cells.len(), 1);
+        assert_eq!(
+            sheet.rows[1].cells[0].reference,
+            CellRef::parse("B2").unwrap()
+        );
+    }
 }

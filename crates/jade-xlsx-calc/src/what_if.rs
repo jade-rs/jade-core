@@ -2,14 +2,13 @@
 //! results: a few input cells given trial values and the workbook evaluated
 //! again in a kept engine model, the file itself untouched.
 
-use std::collections::{BTreeMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 
 use ironcalc_base::Model;
 use jade_xlsx_reader::{CellRef, CellValue, DateSystem, Workbook};
 
 use crate::{
-    cached_value, set_literal, settle, table_formula, to_cell_value, with_workbook_scopes,
-    CalcError, Result,
+    cached_value, read_cell_value, set_literal, settle, table_formula, with_workbook_scopes, Result,
 };
 
 /// The workbook evaluated once and kept, to be evaluated again with trial
@@ -21,6 +20,7 @@ pub struct WhatIf {
     /// The cells a probe set, each put back as the workbook holds it before
     /// a probe that leaves it out.
     set: Vec<(usize, CellRef)>,
+    held: HashMap<(usize, CellRef), CellValue>,
 }
 
 /// The workbook evaluated as a recalculation would, kept for [`WhatIf::probe`].
@@ -32,14 +32,25 @@ pub fn what_if(
     manual: &BTreeMap<String, HashSet<u32>>,
 ) -> Result<WhatIf> {
     let instant = ironcalc_base::get_milliseconds_since_epoch();
-    let (_, model, _, _) = with_workbook_scopes(workbook, manual, instant, || {
+    let (outcome, model, _, _) = with_workbook_scopes(workbook, manual, instant, || {
         settle(workbook, time_zone, false)
     })?;
+    let mut held = HashMap::new();
+    for skipped in outcome.skipped {
+        let value = read_cell_value(
+            &model,
+            skipped.sheet as u32,
+            skipped.reference.row as i32 + 1,
+            skipped.reference.column as i32 + 1,
+        )?;
+        held.insert((skipped.sheet, skipped.reference), value);
+    }
     Ok(WhatIf {
         model,
         manual: manual.clone(),
         instant,
         set: Vec::new(),
+        held,
     })
 }
 
@@ -64,10 +75,11 @@ impl WhatIf {
             .copied()
             .collect();
         let model = &mut self.model;
+        let held = &self.held;
         let values = with_workbook_scopes(workbook, &self.manual, self.instant, || {
             ironcalc_base::date_system::with_date_system(system, || {
                 for &(sheet, at) in &restore {
-                    put_back(model, workbook, sheet, at);
+                    put_back(model, workbook, sheet, at, held.get(&(sheet, at)));
                 }
                 for (sheet, at, value) in inputs {
                     clear(model, *sheet, *at);
@@ -83,14 +95,12 @@ impl WhatIf {
                 outputs
                     .iter()
                     .map(|(sheet, at)| {
-                        model
-                            .get_cell_value_by_index(
-                                *sheet as u32,
-                                at.row as i32 + 1,
-                                at.column as i32 + 1,
-                            )
-                            .map(to_cell_value)
-                            .map_err(CalcError::Engine)
+                        read_cell_value(
+                            model,
+                            *sheet as u32,
+                            at.row as i32 + 1,
+                            at.column as i32 + 1,
+                        )
                     })
                     .collect::<Result<Vec<_>>>()
             })
@@ -138,6 +148,7 @@ impl WhatIf {
         };
         let restore = std::mem::take(&mut self.set);
         let model = &mut self.model;
+        let held = &self.held;
         let formula = jade_xlsx_reader::collapse_ref_errors(&table_formula(
             workbook,
             sheet,
@@ -148,7 +159,7 @@ impl WhatIf {
             ironcalc_base::date_system::with_date_system(system, || {
                 if !restore.is_empty() {
                     for &(on, at) in &restore {
-                        put_back(model, workbook, on, at);
+                        put_back(model, workbook, on, at, held.get(&(on, at)));
                     }
                     model.evaluate();
                 }
@@ -187,7 +198,13 @@ fn clear(model: &mut Model<'static>, sheet: usize, at: CellRef) {
 
 /// A cell of the model as the workbook holds it again: its formula, its
 /// value, or nothing.
-fn put_back(model: &mut Model<'static>, workbook: &Workbook, sheet: usize, at: CellRef) {
+fn put_back(
+    model: &mut Model<'static>,
+    workbook: &Workbook,
+    sheet: usize,
+    at: CellRef,
+    held: Option<&CellValue>,
+) {
     clear(model, sheet, at);
     let (row, column) = (at.row as i32 + 1, at.column as i32 + 1);
     let formula = workbook
@@ -206,14 +223,31 @@ fn put_back(model: &mut Model<'static>, workbook: &Workbook, sheet: usize, at: C
                     &formula
                 ))
             );
-            let _ = model.update_cell_with_formula(sheet as u32, row, column, text);
+            if let Some(value) = held {
+                set_literal(model, sheet as u32, row, column, value);
+            } else {
+                let _ = crate::set_projected_formula(model, workbook, sheet, at, text);
+            }
+            model.set_source_formula(
+                sheet as u32,
+                row,
+                column,
+                Some(crate::source_formula_text(workbook, sheet, at, &formula)),
+            );
         }
-        None => set_literal(
-            model,
-            sheet as u32,
-            row,
-            column,
-            &cached_value(workbook, sheet, at),
-        ),
+        None => {
+            set_literal(
+                model,
+                sheet as u32,
+                row,
+                column,
+                &cached_value(workbook, sheet, at),
+            );
+            if workbook.sheets[sheet].array_formulas.iter().any(|array| {
+                array.kind == jade_xlsx_reader::ArrayFormulaKind::Legacy && array.outputs_to(at)
+            }) {
+                model.restore_source_array_member(sheet as u32, row, column);
+            }
+        }
     }
 }

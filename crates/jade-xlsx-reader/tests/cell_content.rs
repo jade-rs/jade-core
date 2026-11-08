@@ -6,6 +6,148 @@ use std::collections::BTreeSet;
 const MAIN: &str = "http://schemas.openxmlformats.org/spreadsheetml/2006/main";
 const STRICT: &str = "http://purl.oclc.org/ooxml/spreadsheetml/main";
 const MC: &str = "http://schemas.openxmlformats.org/markup-compatibility/2006";
+
+#[test]
+fn validation_container_alternatives_select_one_owned_container_and_keep_source_offsets() {
+    for main in [MAIN, STRICT] {
+        for (requires, expected) in [("s", "3"), ("s u", "2"), ("missing", "2")] {
+            let body = format!(
+                r#"<s:sheetData/><mc:AlternateContent><mc:Choice Requires="u"><s:dataValidations><s:dataValidation sqref="bad"/></s:dataValidations></mc:Choice><mc:Choice Requires="{requires}"><s:dataValidations count="1"><s:dataValidation type="whole" operator="equal" sqref="A1"><s:formula1>3</s:formula1></s:dataValidation></s:dataValidations></mc:Choice><mc:Fallback><s:dataValidations count="1"><s:dataValidation type="whole" operator="equal" sqref="A1"><s:formula1>2</s:formula1></s:dataValidation></s:dataValidations></mc:Fallback></mc:AlternateContent><u:wrapper><s:dataValidations><s:dataValidation sqref="bad"/></s:dataValidations></u:wrapper>"#
+            );
+            let xml = worksheet(&body).replace(MAIN, main);
+            let records = jade_xlsx_reader::data_validations::validation_records(&xml).unwrap();
+            assert_eq!(records.len(), 1);
+            assert_eq!(records[0].rule.formula1.as_deref(), Some(expected));
+            assert!(xml[records[0].container.clone()].starts_with("<s:dataValidations"));
+            assert!(xml[records[0].container.clone()].ends_with("</s:dataValidations>"));
+            assert_eq!(
+                read_xlsx(&package(&xml, &pool(""))).unwrap().sheets[0].data_validations,
+                vec![records[0].rule.clone()]
+            );
+        }
+    }
+}
+
+#[test]
+fn nested_extended_validation_containers_resolve_local_capabilities_and_empty_choices() {
+    let x14 = "http://schemas.microsoft.com/office/spreadsheetml/2009/9/main";
+    let xm = "http://schemas.microsoft.com/office/excel/2006/main";
+    let container = |value| {
+        format!(
+            r#"<x:dataValidations count="1"><u:dataValidation/><x:dataValidation type="whole" operator="equal"><x:formula1><m:f>{value}</m:f></x:formula1><m:sqref>B2:B4</m:sqref></x:dataValidation></x:dataValidations>"#
+        )
+    };
+    let body = format!(
+        r#"<s:sheetData/><s:extLst><s:ext uri="test"><mc:AlternateContent><mc:Choice xmlns:q="{x14}" Requires="q"><mc:AlternateContent><mc:Choice xmlns:q="urn:rebound" Requires="q">{}</mc:Choice><mc:Fallback>{}</mc:Fallback></mc:AlternateContent></mc:Choice><mc:Fallback>{}</mc:Fallback></mc:AlternateContent></s:ext></s:extLst>"#,
+        container(99),
+        container(3),
+        container(2)
+    );
+    let xml = worksheet(&body).replace(
+        "<s:worksheet ",
+        &format!("<s:worksheet xmlns:x=\"{x14}\" xmlns:m=\"{xm}\" "),
+    );
+    let selected = jade_xlsx_reader::data_validations::validation_records(&xml).unwrap();
+    assert_eq!(selected.len(), 1);
+    assert!(selected[0].extended);
+    assert_eq!(selected[0].index, 0);
+    assert_eq!(selected[0].rule.formula1.as_deref(), Some("3"));
+    let stored =
+        jade_xlsx_reader::data_validations::all_supported_validation_containers(&xml).unwrap();
+    assert_eq!(
+        stored
+            .iter()
+            .map(|r| r.rule.formula1.as_deref())
+            .collect::<Vec<_>>(),
+        [Some("3"), Some("2")]
+    );
+    for choice in [
+        "<mc:Choice Requires=\"s\"/>",
+        "<mc:Choice Requires=\"s\"></mc:Choice>",
+    ] {
+        let xml = worksheet(&format!(
+            r#"<s:sheetData/><mc:AlternateContent>{choice}<mc:Fallback><s:dataValidations><s:dataValidation sqref="A1"/></s:dataValidations></mc:Fallback></mc:AlternateContent>"#
+        ));
+        assert!(jade_xlsx_reader::data_validations::validation_records(&xml)
+            .unwrap()
+            .is_empty());
+        assert_eq!(
+            jade_xlsx_reader::data_validations::all_supported_validation_containers(&xml)
+                .unwrap()
+                .len(),
+            1
+        );
+    }
+}
+
+#[test]
+fn dynamic_array_choices_resolve_aliases_locally_and_require_every_namespace() {
+    let dynamic = "http://schemas.microsoft.com/office/spreadsheetml/2017/dynamicarray";
+    for main in [MAIN, STRICT] {
+        for (declarations, requires, modern) in [
+            (String::new(), "Requires=\"d\"", true),
+            (String::new(), "Requires=\"d s\"", true),
+            (format!("xmlns:a=\"{dynamic}\""), "Requires=\"a\"", true),
+            ("xmlns:d=\"urn:future\"".into(), "Requires=\"d\"", false),
+            (
+                format!("xmlns:d=\"{dynamic}-lookalike\""),
+                "Requires=\"d\"",
+                false,
+            ),
+            (String::new(), "Requires=\"d u\"", false),
+            (String::new(), "Requires=\"missing\"", false),
+            (String::new(), "u:Requires=\"d\"", false),
+        ] {
+            let body = format!("<s:sheetData><s:row r=\"1\"><mc:AlternateContent><mc:Choice {declarations} {requires}><s:c r=\"A1\"><s:v>3</s:v></s:c></mc:Choice><mc:Fallback><s:c r=\"A1\"><s:v>2</s:v></s:c></mc:Fallback></mc:AlternateContent></s:row></s:sheetData>");
+            let xml = worksheet(&body).replace(MAIN, main).replace(
+                "<s:worksheet ",
+                &format!("<s:worksheet xmlns:d=\"{dynamic}\" "),
+            );
+            let sheet = parse(&xml);
+            assert_eq!(
+                at(&sheet, "A1").value,
+                CellValue::Number(if modern { 3.0 } else { 2.0 })
+            );
+            assert_eq!(sheet.rows[0].cells.len(), 1);
+        }
+    }
+}
+
+#[test]
+fn an_understood_dynamic_property_is_not_unwrapped_as_foreign_grid_content() {
+    let body = "<s:sheetData><s:row r=\"1\"><d:dynamicArrayProperties fDynamic=\"1\"><s:c r=\"A1\" cm=\"1\"><s:v>99</s:v></s:c></d:dynamicArrayProperties><s:c r=\"B1\"><s:v>2</s:v></s:c></s:row></s:sheetData>";
+    let xml = worksheet(body).replace("<s:worksheet ", "<s:worksheet xmlns:d=\"http://schemas.microsoft.com/office/spreadsheetml/2017/dynamicarray\" mc:Ignorable=\"d\" mc:ProcessContent=\"d:dynamicArrayProperties\" ");
+    let sheet = parse(&xml);
+    assert_eq!(sheet.rows[0].cells.len(), 1);
+    assert_eq!(
+        sheet.rows[0].cells[0].reference,
+        CellRef::parse("B1").unwrap()
+    );
+}
+
+#[test]
+fn validation_choices_share_the_grid_dynamic_array_capability() {
+    for namespace in [
+        "http://schemas.microsoft.com/office/spreadsheetml/2017/dynamicarray",
+        "urn:future",
+    ] {
+        let body = r#"<s:sheetData/><s:dataValidations count="1"><s:dataValidation type="whole" operator="equal" sqref="A1"><mc:AlternateContent><mc:Choice Requires="d"><s:formula1>3</s:formula1></mc:Choice><mc:Fallback><s:formula1>2</s:formula1></mc:Fallback></mc:AlternateContent></s:dataValidation></s:dataValidations>"#;
+        let xml = worksheet(body).replace(
+            "<s:worksheet ",
+            &format!("<s:worksheet xmlns:d=\"{namespace}\" "),
+        );
+        let rules = jade_xlsx_reader::data_validations::parse_data_validations(&xml).unwrap();
+        assert_eq!(rules.len(), 1);
+        assert_eq!(
+            rules[0].formula1.as_deref(),
+            Some(if namespace == "urn:future" { "2" } else { "3" })
+        );
+        assert_eq!(
+            read_xlsx(&package(&xml, &pool(""))).unwrap().sheets[0].data_validations,
+            rules
+        );
+    }
+}
 fn worksheet(body: &str) -> String {
     format!(
         r#"<s:worksheet xmlns:s="{MAIN}" xmlns:mc="{MC}" xmlns:u="urn:foreign">{body}</s:worksheet>"#

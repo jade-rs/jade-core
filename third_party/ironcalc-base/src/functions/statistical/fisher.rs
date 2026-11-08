@@ -7,62 +7,44 @@ use crate::{
 };
 
 impl<'a> Model<'a> {
-    // FISHER(x) = 0.5 * ln((1 + x) / (1 - x))
     pub(crate) fn fn_fisher(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 1 {
-            return CalcResult::new_args_number_error(cell);
-        }
-
-        let x = match self.get_number(&args[0], cell) {
-            Ok(f) => f,
-            Err(e) => return e,
-        };
-
-        if x <= -1.0 || x >= 1.0 {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "x must be between -1 and 1 (exclusive) in FISHER".to_string(),
-            };
-        }
-
-        let ratio = (1.0 + x) / (1.0 - x);
-        let result = 0.5 * ratio.ln();
-
-        if result.is_nan() || result.is_infinite() {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "Invalid result for FISHER".to_string(),
-            };
-        }
-
-        CalcResult::Number(result)
+        self.fisher_arguments(args, cell, false)
     }
 
-    // FISHERINV(y) = (e^(2y) - 1) / (e^(2y) + 1) = tanh(y)
     pub(crate) fn fn_fisher_inv(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.fisher_arguments(args, cell, true)
+    }
+
+    fn fisher_arguments(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+        inverse: bool,
+    ) -> CalcResult {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         }
-
-        let y = match self.get_number(&args[0], cell) {
-            Ok(f) => f,
-            Err(e) => return e,
-        };
-
-        // Use tanh directly to avoid overflow from exp(2y)
-        let result = y.tanh();
-
-        if result.is_nan() || result.is_infinite() {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "Invalid result for FISHERINV".to_string(),
+        self.map_scalar_values(&args[0], cell, |model, value| {
+            let number = match model.cast_to_number(value, cell) {
+                Ok(number) => number,
+                Err(error) => return error,
             };
-        }
-
-        CalcResult::Number(result)
+            if !number.is_finite() || (!inverse && (number <= -1.0 || number >= 1.0)) {
+                return CalcResult::new_error(Error::NUM, cell, "Invalid Fisher parameter".into());
+            }
+            let result = if inverse {
+                // Preserve the stable inverse without overflowing exp(2y).
+                number.tanh()
+            } else {
+                // Retain the existing arithmetic/rounding for the transform.
+                0.5 * ((1.0 + number) / (1.0 - number)).ln()
+            };
+            if result.is_finite() {
+                CalcResult::Number(result)
+            } else {
+                CalcResult::new_error(Error::NUM, cell, "Invalid Fisher result".into())
+            }
+        })
     }
 
     // F.DIST(x, deg_freedom1, deg_freedom2, cumulative)

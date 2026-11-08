@@ -1,0 +1,22 @@
+{
+  "engine_commit": "9137b0fe8b3f3c5a73e16680d255cb94c38f6f3f",
+  "word_product_version": "16.0.19127.20860",
+  "capture_id": "20261107T035930893Z-61ca197b",
+  "reference_kind": "emf",
+  "engine_source_worktree_dirty": false,
+  "strict_fixtures": [
+    "word-windows-edge-decimal-separators",
+    "word-windows-edge-decimal-suffix",
+    "word-windows-edge-decimal-tracking",
+    "word-windows-edge-table-alignment",
+    "word-windows-edge-table-borders"
+  ],
+  "matching_fixtures": [
+    "word-windows-edge-decimal-separators",
+    "word-windows-edge-decimal-suffix",
+    "word-windows-edge-decimal-tracking",
+    "word-windows-edge-table-alignment",
+    "word-windows-edge-table-borders"
+  ],
+  "pending_fixtures": []
+}

@@ -18048,6 +18048,52 @@ mod tests {
     }
 
     #[test]
+    fn cell_spacing_keeps_xml_forms_without_changing_legacy_numeric_values() {
+        for expanded in [false, true] {
+            for (attributes, raw, numeric) in [
+                (r#"w:w="0" w:type="dxa""#, "dxa:0", Some(0.0)),
+                (r#"w:type="dxa""#, "dxa:", None),
+                (r#"w:w="0""#, "dxa:0", Some(0.0)),
+                (r#"w:w="-40" w:type="dxa""#, "dxa:-40", Some(0.0)),
+                (r#"w:w="120" w:type="nil""#, "nil:120", Some(0.0)),
+                (r#"w:w="120" w:type="auto""#, "auto:120", None),
+                (r#"w:w="5000" w:type="pct""#, "pct:5000", None),
+                (r#"w:w="120" w:type="dxa""#, "dxa:120", Some(6.0)),
+                (r#"w:w="invalid" w:type="dxa""#, "dxa:invalid", None),
+            ] {
+                let spacing = if expanded {
+                    format!("<w:tblCellSpacing {attributes}></w:tblCellSpacing>")
+                } else {
+                    format!("<w:tblCellSpacing {attributes}/>")
+                };
+                let body = format!("<w:tbl><w:tblPr>{spacing}</w:tblPr><w:tr><w:tblPrEx>{spacing}</w:tblPrEx><w:trPr>{spacing}</w:trPr><w:tc><w:p/></w:tc></w:tr></w:tbl>");
+                let document = parse_document_from_body(&body);
+                let BodyElement::Table(table) = &document.body.as_ref().unwrap().elements[0] else {
+                    panic!("table");
+                };
+                let row = &table.rows[0];
+                assert_eq!(table.cell_spacing, numeric, "{raw}");
+                assert_eq!(row.cell_spacing, numeric, "{raw}");
+                assert_eq!(row.cell_spacing_exception, numeric, "{raw}");
+                assert_eq!(
+                    table.style.get("-jade-cell-spacing").map(String::as_str),
+                    Some(raw)
+                );
+                assert_eq!(
+                    row.style.get("-jade-cell-spacing").map(String::as_str),
+                    Some(raw)
+                );
+                assert_eq!(
+                    row.style
+                        .get("-jade-cell-spacing-exception")
+                        .map(String::as_str),
+                    Some(raw)
+                );
+            }
+        }
+    }
+
+    #[test]
     fn row_spacing_keeps_direct_and_table_exception_scopes_in_the_model() {
         for expanded in [false, true] {
             let spacing = |twips| {
