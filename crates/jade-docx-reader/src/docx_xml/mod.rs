@@ -1632,13 +1632,26 @@ impl std::fmt::Display for DocxXmlError {
 
 impl std::error::Error for DocxXmlError {}
 
+const TEXT_ESCAPE_MASK: u64 = (1 << b'&') | (1 << b'<') | (1 << b'>') | (1 << b'\r');
+const ATTRIBUTE_ESCAPE_MASK: u64 = (1 << b'&')
+    | (1 << b'<')
+    | (1 << b'"')
+    | (1 << b'\'')
+    | (1 << b'\n')
+    | (1 << b'\r')
+    | (1 << b'\t');
+
+const fn is_escape_byte<const MASK: u64>(byte: u8) -> bool {
+    byte < 64 && (MASK & (1_u64 << byte)) != 0
+}
+
 /// Appends `value` with `&`, `<`, `>` and carriage returns escaped.
 ///
 /// Serialising a part escaped every text node and attribute into a new string
 /// grown a character at a time; on a large `document.xml` that was a sizeable
 /// share of each export. Unescaped stretches are copied as whole slices.
 fn push_escaped_text(buffer: &mut String, value: &str) {
-    push_escaped(buffer, value, |byte| match byte {
+    push_escaped::<TEXT_ESCAPE_MASK>(buffer, value, |byte| match byte {
         b'&' => Some("&amp;"),
         b'<' => Some("&lt;"),
         b'>' => Some("&gt;"),
@@ -1650,7 +1663,7 @@ fn push_escaped_text(buffer: &mut String, value: &str) {
 
 /// Appends `value` with `&`, `<`, `"` and `'` escaped.
 fn push_escaped_attribute(buffer: &mut String, value: &str) {
-    push_escaped(buffer, value, |byte| match byte {
+    push_escaped::<ATTRIBUTE_ESCAPE_MASK>(buffer, value, |byte| match byte {
         b'&' => Some("&amp;"),
         b'<' => Some("&lt;"),
         b'"' => Some("&quot;"),
@@ -1663,11 +1676,20 @@ fn push_escaped_attribute(buffer: &mut String, value: &str) {
     });
 }
 
-fn push_escaped(buffer: &mut String, value: &str, entity: impl Fn(u8) -> Option<&'static str>) {
+fn push_escaped<const MASK: u64>(
+    buffer: &mut String,
+    value: &str,
+    entity: impl Fn(u8) -> Option<&'static str>,
+) {
     // Every escaped character is ASCII, and ASCII bytes never occur inside a
     // multi-byte UTF-8 sequence, so each match is also a char boundary.
     let mut start = 0;
     for (index, byte) in value.bytes().enumerate() {
+        // All escape bytes fit in the mask; the common path need not select
+        // an entity string. The range check also keeps the shift in bounds.
+        if !is_escape_byte::<MASK>(byte) {
+            continue;
+        }
         if let Some(entity) = entity(byte) {
             buffer.push_str(&value[start..index]);
             buffer.push_str(entity);
@@ -2054,6 +2076,66 @@ pub(crate) mod tests {
         escaped
     }
 
+    #[test]
+    fn escape_masks_match_every_byte() {
+        for byte in u8::MIN..=u8::MAX {
+            assert_eq!(
+                is_escape_byte::<TEXT_ESCAPE_MASK>(byte),
+                [b'&', b'<', b'>', b'\r'].contains(&byte),
+                "text byte {byte}"
+            );
+            assert_eq!(
+                is_escape_byte::<ATTRIBUTE_ESCAPE_MASK>(byte),
+                [b'&', b'<', b'"', b'\'', b'\n', b'\r', b'\t'].contains(&byte),
+                "attribute byte {byte}"
+            );
+        }
+    }
+
+    #[test]
+    fn buffered_escaping_matches_reference_for_every_unicode_scalar() {
+        let value: String = (0..=0x10ffff).filter_map(char::from_u32).collect();
+        let prefix = "existing <&> 日本語😀";
+        let mut text = prefix.to_owned();
+        push_escaped_text(&mut text, &value);
+        assert_eq!(text, format!("{prefix}{}", reference_escape(&value, false)));
+
+        let mut attribute = prefix.to_owned();
+        push_escaped_attribute(&mut attribute, &value);
+        assert_eq!(
+            attribute,
+            format!("{prefix}{}", reference_escape(&value, true))
+        );
+    }
+
+    #[test]
+    fn buffered_escaping_preserves_boundaries_and_capacity_variants() {
+        for value in [
+            "",
+            "日本語😀",
+            "&<>&<>'\"\r\n\t",
+            "&日本語<😀>\r\n\t'\"&",
+            "\u{0}\u{1}\u{1f}\u{7f}\u{80}\u{85}\u{2028}\u{10ffff}",
+        ] {
+            for prefix in ["", "<&", "既存😀"] {
+                for capacity in [0, 1, 8, 64, 256] {
+                    let mut text = String::with_capacity(capacity);
+                    text.push_str(prefix);
+                    push_escaped_text(&mut text, value);
+                    assert_eq!(text, format!("{prefix}{}", reference_escape(value, false)));
+
+                    let mut attribute = String::with_capacity(capacity);
+                    attribute.push_str(prefix);
+                    push_escaped_attribute(&mut attribute, value);
+                    assert_eq!(
+                        attribute,
+                        format!("{prefix}{}", reference_escape(value, true))
+                    );
+                }
+            }
+        }
+    }
+
     proptest! {
         #[test]
         fn text_values_survive_xml_line_end_normalization(
@@ -2070,15 +2152,33 @@ pub(crate) mod tests {
         #[test]
         fn buffered_escaping_matches_the_reference(
             prefix in ".{0,8}",
-            value in "([&<>\"'a-z]|あ|😀|\\PC){0,40}",
+            value in proptest::collection::vec(prop_oneof![
+                proptest::sample::select(vec!['&', '<', '>', '"', '\'', '\r', '\n', '\t']),
+                any::<char>(),
+            ], 0..80),
+            capacity in 0usize..256,
         ) {
-            let mut text = prefix.clone();
+            let value: String = value.into_iter().collect();
+            let mut text = String::with_capacity(capacity);
+            text.push_str(&prefix);
             push_escaped_text(&mut text, &value);
             prop_assert_eq!(text, format!("{prefix}{}", reference_escape(&value, false)));
 
-            let mut attribute = prefix.clone();
+            let mut attribute = String::with_capacity(capacity);
+            attribute.push_str(&prefix);
             push_escaped_attribute(&mut attribute, &value);
             prop_assert_eq!(attribute, format!("{prefix}{}", reference_escape(&value, true)));
+
+            let mut document = DocxXmlDocument::parse("<root/>").unwrap();
+            document.root.attributes.push(XmlAttribute {
+                name: "value".to_owned(),
+                value: value.clone(),
+            });
+            document.root.children.push(XmlNode::Text(value.clone()));
+            prop_assert_eq!(
+                document.to_string().unwrap(),
+                format!("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\r\n<root value=\"{}\">{}</root>", reference_escape(&value, true), reference_escape(&value, false))
+            );
         }
     }
 
