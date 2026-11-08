@@ -128,11 +128,13 @@ fn structural(xml: &str, change: &CellShift) -> Result<String> {
     formula_map(xml, |f| shift_cells_formula(f, &change.sheet, change))
 }
 fn retain_nonempty(xml: String, name: &[u8]) -> Result<String> {
-    Ok(if xml_edit_ns::children(&xml, name)?.is_empty() {
-        String::new()
-    } else {
-        xml
-    })
+    Ok(
+        if xml_edit_ns::children(&xml, name)?.is_empty() && xml_edit_ns::plain_empty(&xml, &[])? {
+            String::new()
+        } else {
+            xml
+        },
+    )
 }
 fn paired_ranges(xml: &str) -> Result<BTreeMap<String, Vec<CellRange>>> {
     let mut pairs = BTreeMap::new();
@@ -251,7 +253,7 @@ pub(crate) fn move_dv(xml: &str, change: &CellShift) -> Result<String> {
         Ok(result)
     })?;
     let count = xml_edit_ns::children(&moved, b"dataValidation")?.len();
-    if count == 0 {
+    if count == 0 && xml_edit_ns::plain_empty(&moved, &[b"count"])? {
         return Ok(String::new());
     }
     xml_edit::root_attributes(&moved, &[("count", Some(count.to_string()))])
