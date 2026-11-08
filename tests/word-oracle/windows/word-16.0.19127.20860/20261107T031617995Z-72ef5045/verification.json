@@ -1,0 +1,24 @@
+{
+  "engine_commit": "74dd0ec144616190e57b6f39fde55a97279d7760",
+  "word_product_version": "16.0.19127.20860",
+  "capture_id": "20261107T031617995Z-72ef5045",
+  "reference_kind": "emf",
+  "engine_source_worktree_dirty": false,
+  "strict_fixtures": [
+    "word-windows-edge-arial-script-sweep",
+    "word-windows-edge-indents",
+    "word-windows-edge-run-position",
+    "word-windows-edge-run-width",
+    "word-windows-edge-spacing",
+    "word-windows-edge-tabs"
+  ],
+  "matching_fixtures": [
+    "word-windows-edge-arial-script-sweep",
+    "word-windows-edge-indents",
+    "word-windows-edge-run-position",
+    "word-windows-edge-run-width",
+    "word-windows-edge-spacing",
+    "word-windows-edge-tabs"
+  ],
+  "pending_fixtures": []
+}

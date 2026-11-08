@@ -1,0 +1,147 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261107T065217527Z-03cce62f",
+  "captured_at_utc": "2026-11-07T06:52:17.5497051Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20860",
+    "file_version": "16.0.19127.20860",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "9bafe09d0c458006744b9edce767a328ba2da1bb5d9a460e5830c47bf6d7f1d1"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-edge-table-spacing-at-least-compat12",
+      "source": "tmp\\growing-spaced-table-inputs\\word-windows-edge-table-spacing-at-least-compat12.docx",
+      "sha256": "9ab531d9042850bf56186a8ad105c669629e24d36c0bb58fac5877d14c65a6b1",
+      "pdf": "word-windows-edge-table-spacing-at-least-compat12.pdf",
+      "pdf_sha256": "cf0bb58932155d630edc14b7473f63a938c90fe201aff61e78377810c9bbf794",
+      "pages": 2,
+      "compatibility_mode": 12,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-spacing-at-least-compat12.page-001.emf",
+          "sha256": "f84aef9c8561a2692926b6cfd81a684a63e83ac7caf7257c054c01c77146f06e",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 2,
+          "file": "word-windows-edge-table-spacing-at-least-compat12.page-002.emf",
+          "sha256": "85da72884ba78f8cbf339b8380252bc8996efb31fb09c30e2ff10abc4954dde7",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-spacing-at-least-compat14",
+      "source": "tmp\\growing-spaced-table-inputs\\word-windows-edge-table-spacing-at-least-compat14.docx",
+      "sha256": "fc602c21703279426196d46818373389567bf0841e0cfd20f8b17f28cc05278c",
+      "pdf": "word-windows-edge-table-spacing-at-least-compat14.pdf",
+      "pdf_sha256": "75a68282be587ead197db41347ede95040c76c0bf506980aa5f55fab2665388e",
+      "pages": 2,
+      "compatibility_mode": 14,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-spacing-at-least-compat14.page-001.emf",
+          "sha256": "d1882364edba5c30cb3e904a4995b1688d759748315fd3eacf783eb35ddead20",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 2,
+          "file": "word-windows-edge-table-spacing-at-least-compat14.page-002.emf",
+          "sha256": "85da72884ba78f8cbf339b8380252bc8996efb31fb09c30e2ff10abc4954dde7",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-spacing-at-least-compat15",
+      "source": "tmp\\growing-spaced-table-inputs\\word-windows-edge-table-spacing-at-least-compat15.docx",
+      "sha256": "5696b24549f6ab79ea951a28a7387b3e32f3b2103f734782120ab53e7876333a",
+      "pdf": "word-windows-edge-table-spacing-at-least-compat15.pdf",
+      "pdf_sha256": "4e484e1f4f0fdd759e888210cb9e3d8dcbd7f649abd9eb9ea77b6bc7a723e8c9",
+      "pages": 2,
+      "compatibility_mode": 15,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-spacing-at-least-compat15.page-001.emf",
+          "sha256": "d51607469e23e405f84804ee1e52b6bad48305692600763c0ed674106fe9f5ca",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 2,
+          "file": "word-windows-edge-table-spacing-at-least-compat15.page-002.emf",
+          "sha256": "39024d0eaba12c06b4ca47823f6ddfdda0c2596cf8ee7d3980d6392efdc26e38",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-spacing-auto-compat12",
+      "source": "tmp\\growing-spaced-table-inputs\\word-windows-edge-table-spacing-auto-compat12.docx",
+      "sha256": "3d5fe32119098a5fd34f9b32e37b247d2a7202fab160e215a60f08c000732535",
+      "pdf": "word-windows-edge-table-spacing-auto-compat12.pdf",
+      "pdf_sha256": "7f4047ab1a97061266d803cb28fc63a71307253d9ba43a76d1442393eed24697",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-spacing-auto-compat12.page-001.emf",
+          "sha256": "7fd9e7826bee0810b8449380bc660637f7ac1366d30505b7c9d82528145a927e",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-spacing-auto-compat14",
+      "source": "tmp\\growing-spaced-table-inputs\\word-windows-edge-table-spacing-auto-compat14.docx",
+      "sha256": "2f7a7b41a134bb67ead9af9ec57ba31187be79d340909b2baa5adbc3f2f7cedb",
+      "pdf": "word-windows-edge-table-spacing-auto-compat14.pdf",
+      "pdf_sha256": "386427d7d12295c33e73b89b93e0667962f37dc18aeeecc10f55cf313bcf41ea",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-spacing-auto-compat14.page-001.emf",
+          "sha256": "7851f12220e837844605270ffc9198503064cf335d699ade11a0a3ce3ac7d769",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-spacing-auto-compat15",
+      "source": "tmp\\growing-spaced-table-inputs\\word-windows-edge-table-spacing-auto-compat15.docx",
+      "sha256": "8169f3b77975786b2286804e1e616c28f48919fa2e18aed631549087d513687f",
+      "pdf": "word-windows-edge-table-spacing-auto-compat15.pdf",
+      "pdf_sha256": "ac7496764a086292818567b7793fd5fe0e376df91fee22b7fec5205197c4f3b0",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-spacing-auto-compat15.page-001.emf",
+          "sha256": "fd22265302de0eeaa4b220f4fd209282f10a83e3e1f4a3a52bcca5be683fe168",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    }
+  ]
+}
