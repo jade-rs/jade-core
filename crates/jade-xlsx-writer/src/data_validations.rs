@@ -110,7 +110,10 @@ fn edit_record(xml: &str, index: usize, rule: Option<&DataValidation>) -> Result
             Some((total - usize::from(rule.is_none())).to_string()),
         )],
     )?;
-    let changed = if rule.is_none() && total == 1 {
+    let changed = if rule.is_none()
+        && total == 1
+        && crate::xml_edit_ns::plain_empty(&changed, &[b"count"])?
+    {
         String::new()
     } else {
         list.finish(&changed)?
