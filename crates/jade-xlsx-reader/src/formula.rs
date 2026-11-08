@@ -135,9 +135,78 @@ impl Endpoint {
 /// reference into `change.sheet` moved. `formula_sheet` is the sheet the
 /// formula sits on, which is what an unqualified reference means.
 pub fn shift_formula(formula: &str, formula_sheet: &str, change: &StructureChange) -> String {
-    rewrite_grid_formula(formula, formula_sheet, &change.sheet, |reference| {
+    rewrite_grid_formula(formula, formula_sheet, &change.sheet, |reference, _| {
         shift_reference(reference, change)
     })
+}
+
+/// One syntactic reference into the changed sheet, including references whose
+/// spelling does not change. Offsets address the original decoded formula.
+#[derive(Debug, Clone)]
+pub struct FormulaReferenceEdit {
+    pub range: std::ops::Range<usize>,
+    pub text: String,
+}
+
+/// Structural reference replacements for preserving writers. Identity entries
+/// let a writer redistribute a reference split across shared XML text nodes
+/// consistently with another alternative whose reference does change.
+pub fn shifted_formula_references(
+    formula: &str,
+    formula_sheet: &str,
+    change: &StructureChange,
+) -> Vec<FormulaReferenceEdit> {
+    let mut edits = Vec::new();
+    let _ = rewrite_grid_formula(formula, formula_sheet, &change.sheet, |reference, range| {
+        let text = shift_reference(reference, change);
+        edits.push(FormulaReferenceEdit {
+            range,
+            text: text.clone().unwrap_or_else(|| "#REF!".into()),
+        });
+        text
+    });
+    edits
+}
+
+#[cfg(test)]
+mod reference_edit_tests {
+    use super::*;
+
+    #[test]
+    fn reference_offsets_exclude_strings_selectors_and_other_sheets_and_keep_identity() {
+        let change = StructureChange {
+            sheet: "Sheet1".into(),
+            axis: Axis::Rows,
+            at: 0,
+            count: 1,
+            inserted: true,
+        };
+        let text = "IF(A1<2,\"A1\",Sheet2!B2)+Table1[A1]";
+        let edits = shifted_formula_references(text, "Sheet1", &change);
+        assert_eq!(edits.len(), 1);
+        assert_eq!(&text[edits[0].range.clone()], "A1");
+        assert_eq!(edits[0].text, "A2");
+        let mut updated = text.to_string();
+        for edit in edits.into_iter().rev() {
+            updated.replace_range(edit.range, &edit.text);
+        }
+        assert_eq!(updated, "IF(A2<2,\"A1\",Sheet2!B2)+Table1[A1]");
+        let text = "\"あ\"&'Sheet1'!$A$1+A1";
+        let mut updated = text.to_string();
+        for edit in shifted_formula_references(text, "Sheet1", &change)
+            .into_iter()
+            .rev()
+        {
+            updated.replace_range(edit.range, &edit.text);
+        }
+        assert_eq!(updated, "\"あ\"&'Sheet1'!$A$2+A2");
+        let mut unchanged = change;
+        unchanged.at = 100;
+        let edits = shifted_formula_references("A1", "Sheet1", &unchanged);
+        assert_eq!(edits.len(), 1);
+        assert_eq!(edits[0].range, 0..2);
+        assert_eq!(edits[0].text, "A1");
+    }
 }
 
 /// Rewrites structural references within a cell shift's perpendicular strip.
@@ -149,7 +218,7 @@ pub fn shift_cells_formula(
     change: &crate::CellShift,
 ) -> String {
     let axis = change.axis_change();
-    rewrite_grid_formula(formula, formula_sheet, &change.sheet, |reference| {
+    rewrite_grid_formula(formula, formula_sheet, &change.sheet, |reference, _| {
         let span = |end: Endpoint| match change.axis {
             Axis::Rows => end.column,
             Axis::Columns => end.row,
@@ -209,7 +278,7 @@ fn rewrite_grid_formula(
     formula: &str,
     formula_sheet: &str,
     changed_sheet: &str,
-    mut map: impl FnMut(&Reference) -> Option<String>,
+    mut map: impl FnMut(&Reference, std::ops::Range<usize>) -> Option<String>,
 ) -> String {
     let bytes = formula.as_bytes();
     let mut output = String::with_capacity(formula.len());
@@ -249,7 +318,7 @@ fn rewrite_grid_formula(
                 if !skip
                     && same_sheet_name(qualified.as_deref().unwrap_or(formula_sheet), changed_sheet)
                 {
-                    output.push_str(&map(&reference).unwrap_or_else(|| "#REF!".into()));
+                    output.push_str(&map(&reference, index..end).unwrap_or_else(|| "#REF!".into()));
                 } else {
                     output.push_str(&formula[index..end]);
                 }
