@@ -1380,21 +1380,25 @@ fn try_execute_bmp_glyph_run_batch<P: Painter>(
         if fonts.get(glyph.font_index as usize).is_none() {
             return Ok(false);
         }
-        let Some(glyph_text) = glyph.text(run_text) else {
+        let start = glyph.text_start as usize;
+        let end = glyph.text_end as usize;
+        let Some(bytes) = run_text.as_bytes().get(start..end) else {
             return Ok(false);
         };
-        if let Some(text) = &mut copied_text {
-            if !try_append_bmp_glyph(text, glyph_text) {
-                return Ok(false);
-            }
-        } else if !is_single_bmp_glyph(glyph_text) {
+        // The source is valid UTF-8. A leading byte and its exact BMP length
+        // therefore prove both character boundaries without slicing a str for
+        // every consecutive glyph. Continuation bytes cannot start a match.
+        if !matches!(bytes, [0..=0x7f] | [0xc2..=0xdf, _] | [0xe0..=0xef, _, _]) {
             return Ok(false);
-        } else if glyph.text_start as usize == text_end {
-            text_end = glyph.text_end as usize;
+        }
+        if let Some(text) = &mut copied_text {
+            text.push_str(&run_text[start..end]);
+        } else if start == text_end {
+            text_end = end;
         } else {
             let mut text = String::with_capacity(text_capacity);
             text.push_str(&run_text[text_start..text_end]);
-            text.push_str(glyph_text);
+            text.push_str(&run_text[start..end]);
             copied_text = Some(text);
         }
         match single_font_index {
@@ -1407,7 +1411,7 @@ fn try_execute_bmp_glyph_run_batch<P: Painter>(
         *x_position = x + glyph.x_offset;
     }
 
-    // Every endpoint in the borrowed span was checked by glyph.text above.
+    // Every endpoint in the borrowed span was validated by its BMP byte shape.
     let text = copied_text
         .as_deref()
         .unwrap_or(&run_text[text_start..text_end]);

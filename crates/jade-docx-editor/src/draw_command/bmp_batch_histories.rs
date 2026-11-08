@@ -683,6 +683,110 @@ fn position_buffer_boundaries_preserve_every_glyph_and_batch_outcome() {
 }
 
 #[test]
+fn raw_byte_ranges_match_the_utf16_contract_at_every_boundary() {
+    let source = "\0Aé\u{7ff}\u{800}税\u{ffff}😀e\u{301}";
+    let fonts = [
+        Rc::<str>::from("12pt Calibri"),
+        Rc::from("11pt 'Noto Sans JP'"),
+    ];
+    let a = source.find('A').unwrap() as u32;
+    let tax = source.find('税').unwrap() as u32;
+    let offsets: Vec<_> = (0..=source.len() as u32 + 2).chain([u32::MAX]).collect();
+    for &start in &offsets {
+        for &end in &offsets {
+            for raw_slot in 0..3 {
+                for multi_font in [false, true] {
+                    let mut ranges = vec![(a, a + 1), (tax, tax + 3)];
+                    ranges.insert(raw_slot, (start, end));
+                    let glyphs: Vec<_> = ranges
+                        .into_iter()
+                        .enumerate()
+                        .map(|(index, (text_start, text_end))| GlyphRunStep {
+                            text_start,
+                            text_end,
+                            font_index: if multi_font { (index % 2) as u16 } else { 0 },
+                            x_offset: index as f64 * 2.5,
+                        })
+                        .collect();
+                    // Checked str slicing and UTF-16 counts are the independent
+                    // contract, including empty, reversed and out-of-range spans.
+                    let valid: Vec<_> = glyphs
+                        .iter()
+                        .map(|glyph| {
+                            fonts
+                                .get(glyph.font_index as usize)
+                                .zip(source.get(glyph.text_start as usize..glyph.text_end as usize))
+                        })
+                        .collect();
+                    let eligible = valid.iter().all(|value| {
+                        value.is_some_and(|(_, text)| text.encode_utf16().count() == 1)
+                    });
+                    for mode in [BatchMode::Accept, BatchMode::Decline, BatchMode::Error] {
+                        let painter = BatchPainter::new();
+                        painter.mode.set(mode);
+                        let should_error = eligible && matches!(mode, BatchMode::Error);
+                        let result = draw_text_run_glyphs(
+                            &painter,
+                            source,
+                            -7.0,
+                            25.0,
+                            &TextStyle::default(),
+                            &fonts,
+                            &glyphs,
+                            &mut FontStateTracker::new(),
+                        );
+                        assert_eq!(
+                            result,
+                            if should_error { Err("batch") } else { Ok(()) },
+                            "range {start}..{end}, slot {raw_slot}, multi {multi_font}, {mode:?}"
+                        );
+                        let calls = painter.calls.borrow();
+                        assert_eq!(calls.len(), usize::from(eligible));
+                        if eligible {
+                            let expected_text: String =
+                                valid.iter().map(|value| value.unwrap().1).collect();
+                            let expected_xs: Vec<_> =
+                                glyphs.iter().map(|glyph| -7.0 + glyph.x_offset).collect();
+                            let expected_indexes: Vec<_> = if multi_font {
+                                glyphs.iter().map(|glyph| glyph.font_index).collect()
+                            } else {
+                                Vec::new()
+                            };
+                            assert_eq!(calls[0].0, expected_text);
+                            assert_eq!(calls[0].1, expected_xs);
+                            assert_eq!(calls[0].2, expected_indexes);
+                        }
+                        let expected: Vec<_> = if should_error {
+                            Vec::new()
+                        } else {
+                            glyphs
+                                .iter()
+                                .zip(&valid)
+                                .filter_map(|(glyph, value)| {
+                                    value.map(|(font, text)| {
+                                        (
+                                            font.to_string(),
+                                            text.to_owned(),
+                                            (-7.0 + glyph.x_offset).to_bits(),
+                                            25.0_f64.to_bits(),
+                                        )
+                                    })
+                                })
+                                .collect()
+                        };
+                        assert_eq!(
+                            drawn_glyphs(&painter.inner),
+                            expected,
+                            "range {start}..{end}, slot {raw_slot}, multi {multi_font}, {mode:?}"
+                        );
+                    }
+                }
+            }
+        }
+    }
+}
+
+#[test]
 fn contiguous_spans_are_borrowed_and_other_orders_keep_the_exact_text() {
     let source = "😀Aé税終";
     let fonts = [
