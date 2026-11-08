@@ -70,10 +70,23 @@ enum Role {
 /// wrappers do not change logical parentage; unsupported choices remain opaque.
 pub fn sources(xml: &str) -> Result<Sources> {
     let mut result = Sources::default();
-    if !xml.contains("ext") && !xml.contains("conditionalFormatting") {
+    if !xml.contains("ext")
+        && !xml.contains("conditionalFormatting")
+        && !xml.contains("AlternateContent")
+        && !xml.contains("Ignorable")
+        && !xml.contains("ProcessContent")
+    {
         return Ok(result);
     }
-    let processed = process_content::processed_elements(xml)?;
+    // Formula walkers also use these guards for chart, table and workbook
+    // parts. Their root namespaces are not worksheet extensions: treating an
+    // entire chart as foreign would suppress ordinary series-reference edits.
+    let processed = if worksheet_root(xml)? {
+        process_content::elements_with_opacity(xml)?
+    } else {
+        process_content::processed_elements(xml)?
+    };
+    result.opaque.extend(processed.opaque_starts());
     let mut reader = NsReader::from_str(xml);
     let mut main: Option<Vec<u8>> = None;
     let mut roles = Vec::new();
@@ -175,12 +188,71 @@ pub fn sources(xml: &str) -> Result<Sources> {
             _ => {}
         }
     }
+    result.opaque.sort_unstable();
+    result.opaque.dedup();
     Ok(result)
+}
+
+fn worksheet_root(xml: &str) -> Result<bool> {
+    let mut reader = NsReader::from_str(xml);
+    loop {
+        match reader.read_event()? {
+            Event::Start(e) | Event::Empty(e) => {
+                let namespace = match reader.resolver().resolve_element(e.name()).0 {
+                    ResolveResult::Unbound => Vec::new(),
+                    ResolveResult::Bound(n) => n.as_ref().to_vec(),
+                    _ => return Ok(false),
+                };
+                return Ok(e.local_name().as_ref() == b"worksheet"
+                    && matches!(
+                        namespace.as_slice(),
+                        b"" | b"http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+                            | b"http://purl.oclc.org/ooxml/spreadsheetml/main"
+                    ));
+            }
+            Event::Eof => return Ok(false),
+            _ => {}
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn nonworksheet_parts_are_not_opaque_worksheet_payloads() {
+        for namespace in [
+            "http://schemas.openxmlformats.org/drawingml/2006/chart",
+            "http://purl.oclc.org/ooxml/drawingml/chart",
+        ] {
+            let xml = format!(
+                r#"<?xml version="1.0"?><!--part--><c:chartSpace xmlns:c="{namespace}"><c:chart><c:ser><c:f>Report!A1:A2</c:f></c:ser></c:chart><c:extLst/></c:chartSpace>"#
+            );
+            let ownership = sources(&xml).unwrap();
+            assert!(!ownership.opaque_at(xml.find("<c:chartSpace").unwrap()));
+            assert!(!ownership.opaque_at(xml.find("<c:f>").unwrap()));
+            assert!(ownership.opaque.is_empty());
+        }
+        let xml = r#"<worksheet xmlns="urn:foreign"><extLst/></worksheet>"#;
+        assert!(sources(xml).unwrap().opaque.is_empty());
+    }
+    #[test]
+    fn compatibility_and_ignored_parents_are_opaque_without_extension_features() {
+        let xml = r#"<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:m="http://schemas.openxmlformats.org/markup-compatibility/2006" xmlns:u="urn:future"><m:AlternateContent><m:Choice Requires="u"><mergeCells><mergeCell ref="A1:B1"/></mergeCells></m:Choice><m:Fallback/></m:AlternateContent></worksheet>"#;
+        assert!(sources(xml)
+            .unwrap()
+            .opaque_at(xml.find("<m:Choice").unwrap()));
+        let xml = r#"<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:m="http://schemas.openxmlformats.org/markup-compatibility/2006" xmlns:u="urn:future" m:Ignorable="u" m:ProcessContent="u:pass"><u:payload><mergeCells><mergeCell ref="A1:B1"/></mergeCells></u:payload><u:pass><mergeCells><mergeCell ref="C1:D1"/></mergeCells></u:pass></worksheet>"#;
+        let ownership = sources(xml).unwrap();
+        assert!(ownership.opaque_at(xml.find("<u:payload").unwrap()));
+        assert!(!ownership.opaque_at(xml.find("<u:pass").unwrap()));
+        let xml = r#"<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:x="http://schemas.microsoft.com/office/spreadsheetml/2009/9/main" xmlns:m="http://schemas.openxmlformats.org/markup-compatibility/2006" xmlns:u="urn:future"><extLst><ext uri="{05C60535-1F16-4FD2-B633-F4F36F0B64E0}"><x:sparklineGroups><m:AlternateContent><m:Choice Requires="u"><x:sparklineGroup/></m:Choice><m:Fallback/></m:AlternateContent><x:sparklineGroup/></x:sparklineGroups></ext></extLst></worksheet>"#;
+        let ownership = sources(xml).unwrap();
+        assert!(
+            ownership.owns_payload_at(xml.find("<x:sparklineGroups>").unwrap(), Kind::Sparklines)
+        );
+        assert!(ownership.opaque_at(xml.find("<m:Choice").unwrap()));
+    }
     #[test]
     fn conditional_roots_require_compatible_logical_worksheet_parents() {
         let xml = r#"<s:worksheet xmlns:s="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" xmlns:u="urn:future" mc:Ignorable="u" mc:ProcessContent="u:wrap"><u:wrap><s:conditionalFormatting id="processed"/></u:wrap><u:opaque><s:conditionalFormatting id="hidden"/></u:opaque><mc:AlternateContent><mc:Choice Requires="u"><s:conditionalFormatting id="unknown"/></mc:Choice><mc:Choice Requires="s"><s:conditionalFormatting id="choice"/></mc:Choice><mc:Fallback><s:conditionalFormatting id="fallback"/></mc:Fallback></mc:AlternateContent></s:worksheet>"#;

@@ -123,7 +123,34 @@ impl ContextXml {
             .iter()
             .map(|(k, v)| (k.as_str(), v.clone()))
             .collect();
-        xml_edit::root_attributes(updated, &updates)
+        // A split can return several sibling copies of the contextual root.
+        // Restore each copy's inherited environment, leaving descendants alone.
+        let mut reader = quick_xml::Reader::from_str(updated);
+        let mut edits = Vec::new();
+        loop {
+            let start = reader.buffer_position() as usize;
+            match reader.read_event()? {
+                event @ (Event::Start(_) | Event::Empty(_)) => {
+                    let empty = matches!(event, Event::Empty(_));
+                    let e = match event {
+                        Event::Start(e) | Event::Empty(e) => e,
+                        _ => unreachable!(),
+                    };
+                    let end = reader.buffer_position() as usize;
+                    edits.push(Splice {
+                        start,
+                        end,
+                        text: xml_edit::root_attributes(&updated[start..end], &updates)?,
+                    });
+                    if !empty {
+                        reader.read_to_end(e.name())?;
+                    }
+                }
+                Event::Eof if edits.is_empty() => return Err(WriteError::NoRoot("XML")),
+                Event::Eof => return Ok(apply(updated, edits)),
+                _ => {}
+            }
+        }
     }
 }
 const MC: &[u8] = b"http://schemas.openxmlformats.org/markup-compatibility/2006";
@@ -438,6 +465,15 @@ mod tests {
             assert!(!processed.processes_content_at(context.text.find("<u:pass").unwrap()));
             assert!(!processed.processes_content_at(context.text.find("<v:opaque").unwrap()));
             assert_eq!(context.finish(&context.text).unwrap(), &xml[start..end]);
+            let split = format!("{}<!--between copies-->{}", context.text, context.text);
+            assert_eq!(
+                context.finish(&split).unwrap(),
+                format!(
+                    "{}<!--between copies-->{}",
+                    &xml[start..end],
+                    &xml[start..end]
+                )
+            );
             let added = new_child(&context.text, b"leaf").unwrap();
             assert!(plain_empty(&added.text, &[]).unwrap());
             assert_eq!(added.finish(&added.text).unwrap(), "<leaf/>");

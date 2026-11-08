@@ -1,21 +1,30 @@
 mod common;
 use jade_opc::OpcPackage;
 use jade_xlsx_headless_editor::HeadlessWorkbook;
+use jade_xlsx_reader::{Axis, CellRange};
 const MAIN: &str = "http://schemas.openxmlformats.org/spreadsheetml/2006/main";
 const STRICT: &str = "http://purl.oclc.org/ooxml/spreadsheetml/main";
 #[test]
 fn deleting_last_rule_keeps_opaque_container_data_and_history() {
-    check_delete(0);
+    check_delete(0, 0);
 }
 #[test]
 fn deleting_last_coverage_keeps_container_attributes() {
-    check_delete(1);
-    check_delete(2);
+    check_delete(1, 0);
+    check_delete(2, 0);
 }
-fn check_delete(operation: u8) {
+#[test]
+fn deleting_last_cells_keeps_opaque_validation_container() {
+    for wrapper in 0..3 {
+        check_delete(3, wrapper);
+        check_delete(4, wrapper);
+    }
+}
+fn check_delete(operation: u8, wrapper: u8) {
     for ns in [MAIN, STRICT] {
         for extended in [false, true] {
             for (attrs, opaque) in [
+                ("", ""),
                 ("", "<u:payload>A2</u:payload>"),
                 (" u:flag=\"keep\"", ""),
                 ("", "<!--keep-->"),
@@ -32,8 +41,13 @@ fn check_delete(operation: u8) {
                 } else {
                     list
                 };
+                let tail = match wrapper {
+                    1 => format!("<u:wrap>{tail}</u:wrap>"),
+                    2 => format!("<mc:AlternateContent><mc:Choice Requires=\"u\"><u:ignored/></mc:Choice><mc:Fallback>{tail}</mc:Fallback></mc:AlternateContent>"),
+                    _ => tail,
+                };
                 let xml = format!(
-                    r#"<worksheet xmlns="{ns}" xmlns:x="http://schemas.microsoft.com/office/spreadsheetml/2009/9/main" xmlns:m="http://schemas.microsoft.com/office/excel/2006/main" xmlns:u="urn:foreign"><sheetData/>{tail}</worksheet>"#
+                    r#"<worksheet xmlns="{ns}" xmlns:x="http://schemas.microsoft.com/office/spreadsheetml/2009/9/main" xmlns:m="http://schemas.microsoft.com/office/excel/2006/main" xmlns:u="urn:foreign" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" mc:Ignorable="u" mc:ProcessContent="u:wrap"><sheetData/>{tail}</worksheet>"#
                 );
                 let mut book =
                     HeadlessWorkbook::open_for_editing(&common::workbook_with_sheet(&xml)).unwrap();
@@ -43,9 +57,21 @@ fn check_delete(operation: u8) {
                     1 => {
                         book.delete_rows("Sheet1", 2, 1).unwrap();
                     }
-                    _ => {
+                    2 => {
                         book.delete_columns("Sheet1", "B", 1).unwrap();
                     }
+                    _ => book
+                        .shift_cells(
+                            "Sheet1",
+                            CellRange::parse("B2").unwrap(),
+                            if operation == 3 {
+                                Axis::Rows
+                            } else {
+                                Axis::Columns
+                            },
+                            false,
+                        )
+                        .unwrap(),
                 }
                 let after = book.bytes().to_vec();
                 book.undo().unwrap();
@@ -53,11 +79,38 @@ fn check_delete(operation: u8) {
                 book.redo().unwrap();
                 assert_eq!(book.bytes(), after);
                 let bytes = book.save_bytes().unwrap();
+                if let Some(directory) = std::env::var_os("JADE_SCHEMA_AUDIT_DIR") {
+                    let directory = std::path::PathBuf::from(directory);
+                    std::fs::create_dir_all(&directory).unwrap();
+                    let kind = if !attrs.is_empty() {
+                        "attribute"
+                    } else if opaque.is_empty() {
+                        "plain"
+                    } else if opaque.starts_with("<!--") {
+                        "comment"
+                    } else if opaque.contains("u:payload") {
+                        "payload"
+                    } else {
+                        "lookalike"
+                    };
+                    std::fs::write(
+                        directory.join(format!(
+                            "validation-{operation}-{}-{extended}-{wrapper}-{kind}.xlsx",
+                            ns == STRICT
+                        )),
+                        &bytes,
+                    )
+                    .unwrap();
+                }
                 let saved = OpcPackage::open(&bytes)
                     .unwrap()
                     .required_part_str("xl/worksheets/sheet1.xml")
                     .unwrap();
-                assert!(saved.contains(&format!("<{prefix}dataValidations count=\"0\"{attrs}>{opaque}</{prefix}dataValidations>")), "{saved}");
+                if attrs.is_empty() && opaque.is_empty() {
+                    assert!(!saved.contains("dataValidations"), "{saved}");
+                } else {
+                    assert!(saved.contains(&format!("<{prefix}dataValidations count=\"0\"{attrs}>{opaque}</{prefix}dataValidations>")), "{saved}");
+                }
                 let mut reopened = HeadlessWorkbook::open_for_editing(&bytes).unwrap();
                 let saved_again = OpcPackage::open(&reopened.save_bytes().unwrap())
                     .unwrap()

@@ -1,4 +1,4 @@
-//! Remove newly emptied owned x14 conditional lists without dropping opaque data.
+//! Finish newly emptied owned extension features without dropping opaque data.
 use crate::{
     patch::{apply, Splice},
     xml_edit_ns, Result,
@@ -6,27 +6,68 @@ use crate::{
 use jade_xlsx_reader::worksheet_extensions::{self, Kind};
 use quick_xml::{events::Event, NsReader};
 use std::ops::Range;
-fn lists(xml: &str) -> Result<Vec<Range<usize>>> {
+fn lists(xml: &str) -> Result<Vec<(Range<usize>, Kind)>> {
     let sources = worksheet_extensions::sources(xml)?;
     let mut reader = NsReader::from_str(xml);
     let mut spans = Vec::new();
     loop {
         let start = reader.buffer_position() as usize;
         match reader.read_event()? {
-            Event::Start(e) if sources.owns_payload_at(start, Kind::ConditionalFormats) => {
-                reader.read_to_end(e.name())?;
-                spans.push(start..reader.buffer_position() as usize);
-            }
-            Event::Empty(_) if sources.owns_payload_at(start, Kind::ConditionalFormats) => {
-                spans.push(start..reader.buffer_position() as usize);
+            event @ (Event::Start(_) | Event::Empty(_)) => {
+                let kind = [Kind::ConditionalFormats, Kind::Sparklines]
+                    .into_iter()
+                    .find(|kind| sources.owns_payload_at(start, *kind));
+                if let Some(kind) = kind {
+                    if let Event::Start(e) = event {
+                        reader.read_to_end(e.name())?;
+                    }
+                    spans.push((start..reader.buffer_position() as usize, kind));
+                }
             }
             Event::Eof => return Ok(spans),
             _ => {}
         }
     }
 }
+
+fn changed_children(
+    before: &str,
+    after: &str,
+    name: &[u8],
+    mut finish: impl FnMut(&xml_edit_ns::ContextXml, &xml_edit_ns::ContextXml) -> Result<String>,
+) -> Result<String> {
+    let old = xml_edit_ns::children(before, name)?;
+    let new = xml_edit_ns::children(after, name)?;
+    if old.len() != new.len() {
+        return Ok(after.into());
+    }
+    let mut edits = Vec::new();
+    for ((a, b, original), (start, end, moved)) in old.iter().zip(&new) {
+        if before[*a..*b] != after[*start..*end] {
+            let text = finish(original, moved)?;
+            if text != after[*start..*end] {
+                edits.push(Splice {
+                    start: *start,
+                    end: *end,
+                    text,
+                });
+            }
+        }
+    }
+    Ok(apply(after, edits))
+}
+
+fn sparkline_groups(before: &str, after: &str) -> Result<String> {
+    changed_children(before, after, b"sparklineGroup", |old, new| {
+        let moved = changed_children(&old.text, &new.text, b"sparklines", |_, list| {
+            crate::empty_feature::finish(list, &list.text, b"sparkline")
+        })?;
+        crate::empty_feature::finish(new, &moved, b"sparklines")
+    })
+}
+
 pub(crate) fn after_structure(before: &str, after: &str) -> Result<String> {
-    if !before.contains("conditionalFormattings") {
+    if !before.contains("conditionalFormattings") && !before.contains("sparklineGroups") {
         return Ok(after.into());
     }
     let original = lists(before)?;
@@ -37,15 +78,26 @@ pub(crate) fn after_structure(before: &str, after: &str) -> Result<String> {
         return Ok(after.into());
     }
     let mut edits = Vec::new();
-    for (old, new) in original.iter().zip(&moved) {
-        if !xml_edit_ns::plain_empty(&before[old.clone()], &[])?
-            && xml_edit_ns::plain_empty(&after[new.clone()], &[])?
-        {
-            edits.push(Splice {
-                start: new.start,
-                end: new.end,
-                text: String::new(),
-            });
+    for ((old, original_kind), (new, kind)) in original.iter().zip(&moved) {
+        if original_kind != kind {
+            return Ok(after.into());
+        }
+        if before[old.clone()] != after[new.clone()] {
+            let context = xml_edit_ns::fragment(after, new.clone())?;
+            let text = if *kind == Kind::Sparklines {
+                let original = xml_edit_ns::fragment(before, old.clone())?;
+                let moved = sparkline_groups(&original.text, &context.text)?;
+                crate::empty_feature::finish(&context, &moved, b"sparklineGroup")?
+            } else {
+                crate::empty_feature::finish(&context, &context.text, b"conditionalFormatting")?
+            };
+            if text != after[new.clone()] {
+                edits.push(Splice {
+                    start: new.start,
+                    end: new.end,
+                    text,
+                });
+            }
         }
     }
     if edits.is_empty() {
@@ -62,8 +114,10 @@ pub(crate) fn after_structure(before: &str, after: &str) -> Result<String> {
                 for attr in e.attributes() {
                     let attr = attr?;
                     if attr.key.as_ref() == b"uri" {
-                        known = Kind::from_uri(&attr.unescape_value()?)
-                            == Some(Kind::ConditionalFormats);
+                        known = matches!(
+                            Kind::from_uri(&attr.unescape_value()?),
+                            Some(Kind::ConditionalFormats | Kind::Sparklines)
+                        );
                     }
                 }
             }
