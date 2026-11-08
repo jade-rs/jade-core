@@ -1335,10 +1335,13 @@ pub(crate) fn try_append_bmp_glyph(output: &mut String, text: &str) -> bool {
 
 #[inline]
 pub(crate) fn is_single_bmp_glyph(text: &str) -> bool {
-    matches!(
-        text.as_bytes(),
-        [0..=0x7f] | [0xc2..=0xdf, _] | [0xe0..=0xef, _, _]
-    )
+    // Valid UTF-8 and byte length already constrain the scalar's upper bound.
+    match text.as_bytes() {
+        [_] => true,
+        [first, _] => *first >= 0xc2,
+        [first, _, _] => *first >= 0xe0,
+        _ => false,
+    }
 }
 
 fn try_execute_bmp_glyph_run_batch<P: Painter>(
@@ -2826,16 +2829,51 @@ mod painter_backend_tests {
         }
     }
 
+    #[test]
+    fn bmp_batch_rejects_every_short_multi_scalar_utf8_string() {
+        let check = |text: &str| {
+            assert_eq!(is_single_bmp_glyph(text), text.encode_utf16().count() == 1);
+        };
+        check("");
+        // These and the exhaustive scalar test cover every valid UTF-8 string
+        // of at most three bytes, including mixed ASCII/two-byte scalars.
+        for first in 0..=0x7f {
+            for second in 0..=0x7f {
+                let bytes = [first, second];
+                check(std::str::from_utf8(&bytes).unwrap());
+                for third in 0..=0x7f {
+                    let bytes = [first, second, third];
+                    check(std::str::from_utf8(&bytes).unwrap());
+                }
+            }
+        }
+        let mut buffer = [0; 4];
+        for scalar in 0x80..=0x7ff {
+            let encoded = char::from_u32(scalar).unwrap().encode_utf8(&mut buffer);
+            let bytes = encoded.as_bytes();
+            for ascii in 0..=0x7f {
+                let ascii_first = [ascii, bytes[0], bytes[1]];
+                let ascii_last = [bytes[0], bytes[1], ascii];
+                check(std::str::from_utf8(&ascii_first).unwrap());
+                check(std::str::from_utf8(&ascii_last).unwrap());
+            }
+        }
+    }
+
     proptest! {
         #![proptest_config(ProptestConfig::with_cases(128))]
 
         #[test]
         fn bmp_batch_rejects_empty_and_multi_scalar_text(
-            characters in proptest::collection::vec(any::<char>(), 0..12),
+            characters in proptest::collection::vec(
+                prop_oneof![Just('A'), Just('é'), Just('税'), Just('\u{0301}'), Just('😀'), any::<char>()],
+                0..12,
+            ),
         ) {
             let text: String = characters.iter().collect();
             let mut output = String::from("prefix");
             let expected = text.encode_utf16().count() == 1;
+            prop_assert_eq!(is_single_bmp_glyph(&text), expected);
             prop_assert_eq!(try_append_bmp_glyph(&mut output, &text), expected);
             prop_assert_eq!(output, if expected { format!("prefix{text}") } else { String::from("prefix") });
         }
