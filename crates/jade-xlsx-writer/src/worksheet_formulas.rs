@@ -6,7 +6,9 @@ use jade_xlsx_reader::{
     data_validations::{
         all_supported_validation_containers, ValidationRecord, X14_NAMESPACE, XM_NAMESPACE,
     },
-    CellRange, CellRef,
+    translate_formula,
+    worksheet_extensions::Kind,
+    CellRange, CellRef, StructureChange,
 };
 use quick_xml::{events::Event, name::ResolveResult, NsReader};
 
@@ -97,11 +99,43 @@ fn validations(xml: &str, rewrite: &Rewrite<'_>) -> Result<BTreeMap<usize, Strin
     Ok(result)
 }
 
-fn conditional(xml: &str, main: &[u8], extended: bool, rewrite: &Rewrite<'_>) -> Result<String> {
-    let at = if extended {
-        coverage(xml)?
+fn conditional(
+    xml: &str,
+    main: &[u8],
+    extended: bool,
+    rewrite: &Rewrite<'_>,
+    geometry: Option<&StructureChange>,
+) -> Result<String> {
+    let mut ranges = Vec::new();
+    if extended {
+        for (_, _, child) in xml_edit_ns::children_ns(xml, b"sqref", XM_NAMESPACE)? {
+            ranges.extend(
+                leaf_text(&child.text)?
+                    .split_ascii_whitespace()
+                    .filter_map(|r| CellRange::parse(r).ok()),
+            );
+        }
     } else {
-        head_attr(xml, b"sqref")?.and_then(|s| first_range(&s))
+        ranges.extend(
+            head_attr(xml, b"sqref")?
+                .unwrap_or_default()
+                .split_ascii_whitespace()
+                .filter_map(|r| CellRange::parse(r).ok()),
+        );
+    }
+    let at = ranges.first().map(|r| r.start);
+    let source = geometry.and_then(|change| {
+        ranges.iter().find_map(|r| {
+            crate::validation_structure::map_range(*r, change)
+                .map(|_| crate::validation_structure::surviving_start(*r, change))
+        })
+    });
+    let map_formula = |formula: &str| {
+        let translated = match (at, source) {
+            (Some(base), Some(source)) => translate_formula(formula, base, source),
+            _ => formula.to_string(),
+        };
+        rewrite(&translated, at)
     };
     children_map(xml, b"cfRule", |rule| {
         let source_ns = if extended { XM_NAMESPACE } else { main };
@@ -110,7 +144,7 @@ fn conditional(xml: &str, main: &[u8], extended: bool, rewrite: &Rewrite<'_>) ->
         } else {
             b"formula"
         };
-        let mut moved = map_source_level(rule, source_ns, &[leaf], false, &|f| rewrite(f, at))?;
+        let mut moved = map_source_level(rule, source_ns, &[leaf], false, &map_formula)?;
         for group in [b"dataBar".as_slice(), b"colorScale", b"iconSet"] {
             moved = children_map(&moved, group, |group| {
                 children_map(group, b"cfvo", |bound| {
@@ -118,9 +152,9 @@ fn conditional(xml: &str, main: &[u8], extended: bool, rewrite: &Rewrite<'_>) ->
                         return Ok(bound.into());
                     }
                     if extended {
-                        map_source_level(bound, XM_NAMESPACE, &[b"f"], false, &|f| rewrite(f, at))
+                        map_source_level(bound, XM_NAMESPACE, &[b"f"], false, &map_formula)
                     } else if let Some(value) = head_attr(bound, b"val")? {
-                        let next = rewrite(&value, at);
+                        let next = map_formula(&value);
                         if next == value {
                             Ok(bound.into())
                         } else {
@@ -153,7 +187,36 @@ fn sparklines(xml: &str, rewrite: &Rewrite<'_>) -> Result<String> {
 /// cells/rules use the shared leaf mapper. Other feature containers keep their
 /// existing namespace and parent-path checks.
 pub(crate) fn rewrite(xml: &str, map: &Rewrite<'_>) -> Result<String> {
-    let mut validations = validations(xml, map)?;
+    rewrite_sources(xml, map, Mode::All)
+}
+
+/// Rewrite conditional and sparkline sources before geometry, preserving the
+/// original anchor of the first surviving conditional-format cell.
+pub(crate) fn rewrite_structural_features(
+    xml: &str,
+    map: &Rewrite<'_>,
+    geometry: Option<&StructureChange>,
+) -> Result<String> {
+    rewrite_sources(xml, map, Mode::Structure(geometry))
+}
+
+#[derive(Clone, Copy)]
+enum Mode<'a> {
+    All,
+    Structure(Option<&'a StructureChange>),
+}
+
+fn rewrite_sources(xml: &str, map: &Rewrite<'_>, mode: Mode<'_>) -> Result<String> {
+    let whole_axis = matches!(mode, Mode::Structure(_));
+    let geometry = match mode {
+        Mode::All => None,
+        Mode::Structure(change) => change,
+    };
+    let mut validations = if whole_axis {
+        BTreeMap::new()
+    } else {
+        validations(xml, map)?
+    };
     let extensions = jade_xlsx_reader::worksheet_extensions::sources(xml)?;
     let mut reader = NsReader::from_str(xml);
     let mut main = None;
@@ -194,6 +257,12 @@ pub(crate) fn rewrite(xml: &str, map: &Rewrite<'_>) -> Result<String> {
                         })
                 };
                 let own = Some(&ns) == main.as_ref();
+                if whole_axis && own && name == b"sheetData" && owned_path(&[b"worksheet"]) {
+                    if !empty {
+                        reader.read_to_end(e.name())?;
+                    }
+                    continue;
+                }
                 if own && name == b"row" && owned_path(&[b"worksheet", b"sheetData"]) {
                     row = (
                         head_attr(&xml[start..reader.buffer_position() as usize], b"r")?
@@ -204,17 +273,15 @@ pub(crate) fn rewrite(xml: &str, map: &Rewrite<'_>) -> Result<String> {
                     );
                     next_row = row.0.saturating_add(1);
                 }
-                let cell = own && name == b"c" && owned_path(&[b"worksheet", b"sheetData", b"row"]);
-                let conditional =
-                    own && name == b"conditionalFormatting" && owned_path(&[b"worksheet"]);
-                let extension = ns == X14_NAMESPACE
-                    && matches!(
-                        name.as_slice(),
-                        b"conditionalFormattings" | b"sparklineGroups"
-                    )
-                    && owned_path(&[b"worksheet", b"extLst", b"ext"]);
-                let mut validation =
-                    matches!(name.as_slice(), b"dataValidations" | b"dataValidation");
+                let cell = !whole_axis
+                    && own
+                    && name == b"c"
+                    && owned_path(&[b"worksheet", b"sheetData", b"row"]);
+                let conditional = extensions.owns_conditional_at(start);
+                let extension = extensions.owns_payload_at(start, Kind::ConditionalFormats)
+                    || extensions.owns_payload_at(start, Kind::Sparklines);
+                let mut validation = !whole_axis
+                    && matches!(name.as_slice(), b"dataValidations" | b"dataValidation");
                 // A nominated foreign wrapper can have the same local name.
                 // Traverse its children instead of consuming it as a rule.
                 if validation && has_process_content {
@@ -260,13 +327,27 @@ pub(crate) fn rewrite(xml: &str, map: &Rewrite<'_>) -> Result<String> {
                                 &|f| map(f, at),
                             )?
                         } else if conditional {
-                            self::conditional(&context.text, main.as_deref().unwrap(), false, map)?
+                            self::conditional(
+                                &context.text,
+                                main.as_deref().unwrap(),
+                                false,
+                                map,
+                                geometry,
+                            )?
                         } else if name == b"conditionalFormattings" {
                             map_ns(
                                 &context.text,
                                 b"conditionalFormatting",
                                 X14_NAMESPACE,
-                                |rule| self::conditional(rule, main.as_deref().unwrap(), true, map),
+                                |rule| {
+                                    self::conditional(
+                                        rule,
+                                        main.as_deref().unwrap(),
+                                        true,
+                                        map,
+                                        geometry,
+                                    )
+                                },
                             )?
                         } else {
                             sparklines(&context.text, map)?
