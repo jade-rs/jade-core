@@ -33,6 +33,8 @@ pub(crate) struct PlacedLine {
     pub(crate) x: f64,
     /// The x of its alignment point, if it has one.
     pub(crate) align: Option<f64>,
+    /// Source glyph and local x for a repeated operator at the line end.
+    pub(crate) trailing_operator: Option<(usize, f64)>,
 }
 
 /// Lays out an `m:oMath` on one line, then breaks it.
@@ -61,6 +63,7 @@ pub(crate) fn math_lines<'a, C: StyledMathMeasure>(
             group,
             x: 0.0,
             align: None,
+            trailing_operator: None,
         }]);
     }
     Ok(break_lines(b, start, end, metrics, breaks, group))
@@ -117,15 +120,23 @@ fn break_lines<C: StyledMathMeasure>(
     let mut indent = 0.0;
     let mut last_fit: Option<(BreakCandidate, f64)> = None;
     for c in &candidates {
-        let Some(mut x) = x_of(b, c.mark) else {
+        let Some(operator_x) = x_of(b, c.mark) else {
             continue;
         };
-        // The operator stays on the preceding line for brkBin="after".
-        // Reserve its width when choosing a fitting break, using the same
-        // boundary as the glyph-range split below.
-        if settings.break_binary == BreakBinary::After && !c.manual && c.class == AtomClass::Bin {
-            x += b.plan.glyphs[c.mark.glyphs].width;
-        }
+        // Both `after` and `repeat` leave an operator on the preceding line.
+        // With `repeat`, the continuation still starts at the operator.
+        let keeps_operator =
+            settings.break_binary != BreakBinary::Before && !c.manual && c.class == AtomClass::Bin;
+        let fit_x = if keeps_operator {
+            operator_x + b.plan.glyphs[c.mark.glyphs].width
+        } else {
+            operator_x
+        };
+        let x = if settings.break_binary == BreakBinary::After {
+            fit_x
+        } else {
+            operator_x
+        };
         if c.manual {
             chosen.push((*c, x));
             line_start_x = x;
@@ -134,7 +145,7 @@ fn break_lines<C: StyledMathMeasure>(
             continue;
         }
         if let Some(width) = max_width {
-            if x - line_start_x + indent > width {
+            if fit_x - line_start_x + indent > width {
                 if let Some((fit, fit_x)) = last_fit.take() {
                     chosen.push((fit, fit_x));
                     line_start_x = fit_x;
@@ -166,6 +177,7 @@ fn break_lines<C: StyledMathMeasure>(
             group,
             x: 0.0,
             align: None,
+            trailing_operator: None,
         }];
     }
     // brkBin="after" keeps the operator at the end of the line above.
@@ -198,9 +210,24 @@ fn break_lines<C: StyledMathMeasure>(
     for i in 0..bounds.len() {
         let (line_start, origin_x, candidate) = bounds[i];
         let line_end = bounds.get(i + 1).map_or(end, |b| b.0);
-        let extent = extent(b, line_start, line_end);
+        let (_, mut ascent, mut right, mut descent) = extent(b, line_start, line_end);
+        let trailing_operator = bounds
+            .get(i + 1)
+            .and_then(|bound| bound.2)
+            .filter(|c| {
+                settings.break_binary == BreakBinary::Repeat
+                    && !c.manual
+                    && c.class == AtomClass::Bin
+            })
+            .map(|c| {
+                let glyph = &b.plan.glyphs[c.mark.glyphs];
+                ascent = ascent.max(glyph.ascent - glyph.baseline);
+                descent = descent.max(glyph.descent + glyph.baseline);
+                right = right.max(glyph.x + glyph.width);
+                (c.mark.glyphs, glyph.x - origin_x)
+            });
         b.shift_range(line_start, line_end, -origin_x, 0.0);
-        let width = (extent.2 - origin_x).max(0.0);
+        let width = (right - origin_x).max(0.0);
         let x = match candidate {
             None => 0.0,
             Some(c) if c.manual => match c.align_at {
@@ -225,12 +252,13 @@ fn break_lines<C: StyledMathMeasure>(
             end: line_end,
             metrics: MathMetrics {
                 width,
-                ascent: extent.1,
-                descent: extent.3,
+                ascent,
+                descent,
             },
             group,
             x,
             align,
+            trailing_operator,
         });
     }
     lines
@@ -350,6 +378,14 @@ pub(crate) fn stack<C: StyledMathMeasure>(
             _ => group_x + line.x,
         };
         b.shift_range(line.start, line.end, x, baseline);
+        if let Some((source, operator_x)) = line.trailing_operator {
+            // A display copy shares the original text range. Appending it
+            // leaves the source glyph indices used by equation carets intact.
+            let mut glyph = b.plan.glyphs[source].clone();
+            glyph.x = x + operator_x;
+            glyph.baseline += baseline;
+            b.plan.glyphs.push(glyph);
+        }
         b.plan.lines.push(MathLine {
             baseline,
             x,

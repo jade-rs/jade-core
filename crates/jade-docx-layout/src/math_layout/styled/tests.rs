@@ -39,6 +39,55 @@ fn break_after_reserves_the_trailing_operator_width() {
     }
 }
 
+#[test]
+fn break_repeat_places_the_same_operator_on_both_lines() {
+    let math = parse("<m:r><m:t>aa+bb+cc+dd+ee+ff+gg+hh</m:t></m:r>");
+    // A continuation between two plus signs is about 34 px before indent.
+    for width in [44.0, 48.0, 60.0, 80.0] {
+        for indent in [0.0, 8.0] {
+            let plan = plan_with(
+                &math,
+                MathLayoutOptions {
+                    max_width: Some(width),
+                    settings: MathSettings {
+                        break_binary: BreakBinary::Repeat,
+                        wrap_indent_px: indent,
+                        ..Default::default()
+                    },
+                    ..display()
+                },
+            );
+            assert!(plan.lines.len() > 1);
+            assert_eq!(plan.text.matches('+').count(), 7);
+            let edges = |line: &MathLine| {
+                let mut glyphs: Vec<_> = plan
+                    .glyphs
+                    .iter()
+                    .filter(|glyph| glyph.visible && glyph.baseline == line.baseline)
+                    .collect();
+                glyphs.sort_by(|a, b| a.x.total_cmp(&b.x));
+                (
+                    &plan.text[glyphs.first().unwrap().text_range.clone()],
+                    &plan.text[glyphs.last().unwrap().text_range.clone()],
+                )
+            };
+            for (index, line) in plan.lines.iter().enumerate() {
+                assert!(
+                    line.x + line.width <= width + 1e-9,
+                    "width={width}, indent={indent}: {line:?}"
+                );
+                let (first, last) = edges(line);
+                if index > 0 {
+                    assert_eq!(first, "+");
+                }
+                if index + 1 < plan.lines.len() {
+                    assert_eq!(last, "+");
+                }
+            }
+        }
+    }
+}
+
 #[derive(Default)]
 struct Measure {
     calls: RefCell<Vec<(String, f64)>>,
