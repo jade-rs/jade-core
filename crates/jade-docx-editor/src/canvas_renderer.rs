@@ -32573,7 +32573,7 @@ where
         Ok(())
     }
 
-    fn build_numbering_layout<'arena>(
+    fn build_numbering_layout<'arena, const VISUALS: bool>(
         &self,
         arena: &'arena Bump,
         text: &str,
@@ -32600,7 +32600,7 @@ where
             hyperlink: None,
             leading_width: 0.0,
         };
-        let mut plan = self.build_fragment_layout_with_ink_bounds(
+        let mut plan = self.build_fragment_layout_with_ink_bounds_and_visuals::<VISUALS>(
             arena,
             &segment,
             style,
@@ -32657,7 +32657,7 @@ where
             hyperlink: None,
             leading_width: 0.0,
         };
-        let suffix = self.build_fragment_layout_with_ink_bounds(
+        let suffix = self.build_fragment_layout_with_ink_bounds_and_visuals::<VISUALS>(
             arena,
             &suffix_segment,
             &suffix_style,
@@ -32668,22 +32668,24 @@ where
             context.following_grapheme,
             ink_bounds,
         )?;
-        let mut glyphs = plan.fragment.glyphs.to_vec();
-        glyphs.extend(suffix.fragment.glyphs.iter().cloned().map(|mut glyph| {
-            glyph.x += plan.width;
-            glyph
-        }));
-        for mut step in suffix.glyph_steps {
-            step.text_start += label_end as u32;
-            step.text_end += label_end as u32;
-            step.x_offset += plan.width;
-            step.font_slot = ResolvedFontSlot::LatinHansi;
-            plan.glyph_steps.push(step);
+        if VISUALS {
+            let mut glyphs = plan.fragment.glyphs.to_vec();
+            glyphs.extend(suffix.fragment.glyphs.iter().cloned().map(|mut glyph| {
+                glyph.x += plan.width;
+                glyph
+            }));
+            for mut step in suffix.glyph_steps {
+                step.text_start += label_end as u32;
+                step.text_end += label_end as u32;
+                step.x_offset += plan.width;
+                step.font_slot = ResolvedFontSlot::LatinHansi;
+                plan.glyph_steps.push(step);
+            }
+            plan.fragment.glyphs = glyphs.into();
         }
         plan.width += suffix.width;
         plan.fragment.end = text.len();
         plan.fragment.width = plan.width;
-        plan.fragment.glyphs = glyphs.into();
         plan.top_offset = plan.top_offset.min(suffix.top_offset);
         plan.bottom_offset = plan.bottom_offset.max(suffix.bottom_offset);
         plan.end_state = suffix.end_state;
@@ -32700,8 +32702,14 @@ where
         let arena = arena.borrow();
         // Advance measurement consumes no vertical ink bounds. This also
         // avoids initializing fallback glyphs absent from the marker text.
-        let plan =
-            self.build_numbering_layout(&arena, text, style, context, FragmentInkBounds::Unused)?;
+        // Glyph boxes and draw steps are only needed when painting the label.
+        let plan = self.build_numbering_layout::<false>(
+            &arena,
+            text,
+            style,
+            context,
+            FragmentInkBounds::Unused,
+        )?;
         Ok(plan.width)
     }
 
@@ -32729,7 +32737,7 @@ where
         } else {
             FragmentInkBounds::Unused
         };
-        let plan = self.build_numbering_layout(&arena, text, style, context, ink_bounds)?;
+        let plan = self.build_numbering_layout::<true>(&arena, text, style, context, ink_bounds)?;
         // distance measures from the right edge of a margin line number to
         // the column's text margin. The shared glyph plan owns its width.
         let position = if context.margin_line_number {
@@ -38717,6 +38725,7 @@ mod tests {
 
     mod decoration_histories;
     mod numbering_snapshot_histories;
+    mod numbering_width_histories;
     mod revision_snapshot_histories;
 
     // Vary topology and coordinates independently of the snapshot implementation.
