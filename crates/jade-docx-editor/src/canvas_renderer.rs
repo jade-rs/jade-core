@@ -9822,7 +9822,7 @@ where
         }) {
             return false;
         }
-        painter.set_font(font_descriptor);
+        painter.set_font_rc(font_descriptor);
         *current = Some(font_descriptor.clone());
         true
     }

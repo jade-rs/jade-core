@@ -250,7 +250,7 @@ impl FontStateTracker {
                 return false;
             }
         }
-        context.set_font(font);
+        context.set_font_rc(font);
         self.current_font = Some(Rc::clone(font));
         // Positioned glyph replay does not measure text. Hash this descriptor
         // only if a later short-text measurement needs a grapheme-cache key.

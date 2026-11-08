@@ -133,6 +133,11 @@ pub trait Painter {
 
     /// Sets the font from a CSS font shorthand, e.g. `"bold 10.50pt 'Noto Sans JP'"`.
     fn set_font(&self, value: &str);
+    /// Sets an already shared font descriptor. Capturing painters can retain
+    /// the descriptor without copying its text; other backends use `set_font`.
+    fn set_font_rc(&self, value: &std::rc::Rc<str>) {
+        self.set_font(value);
+    }
     /// Sets the baseline the y coordinate of text operations refers to.
     fn set_text_baseline(&self, value: &str);
     fn fill_text(&self, text: &str, x: f64, y: f64) -> Result<(), Self::Error>;

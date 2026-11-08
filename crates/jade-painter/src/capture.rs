@@ -154,7 +154,7 @@ pub fn replay<P: Painter>(
             PaintOp::SetShadowOffsetX(value) => painter.set_shadow_offset_x(*value),
             PaintOp::SetShadowOffsetY(value) => painter.set_shadow_offset_y(*value),
             PaintOp::SetBlurFilter(radius) => painter.set_blur_filter(*radius),
-            PaintOp::SetFont(value) => painter.set_font(value),
+            PaintOp::SetFont(value) => painter.set_font_rc(value),
             PaintOp::SetTextBaseline(value) => painter.set_text_baseline(value),
             PaintOp::FillText(text, x, y) => painter.fill_text(text, *x, *y)?,
             PaintOp::FillShapedText(text, clusters, y) => {
@@ -338,6 +338,11 @@ impl<P: Painter> Painter for RoutedPainter<P> {
     fn set_font(&self, value: &str) {
         self.record(|| PaintOp::SetFont(Rc::from(value)));
         self.inner.set_font(value);
+    }
+
+    fn set_font_rc(&self, value: &Rc<str>) {
+        self.record(|| PaintOp::SetFont(Rc::clone(value)));
+        self.inner.set_font_rc(value);
     }
 
     fn set_text_baseline(&self, value: &str) {
@@ -582,6 +587,76 @@ impl<P: Painter> Painter for RoutedPainter<P> {
 mod tests {
     use super::*;
     use crate::recording::{Op, RecordingPainter};
+
+    #[test]
+    fn shared_font_defaults_and_direct_routes_apply_each_call() {
+        for descriptor in ["", "12px Arial", "ot:liga 12px '日本語 😀'"] {
+            let surface = RecordingPainter::new();
+            let font: Rc<str> = Rc::from(descriptor);
+            surface.set_font_rc(&font);
+            let direct = RoutedPainter::direct(surface.clone());
+            direct.set_font_rc(&font);
+            direct.clone().set_font_rc(&font);
+            assert_eq!(surface.ops(), vec![Op::SetFont(descriptor.into()); 3]);
+            assert_eq!(Rc::strong_count(&font), 1);
+        }
+    }
+
+    #[test]
+    fn nested_captures_share_fonts_and_apply_them_before_measurement() {
+        let surface = RecordingPainter::with_width_per_char(2.0);
+        let outer_sink = new_sink();
+        let inner_sink = new_sink();
+        let outer = RoutedPainter::new(surface.clone(), Some(outer_sink.clone()));
+        let inner = RoutedPainter::new(outer, Some(inner_sink.clone()));
+        let font: Rc<str> = Rc::from("12px Arial");
+        inner.clone().set_font_rc(&font);
+        assert_eq!(inner.measure_text_width("日本語😀"), Ok(8.0));
+        for sink in [&outer_sink, &inner_sink] {
+            let ops = sink.borrow();
+            let [PaintOp::SetFont(captured)] = ops.as_slice() else {
+                panic!("unexpected captured operations: {ops:?}");
+            };
+            assert!(Rc::ptr_eq(captured, &font));
+        }
+        assert_eq!(
+            surface.ops(),
+            vec![
+                Op::SetFont("12px Arial".into()),
+                Op::MeasureText("日本語😀".into())
+            ]
+        );
+    }
+
+    #[test]
+    fn replay_retains_shared_font_until_captures_are_released() {
+        let first_sink = new_sink();
+        let first = RoutedPainter::new(RecordingPainter::new(), Some(first_sink.clone()));
+        let mut font: Rc<str> = Rc::from("12px Arial");
+        let original = Rc::downgrade(&font);
+        first.set_font_rc(&font);
+
+        let surface = RecordingPainter::new();
+        let second_sink = new_sink();
+        let second = RoutedPainter::new(surface.clone(), Some(second_sink.clone()));
+        replay(&first_sink.borrow(), &second, |_| {}).unwrap();
+        {
+            let ops = second_sink.borrow();
+            let [PaintOp::SetFont(captured)] = ops.as_slice() else {
+                panic!("unexpected replayed operations: {ops:?}");
+            };
+            assert!(Rc::ptr_eq(captured, &font));
+        }
+        Rc::make_mut(&mut font).make_ascii_uppercase();
+        drop(font);
+        first_sink.borrow_mut().clear();
+        assert!(original.upgrade().is_some());
+        surface.clear();
+        replay(&second_sink.borrow(), &surface, |_| {}).unwrap();
+        assert_eq!(surface.ops(), vec![Op::SetFont("12px Arial".into())]);
+        second_sink.borrow_mut().clear();
+        assert!(original.upgrade().is_none());
+    }
 
     #[test]
     fn a_capture_paints_nothing_until_it_is_replayed() {
