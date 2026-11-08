@@ -15940,11 +15940,12 @@ where
         );
         let (_, column_width) = self.math_settings.display_content_box(0.0, column_width);
         let math_family = Rc::clone(&self.math_family);
+        let text_family = self.math_text_family();
         let style = self.body_math_style(math, &math_family);
         let options = jade_docx_layout::math_layout::styled::MathLayoutOptions {
             display: true,
             max_width: Some(column_width),
-            text_family: Some(self.math_text_family()),
+            text_family: Some(&text_family),
             settings: self.display_math_settings(math),
             uniform: false,
             script_scales: Some(jade_docx_layout::math_layout::styled::WORD_SCRIPT_SCALES),
@@ -15955,8 +15956,28 @@ where
 
     /// The face `m:nor` (normal text) runs are set in: the document's
     /// default text face.
-    fn math_text_family(&self) -> &'static str {
-        "Cambria"
+    fn math_text_family(&self) -> String {
+        let mut properties = self
+            .styles_part
+            .as_ref()
+            .and_then(|styles| styles.resolve_effective_run_properties(None, None));
+        if let (Some(properties), Some(theme)) = (properties.as_mut(), self.theme_part.as_ref()) {
+            if theme.has_resolvable_font_reference(properties) {
+                theme.apply_to_run_properties(properties);
+            }
+        }
+        properties
+            .as_ref()
+            .and_then(|properties| {
+                properties
+                    .fonts
+                    .as_ref()
+                    .and_then(|fonts| fonts.ascii.as_deref().or(fonts.h_ansi.as_deref()))
+                    .or(properties.font_family.as_deref())
+            })
+            .filter(|family| !family.trim().is_empty())
+            .unwrap_or("Cambria")
+            .to_owned()
     }
 
     /// Lays out math in the bound face for the style's family, when one is
@@ -15992,10 +16013,11 @@ where
         {
             style.size_px = points_to_px(size);
         }
+        let text_family = self.math_text_family();
         let options = jade_docx_layout::math_layout::styled::MathLayoutOptions {
             display,
             max_width: None,
-            text_family: Some(self.math_text_family()),
+            text_family: Some(&text_family),
             settings: self.math_settings,
             uniform: false,
             script_scales: Some(jade_docx_layout::math_layout::styled::WORD_SCRIPT_SCALES),
@@ -28502,10 +28524,11 @@ where
                     }
                 }
                 BodyElement::Math(math) => {
+                    let text_family = self.math_text_family();
                     let (_, width) = self.boxed_math_content_box(math, content_left, content_right);
                     let options = jade_docx_layout::math_layout::styled::MathLayoutOptions {
                         max_width: Some(width),
-                        text_family: Some(self.math_text_family()),
+                        text_family: Some(&text_family),
                         settings: self.display_math_settings(math),
                         script_scales: Some(
                             jade_docx_layout::math_layout::styled::WORD_SCRIPT_SCALES,
@@ -46592,6 +46615,73 @@ mod tests {
             );
             assert!((lines[0].start_x - drawn_x).abs() < 1e-9);
             assert!((lines[0].fragments[0].x - drawn_x).abs() < 1e-9);
+        }
+    }
+
+    #[test]
+    fn normal_math_text_uses_the_document_text_font_and_keeps_run_overrides() {
+        let runs = r#"<m:r><m:rPr><m:nor/></m:rPr><m:t>f</m:t></m:r><m:r><m:rPr><m:nor/></m:rPr><w:rPr><w:rFonts w:ascii="Courier New"/></w:rPr><m:t>g</m:t></m:r><m:r><m:t>x</m:t></m:r>"#;
+        let xml = format!(
+            r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><w:body><w:p><m:oMathPara><m:oMath>{runs}</m:oMath></m:oMathPara></w:p><w:p><m:oMath>{runs}</m:oMath></w:p></w:body></w:document>"#
+        );
+        let mut document = jade_docx_reader::DocumentParser::new()
+            .parse_document_xml(&xml)
+            .unwrap();
+        document.math_properties.math_font = Some("Host Math".into());
+        let (mut renderer, _) = recording_renderer();
+        for (style, family, theme) in [
+            (
+                r#"<w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="Arial"/></w:rPr></w:rPrDefault></w:docDefaults>"#,
+                "Arial",
+                None,
+            ),
+            (
+                r#"<w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:rPr><w:rFonts w:ascii="Times New Roman"/></w:rPr></w:style>"#,
+                "Times New Roman",
+                None,
+            ),
+            (
+                r#"<w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:asciiTheme="minorHAnsi"/></w:rPr></w:rPrDefault></w:docDefaults>"#,
+                "Arial",
+                Some(Rc::new(ThemePart {
+                    minor: jade_docx_reader::theme::ThemeFonts {
+                        latin: Some("Arial".into()),
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                })),
+            ),
+        ] {
+            renderer.set_style_context(Some(Rc::new(StylesPart::from_xml(&format!(
+                r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">{style}</w:styles>"#
+            )).unwrap())), theme);
+            renderer.render(&document, &Options::default()).unwrap();
+            let check = |plan: &math::OwnedMathPlan| {
+                for glyph in &plan.glyphs {
+                    let text = &plan.text[glyph.text_range.clone()];
+                    let expected = match text {
+                        "f" => family,
+                        "g" => "Courier New",
+                        "𝑥" => "Host Math",
+                        _ => panic!("unexpected glyph {text:?}"),
+                    };
+                    assert_eq!(glyph.family, expected, "{text}");
+                }
+            };
+            assert_eq!(renderer.math_zones().len(), 2);
+            for zone in renderer.math_zones() {
+                check(&zone.plan);
+            }
+            let measured = renderer
+                .measure_text_box_blocks(
+                    &document.body.as_ref().unwrap().elements,
+                    0.0,
+                    400.0,
+                    &mut NumberingCounter::new(),
+                )
+                .unwrap();
+            assert_eq!(measured.math_plans.len(), 1);
+            check(&measured.math_plans[0]);
         }
     }
 
