@@ -1,9 +1,37 @@
+#[derive(Clone)]
 pub struct Lexer {
     position: usize,
     len: usize,
     chars: Vec<char>,
     error_message: String,
     error_position: usize,
+}
+
+/// Split format sections while retaining empty (including trailing) sections.
+/// Escaped, quoted, fill and spacing characters cannot introduce a separator.
+pub(super) fn split_sections(format: &str) -> Vec<String> {
+    let mut sections = vec![String::new()];
+    let (mut quoted, mut bracketed, mut escaped) = (false, false, false);
+    for c in format.chars() {
+        if escaped {
+            sections.last_mut().expect("a section").push(c);
+            escaped = false;
+            continue;
+        }
+        match c {
+            '\\' | '_' | '*' if !quoted && !bracketed => escaped = true,
+            '"' => quoted = !quoted,
+            '[' if !quoted => bracketed = true,
+            ']' if !quoted => bracketed = false,
+            ';' if !quoted && !bracketed => {
+                sections.push(String::new());
+                continue;
+            }
+            _ => {}
+        }
+        sections.last_mut().expect("a section").push(c);
+    }
+    sections
 }
 
 #[derive(PartialEq, Debug)]
@@ -27,28 +55,28 @@ pub enum Token {
     ScientificMinus, // E-
     General,       // General
     // Dates and time
-    Day,                 // d
-    DayPadded,           // dd
-    DayNameShort,        // ddd
-    DayName,             // dddd+
-    Month,               // m (or minute)
-    MonthPadded,         // mm (or minute padded)
-    MonthNameShort,      // mmm
-    MonthName,           // mmmm or mmmmmm+
-    MonthLetter,         // mmmmm
-    YearShort,           // y or yy
-    Year,                // yyy+
-    Hour,                // h
-    HourPadded,          // hh
-    Second,              // s
-    SecondPadded,        // ss
-    ElapsedHour,         // [h]
-    ElapsedMinute,       // [m]
-    ElapsedSecond,       // [s]
-    ElapsedHourPadded,   // [hh]
-    ElapsedMinutePadded, // [mm]
-    ElapsedSecondPadded, // [ss]
-    AMPM,                // AM/PM (or A/P)
+    Day,                  // d
+    DayPadded,            // dd
+    DayNameShort,         // ddd
+    DayName,              // dddd+
+    Month,                // m (or minute)
+    MonthPadded,          // mm (or minute padded)
+    MonthNameShort,       // mmm
+    MonthName,            // mmmm or mmmmmm+
+    MonthLetter,          // mmmmm
+    YearShort,            // y or yy
+    Year,                 // yyy+
+    Hour,                 // h
+    HourPadded,           // hh
+    Second,               // s
+    SecondPadded,         // ss
+    ElapsedHour,          // [h]
+    ElapsedMinute,        // [m]
+    ElapsedSecond,        // [s]
+    ElapsedHourPadded,    // [hh]
+    ElapsedMinutePadded,  // [mm]
+    ElapsedSecondPadded,  // [ss]
+    AMPM(String, String), // Preserve AM/PM or A/P spelling and case.
     // Jade: Japanese dates
     Era(u8),             // g R, gg 令, ggg 令和
     EraYear(u8),         // e 6, ee 06
@@ -61,6 +89,7 @@ pub enum Token {
 #[derive(PartialEq, Eq, Debug)]
 pub enum Compare {
     Equal,
+    NotEqual,
     LessThan,
     GreaterThan,
     LessOrEqualThan,
@@ -211,6 +240,9 @@ impl Lexer {
                 if let Some('=') = self.peek_char() {
                     self.read_next_char();
                     cmp = Compare::LessOrEqualThan;
+                } else if let Some('>') = self.peek_char() {
+                    self.read_next_char();
+                    cmp = Compare::NotEqual;
                 } else {
                     cmp = Compare::LessThan;
                 }
@@ -326,6 +358,44 @@ impl Lexer {
         let token = self.next_token();
         self.position = position;
         token
+    }
+
+    /// A leading decimal point can be separated from its first digit by
+    /// literals. `first` is the already-read lookahead token. Inspect a clone
+    /// so the parser still consumes every literal and formatting directive.
+    pub(super) fn digit_after_literals(&self, first: &Token) -> bool {
+        let literal_or_directive = |token: &Token| {
+            matches!(
+                token,
+                Token::Literal(_)
+                    | Token::Text(_)
+                    | Token::Ghost(_)
+                    | Token::Spacer(_)
+                    | Token::Color(_)
+                    | Token::Condition(_, _)
+                    | Token::Locale
+                    | Token::Currency(_)
+                    | Token::Percent
+            )
+        };
+        if first.is_digit() {
+            return true;
+        }
+        if !literal_or_directive(first) {
+            return false;
+        }
+        let mut lookahead = self.clone();
+        loop {
+            let token = lookahead.next_token();
+            if token.is_digit() {
+                return true;
+            }
+            // Dates/times, separators, EOF and invalid tokens all stop the
+            // numeric lookahead; a later section cannot supply this digit.
+            if !literal_or_directive(&token) {
+                return false;
+            }
+        }
     }
 
     /// Whether the characters after the current one spell `text`, in any
@@ -564,32 +634,35 @@ impl Lexer {
                     }
                     Token::EraYear(run)
                 }
-                'A' | 'a' => {
-                    if let Some('M') | Some('m') = self.peek_char() {
-                        self.read_next_char();
-                    } else {
-                        self.set_error("Unexpected character after 'A'");
+                first @ ('A' | 'a') => {
+                    let mut am = first.to_string();
+                    let long = matches!(self.peek_char(), Some('M' | 'm'));
+                    if long {
+                        if let Some(c) = self.read_next_char() {
+                            am.push(c);
+                        }
+                    }
+                    if self.read_next_char() != Some('/') {
+                        self.set_error("Expected '/' in AM/PM or A/P");
                         return Token::ILLEGAL;
                     }
-                    if let Some('/') = self.peek_char() {
-                        self.read_next_char();
-                    } else {
-                        self.set_error("Unexpected character after 'AM'");
-                        return Token::ILLEGAL;
+                    let mut pm = match self.read_next_char() {
+                        Some(c @ ('P' | 'p')) => c.to_string(),
+                        _ => {
+                            self.set_error("Expected P in AM/PM or A/P");
+                            return Token::ILLEGAL;
+                        }
+                    };
+                    if long {
+                        match self.read_next_char() {
+                            Some(c @ ('M' | 'm')) => pm.push(c),
+                            _ => {
+                                self.set_error("Expected M in AM/PM");
+                                return Token::ILLEGAL;
+                            }
+                        }
                     }
-                    if let Some('P') | Some('p') = self.peek_char() {
-                        self.read_next_char();
-                    } else {
-                        self.set_error("Unexpected character after 'AM'");
-                        return Token::ILLEGAL;
-                    }
-                    if let Some('M') | Some('m') = self.peek_char() {
-                        self.read_next_char();
-                    } else {
-                        self.set_error("Unexpected character after 'AMP'");
-                        return Token::ILLEGAL;
-                    }
-                    Token::AMPM
+                    Token::AMPM(am, pm)
                 }
                 'g' | 'G' if !self.followed_by_ignore_case("eneral") => {
                     // Jade: a Japanese era.

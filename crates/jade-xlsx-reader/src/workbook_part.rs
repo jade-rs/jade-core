@@ -236,6 +236,11 @@ pub fn parse_workbook(xml: &str) -> Result<WorkbookPart> {
                     name.formula.push_str(&text.decode()?);
                 }
             }
+            Event::CData(ref text) if defined_name.is_some() => {
+                if let Some(name) = defined_name.as_mut() {
+                    name.formula.push_str(&text.decode()?);
+                }
+            }
             Event::GeneralRef(ref reference) if defined_name.is_some() => {
                 if let Some(decoded) = decoded_reference(reference) {
                     if let Some(name) = defined_name.as_mut() {
@@ -261,4 +266,25 @@ fn decoded_reference(reference: &quick_xml::events::BytesRef<'_>) -> Option<Stri
     quick_xml::escape::unescape(&format!("&{name};"))
         .ok()
         .map(|text| text.into_owned())
+}
+
+#[cfg(test)]
+mod text_tests {
+    use super::*;
+
+    #[test]
+    fn defined_name_formulas_join_cdata_text_and_entities() {
+        for (content, expected) in [
+            ("<![CDATA[Sheet1!$A$1]]>", "Sheet1!$A$1"),
+            ("Sheet1!<![CDATA[$A$1]]>", "Sheet1!$A$1"),
+            ("<![CDATA[\" A & B \" ]]>", "\" A & B \" "),
+            ("<![CDATA[\" A ]]>&amp;<![CDATA[ B \" ]]>", "\" A & B \" "),
+        ] {
+            let xml = format!("<workbook xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\"><definedNames><definedName name=\"Example\">{content}</definedName></definedNames></workbook>");
+            assert_eq!(
+                parse_workbook(&xml).unwrap().defined_names[0].formula,
+                expected
+            );
+        }
+    }
 }

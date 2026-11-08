@@ -49,9 +49,20 @@ impl Formatted {
     }
 }
 
-/// Stands where a `*` repeat goes, followed by the character to repeat,
-/// until [`format_value`] lifts it out of the text.
-const FILL_MARK: char = '\u{E000}';
+/// An internal delimiter longer than any literal private-use run the input
+/// can produce. Its central NUL prevents a preceding literal from shifting
+/// the start of a repeat directive. User text may contain any of these chars.
+fn fill_marker(value: &CellValue, code: Option<&str>) -> String {
+    let code = code.unwrap_or_default();
+    let literal_count = code.chars().filter(|c| *c == '\u{E000}').count();
+    let text_count = match value {
+        CellValue::Text(text) => text.chars().filter(|c| *c == '\u{E000}').count(),
+        _ => 0,
+    };
+    let copies = code.chars().filter(|c| *c == '@').count().max(1);
+    let guard = "\u{E000}".repeat(literal_count + text_count * copies + 1);
+    format!("{guard}\0{guard}")
+}
 
 /// The colours a number format can name.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -71,12 +82,11 @@ pub enum FormatColor {
 impl FormatColor {
     fn parse(token: &str) -> Option<Self> {
         let token = token.trim();
-        if let Some(index) = token
-            .strip_prefix("Color")
-            .or_else(|| token.strip_prefix("COLOR"))
-            .or_else(|| token.strip_prefix("color"))
+        if token
+            .get(..5)
+            .is_some_and(|prefix| prefix.eq_ignore_ascii_case("color"))
         {
-            return index.parse().ok().map(FormatColor::Indexed);
+            return token[5..].parse().ok().map(FormatColor::Indexed);
         }
         Some(match token.to_ascii_lowercase().as_str() {
             "black" => FormatColor::Black,
@@ -145,20 +155,23 @@ fn formatted_number(number: f64, code: Option<&str>, dates: DateSystem) -> Forma
 }
 
 fn format_uncached(value: &CellValue, code: Option<&str>, dates: DateSystem) -> Formatted {
+    let marker = fill_marker(value, code);
     let mut formatted = match value {
-        CellValue::Empty => Formatted::plain(String::new()),
-        CellValue::Bool(flag) => Formatted::plain(if *flag { "TRUE" } else { "FALSE" }.to_string()),
-        CellValue::Error(message) => Formatted::plain(message.clone()),
-        CellValue::Text(text) => format_text(text, code),
-        CellValue::Number(number) => format_number(*number, code, dates),
+        CellValue::Empty => return Formatted::plain(String::new()),
+        CellValue::Bool(flag) => {
+            return Formatted::plain(if *flag { "TRUE" } else { "FALSE" }.to_string())
+        }
+        CellValue::Error(message) => return Formatted::plain(message.clone()),
+        CellValue::Text(text) => format_text(text, code, &marker),
+        CellValue::Number(number) => format_number(*number, code, dates, &marker),
     };
     // Only the first repeat counts; any other is dropped as Excel drops it.
-    if let Some(at) = formatted.text.find(FILL_MARK) {
-        let mut rest = formatted.text[at + FILL_MARK.len_utf8()..].chars();
-        let character = rest.next().filter(|c| *c != FILL_MARK).unwrap_or(' ');
+    if let Some(at) = formatted.text.find(&marker) {
+        let mut rest = formatted.text[at + marker.len()..].chars();
+        let character = rest.next().unwrap_or(' ');
         let after: String = rest.collect::<String>();
         let mut text = formatted.text[..at].to_string();
-        let mut tail = after.split(FILL_MARK);
+        let mut tail = after.split(&marker);
         text.push_str(tail.next().unwrap_or_default());
         for piece in tail {
             text.push_str(
@@ -173,7 +186,7 @@ fn format_uncached(value: &CellValue, code: Option<&str>, dates: DateSystem) -> 
     formatted
 }
 
-fn format_text(text: &str, code: Option<&str>) -> Formatted {
+fn format_text(text: &str, code: Option<&str>, marker: &str) -> Formatted {
     // The fourth section is the one that applies to text; without it the text
     // shows as-is, which is also what `@` means.
     let Some(sections) = code.map(split_sections) else {
@@ -196,7 +209,7 @@ fn format_text(text: &str, code: Option<&str>) -> Formatted {
             '"' => out.extend(chars.by_ref().take_while(|c| *c != '"')),
             '\\' => out.extend(chars.next()),
             '*' => {
-                out.push(FILL_MARK);
+                out.push_str(marker);
                 out.extend(chars.next());
             }
             '_' => {
@@ -213,7 +226,7 @@ fn format_text(text: &str, code: Option<&str>) -> Formatted {
     }
 }
 
-fn format_number(value: f64, code: Option<&str>, dates: DateSystem) -> Formatted {
+fn format_number(value: f64, code: Option<&str>, dates: DateSystem, marker: &str) -> Formatted {
     let Some(code) = code else {
         return Formatted::plain(general(value));
     };
@@ -271,7 +284,7 @@ fn format_number(value: f64, code: Option<&str>, dates: DateSystem) -> Formatted
     }
 
     if is_date_pattern(&pattern) {
-        return match format_datetime(magnitude, &pattern, dates) {
+        return match format_datetime(magnitude, &pattern, dates, marker) {
             Some(text) => Formatted {
                 text,
                 color,
@@ -281,15 +294,15 @@ fn format_number(value: f64, code: Option<&str>, dates: DateSystem) -> Formatted
         };
     }
 
-    if let Some(text) = format_fraction(magnitude, &pattern) {
+    if let Some(text) = format_fraction(magnitude.abs(), &pattern) {
         return Formatted {
-            text: format!("{sign}{text}"),
+            text: format!("{sign}{}{text}", if magnitude < 0.0 { "-" } else { "" }),
             color,
             fill: None,
         };
     }
 
-    if let Some(format) = parse_numeric(&pattern) {
+    if let Some(format) = parse_numeric(&pattern, marker) {
         return Formatted {
             text: format!("{sign}{}", apply(magnitude, &format)),
             color,
@@ -298,7 +311,7 @@ fn format_number(value: f64, code: Option<&str>, dates: DateSystem) -> Formatted
     }
     // A section with no placeholder at all is its literals: `0;-0;"-"` shows a
     // dash for zero rather than a zero.
-    if let Some(literal) = literal_only(&pattern) {
+    if let Some(literal) = literal_only(&pattern, marker) {
         return Formatted {
             text: literal,
             color,
@@ -403,7 +416,7 @@ fn best_fraction(value: f64, maximum_denominator: u64) -> (u64, u64) {
 
 /// The literal text of a pattern that has no digit placeholders, or `None` when
 /// it has any.
-fn literal_only(pattern: &str) -> Option<String> {
+fn literal_only(pattern: &str, marker: &str) -> Option<String> {
     let mut out = String::new();
     let mut chars = pattern.chars().peekable();
     while let Some(c) = chars.next() {
@@ -419,7 +432,7 @@ fn literal_only(pattern: &str) -> Option<String> {
             }
             '\\' => out.extend(chars.next()),
             '*' => {
-                out.push(FILL_MARK);
+                out.push_str(marker);
                 out.extend(chars.next());
             }
             '_' => {
@@ -443,7 +456,7 @@ fn is_text_section(section: &str) -> bool {
             '"' => {
                 chars.by_ref().find(|c| *c == '"');
             }
-            '\\' => {
+            '\\' | '_' | '*' => {
                 chars.next();
             }
             '@' => return true,
@@ -465,6 +478,10 @@ fn split_sections(code: &str) -> Vec<String> {
             continue;
         }
         match c {
+            '_' | '*' if !in_quotes && !in_brackets => {
+                escaped = true;
+                sections.last_mut().expect("a section").push(c);
+            }
             '\\' => {
                 escaped = true;
                 sections.last_mut().expect("a section").push(c);
@@ -539,8 +556,14 @@ fn brackets(section: &str) -> Vec<String> {
     let mut tokens = Vec::new();
     let mut current: Option<String> = None;
     let mut in_quotes = false;
+    let mut escaped = false;
     for c in section.chars() {
+        if escaped {
+            escaped = false;
+            continue;
+        }
         match c {
+            '\\' | '_' | '*' if !in_quotes && current.is_none() => escaped = true,
             '"' => in_quotes = !in_quotes,
             '[' if !in_quotes => current = Some(String::new()),
             ']' if !in_quotes => {
@@ -569,8 +592,18 @@ fn take_color(section: &str) -> (Option<FormatColor>, String) {
     let mut out = String::new();
     let mut token: Option<String> = None;
     let mut in_quotes = false;
+    let mut escaped = false;
     for c in section.chars() {
+        if escaped {
+            out.push(c);
+            escaped = false;
+            continue;
+        }
         match c {
+            '\\' | '_' | '*' if !in_quotes && token.is_none() => {
+                out.push(c);
+                escaped = true;
+            }
             '"' => {
                 in_quotes = !in_quotes;
                 out.push(c);
@@ -587,7 +620,10 @@ fn take_color(section: &str) -> (Option<FormatColor>, String) {
                         out.push_str(literal);
                         out.push('"');
                     }
-                } else if matches!(token.trim(), "h" | "hh" | "m" | "mm" | "s" | "ss") {
+                } else if matches!(
+                    token.trim().to_ascii_lowercase().as_str(),
+                    "h" | "hh" | "m" | "mm" | "s" | "ss"
+                ) {
                     // Elapsed time: kept so the date formatter sees it.
                     out.push('[');
                     out.push_str(&token);
@@ -744,7 +780,7 @@ struct NumericFormat {
     minimum_decimals: usize,
     maximum_decimals: usize,
     thousands: bool,
-    percent: bool,
+    percent: u32,
     /// Powers of a thousand to divide by, from trailing commas (`#,##0,,` shows
     /// millions).
     scale_thousands: u32,
@@ -759,7 +795,7 @@ struct ScientificFormat {
     integer_digits: usize,
 }
 
-fn parse_numeric(section: &str) -> Option<NumericFormat> {
+fn parse_numeric(section: &str, marker: &str) -> Option<NumericFormat> {
     let mut prefix = String::new();
     let mut suffix = String::new();
     let mut integer = Vec::new();
@@ -768,7 +804,7 @@ fn parse_numeric(section: &str) -> Option<NumericFormat> {
     let mut minimum_decimals = 0usize;
     let mut maximum_decimals = 0usize;
     let mut thousands = false;
-    let mut percent = false;
+    let mut percent = 0;
     let mut scale_thousands = 0u32;
     let mut scientific = None;
     let mut seen_digit_placeholder = false;
@@ -871,7 +907,7 @@ fn parse_numeric(section: &str) -> Option<NumericFormat> {
                 }
             }
             '%' => {
-                percent = true;
+                percent += 1;
                 literal!("%");
             }
             '_' => {
@@ -882,7 +918,7 @@ fn parse_numeric(section: &str) -> Option<NumericFormat> {
             }
             '*' => {
                 let repeated = chars.next().unwrap_or(' ');
-                literal!(&format!("{FILL_MARK}{repeated}"));
+                literal!(&format!("{marker}{repeated}"));
             }
             '@' => return None,
             other => literal!(&other.to_string()),
@@ -906,7 +942,10 @@ fn parse_numeric(section: &str) -> Option<NumericFormat> {
 }
 
 fn apply(value: f64, format: &NumericFormat) -> String {
-    let mut scaled = if format.percent { value * 100.0 } else { value };
+    let mut scaled = value;
+    for _ in 0..format.percent {
+        scaled *= 100.0;
+    }
     for _ in 0..format.scale_thousands {
         scaled /= 1000.0;
     }
@@ -1095,6 +1134,7 @@ fn is_date_pattern(pattern: &str) -> bool {
         }
         match c {
             '\\' => escaped = true,
+            '_' | '*' if !in_quotes => escaped = true,
             '"' => in_quotes = !in_quotes,
             // `g` is the Japanese era, which only dates have.
             c if !in_quotes
@@ -1135,7 +1175,8 @@ enum DateToken {
     /// `[h]`, `[m]`, `[s]`: time that accumulates instead of wrapping.
     Elapsed(char, usize),
     Meridiem {
-        long: bool,
+        morning: String,
+        afternoon: String,
     },
     /// Japanese era: `g` R, `gg` 令, `ggg` 令和.
     Era(usize),
@@ -1194,7 +1235,7 @@ const DAY_NAMES: [&str; 7] = [
     "Saturday",
 ];
 
-fn format_datetime(serial: f64, pattern: &str, dates: DateSystem) -> Option<String> {
+fn format_datetime(serial: f64, pattern: &str, dates: DateSystem, marker: &str) -> Option<String> {
     // Excel's calendar ends at 9999-12-31: serial 2958465 in the 1900 system,
     // 2957003 in the 1904 one. Past it there is no date to show — and the day
     // arithmetic below would overflow — so the value falls back to General.
@@ -1205,7 +1246,7 @@ fn format_datetime(serial: f64, pattern: &str, dates: DateSystem) -> Option<Stri
     if !(0.0..last_serial).contains(&serial) {
         return None;
     }
-    let tokens = tokenize_date(pattern);
+    let tokens = tokenize_date(pattern, marker);
     let twelve_hour = tokens
         .iter()
         .any(|token| matches!(token, DateToken::Meridiem { .. }));
@@ -1296,7 +1337,10 @@ fn format_datetime(serial: f64, pattern: &str, dates: DateSystem) -> Option<Stri
                 out.push_str(&format!("{:0width$}", fractional / divisor));
             }
             DateToken::Elapsed(unit, width) => {
-                let total_seconds = (serial * 86_400.0).round() as i64;
+                // Fractional digits already rounded the complete time above.
+                // Rounding the original serial to whole seconds separately
+                // would turn 3735.80 into 3736.80 and carry minutes too early.
+                let total_seconds = (datetime_serial * 86_400.0).round() as i64;
                 let value = match unit {
                     'h' => total_seconds / 3_600,
                     'm' => total_seconds / 60,
@@ -1308,14 +1352,8 @@ fn format_datetime(serial: f64, pattern: &str, dates: DateSystem) -> Option<Stri
                     out.push_str(&value.to_string());
                 }
             }
-            DateToken::Meridiem { long } => {
-                let morning = hour < 12;
-                out.push_str(match (long, morning) {
-                    (true, true) => "AM",
-                    (true, false) => "PM",
-                    (false, true) => "A",
-                    (false, false) => "P",
-                });
+            DateToken::Meridiem { morning, afternoon } => {
+                out.push_str(if hour < 12 { morning } else { afternoon });
             }
             DateToken::Era(width) => {
                 let (era, _) = japanese_era(year, month, day);
@@ -1346,7 +1384,7 @@ fn format_datetime(serial: f64, pattern: &str, dates: DateSystem) -> Option<Stri
     Some(out)
 }
 
-fn tokenize_date(pattern: &str) -> Vec<DateToken> {
+fn tokenize_date(pattern: &str, marker: &str) -> Vec<DateToken> {
     let mut tokens: Vec<DateToken> = Vec::new();
     let chars: Vec<char> = pattern.chars().collect();
     let mut index = 0usize;
@@ -1355,6 +1393,17 @@ fn tokenize_date(pattern: &str) -> Vec<DateToken> {
         let c = chars[index];
         let lower = c.to_ascii_lowercase();
         match lower {
+            '_' => {
+                index = (index + 2).min(chars.len());
+                tokens.push(DateToken::Literal(" ".into()));
+            }
+            '*' => {
+                index += 1;
+                if let Some(repeated) = chars.get(index) {
+                    tokens.push(DateToken::Literal(format!("{marker}{repeated}")));
+                    index += 1;
+                }
+            }
             'y' | 'm' | 'd' | 'h' | 's' => {
                 let mut width = 0usize;
                 while index < chars.len() && chars[index].to_ascii_lowercase() == lower {
@@ -1423,10 +1472,16 @@ fn tokenize_date(pattern: &str) -> Vec<DateToken> {
                     tokens.push(DateToken::JapaneseWeekday(run));
                     index += run;
                 } else if rest.starts_with("am/pm") {
-                    tokens.push(DateToken::Meridiem { long: true });
+                    tokens.push(DateToken::Meridiem {
+                        morning: chars[index..index + 2].iter().collect(),
+                        afternoon: chars[index + 3..index + 5].iter().collect(),
+                    });
                     index += 5;
                 } else if rest.starts_with("a/p") {
-                    tokens.push(DateToken::Meridiem { long: false });
+                    tokens.push(DateToken::Meridiem {
+                        morning: chars[index].to_string(),
+                        afternoon: chars[index + 2].to_string(),
+                    });
                     index += 3;
                 } else {
                     tokens.push(DateToken::Literal(c.to_string()));

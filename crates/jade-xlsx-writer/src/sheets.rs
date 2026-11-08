@@ -652,6 +652,19 @@ pub(crate) fn rewrite_formula_elements(
     xml: &str,
     formula: &dyn Fn(&str) -> String,
 ) -> Result<String> {
+    // Feature formulas share the same ownership and MCE rules as structural
+    // edits. The generic part walker must not revisit their opaque children.
+    let features = if xml.contains("conditionalFormatting") || xml.contains("sparklineGroup") {
+        Some(crate::worksheet_formulas::rewrite_structural_features(
+            xml,
+            &|text, _| formula(text),
+            None,
+        )?)
+    } else {
+        None
+    };
+    let xml = features.as_deref().unwrap_or(xml);
+    let extensions = jade_xlsx_reader::worksheet_extensions::sources(xml)?;
     let mut reader = Reader::from_str(xml);
     reader.config_mut().trim_text(false);
     let mut buf = Vec::new();
@@ -661,6 +674,22 @@ pub(crate) fn rewrite_formula_elements(
         let start = reader.buffer_position() as usize;
         match reader.read_event_into(&mut buf)? {
             Event::Start(ref element) => {
+                if extensions.opaque_at(start)
+                    || extensions.owns_conditional_at(start)
+                    || extensions.owns_payload_at(
+                        start,
+                        jade_xlsx_reader::worksheet_extensions::Kind::ConditionalFormats,
+                    )
+                    || extensions.owns_payload_at(
+                        start,
+                        jade_xlsx_reader::worksheet_extensions::Kind::Sparklines,
+                    )
+                {
+                    reader.read_to_end_into(element.name(), &mut Vec::new())?;
+                    content = None;
+                    buf.clear();
+                    continue;
+                }
                 // Only an element holding text is a formula; `<formula1>`
                 // around an `<xm:f>` is not.
                 content = is_formula_element(local(element.name().as_ref()))
@@ -1303,9 +1332,8 @@ pub fn copy_sheet(original: &[u8], source: &str, name: &str) -> Result<(Vec<u8>,
         .clone()
         .ok_or_else(|| WriteError::NoSuchSheet(name.to_string()))?;
     // The copy is not the selected tab.
-    parts
-        .package
-        .replace(&copy_part, rewrite_selected_tabs(&xml)?.into_bytes());
+    let copied = crate::copy_feature_ids::rewrite(&rewrite_selected_tabs(&xml)?, &parts.package)?;
+    parts.package.replace(&copy_part, copied.into_bytes());
     if let Some(rels) = source_rels {
         let book = jade_xlsx_reader::read_xlsx(original)?;
         let mut tables = crate::copy_objects::TableNames::of(&parts.package, &book)?;
