@@ -2037,6 +2037,9 @@ fn extract_font_family(descriptor: &str) -> &str {
 mod fill_style_tests;
 
 #[cfg(test)]
+mod control_mark_tests;
+
+#[cfg(test)]
 mod tests {
     use super::*;
 
