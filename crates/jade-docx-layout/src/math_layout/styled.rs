@@ -259,6 +259,8 @@ pub struct MathSettings {
     pub wrap_right: bool,
     /// `m:brkBin`: where a line breaks at a binary operator.
     pub break_binary: BreakBinary,
+    /// Additional display-equation margins (`m:lMargin`, `m:rMargin`), in pixels.
+    pub display_margins_px: (f64, f64),
     /// `m:defJc`: the default justification of display math.
     pub default_justification: MathJustification,
 }
@@ -272,8 +274,32 @@ impl Default for MathSettings {
             wrap_indent_px: 96.0,
             wrap_right: false,
             break_binary: BreakBinary::Before,
+            display_margins_px: (0.0, 0.0),
             default_justification: MathJustification::CenterGroup,
         }
+    }
+}
+
+impl MathSettings {
+    /// Add math margins to the enclosing paragraph box. ECMA-376 §22.1.2.59
+    /// drops the left math margin when the two margins exceed the available
+    /// width. Keep a positive wrapping width even for an oversized right margin.
+    pub fn display_content_box(self, left: f64, width: f64) -> (f64, f64) {
+        let margin = |value: f64| {
+            if value.is_finite() {
+                value.max(0.0)
+            } else {
+                0.0
+            }
+        };
+        let (mut l, r) = (
+            margin(self.display_margins_px.0),
+            margin(self.display_margins_px.1),
+        );
+        if l + r > width {
+            l = 0.0;
+        }
+        (left + l, (width - l - r).max(1.0))
     }
 }
 

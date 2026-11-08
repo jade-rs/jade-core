@@ -392,3 +392,33 @@ fn eq_fields_lay_out_upright_at_one_size() {
     let raised = glyph(&p, "2");
     assert!((raised.baseline + 8.0 * 96.0 / 72.0).abs() < 1e-9);
 }
+
+#[test]
+fn display_math_margins_narrow_wrapping_and_drop_an_excess_left_margin() {
+    let settings = MathSettings {
+        display_margins_px: (40.0, 20.0),
+        ..Default::default()
+    };
+    assert_eq!(settings.display_content_box(10.0, 140.0), (50.0, 80.0));
+    assert_eq!(settings.display_content_box(10.0, 50.0), (10.0, 30.0));
+    assert_eq!(settings.display_content_box(10.0, 10.0), (10.0, 1.0));
+    let math = parse("<m:r><m:t>a=b+c+d+e+f+g+h</m:t></m:r>");
+    let options = MathLayoutOptions {
+        max_width: Some(400.0),
+        ..display()
+    };
+    let wide = plan_with(&math, options);
+    let narrow = plan_with(
+        &math,
+        MathLayoutOptions {
+            max_width: Some(settings.display_content_box(0.0, 140.0).1),
+            settings: MathSettings {
+                wrap_indent_px: 10.0,
+                ..settings
+            },
+            ..options
+        },
+    );
+    assert_eq!(wide.lines.len(), 1);
+    assert!(narrow.lines.len() > wide.lines.len());
+}

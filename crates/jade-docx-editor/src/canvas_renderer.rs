@@ -15917,6 +15917,7 @@ where
             char_unit_pt,
             self.current_page_number.is_multiple_of(2),
         );
+        let (_, column_width) = self.math_settings.display_content_box(0.0, column_width);
         let style = self.body_math_style(math);
         let options = jade_docx_layout::math_layout::styled::MathLayoutOptions {
             display: true,
@@ -16084,6 +16085,9 @@ where
             char_unit_pt,
             self.current_page_number.is_multiple_of(2),
         );
+        let (column_x, column_width) = self
+            .math_settings
+            .display_content_box(column_x, column_width);
         let baseline_y = self.current_y + line_box.baseline;
         let math_x = plan.alignment.x(column_x, column_width, plan.metrics.width);
         let owned = Rc::new(math::OwnedMathPlan::from_plan(&plan));
@@ -28475,23 +28479,16 @@ where
                     }
                 }
                 BodyElement::Math(math) => {
-                    let painter = self.host.painter();
-                    #[cfg(feature = "opentype-math")]
-                    let plan = if let Some(font) =
-                        self.math_fonts.get(self.boxed_math_style().family)
-                    {
-                        math::layout_boxed_math_with_font(&painter, math, self.boxed_math_style(), font)
-                            .map_err(|error| match error {
-                                jade_docx_layout::math_layout::styled::font::MathFontLayoutError::Fallback(e) => e.into_js_value(),
-                                other => JsValue::from_str(&format!("MATH font preparation: {}", other.kind())),
-                            })?
-                    } else {
-                        math::layout_boxed_math(&painter, math, self.boxed_math_style())
-                            .map_err(PainterError::into_js_value)?
+                    let (_, width) = self
+                        .math_settings
+                        .display_content_box(content_left, content_right - content_left);
+                    let options = jade_docx_layout::math_layout::styled::MathLayoutOptions {
+                        max_width: Some(width),
+                        text_family: Some(self.math_text_family()),
+                        settings: self.math_settings,
+                        ..Default::default()
                     };
-                    #[cfg(not(feature = "opentype-math"))]
-                    let plan = math::layout_boxed_math(&painter, math, self.boxed_math_style())
-                        .map_err(PainterError::into_js_value)?;
+                    let plan = self.math_plan(&math.elements, self.boxed_math_style(), &options)?;
                     height += plan.metrics.ascent + plan.metrics.descent;
                     line_count += 1;
                     math_plans.push(plan);
@@ -28836,11 +28833,10 @@ where
         self.selection
             .append_paragraph_text(paragraph_index, &plan.text);
         if baseline <= box_bottom {
-            let x = plan.alignment.x(
-                content_left,
-                content_right - content_left,
-                plan.metrics.width,
-            );
+            let (left, width) = self
+                .math_settings
+                .display_content_box(content_left, content_right - content_left);
+            let x = plan.alignment.x(left, width, plan.metrics.width);
             let fragments = plan
                 .glyphs
                 .iter()
@@ -46499,6 +46495,120 @@ mod tests {
             );
             assert!((lines[0].start_x - drawn_x).abs() < 1e-9);
             assert!((lines[0].fragments[0].x - drawn_x).abs() < 1e-9);
+        }
+    }
+
+    #[test]
+    fn boxed_math_margins_apply_to_wrapping_and_selection() {
+        use jade_painter::recording::Op;
+        let math = jade_docx_reader::parser::math::parse_math_paragraph(
+            r#"<m:oMath xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><m:r><m:t>a=b+c+d+e+f+g+h</m:t></m:r></m:oMath>"#.to_string(),
+        ).unwrap();
+        let blocks = [BodyElement::Math(Box::new(math))];
+        let painter = jade_painter::recording::RecordingPainter::with_width_per_char(8.0);
+        let mut renderer = CanvasRenderer::with_host(
+            Box::new(NonCanvasHost {
+                painter: painter.clone(),
+            }),
+            true,
+        )
+        .unwrap();
+        let wide = renderer
+            .measure_text_box_blocks(&blocks, 10.0, 410.0, &mut NumberingCounter::new())
+            .unwrap();
+        renderer.math_settings = math::settings_from(&jade_docx_reader::settings::MathProperties {
+            left_margin: Some(600.0),
+            right_margin: Some(4200.0),
+            wrap_indent: Some(150.0),
+            default_justification: Some("left".to_string()),
+            ..Default::default()
+        });
+        let narrow = renderer
+            .measure_text_box_blocks(&blocks, 10.0, 410.0, &mut NumberingCounter::new())
+            .unwrap();
+        assert_eq!(wide.math_plans[0].lines.len(), 1);
+        assert!(narrow.math_plans[0].lines.len() > 1);
+        assert!(narrow.height > wide.height);
+        painter.clear();
+        let mut y = 100.0;
+        renderer
+            .render_text_box_blocks(
+                &blocks,
+                10.0,
+                410.0,
+                &mut y,
+                1000.0,
+                false,
+                &mut NumberingCounter::new(),
+                0.0,
+                &mut 0,
+                &mut narrow.math_plans.iter(),
+            )
+            .unwrap();
+        let drawn_x = painter
+            .ops()
+            .into_iter()
+            .find_map(|op| match op {
+                Op::FillText(_, x, _) => Some(x),
+                _ => None,
+            })
+            .unwrap();
+        assert!((drawn_x - 50.0).abs() < 1e-9);
+        let lines = renderer.layout_debug_lines();
+        assert!((lines[0].fragments[0].x - drawn_x).abs() < 1e-9);
+        assert!((y - 100.0 - narrow.height).abs() < 1e-9);
+    }
+
+    #[test]
+    fn math_block_document_margins_move_paint_and_selection_together() {
+        use jade_painter::recording::Op;
+        for (display_default, extra_left, extra_right) in [(true, 48.0, 16.0), (false, 0.0, 0.0)] {
+            for alignment in ["left", "center", "right"] {
+                let xml = format!(
+                    r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><w:body><w:p><w:pPr><w:ind w:left="600" w:right="200"/></w:pPr><m:oMathPara><m:oMathParaPr><m:jc m:val="{alignment}"/></m:oMathParaPr><m:oMath><m:r><m:t>x</m:t></m:r></m:oMath></m:oMathPara></w:p></w:body></w:document>"#
+                );
+                let document = jade_docx_reader::DocumentParser::new()
+                    .parse_document_xml(&xml)
+                    .unwrap();
+                let BodyElement::Math(math) = &document.body.unwrap().elements[0] else {
+                    panic!("math block missing");
+                };
+                let (mut renderer, painter) = recording_renderer();
+                renderer.current_y = 100.0;
+                renderer.math_settings =
+                    math::settings_from(&jade_docx_reader::settings::MathProperties {
+                        display_default: Some(display_default),
+                        left_margin: Some(720.0),
+                        right_margin: Some(240.0),
+                        ..Default::default()
+                    });
+                let left = renderer.current_column_x() + 40.0 + extra_left;
+                let width =
+                    renderer.current_column_width() - 40.0 - 40.0 / 3.0 - extra_left - extra_right;
+                renderer.render_math_block(math).unwrap();
+                let drawn_x = painter
+                    .ops()
+                    .into_iter()
+                    .find_map(|op| match op {
+                        // Word draws a math letter from the italic alphabet.
+                        Op::FillText(text, x, _) if text == "𝑥" => Some(x),
+                        _ => None,
+                    })
+                    .unwrap();
+                let lines = renderer.layout_debug_lines();
+                let advance = lines[0].fragments[0].width;
+                let expected = match alignment {
+                    "center" => left + (width - advance) / 2.0,
+                    "right" => left + width - advance,
+                    _ => left,
+                };
+                assert!(
+                    (drawn_x - expected).abs() < 1e-5,
+                    "{alignment}: {drawn_x} versus {expected}"
+                );
+                assert!((lines[0].start_x - drawn_x).abs() < 1e-9);
+                assert!((lines[0].fragments[0].x - drawn_x).abs() < 1e-9);
+            }
         }
     }
 
