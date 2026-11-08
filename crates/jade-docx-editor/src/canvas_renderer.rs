@@ -37520,6 +37520,14 @@ where
         Ok(style.resolved.clone())
     }
 
+    fn resolve_run_style_rc(
+        &self,
+        properties: Option<&Rc<RunProperties>>,
+    ) -> Result<Rc<ResolvedRunStyle>, Self::Error> {
+        let style = self.apply_run_style_rc(properties)?;
+        Ok(Rc::clone(&style.resolved))
+    }
+
     fn measure_text(&self, text: &str, font_descriptor: &str) -> Result<f64, Self::Error> {
         // Do NOT set the canvas font here: `measure_text_cached` returns a cached
         // width on a hit (the vast majority of calls during wrapping) without
@@ -51247,6 +51255,129 @@ mod tests {
             identity_elapsed.as_micros(),
             ITERS,
         );
+    }
+
+    #[derive(Clone, Debug)]
+    enum SharedRunStyleCommand {
+        Resolve(usize),
+        Replace(usize, usize),
+        CopyOnWriteBold(usize, bool),
+        Grid(Option<i8>),
+        DarkMode(bool),
+        Measure,
+        Invalidate,
+    }
+
+    fn shared_run_style_commands(
+    ) -> impl proptest::strategy::Strategy<Value = SharedRunStyleCommand> {
+        use proptest::prelude::*;
+        prop_oneof![
+            4 => (0usize..7).prop_map(SharedRunStyleCommand::Resolve),
+            1 => (0usize..6, 0usize..6).prop_map(|(slot, source)| SharedRunStyleCommand::Replace(slot, source)),
+            1 => (0usize..6, any::<bool>()).prop_map(|(slot, bold)| SharedRunStyleCommand::CopyOnWriteBold(slot, bold)),
+            1 => proptest::option::of(-2i8..3).prop_map(SharedRunStyleCommand::Grid),
+            1 => any::<bool>().prop_map(SharedRunStyleCommand::DarkMode),
+            1 => Just(SharedRunStyleCommand::Measure),
+            1 => Just(SharedRunStyleCommand::Invalidate),
+        ]
+    }
+
+    fn shared_run_style_properties(index: usize) -> RunProperties {
+        match index {
+            0 => RunProperties::default(),
+            1 | 2 => RunProperties {
+                bold: Some(true),
+                font_size: Some(12.0),
+                color: Some("FF0000".into()),
+                ..RunProperties::default()
+            },
+            3 => RunProperties {
+                italic: Some(true),
+                char_spacing: Some(0.5),
+                text_scale: Some(75.0),
+                fonts: Some(RunFonts {
+                    ascii: Some("Times New Roman".into()),
+                    east_asia: Some("MS Mincho".into()),
+                    hint: Some(FontHint::EastAsia),
+                    ..RunFonts::default()
+                }),
+                ..RunProperties::default()
+            },
+            4 => RunProperties {
+                bold_complex: Some(true),
+                color: Some("auto".into()),
+                ..RunProperties::default()
+            },
+            _ => RunProperties {
+                font_size: Some(18.0),
+                baseline: Some("superscript".into()),
+                kerning: Some(12.0),
+                color: Some("#336699".into()),
+                ..RunProperties::default()
+            },
+        }
+    }
+
+    proptest::proptest! {
+        #![proptest_config(proptest::test_runner::Config::with_cases(128))]
+        #[test]
+        fn shared_run_style_histories_match_borrowed_resolution(
+            commands in proptest::collection::vec(shared_run_style_commands(), 1..65)
+        ) {
+            use jade_painter::recording::RecordingPainter;
+
+            let shared_painter = RecordingPainter::with_width_per_char(7.0);
+            let borrowed_painter = RecordingPainter::with_width_per_char(7.0);
+            let mut shared = recording_table_renderer(shared_painter.clone());
+            let mut borrowed = recording_table_renderer(borrowed_painter.clone());
+            let mut properties: Vec<_> = (0..6)
+                .map(|index| Rc::new(shared_run_style_properties(index)))
+                .collect();
+
+            for command in &commands {
+                match *command {
+                    SharedRunStyleCommand::Resolve(index) => {
+                        let input = properties.get(index);
+                        let actual = LineWrapContext::resolve_run_style_rc(&shared, input).unwrap();
+                        // The existing value-keyed path is the reference. It
+                        // does not inspect the new identity lookup or cache.
+                        let expected = LineWrapContext::resolve_run_style(
+                            &borrowed, input.map(Rc::as_ref),
+                        ).unwrap();
+                        proptest::prop_assert_eq!(format!("{actual:?}"), format!("{expected:?}"), "history={:?}", commands);
+                    }
+                    SharedRunStyleCommand::Replace(slot, source) => {
+                        properties[slot] = Rc::new(shared_run_style_properties(source));
+                    }
+                    SharedRunStyleCommand::CopyOnWriteBold(slot, bold) => {
+                        // A retained allocation forces COW rather than
+                        // allowing a later style to alias the cached owner.
+                        Rc::make_mut(&mut properties[slot]).bold = Some(bold);
+                    }
+                    SharedRunStyleCommand::Grid(value) => {
+                        shared.current_doc_grid_char_spacing_px = value.map(f64::from);
+                        borrowed.current_doc_grid_char_spacing_px = value.map(f64::from);
+                    }
+                    SharedRunStyleCommand::DarkMode(value) => {
+                        shared.dark_mode_text = value;
+                        borrowed.dark_mode_text = value;
+                    }
+                    SharedRunStyleCommand::Measure => {
+                        let actual = LineWrapContext::measure_text(&shared, "measurement probe", "9pt Arial").unwrap();
+                        let expected = LineWrapContext::measure_text(&borrowed, "measurement probe", "9pt Arial").unwrap();
+                        proptest::prop_assert_eq!(actual, expected);
+                    }
+                    SharedRunStyleCommand::Invalidate => {
+                        for renderer in [&shared, &borrowed] {
+                            renderer.paragraph_font_cache.borrow_mut().clear();
+                            renderer.applied_run_style_cache.borrow_mut().clear();
+                            renderer.applied_run_style_identity_cache.borrow_mut().clear();
+                        }
+                    }
+                }
+                proptest::prop_assert_eq!(shared_painter.ops(), borrowed_painter.ops(), "command={:?}, history={:?}", command, commands);
+            }
+        }
     }
 
     #[test]
