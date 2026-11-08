@@ -212,9 +212,8 @@ pub(crate) fn rewrite(xml: &str, map: &Rewrite<'_>) -> Result<String> {
                 // Traverse its children instead of consuming it as a rule.
                 if validation && has_process_content {
                     if compatibility.is_none() {
-                        compatibility = Some(
-                            jade_xlsx_reader::cell_content::compatible_worksheet_source(xml)?,
-                        );
+                        compatibility =
+                            Some(jade_xlsx_reader::process_content::processed_elements(xml)?);
                     }
                     validation = !compatibility.as_ref().unwrap().processes_content_at(start);
                 }

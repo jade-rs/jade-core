@@ -11,6 +11,39 @@ const MC: &str = "http://schemas.openxmlformats.org/markup-compatibility/2006";
 const AC: &str = "http://schemas.microsoft.com/office/spreadsheetml/2011/1/ac";
 
 #[test]
+fn processed_wrappers_inside_extensions_keep_their_validation_edits() {
+    for wrapper in ["wrap", "dataValidations", "protectedRanges", "mergeCells"] {
+        let tail = format!(
+            r#"<s:extLst><s:ext uri="{{CCE6A557-97BC-4B89-ADB6-D9C93CAAB3DF}}"><u:{wrapper} mc:Ignorable="u" mc:ProcessContent="u:{wrapper}"><x:dataValidations count="1"><x:dataValidation type="custom"><x:formula1><m:f>Sheet1!$C1&gt;0</m:f></x:formula1><m:sqref>B1:B3</m:sqref></x:dataValidation></x:dataValidations></u:{wrapper}></s:ext></s:extLst>"#
+        );
+        let mut b = open(&tail);
+        assert_eq!(rules(&b).len(), 1);
+        let name = b.workbook().sheets[0].name.clone();
+        let mut package = OpcPackage::open(b.bytes()).unwrap();
+        package.replace(
+            PART,
+            xml(&b)
+                .replace("Sheet1!", &format!("'{name}'!"))
+                .into_bytes(),
+        );
+        b = HeadlessWorkbook::open(&package.write().unwrap()).unwrap();
+        let before = b.bytes().to_vec();
+        b.insert_rows(&name, 1, 1).unwrap();
+        assert_eq!(coverage(&rules(&b)[0]), ranges(&["B2:B4"]), "{wrapper}");
+        assert!(rules(&b)[0]
+            .formula1
+            .as_deref()
+            .unwrap()
+            .ends_with("!$C2>0"));
+        saved_and_history(&mut b, &before);
+        b.rename_sheet(&name, "Renamed").unwrap();
+        assert_eq!(rules(&b)[0].formula1.as_deref(), Some("Renamed!$C2>0"));
+        let reopened = HeadlessWorkbook::open(&b.save_bytes().unwrap()).unwrap();
+        assert_eq!(rules(&reopened), rules(&b));
+    }
+}
+
+#[test]
 fn processed_validation_wrappers_named_like_sheet_elements_keep_inner_edits() {
     let opaque = "<u:payload keep=\"exact\">A99</u:payload>";
     for wrapper in [
