@@ -487,6 +487,16 @@ pub(crate) fn map_source_level(
             }
         }
     }
+    for (start, end, wrapper) in xml_edit_ns::processed_children(xml)? {
+        let moved = map_source_level(&wrapper.text, ns, names, wrapped, map)?;
+        if moved != wrapper.text {
+            edits.push(Splice {
+                start,
+                end,
+                text: wrapper.finish(&moved)?,
+            });
+        }
+    }
     for (start, end, wrapper) in xml_edit_ns::children_ns(xml, b"AlternateContent", MC_NAMESPACE)? {
         let mut changes = Vec::new();
         for (a, b, branch, is_fallback) in branches(&wrapper.text)? {
@@ -518,7 +528,18 @@ pub(crate) fn map_source_level(
 // Comments and processing instructions are not formula characters. Keep them
 // when a text leaf changes; a leaf containing element children is opaque.
 fn map_text_leaf(xml: &str, map: &impl Fn(&str) -> String) -> Result<String> {
-    map_text_leaf_with_elements(xml, &|_| TextElement::Opaque, map)
+    let processed = jade_xlsx_reader::process_content::processed_elements(xml)?;
+    map_text_leaf_with_elements(
+        xml,
+        &|offset| {
+            if processed.processes_content_at(offset) {
+                TextElement::Process
+            } else {
+                TextElement::Opaque
+            }
+        },
+        map,
+    )
 }
 
 pub(crate) enum TextElement {

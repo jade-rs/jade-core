@@ -219,6 +219,7 @@ fn rewrite_sources(xml: &str, map: &Rewrite<'_>, mode: Mode<'_>) -> Result<Strin
     };
     let extensions = jade_xlsx_reader::worksheet_extensions::sources(xml)?;
     let mut reader = NsReader::from_str(xml);
+    let mut scope = jade_xlsx_reader::process_content::Scope::for_xml(xml);
     let mut main = None;
     let mut stack: Vec<(Vec<u8>, Vec<u8>)> = Vec::new();
     let mut edits = Vec::new();
@@ -238,6 +239,7 @@ fn rewrite_sources(xml: &str, map: &Rewrite<'_>, mode: Mode<'_>) -> Result<Strin
                     }
                     continue;
                 }
+                scope.push(&reader, e)?;
                 let ns = namespace(&reader, e.name());
                 let name = e.local_name().as_ref().to_vec();
                 if stack.is_empty()
@@ -261,6 +263,7 @@ fn rewrite_sources(xml: &str, map: &Rewrite<'_>, mode: Mode<'_>) -> Result<Strin
                     if !empty {
                         reader.read_to_end(e.name())?;
                     }
+                    scope.pop();
                     continue;
                 }
                 if own && name == b"row" && owned_path(&[b"worksheet", b"sheetData"]) {
@@ -317,7 +320,8 @@ fn rewrite_sources(xml: &str, map: &Rewrite<'_>, mode: Mode<'_>) -> Result<Strin
                             edits.push(Splice { start, end, text });
                         }
                     } else {
-                        let context = xml_edit_ns::ContextXml::new(&xml[start..end], &bindings)?;
+                        let context =
+                            xml_edit_ns::ContextXml::scoped(&xml[start..end], &bindings, &scope)?;
                         let moved = if cell {
                             map_source_level(
                                 &context.text,
@@ -360,13 +364,17 @@ fn rewrite_sources(xml: &str, map: &Rewrite<'_>, mode: Mode<'_>) -> Result<Strin
                             });
                         }
                     }
+                    scope.pop();
                     continue;
                 }
                 if !empty {
                     stack.push((ns, name));
+                } else {
+                    scope.pop();
                 }
             }
             Event::End(_) => {
+                scope.pop();
                 stack.pop();
             }
             Event::Eof => break,

@@ -175,6 +175,16 @@ impl Scope {
             self.content.truncate(content);
         }
     }
+    /// Active ignorable namespace URIs, resolved at their declarations.
+    pub fn ignorable_namespaces(&self) -> impl Iterator<Item = &str> {
+        self.ignorable.iter().map(String::as_str)
+    }
+    /// Active nominated expanded names, including inherited declarations.
+    pub fn process_content_names(&self) -> impl Iterator<Item = (&str, &str)> {
+        self.content
+            .iter()
+            .map(|(ns, name)| (ns.as_str(), name.as_str()))
+    }
     pub fn processes(&self, namespace: &[u8], local: &[u8]) -> bool {
         !self.content.is_empty()
             && self.ignorable.iter().any(|ns| ns.as_bytes() == namespace)
