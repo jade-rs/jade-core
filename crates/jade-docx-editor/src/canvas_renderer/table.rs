@@ -1203,17 +1203,37 @@ impl TableMathContext {
         Ok(())
     }
 
-    fn layout<P: Painter<Error: PainterError>>(
+    fn display_content_box(
+        &self,
+        math: &jade_docx_reader::document::MathParagraph,
+        config: &LayoutConfig,
+        available_width: f64,
+        even: bool,
+    ) -> (f64, f64) {
+        let char_unit_pt = config
+            .styles_part
+            .as_deref()
+            .and_then(StylesPart::doc_default_font_size)
+            .map_or(super::DEFAULT_INDENT_CHAR_UNIT_PT, f64::from);
+        let (x, width) = jade_docx_layout::math_layout::math_block_content_box(
+            math.properties.as_deref(),
+            0.0,
+            available_width,
+            char_unit_pt,
+            even,
+        );
+        self.settings.display_content_box(x, width)
+    }
+
+    fn with_display_plan<P: Painter<Error: PainterError>, T>(
         &self,
         painter: &P,
         math: &jade_docx_reader::document::MathParagraph,
         config: &LayoutConfig,
-        available_width: f64,
-        previous_after: &mut f64,
-    ) -> Result<(CellDisplayMath, f64), JsValue> {
+        max_width: Option<f64>,
+        use_plan: impl FnOnce(jade_docx_layout::math_layout::styled::StyledMathLayout<'_>, f32) -> T,
+    ) -> Result<T, JsValue> {
         use jade_docx_layout::math_layout::styled::{MathLayoutOptions, WORD_SCRIPT_SCALES};
-        use jade_docx_layout::math_layout::{math_block_content_box, math_block_line_box};
-        use jade_docx_layout::text_extract::{paragraph_spacing_after, paragraph_spacing_before};
 
         let resources = super::math::DisplayMathStyle {
             styles: config.styles_part.as_deref(),
@@ -1221,28 +1241,18 @@ impl TableMathContext {
             settings: self.settings,
             dark_mode_text: false,
         };
-        let properties = math.properties.as_deref();
-        let char_unit_pt = resources
-            .styles
-            .and_then(StylesPart::doc_default_font_size)
-            .map_or(super::DEFAULT_INDENT_CHAR_UNIT_PT, f64::from);
-        let content_box = |even| {
-            let (x, width) =
-                math_block_content_box(properties, 0.0, available_width, char_unit_pt, even);
-            self.settings.display_content_box(x, width)
-        };
         let mut style = resources.body_math_style(math, &self.family);
-        // The eventual cell's shading decides automatic ink colour. Keep
-        // that distinction through preparation and resolve it when painting.
+        // The eventual cell's shading decides automatic ink colour.
         style.color = "auto";
-        let text_family = resources.math_text_family(properties.and_then(|p| p.style.as_deref()));
+        let text_family =
+            resources.math_text_family(math.properties.as_ref().and_then(|p| p.style.as_deref()));
         let plan = super::math::layout_math_elements(
             painter,
             &math.elements,
             style,
             &MathLayoutOptions {
                 display: true,
-                max_width: Some(content_box(false).1),
+                max_width,
                 text_family: Some(&text_family),
                 settings: resources.display_math_settings(math),
                 uniform: false,
@@ -1251,9 +1261,56 @@ impl TableMathContext {
             #[cfg(feature = "opentype-math")]
             self.fonts.get(style.family).map(Rc::as_ref),
         )?;
+        Ok(use_plan(plan, (style.size_px * 72.0 / 96.0) as f32))
+    }
+
+    fn intrinsic_display_widths<P: Painter<Error: PainterError>>(
+        &self,
+        painter: &P,
+        math: &jade_docx_reader::document::MathParagraph,
+        config: &LayoutConfig,
+    ) -> Result<(f64, f64), JsValue> {
+        let natural =
+            self.with_display_plan(painter, math, config, None, |plan, _| plan.metrics.width)?;
+        // A very narrow box exercises the same operator break opportunities
+        // as actual layout, without breaking up fractions or other objects.
+        let broken = self.with_display_plan(painter, math, config, Some(1.0), |plan, _| {
+            plan.metrics.width
+        })?;
+        // Measure paragraph indents and math margins before the box's
+        // narrow-width fallback can discard them.
+        let reference = 1_000_000.0;
+        let insets = [false, true]
+            .map(|even| reference - self.display_content_box(math, config, reference, even).1);
+        let insets = insets[0].max(insets[1]).max(0.0);
+        let natural = natural + insets;
+        let minimum = (broken + insets).min(natural);
+        Ok((natural, minimum))
+    }
+
+    fn layout<P: Painter<Error: PainterError>>(
+        &self,
+        painter: &P,
+        math: &jade_docx_reader::document::MathParagraph,
+        config: &LayoutConfig,
+        available_width: f64,
+        previous_after: &mut f64,
+    ) -> Result<(CellDisplayMath, f64), JsValue> {
+        use jade_docx_layout::math_layout::math_block_line_box;
+        use jade_docx_layout::text_extract::{paragraph_spacing_after, paragraph_spacing_before};
+
+        let properties = math.properties.as_deref();
+        let content_box = |even| self.display_content_box(math, config, available_width, even);
+        let (plan, font_size_pt) = self.with_display_plan(
+            painter,
+            math,
+            config,
+            Some(content_box(false).1),
+            |plan, size| (super::math::OwnedMathPlan::from_plan(&plan), size),
+        )?;
         let line_box = math_block_line_box(
             plan.line_metrics,
-            (style.size_px * 72.0 / 96.0) as f32,
+            font_size_pt,
             properties,
             config.doc_grid.as_ref(),
             config.document_snap_to_grid_default,
@@ -1274,7 +1331,7 @@ impl TableMathContext {
         });
         Ok((
             CellDisplayMath {
-                plan: Rc::new(super::math::OwnedMathPlan::from_plan(&plan)),
+                plan: Rc::new(plan),
                 line_box,
                 spacing_before,
                 x_by_page_parity,
@@ -9462,8 +9519,16 @@ fn apply_table_layout_width(
 /// Intrinsic measurement uses the same painter and math fonts as cell
 /// layout. Text-only measurement contexts do not create equation plans.
 trait TableAutofitContext: LineWrapContext {
-    fn inline_math_enabled(&self) -> bool {
+    fn math_enabled(&self) -> bool {
         false
+    }
+
+    fn measure_display_math(
+        &self,
+        _math: &jade_docx_reader::document::MathParagraph,
+        _config: &LayoutConfig,
+    ) -> Result<(f64, f64), Self::Error> {
+        Ok((0.0, 0.0))
     }
 
     fn measure_inline_math(
@@ -9477,8 +9542,18 @@ trait TableAutofitContext: LineWrapContext {
 }
 
 impl<P: Painter<Error: PainterError>> TableAutofitContext for TableLineWrapContext<'_, P> {
-    fn inline_math_enabled(&self) -> bool {
+    fn math_enabled(&self) -> bool {
         self.math.is_some()
+    }
+
+    fn measure_display_math(
+        &self,
+        math: &jade_docx_reader::document::MathParagraph,
+        config: &LayoutConfig,
+    ) -> Result<(f64, f64), Self::Error> {
+        self.math.as_ref().map_or(Ok((0.0, 0.0)), |context| {
+            context.intrinsic_display_widths(self.context, math, config)
+        })
     }
 
     fn measure_inline_math(
@@ -9958,6 +10033,9 @@ fn table_autofit_cache_signature(
     for row in &table.rows {
         for cell in &row.cells {
             for block in &cell.blocks {
+                if matches!(block, BodyElement::Math(_)) {
+                    return None;
+                }
                 if let BodyElement::Paragraph(paragraph) = block {
                     bytes.extend_from_slice(&line_height_for(paragraph).to_bits().to_le_bytes());
                     for run in &paragraph.runs {
@@ -10088,12 +10166,18 @@ fn autofit_content_widths<C: TableAutofitContext>(
                 explicit_width_columns[start..end].fill(true);
             }
 
-            let math_config = config.filter(|_| {
-                cell.text_direction != Some(TextDirection::LrTbV) && context.inline_math_enabled()
-            });
+            let math_config = config.filter(|_| context.math_enabled());
+            let inline_math_config =
+                math_config.filter(|_| cell.text_direction != Some(TextDirection::LrTbV));
             let mut natural_content_width = 0.0_f64;
             let mut unbreakable_content_width = 0.0_f64;
             for block in &cell.blocks {
+                if let (BodyElement::Math(math), Some(config)) = (block, math_config) {
+                    let (natural, minimum) = context.measure_display_math(math, config)?;
+                    natural_content_width = natural_content_width.max(natural);
+                    unbreakable_content_width = unbreakable_content_width.max(minimum);
+                    continue;
+                }
                 let BodyElement::Paragraph(paragraph) = block else {
                     continue;
                 };
@@ -10103,7 +10187,7 @@ fn autofit_content_widths<C: TableAutofitContext>(
                     false,
                     &NoteMarkers::default(),
                     field_value_for,
-                    math_config.is_some(),
+                    inline_math_config.is_some(),
                 );
                 if text.is_empty() {
                     continue;
@@ -10125,7 +10209,7 @@ fn autofit_content_widths<C: TableAutofitContext>(
                     styles,
                     config.is_some_and(|config| config.override_table_style_font_size),
                 );
-                if let Some(config) = math_config {
+                if let Some(config) = inline_math_config {
                     context.measure_inline_math(paragraph, config, &mut styled_runs)?;
                 }
                 let run_styles = styled_run_styles(&text, &styled_runs);
@@ -15892,6 +15976,43 @@ mod tests {
             .find(|line| line.text == "Adjacent cell")
             .unwrap();
         assert_eq!(left.baseline, equation.baseline);
+        assert!(equation.x + equation.plan.metrics.width <= adjacent.start_x);
+    }
+
+    #[test]
+    fn table_autofit_reserves_width_for_display_equations() {
+        let xml = r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math">
+            <w:body><w:tbl><w:tblPr><w:tblW w:w="0" w:type="auto"/><w:tblLayout w:type="autofit"/></w:tblPr>
+                <w:tblGrid><w:gridCol w:w="1200"/><w:gridCol w:w="4200"/></w:tblGrid>
+                <w:tr><w:tc><w:tcPr><w:tcW w:w="0" w:type="auto"/></w:tcPr>
+                    <m:oMathPara><m:oMathParaPr><m:jc m:val="left"/></m:oMathParaPr><m:oMath>
+                    <m:f><m:num><m:r><m:t>abcdefghijklmnopqrstuv</m:t></m:r></m:num><m:den><m:r><m:t>2</m:t></m:r></m:den></m:f>
+                    </m:oMath></m:oMathPara><w:p/>
+                </w:tc><w:tc><w:tcPr><w:tcW w:w="0" w:type="auto"/></w:tcPr>
+                    <w:p><w:r><w:t>Adjacent cell</w:t></w:r></w:p>
+                </w:tc></w:tr>
+            </w:tbl></w:body></w:document>"#;
+        let document = jade_docx_reader::DocumentParser::new()
+            .parse_document_xml(xml)
+            .unwrap();
+        let mut renderer = CanvasRenderer::with_host(
+            Box::new(super::super::recording_host::RecordingHost {
+                painter: RecordingPainter::with_width_per_char(8.0),
+            }),
+            false,
+        )
+        .unwrap();
+        renderer
+            .render(&document, &crate::Options::default())
+            .unwrap();
+        let [equation] = renderer.math_zones() else {
+            panic!("expected the display equation");
+        };
+        let lines = renderer.layout_debug_lines();
+        let adjacent = lines
+            .iter()
+            .find(|line| line.text == "Adjacent cell")
+            .unwrap();
         assert!(equation.x + equation.plan.metrics.width <= adjacent.start_x);
     }
 
