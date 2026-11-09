@@ -107,6 +107,8 @@ pub trait StyledMathMeasure {
 #[derive(Debug, Clone)]
 pub struct MathGlyph<'a> {
     pub text_range: Range<usize>,
+    /// An optional paint-only substitution for a wrapped operator.
+    pub rendered_text: Option<&'static str>,
     pub x: f64,
     pub baseline: f64,
     pub width: f64,
@@ -121,6 +123,13 @@ pub struct MathGlyph<'a> {
     #[cfg(feature = "opentype-math")]
     pub font_glyph: Option<font::PreparedMathGlyph>,
 }
+impl MathGlyph<'_> {
+    pub fn display_text<'t>(&self, text: &'t str) -> &'t str {
+        self.rendered_text
+            .unwrap_or_else(|| &text[self.text_range.clone()])
+    }
+}
+
 #[derive(Debug)]
 pub struct MathRule<'a> {
     pub x: f64,
@@ -259,6 +268,8 @@ pub struct MathSettings {
     pub wrap_right: bool,
     /// `m:brkBin`: where a line breaks at a binary operator.
     pub break_binary: BreakBinary,
+    /// `m:brkBinSub`: signs to paint at a repeated subtraction break.
+    pub break_binary_subtraction: BreakBinarySubtraction,
     /// Additional display-equation margins (`m:lMargin`, `m:rMargin`), in pixels.
     pub display_margins_px: (f64, f64),
     /// `m:dispDef`: use special display defaults rather than paragraph settings.
@@ -276,6 +287,7 @@ impl Default for MathSettings {
             wrap_indent_px: 96.0,
             wrap_right: false,
             break_binary: BreakBinary::Before,
+            break_binary_subtraction: BreakBinarySubtraction::MinusMinus,
             display_margins_px: (0.0, 0.0),
             use_display_defaults: true,
             default_justification: MathJustification::CenterGroup,
@@ -314,6 +326,13 @@ pub enum BreakBinary {
     Before,
     After,
     Repeat,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BreakBinarySubtraction {
+    MinusMinus,
+    PlusMinus,
+    MinusPlus,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -890,6 +909,7 @@ impl<'a, C: StyledMathMeasure> Builder<'_, 'a, C> {
                 let mark = self.mark();
                 self.plan.glyphs.push(MathGlyph {
                     text_range: start..self.plan.text.len(),
+                    rendered_text: None,
                     x: total.width,
                     baseline: 0.0,
                     width: 0.0,
@@ -934,7 +954,7 @@ impl<'a, C: StyledMathMeasure> Builder<'_, 'a, C> {
                 }
                 self.prev = Some(class);
                 if matches!(class, AtomClass::Bin | AtomClass::Rel) {
-                    self.break_candidate(class, false, None);
+                    self.break_candidate(class, false, None, matches!(first_char, '-' | '−'));
                 }
             } else if plain {
                 self.prev = Some(AtomClass::Ord);
@@ -959,6 +979,7 @@ impl<'a, C: StyledMathMeasure> Builder<'_, 'a, C> {
             let x = total.width + space;
             self.plan.glyphs.push(MathGlyph {
                 text_range: range,
+                rendered_text: None,
                 x,
                 baseline: 0.0,
                 width: metrics.width,
@@ -981,6 +1002,7 @@ impl<'a, C: StyledMathMeasure> Builder<'_, 'a, C> {
         class: AtomClass,
         manual: bool,
         align_at: Option<u32>,
+        subtraction: bool,
     ) {
         if self.depth != 0 {
             return;
@@ -993,6 +1015,7 @@ impl<'a, C: StyledMathMeasure> Builder<'_, 'a, C> {
                 manual,
                 align_at,
                 align_point: false,
+                subtraction,
             });
         }
     }
@@ -1010,6 +1033,7 @@ impl<'a, C: StyledMathMeasure> Builder<'_, 'a, C> {
                 manual: false,
                 align_at: None,
                 align_point: true,
+                subtraction: false,
             });
         }
     }
@@ -1022,7 +1046,15 @@ impl<'a, C: StyledMathMeasure> Builder<'_, 'a, C> {
         range: &Range<usize>,
         style: MathTextStyle<'a>,
     ) -> Result<(MathMetrics, GlyphInfo, GlyphHandle), C::Error> {
-        let text = &self.plan.text[range.clone()];
+        self.measure_text(&self.plan.text[range.clone()], style)
+    }
+
+    #[allow(clippy::type_complexity)]
+    fn measure_text(
+        &self,
+        text: &str,
+        style: MathTextStyle<'a>,
+    ) -> Result<(MathMetrics, GlyphInfo, GlyphHandle), C::Error> {
         #[cfg(feature = "opentype-math")]
         {
             let prepared = self.context.prepare_glyph_at_script_level(
@@ -1141,7 +1173,7 @@ impl<'a, C: StyledMathMeasure> Builder<'_, 'a, C> {
         }
         self.first = None;
         if structure && matches!(class.0, AtomClass::Bin | AtomClass::Rel) {
-            self.break_candidate(class.0, false, None);
+            self.break_candidate(class.0, false, None, false);
         }
         let metrics = match e.kind {
             Run => self.run(e)?,
@@ -1211,7 +1243,7 @@ impl<'a, C: StyledMathMeasure> Builder<'_, 'a, C> {
         let run = run_properties(e, self.style, self.options.text_family);
         if let Some(align_at) = run.manual_break {
             let class = first_char(e).map_or(AtomClass::Ord, alphabet::char_class);
-            self.break_candidate(class, true, align_at);
+            self.break_candidate(class, true, align_at, false);
         }
         if run.align_point {
             self.align_point();
@@ -1246,7 +1278,7 @@ impl<'a, C: StyledMathMeasure> Builder<'_, 'a, C> {
         &mut self,
         math: &'a MathElement,
         group: usize,
-    ) -> Result<Vec<lines::PlacedLine>, C::Error> {
+    ) -> Result<Vec<lines::PlacedLine<'a>>, C::Error> {
         lines::math_lines(self, math, group)
     }
 }
