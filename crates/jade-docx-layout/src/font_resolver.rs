@@ -1317,14 +1317,13 @@ impl ResolvedRunStyle {
 
     pub(crate) fn windows_requested_ascii_advance_px(&self, ascii: u8) -> Option<f64> {
         use crate::line_metrics::WordAsciiMetrics;
+        // Yu Mincho facts come from Word for Mac. Windows wrapping measures
+        // the font selected by the host when laying out Yu Mincho runs.
         self.ascii_metrics()
             .filter(|metrics| {
                 matches!(
                     metrics,
-                    WordAsciiMetrics::Fixed(..)
-                        | WordAsciiMetrics::YuMincho(..)
-                        | WordAsciiMetrics::YuMinchoBold(..)
-                        | WordAsciiMetrics::TimesNewRoman(..)
+                    WordAsciiMetrics::Fixed(..) | WordAsciiMetrics::TimesNewRoman(..)
                 )
             })
             .and_then(|metrics| metrics.advance_px(ascii))
@@ -2281,6 +2280,17 @@ mod tests {
             cached_style_elapsed.as_micros(),
             ITERS,
         );
+    }
+
+    #[test]
+    fn yu_mincho_wrapping_uses_requested_ascii_metrics_only_on_mac() {
+        for descriptor in ["10.50pt 'Yu Mincho', serif", "bold 10.50pt '游明朝', serif"] {
+            let style = ResolvedRunStyle::new(
+                descriptor, descriptor, descriptor, descriptor, 0.0, 1.0, false, None,
+            );
+            assert!(style.ascii_advance_px(b'H').is_some());
+            assert_eq!(style.windows_requested_ascii_advance_px(b'H'), None);
+        }
     }
 
     #[test]
