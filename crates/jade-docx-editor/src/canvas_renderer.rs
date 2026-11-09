@@ -10677,8 +10677,9 @@ where
     /// This is important when we end up drawing due to a cache miss even if the
     /// caller didn't mark anything dirty ahead of time.
     fn promote_page_to_dirty_for_current_render(&mut self, page: usize) -> Result<(), JsValue> {
-        // A note measuring pass lays notes out off-page and draws nothing.
-        if self.render_full_repaint || self.measuring_notes {
+        // Layout-only passes (including header/footer measurement) must not
+        // promote a retained page or flush its deferred paint commands.
+        if self.render_full_repaint || self.render_skip_draw || self.measuring_notes {
             return Ok(());
         }
         // If the page isn't within the visible page range, we should not force it dirty.
