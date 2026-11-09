@@ -14422,9 +14422,7 @@ where
             }
         }
 
-        if self.band_redraw_plan.is_none()
-            && self.host.requires_full_page_repaint_without_band()
-        {
+        if self.band_redraw_plan.is_none() && self.host.requires_full_page_repaint_without_band() {
             self.render_full_repaint = true;
             self.render_dirty_pages = None;
         }
