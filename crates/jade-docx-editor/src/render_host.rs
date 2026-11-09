@@ -378,6 +378,12 @@ pub trait CanvasRenderHost {
         true
     }
 
+    /// Retained native surfaces require a complete page paint unless a band
+    /// plan proves that the existing pixels outside its clip remain valid.
+    fn requires_full_page_repaint_without_band(&self) -> bool {
+        false
+    }
+
     /// Records that the given 0-based page was (re)painted in the current render
     /// pass, so its backing now holds valid pixels. Paired with the backing being
     /// invalidated on shrink/inflate. Default no-op.

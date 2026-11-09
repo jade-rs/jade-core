@@ -148,9 +148,91 @@ fn every_keystroke_matches_a_fresh_render() {
         let expected = reopened.page_pixels(0).expect("fresh page 1 pixels").0;
         assert!(
             current == expected,
-            "keystroke {keystroke} repaint differs from a fresh render of the edited document"
+            "keystroke {keystroke} repaint differs from a fresh render: stats {:?}, first differing byte {:?}",
+            document.renderer().band_redraw_stats(),
+            current.iter().zip(&expected).position(|(a, b)| a != b)
         );
         previous = current;
+    }
+}
+
+/// A correct-looking full redraw must not silently replace the IME fast path.
+#[test]
+fn ime_updates_reuse_retained_page_pixels() {
+    let mut document = open_contract();
+    assert!(!document.renderer().needs_full_repaint());
+    let taken_before = document.renderer().band_redraw_stats().1;
+    let mut previous_len = 0;
+    for text in ["に", "にほ", "にほん", "日本語", ""] {
+        document.replace_range(3, 0, previous_len, text, 1).unwrap();
+        assert!(!document.renderer().needs_full_repaint());
+        let incremental = document.page_pixels(0).unwrap().0;
+        document.repaint_all().unwrap();
+        assert!(
+            incremental == document.page_pixels(0).unwrap().0,
+            "retained pixels differ after IME candidate {text:?}"
+        );
+        previous_len = text.len();
+    }
+    assert!(
+        document.renderer().band_redraw_stats().1 > taken_before,
+        "stable IME replacements should reuse the retained page outside the paragraph"
+    );
+}
+
+/// IME readings grow, convert, shrink and disappear. Reusing completed
+/// pagination must still repaint wrapping text and preserve undo/redo.
+#[test]
+fn ime_replacements_match_full_repaint_and_history() {
+    let mut document = open_contract();
+    let first = common::paragraph_on_first_page(&mut document);
+    let later = (0..60)
+        .find(|&p| {
+            document
+                .place_caret(p, 0)
+                .is_some_and(|caret| document.page_and_offset(caret.document_y).0 == 1)
+        })
+        .expect("paragraph on page 2");
+    for paragraph in [first, later] {
+        let original = document.paragraph_text(paragraph).unwrap();
+        let mut previous = String::new();
+        for text in [
+            "に",
+            "にほん",
+            "日本語",
+            &"長い変換候補".repeat(30),
+            "日",
+            "",
+        ] {
+            let caret = document.place_caret(paragraph, 0).unwrap();
+            let page = document.page_and_offset(caret.document_y).0;
+            document
+                .replace_range(paragraph, 0, previous.len(), text, page + 1)
+                .unwrap();
+            assert_eq!(
+                document.paragraph_text(paragraph).unwrap(),
+                format!("{text}{original}")
+            );
+            let incremental = document.page_pixels(page).unwrap().0;
+            document.repaint_all().unwrap();
+            assert!(
+                incremental == document.page_pixels(page).unwrap().0,
+                "IME update {text:?} on paragraph {paragraph} differs from full repaint: stats {:?}, first differing byte {:?}",
+                document.renderer().band_redraw_stats(),
+                incremental.iter().zip(document.page_pixels(page).unwrap().0).position(|(a, b)| *a != b)
+            );
+            document.undo().unwrap();
+            assert_eq!(
+                document.paragraph_text(paragraph).unwrap(),
+                format!("{previous}{original}")
+            );
+            document.redo().unwrap();
+            assert_eq!(
+                document.paragraph_text(paragraph).unwrap(),
+                format!("{text}{original}")
+            );
+            previous = text.to_owned();
+        }
     }
 }
 

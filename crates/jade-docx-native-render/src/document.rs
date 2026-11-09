@@ -377,6 +377,7 @@ impl NativeDocument {
         if let Some(error) = renderer.take_render_error() {
             return Err(error);
         }
+        renderer.clear_dirty_regions();
         drop(document);
 
         Ok(Self {
@@ -709,6 +710,10 @@ impl NativeDocument {
         if let Some(error) = self.renderer.take_render_error() {
             return Err(error);
         }
+        // The native host has consumed this pass directly into retained page
+        // surfaces. Leaving the tracker full-dirty disables incremental drawing
+        // on every subsequent keystroke (the browser consumes it in its payload).
+        self.renderer.clear_dirty_regions();
         self.follow_page_box()?;
         Ok(started.elapsed())
     }
@@ -776,6 +781,7 @@ impl NativeDocument {
         if let Some(error) = renderer.take_render_error() {
             return Err(error);
         }
+        renderer.clear_dirty_regions();
         self.renderer = renderer;
         self.pages = pages;
         self.rendered_pages = rendered_pages;
@@ -1095,6 +1101,10 @@ impl NativeDocument {
         if let Some(error) = self.renderer.take_render_error() {
             return Err(error);
         }
+        // The native host has consumed this pass directly into retained page
+        // surfaces. Leaving the tracker full-dirty disables incremental drawing
+        // on every subsequent keystroke (the browser consumes it in its payload).
+        self.renderer.clear_dirty_regions();
         Ok(started.elapsed())
     }
 
@@ -2766,11 +2776,22 @@ impl NativeDocument {
         visible_end_page_1idx: usize,
         executor_steps: usize,
     ) -> Result<Duration, String> {
-        let old_height = matches!(&command, HeadlessCommand::InsertText { .. })
+        // IME updates replace the previous marked text in the same paragraph.
+        // Capture the same reuse candidates as typing; the recorded command's
+        // footprint below must still prove that no other paragraph/part changed.
+        let local_text_edit = match &command {
+            HeadlessCommand::InsertText { .. } => true,
+            HeadlessCommand::ReplaceRange {
+                start_paragraph,
+                end_paragraph,
+                ..
+            } => *start_paragraph == paragraph && *end_paragraph == paragraph,
+            _ => false,
+        };
+        let old_height = local_text_edit
             .then(|| self.renderer.cached_paragraph_height(paragraph))
             .flatten();
-        let text_edit_cache = matches!(&command, HeadlessCommand::InsertText { .. })
-            .then(|| self.renderer.local_text_edit_cache());
+        let text_edit_cache = local_text_edit.then(|| self.renderer.local_text_edit_cache());
         let recorded = self.executor.history_revision();
         let before = self.selection;
         let group_commands = executor_steps > 1;
@@ -2849,6 +2870,14 @@ impl NativeDocument {
             && self.executor.next_undo_render_footprint()
                 == Some(HistoryRenderFootprint::SingleParagraph { index: paragraph })
         {
+            // Native pages retain their pixels between edits. Let the renderer
+            // redraw only this paragraph's band when its geometry is stable;
+            // unsupported layouts and height changes fall back to a full page.
+            // The incremental hyperlink registry retains prefix regions while
+            // native replay may visit them again. Keep the full-page path for
+            // linked documents until that registry supports retained bands.
+            let band_safe = local_text_edit && self.renderer.hyperlink_regions().is_empty();
+            self.renderer.set_band_redraw_enabled(band_safe);
             if let Some(cache) = text_edit_cache {
                 self.renderer
                     .restore_local_text_edit_cache(cache, &self.word_document, paragraph);
@@ -2878,6 +2907,7 @@ impl NativeDocument {
             self.word_document.footer_lines.as_deref(),
             visible_end_page_1idx,
         );
+        self.renderer.set_band_redraw_enabled(false);
         // Whatever the pass was, the next one is a whole-document render until
         // something says otherwise.
         self.pass_covers_whole_document.set(true);
@@ -2885,6 +2915,10 @@ impl NativeDocument {
         if let Some(error) = self.renderer.take_render_error() {
             return Err(error);
         }
+        // The native host has consumed this pass directly into retained page
+        // surfaces. Leaving the tracker full-dirty disables incremental drawing
+        // on every subsequent keystroke (the browser consumes it in its payload).
+        self.renderer.clear_dirty_regions();
 
         Ok(started.elapsed())
     }
