@@ -15312,14 +15312,14 @@ impl WordDocument {
         raw_omml: &str,
         placement: EquationPlacement,
     ) -> Result<TextPosition, String> {
-        let text_box_inline = placement == EquationPlacement::Inline
+        let story_inline = placement == EquationPlacement::Inline
             && matches!(
                 self.paragraph_surfaces.get(position.paragraph),
-                Some(ParagraphSurface::TextBox { .. })
+                Some(ParagraphSurface::TextBox { .. } | ParagraphSurface::Note { .. })
             );
-        if !self.is_body_paragraph_surface(position.paragraph) && !text_box_inline {
+        if !self.is_body_paragraph_surface(position.paragraph) && !story_inline {
             return Err(
-                "equations can only be inserted in body paragraphs or inline in text boxes"
+                "equations can only be inserted in body paragraphs or inline in text boxes and notes"
                     .to_string(),
             );
         }
