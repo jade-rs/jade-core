@@ -27,6 +27,17 @@ fn formula(b: &mut Workbook, target: &str, text: &str) {
         .unwrap();
     row.cells.push(cell);
     row.cells.sort_by_key(|c| c.reference.column);
+    // Newly authored AE entries carry their evaluation mode in the model.
+    b.sheets[1]
+        .array_formulas
+        .push(jade_xlsx_reader::ArrayFormula {
+            anchor: reference,
+            range: jade_xlsx_reader::CellRange {
+                start: reference,
+                end: reference,
+            },
+            kind: jade_xlsx_reader::ArrayFormulaKind::Dynamic,
+        });
 }
 fn result(b: &Workbook, target: &str) -> CellValue {
     let answer = evaluate(b).unwrap();

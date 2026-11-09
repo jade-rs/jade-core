@@ -8,6 +8,7 @@ license = "MIT"
 doctest = false
 
 [dependencies]
+jade-number-format = { path = "../jade-number-format" }
 quick-xml = "0.41"
 zip = { version = "9.0", default-features = false, features = ["deflate"] }
 thiserror = "2.0"

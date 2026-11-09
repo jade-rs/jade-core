@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "documents": [
+    {
+      "name": "word-windows-edge-table-positive-spacing-bidi-border-widths-compat14",
+      "file": "inputs/word-windows-edge-table-positive-spacing-bidi-border-widths-compat14.docx",
+      "sha256": "29831463c6be8052dec37440cc801925abc9d20238383a9d56bb3d695335c415"
+    },
+    {
+      "name": "word-windows-edge-table-positive-spacing-bidi-border-widths-compat15",
+      "file": "inputs/word-windows-edge-table-positive-spacing-bidi-border-widths-compat15.docx",
+      "sha256": "4f06f6a176a5b8c1d272c93491bc8d3d3f2501941af8398f0a209bdb422e58f9"
+    },
+    {
+      "name": "word-windows-edge-table-positive-spacing-sizing-autofit-bidi-compat15",
+      "file": "inputs/word-windows-edge-table-positive-spacing-sizing-autofit-bidi-compat15.docx",
+      "sha256": "df04af8e79cf37bd2b3ba6a6f244940894f83c7efac2e8da253eea1038e8c390"
+    }
+  ]
+}

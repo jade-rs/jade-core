@@ -1,0 +1,47 @@
+[
+  {
+    "fixture": "word-windows-edge-table-spacing-mixed-borders-compat12",
+    "word_pages": 3,
+    "native_pages": 3,
+    "word_glyphs": 1036,
+    "native_glyphs": 1036,
+    "matched": 1036,
+    "within_0_375pt": 1036,
+    "x_p50": 0.0800018310546875,
+    "x_p95": 0.170257568359375,
+    "y_p50": 0.0682373046875,
+    "y_p95": 0.1400146484375,
+    "first_errors": [],
+    "pdf_sha256": "d7c354473fca173b4faa85f2d9900995f2ad2fed98b6d11f28c11f9939534b45"
+  },
+  {
+    "fixture": "word-windows-edge-table-spacing-mixed-borders-compat14",
+    "word_pages": 3,
+    "native_pages": 3,
+    "word_glyphs": 1036,
+    "native_glyphs": 1036,
+    "matched": 1036,
+    "within_0_375pt": 1036,
+    "x_p50": 0.0800018310546875,
+    "x_p95": 0.170257568359375,
+    "y_p50": 0.0682373046875,
+    "y_p95": 0.1400146484375,
+    "first_errors": [],
+    "pdf_sha256": "ddd99438d0f4d53a6bfa062485b4e316491ba920e09c2335c5c8ed50fcfc3519"
+  },
+  {
+    "fixture": "word-windows-edge-table-spacing-mixed-borders-compat15",
+    "word_pages": 3,
+    "native_pages": 3,
+    "word_glyphs": 1036,
+    "native_glyphs": 1036,
+    "matched": 1036,
+    "within_0_375pt": 1036,
+    "x_p50": 0.09410095214840908,
+    "x_p95": 0.186492919921875,
+    "y_p50": 0.0682373046875,
+    "y_p95": 0.1400146484375,
+    "first_errors": [],
+    "pdf_sha256": "b2c030feb4bbb4195a55ee7594862a6232e4af662d3f1e94711a62bc1c9bc498"
+  }
+]

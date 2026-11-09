@@ -103,6 +103,36 @@ class CorpusAuditTests(unittest.TestCase):
             ["repeated revision IDs"],
         )
 
+    def test_only_the_new_text_only_tracked_edit_is_removed(self) -> None:
+        def document(content: str) -> bytes:
+            return (
+                '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
+                f"<w:body><w:p>{content}</w:p></w:body></w:document>"
+            ).encode()
+
+        original = '<w:ins w:id="4"><w:r><w:t>A</w:t></w:r></w:ins>'
+        before = document(original)
+        inserted = '<w:ins w:id="5" w:author="jade"><w:r><w:rPr><w:b/></w:rPr><w:t>Z</w:t></w:r></w:ins>'
+        after = document(inserted + original)
+        self.assertEqual(
+            audit.structural_sequence(before),
+            audit.structural_sequence(audit.without_new_tracked_insertion(before, after, "Z")),
+        )
+        for invalid in (
+            inserted.replace('w:id="5"', 'w:id="4"'),
+            inserted.replace(' w:id="5"', ''),
+            inserted.replace('<w:t>Z</w:t>', '<w:t>ZA</w:t>'),
+            inserted.replace('<w:t>Z</w:t>', '<w:t>Z</w:t><w:drawing/>'),
+            inserted.replace('<w:t>Z</w:t>', '<w:delText>Z</w:delText>'),
+        ):
+            exported = document(invalid + original)
+            self.assertEqual(audit.without_new_tracked_insertion(before, exported, "Z"), exported)
+        extra = document(inserted + inserted.replace('w:id="5"', 'w:id="6"') + original)
+        self.assertNotEqual(
+            audit.structural_sequence(before),
+            audit.structural_sequence(audit.without_new_tracked_insertion(before, extra, "Z")),
+        )
+
     def test_shrunken_fixture_corpus_fails_before_export(self) -> None:
         original = audit.FIXTURES
         try:

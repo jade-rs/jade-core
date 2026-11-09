@@ -38,16 +38,15 @@ impl SetParagraphTypographyCommand {
     }
 }
 
-/// Each option with its element and Word's default: a value equal to the
-/// default is written by leaving the element out, as Word does.
-fn options(typography: &HeadlessParagraphTypography) -> [(&'static str, Option<bool>, bool); 6] {
+/// Explicit values must override styles even when they match Word's defaults.
+fn options(typography: &HeadlessParagraphTypography) -> [(&'static str, Option<bool>); 6] {
     [
-        ("w:kinsoku", typography.kinsoku, true),
-        ("w:wordWrap", typography.word_wrap, true),
-        ("w:overflowPunct", typography.overflow_punctuation, true),
-        ("w:topLinePunct", typography.top_line_punctuation, false),
-        ("w:autoSpaceDE", typography.auto_space_de, true),
-        ("w:autoSpaceDN", typography.auto_space_dn, true),
+        ("w:kinsoku", typography.kinsoku),
+        ("w:wordWrap", typography.word_wrap),
+        ("w:overflowPunct", typography.overflow_punctuation),
+        ("w:topLinePunct", typography.top_line_punctuation),
+        ("w:autoSpaceDE", typography.auto_space_de),
+        ("w:autoSpaceDN", typography.auto_space_dn),
     ]
 }
 
@@ -100,9 +99,9 @@ impl Command for SetParagraphTypographyCommand {
             if let Some(value) = typography.auto_space_dn {
                 settings.auto_space_dn = Some(value);
             }
-            for (tag, value, default) in options(&self.typography) {
+            for (tag, value) in options(&self.typography) {
                 let Some(value) = value else { continue };
-                let written = (value != default).then_some(if value { "1" } else { "0" });
+                let written = Some(if value { "1" } else { "0" });
                 sync_paragraph_value_xml(ctx.document, index, tag, written);
             }
         }

@@ -1,0 +1,217 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261107T123422628Z-6990d43d",
+  "captured_at_utc": "2026-11-07T12:34:22.6519917Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20860",
+    "file_version": "16.0.19127.20860",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "9bafe09d0c458006744b9edce767a328ba2da1bb5d9a460e5830c47bf6d7f1d1"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-edge-table-negative-spacing-columns-2-compat14",
+      "source": "..\\decimal-anchor-core\\public\\fixtures\\word-windows-edge-table-negative-spacing-columns-2-compat14.docx",
+      "sha256": "37bcf2fd5b23fe0bf575848103503f01b382203d6822c1a84005f782b3fe4900",
+      "pdf": "word-windows-edge-table-negative-spacing-columns-2-compat14.pdf",
+      "pdf_sha256": "c3c45ca868aef0c9f47e96aaf03d1a05fb7dc9281d5cedee7bcb19504c17e784",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-negative-spacing-columns-2-compat14.page-001.emf",
+          "sha256": "482be87029307e9f9f8f8b4ce20340bdeda907df1421eb2750ea68d7e2a64c40",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-negative-spacing-columns-3-compat14",
+      "source": "..\\decimal-anchor-core\\public\\fixtures\\word-windows-edge-table-negative-spacing-columns-3-compat14.docx",
+      "sha256": "e35ed97ba985216d4476fa168b010318bdac0e324e5c74f12bd57a6ce00fb32a",
+      "pdf": "word-windows-edge-table-negative-spacing-columns-3-compat14.pdf",
+      "pdf_sha256": "5e489ec5a13b26a0e8634db55ad5129e84e05916fbb42d5398bbba585b5b28e6",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-negative-spacing-columns-3-compat14.page-001.emf",
+          "sha256": "36d789c0a5f29af107e659f01872253f8269c1e121251ba5f9db64dadd40eef4",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-negative-spacing-columns-4-compat14",
+      "source": "..\\decimal-anchor-core\\public\\fixtures\\word-windows-edge-table-negative-spacing-columns-4-compat14.docx",
+      "sha256": "ea4a8323c7578e20ac66e31667c8d4a6d8ce100aeac26fac9e1f8bcb9b69afe5",
+      "pdf": "word-windows-edge-table-negative-spacing-columns-4-compat14.pdf",
+      "pdf_sha256": "58a8111a666a7b4ed765fedaad3ca7de48c972acdf05fd1eeab2f9dfb212edfb",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-negative-spacing-columns-4-compat14.page-001.emf",
+          "sha256": "deae4fcf151f4c73de49d8e389cb3bdd5c97ed3693178f97d0649380ebfc53e2",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-negative-spacing-columns-5-compat14",
+      "source": "..\\decimal-anchor-core\\public\\fixtures\\word-windows-edge-table-negative-spacing-columns-5-compat14.docx",
+      "sha256": "23c3f84c0e5e72966f3565ce6c00437d3fa1ad13bcde1c0380d19374c7e1f063",
+      "pdf": "word-windows-edge-table-negative-spacing-columns-5-compat14.pdf",
+      "pdf_sha256": "fee0497ff693f2c30dce54a7a11278c42b78290ffc6863430da40ed6e82ccb0d",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-negative-spacing-columns-5-compat14.page-001.emf",
+          "sha256": "b68d04377534a14897ffa53797482b07544f2c65bedefce80796d1f712de7da9",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-negative-spacing-row-scopes-compat14",
+      "source": "..\\decimal-anchor-core\\public\\fixtures\\word-windows-edge-table-negative-spacing-row-scopes-compat14.docx",
+      "sha256": "7021237b83426e8decee7798b9d020760b7ef18ae8fbf0e0bf3ac2733d3c5f34",
+      "pdf": "word-windows-edge-table-negative-spacing-row-scopes-compat14.pdf",
+      "pdf_sha256": "4bd2edfbf268f306a35fe226370bc31f30b1d775ec8a3fb99b11ced99eb830ae",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-negative-spacing-row-scopes-compat14.page-001.emf",
+          "sha256": "10138b5a6576420be1410de8e6db1ed1b673a3a0da4ab1af0932d821ca1ce667",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-negative-spacing-unequal-2-compat14",
+      "source": "..\\decimal-anchor-core\\public\\fixtures\\word-windows-edge-table-negative-spacing-unequal-2-compat14.docx",
+      "sha256": "6d36c268dd709b2a653022e1fe3977a929be5e4d3d5386d0bebd1293ffb87a2b",
+      "pdf": "word-windows-edge-table-negative-spacing-unequal-2-compat14.pdf",
+      "pdf_sha256": "c3b1a2f21265978ba6686001c61655fdde55e46887f6ef15d43d3535783fd8ed",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-negative-spacing-unequal-2-compat14.page-001.emf",
+          "sha256": "69a6045e28f56e22811cb0d5c17088453bcf16aba05686086da0bda56c8857d5",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-negative-spacing-unequal-3-compat14",
+      "source": "..\\decimal-anchor-core\\public\\fixtures\\word-windows-edge-table-negative-spacing-unequal-3-compat14.docx",
+      "sha256": "4f4286c30d31aef0ab783094829e013abf4bc5951f048178d3775bd42333c11f",
+      "pdf": "word-windows-edge-table-negative-spacing-unequal-3-compat14.pdf",
+      "pdf_sha256": "5ffb9984b1b2ee960c1fad5caaf8ca03e3dbda15668cddb793c7611635de3aa2",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-negative-spacing-unequal-3-compat14.page-001.emf",
+          "sha256": "38eeff9008ad6afa453a018390614672377ea8891dd85b15e49eb16aa2eb9380",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-negative-spacing-unequal-4-compat14",
+      "source": "..\\decimal-anchor-core\\public\\fixtures\\word-windows-edge-table-negative-spacing-unequal-4-compat14.docx",
+      "sha256": "3a9252adee8107cf04c13ebe31fb6d954cf25ad0c9e06ee82bf7df66de99eacc",
+      "pdf": "word-windows-edge-table-negative-spacing-unequal-4-compat14.pdf",
+      "pdf_sha256": "fcf5c3bca84b0f5ab59bc508c6d5901116d9ec41439d90b01567ec72226a15e3",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-negative-spacing-unequal-4-compat14.page-001.emf",
+          "sha256": "f77eb9a0f45c865587583c5b37fa5914ebc3fe95cf418b73dcc66a4da0cd08c6",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-spacing-negative-mixed-borders-compat12",
+      "source": "..\\decimal-anchor-core\\public\\fixtures\\word-windows-edge-table-spacing-negative-mixed-borders-compat12.docx",
+      "sha256": "db79c5dfcc922b3ea5bf4ed243dcba9f1db8c7205aa9187594741f9e7cd50369",
+      "pdf": "word-windows-edge-table-spacing-negative-mixed-borders-compat12.pdf",
+      "pdf_sha256": "c9c89a1c5aaea26f0e5fcd81af9f1e850687affc1b18f0fe5aa84106c89f35ec",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-spacing-negative-mixed-borders-compat12.page-001.emf",
+          "sha256": "60f11aa7303cebec6dd5f85ce1f53eaf00bf03f0f104c94ef0fa441b53cda126",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-spacing-negative-mixed-borders-compat14",
+      "source": "..\\decimal-anchor-core\\public\\fixtures\\word-windows-edge-table-spacing-negative-mixed-borders-compat14.docx",
+      "sha256": "a8674127ec0066fb7827f7470aa61cc470ecba4bf0078755647a280df5d304c6",
+      "pdf": "word-windows-edge-table-spacing-negative-mixed-borders-compat14.pdf",
+      "pdf_sha256": "dc1418a884452e0990a74de9b8831385c59734491c5213f4d41620c32a773c38",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-spacing-negative-mixed-borders-compat14.page-001.emf",
+          "sha256": "b2ee4c17a0171585c617da5ff3d69bad3b8b16525358f770bfb95444551acbcf",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-spacing-negative-mixed-borders-compat15",
+      "source": "..\\decimal-anchor-core\\public\\fixtures\\word-windows-edge-table-spacing-negative-mixed-borders-compat15.docx",
+      "sha256": "e3d7f88d4027df43ac3c21b9370669e460be8998991cc7677ae147b0ccf372a6",
+      "pdf": "word-windows-edge-table-spacing-negative-mixed-borders-compat15.pdf",
+      "pdf_sha256": "a41a219dd03a229c6d89baeea16e950d9647123dd3c19ca04c1d472594319bdb",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-spacing-negative-mixed-borders-compat15.page-001.emf",
+          "sha256": "0c34c091a1e91c87b3b392b4328937664ad9d2a2b390b8b143ab43098813be13",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    }
+  ],
+  "table_glyph_projection": "unclipped"
+}

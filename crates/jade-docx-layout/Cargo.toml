@@ -17,13 +17,13 @@ unicode-script = "0.5"
 unicode-bidi = "0.3"
 jade-docx-reader = { path = "../jade-docx-reader" }
 fontdue = "0.9"
-rustybuzz = { version = "0.20", optional = true }
+rustybuzz = "0.20"
 ttf-parser = { version = "0.25.1", default-features = false, features = ["std", "opentype-layout"], optional = true }
 
 [features]
 default = []
-# In-process OpenType shaping. Off by default so wasm builds never link rustybuzz.
-native-shaping = ["dep:rustybuzz"]
+# Full-run OpenType shaping. Vertical glyph metrics are available in all builds.
+native-shaping = []
 # Font bytes supplied by a host; no font files or browser loading policy.
 opentype-math = ["dep:ttf-parser"]
 

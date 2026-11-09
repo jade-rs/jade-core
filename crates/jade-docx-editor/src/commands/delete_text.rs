@@ -3044,6 +3044,8 @@ mod tests {
         for tracking in [false, true] {
             let mut doc =
                 executor::block_on(WordDocument::load(&data, &Options::default())).unwrap();
+            // Choose the test mode explicitly; this fixture enables recording.
+            doc.set_revision_session(None);
             doc.insert_table_after_paragraph(0, 1, 1, &[]).unwrap();
             apply_text_edit(
                 &mut doc.paragraph_mut(1).unwrap().runs,
@@ -3847,6 +3849,8 @@ mod tests {
         for track_changes in [false, true] {
             let mut word_doc =
                 executor::block_on(WordDocument::load(&data, &Options::default())).expect("load");
+            // Choose the test mode explicitly; this fixture enables recording.
+            word_doc.set_revision_session(None);
             {
                 let paragraph = word_doc.paragraph_mut(0).expect("paragraph");
                 apply_text_edit(&mut paragraph.runs, 0, 0, "A", &ZeroWidthRuns::default());
@@ -3919,6 +3923,8 @@ mod tests {
         {
             let mut word_doc =
                 executor::block_on(WordDocument::load(&data, &Options::default())).expect("load");
+            // Choose the test mode explicitly; this fixture enables recording.
+            word_doc.set_revision_session(None);
             let before_count = word_doc.paragraph_count();
             let range = SelectionRange::new(TextPosition::new(0, 0), TextPosition::new(1, 3));
             let mut selection = Some(range);

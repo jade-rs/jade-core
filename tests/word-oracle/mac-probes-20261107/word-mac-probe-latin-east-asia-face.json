@@ -1,0 +1,1566 @@
+{
+ "source": "Word for Mac: Save As > PDF",
+ "word_version": "16.114.3",
+ "word_build": "16.114.26102720",
+ "os": "macOS 27.0.1",
+ "docx_sha256": "fb23825b205b5acba3acaee23de2766bf1e89c13da4fbf9dc43714b31ed4fc31",
+ "pdf_sha256": "b45bf24b384f7e3c8497cd11ce7e3347f532a86e0535c834a6a2a20ca886ea44",
+ "page_count": 1,
+ "pages": [
+  {
+   "page": 1,
+   "width_pt": 595.2,
+   "height_pt": 841.92,
+   "rows": [
+    {
+     "baseline_pt": 111.36,
+     "characters": [
+      {
+       "text": "著",
+       "x_pt": 84.96,
+       "advance_pt": 12.0,
+       "baseline_pt": 111.36,
+       "font": "MS-Mincho",
+       "size_pt": 12.0
+      },
+      {
+       "text": "作",
+       "x_pt": 96.96,
+       "advance_pt": 12.0,
+       "baseline_pt": 111.36,
+       "font": "MS-Mincho",
+       "size_pt": 12.0
+      },
+      {
+       "text": "権",
+       "x_pt": 108.96,
+       "advance_pt": 12.0,
+       "baseline_pt": 111.36,
+       "font": "MS-Mincho",
+       "size_pt": 12.0
+      },
+      {
+       "text": "法",
+       "x_pt": 120.96,
+       "advance_pt": 12.0,
+       "baseline_pt": 111.36,
+       "font": "MS-Mincho",
+       "size_pt": 12.0
+      },
+      {
+       "text": "の",
+       "x_pt": 132.96,
+       "advance_pt": 12.0,
+       "baseline_pt": 111.36,
+       "font": "MS-Mincho",
+       "size_pt": 12.0
+      },
+      {
+       "text": "規",
+       "x_pt": 144.96,
+       "advance_pt": 12.0,
+       "baseline_pt": 111.36,
+       "font": "MS-Mincho",
+       "size_pt": 12.0
+      },
+      {
+       "text": "定",
+       "x_pt": 156.96,
+       "advance_pt": 12.0,
+       "baseline_pt": 111.36,
+       "font": "MS-Mincho",
+       "size_pt": 12.0
+      },
+      {
+       "text": "に",
+       "x_pt": 168.96,
+       "advance_pt": 12.0,
+       "baseline_pt": 111.36,
+       "font": "MS-Mincho",
+       "size_pt": 12.0
+      },
+      {
+       "text": "よ",
+       "x_pt": 180.96,
+       "advance_pt": 12.0,
+       "baseline_pt": 111.36,
+       "font": "MS-Mincho",
+       "size_pt": 12.0
+      },
+      {
+       "text": "る",
+       "x_pt": 192.96,
+       "advance_pt": 12.0,
+       "baseline_pt": 111.36,
+       "font": "MS-Mincho",
+       "size_pt": 12.0
+      }
+     ],
+     "text": "著作権法の規定による"
+    },
+    {
+     "baseline_pt": 126.784,
+     "characters": [
+      {
+       "text": "著",
+       "x_pt": 84.96,
+       "advance_pt": 12.0,
+       "baseline_pt": 126.784,
+       "font": "MS-Mincho",
+       "size_pt": 11.882
+      },
+      {
+       "text": "作",
+       "x_pt": 97.194,
+       "advance_pt": 12.0,
+       "baseline_pt": 126.784,
+       "font": "MS-Mincho",
+       "size_pt": 11.882
+      },
+      {
+       "text": "権",
+       "x_pt": 109.428,
+       "advance_pt": 12.0,
+       "baseline_pt": 126.784,
+       "font": "MS-Mincho",
+       "size_pt": 11.882
+      },
+      {
+       "text": "法",
+       "x_pt": 121.662,
+       "advance_pt": 12.0,
+       "baseline_pt": 126.784,
+       "font": "MS-Mincho",
+       "size_pt": 11.882
+      },
+      {
+       "text": "の",
+       "x_pt": 133.896,
+       "advance_pt": 12.0,
+       "baseline_pt": 126.784,
+       "font": "MS-Mincho",
+       "size_pt": 11.882
+      },
+      {
+       "text": "規",
+       "x_pt": 146.13,
+       "advance_pt": 12.0,
+       "baseline_pt": 126.784,
+       "font": "MS-Mincho",
+       "size_pt": 11.882
+      },
+      {
+       "text": "定",
+       "x_pt": 158.364,
+       "advance_pt": 12.0,
+       "baseline_pt": 126.784,
+       "font": "MS-Mincho",
+       "size_pt": 11.882
+      },
+      {
+       "text": "に",
+       "x_pt": 170.598,
+       "advance_pt": 12.0,
+       "baseline_pt": 126.784,
+       "font": "MS-Mincho",
+       "size_pt": 11.882
+      },
+      {
+       "text": "よ",
+       "x_pt": 182.832,
+       "advance_pt": 12.0,
+       "baseline_pt": 126.784,
+       "font": "MS-Mincho",
+       "size_pt": 11.882
+      },
+      {
+       "text": "る",
+       "x_pt": 195.066,
+       "advance_pt": 12.0,
+       "baseline_pt": 126.784,
+       "font": "MS-Mincho",
+       "size_pt": 11.882
+      }
+     ],
+     "text": "著作権法の規定による"
+    },
+    {
+     "baseline_pt": 142.56,
+     "characters": [
+      {
+       "text": "著",
+       "x_pt": 84.96,
+       "advance_pt": 12.0,
+       "baseline_pt": 142.56,
+       "font": "MS-Mincho",
+       "size_pt": 12.0
+      },
+      {
+       "text": "作",
+       "x_pt": 96.96,
+       "advance_pt": 12.0,
+       "baseline_pt": 142.56,
+       "font": "MS-Mincho",
+       "size_pt": 12.0
+      },
+      {
+       "text": "権",
+       "x_pt": 108.96,
+       "advance_pt": 12.0,
+       "baseline_pt": 142.56,
+       "font": "MS-Mincho",
+       "size_pt": 12.0
+      },
+      {
+       "text": "法",
+       "x_pt": 120.96,
+       "advance_pt": 12.0,
+       "baseline_pt": 142.56,
+       "font": "MS-Mincho",
+       "size_pt": 12.0
+      },
+      {
+       "text": "の",
+       "x_pt": 132.96,
+       "advance_pt": 12.0,
+       "baseline_pt": 142.56,
+       "font": "MS-Mincho",
+       "size_pt": 12.0
+      },
+      {
+       "text": "規",
+       "x_pt": 144.96,
+       "advance_pt": 12.0,
+       "baseline_pt": 142.56,
+       "font": "MS-Mincho",
+       "size_pt": 12.0
+      },
+      {
+       "text": "定",
+       "x_pt": 156.96,
+       "advance_pt": 12.0,
+       "baseline_pt": 142.56,
+       "font": "MS-Mincho",
+       "size_pt": 12.0
+      },
+      {
+       "text": "に",
+       "x_pt": 168.96,
+       "advance_pt": 12.0,
+       "baseline_pt": 142.56,
+       "font": "MS-Mincho",
+       "size_pt": 12.0
+      },
+      {
+       "text": "よ",
+       "x_pt": 180.96,
+       "advance_pt": 12.0,
+       "baseline_pt": 142.56,
+       "font": "MS-Mincho",
+       "size_pt": 12.0
+      },
+      {
+       "text": "る",
+       "x_pt": 192.96,
+       "advance_pt": 12.0,
+       "baseline_pt": 142.56,
+       "font": "MS-Mincho",
+       "size_pt": 12.0
+      }
+     ],
+     "text": "著作権法の規定による"
+    },
+    {
+     "baseline_pt": 157.983,
+     "characters": [
+      {
+       "text": "著",
+       "x_pt": 84.96,
+       "advance_pt": 12.0,
+       "baseline_pt": 157.983,
+       "font": "MS-Mincho",
+       "size_pt": 11.882
+      },
+      {
+       "text": "作",
+       "x_pt": 97.194,
+       "advance_pt": 12.0,
+       "baseline_pt": 157.983,
+       "font": "MS-Mincho",
+       "size_pt": 11.882
+      },
+      {
+       "text": "権",
+       "x_pt": 109.428,
+       "advance_pt": 12.0,
+       "baseline_pt": 157.983,
+       "font": "MS-Mincho",
+       "size_pt": 11.882
+      },
+      {
+       "text": "法",
+       "x_pt": 121.662,
+       "advance_pt": 12.0,
+       "baseline_pt": 157.983,
+       "font": "MS-Mincho",
+       "size_pt": 11.882
+      },
+      {
+       "text": "の",
+       "x_pt": 133.896,
+       "advance_pt": 12.0,
+       "baseline_pt": 157.983,
+       "font": "MS-Mincho",
+       "size_pt": 11.882
+      },
+      {
+       "text": "規",
+       "x_pt": 146.13,
+       "advance_pt": 12.0,
+       "baseline_pt": 157.983,
+       "font": "MS-Mincho",
+       "size_pt": 11.882
+      },
+      {
+       "text": "定",
+       "x_pt": 158.364,
+       "advance_pt": 12.0,
+       "baseline_pt": 157.983,
+       "font": "MS-Mincho",
+       "size_pt": 11.882
+      },
+      {
+       "text": "に",
+       "x_pt": 170.598,
+       "advance_pt": 12.0,
+       "baseline_pt": 157.983,
+       "font": "MS-Mincho",
+       "size_pt": 11.882
+      },
+      {
+       "text": "よ",
+       "x_pt": 182.832,
+       "advance_pt": 12.0,
+       "baseline_pt": 157.983,
+       "font": "MS-Mincho",
+       "size_pt": 11.882
+      },
+      {
+       "text": "る",
+       "x_pt": 195.066,
+       "advance_pt": 12.0,
+       "baseline_pt": 157.983,
+       "font": "MS-Mincho",
+       "size_pt": 11.882
+      }
+     ],
+     "text": "著作権法の規定による"
+    },
+    {
+     "baseline_pt": 173.76,
+     "characters": [
+      {
+       "text": "著",
+       "x_pt": 84.96,
+       "advance_pt": 12.0,
+       "baseline_pt": 173.76,
+       "font": "MS-Mincho",
+       "size_pt": 12.0
+      },
+      {
+       "text": "作",
+       "x_pt": 96.96,
+       "advance_pt": 12.0,
+       "baseline_pt": 173.76,
+       "font": "MS-Mincho",
+       "size_pt": 12.0
+      },
+      {
+       "text": "権",
+       "x_pt": 108.96,
+       "advance_pt": 12.0,
+       "baseline_pt": 173.76,
+       "font": "MS-Mincho",
+       "size_pt": 12.0
+      },
+      {
+       "text": "法",
+       "x_pt": 120.96,
+       "advance_pt": 12.0,
+       "baseline_pt": 173.76,
+       "font": "MS-Mincho",
+       "size_pt": 12.0
+      },
+      {
+       "text": "の",
+       "x_pt": 132.96,
+       "advance_pt": 12.0,
+       "baseline_pt": 173.76,
+       "font": "MS-Mincho",
+       "size_pt": 12.0
+      },
+      {
+       "text": "規",
+       "x_pt": 144.96,
+       "advance_pt": 12.0,
+       "baseline_pt": 173.76,
+       "font": "MS-Mincho",
+       "size_pt": 12.0
+      },
+      {
+       "text": "定",
+       "x_pt": 156.96,
+       "advance_pt": 12.0,
+       "baseline_pt": 173.76,
+       "font": "MS-Mincho",
+       "size_pt": 12.0
+      },
+      {
+       "text": "に",
+       "x_pt": 168.96,
+       "advance_pt": 12.0,
+       "baseline_pt": 173.76,
+       "font": "MS-Mincho",
+       "size_pt": 12.0
+      },
+      {
+       "text": "よ",
+       "x_pt": 180.96,
+       "advance_pt": 12.0,
+       "baseline_pt": 173.76,
+       "font": "MS-Mincho",
+       "size_pt": 12.0
+      },
+      {
+       "text": "る",
+       "x_pt": 192.96,
+       "advance_pt": 12.0,
+       "baseline_pt": 173.76,
+       "font": "MS-Mincho",
+       "size_pt": 12.0
+      }
+     ],
+     "text": "著作権法の規定による"
+    },
+    {
+     "baseline_pt": 189.184,
+     "characters": [
+      {
+       "text": "著",
+       "x_pt": 84.96,
+       "advance_pt": 12.0,
+       "baseline_pt": 189.184,
+       "font": "MS-Mincho",
+       "size_pt": 11.882
+      },
+      {
+       "text": "作",
+       "x_pt": 97.194,
+       "advance_pt": 12.0,
+       "baseline_pt": 189.184,
+       "font": "MS-Mincho",
+       "size_pt": 11.882
+      },
+      {
+       "text": "権",
+       "x_pt": 109.428,
+       "advance_pt": 12.0,
+       "baseline_pt": 189.184,
+       "font": "MS-Mincho",
+       "size_pt": 11.882
+      },
+      {
+       "text": "法",
+       "x_pt": 121.662,
+       "advance_pt": 12.0,
+       "baseline_pt": 189.184,
+       "font": "MS-Mincho",
+       "size_pt": 11.882
+      },
+      {
+       "text": "の",
+       "x_pt": 133.896,
+       "advance_pt": 12.0,
+       "baseline_pt": 189.184,
+       "font": "MS-Mincho",
+       "size_pt": 11.882
+      },
+      {
+       "text": "規",
+       "x_pt": 146.13,
+       "advance_pt": 12.0,
+       "baseline_pt": 189.184,
+       "font": "MS-Mincho",
+       "size_pt": 11.882
+      },
+      {
+       "text": "定",
+       "x_pt": 158.364,
+       "advance_pt": 12.0,
+       "baseline_pt": 189.184,
+       "font": "MS-Mincho",
+       "size_pt": 11.882
+      },
+      {
+       "text": "に",
+       "x_pt": 170.598,
+       "advance_pt": 12.0,
+       "baseline_pt": 189.184,
+       "font": "MS-Mincho",
+       "size_pt": 11.882
+      },
+      {
+       "text": "よ",
+       "x_pt": 182.832,
+       "advance_pt": 12.0,
+       "baseline_pt": 189.184,
+       "font": "MS-Mincho",
+       "size_pt": 11.882
+      },
+      {
+       "text": "る",
+       "x_pt": 195.066,
+       "advance_pt": 12.0,
+       "baseline_pt": 189.184,
+       "font": "MS-Mincho",
+       "size_pt": 11.882
+      }
+     ],
+     "text": "著作権法の規定による"
+    },
+    {
+     "baseline_pt": 204.72,
+     "characters": [
+      {
+       "text": "著",
+       "x_pt": 84.96,
+       "advance_pt": 12.0,
+       "baseline_pt": 204.72,
+       "font": "MS-Mincho",
+       "size_pt": 12.0
+      },
+      {
+       "text": "作",
+       "x_pt": 96.96,
+       "advance_pt": 12.0,
+       "baseline_pt": 204.72,
+       "font": "MS-Mincho",
+       "size_pt": 12.0
+      },
+      {
+       "text": "権",
+       "x_pt": 108.96,
+       "advance_pt": 12.0,
+       "baseline_pt": 204.72,
+       "font": "MS-Mincho",
+       "size_pt": 12.0
+      },
+      {
+       "text": "法",
+       "x_pt": 120.96,
+       "advance_pt": 12.0,
+       "baseline_pt": 204.72,
+       "font": "MS-Mincho",
+       "size_pt": 12.0
+      },
+      {
+       "text": "の",
+       "x_pt": 132.96,
+       "advance_pt": 12.0,
+       "baseline_pt": 204.72,
+       "font": "MS-Mincho",
+       "size_pt": 12.0
+      },
+      {
+       "text": "規",
+       "x_pt": 144.96,
+       "advance_pt": 12.0,
+       "baseline_pt": 204.72,
+       "font": "MS-Mincho",
+       "size_pt": 12.0
+      },
+      {
+       "text": "定",
+       "x_pt": 156.96,
+       "advance_pt": 12.0,
+       "baseline_pt": 204.72,
+       "font": "MS-Mincho",
+       "size_pt": 12.0
+      },
+      {
+       "text": "に",
+       "x_pt": 168.96,
+       "advance_pt": 12.0,
+       "baseline_pt": 204.72,
+       "font": "MS-Mincho",
+       "size_pt": 12.0
+      },
+      {
+       "text": "よ",
+       "x_pt": 180.96,
+       "advance_pt": 12.0,
+       "baseline_pt": 204.72,
+       "font": "MS-Mincho",
+       "size_pt": 12.0
+      },
+      {
+       "text": "る",
+       "x_pt": 192.96,
+       "advance_pt": 12.0,
+       "baseline_pt": 204.72,
+       "font": "MS-Mincho",
+       "size_pt": 12.0
+      }
+     ],
+     "text": "著作権法の規定による"
+    },
+    {
+     "baseline_pt": 220.143,
+     "characters": [
+      {
+       "text": "著",
+       "x_pt": 84.96,
+       "advance_pt": 12.0,
+       "baseline_pt": 220.143,
+       "font": "MS-Mincho",
+       "size_pt": 11.882
+      },
+      {
+       "text": "作",
+       "x_pt": 97.194,
+       "advance_pt": 12.0,
+       "baseline_pt": 220.143,
+       "font": "MS-Mincho",
+       "size_pt": 11.882
+      },
+      {
+       "text": "権",
+       "x_pt": 109.428,
+       "advance_pt": 12.0,
+       "baseline_pt": 220.143,
+       "font": "MS-Mincho",
+       "size_pt": 11.882
+      },
+      {
+       "text": "法",
+       "x_pt": 121.662,
+       "advance_pt": 12.0,
+       "baseline_pt": 220.143,
+       "font": "MS-Mincho",
+       "size_pt": 11.882
+      },
+      {
+       "text": "の",
+       "x_pt": 133.896,
+       "advance_pt": 12.0,
+       "baseline_pt": 220.143,
+       "font": "MS-Mincho",
+       "size_pt": 11.882
+      },
+      {
+       "text": "規",
+       "x_pt": 146.13,
+       "advance_pt": 12.0,
+       "baseline_pt": 220.143,
+       "font": "MS-Mincho",
+       "size_pt": 11.882
+      },
+      {
+       "text": "定",
+       "x_pt": 158.364,
+       "advance_pt": 12.0,
+       "baseline_pt": 220.143,
+       "font": "MS-Mincho",
+       "size_pt": 11.882
+      },
+      {
+       "text": "に",
+       "x_pt": 170.598,
+       "advance_pt": 12.0,
+       "baseline_pt": 220.143,
+       "font": "MS-Mincho",
+       "size_pt": 11.882
+      },
+      {
+       "text": "よ",
+       "x_pt": 182.832,
+       "advance_pt": 12.0,
+       "baseline_pt": 220.143,
+       "font": "MS-Mincho",
+       "size_pt": 11.882
+      },
+      {
+       "text": "る",
+       "x_pt": 195.066,
+       "advance_pt": 12.0,
+       "baseline_pt": 220.143,
+       "font": "MS-Mincho",
+       "size_pt": 11.882
+      }
+     ],
+     "text": "著作権法の規定による"
+    },
+    {
+     "baseline_pt": 235.92,
+     "characters": [
+      {
+       "text": "著",
+       "x_pt": 84.96,
+       "advance_pt": 12.0,
+       "baseline_pt": 235.92,
+       "font": "MS-Mincho",
+       "size_pt": 12.0
+      },
+      {
+       "text": "作",
+       "x_pt": 96.96,
+       "advance_pt": 12.0,
+       "baseline_pt": 235.92,
+       "font": "MS-Mincho",
+       "size_pt": 12.0
+      },
+      {
+       "text": "権",
+       "x_pt": 108.96,
+       "advance_pt": 12.0,
+       "baseline_pt": 235.92,
+       "font": "MS-Mincho",
+       "size_pt": 12.0
+      },
+      {
+       "text": "法",
+       "x_pt": 120.96,
+       "advance_pt": 12.0,
+       "baseline_pt": 235.92,
+       "font": "MS-Mincho",
+       "size_pt": 12.0
+      },
+      {
+       "text": "の",
+       "x_pt": 132.96,
+       "advance_pt": 12.0,
+       "baseline_pt": 235.92,
+       "font": "MS-Mincho",
+       "size_pt": 12.0
+      },
+      {
+       "text": "規",
+       "x_pt": 144.96,
+       "advance_pt": 12.0,
+       "baseline_pt": 235.92,
+       "font": "MS-Mincho",
+       "size_pt": 12.0
+      },
+      {
+       "text": "定",
+       "x_pt": 156.96,
+       "advance_pt": 12.0,
+       "baseline_pt": 235.92,
+       "font": "MS-Mincho",
+       "size_pt": 12.0
+      },
+      {
+       "text": "に",
+       "x_pt": 168.96,
+       "advance_pt": 12.0,
+       "baseline_pt": 235.92,
+       "font": "MS-Mincho",
+       "size_pt": 12.0
+      },
+      {
+       "text": "よ",
+       "x_pt": 180.96,
+       "advance_pt": 12.0,
+       "baseline_pt": 235.92,
+       "font": "MS-Mincho",
+       "size_pt": 12.0
+      },
+      {
+       "text": "る",
+       "x_pt": 192.96,
+       "advance_pt": 12.0,
+       "baseline_pt": 235.92,
+       "font": "MS-Mincho",
+       "size_pt": 12.0
+      }
+     ],
+     "text": "著作権法の規定による"
+    },
+    {
+     "baseline_pt": 251.343,
+     "characters": [
+      {
+       "text": "著",
+       "x_pt": 84.96,
+       "advance_pt": 12.0,
+       "baseline_pt": 251.343,
+       "font": "MS-Mincho",
+       "size_pt": 11.882
+      },
+      {
+       "text": "作",
+       "x_pt": 97.194,
+       "advance_pt": 12.0,
+       "baseline_pt": 251.343,
+       "font": "MS-Mincho",
+       "size_pt": 11.882
+      },
+      {
+       "text": "権",
+       "x_pt": 109.428,
+       "advance_pt": 12.0,
+       "baseline_pt": 251.343,
+       "font": "MS-Mincho",
+       "size_pt": 11.882
+      },
+      {
+       "text": "法",
+       "x_pt": 121.662,
+       "advance_pt": 12.0,
+       "baseline_pt": 251.343,
+       "font": "MS-Mincho",
+       "size_pt": 11.882
+      },
+      {
+       "text": "の",
+       "x_pt": 133.896,
+       "advance_pt": 12.0,
+       "baseline_pt": 251.343,
+       "font": "MS-Mincho",
+       "size_pt": 11.882
+      },
+      {
+       "text": "規",
+       "x_pt": 146.13,
+       "advance_pt": 12.0,
+       "baseline_pt": 251.343,
+       "font": "MS-Mincho",
+       "size_pt": 11.882
+      },
+      {
+       "text": "定",
+       "x_pt": 158.364,
+       "advance_pt": 12.0,
+       "baseline_pt": 251.343,
+       "font": "MS-Mincho",
+       "size_pt": 11.882
+      },
+      {
+       "text": "に",
+       "x_pt": 170.598,
+       "advance_pt": 12.0,
+       "baseline_pt": 251.343,
+       "font": "MS-Mincho",
+       "size_pt": 11.882
+      },
+      {
+       "text": "よ",
+       "x_pt": 182.832,
+       "advance_pt": 12.0,
+       "baseline_pt": 251.343,
+       "font": "MS-Mincho",
+       "size_pt": 11.882
+      },
+      {
+       "text": "る",
+       "x_pt": 195.066,
+       "advance_pt": 12.0,
+       "baseline_pt": 251.343,
+       "font": "MS-Mincho",
+       "size_pt": 11.882
+      }
+     ],
+     "text": "著作権法の規定による"
+    },
+    {
+     "baseline_pt": 267.12,
+     "characters": [
+      {
+       "text": "著",
+       "x_pt": 84.96,
+       "advance_pt": 12.0,
+       "baseline_pt": 267.12,
+       "font": "MS-Mincho",
+       "size_pt": 12.0
+      },
+      {
+       "text": "作",
+       "x_pt": 96.96,
+       "advance_pt": 12.0,
+       "baseline_pt": 267.12,
+       "font": "MS-Mincho",
+       "size_pt": 12.0
+      },
+      {
+       "text": "権",
+       "x_pt": 108.96,
+       "advance_pt": 12.0,
+       "baseline_pt": 267.12,
+       "font": "MS-Mincho",
+       "size_pt": 12.0
+      },
+      {
+       "text": "法",
+       "x_pt": 120.96,
+       "advance_pt": 12.0,
+       "baseline_pt": 267.12,
+       "font": "MS-Mincho",
+       "size_pt": 12.0
+      },
+      {
+       "text": "の",
+       "x_pt": 132.96,
+       "advance_pt": 12.0,
+       "baseline_pt": 267.12,
+       "font": "MS-Mincho",
+       "size_pt": 12.0
+      },
+      {
+       "text": "規",
+       "x_pt": 144.96,
+       "advance_pt": 12.0,
+       "baseline_pt": 267.12,
+       "font": "MS-Mincho",
+       "size_pt": 12.0
+      },
+      {
+       "text": "定",
+       "x_pt": 156.96,
+       "advance_pt": 12.0,
+       "baseline_pt": 267.12,
+       "font": "MS-Mincho",
+       "size_pt": 12.0
+      },
+      {
+       "text": "に",
+       "x_pt": 168.96,
+       "advance_pt": 12.0,
+       "baseline_pt": 267.12,
+       "font": "MS-Mincho",
+       "size_pt": 12.0
+      },
+      {
+       "text": "よ",
+       "x_pt": 180.96,
+       "advance_pt": 12.0,
+       "baseline_pt": 267.12,
+       "font": "MS-Mincho",
+       "size_pt": 12.0
+      },
+      {
+       "text": "る",
+       "x_pt": 192.96,
+       "advance_pt": 12.0,
+       "baseline_pt": 267.12,
+       "font": "MS-Mincho",
+       "size_pt": 12.0
+      }
+     ],
+     "text": "著作権法の規定による"
+    },
+    {
+     "baseline_pt": 282.543,
+     "characters": [
+      {
+       "text": "著",
+       "x_pt": 84.96,
+       "advance_pt": 12.0,
+       "baseline_pt": 282.543,
+       "font": "MS-Mincho",
+       "size_pt": 11.882
+      },
+      {
+       "text": "作",
+       "x_pt": 97.194,
+       "advance_pt": 12.0,
+       "baseline_pt": 282.543,
+       "font": "MS-Mincho",
+       "size_pt": 11.882
+      },
+      {
+       "text": "権",
+       "x_pt": 109.428,
+       "advance_pt": 12.0,
+       "baseline_pt": 282.543,
+       "font": "MS-Mincho",
+       "size_pt": 11.882
+      },
+      {
+       "text": "法",
+       "x_pt": 121.662,
+       "advance_pt": 12.0,
+       "baseline_pt": 282.543,
+       "font": "MS-Mincho",
+       "size_pt": 11.882
+      },
+      {
+       "text": "の",
+       "x_pt": 133.896,
+       "advance_pt": 12.0,
+       "baseline_pt": 282.543,
+       "font": "MS-Mincho",
+       "size_pt": 11.882
+      },
+      {
+       "text": "規",
+       "x_pt": 146.13,
+       "advance_pt": 12.0,
+       "baseline_pt": 282.543,
+       "font": "MS-Mincho",
+       "size_pt": 11.882
+      },
+      {
+       "text": "定",
+       "x_pt": 158.364,
+       "advance_pt": 12.0,
+       "baseline_pt": 282.543,
+       "font": "MS-Mincho",
+       "size_pt": 11.882
+      },
+      {
+       "text": "に",
+       "x_pt": 170.598,
+       "advance_pt": 12.0,
+       "baseline_pt": 282.543,
+       "font": "MS-Mincho",
+       "size_pt": 11.882
+      },
+      {
+       "text": "よ",
+       "x_pt": 182.832,
+       "advance_pt": 12.0,
+       "baseline_pt": 282.543,
+       "font": "MS-Mincho",
+       "size_pt": 11.882
+      },
+      {
+       "text": "る",
+       "x_pt": 195.066,
+       "advance_pt": 12.0,
+       "baseline_pt": 282.543,
+       "font": "MS-Mincho",
+       "size_pt": 11.882
+      }
+     ],
+     "text": "著作権法の規定による"
+    },
+    {
+     "baseline_pt": 298.32,
+     "characters": [
+      {
+       "text": "著",
+       "x_pt": 84.96,
+       "advance_pt": 12.0,
+       "baseline_pt": 298.32,
+       "font": "MS-Mincho",
+       "size_pt": 12.0
+      },
+      {
+       "text": "作",
+       "x_pt": 96.96,
+       "advance_pt": 12.0,
+       "baseline_pt": 298.32,
+       "font": "MS-Mincho",
+       "size_pt": 12.0
+      },
+      {
+       "text": "権",
+       "x_pt": 108.96,
+       "advance_pt": 12.0,
+       "baseline_pt": 298.32,
+       "font": "MS-Mincho",
+       "size_pt": 12.0
+      },
+      {
+       "text": "法",
+       "x_pt": 120.96,
+       "advance_pt": 12.0,
+       "baseline_pt": 298.32,
+       "font": "MS-Mincho",
+       "size_pt": 12.0
+      },
+      {
+       "text": "の",
+       "x_pt": 132.96,
+       "advance_pt": 12.0,
+       "baseline_pt": 298.32,
+       "font": "MS-Mincho",
+       "size_pt": 12.0
+      },
+      {
+       "text": "規",
+       "x_pt": 144.96,
+       "advance_pt": 12.0,
+       "baseline_pt": 298.32,
+       "font": "MS-Mincho",
+       "size_pt": 12.0
+      },
+      {
+       "text": "定",
+       "x_pt": 156.96,
+       "advance_pt": 12.0,
+       "baseline_pt": 298.32,
+       "font": "MS-Mincho",
+       "size_pt": 12.0
+      },
+      {
+       "text": "に",
+       "x_pt": 168.96,
+       "advance_pt": 12.0,
+       "baseline_pt": 298.32,
+       "font": "MS-Mincho",
+       "size_pt": 12.0
+      },
+      {
+       "text": "よ",
+       "x_pt": 180.96,
+       "advance_pt": 12.0,
+       "baseline_pt": 298.32,
+       "font": "MS-Mincho",
+       "size_pt": 12.0
+      },
+      {
+       "text": "る",
+       "x_pt": 192.96,
+       "advance_pt": 12.0,
+       "baseline_pt": 298.32,
+       "font": "MS-Mincho",
+       "size_pt": 12.0
+      }
+     ],
+     "text": "著作権法の規定による"
+    },
+    {
+     "baseline_pt": 313.503,
+     "characters": [
+      {
+       "text": "著",
+       "x_pt": 84.96,
+       "advance_pt": 12.0,
+       "baseline_pt": 313.503,
+       "font": "MS-Mincho",
+       "size_pt": 11.882
+      },
+      {
+       "text": "作",
+       "x_pt": 97.194,
+       "advance_pt": 12.0,
+       "baseline_pt": 313.503,
+       "font": "MS-Mincho",
+       "size_pt": 11.882
+      },
+      {
+       "text": "権",
+       "x_pt": 109.428,
+       "advance_pt": 12.0,
+       "baseline_pt": 313.503,
+       "font": "MS-Mincho",
+       "size_pt": 11.882
+      },
+      {
+       "text": "法",
+       "x_pt": 121.662,
+       "advance_pt": 12.0,
+       "baseline_pt": 313.503,
+       "font": "MS-Mincho",
+       "size_pt": 11.882
+      },
+      {
+       "text": "の",
+       "x_pt": 133.896,
+       "advance_pt": 12.0,
+       "baseline_pt": 313.503,
+       "font": "MS-Mincho",
+       "size_pt": 11.882
+      },
+      {
+       "text": "規",
+       "x_pt": 146.13,
+       "advance_pt": 12.0,
+       "baseline_pt": 313.503,
+       "font": "MS-Mincho",
+       "size_pt": 11.882
+      },
+      {
+       "text": "定",
+       "x_pt": 158.364,
+       "advance_pt": 12.0,
+       "baseline_pt": 313.503,
+       "font": "MS-Mincho",
+       "size_pt": 11.882
+      },
+      {
+       "text": "に",
+       "x_pt": 170.598,
+       "advance_pt": 12.0,
+       "baseline_pt": 313.503,
+       "font": "MS-Mincho",
+       "size_pt": 11.882
+      },
+      {
+       "text": "よ",
+       "x_pt": 182.832,
+       "advance_pt": 12.0,
+       "baseline_pt": 313.503,
+       "font": "MS-Mincho",
+       "size_pt": 11.882
+      },
+      {
+       "text": "る",
+       "x_pt": 195.066,
+       "advance_pt": 12.0,
+       "baseline_pt": 313.503,
+       "font": "MS-Mincho",
+       "size_pt": 11.882
+      }
+     ],
+     "text": "著作権法の規定による"
+    },
+    {
+     "baseline_pt": 329.28,
+     "characters": [
+      {
+       "text": "著",
+       "x_pt": 84.96,
+       "advance_pt": 12.0,
+       "baseline_pt": 329.28,
+       "font": "MS-Mincho",
+       "size_pt": 12.0
+      },
+      {
+       "text": "作",
+       "x_pt": 96.96,
+       "advance_pt": 12.0,
+       "baseline_pt": 329.28,
+       "font": "MS-Mincho",
+       "size_pt": 12.0
+      },
+      {
+       "text": "権",
+       "x_pt": 108.96,
+       "advance_pt": 12.0,
+       "baseline_pt": 329.28,
+       "font": "MS-Mincho",
+       "size_pt": 12.0
+      },
+      {
+       "text": "法",
+       "x_pt": 120.96,
+       "advance_pt": 12.0,
+       "baseline_pt": 329.28,
+       "font": "MS-Mincho",
+       "size_pt": 12.0
+      },
+      {
+       "text": "の",
+       "x_pt": 132.96,
+       "advance_pt": 12.0,
+       "baseline_pt": 329.28,
+       "font": "MS-Mincho",
+       "size_pt": 12.0
+      },
+      {
+       "text": "規",
+       "x_pt": 144.96,
+       "advance_pt": 12.0,
+       "baseline_pt": 329.28,
+       "font": "MS-Mincho",
+       "size_pt": 12.0
+      },
+      {
+       "text": "定",
+       "x_pt": 156.96,
+       "advance_pt": 12.0,
+       "baseline_pt": 329.28,
+       "font": "MS-Mincho",
+       "size_pt": 12.0
+      },
+      {
+       "text": "に",
+       "x_pt": 168.96,
+       "advance_pt": 12.0,
+       "baseline_pt": 329.28,
+       "font": "MS-Mincho",
+       "size_pt": 12.0
+      },
+      {
+       "text": "よ",
+       "x_pt": 180.96,
+       "advance_pt": 12.0,
+       "baseline_pt": 329.28,
+       "font": "MS-Mincho",
+       "size_pt": 12.0
+      },
+      {
+       "text": "る",
+       "x_pt": 192.96,
+       "advance_pt": 12.0,
+       "baseline_pt": 329.28,
+       "font": "MS-Mincho",
+       "size_pt": 12.0
+      }
+     ],
+     "text": "著作権法の規定による"
+    },
+    {
+     "baseline_pt": 344.703,
+     "characters": [
+      {
+       "text": "著",
+       "x_pt": 84.96,
+       "advance_pt": 12.0,
+       "baseline_pt": 344.703,
+       "font": "MS-Mincho",
+       "size_pt": 11.882
+      },
+      {
+       "text": "作",
+       "x_pt": 97.194,
+       "advance_pt": 12.0,
+       "baseline_pt": 344.703,
+       "font": "MS-Mincho",
+       "size_pt": 11.882
+      },
+      {
+       "text": "権",
+       "x_pt": 109.428,
+       "advance_pt": 12.0,
+       "baseline_pt": 344.703,
+       "font": "MS-Mincho",
+       "size_pt": 11.882
+      },
+      {
+       "text": "法",
+       "x_pt": 121.662,
+       "advance_pt": 12.0,
+       "baseline_pt": 344.703,
+       "font": "MS-Mincho",
+       "size_pt": 11.882
+      },
+      {
+       "text": "の",
+       "x_pt": 133.896,
+       "advance_pt": 12.0,
+       "baseline_pt": 344.703,
+       "font": "MS-Mincho",
+       "size_pt": 11.882
+      },
+      {
+       "text": "規",
+       "x_pt": 146.13,
+       "advance_pt": 12.0,
+       "baseline_pt": 344.703,
+       "font": "MS-Mincho",
+       "size_pt": 11.882
+      },
+      {
+       "text": "定",
+       "x_pt": 158.364,
+       "advance_pt": 12.0,
+       "baseline_pt": 344.703,
+       "font": "MS-Mincho",
+       "size_pt": 11.882
+      },
+      {
+       "text": "に",
+       "x_pt": 170.598,
+       "advance_pt": 12.0,
+       "baseline_pt": 344.703,
+       "font": "MS-Mincho",
+       "size_pt": 11.882
+      },
+      {
+       "text": "よ",
+       "x_pt": 182.832,
+       "advance_pt": 12.0,
+       "baseline_pt": 344.703,
+       "font": "MS-Mincho",
+       "size_pt": 11.882
+      },
+      {
+       "text": "る",
+       "x_pt": 195.066,
+       "advance_pt": 12.0,
+       "baseline_pt": 344.703,
+       "font": "MS-Mincho",
+       "size_pt": 11.882
+      }
+     ],
+     "text": "著作権法の規定による"
+    },
+    {
+     "baseline_pt": 363.36,
+     "characters": [
+      {
+       "text": "著",
+       "x_pt": 84.96,
+       "advance_pt": 12.0,
+       "baseline_pt": 363.36,
+       "font": "ArialUnicodeMS",
+       "size_pt": 12.0
+      },
+      {
+       "text": "作",
+       "x_pt": 96.96,
+       "advance_pt": 12.0,
+       "baseline_pt": 363.36,
+       "font": "ArialUnicodeMS",
+       "size_pt": 12.0
+      },
+      {
+       "text": "権",
+       "x_pt": 108.96,
+       "advance_pt": 12.0,
+       "baseline_pt": 363.36,
+       "font": "ArialUnicodeMS",
+       "size_pt": 12.0
+      },
+      {
+       "text": "法",
+       "x_pt": 120.96,
+       "advance_pt": 12.0,
+       "baseline_pt": 363.36,
+       "font": "ArialUnicodeMS",
+       "size_pt": 12.0
+      },
+      {
+       "text": "の",
+       "x_pt": 132.96,
+       "advance_pt": 12.0,
+       "baseline_pt": 363.36,
+       "font": "ArialUnicodeMS",
+       "size_pt": 12.0
+      },
+      {
+       "text": "規",
+       "x_pt": 144.96,
+       "advance_pt": 12.0,
+       "baseline_pt": 363.36,
+       "font": "ArialUnicodeMS",
+       "size_pt": 12.0
+      },
+      {
+       "text": "定",
+       "x_pt": 156.96,
+       "advance_pt": 12.0,
+       "baseline_pt": 363.36,
+       "font": "ArialUnicodeMS",
+       "size_pt": 12.0
+      },
+      {
+       "text": "に",
+       "x_pt": 168.96,
+       "advance_pt": 12.0,
+       "baseline_pt": 363.36,
+       "font": "ArialUnicodeMS",
+       "size_pt": 12.0
+      },
+      {
+       "text": "よ",
+       "x_pt": 180.96,
+       "advance_pt": 12.0,
+       "baseline_pt": 363.36,
+       "font": "ArialUnicodeMS",
+       "size_pt": 12.0
+      },
+      {
+       "text": "る",
+       "x_pt": 192.96,
+       "advance_pt": 12.0,
+       "baseline_pt": 363.36,
+       "font": "ArialUnicodeMS",
+       "size_pt": 12.0
+      }
+     ],
+     "text": "著作権法の規定による"
+    },
+    {
+     "baseline_pt": 384.063,
+     "characters": [
+      {
+       "text": "著",
+       "x_pt": 84.96,
+       "advance_pt": 12.0,
+       "baseline_pt": 384.063,
+       "font": "ArialUnicodeMS",
+       "size_pt": 11.882
+      },
+      {
+       "text": "作",
+       "x_pt": 97.2,
+       "advance_pt": 12.0,
+       "baseline_pt": 384.063,
+       "font": "ArialUnicodeMS",
+       "size_pt": 11.882
+      },
+      {
+       "text": "権",
+       "x_pt": 109.44,
+       "advance_pt": 12.0,
+       "baseline_pt": 384.063,
+       "font": "ArialUnicodeMS",
+       "size_pt": 11.882
+      },
+      {
+       "text": "法",
+       "x_pt": 121.68,
+       "advance_pt": 12.0,
+       "baseline_pt": 384.063,
+       "font": "ArialUnicodeMS",
+       "size_pt": 11.882
+      },
+      {
+       "text": "の",
+       "x_pt": 133.92,
+       "advance_pt": 12.0,
+       "baseline_pt": 384.063,
+       "font": "ArialUnicodeMS",
+       "size_pt": 11.882
+      },
+      {
+       "text": "規",
+       "x_pt": 146.16,
+       "advance_pt": 12.0,
+       "baseline_pt": 384.063,
+       "font": "ArialUnicodeMS",
+       "size_pt": 11.882
+      },
+      {
+       "text": "定",
+       "x_pt": 158.4,
+       "advance_pt": 12.0,
+       "baseline_pt": 384.063,
+       "font": "ArialUnicodeMS",
+       "size_pt": 11.882
+      },
+      {
+       "text": "に",
+       "x_pt": 170.64,
+       "advance_pt": 12.0,
+       "baseline_pt": 384.063,
+       "font": "ArialUnicodeMS",
+       "size_pt": 11.882
+      },
+      {
+       "text": "よ",
+       "x_pt": 182.88,
+       "advance_pt": 12.0,
+       "baseline_pt": 384.063,
+       "font": "ArialUnicodeMS",
+       "size_pt": 11.882
+      },
+      {
+       "text": "る",
+       "x_pt": 195.12,
+       "advance_pt": 12.0,
+       "baseline_pt": 384.063,
+       "font": "ArialUnicodeMS",
+       "size_pt": 11.882
+      }
+     ],
+     "text": "著作権法の規定による"
+    }
+   ]
+  }
+ ]
+}

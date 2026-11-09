@@ -1,0 +1,384 @@
+<?xml version='1.0' encoding='utf-8'?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:body>
+    <w:tbl>
+      <w:tblPr>
+        <w:tblW w:w="9000" w:type="dxa" />
+      </w:tblPr>
+      <w:tblGrid>
+        <w:gridCol w:w="3000" />
+        <w:gridCol w:w="6000" />
+      </w:tblGrid>
+      <w:tr>
+        <w:trPr>
+          <w:trHeight w:val="1800" w:hRule="atLeast" />
+        </w:trPr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="3000" w:type="dxa" />
+          </w:tcPr>
+          <w:p>
+            <w:r>
+              <w:t>tbRl reference</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="6000" w:type="dxa" />
+            <w:textDirection w:val="tbRl" />
+          </w:tcPr>
+          <w:p>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial" w:eastAsia="游明朝" />
+                <w:sz w:val="24" />
+              </w:rPr>
+              <w:t>前</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial" w:eastAsia="游明朝" />
+                <w:sz w:val="24" />
+                <w:fitText w:val="960" w:id="1" />
+              </w:rPr>
+              <w:t>株式会社</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial" w:eastAsia="游明朝" />
+                <w:sz w:val="24" />
+              </w:rPr>
+              <w:t>後</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr>
+        <w:trPr>
+          <w:trHeight w:val="1800" w:hRule="atLeast" />
+        </w:trPr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="3000" w:type="dxa" />
+          </w:tcPr>
+          <w:p>
+            <w:r>
+              <w:t>tbRl combine</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="6000" w:type="dxa" />
+            <w:textDirection w:val="tbRl" />
+          </w:tcPr>
+          <w:p>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial" w:eastAsia="游明朝" />
+                <w:sz w:val="24" />
+              </w:rPr>
+              <w:t>前</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial" w:eastAsia="游明朝" />
+                <w:sz w:val="24" />
+                <w:fitText w:val="960" w:id="1" />
+                <w:eastAsianLayout w:combine="1" w:vert="0" w:combineBrackets="round" />
+              </w:rPr>
+              <w:t>株式会社</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial" w:eastAsia="游明朝" />
+                <w:sz w:val="24" />
+              </w:rPr>
+              <w:t>後</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr>
+        <w:trPr>
+          <w:trHeight w:val="1800" w:hRule="atLeast" />
+        </w:trPr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="3000" w:type="dxa" />
+          </w:tcPr>
+          <w:p>
+            <w:r>
+              <w:t>tbRl vert</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="6000" w:type="dxa" />
+            <w:textDirection w:val="tbRl" />
+          </w:tcPr>
+          <w:p>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial" w:eastAsia="游明朝" />
+                <w:sz w:val="24" />
+              </w:rPr>
+              <w:t>前</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial" w:eastAsia="游明朝" />
+                <w:sz w:val="24" />
+                <w:fitText w:val="960" w:id="1" />
+                <w:eastAsianLayout w:combine="0" w:vert="1" w:combineBrackets="round" />
+              </w:rPr>
+              <w:t>株式会社</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial" w:eastAsia="游明朝" />
+                <w:sz w:val="24" />
+              </w:rPr>
+              <w:t>後</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr>
+        <w:trPr>
+          <w:trHeight w:val="1800" w:hRule="atLeast" />
+        </w:trPr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="3000" w:type="dxa" />
+          </w:tcPr>
+          <w:p>
+            <w:r>
+              <w:t>tbRl both</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="6000" w:type="dxa" />
+            <w:textDirection w:val="tbRl" />
+          </w:tcPr>
+          <w:p>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial" w:eastAsia="游明朝" />
+                <w:sz w:val="24" />
+              </w:rPr>
+              <w:t>前</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial" w:eastAsia="游明朝" />
+                <w:sz w:val="24" />
+                <w:fitText w:val="960" w:id="1" />
+                <w:eastAsianLayout w:combine="1" w:vert="1" w:combineBrackets="round" />
+              </w:rPr>
+              <w:t>株式会社</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial" w:eastAsia="游明朝" />
+                <w:sz w:val="24" />
+              </w:rPr>
+              <w:t>後</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr>
+        <w:trPr>
+          <w:trHeight w:val="1800" w:hRule="atLeast" />
+        </w:trPr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="3000" w:type="dxa" />
+          </w:tcPr>
+          <w:p>
+            <w:r>
+              <w:t>tbRlV reference</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="6000" w:type="dxa" />
+            <w:textDirection w:val="tbRlV" />
+          </w:tcPr>
+          <w:p>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial" w:eastAsia="游明朝" />
+                <w:sz w:val="24" />
+              </w:rPr>
+              <w:t>前</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial" w:eastAsia="游明朝" />
+                <w:sz w:val="24" />
+                <w:fitText w:val="960" w:id="1" />
+              </w:rPr>
+              <w:t>株式会社</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial" w:eastAsia="游明朝" />
+                <w:sz w:val="24" />
+              </w:rPr>
+              <w:t>後</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr>
+        <w:trPr>
+          <w:trHeight w:val="1800" w:hRule="atLeast" />
+        </w:trPr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="3000" w:type="dxa" />
+          </w:tcPr>
+          <w:p>
+            <w:r>
+              <w:t>tbRlV combine</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="6000" w:type="dxa" />
+            <w:textDirection w:val="tbRlV" />
+          </w:tcPr>
+          <w:p>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial" w:eastAsia="游明朝" />
+                <w:sz w:val="24" />
+              </w:rPr>
+              <w:t>前</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial" w:eastAsia="游明朝" />
+                <w:sz w:val="24" />
+                <w:fitText w:val="960" w:id="1" />
+                <w:eastAsianLayout w:combine="1" w:vert="0" w:combineBrackets="round" />
+              </w:rPr>
+              <w:t>株式会社</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial" w:eastAsia="游明朝" />
+                <w:sz w:val="24" />
+              </w:rPr>
+              <w:t>後</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr>
+        <w:trPr>
+          <w:trHeight w:val="1800" w:hRule="atLeast" />
+        </w:trPr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="3000" w:type="dxa" />
+          </w:tcPr>
+          <w:p>
+            <w:r>
+              <w:t>tbRlV vert</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="6000" w:type="dxa" />
+            <w:textDirection w:val="tbRlV" />
+          </w:tcPr>
+          <w:p>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial" w:eastAsia="游明朝" />
+                <w:sz w:val="24" />
+              </w:rPr>
+              <w:t>前</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial" w:eastAsia="游明朝" />
+                <w:sz w:val="24" />
+                <w:fitText w:val="960" w:id="1" />
+                <w:eastAsianLayout w:combine="0" w:vert="1" w:combineBrackets="round" />
+              </w:rPr>
+              <w:t>株式会社</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial" w:eastAsia="游明朝" />
+                <w:sz w:val="24" />
+              </w:rPr>
+              <w:t>後</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr>
+        <w:trPr>
+          <w:trHeight w:val="1800" w:hRule="atLeast" />
+        </w:trPr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="3000" w:type="dxa" />
+          </w:tcPr>
+          <w:p>
+            <w:r>
+              <w:t>tbRlV both</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="6000" w:type="dxa" />
+            <w:textDirection w:val="tbRlV" />
+          </w:tcPr>
+          <w:p>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial" w:eastAsia="游明朝" />
+                <w:sz w:val="24" />
+              </w:rPr>
+              <w:t>前</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial" w:eastAsia="游明朝" />
+                <w:sz w:val="24" />
+                <w:fitText w:val="960" w:id="1" />
+                <w:eastAsianLayout w:combine="1" w:vert="1" w:combineBrackets="round" />
+              </w:rPr>
+              <w:t>株式会社</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial" w:eastAsia="游明朝" />
+                <w:sz w:val="24" />
+              </w:rPr>
+              <w:t>後</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+    </w:tbl>
+    <w:sectPr>
+      <w:pgSz w:w="11906" w:h="16838" />
+      <w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440" />
+    </w:sectPr>
+  </w:body>
+</w:document>

@@ -146,9 +146,11 @@ impl WordDocument {
                 .table_mut_by_order(table_order_index)
                 .ok_or_else(|| format!("table {table_order_index} was not found"))?;
             table.cell_spacing = spacing;
+            table.style.remove("-jade-cell-spacing");
             let mut row_ids = Vec::new();
             for row in &mut table.rows {
-                if row.cell_spacing.take().is_some() {
+                let had_raw_spacing = row.style.remove("-jade-cell-spacing").is_some();
+                if row.cell_spacing.take().is_some() || had_raw_spacing {
                     row_ids.push(row.node_id);
                 }
             }
@@ -860,6 +862,7 @@ impl WordDocument {
             .paragraph_mut(index)
             .and_then(|paragraph| paragraph.properties.as_mut())
         {
+            let before = props.clone();
             rebase_paragraph_style_properties(
                 props,
                 &old,
@@ -871,6 +874,19 @@ impl WordDocument {
                         .any(|(element, name)| element == tag && name == attribute)
                 },
             );
+            if declared.iter().any(|tag| tag == "w:spacing") {
+                props.spacing = new.spacing.clone();
+                keep_declared_paragraph_properties(
+                    props,
+                    &before,
+                    |tag| tag == "w:spacing",
+                    |tag, attribute| {
+                        attributes
+                            .iter()
+                            .any(|(element, name)| element == tag && name == attribute)
+                    },
+                );
+            }
         }
     }
 
@@ -2428,6 +2444,28 @@ mod tests {
             part(&before, "word/styles.xml")
         );
         assert!(document.table_by_order(0).is_none());
+    }
+
+    #[test]
+    fn removing_spacing_clears_zero_width_metadata_and_direct_row_xml() {
+        let spacing = "<w:tblCellSpacing w:type=\"dxa\"/>";
+        let xml = format!("<w:tbl><w:tblPr>{spacing}</w:tblPr><w:tblGrid><w:gridCol w:w=\"2400\"/></w:tblGrid><w:tr><w:trPr>{spacing}</w:trPr><w:tc><w:p/></w:tc></w:tr></w:tbl>");
+        let mut document = load(&package(&xml, None));
+        assert!(document.table_by_order(0).unwrap().rows[0]
+            .style
+            .contains_key("-jade-cell-spacing"));
+        document.set_table_cell_spacing(0, None).unwrap();
+        let table = document.table_by_order(0).unwrap();
+        assert!(!table.style.contains_key("-jade-cell-spacing"));
+        assert!(!table.rows[0].style.contains_key("-jade-cell-spacing"));
+        let exported = document.export_docx().unwrap();
+        assert!(!part(&exported, "word/document.xml").contains("tblCellSpacing"));
+        let reloaded = load(&exported);
+        assert!(!reloaded
+            .table_by_order(0)
+            .unwrap()
+            .style
+            .contains_key("-jade-cell-spacing"));
     }
 
     #[test]

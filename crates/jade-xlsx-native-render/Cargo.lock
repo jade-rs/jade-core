@@ -627,6 +627,7 @@ dependencies = [
  "lopdf",
  "rustybuzz",
  "skia-safe",
+ "unicode-segmentation",
 ]
 
 [[package]]

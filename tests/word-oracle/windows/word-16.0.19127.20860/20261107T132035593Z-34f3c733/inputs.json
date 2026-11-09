@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "documents": [
+    {
+      "name": "word-windows-edge-table-negative-spacing-autofit-unequal-3-compat14",
+      "file": "inputs/word-windows-edge-table-negative-spacing-autofit-unequal-3-compat14.docx",
+      "sha256": "8b55c2e136e2cfc2d9f2870f53ad86f9cf6053d8db81641e629453e4c23385d2"
+    },
+    {
+      "name": "word-windows-edge-table-negative-spacing-bidi-unequal-3-compat14",
+      "file": "inputs/word-windows-edge-table-negative-spacing-bidi-unequal-3-compat14.docx",
+      "sha256": "aa656c0bb32c8f11d9004246135445276ed0db25c672c61355d23ba5ec83a0ff"
+    }
+  ]
+}

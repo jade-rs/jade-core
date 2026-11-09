@@ -111,6 +111,34 @@ impl HeadlessWorkbook {
             |_| false,
         )?;
         jade_xlsx_writer::data_validations::validate(rule)?;
+        // Editing the sole rule on the same cells keeps its source metadata and
+        // identity. Ambiguous overlaps still use the range-replacement path.
+        let replace = {
+            let mut overlapping = self.workbook.sheets[sheet_index]
+                .data_validations
+                .iter()
+                .enumerate()
+                .filter(|(_, old)| {
+                    old.ranges.iter().any(|a| {
+                        rule.ranges.iter().any(|b| {
+                            a.start.column <= b.end.column
+                                && b.start.column <= a.end.column
+                                && a.start.row <= b.end.row
+                                && b.start.row <= a.end.row
+                        })
+                    })
+                });
+            match overlapping.next() {
+                Some((index, old)) if old.ranges == rule.ranges && overlapping.next().is_none() => {
+                    Some(index)
+                }
+                _ => None,
+            }
+        };
+        if let Some(index) = replace {
+            self.set_data_validation(sheet, Some(index), rule)?;
+            return Ok(());
+        }
         let part = self.workbook.sheets[sheet_index].part_name.clone();
         let package = jade_opc::OpcPackage::open(&self.source)?;
         let mut xml = package.required_part_str(&part)?;

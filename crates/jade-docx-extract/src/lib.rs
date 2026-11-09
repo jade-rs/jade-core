@@ -178,16 +178,7 @@ fn assign_numbering(
     for para in paragraphs.iter_mut() {
         if let Some(ref info) = para.numbering {
             let level = info.level;
-            let abstract_num_id = numbering.abstract_num_id(&info.num_id).unwrap_or_default();
-            let start = numbering.start_value(&info.num_id, level);
-            let has_start_override = numbering.has_start_override(&info.num_id, level);
-            display_counters.increment(
-                &info.num_id,
-                abstract_num_id,
-                level,
-                start,
-                has_start_override,
-            );
+            display_counters.increment(numbering, &info.num_id, level);
             para.numbering_text = numbering.format(&info.num_id, level, &display_counters);
         } else {
             para.numbering_text.clear();
@@ -199,16 +190,7 @@ fn assign_numbering(
         if let Some(ref info) = para.numbering {
             if !para.is_removed_after_accept() {
                 let level = info.level;
-                let abstract_num_id = numbering.abstract_num_id(&info.num_id).unwrap_or_default();
-                let start = numbering.start_value(&info.num_id, level);
-                let has_start_override = numbering.has_start_override(&info.num_id, level);
-                accepted_counters.increment(
-                    &info.num_id,
-                    abstract_num_id,
-                    level,
-                    start,
-                    has_start_override,
-                );
+                accepted_counters.increment(numbering, &info.num_id, level);
                 para.accepted_numbering_text =
                     numbering.format(&info.num_id, level, &accepted_counters);
             } else {

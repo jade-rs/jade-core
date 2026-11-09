@@ -1,3 +1,4 @@
+use super::paragraph_undo::ParagraphRangeUndo;
 use crate::commands::{Command, CommandContext, CommandError, CommandResult};
 use crate::document::Run;
 use crate::word_document::{FloatingObjectKind, FloatingObjectTarget};
@@ -5,7 +6,7 @@ use jade_docx_layout::selection::{SelectionRange, TextPosition};
 
 pub struct DeleteObjectCommand {
     target: FloatingObjectTarget,
-    previous_runs: Option<Vec<Run>>,
+    undo: Option<ParagraphRangeUndo>,
     previous_selection: Option<SelectionRange>,
 }
 
@@ -13,7 +14,7 @@ impl DeleteObjectCommand {
     pub fn new(target: FloatingObjectTarget) -> Self {
         Self {
             target,
-            previous_runs: None,
+            undo: None,
             previous_selection: None,
         }
     }
@@ -51,32 +52,33 @@ impl Command for DeleteObjectCommand {
             )));
         }
 
-        self.previous_runs = Some(paragraph.runs.clone());
-
+        let run = &paragraph.runs[self.target.run_index];
+        let present = match self.target.kind {
+            FloatingObjectKind::Image => run.image.is_some(),
+            FloatingObjectKind::TextBox => run.text_box.is_some(),
+        };
+        if !present {
+            return Err(CommandError::Custom(
+                "the selected run has no matching object".into(),
+            ));
+        }
+        let mut undo = ParagraphRangeUndo::begin(
+            ctx,
+            Some((self.target.paragraph_index, self.target.paragraph_index)),
+        )?;
+        ctx.document.clear_object_run_drawing(self.target);
+        let paragraph = ctx
+            .document
+            .paragraph_mut(self.target.paragraph_index)
+            .ok_or(CommandError::ParagraphUnavailable)?;
         let remove_entire_run = {
             let run = paragraph
                 .runs
                 .get_mut(self.target.run_index)
                 .ok_or(CommandError::ParagraphUnavailable)?;
             match self.target.kind {
-                FloatingObjectKind::Image => {
-                    if run.image.is_none() {
-                        return Err(CommandError::Custom(format!(
-                            "run {} does not contain an image",
-                            self.target.run_index
-                        )));
-                    }
-                    run.image = None;
-                }
-                FloatingObjectKind::TextBox => {
-                    if run.text_box.is_none() {
-                        return Err(CommandError::Custom(format!(
-                            "run {} does not contain a text box",
-                            self.target.run_index
-                        )));
-                    }
-                    run.text_box = None;
-                }
+                FloatingObjectKind::Image => run.image = None,
+                FloatingObjectKind::TextBox => run.text_box = None,
             }
             Self::run_is_empty(run)
         };
@@ -89,22 +91,16 @@ impl Command for DeleteObjectCommand {
             .sync_paragraph_text(self.target.paragraph_index);
         ctx.document.rebuild_paragraph_surfaces();
         *ctx.selection = Some(self.collapse_selection());
+        undo.finish(ctx);
+        self.undo = Some(undo);
         Ok(())
     }
 
     fn undo(&mut self, ctx: &mut CommandContext<'_>) -> CommandResult<()> {
-        let paragraph = ctx
-            .document
-            .paragraph_mut(self.target.paragraph_index)
-            .ok_or(CommandError::ParagraphUnavailable)?;
-        let backup = self
-            .previous_runs
-            .as_ref()
-            .ok_or_else(|| CommandError::Custom("missing object backup for undo".into()))?;
-        paragraph.runs = backup.clone();
-        ctx.document
-            .sync_paragraph_text(self.target.paragraph_index);
-        ctx.document.rebuild_paragraph_surfaces();
+        self.undo
+            .take()
+            .ok_or_else(|| CommandError::Custom("missing object backup for undo".into()))?
+            .undo(ctx)?;
         *ctx.selection = self.previous_selection;
         Ok(())
     }

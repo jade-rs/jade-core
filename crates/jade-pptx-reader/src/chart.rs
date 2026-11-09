@@ -3,11 +3,16 @@
 //! chart is its numbers, and PowerPoint caches them in the part.
 
 use serde::{Deserialize, Serialize};
+use std::cell::OnceCell;
 
 use crate::error::Result;
 use crate::slide::{parse_fill, parse_outline};
 use crate::xml_tree::{parse_tree, XmlElement};
 use crate::{Fill, Outline};
+
+mod workbook;
+
+const MAX_CACHE_POINTS: usize = 100_001;
 
 /// One series: its name, category labels and values, as cached in the part.
 /// A point missing from the cache is `None` at its index so the values line
@@ -52,6 +57,9 @@ pub struct ChartSeries {
     /// c:formatCode`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub format_code: Option<String>,
+    /// Labels formatted from the embedded worksheet, indexed by value point.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub worksheet_value_labels: Vec<Option<String>>,
     /// `c:explosion`: how far a pie's slices stand off, as a fraction of
     /// the radius.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -78,6 +86,9 @@ pub struct DataLabels {
     /// `c:numFmt formatCode` when not linked to the source.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub number_format: Option<String>,
+    /// Whether the label format omits its source-link flag.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub number_format_source_link_unspecified: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub separator: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -267,7 +278,26 @@ pub struct ChartContent {
 
 /// Parses a `c:chartSpace` part.
 pub fn parse_chart_xml(xml: &str) -> Result<ChartContent> {
+    parse_chart(xml, None)
+}
+
+pub(crate) fn parse_chart_part(
+    xml: &str,
+    package: &jade_opc::OpcPackage,
+    part: &str,
+) -> Result<ChartContent> {
+    parse_chart(xml, Some((package, part)))
+}
+
+fn parse_chart(xml: &str, package: Option<(&jade_opc::OpcPackage, &str)>) -> Result<ChartContent> {
     let root = parse_tree(xml)?;
+    let workbook = OnceCell::new();
+    let embedded_workbook = || {
+        let (package, part) = package?;
+        workbook
+            .get_or_init(|| workbook::open(package, part, &root))
+            .as_ref()
+    };
     let chart = root.child("chart").unwrap_or(&root);
     let plot = chart.child("plotArea");
     let plots: Vec<&XmlElement> = plot
@@ -287,6 +317,7 @@ pub fn parse_chart_xml(xml: &str) -> Result<ChartContent> {
                 .filter(|child| child.name == "ser")
                 .map(move |ser| {
                     let mut series = parse_series(ser);
+                    workbook::recover_numbers(ser, &mut series, embedded_workbook);
                     series.plot = Some(plot.name.clone());
                     series.plot_index = index;
                     series
@@ -515,6 +546,9 @@ fn parse_labels(labels: &XmlElement) -> DataLabels {
             .and_then(|p| p.attr("val"))
             .map(str::to_string),
         number_format,
+        number_format_source_link_unspecified: labels
+            .child("numFmt")
+            .is_some_and(|format| format.attr("sourceLinked").is_none()),
         separator: labels.child("separator").map(|s| s.text.clone()),
         text: labels.child("txPr").and_then(text_properties),
         hidden_points: labels
@@ -608,6 +642,7 @@ fn parse_series(ser: &XmlElement) -> ChartSeries {
             .and_then(|c| c.child("formatCode"))
             .map(|code| code.text.clone())
             .filter(|code| !code.trim().is_empty()),
+        worksheet_value_labels: Vec::new(),
         explosion: number(ser.child("explosion")).map(|percent| percent / 100.0),
     }
 }
@@ -631,7 +666,7 @@ fn cached_points(container: &XmlElement) -> Vec<Option<String>> {
                 continue;
             };
             // A runaway idx would allocate without bound; caches are small.
-            if index > 100_000 {
+            if index >= MAX_CACHE_POINTS {
                 continue;
             }
             if points.len() <= index {

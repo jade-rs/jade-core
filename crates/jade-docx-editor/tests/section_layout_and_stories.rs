@@ -372,6 +372,18 @@ fn paragraphs_leave_and_rejoin_the_grid() {
             snap: true,
         }],
     );
-    let xml = part(&document.export_docx().unwrap(), "word/document.xml").unwrap();
-    assert!(!xml.contains("w:snapToGrid"));
+    let bytes = document.export_docx().unwrap();
+    let xml = part(&bytes, "word/document.xml").unwrap();
+    assert!(xml.contains(r#"<w:snapToGrid w:val="1"/>"#), "{xml}");
+    assert_eq!(
+        load_bytes(&bytes)
+            .paragraph(0)
+            .unwrap()
+            .properties
+            .as_ref()
+            .unwrap()
+            .snap_to_grid,
+        Some(true),
+        "enabling the grid survives saving and reopening"
+    );
 }

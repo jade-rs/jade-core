@@ -23,6 +23,7 @@ pub(super) fn boolean_flags(props: &RunProperties) -> u64 {
         props.outline,
         props.emboss,
         props.imprint,
+        props.snap_to_grid,
     ]
     .into_iter()
     .enumerate()
@@ -62,16 +63,15 @@ pub(super) fn windows_key(properties: Option<&RunProperties>, grid: Option<f64>)
                 .map(|effects| format!("{effects:?}"))
         );
         optional!(5, props.emphasis.as_ref());
+        optional!(19, props.east_asian_layout.as_ref());
         if let Some(ruby) = props.ruby.as_ref() {
             present |= 1 << 6;
             ruby.text.hash(&mut hasher);
             ruby.size_pt.map(f32::to_bits).hash(&mut hasher);
             ruby.align.hash(&mut hasher);
             ruby.raise_half_points.hash(&mut hasher);
-            ruby.fonts
-                .as_ref()
-                .map(|fonts| (&fonts.ascii, &fonts.east_asia))
-                .hash(&mut hasher);
+            ruby.fonts.hash(&mut hasher);
+            format!("{:?}", ruby.guide_runs).hash(&mut hasher);
             ruby.continuation.hash(&mut hasher);
         }
         if let Some(border) = props.border.as_ref() {
@@ -179,7 +179,7 @@ mod tests {
 
     #[test]
     fn explicit_boolean_values_and_field_positions_remain_distinct() {
-        let setters: [fn(&mut RunProperties, Option<bool>); 15] = [
+        let setters: [fn(&mut RunProperties, Option<bool>); 16] = [
             |p, v| p.bold = v,
             |p, v| p.italic = v,
             |p, v| p.bold_complex = v,
@@ -195,6 +195,7 @@ mod tests {
             |p, v| p.outline = v,
             |p, v| p.emboss = v,
             |p, v| p.imprint = v,
+            |p, v| p.snap_to_grid = v,
         ];
         let mut keys = std::collections::HashSet::new();
         assert!(keys.insert(windows_key(None, None)));

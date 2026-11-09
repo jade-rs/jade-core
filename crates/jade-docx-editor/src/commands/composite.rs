@@ -39,6 +39,14 @@ impl CompositeCommand {
 }
 
 impl Command for CompositeCommand {
+    fn append_history_command(
+        &mut self,
+        command: Box<dyn Command>,
+    ) -> Result<(), Box<dyn Command>> {
+        self.children.push(command);
+        Ok(())
+    }
+
     fn name(&self) -> &'static str {
         self.name
     }

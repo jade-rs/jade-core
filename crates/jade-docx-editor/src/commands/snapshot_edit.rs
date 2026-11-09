@@ -20,7 +20,7 @@ use jade_docx_layout::selection::{SelectionRange, TextPosition};
 use std::collections::HashSet;
 
 /// The mutation a [`SnapshotEditCommand`] wraps.
-type DocumentMutation = Box<dyn FnMut(&mut WordDocument) -> Result<(), String>>;
+type DocumentMutation = Box<dyn FnMut(&mut WordDocument) -> Result<bool, String>>;
 
 /// What a [`SnapshotEditCommand`]'s mutation can change.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -62,7 +62,24 @@ impl SnapshotEditCommand {
     pub fn with_scope(
         name: &'static str,
         scope: EditScope,
-        mutate: impl FnMut(&mut WordDocument) -> Result<(), String> + 'static,
+        mut mutate: impl FnMut(&mut WordDocument) -> Result<(), String> + 'static,
+    ) -> Self {
+        Self::with_change_detection(name, scope, move |document| mutate(document).map(|()| true))
+    }
+
+    /// A mutation that reports whether it changed the document. A no-op
+    /// restores the checkpoint and preserves existing undo and redo history.
+    pub fn new_if_changed(
+        name: &'static str,
+        mutate: impl FnMut(&mut WordDocument) -> Result<bool, String> + 'static,
+    ) -> Self {
+        Self::with_change_detection(name, EditScope::Document, mutate)
+    }
+
+    fn with_change_detection(
+        name: &'static str,
+        scope: EditScope,
+        mutate: impl FnMut(&mut WordDocument) -> Result<bool, String> + 'static,
     ) -> Self {
         Self {
             name,
@@ -82,7 +99,12 @@ impl Command for SnapshotEditCommand {
         self.name
     }
 
+    fn should_record_history(&self) -> bool {
+        self.undo.is_some()
+    }
+
     fn apply(&mut self, ctx: &mut CommandContext<'_>) -> CommandResult<()> {
+        self.undo = None;
         let previous_selection = *ctx.selection;
         // The journal can only roll back XML that exists; a document whose
         // round-trip XML is not prepared yet keeps the snapshot instead, and
@@ -104,9 +126,16 @@ impl Command for SnapshotEditCommand {
         let undo = match scope {
             EditScope::Paragraphs(range) => {
                 let mut checkpoint = ParagraphRangeUndo::begin_with_package(ctx, range)?;
-                if let Err(error) = (self.mutate)(ctx.document) {
-                    checkpoint.abort(ctx);
-                    return Err(CommandError::Custom(error));
+                match (self.mutate)(ctx.document) {
+                    Ok(true) => {}
+                    Ok(false) => {
+                        checkpoint.abort(ctx);
+                        return Ok(());
+                    }
+                    Err(error) => {
+                        checkpoint.abort(ctx);
+                        return Err(CommandError::Custom(error));
+                    }
                 }
                 checkpoint.finish(ctx);
                 debug_assert_eq!(
@@ -122,9 +151,16 @@ impl Command for SnapshotEditCommand {
                     .document
                     .snapshot_including_package()
                     .ok_or_else(|| CommandError::Custom("document is unavailable".into()))?;
-                if let Err(error) = (self.mutate)(ctx.document) {
-                    ctx.document.restore_snapshot(snapshot);
-                    return Err(CommandError::Custom(error));
+                match (self.mutate)(ctx.document) {
+                    Ok(true) => {}
+                    Ok(false) => {
+                        ctx.document.restore_snapshot(snapshot);
+                        return Ok(());
+                    }
+                    Err(error) => {
+                        ctx.document.restore_snapshot(snapshot);
+                        return Err(CommandError::Custom(error));
+                    }
                 }
                 EditUndo::Snapshot(Box::new(snapshot))
             }
@@ -406,6 +442,108 @@ mod tests {
             .join(name);
         let data = std::fs::read(path).expect("read fixture");
         executor::block_on(WordDocument::load(&data, &Options::default())).expect("load")
+    }
+
+    #[test]
+    fn header_footer_no_op_preserves_redo_and_package_state() {
+        let mut doc = load("header-footer-sections.docx");
+        let mut history = CommandExecutor::new();
+        let command = |linked| HeadlessCommand::SetHeaderFooterLink {
+            section: 1,
+            role: "header".into(),
+            variant: "default".into(),
+            linked,
+        };
+        let before = state(&doc);
+        run(&mut doc, &mut history, command(true));
+        assert_eq!(history.undo_depth(), 1);
+        let after = state(&doc);
+        run(&mut doc, &mut history, command(true));
+        assert_eq!(history.undo_depth(), 1);
+        assert_eq!(state(&doc), after);
+        let mut selection = None;
+        assert!(history
+            .undo(&mut CommandContext::new(&mut doc, &mut selection))
+            .unwrap());
+        assert_eq!(state(&doc), before);
+        // The original story was already independent. Repeating that setting
+        // must not destroy the pending redo of linking it to the previous one.
+        run(&mut doc, &mut history, command(false));
+        assert_eq!(history.undo_depth(), 0);
+        assert!(history.can_redo());
+        assert_eq!(state(&doc), before);
+        assert!(history
+            .redo(&mut CommandContext::new(&mut doc, &mut selection))
+            .unwrap());
+        assert_eq!(state(&doc), after);
+    }
+
+    #[test]
+    fn header_footer_story_image_edits_restore_package_on_undo_and_redo() {
+        for role in ["header", "footer"] {
+            for variant in ["default", "first", "even"] {
+                let mut doc = load("header-footer-sections.docx");
+                let mut story = load("header-footer-sections.docx");
+                story
+                    .insert_inline_image_at(
+                        0,
+                        0,
+                        &[137, 80, 78, 71, 13, 10, 26, 10, 42],
+                        "image/png",
+                        24.0,
+                        24.0,
+                        None,
+                        None,
+                    )
+                    .unwrap();
+                let bytes = story.export_docx().unwrap();
+                let mut history = CommandExecutor::new();
+                let mut selection = None;
+                let before = state(&doc);
+                history
+                    .execute(
+                        Box::new(SnapshotEditCommand::new_if_changed(
+                            "replace_test_story",
+                            move |document| {
+                                document.replace_story_from_docx(1, role, variant, &bytes)
+                            },
+                        )),
+                        &mut CommandContext::new(&mut doc, &mut selection),
+                    )
+                    .unwrap();
+                let after = state(&doc);
+                assert_ne!(before.0, after.0);
+                let linked_after = doc.header_footer_linked(1, role, variant).unwrap();
+                for _ in 0..2 {
+                    assert!(history
+                        .undo(&mut CommandContext::new(&mut doc, &mut selection))
+                        .unwrap());
+                    assert_eq!(state(&doc), before);
+                    assert!(history
+                        .redo(&mut CommandContext::new(&mut doc, &mut selection))
+                        .unwrap());
+                    assert_eq!(state(&doc).0, after.0);
+                    assert_eq!(
+                        doc.header_footer_linked(1, role, variant).unwrap(),
+                        linked_after
+                    );
+                }
+                let unchanged = doc.story_docx(1, role, variant, 1).unwrap();
+                history
+                    .execute(
+                        Box::new(SnapshotEditCommand::new_if_changed(
+                            "save_unchanged_story",
+                            move |document| {
+                                document.replace_story_from_docx(1, role, variant, &unchanged)
+                            },
+                        )),
+                        &mut CommandContext::new(&mut doc, &mut selection),
+                    )
+                    .unwrap();
+                assert_eq!(history.undo_depth(), 1);
+                assert_eq!(state(&doc).0, after.0);
+            }
+        }
     }
 
     fn session() -> Option<RevisionSession> {

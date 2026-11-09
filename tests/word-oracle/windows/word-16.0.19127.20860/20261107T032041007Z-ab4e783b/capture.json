@@ -1,0 +1,151 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261107T032041007Z-ab4e783b",
+  "captured_at_utc": "2026-11-07T03:20:41.0268134Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20860",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "9bafe09d0c458006744b9edce767a328ba2da1bb5d9a460e5830c47bf6d7f1d1"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "documents": [
+    {
+      "name": "word-windows-edge-arial-script-sweep-bold-italic",
+      "source": "jade-core\\public\\fixtures\\word-windows-edge-arial-script-sweep-bold-italic.docx",
+      "sha256": "2234d3228250cfdbc74396699c42eef23436ff799f3e97ed84eb86f0d0fdae52",
+      "pdf": "word-windows-edge-arial-script-sweep-bold-italic.pdf",
+      "pdf_sha256": "8263253bb10c4b4905f38fd46954741ab3c54cb6c91258062585cc788f6551c3",
+      "pages": 5,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-arial-script-sweep-bold-italic.page-001.emf",
+          "sha256": "45edded2841e195bc26dca32ac0fe0a0c1e0094755789cc7321d0fb121a55667",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 2,
+          "file": "word-windows-edge-arial-script-sweep-bold-italic.page-002.emf",
+          "sha256": "09b747f47d9df1c8458b38718f66358e474bdbe9e18da193a82ccdbedfa0ea36",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 3,
+          "file": "word-windows-edge-arial-script-sweep-bold-italic.page-003.emf",
+          "sha256": "2c80e7a5df67c076ce23801fdb6ee4616ecf84911240306517d2d10f5eb2ffda",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 4,
+          "file": "word-windows-edge-arial-script-sweep-bold-italic.page-004.emf",
+          "sha256": "47bbe00f730a9ffc3294598c90f0e1a2c9ee5a24de77f8583b28c855ed4f3584",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 5,
+          "file": "word-windows-edge-arial-script-sweep-bold-italic.page-005.emf",
+          "sha256": "8621375bd652f8d0842d68bd8e617ace91693b9100bab44f803c413e0485f3b4",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-arial-script-sweep-bold",
+      "source": "jade-core\\public\\fixtures\\word-windows-edge-arial-script-sweep-bold.docx",
+      "sha256": "644a659a7b4f173c6d0744fc927b01011d096cfd5600d76b9eb7c1698868f724",
+      "pdf": "word-windows-edge-arial-script-sweep-bold.pdf",
+      "pdf_sha256": "4daf3592685d266725467d69c7837b0a06a356123adf6dcd9e69c49884b1e271",
+      "pages": 5,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-arial-script-sweep-bold.page-001.emf",
+          "sha256": "67c68937a584774df6ca783eb9a27a49239f14fe6d027ee96a4de07eafdaff6b",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 2,
+          "file": "word-windows-edge-arial-script-sweep-bold.page-002.emf",
+          "sha256": "f8220139584fcb9d119a6f40fceef47fe7810458a4ab6e4103895067d152e358",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 3,
+          "file": "word-windows-edge-arial-script-sweep-bold.page-003.emf",
+          "sha256": "c135d0d40a817a975528e2d734535406853ed0ff48ec82da08d9bbea36b0e8c0",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 4,
+          "file": "word-windows-edge-arial-script-sweep-bold.page-004.emf",
+          "sha256": "53fe9c77a4ad84cc27f090ca1b2d5f748b734850e2f13c34a60e53d4cfff0079",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 5,
+          "file": "word-windows-edge-arial-script-sweep-bold.page-005.emf",
+          "sha256": "6785b6777b2858e9a4673a277578396592c8871b4dede15b225b72a1beecf79b",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-arial-script-sweep-italic",
+      "source": "jade-core\\public\\fixtures\\word-windows-edge-arial-script-sweep-italic.docx",
+      "sha256": "f64874e311dc7bca8a1bc727d5d3a50e2570f15bd2981531db405e8b6ea0d2b3",
+      "pdf": "word-windows-edge-arial-script-sweep-italic.pdf",
+      "pdf_sha256": "4a9103e5e9dd2020f01fcf283b930b8ae083c46ba108456092006d8d1183138c",
+      "pages": 5,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-arial-script-sweep-italic.page-001.emf",
+          "sha256": "e40792dc37d44b0cd8ff2231f67646f37f72914302b7a0cce970fd7eb21c5687",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 2,
+          "file": "word-windows-edge-arial-script-sweep-italic.page-002.emf",
+          "sha256": "3c2353fe14953fa5f82d903dcdc085f14ccaf011d5cb80b63f55a3ab5295ba78",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 3,
+          "file": "word-windows-edge-arial-script-sweep-italic.page-003.emf",
+          "sha256": "02472b0888ab6f1043e22f9b4bc5cdb35948e811435330ed6fa3baef0c431a4f",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 4,
+          "file": "word-windows-edge-arial-script-sweep-italic.page-004.emf",
+          "sha256": "fa269c36e9e2bf6228a70d8365b70be4bc7a81bab424ca8120649fe582ce2b0a",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 5,
+          "file": "word-windows-edge-arial-script-sweep-italic.page-005.emf",
+          "sha256": "3139dec19f6e8bc0b9ae98c79c6e3922e7d9a17e38612d06abfac21413350db8",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    }
+  ]
+}

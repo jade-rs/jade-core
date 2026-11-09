@@ -1903,6 +1903,7 @@ dependencies = [
  "jade-docx-reader",
  "jade-docx-writer",
  "jade-ink",
+ "jade-opc",
  "jade-selection",
  "png 0.17.16",
  "proptest",
@@ -1910,6 +1911,7 @@ dependencies = [
  "rustc-hash",
  "serde",
  "serde_json",
+ "sha1",
  "sha2 0.10.9",
  "thiserror 2.0.18",
  "tracing",
@@ -1926,6 +1928,7 @@ dependencies = [
  "base64",
  "bumpalo",
  "cfb",
+ "ciborium",
  "console_error_panic_hook",
  "emf-core",
  "encoding_rs",
@@ -1966,6 +1969,7 @@ dependencies = [
  "serde",
  "serde-wasm-bindgen",
  "serde_json",
+ "sha1",
  "sha2 0.10.9",
  "thiserror 2.0.18",
  "tracing",
@@ -1985,6 +1989,7 @@ name = "jade-docx-extract"
 version = "0.1.0"
 dependencies = [
  "insta",
+ "jade-number-format",
  "quick-xml 0.41.0",
  "serde",
  "thiserror 2.0.18",
@@ -2129,6 +2134,7 @@ dependencies = [
  "criterion 0.5.1",
  "encoding_rs",
  "jade-ink",
+ "jade-number-format",
  "jade-opc",
  "proptest",
  "quick-xml 0.41.0",
@@ -2158,6 +2164,10 @@ dependencies = [
  "quick-xml 0.41.0",
  "serde",
 ]
+
+[[package]]
+name = "jade-number-format"
+version = "0.1.0"
 
 [[package]]
 name = "jade-opc"
@@ -2259,9 +2269,12 @@ dependencies = [
 name = "jade-pptx-layout"
 version = "0.1.0"
 dependencies = [
+ "jade-opc",
  "jade-picture-effects",
  "jade-pptx-reader",
  "jade-text-layout",
+ "jade-xlsx-reader",
+ "jade-xlsx-writer",
  "proptest",
  "serde",
  "unicode-script",
@@ -2275,6 +2288,8 @@ dependencies = [
  "jade-ink",
  "jade-opc",
  "jade-smartart",
+ "jade-xlsx-layout",
+ "jade-xlsx-reader",
  "proptest",
  "quick-xml 0.39.2",
  "serde",

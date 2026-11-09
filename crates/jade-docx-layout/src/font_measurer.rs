@@ -10,6 +10,7 @@ use std::error::Error;
 use std::fs;
 use std::path::Path;
 use std::rc::Rc;
+use unicode_segmentation::UnicodeSegmentation;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum RegisteredFontStyle {
@@ -31,6 +32,38 @@ struct RegisteredFont {
     weight: u16,
     style: RegisteredFontStyle,
     font: Font,
+    bytes: Rc<[u8]>,
+    collection_index: u32,
+    upright_advances: RefCell<HashMap<String, Option<u16>>>,
+}
+
+impl RegisteredFont {
+    /// Cache design units independently of the requested point size.
+    fn upright_advance(&self, text: &str) -> Option<u16> {
+        if let Some(&advance) = self.upright_advances.borrow().get(text) {
+            return advance;
+        }
+        let advance = (|| {
+            let face = rustybuzz::Face::from_slice(&self.bytes, self.collection_index)?;
+            let mut buffer = rustybuzz::UnicodeBuffer::new();
+            buffer.push_str(text);
+            buffer.guess_segment_properties();
+            buffer.set_direction(rustybuzz::Direction::TopToBottom);
+            let shaped = rustybuzz::shape(&face, &[], buffer);
+            let [info] = shaped.glyph_infos() else {
+                return None;
+            };
+            if info.glyph_id == 0 {
+                return None;
+            }
+            face.glyph_ver_advance(rustybuzz::ttf_parser::GlyphId(info.glyph_id as u16))
+                .filter(|advance| *advance > 0)
+        })();
+        self.upright_advances
+            .borrow_mut()
+            .insert(text.to_owned(), advance);
+        advance
+    }
 }
 
 /// Deterministic `fontdue`-backed measurer for `jade-docx-layout`.
@@ -112,9 +145,45 @@ impl FontdueMeasurer {
             weight,
             style,
             font,
+            bytes: Rc::from(bytes),
+            collection_index,
+            upright_advances: RefCell::new(HashMap::new()),
         });
         self.descriptor_cache.borrow_mut().clear();
         Ok(())
+    }
+
+    /// Advance of one vertically shaped grapheme in the selected fallback face.
+    pub fn measure_upright_vertical_advance(
+        &self,
+        text: &str,
+        font_descriptor: &str,
+    ) -> Result<Option<f64>, Box<dyn Error>> {
+        let Some(ch) = text.chars().next() else {
+            return Ok(None);
+        };
+        if text.graphemes(true).count() != 1 {
+            return Ok(None);
+        }
+        let Some((primary, size_pt)) = self.resolve_registered_font(font_descriptor)? else {
+            return Ok(None);
+        };
+        // Match the painter's character fallback before shaping the whole cell.
+        let entry = if primary.font.has_glyph(ch) {
+            primary
+        } else {
+            let Some(covering) = self.fonts.iter().find(|entry| entry.font.has_glyph(ch)) else {
+                return Ok(None);
+            };
+            covering
+        };
+        let Some(advance) = entry.upright_advance(text) else {
+            return Ok(None);
+        };
+        // Scale design units in f64 so an exactly full column does not overflow.
+        let advance =
+            f64::from(advance) * points_to_px(size_pt) / f64::from(entry.font.units_per_em());
+        Ok((advance.is_finite() && advance > 0.0).then_some(advance))
     }
 
     pub fn measure_line_box_height(
@@ -146,26 +215,29 @@ impl FontdueMeasurer {
     }
 
     fn resolve_font(&self, descriptor: &str) -> Result<Option<(&Font, f32)>, Box<dyn Error>> {
+        Ok(self
+            .resolve_registered_font(descriptor)?
+            .map(|(entry, size)| (&entry.font, size)))
+    }
+
+    fn resolve_registered_font(
+        &self,
+        descriptor: &str,
+    ) -> Result<Option<(&RegisteredFont, f32)>, Box<dyn Error>> {
         if self.fonts.is_empty() {
             return Ok(None);
         }
 
         let spec = self.parse_descriptor(descriptor);
         if let Some(index) = self.descriptor_cache.borrow().get(descriptor).copied() {
-            return Ok(self
-                .fonts
-                .get(index)
-                .map(|entry| (&entry.font, spec.size_pt)));
+            return Ok(self.fonts.get(index).map(|entry| (entry, spec.size_pt)));
         }
 
         let index = self.pick_font_index(&spec).unwrap_or(0);
         self.descriptor_cache
             .borrow_mut()
             .insert(descriptor.to_string(), index);
-        Ok(self
-            .fonts
-            .get(index)
-            .map(|entry| (&entry.font, spec.size_pt)))
+        Ok(self.fonts.get(index).map(|entry| (entry, spec.size_pt)))
     }
 
     fn pick_font_index(&self, spec: &ParsedFontDescriptor) -> Option<usize> {
@@ -319,6 +391,15 @@ impl LineWrapContext for FontdueLineWrapContext {
     ) -> Result<f64, Self::Error> {
         let mut cache = self.cache.borrow_mut();
         cache.measure_with_hash(&self.measurer, text, font_descriptor, font_descriptor_hash)
+    }
+
+    fn measure_upright_vertical_advance(
+        &self,
+        text: &str,
+        font_descriptor: &str,
+    ) -> Result<Option<f64>, Self::Error> {
+        self.measurer
+            .measure_upright_vertical_advance(text, font_descriptor)
     }
 
     fn measure_line_box_height(&self, font_descriptor: &str) -> Result<Option<f64>, Self::Error> {

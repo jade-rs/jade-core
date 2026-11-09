@@ -102,6 +102,30 @@ fn record_paragraph_changes(
     if signature(old_ppr) != signature(child(parent, "w:pPr")) {
         pending.push((parent.id, "w:pPr", "w:pPrChange", old_ppr.cloned(), None));
     }
+    // Paragraph-mark character formatting has its own rPrChange, separate
+    // from paragraph properties and the paragraph's text runs.
+    let mark_parent = child(parent, "w:pPr").map(|p| p.id);
+    if let Some(mark_parent) = mark_parent {
+        let old_mark = old_ppr.and_then(|p| child(p, "w:rPr"));
+        let current_mark = raw.element(mark_parent).and_then(|p| child(p, "w:rPr"));
+        if signature(old_mark) != signature(current_mark) {
+            let mut original = old
+                .properties
+                .as_ref()
+                .and_then(|p| p.mark_run_properties.clone())
+                .unwrap_or_default();
+            if let Some(change) = original.change.take() {
+                original = change.previous;
+            }
+            pending.push((
+                mark_parent,
+                "w:rPr",
+                "w:rPrChange",
+                old_mark.cloned(),
+                Some(original),
+            ));
+        }
+    }
     let mut offset = 0usize;
     let mut empty_ordinal = 0usize;
     for run in &current.runs {
@@ -232,6 +256,21 @@ fn record_paragraph_changes(
     // first identity stable and allocate a distinct identity for each fragment
     // before exposing revisions to callers (not only during DOCX export).
     let targets = std::iter::once((current.node_id, "w:pPr", "w:pPrChange", None))
+        .chain(std::iter::once((
+            mark_parent,
+            "w:rPr",
+            "w:rPrChange",
+            mark_parent
+                .and_then(|id| run_changes.get(&id))
+                .map(|(model, _)| model.clone())
+                .or_else(|| {
+                    current
+                        .properties
+                        .as_ref()
+                        .and_then(|p| p.mark_run_properties.as_ref())
+                        .and_then(|p| p.change.clone())
+                }),
+        )))
         .chain(current.runs.iter().map(|run| {
             let model = run
                 .node_id
@@ -353,9 +392,27 @@ impl WordDocument {
                     &mut seen_ids,
                 )
             };
+            let mark_parent = self
+                .paragraph_xml_element(*index)
+                .and_then(|p| child(&p, "w:pPr").map(|p| p.id));
             // Preserve the stamp in the semantic model too: the next run
             // serialization must not erase a direct OOXML property revision.
             if let Some(paragraph) = self.paragraph_mut(*index) {
+                if let Some((change, raw_change)) = mark_parent.and_then(|id| changes.remove(&id)) {
+                    let properties = paragraph
+                        .properties
+                        .get_or_insert_with(Default::default)
+                        .mark_run_properties
+                        .get_or_insert_with(Default::default);
+                    properties.change = Some(change);
+                    properties.preserved_rpr.0.retain(
+                        |node| !matches!(node, XmlNode::Element(e) if e.name == "w:rPrChange"),
+                    );
+                    properties
+                        .preserved_rpr
+                        .0
+                        .push(XmlNode::Element(raw_change));
+                }
                 for (run, bound) in paragraph.runs.iter_mut().zip(&current.runs) {
                     if let Some((change, raw_change)) =
                         bound.node_id.and_then(|id| changes.remove(&id))
@@ -413,7 +470,8 @@ impl WordDocument {
                               kind: &str,
                               start: usize,
                               end: usize,
-                              text: String| {
+                              text: String,
+                              paragraph_mark: bool| {
                 let Some(change) = parent_id
                     .and_then(|id| raw.element(id))
                     .and_then(|parent| child(parent, property))
@@ -431,7 +489,7 @@ impl WordDocument {
                     start_offset: start,
                     end_offset: end,
                     text,
-                    paragraph_mark: false,
+                    paragraph_mark,
                 });
             };
             append(
@@ -442,6 +500,7 @@ impl WordDocument {
                 0,
                 text.len(),
                 text,
+                false,
             );
             let mut offset = 0;
             for run in &paragraph.runs {
@@ -453,9 +512,24 @@ impl WordDocument {
                     offset,
                     offset + run.text.len(),
                     run.text.clone(),
+                    false,
                 );
                 offset += run.text.len();
             }
+            append(
+                paragraph
+                    .node_id
+                    .and_then(|id| raw.element(id))
+                    .and_then(|p| child(p, "w:pPr"))
+                    .map(|p| p.id),
+                "w:rPr",
+                "w:rPrChange",
+                "runFormat",
+                offset,
+                offset,
+                String::new(),
+                true,
+            );
         }
         result
     }
@@ -497,6 +571,20 @@ impl WordDocument {
             let paragraph = bound.as_ref().unwrap_or(paragraph);
             let (parent, property, change) = if revision.kind == "paragraphFormat" {
                 (paragraph.node_id, "w:pPr", "w:pPrChange")
+            } else if revision.paragraph_mark {
+                let raw = note
+                    .as_ref()
+                    .map(|(_, raw, _)| raw)
+                    .or(self.raw_document.as_ref());
+                (
+                    paragraph
+                        .node_id
+                        .and_then(|id| raw?.element(id))
+                        .and_then(|p| child(p, "w:pPr"))
+                        .map(|p| p.id),
+                    "w:rPr",
+                    "w:rPrChange",
+                )
             } else {
                 let mut offset = 0;
                 let run = paragraph.runs.iter().find(|run| {
@@ -613,13 +701,23 @@ impl WordDocument {
             }
         }
         if let Some(styles) = self.styles_part.as_ref() {
-            Self::apply_style_paragraph_defaults_to_document(&mut parsed, styles);
+            Self::apply_style_paragraph_defaults_to_document(
+                &mut parsed,
+                styles,
+                self.loaded_document_settings()
+                    .compat
+                    .setting_on("overrideTableStyleFontSizeAndJustification"),
+            );
             Self::apply_table_styles_to_document(&mut parsed, styles);
             Self::apply_style_numbering_to_document(&mut parsed, styles);
             Self::apply_run_font_defaults_to_document(&mut parsed, styles);
         }
         if let Some(theme) = self.loaded_theme_part() {
-            Self::apply_theme_to_document(&mut parsed, &theme);
+            Self::apply_theme_to_document(
+                &mut parsed,
+                &theme,
+                &self.loaded_document_settings().color_scheme_mapping,
+            );
         }
         let original = self.document.replace(Rc::new(parsed));
         self.rebuild_paragraph_surfaces();

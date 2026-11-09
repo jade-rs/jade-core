@@ -11,6 +11,7 @@ skia-safe = { version = "0.87", features = ["svg", "webp"] }
 lopdf = { version = "=0.39.0", default-features = false }
 # Shapes runs that ask for OpenType features (Word's ligatures, figure styles).
 rustybuzz = "0.20"
+unicode-segmentation = "1.10"
 
 [dev-dependencies]
 jade-docx-editor = { path = "../jade-docx-editor" }

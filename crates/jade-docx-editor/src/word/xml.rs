@@ -287,7 +287,9 @@ impl Element {
     /// Sets an on/off child: present for `true`, absent for `false`.
     pub fn set_flag(&mut self, name: &str, on: bool, order: &[&str]) {
         if on {
-            if self.find(name).is_none() {
+            if let Some(flag) = self.find_mut(name) {
+                flag.remove_attr("w:val");
+            } else {
                 self.insert_ordered(Element::new(name), order);
             }
         } else {

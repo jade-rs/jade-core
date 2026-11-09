@@ -1,0 +1,61 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261107T031037551Z-1b5b89e9",
+  "captured_at_utc": "2026-11-07T03:10:37.5745448Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20860",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "9bafe09d0c458006744b9edce767a328ba2da1bb5d9a460e5830c47bf6d7f1d1"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "documents": [
+    {
+      "name": "word-windows-edge-arial-script-sweep",
+      "source": "jade-core\\public\\fixtures\\word-windows-edge-arial-script-sweep.docx",
+      "sha256": "c304eb98daf822e0e043db36aaae9febf4066d1610609c7d0426d0bf326f5ded",
+      "pdf": "word-windows-edge-arial-script-sweep.pdf",
+      "pdf_sha256": "9bb65be9f63403c95020366da6e1a74cd583c3a2df15e6e40135de4329d83118",
+      "pages": 5,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-arial-script-sweep.page-001.emf",
+          "sha256": "ee01505c964c5f460dd41c3684cc3e779e8adc6a500ef32d1631d87aae1f6b86",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 2,
+          "file": "word-windows-edge-arial-script-sweep.page-002.emf",
+          "sha256": "01b18dd919eb187050d95e9c2784ac2bcd0f3261ae55589736bd0f9ef8e7c272",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 3,
+          "file": "word-windows-edge-arial-script-sweep.page-003.emf",
+          "sha256": "3b9b0c5df9bc30761a03a5bf983bb39cb9cd2bfb6e0c23b3d8f2192d53196aeb",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 4,
+          "file": "word-windows-edge-arial-script-sweep.page-004.emf",
+          "sha256": "08396b6fde615ea5d7e4cee06b2e9c1852e6ee792064547e41eab20a1bde2093",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 5,
+          "file": "word-windows-edge-arial-script-sweep.page-005.emf",
+          "sha256": "817a122149612f3936a20af1feab7a410e648f92bcdd7067004c012e8d312a4b",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    }
+  ]
+}

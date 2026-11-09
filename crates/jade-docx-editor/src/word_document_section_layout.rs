@@ -783,7 +783,7 @@ impl WordDocument {
             paragraph
                 .properties
                 .get_or_insert_with(ParagraphProperties::default)
-                .snap_to_grid = (!snap).then_some(false);
+                .snap_to_grid = Some(snap);
             crate::commands::paragraph_property_sync::sync_paragraph_snap_to_grid_xml(
                 self, index, snap,
             );

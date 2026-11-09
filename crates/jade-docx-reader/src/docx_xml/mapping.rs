@@ -52,12 +52,39 @@ fn map_body_elements(elements: &mut [BodyElement], xml_parent: &XmlElement, doc:
         &mut xml_blocks,
     );
     let mut iter = xml_blocks.into_iter().peekable();
-    let mut math_wrapper_with_runs = None;
+    let mut editable_math_wrapper = None;
 
-    for element in elements {
+    fn has_modeled_comment(element: &XmlElement, paragraph: &Paragraph) -> bool {
+        element_children(element).any(|child| match child.name.as_str() {
+            "w:commentRangeEnd" | "w:commentReference" => child
+                .attributes
+                .iter()
+                .find(|attribute| attribute.name == "w:id")
+                .is_some_and(|attribute| {
+                    if child.name == "w:commentRangeEnd" {
+                        paragraph
+                            .comment_ranges
+                            .iter()
+                            .any(|range| range.id == attribute.value)
+                    } else {
+                        paragraph
+                            .comment_markers
+                            .iter()
+                            .any(|marker| marker.id == attribute.value)
+                    }
+                }),
+            name if name == "w:r" || is_transparent_run_container(name) => {
+                has_modeled_comment(child, paragraph)
+            }
+            _ => false,
+        })
+    }
+
+    let mut elements = elements.iter_mut().peekable();
+    while let Some(element) = elements.next() {
         match element {
             BodyElement::Paragraph(paragraph) => {
-                let xml_paragraph = math_wrapper_with_runs
+                let xml_paragraph = editable_math_wrapper
                     .take()
                     .or_else(|| find_next_with_name(&mut iter, "w:p"));
                 if let Some(xml_paragraph) = xml_paragraph {
@@ -67,7 +94,7 @@ fn map_body_elements(elements: &mut [BodyElement], xml_parent: &XmlElement, doc:
                 }
             }
             BodyElement::Table(table) => {
-                math_wrapper_with_runs = None;
+                editable_math_wrapper = None;
                 if let Some(xml_table) = find_next_with_name(&mut iter, "w:tbl") {
                     map_table(table.as_mut(), xml_table, doc);
                 } else {
@@ -75,7 +102,7 @@ fn map_body_elements(elements: &mut [BodyElement], xml_parent: &XmlElement, doc:
                 }
             }
             BodyElement::Math(_) => {
-                math_wrapper_with_runs = None;
+                editable_math_wrapper = None;
                 let is_math_wrapper = iter.peek().is_some_and(|paragraph| {
                     paragraph.name == "w:p"
                         && element_children(paragraph).any(|child| child.name == "m:oMathPara")
@@ -84,10 +111,14 @@ fn map_body_elements(elements: &mut [BodyElement], xml_parent: &XmlElement, doc:
                     let xml_paragraph = iter.next().expect("peeked math wrapper");
                     let mut slots = Vec::new();
                     collect_run_slots(&xml_paragraph.children, None, doc, &mut slots);
-                    if !slots.is_empty() {
-                        // The parser emits both a Math block and an editable
-                        // Paragraph when a wrapper also contains Word runs.
-                        math_wrapper_with_runs = Some(xml_paragraph);
+                    let retains_comments = elements
+                        .peek()
+                        .and_then(|block| block.as_paragraph())
+                        .is_some_and(|paragraph| has_modeled_comment(xml_paragraph, paragraph));
+                    if !slots.is_empty() || retains_comments {
+                        // The parser retains an editable paragraph for Word
+                        // runs or comment metadata beside the display math.
+                        editable_math_wrapper = Some(xml_paragraph);
                     }
                 }
             }
@@ -889,6 +920,35 @@ mod tests {
             assert_eq!(xml.element(identity).unwrap().name, "w:fldSimple");
         }
         assert!(paragraph.runs.last().unwrap().field.is_none());
+    }
+
+    #[test]
+    fn comments_only_math_wrappers_keep_their_paragraph_xml_identity() {
+        const XML: &str = r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><w:body>
+<w:p><m:oMathPara><m:oMath><m:r><m:t>x</m:t></m:r></m:oMath></m:oMathPara><w:commentRangeStart w:id="7"/><w:commentRangeEnd w:id="7"/></w:p>
+<w:p><w:r><w:t>After</w:t></w:r></w:p>
+</w:body></w:document>"#;
+        let mut document = DocumentParser::new().parse_document_xml(XML).unwrap();
+        let xml = DocxXmlDocument::parse(XML).unwrap();
+        attach_document_xml_ids(&mut document, &xml).unwrap();
+        let xml_body = element_children(xml.root())
+            .find(|element| element.name == "w:body")
+            .unwrap();
+        let xml_paragraphs: Vec<_> = element_children(xml_body).collect();
+        let body = document.body.unwrap();
+        let paragraphs: Vec<_> = body
+            .elements
+            .iter()
+            .filter_map(BodyElement::as_paragraph)
+            .collect();
+        assert_eq!(paragraphs.len(), 2);
+        assert!(paragraphs[0].runs.is_empty());
+        assert!(
+            !paragraphs[0].comment_ranges.is_empty() || !paragraphs[0].comment_markers.is_empty()
+        );
+        assert_eq!(paragraphs[0].node_id, Some(xml_paragraphs[0].id));
+        assert_eq!(paragraphs[1].node_id, Some(xml_paragraphs[1].id));
+        assert_eq!(paragraphs[1].runs[0].text, "After");
     }
 
     #[test]

@@ -161,6 +161,10 @@ pub struct HeadlessRunFormat {
     /// スタイルセット (`w14:stylisticSets`): 1–20, 0 for the default.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub stylistic_set: Option<u8>,
+    /// All selected stylistic sets (1–20); an empty list selects the default.
+    /// Takes precedence over `stylistic_set` when both are supplied.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub stylistic_sets: Option<Vec<u8>>,
     /// コンテキスト代替を使用する (`w14:cntxtAlts`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub contextual_alternates: Option<bool>,

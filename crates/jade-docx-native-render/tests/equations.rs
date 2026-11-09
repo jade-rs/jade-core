@@ -9,6 +9,10 @@ use std::io::Write;
 const M: &str = r#"xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math""#;
 
 fn docx(body: &str) -> Vec<u8> {
+    docx_with_math_font(body, None)
+}
+
+fn docx_with_math_font(body: &str, math_font: Option<&str>) -> Vec<u8> {
     let document_xml = format!(
         r#"<?xml version="1.0" encoding="UTF-8"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" {M}><w:body>{body}<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440" w:header="720" w:footer="720" w:gutter="0"/></w:sectPr></w:body></w:document>"#
     );
@@ -28,7 +32,19 @@ fn docx(body: &str) -> Vec<u8> {
             ("word/document.xml", document_xml.as_str()),
         ] {
             zip.start_file(path, options).unwrap();
-            zip.write_all(content.as_bytes()).unwrap();
+            if path == "[Content_Types].xml" && math_font.is_some() {
+                let content = content.replace("</Types>", r#"<Override PartName="/word/settings.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.settings+xml"/></Types>"#);
+                zip.write_all(content.as_bytes()).unwrap();
+            } else {
+                zip.write_all(content.as_bytes()).unwrap();
+            }
+        }
+        if let Some(family) = math_font {
+            zip.start_file("word/_rels/document.xml.rels", options)
+                .unwrap();
+            zip.write_all(br#"<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="settings" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/settings" Target="settings.xml"/></Relationships>"#).unwrap();
+            zip.start_file("word/settings.xml", options).unwrap();
+            write!(zip, r#"<w:settings xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" {M}><m:mathPr><m:mathFont m:val="{family}"/></m:mathPr></w:settings>"#).unwrap();
         }
         zip.finish().unwrap();
     }
@@ -36,6 +52,71 @@ fn docx(body: &str) -> Vec<u8> {
 }
 
 const FRACTION: &str = "<m:oMath><m:f><m:num><m:r><m:t>a</m:t></m:r></m:num><m:den><m:r><m:t>b</m:t></m:r></m:den></m:f></m:oMath>";
+
+#[test]
+fn a_custom_math_face_survives_page_rebuild_and_pdf_export() {
+    use jade_docx_native_render::{FaceSpec, NativeDocument};
+    let math_path = common::repo_path("crates/jade-docx-layout/tests/fixtures/math-font.ttf");
+    let text_path = common::repo_path("fonts/Noto_Sans_JP/static/NotoSansJP-Regular.ttf");
+    let faces = [
+        FaceSpec {
+            family: "Host Math",
+            weight: 400,
+            path: &math_path,
+        },
+        FaceSpec {
+            family: "Cambria Math",
+            weight: 400,
+            path: &math_path,
+        },
+        FaceSpec {
+            family: "Arial",
+            weight: 400,
+            path: &text_path,
+        },
+    ];
+    let bytes = docx_with_math_font(
+        // The synthetic face maps upright x, not mathematical italic 𝑥.
+        r#"<w:p><m:oMath><m:r><m:rPr><m:sty m:val="p"/></m:rPr><m:t>x</m:t></m:r></m:oMath></w:p>"#,
+        Some("Host Math"),
+    );
+    let mut document = NativeDocument::open(&bytes, 816.0, 1056.0, &faces).unwrap();
+    let assert_math_face = |document: &NativeDocument| {
+        let stats = document.renderer().math_font_stats();
+        let fonts = stats["fonts"].as_array().unwrap();
+        assert_eq!(
+            fonts.len(),
+            2,
+            "only the configured and fallback math faces: {stats}"
+        );
+        let custom = fonts
+            .iter()
+            .find(|font| font["family"] == "Host Math")
+            .unwrap_or_else(|| panic!("configured math face was not bound: {stats}"));
+        assert!(
+            custom["layouts"].as_u64().unwrap() > 0,
+            "custom MATH table was used: {stats}"
+        );
+        assert!(
+            custom["cached_glyphs"].as_u64().unwrap() > 0,
+            "custom outlines were used: {stats}"
+        );
+    };
+    assert_math_face(&document);
+    document
+        .apply_command(
+            HeadlessCommand::SetPageOrientation { landscape: true },
+            true,
+        )
+        .unwrap();
+    assert!(document.layout_page_size().0 > document.layout_page_size().1);
+    assert_math_face(&document);
+    assert!(document.export_pdf().unwrap().starts_with(b"%PDF-"));
+    assert_math_face(&document);
+    let reopened =
+        NativeDocument::open(&document.export_docx().unwrap(), 816.0, 1056.0, &faces).unwrap();
+    assert_math_face(&reopened);
+}
 
 #[test]
 fn an_inline_equation_is_an_object_in_its_line_and_typing_after_it_works() {
