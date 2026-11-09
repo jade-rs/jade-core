@@ -2269,9 +2269,12 @@ dependencies = [
 name = "jade-pptx-layout"
 version = "0.1.0"
 dependencies = [
+ "jade-opc",
  "jade-picture-effects",
  "jade-pptx-reader",
  "jade-text-layout",
+ "jade-xlsx-reader",
+ "jade-xlsx-writer",
  "proptest",
  "serde",
  "unicode-script",
@@ -2285,6 +2288,8 @@ dependencies = [
  "jade-ink",
  "jade-opc",
  "jade-smartart",
+ "jade-xlsx-layout",
+ "jade-xlsx-reader",
  "proptest",
  "quick-xml 0.39.2",
  "serde",
