@@ -7418,62 +7418,12 @@ where
                         usize::MAX,
                     )?;
                 }
-                BodyElement::Math(math) if !*first_paragraph => {
-                    *note_paragraph_index += 1;
-                    self.render_math_block(math)?;
-                }
                 BodyElement::Math(math) => {
-                    // A note starting with math still needs its synthesized
-                    // note number. Keep that combined preview for now.
-                    let label = Self::math_placeholder_label(math);
-                    let mut placeholder = Paragraph {
-                        runs: vec![Run {
-                            text: label,
-                            properties: Some(RunProperties {
-                                italic: Some(true),
-                                color: Some("#616161".into()),
-                                ..RunProperties::default()
-                            }),
-                            image: None,
-                            text_box: None,
-                            math: None,
-                            field: None,
-                            hyperlink: None,
-                            node_id: None,
-                            text_node_id: None,
-                            revision_node_id: None,
-                            comment_reference_ids: Vec::new(),
-                            footnote_reference_ids: Vec::new(),
-                            endnote_reference_ids: Vec::new(),
-                            note_separator: None,
-                            has_footnote_ref: false,
-                            has_endnote_ref: false,
-                            revision: None,
-                        }],
-                        properties: None,
-                        node_id: None,
-                        comment_ranges: Vec::new(),
-                        comment_markers: Vec::new(),
-                    };
-                    let marker_text =
-                        self.format_note_number_for_section(number, is_footnote, note_section);
-                    Self::prepare_note_paragraph(
-                        &mut placeholder,
-                        &marker_text,
-                        *first_paragraph,
-                        is_footnote,
-                    );
-                    let element = BodyElement::from_paragraph(placeholder);
-                    let paragraph_index = *note_paragraph_index;
+                    let marker = (*first_paragraph).then(|| {
+                        self.format_note_number_for_section(number, is_footnote, note_section)
+                    });
                     *note_paragraph_index += 1;
-                    self.render_prepared_note_paragraph(
-                        &element,
-                        (*first_paragraph).then_some(marker_text.len()),
-                        options,
-                        numbering_part,
-                        numbering_counter,
-                        paragraph_index,
-                    )?;
+                    self.render_math_block_with_note_marker(math, marker.as_deref())?;
                     *first_paragraph = false;
                 }
             }
@@ -15987,6 +15937,32 @@ where
     }
 
     fn render_math_block(&mut self, math: &MathParagraph) -> Result<(), JsValue> {
+        self.render_math_block_with_note_marker(math, None)
+    }
+
+    fn math_block_horizontal_bounds(
+        &self,
+        math: &MathParagraph,
+        char_unit_pt: f64,
+    ) -> (f64, f64, f64) {
+        let (paragraph_x, paragraph_width) = jade_docx_layout::math_layout::math_block_content_box(
+            math.properties.as_deref(),
+            self.current_column_x(),
+            self.current_column_width(),
+            char_unit_pt,
+            self.current_page_number.is_multiple_of(2),
+        );
+        let (math_x, math_width) = self
+            .math_settings
+            .display_content_box(paragraph_x, paragraph_width);
+        (math_x, math_width, paragraph_x)
+    }
+
+    fn render_math_block_with_note_marker(
+        &mut self,
+        math: &MathParagraph,
+        marker_text: Option<&str>,
+    ) -> Result<(), JsValue> {
         // Math blocks bypass the paragraph render cache so they never trigger
         // the cache-miss promotion path.  Ensure the page is dirty to avoid
         // blank content during incremental rendering.
@@ -15999,14 +15975,26 @@ where
             .and_then(|styles| styles.doc_default_font_size())
             .map(f64::from)
             .unwrap_or(DEFAULT_INDENT_CHAR_UNIT_PT);
-        let (_, column_width) = jade_docx_layout::math_layout::math_block_content_box(
-            math.properties.as_deref(),
-            self.current_column_x(),
-            self.current_column_width(),
-            char_unit_pt,
-            self.current_page_number.is_multiple_of(2),
-        );
-        let (_, column_width) = self.math_settings.display_content_box(0.0, column_width);
+        let marker = marker_text
+            .map(|text| -> Result<DisplayMathNoteMarker<'_>, JsValue> {
+                let run = Self::build_note_marker_run(text, None);
+                let style = self.resolve_applied_run_style_cached(run.properties.as_ref());
+                let width =
+                    self.measure_text_cached(text, &style.resolved.font_descriptor_latin_ascii)?;
+                let width_with_gap = width + points_to_px(style.font_size_pt) / 2.0;
+                Ok(DisplayMathNoteMarker {
+                    text,
+                    style,
+                    width_with_gap,
+                })
+            })
+            .transpose()?;
+        let (column_x, column_width, paragraph_x) =
+            self.math_block_horizontal_bounds(math, char_unit_pt);
+        let column_width = marker.as_ref().map_or(column_width, |marker| {
+            let reserved = (paragraph_x + marker.width_with_gap - column_x).max(0.0);
+            (column_width - reserved).max(1.0)
+        });
         let math_family = Rc::clone(&self.math_family);
         let text_family = self.display_math_style().math_text_family(
             math.properties
@@ -16025,7 +16013,7 @@ where
             script_scales: Some(jade_docx_layout::math_layout::styled::WORD_SCRIPT_SCALES),
         };
         let plan = self.math_plan(&math.elements, style, &options)?;
-        self.render_font_math_block(math, style, plan, char_unit_pt)
+        self.render_font_math_block(math, style, plan, char_unit_pt, marker.as_ref())
     }
 
     /// Lays out math in the bound face for the style's family, when one is
@@ -16197,6 +16185,7 @@ where
         style: jade_docx_layout::math_layout::styled::MathTextStyle<'a>,
         plan: jade_docx_layout::math_layout::styled::StyledMathLayout<'a>,
         char_unit_pt: f64,
+        marker: Option<&DisplayMathNoteMarker<'_>>,
     ) -> Result<(), JsValue> {
         let Some((line_box, after)) =
             self.place_math_block(math, plan.line_metrics, style.size_px)?
@@ -16209,21 +16198,33 @@ where
             return Ok(());
         }
         // Pagination may have changed the column or physical page/mirror side.
-        let (column_x, column_width) = jade_docx_layout::math_layout::math_block_content_box(
-            math.properties.as_deref(),
-            self.current_column_x(),
-            self.current_column_width(),
-            char_unit_pt,
-            self.current_page_number.is_multiple_of(2),
-        );
-        let (column_x, column_width) = self
-            .math_settings
-            .display_content_box(column_x, column_width);
+        let (column_x, column_width, paragraph_x) =
+            self.math_block_horizontal_bounds(math, char_unit_pt);
         let baseline_y = self.current_y + line_box.baseline;
-        let math_x = plan.alignment.x(column_x, column_width, plan.metrics.width);
+        let mut math_x = plan.alignment.x(column_x, column_width, plan.metrics.width);
+        if let Some(marker) = marker {
+            // Keep the equation aligned to the full column unless it would
+            // overlap the number. The number is ink, not an editable run.
+            math_x = math_x.max(paragraph_x + marker.width_with_gap);
+        }
         let owned = Rc::new(math::OwnedMathPlan::from_plan(&plan));
         if self.should_draw_current_page_for_render() {
             let painter = self.host.painter();
+            if let Some(marker) = marker {
+                painter.save();
+                painter.set_font(&marker.style.resolved.font_descriptor_latin_ascii);
+                painter.set_fill_style_str(
+                    self.resolved_style_fill_color(&marker.style, None).as_ref(),
+                );
+                painter.set_text_baseline("alphabetic");
+                let result = painter.fill_text(
+                    marker.text,
+                    paragraph_x,
+                    baseline_y + marker.style.baseline_shift_px,
+                );
+                painter.restore();
+                result.map_err(PainterError::into_js_value)?;
+            }
             owned
                 .paint(&painter, math_x, baseline_y)
                 .map_err(PainterError::into_js_value)?;
@@ -39468,6 +39469,12 @@ fn text_effect_style(
     })
 }
 
+struct DisplayMathNoteMarker<'a> {
+    text: &'a str,
+    style: Rc<AppliedRunStyle>,
+    width_with_gap: f64,
+}
+
 #[derive(Clone)]
 struct AppliedRunStyle {
     small_caps_props: Option<Rc<RunProperties>>,
@@ -47071,10 +47078,7 @@ mod tests {
         }
     }
 
-    #[test]
-    fn display_equations_draw_on_their_own_footnote_and_endnote_surfaces() {
-        use jade_painter::recording::Op;
-
+    fn display_note_equations_fixture(leading: bool) -> Document {
         let parser = jade_docx_reader::DocumentParser::new();
         let mut document = parser.parse_document_xml(
             r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
@@ -47085,11 +47089,17 @@ mod tests {
             (&mut document.footnotes, "footnote", "1", "x"),
             (&mut document.endnotes, "endnote", "2", "y"),
         ] {
+            let intro = if leading {
+                String::new()
+            } else {
+                format!(
+                    r#"<w:p><w:r><w:{kind}Ref/></w:r><w:r><w:t xml:space="preserve"> before {kind}</w:t></w:r></w:p>"#
+                )
+            };
             let xml = format!(
                 r#"<w:{kind}s xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math">
-                <w:{kind} w:id="{id}">
-                    <w:p><w:r><w:{kind}Ref/></w:r><w:r><w:t xml:space="preserve"> before {kind}</w:t></w:r></w:p>
-                    <w:p><m:oMathPara><m:oMath><m:f><m:num><m:r><m:t>{variable}</m:t></m:r></m:num><m:den><m:r><m:t>2</m:t></m:r></m:den></m:f></m:oMath></m:oMathPara></w:p>
+                <w:{kind} w:id="{id}">{intro}
+                    <w:p><m:oMathPara><m:oMathParaPr><m:jc m:val="left"/></m:oMathParaPr><m:oMath><m:f><m:num><m:r><m:t>{variable}</m:t></m:r></m:num><m:den><m:r><m:t>2</m:t></m:r></m:den></m:f></m:oMath></m:oMathPara></w:p>
                     <w:p><w:r><w:t>after {kind}</w:t></w:r></w:p>
                 </w:{kind}></w:{kind}s>"#,
             );
@@ -47098,9 +47108,20 @@ mod tests {
                 .unwrap()
                 .pop()
                 .unwrap();
-            assert!(matches!(note.body[1], BodyElement::Math(_)));
+            assert!(matches!(
+                note.body[usize::from(!leading)],
+                BodyElement::Math(_)
+            ));
             notes.insert(id.into(), note);
         }
+        document
+    }
+
+    #[test]
+    fn display_equations_draw_on_their_own_footnote_and_endnote_surfaces() {
+        use jade_painter::recording::Op;
+
+        let document = display_note_equations_fixture(false);
         let (mut renderer, painter) = recording_renderer();
         renderer.render(&document, &Options::default()).unwrap();
         assert_eq!(renderer.math_zones().len(), 2);
@@ -47120,6 +47141,50 @@ mod tests {
             assert_eq!(following.paragraph, zone.paragraph + 1);
             assert!(following.absolute_top > zone.absolute_baseline);
         }
+    }
+
+    #[test]
+    fn leading_display_equations_keep_note_numbers_and_editable_surfaces() {
+        use jade_painter::recording::Op;
+
+        let document = display_note_equations_fixture(true);
+        let model = WordDocument::from_document(document.clone());
+        let (mut renderer, painter) = recording_renderer();
+        renderer.render(&document, &Options::default()).unwrap();
+        assert_eq!(renderer.math_zones().len(), 2);
+        let lines = renderer.layout_debug_lines();
+        let ops = painter.ops();
+        for (glyph, marker, story, id) in [("𝑥", "1", "footnote", "1"), ("𝑦", "i", "endnote", "2")]
+        {
+            let zone = renderer
+                .math_zones()
+                .iter()
+                .find(|zone| zone.plan.text.contains(glyph))
+                .unwrap();
+            assert!(zone.display);
+            assert_eq!(zone.offset, 0);
+            assert_eq!(
+                renderer.selection.paragraph_text_len(zone.paragraph),
+                zone.plan.text.len()
+            );
+            assert!(ops.iter().any(|op| {
+                matches!(op, Op::FillText(text, x, y) if text == marker
+                    && *x < zone.x && *y < zone.baseline && *y > zone.baseline - 20.0)
+            }));
+            let tail = format!("after {story}");
+            let following = lines.iter().find(|line| line.text == tail).unwrap();
+            assert_eq!(following.paragraph, zone.paragraph + 1);
+            assert!(following.absolute_top > zone.absolute_baseline);
+
+            let tail_surface = model
+                .surface_index_for_story(story, 0, None, Some(id))
+                .unwrap();
+            let position = TextPosition::new(tail_surface, 0);
+            assert_eq!(model.model_to_rendered_text_position(position), position);
+        }
+        assert!(!ops
+            .iter()
+            .any(|op| { matches!(op, Op::FillText(text, _, _) if text.contains("Math:")) }));
     }
 
     #[test]
