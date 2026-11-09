@@ -2,10 +2,12 @@
 //! runs out of width, its continuation lines aligned as Word aligns them, and
 //! the lines of an `m:oMathPara` stacked and justified.
 use super::{
-    shapes, AtomClass, BreakBinary, Builder, Mark, MathJustification, MathLine, StyledMathMeasure,
+    is_skipped, shapes, AtomClass, BreakBinary, BreakBinarySubtraction, Builder, Mark, MathGlyph,
+    MathJustification, MathLine, StyledMathMeasure,
 };
 use crate::math_layout::MathMetrics;
-use jade_docx_reader::document::MathElement;
+use jade_docx_reader::document::{MathElement, MathElementKind};
+use std::collections::HashMap;
 
 /// A place a display line may break: before an operator at the top level of
 /// the equation, or where a run asks for a manual break.
@@ -18,12 +20,14 @@ pub(crate) struct BreakCandidate {
     pub(crate) align_at: Option<u32>,
     /// `m:aln`: an alignment point rather than a break.
     pub(crate) align_point: bool,
+    /// A subtraction character in a run, rather than a whole operator box.
+    pub(crate) subtraction: bool,
 }
 
 /// A laid-out line before stacking: the plan items in `start..end`, on a
 /// baseline at 0 and starting at x 0.
-#[derive(Debug, Clone, Copy)]
-pub(crate) struct PlacedLine {
+#[derive(Debug)]
+pub(crate) struct PlacedLine<'a> {
     pub(crate) start: Mark,
     pub(crate) end: Mark,
     pub(crate) metrics: MathMetrics,
@@ -33,6 +37,8 @@ pub(crate) struct PlacedLine {
     pub(crate) x: f64,
     /// The x of its alignment point, if it has one.
     pub(crate) align: Option<f64>,
+    /// A paint copy of the repeated operator at the line end, in local coordinates.
+    pub(crate) trailing_operator: Option<MathGlyph<'a>>,
 }
 
 /// Lays out an `m:oMath` on one line, then breaks it.
@@ -40,13 +46,25 @@ pub(crate) fn math_lines<'a, C: StyledMathMeasure>(
     b: &mut Builder<'_, 'a, C>,
     math: &'a MathElement,
     group: usize,
-) -> Result<Vec<PlacedLine>, C::Error> {
+) -> Result<Vec<PlacedLine<'a>>, C::Error> {
     let start = b.mark();
     let index = b.open_box(math, start);
     let saved = (b.depth, b.prev.take(), b.breaks.take());
     b.depth = 0;
     b.breaks = Some(Vec::new());
-    let metrics = b.sequence(&math.children)?;
+    // A standalone display array can use the formatting width. Arrays in
+    // arguments or alongside other atoms do not own that width.
+    let max_array_width = b.options.max_width.filter(|_| {
+        if !b.display || b.options.uniform {
+            return false;
+        }
+        let mut content = math.children.iter().filter(|child| !is_skipped(child));
+        content
+            .next()
+            .is_some_and(|child| child.kind == MathElementKind::EquationArray)
+            && content.next().is_none()
+    });
+    let metrics = b.sequence_with_array_width(&math.children, max_array_width)?;
     let breaks = b.breaks.take().unwrap_or_default();
     b.depth = saved.0;
     b.prev = saved.1;
@@ -61,9 +79,10 @@ pub(crate) fn math_lines<'a, C: StyledMathMeasure>(
             group,
             x: 0.0,
             align: None,
+            trailing_operator: None,
         }]);
     }
-    Ok(break_lines(b, start, end, metrics, breaks, group))
+    break_lines(b, start, end, metrics, breaks, group)
 }
 
 /// Whether a run asks for a manual break before it.
@@ -76,14 +95,14 @@ pub(crate) fn run_break(element: &MathElement) -> bool {
         .any(|pr| pr.children.iter().any(|p| p.tag.as_deref() == Some("brk")))
 }
 
-fn break_lines<C: StyledMathMeasure>(
-    b: &mut Builder<'_, '_, C>,
+fn break_lines<'a, C: StyledMathMeasure>(
+    b: &mut Builder<'_, 'a, C>,
     start: Mark,
     end: Mark,
     metrics: MathMetrics,
     breaks: Vec<BreakCandidate>,
     group: usize,
-) -> Vec<PlacedLine> {
+) -> Result<Vec<PlacedLine<'a>>, C::Error> {
     // The x of the glyph a candidate stands before, once laid out.
     let x_of = |b: &Builder<'_, '_, C>, mark: Mark| -> Option<f64> {
         b.plan.glyphs.get(mark.glyphs).map(|g| g.x)
@@ -110,34 +129,91 @@ fn break_lines<C: StyledMathMeasure>(
     }
     let max_width = b.options.max_width.filter(|w| *w > 0.0);
     let settings = b.options.settings;
+    let substitute_start = settings.break_binary_subtraction == BreakBinarySubtraction::MinusPlus;
+    let substitute_end = settings.break_binary_subtraction == BreakBinarySubtraction::PlusMinus;
+    let repeats = |c: BreakCandidate| {
+        settings.break_binary == BreakBinary::Repeat && !c.manual && c.class == AtomClass::Bin
+    };
+    let mut plus_signs = HashMap::new();
+    if max_width.is_some_and(|width| metrics.width > width) && (substitute_start || substitute_end)
+    {
+        for c in candidates
+            .iter()
+            .copied()
+            .filter(|c| c.subtraction && repeats(*c))
+        {
+            let source = &b.plan.glyphs[c.mark.glyphs];
+            let (metrics, _, font_glyph) = b.measure_text("+", source.style)?;
+            let mut plus = source.clone();
+            plus.rendered_text = Some("+");
+            plus.width = metrics.width;
+            plus.ascent = metrics.ascent;
+            plus.descent = metrics.descent;
+            #[cfg(feature = "opentype-math")]
+            {
+                plus.font_glyph = font_glyph;
+            }
+            #[cfg(not(feature = "opentype-math"))]
+            let _ = font_glyph;
+            plus_signs.insert(c.mark.glyphs, plus);
+        }
+    }
+    let start_delta = |c: BreakCandidate, b: &Builder<'_, '_, C>| {
+        if substitute_start {
+            plus_signs
+                .get(&c.mark.glyphs)
+                .map_or(0.0, |plus| plus.width - b.plan.glyphs[c.mark.glyphs].width)
+        } else {
+            0.0
+        }
+    };
     // Choose the breaks: every manual one, then automatic ones where a line
     // would run past the width.
     let mut chosen: Vec<(BreakCandidate, f64)> = Vec::new();
     let mut line_start_x = 0.0;
+    let mut leading_delta = 0.0;
     let mut indent = 0.0;
     let mut last_fit: Option<(BreakCandidate, f64)> = None;
     for c in &candidates {
-        let Some(mut x) = x_of(b, c.mark) else {
+        let Some(operator_x) = x_of(b, c.mark) else {
             continue;
         };
-        // The operator stays on the preceding line for brkBin="after".
-        // Reserve its width when choosing a fitting break, using the same
-        // boundary as the glyph-range split below.
-        if settings.break_binary == BreakBinary::After && !c.manual && c.class == AtomClass::Bin {
-            x += b.plan.glyphs[c.mark.glyphs].width;
-        }
+        // Both `after` and `repeat` leave an operator on the preceding line.
+        // With `repeat`, the continuation still starts at the operator.
+        let keeps_operator =
+            settings.break_binary != BreakBinary::Before && !c.manual && c.class == AtomClass::Bin;
+        let fit_x = if keeps_operator {
+            let glyph = &b.plan.glyphs[c.mark.glyphs];
+            let width = if substitute_end {
+                plus_signs
+                    .get(&c.mark.glyphs)
+                    .map_or(glyph.width, |plus| plus.width)
+            } else {
+                glyph.width
+            };
+            operator_x + width
+        } else {
+            operator_x
+        };
+        let x = if settings.break_binary == BreakBinary::After {
+            fit_x
+        } else {
+            operator_x
+        };
         if c.manual {
             chosen.push((*c, x));
             line_start_x = x;
+            leading_delta = 0.0;
             indent = 0.0;
             last_fit = None;
             continue;
         }
         if let Some(width) = max_width {
-            if x - line_start_x + indent > width {
+            if fit_x - line_start_x + leading_delta + indent > width {
                 if let Some((fit, fit_x)) = last_fit.take() {
                     chosen.push((fit, fit_x));
                     line_start_x = fit_x;
+                    leading_delta = start_delta(fit, b);
                     indent = if settings.wrap_right {
                         0.0
                     } else {
@@ -150,7 +226,7 @@ fn break_lines<C: StyledMathMeasure>(
     }
     // The end of the equation may still overflow the last line.
     if let (Some(width), Some((fit, fit_x))) = (max_width, last_fit) {
-        if metrics.width - line_start_x + indent > width
+        if metrics.width - line_start_x + leading_delta + indent > width
             && chosen
                 .last()
                 .is_none_or(|(c, _)| c.mark.glyphs < fit.mark.glyphs)
@@ -159,14 +235,15 @@ fn break_lines<C: StyledMathMeasure>(
         }
     }
     if chosen.is_empty() && align_points.is_empty() {
-        return vec![PlacedLine {
+        return Ok(vec![PlacedLine {
             start,
             end,
             metrics,
             group,
             x: 0.0,
             align: None,
-        }];
+            trailing_operator: None,
+        }]);
     }
     // brkBin="after" keeps the operator at the end of the line above.
     let after = settings.break_binary == BreakBinary::After;
@@ -198,9 +275,38 @@ fn break_lines<C: StyledMathMeasure>(
     for i in 0..bounds.len() {
         let (line_start, origin_x, candidate) = bounds[i];
         let line_end = bounds.get(i + 1).map_or(end, |b| b.0);
-        let extent = extent(b, line_start, line_end);
+        let leading_delta = candidate.map_or(0.0, |c| start_delta(c, b));
+        if let Some(plus) = candidate
+            .filter(|_| substitute_start)
+            .and_then(|c| plus_signs.get(&c.mark.glyphs))
+        {
+            b.plan.glyphs[line_start.glyphs] = plus.clone();
+            let mut rest = line_start;
+            rest.glyphs += 1;
+            b.shift_range(rest, line_end, leading_delta, 0.0);
+        }
+        let (_, mut ascent, mut right, mut descent) = extent(b, line_start, line_end);
+        let trailing_operator = bounds
+            .get(i + 1)
+            .and_then(|bound| bound.2)
+            .filter(|c| repeats(*c))
+            .map(|c| {
+                let mut glyph = if substitute_end {
+                    plus_signs.get(&c.mark.glyphs)
+                } else {
+                    None
+                }
+                .unwrap_or(&b.plan.glyphs[c.mark.glyphs])
+                .clone();
+                glyph.x += leading_delta;
+                ascent = ascent.max(glyph.ascent - glyph.baseline);
+                descent = descent.max(glyph.descent + glyph.baseline);
+                right = right.max(glyph.x + glyph.width);
+                glyph.x -= origin_x;
+                glyph
+            });
         b.shift_range(line_start, line_end, -origin_x, 0.0);
-        let width = (extent.2 - origin_x).max(0.0);
+        let width = (right - origin_x).max(0.0);
         let x = match candidate {
             None => 0.0,
             Some(c) if c.manual => match c.align_at {
@@ -225,15 +331,16 @@ fn break_lines<C: StyledMathMeasure>(
             end: line_end,
             metrics: MathMetrics {
                 width,
-                ascent: extent.1,
-                descent: extent.3,
+                ascent,
+                descent,
             },
             group,
             x,
             align,
+            trailing_operator,
         });
     }
-    lines
+    Ok(lines)
 }
 
 /// The ink of the plan items in a range: left, ascent, right, descent,
@@ -285,15 +392,15 @@ pub(crate) fn extent<C: StyledMathMeasure>(
 /// Stacks the lines, aligns their alignment points, justifies each group,
 /// and records the lines in the plan. Returns the plan's metrics with the
 /// first line's baseline at 0.
-pub(crate) fn stack<C: StyledMathMeasure>(
-    b: &mut Builder<'_, '_, C>,
-    mut lines: Vec<PlacedLine>,
+pub(crate) fn stack<'a, C: StyledMathMeasure>(
+    b: &mut Builder<'_, 'a, C>,
+    mut lines: Vec<PlacedLine<'a>>,
 ) -> MathMetrics {
     if lines.is_empty() {
         return MathMetrics::default();
     }
     if lines.len() == 1 && lines[0].x == 0.0 {
-        let line = lines[0];
+        let line = &lines[0];
         b.plan.lines.push(MathLine {
             baseline: 0.0,
             x: 0.0,
@@ -319,27 +426,22 @@ pub(crate) fn stack<C: StyledMathMeasure>(
             }
         }
     }
-    let group_width = |lines: &[PlacedLine], group: usize| {
-        lines
-            .iter()
-            .filter(|l| l.group == group)
-            .map(|l| l.x + l.metrics.width)
-            .fold(0.0, f64::max)
-    };
-    let width = (0..groups)
-        .map(|g| group_width(&lines, g))
-        .fold(0.0, f64::max);
+    let mut group_widths = vec![0.0_f64; groups];
+    for line in &lines {
+        group_widths[line.group] = group_widths[line.group].max(line.x + line.metrics.width);
+    }
+    let width = group_widths.iter().copied().fold(0.0, f64::max);
     let justification = b.justification();
     let size = b.base_size;
     let gap = super::MathConstants::cambria(size).leading;
     let mut baseline = 0.0;
     let mut previous: Option<MathMetrics> = None;
     let mut total = MathMetrics::default();
-    for line in &lines {
+    for line in lines {
         if let Some(prev) = previous {
             baseline += (prev.descent + line.metrics.ascent + gap).max(size * 1.2);
         }
-        let group_w = group_width(&lines, line.group);
+        let group_w = group_widths[line.group];
         let group_x = match justification {
             MathJustification::Left => 0.0,
             MathJustification::Right => width - group_w,
@@ -350,6 +452,13 @@ pub(crate) fn stack<C: StyledMathMeasure>(
             _ => group_x + line.x,
         };
         b.shift_range(line.start, line.end, x, baseline);
+        if let Some(mut glyph) = line.trailing_operator {
+            // A display copy shares the original text range. Appending it
+            // leaves the source glyph indices used by equation carets intact.
+            glyph.x += x;
+            glyph.baseline += baseline;
+            b.plan.glyphs.push(glyph);
+        }
         b.plan.lines.push(MathLine {
             baseline,
             x,

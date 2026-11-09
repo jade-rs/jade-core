@@ -39,6 +39,148 @@ fn break_after_reserves_the_trailing_operator_width() {
     }
 }
 
+#[test]
+fn break_repeat_places_the_same_operator_on_both_lines() {
+    let math = parse("<m:r><m:t>aa+bb+cc+dd+ee+ff+gg+hh</m:t></m:r>");
+    // A continuation between two plus signs is about 34 px before indent.
+    for width in [44.0, 48.0, 60.0, 80.0] {
+        for indent in [0.0, 8.0] {
+            let plan = plan_with(
+                &math,
+                MathLayoutOptions {
+                    max_width: Some(width),
+                    settings: MathSettings {
+                        break_binary: BreakBinary::Repeat,
+                        wrap_indent_px: indent,
+                        ..Default::default()
+                    },
+                    ..display()
+                },
+            );
+            assert!(plan.lines.len() > 1);
+            assert_eq!(plan.text.matches('+').count(), 7);
+            let edges = |line: &MathLine| {
+                let mut glyphs: Vec<_> = plan
+                    .glyphs
+                    .iter()
+                    .filter(|glyph| glyph.visible && glyph.baseline == line.baseline)
+                    .collect();
+                glyphs.sort_by(|a, b| a.x.total_cmp(&b.x));
+                (
+                    &plan.text[glyphs.first().unwrap().text_range.clone()],
+                    &plan.text[glyphs.last().unwrap().text_range.clone()],
+                )
+            };
+            for (index, line) in plan.lines.iter().enumerate() {
+                assert!(
+                    line.x + line.width <= width + 1e-9,
+                    "width={width}, indent={indent}: {line:?}"
+                );
+                let (first, last) = edges(line);
+                if index > 0 {
+                    assert_eq!(first, "+");
+                }
+                if index + 1 < plan.lines.len() {
+                    assert_eq!(last, "+");
+                }
+            }
+        }
+    }
+}
+
+#[test]
+fn repeated_subtraction_displays_the_requested_signs_without_changing_the_equation() {
+    struct Signs;
+    impl StyledMathMeasure for Signs {
+        type Error = std::convert::Infallible;
+
+        fn measure_glyph(
+            &self,
+            text: &str,
+            _: MathTextStyle<'_>,
+        ) -> Result<MathMetrics, Self::Error> {
+            Ok(MathMetrics {
+                width: if text == "+" { 10.0 } else { 4.0 },
+                ascent: if text == "+" { 12.0 } else { 8.0 },
+                descent: 2.0,
+            })
+        }
+    }
+
+    let math = parse("<m:r><m:t>aa-bb−cc-dd-ee-ff+gg</m:t></m:r>");
+    for (setting, end_sign, start_sign) in [
+        (BreakBinarySubtraction::MinusMinus, "−", "−"),
+        (BreakBinarySubtraction::PlusMinus, "+", "−"),
+        (BreakBinarySubtraction::MinusPlus, "−", "+"),
+    ] {
+        let options = MathLayoutOptions {
+            max_width: Some(38.0),
+            settings: MathSettings {
+                break_binary: BreakBinary::Repeat,
+                break_binary_subtraction: setting,
+                wrap_indent_px: 2.0,
+                ..Default::default()
+            },
+            ..display()
+        };
+        let plan = layout_styled_math_with_options(&Signs, &math, style(), &options).unwrap();
+        assert_eq!(plan.text.matches('−').count(), 5);
+        assert_eq!(plan.text.matches('+').count(), 1);
+        let mut minus_breaks = 0;
+        for pair in plan.lines.windows(2) {
+            let [left, right] = pair else { unreachable!() };
+            let last = plan
+                .glyphs
+                .iter()
+                .filter(|g| g.baseline == left.baseline)
+                .max_by(|a, b| a.x.total_cmp(&b.x))
+                .unwrap();
+            let first = plan
+                .glyphs
+                .iter()
+                .filter(|g| g.baseline == right.baseline)
+                .min_by(|a, b| a.x.total_cmp(&b.x))
+                .unwrap();
+            assert_eq!(last.text_range, first.text_range);
+            if &plan.text[first.text_range.clone()] == "−" {
+                minus_breaks += 1;
+                assert_eq!(last.display_text(&plan.text), end_sign);
+                assert_eq!(first.display_text(&plan.text), start_sign);
+                for (glyph, line) in [(last, left), (first, right)] {
+                    if glyph.display_text(&plan.text) == "+" {
+                        assert_eq!(glyph.width, 10.0);
+                        assert!(line.ascent >= 12.0);
+                    }
+                }
+            } else {
+                assert_eq!(last.display_text(&plan.text), "+");
+                assert_eq!(first.display_text(&plan.text), "+");
+            }
+        }
+        assert!(minus_breaks > 0);
+        assert!(plan
+            .lines
+            .iter()
+            .all(|line| line.x + line.width <= 38.0 + 1e-9));
+
+        let unwrapped = layout_styled_math_with_options(
+            &Signs,
+            &math,
+            style(),
+            &MathLayoutOptions {
+                max_width: None,
+                ..options
+            },
+        )
+        .unwrap();
+        assert_eq!(unwrapped.lines.len(), 1);
+        assert!(unwrapped
+            .glyphs
+            .iter()
+            .all(|g| g.display_text(&unwrapped.text) == &unwrapped.text[g.text_range.clone()]));
+    }
+}
+
 #[derive(Default)]
 struct Measure {
     calls: RefCell<Vec<(String, f64)>>,
@@ -326,6 +468,90 @@ fn matrices_align_columns_and_arrays_align_their_ampersands() {
 }
 
 #[test]
+fn display_equation_array_distributes_space_between_aligned_column_pairs() {
+    let render = |properties: &str, width: Option<f64>| {
+        let math = leak(&format!(
+            r#"<m:eqArr><m:eqArrPr>{properties}</m:eqArrPr><m:e><m:r><m:t>11&amp;=1&amp;33&amp;=3</m:t></m:r></m:e><m:e><m:r><m:t>222&amp;=2&amp;444&amp;=4</m:t></m:r></m:e></m:eqArr>"#
+        ));
+        plan_with(
+            math,
+            MathLayoutOptions {
+                max_width: width,
+                ..display()
+            },
+        )
+    };
+    let width = 180.0;
+    let compact = render("", Some(width));
+    let compact_equals = glyphs(&compact, "=");
+    assert_eq!(compact_equals.len(), 4);
+    let max_dist = r#"<m:maxDist/>"#;
+    let obj_dist = r#"<m:objDist m:val="1"/>"#;
+    for (properties, pads) in [
+        ("", (0.0, 0.0, 0.0)),
+        (obj_dist, (0.0, 0.0, 0.0)),
+        (max_dist, (1.0 / 3.0, 1.0 / 3.0, 1.0 / 3.0)),
+        (&format!("{max_dist}{obj_dist}"), (0.0, 1.0, 0.0)),
+    ] {
+        let plan = render(properties, Some(width));
+        let equals = glyphs(&plan, "=");
+        assert_eq!(equals.len(), compact_equals.len());
+        assert_eq!(plan.text, compact.text);
+        let extra = width - compact.metrics.width;
+        let (left, between, right) = (pads.0 * extra, pads.1 * extra, pads.2 * extra);
+        assert!((plan.metrics.width - compact.metrics.width - left - between - right).abs() < 1e-9);
+        for (i, (old, new)) in compact_equals.iter().zip(equals).enumerate() {
+            let shift = left + if i % 2 == 0 { 0.0 } else { between };
+            assert!((new.x - old.x - shift).abs() < 1e-9, "{properties}");
+            assert_eq!(old.baseline, new.baseline);
+        }
+        assert!(glyphs(&plan, "&")
+            .iter()
+            .all(|g| !g.visible && g.width == 0.0));
+    }
+    assert_eq!(render(max_dist, None).metrics, compact.metrics);
+    assert_eq!(render(max_dist, Some(20.0)).metrics, compact.metrics);
+}
+
+#[test]
+fn distribution_does_not_expand_arrays_without_alignment_or_their_own_display_line() {
+    let array = |row: &str| {
+        format!("<m:eqArr><m:eqArrPr><m:maxDist/></m:eqArrPr><m:e><m:r><m:t>{row}</m:t></m:r></m:e></m:eqArr>")
+    };
+    let unmarked = array("11=2");
+    let marked = array("11&amp;=2&amp;33&amp;=4");
+    let nested =
+        format!("<m:f><m:num>{marked}</m:num><m:den><m:r><m:t>5</m:t></m:r></m:den></m:f>");
+    let with_neighbor = format!("{marked}<m:r><m:t>5</m:t></m:r>");
+    for (body, display) in [
+        (&unmarked, true),
+        (&nested, true),
+        (&with_neighbor, true),
+        (&marked, false),
+    ] {
+        let math = parse(body);
+        let options = MathLayoutOptions {
+            display,
+            ..Default::default()
+        };
+        let compact = plan_with(&math, options);
+        let constrained = plan_with(
+            &math,
+            MathLayoutOptions {
+                max_width: Some(500.0),
+                ..options
+            },
+        );
+        assert_eq!(compact.metrics, constrained.metrics, "{body}");
+        assert!(compact
+            .glyphs
+            .iter()
+            .zip(&constrained.glyphs)
+            .all(|(a, b)| a.x == b.x));
+    }
+}
+
+#[test]
 fn boxes_phantoms_and_border_boxes() {
     let p = plan_with(leak("<m:phant><m:phantPr><m:show m:val=\"0\"/></m:phantPr><m:e><m:r><m:t>x</m:t></m:r></m:e></m:phant><m:r><m:t>y</m:t></m:r>"),
             display(),
@@ -393,6 +619,38 @@ fn display_lines_break_where_asked_and_where_they_overflow() {
     }
     let p = plan_with(&long, MathLayoutOptions::inline());
     assert_eq!(p.lines.len(), 1);
+}
+
+#[test]
+fn manual_break_on_a_run_that_does_not_start_with_an_operator_is_ignored() {
+    for text in ["23+4", "x=1", "", " +2"] {
+        let before = "<m:r><m:t>a=b</m:t></m:r>";
+        let after = "<m:r><m:t>+c</m:t></m:r>";
+        let plain = parse(&format!(
+            "{before}<m:r><m:t xml:space=\"preserve\">{text}</m:t></m:r>{after}"
+        ));
+        let marked = parse(&format!(
+            "{before}<m:r><m:rPr><m:brk m:alnAt=\"1\"/></m:rPr><m:t xml:space=\"preserve\">{text}</m:t></m:r>{after}"
+        ));
+        for max_width in [None, Some(46.0)] {
+            let options = MathLayoutOptions {
+                max_width,
+                ..display()
+            };
+            let expected = plan_with(&plain, options);
+            let actual = plan_with(&marked, options);
+            assert_eq!(actual.text, expected.text, "run: {text:?}");
+            assert_eq!(actual.lines.len(), expected.lines.len(), "run: {text:?}");
+            assert!(
+                actual
+                    .glyphs
+                    .iter()
+                    .zip(&expected.glyphs)
+                    .all(|(a, b)| a.x == b.x && a.baseline == b.baseline),
+                "run: {text:?}"
+            );
+        }
+    }
 }
 
 #[test]
