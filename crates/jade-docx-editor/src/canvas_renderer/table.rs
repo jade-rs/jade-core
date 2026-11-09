@@ -4259,19 +4259,17 @@ where
                                 )?;
                             }
 
-                            if !matches!(cell.text_direction, Some(TextDirection::LrTbV)) {
-                                self.draw_cell_line_math(
-                                    paragraph,
-                                    line,
-                                    CellLinePlacement {
-                                        start_x: text_x,
-                                        top: line_top,
-                                        height: line_height,
-                                    },
-                                    draw_enabled,
-                                    (!self.measuring_notes).then_some(paragraph_index),
-                                )?;
-                            }
+                            self.draw_cell_line_math(
+                                paragraph,
+                                line,
+                                CellLinePlacement {
+                                    start_x: text_x,
+                                    top: line_top,
+                                    height: line_height,
+                                },
+                                draw_enabled,
+                                (!self.measuring_notes).then_some(paragraph_index),
+                            )?;
 
                             if draw_enabled {
                                 self.draw_table_formatting_mark(
@@ -5292,18 +5290,18 @@ where
                             line_height,
                             capture_paragraph,
                         )?;
-                        self.draw_cell_line_math(
-                            paragraph,
-                            line,
-                            CellLinePlacement {
-                                start_x: text_x,
-                                top: line_top,
-                                height: line_height,
-                            },
-                            true,
-                            None,
-                        )?;
                     }
+                    self.draw_cell_line_math(
+                        paragraph,
+                        line,
+                        CellLinePlacement {
+                            start_x: text_x,
+                            top: line_top,
+                            height: line_height,
+                        },
+                        true,
+                        None,
+                    )?;
                     if self.auxiliary_story_capture_mode.enabled()
                         && !line.text.is_empty()
                         && !matches!(cell.text_direction, Some(TextDirection::LrTbV))
@@ -5809,6 +5807,12 @@ where
         let mut fragments = Vec::with_capacity(line.glyphs.len());
         for glyph in &line.glyphs {
             let text = paragraph.text.get(glyph.start..glyph.end).unwrap_or("");
+            if text.starts_with(CELL_INLINE_OBJECT_CHAR)
+                && cell_inline_math_at(&paragraph.styled_runs, glyph.start)
+            {
+                // The math plan supplies ink and keeps this layout slot editable.
+                continue;
+            }
             let font = paragraph_range_font_descriptor(paragraph, glyph.start, glyph.end, text);
             let descriptor = font.as_deref().unwrap_or(TABLE_FONT);
             painter.set_font(descriptor);
@@ -6831,6 +6835,12 @@ where
 
         for glyph in &line.glyphs {
             let glyph_text = &paragraph.text[glyph.start..glyph.end];
+            if glyph_text.starts_with(CELL_INLINE_OBJECT_CHAR)
+                && cell_inline_math_at(&paragraph.styled_runs, glyph.start)
+            {
+                // The math plan supplies ink and keeps this layout slot editable.
+                continue;
+            }
             let width = glyph.width.max(1.0);
             let is_east_asian = glyph_has_east_asian(glyph_text);
             let glyph_x = start_x + glyph.x;
@@ -10181,8 +10191,6 @@ fn autofit_content_widths<C: TableAutofitContext>(
             }
 
             let math_config = config.filter(|_| context.math_enabled());
-            let inline_math_config =
-                math_config.filter(|_| cell.text_direction != Some(TextDirection::LrTbV));
             let mut natural_content_width = 0.0_f64;
             let mut unbreakable_content_width = 0.0_f64;
             for block in &cell.blocks {
@@ -10201,7 +10209,7 @@ fn autofit_content_widths<C: TableAutofitContext>(
                     false,
                     &NoteMarkers::default(),
                     field_value_for,
-                    inline_math_config.is_some(),
+                    math_config.is_some(),
                 );
                 if text.is_empty() {
                     continue;
@@ -10223,7 +10231,7 @@ fn autofit_content_widths<C: TableAutofitContext>(
                     styles,
                     config.is_some_and(|config| config.override_table_style_font_size),
                 );
-                if let Some(config) = inline_math_config {
+                if let Some(config) = math_config {
                     context.measure_inline_math(paragraph, config, &mut styled_runs)?;
                 }
                 let run_styles = styled_run_styles(&text, &styled_runs);
@@ -13716,10 +13724,9 @@ fn prepare_row_layout<P: Painter<Error: PainterError>>(
                         let paragraph_line_height = config.line_height_for(paragraph);
                         let (left_inset, mut paragraph_style) = config.paragraph_style(paragraph);
                         let math_context = wrap_context.math.as_ref().filter(|_| {
-                            cell.text_direction.is_none_or(|direction| {
-                                direction != TextDirection::LrTbV
-                                    && !direction_requires_vertical_stack(direction)
-                            })
+                            !cell
+                                .text_direction
+                                .is_some_and(direction_requires_vertical_stack)
                         });
                         let (text, mut styled_runs, note_anchors) = collect_paragraph_text(
                             paragraph,
@@ -14470,6 +14477,12 @@ fn collect_paragraph_text(
 /// placeholder in editable model text; pictures only use it for layout.
 const CELL_INLINE_OBJECT_CHAR: char = '\u{fffc}';
 
+fn cell_inline_math_at(styled_runs: &[StyledRunRange], offset: usize) -> bool {
+    styled_runs.iter().any(|run| {
+        run.start == offset && matches!(run.inline_object, Some(CellInlineObject::Math(_)))
+    })
+}
+
 fn cell_fit_text_enabled(cell: &TableCell) -> bool {
     cell.style
         .get("fit-text")
@@ -14488,9 +14501,7 @@ fn paragraph_trailing_overhang<C: LineWrapContext>(
     let Some((offset, grapheme)) = text.grapheme_indices(true).next_back() else {
         return Ok(0.0);
     };
-    if styled_runs.iter().any(|run| {
-        run.start == offset && matches!(run.inline_object, Some(CellInlineObject::Math(_)))
-    }) {
+    if cell_inline_math_at(styled_runs, offset) {
         return Ok(0.0);
     }
     let run_styles = styled_run_styles(text, styled_runs);
@@ -15904,18 +15915,32 @@ mod tests {
 
     #[test]
     fn inline_equations_in_table_cells_keep_their_width_and_model_offsets() {
-        let xml = r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math">
+        assert_inline_equation_cell_geometry("");
+    }
+
+    #[test]
+    fn inline_equations_in_lrtbv_cells_keep_their_width_and_model_offsets() {
+        assert_inline_equation_cell_geometry(
+            r#"<w:tcPr><w:textDirection w:val="lrTbV"/></w:tcPr>"#,
+        );
+        assert_inline_equation_autofit(r#"<w:textDirection w:val="lrTbV"/>"#);
+    }
+
+    fn assert_inline_equation_cell_geometry(cell_props: &str) {
+        let xml = format!(
+            r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math">
             <w:body><w:tbl><w:tblPr><w:tblW w:w="3120" w:type="dxa"/><w:tblLayout w:type="fixed"/></w:tblPr>
                 <w:tblGrid><w:gridCol w:w="3120"/></w:tblGrid>
-                <w:tr><w:tc><w:p><w:r><w:t xml:space="preserve">左 </w:t></w:r>
+                <w:tr><w:tc>{cell_props}<w:p><w:r><w:t xml:space="preserve">左 </w:t></w:r>
                     <m:oMath><m:f><m:num><m:r><m:t>x</m:t></m:r></m:num><m:den><m:r><m:t>2</m:t></m:r></m:den></m:f></m:oMath>
                     <w:r><w:t xml:space="preserve"> + </w:t></w:r>
                     <m:oMath><m:r><m:t>y</m:t></m:r></m:oMath>
                     <w:r><w:t xml:space="preserve"> right</w:t></w:r>
                 </w:p></w:tc></w:tr>
-            </w:tbl></w:body></w:document>"#;
+            </w:tbl></w:body></w:document>"#
+        );
         let document = jade_docx_reader::DocumentParser::new()
-            .parse_document_xml(xml)
+            .parse_document_xml(&xml)
             .unwrap();
         let painter = RecordingPainter::with_width_per_char(8.0);
         let mut renderer = CanvasRenderer::with_host(
@@ -15946,10 +15971,16 @@ mod tests {
             renderer.layout_debug_lines(),
         );
         assert_eq!(fraction.baseline, variable.baseline);
-        assert!(painter
-            .ops()
+        let ops = painter.ops();
+        assert!(ops
             .iter()
             .any(|op| matches!(op, Op::FillText(text, _, _) if text == "𝑥")));
+        assert!(!ops.iter().any(
+            |op| matches!(op, Op::FillText(text, _, _) if text.contains(CELL_INLINE_OBJECT_CHAR))
+        ));
+        if !cell_props.is_empty() {
+            assert!(ops.contains(&Op::Rotate(-FRAC_PI_2)));
+        }
         let lines = renderer.layout_debug_lines();
         assert!(lines
             .iter()
@@ -15958,19 +15989,25 @@ mod tests {
 
     #[test]
     fn table_autofit_reserves_width_for_inline_equations() {
-        let xml = r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math">
+        assert_inline_equation_autofit("");
+    }
+
+    fn assert_inline_equation_autofit(direction: &str) {
+        let xml = format!(
+            r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math">
             <w:body><w:tbl><w:tblPr><w:tblW w:w="0" w:type="auto"/><w:tblLayout w:type="autofit"/></w:tblPr>
                 <w:tblGrid><w:gridCol w:w="1200"/><w:gridCol w:w="4200"/></w:tblGrid>
-                <w:tr><w:tc><w:tcPr><w:tcW w:w="0" w:type="auto"/></w:tcPr>
+                <w:tr><w:tc><w:tcPr><w:tcW w:w="0" w:type="auto"/>{direction}</w:tcPr>
                     <w:p><w:r><w:t>A</w:t></w:r>
                     <m:oMath><m:f><m:num><m:r><m:t>abcdefghijklmnopqrstuv</m:t></m:r></m:num><m:den><m:r><m:t>2</m:t></m:r></m:den></m:f></m:oMath>
                     </w:p>
                 </w:tc><w:tc><w:tcPr><w:tcW w:w="0" w:type="auto"/></w:tcPr>
                     <w:p><w:r><w:t>Adjacent cell</w:t></w:r></w:p>
                 </w:tc></w:tr>
-            </w:tbl></w:body></w:document>"#;
+            </w:tbl></w:body></w:document>"#
+        );
         let document = jade_docx_reader::DocumentParser::new()
-            .parse_document_xml(xml)
+            .parse_document_xml(&xml)
             .unwrap();
         let mut renderer = CanvasRenderer::with_host(
             Box::new(super::super::recording_host::RecordingHost {
