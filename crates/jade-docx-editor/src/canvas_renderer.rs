@@ -14422,6 +14422,13 @@ where
             }
         }
 
+        if self.band_redraw_plan.is_none()
+            && self.host.requires_full_page_repaint_without_band()
+        {
+            self.render_full_repaint = true;
+            self.render_dirty_pages = None;
+        }
+
         let _ = self.host.update_device_pixel_ratio()?;
         // Page settings initialize current_y from the page's header and vAlign
         // offset. Resolve those for page one, not where the previous (possibly
@@ -20591,7 +20598,10 @@ where
                         // page kept the pixels of the paragraphs that follow.
                         // A page this pass cleared whole is drawn to its end;
                         // the page cap below still ends the walk there.
-                        if self.current_page_cleared_whole {
+                        // A band can clear neighbouring lines too. Walk the
+                        // rest of the page under its clip before stopping so
+                        // those lines are repainted as promised by the plan.
+                        if self.current_page_cleared_whole || self.band_redraw_plan.is_some() {
                             self.fast_replay_draw_through_page = Some(self.current_page_number);
                         } else {
                             self.fast_replay_from = Some(paragraph_index + 1);
