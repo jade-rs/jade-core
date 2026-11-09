@@ -127,6 +127,10 @@ impl DocumentParser {
             && spacing.after_lines.is_none()
             && spacing.line.is_none()
             && spacing.line_rule.is_none()
+            && !spacing.before_auto
+            && !spacing.after_auto
+            && spacing.before_auto_setting.is_none()
+            && spacing.after_auto_setting.is_none()
     }
 
     pub(super) fn parse_table_grid(
@@ -243,11 +247,10 @@ impl DocumentParser {
                         self.skip_element(reader, b"w:hidden")?;
                     }
                     b"w:shd" => {
-                        if let Some(color) = Self::read_color_attribute(e.attributes(), b"w:fill") {
-                            table
-                                .cell_style
-                                .insert("background-color".to_string(), color);
-                        }
+                        let color = Self::parse_table_shading_color(e.attributes());
+                        table
+                            .cell_style
+                            .insert("background-color".to_string(), color);
                         self.skip_element(reader, b"w:shd")?;
                     }
                     b"w:tblBorders" => {
@@ -263,7 +266,11 @@ impl DocumentParser {
                         }
                     }
                     b"w:tblCellSpacing" => {
-                        table.cell_spacing = Self::table_cell_spacing_value(e.attributes());
+                        table.cell_spacing = Self::table_cell_spacing_value(
+                            e.attributes(),
+                            &mut table.style,
+                            "-jade-cell-spacing",
+                        );
                         self.skip_element(reader, b"w:tblCellSpacing")?;
                     }
                     b"w:tblLayout" => {
@@ -331,14 +338,17 @@ impl DocumentParser {
                             .insert("display".to_string(), "none".to_string());
                     }
                     b"w:shd" => {
-                        if let Some(color) = Self::read_color_attribute(e.attributes(), b"w:fill") {
-                            table
-                                .cell_style
-                                .insert("background-color".to_string(), color);
-                        }
+                        let color = Self::parse_table_shading_color(e.attributes());
+                        table
+                            .cell_style
+                            .insert("background-color".to_string(), color);
                     }
                     b"w:tblCellSpacing" => {
-                        table.cell_spacing = Self::table_cell_spacing_value(e.attributes());
+                        table.cell_spacing = Self::table_cell_spacing_value(
+                            e.attributes(),
+                            &mut table.style,
+                            "-jade-cell-spacing",
+                        );
                     }
                     b"w:tblLayout" => {
                         table.table_layout = Self::parse_table_layout_type(e.attributes());
@@ -464,7 +474,11 @@ impl DocumentParser {
                         self.skip_element(reader, b"w:wAfter")?;
                     }
                     b"w:tblCellSpacing" => {
-                        row.cell_spacing = Self::table_cell_spacing_value(e.attributes());
+                        row.cell_spacing = Self::table_cell_spacing_value(
+                            e.attributes(),
+                            &mut row.style,
+                            "-jade-cell-spacing",
+                        );
                         self.skip_element(reader, b"w:tblCellSpacing")?;
                     }
                     b"w:ins" | b"w:del" => {
@@ -527,7 +541,11 @@ impl DocumentParser {
                         row.width_after = Self::parse_table_width(e.attributes());
                     }
                     b"w:tblCellSpacing" => {
-                        row.cell_spacing = Self::table_cell_spacing_value(e.attributes());
+                        row.cell_spacing = Self::table_cell_spacing_value(
+                            e.attributes(),
+                            &mut row.style,
+                            "-jade-cell-spacing",
+                        );
                     }
                     b"w:ins" | b"w:del" => {
                         let kind = Self::revision_kind(e);
@@ -582,7 +600,11 @@ impl DocumentParser {
             match reader.next_event(&mut buf) {
                 Ok(Event::Start(ref e)) => match e.name().as_ref() {
                     b"w:tblCellSpacing" => {
-                        row.cell_spacing_exception = Self::table_cell_spacing_value(e.attributes());
+                        row.cell_spacing_exception = Self::table_cell_spacing_value(
+                            e.attributes(),
+                            &mut row.style,
+                            "-jade-cell-spacing-exception",
+                        );
                         self.skip_element(reader, b"w:tblCellSpacing")?;
                     }
                     b"w:tblCellMar" => {
@@ -592,9 +614,8 @@ impl DocumentParser {
                         }
                     }
                     b"w:shd" => {
-                        if let Some(color) = Self::read_color_attribute(e.attributes(), b"w:fill") {
-                            row.style.insert("background-color".to_string(), color);
-                        }
+                        let color = Self::parse_table_shading_color(e.attributes());
+                        row.style.insert("background-color".to_string(), color);
                         self.skip_element(reader, b"w:shd")?;
                     }
                     b"w:tblBorders" => {
@@ -607,12 +628,15 @@ impl DocumentParser {
                 },
                 Ok(Event::Empty(ref e)) => match e.name().as_ref() {
                     b"w:tblCellSpacing" => {
-                        row.cell_spacing_exception = Self::table_cell_spacing_value(e.attributes());
+                        row.cell_spacing_exception = Self::table_cell_spacing_value(
+                            e.attributes(),
+                            &mut row.style,
+                            "-jade-cell-spacing-exception",
+                        );
                     }
                     b"w:shd" => {
-                        if let Some(color) = Self::read_color_attribute(e.attributes(), b"w:fill") {
-                            row.style.insert("background-color".to_string(), color);
-                        }
+                        let color = Self::parse_table_shading_color(e.attributes());
+                        row.style.insert("background-color".to_string(), color);
                     }
                     _ => {}
                 },
@@ -667,9 +691,8 @@ impl DocumentParser {
                         self.skip_element(reader, b"w:tcW")?;
                     }
                     b"w:shd" => {
-                        if let Some(color) = Self::read_color_attribute(e.attributes(), b"w:fill") {
-                            cell.style.insert("background-color".to_string(), color);
-                        }
+                        let color = Self::parse_table_shading_color(e.attributes());
+                        cell.style.insert("background-color".to_string(), color);
                         self.skip_element(reader, b"w:shd")?;
                     }
                     b"w:tcBorders" => {
@@ -748,9 +771,8 @@ impl DocumentParser {
                         }
                     }
                     b"w:shd" => {
-                        if let Some(color) = Self::read_color_attribute(e.attributes(), b"w:fill") {
-                            cell.style.insert("background-color".to_string(), color);
-                        }
+                        let color = Self::parse_table_shading_color(e.attributes());
+                        cell.style.insert("background-color".to_string(), color);
                     }
                     b"w:tcBorders" => {}
                     b"w:hideMark" => {
@@ -1020,12 +1042,18 @@ impl DocumentParser {
     /// Converts `w:tblCellSpacing` to points. The element shares the common
     /// table-width attribute shape, but ECMA-376 explicitly ignores `pct` and
     /// `auto` here. An omitted type is DXA; `nil` is an explicit zero.
-    fn table_cell_spacing_value(attributes: Attributes<'_>) -> Option<f32> {
+    fn table_cell_spacing_value(
+        attributes: Attributes<'_>,
+        style: &mut crate::document::StyleMap,
+        key: &str,
+    ) -> Option<f32> {
         let mut width: Option<f32> = None;
+        let mut raw_width = String::new();
         let mut width_type: Option<String> = None;
         for attr in attributes.flatten() {
             match attr.key.as_ref() {
                 b"w:w" => {
+                    raw_width = String::from_utf8_lossy(&attr.value).trim().to_string();
                     width = String::from_utf8_lossy(&attr.value)
                         .trim()
                         .parse::<f32>()
@@ -1042,6 +1070,13 @@ impl DocumentParser {
             }
         }
 
+        // Keep the XML distinction without changing the legacy numeric value
+        // consumed by Mac. Windows Word separates an explicit DXA zero (also
+        // a missing DXA width), unlike nil or an omitted spacing element.
+        style.insert(
+            key.to_string(),
+            format!("{}:{}", width_type.as_deref().unwrap_or("dxa"), raw_width),
+        );
         match width_type.as_deref() {
             Some("nil") => Some(0.0),
             Some("pct" | "auto") => None,
@@ -1164,6 +1199,7 @@ impl DocumentParser {
         // the CSS keyword `none` for parity with the rest of the pipeline.
         let mut raw_style: Option<String> = None;
         let mut size_eighths: Option<f32> = None;
+        let (mut theme_name, mut tint, mut shade) = (None, None, None);
         let mut color: Option<String> = None;
         for attr in attributes.flatten() {
             match attr.key.as_ref() {
@@ -1185,6 +1221,18 @@ impl DocumentParser {
                         } else {
                             value
                         });
+                    }
+                }
+                b"w:themeColor" | b"w:themeTint" | b"w:themeShade" => {
+                    let decoded = String::from_utf8_lossy(&attr.value);
+                    let value = decoded.trim();
+                    if !value.is_empty() {
+                        let target = match attr.key.as_ref() {
+                            b"w:themeColor" => &mut theme_name,
+                            b"w:themeTint" => &mut tint,
+                            _ => &mut shade,
+                        };
+                        *target = Some(value.to_owned());
                     }
                 }
                 _ => {}
@@ -1209,7 +1257,10 @@ impl DocumentParser {
                 .insert(width_key.to_string(), format!("{points:.4}pt"));
         }
 
-        if let Some(color) = color {
+        let theme_color = theme_name.as_deref().and_then(|name| {
+            crate::theme::text_theme_color(name, tint.as_deref(), shade.as_deref())
+        });
+        if let Some(color) = theme_color.or(color) {
             cell.style.insert(color_key.to_string(), color);
         }
     }
@@ -1403,23 +1454,13 @@ impl DocumentParser {
         None
     }
 
-    fn read_color_attribute(attributes: Attributes<'_>, key: &[u8]) -> Option<String> {
-        for attr in attributes.flatten() {
-            if attr.key.as_ref() == key {
-                let value = String::from_utf8_lossy(&attr.value).to_string();
-                if value.eq_ignore_ascii_case("auto") {
-                    return None;
-                }
-                if value.starts_with('#') {
-                    return Some(value);
-                }
-                if value.len() == 6 {
-                    return Some(format!("#{value}"));
-                }
-                return Some(value);
-            }
-        }
-        None
+    /// Preserve an explicit shading override even when its visible fill is
+    /// empty. An absent property inherits, whereas an explicit clear/auto
+    /// property must suppress the base style or table exception's fill.
+    pub(crate) fn parse_table_shading_color(attributes: Attributes<'_>) -> String {
+        Self::parse_shading(attributes)
+            .resolved_background_color()
+            .unwrap_or_else(|| "transparent".to_string())
     }
 
     fn read_text_direction(attributes: Attributes<'_>) -> Option<TextDirection> {

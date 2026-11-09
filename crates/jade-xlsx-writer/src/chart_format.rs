@@ -1017,7 +1017,12 @@ fn format_axis(axis: &mut Element, names: &Names, format: &AxisFormat) {
             Some(code) => axis.put(
                 names
                     .c("numFmt")
-                    .with("formatCode", code)
+                    .with(
+                        "formatCode",
+                        &jade_xlsx_reader::xstring::encode_xstring(code)
+                            .replace('\n', "_x000A_")
+                            .replace('\t', "_x0009_"),
+                    )
                     .with("sourceLinked", "0"),
                 AXIS,
             ),

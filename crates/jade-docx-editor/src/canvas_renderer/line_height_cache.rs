@@ -66,7 +66,7 @@ impl LineHeightPlanCache {
         label: Option<f64>,
     ) -> Option<LineHeights> {
         let compute = || {
-            if label.is_some() {
+            if label.is_some() || style.numbering_border_box.is_some() {
                 WrappedLine::line_heights_px_with_numbering_ascent(
                     lines, style, fallback, mark, label,
                 )
@@ -77,6 +77,7 @@ impl LineHeightPlanCache {
         // Preserve the Mac path, including mixed-platform diagnostic contexts.
         if style.word_platform != WordLayoutPlatform::Windows
             || word_layout_platform() != WordLayoutPlatform::Windows
+            || style.numbering_border_box.is_some()
             || lines.len() > MAX_LINES
         {
             return compute().map(LineHeights::Fresh);

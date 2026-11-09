@@ -141,6 +141,11 @@ pub trait Painter {
     /// Sets the baseline the y coordinate of text operations refers to.
     fn set_text_baseline(&self, value: &str);
     fn fill_text(&self, text: &str, x: f64, y: f64) -> Result<(), Self::Error>;
+    /// Paints an upright vertical character using font vertical alternates when available.
+    /// Coordinates retain the current text baseline; column placement belongs to layout.
+    fn fill_upright_text(&self, text: &str, x: f64, y: f64) -> Result<(), Self::Error> {
+        self.fill_text(text, x, y)
+    }
     fn stroke_text(&self, text: &str, x: f64, y: f64) -> Result<(), Self::Error>;
     /// Advance width of `text` under the current font.
     ///
@@ -154,6 +159,13 @@ pub trait Painter {
     /// these only for line heights and ink overhang, while advance width is
     /// measured per grapheme while wrapping.
     fn measure_text_metrics(&self, text: &str) -> Result<TextMetrics, Self::Error>;
+
+    /// Font-provided vertical advance for one upright grapheme, in pixels.
+    /// Returns `None` when vertical metrics or glyph coverage are unavailable.
+    /// Backends may return `None` for clusters that require multiple glyphs.
+    fn measure_upright_vertical_advance(&self, _text: &str) -> Result<Option<f64>, Self::Error> {
+        Ok(None)
+    }
 
     // ---- rectangles --------------------------------------------------------
 

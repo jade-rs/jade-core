@@ -1,0 +1,120 @@
+[
+  {
+    "fixture": "word-windows-edge-arial-script-sweep",
+    "coordinate_source": "Word Page.EnhMetaFileBits / MS-EMF",
+    "word_pages": 5,
+    "native_pages": 5,
+    "word_glyphs": 1911,
+    "native_glyphs": 1911,
+    "matched": 1911,
+    "within_0_375pt": 1911,
+    "x_p50": 0.05660156250000625,
+    "x_p95": 0.15220092773436988,
+    "y_p50": 0.03657226562499716,
+    "y_p95": 0.10778320312499545,
+    "first_errors": [],
+    "pdf_sha256": "e050fbd25878f589ef35cfcd35e73cf6a0b4417bfb9d4e889466309d15cb50e3",
+    "metafile_sha256": [
+      "b1dda8a37b412d3edc10a77c28728576c6b8832ddb952f6aeaee841f6d045869",
+      "c8c5819d386222ebb8bdc4f4493749fc4d290f20b2dbcc3c76fc0f66064e50d4",
+      "c5ed880063ac1fef221b16b869184b209902d1aea92354289b3fefc199bd3b97",
+      "33535fb68b953b94aa791295c29867269bddbef431780543ab1a0393989e46d6",
+      "e1175048a45e460541dd74c312e28098ad04c964991c22e8fec24f079dc09dfe"
+    ]
+  },
+  {
+    "fixture": "word-windows-edge-indents",
+    "coordinate_source": "Word Page.EnhMetaFileBits / MS-EMF",
+    "word_pages": 1,
+    "native_pages": 1,
+    "word_glyphs": 2016,
+    "native_glyphs": 2016,
+    "matched": 2016,
+    "within_0_375pt": 2016,
+    "x_p50": 0.07195312499999318,
+    "x_p95": 0.17156249999999318,
+    "y_p50": 0.04406249999999545,
+    "y_p95": 0.06398437500001819,
+    "first_errors": [],
+    "pdf_sha256": "1a8741a65b16fe1dc65ae3aca6a0d4a073945d9e4cb07e812b8592a0c3d792be",
+    "metafile_sha256": [
+      "42728661b945c818d8dc793e288ef91e5866f21273eca302c46c31b4b07a0fa8"
+    ]
+  },
+  {
+    "fixture": "word-windows-edge-run-position",
+    "coordinate_source": "Word Page.EnhMetaFileBits / MS-EMF",
+    "word_pages": 1,
+    "native_pages": 1,
+    "word_glyphs": 156,
+    "native_glyphs": 156,
+    "matched": 156,
+    "within_0_375pt": 156,
+    "x_p50": 0.0705468749999909,
+    "x_p95": 0.14921997070312898,
+    "y_p50": 0.028437499999995453,
+    "y_p95": 0.09792968749999886,
+    "first_errors": [],
+    "pdf_sha256": "628dd84cbf83f50ceb5b4be84e3ccec0fb11311cf8d09dd3bd5e99ecca49b527",
+    "metafile_sha256": [
+      "1e9996601a16417f25b2b2c732c0b8e9c655432a846341dd4ebf182a6ed804ad"
+    ]
+  },
+  {
+    "fixture": "word-windows-edge-run-width",
+    "coordinate_source": "Word Page.EnhMetaFileBits / MS-EMF",
+    "word_pages": 1,
+    "native_pages": 1,
+    "word_glyphs": 540,
+    "native_glyphs": 540,
+    "matched": 540,
+    "within_0_375pt": 540,
+    "x_p50": 0.05318847656255343,
+    "x_p95": 0.1419140624999784,
+    "y_p50": 0.04054687500001819,
+    "y_p95": 0.09207031249999886,
+    "first_errors": [],
+    "pdf_sha256": "7de19a8740ebc85d31ea8b03175a85cffbd0d29b7670e4f5d893020eaf7240f8",
+    "metafile_sha256": [
+      "38da9d347ed9d8b313db346a9bf4b91cf23551ac7516bf163668213786f2a3f9"
+    ]
+  },
+  {
+    "fixture": "word-windows-edge-spacing",
+    "coordinate_source": "Word Page.EnhMetaFileBits / MS-EMF",
+    "word_pages": 1,
+    "native_pages": 1,
+    "word_glyphs": 384,
+    "native_glyphs": 384,
+    "matched": 384,
+    "within_0_375pt": 384,
+    "x_p50": 0.07992187499999659,
+    "x_p95": 0.12843749999998977,
+    "y_p50": 0.03820312499999545,
+    "y_p95": 0.04992187499999545,
+    "first_errors": [],
+    "pdf_sha256": "23ed7d12776693ee0570c2736a8ff05437092ebdf4de94ff74f30b2f1072dae3",
+    "metafile_sha256": [
+      "dce9a0f7233751b5a2a264ef0c8c6c3ba53ed8ae4d950db6220cf3e3186c6a9c"
+    ]
+  },
+  {
+    "fixture": "word-windows-edge-tabs",
+    "coordinate_source": "Word Page.EnhMetaFileBits / MS-EMF",
+    "word_pages": 1,
+    "native_pages": 1,
+    "word_glyphs": 156,
+    "native_glyphs": 156,
+    "matched": 156,
+    "within_0_375pt": 156,
+    "x_p50": 0.04617187499999886,
+    "x_p95": 0.10828124999999034,
+    "y_p50": 0.030000000000001137,
+    "y_p95": 0.037031249999984084,
+    "first_errors": [],
+    "pdf_sha256": "f5b80edcd565a4b35d59ea7b097cfb97892a0a405d28edb7a0a22f0f084dadf0",
+    "metafile_sha256": [
+      "7732d88e0c6761e44af1593cdb32e92512bdd5f7525dcbeb5e51c812fadfc9e5"
+    ]
+  }
+]

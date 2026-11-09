@@ -369,9 +369,21 @@ fn looks(workbook: &Workbook) -> Option<ironcalc_base::host::Looks> {
             .iter()
             .flat_map(|row| &row.cells)
             .filter_map(|cell| cell.formula.as_deref())
-            .any(|formula| formula.to_ascii_uppercase().contains("CELL("))
+            .any(|formula| {
+                let formula = formula.to_ascii_uppercase();
+                formula.contains("CELL(") || formula.contains("FORMULATEXT")
+            })
     });
-    if !asks {
+    let protected_formulas = workbook
+        .sheets
+        .iter()
+        .any(|sheet| sheet.protection.is_some())
+        && workbook
+            .styles
+            .cell_formats
+            .iter()
+            .any(|format| format.formula_hidden);
+    if !asks && !protected_formulas {
         return None;
     }
     let styles = &workbook.styles;
@@ -394,11 +406,13 @@ fn looks(workbook: &Workbook) -> Option<ironcalc_base::host::Looks> {
                 _ => Engine::Distributed,
             },
             locked: !format.unlocked,
+            formula_hidden: format.formula_hidden,
         })
         .collect();
     /// First and last column, style, width, and whether the width is custom.
     type ColumnSpan = (i32, i32, Option<u32>, Option<f32>, bool);
     struct SheetLooks {
+        protected: bool,
         cells: HashMap<(i32, i32), u32>,
         rows: HashMap<i32, u32>,
         columns: Vec<ColumnSpan>,
@@ -408,6 +422,7 @@ fn looks(workbook: &Workbook) -> Option<ironcalc_base::host::Looks> {
         .sheets
         .iter()
         .map(|sheet| SheetLooks {
+            protected: sheet.protection.is_some(),
             cells: sheet
                 .rows
                 .iter()
@@ -463,7 +478,10 @@ fn looks(workbook: &Workbook) -> Option<ironcalc_base::host::Looks> {
                         .and_then(|span| span.2)
                 })
                 .unwrap_or(0);
-            formats.get(index as usize).cloned()
+            formats.get(index as usize).cloned().map(|mut format| {
+                format.formula_hidden &= looks.protected;
+                format
+            })
         }),
         column: Box::new(move |sheet, column| {
             let looks = widths.get(sheet as usize)?;
@@ -597,7 +615,14 @@ struct ParsedFormulas {
     /// What the parses depend on besides the text and the cell: the sheets,
     /// tables and names. Another set of them empties the cache.
     context: u64,
-    cells: HashMap<(u32, i32, i32), (String, String, bool)>,
+    cells: HashMap<(u32, i32, i32), ParsedFormula>,
+}
+
+struct ParsedFormula {
+    text: String,
+    shared: String,
+    dynamic: bool,
+    intersect: bool,
 }
 
 thread_local! {
@@ -638,23 +663,158 @@ fn set_formula(
     cache: &mut ParsedFormulas,
     (sheet, row, column): (u32, i32, i32),
     formula: String,
+    intersect: bool,
 ) -> std::result::Result<(), String> {
-    if let Some((text, shared, dynamic)) = cache.cells.get(&(sheet, row, column)) {
-        if *text == formula
-            && model.update_cell_with_shared_formula(sheet, row, column, shared, *dynamic)?
+    if let Some(parsed) = cache.cells.get(&(sheet, row, column)) {
+        if parsed.text == formula
+            && parsed.intersect == intersect
+            && model.update_cell_with_shared_formula(
+                sheet,
+                row,
+                column,
+                &parsed.shared,
+                parsed.dynamic,
+            )?
         {
             return Ok(());
         }
     }
-    let (shared, dynamic) =
-        model.update_cell_with_formula_shared(sheet, row, column, formula.clone())?;
+    let (shared, dynamic) = if intersect {
+        model.update_cell_with_intersected_formula_shared(sheet, row, column, formula.clone())?
+    } else {
+        model.update_cell_with_formula_shared(sheet, row, column, formula.clone())?
+    };
     if cache.cells.len() >= PARSED_FORMULA_LIMIT {
         cache.cells.clear();
     }
-    cache
-        .cells
-        .insert((sheet, row, column), (formula, shared, dynamic));
+    cache.cells.insert(
+        (sheet, row, column),
+        ParsedFormula {
+            text: formula,
+            shared,
+            dynamic,
+            intersect,
+        },
+    );
     Ok(())
+}
+
+/// Display identity is separate from the executable formula. Dynamic and
+/// unresolved array anchors must not inherit legacy CSE braces.
+fn source_formula_text(workbook: &Workbook, sheet: usize, at: CellRef, formula: &str) -> String {
+    let display = format!(
+        "={}",
+        formula_text::to_display_formula(formula.strip_prefix('=').unwrap_or(formula))
+    );
+    if workbook.sheets.get(sheet).is_some_and(|sheet| {
+        sheet.array_formulas.iter().any(|array| {
+            array.anchor == at && array.kind == jade_xlsx_reader::ArrayFormulaKind::Legacy
+        })
+    }) {
+        format!("{{{display}}}")
+    } else {
+        display
+    }
+}
+
+fn fixed_array_size(
+    array: &jade_xlsx_reader::ArrayFormula,
+) -> std::result::Result<(i32, i32), String> {
+    let width = array
+        .range
+        .end
+        .column
+        .checked_sub(array.anchor.column)
+        .and_then(|v| v.checked_add(1));
+    let height = array
+        .range
+        .end
+        .row
+        .checked_sub(array.anchor.row)
+        .and_then(|v| v.checked_add(1));
+    let (Some(width), Some(height)) = (width, height) else {
+        return Err("Invalid CSE range".into());
+    };
+    if array.range.start != array.anchor || u64::from(width) * u64::from(height) > (1 << 20) {
+        return Err("CSE range exceeds the eager calculation budget".into());
+    }
+    Ok((width as i32, height as i32))
+}
+
+/// Newly entered AE formulas whose meaning changes under ordinary persisted
+/// formula evaluation. Scalar-result aggregates can need this too; an actual
+/// multi-cell spill is not the only reason to save an array declaration.
+pub fn formulas_requiring_array_evaluation(
+    workbook: &Workbook,
+    formulas: &[(usize, CellRef, String)],
+) -> Result<Vec<(usize, CellRef)>> {
+    if formulas.is_empty() {
+        return Ok(Vec::new());
+    }
+    let mut model = project_structure(workbook, "UTC")?;
+    let mut arrays = Vec::new();
+    for (sheet, at, formula) in formulas {
+        if workbook.sheets.get(*sheet).is_none()
+            || at.row >= jade_xlsx_reader::model::MAX_ROW_COUNT
+            || at.column >= jade_xlsx_reader::model::MAX_COLUMN_COUNT
+        {
+            return Err(CalcError::Engine("Invalid formula entry position".into()));
+        }
+        let text = format!(
+            "={}",
+            jade_xlsx_reader::collapse_ref_errors(&table_formula(
+                workbook,
+                *sheet,
+                Some(*at),
+                formula.strip_prefix('=').unwrap_or(formula)
+            ))
+        );
+        if model
+            .formula_requires_array_evaluation(
+                *sheet as u32,
+                at.row as i32 + 1,
+                at.column as i32 + 1,
+                &text,
+            )
+            .map_err(CalcError::Engine)?
+        {
+            arrays.push((*sheet, *at));
+        }
+    }
+    Ok(arrays)
+}
+
+/// CSE formulas evaluate in their declared area rather than being re-inferred
+/// as dynamic arrays. Keep unbounded declarations out of eager allocation.
+fn set_projected_formula(
+    model: &mut Model<'_>,
+    workbook: &Workbook,
+    sheet: usize,
+    at: CellRef,
+    formula: String,
+) -> std::result::Result<(), String> {
+    let position = (sheet as u32, at.row as i32 + 1, at.column as i32 + 1);
+    let fixed = workbook.sheets[sheet].array_formulas.iter().find(|array| {
+        array.anchor == at && array.kind == jade_xlsx_reader::ArrayFormulaKind::Legacy
+    });
+    if let Some(array) = fixed {
+        let (width, height) = fixed_array_size(array)?;
+        model.set_user_array_formula(position.0, position.1, position.2, width, height, &formula)
+    } else {
+        let intersect = !workbook.sheets[sheet]
+            .array_formulas
+            .iter()
+            .any(|array| array.anchor == at);
+        PARSED.with(|parsed| {
+            set_formula(
+                model,
+                &mut parsed.borrow_mut(),
+                position,
+                formula,
+                intersect,
+            )
+        })
+    }
 }
 
 fn project_with_epoch<'a>(
@@ -674,7 +834,7 @@ fn project_with_epoch<'a>(
         }
     });
     let mut projected = Vec::new();
-    let mut unparsed = Vec::new();
+    let mut unparsed: Vec<SkippedCell> = Vec::new();
     for (index, sheet) in workbook.sheets.iter().enumerate() {
         let engine_sheet = index as u32;
         for row in &sheet.rows {
@@ -685,10 +845,15 @@ fn project_with_epoch<'a>(
                 // engine spills it again, and a literal there would block
                 // the spill (`#SPILL!`).
                 if cell.formula.is_none()
-                    && sheet
-                        .array_formulas
-                        .iter()
-                        .any(|array| array.outputs_to(cell.reference))
+                    && sheet.array_formulas.iter().any(|array| {
+                        array.outputs_to(cell.reference)
+                            && !skipped.contains_key(&(index, array.anchor))
+                            && !unparsed
+                                .iter()
+                                .any(|cell| cell.sheet == index && cell.reference == array.anchor)
+                            && (array.kind != jade_xlsx_reader::ArrayFormulaKind::Legacy
+                                || fixed_array_size(array).is_ok())
+                    })
                 {
                     continue;
                 }
@@ -705,15 +870,20 @@ fn project_with_epoch<'a>(
                             formula
                         ))
                     );
-                    let set = PARSED.with(|parsed| {
-                        set_formula(
-                            &mut model,
-                            &mut parsed.borrow_mut(),
-                            (engine_sheet, engine_row, engine_column),
-                            text,
-                        )
-                    });
+                    let set =
+                        set_projected_formula(&mut model, workbook, index, cell.reference, text);
                     if set.is_ok() {
+                        model.set_source_formula(
+                            engine_sheet,
+                            engine_row,
+                            engine_column,
+                            Some(source_formula_text(
+                                workbook,
+                                index,
+                                cell.reference,
+                                formula,
+                            )),
+                        );
                         if workbook.iteration.enabled {
                             // Iterative calculation goes on from the value
                             // the formula was saved with.
@@ -731,12 +901,41 @@ fn project_with_epoch<'a>(
                     unparsed.push(SkippedCell {
                         sheet: index,
                         reference: cell.reference,
-                        reason: "the engine could not parse the formula".to_string(),
+                        reason: set
+                            .err()
+                            .unwrap_or_else(|| "the engine could not parse the formula".into()),
                     });
                 }
                 let value = held.unwrap_or(&cell.value);
                 set_literal(&mut model, engine_sheet, engine_row, engine_column, value);
+                if let Some(formula) = &cell.formula {
+                    model.set_source_formula(
+                        engine_sheet,
+                        engine_row,
+                        engine_column,
+                        Some(source_formula_text(
+                            workbook,
+                            index,
+                            cell.reference,
+                            formula,
+                        )),
+                    );
+                }
             }
+        }
+    }
+    for (index, sheet) in workbook.sheets.iter().enumerate() {
+        for array in sheet.array_formulas.iter().filter(|array| {
+            array.kind == jade_xlsx_reader::ArrayFormulaKind::Legacy
+                && array.range.start == array.anchor
+        }) {
+            model.register_source_array_formula(
+                index as u32,
+                array.anchor.row as i32 + 1,
+                array.anchor.column as i32 + 1,
+                array.range.end.row as i32 + 1,
+                array.range.end.column as i32 + 1,
+            );
         }
     }
     if trace {
@@ -762,6 +961,11 @@ fn project_structure<'a>(workbook: &Workbook, time_zone: &'a str) -> Result<Mode
         } else {
             model.add_sheet(&sheet.name).map_err(CalcError::Engine)?;
         }
+        model.workbook.worksheets[index].merge_cells = sheet
+            .merges
+            .iter()
+            .filter_map(|range| engine_range(*range))
+            .collect();
     }
 
     model.set_pivot_regions(pivot::regions(workbook));
@@ -789,11 +993,7 @@ fn project_structure<'a>(workbook: &Workbook, time_zone: &'a str) -> Result<Mode
     Ok(model)
 }
 
-/// A table as the engine holds it: its range in A1 form and its columns.
-fn engine_table(
-    sheet: &str,
-    table: &jade_xlsx_reader::Table,
-) -> Option<ironcalc_base::types::Table> {
+fn engine_range(range: jade_xlsx_reader::CellRange) -> Option<String> {
     use ironcalc_base::expressions::utils::number_to_column;
     let corner = |reference: CellRef| {
         Some(format!(
@@ -802,15 +1002,19 @@ fn engine_table(
             reference.row + 1
         ))
     };
+    Some(format!("{}:{}", corner(range.start)?, corner(range.end)?))
+}
+
+/// A table as the engine holds it: its range in A1 form and its columns.
+fn engine_table(
+    sheet: &str,
+    table: &jade_xlsx_reader::Table,
+) -> Option<ironcalc_base::types::Table> {
     Some(ironcalc_base::types::Table {
         name: table.name.clone(),
         display_name: table.display_name.clone(),
         sheet_name: sheet.to_string(),
-        reference: format!(
-            "{}:{}",
-            corner(table.reference.start)?,
-            corner(table.reference.end)?
-        ),
+        reference: engine_range(table.reference)?,
         totals_row_count: table.totals_row_count,
         header_row_count: table.header_row_count,
         header_row_dxf_id: None,
@@ -894,17 +1098,34 @@ fn seed_formula_value(
 }
 
 fn set_literal(model: &mut Model<'_>, sheet: u32, row: i32, column: i32, value: &CellValue) {
+    model.set_source_formula(sheet, row, column, None);
     // Projection failures here are deliberate no-ops: an unset cell reads as
     // empty, the conservative meaning for a value the engine cannot hold.
     let _ = match value {
         CellValue::Number(number) => model.update_cell_with_number(sheet, row, column, *number),
         CellValue::Text(text) => model.update_cell_with_text(sheet, row, column, text),
         CellValue::Bool(flag) => model.update_cell_with_bool(sheet, row, column, *flag),
-        // The engine has no setter for an error; a formula that is only the
-        // error literal holds it, so cells reading it see the error, as in
-        // Excel, not an empty cell.
+        // Keep literal errors distinct from formulas for ISFORMULA and
+        // FORMULATEXT. Unknown errors retain the conservative fallback.
         CellValue::Error(error) => {
-            model.update_cell_with_formula(sheet, row, column, format!("={error}"))
+            if matches!(
+                error.as_str(),
+                "#NULL!"
+                    | "#DIV/0!"
+                    | "#VALUE!"
+                    | "#REF!"
+                    | "#NAME?"
+                    | "#NUM!"
+                    | "#N/A"
+                    | "#SPILL!"
+                    | "#CALC!"
+                    | "#ERROR!"
+                    | "#CIRC!"
+            ) {
+                model.set_user_input(sheet, row, column, error.clone())
+            } else {
+                model.update_cell_with_formula(sheet, row, column, format!("={error}"))
+            }
         }
         CellValue::Empty => Ok(()),
     };
@@ -926,14 +1147,12 @@ fn read_back(
     let mut spills = Vec::new();
     for (sheet_index, reference) in projected {
         spills.extend(spill_of(model, *sheet_index, *reference)?);
-        let value = model
-            .get_cell_value_by_index(
-                *sheet_index as u32,
-                reference.row as i32 + 1,
-                reference.column as i32 + 1,
-            )
-            .map_err(CalcError::Engine)?;
-        let value = to_cell_value(value);
+        let value = read_cell_value(
+            model,
+            *sheet_index as u32,
+            reference.row as i32 + 1,
+            reference.column as i32 + 1,
+        )?;
         // An artifact the cell's own formula produced overwrites nothing
         // Excel computed only when the cache holds the same answer and the
         // file is not waiting on a full calculation that would replace it.
@@ -988,13 +1207,11 @@ fn spill_of(model: &Model<'_>, sheet: usize, anchor: CellRef) -> Result<Option<S
             if (down, across) == (0, 0) {
                 continue;
             }
-            let value = model
-                .get_cell_value_by_index(sheet as u32, row + down, column + across)
-                .map_err(CalcError::Engine)?;
+            let value = read_cell_value(model, sheet as u32, row + down, column + across)?;
             values.push(ComputedCell {
                 sheet,
                 reference: CellRef::new(anchor.column + across as u32, anchor.row + down as u32),
-                value: to_cell_value(value),
+                value,
             });
         }
     }
@@ -1100,13 +1317,26 @@ fn is_engine_artifact(value: &CellValue) -> bool {
     matches!(value, CellValue::Error(text) if text == "#NAME?" || text == "#ERROR!")
 }
 
-fn to_cell_value(value: EngineValue) -> CellValue {
+fn read_cell_value(model: &Model<'_>, sheet: u32, row: i32, column: i32) -> Result<CellValue> {
+    // The engine's value API returns both strings and errors as String.
+    // Inspect the stored type so literal error-looking text stays text.
+    let value = model
+        .get_cell_value_by_index(sheet, row, column)
+        .map_err(CalcError::Engine)?;
+    let error = model
+        .get_cell_type(sheet, row, column)
+        .map_err(CalcError::Engine)?
+        == ironcalc_base::types::CellType::ErrorValue;
+    Ok(to_cell_value(value, error))
+}
+
+fn to_cell_value(value: EngineValue, error: bool) -> CellValue {
     match value {
         EngineValue::None => CellValue::Empty,
         EngineValue::Number(number) => CellValue::Number(number),
         EngineValue::Boolean(flag) => CellValue::Bool(flag),
         EngineValue::String(text) => {
-            if is_excel_error(&text) {
+            if error && is_excel_error(&text) {
                 CellValue::Error(text)
             } else {
                 CellValue::Text(text)

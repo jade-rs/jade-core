@@ -1,22 +1,22 @@
 //! Word editing-restriction command.
 //!
 //! Authors/removes `w:documentProtection` in `word/settings.xml`. The command
-//! snapshots the exact previous settings part so undo restores imported
-//! extension markup and namespace choices byte-for-byte.
+//! snapshots package state so undo restores settings, relationships, content
+//! types and the revision session, including when no settings part existed.
 
 use super::{Command, CommandContext, CommandError, CommandResult};
-use crate::word_document::DocumentProtectionInfo;
+use crate::word_document::{DocumentProtectionInfo, PackageStateSnapshot};
 
 pub struct SetDocumentProtectionCommand {
     protection: Option<DocumentProtectionInfo>,
-    previous_settings_xml: Option<String>,
+    previous_package: Option<PackageStateSnapshot>,
 }
 
 impl SetDocumentProtectionCommand {
     pub fn new(protection: Option<DocumentProtectionInfo>) -> Self {
         Self {
             protection,
-            previous_settings_xml: None,
+            previous_package: None,
         }
     }
 }
@@ -27,20 +27,20 @@ impl Command for SetDocumentProtectionCommand {
     }
 
     fn apply(&mut self, ctx: &mut CommandContext<'_>) -> CommandResult<()> {
-        let previous = ctx
-            .document
+        let previous = ctx.document.package_state();
+        ctx.document
             .set_document_protection(self.protection.clone())
             .map_err(CommandError::Custom)?;
-        self.previous_settings_xml = Some(previous);
+        self.previous_package = Some(previous);
         Ok(())
     }
 
     fn undo(&mut self, ctx: &mut CommandContext<'_>) -> CommandResult<()> {
         let previous = self
-            .previous_settings_xml
+            .previous_package
             .take()
             .ok_or_else(|| CommandError::Custom("missing protection settings backup".into()))?;
-        ctx.document.restore_settings_xml(previous);
+        ctx.document.restore_package_state(previous);
         Ok(())
     }
 }
@@ -122,6 +122,8 @@ mod tests {
                 salt: Some(BASE64.encode(salt_bytes)),
                 spin_count: Some(spin_count),
                 algorithm_sid: Some(14),
+                algorithm_name: None,
+                formatting: None,
             };
             let mut selection = None;
             let mut executor = CommandExecutor::new();
@@ -175,7 +177,7 @@ mod tests {
         for (hash, salt) in [
             ("not base64".to_string(), "also not base64".to_string()),
             (BASE64.encode([0u8; 63]), BASE64.encode([0u8; 16])),
-            (BASE64.encode([0u8; 64]), BASE64.encode([0u8; 15])),
+            (BASE64.encode([0u8; 64]), BASE64.encode(vec![0u8; 65_537])),
         ] {
             let result = word_doc.set_document_protection(Some(DocumentProtectionInfo {
                 edit: "readOnly".to_string(),
@@ -184,6 +186,8 @@ mod tests {
                 salt: Some(salt),
                 spin_count: Some(100_000),
                 algorithm_sid: Some(14),
+                algorithm_name: None,
+                formatting: None,
             }));
             assert!(result.is_err());
             assert_eq!(settings_xml(&word_doc), before);

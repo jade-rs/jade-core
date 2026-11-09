@@ -535,6 +535,7 @@ mod tests {
                 size_eighths: Some(24),
                 space: Some(0),
                 color: Some("#ff0000".into()),
+                theme_color: None,
             },
             None,
         )

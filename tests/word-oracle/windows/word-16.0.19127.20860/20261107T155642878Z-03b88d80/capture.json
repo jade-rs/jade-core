@@ -1,0 +1,220 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261107T155642878Z-03b88d80",
+  "captured_at_utc": "2026-11-07T15:56:42.8983836Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20860",
+    "file_version": "16.0.19127.20860",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "9bafe09d0c458006744b9edce767a328ba2da1bb5d9a460e5830c47bf6d7f1d1"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-edge-table-negative-spacing-autofit-bidi-alignment-compat12",
+      "source": "..\\spacing-compatibility-inputs\\public\\fixtures\\word-windows-edge-table-negative-spacing-autofit-bidi-alignment-compat12.docx",
+      "sha256": "bab87cfe956ea661cf82ee1cb348eacf134bfcb8fb929eb1fba8744628ed511b",
+      "pdf": "word-windows-edge-table-negative-spacing-autofit-bidi-alignment-compat12.pdf",
+      "pdf_sha256": "6fc7bc677f4410cc94171ca8296a9aa0b963e520124029a7aa62784aecd4c5ef",
+      "pages": 2,
+      "compatibility_mode": 12,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-negative-spacing-autofit-bidi-alignment-compat12.page-001.emf",
+          "sha256": "312940b7ca92597fb56ebf807f4e1153410a124ac15f5a4a1c8519b6fc77cc93",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 2,
+          "file": "word-windows-edge-table-negative-spacing-autofit-bidi-alignment-compat12.page-002.emf",
+          "sha256": "b5ab9a2ebd787733537a2d592885db5f869b53dcd72bffd8cb8f2c9ca0157400",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-negative-spacing-autofit-bidi-alignment-compat14",
+      "source": "..\\spacing-compatibility-inputs\\public\\fixtures\\word-windows-edge-table-negative-spacing-autofit-bidi-alignment-compat14.docx",
+      "sha256": "3626daa52ff791015d578a92d40288efe6bebfdf71d4f383163778298d69a42e",
+      "pdf": "word-windows-edge-table-negative-spacing-autofit-bidi-alignment-compat14.pdf",
+      "pdf_sha256": "4c060da3d89c6006ce70278cead46dc00e4563da428c97fac15fff6738cff6a1",
+      "pages": 2,
+      "compatibility_mode": 14,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-negative-spacing-autofit-bidi-alignment-compat14.page-001.emf",
+          "sha256": "c083cb706109a6577e983b13f768da63e470240b2b51e9aef950e7a2d301f263",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 2,
+          "file": "word-windows-edge-table-negative-spacing-autofit-bidi-alignment-compat14.page-002.emf",
+          "sha256": "b5ab9a2ebd787733537a2d592885db5f869b53dcd72bffd8cb8f2c9ca0157400",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-negative-spacing-autofit-bidi-alignment-compat15",
+      "source": "..\\spacing-compatibility-inputs\\public\\fixtures\\word-windows-edge-table-negative-spacing-autofit-bidi-alignment-compat15.docx",
+      "sha256": "89b3b0d80838539be0ae48851f150300c78ed0afd3a4d31b6f49f8187c16d8bd",
+      "pdf": "word-windows-edge-table-negative-spacing-autofit-bidi-alignment-compat15.pdf",
+      "pdf_sha256": "eec4aca6e75eaf4b588ab197240727050b6f9bcc8e794ef0f8630be070f4216c",
+      "pages": 2,
+      "compatibility_mode": 15,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-negative-spacing-autofit-bidi-alignment-compat15.page-001.emf",
+          "sha256": "4ff8d0a09ab8b36007c131216a1cac202e8f01be4a22aa3899d44866bd9d2527",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 2,
+          "file": "word-windows-edge-table-negative-spacing-autofit-bidi-alignment-compat15.page-002.emf",
+          "sha256": "8995828ecd6d2f66837bfc202a852afdea26f35025161f461d515f3690526243",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-negative-spacing-autofit-bidi-unequal-3-compat12",
+      "source": "..\\spacing-compatibility-inputs\\public\\fixtures\\word-windows-edge-table-negative-spacing-autofit-bidi-unequal-3-compat12.docx",
+      "sha256": "0c60680ee6d8b747f698489c31519afe68f8bec807212050618eab59527c2efd",
+      "pdf": "word-windows-edge-table-negative-spacing-autofit-bidi-unequal-3-compat12.pdf",
+      "pdf_sha256": "6fad44ca3f1a8cb4b1f5e5c13e5dd4c8d8bd1f600d6e9a4c52f614194a867fc5",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-negative-spacing-autofit-bidi-unequal-3-compat12.page-001.emf",
+          "sha256": "deaf5a937c2f4291518828eb4ef38cb15295097a19dcea1ded5873dbc20c61c7",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-negative-spacing-autofit-bidi-unequal-3-compat14",
+      "source": "..\\spacing-compatibility-inputs\\public\\fixtures\\word-windows-edge-table-negative-spacing-autofit-bidi-unequal-3-compat14.docx",
+      "sha256": "79f17cce141a93ea03f02164c8bcf17e107f5ae7e70f340f1badff75e9c7ba52",
+      "pdf": "word-windows-edge-table-negative-spacing-autofit-bidi-unequal-3-compat14.pdf",
+      "pdf_sha256": "345c9db4ac33c054f1d77af158400e849ea89e54a5f6ddcc68289914fc018d7c",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-negative-spacing-autofit-bidi-unequal-3-compat14.page-001.emf",
+          "sha256": "6223e1d9359720a9288a835204e228644312635d0400c659aff349c76b1bb707",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-negative-spacing-autofit-bidi-unequal-3-compat15",
+      "source": "..\\spacing-compatibility-inputs\\public\\fixtures\\word-windows-edge-table-negative-spacing-autofit-bidi-unequal-3-compat15.docx",
+      "sha256": "189d07e3d0530af150b261245ed8a29ebbd4b88156307dc18fcf67de4cfd6bec",
+      "pdf": "word-windows-edge-table-negative-spacing-autofit-bidi-unequal-3-compat15.pdf",
+      "pdf_sha256": "5db002188c4984f457adc3e0476d9cafea6f8c1732613605db14a90fd4650de5",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-negative-spacing-autofit-bidi-unequal-3-compat15.page-001.emf",
+          "sha256": "7b14737bc82b2dcf8b5df1486fd8e004b9fd49898da5a5c842057df527b9278e",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-negative-spacing-autofit-unequal-3-compat12",
+      "source": "..\\spacing-compatibility-inputs\\public\\fixtures\\word-windows-edge-table-negative-spacing-autofit-unequal-3-compat12.docx",
+      "sha256": "75325afdd11ed4eb6b3f6c360ab93f907a0bd755e0a0a7621a5ae31bd5342f4b",
+      "pdf": "word-windows-edge-table-negative-spacing-autofit-unequal-3-compat12.pdf",
+      "pdf_sha256": "11a800073b0b40ac6fe2e389c624b6d768ccd7a79ffadfd5c708357121b59995",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-negative-spacing-autofit-unequal-3-compat12.page-001.emf",
+          "sha256": "a11d1ff09d437b5d87e1cdc742ff9344801920f3bd14bcf0a0e46699fc3f99ea",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-negative-spacing-autofit-unequal-3-compat15",
+      "source": "..\\spacing-compatibility-inputs\\public\\fixtures\\word-windows-edge-table-negative-spacing-autofit-unequal-3-compat15.docx",
+      "sha256": "5ee2d3707294d7a4651093997ed9c516063903792eb9485ccde73e152a300057",
+      "pdf": "word-windows-edge-table-negative-spacing-autofit-unequal-3-compat15.pdf",
+      "pdf_sha256": "48aa838194a71d74971e4c19fadaf79ac528707aacad9f27308ea809bca94925",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-negative-spacing-autofit-unequal-3-compat15.page-001.emf",
+          "sha256": "b31aa5e8b4cd2f14c2319d0eaa7afc656f07c326fa7da7b688c0dbd4dcb6a3d0",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-negative-spacing-bidi-unequal-3-compat12",
+      "source": "..\\spacing-compatibility-inputs\\public\\fixtures\\word-windows-edge-table-negative-spacing-bidi-unequal-3-compat12.docx",
+      "sha256": "5d4fb6016ce76fb3816f9d09b35e7cc21108bba38f7841ab2fbdbf8e6f3ec6c5",
+      "pdf": "word-windows-edge-table-negative-spacing-bidi-unequal-3-compat12.pdf",
+      "pdf_sha256": "5fb6d33be85f0b8776debb977328fc910c8e735e43e59902c9eeebed9b35dbf8",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-negative-spacing-bidi-unequal-3-compat12.page-001.emf",
+          "sha256": "60c357cba20ffd2d1367cd5e42fb70a9ade2fc79b44eceee95a0dc396230a3f6",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-negative-spacing-bidi-unequal-3-compat15",
+      "source": "..\\spacing-compatibility-inputs\\public\\fixtures\\word-windows-edge-table-negative-spacing-bidi-unequal-3-compat15.docx",
+      "sha256": "cdc541e6a516064df5f31bc92b2c3cc8799bc55dd4191c559fbd608d1a6fe7ae",
+      "pdf": "word-windows-edge-table-negative-spacing-bidi-unequal-3-compat15.pdf",
+      "pdf_sha256": "8478a0c06cc11ff5af5f0d4aa47d09974897b31795590e19b8cefefdf623fe35",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-negative-spacing-bidi-unequal-3-compat15.page-001.emf",
+          "sha256": "aa8731818d19278f875b88e8317723e6ad2f0820e62f5be2968a931365269237",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    }
+  ],
+  "table_glyph_projection": "unclipped"
+}

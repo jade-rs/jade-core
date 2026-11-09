@@ -1,0 +1,65 @@
+[
+  {
+    "file": "absent.docx",
+    "sha256": "e208708c5473ca2757e054202631b87c3ba158a164ecb8c8063cd68115ddb305",
+    "math_settings": "",
+    "paragraph_properties": "",
+    "styles": ""
+  },
+  {
+    "file": "margins.docx",
+    "sha256": "e35b092b5499249817e834c27817d228def7dff11b655c4daebe2f10638144b6",
+    "math_settings": "<m:lMargin m:val=\"1440\"/><m:rMargin m:val=\"720\"/>",
+    "paragraph_properties": "",
+    "styles": ""
+  },
+  {
+    "file": "present-without-value.docx",
+    "sha256": "e6a5389d70f8fdb6690830acba6ff49990e44a5e0bbe22cbc28366191a229070",
+    "math_settings": "<m:lMargin/><m:rMargin/>",
+    "paragraph_properties": "",
+    "styles": ""
+  },
+  {
+    "file": "oversized-left.docx",
+    "sha256": "35b4243c514ae9ee38b6dca39da69987161a22563c7557d54a5249b6847c3a3d",
+    "math_settings": "<m:lMargin m:val=\"9000\"/><m:rMargin m:val=\"1440\"/>",
+    "paragraph_properties": "",
+    "styles": ""
+  },
+  {
+    "file": "disabled-left.docx",
+    "sha256": "d96000325ec6776d07e8f5f7d5d64ce49342f3e27101ba2baa7417435ce9912c",
+    "math_settings": "<m:dispDef m:val=\"0\"/><m:lMargin m:val=\"1440\"/><m:rMargin m:val=\"720\"/><m:defJc m:val=\"right\"/><m:wrapIndent m:val=\"2880\"/><m:wrapRight/>",
+    "paragraph_properties": "<w:jc w:val=\"left\"/>",
+    "styles": ""
+  },
+  {
+    "file": "disabled-default-style.docx",
+    "sha256": "23791e8d0b23cc93b5442fd5df416c1fd579c9530e072f54602ec46ee5cbeb2d",
+    "math_settings": "<m:dispDef m:val=\"0\"/>",
+    "paragraph_properties": "",
+    "styles": "<w:style w:type=\"paragraph\" w:default=\"1\" w:styleId=\"Normal\"><w:pPr><w:jc w:val=\"center\"/></w:pPr></w:style>"
+  },
+  {
+    "file": "disabled-document-default.docx",
+    "sha256": "8a2aadbdb542155d79d5b5fac5079e17661db18852617ce7a181593df74381f7",
+    "math_settings": "<m:dispDef m:val=\"0\"/>",
+    "paragraph_properties": "",
+    "styles": ""
+  },
+  {
+    "file": "disabled-inherited-rtl.docx",
+    "sha256": "05f06500c54b3de516448efe96d4b2eb37e8b81240c4d6ca7a0b2e602d9d1605",
+    "math_settings": "<m:dispDef m:val=\"0\"/>",
+    "paragraph_properties": "<w:pStyle w:val=\"Child\"/>",
+    "styles": "<w:style w:type=\"paragraph\" w:styleId=\"Base\"><w:pPr><w:bidi/><w:jc w:val=\"end\"/></w:pPr></w:style><w:style w:type=\"paragraph\" w:styleId=\"Child\"><w:basedOn w:val=\"Base\"/></w:style>"
+  },
+  {
+    "file": "disabled-direct-override.docx",
+    "sha256": "1ce112b856d030c8c242283ef317691926d02a57c607e0a1a805bf501feb4815",
+    "math_settings": "<m:dispDef m:val=\"0\"/>",
+    "paragraph_properties": "<w:jc w:val=\"left\"/>",
+    "styles": "<w:style w:type=\"paragraph\" w:default=\"1\" w:styleId=\"Normal\"><w:pPr><w:jc w:val=\"right\"/></w:pPr></w:style>"
+  }
+]

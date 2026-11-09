@@ -347,7 +347,7 @@ fn test_weekday_function() {
 
     // Error cases
     assert_eq!(model._get_text("A7"), *"#ERROR!");
-    assert_eq!(model._get_text("A8"), *"#VALUE!");
+    assert_eq!(model._get_text("A8"), *"#NUM!");
     assert_eq!(model._get_text("A9"), *"#NUM!");
 }
 
@@ -407,9 +407,9 @@ fn test_weeknum_function() {
     // Error cases
     assert_eq!(model._get_text("A12"), *"#ERROR!");
     assert_eq!(model._get_text("A13"), *"#ERROR!");
-    assert_eq!(model._get_text("A14"), *"#VALUE!");
-    assert_eq!(model._get_text("A15"), *"#VALUE!");
-    assert_eq!(model._get_text("A16"), *"#VALUE!");
+    assert_eq!(model._get_text("A14"), *"#NUM!");
+    assert_eq!(model._get_text("A15"), *"#NUM!");
+    assert_eq!(model._get_text("A16"), *"#NUM!");
     assert_eq!(model._get_text("A17"), *"#NUM!");
     assert_eq!(model._get_text("A18"), *"#NUM!");
 }

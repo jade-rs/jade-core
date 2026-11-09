@@ -1226,6 +1226,35 @@ fn shared_id_revision_review_regression_matrix() {
     }
 }
 
+#[test]
+fn paragraph_mark_format_rejection_survives_paragraph_edits_and_reload() {
+    for paragraph in [0, 1] {
+        let mut word = fixture();
+        let original = snapshot(&word);
+        track(&mut word);
+        apply(
+            &mut word,
+            vec![json!({"type": "apply_italic", "enabled": true,
+            "start_paragraph": paragraph, "end_paragraph": paragraph + 1,
+            "start_offset": 0, "end_offset": 0})],
+        );
+        assert!(revisions(&word)
+            .iter()
+            .any(|revision| revision.paragraph_mark));
+        apply(
+            &mut word,
+            vec![
+                json!({"type": "set_paragraph_alignment", "alignment": "center",
+            "start_paragraph": 0, "end_paragraph": 1}),
+            ],
+        );
+        let mut word = reload(&word);
+        decide(&mut word, false, None);
+        assert_eq!(snapshot(&word), original);
+        assert!(revisions(&word).is_empty());
+    }
+}
+
 proptest! {
     #![proptest_config(ProptestConfig {
         cases: std::env::var("PROPTEST_CASES").ok().and_then(|v| v.parse().ok()).unwrap_or(128),

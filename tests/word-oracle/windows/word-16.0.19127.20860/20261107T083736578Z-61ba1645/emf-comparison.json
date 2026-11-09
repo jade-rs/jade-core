@@ -1,0 +1,65 @@
+[
+  {
+    "fixture": "word-windows-edge-table-spacing-mixed-borders-compat12",
+    "coordinate_source": "Word Page.EnhMetaFileBits / MS-EMF",
+    "word_pages": 3,
+    "native_pages": 3,
+    "word_glyphs": 1036,
+    "native_glyphs": 1036,
+    "matched": 1036,
+    "within_0_375pt": 1036,
+    "x_p50": 0.0801562499999875,
+    "x_p95": 0.17249999999998522,
+    "y_p50": 0.026484375000052296,
+    "y_p95": 0.07234374999990223,
+    "first_errors": [],
+    "pdf_sha256": "d7c354473fca173b4faa85f2d9900995f2ad2fed98b6d11f28c11f9939534b45",
+    "metafile_sha256": [
+      "0eb5569d03f74d9af8ff5ec6ff00ea74e499bcb48a1589c8fda4ee5d2932422c",
+      "69f07077225bd476181879ce756601f10c5feb1836f143839f4a504451f10b32",
+      "466c40e67e7752b8db1c51ac6342356badecc06fe361828273fba7b6be09d835"
+    ]
+  },
+  {
+    "fixture": "word-windows-edge-table-spacing-mixed-borders-compat14",
+    "coordinate_source": "Word Page.EnhMetaFileBits / MS-EMF",
+    "word_pages": 3,
+    "native_pages": 3,
+    "word_glyphs": 1036,
+    "native_glyphs": 1036,
+    "matched": 1036,
+    "within_0_375pt": 1036,
+    "x_p50": 0.0801562499999875,
+    "x_p95": 0.17249999999998522,
+    "y_p50": 0.026484375000052296,
+    "y_p95": 0.07234374999990223,
+    "first_errors": [],
+    "pdf_sha256": "ddd99438d0f4d53a6bfa062485b4e316491ba920e09c2335c5c8ed50fcfc3519",
+    "metafile_sha256": [
+      "f7e6f3a56c4fff40e02e32d7e24b22e5fb3c29d3e8083a0a1882a62342976827",
+      "69f07077225bd476181879ce756601f10c5feb1836f143839f4a504451f10b32",
+      "e46a8f8fa7234711d29c16aac1096e6592a1db15431f0553dd5c163e0771b517"
+    ]
+  },
+  {
+    "fixture": "word-windows-edge-table-spacing-mixed-borders-compat15",
+    "coordinate_source": "Word Page.EnhMetaFileBits / MS-EMF",
+    "word_pages": 3,
+    "native_pages": 3,
+    "word_glyphs": 1036,
+    "native_glyphs": 1036,
+    "matched": 1036,
+    "within_0_375pt": 1036,
+    "x_p50": 0.08609375000001762,
+    "x_p95": 0.18265624999997954,
+    "y_p50": 0.026484375000052296,
+    "y_p95": 0.07234374999990223,
+    "first_errors": [],
+    "pdf_sha256": "b2c030feb4bbb4195a55ee7594862a6232e4af662d3f1e94711a62bc1c9bc498",
+    "metafile_sha256": [
+      "c3fcd5fb2d2bd19cf62301ac11250ac9378e447e9ec602e0727f5267de65d803",
+      "7dd5457f232051da6c7022526dcead4798e4205bd0bf74a9198a95827cc2b998",
+      "53ffb0068b3bba6b5d0bcc0370f471add0be4d0a80c12891d7edb6c277c81534"
+    ]
+  }
+]

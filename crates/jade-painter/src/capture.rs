@@ -43,6 +43,7 @@ pub enum PaintOp {
     SetFont(Rc<str>),
     SetTextBaseline(Rc<str>),
     FillText(Rc<str>, f64, f64),
+    FillUprightText(Rc<str>, f64, f64),
     /// [`Painter::try_fill_shaped_text`]: the text, its clusters (byte
     /// offset, x) and `y`; drawn a cluster at a time at replay when the
     /// painter cannot shape it.
@@ -157,6 +158,7 @@ pub fn replay<P: Painter>(
             PaintOp::SetFont(value) => painter.set_font_rc(value),
             PaintOp::SetTextBaseline(value) => painter.set_text_baseline(value),
             PaintOp::FillText(text, x, y) => painter.fill_text(text, *x, *y)?,
+            PaintOp::FillUprightText(text, x, y) => painter.fill_upright_text(text, *x, *y)?,
             PaintOp::FillShapedText(text, clusters, y) => {
                 if !painter.try_fill_shaped_text(text, clusters, *y)? {
                     for (index, (start, x)) in clusters.iter().enumerate() {
@@ -358,6 +360,13 @@ impl<P: Painter> Painter for RoutedPainter<P> {
         self.inner.fill_text(text, x, y)
     }
 
+    fn fill_upright_text(&self, text: &str, x: f64, y: f64) -> Result<(), Self::Error> {
+        if self.record(|| PaintOp::FillUprightText(Rc::from(text), x, y)) {
+            return Ok(());
+        }
+        self.inner.fill_upright_text(text, x, y)
+    }
+
     /// Recorded whole, so the shaping (a ligature for its letters) happens
     /// when the capture is painted.
     fn try_fill_shaped_text(
@@ -381,6 +390,10 @@ impl<P: Painter> Painter for RoutedPainter<P> {
 
     fn measure_text_width(&self, text: &str) -> Result<f64, Self::Error> {
         self.inner.measure_text_width(text)
+    }
+
+    fn measure_upright_vertical_advance(&self, text: &str) -> Result<Option<f64>, Self::Error> {
+        self.inner.measure_upright_vertical_advance(text)
     }
 
     fn measure_text_metrics(&self, text: &str) -> Result<TextMetrics, Self::Error> {

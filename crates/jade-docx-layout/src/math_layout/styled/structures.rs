@@ -1141,7 +1141,11 @@ impl<'a, C: StyledMathMeasure> Builder<'_, 'a, C> {
         total
     }
 
-    pub(crate) fn equation_array(&mut self, e: &'a MathElement) -> Result<MathMetrics, C::Error> {
+    pub(crate) fn equation_array(
+        &mut self,
+        e: &'a MathElement,
+        max_width: Option<f64>,
+    ) -> Result<MathMetrics, C::Error> {
         let pr = property_element(e, "eqArrPr");
         let mut rows = Vec::new();
         let mut segments: Vec<Vec<(Mark, f64)>> = Vec::new();
@@ -1157,7 +1161,6 @@ impl<'a, C: StyledMathMeasure> Builder<'_, 'a, C> {
                 let x = self.plan.glyphs[mark.glyphs].x;
                 row_segments.push((mark, x));
             }
-            let _ = r1;
             rows.push((r0, r1, m));
             segments.push(row_segments);
         }
@@ -1171,7 +1174,7 @@ impl<'a, C: StyledMathMeasure> Builder<'_, 'a, C> {
                 widths[k] = widths[k].max(end_x - seg.1);
             }
         }
-        let starts: Vec<f64> = widths
+        let mut starts: Vec<f64> = widths
             .iter()
             .scan(0.0, |x, w| {
                 let s = *x;
@@ -1179,9 +1182,26 @@ impl<'a, C: StyledMathMeasure> Builder<'_, 'a, C> {
                 Some(s)
             })
             .collect();
-        let total_width: f64 = widths.iter().sum();
-        for (i, (row, segs)) in rows.iter_mut().zip(&segments).enumerate() {
-            let _ = i;
+        let mut total_width: f64 = widths.iter().sum();
+        if let Some(width) = max_width.filter(|w| w.is_finite() && *w > total_width) {
+            if columns > 1 && on(pr, "maxDist") {
+                let pairs = columns.div_ceil(2);
+                // Every second mark separates column pairs. objDist puts
+                // the spare room between pairs; otherwise the outer gaps
+                // share that room as well.
+                let objects_only = on(pr, "objDist");
+                let gaps = if objects_only { pairs - 1 } else { pairs + 1 };
+                if gaps > 0 {
+                    let gap = (width - total_width) / gaps as f64;
+                    let leading = if objects_only { 0.0 } else { gap };
+                    for (segment, start) in starts.iter_mut().enumerate() {
+                        *start += leading + (segment / 2) as f64 * gap;
+                    }
+                    total_width = width;
+                }
+            }
+        }
+        for (row, segs) in rows.iter_mut().zip(&segments) {
             for (k, seg) in segs.iter().enumerate() {
                 let end_x = segs.get(k + 1).map_or(row.2.width, |s| s.1);
                 let seg_end = segs.get(k + 1).map_or(row.1, |s| s.0);

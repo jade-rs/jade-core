@@ -264,35 +264,29 @@ pub struct NativeDocument {
     view_geometry: Option<jade_docx_editor::canvas_renderer::ViewGeometry>,
     /// アウトライン's indent for each paragraph, while it shows.
     outline_indents: Option<Rc<std::collections::HashMap<usize, f64>>>,
-    /// The math face the renderers bind (Cambria Math), when installed.
-    math_face: Option<FontFace>,
+    /// Configured and fallback math faces, retained across renderer rebuilds.
+    math_faces: Vec<FontFace>,
 }
 
-/// Binds the math face among `faces` (Cambria Math, from Office's fonts) to
-/// the renderer, so equations use its MATH table and outlines. Without it they
-/// are laid out on Cambria Math's constants and drawn through the painter.
-fn register_math_face(renderer: &mut CanvasRenderer<SkiaPainter>, faces: &[FontFace]) {
-    let Some(face) = math_face_of(faces) else {
-        return;
-    };
-    let Ok(bytes) = std::fs::read(&face.path) else {
-        return;
-    };
-    let _ = renderer.register_math_face(
-        crate::system_fonts::MATH_FAMILY.to_string(),
-        bytes,
-        face.index,
-    );
+/// Binds only the selected math faces, so each family uses its own MATH
+/// table and outlines instead of the renderer's fallback constants.
+fn register_math_faces(renderer: &mut CanvasRenderer<SkiaPainter>, faces: &[FontFace]) {
+    for face in faces {
+        let Ok(bytes) = std::fs::read(&face.path) else {
+            continue;
+        };
+        let _ = renderer.register_math_face(face.family.clone(), bytes, face.index);
+    }
 }
 
-fn math_face_of(faces: &[FontFace]) -> Option<FontFace> {
-    faces
-        .iter()
-        .find(|face| {
-            face.family
-                .eq_ignore_ascii_case(crate::system_fonts::MATH_FAMILY)
-        })
-        .cloned()
+fn math_faces_of(faces: &[FontFace], word_document: &WordDocument) -> Vec<FontFace> {
+    crate::system_fonts::math_faces_for(
+        faces,
+        word_document
+            .document
+            .as_ref()
+            .and_then(|document| document.math_properties.math_font.as_deref()),
+    )
 }
 
 impl NativeDocument {
@@ -352,7 +346,8 @@ impl NativeDocument {
         let dark_paper = host.dark_paper();
         let mut renderer = CanvasRenderer::<SkiaPainter>::with_host(Box::new(host), false)
             .map_err(|_| "renderer setup failed".to_string())?;
-        register_math_face(&mut renderer, faces);
+        let math_faces = math_faces_of(faces, &word_document);
+        register_math_faces(&mut renderer, &math_faces);
         renderer.sync_word_document(&word_document);
 
         let document = word_document
@@ -382,6 +377,7 @@ impl NativeDocument {
         if let Some(error) = renderer.take_render_error() {
             return Err(error);
         }
+        renderer.clear_dirty_regions();
         drop(document);
 
         Ok(Self {
@@ -405,7 +401,7 @@ impl NativeDocument {
             field_datetime: None,
             field_codes: FieldCodeView::default(),
             field_shading: FieldShading::Never,
-            math_face: math_face_of(faces),
+            math_faces,
             view_geometry: None,
             outline_indents: None,
         })
@@ -473,7 +469,7 @@ impl NativeDocument {
             let count = host.rendered_pages();
             let mut renderer = CanvasRenderer::<SkiaPainter>::with_host(Box::new(host), false)
                 .map_err(|_| "PDF renderer setup failed".to_string())?;
-            register_math_face(&mut renderer, self.math_face.as_slice());
+            register_math_faces(&mut renderer, &self.math_faces);
             renderer.sync_word_document(&self.word_document);
             renderer.set_spelling_export_mode(true);
             renderer.set_structure_tagging(pdf_options.tagged);
@@ -714,6 +710,10 @@ impl NativeDocument {
         if let Some(error) = self.renderer.take_render_error() {
             return Err(error);
         }
+        // The native host has consumed this pass directly into retained page
+        // surfaces. Leaving the tracker full-dirty disables incremental drawing
+        // on every subsequent keystroke (the browser consumes it in its payload).
+        self.renderer.clear_dirty_regions();
         self.follow_page_box()?;
         Ok(started.elapsed())
     }
@@ -747,7 +747,7 @@ impl NativeDocument {
         let dark_paper = host.dark_paper();
         let mut renderer = CanvasRenderer::<SkiaPainter>::with_host(Box::new(host), false)
             .map_err(|_| "renderer setup failed".to_string())?;
-        register_math_face(&mut renderer, self.math_face.as_slice());
+        register_math_faces(&mut renderer, &self.math_faces);
         renderer.sync_word_document(&self.word_document);
         renderer.set_use_selection_overlay(false);
         renderer.set_view_geometry(self.view_geometry);
@@ -781,6 +781,7 @@ impl NativeDocument {
         if let Some(error) = renderer.take_render_error() {
             return Err(error);
         }
+        renderer.clear_dirty_regions();
         self.renderer = renderer;
         self.pages = pages;
         self.rendered_pages = rendered_pages;
@@ -1100,6 +1101,10 @@ impl NativeDocument {
         if let Some(error) = self.renderer.take_render_error() {
             return Err(error);
         }
+        // The native host has consumed this pass directly into retained page
+        // surfaces. Leaving the tracker full-dirty disables incremental drawing
+        // on every subsequent keystroke (the browser consumes it in its payload).
+        self.renderer.clear_dirty_regions();
         Ok(started.elapsed())
     }
 
@@ -2385,7 +2390,7 @@ impl NativeDocument {
         register_faces(&mut host, faces)?;
         let mut renderer = CanvasRenderer::<SkiaPainter>::with_host(Box::new(host), false)
             .map_err(|_| "renderer setup failed".to_string())?;
-        register_math_face(&mut renderer, faces);
+        register_math_faces(&mut renderer, &math_faces_of(faces, word_document));
         renderer.sync_word_document(word_document);
         let document = word_document
             .document
@@ -2572,6 +2577,16 @@ impl NativeDocument {
         self.renderer
             .capture_full_layout_debug()
             .map_err(|_| "full layout capture failed".to_owned())
+    }
+
+    /// Capture original table glyph origins even when painter clipping hides
+    /// them, for comparison with Word's complete EMF text records.
+    pub fn capture_full_layout_debug_unclipped_tables(
+        &mut self,
+    ) -> Result<FullLayoutDebugSnapshot, String> {
+        self.renderer
+            .capture_full_layout_debug_unclipped_tables()
+            .map_err(|_| "unclipped table layout capture failed".to_owned())
     }
 
     /// The clock `DATE` and `TIME` fields show from the next repaint, as
@@ -2761,11 +2776,22 @@ impl NativeDocument {
         visible_end_page_1idx: usize,
         executor_steps: usize,
     ) -> Result<Duration, String> {
-        let old_height = matches!(&command, HeadlessCommand::InsertText { .. })
+        // IME updates replace the previous marked text in the same paragraph.
+        // Capture the same reuse candidates as typing; the recorded command's
+        // footprint below must still prove that no other paragraph/part changed.
+        let local_text_edit = match &command {
+            HeadlessCommand::InsertText { .. } => true,
+            HeadlessCommand::ReplaceRange {
+                start_paragraph,
+                end_paragraph,
+                ..
+            } => *start_paragraph == paragraph && *end_paragraph == paragraph,
+            _ => false,
+        };
+        let old_height = local_text_edit
             .then(|| self.renderer.cached_paragraph_height(paragraph))
             .flatten();
-        let text_edit_cache = matches!(&command, HeadlessCommand::InsertText { .. })
-            .then(|| self.renderer.local_text_edit_cache());
+        let text_edit_cache = local_text_edit.then(|| self.renderer.local_text_edit_cache());
         let recorded = self.executor.history_revision();
         let before = self.selection;
         let group_commands = executor_steps > 1;
@@ -2844,6 +2870,14 @@ impl NativeDocument {
             && self.executor.next_undo_render_footprint()
                 == Some(HistoryRenderFootprint::SingleParagraph { index: paragraph })
         {
+            // Native pages retain their pixels between edits. Let the renderer
+            // redraw only this paragraph's band when its geometry is stable;
+            // unsupported layouts and height changes fall back to a full page.
+            // The incremental hyperlink registry retains prefix regions while
+            // native replay may visit them again. Keep the full-page path for
+            // linked documents until that registry supports retained bands.
+            let band_safe = local_text_edit && self.renderer.hyperlink_regions().is_empty();
+            self.renderer.set_band_redraw_enabled(band_safe);
             if let Some(cache) = text_edit_cache {
                 self.renderer
                     .restore_local_text_edit_cache(cache, &self.word_document, paragraph);
@@ -2873,6 +2907,7 @@ impl NativeDocument {
             self.word_document.footer_lines.as_deref(),
             visible_end_page_1idx,
         );
+        self.renderer.set_band_redraw_enabled(false);
         // Whatever the pass was, the next one is a whole-document render until
         // something says otherwise.
         self.pass_covers_whole_document.set(true);
@@ -2880,6 +2915,10 @@ impl NativeDocument {
         if let Some(error) = self.renderer.take_render_error() {
             return Err(error);
         }
+        // The native host has consumed this pass directly into retained page
+        // surfaces. Leaving the tracker full-dirty disables incremental drawing
+        // on every subsequent keystroke (the browser consumes it in its payload).
+        self.renderer.clear_dirty_regions();
 
         Ok(started.elapsed())
     }

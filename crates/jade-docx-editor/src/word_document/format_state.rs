@@ -41,8 +41,7 @@ pub struct ParagraphOutlineState {
 impl WordDocument {
     /// The formatting of the run holding byte `offset` of paragraph
     /// `paragraph` — the run before it at the paragraph's end — as the
-    /// フォント dialog shows it. Direct formatting only, as Word's dialog
-    /// reads it.
+    /// フォント dialog shows it, including inherited styles.
     pub fn run_format_at(&self, paragraph: usize, offset: usize) -> HeadlessRunFormat {
         let Some(paragraph) = self.paragraph(paragraph) else {
             return HeadlessRunFormat::default();
@@ -61,9 +60,91 @@ impl WordDocument {
             }
             start = end;
         }
-        last.and_then(|run| run.properties.as_ref())
+        let direct = last
+            .or_else(|| paragraph.runs.last())
+            .and_then(|run| run.properties.as_ref());
+        let style = paragraph
+            .properties
+            .as_ref()
+            .and_then(|props| props.style.as_deref());
+        let mark = paragraph
+            .properties
+            .as_ref()
+            .and_then(|p| p.mark_run_properties.as_ref());
+        self.resolved_run_format(style, if length == 0 { mark.or(direct) } else { direct })
+    }
+
+    /// Effective formats intersecting a half-open UTF-8 byte range. The end
+    /// run (or next paragraph at offset zero) is not part of the selection.
+    pub fn run_formats_in_range(
+        &self,
+        start: (usize, usize),
+        end: (usize, usize),
+    ) -> Vec<HeadlessRunFormat> {
+        let (start, end) = if start <= end {
+            (start, end)
+        } else {
+            (end, start)
+        };
+        if start == end {
+            return vec![self.run_format_at(start.0, start.1)];
+        }
+        let mut formats = Vec::new();
+        for index in start.0..=end.0.min(self.paragraph_count().saturating_sub(1)) {
+            if index == end.0 && end.1 == 0 {
+                break;
+            }
+            let Some(paragraph) = self.paragraph(index) else {
+                continue;
+            };
+            let from = if index == start.0 { start.1 } else { 0 };
+            let to = if index == end.0 { end.1 } else { usize::MAX };
+            let style = paragraph
+                .properties
+                .as_ref()
+                .and_then(|p| p.style.as_deref());
+            let mut offset = 0;
+            for run in &paragraph.runs {
+                let next = offset + run.text.len();
+                if offset < to && next > from && next > offset {
+                    formats.push(self.resolved_run_format(style, run.properties.as_ref()));
+                }
+                offset = next;
+            }
+            // Crossing into the next paragraph selects this paragraph's mark,
+            // even when none of its text is selected. The final paragraph at
+            // offset zero remains excluded by the half-open boundary above.
+            if index < end.0 {
+                let mark = paragraph
+                    .properties
+                    .as_ref()
+                    .and_then(|p| p.mark_run_properties.as_ref());
+                formats.push(self.resolved_run_format(style, mark));
+            }
+        }
+        formats
+    }
+
+    pub(crate) fn resolved_run_format(
+        &self,
+        paragraph_style: Option<&str>,
+        direct: Option<&jade_docx_reader::RunProperties>,
+    ) -> HeadlessRunFormat {
+        let resolved = self
+            .styles_part
+            .as_ref()
+            .and_then(|styles| styles.resolve_effective_run_properties(paragraph_style, direct));
+        let mut format = resolved
+            .as_ref()
+            .or(direct)
             .map(run_format_of)
-            .unwrap_or_default()
+            .unwrap_or_default();
+        // noProof is retained as XML rather than a modeled style property.
+        // Style resolution must not discard an authored on/off value.
+        if let Some(direct) = direct {
+            format.no_proof = run_format_of(direct).no_proof.or(format.no_proof);
+        }
+        format
     }
 
     /// The level paragraph `paragraph`'s style gives it: 0–8, or 9 for

@@ -50,7 +50,15 @@ pub(crate) fn children_map(
             end,
             text: if changed.is_empty() {
                 changed
+            } else if name != b"dataValidations" {
+                if let Some(required) = crate::empty_feature::required(name) {
+                    crate::empty_feature::finish(&context, &changed, required)?
+                } else {
+                    context.finish(&changed)?
+                }
             } else {
+                // Validation geometry is rebuilt from the original records
+                // later in move_rules; do not archive its temporary state.
                 context.finish(&changed)?
             },
         });
@@ -773,7 +781,7 @@ fn move_rules(
         let moved = if moved.is_empty() {
             moved
         } else {
-            container.finish(&moved)?
+            crate::empty_feature::finish(&container, &moved, b"dataValidation")?
         };
         result = xml_edit_ns::set_child(
             &result,
@@ -794,7 +802,57 @@ fn move_rules(
             ],
         )?;
     }
+    let result = move_conditional_validations(original, &result, change)?;
     crate::cell_shift_extensions::move_extensions(original, &result, change, ids)
+}
+
+fn move_conditional_validations(
+    original: &str,
+    current: &str,
+    change: &CellShift,
+) -> Result<String> {
+    let containers = |xml: &str| -> Result<Vec<_>> {
+        let mut spans = std::collections::BTreeMap::new();
+        for record in jade_xlsx_reader::data_validations::all_supported_validation_containers(xml)?
+        {
+            if record.conditional {
+                spans
+                    .entry(record.container.start)
+                    .or_insert((record.container, record.extended));
+            }
+        }
+        Ok(spans.into_values().collect::<Vec<_>>())
+    };
+    let sources = containers(original)?;
+    let targets = containers(current)?;
+    if sources.len() != targets.len() {
+        return Err(failure(
+            "conditional validation containers changed during the formula pass",
+        ));
+    }
+    let mut edits = Vec::new();
+    for ((span, extended), (target, _)) in sources.into_iter().zip(targets) {
+        let context = xml_edit_ns::fragment(original, span)?;
+        let moved = if extended {
+            crate::cell_shift_extensions::move_dv(&context.text, change)?
+        } else {
+            let moved = children_map(&context.text, b"dataValidation", |rule| {
+                Ok(move_rule(rule, change, false)?.concat())
+            })?;
+            count_children(&moved, b"dataValidation", "count")?
+        };
+        let text = if moved.is_empty() {
+            moved
+        } else {
+            crate::empty_feature::finish(&context, &moved, b"dataValidation")?
+        };
+        edits.push(Splice {
+            start: target.start,
+            end: target.end,
+            text,
+        });
+    }
+    Ok(apply(current, edits))
 }
 
 fn regions(xml: &str, key: &[u8], change: &CellShift) -> Result<Vec<CellRange>> {
@@ -809,7 +867,7 @@ fn regions(xml: &str, key: &[u8], change: &CellShift) -> Result<Vec<CellRange>> 
 }
 fn count_children(xml: &str, child: &[u8], attribute: &str) -> Result<String> {
     let count = xml_edit_ns::children(xml, child)?.len();
-    if count == 0 {
+    if count == 0 && xml_edit_ns::plain_empty(xml, &[attribute.as_bytes()])? {
         Ok(String::new())
     } else {
         xml_edit::root_attributes(xml, &[(attribute, Some(count.to_string()))])

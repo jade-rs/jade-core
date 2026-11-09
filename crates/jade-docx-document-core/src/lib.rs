@@ -167,3 +167,14 @@ impl Options {
         self.revision_date_utc.clone()
     }
 }
+
+#[cfg(test)]
+// Shared document tests also exercise the pure font-dialog state.
+#[allow(dead_code)]
+#[path = "../../jade-docx-editor/src/font_format.rs"]
+pub(crate) mod font_format;
+
+#[cfg(test)]
+pub mod line_wrap {
+    pub use jade_docx_layout_engine::line_wrap::*;
+}

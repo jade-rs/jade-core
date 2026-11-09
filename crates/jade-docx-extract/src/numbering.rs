@@ -1,3 +1,4 @@
+use jade_number_format::{CUSTOM_FORMAT_PREFIX, format_number_value};
 use quick_xml::Reader;
 use quick_xml::events::{BytesStart, Event};
 use std::collections::HashMap;
@@ -16,21 +17,12 @@ struct AbstractNum {
 #[derive(Debug)]
 struct NumberingLevel {
     start: Option<u32>,
-    format: NumberFormat,
+    restart: Option<u32>,
+    is_legal: bool,
+    format: String,
+    language: Option<String>,
     text: Option<String>,
     suffix: Option<String>,
-}
-
-#[derive(Debug, Clone, Copy)]
-enum NumberFormat {
-    Decimal,
-    DecimalZero,
-    UpperRoman,
-    LowerRoman,
-    UpperLetter,
-    LowerLetter,
-    Bullet,
-    Other,
 }
 
 #[derive(Debug, Default)]
@@ -42,6 +34,7 @@ struct NumberingInstance {
 #[derive(Debug, Default)]
 struct LevelOverride {
     start: Option<u32>,
+    level: Option<NumberingLevel>,
 }
 
 impl NumberingDefinitions {
@@ -78,7 +71,10 @@ impl NumberingDefinitions {
                             current_level = Some(PendingLevel {
                                 level,
                                 start: None,
-                                format: NumberFormat::Decimal,
+                                restart: None,
+                                is_legal: false,
+                                format: "decimal".to_string(),
+                                language: None,
                                 text: None,
                                 suffix: None,
                             });
@@ -91,16 +87,42 @@ impl NumberingDefinitions {
                             level.start = val.parse().ok();
                         }
                     }
+                    b"w:lvlRestart" => {
+                        if let Some(level) = current_level.as_mut()
+                            && let Some(val) = attr_value(e, b"w:val")
+                        {
+                            level.restart = val.parse().ok();
+                        }
+                    }
+                    b"w:isLgl" => {
+                        if let Some(level) = current_level.as_mut() {
+                            level.is_legal = attr_value(e, b"w:val").is_none_or(|value| {
+                                !matches!(value.as_str(), "0" | "false" | "off")
+                            });
+                        }
+                    }
                     b"w:numFmt" => {
                         if let Some(level) = current_level.as_mut()
                             && let Some(val) = attr_value(e, b"w:val")
                         {
-                            level.format = NumberFormat::from_str(&val);
+                            if val == "custom" {
+                                if let Some(format) = attr_value(e, b"w:format") {
+                                    level.format = format!("{CUSTOM_FORMAT_PREFIX}{format}");
+                                }
+                            } else if !level.format.starts_with(CUSTOM_FORMAT_PREFIX) {
+                                // Retain the supported custom choice over its decimal fallback.
+                                level.format = val;
+                            }
                         }
                     }
                     b"w:lvlText" => {
                         if let Some(level) = current_level.as_mut() {
                             level.text = attr_value(e, b"w:val");
+                        }
+                    }
+                    b"w:lang" => {
+                        if let Some(level) = current_level.as_mut() {
+                            level.language = attr_value(e, b"w:val");
                         }
                     }
                     b"w:suff" => {
@@ -144,6 +166,22 @@ impl NumberingDefinitions {
                 },
                 Event::Empty(ref e) => {
                     match e.name().as_ref() {
+                        b"w:lvl" => {
+                            if let Some(ilvl) = attr_value(e, b"w:ilvl")
+                                && let Ok(level) = ilvl.parse::<u32>()
+                            {
+                                current_level = Some(PendingLevel {
+                                    level,
+                                    start: None,
+                                    restart: None,
+                                    is_legal: false,
+                                    format: "decimal".to_string(),
+                                    language: None,
+                                    text: None,
+                                    suffix: None,
+                                });
+                            }
+                        }
                         b"w:start" => {
                             if let Some(level) = current_level.as_mut()
                                 && let Some(val) = attr_value(e, b"w:val")
@@ -151,16 +189,42 @@ impl NumberingDefinitions {
                                 level.start = val.parse().ok();
                             }
                         }
+                        b"w:lvlRestart" => {
+                            if let Some(level) = current_level.as_mut()
+                                && let Some(val) = attr_value(e, b"w:val")
+                            {
+                                level.restart = val.parse().ok();
+                            }
+                        }
+                        b"w:isLgl" => {
+                            if let Some(level) = current_level.as_mut() {
+                                level.is_legal = attr_value(e, b"w:val").is_none_or(|value| {
+                                    !matches!(value.as_str(), "0" | "false" | "off")
+                                });
+                            }
+                        }
                         b"w:numFmt" => {
                             if let Some(level) = current_level.as_mut()
                                 && let Some(val) = attr_value(e, b"w:val")
                             {
-                                level.format = NumberFormat::from_str(&val);
+                                if val == "custom" {
+                                    if let Some(format) = attr_value(e, b"w:format") {
+                                        level.format = format!("{CUSTOM_FORMAT_PREFIX}{format}");
+                                    }
+                                } else if !level.format.starts_with(CUSTOM_FORMAT_PREFIX) {
+                                    // Retain the supported custom choice over its decimal fallback.
+                                    level.format = val;
+                                }
                             }
                         }
                         b"w:lvlText" => {
                             if let Some(level) = current_level.as_mut() {
                                 level.text = attr_value(e, b"w:val");
+                            }
+                        }
+                        b"w:lang" => {
+                            if let Some(level) = current_level.as_mut() {
+                                level.language = attr_value(e, b"w:val");
                             }
                         }
                         b"w:suff" => {
@@ -219,20 +283,14 @@ impl NumberingDefinitions {
     }
 
     pub fn start_value(&self, num_id: &str, level: u32) -> Option<u32> {
-        if let Some(instance) = self.instances.get(num_id) {
-            if let Some(override_level) = instance.overrides.get(&level)
-                && override_level.start.is_some()
-            {
-                return override_level.start;
-            }
-            if let Some(abs) = self.abstract_nums.get(&instance.abstract_num_id)
-                && let Some(level_info) = abs.levels.get(&level)
-            {
-                return level_info.start;
-            }
+        if let Some(instance) = self.instances.get(num_id)
+            && let Some(override_level) = instance.overrides.get(&level)
+            && override_level.start.is_some()
+        {
+            return override_level.start;
         }
-
-        None
+        self.abstract_level_info(num_id, level)
+            .and_then(|info| info.start)
     }
 
     pub fn abstract_num_id(&self, num_id: &str) -> Option<&str> {
@@ -245,14 +303,17 @@ impl NumberingDefinitions {
         self.instances
             .get(num_id)
             .and_then(|instance| instance.overrides.get(&level))
-            .and_then(|override_level| override_level.start)
-            .is_some()
+            .is_some_and(|replacement| replacement.start.is_some())
     }
 
     pub fn format(&self, num_id: &str, level: u32, counters: &NumberingCounter) -> String {
         let Some(info) = self.level_info(num_id, level) else {
             return counters.get(num_id, level).max(1).to_string();
         };
+
+        if info.format == "none" {
+            return String::new();
+        }
 
         let template = info.text.clone().unwrap_or_else(|| "%1.".to_string());
 
@@ -274,11 +335,10 @@ impl NumberingDefinitions {
                     && idx >= 1
                 {
                     let placeholder_level = idx - 1;
-                    let formatted = self.format_value(num_id, placeholder_level, counters);
-                    if !formatted.is_empty() {
-                        result.push_str(&formatted);
-                        continue;
-                    }
+                    let formatted =
+                        self.format_value(num_id, placeholder_level, counters, info.is_legal);
+                    result.push_str(&formatted);
+                    continue;
                 }
                 result.push('%');
                 result.push_str(&digits);
@@ -296,9 +356,10 @@ impl NumberingDefinitions {
         if result.is_empty() {
             let value = counters.get(num_id, level);
             if value > 0 {
-                return match info.format {
-                    NumberFormat::Bullet => template,
-                    _ => value.to_string(),
+                return if info.format == "bullet" {
+                    template
+                } else {
+                    value.to_string()
                 };
             }
         }
@@ -306,38 +367,70 @@ impl NumberingDefinitions {
         result
     }
 
+    fn abstract_level_info(&self, num_id: &str, level: u32) -> Option<&NumberingLevel> {
+        let instance = self.instances.get(num_id)?;
+        self.abstract_nums
+            .get(&instance.abstract_num_id)?
+            .levels
+            .get(&level)
+    }
+
+    fn restart_value(&self, num_id: &str, level: u32) -> Option<u32> {
+        // MS-OI29500 2.1.282: Word ignores restart in concrete level overrides.
+        self.abstract_level_info(num_id, level)
+            .and_then(|info| info.restart)
+            .filter(|restart| *restart <= level && *restart <= 7)
+    }
+
     fn level_info(&self, num_id: &str, level: u32) -> Option<&NumberingLevel> {
         let instance = self.instances.get(num_id)?;
+        if let Some(replacement) = instance
+            .overrides
+            .get(&level)
+            .and_then(|value| value.level.as_ref())
+        {
+            return Some(replacement);
+        }
         let abstract_num = self.abstract_nums.get(&instance.abstract_num_id)?;
         abstract_num.levels.get(&level)
     }
 
-    fn format_value(&self, num_id: &str, level: u32, counters: &NumberingCounter) -> String {
-        let value = counters.get(num_id, level);
-        let value = if value == 0 {
-            self.start_value(num_id, level).unwrap_or(1)
-        } else {
-            value
-        };
+    fn format_value(
+        &self,
+        num_id: &str,
+        level: u32,
+        counters: &NumberingCounter,
+        legal: bool,
+    ) -> String {
+        let value = counters
+            .value(num_id, level)
+            .unwrap_or_else(|| self.start_value(num_id, level).unwrap_or(1));
 
-        let format = self
-            .level_info(num_id, level)
-            .map(|lvl| lvl.format)
-            .unwrap_or(NumberFormat::Decimal);
-
-        match format {
-            NumberFormat::Decimal => value.to_string(),
-            NumberFormat::DecimalZero => format!("{value:02}"),
-            NumberFormat::UpperRoman => to_roman(value, true),
-            NumberFormat::LowerRoman => to_roman(value, false),
-            NumberFormat::UpperLetter => to_letter(value, true),
-            NumberFormat::LowerLetter => to_letter(value, false),
-            NumberFormat::Bullet => self
-                .level_info(num_id, level)
-                .and_then(|lvl| lvl.text.clone())
-                .unwrap_or_else(|| "•".to_string()),
-            NumberFormat::Other => value.to_string(),
+        let info = self.level_info(num_id, level);
+        let format = info.map(|lvl| lvl.format.as_str()).unwrap_or("decimal");
+        // Word applies isLgl to all placeholders, except levels with numFmt=none.
+        if legal && format != "none" {
+            return value.to_string();
         }
+        if format == "bullet" {
+            return info
+                .and_then(|lvl| lvl.text.clone())
+                .unwrap_or_else(|| "•".to_string());
+        }
+        // Decimal formats can start at zero; other list formats are one-based.
+        let value = if matches!(
+            format,
+            "decimal"
+                | "decimalHalfWidth"
+                | "decimalFullWidth"
+                | "decimalFullWidth2"
+                | "decimalZero"
+        ) {
+            value
+        } else {
+            value.max(1)
+        };
+        format_number_value(format, value, info.and_then(|lvl| lvl.language.as_deref()))
     }
 }
 
@@ -360,7 +453,10 @@ impl PendingAbstract {
 struct PendingLevel {
     level: u32,
     start: Option<u32>,
-    format: NumberFormat,
+    restart: Option<u32>,
+    is_legal: bool,
+    format: String,
+    language: Option<String>,
     text: Option<String>,
     suffix: Option<String>,
 }
@@ -393,18 +489,22 @@ fn handle_end_event(
 ) {
     match name {
         b"w:lvl" => {
-            if let Some(level) = current_level.take()
-                && let Some(abs) = current_abstract.as_mut()
-            {
-                abs.levels.insert(
-                    level.level,
-                    NumberingLevel {
-                        start: level.start,
-                        format: level.format,
-                        text: level.text,
-                        suffix: level.suffix,
-                    },
-                );
+            if let Some(level) = current_level.take() {
+                let index = level.level;
+                let definition = NumberingLevel {
+                    start: level.start,
+                    restart: level.restart,
+                    is_legal: level.is_legal,
+                    format: level.format,
+                    language: level.language,
+                    text: level.text,
+                    suffix: level.suffix,
+                };
+                if let (Some(index), Some(num)) = (*current_override_level, current_num.as_mut()) {
+                    num.overrides.entry(index).or_default().level = Some(definition);
+                } else if let Some(abs) = current_abstract.as_mut() {
+                    abs.levels.insert(index, definition);
+                }
             }
         }
         b"w:abstractNum" => {
@@ -427,8 +527,8 @@ fn handle_end_event(
 }
 
 pub struct NumberingCounter {
-    counters: HashMap<String, Vec<u32>>,
-    abstract_counters: HashMap<String, Vec<u32>>,
+    counters: HashMap<String, Vec<Option<u32>>>,
+    abstract_counters: HashMap<String, Vec<Option<u32>>>,
 }
 
 impl NumberingCounter {
@@ -439,67 +539,63 @@ impl NumberingCounter {
         }
     }
 
-    pub fn increment(
-        &mut self,
-        num_id: &str,
-        abstract_num_id: &str,
-        level: u32,
-        start: Option<u32>,
-        has_start_override: bool,
-    ) -> u32 {
+    pub fn increment(&mut self, numbering: &NumberingDefinitions, num_id: &str, level: u32) -> u32 {
+        let abstract_num_id = numbering.abstract_num_id(num_id).unwrap_or_default();
+        let restarts = |deeper: usize| {
+            numbering
+                .restart_value(num_id, deeper as u32)
+                .is_none_or(|restart| level < restart)
+        };
         let entry = self.counters.entry(num_id.to_string()).or_default();
-
-        while entry.len() <= level as usize {
-            entry.push(0);
-        }
-
-        for value in entry.iter_mut().skip((level + 1) as usize) {
-            *value = 0;
-        }
-
-        let counter = &mut entry[level as usize];
-        if *counter == 0 {
-            // Keep numbering continuous across numId changes when both ids point
-            // to the same abstractNum and the new numId has no startOverride.
-            if !has_start_override {
-                if let Some(previous) = self
-                    .abstract_counters
-                    .get(abstract_num_id)
-                    .and_then(|levels| levels.get(level as usize))
-                    .copied()
-                    .filter(|value| *value > 0)
-                {
-                    *counter = previous + 1;
-                } else {
-                    *counter = start.unwrap_or(1);
-                }
-            } else {
-                *counter = start.unwrap_or(1);
+        entry.resize(entry.len().max(level as usize + 1), None);
+        for (deeper, value) in entry.iter_mut().enumerate().skip(level as usize + 1) {
+            if restarts(deeper) {
+                *value = None;
             }
-        } else {
-            *counter += 1;
         }
-
-        let abstract_entry = self
+        let shared = self
+            .abstract_counters
+            .get(abstract_num_id)
+            .and_then(|levels| levels.get(level as usize))
+            .copied();
+        let previous = match shared {
+            Some(value) if !numbering.has_start_override(num_id, level) => value,
+            _ => entry[level as usize],
+        };
+        let value = previous.map_or_else(
+            || numbering.start_value(num_id, level).unwrap_or(1),
+            |value| value + 1,
+        );
+        entry[level as usize] = Some(value);
+        let shared = self
             .abstract_counters
             .entry(abstract_num_id.to_string())
             .or_default();
-        while abstract_entry.len() <= level as usize {
-            abstract_entry.push(0);
+        shared.resize(shared.len().max(level as usize + 1), None);
+        for (deeper, value) in shared.iter_mut().enumerate().skip(level as usize + 1) {
+            if restarts(deeper) {
+                *value = None;
+            }
         }
-        for value in abstract_entry.iter_mut().skip((level + 1) as usize) {
-            *value = 0;
+        shared[level as usize] = Some(value);
+        for (ancestor, previous) in shared.iter().enumerate().take(level as usize) {
+            if previous.is_some() && !numbering.has_start_override(num_id, ancestor as u32) {
+                entry[ancestor] = *previous;
+            }
         }
-        abstract_entry[level as usize] = *counter;
+        value
+    }
 
-        *counter
+    fn value(&self, num_id: &str, level: u32) -> Option<u32> {
+        self.counters
+            .get(num_id)
+            .and_then(|levels| levels.get(level as usize))
+            .copied()
+            .flatten()
     }
 
     pub fn get(&self, num_id: &str, level: u32) -> u32 {
-        self.counters
-            .get(num_id)
-            .and_then(|levels| levels.get(level as usize).copied())
-            .unwrap_or(0)
+        self.value(num_id, level).unwrap_or(0)
     }
 }
 
@@ -512,64 +608,12 @@ impl Default for NumberingCounter {
 fn attr_value(e: &BytesStart, key: &[u8]) -> Option<String> {
     for attr in e.attributes().flatten() {
         if attr.key.as_ref() == key {
-            return Some(String::from_utf8_lossy(&attr.value).to_string());
+            return Some(
+                attr.normalized_value(quick_xml::XmlVersion::Implicit1_0)
+                    .map(|value| value.into_owned())
+                    .unwrap_or_else(|_| String::from_utf8_lossy(&attr.value).into_owned()),
+            );
         }
     }
     None
-}
-
-impl NumberFormat {
-    fn from_str(value: &str) -> Self {
-        match value {
-            "decimal" => NumberFormat::Decimal,
-            "decimalZero" => NumberFormat::DecimalZero,
-            "upperRoman" => NumberFormat::UpperRoman,
-            "lowerRoman" => NumberFormat::LowerRoman,
-            "upperLetter" => NumberFormat::UpperLetter,
-            "lowerLetter" => NumberFormat::LowerLetter,
-            "bullet" => NumberFormat::Bullet,
-            _ => NumberFormat::Other,
-        }
-    }
-}
-
-fn to_roman(mut num: u32, uppercase: bool) -> String {
-    if num == 0 {
-        num = 1;
-    }
-
-    let values = [1000, 900, 500, 400, 100, 90, 50, 40, 10, 9, 5, 4, 1];
-    let symbols = if uppercase {
-        [
-            "M", "CM", "D", "CD", "C", "XC", "L", "XL", "X", "IX", "V", "IV", "I",
-        ]
-    } else {
-        [
-            "m", "cm", "d", "cd", "c", "xc", "l", "xl", "x", "ix", "v", "iv", "i",
-        ]
-    };
-
-    let mut result = String::new();
-    let mut n = num;
-
-    for (i, &value) in values.iter().enumerate() {
-        while n >= value {
-            result.push_str(symbols[i]);
-            n -= value;
-        }
-    }
-
-    result
-}
-
-/// Word's lettered lists repeat the letter after `z`: `aa`, `bb`, `cc`, …
-fn to_letter(num: u32, uppercase: bool) -> String {
-    let index = num.max(1) - 1;
-    if index / 26 >= 40 {
-        // A hostile w:start must not turn into a megabyte-long label.
-        return num.to_string();
-    }
-    let base = if uppercase { b'A' } else { b'a' };
-    let letter = (base + (index % 26) as u8) as char;
-    std::iter::repeat_n(letter, (index / 26 + 1) as usize).collect()
 }

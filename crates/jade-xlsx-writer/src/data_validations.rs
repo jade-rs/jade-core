@@ -1,7 +1,7 @@
 //! Input-rule authoring by preserving splices. A change to one rule retains
 //! sibling rules, container settings, unknown attributes and extensions.
 use crate::{
-    patch::{apply, escape, namespace_prefix, Splice},
+    patch::{apply, namespace_prefix, Splice},
     xml_edit,
     xml_edit_ns::set_child,
     Result, WriteError,
@@ -54,13 +54,18 @@ pub fn set_data_validation(
 
 /// The reader index at which a newly appended standard rule will appear.
 pub fn data_validation_insertion_index(xml: &str) -> Result<usize> {
-    let records = jade_xlsx_reader::data_validations::validation_records(xml)?;
-    let first = crate::xml_edit_ns::children(xml, b"dataValidations")?
+    // Locate the same direct container that authoring will use, including its
+    // insertion position when only compatibility-wrapped containers exist.
+    let placed = crate::xml_edit_ns::edit_child(xml, b"dataValidations", FOLLOWING, |list| {
+        Ok(list.to_owned())
+    })?;
+    let records = jade_xlsx_reader::data_validations::validation_records(&placed)?;
+    let first = crate::xml_edit_ns::children(&placed, b"dataValidations")?
         .first()
         .map(|(start, _, _)| *start);
     Ok(records
         .iter()
-        .filter(|r| !r.extended && Some(r.container.start) == first)
+        .filter(|r| !r.extended && Some(r.container.start) <= first)
         .count())
 }
 
@@ -105,10 +110,13 @@ fn edit_record(xml: &str, index: usize, rule: Option<&DataValidation>) -> Result
             Some((total - usize::from(rule.is_none())).to_string()),
         )],
     )?;
-    let changed = if rule.is_none() && total == 1 {
+    let changed = if rule.is_none()
+        && total == 1
+        && crate::xml_edit_ns::plain_empty(&changed, &[b"count"])?
+    {
         String::new()
     } else {
-        list.finish(&changed)?
+        crate::empty_feature::finish(&list, &changed, b"dataValidation")?
     };
     Ok(apply(
         xml,
@@ -190,22 +198,17 @@ fn rule_xml(existing: &str, rule: &DataValidation) -> Result<String> {
     let xml = if source.first {
         xml
     } else {
-        set_child(
+        set_standard_formula(
             &xml,
             b"formula1",
-            |p| formula_xml(p, "formula1", rule.formula1.as_deref()),
+            rule.formula1.as_deref(),
             &[b"formula2", b"extLst"],
         )?
     };
     if source.second {
         return Ok(xml);
     }
-    set_child(
-        &xml,
-        b"formula2",
-        |p| formula_xml(p, "formula2", rule.formula2.as_deref()),
-        &[b"extLst"],
-    )
+    set_standard_formula(&xml, b"formula2", rule.formula2.as_deref(), &[b"extLst"])
 }
 fn extended_rule_xml(existing: &str, rule: &DataValidation) -> Result<String> {
     use jade_xlsx_reader::data_validations::XM_NAMESPACE;
@@ -266,7 +269,7 @@ fn extended_rule_xml(existing: &str, rule: &DataValidation) -> Result<String> {
         .join(" ");
     let leaves = crate::xml_edit_ns::children_ns(&xml, b"sqref", XM_NAMESPACE)?;
     if let Some((start, end, leaf)) = leaves.first() {
-        let changed = crate::cell_shift::text_content(&leaf.text, &ranges)?;
+        let changed = crate::validation_sources::set_text_value(&leaf.text, &ranges)?;
         xml = apply(
             &xml,
             vec![Splice {
@@ -288,15 +291,18 @@ fn extended_rule_xml(existing: &str, rule: &DataValidation) -> Result<String> {
     Ok(xml)
 }
 
-fn formula_xml(prefix: &str, name: &str, formula: Option<&str>) -> String {
-    formula
-        .map(|f| {
-            format!(
-                "<{prefix}{name}>{}</{prefix}{name}>",
-                escape(f.strip_prefix('=').unwrap_or(f))
-            )
-        })
-        .unwrap_or_default()
+fn set_standard_formula(
+    xml: &str,
+    name: &[u8],
+    value: Option<&str>,
+    following: &[&[u8]],
+) -> Result<String> {
+    let Some(value) = value else {
+        return set_child(xml, name, |_| String::new(), following);
+    };
+    crate::xml_edit_ns::edit_child(xml, name, following, |leaf| {
+        crate::validation_sources::set_text_value(leaf, value.strip_prefix('=').unwrap_or(value))
+    })
 }
 fn bad(message: &str) -> WriteError {
     WriteError::DataValidation(message.into())

@@ -1,0 +1,38 @@
+{
+  "application": "Microsoft Word for Mac",
+  "version": "16.114.3",
+  "fixture": "public/fixtures/partial-style-numbering.docx",
+  "sha256": "d12c68c4e253987b9cb2854096af9f4acd1afee67d40c24bc86f32aad5987120",
+  "paragraphs": [
+    {
+      "index": 0,
+      "list_level_number": 2,
+      "list_string": "第１条"
+    },
+    {
+      "index": 1,
+      "list_level_number": 2,
+      "list_string": "第２条"
+    },
+    {
+      "index": 2,
+      "list_level_number": 1,
+      "list_string": ""
+    },
+    {
+      "index": 3,
+      "list_level_number": 2,
+      "list_string": "第３条"
+    },
+    {
+      "index": 4,
+      "list_level_number": 2,
+      "list_string": ""
+    },
+    {
+      "index": 5,
+      "list_level_number": 3,
+      "list_string": "１"
+    }
+  ]
+}

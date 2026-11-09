@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "host": "Windows",
+  "word_layout_platform": "Mac",
+  "before_native_source_commit": "f41d7e73d356dc703a4ea2e8c6da64a1ac733c1b",
+  "after_native_source_commit": "2ef8f939509680fb21cc01213de0319a331bcb27",
+  "before_executable_sha256": "72c9e6a082a54636f2c375fbb8b28c0f66678a8f1d132ff293bcb5353fc448d0",
+  "after_executable_sha256": "7132654ed6d1144403df4137c48aeefdfd8a0e3478b1c8666684d0475fe7fd25",
+  "comparison": "mac-policy-parity.json",
+  "actual_mac_word_capture": false
+}

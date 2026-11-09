@@ -466,12 +466,23 @@ impl DataTable {
     }
 }
 
+/// Identity established by an array anchor's cell-metadata link.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ArrayFormulaKind {
+    Legacy,
+    Dynamic,
+    #[default]
+    Unknown,
+}
+
 /// An array formula: its anchor holds the formula, and the rest of `range`
-/// holds what it returned.
+/// holds what it returned. Unknown identity is retained for unreadable links.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ArrayFormula {
     pub anchor: CellRef,
     pub range: CellRange,
+    #[serde(default)]
+    pub kind: ArrayFormulaKind,
 }
 
 impl ArrayFormula {
@@ -1037,6 +1048,31 @@ impl Sheet {
     /// the sorted rows and the row's sorted cells.
     pub fn cell_at(&self, reference: CellRef) -> Option<&Cell> {
         self.row(reference.row)?.cell(reference.column)
+    }
+
+    /// The original formula and its owning cell. Legacy CSE members share
+    /// their anchor's text without relative translation. Dynamic/unknown
+    /// outputs are not formula sources. This never expands a declared area.
+    pub fn formula_source_at(&self, reference: CellRef) -> Option<(CellRef, &str)> {
+        if let Some(formula) = self
+            .cell_at(reference)
+            .and_then(|cell| cell.formula.as_deref())
+        {
+            return Some((reference, formula));
+        }
+        let mut arrays = self.array_formulas.iter().filter(|array| {
+            array.kind == ArrayFormulaKind::Legacy
+                && array.range.start == array.anchor
+                && array.outputs_to(reference)
+        });
+        let array = arrays.next()?;
+        if arrays.next().is_some() {
+            return None;
+        }
+        Some((
+            array.anchor,
+            self.cell_at(array.anchor)?.formula.as_deref()?,
+        ))
     }
 
     /// [`Sheet::cell_at`], to change.
