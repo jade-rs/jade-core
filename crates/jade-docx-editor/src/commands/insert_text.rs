@@ -31,12 +31,13 @@ pub struct InsertTextCommand {
     previous_revision_id: Option<u32>,
     /// Package snapshot for cross-container replacements and structural note
     /// edits, whose raw part XML cannot be restored from paragraph models.
-    previous_snapshot: Option<crate::word_document::WordDocumentSnapshot>,
+    /// Keep the large, normally absent payload out of every typing command.
+    previous_snapshot: Option<Box<crate::word_document::WordDocumentSnapshot>>,
     /// Undo for a replacement that rewrites its paragraphs without removing
     /// any: a tracked one across sibling paragraphs (it marks the text and
     /// paragraph marks deleted) or one across containers.
     in_place: Option<ParagraphRangeUndo>,
-    note_range_deletion: Option<DeleteTextCommand>,
+    note_range_deletion: Option<Box<DeleteTextCommand>>,
     paragraph_index: usize,
 }
 
@@ -108,7 +109,7 @@ impl InsertTextCommand {
 
         if self.delete_selected_tables && self.text.is_empty() {
             if let Some(snapshot) = super::table_range::delete_range_with_tables(ctx, start, end)? {
-                self.previous_snapshot = Some(snapshot);
+                self.previous_snapshot = Some(Box::new(snapshot));
                 self.previous_selection = previous_selection;
                 self.in_place = None;
                 self.note_range_deletion = None;
@@ -249,7 +250,7 @@ impl InsertTextCommand {
                 tracked_range.finish(ctx);
             }
             self.in_place = tracked_range;
-            self.previous_snapshot = snapshot;
+            self.previous_snapshot = snapshot.map(Box::new);
             *ctx.selection = Some(SelectionRange::collapsed(
                 ctx.document
                     .model_to_rendered_text_position(TextPosition::new(
@@ -298,7 +299,7 @@ impl InsertTextCommand {
                     ctx.document.restore_snapshot(snapshot);
                     return Err(error);
                 }
-                self.previous_snapshot = Some(snapshot);
+                self.previous_snapshot = Some(Box::new(snapshot));
             } else {
                 // Undo splits the following paragraph back into the removed
                 // ones, as for a join, and rolls back the XML; a snapshot of
@@ -332,7 +333,7 @@ impl InsertTextCommand {
         {
             let mut command = DeleteTextCommand::new(self.range, DeleteDirection::Backward);
             command.apply(ctx)?;
-            self.note_range_deletion = Some(command);
+            self.note_range_deletion = Some(Box::new(command));
             return Ok(());
         }
 
@@ -487,7 +488,7 @@ impl InsertTextCommand {
                 range_undo.finish(ctx);
             }
             self.in_place = range_undo;
-            self.previous_snapshot = snapshot;
+            self.previous_snapshot = snapshot.map(Box::new);
             let new_focus = ctx
                 .document
                 .model_to_rendered_text_position(TextPosition::new(
@@ -744,11 +745,11 @@ impl InsertTextCommand {
         } else {
             let note_story = ctx.document.is_note_paragraph_surface(start.paragraph);
             if note_story {
-                self.previous_snapshot = Some(
+                self.previous_snapshot = Some(Box::new(
                     ctx.document
                         .snapshot_including_package()
                         .ok_or(CommandError::DocumentUnavailable)?,
-                );
+                ));
             } else {
                 self.raw_xml_undo.begin(ctx);
                 let mut previous_paragraphs =
@@ -1043,7 +1044,7 @@ impl Command for InsertTextCommand {
                 return Ok(());
             }
             if let Some(snapshot) = self.previous_snapshot.take() {
-                ctx.document.restore_snapshot(snapshot);
+                ctx.document.restore_snapshot(*snapshot);
                 *ctx.selection = self.previous_selection;
                 return Ok(());
             }
@@ -1143,6 +1144,134 @@ mod tests {
             .join("public")
             .join("fixtures")
             .join(name)
+    }
+
+    #[test]
+    fn note_range_replacements_restore_exact_package_through_mixed_history() {
+        let data = std::fs::read(fixture_path("hello.docx")).unwrap();
+        for story in ["footnote", "endnote"] {
+            let mut doc =
+                executor::block_on(WordDocument::load(&data, &Options::default())).unwrap();
+            let id = if story == "footnote" {
+                doc.insert_footnote_at(0, 0, "AlphaBeta").unwrap()
+            } else {
+                doc.insert_endnote_at(0, 0, "AlphaBeta").unwrap()
+            };
+            let first = doc
+                .surface_index_for_story(story, 0, None, Some(&id))
+                .unwrap();
+            assert!(doc.split_paragraph_at(first, 6));
+            let second = doc
+                .surface_index_for_story(story, 1, None, Some(&id))
+                .unwrap();
+            let texts = |doc: &WordDocument| {
+                [first, second]
+                    .into_iter()
+                    .filter_map(|index| {
+                        doc.story_position_for_surface(index)
+                            .filter(|position| {
+                                position.story == story
+                                    && position.note_id.as_deref() == Some(id.as_str())
+                            })
+                            .map(|_| {
+                                doc.paragraph(index)
+                                    .unwrap()
+                                    .runs
+                                    .iter()
+                                    .map(|run| run.text.as_str())
+                                    .collect::<String>()
+                            })
+                    })
+                    .collect::<Vec<_>>()
+            };
+            assert_eq!(texts(&doc), ["\tAlpha", "Beta"]);
+            let original = doc.export_docx().unwrap();
+            let body = exported_document_xml(&mut doc);
+            let mut history = CommandExecutor::new();
+            let mut selection;
+
+            for replacement in ["契約😀", "", "Z\u{301}"] {
+                // Mix ordinary typing with both kinds of cross-paragraph note
+                // edit: a replacement keeps a package snapshot; an empty one
+                // delegates to the note-aware deletion command.
+                let body_range = SelectionRange::collapsed(TextPosition::new(0, 0));
+                selection = Some(body_range);
+                history
+                    .execute(
+                        Box::new(InsertTextCommand::new(body_range, "X".into(), None)),
+                        &mut CommandContext::new(&mut doc, &mut selection),
+                    )
+                    .unwrap();
+                assert!(history
+                    .undo(&mut CommandContext::new(&mut doc, &mut selection))
+                    .unwrap());
+                assert_eq!(doc.export_docx().unwrap(), original);
+
+                let range = SelectionRange::new(
+                    doc.model_to_rendered_text_position(TextPosition::new(first, 2)),
+                    doc.model_to_rendered_text_position(TextPosition::new(second, 2)),
+                );
+                selection = Some(range);
+                history
+                    .execute(
+                        Box::new(InsertTextCommand::new(range, replacement.into(), None)),
+                        &mut CommandContext::new(&mut doc, &mut selection),
+                    )
+                    .unwrap();
+                assert!(!history.can_redo(), "a new edit clears the undone typing");
+                let expected = vec![format!("\tA{replacement}ta")];
+                assert_eq!(texts(&doc), expected);
+                let applied = doc.export_docx().unwrap();
+                let applied_selection = selection;
+                assert_eq!(exported_document_xml(&mut doc), body);
+
+                // A failed edit must retain the cold undo payload, as well as
+                // the current document and selection.
+                let invalid = SelectionRange::collapsed(TextPosition::new(usize::MAX, 0));
+                let depth = history.undo_depth();
+                assert!(matches!(
+                    history.execute(
+                        Box::new(InsertTextCommand::new(invalid, "!".into(), None)),
+                        &mut CommandContext::new(&mut doc, &mut selection),
+                    ),
+                    Err(CommandError::ParagraphUnavailable)
+                ));
+                assert_eq!(history.undo_depth(), depth);
+                assert_eq!(selection, applied_selection);
+                assert_eq!(doc.export_docx().unwrap(), applied);
+
+                for _ in 0..2 {
+                    assert!(history
+                        .undo(&mut CommandContext::new(&mut doc, &mut selection))
+                        .unwrap());
+                    assert_eq!(texts(&doc), ["\tAlpha", "Beta"]);
+                    assert_eq!(selection, Some(range));
+                    assert_eq!(doc.export_docx().unwrap(), original);
+                    assert!(matches!(
+                        history.execute(
+                            Box::new(InsertTextCommand::new(invalid, "!".into(), None)),
+                            &mut CommandContext::new(&mut doc, &mut selection),
+                        ),
+                        Err(CommandError::ParagraphUnavailable)
+                    ));
+                    assert!(history.can_redo(), "a failed edit keeps redo");
+                    assert_eq!(history.undo_depth(), 0);
+                    assert_eq!(selection, Some(range));
+                    assert_eq!(doc.export_docx().unwrap(), original);
+                    assert!(history
+                        .redo(&mut CommandContext::new(&mut doc, &mut selection))
+                        .unwrap());
+                    assert_eq!(texts(&doc), expected);
+                    assert_eq!(selection, applied_selection);
+                    assert_eq!(doc.export_docx().unwrap(), applied);
+                    assert_eq!(exported_document_xml(&mut doc), body);
+                }
+                assert!(history
+                    .undo(&mut CommandContext::new(&mut doc, &mut selection))
+                    .unwrap());
+                assert_eq!(doc.export_docx().unwrap(), original);
+            }
+        }
     }
 
     fn build_docx_with_body(body_xml: &str) -> Vec<u8> {
