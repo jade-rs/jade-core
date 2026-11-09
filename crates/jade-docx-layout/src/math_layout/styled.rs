@@ -104,7 +104,7 @@ pub trait StyledMathMeasure {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct MathGlyph<'a> {
     pub text_range: Range<usize>,
     pub x: f64,
@@ -840,6 +840,7 @@ impl<'a, C: StyledMathMeasure> Builder<'_, 'a, C> {
                         group,
                         x: 0.0,
                         align: None,
+                        trailing_operator: None,
                     });
                     group += 1;
                 }
