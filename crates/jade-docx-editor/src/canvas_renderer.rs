@@ -7396,7 +7396,13 @@ where
                         usize::MAX,
                     )?;
                 }
+                BodyElement::Math(math) if !*first_paragraph => {
+                    *note_paragraph_index += 1;
+                    self.render_math_block(math)?;
+                }
                 BodyElement::Math(math) => {
+                    // A note starting with math still needs its synthesized
+                    // note number. Keep that combined preview for now.
                     let label = Self::math_placeholder_label(math);
                     let mut placeholder = Paragraph {
                         runs: vec![Run {
@@ -7685,7 +7691,7 @@ where
                         .filter(|note| {
                             note.body
                                 .iter()
-                                .all(|element| element.as_paragraph().is_some())
+                                .all(|element| !matches!(element, BodyElement::Table(_)))
                         })
                         .map(|note| MeasuredNoteLineBottoms::new(note.body.len()));
                     let height = self.measure_note_ids_height(
@@ -16082,6 +16088,18 @@ where
         &self.math_zones
     }
 
+    /// Keeps the rendered and measured footnote areas on the same complete
+    /// line boundaries, including atomic display equation blocks.
+    fn record_placed_footnote_line(&mut self) {
+        if self.note_area_bottom.is_some() {
+            self.note_area_lines += 1;
+        } else if let Some(bottoms) = self.measured_note_line_bottoms.as_mut() {
+            if !bottoms.push(self.current_y) {
+                self.measured_note_line_bottoms = None;
+            }
+        }
+    }
+
     /// Sizes a display-math line by the paragraph's rules (line spacing and
     /// the document grid), applies its spacing before, and returns the line
     /// box with the spacing after. Word for Mac gives the `math` fixture's
@@ -16091,7 +16109,7 @@ where
         math: &MathParagraph,
         metrics: jade_docx_layout::math_layout::MathMetrics,
         size_px: f64,
-    ) -> Result<(jade_docx_layout::math_layout::MathBlockLineBox, f64), JsValue> {
+    ) -> Result<Option<(jade_docx_layout::math_layout::MathBlockLineBox, f64)>, JsValue> {
         let line_box = jade_docx_layout::math_layout::math_block_line_box(
             metrics,
             (size_px * 72.0 / 96.0) as f32,
@@ -16109,7 +16127,6 @@ where
             .map_or(0.0, |amount| amount.px_with_line_unit(line_box.height));
         let preceding_after = self
             .trailing_spacing_after
-            .take()
             .filter(|&(page, column, y, _)| {
                 page == self.current_page_number
                     && column == self.column_index
@@ -16117,9 +16134,24 @@ where
             })
             .map_or(0.0, |(_, _, _, amount)| amount);
         let before = collapsed_spacing_before(before, preceding_after);
+        if self.rendering_page_footnotes
+            && self.note_area_bottom.is_some_and(|bottom| {
+                note_line_overflows(
+                    self.current_y,
+                    before + line_box.height,
+                    bottom,
+                    self.note_area_lines,
+                )
+            })
+        {
+            // Carry the whole equation to the next footnote area.
+            self.note_overflow_line = Some((self.paragraph_counter, 0));
+            return Ok(None);
+        }
+        self.trailing_spacing_after = None;
         self.ensure_space(before + line_box.height + after)?;
         self.current_y += before;
-        Ok((line_box, after))
+        Ok(Some((line_box, after)))
     }
 
     fn render_font_math_block<'a>(
@@ -16129,8 +16161,16 @@ where
         plan: jade_docx_layout::math_layout::styled::StyledMathLayout<'a>,
         char_unit_pt: f64,
     ) -> Result<(), JsValue> {
-        let painter = self.host.painter();
-        let (line_box, after) = self.place_math_block(math, plan.line_metrics, style.size_px)?;
+        let Some((line_box, after)) =
+            self.place_math_block(math, plan.line_metrics, style.size_px)?
+        else {
+            return Ok(());
+        };
+        if self.measuring_notes {
+            self.paragraph_counter += 1;
+            self.advance_past_math_block(line_box.height, line_box.baseline, after);
+            return Ok(());
+        }
         // Pagination may have changed the column or physical page/mirror side.
         let (column_x, column_width) = jade_docx_layout::math_layout::math_block_content_box(
             math.properties.as_deref(),
@@ -16146,12 +16186,12 @@ where
         let math_x = plan.alignment.x(column_x, column_width, plan.metrics.width);
         let owned = Rc::new(math::OwnedMathPlan::from_plan(&plan));
         if self.should_draw_current_page_for_render() {
+            let painter = self.host.painter();
             owned
                 .paint(&painter, math_x, baseline_y)
                 .map_err(PainterError::into_js_value)?;
             self.reset_fill_style_state();
         }
-        drop(painter);
         let line_height = line_box.height;
         self.record_math_zone(math::MathZone {
             paragraph: self.paragraph_counter,
@@ -16209,7 +16249,12 @@ where
             vertical_reversed: false,
         };
         self.selection.record_line(paragraph_index, line_layout);
+        self.advance_past_math_block(line_height, line_box.baseline, after);
+        Ok(())
+    }
 
+    fn advance_past_math_block(&mut self, line_height: f64, baseline: f64, after: f64) {
+        self.last_line_baseline = self.current_y + baseline;
         self.current_y += line_height + after;
         self.trailing_spacing_after = Some((
             self.current_page_number,
@@ -16217,8 +16262,9 @@ where
             self.current_y,
             after,
         ));
-        self.last_line_baseline = baseline_y;
-        Ok(())
+        if self.rendering_page_footnotes {
+            self.record_placed_footnote_line();
+        }
     }
 
     fn math_placeholder_label(math: &MathParagraph) -> String {
@@ -23137,13 +23183,7 @@ where
                 }
             }
             if self.rendering_page_footnotes {
-                if self.note_area_bottom.is_some() {
-                    self.note_area_lines += 1;
-                } else if let Some(bottoms) = self.measured_note_line_bottoms.as_mut() {
-                    if !bottoms.push(self.current_y) {
-                        self.measured_note_line_bottoms = None;
-                    }
-                }
+                self.record_placed_footnote_line();
             } else if self.tracks_footnote_placement() {
                 self.last_body_line_px = line_box_height;
             }
@@ -46937,6 +46977,112 @@ mod tests {
             assert!((lines[0].start_x - drawn_x).abs() < 1e-9);
             assert!((lines[0].fragments[0].x - drawn_x).abs() < 1e-9);
         }
+    }
+
+    #[test]
+    fn display_equations_draw_on_their_own_footnote_and_endnote_surfaces() {
+        use jade_painter::recording::Op;
+
+        let parser = jade_docx_reader::DocumentParser::new();
+        let mut document = parser.parse_document_xml(
+            r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+                <w:body><w:p><w:r><w:t>body</w:t></w:r><w:r><w:footnoteReference w:id="1"/></w:r><w:r><w:endnoteReference w:id="2"/></w:r></w:p>
+                <w:p><w:r><w:t>body tail</w:t></w:r></w:p></w:body></w:document>"#,
+        ).unwrap();
+        for (notes, kind, id, variable) in [
+            (&mut document.footnotes, "footnote", "1", "x"),
+            (&mut document.endnotes, "endnote", "2", "y"),
+        ] {
+            let xml = format!(
+                r#"<w:{kind}s xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math">
+                <w:{kind} w:id="{id}">
+                    <w:p><w:r><w:{kind}Ref/></w:r><w:r><w:t xml:space="preserve"> before {kind}</w:t></w:r></w:p>
+                    <w:p><m:oMathPara><m:oMath><m:f><m:num><m:r><m:t>{variable}</m:t></m:r></m:num><m:den><m:r><m:t>2</m:t></m:r></m:den></m:f></m:oMath></m:oMathPara></w:p>
+                    <w:p><w:r><w:t>after {kind}</w:t></w:r></w:p>
+                </w:{kind}></w:{kind}s>"#,
+            );
+            let note = parser
+                .parse_notes_xml(&xml, format!("w:{kind}").as_bytes())
+                .unwrap()
+                .pop()
+                .unwrap();
+            assert!(matches!(note.body[1], BodyElement::Math(_)));
+            notes.insert(id.into(), note);
+        }
+        let (mut renderer, painter) = recording_renderer();
+        renderer.render(&document, &Options::default()).unwrap();
+        assert_eq!(renderer.math_zones().len(), 2);
+        let lines = renderer.layout_debug_lines();
+        for (glyph, tail) in [("𝑥", "after footnote"), ("𝑦", "after endnote")] {
+            let zone = renderer
+                .math_zones()
+                .iter()
+                .find(|zone| zone.plan.text.contains(glyph))
+                .unwrap();
+            assert!(zone.display);
+            assert!(painter
+                .ops()
+                .iter()
+                .any(|op| matches!(op, Op::FillText(text, _, _) if text == glyph)));
+            let following = lines.iter().find(|line| line.text == tail).unwrap();
+            assert_eq!(following.paragraph, zone.paragraph + 1);
+            assert!(following.absolute_top > zone.absolute_baseline);
+        }
+    }
+
+    #[test]
+    fn footnote_display_equation_measures_without_drawing_and_carries_whole() {
+        use jade_painter::recording::Op;
+
+        let document = jade_docx_reader::DocumentParser::new().parse_document_xml(
+            r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math">
+                <w:body><w:p><m:oMathPara><m:oMath><m:r><m:t>x</m:t></m:r></m:oMath></m:oMathPara></w:p></w:body>
+            </w:document>"#,
+        ).unwrap();
+        let BodyElement::Math(math) = &document.body.as_ref().unwrap().elements[0] else {
+            panic!("expected display equation");
+        };
+        let (mut measuring, measurement_painter) = recording_renderer();
+        measuring.rendering_page_footnotes = true;
+        measuring.measuring_notes = true;
+        measuring.measured_note_line_bottoms = Some(MeasuredNoteLineBottoms::new(1));
+        let start = measuring.current_y;
+        measuring.render_math_block(math).unwrap();
+        let measured_height = measuring.current_y - start;
+        assert!(measured_height > 1.0);
+        assert_eq!(
+            measuring
+                .measured_note_line_bottoms
+                .as_ref()
+                .unwrap()
+                .bottoms
+                .as_slice(),
+            &[measuring.current_y],
+        );
+        assert!(measuring.math_zones().is_empty());
+        assert!(!measurement_painter.ops().iter().any(|op| matches!(
+            op,
+            Op::FillText(..) | Op::FillRect(..) | Op::Fill | Op::Stroke
+        )));
+
+        let (mut renderer, _) = recording_renderer();
+        renderer.rendering_page_footnotes = true;
+        renderer.paragraph_counter = 7;
+        renderer.note_area_bottom = Some(start + 1.0);
+        renderer.note_area_lines = 1;
+        renderer.render_math_block(math).unwrap();
+        assert_eq!(renderer.note_overflow_line.take(), Some((7, 0)));
+        assert_eq!(renderer.current_y, start);
+        assert!(renderer.math_zones().is_empty());
+
+        // The same block fits in a fresh area and keeps its surface index.
+        renderer.note_area_bottom = Some(start + measured_height);
+        renderer.note_area_lines = 0;
+        renderer.render_math_block(math).unwrap();
+        assert_eq!(renderer.note_overflow_line, None);
+        assert_eq!(renderer.note_area_lines, 1);
+        assert_eq!(renderer.math_zones()[0].paragraph, 7);
+        assert_eq!(renderer.current_y - start, measured_height);
     }
 
     #[test]
