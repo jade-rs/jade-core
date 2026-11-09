@@ -6650,7 +6650,7 @@ impl WordDocument {
                 .iter()
                 .position(|child| matches!(child, XmlNode::Element(element) if element.name == "w:gridBefore"))
                 .map(|index| index + 1)
-                .unwrap_or(tr_pr.children.len());
+                .unwrap_or_else(|| Self::table_row_property_insert_position(tr_pr));
             tr_pr.children.insert(
                 insert_at,
                 XmlNode::Element(XmlElement {
@@ -6667,7 +6667,7 @@ impl WordDocument {
                 .iter()
                 .position(|child| matches!(child, XmlNode::Element(element) if element.name == "w:gridAfter"))
                 .map(|index| index + 1)
-                .unwrap_or(tr_pr.children.len());
+                .unwrap_or_else(|| Self::table_row_property_insert_position(tr_pr));
             tr_pr.children.insert(
                 insert_at,
                 XmlNode::Element(XmlElement {
@@ -6891,8 +6891,11 @@ impl WordDocument {
                     attributes: Vec::new(),
                     children: Vec::new(),
                 };
-                tr_pr_element.children.push(XmlNode::Element(element));
-                height_idx = Some(tr_pr_element.children.len() - 1);
+                let index = Self::table_row_property_insert_position(tr_pr_element);
+                tr_pr_element
+                    .children
+                    .insert(index, XmlNode::Element(element));
+                height_idx = Some(index);
             }
 
             if let Some(XmlNode::Element(height_element)) =
@@ -26353,6 +26356,17 @@ impl WordDocument {
             .ok_or_else(|| format!("failed to create {name}"))
     }
 
+    fn table_row_property_insert_position(properties: &XmlElement) -> usize {
+        // CT_TrPr puts row revisions after the ordinary row properties.
+        properties
+            .children
+            .iter()
+            .position(|node| {
+                matches!(node, XmlNode::Element(element) if matches!(element.name.as_str(), "w:ins" | "w:del" | "w:trPrChange"))
+            })
+            .unwrap_or(properties.children.len())
+    }
+
     fn replace_property_child(
         raw: &mut DocxXmlDocument,
         properties_id: XmlNodeId,
@@ -26366,7 +26380,12 @@ impl WordDocument {
         properties
             .children
             .retain(|node| !matches!(node, XmlNode::Element(existing) if existing.name == name));
-        properties.children.push(XmlNode::Element(element));
+        let index = if properties.name == "w:trPr" {
+            Self::table_row_property_insert_position(properties)
+        } else {
+            properties.children.len()
+        };
+        properties.children.insert(index, XmlNode::Element(element));
         Ok(())
     }
 
@@ -28685,7 +28704,12 @@ impl WordDocument {
                 preserved.children.retain(|child| {
                     !matches!(child, XmlNode::Element(element) if model_owned_children.contains(&element.name.as_str()))
                 });
-                preserved.children.extend(generated.children.into_iter().filter(
+                let index = if property_name == "w:trPr" {
+                    Self::table_row_property_insert_position(&preserved)
+                } else {
+                    preserved.children.len()
+                };
+                preserved.children.splice(index..index, generated.children.into_iter().filter(
                     |child| matches!(child, XmlNode::Element(element) if model_owned_children.contains(&element.name.as_str())),
                 ));
                 preserved
@@ -48846,7 +48870,7 @@ mod tests {
         let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
 <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
   <w:body><w:tbl><w:tblPr/><w:tr>
-    <w:trPr><w:tblHeader/><w:trPrChange w:id="7"><w:trPr/></w:trPrChange></w:trPr>
+    <w:trPr><w:ins w:id="6" w:author="Reviewer"/><w:trPrChange w:id="7" w:author="Reviewer"><w:trPr/></w:trPrChange></w:trPr>
     <w:tc><w:tcPr><w:hideMark/><w:tcPrChange w:id="8"><w:tcPr/></w:tcPrChange></w:tcPr>
       <w:p><w:r><w:t>A</w:t></w:r></w:p></w:tc>
   </w:tr></w:tbl></w:body>
@@ -48861,14 +48885,39 @@ mod tests {
         word_doc
             .insert_table_row(0, 1, None)
             .expect("insert table row");
+        word_doc
+            .insert_table_cell(0, 1, 0, false)
+            .expect("shift cells in the second row");
+        word_doc
+            .set_table_row_height_properties(0, 0, "exact", Some(24.0))
+            .expect("set height on the revised row");
+        word_doc
+            .set_table_row_properties(0, 0, Some(true), Some(true))
+            .expect("set properties on the revised row");
 
-        let rewritten = word_doc
-            .raw_document
-            .as_ref()
-            .expect("raw document")
-            .to_string()
-            .expect("serialize raw document");
-        assert!(rewritten.contains("w:trPrChange"));
+        let raw = word_doc.raw_document.as_ref().expect("raw document");
+        let row_id = word_doc.table_by_order(0).unwrap().rows[0].node_id.unwrap();
+        let row = raw.element(row_id).expect("revised row");
+        let properties = WordDocument::table_child_element(row, "w:trPr").unwrap();
+        let names: Vec<&str> = properties
+            .children
+            .iter()
+            .filter_map(|child| match child {
+                XmlNode::Element(element) => Some(element.name.as_str()),
+                _ => None,
+            })
+            .collect();
+        let insertion = names.iter().position(|name| *name == "w:ins").unwrap();
+        for property in ["w:gridAfter", "w:trHeight", "w:tblHeader", "w:cantSplit"] {
+            let position = names.iter().position(|name| *name == property).unwrap();
+            assert!(position < insertion, "{names:?}");
+        }
+        let change = names
+            .iter()
+            .position(|name| *name == "w:trPrChange")
+            .unwrap();
+        assert!(insertion < change, "{names:?}");
+        let rewritten = raw.to_string().expect("serialize raw document");
         assert!(rewritten.contains("w:id=\"7\""));
         assert!(rewritten.contains("w:hideMark"));
         assert!(rewritten.contains("w:tcPrChange"));
