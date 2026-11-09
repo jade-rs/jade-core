@@ -721,11 +721,17 @@ mod tests {
             assert!(plan.lines.len() > 1);
             assert_eq!(plan.text, "11−22−33−44−55−66");
             let owned = OwnedMathPlan::from_plan(&plan);
-            for draw_owned in [false, true] {
+            let painter_kinds = [
+                true,
+                #[cfg(feature = "opentype-math")]
+                false,
+            ];
+            for draw_owned in painter_kinds {
                 painter.clear();
                 if draw_owned {
                     owned.paint(&painter, 0.0, 0.0).unwrap();
                 } else {
+                    #[cfg(feature = "opentype-math")]
                     paint_boxed_math(&painter, &plan, 0.0, 0.0).unwrap();
                 }
                 let ops = painter.ops();

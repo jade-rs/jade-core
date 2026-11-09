@@ -53387,6 +53387,7 @@ mod tests {
         assert_eq!(
             test_renderer()
                 .text_box_paragraph_layout(model.paragraph(0).unwrap())
+                .expect("layout text box")
                 .0,
             "第１１条",
         );
@@ -53415,7 +53416,10 @@ mod tests {
             run.field.as_mut().unwrap().resolved_value = Some(value.into());
         }
         assert_eq!(
-            test_renderer().text_box_paragraph_layout(paragraph).0,
+            test_renderer()
+                .text_box_paragraph_layout(paragraph)
+                .expect("layout text box")
+                .0,
             "第２２条"
         );
         assert_eq!(
