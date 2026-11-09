@@ -2207,7 +2207,8 @@ pub(crate) fn word_windows_cjk_synthetic_bold_extra_advance_px(font_descriptor: 
 
 /// Extra advance, in px, that Word for Mac gives a glyph it emboldens itself:
 /// 1/50 em for a bold run in a face without a bold style (Yu Mincho, MS
-/// Mincho, MS Gothic, and Century, which Word for Mac ships without one).
+/// Mincho, MS Gothic, and Century, which Word for Mac ships without one, and
+/// Arial Unicode MS, whose bold 12pt kanji Word for Mac 16.114 sets at 12.24pt).
 /// Word for Mac 16.113 sets bold 10.5pt `第1条（目的）` in either face at a
 /// 10.71pt pitch and the 16pt title at 16.32pt. Windows CJK uses the
 /// separate, smaller observed advance above; half cells retain their own policy.
@@ -2256,6 +2257,8 @@ pub fn word_synthetic_bold_extra_advance_px(font_descriptor: &str) -> f64 {
             | "ＭＳＰゴシック"
             | "MS PGothic"
             | "Century"
+            | "Arial Unicode MS"
+            | "ArialUnicodeMS"
     );
     if synthesized {
         f64::from(size_pt) * 96.0 / 72.0 * 0.02
@@ -3187,6 +3190,21 @@ pub fn doc_grid_has_active_line_grid(doc_grid: Option<&DocGrid>) -> bool {
         // Keep the existing Windows legacy FE-grid behavior until traced there.
         None => word_layout_platform() == WordLayoutPlatform::Windows && grid.char_space.is_some(),
     }
+}
+
+/// The pitch a `w:beforeLines`/`w:afterLines` unit measures, when the section
+/// has an active line grid; see `text_extract::spacing_before_px_on_grid`. A
+/// paragraph's own `w:snapToGrid` does not change it.
+pub fn doc_grid_line_unit_pitch_pt(
+    doc_grid: Option<&DocGrid>,
+    section_content_height_pt: Option<f32>,
+    base_font_size: f32,
+) -> Option<f32> {
+    doc_grid_has_active_line_grid(doc_grid)
+        .then(|| {
+            effective_doc_grid_line_pitch_pt(doc_grid, section_content_height_pt, base_font_size)
+        })
+        .flatten()
 }
 
 /// When `w:linePitch` is present but tiny (e.g. `100` → 5pt), Word does not use that value as the
@@ -4485,6 +4503,47 @@ mod tests {
             run.text.clear();
         }
         assert!(run.text.is_empty());
+    }
+
+    #[test]
+    fn doc_grid_line_unit_pitch_needs_an_active_line_grid() {
+        set_word_layout_platform(WordLayoutPlatform::Mac);
+        for (grid_type, expected) in [
+            ("lines", Some(18.0)),
+            ("linesAndChars", Some(18.0)),
+            ("snapToChars", Some(18.0)),
+            ("default", None),
+        ] {
+            let grid = doc_grid(grid_type, Some(18.0), None);
+            assert_eq!(
+                doc_grid_line_unit_pitch_pt(Some(&grid), Some(650.0), 12.0),
+                expected,
+                "{grid_type}"
+            );
+        }
+        let untyped = DocGrid {
+            line_pitch: Some(18.0),
+            ..DocGrid::default()
+        };
+        assert_eq!(
+            doc_grid_line_unit_pitch_pt(Some(&untyped), Some(650.0), 12.0),
+            None
+        );
+        assert_eq!(doc_grid_line_unit_pitch_pt(None, Some(650.0), 12.0), None);
+        set_word_layout_platform(WordLayoutPlatform::Windows);
+    }
+
+    #[test]
+    fn arial_unicode_bold_gets_synthetic_advance_on_mac() {
+        set_word_layout_platform(WordLayoutPlatform::Mac);
+        let bold = "bold 12.00pt 'Arial Unicode MS', 'Arial', sans-serif";
+        assert!((word_synthetic_bold_extra_advance_px(bold) - 0.32).abs() < 1e-9);
+        assert_eq!(
+            word_synthetic_bold_extra_advance_px("12.00pt 'Arial Unicode MS'"),
+            0.0
+        );
+        set_word_layout_platform(WordLayoutPlatform::Windows);
+        assert_eq!(word_synthetic_bold_extra_advance_px(bold), 0.0);
     }
 
     #[test]

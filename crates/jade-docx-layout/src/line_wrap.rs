@@ -7791,8 +7791,29 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
     // The final width repair can move a closing punctuation cluster to the
     // next line. Reapply kinsoku after that movement so a non-hanging character
     // does not leave its matching opening punctuation at the previous line end.
-    enforce_line_start_rules(paragraph_style, &mut lines);
+    let mut kinsoku_moved = enforce_line_start_rules(paragraph_style, &mut lines);
     drop_line_start_auto_space(&mut lines);
+    // That repair can grow the next line past the edge: Word for Mac sets
+    // `…場合に` | `は、…あつ` | `ては、…`, where one repair of each kind would
+    // leave `て` overhanging. A justified line has the squeeze above instead,
+    // and Word for Windows traces were fitted without this.
+    if mac_ragged_line_refits(paragraph_style) {
+        let mut rounds = 0;
+        while kinsoku_moved && rounds < MAX_KINSOKU_REFIT_ROUNDS {
+            ensure_lines_fit_available_width(
+                ctx,
+                character_borders,
+                &mut lines,
+                base_x,
+                paragraph_style,
+                column_right_edge,
+                &mut snap_to_chars_cell_width_cache,
+            )?;
+            kinsoku_moved = enforce_line_start_rules(paragraph_style, &mut lines);
+            drop_line_start_auto_space(&mut lines);
+            rounds += 1;
+        }
+    }
     hyphenate::hyphenate_lines(ctx, &mut lines, paragraph_style, base_available)?;
     // Border detection already checked every original segment. Ordinary text
     // cannot acquire a border while clusters move, so reuse that result and
@@ -7951,6 +7972,9 @@ fn punctuation_pair_blank(
 /// jade carries page sizes, margins and indents as f32 points, which leaves
 /// such a line up to ~1e-4 px over. Far below a twip (0.067 px).
 const WRAP_FIT_TOLERANCE_PX: f64 = 1e-3;
+/// Each round walks every line, so a cascade takes one; the bound only stops a
+/// repair pair that keeps undoing itself.
+const MAX_KINSOKU_REFIT_ROUNDS: usize = 8;
 
 /// Word for Mac 16.114 squeeze probes: a justified line keeps the character
 /// that overflows it by `D` while `D / shrink <= E / stretch`, where `E` is
@@ -8139,6 +8163,13 @@ fn mac_squeeze_enabled(style: &ParagraphStyle) -> bool {
     style.word_platform == crate::line_metrics::WordLayoutPlatform::Mac
         && is_justified_alignment(&style.alignment)
         && style.oracle_advance_px_by_text_offset.is_none()
+}
+
+/// Whether a line a kinsoku repair overfills wraps again, rather than being
+/// narrowed: a ragged Word for Mac paragraph.
+fn mac_ragged_line_refits(style: &ParagraphStyle) -> bool {
+    style.word_platform == crate::line_metrics::WordLayoutPlatform::Mac
+        && !is_justified_alignment(&style.alignment)
 }
 
 fn mac_punctuation_compression_enabled(style: &ParagraphStyle) -> bool {
@@ -9048,10 +9079,18 @@ fn ensure_lines_fit_available_width<C: LineWrapContext>(
                         .clusters
                         .last()
                         .is_some_and(|cluster| cluster.can_hang_line_end);
-                let has_word_break_opportunity = lines[line_index]
-                    .clusters
-                    .iter()
-                    .any(|cluster| cluster.is_whitespace);
+                // East Asian text is never one unbreakable word: a kinsoku
+                // repair can overfill the last line, and Word for Mac then
+                // wraps it (`…ものとす` | `る。`, word-mac-grid-tall-face).
+                let breaks_anywhere = mac_ragged_line_refits(paragraph_style);
+                let has_word_break_opportunity = lines[line_index].clusters.iter().any(|cluster| {
+                    cluster.is_whitespace
+                        || (breaks_anywhere
+                            && cluster
+                                .layout
+                                .as_ref()
+                                .is_some_and(|layout| layout.script == ScriptCategory::EastAsia))
+                });
                 let intrinsic_width = original_widths
                     .as_ref()
                     .map_or(incremental_width, |widths| {
@@ -9110,11 +9149,15 @@ fn ensure_lines_fit_available_width<C: LineWrapContext>(
 /// because Word keeps the terminal mark within the paragraph text extent.
 /// Consecutive prohibited-start punctuation is kept with a preceding body
 /// character rather than pretending that `overflowPunct` permits an arbitrary
-/// multi-character overhang.
-pub fn enforce_line_start_rules(paragraph_style: &ParagraphStyle, lines: &mut Vec<WrappedLine>) {
+/// multi-character overhang. Returns whether any character moved.
+pub fn enforce_line_start_rules(
+    paragraph_style: &ParagraphStyle,
+    lines: &mut Vec<WrappedLine>,
+) -> bool {
     if !paragraph_style.kinsoku_enabled() || lines.len() < 2 {
-        return;
+        return false;
     }
+    let mut moved = false;
 
     for idx in 1..lines.len() {
         if !matches!(lines[idx - 1].break_kind, LineBreakKind::Soft) {
@@ -9133,6 +9176,7 @@ pub fn enforce_line_start_rules(paragraph_style: &ParagraphStyle, lines: &mut Ve
         if prev_forbids_end && prev_line.clusters.len() > 1 {
             if let Some((cluster, segment)) = detach_trailing_cluster(prev_line) {
                 prepend_cluster_to_line(next_line, cluster, segment);
+                moved = true;
                 continue;
             }
         }
@@ -9153,6 +9197,7 @@ pub fn enforce_line_start_rules(paragraph_style: &ParagraphStyle, lines: &mut Ve
             && paragraph_style.allows_hanging_punctuation_at(prev_line.break_kind)
             && hang_single_forbidden_line_start_cluster(prev_line, next_line)
         {
+            moved = true;
             if next_line.clusters.is_empty() {
                 // Hanging the only cluster(s) of a terminal wrap line must not
                 // leave a phantom line box behind. Preserve the paragraph/hard
@@ -9180,12 +9225,14 @@ pub fn enforce_line_start_rules(paragraph_style: &ParagraphStyle, lines: &mut Ve
                     break;
                 };
                 prepend_cluster_to_line(next_line, cluster, segment);
+                moved = true;
             }
             if prev_line.clusters.len() > 1 {
                 let Some((cluster, segment)) = detach_trailing_cluster(prev_line) else {
                     continue;
                 };
                 prepend_cluster_to_line(next_line, cluster, segment);
+                moved = true;
             }
             // Moving the body character can expose an opening punctuation
             // character at the previous line end (for example `(a)` when the
@@ -9202,11 +9249,13 @@ pub fn enforce_line_start_rules(paragraph_style: &ParagraphStyle, lines: &mut Ve
                     break;
                 };
                 prepend_cluster_to_line(next_line, cluster, segment);
+                moved = true;
             }
         }
     }
 
     lines.retain(|line| !line.clusters.is_empty() || line.break_range.is_some());
+    moved
 }
 
 /// A wrapped line's first character has no East Asian neighbour before it:
@@ -15410,6 +15459,58 @@ mod tests {
             },
             ..ParagraphStyle::default()
         }
+    }
+
+    fn mac_ragged_kinsoku_lines(text: &str, right_edge: f64) -> Vec<String> {
+        let paragraph = ParagraphStyle {
+            alignment: "left".into(),
+            enable_line_break_rules: true,
+            word_platform: crate::line_metrics::WordLayoutPlatform::Mac,
+            east_asian_rules: EastAsianLineBreakingRules {
+                compatibility_mode: Some(15),
+                ..EastAsianLineBreakingRules::default()
+            },
+            ..ParagraphStyle::default()
+        };
+        let lines = wrap_text_into_lines(
+            &TestContext::new(10.0),
+            text,
+            &[make_run(text)],
+            0.0,
+            &paragraph,
+            0,
+            right_edge,
+        )
+        .unwrap();
+        for line in &lines {
+            let width: f64 = line.clusters.iter().map(|cluster| cluster.width).sum();
+            assert!(width <= right_edge, "{width} > {right_edge}");
+        }
+        collect_line_infos(&lines)
+            .into_iter()
+            .map(|line| line.text)
+            .collect()
+    }
+
+    /// Word for Mac 16.114, `word-mac-grid-tall-face` page 45: a comma pushed
+    /// to a line start pulls the character before it along, and what that
+    /// overfills wraps again (`…場合に` | `は、…あつ` | `ては、…`).
+    #[test]
+    fn mac_kinsoku_repair_after_a_refit_refits_the_line_it_grew() {
+        assert_eq!(
+            mac_ragged_kinsoku_lines("甲乙丙丁戊、己庚辛、壬癸子丑寅卯辰巳", 50.0),
+            ["甲乙丙丁", "戊、己庚", "辛、壬癸子", "丑寅卯辰巳"]
+        );
+    }
+
+    /// Same document, page 79: a kinsoku repair overfills the paragraph's last
+    /// line, which is not an unbreakable word (`…ものとす` | `る。`).
+    #[test]
+    fn mac_kinsoku_repair_wraps_an_overfull_last_line_of_east_asian_text() {
+        assert_eq!(
+            mac_ragged_kinsoku_lines("甲乙丙丁戊、己庚辛。", 50.0),
+            ["甲乙丙丁", "戊、己庚", "辛。"]
+        );
     }
 
     #[test]
