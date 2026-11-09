@@ -13,4 +13,7 @@ unicode-segmentation = "1.10"
 unicode-script = "0.5"
 
 [dev-dependencies]
+jade-opc = { path = "../jade-opc" }
+jade-xlsx-reader = { path = "../jade-xlsx-reader" }
+jade-xlsx-writer = { path = "../jade-xlsx-writer" }
 proptest = "1.6"
