@@ -521,6 +521,17 @@ fn inserting_an_earlier_row_after_wrapping_later_cell_matches_fresh_pixels() {
 }
 
 #[test]
+fn typing_after_a_wrapped_table_row_preserves_its_border_pixels() {
+    use Operation::*;
+    check_sequence(&[
+        Row(0, 0, false),
+        Row(0, 0, true),
+        CellText(0, 61, 32, "折り返し 日本語 ab ".repeat(8)),
+        BodyText(1, "日".into()),
+    ]);
+}
+
+#[test]
 fn rejected_row_edits_and_empty_cell_typing_preserve_the_redo_branch() {
     use Operation::*;
     check_sequence(&[

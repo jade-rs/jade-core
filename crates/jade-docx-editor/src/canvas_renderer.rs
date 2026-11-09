@@ -3521,10 +3521,7 @@ where
     active_keep_next_group_end: Option<usize>,
     keep_next_group_surfaces: std::collections::BTreeMap<usize, usize>,
     #[cfg(feature = "opentype-math")]
-    math_fonts: std::collections::HashMap<
-        String,
-        jade_docx_layout::math_layout::styled::font::MathFontData,
-    >,
+    math_fonts: Rc<math::MathFonts>,
     /// Where every equation was drawn at the last render, for an equation
     /// editor's caret.
     math_zones: Vec<math::MathZone>,
@@ -8613,7 +8610,7 @@ where
             return Err(MathFontDataError::RegistryFull);
         }
         let font = MathFontData::new(family, bytes, 512, 4096)?;
-        self.math_fonts.insert(font.family().to_owned(), font);
+        Rc::make_mut(&mut self.math_fonts).insert(font.family().to_owned(), Rc::new(font));
         Ok(())
     }
 
@@ -8633,7 +8630,7 @@ where
             return Err(MathFontDataError::AlreadyRegistered);
         }
         let font = MathFontData::from_collection(family, bytes, face_index, 4096, 8192)?;
-        self.math_fonts.insert(font.family().to_owned(), font);
+        Rc::make_mut(&mut self.math_fonts).insert(font.family().to_owned(), Rc::new(font));
         Ok(())
     }
 
@@ -8690,7 +8687,7 @@ where
             active_keep_next_group_end: None,
             keep_next_group_surfaces: std::collections::BTreeMap::new(),
             #[cfg(feature = "opentype-math")]
-            math_fonts: std::collections::HashMap::new(),
+            math_fonts: Rc::default(),
             math_zones: Vec::new(),
             math_settings: Default::default(),
             math_family: Rc::from("Cambria Math"),
@@ -12421,6 +12418,18 @@ where
                 .set(self.band_redraw_fallback_not_plain_paragraph.get() + 1);
             return None;
         };
+        // A neighboring table's borders can extend beyond its cell text. A
+        // paragraph band can clear those pixels without replaying the table.
+        if edited
+            .checked_sub(1)
+            .and_then(|previous| self.selection.cell_id_for_paragraph(previous))
+            .is_some()
+            || self.selection.cell_id_for_paragraph(edited + 1).is_some()
+        {
+            self.band_redraw_fallback_neighbor_ink
+                .set(self.band_redraw_fallback_neighbor_ink.get() + 1);
+            return None;
+        }
         // Joined paragraphs register their lines per member.
         if self.paragraph_join_group(edited).count() > 1 {
             self.band_redraw_fallback_not_plain_paragraph
@@ -15999,48 +16008,24 @@ where
         );
         let (_, column_width) = self.math_settings.display_content_box(0.0, column_width);
         let math_family = Rc::clone(&self.math_family);
-        let text_family = self.math_text_family(
+        let text_family = self.display_math_style().math_text_family(
             math.properties
                 .as_deref()
                 .and_then(|properties| properties.style.as_deref()),
         );
-        let style = self.body_math_style(math, &math_family);
+        let style = self
+            .display_math_style()
+            .body_math_style(math, &math_family);
         let options = jade_docx_layout::math_layout::styled::MathLayoutOptions {
             display: true,
             max_width: Some(column_width),
             text_family: Some(&text_family),
-            settings: self.display_math_settings(math),
+            settings: self.display_math_style().display_math_settings(math),
             uniform: false,
             script_scales: Some(jade_docx_layout::math_layout::styled::WORD_SCRIPT_SCALES),
         };
         let plan = self.math_plan(&math.elements, style, &options)?;
         self.render_font_math_block(math, style, plan, char_unit_pt)
-    }
-
-    /// The text face inherited by `m:nor` (normal text) runs from the
-    /// containing paragraph style and document defaults.
-    fn math_text_family(&self, paragraph_style: Option<&str>) -> String {
-        let mut properties = self
-            .styles_part
-            .as_ref()
-            .and_then(|styles| styles.resolve_effective_run_properties(paragraph_style, None));
-        if let (Some(properties), Some(theme)) = (properties.as_mut(), self.theme_part.as_ref()) {
-            if theme.has_resolvable_font_reference(properties) {
-                theme.apply_to_run_properties(properties);
-            }
-        }
-        properties
-            .as_ref()
-            .and_then(|properties| {
-                properties
-                    .fonts
-                    .as_ref()
-                    .and_then(|fonts| fonts.ascii.as_deref().or(fonts.h_ansi.as_deref()))
-                    .or(properties.font_family.as_deref())
-            })
-            .filter(|family| !family.trim().is_empty())
-            .unwrap_or("Cambria")
-            .to_owned()
     }
 
     /// Lays out math in the bound face for the style's family, when one is
@@ -16058,7 +16043,7 @@ where
             style,
             options,
             #[cfg(feature = "opentype-math")]
-            self.math_fonts.get(style.family),
+            self.math_fonts.get(style.family).map(Rc::as_ref),
         )
     }
 
@@ -16070,14 +16055,16 @@ where
         paragraph_style: Option<&str>,
         display: bool,
     ) -> Result<math::OwnedMathPlan, JsValue> {
-        let mut style = self.boxed_math_style(&self.math_family);
+        let mut style = self
+            .display_math_style()
+            .boxed_math_style(&self.math_family);
         if let Some(size) = properties
             .and_then(|p| p.font_size)
             .filter(|size| size.is_finite() && *size > 0.0)
         {
             style.size_px = points_to_px(size);
         }
-        let text_family = self.math_text_family(paragraph_style);
+        let text_family = self.display_math_style().math_text_family(paragraph_style);
         let options = jade_docx_layout::math_layout::styled::MathLayoutOptions {
             display,
             max_width: None,
@@ -16099,7 +16086,9 @@ where
         let families = jade_docx_layout::font_resolver::resolve_font_families(properties);
         let stack = families.latin_ascii_stack();
         let family = first_family(stack);
-        let mut style = self.boxed_math_style(&self.math_family);
+        let mut style = self
+            .display_math_style()
+            .boxed_math_style(&self.math_family);
         style.family = &family;
         style.variant = jade_docx_layout::math_layout::styled::MathVariant::Plain;
         if let Some(size) = properties
@@ -16240,9 +16229,31 @@ where
                 .map_err(PainterError::into_js_value)?;
             self.reset_fill_style_state();
         }
+        let paragraph_index = self.paragraph_counter;
+        self.paragraph_counter += 1;
+        self.register_display_math_surface(
+            paragraph_index,
+            owned,
+            math_x,
+            self.current_y,
+            line_box,
+        );
+        self.advance_past_math_block(line_box.height, line_box.baseline, after);
+        Ok(())
+    }
+
+    fn register_display_math_surface(
+        &mut self,
+        paragraph_index: usize,
+        plan: Rc<math::OwnedMathPlan>,
+        math_x: f64,
+        top: f64,
+        line_box: jade_docx_layout::math_layout::MathBlockLineBox,
+    ) {
+        let baseline_y = top + line_box.baseline;
         let line_height = line_box.height;
         self.record_math_zone(math::MathZone {
-            paragraph: self.paragraph_counter,
+            paragraph: paragraph_index,
             offset: 0,
             run_index: None,
             display: true,
@@ -16250,11 +16261,9 @@ where
             x: math_x,
             baseline: baseline_y,
             absolute_baseline: self.page_offset_y + baseline_y,
-            plan: owned,
+            plan: Rc::clone(&plan),
         });
 
-        let paragraph_index = self.paragraph_counter;
-        self.paragraph_counter += 1;
         // One invocation registers the whole math paragraph; a same-pass
         // re-entry replaces it rather than appending a duplicate.
         self.selection.reset_paragraph_registration(paragraph_index);
@@ -16278,15 +16287,15 @@ where
             })
             .collect::<Vec<_>>();
         let line_layout = SelectionLineLayout {
-            top: self.current_y,
-            absolute_top: self.page_offset_y + self.current_y,
+            top,
+            absolute_top: self.page_offset_y + top,
             height: line_height,
             baseline: baseline_y,
             start_x: math_x,
             cursor_end_x: math_x + plan.metrics.width,
             allowed_trailing_overflow_width: 0.0,
-            content_top: self.current_y,
-            absolute_content_top: self.page_offset_y + self.current_y,
+            content_top: top,
+            absolute_content_top: self.page_offset_y + top,
             content_height: line_height,
             fragments: fragments.into(),
             break_range: None,
@@ -16297,8 +16306,6 @@ where
             vertical_reversed: false,
         };
         self.selection.record_line(paragraph_index, line_layout);
-        self.advance_past_math_block(line_height, line_box.baseline, after);
-        Ok(())
     }
 
     fn advance_past_math_block(&mut self, line_height: f64, baseline: f64, after: f64) {
@@ -18244,7 +18251,10 @@ where
         };
 
         if let (true, Some(render_hash)) = (cache_eligible, cache_render_hash) {
-            if !self.pageless_mode && !should_draw_cached_replay {
+            if !self.pageless_mode
+                && !self.rendering_header_footer_story
+                && !should_draw_cached_replay
+            {
                 // A layout shift on a page that was not drawable at page start
                 // means its cached bitmap is stale: promote the page now, before
                 // the hit is bound below for replay. The promotion activates
@@ -28784,7 +28794,7 @@ where
                     }
                 }
                 BodyElement::Math(math) => {
-                    let text_family = self.math_text_family(
+                    let text_family = self.display_math_style().math_text_family(
                         math.properties
                             .as_deref()
                             .and_then(|properties| properties.style.as_deref()),
@@ -28793,7 +28803,7 @@ where
                     let options = jade_docx_layout::math_layout::styled::MathLayoutOptions {
                         max_width: Some(width),
                         text_family: Some(&text_family),
-                        settings: self.display_math_settings(math),
+                        settings: self.display_math_style().display_math_settings(math),
                         script_scales: Some(
                             jade_docx_layout::math_layout::styled::WORD_SCRIPT_SCALES,
                         ),
@@ -28801,7 +28811,8 @@ where
                     };
                     let plan = self.math_plan(
                         &math.elements,
-                        self.body_math_style(math, &math_family),
+                        self.display_math_style()
+                            .body_math_style(math, &math_family),
                         &options,
                     )?;
                     height += plan.metrics.ascent + plan.metrics.descent;
@@ -29080,76 +29091,13 @@ where
         Ok(rendered)
     }
 
-    fn body_math_style<'a>(
-        &self,
-        math: &'a MathParagraph,
-        family: &'a str,
-    ) -> jade_docx_layout::math_layout::styled::MathTextStyle<'a> {
-        let mut style = self.boxed_math_style(family);
-        if let Some(properties) = math.properties.as_deref() {
-            let mark = properties.mark_run_properties.as_ref();
-            if let Some(size) = mark
-                .and_then(|p| p.font_size)
-                .or_else(|| {
-                    properties.style.as_deref().and_then(|id| {
-                        self.styles_part
-                            .as_ref()
-                            .and_then(|s| s.resolve_font_size(id))
-                    })
-                })
-                .filter(|size| size.is_finite() && *size > 0.0)
-            {
-                style.size_px = points_to_px(size);
-            }
-            if let Some(family) = mark
-                .and_then(|p| p.fonts.as_ref())
-                .and_then(|f| f.ascii.as_deref().or(f.h_ansi.as_deref()))
-            {
-                style.family = family;
-            }
+    fn display_math_style(&self) -> math::DisplayMathStyle<'_> {
+        math::DisplayMathStyle {
+            styles: self.styles_part.as_deref(),
+            theme: self.theme_part.as_deref(),
+            settings: self.math_settings,
+            dark_mode_text: self.dark_mode_text,
         }
-        style
-    }
-
-    fn display_math_settings(
-        &self,
-        math: &MathParagraph,
-    ) -> jade_docx_layout::math_layout::styled::MathSettings {
-        use jade_docx_layout::math_layout::styled::MathJustification;
-        let mut settings = self.math_settings;
-        if !settings.use_display_defaults {
-            // dispDef=false uses text paragraph settings instead of defJc,
-            // wrapIndent and wrapRight. Explicit m:jc still wins in the planner.
-            let properties = math.properties.as_deref();
-            let styles = self.styles_part.as_deref();
-            let inherited = styles.and_then(|styles| {
-                styles.resolve_paragraph_properties(
-                    properties.and_then(|p| p.style.as_deref()).unwrap_or(""),
-                )
-            });
-            let defaults = styles.and_then(StylesPart::doc_default_paragraph_properties);
-            let bidi = properties
-                .and_then(|p| p.bidi)
-                .or_else(|| inherited.as_ref().and_then(|p| p.bidi))
-                .or_else(|| defaults.and_then(|p| p.bidi))
-                .unwrap_or(false);
-            let alignment = properties
-                .and_then(|p| p.alignment.as_deref())
-                .or_else(|| inherited.as_ref().and_then(|p| p.alignment.as_deref()))
-                .or_else(|| defaults.and_then(|p| p.alignment.as_deref()));
-            settings.default_justification = match alignment {
-                Some("center") => MathJustification::Center,
-                Some("right") => MathJustification::Right,
-                Some("left") => MathJustification::Left,
-                Some("end") if !bidi => MathJustification::Right,
-                Some("end") => MathJustification::Left,
-                _ if bidi => MathJustification::Right,
-                _ => MathJustification::Left,
-            };
-            settings.wrap_indent_px = 0.0;
-            settings.wrap_right = false;
-        }
-        settings
     }
 
     fn boxed_math_content_box(&self, math: &MathParagraph, left: f64, right: f64) -> (f64, f64) {
@@ -29167,28 +29115,6 @@ where
             self.current_page_number.is_multiple_of(2),
         );
         self.math_settings.display_content_box(left, width)
-    }
-
-    fn boxed_math_style<'a>(
-        &self,
-        family: &'a str,
-    ) -> jade_docx_layout::math_layout::styled::MathTextStyle<'a> {
-        use jade_docx_layout::math_layout::styled::{MathTextStyle, MathVariant};
-        let size = self
-            .styles_part
-            .as_ref()
-            .and_then(|s| s.doc_default_font_size())
-            .unwrap_or(10.5);
-        MathTextStyle {
-            family,
-            size_px: points_to_px(size),
-            color: if self.dark_mode_text {
-                DARK_MODE_TEXT_COLOR
-            } else {
-                "#000000"
-            },
-            variant: MathVariant::Italic,
-        }
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -47611,7 +47537,7 @@ mod tests {
                         wrap_right: Some(true),
                         ..Default::default()
                     });
-                let settings = renderer.display_math_settings(math);
+                let settings = renderer.display_math_style().display_math_settings(math);
                 assert_eq!(settings.wrap_indent_px, 0.0);
                 assert!(!settings.wrap_right);
                 if paragraph_alignment == "center" {
