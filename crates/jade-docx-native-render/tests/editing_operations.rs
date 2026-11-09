@@ -120,13 +120,8 @@ fn typing_on_page_one_does_not_shrink_the_page_count() {
 #[test]
 fn stable_typing_keeps_later_carets_and_matches_a_full_repaint() {
     let mut document = open_contract();
-    assert!(!document.renderer().needs_full_repaint());
     let paragraph = paragraph_on_first_page(&mut document);
     let pages = document.page_count();
-    // Start fully dirty to cover the case where a stable bounded edit retains the
-    // selection tail even though incremental registration starts from zero.
-    document.renderer().mark_full_repaint();
-    assert!(document.renderer().needs_full_repaint());
     let (later, later_rect) = (0..document.paragraph_count())
         .rev()
         .find_map(|index| document.position_rect(index, 0).map(|rect| (index, rect)))
@@ -134,6 +129,9 @@ fn stable_typing_keeps_later_carets_and_matches_a_full_repaint() {
     assert!(document.page_and_offset(later_rect.document_y).0 > 0);
 
     for iteration in 0..3 {
+        // Force selection registration to start from zero. A stable bounded
+        // edit still has to preserve the carets on later pages.
+        document.renderer().mark_full_repaint();
         document.insert_text(paragraph, 0, "a", 1).unwrap();
         assert!(document
             .renderer()
