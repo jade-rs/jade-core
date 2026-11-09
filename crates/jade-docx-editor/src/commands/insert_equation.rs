@@ -161,6 +161,135 @@ mod tests {
         )
     }
 
+    fn build_docx_note(body: &str, kind: &str, notes: String) -> Vec<u8> {
+        let part_path = format!("word/{kind}s.xml");
+        let source = build_docx_body(body);
+        let mut input = zip::ZipArchive::new(std::io::Cursor::new(source)).unwrap();
+        let mut output = zip::ZipWriter::new(std::io::Cursor::new(Vec::new()));
+        for index in 0..input.len() {
+            let mut entry = input.by_index(index).unwrap();
+            let name = entry.name().unwrap().into_owned();
+            let mut content = String::new();
+            entry.read_to_string(&mut content).unwrap();
+            if name == "[Content_Types].xml" {
+                content = content.replace("</Types>", &format!(r#"<Override PartName="/{part_path}" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.{kind}s+xml"/></Types>"#));
+            }
+            output
+                .start_file(name, SimpleFileOptions::default())
+                .unwrap();
+            output.write_all(content.as_bytes()).unwrap();
+        }
+        for (name, content) in [
+            (part_path.clone(), notes),
+            (
+                "word/_rels/document.xml.rels".to_string(),
+                format!(
+                    r#"<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rNote" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/{kind}s" Target="{kind}s.xml"/></Relationships>"#
+                ),
+            ),
+        ] {
+            output
+                .start_file(name, SimpleFileOptions::default())
+                .unwrap();
+            output.write_all(content.as_bytes()).unwrap();
+        }
+        output.finish().unwrap().into_inner()
+    }
+
+    #[test]
+    fn inline_equations_insert_in_note_tables_with_utf8_carets_and_history() {
+        for kind in ["footnote", "endnote"] {
+            let body = format!(
+                r#"<w:p><w:r><w:t>body-before</w:t><w:{kind}Reference w:id="7"/></w:r></w:p><w:p><w:r><w:t>body-after</w:t></w:r></w:p>"#
+            );
+            let notes = format!(
+                r#"<w:{kind}s xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><w:{kind} w:id="7"><w:p><w:r><w:{kind}Ref/><w:t>neighbor</w:t></w:r></w:p><w:tbl><w:tr><w:tc><w:p><w:pPr><w:jc w:val="right"/></w:pPr><w:r><w:t>日本語after</w:t></w:r></w:p></w:tc></w:tr></w:tbl></w:{kind}><w:{kind} w:id="8"><w:p><m:oMath><m:r><m:t>other-equation</m:t></m:r></m:oMath><w:r><w:t>other-note</w:t></w:r></w:p></w:{kind}></w:{kind}s>"#
+            );
+            let source = build_docx_note(&body, kind, notes);
+            let mut document =
+                executor::block_on(WordDocument::load(&source, &Options::default())).unwrap();
+            let target = (0..document.paragraph_count())
+                .find(|&index| {
+                    document.paragraph(index).is_some_and(|paragraph| {
+                        paragraph.runs.iter().any(|run| run.text == "日本語after")
+                    })
+                })
+                .unwrap();
+            let original = document.export_docx().unwrap();
+            let original_selection = Some(SelectionRange::collapsed(TextPosition::new(
+                target,
+                "日本語".len(),
+            )));
+            let mut selection = original_selection;
+            let mut history = CommandExecutor::new();
+            apply(
+                &mut document,
+                &mut history,
+                &mut selection,
+                INLINE,
+                EquationPlacement::Inline,
+            )
+            .unwrap();
+            assert_eq!(
+                selection.unwrap().focus,
+                TextPosition::new(target, "日本語".len() + '\u{fffc}'.len_utf8())
+            );
+            let saved = document.export_docx().unwrap();
+            assert_eq!(
+                part(&saved, "word/document.xml"),
+                part(&original, "word/document.xml")
+            );
+            let part_path = format!("word/{kind}s.xml");
+            let changed = part(&saved, &part_path);
+            assert_eq!(changed.matches("<m:f>").count(), 1, "{kind}: {changed}");
+            assert!(
+                changed.contains(&format!("<w:{kind}Ref")),
+                "{kind}: {changed}"
+            );
+            for preserved in [
+                "日本語",
+                "after",
+                "neighbor",
+                "other-equation",
+                "other-note",
+                r#"w:val="right""#,
+            ] {
+                assert!(changed.contains(preserved), "{kind}: {changed}");
+            }
+            let reopened =
+                executor::block_on(WordDocument::load(&saved, &Options::default())).unwrap();
+            let paragraph = reopened.paragraph(target).unwrap();
+            assert_eq!(
+                paragraph
+                    .runs
+                    .iter()
+                    .filter(|run| run.math.is_some())
+                    .count(),
+                1
+            );
+            assert_eq!(
+                paragraph
+                    .runs
+                    .iter()
+                    .map(|run| run.text.as_str())
+                    .collect::<String>(),
+                "日本語after"
+            );
+            let mut context = CommandContext::new(&mut document, &mut selection);
+            history.undo(&mut context).unwrap();
+            assert_eq!(*context.selection, original_selection);
+            assert_eq!(
+                part(&context.document.export_docx().unwrap(), &part_path),
+                part(&original, &part_path)
+            );
+            history.redo(&mut context).unwrap();
+            assert_eq!(
+                part(&context.document.export_docx().unwrap(), &part_path),
+                changed
+            );
+        }
+    }
+
     #[test]
     fn inline_equation_in_a_text_box_preserves_both_copies_and_history() {
         let content =
