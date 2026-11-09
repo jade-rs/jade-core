@@ -721,6 +721,7 @@ fn labels_for<'a>(series: &'a ChartSeries, plot: Option<&'a ChartPlot>) -> Optio
 fn label_text(
     labels: &DataLabels,
     series: &ChartSeries,
+    point: usize,
     category: &str,
     value: f64,
     percent: Option<f64>,
@@ -736,11 +737,21 @@ fn label_text(
         parts.push(category.to_string());
     }
     if labels.show_value {
-        let code = labels
-            .number_format
-            .as_deref()
-            .or(series.format_code.as_deref());
-        parts.push(format_chart_number(value, code));
+        let authored = labels.number_format.as_deref();
+        let worksheet = series
+            .worksheet_value_labels
+            .get(point)
+            .and_then(Option::as_ref);
+        if let Some(text) =
+            worksheet.filter(|_| authored.is_none() || labels.number_format_source_link_unspecified)
+        {
+            parts.push(text.clone());
+        } else {
+            parts.push(format_chart_number(
+                value,
+                authored.or(series.format_code.as_deref()),
+            ));
+        }
     }
     if labels.show_percent {
         if let Some(percent) = percent {
@@ -1393,7 +1404,7 @@ fn plot_categories(
                         (labels, text_style.as_ref(), value_at(s, c))
                     {
                         if !labels.hidden_points.contains(&c) {
-                            let text = label_text(labels, series, &category(c), raw, None, None);
+                            let text = label_text(labels, series, c, &category(c), raw, None, None);
                             let mid = center(c, base_value + v / 2.0);
                             place_label(
                                 kit,
@@ -1454,7 +1465,7 @@ fn plot_categories(
                     run.push((c, point));
                     if let (Some(labels), Some(text_style)) = (labels, text_style.as_ref()) {
                         if !labels.hidden_points.contains(&c) {
-                            let text = label_text(labels, series, &category(c), raw, None, None);
+                            let text = label_text(labels, series, c, &category(c), raw, None, None);
                             let gap = 4.0
                                 + marker.as_ref().map_or(0.0, |m| {
                                     m.size.unwrap_or(DEFAULT_MARKER_PT) * PX_PER_PT / 2.0
@@ -1601,7 +1612,7 @@ fn plot_categories(
                     if labels.hidden_points.contains(&c) {
                         continue;
                     }
-                    let text = label_text(labels, series, &category_name, raw, None, None);
+                    let text = label_text(labels, series, c, &category_name, raw, None, None);
                     let default = if stacked { "ctr" } else { "outEnd" };
                     let position = labels.position.as_deref().unwrap_or(default);
                     // Along the value axis: where on the bar the label
@@ -2077,7 +2088,7 @@ fn plot_xy(
                 if let (Some(labels), Some(text_style)) = (labels, text_style.as_ref()) {
                     if !labels.hidden_points.contains(i) {
                         let category = format_chart_number(*x, None);
-                        let text = label_text(labels, series, &category, *y, None, Some(*size));
+                        let text = label_text(labels, series, *i, &category, *y, None, Some(*size));
                         place_label(
                             kit,
                             kit.tag(&format!("{name} label {i}")),
@@ -2154,8 +2165,15 @@ fn plot_xy(
                         .find(|p| p.0 == *i)
                         .copied()
                         .unwrap_or((0, 0.0, 0.0, 0.0));
-                    let text =
-                        label_text(labels, series, &format_chart_number(x, None), y, None, None);
+                    let text = label_text(
+                        labels,
+                        series,
+                        *i,
+                        &format_chart_number(x, None),
+                        y,
+                        None,
+                        None,
+                    );
                     place_label(
                         kit,
                         kit.tag(&format!("{name} label {i}")),
@@ -2337,7 +2355,7 @@ fn plot_radar(
                 }
                 let value = series.values.get(*c).copied().flatten().unwrap_or(0.0);
                 let category = series.categories.get(*c).cloned().unwrap_or_default();
-                let text = label_text(labels, series, &category, value, None, None);
+                let text = label_text(labels, series, *c, &category, value, None, None);
                 place_label(
                     kit,
                     kit.tag(&format!("{name} label {c}")),
@@ -2500,7 +2518,15 @@ fn plot_pie(
         out.push(sector);
         if let (Some(labels), Some(text_style)) = (labels, text_style.as_ref()) {
             if !labels.hidden_points.contains(&index) {
-                let text = label_text(labels, series, &category, value, Some(value / total), None);
+                let text = label_text(
+                    labels,
+                    series,
+                    index,
+                    &category,
+                    value,
+                    Some(value / total),
+                    None,
+                );
                 let (reach, anchor) = match labels.position.as_deref() {
                     Some("ctr") => ((0.5 + hole * 0.5) / 1.0 * 0.5 + 0.25 * hole, (0.5, 0.5)),
                     Some("inEnd") => (0.8, (0.5, 0.5)),
