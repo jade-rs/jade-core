@@ -15381,7 +15381,7 @@ impl WordDocument {
     }
 
     /// Replaces an equation's OMML in place: an inline one (`run_index`, a
-    /// math run of a body or text-box paragraph) or a display one (a math
+    /// math run of a body, text-box or note paragraph) or a display one (a math
     /// surface). The model and document XML change together; nothing else
     /// around the equation is rewritten.
     pub(crate) fn replace_equation_at(
@@ -15405,7 +15405,11 @@ impl WordDocument {
                 _,
             ) => self.replace_text_box_display_equation(&location, raw_omml),
             (
-                Some(ParagraphSurface::Body { .. } | ParagraphSurface::TextBox { .. }),
+                Some(
+                    ParagraphSurface::Body { .. }
+                    | ParagraphSurface::TextBox { .. }
+                    | ParagraphSurface::Note { .. },
+                ),
                 Some(run_index),
             ) => self.replace_inline_equation(paragraph, run_index, raw_omml),
             _ => Err("there is no editable equation there".to_string()),
@@ -15439,41 +15443,60 @@ impl WordDocument {
             .iter()
             .filter(|run| run.math.is_some())
             .count();
-        let node_id = paragraph
-            .node_id
-            .ok_or_else(|| "the paragraph has no XML".to_string())?;
-        let paragraph_ids = if matches!(
-            self.paragraph_surfaces.get(paragraph_index),
-            Some(ParagraphSurface::TextBox { .. })
-        ) {
-            let ids = self.text_box_paragraph_element_ids(paragraph_index);
-            if ids.is_empty() {
-                return Err("the text box paragraph XML is missing".to_string());
-            }
-            ids
+        if self.is_note_paragraph_surface(paragraph_index) {
+            let (part, mut raw, id) = self
+                .note_paragraph_xml(paragraph_index)
+                .ok_or_else(|| "the note paragraph XML is missing".to_string())?;
+            let element = raw
+                .element(id)
+                .ok_or_else(|| "the note paragraph XML is missing".to_string())?;
+            let mut found = Vec::new();
+            Self::collect_equation_elements(&raw, element, false, &mut found);
+            let target = *found
+                .get(ordinal)
+                .ok_or_else(|| "the equation's XML is missing".to_string())?;
+            Self::replace_xml_element(&mut raw, target, root)?;
+            self.upsert_xml_part_content(
+                &part,
+                raw.to_string().map_err(|error| error.to_string())?,
+            );
         } else {
-            vec![node_id]
-        };
-        let raw = self
-            .raw_document
-            .as_mut()
-            .ok_or_else(|| "raw document xml is unavailable".to_string())?;
-        let targets = paragraph_ids
-            .into_iter()
-            .map(|id| {
-                let element = raw
-                    .element(id)
-                    .ok_or_else(|| "the paragraph XML is missing".to_string())?;
-                let mut found = Vec::new();
-                Self::collect_equation_elements(raw, element, false, &mut found);
-                found
-                    .get(ordinal)
-                    .copied()
-                    .ok_or_else(|| "the equation's XML is missing".to_string())
-            })
-            .collect::<Result<Vec<_>, String>>()?;
-        for target in targets {
-            Self::replace_xml_element(raw, target, root.clone())?;
+            let node_id = paragraph
+                .node_id
+                .ok_or_else(|| "the paragraph has no XML".to_string())?;
+            let paragraph_ids = if matches!(
+                self.paragraph_surfaces.get(paragraph_index),
+                Some(ParagraphSurface::TextBox { .. })
+            ) {
+                let ids = self.text_box_paragraph_element_ids(paragraph_index);
+                if ids.is_empty() {
+                    return Err("the text box paragraph XML is missing".to_string());
+                }
+                ids
+            } else {
+                vec![node_id]
+            };
+            let raw = self
+                .raw_document
+                .as_mut()
+                .ok_or_else(|| "raw document xml is unavailable".to_string())?;
+            let targets = paragraph_ids
+                .into_iter()
+                .map(|id| {
+                    let element = raw
+                        .element(id)
+                        .ok_or_else(|| "the paragraph XML is missing".to_string())?;
+                    let mut found = Vec::new();
+                    Self::collect_equation_elements(raw, element, false, &mut found);
+                    found
+                        .get(ordinal)
+                        .copied()
+                        .ok_or_else(|| "the equation's XML is missing".to_string())
+                })
+                .collect::<Result<Vec<_>, String>>()?;
+            for target in targets {
+                Self::replace_xml_element(raw, target, root.clone())?;
+            }
         }
         let paragraph = self
             .paragraph_mut(paragraph_index)
