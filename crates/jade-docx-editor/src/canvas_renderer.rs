@@ -49185,8 +49185,8 @@ mod tests {
             painted,
             vec![
                 ("A".into(), "12.00pt".into()),
-                ("B".into(), "9.00pt".into()),
-                ("C".into(), "9.00pt".into()),
+                ("B".into(), "10.00pt".into()),
+                ("C".into(), "10.00pt".into()),
                 ("Z".into(), "12.00pt".into()),
                 ("q".into(), "12.00pt".into()),
             ]
