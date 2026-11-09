@@ -192,13 +192,21 @@ where
         let after = if self.contextual_suppresses_spacing_after(index) {
             0.0
         } else {
-            jade_docx_layout::text_extract::spacing_after_px(paragraph, current_line_pt)
+            jade_docx_layout::text_extract::spacing_after_px_on_grid(
+                paragraph,
+                current_line_pt,
+                self.paragraph_spacing_grid_pitch_pt(paragraph),
+            )
         };
         let anchor_gap = if self.contextual_suppresses_spacing_before(anchor_element) {
             0.0
         } else {
             jade_docx_layout::line_metrics::collapsed_spacing_before(
-                jade_docx_layout::text_extract::spacing_before_px(anchor, anchor_line_pt),
+                jade_docx_layout::text_extract::spacing_before_px_on_grid(
+                    anchor,
+                    anchor_line_pt,
+                    self.paragraph_spacing_grid_pitch_pt(anchor),
+                ),
                 after,
             )
         };
