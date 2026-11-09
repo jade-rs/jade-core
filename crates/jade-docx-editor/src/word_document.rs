@@ -33775,6 +33775,18 @@ impl WordDocument {
         {
             return 0;
         }
+        // A preceding top-level display already carries the painted note
+        // number. Its marker does not consume bytes in this text paragraph.
+        if path.first().is_some_and(|entry| match entry {
+            PathEntry::Element(top_index) => note
+                .body
+                .iter()
+                .take(*top_index)
+                .any(|block| matches!(block, BodyElement::Math(_))),
+            PathEntry::TableCell { .. } => false,
+        }) {
+            return 0;
+        }
 
         if let Some(marker) = self.note_reference_marker(*kind, note_id) {
             return marker.len();
