@@ -63,7 +63,7 @@ fn check_marks(
     painter.clear();
     let mut commands = Vec::new();
     renderer
-        .draw_whitespace_marks(&[&segment], &line, 34.0, Some(&mut commands))
+        .draw_whitespace_marks(&[&segment], &line, 34.0, false, Some(&mut commands))
         .unwrap();
     let actual: Vec<_> = commands
         .iter()
