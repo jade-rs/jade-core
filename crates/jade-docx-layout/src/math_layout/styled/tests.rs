@@ -468,6 +468,90 @@ fn matrices_align_columns_and_arrays_align_their_ampersands() {
 }
 
 #[test]
+fn display_equation_array_distributes_space_between_aligned_column_pairs() {
+    let render = |properties: &str, width: Option<f64>| {
+        let math = leak(&format!(
+            r#"<m:eqArr><m:eqArrPr>{properties}</m:eqArrPr><m:e><m:r><m:t>11&amp;=1&amp;33&amp;=3</m:t></m:r></m:e><m:e><m:r><m:t>222&amp;=2&amp;444&amp;=4</m:t></m:r></m:e></m:eqArr>"#
+        ));
+        plan_with(
+            math,
+            MathLayoutOptions {
+                max_width: width,
+                ..display()
+            },
+        )
+    };
+    let width = 180.0;
+    let compact = render("", Some(width));
+    let compact_equals = glyphs(&compact, "=");
+    assert_eq!(compact_equals.len(), 4);
+    let max_dist = r#"<m:maxDist/>"#;
+    let obj_dist = r#"<m:objDist m:val="1"/>"#;
+    for (properties, pads) in [
+        ("", (0.0, 0.0, 0.0)),
+        (obj_dist, (0.0, 0.0, 0.0)),
+        (max_dist, (1.0 / 3.0, 1.0 / 3.0, 1.0 / 3.0)),
+        (&format!("{max_dist}{obj_dist}"), (0.0, 1.0, 0.0)),
+    ] {
+        let plan = render(properties, Some(width));
+        let equals = glyphs(&plan, "=");
+        assert_eq!(equals.len(), compact_equals.len());
+        assert_eq!(plan.text, compact.text);
+        let extra = width - compact.metrics.width;
+        let (left, between, right) = (pads.0 * extra, pads.1 * extra, pads.2 * extra);
+        assert!((plan.metrics.width - compact.metrics.width - left - between - right).abs() < 1e-9);
+        for (i, (old, new)) in compact_equals.iter().zip(equals).enumerate() {
+            let shift = left + if i % 2 == 0 { 0.0 } else { between };
+            assert!((new.x - old.x - shift).abs() < 1e-9, "{properties}");
+            assert_eq!(old.baseline, new.baseline);
+        }
+        assert!(glyphs(&plan, "&")
+            .iter()
+            .all(|g| !g.visible && g.width == 0.0));
+    }
+    assert_eq!(render(max_dist, None).metrics, compact.metrics);
+    assert_eq!(render(max_dist, Some(20.0)).metrics, compact.metrics);
+}
+
+#[test]
+fn distribution_does_not_expand_arrays_without_alignment_or_their_own_display_line() {
+    let array = |row: &str| {
+        format!("<m:eqArr><m:eqArrPr><m:maxDist/></m:eqArrPr><m:e><m:r><m:t>{row}</m:t></m:r></m:e></m:eqArr>")
+    };
+    let unmarked = array("11=2");
+    let marked = array("11&amp;=2&amp;33&amp;=4");
+    let nested =
+        format!("<m:f><m:num>{marked}</m:num><m:den><m:r><m:t>5</m:t></m:r></m:den></m:f>");
+    let with_neighbor = format!("{marked}<m:r><m:t>5</m:t></m:r>");
+    for (body, display) in [
+        (&unmarked, true),
+        (&nested, true),
+        (&with_neighbor, true),
+        (&marked, false),
+    ] {
+        let math = parse(body);
+        let options = MathLayoutOptions {
+            display,
+            ..Default::default()
+        };
+        let compact = plan_with(&math, options);
+        let constrained = plan_with(
+            &math,
+            MathLayoutOptions {
+                max_width: Some(500.0),
+                ..options
+            },
+        );
+        assert_eq!(compact.metrics, constrained.metrics, "{body}");
+        assert!(compact
+            .glyphs
+            .iter()
+            .zip(&constrained.glyphs)
+            .all(|(a, b)| a.x == b.x));
+    }
+}
+
+#[test]
 fn boxes_phantoms_and_border_boxes() {
     let p = plan_with(leak("<m:phant><m:phantPr><m:show m:val=\"0\"/></m:phantPr><m:e><m:r><m:t>x</m:t></m:r></m:e></m:phant><m:r><m:t>y</m:t></m:r>"),
             display(),

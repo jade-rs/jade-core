@@ -361,7 +361,7 @@ pub struct MathLayoutOptions<'a> {
     /// Display math (an equation on its own line): large operators, limits
     /// over and under, full-size fractions. Inline math shrinks them.
     pub display: bool,
-    /// The width a display equation breaks its lines to fit.
+    /// The available width for wrapping display math and distributing standalone arrays.
     pub max_width: Option<f64>,
     /// The face `m:nor` (normal text) runs are drawn in.
     pub text_family: Option<&'a str>,
@@ -1079,6 +1079,14 @@ impl<'a, C: StyledMathMeasure> Builder<'_, 'a, C> {
         &mut self,
         children: &'a [MathElement],
     ) -> Result<MathMetrics, C::Error> {
+        self.sequence_with_array_width(children, None)
+    }
+
+    fn sequence_with_array_width(
+        &mut self,
+        children: &'a [MathElement],
+        max_array_width: Option<f64>,
+    ) -> Result<MathMetrics, C::Error> {
         let mut total = MathMetrics::default();
         for (index, child) in children.iter().enumerate() {
             if is_skipped(child) {
@@ -1086,7 +1094,7 @@ impl<'a, C: StyledMathMeasure> Builder<'_, 'a, C> {
             }
             self.path.push(index as u16);
             let start = self.mark();
-            let metrics = self.element(child)?;
+            let metrics = self.element_with_array_width(child, max_array_width)?;
             self.path.pop();
             let x = total.width;
             self.shift(start, x, 0.0);
@@ -1155,6 +1163,14 @@ impl<'a, C: StyledMathMeasure> Builder<'_, 'a, C> {
 
     /// Lays out one element of a sequence at the origin.
     pub(crate) fn element(&mut self, e: &'a MathElement) -> Result<MathMetrics, C::Error> {
+        self.element_with_array_width(e, None)
+    }
+
+    fn element_with_array_width(
+        &mut self,
+        e: &'a MathElement,
+        max_array_width: Option<f64>,
+    ) -> Result<MathMetrics, C::Error> {
         use MathElementKind::*;
         let start = self.mark();
         let b = self.open_box(e, start);
@@ -1201,7 +1217,7 @@ impl<'a, C: StyledMathMeasure> Builder<'_, 'a, C> {
             Box => self.boxed(e)?,
             BorderBox => self.border_box(e)?,
             Phantom => self.phantom(e)?,
-            EquationArray => self.equation_array(e)?,
+            EquationArray => self.equation_array(e, max_array_width)?,
             Matrix => self.matrix(e)?,
             _ => match e.local_name() {
                 "eqShift" | "eqArray" | "eqOverstrike" | "eqDisplace" | "eqList" => {
