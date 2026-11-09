@@ -1,10 +1,13 @@
-#[cfg(test)]
 use crate::document::MathParagraph;
 #[cfg(test)]
 use crate::document::{MathElement, MathElementKind};
 pub(crate) use jade_docx_layout::math_layout::math_text;
 use jade_docx_layout::math_layout::MathMetrics;
+use jade_docx_layout::units::points_to_px;
+use jade_docx_reader::{StylesPart, ThemePart};
 use jade_painter::Painter;
+#[cfg(feature = "opentype-math")]
+use std::rc::Rc;
 
 use jade_docx_layout::math_layout::styled::{MathTextStyle, StyledMathLayout, StyledMathMeasure};
 use std::cell::RefCell;
@@ -265,6 +268,16 @@ impl OwnedMathPlan {
     /// Paints the plan with its origin (first baseline, left edge) at
     /// (`x`, `baseline`).
     pub fn paint<P: Painter>(&self, painter: &P, x: f64, baseline: f64) -> Result<(), P::Error> {
+        self.paint_with_automatic_color(painter, x, baseline, "#000000")
+    }
+
+    pub(super) fn paint_with_automatic_color<P: Painter>(
+        &self,
+        painter: &P,
+        x: f64,
+        baseline: f64,
+        automatic_color: &str,
+    ) -> Result<(), P::Error> {
         painter.save();
         let result = (|| {
             let mut last_font: Option<(&str, f64)> = None;
@@ -273,7 +286,8 @@ impl OwnedMathPlan {
                 #[cfg(feature = "opentype-math")]
                 if let Some(prepared) = &glyph.font_glyph {
                     if last_color != Some(glyph.color.as_str()) {
-                        painter.set_fill_style_str(&styled_color(&glyph.color));
+                        painter
+                            .set_fill_style_str(&owned_math_color(&glyph.color, automatic_color));
                         last_color = Some(glyph.color.as_str());
                     }
                     paint_math_outline(painter, prepared, x + glyph.x, baseline + glyph.baseline);
@@ -290,7 +304,7 @@ impl OwnedMathPlan {
                     last_font = Some(font);
                 }
                 if last_color != Some(glyph.color.as_str()) {
-                    painter.set_fill_style_str(&styled_color(&glyph.color));
+                    painter.set_fill_style_str(&owned_math_color(&glyph.color, automatic_color));
                     last_color = Some(glyph.color.as_str());
                 }
                 painter.fill_text(
@@ -302,7 +316,7 @@ impl OwnedMathPlan {
                 )?;
             }
             for (rx, ry, width, thickness, color) in &self.rules {
-                painter.set_stroke_style_str(&styled_color(color));
+                painter.set_stroke_style_str(&owned_math_color(color, automatic_color));
                 painter.set_line_width(*thickness);
                 painter.begin_path();
                 painter.move_to(x + rx, baseline + ry);
@@ -310,7 +324,7 @@ impl OwnedMathPlan {
                 painter.stroke();
             }
             for shape in &self.shapes {
-                paint_owned_shape(painter, shape, x, baseline);
+                paint_owned_shape(painter, shape, x, baseline, automatic_color);
             }
             Ok(())
         })();
@@ -319,7 +333,21 @@ impl OwnedMathPlan {
     }
 }
 
-fn paint_owned_shape<P: Painter>(painter: &P, shape: &OwnedMathShape, x: f64, baseline: f64) {
+fn owned_math_color<'a>(color: &'a str, automatic_color: &'a str) -> std::borrow::Cow<'a, str> {
+    if color == "auto" {
+        std::borrow::Cow::Borrowed(automatic_color)
+    } else {
+        styled_color(color)
+    }
+}
+
+fn paint_owned_shape<P: Painter>(
+    painter: &P,
+    shape: &OwnedMathShape,
+    x: f64,
+    baseline: f64,
+    automatic_color: &str,
+) {
     use jade_docx_layout::math_layout::styled::MathPathCommand::*;
     painter.begin_path();
     for command in &shape.commands {
@@ -342,12 +370,12 @@ fn paint_owned_shape<P: Painter>(painter: &P, shape: &OwnedMathShape, x: f64, ba
     }
     match shape.stroke {
         Some(width) => {
-            painter.set_stroke_style_str(&styled_color(&shape.color));
+            painter.set_stroke_style_str(&owned_math_color(&shape.color, automatic_color));
             painter.set_line_width(width);
             painter.stroke();
         }
         None => {
-            painter.set_fill_style_str(&styled_color(&shape.color));
+            painter.set_fill_style_str(&owned_math_color(&shape.color, automatic_color));
             painter.fill();
         }
     }
@@ -636,3 +664,136 @@ mod tests {
         assert_eq!(MathParagraphAlignment::Center.x(10.0, 20.0, 40.0), 10.0);
     }
 }
+
+/// Shared font and paragraph rules for display equations in every story.
+pub(super) struct DisplayMathStyle<'a> {
+    pub(super) styles: Option<&'a StylesPart>,
+    pub(super) theme: Option<&'a ThemePart>,
+    pub(super) settings: jade_docx_layout::math_layout::styled::MathSettings,
+    pub(super) dark_mode_text: bool,
+}
+
+impl DisplayMathStyle<'_> {
+    /// The text face inherited by `m:nor` (normal text) runs from the
+    /// containing paragraph style and document defaults.
+    pub(super) fn math_text_family(&self, paragraph_style: Option<&str>) -> String {
+        let mut properties = self
+            .styles
+            .and_then(|styles| styles.resolve_effective_run_properties(paragraph_style, None));
+        if let (Some(properties), Some(theme)) = (properties.as_mut(), self.theme) {
+            if theme.has_resolvable_font_reference(properties) {
+                theme.apply_to_run_properties(properties);
+            }
+        }
+        properties
+            .as_ref()
+            .and_then(|properties| {
+                properties
+                    .fonts
+                    .as_ref()
+                    .and_then(|fonts| fonts.ascii.as_deref().or(fonts.h_ansi.as_deref()))
+                    .or(properties.font_family.as_deref())
+            })
+            .filter(|family| !family.trim().is_empty())
+            .unwrap_or("Cambria")
+            .to_owned()
+    }
+
+    pub(super) fn body_math_style<'a>(
+        &self,
+        math: &'a MathParagraph,
+        family: &'a str,
+    ) -> jade_docx_layout::math_layout::styled::MathTextStyle<'a> {
+        let mut style = self.boxed_math_style(family);
+        if let Some(properties) = math.properties.as_deref() {
+            let mark = properties.mark_run_properties.as_ref();
+            if let Some(size) = mark
+                .and_then(|p| p.font_size)
+                .or_else(|| {
+                    properties
+                        .style
+                        .as_deref()
+                        .and_then(|id| self.styles.and_then(|s| s.resolve_font_size(id)))
+                })
+                .filter(|size| size.is_finite() && *size > 0.0)
+            {
+                style.size_px = points_to_px(size);
+            }
+            if let Some(family) = mark
+                .and_then(|p| p.fonts.as_ref())
+                .and_then(|f| f.ascii.as_deref().or(f.h_ansi.as_deref()))
+            {
+                style.family = family;
+            }
+        }
+        style
+    }
+
+    pub(super) fn display_math_settings(
+        &self,
+        math: &MathParagraph,
+    ) -> jade_docx_layout::math_layout::styled::MathSettings {
+        use jade_docx_layout::math_layout::styled::MathJustification;
+        let mut settings = self.settings;
+        if !settings.use_display_defaults {
+            // dispDef=false uses text paragraph settings instead of defJc,
+            // wrapIndent and wrapRight. Explicit m:jc still wins in the planner.
+            let properties = math.properties.as_deref();
+            let styles = self.styles;
+            let inherited = styles.and_then(|styles| {
+                styles.resolve_paragraph_properties(
+                    properties.and_then(|p| p.style.as_deref()).unwrap_or(""),
+                )
+            });
+            let defaults = styles.and_then(StylesPart::doc_default_paragraph_properties);
+            let bidi = properties
+                .and_then(|p| p.bidi)
+                .or_else(|| inherited.as_ref().and_then(|p| p.bidi))
+                .or_else(|| defaults.and_then(|p| p.bidi))
+                .unwrap_or(false);
+            let alignment = properties
+                .and_then(|p| p.alignment.as_deref())
+                .or_else(|| inherited.as_ref().and_then(|p| p.alignment.as_deref()))
+                .or_else(|| defaults.and_then(|p| p.alignment.as_deref()));
+            settings.default_justification = match alignment {
+                Some("center") => MathJustification::Center,
+                Some("right") => MathJustification::Right,
+                Some("left") => MathJustification::Left,
+                Some("end") if !bidi => MathJustification::Right,
+                Some("end") => MathJustification::Left,
+                _ if bidi => MathJustification::Right,
+                _ => MathJustification::Left,
+            };
+            settings.wrap_indent_px = 0.0;
+            settings.wrap_right = false;
+        }
+        settings
+    }
+
+    pub(super) fn boxed_math_style<'a>(
+        &self,
+        family: &'a str,
+    ) -> jade_docx_layout::math_layout::styled::MathTextStyle<'a> {
+        use jade_docx_layout::math_layout::styled::{MathTextStyle, MathVariant};
+        let size = self
+            .styles
+            .and_then(|s| s.doc_default_font_size())
+            .unwrap_or(10.5);
+        MathTextStyle {
+            family,
+            size_px: points_to_px(size),
+            color: if self.dark_mode_text {
+                super::DARK_MODE_TEXT_COLOR
+            } else {
+                "#000000"
+            },
+            variant: MathVariant::Italic,
+        }
+    }
+}
+
+#[cfg(feature = "opentype-math")]
+pub(super) type MathFonts = std::collections::HashMap<
+    String,
+    Rc<jade_docx_layout::math_layout::styled::font::MathFontData>,
+>;

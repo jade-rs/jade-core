@@ -1062,7 +1062,115 @@ enum CellBlockKind {
     /// A paragraph margin continued across a page without a text/caret surface.
     Spacing,
     Paragraph(CellParagraph),
+    Math(Box<CellDisplayMath>),
     Table(NestedTableLayout),
+}
+
+#[derive(Clone, Debug)]
+struct CellDisplayMath {
+    plan: Rc<super::math::OwnedMathPlan>,
+    line_box: jade_docx_layout::math_layout::MathBlockLineBox,
+    spacing_before: f64,
+    /// Math origins relative to the cell's text box on odd/even pages.
+    x_by_page_parity: [f64; 2],
+}
+
+impl CellDisplayMath {
+    fn x(&self, cell_text_x: f64, page: usize) -> f64 {
+        cell_text_x + self.x_by_page_parity[usize::from(page.is_multiple_of(2))]
+    }
+}
+
+/// Resources needed to measure math alongside ordinary paragraphs during
+/// row preparation, before the row is placed on a page.
+struct TableDisplayMathContext {
+    family: Rc<str>,
+    settings: jade_docx_layout::math_layout::styled::MathSettings,
+    section_content_height_pt: f32,
+    #[cfg(feature = "opentype-math")]
+    fonts: Rc<super::math::MathFonts>,
+}
+
+impl TableDisplayMathContext {
+    fn layout<P: Painter<Error: PainterError>>(
+        &self,
+        painter: &P,
+        math: &jade_docx_reader::document::MathParagraph,
+        config: &LayoutConfig,
+        available_width: f64,
+        previous_after: &mut f64,
+    ) -> Result<(CellDisplayMath, f64), JsValue> {
+        use jade_docx_layout::math_layout::styled::{MathLayoutOptions, WORD_SCRIPT_SCALES};
+        use jade_docx_layout::math_layout::{math_block_content_box, math_block_line_box};
+        use jade_docx_layout::text_extract::{paragraph_spacing_after, paragraph_spacing_before};
+
+        let resources = super::math::DisplayMathStyle {
+            styles: config.styles_part.as_deref(),
+            theme: config.theme_part.as_deref(),
+            settings: self.settings,
+            dark_mode_text: false,
+        };
+        let properties = math.properties.as_deref();
+        let char_unit_pt = resources
+            .styles
+            .and_then(StylesPart::doc_default_font_size)
+            .map_or(super::DEFAULT_INDENT_CHAR_UNIT_PT, f64::from);
+        let content_box = |even| {
+            let (x, width) =
+                math_block_content_box(properties, 0.0, available_width, char_unit_pt, even);
+            self.settings.display_content_box(x, width)
+        };
+        let mut style = resources.body_math_style(math, &self.family);
+        // The eventual cell's shading decides automatic ink colour. Keep
+        // that distinction through preparation and resolve it when painting.
+        style.color = "auto";
+        let text_family = resources.math_text_family(properties.and_then(|p| p.style.as_deref()));
+        let plan = super::math::layout_math_elements(
+            painter,
+            &math.elements,
+            style,
+            &MathLayoutOptions {
+                display: true,
+                max_width: Some(content_box(false).1),
+                text_family: Some(&text_family),
+                settings: resources.display_math_settings(math),
+                uniform: false,
+                script_scales: Some(WORD_SCRIPT_SCALES),
+            },
+            #[cfg(feature = "opentype-math")]
+            self.fonts.get(style.family).map(Rc::as_ref),
+        )?;
+        let line_box = math_block_line_box(
+            plan.line_metrics,
+            (style.size_px * 72.0 / 96.0) as f32,
+            properties,
+            config.doc_grid.as_ref(),
+            config.document_snap_to_grid_default,
+            Some(self.section_content_height_pt),
+        );
+        let spacing = properties.and_then(|p| p.spacing.as_ref());
+        let before = spacing
+            .and_then(paragraph_spacing_before)
+            .map_or(0.0, |amount| amount.px_with_line_unit(line_box.height));
+        let after = spacing
+            .and_then(paragraph_spacing_after)
+            .map_or(0.0, |amount| amount.px_with_line_unit(line_box.height));
+        let spacing_before = (before - *previous_after).max(0.0);
+        *previous_after = after;
+        let x_by_page_parity = [false, true].map(|even| {
+            let (x, width) = content_box(even);
+            plan.alignment.x(x, width, plan.metrics.width)
+        });
+        Ok((
+            CellDisplayMath {
+                plan: Rc::new(super::math::OwnedMathPlan::from_plan(&plan)),
+                line_box,
+                spacing_before,
+                x_by_page_parity,
+            },
+            spacing_before + line_box.height + after,
+        ))
+    }
 }
 
 /// Vertical paragraphs share the writing axis and advance across columns.
@@ -1591,6 +1699,7 @@ struct TableLineWrapContext<'a, P: Painter> {
     /// load invalidation still reaches the persistent measurement cache.
     ascii_measure_memo: RefCell<FxHashMap<(u32, u32), f64>>,
     wrap_cache: Option<Rc<RefCell<ParagraphWrapCache>>>,
+    display_math: Option<TableDisplayMathContext>,
 }
 
 impl<'a, P: Painter> TableLineWrapContext<'a, P> {
@@ -1616,6 +1725,7 @@ impl<'a, P: Painter> TableLineWrapContext<'a, P> {
             trailing_overhang_cache,
             ascii_measure_memo: RefCell::new(FxHashMap::default()),
             wrap_cache: None,
+            display_math: None,
         };
         result.style = Rc::new(result.attach_font_ids((*result.style).clone()));
         result
@@ -2254,6 +2364,16 @@ where
         if self.table_autofit_cache_enabled {
             table_wrap_context.wrap_cache = Some(Rc::clone(&self.paragraph_wrap_cache));
         }
+
+        table_wrap_context.display_math = Some(TableDisplayMathContext {
+            family: Rc::clone(&self.math_family),
+            settings: self.math_settings,
+            section_content_height_pt: ((self.page_height - self.margin_top - self.margin_bottom)
+                * 72.0
+                / 96.0) as f32,
+            #[cfg(feature = "opentype-math")]
+            fonts: Rc::clone(&self.math_fonts),
+        });
 
         let padding_x = table_default_horizontal_padding_px(
             table,
@@ -4051,6 +4171,34 @@ where
                     block_top += consumed;
                     consumed_height += consumed;
                 }
+                CellBlockKind::Math(math) => {
+                    let x = math.x(x_start + pad_left, self.current_page_number);
+                    let top = block_top + math.spacing_before;
+                    if draw_enabled {
+                        math.plan
+                            .paint_with_automatic_color(
+                                &clip_painter,
+                                x,
+                                top + math.line_box.baseline,
+                                self.resolve_text_fill_color("auto").as_ref(),
+                            )
+                            .map_err(PainterError::into_js_value)?;
+                    }
+                    if !self.measuring_notes {
+                        if let Some(&paragraph_index) = block.paragraph_indices.first() {
+                            self.register_display_math_surface(
+                                paragraph_index,
+                                Rc::clone(&math.plan),
+                                x,
+                                top,
+                                math.line_box,
+                            );
+                        }
+                    }
+                    self.last_line_baseline = top + math.line_box.baseline;
+                    block_top += block.height;
+                    consumed_height += block.height;
+                }
                 CellBlockKind::Table(nested_table) => {
                     let [border_left_inset, border_right_inset] = nested_border_frame_insets(
                         word_modern_nested_border_frame_enabled(
@@ -4800,6 +4948,18 @@ where
             let placement = placements.as_ref().map(|items| items[block_index]);
             if let Some(placement) = placement {
                 block_top = content_top + placement.top;
+            }
+            if let CellBlockKind::Math(math) = &block.kind {
+                math.plan
+                    .paint_with_automatic_color(
+                        &clip_painter,
+                        math.x(x_start + pad_left, self.current_page_number),
+                        block_top + math.spacing_before + math.line_box.baseline,
+                        self.resolve_text_fill_color("auto").as_ref(),
+                    )
+                    .map_err(PainterError::into_js_value)?;
+                block_top += block.height;
+                continue;
             }
             if let CellBlockKind::Table(nested) = &block.kind {
                 // Word repeats the whole header row, including a table nested
@@ -11397,7 +11557,7 @@ fn assign_row_paragraph_indices(
         for block in &mut cell.blocks {
             match &mut block.kind {
                 CellBlockKind::Spacing => {}
-                CellBlockKind::Paragraph(_) => {
+                CellBlockKind::Paragraph(_) | CellBlockKind::Math(_) => {
                     block.paragraph_indices.clear();
                     block.paragraph_indices.push(next);
                     advance(&mut next, 1);
@@ -13478,6 +13638,26 @@ fn prepare_row_layout<P: Painter<Error: PainterError>>(
                         });
                     }
                     BodyElement::Math(math) => {
+                        if let Some(context) = wrap_context.display_math.as_ref().filter(|_| {
+                            cell.text_direction.is_none_or(|direction| {
+                                !direction_requires_vertical_stack(direction)
+                            })
+                        }) {
+                            let (math, height) = context.layout(
+                                wrap_context.context,
+                                math,
+                                config,
+                                available_width,
+                                &mut previous_after,
+                            )?;
+                            blocks.push(CellBlock {
+                                source_index: 0,
+                                kind: CellBlockKind::Math(Box::new(math)),
+                                height,
+                                paragraph_indices: Vec::new(),
+                            });
+                            continue;
+                        }
                         previous_after = 0.0;
                         let label = <CanvasRenderer>::math_placeholder_label(math);
                         let cell_paragraph = layout_paragraph_with_table_context(
@@ -15252,6 +15432,74 @@ mod tests {
             comment_ranges: Vec::new(),
             comment_markers: Vec::new(),
         }
+    }
+
+    #[test]
+    fn display_equations_in_table_cells_paint_and_keep_the_next_surface() {
+        let xml = r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math">
+            <w:body>
+                <w:tbl>
+                    <w:tblPr><w:tblW w:w="3120" w:type="dxa"/><w:tblLayout w:type="fixed"/></w:tblPr>
+                    <w:tblGrid><w:gridCol w:w="3120"/></w:tblGrid>
+                    <w:tr><w:trPr><w:tblHeader/></w:trPr><w:tc>
+                        <w:tcPr><w:tcW w:w="3120" w:type="dxa"/><w:shd w:fill="111111"/></w:tcPr>
+                        <w:p><w:r><w:t>Before equation</w:t></w:r></w:p>
+                        <w:p><m:oMathPara><m:oMathParaPr><m:jc m:val="center"/></m:oMathParaPr>
+                            <m:oMath><m:f><m:num><m:r><m:t>x</m:t></m:r></m:num><m:den><m:r><m:t>2</m:t></m:r></m:den></m:f></m:oMath>
+                        </m:oMathPara></w:p>
+                        <w:p><w:r><w:t>After equation</w:t></w:r></w:p>
+                    </w:tc></w:tr>
+                    <w:tr><w:trPr><w:cantSplit/><w:trHeight w:val="1000" w:hRule="exact"/></w:trPr>
+                        <w:tc><w:p><w:r><w:t>First body row</w:t></w:r></w:p></w:tc></w:tr>
+                    <w:tr><w:trPr><w:cantSplit/><w:trHeight w:val="1000" w:hRule="exact"/></w:trPr>
+                        <w:tc><w:p><w:r><w:t>Second body row</w:t></w:r></w:p></w:tc></w:tr>
+                </w:tbl>
+                <w:sectPr><w:pgSz w:w="6000" w:h="2700"/><w:pgMar w:top="240" w:bottom="240" w:left="240" w:right="240"/></w:sectPr>
+            </w:body></w:document>"#;
+        let document = jade_docx_reader::DocumentParser::new()
+            .parse_document_xml(xml)
+            .unwrap();
+        let painter = RecordingPainter::new();
+        let mut renderer = CanvasRenderer::with_host(
+            Box::new(super::super::recording_host::RecordingHost {
+                painter: painter.clone(),
+            }),
+            false,
+        )
+        .unwrap();
+        renderer
+            .render(&document, &crate::Options::default())
+            .unwrap();
+        let [zone] = renderer.math_zones() else {
+            panic!("expected exactly one math surface in the cell");
+        };
+        assert!(zone.display);
+        assert_eq!(zone.paragraph, 1);
+        let mut fill = String::new();
+        let mut math_colors = Vec::new();
+        for op in painter.ops() {
+            match op {
+                Op::SetFillStyle(color) => fill = color,
+                Op::FillText(text, _, _) if text == "𝑥" => math_colors.push(fill.clone()),
+                _ => {}
+            }
+        }
+        // Paint the formula on both pages using the cell's automatic colour,
+        // but register only the editable source equation above.
+        assert_eq!(math_colors, ["#FFFFFF", "#FFFFFF"]);
+        let lines = renderer.layout_debug_lines();
+        let before = lines
+            .iter()
+            .find(|line| line.text == "Before equation")
+            .unwrap();
+        let after = lines
+            .iter()
+            .find(|line| line.text == "After equation")
+            .unwrap();
+        assert_eq!(after.paragraph, 2);
+        assert!(before.absolute_top < zone.absolute_baseline);
+        assert!(after.absolute_top > zone.absolute_baseline);
+        assert!(zone.x > before.start_x, "the cell equation is centered");
     }
 
     #[test]
