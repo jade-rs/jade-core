@@ -70,6 +70,16 @@ provenance. Bold, italic, other families, Windows and oracle-supplied widths
 keep their previous behavior. This is a title-row gate only: other known
 differences in this document are not declared fixed.
 
+`mac_grid_tall_face_document_paginates_like_word` holds a 265-page exported
+statute (`mac-probes-20261107`) to its Word for Mac PDF: the page count, the row
+that starts each page, and all 4692 rows' page and text, with baselines within
+**0.375 pt**. X is not compared there, because Noto Sans JP Bold's Latin letters
+stand in for Arial Unicode MS's; every kanji row is within 0.3 pt in the browser
+with the real face. `mac_grid_tall_face_probes_match_word` and
+`mac_table_cell_line_units_follow_the_section_grid` hold the probes for each of
+its rules to Word directly. Playwright's `word-mac-glyph-parity.spec.ts` repeats
+the pagination check in the browser engine.
+
 This is not full Word compatibility coverage. The original
 `layout_debug_lines()` capture omits some painted content; the additional
 auxiliary snapshot gate covers numbering and ruby in these six probes; the
