@@ -366,6 +366,75 @@ mod tests {
     }
 
     #[test]
+    fn a_text_box_inline_equation_updates_drawingml_and_vml_fallback_together() {
+        let content = r#"<w:p><m:oMath><m:r><m:t>first</m:t></m:r></m:oMath><w:r><w:t> between </w:t></w:r><m:oMath><m:r><m:t>target</m:t></m:r></m:oMath></w:p>"#;
+        let body = format!(
+            r#"<w:p><m:oMath><m:r><m:t>body-before</m:t></m:r></m:oMath></w:p>
+            <w:p><w:r><mc:AlternateContent xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" xmlns:wps="http://schemas.microsoft.com/office/word/2010/wordprocessingShape" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:v="urn:schemas-microsoft-com:vml">
+            <mc:Choice Requires="wps"><w:drawing><wp:inline><wp:extent cx="2286000" cy="1143000"/><wp:docPr id="1" name="keep-drawing"/>
+            <a:graphic><a:graphicData uri="http://schemas.microsoft.com/office/word/2010/wordprocessingShape"><wps:wsp><wps:cNvSpPr txBox="1"/><wps:spPr><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></wps:spPr><wps:txbx><w:txbxContent>{content}</w:txbxContent></wps:txbx><wps:bodyPr/></wps:wsp></a:graphicData></a:graphic></wp:inline></w:drawing></mc:Choice>
+            <mc:Fallback><w:pict><v:shape id="keep-fallback" style="width:180pt;height:90pt"><v:textbox><w:txbxContent>{content}</w:txbxContent></v:textbox></v:shape></w:pict></mc:Fallback>
+            </mc:AlternateContent></w:r></w:p>
+            <w:p><m:oMath><m:r><m:t>body-after</m:t></m:r></m:oMath></w:p>"#
+        );
+        let mut document =
+            executor::block_on(WordDocument::load(&build_docx(&body), &Options::default()))
+                .unwrap();
+        let (target, run_index) = (0..document.paragraph_count())
+            .find_map(|index| {
+                document
+                    .paragraph(index)?
+                    .runs
+                    .iter()
+                    .enumerate()
+                    .find(|(_, run)| {
+                        run.math
+                            .as_ref()
+                            .is_some_and(|math| math.raw_omml.contains("target"))
+                    })
+                    .map(|(run, _)| (index, run))
+            })
+            .unwrap();
+        let original = part(&document.export_docx().unwrap(), "word/document.xml");
+        let mut history = CommandExecutor::new();
+        let omml = format!(r#"<m:oMath {M}><m:r><m:t>updated</m:t></m:r></m:oMath>"#);
+        replace(&mut document, &mut history, target, Some(run_index), &omml).unwrap();
+        let saved = document.export_docx().unwrap();
+        let xml = part(&saved, "word/document.xml");
+        assert_eq!(xml.matches("<m:t>updated</m:t>").count(), 2, "{xml}");
+        assert_eq!(xml.matches("<m:t>first</m:t>").count(), 2, "{xml}");
+        assert!(!xml.contains("<m:t>target</m:t>"), "{xml}");
+        for preserved in ["body-before", "body-after", "keep-drawing", "keep-fallback"] {
+            assert!(xml.contains(preserved), "{xml}");
+        }
+        let reopened = executor::block_on(WordDocument::load(&saved, &Options::default())).unwrap();
+        assert!(reopened.paragraph(target).unwrap().runs[run_index]
+            .math
+            .as_ref()
+            .unwrap()
+            .raw_omml
+            .contains("updated"));
+        let mut selection = None;
+        let mut context = CommandContext::new(&mut document, &mut selection);
+        history.undo(&mut context).unwrap();
+        assert_eq!(
+            part(
+                &context.document.export_docx().unwrap(),
+                "word/document.xml"
+            ),
+            original
+        );
+        history.redo(&mut context).unwrap();
+        assert_eq!(
+            part(
+                &context.document.export_docx().unwrap(),
+                "word/document.xml"
+            ),
+            xml
+        );
+    }
+
+    #[test]
     fn a_display_equation_is_replaced_in_its_wrapper_paragraph() {
         let body = r#"<w:p><w:r><w:t>before</w:t></w:r></w:p><w:p><m:oMathPara><m:oMath><m:r><m:t>x=1</m:t></m:r></m:oMath></m:oMathPara></w:p><w:p><w:r><w:t>after</w:t></w:r></w:p>"#;
         let source = build_docx(body);
