@@ -294,6 +294,8 @@ mod paragraph_font_cache;
 mod paragraph_hash;
 mod paragraph_join;
 #[cfg(test)]
+mod planned_batch_tests;
+#[cfg(test)]
 mod preset_shape_tests;
 #[cfg(test)]
 mod recording_host;
@@ -1510,7 +1512,6 @@ impl TextBatchScratch {
         self.text.clear();
         self.x_positions.clear();
         self.font_indexes.clear();
-        self.text.reserve(len);
         self.x_positions.reserve(len);
         self.first_font_slot = None;
         self.single_font_run = true;
@@ -3709,6 +3710,9 @@ where
     /// Using `Rc` avoids expensive cloning of large documents on every render.
     last_document: Option<Rc<Document>>,
     last_options: Option<Options>,
+    /// Previous-frame compatibility captured before last_options becomes current.
+    /// Only set while a render pass is active.
+    render_replay_options_compatible: Option<bool>,
     last_numbering_part: Option<Rc<NumberingPart>>,
     /// Package style catalog used to resolve paragraph and character run
     /// styles without materializing their visual properties as direct OOXML
@@ -6143,6 +6147,11 @@ where
         if !self.incremental_layout_enabled || self.mirror_margins {
             return false;
         }
+        self.render_replay_options_compatible
+            .unwrap_or_else(|| self.last_options_match_for_replay(options))
+    }
+
+    fn last_options_match_for_replay(&self, options: &Options) -> bool {
         let Some(last) = self.last_options.as_ref() else {
             return false;
         };
@@ -8745,6 +8754,7 @@ where
             footer_distance: points_to_px(36.0),
             last_document: None,
             last_options: None,
+            render_replay_options_compatible: None,
             last_numbering_part: None,
             styles_part: None,
             theme_part: None,
@@ -9894,7 +9904,7 @@ where
         }) {
             return false;
         }
-        painter.set_font(font_descriptor);
+        painter.set_font_rc(font_descriptor);
         *current = Some(font_descriptor.clone());
         true
     }
@@ -11586,29 +11596,7 @@ where
             }
 
             if let Some(props) = run.properties.as_ref() {
-                // Encode the three states separately, then hash the switches as
-                // one byte stream instead of mixing a usize per Option<bool>.
-                // Run switches are visited for every unchanged rendered run.
-                [
-                    props.bold,
-                    props.italic,
-                    props.bold_complex,
-                    props.italic_complex,
-                    props.underline,
-                    props.strike,
-                    props.double_strike,
-                    props.caps,
-                    props.small_caps,
-                    props.vanish,
-                    props.spec_vanish,
-                    props.shadow,
-                    props.outline,
-                    props.emboss,
-                    props.imprint,
-                    props.snap_to_grid,
-                ]
-                .map(|value| value.map_or(2, u8::from))
-                .hash(&mut hasher);
+                run_style_key::boolean_flags(props).hash(&mut hasher);
                 props.underline_kind.hash(&mut hasher);
                 props.underline_color.hash(&mut hasher);
                 props.east_asian_layout.hash(&mut hasher);
@@ -11633,11 +11621,23 @@ where
                     border.color.hash(&mut hasher);
                 }
                 props.baseline.as_deref().hash(&mut hasher);
-                props.text_position.map(|v| v.to_bits()).hash(&mut hasher);
-                props.char_spacing.map(|v| v.to_bits()).hash(&mut hasher);
-                props.kerning.map(|v| v.to_bits()).hash(&mut hasher);
-                props.text_scale.map(|v| v.to_bits()).hash(&mut hasher);
-                props.font_size.map(|v| v.to_bits()).hash(&mut hasher);
+                // Encode the five Option tags once; keep field order and all
+                // float bits, including signed zero and NaN payloads.
+                let mut metric_presence = 0_u8;
+                macro_rules! hash_metric {
+                    ($field:ident, $bit:expr) => {
+                        if let Some(value) = props.$field {
+                            metric_presence |= 1 << $bit;
+                            value.to_bits().hash(&mut hasher);
+                        }
+                    };
+                }
+                hash_metric!(text_position, 0);
+                hash_metric!(char_spacing, 1);
+                hash_metric!(kerning, 2);
+                hash_metric!(text_scale, 3);
+                hash_metric!(font_size, 4);
+                metric_presence.hash(&mut hasher);
                 props.font_family.as_deref().hash(&mut hasher);
                 if let Some(fonts) = props.fonts.as_ref() {
                     fonts.ascii.as_deref().hash(&mut hasher);
@@ -14269,6 +14269,37 @@ where
     }
 
     fn render_with_numbering_rc_once(
+        &mut self,
+        document_rc: Rc<Document>,
+        options: &Options,
+        numbering_part: Option<&NumberingPart>,
+        header_lines: Option<&[HeaderLine]>,
+        footer_lines: Option<&[HeaderLine]>,
+        comments: Option<&HashMap<String, DocumentComment>>,
+    ) -> Result<(), JsValue> {
+        // last_options is also the current pass's drawing configuration. Keep
+        // its previous-frame comparison before that snapshot is replaced.
+        let compatible = self.last_options_match_for_replay(options);
+        let previous = self.render_replay_options_compatible.replace(compatible);
+        let result = self.render_with_numbering_rc_once_inner(
+            document_rc,
+            options,
+            numbering_part,
+            header_lines,
+            footer_lines,
+            comments,
+        );
+        // An early rendering error must not leak a pass's decision to callers.
+        self.render_replay_options_compatible = previous;
+        if result.is_err() {
+            // The failed pass may have replaced last_options without rebuilding
+            // every cached paragraph. Require hash checks on the next render.
+            self.last_options = None;
+        }
+        result
+    }
+
+    fn render_with_numbering_rc_once_inner(
         &mut self,
         document_rc: Rc<Document>,
         options: &Options,
@@ -19439,9 +19470,11 @@ where
                 pending_note_separator = None;
                 let segment_start = current_pos;
                 let suppress_line_height = run.suppresses_line_height_contribution();
-                let mut effective_props = resolved_run_properties.as_deref().cloned();
+                // Keep the cached identity for ordinary text; isolate any
+                // property changes made for rendering decorations.
+                let mut effective_props = resolved_run_properties;
                 if run.hyperlink.is_some() {
-                    let props = effective_props.get_or_insert_with(RunProperties::default);
+                    let props = Rc::make_mut(effective_props.get_or_insert_with(Rc::default));
                     if props.underline.is_none() {
                         props.underline = Some(true);
                     }
@@ -19455,7 +19488,7 @@ where
                         .as_ref()
                         .filter(|mark| revision_view.marks_up(mark))
                     {
-                        let props = effective_props.get_or_insert_with(RunProperties::default);
+                        let props = Rc::make_mut(effective_props.get_or_insert_with(Rc::default));
                         let (default_color, struck) = match mark.kind {
                             RevisionKind::Inserted => (REVISION_INSERTED_COLOR, false),
                             RevisionKind::Deleted => (REVISION_DELETED_COLOR, true),
@@ -19491,8 +19524,7 @@ where
                 if let Some(RunFieldKind::EqEnclosed { enclosure, .. }) =
                     run.field.as_ref().map(|field| field.kind.base_kind())
                 {
-                    effective_props
-                        .get_or_insert_with(RunProperties::default)
+                    Rc::make_mut(effective_props.get_or_insert_with(Rc::default))
                         .text_effects
                         .get_or_insert_with(Default::default)
                         .enclosure = Some(Rc::from(enclosure.as_str()));
@@ -19503,9 +19535,8 @@ where
                     .as_ref()
                     .and_then(|field| field.kind.eq_ruby_annotation())
                 {
-                    effective_props
-                        .get_or_insert_with(RunProperties::default)
-                        .ruby = Some(Box::new(ruby));
+                    Rc::make_mut(effective_props.get_or_insert_with(Rc::default)).ruby =
+                        Some(Box::new(ruby));
                 }
                 // w:smallCaps: split into sub-runs so lowercase-origin characters
                 // render as smaller capitals while uppercase/digits/punctuation
@@ -19530,7 +19561,7 @@ where
 
                         let mut chunk_props = effective_props.clone();
                         if scaled {
-                            let props = chunk_props.get_or_insert_with(RunProperties::default);
+                            let props = Rc::make_mut(chunk_props.get_or_insert_with(Rc::default));
                             props.font_size = Some(small_caps_font_size(base_size));
                             props.font_size_complex =
                                 props.font_size_complex.map(small_caps_font_size);
@@ -19538,7 +19569,7 @@ where
                         run_styles.push(RunStyle {
                             start: start_pos,
                             end: current_pos,
-                            properties: chunk_props.map(Rc::new),
+                            properties: chunk_props,
                             revision: run.revision.clone(),
                             hyperlink: run.hyperlink.clone(),
                             inline_object: None,
@@ -19546,7 +19577,7 @@ where
                     }
                 } else if let Some(chunks) = self.combined_character_chunks(
                     &segment,
-                    effective_props.as_ref(),
+                    effective_props.as_deref(),
                     &paragraph_style,
                 )? {
                     // 組み文字 / 割注: two half-size lines stacked in one
@@ -19578,7 +19609,7 @@ where
                     run_styles.push(RunStyle {
                         start: start_pos,
                         end: current_pos,
-                        properties: effective_props.map(Rc::new),
+                        properties: effective_props,
                         revision: run.revision.clone(),
                         hyperlink: run.hyperlink.clone(),
                         inline_object: None,
@@ -24811,8 +24842,8 @@ where
                 } {
                     let properties_ref = prepared_segments
                         .last()
-                        .and_then(|prepared| prepared.segment.properties.as_deref());
-                    let style = self.apply_run_style(properties_ref)?;
+                        .and_then(|prepared| prepared.segment.properties.as_ref());
+                    let style = self.apply_run_style_rc(properties_ref)?;
                     let context = self.host.painter();
                     let mark_x = if cursor_x > line_start_x {
                         cursor_x + CONTROL_MARK_GAP_PX
@@ -31421,15 +31452,6 @@ where
             return Ok(None);
         }
 
-        let mut fragment = SelectionFragmentLayout {
-            baseline_shift_px: style.baseline_shift_px,
-            start: segment.start,
-            end: segment.end,
-            x: 0.0,
-            width: 0.0,
-            glyphs: Rc::from([]),
-        };
-
         let mut cursor = 0.0_f64;
         let mut glyph_steps =
             BumpVec::with_capacity_in(if VISUALS { segment_clusters.len() } else { 0 }, arena);
@@ -31534,10 +31556,17 @@ where
 
         // When visuals are requested, every slot is written exactly once. Early returns
         // drop the MaybeUninit slice without observing a partially initialized value.
-        if let Some(glyphs) = glyphs {
-            fragment.glyphs = unsafe { glyphs.assume_init() };
-        }
-        fragment.width = cursor;
+        let fragment = SelectionFragmentLayout {
+            baseline_shift_px: style.baseline_shift_px,
+            start: segment.start,
+            end: segment.end,
+            x: 0.0,
+            width: cursor,
+            glyphs: match glyphs {
+                Some(glyphs) => unsafe { glyphs.assume_init() },
+                None => Rc::from([]),
+            },
+        };
         if !min_top_offset.is_finite() {
             min_top_offset = style.baseline_shift_px - fallback_ascent;
         }
@@ -31638,15 +31667,6 @@ where
         next_grapheme_after_segment: Option<&str>,
         ink_bounds: FragmentInkBounds,
     ) -> Result<PlannedSegmentLayout<'arena>, JsValue> {
-        let mut fragment = SelectionFragmentLayout {
-            baseline_shift_px: style.baseline_shift_px,
-            start: segment.start,
-            end: segment.end,
-            x: 0.0,
-            width: 0.0,
-            glyphs: Rc::from([]),
-        };
-
         let mut cursor = 0.0_f64;
         let mut glyph_steps = BumpVec::new_in(arena);
         let mut glyphs = Vec::new();
@@ -31739,10 +31759,14 @@ where
             },
         )?;
 
-        if VISUALS {
-            fragment.glyphs = glyphs.into();
-        }
-        fragment.width = cursor;
+        let fragment = SelectionFragmentLayout {
+            baseline_shift_px: style.baseline_shift_px,
+            start: segment.start,
+            end: segment.end,
+            x: 0.0,
+            width: cursor,
+            glyphs: glyphs.into(),
+        };
 
         if !min_top_offset.is_finite() {
             min_top_offset = style.baseline_shift_px - fallback_ascent;
@@ -32991,10 +33015,36 @@ where
         let mut scratch = self.text_batch_scratch.borrow_mut();
         scratch.clear_for_len(glyph_steps.len());
 
+        // Layout normally references consecutive glyphs in the segment. Keep
+        // that source span borrowed until a gap, repetition or visual reorder
+        // requires the scratch string to preserve the requested glyph order.
+        let text_start = glyph_steps
+            .first()
+            .map_or(0, |step| step.text_start as usize);
+        let mut text_end = text_start;
+        let mut copied_text = false;
+
         for step in glyph_steps {
             let glyph_text = step.text(segment_text);
-            if !crate::draw_command::executor::try_append_bmp_glyph(&mut scratch.text, glyph_text) {
+            if copied_text {
+                if !crate::draw_command::executor::try_append_bmp_glyph(
+                    &mut scratch.text,
+                    glyph_text,
+                ) {
+                    return Ok(false);
+                }
+            } else if !crate::draw_command::executor::is_single_bmp_glyph(glyph_text) {
                 return Ok(false);
+            } else if step.text_start as usize == text_end {
+                text_end = step.text_end as usize;
+            } else {
+                let capacity = segment_text
+                    .len()
+                    .clamp(glyph_steps.len(), glyph_steps.len().saturating_mul(3));
+                scratch.text.reserve(capacity);
+                scratch.text.push_str(&segment_text[text_start..text_end]);
+                scratch.text.push_str(glyph_text);
+                copied_text = true;
             }
             scratch.observe_font_slot(resolved_style, step.font_slot);
             scratch.x_positions.push(x + step.x_offset);
@@ -33006,7 +33056,12 @@ where
             };
             let font_descriptor = resolved_style.descriptor_for_slot(font_slot);
             self.set_font_if_changed_rc(context, font_descriptor);
-            if !context.try_fill_glyph_run_batch(&scratch.text, &scratch.x_positions, y)? {
+            let text = if copied_text {
+                scratch.text.as_str()
+            } else {
+                &segment_text[text_start..text_end]
+            };
+            if !context.try_fill_glyph_run_batch(text, &scratch.x_positions, y)? {
                 return Ok(false);
             }
         } else {
@@ -33015,8 +33070,13 @@ where
                 let font_index = scratch.font_index(resolved_style, step.font_slot);
                 scratch.font_indexes.push(font_index);
             }
+            let text = if copied_text {
+                scratch.text.as_str()
+            } else {
+                &segment_text[text_start..text_end]
+            };
             if !context.try_fill_glyph_run_batch_multi_font(
-                &scratch.text,
+                text,
                 &scratch.x_positions,
                 &scratch.font_indexes,
                 &scratch.fonts,
@@ -38729,7 +38789,7 @@ where
 
     fn apply_eq_distributed_text_scale(
         &self,
-        properties: &mut Option<RunProperties>,
+        properties: &mut Option<Rc<RunProperties>>,
         display_text: &str,
         guide_text: &str,
         paragraph_style: Option<&ParagraphStyle>,
@@ -38744,7 +38804,7 @@ where
             return Ok(());
         }
 
-        let style = self.resolve_applied_run_style_uncached(properties.as_ref());
+        let style = self.resolve_applied_run_style_uncached(properties.as_deref());
         let display_width =
             self.measure_text_with_spacing(display_text, &style, paragraph_style)?;
         let guide_width = self.measure_text_with_spacing(guide_text, &style, paragraph_style)?;
@@ -38759,9 +38819,7 @@ where
             return Ok(());
         };
 
-        properties
-            .get_or_insert_with(RunProperties::default)
-            .text_scale = Some(scale_percent);
+        Rc::make_mut(properties.get_or_insert_with(Rc::default)).text_scale = Some(scale_percent);
         Ok(())
     }
 
@@ -39096,6 +39154,14 @@ where
     ) -> Result<Rc<ResolvedRunStyle>, Self::Error> {
         let style = self.apply_run_style(properties)?;
         Ok(style.resolved.clone())
+    }
+
+    fn resolve_run_style_rc(
+        &self,
+        properties: Option<&Rc<RunProperties>>,
+    ) -> Result<Rc<ResolvedRunStyle>, Self::Error> {
+        let style = self.apply_run_style_rc(properties)?;
+        Ok(Rc::clone(&style.resolved))
     }
 
     fn measure_text(&self, text: &str, font_descriptor: &str) -> Result<f64, Self::Error> {
@@ -40346,6 +40412,8 @@ mod tests {
     mod numbering_width_histories;
     mod paragraph_render_hash_tests;
     mod revision_snapshot_histories;
+    mod run_flag_histories;
+    mod whitespace_mark_histories;
 
     // Vary topology and coordinates independently of the snapshot implementation.
     fn set_resize_metadata_source(
@@ -48957,6 +49025,214 @@ mod tests {
         );
     }
 
+    /// Rendering-only decorations must not become the cached source for a
+    /// neighboring run, a later paint, or a direct formatting edit.
+    #[test]
+    fn render_decorations_leave_shared_effective_properties_unchanged() {
+        use jade_docx_reader::document::{EastAsianLayout, RunHyperlink};
+        use jade_painter::recording::Op;
+
+        for case in 0..15 {
+            let mut run = build_run(Some(RunProperties {
+                font_size: Some(12.0),
+                ..RunProperties::default()
+            }));
+            run.text = "Abc Z".into();
+            match case {
+                0 => {}
+                1 | 2 => {
+                    run.hyperlink = Some(RunHyperlink {
+                        anchor: Some("target".into()),
+                        ..Default::default()
+                    });
+                    if case == 2 {
+                        let props = run.properties.as_mut().unwrap();
+                        props.color = Some("#123456".into());
+                        props.underline = Some(false);
+                    }
+                }
+                3..=6 => {
+                    run.revision = build_revision_run(match case {
+                        3 => RevisionKind::Inserted,
+                        4 => RevisionKind::Deleted,
+                        5 => RevisionKind::MovedFrom,
+                        _ => RevisionKind::MovedTo,
+                    })
+                    .revision;
+                }
+                7 | 8 => {
+                    let props = run.properties.as_mut().unwrap();
+                    props.small_caps = Some(true);
+                    props.caps = (case == 8).then_some(true);
+                }
+                9..=13 => {
+                    run.field = Some(RunField {
+                        kind: match case {
+                            9 | 10 => RunFieldKind::EqDistributed {
+                                text: "Abc Z".into(),
+                                guide: if case == 9 { "longer guide" } else { "\t" }.into(),
+                            },
+                            11 => RunFieldKind::EqEnclosed {
+                                text: "秘".into(),
+                                enclosure: "○".into(),
+                            },
+                            12 => RunFieldKind::EqRuby {
+                                text: "漢字".into(),
+                                guide: "かんじ".into(),
+                                align: Some("center".into()),
+                                size_half_points: Some(12),
+                                raise_points: 12,
+                            },
+                            _ => RunFieldKind::EqEnclosed {
+                                text: "秘".into(),
+                                enclosure: "○".into(),
+                            }
+                            .with_lock(true),
+                        },
+                        word_mac_body_result: None,
+                        cached_text: None,
+                        source_field_id: None,
+                        resolved_value: None,
+                    });
+                }
+                _ => {
+                    run.properties.as_mut().unwrap().east_asian_layout =
+                        Some(Box::new(EastAsianLayout {
+                            combine: true,
+                            ..Default::default()
+                        }));
+                }
+            }
+
+            let painter = jade_painter::recording::RecordingPainter::with_width_per_char(8.0);
+            let mut renderer = CanvasRenderer::with_host(
+                Box::new(NonCanvasHost {
+                    painter: painter.clone(),
+                }),
+                true,
+            )
+            .unwrap();
+            let mut document = doc_with_paragraph_texts(&[""]);
+            let BodyElement::Paragraph(paragraph) =
+                &mut document.body.as_mut().unwrap().elements[0]
+            else {
+                unreachable!()
+            };
+            let mut neighbor = build_run(run.properties.clone());
+            neighbor.text = " NEXT".into();
+            paragraph.runs = vec![run, neighbor];
+            let original =
+                renderer.effective_run_properties(paragraph, paragraph.runs[0].properties.as_ref());
+            let shared = renderer
+                .effective_run_properties_rc(paragraph, paragraph.runs[0].properties.as_ref());
+            let options = Options {
+                render_changes: true,
+                show_formatting_marks: false,
+                ..Default::default()
+            };
+            // A changed neighboring run forces layout again while the first
+            // run keeps the same shared source and applied-style identity.
+            for suffix in [" NEXT", " EDITED", " NEXT"] {
+                let BodyElement::Paragraph(paragraph) =
+                    &mut document.body.as_mut().unwrap().elements[0]
+                else {
+                    unreachable!()
+                };
+                paragraph.runs[1].text = suffix.into();
+                painter.clear();
+                renderer.render(&document, &options).unwrap();
+                assert_eq!(shared.as_deref(), original.as_ref(), "case {case}");
+                let BodyElement::Paragraph(paragraph) =
+                    &document.body.as_ref().unwrap().elements[0]
+                else {
+                    unreachable!()
+                };
+                assert_eq!(
+                    renderer
+                        .effective_run_properties_rc(
+                            paragraph,
+                            paragraph.runs[0].properties.as_ref()
+                        )
+                        .as_deref(),
+                    original.as_ref(),
+                    "case {case}: decorated properties escaped into resolution"
+                );
+                assert!(painter.count(|op| matches!(op, Op::FillText(..))) > 0);
+
+                let fresh_painter =
+                    jade_painter::recording::RecordingPainter::with_width_per_char(8.0);
+                let mut fresh = CanvasRenderer::with_host(
+                    Box::new(NonCanvasHost {
+                        painter: fresh_painter.clone(),
+                    }),
+                    true,
+                )
+                .unwrap();
+                fresh.render(&document, &options).unwrap();
+                assert_eq!(
+                    serde_json::to_value(renderer.layout_debug_lines()).unwrap(),
+                    serde_json::to_value(fresh.layout_debug_lines()).unwrap(),
+                    "case {case}: warm layout differs from a fresh render"
+                );
+                let glyphs = |painter: &jade_painter::recording::RecordingPainter| {
+                    painter
+                        .ops()
+                        .into_iter()
+                        .filter(|op| matches!(op, Op::FillText(..) | Op::StrokeText(..)))
+                        .collect::<Vec<_>>()
+                };
+                assert_eq!(glyphs(&painter), glyphs(&fresh_painter), "case {case}");
+            }
+        }
+    }
+
+    #[test]
+    fn small_caps_render_keeps_full_sized_chunks_and_plain_neighbors() {
+        use jade_painter::recording::Op;
+        let (mut renderer, painter) = recording_renderer();
+        let mut document = doc_with_paragraph_texts(&[""]);
+        let BodyElement::Paragraph(paragraph) = &mut document.body.as_mut().unwrap().elements[0]
+        else {
+            unreachable!()
+        };
+        let mut small = build_run(Some(RunProperties {
+            font_size: Some(12.0),
+            small_caps: Some(true),
+            ..Default::default()
+        }));
+        small.text = "Abc Z".into();
+        let mut plain = build_run(Some(RunProperties {
+            font_size: Some(12.0),
+            ..Default::default()
+        }));
+        plain.text = "q".into();
+        paragraph.runs = vec![small, plain];
+        renderer
+            .render(&document, &options_for_seek_tests())
+            .unwrap();
+        let mut font = String::new();
+        let mut painted = Vec::new();
+        for op in painter.ops() {
+            match op {
+                Op::SetFont(value) => font = value,
+                Op::FillText(text, _, _) if !text.trim().is_empty() => {
+                    painted.push((text, font.split_whitespace().next().unwrap().to_string()));
+                }
+                _ => {}
+            }
+        }
+        assert_eq!(
+            painted,
+            vec![
+                ("A".into(), "12.00pt".into()),
+                ("B".into(), "10.00pt".into()),
+                ("C".into(), "10.00pt".into()),
+                ("Z".into(), "12.00pt".into()),
+                ("q".into(), "12.00pt".into()),
+            ]
+        );
+    }
+
     #[test]
     fn text_box_runs_inherit_paragraph_and_document_font_properties() {
         let (mut renderer, _) = recording_renderer();
@@ -53338,6 +53614,37 @@ mod tests {
     }
 
     #[test]
+    fn eq_distributed_scaling_preserves_shared_source_and_noop_identity() {
+        let painter = jade_painter::recording::RecordingPainter::with_width_per_char(8.0);
+        let renderer =
+            CanvasRenderer::with_host(Box::new(NonCanvasHost { painter }), true).unwrap();
+        let source = Rc::new(RunProperties {
+            text_scale: Some(80.0),
+            ..Default::default()
+        });
+        let mut scaled = Some(Rc::clone(&source));
+        renderer
+            .apply_eq_distributed_text_scale(&mut scaled, "ab", "abcd", None)
+            .unwrap();
+        assert_eq!(source.text_scale, Some(80.0));
+        assert!(scaled.as_ref().unwrap().text_scale.unwrap() > 80.0);
+        assert!(!Rc::ptr_eq(&source, scaled.as_ref().unwrap()));
+
+        for (text, guide) in [("", "abc"), ("ab", ""), ("a\tb", "abc"), ("ab", "a\nb")] {
+            let mut unchanged = Some(Rc::clone(&source));
+            renderer
+                .apply_eq_distributed_text_scale(&mut unchanged, text, guide, None)
+                .unwrap();
+            assert!(Rc::ptr_eq(&source, unchanged.as_ref().unwrap()));
+            let mut absent = None;
+            renderer
+                .apply_eq_distributed_text_scale(&mut absent, text, guide, None)
+                .unwrap();
+            assert!(absent.is_none());
+        }
+    }
+
+    #[test]
     fn eq_distributed_text_scale_uses_guide_to_display_width_ratio() {
         let scale = eq_distributed_text_scale_percent(100.0, 20.0, 40.0).expect("valid scale");
         assert!((scale - 200.0).abs() < 1e-6);
@@ -56066,6 +56373,129 @@ mod tests {
             identity_elapsed.as_micros(),
             ITERS,
         );
+    }
+
+    #[derive(Clone, Debug)]
+    enum SharedRunStyleCommand {
+        Resolve(usize),
+        Replace(usize, usize),
+        CopyOnWriteBold(usize, bool),
+        Grid(Option<i8>),
+        DarkMode(bool),
+        Measure,
+        Invalidate,
+    }
+
+    fn shared_run_style_commands(
+    ) -> impl proptest::strategy::Strategy<Value = SharedRunStyleCommand> {
+        use proptest::prelude::*;
+        prop_oneof![
+            4 => (0usize..7).prop_map(SharedRunStyleCommand::Resolve),
+            1 => (0usize..6, 0usize..6).prop_map(|(slot, source)| SharedRunStyleCommand::Replace(slot, source)),
+            1 => (0usize..6, any::<bool>()).prop_map(|(slot, bold)| SharedRunStyleCommand::CopyOnWriteBold(slot, bold)),
+            1 => proptest::option::of(-2i8..3).prop_map(SharedRunStyleCommand::Grid),
+            1 => any::<bool>().prop_map(SharedRunStyleCommand::DarkMode),
+            1 => Just(SharedRunStyleCommand::Measure),
+            1 => Just(SharedRunStyleCommand::Invalidate),
+        ]
+    }
+
+    fn shared_run_style_properties(index: usize) -> RunProperties {
+        match index {
+            0 => RunProperties::default(),
+            1 | 2 => RunProperties {
+                bold: Some(true),
+                font_size: Some(12.0),
+                color: Some("FF0000".into()),
+                ..RunProperties::default()
+            },
+            3 => RunProperties {
+                italic: Some(true),
+                char_spacing: Some(0.5),
+                text_scale: Some(75.0),
+                fonts: Some(RunFonts {
+                    ascii: Some("Times New Roman".into()),
+                    east_asia: Some("MS Mincho".into()),
+                    hint: Some(FontHint::EastAsia),
+                    ..RunFonts::default()
+                }),
+                ..RunProperties::default()
+            },
+            4 => RunProperties {
+                bold_complex: Some(true),
+                color: Some("auto".into()),
+                ..RunProperties::default()
+            },
+            _ => RunProperties {
+                font_size: Some(18.0),
+                baseline: Some("superscript".into()),
+                kerning: Some(12.0),
+                color: Some("#336699".into()),
+                ..RunProperties::default()
+            },
+        }
+    }
+
+    proptest::proptest! {
+        #![proptest_config(proptest::test_runner::Config::with_cases(128))]
+        #[test]
+        fn shared_run_style_histories_match_borrowed_resolution(
+            commands in proptest::collection::vec(shared_run_style_commands(), 1..65)
+        ) {
+            use jade_painter::recording::RecordingPainter;
+
+            let shared_painter = RecordingPainter::with_width_per_char(7.0);
+            let borrowed_painter = RecordingPainter::with_width_per_char(7.0);
+            let mut shared = recording_table_renderer(shared_painter.clone());
+            let mut borrowed = recording_table_renderer(borrowed_painter.clone());
+            let mut properties: Vec<_> = (0..6)
+                .map(|index| Rc::new(shared_run_style_properties(index)))
+                .collect();
+
+            for command in &commands {
+                match *command {
+                    SharedRunStyleCommand::Resolve(index) => {
+                        let input = properties.get(index);
+                        let actual = LineWrapContext::resolve_run_style_rc(&shared, input).unwrap();
+                        // The existing value-keyed path is the reference. It
+                        // does not inspect the new identity lookup or cache.
+                        let expected = LineWrapContext::resolve_run_style(
+                            &borrowed, input.map(Rc::as_ref),
+                        ).unwrap();
+                        proptest::prop_assert_eq!(format!("{actual:?}"), format!("{expected:?}"), "history={:?}", commands);
+                    }
+                    SharedRunStyleCommand::Replace(slot, source) => {
+                        properties[slot] = Rc::new(shared_run_style_properties(source));
+                    }
+                    SharedRunStyleCommand::CopyOnWriteBold(slot, bold) => {
+                        // A retained allocation forces COW rather than
+                        // allowing a later style to alias the cached owner.
+                        Rc::make_mut(&mut properties[slot]).bold = Some(bold);
+                    }
+                    SharedRunStyleCommand::Grid(value) => {
+                        shared.current_doc_grid_char_spacing_px = value.map(f64::from);
+                        borrowed.current_doc_grid_char_spacing_px = value.map(f64::from);
+                    }
+                    SharedRunStyleCommand::DarkMode(value) => {
+                        shared.dark_mode_text = value;
+                        borrowed.dark_mode_text = value;
+                    }
+                    SharedRunStyleCommand::Measure => {
+                        let actual = LineWrapContext::measure_text(&shared, "measurement probe", "9pt Arial").unwrap();
+                        let expected = LineWrapContext::measure_text(&borrowed, "measurement probe", "9pt Arial").unwrap();
+                        proptest::prop_assert_eq!(actual, expected);
+                    }
+                    SharedRunStyleCommand::Invalidate => {
+                        for renderer in [&shared, &borrowed] {
+                            renderer.paragraph_font_cache.borrow_mut().clear();
+                            renderer.applied_run_style_cache.borrow_mut().clear();
+                            renderer.applied_run_style_identity_cache.borrow_mut().clear();
+                        }
+                    }
+                }
+                proptest::prop_assert_eq!(shared_painter.ops(), borrowed_painter.ops(), "command={:?}, history={:?}", command, commands);
+            }
+        }
     }
 
     #[test]

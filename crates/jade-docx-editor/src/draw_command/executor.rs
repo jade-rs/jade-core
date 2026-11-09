@@ -250,7 +250,7 @@ impl FontStateTracker {
                 return false;
             }
         }
-        context.set_font(font);
+        context.set_font_rc(font);
         self.current_font = Some(Rc::clone(font));
         // Positioned glyph replay does not measure text. Hash this descriptor
         // only if a later short-text measurement needs a grapheme-cache key.
@@ -1411,7 +1411,7 @@ pub(crate) fn try_append_bmp_glyph(output: &mut String, text: &str) -> bool {
 }
 
 #[inline]
-fn is_single_bmp_glyph(text: &str) -> bool {
+pub(crate) fn is_single_bmp_glyph(text: &str) -> bool {
     matches!(
         text.as_bytes(),
         [0..=0x7f] | [0xc2..=0xdf, _] | [0xe0..=0xef, _, _]
@@ -1441,7 +1441,8 @@ fn try_execute_bmp_glyph_run_batch<P: Painter>(
     let mut copied_text: Option<String> = None;
     // Runs up to 64 glyphs use a stack buffer. Longer runs keep the
     // same exact positions in a heap buffer rather than truncating the batch.
-    let mut local_positions = [0.0; 64];
+    const LOCAL_CAPACITY: usize = 64;
+    let mut local_positions = [0.0; LOCAL_CAPACITY];
     let mut heap_positions;
     let x_positions = if glyphs.len() <= local_positions.len() {
         &mut local_positions[..glyphs.len()]
@@ -1449,14 +1450,10 @@ fn try_execute_bmp_glyph_run_batch<P: Painter>(
         heap_positions = vec![0.0; glyphs.len()];
         &mut heap_positions[..]
     };
-    // Most replayed runs use one font and take the single-font JS path. Allocate
-    // indexes only after discovering a font change that requires the multi-font path.
-    let mut font_indexes = Vec::new();
     let mut single_font_index: Option<u16> = None;
     let mut single_font_run = true;
 
-    for (glyph_index, (glyph, x_position)) in glyphs.iter().zip(x_positions.iter_mut()).enumerate()
-    {
+    for (glyph, x_position) in glyphs.iter().zip(x_positions.iter_mut()) {
         if fonts.get(glyph.font_index as usize).is_none() {
             return Ok(false);
         }
@@ -1478,18 +1475,13 @@ fn try_execute_bmp_glyph_run_batch<P: Painter>(
             copied_text = Some(text);
         }
         match single_font_index {
-            Some(index) if index != glyph.font_index && single_font_run => {
+            Some(index) if index != glyph.font_index => {
                 single_font_run = false;
-                font_indexes.reserve(glyphs.len());
-                font_indexes.resize(glyph_index, index);
             }
             None => single_font_index = Some(glyph.font_index),
             _ => {}
         }
         *x_position = x + glyph.x_offset;
-        if !single_font_run {
-            font_indexes.push(glyph.font_index);
-        }
     }
 
     // Every endpoint in the borrowed span was checked by glyph.text above.
@@ -1506,10 +1498,28 @@ fn try_execute_bmp_glyph_run_batch<P: Painter>(
             return Ok(false);
         }
     } else {
+        // Build indexes only for a validated multi-font batch, keeping buffer
+        // management out of the common single-font loop. Short runs use stack
+        // storage; longer runs retain their complete index list on the heap.
+        let mut local_font_indexes = [0; LOCAL_CAPACITY];
+        let heap_font_indexes;
+        let font_indexes = if glyphs.len() <= LOCAL_CAPACITY {
+            let indexes = &mut local_font_indexes[..glyphs.len()];
+            for (index, glyph) in indexes.iter_mut().zip(glyphs) {
+                *index = glyph.font_index;
+            }
+            &*indexes
+        } else {
+            heap_font_indexes = glyphs
+                .iter()
+                .map(|glyph| glyph.font_index)
+                .collect::<Vec<_>>();
+            &heap_font_indexes
+        };
         if !context.try_fill_glyph_run_batch_multi_font(
             text,
             x_positions,
-            &font_indexes,
+            font_indexes,
             fonts,
             y,
         )? {
@@ -2775,7 +2785,7 @@ mod tests {
 
 #[cfg(test)]
 #[path = "bmp_batch_histories.rs"]
-mod bmp_batch_histories;
+pub(crate) mod bmp_batch_histories;
 
 #[cfg(test)]
 mod painter_backend_tests {

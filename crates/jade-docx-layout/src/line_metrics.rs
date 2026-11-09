@@ -3449,6 +3449,9 @@ pub fn resolve_line_height_points_with_default_multiplier(
 }
 
 #[cfg(test)]
+mod monospace_tests;
+
+#[cfg(test)]
 mod tests {
     #[test]
     fn descriptor_cache_matches_parser_after_replacement_and_eviction() {

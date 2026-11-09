@@ -7274,3 +7274,7 @@ mod tests {
         );
     }
 }
+
+#[cfg(test)]
+#[path = "selection/render_history_tests.rs"]
+mod render_history_tests;

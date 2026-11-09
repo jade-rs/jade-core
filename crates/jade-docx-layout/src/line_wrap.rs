@@ -867,7 +867,7 @@ pub fn prepare_drop_cap_layout<C: LineWrapContext>(
     properties.char_spacing = Some(properties.char_spacing.unwrap_or(0.0) + gap_pt);
     let properties = Some(Rc::new(properties));
 
-    let resolved = ctx.resolve_run_style(properties.as_deref())?;
+    let resolved = ctx.resolve_run_style_rc(properties.as_ref())?;
     let script = classify_script(grapheme);
     let (descriptor, descriptor_hash) = resolved.descriptor_and_hash_for_grapheme(grapheme, script);
     let measured = ctx.measure_text_with_hash(grapheme, descriptor, descriptor_hash)?;
@@ -4848,7 +4848,7 @@ fn layout_text_vertically_on_grid<C: LineWrapContext>(
             continue;
         }
 
-        let style = ctx.resolve_run_style(run_style.properties.as_deref())?;
+        let style = ctx.resolve_run_style_rc(run_style.properties.as_ref())?;
         // The run's character pitch on a `snapToChars` grid, as across a
         // horizontal line ([`resolve_snap_to_chars_cell_width`]).
         let cell = match snap_char_space_px {
@@ -5141,7 +5141,7 @@ pub fn layout_section_text_vertically_on_grid<C: LineWrapContext>(
                 continue;
             }
             if resolved_index != Some(run_index) {
-                resolved = Some(ctx.resolve_run_style(run.properties.as_deref())?);
+                resolved = Some(ctx.resolve_run_style_rc(run.properties.as_ref())?);
                 resolved_index = Some(run_index);
             }
             let style = resolved.as_ref().expect("resolved vertical run");
@@ -5261,7 +5261,7 @@ pub fn project_cell_text_turned<C: LineWrapContext>(
                     _ => false,
                 };
                 if glyph_style.is_none() || !same_properties {
-                    glyph_style = Some(ctx.resolve_run_style(properties.map(|p| p.as_ref()))?);
+                    glyph_style = Some(ctx.resolve_run_style_rc(properties)?);
                     glyph_properties = properties.cloned();
                 }
                 let resolved = glyph_style.as_ref().expect("resolved turned run");
@@ -5950,6 +5950,16 @@ pub trait LineWrapContext {
         &self,
         properties: Option<&RunProperties>,
     ) -> Result<Rc<ResolvedRunStyle>, Self::Error>;
+    /// Resolves properties whose owning allocation is available to the caller.
+    /// Contexts may retain that owner for an identity cache. The default keeps
+    /// the borrowed resolver's results, side effects, and errors unchanged.
+    #[inline]
+    fn resolve_run_style_rc(
+        &self,
+        properties: Option<&Rc<RunProperties>>,
+    ) -> Result<Rc<ResolvedRunStyle>, Self::Error> {
+        self.resolve_run_style(properties.map(Rc::as_ref))
+    }
     /// Measures a text fragment using the provided font descriptor.
     fn measure_text(&self, text: &str, font_descriptor: &str) -> Result<f64, Self::Error>;
     /// Optional font-provided advance for an upright glyph, before text scaling.
@@ -6481,7 +6491,7 @@ fn fit_text_group_adjustment<C: LineWrapContext>(
     let mut state = TextAdvanceState::default();
     let group_end = runs[end - 1].end;
     for run in &runs[start..end] {
-        let mut style = ctx.resolve_run_style(run.properties.as_deref())?;
+        let mut style = ctx.resolve_run_style_rc(run.properties.as_ref())?;
         if mac && style.letter_spacing_px != 0.0 {
             Rc::make_mut(&mut style).letter_spacing_px = 0.0;
         }
@@ -6634,7 +6644,7 @@ fn ruby_group_adjustment<C: LineWrapContext>(
         let Some(run_text) = text.get(run.start..run.end) else {
             return Ok((end, None));
         };
-        let style = ctx.resolve_run_style(run.properties.as_deref())?;
+        let style = ctx.resolve_run_style_rc(run.properties.as_ref())?;
         let next = text
             .get(run.end..group_end)
             .and_then(|rest| rest.graphemes(true).next());
@@ -7063,7 +7073,7 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
             &run_style.properties
         };
         let overflow_punctuation_set = word_overflow_punctuation_set(run_properties.as_deref());
-        let style = ctx.resolve_run_style(run_properties.as_deref())?;
+        let style = ctx.resolve_run_style_rc(run_properties.as_ref())?;
         let text_scale_x = style.text_scale_x.max(0.01);
         let mut buffer = String::new();
         let mut buffer_start_abs = base_offset + start_aligned;
@@ -8709,7 +8719,7 @@ fn measure_tab_segment<C: LineWrapContext>(
         }
         let run_text = text.get(run_start_aligned..run_end).unwrap_or("");
         let initial_offset = cursor_rel - run_start_aligned;
-        let style = ctx.resolve_run_style(run.properties.as_deref())?;
+        let style = ctx.resolve_run_style_rc(run.properties.as_ref())?;
         let text_scale_x = style.text_scale_x.max(0.01);
         let initial_offset = initial_offset.min(run_text.len());
         let snap_cell_width = resolve_snap_to_chars_cell_width(
@@ -8831,7 +8841,7 @@ fn measure_wrapped_line_width<C: LineWrapContext>(
             continue;
         }
         width += segment.leading_width;
-        let style = ctx.resolve_run_style(segment.properties.as_deref())?;
+        let style = ctx.resolve_run_style_rc(segment.properties.as_ref())?;
         let next_grapheme_after_segment = line
             .segments
             .iter()
@@ -11193,6 +11203,137 @@ mod tests {
                 * self
                     .vertical_width_per_grapheme
                     .unwrap_or(self.width_per_grapheme))
+        }
+    }
+
+    #[test]
+    fn shared_run_style_default_preserves_borrows_results_and_errors() {
+        struct Context {
+            style: Rc<ResolvedRunStyle>,
+            seen: RefCell<Vec<Option<usize>>>,
+        }
+        impl LineWrapContext for Context {
+            type Error = &'static str;
+
+            fn resolve_run_style(
+                &self,
+                properties: Option<&RunProperties>,
+            ) -> Result<Rc<ResolvedRunStyle>, Self::Error> {
+                self.seen
+                    .borrow_mut()
+                    .push(properties.map(|p| p as *const _ as usize));
+                if properties.is_some_and(|p| p.bold == Some(false)) {
+                    Err("style unavailable")
+                } else {
+                    Ok(Rc::clone(&self.style))
+                }
+            }
+
+            fn measure_text(&self, _: &str, _: &str) -> Result<f64, Self::Error> {
+                unreachable!("resolving a style does not measure text")
+            }
+        }
+        let context = Context {
+            style: Rc::new(TestContext::new(10.0).style),
+            seen: RefCell::new(Vec::new()),
+        };
+        let properties = Rc::new(RunProperties {
+            bold: Some(true),
+            ..RunProperties::default()
+        });
+        let error_properties = Rc::new(RunProperties {
+            bold: Some(false),
+            ..RunProperties::default()
+        });
+        let actual = context.resolve_run_style_rc(Some(&properties)).unwrap();
+        assert!(Rc::ptr_eq(&actual, &context.style));
+        assert!(Rc::ptr_eq(
+            &context.resolve_run_style_rc(None).unwrap(),
+            &context.style
+        ));
+        assert_eq!(
+            context
+                .resolve_run_style_rc(Some(&error_properties))
+                .unwrap_err(),
+            "style unavailable"
+        );
+        assert_eq!(
+            *context.seen.borrow(),
+            vec![
+                Some(Rc::as_ptr(&properties) as usize),
+                None,
+                Some(Rc::as_ptr(&error_properties) as usize),
+            ]
+        );
+    }
+
+    #[test]
+    fn shared_run_style_wrap_preserves_owning_run_properties() {
+        struct Context {
+            inner: TestContext,
+            seen: RefCell<Vec<Option<Rc<RunProperties>>>>,
+        }
+        impl LineWrapContext for Context {
+            type Error = ();
+
+            fn resolve_run_style(
+                &self,
+                _: Option<&RunProperties>,
+            ) -> Result<Rc<ResolvedRunStyle>, Self::Error> {
+                panic!("an owning run should use the shared resolver")
+            }
+
+            fn resolve_run_style_rc(
+                &self,
+                properties: Option<&Rc<RunProperties>>,
+            ) -> Result<Rc<ResolvedRunStyle>, Self::Error> {
+                self.seen.borrow_mut().push(properties.cloned());
+                self.inner.resolve_run_style(properties.map(Rc::as_ref))
+            }
+
+            fn measure_text(&self, text: &str, font: &str) -> Result<f64, Self::Error> {
+                self.inner.measure_text(text, font)
+            }
+        }
+        let context = Context {
+            inner: TestContext::new(10.0),
+            seen: RefCell::new(Vec::new()),
+        };
+        let first = Rc::new(RunProperties {
+            bold: Some(true),
+            ..RunProperties::default()
+        });
+        let second = Rc::new(RunProperties {
+            italic: Some(true),
+            ..RunProperties::default()
+        });
+        let text = "A界B";
+        let runs: Vec<_> = [(0, 1, None), (1, 4, Some(&first)), (4, 5, Some(&second))]
+            .into_iter()
+            .map(|(start, end, properties)| RunStyle {
+                start,
+                end,
+                properties: properties.cloned(),
+                revision: None,
+                hyperlink: None,
+                inline_object: None,
+            })
+            .collect();
+        let lines = wrap_text_into_lines(
+            &context,
+            text,
+            &runs,
+            0.0,
+            &ParagraphStyle::default(),
+            0,
+            400.0,
+        )
+        .unwrap();
+        assert_eq!(lines.len(), 1);
+        let seen = context.seen.borrow();
+        assert!(seen.iter().any(Option::is_none));
+        for owner in [&first, &second] {
+            assert!(seen.iter().flatten().any(|p| Rc::ptr_eq(p, owner)));
         }
     }
 

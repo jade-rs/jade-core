@@ -1,0 +1,10 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 45f3764bd54f19ae5c6d92578e0f18aef4a16450a31ebfd904b5adb74d52186f # shrinks to edits = [Text(2), Metric(4, Some(8.0))], windows = false
+cc e8a1c4b9789ddc763ba64390bdb47020a07ba77bd99407b6eb02e9b7b8a110a2 # shrinks to edits = [RunText(2, Some(1))], windows = false
+cc 8baa5b951b74acd8186dbe48f24df22a359f7a8afff9bce91eb187214c9a07e4 # shrinks to edits = [RunText(10, Some(0)), Flag(5, Some(true)), Repaint], windows = false
+cc cf4638578160e2b4fb9a71255a2ba365aa35a8e59bf45a7617c6c95127af8d73 # shrinks to edits = [Metric(4, Some(10.0)), RunText(4, Some(2)), Flag(9, Some(true))], windows = false

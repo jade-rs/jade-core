@@ -7,7 +7,7 @@ use proptest::prelude::*;
 use std::cell::{Cell, RefCell};
 
 #[derive(Clone, Copy, Debug)]
-enum BatchMode {
+pub(crate) enum BatchMode {
     Accept,
     Decline,
     Error,
@@ -15,14 +15,14 @@ enum BatchMode {
 
 type BatchCall = (String, Vec<f64>, Vec<u16>, usize);
 
-struct BatchPainter {
-    inner: RecordingPainter,
-    mode: Cell<BatchMode>,
-    calls: RefCell<Vec<BatchCall>>,
+pub(crate) struct BatchPainter {
+    pub(crate) inner: RecordingPainter,
+    pub(crate) mode: Cell<BatchMode>,
+    pub(crate) calls: RefCell<Vec<BatchCall>>,
 }
 
 impl BatchPainter {
-    fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self {
             inner: RecordingPainter::new(),
             mode: Cell::new(BatchMode::Accept),
@@ -310,6 +310,7 @@ enum ReplayOp {
         glyphs: Vec<GlyphRunStep>,
         mode: BatchMode,
         font_count: usize,
+        alias_fonts: bool,
         x: f64,
         y: f64,
     },
@@ -345,11 +346,12 @@ fn replay_op() -> impl Strategy<Value = ReplayOp> {
         0u8..5,
         0u8..3,
         0usize..3,
+        any::<bool>(),
         -300i16..300,
         -300i16..300,
     )
         .prop_map(
-            |(characters, selections, range_mode, mode, font_count, x, y)| {
+            |(characters, selections, range_mode, mode, font_count, alias_fonts, x, y)| {
                 let text: String = characters.iter().collect();
                 let ranges: Vec<_> = text
                     .char_indices()
@@ -415,6 +417,7 @@ fn replay_op() -> impl Strategy<Value = ReplayOp> {
                         _ => BatchMode::Error,
                     },
                     font_count,
+                    alias_fonts,
                     x: f64::from(x),
                     y: f64::from(y),
                 }
@@ -435,18 +438,21 @@ proptest! {
         // Reuse the same allocation while replacing its contents between draws.
         let mut source = String::with_capacity(1024);
         let source_ptr = source.as_ptr();
-        let available_fonts = [Rc::<str>::from("12pt Calibri"), Rc::from("11pt 'Noto Sans JP'")];
         let mut expected = Vec::new();
         for (step, operation) in operations.into_iter().enumerate() {
             match operation {
                 ReplayOp::Invalidate => tracker.invalidate(),
                 ReplayOp::CloneTracker => tracker = tracker.clone(),
                 ReplayOp::ResetTracker => tracker = FontStateTracker::new(),
-                ReplayOp::Draw { text, glyphs, mode, font_count, x, y } => {
+                ReplayOp::Draw { text, glyphs, mode, font_count, alias_fonts, x, y } => {
                     source.clear();
                     source.push_str(&text);
                     prop_assert_eq!(source.as_ptr(), source_ptr);
                     painter.mode.set(mode);
+                    // Equal descriptors in different slots remain different batch
+                    // indexes. Change palettes between operations to exercise the
+                    // tracked canvas font after both alias and distinct-font draws.
+                    let available_fonts = [Rc::<str>::from("12pt Calibri"), Rc::from(if alias_fonts { "12pt Calibri" } else { "11pt 'Noto Sans JP'" })];
                     let fonts = &available_fonts[..font_count];
                     // The contract uses UTF-16 unit counts, independently of
                     // the production byte-shape check and borrowing logic.
@@ -717,6 +723,208 @@ fn contiguous_spans_are_borrowed_and_other_orders_keep_the_exact_text() {
             assert_eq!(calls[0].0, expected_text);
             if borrowed {
                 assert_eq!(calls[0].3, source[4..10].as_ptr() as usize);
+            }
+        }
+    }
+}
+
+#[test]
+fn font_index_buffers_preserve_prefix_and_repeated_switches() {
+    let fonts = [
+        Rc::<str>::from("12pt Calibri"),
+        Rc::from("11pt 'Noto Sans JP'"),
+        Rc::from("10pt Arial"),
+    ];
+    for (length, first_font) in [2, 3, 31, 63, 64, 65, 127, 129, 513]
+        .into_iter()
+        .flat_map(|length| (0..fonts.len()).map(move |first_font| (length, first_font)))
+    {
+        let source: String = ['A', 'é', '税', '\0', '\u{0301}']
+            .into_iter()
+            .cycle()
+            .take(length)
+            .collect();
+        for first_change in [1, length / 2, length - 1] {
+            let glyphs: Vec<_> = source
+                .char_indices()
+                .enumerate()
+                .map(|(index, (start, ch))| GlyphRunStep {
+                    text_start: start as u32,
+                    text_end: (start + ch.len_utf8()) as u32,
+                    font_index: if index < first_change {
+                        first_font as u16
+                    } else {
+                        ((first_font + index - first_change + 1) % fonts.len()) as u16
+                    },
+                    x_offset: index as f64 * -0.125,
+                })
+                .collect();
+            for mode in [BatchMode::Accept, BatchMode::Decline, BatchMode::Error] {
+                let painter = BatchPainter::new();
+                painter.mode.set(mode);
+                let result = draw_text_run_glyphs(
+                    &painter,
+                    &source,
+                    3.0,
+                    -2.0,
+                    &TextStyle::default(),
+                    &fonts,
+                    &glyphs,
+                    &mut FontStateTracker::new(),
+                );
+                let is_error = matches!(mode, BatchMode::Error);
+                assert_eq!(result, if is_error { Err("batch") } else { Ok(()) });
+                let calls = painter.calls.borrow();
+                assert_eq!(
+                    calls.len(),
+                    1,
+                    "length={length}, first_font={first_font}, first_change={first_change}, mode={mode:?}"
+                );
+                assert_eq!(calls[0].0, source);
+                assert_eq!(
+                    calls[0].1,
+                    glyphs
+                        .iter()
+                        .map(|glyph| 3.0 + glyph.x_offset)
+                        .collect::<Vec<_>>()
+                );
+                assert_eq!(
+                    calls[0].2,
+                    glyphs
+                        .iter()
+                        .map(|glyph| glyph.font_index)
+                        .collect::<Vec<_>>()
+                );
+                let expected = if is_error {
+                    Vec::new()
+                } else {
+                    glyphs
+                        .iter()
+                        .zip(source.chars())
+                        .map(|(glyph, ch)| {
+                            (
+                                fonts[glyph.font_index as usize].to_string(),
+                                ch.to_string(),
+                                (3.0 + glyph.x_offset).to_bits(),
+                                (-2.0_f64).to_bits(),
+                            )
+                        })
+                        .collect()
+                };
+                assert_eq!(drawn_glyphs(&painter.inner), expected);
+            }
+        }
+    }
+}
+
+#[test]
+fn aliased_font_slots_preserve_batch_routing_and_the_next_draw() {
+    let fonts = [Rc::<str>::from("12pt Calibri"), Rc::from("12pt Calibri")];
+    let next_fonts = [Rc::<str>::from("11pt 'Noto Sans JP'")];
+    for length in [0, 1, 63, 64, 65, 129] {
+        // A nonempty source with no glyphs must not submit an empty batch.
+        let source: String = "😀"
+            .chars()
+            .chain(['A', 'é', '税'].into_iter().cycle().take(length))
+            .collect();
+        for first_font in [0, 1] {
+            for mixed in [false, true] {
+                let glyphs: Vec<_> = source
+                    .char_indices()
+                    .skip(1)
+                    .enumerate()
+                    .map(|(index, (start, ch))| GlyphRunStep {
+                        text_start: start as u32,
+                        text_end: (start + ch.len_utf8()) as u32,
+                        font_index: if mixed {
+                            (first_font + index as u16 % 2) % 2
+                        } else {
+                            first_font
+                        },
+                        x_offset: index as f64 * 0.25,
+                    })
+                    .collect();
+                for mode in [BatchMode::Accept, BatchMode::Decline, BatchMode::Error] {
+                    let painter = BatchPainter::new();
+                    let mut tracker = FontStateTracker::new();
+                    tracker.set_font_rc_if_changed(&painter, &next_fonts[0]);
+                    painter.mode.set(mode);
+                    let result = draw_text_run_glyphs(
+                        &painter,
+                        &source,
+                        -3.0,
+                        4.0,
+                        &TextStyle::default(),
+                        &fonts,
+                        &glyphs,
+                        &mut tracker,
+                    );
+                    let errors = length > 0 && matches!(mode, BatchMode::Error);
+                    assert_eq!(result, if errors { Err("batch") } else { Ok(()) });
+                    {
+                        let calls = painter.calls.borrow();
+                        assert_eq!(calls.len(), usize::from(length > 0));
+                        if let Some((text, xs, indexes, _)) = calls.first() {
+                            assert_eq!(text, &source[4..]);
+                            assert_eq!(
+                                xs,
+                                &glyphs.iter().map(|g| -3.0 + g.x_offset).collect::<Vec<_>>()
+                            );
+                            let expected_indexes = if mixed && length > 1 {
+                                glyphs.iter().map(|g| g.font_index).collect()
+                            } else {
+                                Vec::new()
+                            };
+                            assert_eq!(indexes, &expected_indexes);
+                        }
+                    }
+                    let mut expected: Vec<_> = if errors {
+                        Vec::new()
+                    } else {
+                        source
+                            .chars()
+                            .skip(1)
+                            .enumerate()
+                            .map(|(index, ch)| {
+                                (
+                                    fonts[0].to_string(),
+                                    ch.to_string(),
+                                    (-3.0 + index as f64 * 0.25).to_bits(),
+                                    4.0f64.to_bits(),
+                                )
+                            })
+                            .collect()
+                    };
+                    assert_eq!(drawn_glyphs(&painter.inner), expected);
+                    painter.mode.set(BatchMode::Accept);
+                    draw_text_run_glyphs(
+                        &painter,
+                        "Z",
+                        7.0,
+                        8.0,
+                        &TextStyle::default(),
+                        &next_fonts,
+                        &[GlyphRunStep {
+                            text_start: 0,
+                            text_end: 1,
+                            font_index: 0,
+                            x_offset: 0.0,
+                        }],
+                        &mut tracker,
+                    )
+                    .unwrap();
+                    expected.push((
+                        next_fonts[0].to_string(),
+                        "Z".into(),
+                        7.0f64.to_bits(),
+                        8.0f64.to_bits(),
+                    ));
+                    assert_eq!(
+                        drawn_glyphs(&painter.inner),
+                        expected,
+                        "length={length}, first_font={first_font}, mixed={mixed}, mode={mode:?}"
+                    );
+                }
             }
         }
     }
