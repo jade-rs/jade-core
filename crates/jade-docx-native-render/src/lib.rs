@@ -379,6 +379,10 @@ impl CanvasRenderHost for SkiaRenderHost {
         true
     }
 
+    fn requires_full_page_repaint_without_band(&self) -> bool {
+        true
+    }
+
     fn draw_image_data_uri(
         &self,
         data_uri: &str,
