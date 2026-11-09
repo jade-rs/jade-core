@@ -734,7 +734,7 @@ fn resolve_charts(
                     continue;
                 };
                 if let Some(xml) = package.part_str(&part)? {
-                    let content = parse_chart_xml(&xml)?;
+                    let content = chart::parse_chart_part(&xml, package, &part)?;
                     chart.kind = content.kind;
                     chart.title = content.title;
                     chart.horizontal = content.horizontal;
