@@ -9459,6 +9459,41 @@ fn apply_table_layout_width(
     apply_table_layout_width_with_minimums(column_widths, available_width, mode, &[])
 }
 
+/// Intrinsic measurement uses the same painter and math fonts as cell
+/// layout. Text-only measurement contexts do not create equation plans.
+trait TableAutofitContext: LineWrapContext {
+    fn inline_math_enabled(&self) -> bool {
+        false
+    }
+
+    fn measure_inline_math(
+        &self,
+        _paragraph: &Paragraph,
+        _config: &LayoutConfig,
+        _runs: &mut [StyledRunRange],
+    ) -> Result<(), Self::Error> {
+        Ok(())
+    }
+}
+
+impl<P: Painter<Error: PainterError>> TableAutofitContext for TableLineWrapContext<'_, P> {
+    fn inline_math_enabled(&self) -> bool {
+        self.math.is_some()
+    }
+
+    fn measure_inline_math(
+        &self,
+        paragraph: &Paragraph,
+        config: &LayoutConfig,
+        runs: &mut [StyledRunRange],
+    ) -> Result<(), Self::Error> {
+        if let Some(math) = &self.math {
+            math.plan_inline_runs(self.context, paragraph, config, runs)?;
+        }
+        Ok(())
+    }
+}
+
 /// Applies autofit after measuring the natural width of horizontal cell
 /// contents.
 ///
@@ -9468,7 +9503,7 @@ fn apply_table_layout_width(
 /// folded into the minimum-width vector. Ordinary cells contribute a separate
 /// preference used to redistribute, rather than grow, the saved table width.
 #[allow(clippy::too_many_arguments)]
-fn apply_table_layout_width_for_table_with_content<C: LineWrapContext>(
+fn apply_table_layout_width_for_table_with_content<C: TableAutofitContext>(
     wrap_context: &C,
     table: &Table,
     column_widths: &mut [f64],
@@ -9926,6 +9961,11 @@ fn table_autofit_cache_signature(
                 if let BodyElement::Paragraph(paragraph) = block {
                     bytes.extend_from_slice(&line_height_for(paragraph).to_bits().to_le_bytes());
                     for run in &paragraph.runs {
+                        // Math plans depend on the document's math settings
+                        // and fonts, which are not in this cache key.
+                        if run.math.is_some() {
+                            return None;
+                        }
                         if let Some(props) = &run.properties {
                             let direct = &props.direct_font_properties;
                             bytes.push(u8::from(direct.known));
@@ -10001,7 +10041,7 @@ fn take_fitting_natural_paragraph_layout(
 /// must already be the per-paragraph ones.
 /// `field_value_for` supplies the same displayed text used by final row layout;
 /// stale saved page fields must not determine the natural width.
-fn autofit_content_widths<C: LineWrapContext>(
+fn autofit_content_widths<C: TableAutofitContext>(
     context: &C,
     table: &Table,
     column_widths: &[f64],
@@ -10048,6 +10088,9 @@ fn autofit_content_widths<C: LineWrapContext>(
                 explicit_width_columns[start..end].fill(true);
             }
 
+            let math_config = config.filter(|_| {
+                cell.text_direction != Some(TextDirection::LrTbV) && context.inline_math_enabled()
+            });
             let mut natural_content_width = 0.0_f64;
             let mut unbreakable_content_width = 0.0_f64;
             for block in &cell.blocks {
@@ -10060,7 +10103,7 @@ fn autofit_content_widths<C: LineWrapContext>(
                     false,
                     &NoteMarkers::default(),
                     field_value_for,
-                    false,
+                    math_config.is_some(),
                 );
                 if text.is_empty() {
                     continue;
@@ -10082,6 +10125,9 @@ fn autofit_content_widths<C: LineWrapContext>(
                     styles,
                     config.is_some_and(|config| config.override_table_style_font_size),
                 );
+                if let Some(config) = math_config {
+                    context.measure_inline_math(paragraph, config, &mut styled_runs)?;
+                }
                 let run_styles = styled_run_styles(&text, &styled_runs);
                 let natural = layout_horizontal_paragraph_with_run_styles_context(
                     context,
@@ -10109,7 +10155,7 @@ fn autofit_content_widths<C: LineWrapContext>(
                 let required_width = content_width + overhang;
                 natural_content_width = natural_content_width.max(required_width);
                 unbreakable_content_width = unbreakable_content_width.max(
-                    longest_unbreakable_width(context, &natural, &text, &run_styles)?,
+                    longest_unbreakable_width(context, &natural, &text, &run_styles, &styled_runs)?,
                 );
                 natural_paragraph_layouts.push(NaturalParagraphLayout {
                     layout: natural,
@@ -10188,14 +10234,29 @@ fn longest_unbreakable_width<C: LineWrapContext>(
     paragraph: &CellParagraph,
     text: &str,
     run_styles: &[RunStyle],
+    styled_runs: &[StyledRunRange],
 ) -> Result<f64, C::Error> {
     let mut widest = 0.0_f64;
+    let mut equations = styled_runs
+        .iter()
+        .filter(|run| matches!(run.inline_object, Some(CellInlineObject::Math(_))))
+        .peekable();
     let mut cached_style: Option<(Option<usize>, Rc<ResolvedRunStyle>)> = None;
     for line in paragraph.lines.iter() {
         let mut run = 0.0_f64;
         let mut origin = f64::INFINITY;
         let mut ink_right = f64::NEG_INFINITY;
         for glyph in &line.glyphs {
+            if equations.peek().is_some_and(|run| run.start == glyph.start) {
+                // The wrapper can break on either side of the equation; only
+                // its own advance is indivisible.
+                equations.next();
+                widest = widest.max(run).max(ink_right - origin).max(glyph.width);
+                run = 0.0;
+                origin = f64::INFINITY;
+                ink_right = f64::NEG_INFINITY;
+                continue;
+            }
             let grapheme = text.get(glyph.start..glyph.end).unwrap_or("");
             let whitespace = grapheme.chars().all(char::is_whitespace);
             let breakable = grapheme.is_empty()
@@ -14327,6 +14388,11 @@ fn paragraph_trailing_overhang<C: LineWrapContext>(
     let Some((offset, grapheme)) = text.grapheme_indices(true).next_back() else {
         return Ok(0.0);
     };
+    if styled_runs.iter().any(|run| {
+        run.start == offset && matches!(run.inline_object, Some(CellInlineObject::Math(_)))
+    }) {
+        return Ok(0.0);
+    }
     let run_styles = styled_run_styles(text, styled_runs);
     let properties = run_styles
         .iter()
@@ -15791,6 +15857,45 @@ mod tests {
     }
 
     #[test]
+    fn table_autofit_reserves_width_for_inline_equations() {
+        let xml = r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math">
+            <w:body><w:tbl><w:tblPr><w:tblW w:w="0" w:type="auto"/><w:tblLayout w:type="autofit"/></w:tblPr>
+                <w:tblGrid><w:gridCol w:w="1200"/><w:gridCol w:w="4200"/></w:tblGrid>
+                <w:tr><w:tc><w:tcPr><w:tcW w:w="0" w:type="auto"/></w:tcPr>
+                    <w:p><w:r><w:t>A</w:t></w:r>
+                    <m:oMath><m:f><m:num><m:r><m:t>abcdefghijklmnopqrstuv</m:t></m:r></m:num><m:den><m:r><m:t>2</m:t></m:r></m:den></m:f></m:oMath>
+                    </w:p>
+                </w:tc><w:tc><w:tcPr><w:tcW w:w="0" w:type="auto"/></w:tcPr>
+                    <w:p><w:r><w:t>Adjacent cell</w:t></w:r></w:p>
+                </w:tc></w:tr>
+            </w:tbl></w:body></w:document>"#;
+        let document = jade_docx_reader::DocumentParser::new()
+            .parse_document_xml(xml)
+            .unwrap();
+        let mut renderer = CanvasRenderer::with_host(
+            Box::new(super::super::recording_host::RecordingHost {
+                painter: RecordingPainter::with_width_per_char(8.0),
+            }),
+            false,
+        )
+        .unwrap();
+        renderer
+            .render(&document, &crate::Options::default())
+            .unwrap();
+        let [equation] = renderer.math_zones() else {
+            panic!("expected the inline equation");
+        };
+        let lines = renderer.layout_debug_lines();
+        let left = lines.iter().find(|line| line.text == "A\u{fffc}").unwrap();
+        let adjacent = lines
+            .iter()
+            .find(|line| line.text == "Adjacent cell")
+            .unwrap();
+        assert_eq!(left.baseline, equation.baseline);
+        assert!(equation.x + equation.plan.metrics.width <= adjacent.start_x);
+    }
+
+    #[test]
     fn table_field_text_uses_renderer_page_section_lock_and_editable_contracts() {
         let mut renderer = super::super::tests::test_renderer();
         renderer.current_page_number = 2;
@@ -16216,6 +16321,8 @@ mod tests {
         }
     }
 
+    impl TableAutofitContext for FixedWidthWrapContext {}
+
     impl LineWrapContext for FixedWidthWrapContext {
         type Error = ();
 
@@ -16247,6 +16354,8 @@ mod tests {
     }
 
     struct OverhangingWrapContext(FixedWidthWrapContext);
+
+    impl TableAutofitContext for OverhangingWrapContext {}
 
     impl LineWrapContext for OverhangingWrapContext {
         type Error = ();
