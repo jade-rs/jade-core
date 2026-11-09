@@ -15294,8 +15294,16 @@ impl WordDocument {
         raw_omml: &str,
         placement: EquationPlacement,
     ) -> Result<TextPosition, String> {
-        if !self.is_body_paragraph_surface(position.paragraph) {
-            return Err("equations can only be inserted in body paragraphs".to_string());
+        let text_box_inline = placement == EquationPlacement::Inline
+            && matches!(
+                self.paragraph_surfaces.get(position.paragraph),
+                Some(ParagraphSurface::TextBox { .. })
+            );
+        if !self.is_body_paragraph_surface(position.paragraph) && !text_box_inline {
+            return Err(
+                "equations can only be inserted in body paragraphs or inline in text boxes"
+                    .to_string(),
+            );
         }
         let model_position = self.rendered_to_model_text_position(position);
         self.validate_text_position_boundary(model_position)?;
@@ -15345,7 +15353,10 @@ impl WordDocument {
                 self.apply_run_font_defaults_at(model_position.paragraph);
                 self.sync_paragraph_text_preserving_drawings(model_position.paragraph);
                 self.rebuild_paragraph_surfaces();
-                Ok(position)
+                Ok(TextPosition::new(
+                    position.paragraph,
+                    position.offset + '\u{fffc}'.len_utf8(),
+                ))
             }
             EquationPlacement::Block => {
                 let body_index = self
