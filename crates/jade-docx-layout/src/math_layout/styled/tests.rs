@@ -622,6 +622,38 @@ fn display_lines_break_where_asked_and_where_they_overflow() {
 }
 
 #[test]
+fn manual_break_on_a_run_that_does_not_start_with_an_operator_is_ignored() {
+    for text in ["23+4", "x=1", "", " +2"] {
+        let before = "<m:r><m:t>a=b</m:t></m:r>";
+        let after = "<m:r><m:t>+c</m:t></m:r>";
+        let plain = parse(&format!(
+            "{before}<m:r><m:t xml:space=\"preserve\">{text}</m:t></m:r>{after}"
+        ));
+        let marked = parse(&format!(
+            "{before}<m:r><m:rPr><m:brk m:alnAt=\"1\"/></m:rPr><m:t xml:space=\"preserve\">{text}</m:t></m:r>{after}"
+        ));
+        for max_width in [None, Some(46.0)] {
+            let options = MathLayoutOptions {
+                max_width,
+                ..display()
+            };
+            let expected = plan_with(&plain, options);
+            let actual = plan_with(&marked, options);
+            assert_eq!(actual.text, expected.text, "run: {text:?}");
+            assert_eq!(actual.lines.len(), expected.lines.len(), "run: {text:?}");
+            assert!(
+                actual
+                    .glyphs
+                    .iter()
+                    .zip(&expected.glyphs)
+                    .all(|(a, b)| a.x == b.x && a.baseline == b.baseline),
+                "run: {text:?}"
+            );
+        }
+    }
+}
+
+#[test]
 fn boxes_record_every_element_and_empty_arguments() {
     let math = parse("<m:f><m:num><m:r><m:t>ab</m:t></m:r></m:num><m:den/></m:f>");
     let p = plan_with(&math, display());
