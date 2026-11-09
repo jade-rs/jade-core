@@ -1562,11 +1562,11 @@ enum ParagraphSurface {
     Body {
         path: Vec<PathEntry>,
     },
-    /// A display equation in the body or a text box. Notes have neither
-    /// location until their separate XML parts support equation editing.
+    /// A display equation in the body, a text box or a note.
     Math {
         path: Option<Vec<PathEntry>>,
         text_box: Option<TextBoxMathLocation>,
+        note: Option<NoteMathLocation>,
     },
     TextBox {
         host_path: Vec<PathEntry>,
@@ -1585,6 +1585,13 @@ struct TextBoxMathLocation {
     host_path: Vec<PathEntry>,
     run_index: usize,
     block_path: Vec<PathEntry>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct NoteMathLocation {
+    kind: NoteKind,
+    note_id: String,
+    path: Vec<PathEntry>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -5623,6 +5630,7 @@ impl WordDocument {
                     out.push(ParagraphSurface::Math {
                         path: Some(path.clone()),
                         text_box: None,
+                        note: None,
                     });
                     path.pop();
                 }
@@ -5674,10 +5682,19 @@ impl WordDocument {
                     }
                     path.pop();
                 }
-                BodyElement::Math(_) => out.push(ParagraphSurface::Math {
-                    path: None,
-                    text_box: None,
-                }),
+                BodyElement::Math(_) => {
+                    path.push(PathEntry::Element(idx));
+                    out.push(ParagraphSurface::Math {
+                        path: None,
+                        text_box: None,
+                        note: Some(NoteMathLocation {
+                            kind,
+                            note_id: note_id.to_string(),
+                            path: path.clone(),
+                        }),
+                    });
+                    path.pop();
+                }
             }
         }
     }
@@ -5748,6 +5765,7 @@ impl WordDocument {
                             run_index,
                             block_path: path.clone(),
                         }),
+                        note: None,
                     });
                     path.pop();
                 }
@@ -15381,7 +15399,7 @@ impl WordDocument {
     }
 
     /// Replaces an equation's OMML in place: an inline one (`run_index`, a
-    /// math run of a body or text-box paragraph) or a display one (a math
+    /// math run of a body, text-box or note paragraph) or a display one (a math
     /// surface). The model and document XML change together; nothing else
     /// around the equation is rewritten.
     pub(crate) fn replace_equation_at(
@@ -15405,7 +15423,18 @@ impl WordDocument {
                 _,
             ) => self.replace_text_box_display_equation(&location, raw_omml),
             (
-                Some(ParagraphSurface::Body { .. } | ParagraphSurface::TextBox { .. }),
+                Some(ParagraphSurface::Math {
+                    note: Some(location),
+                    ..
+                }),
+                _,
+            ) => self.replace_note_display_equation(paragraph, &location, raw_omml),
+            (
+                Some(
+                    ParagraphSurface::Body { .. }
+                    | ParagraphSurface::TextBox { .. }
+                    | ParagraphSurface::Note { .. },
+                ),
                 Some(run_index),
             ) => self.replace_inline_equation(paragraph, run_index, raw_omml),
             _ => Err("there is no editable equation there".to_string()),
@@ -15439,41 +15468,60 @@ impl WordDocument {
             .iter()
             .filter(|run| run.math.is_some())
             .count();
-        let node_id = paragraph
-            .node_id
-            .ok_or_else(|| "the paragraph has no XML".to_string())?;
-        let paragraph_ids = if matches!(
-            self.paragraph_surfaces.get(paragraph_index),
-            Some(ParagraphSurface::TextBox { .. })
-        ) {
-            let ids = self.text_box_paragraph_element_ids(paragraph_index);
-            if ids.is_empty() {
-                return Err("the text box paragraph XML is missing".to_string());
-            }
-            ids
+        if self.is_note_paragraph_surface(paragraph_index) {
+            let (part, mut raw, id) = self
+                .note_paragraph_xml(paragraph_index)
+                .ok_or_else(|| "the note paragraph XML is missing".to_string())?;
+            let element = raw
+                .element(id)
+                .ok_or_else(|| "the note paragraph XML is missing".to_string())?;
+            let mut found = Vec::new();
+            Self::collect_equation_elements(&raw, element, false, &mut found);
+            let target = *found
+                .get(ordinal)
+                .ok_or_else(|| "the equation's XML is missing".to_string())?;
+            Self::replace_xml_element(&mut raw, target, root)?;
+            self.upsert_xml_part_content(
+                &part,
+                raw.to_string().map_err(|error| error.to_string())?,
+            );
         } else {
-            vec![node_id]
-        };
-        let raw = self
-            .raw_document
-            .as_mut()
-            .ok_or_else(|| "raw document xml is unavailable".to_string())?;
-        let targets = paragraph_ids
-            .into_iter()
-            .map(|id| {
-                let element = raw
-                    .element(id)
-                    .ok_or_else(|| "the paragraph XML is missing".to_string())?;
-                let mut found = Vec::new();
-                Self::collect_equation_elements(raw, element, false, &mut found);
-                found
-                    .get(ordinal)
-                    .copied()
-                    .ok_or_else(|| "the equation's XML is missing".to_string())
-            })
-            .collect::<Result<Vec<_>, String>>()?;
-        for target in targets {
-            Self::replace_xml_element(raw, target, root.clone())?;
+            let node_id = paragraph
+                .node_id
+                .ok_or_else(|| "the paragraph has no XML".to_string())?;
+            let paragraph_ids = if matches!(
+                self.paragraph_surfaces.get(paragraph_index),
+                Some(ParagraphSurface::TextBox { .. })
+            ) {
+                let ids = self.text_box_paragraph_element_ids(paragraph_index);
+                if ids.is_empty() {
+                    return Err("the text box paragraph XML is missing".to_string());
+                }
+                ids
+            } else {
+                vec![node_id]
+            };
+            let raw = self
+                .raw_document
+                .as_mut()
+                .ok_or_else(|| "raw document xml is unavailable".to_string())?;
+            let targets = paragraph_ids
+                .into_iter()
+                .map(|id| {
+                    let element = raw
+                        .element(id)
+                        .ok_or_else(|| "the paragraph XML is missing".to_string())?;
+                    let mut found = Vec::new();
+                    Self::collect_equation_elements(raw, element, false, &mut found);
+                    found
+                        .get(ordinal)
+                        .copied()
+                        .ok_or_else(|| "the equation's XML is missing".to_string())
+                })
+                .collect::<Result<Vec<_>, String>>()?;
+            for target in targets {
+                Self::replace_xml_element(raw, target, root.clone())?;
+            }
         }
         let paragraph = self
             .paragraph_mut(paragraph_index)
@@ -15587,6 +15635,70 @@ impl WordDocument {
             .ok_or_else(|| "the text box is missing".to_string())?;
         let math = Self::locate_math_mut(&mut text_box.blocks, &location.block_path)
             .ok_or_else(|| "the equation is missing from the text box".to_string())?;
+        math.raw_omml = replacement.raw_omml;
+        math.elements = replacement.elements;
+        Ok(())
+    }
+
+    fn replace_note_display_equation(
+        &mut self,
+        surface: usize,
+        location: &NoteMathLocation,
+        raw_omml: &str,
+    ) -> Result<(), String> {
+        let root = Self::validate_authored_omml(raw_omml, "m:oMathPara")?;
+        let replacement = crate::parser::math::parse_math_paragraph(raw_omml.trim().to_string())
+            .map_err(|error| error.to_string())?;
+        if replacement.elements.is_empty() {
+            return Err("equation OMML must contain a math paragraph".to_string());
+        }
+        let ordinal = self.paragraph_surfaces[..surface]
+            .iter()
+            .filter(|candidate| {
+                matches!(candidate, ParagraphSurface::Math { note: Some(other), .. }
+                if other.kind == location.kind && other.note_id == location.note_id)
+            })
+            .count();
+        let part = self.resolve_existing_notes_part_path(location.kind)?;
+        let xml = self
+            .read_xml_part_content(&part)
+            .ok_or_else(|| "the note XML is missing".to_string())?;
+        let mut raw = DocxXmlDocument::parse(&xml).map_err(|error| error.to_string())?;
+        let note =
+            raw.root()
+                .children
+                .iter()
+                .find_map(|node| match node {
+                    XmlNode::Element(element)
+                        if element.name == location.kind.note_tag()
+                            && element.attributes.iter().any(|attr| {
+                                attr.name == "w:id" && attr.value == location.note_id
+                            }) =>
+                    {
+                        Some(element)
+                    }
+                    _ => None,
+                })
+                .ok_or_else(|| "the note XML is missing".to_string())?;
+        let mut equations = Vec::new();
+        Self::collect_equation_elements(&raw, note, true, &mut equations);
+        let target = *equations
+            .get(ordinal)
+            .ok_or_else(|| "the note equation XML is missing".to_string())?;
+        Self::replace_xml_element(&mut raw, target, root)?;
+        self.upsert_xml_part_content(&part, raw.to_string().map_err(|error| error.to_string())?);
+        let document = self
+            .document_mut()
+            .ok_or_else(|| "document is unavailable".to_string())?;
+        let notes = match location.kind {
+            NoteKind::Footnote => &mut document.footnotes,
+            NoteKind::Endnote => &mut document.endnotes,
+        };
+        let note = notes
+            .get_mut(&location.note_id)
+            .ok_or_else(|| "the note is missing".to_string())?;
+        let math = Self::locate_math_mut(&mut note.body, &location.path)
+            .ok_or_else(|| "the note equation is missing".to_string())?;
         math.raw_omml = replacement.raw_omml;
         math.elements = replacement.elements;
         Ok(())
@@ -33093,7 +33205,7 @@ impl WordDocument {
         )
     }
 
-    /// The display equation at a math surface in the body or a text box.
+    /// The display equation at a math surface in the body, a text box or a note.
     pub fn math_paragraph(&self, surface: usize) -> Option<&MathParagraph> {
         let document = self.document.as_ref()?;
         match self.paragraph_surfaces.get(surface)? {
@@ -33107,6 +33219,13 @@ impl WordDocument {
                 let text_box =
                     Self::locate_text_box(document, &location.host_path, location.run_index)?;
                 Self::locate_math(&text_box.blocks, &location.block_path)
+            }
+            ParagraphSurface::Math {
+                note: Some(location),
+                ..
+            } => {
+                let note = location.kind.notes(document).get(&location.note_id)?;
+                Self::locate_math(&note.body, &location.path)
             }
             _ => None,
         }

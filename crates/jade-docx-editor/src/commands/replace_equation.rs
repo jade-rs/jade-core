@@ -434,6 +434,181 @@ mod tests {
         );
     }
 
+    fn build_docx_note(body: &str, kind: &str, notes: String) -> Vec<u8> {
+        let part_path = format!("word/{kind}s.xml");
+        let source = build_docx(body);
+        let mut input = zip::ZipArchive::new(std::io::Cursor::new(source)).unwrap();
+        let mut output = zip::ZipWriter::new(std::io::Cursor::new(Vec::new()));
+        for index in 0..input.len() {
+            let mut entry = input.by_index(index).unwrap();
+            let name = entry.name().unwrap().into_owned();
+            let mut content = String::new();
+            entry.read_to_string(&mut content).unwrap();
+            if name == "[Content_Types].xml" {
+                content = content.replace("</Types>", &format!(r#"<Override PartName="/{part_path}" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.{kind}s+xml"/></Types>"#));
+            }
+            output
+                .start_file(name, SimpleFileOptions::default())
+                .unwrap();
+            output.write_all(content.as_bytes()).unwrap();
+        }
+        for (name, content) in [
+            (part_path.clone(), notes),
+            (
+                "word/_rels/document.xml.rels".to_string(),
+                format!(
+                    r#"<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rNote" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/{kind}s" Target="{kind}s.xml"/></Relationships>"#
+                ),
+            ),
+        ] {
+            output
+                .start_file(name, SimpleFileOptions::default())
+                .unwrap();
+            output.write_all(content.as_bytes()).unwrap();
+        }
+        output.finish().unwrap().into_inner()
+    }
+
+    #[test]
+    fn inline_equations_in_footnotes_and_endnotes_keep_their_story_and_history() {
+        for kind in ["footnote", "endnote"] {
+            let body = format!(
+                r#"<w:p><m:oMath><m:r><m:t>body</m:t></m:r></m:oMath><w:r><w:{kind}Reference w:id="7"/></w:r></w:p>"#
+            );
+            let notes = format!(
+                r#"<w:{kind}s xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" {M}><w:{kind} w:id="7"><w:p><w:r><w:t>neighbor</w:t></w:r></w:p><w:tbl><w:tr><w:tc><w:p><w:pPr><w:jc w:val="right"/></w:pPr><w:r><w:t>prefix</w:t></w:r><m:oMath><m:r><m:t>first</m:t></m:r></m:oMath><m:oMath><m:r><m:t>target</m:t></m:r></m:oMath><w:r><w:t>suffix</w:t></w:r></w:p></w:tc></w:tr></w:tbl></w:{kind}><w:{kind} w:id="8"><w:p><w:r><w:t>other-note</w:t></w:r></w:p></w:{kind}></w:{kind}s>"#
+            );
+            let part_path = format!("word/{kind}s.xml");
+            let source = build_docx_note(&body, kind, notes);
+            let mut document =
+                executor::block_on(WordDocument::load(&source, &Options::default())).unwrap();
+            let (target, run_index) = (0..document.paragraph_count())
+                .find_map(|index| {
+                    document
+                        .paragraph(index)?
+                        .runs
+                        .iter()
+                        .enumerate()
+                        .find(|(_, run)| {
+                            run.math
+                                .as_ref()
+                                .is_some_and(|math| math.raw_omml.contains("target"))
+                        })
+                        .map(|(run, _)| (index, run))
+                })
+                .expect("note equation is modeled");
+            let original = document.export_docx().unwrap();
+            let mut history = CommandExecutor::new();
+            let omml = format!(r#"<m:oMath {M}><m:r><m:t>updated</m:t></m:r></m:oMath>"#);
+            replace(&mut document, &mut history, target, Some(run_index), &omml).unwrap();
+            let saved = document.export_docx().unwrap();
+            assert_eq!(
+                part(&saved, "word/document.xml"),
+                part(&original, "word/document.xml")
+            );
+            let changed = part(&saved, &part_path);
+            assert!(changed.contains("<m:t>updated</m:t>"), "{kind}: {changed}");
+            assert!(!changed.contains("<m:t>target</m:t>"), "{kind}: {changed}");
+            for preserved in [
+                "first",
+                "prefix",
+                "suffix",
+                "neighbor",
+                "other-note",
+                r#"w:val="right""#,
+            ] {
+                assert!(changed.contains(preserved), "{kind}: {changed}");
+            }
+            let reopened =
+                executor::block_on(WordDocument::load(&saved, &Options::default())).unwrap();
+            assert!(reopened.paragraph(target).unwrap().runs[run_index]
+                .math
+                .as_ref()
+                .unwrap()
+                .raw_omml
+                .contains("updated"));
+            let mut selection = None;
+            let mut context = CommandContext::new(&mut document, &mut selection);
+            history.undo(&mut context).unwrap();
+            assert_eq!(
+                part(&context.document.export_docx().unwrap(), &part_path),
+                part(&original, &part_path)
+            );
+            history.redo(&mut context).unwrap();
+            assert_eq!(
+                part(&context.document.export_docx().unwrap(), &part_path),
+                changed
+            );
+        }
+    }
+
+    #[test]
+    fn display_equations_in_note_tables_keep_their_location_and_history() {
+        for kind in ["footnote", "endnote"] {
+            let body = format!(
+                r#"<w:p><m:oMathPara><m:oMath><m:r><m:t>body-display</m:t></m:r></m:oMath></m:oMathPara></w:p><w:p><m:oMath><m:r><m:t>body</m:t></m:r></m:oMath><w:r><w:{kind}Reference w:id="7"/></w:r></w:p>"#
+            );
+            let notes = format!(
+                r#"<w:{kind}s xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" {M}><w:{kind} w:id="7"><w:p><w:r><w:t>neighbor</w:t></w:r></w:p><w:tbl><w:tr><w:tc><w:p><w:pPr><w:jc w:val="right"/></w:pPr><w:r><w:t>prefix</w:t></w:r><m:oMathPara><m:oMath><m:r><m:t>first</m:t></m:r></m:oMath></m:oMathPara></w:p><w:p><w:pPr><w:jc w:val="right"/></w:pPr><m:oMathPara><m:oMath><m:r><m:t>target</m:t></m:r></m:oMath></m:oMathPara><w:r><w:t>suffix</w:t></w:r></w:p></w:tc></w:tr></w:tbl></w:{kind}><w:{kind} w:id="8"><w:p><w:r><w:t>other-note</w:t></w:r></w:p><w:p><m:oMathPara><m:oMath><m:r><m:t>other-note-equation</m:t></m:r></m:oMath></m:oMathPara></w:p></w:{kind}></w:{kind}s>"#
+            );
+            let part_path = format!("word/{kind}s.xml");
+            let source = build_docx_note(&body, kind, notes);
+            let mut document =
+                executor::block_on(WordDocument::load(&source, &Options::default())).unwrap();
+            let target = (0..document.paragraph_count())
+                .find(|&index| {
+                    document
+                        .math_paragraph(index)
+                        .is_some_and(|math| math.raw_omml.contains("target"))
+                })
+                .expect("note display equation is addressable");
+            let original = document.export_docx().unwrap();
+            let mut history = CommandExecutor::new();
+            let omml = format!(
+                r#"<m:oMathPara {M}><m:oMath><m:r><m:t>updated</m:t></m:r></m:oMath></m:oMathPara>"#
+            );
+            replace(&mut document, &mut history, target, None, &omml).unwrap();
+            let saved = document.export_docx().unwrap();
+            assert_eq!(
+                part(&saved, "word/document.xml"),
+                part(&original, "word/document.xml")
+            );
+            let changed = part(&saved, &part_path);
+            assert!(changed.contains("<m:t>updated</m:t>"), "{kind}: {changed}");
+            assert!(!changed.contains("<m:t>target</m:t>"), "{kind}: {changed}");
+            for preserved in [
+                "first",
+                "prefix",
+                "suffix",
+                "neighbor",
+                "other-note",
+                "other-note-equation",
+                r#"w:val="right""#,
+            ] {
+                assert!(changed.contains(preserved), "{kind}: {changed}");
+            }
+            let reopened =
+                executor::block_on(WordDocument::load(&saved, &Options::default())).unwrap();
+            assert!(reopened
+                .math_paragraph(target)
+                .unwrap()
+                .raw_omml
+                .contains("updated"));
+            let mut selection = None;
+            let mut context = CommandContext::new(&mut document, &mut selection);
+            history.undo(&mut context).unwrap();
+            assert_eq!(
+                part(&context.document.export_docx().unwrap(), &part_path),
+                part(&original, &part_path)
+            );
+            history.redo(&mut context).unwrap();
+            assert_eq!(
+                part(&context.document.export_docx().unwrap(), &part_path),
+                changed
+            );
+        }
+    }
+
     #[test]
     fn a_display_equation_is_replaced_in_its_wrapper_paragraph() {
         let body = r#"<w:p><w:r><w:t>before</w:t></w:r></w:p><w:p><m:oMathPara><m:oMath><m:r><m:t>x=1</m:t></m:r></m:oMath></m:oMathPara></w:p><w:p><w:r><w:t>after</w:t></w:r></w:p>"#;
