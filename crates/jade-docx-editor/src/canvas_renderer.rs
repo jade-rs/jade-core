@@ -10677,8 +10677,9 @@ where
     /// This is important when we end up drawing due to a cache miss even if the
     /// caller didn't mark anything dirty ahead of time.
     fn promote_page_to_dirty_for_current_render(&mut self, page: usize) -> Result<(), JsValue> {
-        // A note measuring pass lays notes out off-page and draws nothing.
-        if self.render_full_repaint || self.measuring_notes {
+        // Header and footer layout follows the page's existing draw decision.
+        // Their cache misses must not dirty a retained page during measurement.
+        if self.render_full_repaint || self.measuring_notes || self.rendering_header_footer_story {
             return Ok(());
         }
         // If the page isn't within the visible page range, we should not force it dirty.
@@ -10750,7 +10751,7 @@ where
     fn materialize_promoted_current_page(&mut self, page: usize) -> Result<(), JsValue> {
         self.switch_host_page(|host| host.activate_current_page())?;
         self.invalidate_context_state_tracking();
-        if !self.current_page_started_this_pass || self.rendering_header_footer_story {
+        if !self.current_page_started_this_pass {
             return Ok(());
         }
         self.clear_current_page_for_render(page)?;
@@ -18150,7 +18151,10 @@ where
         };
 
         if let (true, Some(render_hash)) = (cache_eligible, cache_render_hash) {
-            if !self.pageless_mode && !should_draw_cached_replay {
+            if !self.pageless_mode
+                && !self.rendering_header_footer_story
+                && !should_draw_cached_replay
+            {
                 // A layout shift on a page that was not drawable at page start
                 // means its cached bitmap is stale: promote the page now, before
                 // the hit is bound below for replay. The promotion activates
