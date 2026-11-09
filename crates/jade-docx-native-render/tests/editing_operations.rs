@@ -120,10 +120,12 @@ fn typing_on_page_one_does_not_shrink_the_page_count() {
 #[test]
 fn stable_typing_keeps_later_carets_and_matches_a_full_repaint() {
     let mut document = open_contract();
+    assert!(!document.renderer().needs_full_repaint());
     let paragraph = paragraph_on_first_page(&mut document);
     let pages = document.page_count();
-    // Opening leaves full dirty state; a stable bounded edit must retain the
+    // Start fully dirty to cover the case where a stable bounded edit retains the
     // selection tail even though incremental registration starts from zero.
+    document.renderer().mark_full_repaint();
     assert!(document.renderer().needs_full_repaint());
     let (later, later_rect) = (0..document.paragraph_count())
         .rev()
