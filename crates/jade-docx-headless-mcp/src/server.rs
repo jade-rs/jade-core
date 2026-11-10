@@ -10256,6 +10256,58 @@ mod tests {
     }
 
     #[test]
+    fn protected_batch_rejects_table_deletions_that_would_remove_a_new_comment() {
+        let first_cell = "<w:tc><w:tcPr/><w:p><w:r><w:t>Review target</w:t></w:r></w:p></w:tc>";
+        let empty_cell = "<w:tc><w:tcPr/><w:p/></w:tc>";
+        let bytes = body_fixture(&format!(
+            "<w:p><w:r><w:t>Body text</w:t></w:r></w:p>\
+             <w:tbl><w:tblPr/><w:tblGrid><w:gridCol w:w=\"2400\"/><w:gridCol w:w=\"2400\"/></w:tblGrid>\
+             <w:tr>{first_cell}{empty_cell}</w:tr><w:tr>{empty_cell}{empty_cell}</w:tr></w:tbl>"
+        ));
+        for delete in [
+            json!({ "type": "delete_table", "table_order_index": 0 }),
+            json!({ "type": "delete_table_row", "table_order_index": 0, "row_index": 0 }),
+            json!({ "type": "delete_table_column", "table_order_index": 0, "column_index": 0 }),
+        ] {
+            let mut server = test_server();
+            let session = reopen(&mut server, &bytes);
+            let before = export_bytes(&mut server, &session);
+            for dry_run in [true, false] {
+                let result = protected_batch(
+                    &mut server,
+                    &session,
+                    json!([
+                        { "type": "add_comment_by_text", "query": "Review target",
+                            "text": "Keep this review", "author": "Reviewer" },
+                        delete,
+                    ]),
+                    dry_run,
+                );
+                assert!(
+                    matches!(&result, Err(error) if error.contains("index 1")
+                        && error.contains("deleting from a table containing a protected DOCX structure")),
+                    "{result:?}"
+                );
+                assert_eq!(export_bytes(&mut server, &session), before);
+            }
+            protected_batch(
+                &mut server,
+                &session,
+                json!([
+                    { "type": "add_comment_by_text", "query": "Body text",
+                        "text": "Keep this review", "author": "Reviewer" },
+                    delete,
+                ]),
+                false,
+            )
+            .unwrap();
+            let after = export_bytes(&mut server, &session);
+            let reopened = reopen(&mut server, &after);
+            assert_eq!(comment_anchors(&mut server, &reopened).len(), 1);
+        }
+    }
+
+    #[test]
     fn protected_batch_checks_paragraph_break_offsets() {
         let mut server = test_server();
         let session = reopen(
@@ -11811,15 +11863,12 @@ mod tests {
         /// around a merge rather than relying only on the whole-surface fuzzer.
         #[test]
         fn vertical_merge_row_edits_round_trip_and_undo(
-            rows in 2usize..7,
-            merge_start in 0usize..6,
-            merge_len in 2usize..7,
-            insert in any::<bool>(),
-            at in 0usize..7,
+            (rows, merge_start, merge_len, insert, at) in (2usize..7, any::<bool>())
+                .prop_flat_map(|(rows, insert)| (Just(rows), 0..rows - 1, Just(insert)))
+                .prop_flat_map(|(rows, start, insert)| {
+                    (Just(rows), Just(start), 2..=rows - start, Just(insert), 0..rows + usize::from(insert))
+                }),
         ) {
-            prop_assume!(merge_start + merge_len <= rows);
-            prop_assume!(if insert { at <= rows } else { at < rows });
-
             let mut server = test_server();
             let session = open_session(&mut server, TABLE_DOCX);
             for row_count in 2..rows {

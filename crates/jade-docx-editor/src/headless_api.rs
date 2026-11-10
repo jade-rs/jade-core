@@ -6268,6 +6268,16 @@ fn validate_protected_edit(
         }
         Ok(())
     };
+    let table_is_protected = |table| {
+        doc.table_has_commented_paragraph(table)
+            || !doc.table_xml_element(table).is_some_and(|table| {
+                !xml_has_tag(table, |tag| {
+                    protected_structure(tag)
+                        || comment_anchor(tag)
+                        || matches!(tag, "vMerge" | "hMerge" | "gridSpan")
+                })
+            })
+    };
     match command {
         HeadlessCommand::InsertText {
             paragraph, offset, ..
@@ -6325,17 +6335,7 @@ fn validate_protected_edit(
             template_row,
         } => {
             if let Some((rows, columns)) = doc.table_dimensions(*table_order_index) {
-                if doc.table_has_commented_paragraph(*table_order_index)
-                    || !doc
-                        .table_xml_element(*table_order_index)
-                        .is_some_and(|table| {
-                            !xml_has_tag(table, |tag| {
-                                protected_structure(tag)
-                                    || comment_anchor(tag)
-                                    || matches!(tag, "vMerge" | "hMerge" | "gridSpan")
-                            })
-                        })
-                {
+                if table_is_protected(*table_order_index) {
                     return Err(fail("inserting a row into a table containing a protected DOCX structure is not supported"));
                 }
                 if *row_index > rows || template_row.is_some_and(|template| template >= rows) {
@@ -6344,6 +6344,21 @@ fn validate_protected_edit(
                 if rows.saturating_add(1).saturating_mul(columns) > 1000 {
                     return Err(fail("a table must not exceed 1000 cells"));
                 }
+            }
+        }
+        HeadlessCommand::DeleteTable { table_order_index }
+        | HeadlessCommand::DeleteTableRow {
+            table_order_index, ..
+        }
+        | HeadlessCommand::DeleteTableColumn {
+            table_order_index, ..
+        } => {
+            if doc.table_dimensions(*table_order_index).is_some()
+                && table_is_protected(*table_order_index)
+            {
+                return Err(fail(
+                    "deleting from a table containing a protected DOCX structure is not supported",
+                ));
             }
         }
         HeadlessCommand::AcceptRevisions {
