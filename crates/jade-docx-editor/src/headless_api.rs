@@ -1925,20 +1925,46 @@ pub fn plain_text_paste_commands(caret: TextPosition, text: &str) -> Vec<Headles
 pub fn apply_headless_commands_with_executor_to_document(
     word_doc: &mut WordDocument,
     command_executor: &mut CommandExecutor,
+    selection: Option<SelectionRange>,
+    request: &HeadlessEditRequest,
+) -> Result<Option<SelectionRange>, HeadlessApiApplyError> {
+    apply_headless_commands(word_doc, command_executor, selection, request, false)
+}
+
+/// Apply sequential commands with the DOCX interchange safety restrictions.
+/// Each guard sees the document after the preceding commands.
+pub fn apply_protected_headless_commands_with_executor_to_document(
+    word_doc: &mut WordDocument,
+    command_executor: &mut CommandExecutor,
+    selection: Option<SelectionRange>,
+    request: &HeadlessEditRequest,
+) -> Result<Option<SelectionRange>, HeadlessApiApplyError> {
+    apply_headless_commands(word_doc, command_executor, selection, request, true)
+}
+
+fn apply_headless_commands(
+    word_doc: &mut WordDocument,
+    command_executor: &mut CommandExecutor,
     mut selection: Option<SelectionRange>,
     request: &HeadlessEditRequest,
+    protected: bool,
 ) -> Result<Option<SelectionRange>, HeadlessApiApplyError> {
     if request.commands.is_empty() {
         return Err(HeadlessApiApplyError::EmptyCommands);
     }
     refuse_locked_edits(word_doc, &request.commands)?;
-    if let Some(selection) =
-        type_over_placeholder(word_doc, command_executor, selection, &request.commands)?
-    {
-        return Ok(selection);
+    if !protected {
+        if let Some(selection) =
+            type_over_placeholder(word_doc, command_executor, selection, &request.commands)?
+        {
+            return Ok(selection);
+        }
     }
 
     for (index, command) in request.commands.iter().enumerate() {
+        if protected {
+            validate_protected_edit(word_doc, index, command)?;
+        }
         match command {
             HeadlessCommand::InsertText {
                 paragraph,
@@ -3753,7 +3779,7 @@ pub fn apply_headless_commands_with_executor_to_document(
                 let query = query.clone();
                 let (text, author, initials, date) =
                     (text.clone(), author.clone(), initials.clone(), date.clone());
-                let scope = find_nth_text_match(word_doc, &query, wanted)
+                let scope = find_nth_text_match(word_doc, &query, wanted, protected)
                     .map_or(EditScope::Document, |hit| {
                         paragraphs_scope(hit.paragraph, hit.paragraph)
                     });
@@ -3765,9 +3791,22 @@ pub fn apply_headless_commands_with_executor_to_document(
                     "add_comment_by_text",
                     scope,
                     move |doc| {
-                        let hit = find_nth_text_match(doc, &query, wanted).ok_or_else(|| {
-                            format!("text not found: {query:?} (occurrence {wanted})")
-                        })?;
+                        let hit = find_nth_text_match(doc, &query, wanted, protected).ok_or_else(
+                            || {
+                                if protected {
+                                    format!("text not found (occurrence {wanted})")
+                                } else {
+                                    format!("text not found: {query:?} (occurrence {wanted})")
+                                }
+                            },
+                        )?;
+                        if protected {
+                            if let Some(reason) =
+                                protected_paragraph_limitation(doc, hit.paragraph, true)
+                            {
+                                return Err(reason.to_owned());
+                            }
+                        }
                         doc.add_comment(AddCommentRequest {
                             start_paragraph: hit.paragraph,
                             start_offset: hit.start,
@@ -3920,6 +3959,14 @@ pub fn apply_headless_commands_with_executor_to_document(
                 column_widths,
                 caret_offset,
             } => {
+                if protected && *after_paragraph >= word_doc.paragraph_count() {
+                    return Err(HeadlessApiApplyError::Command {
+                        index,
+                        source: CommandError::Custom(
+                            "after_paragraph must reference an existing paragraph".to_string(),
+                        ),
+                    });
+                }
                 let mut ctx = CommandContext::new(word_doc, &mut selection);
                 let command = match caret_offset {
                     Some(offset) => InsertTableCommand::at_caret(
@@ -5473,12 +5520,23 @@ fn execute_headless_query(
             let limit = (*max_paragraphs).max(1);
             let end = start.saturating_add(limit).min(total);
             let numbering_texts = numbering_texts(word_doc);
+            let deleted_rows = deleted_row_paragraphs(word_doc);
             let mut paragraphs = Vec::with_capacity(end.saturating_sub(start));
 
             for paragraph_index in start..end {
+                let (text, offset_basis) =
+                    inspection_paragraph_text(word_doc, paragraph_index).unwrap_or_default();
                 paragraphs.push(HeadlessParagraphText {
                     paragraph: paragraph_index,
-                    text: paragraph_text(word_doc, paragraph_index).unwrap_or_default(),
+                    deleted_table_row: deleted_rows.contains(&paragraph_index),
+                    text,
+                    offset_basis: offset_basis.map(str::to_owned),
+                    edit_limitation: protected_paragraph_limitation(
+                        word_doc,
+                        paragraph_index,
+                        false,
+                    )
+                    .map(str::to_owned),
                     numbering_text: numbering_texts.get(paragraph_index).cloned().flatten(),
                 });
             }
@@ -5519,7 +5577,9 @@ fn execute_headless_query(
             };
 
             'paragraphs: for paragraph_index in start..total {
-                let Some(text) = paragraph_text(word_doc, paragraph_index) else {
+                let Some((text, offset_basis)) =
+                    inspection_paragraph_text(word_doc, paragraph_index)
+                else {
                     continue;
                 };
                 let haystack = if *case_insensitive {
@@ -5527,6 +5587,7 @@ fn execute_headless_query(
                 } else {
                     text.clone()
                 };
+                let mut edit_limitation = None;
                 for (start_offset, folded_match) in haystack.match_indices(needle.as_str()) {
                     let end_offset = start_offset + folded_match.len();
                     // Report the document's own casing, not the folded form.
@@ -5548,6 +5609,13 @@ fn execute_headless_query(
                     );
                     matches.push(HeadlessSearchMatch {
                         paragraph: paragraph_index,
+                        offset_basis: offset_basis.map(str::to_owned),
+                        edit_limitation: edit_limitation
+                            .get_or_insert_with(|| {
+                                protected_paragraph_limitation(word_doc, paragraph_index, false)
+                                    .map(str::to_owned)
+                            })
+                            .clone(),
                         start_offset,
                         end_offset,
                         start_char_offset,
@@ -5933,22 +6001,48 @@ struct TextMatch {
     end: usize,
 }
 
-fn find_nth_text_match(word_doc: &WordDocument, query: &str, nth: usize) -> Option<TextMatch> {
-    if query.is_empty() {
-        return None;
-    }
-    let mut seen = 0usize;
-    let deleted_rows: std::collections::HashSet<usize> = word_doc
+fn deleted_row_paragraphs(word_doc: &WordDocument) -> std::collections::HashSet<usize> {
+    word_doc
         .table_row_revisions()
         .into_iter()
         .filter(|revision| revision.mark.is_deletion())
         .flat_map(|revision| revision.paragraphs)
-        .collect();
+        .collect()
+}
+
+fn find_nth_text_match(
+    word_doc: &WordDocument,
+    query: &str,
+    nth: usize,
+    include_cached_fields: bool,
+) -> Option<TextMatch> {
+    if query.is_empty() {
+        return None;
+    }
+    let mut seen = 0usize;
+    let deleted_rows = deleted_row_paragraphs(word_doc);
     for paragraph in 0..word_doc.paragraph_count() {
         if deleted_rows.contains(&paragraph) {
             continue;
         }
-        let source = word_doc.paragraph(paragraph)?;
+        if include_cached_fields {
+            if let Some((text, Some(_))) = inspection_paragraph_text(word_doc, paragraph) {
+                for (start, matched) in text.match_indices(query) {
+                    if seen == nth {
+                        return Some(TextMatch {
+                            paragraph,
+                            start,
+                            end: start + matched.len(),
+                        });
+                    }
+                    seen += 1;
+                }
+                continue;
+            }
+        }
+        let Some(source) = word_doc.paragraph(paragraph) else {
+            continue;
+        };
         let mut text = String::new();
         let mut offsets = Vec::new();
         let mut original = 0;
@@ -6050,6 +6144,199 @@ fn paragraph_text(word_doc: &WordDocument, index: usize) -> Option<String> {
         text.push_str(&run.text);
     }
     Some(text)
+}
+
+fn xml_has_tag(
+    element: &jade_docx_reader::docx_xml::XmlElement,
+    predicate: fn(&str) -> bool,
+) -> bool {
+    use jade_docx_reader::docx_xml::XmlNode;
+
+    predicate(element.name.rsplit(':').next().unwrap_or_default())
+        || element.children.iter().any(|node| match node {
+            XmlNode::Element(child) => xml_has_tag(child, predicate),
+            _ => false,
+        })
+}
+
+fn protected_structure(tag: &str) -> bool {
+    matches!(
+        tag,
+        "fldSimple" | "fldChar" | "instrText" | "sdt" | "drawing" | "pict" | "object"
+            | "footnoteReference" | "endnoteReference" | "rPrChange" | "pPrChange" | "sectPr"
+    )
+}
+
+fn comment_anchor(tag: &str) -> bool {
+    matches!(tag, "commentRangeStart" | "commentRangeEnd" | "commentReference")
+}
+
+/// Return a static diagnostic. Callers can safely forward it without
+/// disclosing the contents of the DOCX.
+pub fn protected_paragraph_limitation(
+    doc: &WordDocument,
+    index: usize,
+    allow_existing_comments: bool,
+) -> Option<&'static str> {
+    if !doc.is_body_paragraph_surface(index) {
+        return Some("editing non-body paragraphs is not supported");
+    }
+    let paragraph = doc.paragraph(index)?;
+    if !allow_existing_comments
+        && (!paragraph.comment_ranges.is_empty() || !paragraph.comment_markers.is_empty())
+    {
+        return Some("editing a paragraph covered by a comment is not supported");
+    }
+    let xml = doc.paragraph_xml_element(index);
+    if doc.is_in_merged_table_cell(index)
+        || paragraph.runs.iter().any(|run| run.field.is_some())
+        || xml.as_ref().is_some_and(|element| xml_has_tag(element, protected_structure))
+    {
+        return Some("editing a paragraph containing a protected DOCX structure is not supported");
+    }
+    if !allow_existing_comments
+        && xml.as_ref().is_some_and(|element| xml_has_tag(element, comment_anchor))
+    {
+        return Some("editing a paragraph covered by a comment is not supported");
+    }
+    None
+}
+
+fn validate_protected_edit(
+    doc: &WordDocument,
+    index: usize,
+    command: &HeadlessCommand,
+) -> Result<(), HeadlessApiApplyError> {
+    let fail = |reason: &str| HeadlessApiApplyError::Command {
+        index,
+        source: CommandError::Custom(reason.to_owned()),
+    };
+    let validate = |paragraph, allow_existing_comments| {
+        protected_paragraph_limitation(doc, paragraph, allow_existing_comments)
+            .map_or(Ok(()), |reason| Err(fail(reason)))
+    };
+    let validate_text_edit = |paragraph| {
+        if doc.body_paragraph_is_in_deleted_row(paragraph) {
+            return Err(fail("editing a deleted table row is not supported"));
+        }
+        validate(paragraph, false)
+    };
+    match command {
+        HeadlessCommand::InsertText { paragraph, .. }
+        | HeadlessCommand::InsertParagraphBreak { paragraph, .. } => {
+            if *paragraph < doc.paragraph_count() {
+                validate_text_edit(*paragraph)?;
+            }
+        }
+        HeadlessCommand::ReplaceRange {
+            start_paragraph,
+            end_paragraph,
+            ..
+        } => {
+            if *start_paragraph != *end_paragraph
+                && *end_paragraph < doc.paragraph_count()
+                && *start_paragraph < doc.paragraph_count()
+                && !doc.is_consecutive_body_range(*start_paragraph, *end_paragraph)
+            {
+                return Err(fail(
+                    "cross-paragraph replacement must stay within consecutive body paragraphs outside tables",
+                ));
+            }
+            if *end_paragraph < doc.paragraph_count() {
+                for paragraph in *start_paragraph..=*end_paragraph {
+                    validate_text_edit(paragraph)?;
+                }
+            }
+        }
+        HeadlessCommand::InsertTable {
+            after_paragraph, ..
+        } => {
+            if *after_paragraph < doc.paragraph_count() {
+                validate(*after_paragraph, false)?;
+                if !doc.is_top_level_body_paragraph_surface(*after_paragraph) {
+                    return Err(fail(
+                        "table insertion requires a body paragraph outside tables",
+                    ));
+                }
+            }
+        }
+        HeadlessCommand::InsertTableRow {
+            table_order_index,
+            row_index,
+            template_row,
+        } => {
+            if let Some((rows, columns)) = doc.table_dimensions(*table_order_index) {
+                if doc.table_has_commented_paragraph(*table_order_index)
+                    || !doc.table_xml_element(*table_order_index).is_some_and(|table| {
+                    !xml_has_tag(table, |tag| {
+                        protected_structure(tag) || comment_anchor(tag)
+                            || matches!(tag, "vMerge" | "hMerge" | "gridSpan")
+                    })
+                }) {
+                    return Err(fail("inserting a row into a table containing a protected DOCX structure is not supported"));
+                }
+                if *row_index > rows || template_row.is_some_and(|template| template >= rows) {
+                    return Err(fail("table row index is out of range"));
+                }
+                if rows.saturating_add(1).saturating_mul(columns) > 1000 {
+                    return Err(fail("a table must not exceed 1000 cells"));
+                }
+            }
+        }
+        HeadlessCommand::AcceptRevisions {
+            revision_targets: Some(targets),
+            ..
+        }
+        | HeadlessCommand::RejectRevisions {
+            revision_targets: Some(targets),
+            ..
+        } => {
+            for target in targets {
+                validate(target.paragraph, false)?;
+                if target.paragraph_mark && target.paragraph + 1 < doc.paragraph_count() {
+                    validate(target.paragraph + 1, false)?;
+                }
+            }
+        }
+        _ => {}
+    }
+    Ok(())
+}
+
+fn inspection_paragraph_text(
+    word_doc: &WordDocument,
+    index: usize,
+) -> Option<(String, Option<&'static str>)> {
+    let paragraph = word_doc.paragraph(index)?;
+    let cached_text = |run: &jade_docx_reader::Run| {
+        run.field
+            .as_ref()
+            .and_then(|field| field.cached_text.as_deref())
+            .filter(|text| !text.is_empty())
+            .is_some()
+            && run.text.is_empty()
+    };
+    if !paragraph.runs.iter().any(cached_text) {
+        return paragraph_text(word_doc, index).map(|text| (text, None));
+    }
+    // A display-only projection has no editable offsets. Omit deleted runs
+    // here so the caller does not have to apply revision offsets to it.
+    let mut text = String::new();
+    for run in &paragraph.runs {
+        if run.revision.as_ref().is_some_and(|mark| mark.is_deletion()) {
+            continue;
+        }
+        let value = if run.text.is_empty() {
+            run.field
+                .as_ref()
+                .and_then(|field| field.cached_text.as_deref())
+                .unwrap_or_default()
+        } else {
+            &run.text
+        };
+        text.push_str(value);
+    }
+    Some((text, Some("display_utf8")))
 }
 
 #[derive(Debug, Clone)]
@@ -9698,11 +9985,17 @@ mod tests {
                 start_paragraph: 1,
                 paragraphs: vec![
                     HeadlessParagraphText {
+                        deleted_table_row: false,
+                        offset_basis: None,
+                        edit_limitation: None,
                         paragraph: 1,
                         text: "beta".to_string(),
                         numbering_text: None
                     },
                     HeadlessParagraphText {
+                        deleted_table_row: false,
+                        offset_basis: None,
+                        edit_limitation: None,
                         paragraph: 2,
                         text: "gamma".to_string(),
                         numbering_text: None
@@ -22251,14 +22544,14 @@ mod tests {
             ("A".to_string(), "foo bar".to_string()),
             ("B".to_string(), "bar baz".to_string()),
         ]);
-        let first = find_nth_text_match(&word_doc, "bar", 0).expect("first match");
+        let first = find_nth_text_match(&word_doc, "bar", 0, false).expect("first match");
         assert_eq!((first.paragraph, first.start, first.end), (0, 4, 7));
 
-        let second = find_nth_text_match(&word_doc, "bar", 1).expect("second match");
+        let second = find_nth_text_match(&word_doc, "bar", 1, false).expect("second match");
         assert_eq!((second.paragraph, second.start, second.end), (1, 0, 3));
 
-        assert!(find_nth_text_match(&word_doc, "bar", 2).is_none());
-        assert!(find_nth_text_match(&word_doc, "", 0).is_none());
+        assert!(find_nth_text_match(&word_doc, "bar", 2, false).is_none());
+        assert!(find_nth_text_match(&word_doc, "", 0, false).is_none());
     }
 
     #[test]

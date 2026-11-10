@@ -302,6 +302,15 @@ pub struct HeadlessCharacterStyleSnapshot {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct HeadlessParagraphText {
     pub paragraph: usize,
+    /// The accepted document omits this paragraph with its deleted table row.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub deleted_table_row: bool,
+    /// Offsets into the displayed text include cached field results.
+    /// These offsets must not be used as edit positions.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub offset_basis: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub edit_limitation: Option<String>,
     pub text: String,
     #[serde(default)]
     pub numbering_text: Option<String>,
@@ -310,6 +319,12 @@ pub struct HeadlessParagraphText {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct HeadlessSearchMatch {
     pub paragraph: usize,
+    /// Offsets into the displayed text include cached field results.
+    /// These offsets must not be used as edit positions.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub offset_basis: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub edit_limitation: Option<String>,
     /// Rendered UTF-8 selection offsets, including inline reference markers.
     pub start_offset: usize,
     pub end_offset: usize,

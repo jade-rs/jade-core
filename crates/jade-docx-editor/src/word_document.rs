@@ -33500,6 +33500,83 @@ impl WordDocument {
         )
     }
 
+    pub(crate) fn table_xml_element(&self, index: usize) -> Option<&XmlElement> {
+        let id = self.table_by_order(index)?.node_id?;
+        self.raw_document.as_ref()?.element(id)
+    }
+
+    pub(crate) fn table_has_commented_paragraph(&self, index: usize) -> bool {
+        let (Some(raw), Some(table_id)) = (
+            self.raw_document.as_ref(),
+            self.table_by_order(index).and_then(|table| table.node_id),
+        ) else {
+            return false;
+        };
+        (0..self.paragraph_count()).any(|index| {
+            if !self.is_body_paragraph_surface(index) {
+                return false;
+            }
+            let mut node = self.paragraph(index).and_then(|paragraph| {
+                (!paragraph.comment_ranges.is_empty()).then_some(paragraph.node_id).flatten()
+            });
+            while let Some(id) = node {
+                if id == table_id {
+                    return true;
+                }
+                node = raw.parent_id(id);
+            }
+            false
+        })
+    }
+
+    pub(crate) fn is_in_merged_table_cell(&self, index: usize) -> bool {
+        let Some(raw) = &self.raw_document else {
+            return false;
+        };
+        let mut node = self
+            .paragraph(index)
+            .and_then(|paragraph| paragraph.node_id);
+        while let Some(id) = node.and_then(|id| Self::raw_ancestor_with_name(raw, id, "w:tc")) {
+            if raw.element(id).is_some_and(|cell| {
+                cell.children.iter().any(|child| {
+                    let XmlNode::Element(properties) = child else { return false };
+                    properties.name == "w:tcPr" && properties.children.iter().any(|child| {
+                        matches!(child, XmlNode::Element(el) if matches!(el.name.as_str(), "w:vMerge" | "w:hMerge" | "w:gridSpan"))
+                    })
+                })
+            }) {
+                return true;
+            }
+            node = raw.parent_id(id);
+        }
+        false
+    }
+
+    /// Cross-paragraph replacements must stay in a run of consecutive body
+    /// paragraphs. Comparing only surface indices can miss a table with no
+    /// editable paragraphs or another intervening body element.
+    pub(crate) fn is_consecutive_body_range(&self, start: usize, end: usize) -> bool {
+        let element_index = |index| match self.paragraph_surfaces.get(index) {
+            Some(ParagraphSurface::Body { path }) => match path.as_slice() {
+                [PathEntry::Element(index)] => Some(*index),
+                _ => None,
+            },
+            _ => None,
+        };
+        let (Some(start), Some(end)) = (element_index(start), element_index(end)) else {
+            return false;
+        };
+        self.document
+            .as_ref()
+            .and_then(|document| document.body.as_ref())
+            .and_then(|body| body.elements.get(start..=end))
+            .is_some_and(|elements| {
+                elements
+                    .iter()
+                    .all(|element| matches!(element, BodyElement::Paragraph(_)))
+            })
+    }
+
     /// The model's mark for a referenced footnote, for renderer parity tests.
     #[cfg(test)]
     pub(crate) fn footnote_reference_mark(&self, note_id: &str) -> Option<String> {
