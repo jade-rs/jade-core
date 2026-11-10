@@ -8266,9 +8266,14 @@ impl OffscreenDocumentView {
             && commands.len() == 1
             && !text.contains(['\r', '\n']))
         .then(|| {
+            let state = self.state.borrow();
+            let renderer = self.renderer.borrow();
             (
-                self.renderer.borrow().local_text_edit_cache(),
-                self.state.borrow().command_executor.history_revision(),
+                state.word_doc.as_ref().map_or_else(
+                    || renderer.local_text_edit_cache(),
+                    |doc| renderer.local_text_edit_cache_for_paragraph(doc, edited_paragraph_index),
+                ),
+                state.command_executor.history_revision(),
             )
         });
 
@@ -9123,7 +9128,20 @@ impl OffscreenDocumentView {
         // owner so `make_mut` is a no-op, mirroring the insert/paragraph-break
         // edit paths. The guard outlives the block so a failed or no-op action
         // leaves the renderer pointed at the document again.
-        let edit_cache = self.renderer.borrow().local_text_edit_cache();
+        let edit_cache = {
+            let state = self.state.borrow();
+            let renderer = self.renderer.borrow();
+            let footprint = match action {
+                HistoryAction::Undo => state.command_executor.next_undo_render_footprint(),
+                HistoryAction::Redo => state.command_executor.next_redo_render_footprint(),
+            };
+            match (footprint, state.word_doc.as_ref()) {
+                (Some(HistoryRenderFootprint::SingleParagraph { index }), Some(doc)) => {
+                    renderer.local_text_edit_cache_for_paragraph(doc, index)
+                }
+                _ => renderer.local_text_edit_cache(),
+            }
+        };
         let _document_cache = self.drop_renderer_document_cache();
         let maybe_context = {
             let mut state_mut = self.state.borrow_mut();
