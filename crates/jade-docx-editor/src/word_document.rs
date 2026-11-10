@@ -3026,20 +3026,17 @@ impl WordDocument {
             .as_ref()
             .ok_or("main document part is not loaded")?;
         let raw_xml = DocxXmlDocument::parse(&doc_part.content)?;
-        let mut parsed_doc = self
-            .document
-            .as_deref()
-            .cloned()
+        let parsed_doc = self
+            .document_mut()
             .ok_or("semantic document is not loaded")?;
 
-        let _ = attach_document_xml_ids(&mut parsed_doc, &raw_xml);
-        attach_text_box_xml_ids(&mut parsed_doc, &raw_xml);
-        content_controls::forms::annotate_form_check_boxes(&mut parsed_doc, &raw_xml);
+        let _ = attach_document_xml_ids(parsed_doc, &raw_xml);
+        attach_text_box_xml_ids(parsed_doc, &raw_xml);
+        content_controls::forms::annotate_form_check_boxes(parsed_doc, &raw_xml);
         if let Some(body) = parsed_doc.body.as_mut() {
             Self::capture_preserved_run_props(&mut body.elements, &raw_xml);
         }
 
-        self.document = Some(Rc::new(parsed_doc));
         self.raw_document = Some(raw_xml);
         // Attaching XML node ids does not change body text or paragraph
         // ordering. Preserve status-bar counts so the first keystroke after a
@@ -66598,9 +66595,10 @@ mod tests {
         let mut doc = executor::block_on(WordDocument::load_for_initial_render(&data, &options))
             .expect("load semantic document");
 
-        assert!(doc.document.is_some());
+        let document = Rc::as_ptr(doc.document.as_ref().expect("semantic document"));
         assert!(doc.raw_document.is_none());
         assert!(doc.ensure_roundtrip_xml().expect("prepare round-trip XML"));
+        assert_eq!(document, Rc::as_ptr(doc.document.as_ref().unwrap()));
         assert!(doc.raw_document.is_some());
         assert!(!doc.ensure_roundtrip_xml().expect("prepare is idempotent"));
         assert!(!doc.export_docx().expect("export docx").is_empty());
