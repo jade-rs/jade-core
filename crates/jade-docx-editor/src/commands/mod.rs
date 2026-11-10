@@ -555,7 +555,8 @@ impl CommandExecutor {
         self.redo_stack.last().map(|command| command.name())
     }
 
-    pub(crate) fn next_redo_render_footprint(&self) -> Option<HistoryRenderFootprint> {
+    /// Render footprint of the edit at the top of the redo stack.
+    pub fn next_redo_render_footprint(&self) -> Option<HistoryRenderFootprint> {
         self.redo_stack
             .last()
             .map(|command| command.history_render_footprint())
