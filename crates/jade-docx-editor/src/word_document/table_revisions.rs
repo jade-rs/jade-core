@@ -203,7 +203,11 @@ impl WordDocument {
             let Some(row) = table.rows.get(*row) else {
                 break;
             };
-            if row.revision.as_deref().is_some_and(RevisionMark::is_deletion) {
+            if row
+                .revision
+                .as_deref()
+                .is_some_and(RevisionMark::is_deletion)
+            {
                 return true;
             }
             let Some(cell) = row.cells.get(*cell) else {

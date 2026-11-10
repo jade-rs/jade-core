@@ -33517,7 +33517,9 @@ impl WordDocument {
                 return false;
             }
             let mut node = self.paragraph(index).and_then(|paragraph| {
-                (!paragraph.comment_ranges.is_empty()).then_some(paragraph.node_id).flatten()
+                (!paragraph.comment_ranges.is_empty())
+                    .then_some(paragraph.node_id)
+                    .flatten()
             });
             while let Some(id) = node {
                 if id == table_id {

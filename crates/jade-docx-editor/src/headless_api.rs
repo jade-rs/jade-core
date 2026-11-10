@@ -6162,13 +6162,26 @@ fn xml_has_tag(
 fn protected_structure(tag: &str) -> bool {
     matches!(
         tag,
-        "fldSimple" | "fldChar" | "instrText" | "sdt" | "drawing" | "pict" | "object"
-            | "footnoteReference" | "endnoteReference" | "rPrChange" | "pPrChange" | "sectPr"
+        "fldSimple"
+            | "fldChar"
+            | "instrText"
+            | "sdt"
+            | "drawing"
+            | "pict"
+            | "object"
+            | "footnoteReference"
+            | "endnoteReference"
+            | "rPrChange"
+            | "pPrChange"
+            | "sectPr"
     )
 }
 
 fn comment_anchor(tag: &str) -> bool {
-    matches!(tag, "commentRangeStart" | "commentRangeEnd" | "commentReference")
+    matches!(
+        tag,
+        "commentRangeStart" | "commentRangeEnd" | "commentReference"
+    )
 }
 
 /// Return a static diagnostic. Callers can safely forward it without
@@ -6190,12 +6203,16 @@ pub fn protected_paragraph_limitation(
     let xml = doc.paragraph_xml_element(index);
     if doc.is_in_merged_table_cell(index)
         || paragraph.runs.iter().any(|run| run.field.is_some())
-        || xml.as_ref().is_some_and(|element| xml_has_tag(element, protected_structure))
+        || xml
+            .as_ref()
+            .is_some_and(|element| xml_has_tag(element, protected_structure))
     {
         return Some("editing a paragraph containing a protected DOCX structure is not supported");
     }
     if !allow_existing_comments
-        && xml.as_ref().is_some_and(|element| xml_has_tag(element, comment_anchor))
+        && xml
+            .as_ref()
+            .is_some_and(|element| xml_has_tag(element, comment_anchor))
     {
         return Some("editing a paragraph covered by a comment is not supported");
     }
@@ -6267,12 +6284,16 @@ fn validate_protected_edit(
         } => {
             if let Some((rows, columns)) = doc.table_dimensions(*table_order_index) {
                 if doc.table_has_commented_paragraph(*table_order_index)
-                    || !doc.table_xml_element(*table_order_index).is_some_and(|table| {
-                    !xml_has_tag(table, |tag| {
-                        protected_structure(tag) || comment_anchor(tag)
-                            || matches!(tag, "vMerge" | "hMerge" | "gridSpan")
-                    })
-                }) {
+                    || !doc
+                        .table_xml_element(*table_order_index)
+                        .is_some_and(|table| {
+                            !xml_has_tag(table, |tag| {
+                                protected_structure(tag)
+                                    || comment_anchor(tag)
+                                    || matches!(tag, "vMerge" | "hMerge" | "gridSpan")
+                            })
+                        })
+                {
                     return Err(fail("inserting a row into a table containing a protected DOCX structure is not supported"));
                 }
                 if *row_index > rows || template_row.is_some_and(|template| template >= rows) {
