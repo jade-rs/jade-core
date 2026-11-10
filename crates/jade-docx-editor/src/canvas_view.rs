@@ -16210,6 +16210,15 @@ impl OffscreenDocumentView {
     /// initial load. Returns true only when this call performed the parse.
     #[wasm_bindgen(js_name = prepareRoundtripDocument)]
     pub fn prepare_roundtrip_document(&self) -> Result<bool, JsValue> {
+        let needs_preparation = self
+            .state
+            .borrow()
+            .word_doc
+            .as_ref()
+            .is_some_and(|doc| doc.raw_document.is_none());
+        // Preparation only attaches XML metadata to the laid-out document.
+        // Release the renderer's snapshot so the model can update it in place.
+        let _document_cache = needs_preparation.then(|| self.drop_renderer_document_cache());
         let mut state = self.state.borrow_mut();
         let word_doc = state
             .word_doc
