@@ -1971,7 +1971,9 @@ fn apply_headless_commands(
                 offset,
                 text,
             } => {
-                validate_text_offset(word_doc, index, *paragraph, *offset)?;
+                if !protected {
+                    validate_text_offset(word_doc, index, *paragraph, *offset)?;
+                }
                 let range = SelectionRange::collapsed(TextPosition::new(*paragraph, *offset));
                 selection = Some(range);
                 // An empty insertion still validates and moves the caret,
@@ -2067,8 +2069,10 @@ fn apply_headless_commands(
                 end_offset,
                 text,
             } => {
-                validate_text_offset(word_doc, index, *start_paragraph, *start_offset)?;
-                validate_text_offset(word_doc, index, *end_paragraph, *end_offset)?;
+                if !protected {
+                    validate_text_offset(word_doc, index, *start_paragraph, *start_offset)?;
+                    validate_text_offset(word_doc, index, *end_paragraph, *end_offset)?;
+                }
                 // 同じままの前後の文字を変更履歴や書式変更に巻き込まない。
                 // 削除済み文字がある選択は、既存履歴を保護する通常の経路に渡す。
                 let original_end_offset = *end_offset;
@@ -6232,37 +6236,75 @@ fn validate_protected_edit(
         protected_paragraph_limitation(doc, paragraph, allow_existing_comments)
             .map_or(Ok(()), |reason| Err(fail(reason)))
     };
-    let validate_text_edit = |paragraph| {
+    let validate_text_edit = |paragraph, from, to: Option<usize>| {
         if doc.body_paragraph_is_in_deleted_row(paragraph) {
             return Err(fail("editing a deleted table row is not supported"));
         }
-        validate(paragraph, false)
+        validate(paragraph, false)?;
+        if let Some(source) = doc.paragraph(paragraph) {
+            let to_model = |offset| {
+                doc.rendered_to_model_text_position(TextPosition::new(paragraph, offset))
+                    .offset
+            };
+            let from = to_model(from);
+            let to = to.map_or(usize::MAX, to_model);
+            let overlaps_deleted = |start, end| {
+                crate::commands::text_edit::range_contains_deleted_revision(
+                    &source.runs,
+                    start,
+                    end,
+                )
+            };
+            // A formatting boundary can divide a deletion into multiple runs.
+            // A caret with deleted text on both sides is still inside the deletion.
+            let touches_deleted = if from == to {
+                from > 0 && overlaps_deleted(from - 1, from) && overlaps_deleted(from, from + 1)
+            } else {
+                overlaps_deleted(from, to)
+            };
+            if touches_deleted {
+                return Err(fail("cannot edit deleted or moved-from revision text"));
+            }
+        }
+        Ok(())
     };
     match command {
-        HeadlessCommand::InsertText { paragraph, .. }
-        | HeadlessCommand::InsertParagraphBreak { paragraph, .. } => {
-            if *paragraph < doc.paragraph_count() {
-                validate_text_edit(*paragraph)?;
-            }
+        HeadlessCommand::InsertText {
+            paragraph, offset, ..
+        }
+        | HeadlessCommand::InsertParagraphBreak {
+            paragraph, offset, ..
+        } => {
+            validate_text_offset(doc, index, *paragraph, *offset)?;
+            validate_text_edit(*paragraph, *offset, Some(*offset))?;
         }
         HeadlessCommand::ReplaceRange {
             start_paragraph,
+            start_offset,
             end_paragraph,
+            end_offset,
             ..
         } => {
-            if *start_paragraph != *end_paragraph
-                && *end_paragraph < doc.paragraph_count()
-                && *start_paragraph < doc.paragraph_count()
+            validate_text_offset(doc, index, *start_paragraph, *start_offset)?;
+            validate_text_offset(doc, index, *end_paragraph, *end_offset)?;
+            if (start_paragraph, start_offset) > (end_paragraph, end_offset) {
+                return Err(fail("start position must not exceed end position"));
+            }
+            if start_paragraph != end_paragraph
                 && !doc.is_consecutive_body_range(*start_paragraph, *end_paragraph)
             {
                 return Err(fail(
                     "cross-paragraph replacement must stay within consecutive body paragraphs outside tables",
                 ));
             }
-            if *end_paragraph < doc.paragraph_count() {
-                for paragraph in *start_paragraph..=*end_paragraph {
-                    validate_text_edit(paragraph)?;
-                }
+            for paragraph in *start_paragraph..=*end_paragraph {
+                let from = if paragraph == *start_paragraph {
+                    *start_offset
+                } else {
+                    0
+                };
+                let to = (paragraph == *end_paragraph).then_some(*end_offset);
+                validate_text_edit(paragraph, from, to)?;
             }
         }
         HeadlessCommand::InsertTable {

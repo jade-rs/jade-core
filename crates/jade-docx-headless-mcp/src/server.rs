@@ -9911,7 +9911,7 @@ mod tests {
     proptest! {
         #[test]
         fn protected_edits_match_the_docx_model(
-            steps in prop::collection::vec((0u8..13, 0usize..30), 1..22),
+            steps in prop::collection::vec((0u8..14, 0usize..30), 1..22),
         ) {
             let bytes = body_fixture(&format!(
                 "<w:p><w:r><w:t>契約</w:t></w:r></w:p><w:p><w:r><w:t>契約</w:t></w:r></w:p>{BOUNDARY_TABLE}<w:p><w:r><w:t>末尾</w:t></w:r></w:p>"
@@ -9976,6 +9976,30 @@ mod tests {
                         rows.push(String::new());
                         (json!([{ "type": "insert_table", "after_paragraph": body.len() - 1,
                             "rows": 1, "columns": 1 }]), vec![body.len()], vec![])
+                    }
+                    13 if body[at].chars().count() > 1 => {
+                        // The command sees the deletion introduced by the preceding
+                        // command. It was absent from the snapshot at batch start.
+                        let offset = body[at].char_indices().nth(1).unwrap().0;
+                        let edit = match seed % 3 {
+                            0 => json!({ "type": "insert_text", "paragraph": at, "offset": offset, "text": "追記" }),
+                            1 => json!({ "type": "insert_paragraph_break", "paragraph": at, "offset": offset }),
+                            _ => json!({ "type": "replace_range", "start_paragraph": at, "start_offset": offset,
+                                "end_paragraph": at, "end_offset": body[at].len(), "text": "追記" }),
+                        };
+                        let commands = json!([
+                            { "type": "start_change_tracking", "author": "法務" },
+                            { "type": "replace_range", "start_paragraph": at, "start_offset": 0,
+                                "end_paragraph": at, "end_offset": body[at].len(), "text": "" },
+                            edit,
+                        ]);
+                        let before = export_bytes(&mut server, &session);
+                        for dry_run in [true, false] {
+                            let error = protected_batch(&mut server, &session, commands.clone(), dry_run).unwrap_err();
+                            prop_assert!(error.contains("index 2") && error.contains("deleted or moved-from revision text"), "{}", error);
+                            prop_assert_eq!(&export_bytes(&mut server, &session), &before);
+                        }
+                        continue;
                     }
                     9..=12 => {
                         let (invalid, reason) = match op {
@@ -10185,6 +10209,79 @@ mod tests {
             ]), false).unwrap_err();
             prop_assert!(error.contains("protected DOCX structure"), "{}", error);
             prop_assert_eq!(export_bytes(&mut server, &session), before);
+        }
+    }
+
+    #[test]
+    fn protected_batch_rejects_edits_inside_a_deletion_created_in_the_batch() {
+        for paragraph in [
+            "<w:p><w:r><w:t>甲乙丙</w:t></w:r></w:p>",
+            "<w:p><w:r><w:t>甲</w:t></w:r><w:r><w:rPr><w:b/></w:rPr><w:t>乙丙</w:t></w:r></w:p>",
+        ] {
+            assert_edits_inside_batch_deletion_are_rejected(paragraph);
+        }
+    }
+
+    fn assert_edits_inside_batch_deletion_are_rejected(paragraph: &str) {
+        let mut server = test_server();
+        let session = reopen(&mut server, &body_fixture(paragraph));
+        let before = export_bytes(&mut server, &session);
+        for next in [
+            json!({ "type": "insert_text", "paragraph": 0, "offset": 3, "text": "追記" }),
+            json!({ "type": "insert_paragraph_break", "paragraph": 0, "offset": 3 }),
+            json!({ "type": "replace_range", "start_paragraph": 0, "start_offset": 3,
+                "end_paragraph": 0, "end_offset": 6, "text": "追記" }),
+        ] {
+            for dry_run in [true, false] {
+                let error = protected_batch(
+                    &mut server,
+                    &session,
+                    json!([
+                        { "type": "start_change_tracking", "author": "法務" },
+                        { "type": "replace_range", "start_paragraph": 0, "start_offset": 0,
+                            "end_paragraph": 0, "end_offset": 6, "text": "" },
+                        next,
+                    ]),
+                    dry_run,
+                )
+                .unwrap_err();
+                assert!(
+                    error.contains("index 2")
+                        && error.contains("deleted or moved-from revision text"),
+                    "{error}"
+                );
+                assert_eq!(export_bytes(&mut server, &session), before);
+            }
+        }
+    }
+
+    #[test]
+    fn protected_batch_checks_paragraph_break_offsets() {
+        let mut server = test_server();
+        let session = reopen(
+            &mut server,
+            &body_fixture("<w:p><w:r><w:t>契約</w:t></w:r></w:p>"),
+        );
+        let before = export_bytes(&mut server, &session);
+        for (offset, reason) in [
+            (1, "inside a character"),
+            (100, "past the end of paragraph"),
+        ] {
+            let error = protected_batch(
+                &mut server,
+                &session,
+                json!([
+                    { "type": "insert_text", "paragraph": 0, "offset": 0, "text": "甲" },
+                    { "type": "insert_paragraph_break", "paragraph": 0, "offset": offset },
+                ]),
+                false,
+            )
+            .unwrap_err();
+            assert!(
+                error.contains("index 1") && error.contains(reason),
+                "{error}"
+            );
+            assert_eq!(export_bytes(&mut server, &session), before);
         }
     }
 

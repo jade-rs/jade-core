@@ -23,7 +23,7 @@ fn slice_by_byte_range(text: &str, start: usize, end: usize) -> String {
     text.get(start..end).unwrap_or("").to_string()
 }
 
-pub(super) fn range_contains_deleted_revision(runs: &[Run], start: usize, end: usize) -> bool {
+pub(crate) fn range_contains_deleted_revision(runs: &[Run], start: usize, end: usize) -> bool {
     let mut position = 0;
     for run in runs {
         let run_end = position + run.text.len();
