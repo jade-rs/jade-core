@@ -8652,17 +8652,21 @@ impl OffscreenDocumentView {
                     .unwrap_or_else(|| SelectionRange::collapsed(TextPosition::default()))
             })
         };
-        let had_preview = self.state.borrow().composition_preview.is_some();
+        let (had_preview, previous_preview_is_local) = {
+            let state = self.state.borrow();
+            let preview = state.composition_preview.as_ref();
+            (
+                preview.is_some(),
+                preview.is_none_or(|preview| preview.preserves_auxiliary_story_surfaces),
+            )
+        };
+        let edit_cache = self.renderer.borrow().local_text_edit_cache();
         // Undo of the previous preview is part of this edit. A prior structural
         // preview must therefore force a fresh count even if the new text is
         // a plain insertion. No document reference survives the cache drop.
         let mut auxiliary_story_base = {
             let state = self.state.borrow();
-            if state
-                .composition_preview
-                .as_ref()
-                .is_none_or(|preview| preview.preserves_auxiliary_story_surfaces)
-            {
+            if previous_preview_is_local {
                 state.word_doc.as_ref().and_then(|word_doc| {
                     word_doc.document.as_ref().and_then(|document| {
                         self.renderer.borrow().cached_auxiliary_story_base(document)
@@ -8682,6 +8686,7 @@ impl OffscreenDocumentView {
             selection_after,
             dirty_from,
             edited_paragraph_index,
+            local_body_edit,
         ) = {
             let mut state = self.state.borrow_mut();
             let base_selection =
@@ -8689,6 +8694,18 @@ impl OffscreenDocumentView {
             let dirty_from = base_selection.normalized().0.paragraph;
             let edited_paragraph_index = base_selection.focus.paragraph;
             let inline_properties = state.inline_formatting.take_pending_for(&base_selection);
+            let word_doc = state
+                .word_doc
+                .as_ref()
+                .ok_or_else(|| JsValue::from_str("No document loaded"))?;
+            let preserves_auxiliary_story_surfaces =
+                composition_preserves_auxiliary_story_surfaces(word_doc, base_selection, &text);
+            let local_body_edit = previous_preview_is_local
+                && preserves_auxiliary_story_surfaces
+                && word_doc.is_body_paragraph_surface(edited_paragraph_index);
+            if !preserves_auxiliary_story_surfaces {
+                auxiliary_story_base = None;
+            }
 
             if !text.is_empty() {
                 let mut word_doc = state
@@ -8697,21 +8714,11 @@ impl OffscreenDocumentView {
                     .ok_or_else(|| JsValue::from_str("No document loaded"))?;
                 let mut selection = Some(base_selection);
                 let mut applied_commands: Vec<Box<dyn Command>> = Vec::new();
-                let mut preserves_auxiliary_story_surfaces = false;
                 let revision_session = word_doc.revision_session().cloned();
                 word_doc.set_revision_session(None);
                 let apply_result = (|| -> Result<Option<SelectionRange>, JsValue> {
                     let insert_command =
                         InsertTextCommand::new(base_selection, text.clone(), inline_properties);
-                    preserves_auxiliary_story_surfaces =
-                        composition_preserves_auxiliary_story_surfaces(
-                            &word_doc,
-                            base_selection,
-                            &text,
-                        );
-                    if !preserves_auxiliary_story_surfaces {
-                        auxiliary_story_base = None;
-                    }
                     let mut insert_command: Box<dyn Command> = Box::new(insert_command);
                     {
                         let mut ctx = CommandContext::new(&mut word_doc, &mut selection);
@@ -8792,6 +8799,7 @@ impl OffscreenDocumentView {
                 state.selection,
                 dirty_from,
                 edited_paragraph_index,
+                local_body_edit,
             )
         };
 
@@ -8837,7 +8845,17 @@ impl OffscreenDocumentView {
                 // cannot reintroduce the late-page jump/blank bug.
                 renderer.prefer_visible_window_seek_once();
                 renderer.set_incremental_dirty_from(dirty_from);
-                renderer.invalidate_layout_from(dirty_from);
+                let retained_completed_pagination = local_body_edit
+                    && decoration_resolver.is_none()
+                    && renderer
+                        .cached_paragraph_height(edited_paragraph_index)
+                        .is_some_and(|height| {
+                            renderer
+                                .prepare_completed_pagination_edit(edited_paragraph_index, height)
+                        });
+                if !retained_completed_pagination {
+                    renderer.invalidate_layout_from(dirty_from);
+                }
             } else {
                 renderer.set_incremental_dirty_from(dirty_from);
             }
@@ -8868,6 +8886,13 @@ impl OffscreenDocumentView {
                 .as_ref()
                 .ok_or_else(|| JsValue::from_str("No document loaded"))?;
             let render_result = if let Some(document) = word_doc.document.as_ref() {
+                if local_body_edit {
+                    renderer.restore_local_text_edit_cache(
+                        edit_cache,
+                        word_doc,
+                        edited_paragraph_index,
+                    );
+                }
                 if let Some(snapshot) = auxiliary_story_base {
                     renderer.restore_auxiliary_story_base(document, snapshot);
                 }
@@ -9098,6 +9123,7 @@ impl OffscreenDocumentView {
         // owner so `make_mut` is a no-op, mirroring the insert/paragraph-break
         // edit paths. The guard outlives the block so a failed or no-op action
         // leaves the renderer pointed at the document again.
+        let edit_cache = self.renderer.borrow().local_text_edit_cache();
         let _document_cache = self.drop_renderer_document_cache();
         let maybe_context = {
             let mut state_mut = self.state.borrow_mut();
@@ -9310,6 +9336,10 @@ impl OffscreenDocumentView {
                     if refresh_header_footer_stories {
                         sync_renderer_header_footer_stories(&mut renderer, word_doc);
                     }
+                    if let Some(index) = retained_paragraph {
+                        renderer.restore_local_text_edit_cache(edit_cache, word_doc, index);
+                    }
+                    renderer.prepare_wrap_cache_capacity(word_doc);
                     renderer.render_with_numbering_rc(
                         Rc::clone(document),
                         &options,
