@@ -14,7 +14,6 @@ use crate::extension::{
 use crate::file_access::FileAccess;
 use base64::Engine as _;
 use futures::executor::block_on;
-use jade_docx_document_core::Options;
 use jade_docx_document_core::commands::{CommandContext, CommandExecutor};
 use jade_docx_document_core::document::RevisionMark;
 use jade_docx_document_core::headless_api::{
@@ -24,11 +23,12 @@ use jade_docx_document_core::headless_api::{
     execute_headless_queries_on_document,
 };
 use jade_docx_document_core::word_document::{ParagraphStory, WordDocument};
+use jade_docx_document_core::Options;
 use jade_docx_headless_api::{
     HeadlessCommand, HeadlessEditRequest, HeadlessQuery, HeadlessQueryRequest,
 };
 use jade_selection::SelectionRange;
-use serde_json::{Value, json};
+use serde_json::{json, Value};
 
 /// MCP protocol version echoed back when the client does not request one.
 const DEFAULT_PROTOCOL_VERSION: &str = "2024-11-05";
@@ -9797,41 +9797,72 @@ mod tests {
         for (decision, expected) in [("accept_revisions", "New"), ("reject_revisions", "Old")] {
             let mut server = test_server();
             let session = reopen(&mut server, &bytes);
-            let comment = |text| json!({
-                "type": "add_comment_by_text", "query": "Commented", "text": text, "author": "Reviewer"
-            });
+            let comment = |text| {
+                json!({
+                    "type": "add_comment_by_text", "query": "Commented", "text": text, "author": "Reviewer"
+                })
+            };
             protected_batch(&mut server, &session, json!([comment("First")]), false).unwrap();
             protected_batch(&mut server, &session, json!([comment("Second")]), false).unwrap();
             let comments = comment_threads(&mut server, &session);
             assert_eq!(comments.len(), 2);
 
             let before = export_bytes(&mut server, &session);
-            let error = protected_batch(&mut server, &session, json!([
-                { "type": "insert_text", "paragraph": 2, "offset": 0, "text": "Allowed" },
-                { "type": "insert_text", "paragraph": 0, "offset": 0, "text": "Blocked" },
-            ]), false).unwrap_err();
-            assert!(error.contains("index 1") && error.contains("covered by a comment"), "{error}");
+            let error = protected_batch(
+                &mut server,
+                &session,
+                json!([
+                    { "type": "insert_text", "paragraph": 2, "offset": 0, "text": "Allowed" },
+                    { "type": "insert_text", "paragraph": 0, "offset": 0, "text": "Blocked" },
+                ]),
+                false,
+            )
+            .unwrap_err();
+            assert!(
+                error.contains("index 1") && error.contains("covered by a comment"),
+                "{error}"
+            );
             assert_eq!(export_bytes(&mut server, &session), before);
 
-            let result = try_tool(&mut server, "query", json!({
-                "session_id": session, "queries": [{ "type": "revisions", "max_revisions": 20 }]
-            })).unwrap();
+            let result = try_tool(
+                &mut server,
+                "query",
+                json!({
+                    "session_id": session, "queries": [{ "type": "revisions", "max_revisions": 20 }]
+                }),
+            )
+            .unwrap();
             let revisions = result["results"][0]["revisions"].as_array().unwrap();
             assert_eq!(revisions.len(), 2);
             let targets: Vec<_> = revisions.iter().map(|revision| json!({
                 "id": revision["id"], "paragraph": revision["paragraph"],
                 "start_offset": revision["start_offset"], "end_offset": revision["end_offset"],
             })).collect();
-            protected_batch(&mut server, &session, json!([
-                { "type": decision, "revision_targets": targets },
-            ]), false).unwrap();
-            protected_batch(&mut server, &session, json!([
-                { "type": "insert_text", "paragraph": 2, "offset": 5, "text": "!" },
-            ]), false).unwrap();
+            protected_batch(
+                &mut server,
+                &session,
+                json!([
+                    { "type": decision, "revision_targets": targets },
+                ]),
+                false,
+            )
+            .unwrap();
+            protected_batch(
+                &mut server,
+                &session,
+                json!([
+                    { "type": "insert_text", "paragraph": 2, "offset": 5, "text": "!" },
+                ]),
+                false,
+            )
+            .unwrap();
 
             let exported = export_bytes(&mut server, &session);
             let reopened = reopen(&mut server, &exported);
-            assert_eq!(all_paragraph_text(&mut server, &reopened), ["Commented", expected, "Plain!"]);
+            assert_eq!(
+                all_paragraph_text(&mut server, &reopened),
+                ["Commented", expected, "Plain!"]
+            );
             assert!(revisions_in(&mut server, &reopened, 1).is_empty());
             assert_eq!(comment_threads(&mut server, &reopened), comments);
             let xml = part_xml(&exported, "word/document.xml").unwrap();
@@ -9855,13 +9886,25 @@ mod tests {
             { "type": "insert_table_row", "table_order_index": 0, "row_index": 1, "template_row": 0 },
         ]), false).unwrap();
         let before = export_bytes(&mut server, &session);
-        let error = protected_batch(&mut server, &session, json!([
-            { "type": "insert_table_row", "table_order_index": 1, "row_index": 1 },
-        ]), false).unwrap_err();
-        assert!(error.contains("table containing a protected DOCX structure"), "{error}");
+        let error = protected_batch(
+            &mut server,
+            &session,
+            json!([
+                { "type": "insert_table_row", "table_order_index": 1, "row_index": 1 },
+            ]),
+            false,
+        )
+        .unwrap_err();
+        assert!(
+            error.contains("table containing a protected DOCX structure"),
+            "{error}"
+        );
         assert_eq!(export_bytes(&mut server, &session), before);
         let reopened = reopen(&mut server, &before);
-        assert_eq!(all_paragraph_text(&mut server, &reopened), ["Commented", "セル", "", "12"]);
+        assert_eq!(
+            all_paragraph_text(&mut server, &reopened),
+            ["Commented", "セル", "", "12"]
+        );
         assert_eq!(comment_threads(&mut server, &reopened).len(), 1);
     }
 
@@ -10161,7 +10204,10 @@ mod tests {
             { "type": "insert_text", "paragraph": 0, "offset": 0, "text": "追記" },
         ]);
         let error = protected_batch(&mut server, &session, commands, false).unwrap_err();
-        assert!(error.contains("index 2") && error.contains("deleted table row"), "{error}");
+        assert!(
+            error.contains("index 2") && error.contains("deleted table row"),
+            "{error}"
+        );
         assert_eq!(export_bytes(&mut server, &session), before);
     }
 
