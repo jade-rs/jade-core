@@ -2185,6 +2185,7 @@ mod tests {
     #[test]
     fn insertion_rebases_comment_ranges_and_markers() {
         let mut word_doc = sample_document("abcdef");
+        let original_metrics = word_doc.document_text_metrics();
         let paragraph = word_doc.paragraph_mut(0).expect("paragraph");
         paragraph.comment_ranges = vec![crate::document::CommentRange {
             id: "1".to_string(),
@@ -2221,6 +2222,20 @@ mod tests {
             (4, 7)
         );
         assert_eq!(paragraph.comment_markers[0].position, 7);
+        assert_eq!(word_doc.document_text_metrics().chars_with_space, 8);
+
+        let mut ctx = CommandContext::new(&mut word_doc, &mut selection);
+        executor.undo(&mut ctx).expect("undo insert text");
+        let paragraph = word_doc.paragraph(0).expect("paragraph");
+        assert_eq!(
+            (
+                paragraph.comment_ranges[0].start,
+                paragraph.comment_ranges[0].end
+            ),
+            (2, 5)
+        );
+        assert_eq!(paragraph.comment_markers[0].position, 5);
+        assert_eq!(word_doc.document_text_metrics(), original_metrics);
     }
 
     #[test]

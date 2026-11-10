@@ -88,7 +88,7 @@ impl ParagraphRangeUndo {
     /// Puts the document back after an edit that failed part-way.
     pub(crate) fn abort(mut self, ctx: &mut CommandContext<'_>) {
         self.raw_xml.abort(ctx);
-        self.restore_model(ctx);
+        self.restore_model(ctx, false);
     }
 
     pub(crate) fn undo(mut self, ctx: &mut CommandContext<'_>) -> CommandResult<()> {
@@ -96,12 +96,16 @@ impl ParagraphRangeUndo {
         // The paragraphs go back whole: they match the XML as it was before
         // the edit, which is what the journal rolls the XML back to.
         raw_xml.undo(ctx, |ctx| {
-            self.restore_model(ctx);
+            self.restore_model(ctx, true);
             Ok(())
         })
     }
 
-    fn restore_model(self, ctx: &mut CommandContext<'_>) {
+    fn restore_model(self, ctx: &mut CommandContext<'_>, allow_local_restore: bool) {
+        let keep_surfaces = allow_local_restore
+            && self.package.is_none()
+            && matches!(self.paragraphs.as_slice(), [Some(paragraph)]
+                if ctx.document.can_restore_body_paragraph_in_place(self.start, paragraph));
         for (offset, paragraph) in self.paragraphs.into_iter().enumerate() {
             let Some(paragraph) = paragraph else {
                 continue;
@@ -115,7 +119,11 @@ impl ParagraphRangeUndo {
         }
         ctx.document
             .restore_revision_id_counter(self.next_revision_id);
-        ctx.document.rebuild_paragraph_surfaces();
+        if keep_surfaces {
+            ctx.document.mark_paragraph_text_metrics_dirty(self.start);
+        } else {
+            ctx.document.rebuild_paragraph_surfaces();
+        }
     }
 }
 

@@ -2718,6 +2718,7 @@ fn horizontal_float_wrap_witness(document: &Document) -> Option<usize> {
 /// copy or relocate the document.
 pub struct LocalTextEditCache {
     no_comment_anchors: bool,
+    unanchored_footnote_body_count: Option<usize>,
     no_behind_text_objects: bool,
     no_horizontal_float_wrap: bool,
     horizontal_float_wrap_witness: Option<usize>,
@@ -3916,6 +3917,9 @@ where
     /// separator rule sits above the first note line and the block shifts as
     /// its content grows).
     footnote_surface_ranges: Vec<(usize, usize)>,
+    /// Body surface count for an immutable snapshot with no body text boxes
+    /// or footnote references. In that case all footnote surfaces trail the body.
+    unanchored_footnote_body_count: Option<(std::rc::Weak<Document>, usize)>,
     rendered_footnote_count: usize,
     rendering_page_footnotes: bool,
     rendering_note_story: bool,
@@ -8205,24 +8209,30 @@ where
     /// trail the body enumeration in map order, exactly like the model side.
     fn compute_footnote_surface_layout(
         document: &Document,
-    ) -> (HashMap<String, usize>, HashMap<usize, usize>) {
+        unanchored_body_count: Option<usize>,
+    ) -> (HashMap<String, usize>, HashMap<usize, usize>, Option<usize>) {
         let mut bases = HashMap::new();
         let mut extras = HashMap::new();
         if document.footnotes.is_empty() {
-            return (bases, extras);
+            return (bases, extras, None);
         }
+        let mut unanchored = true;
         let mut emitted: HashSet<String> = HashSet::new();
-        let mut counter = 0usize;
-        if let Some(body) = document.body.as_ref() {
-            Self::walk_footnote_surface_layout(
-                &body.elements,
-                document,
-                &mut counter,
-                &mut emitted,
-                &mut bases,
-                &mut extras,
-            );
+        let mut counter = unanchored_body_count.unwrap_or(0);
+        if unanchored_body_count.is_none() {
+            if let Some(body) = document.body.as_ref() {
+                Self::walk_footnote_surface_layout(
+                    &body.elements,
+                    document,
+                    &mut counter,
+                    &mut emitted,
+                    &mut bases,
+                    &mut extras,
+                    &mut unanchored,
+                );
+            }
         }
+        let body_count = unanchored.then_some(counter);
         for (note_id, note) in &document.footnotes {
             if !emitted.insert(note_id.clone()) {
                 continue;
@@ -8230,7 +8240,7 @@ where
             bases.insert(note_id.clone(), counter);
             counter += Self::body_element_paragraph_surface_count(&note.body);
         }
-        (bases, extras)
+        (bases, extras, body_count)
     }
 
     fn walk_footnote_surface_layout(
@@ -8240,17 +8250,25 @@ where
         emitted: &mut HashSet<String>,
         bases: &mut HashMap<String, usize>,
         extras: &mut HashMap<usize, usize>,
+        unanchored: &mut bool,
     ) {
         for element in elements {
             match element {
                 BodyElement::Paragraph(paragraph) => {
                     *counter += 1;
+                    let mut has_footnote_references = false;
                     for run in &paragraph.runs {
                         if let Some(text_box) = run.text_box.as_ref() {
+                            *unanchored = false;
                             *counter +=
                                 Self::body_element_paragraph_surface_count(&text_box.blocks);
                         }
+                        has_footnote_references |= !run.footnote_reference_ids.is_empty();
                     }
+                    if !has_footnote_references {
+                        continue;
+                    }
+                    *unanchored = false;
                     // Surfaces for a note enumerate after the host's text-box
                     // paragraphs, so anchor the reservation on the last index
                     // the host group consumed.
@@ -8284,6 +8302,7 @@ where
                                 emitted,
                                 bases,
                                 extras,
+                                unanchored,
                             );
                         }
                     }
@@ -8291,6 +8310,33 @@ where
                 BodyElement::Math(_) => *counter += 1,
             }
         }
+    }
+
+    fn update_footnote_surface_layout(&mut self, document: &Rc<Document>) {
+        let (bases, extras, body_count) = Self::compute_footnote_surface_layout(
+            document,
+            self.cached_unanchored_footnote_body_count(document),
+        );
+        self.footnote_surface_ranges = bases
+            .iter()
+            .filter_map(|(note_id, base)| {
+                document.footnotes.get(note_id).map(|note| {
+                    (
+                        *base,
+                        base + Self::body_element_paragraph_surface_count(&note.body),
+                    )
+                })
+            })
+            .collect();
+        self.footnote_surface_bases = bases;
+        self.footnote_surface_extras = extras;
+        self.unanchored_footnote_body_count =
+            body_count.map(|count| (Rc::downgrade(document), count));
+    }
+
+    fn cached_unanchored_footnote_body_count(&self, document: &Rc<Document>) -> Option<usize> {
+        let (identity, count) = self.unanchored_footnote_body_count.as_ref()?;
+        identity.ptr_eq(&Rc::downgrade(document)).then_some(*count)
     }
 
     /// Advances a paragraph counter over `count` sequential surface indices,
@@ -8786,6 +8832,7 @@ where
             footnote_surface_bases: HashMap::new(),
             footnote_surface_extras: HashMap::new(),
             footnote_surface_ranges: Vec::new(),
+            unanchored_footnote_body_count: None,
             rendered_footnote_count: 0,
             rendering_page_footnotes: false,
             footnote_reserve_px: 0.0,
@@ -13012,6 +13059,7 @@ where
         self.invalidate_page_layers_document();
         self.horizontal_float_wrap_cache = HorizontalFloatWrapCache::default();
         self.auxiliary_story_base_cache = RefCell::new(AuxiliaryStoryBaseCache::default());
+        self.unanchored_footnote_body_count = None;
         self.keep_next_measurer = None;
         self.keep_next_group_surfaces.clear();
         // Joins stay: the edit that follows maps its paragraph to the first
@@ -13033,6 +13081,10 @@ where
                 .then_some(&self.horizontal_float_wrap_cache)
         });
         LocalTextEditCache {
+            unanchored_footnote_body_count: self
+                .last_document
+                .as_ref()
+                .and_then(|doc| self.cached_unanchored_footnote_body_count(doc)),
             no_behind_text_objects: self
                 .last_document
                 .as_ref()
@@ -13060,6 +13112,17 @@ where
         else {
             return;
         };
+        // All notes trailed the body before the edit. A local text edit
+        // keeps them there if the edited paragraph adds no hosted surfaces.
+        if let Some(count) = cache.unanchored_footnote_body_count.filter(|_| {
+            model.is_body_paragraph_surface(paragraph_index)
+                && paragraph
+                    .runs
+                    .iter()
+                    .all(|run| run.text_box.is_none() && run.footnote_reference_ids.is_empty())
+        }) {
+            self.unanchored_footnote_body_count = Some((Rc::downgrade(document), count));
+        }
         if cache.no_behind_text_objects {
             self.restore_no_behind_text_objects(document, paragraph);
         }
@@ -14562,24 +14625,7 @@ where
         self.footnote_display_map.clear();
         self.footnote_section_map.clear();
         self.footnote_order.clear();
-        // Recompute the footnote surface reservation maps for this pass so the
-        // paragraph counter mirrors `rebuild_paragraph_surfaces` exactly, even
-        // right after a footnote was inserted or removed.
-        let (footnote_surface_bases, footnote_surface_extras) =
-            Self::compute_footnote_surface_layout(document);
-        self.footnote_surface_ranges = footnote_surface_bases
-            .iter()
-            .filter_map(|(note_id, base)| {
-                document.footnotes.get(note_id).map(|note| {
-                    (
-                        *base,
-                        base + Self::body_element_paragraph_surface_count(&note.body),
-                    )
-                })
-            })
-            .collect();
-        self.footnote_surface_bases = footnote_surface_bases;
-        self.footnote_surface_extras = footnote_surface_extras;
+        self.update_footnote_surface_layout(&document_rc);
         self.rendered_footnote_count = 0;
         self.rendering_page_footnotes = false;
         self.rendering_note_story = false;
@@ -40643,12 +40689,13 @@ mod tests {
     #[test]
     fn footnote_surface_layout_matches_model_surface_enumeration() {
         let document = note_test_document();
-        let (bases, extras) = CanvasRenderer::<Canvas2dPainter<CanvasRenderingContext2d>>::compute_footnote_surface_layout(
-            &document,
+        let (bases, extras, body_count) = CanvasRenderer::<Canvas2dPainter<CanvasRenderingContext2d>>::compute_footnote_surface_layout(
+            &document, None,
         );
         // Surfaces: 0 = title, 1 = host, 2 = footnote body, 3 = after.
         assert_eq!(bases.get("2"), Some(&2));
         assert_eq!(extras.get(&1), Some(&1));
+        assert_eq!(body_count, None);
         assert_eq!(extras.len(), 1);
 
         let word_doc = crate::word_document::WordDocument::from_document(document);
@@ -40670,17 +40717,69 @@ mod tests {
                 ))],
             },
         );
-        let (bases, extras) = CanvasRenderer::<Canvas2dPainter<CanvasRenderingContext2d>>::compute_footnote_surface_layout(
-            &document,
+        let (bases, extras, body_count) = CanvasRenderer::<Canvas2dPainter<CanvasRenderingContext2d>>::compute_footnote_surface_layout(
+            &document, None,
         );
         assert_eq!(bases.get("2"), Some(&2));
         // Body consumes 0..=3 (three paragraphs plus the referenced note), so
         // the orphan lands at 4.
         assert_eq!(bases.get("9"), Some(&4));
         assert_eq!(extras.get(&1), Some(&1));
+        assert_eq!(body_count, None);
 
         let word_doc = crate::word_document::WordDocument::from_document(document);
         assert_eq!(word_doc.footnote_paragraph_index("9"), Some(4));
+    }
+
+    #[test]
+    fn local_text_edit_reuses_unanchored_footnote_body_count() {
+        let (mut renderer, _) = recording_renderer();
+        let mut document = note_test_document();
+        let host = document.body.as_mut().unwrap().elements[1]
+            .as_paragraph_mut()
+            .unwrap();
+        for run in &mut host.runs {
+            run.footnote_reference_ids.clear();
+        }
+        let mut model = WordDocument::from_document(document);
+        let document = model.document.as_ref().unwrap();
+        renderer.restore_document_cache(Rc::clone(document));
+        renderer.update_footnote_surface_layout(document);
+        assert_eq!(
+            renderer.cached_unanchored_footnote_body_count(document),
+            Some(3)
+        );
+        assert_eq!(renderer.footnote_surface_bases.get("2"), Some(&3));
+
+        let cache = renderer.local_text_edit_cache();
+        renderer.drop_document_cache();
+        assert_eq!(Rc::weak_count(model.document.as_ref().unwrap()), 0);
+        model.paragraph_mut(1).unwrap().runs[0].text.push('x');
+        let document = model.document.as_ref().unwrap();
+        renderer.restore_local_text_edit_cache(cache, &model, 1);
+        assert_eq!(
+            renderer.cached_unanchored_footnote_body_count(document),
+            Some(3)
+        );
+        renderer.update_footnote_surface_layout(document);
+        assert_eq!(renderer.footnote_surface_bases.get("2"), Some(&3));
+        assert!(renderer.footnote_surface_extras.is_empty());
+
+        renderer.restore_document_cache(Rc::clone(document));
+        let cache = renderer.local_text_edit_cache();
+        renderer.drop_document_cache();
+        model.paragraph_mut(1).unwrap().runs[0]
+            .footnote_reference_ids
+            .push("2".to_string());
+        let document = model.document.as_ref().unwrap();
+        renderer.restore_local_text_edit_cache(cache, &model, 1);
+        assert_eq!(
+            renderer.cached_unanchored_footnote_body_count(document),
+            None
+        );
+        renderer.update_footnote_surface_layout(document);
+        assert_eq!(renderer.footnote_surface_bases.get("2"), Some(&2));
+        assert_eq!(renderer.footnote_surface_extras.get(&1), Some(&1));
     }
 
     /// `w:numRestart` (§17.11.12): `continuous` numbers straight through,

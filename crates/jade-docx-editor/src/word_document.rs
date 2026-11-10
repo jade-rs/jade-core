@@ -7043,6 +7043,31 @@ impl WordDocument {
         self.body_surface_indices.binary_search(&surface_index).ok()
     }
 
+    /// Replacing this paragraph leaves the existing surface paths and note
+    /// cross-references intact.
+    pub(crate) fn can_restore_body_paragraph_in_place(
+        &self,
+        index: usize,
+        previous: &Paragraph,
+    ) -> bool {
+        let has_no_hosted_surfaces = |paragraph: &Paragraph| {
+            paragraph.runs.iter().all(|run| {
+                run.text_box.is_none()
+                    && run.footnote_reference_ids.is_empty()
+                    && run.endnote_reference_ids.is_empty()
+            })
+        };
+        matches!(
+            self.paragraph_surfaces.get(index),
+            Some(ParagraphSurface::Body { .. })
+        ) && self
+            .document
+            .as_ref()
+            .is_some_and(|document| document.bookmarks.is_empty())
+            && has_no_hosted_surfaces(previous)
+            && self.paragraph(index).is_some_and(has_no_hosted_surfaces)
+    }
+
     pub(crate) fn body_paragraph_count(&self) -> usize {
         self.body_surface_indices.len()
     }
@@ -36546,13 +36571,17 @@ impl WordDocument {
         }
     }
 
-    fn sync_paragraph_xml(&mut self, paragraph_index: usize, preserve_drawings: bool) {
+    pub(crate) fn mark_paragraph_text_metrics_dirty(&mut self, paragraph_index: usize) {
         if let Some(body_index) = self.body_index_for_surface(paragraph_index) {
             self.text_metrics_cache
                 .get_mut()
                 .dirty_body_indices
                 .insert(body_index);
         }
+    }
+
+    fn sync_paragraph_xml(&mut self, paragraph_index: usize, preserve_drawings: bool) {
+        self.mark_paragraph_text_metrics_dirty(paragraph_index);
         let edited_paragraph_id = self
             .paragraph(paragraph_index)
             .and_then(|paragraph| paragraph.node_id);
