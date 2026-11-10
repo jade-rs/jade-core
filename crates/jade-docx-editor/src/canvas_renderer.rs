@@ -2718,6 +2718,7 @@ fn horizontal_float_wrap_witness(document: &Document) -> Option<usize> {
 /// copy or relocate the document.
 pub struct LocalTextEditCache {
     no_comment_anchors: bool,
+    no_behind_text_objects: bool,
     no_horizontal_float_wrap: bool,
     horizontal_float_wrap_witness: Option<usize>,
 }
@@ -13031,6 +13032,10 @@ where
                 .then_some(&self.horizontal_float_wrap_cache)
         });
         LocalTextEditCache {
+            no_behind_text_objects: self
+                .last_document
+                .as_ref()
+                .is_some_and(|document| self.cached_no_behind_text_objects(document)),
             no_comment_anchors: self.last_document.is_some()
                 && self.last_document_comment_anchors == Some(false),
             no_horizontal_float_wrap: float_cache.is_some_and(|cache| cache.witness.is_none()),
@@ -13040,7 +13045,7 @@ where
 
     /// Reuse feature scans after a proven single-paragraph text edit, on this
     /// same renderer with unchanged auxiliary stories. Recheck the new paragraph
-    /// (including nested text boxes) before carrying either negative fact to the
+    /// (including nested text boxes) before carrying a negative fact to the
     /// edited immutable snapshot. A positive float answer is reusable only if
     /// its body element still wraps horizontally in the edited document.
     pub fn restore_local_text_edit_cache(
@@ -13054,6 +13059,9 @@ where
         else {
             return;
         };
+        if cache.no_behind_text_objects {
+            self.restore_no_behind_text_objects(document, paragraph);
+        }
         if cache.no_comment_anchors && !Self::paragraph_contains_comment_anchors(paragraph) {
             self.last_document_comment_anchors = Some(false);
             self.last_document = Some(Rc::clone(document));
