@@ -10693,6 +10693,100 @@ mod tests {
     proptest! {
         #![proptest_config(ProptestConfig { cases: 24, ..ProptestConfig::default() })]
 
+        #[test]
+        fn protected_inline_edits_preserve_overlapping_comment_anchors(
+            left in "[a-z]{1,12}",
+            right in "[a-z]{1,12}",
+            tracked in any::<bool>(),
+            reopen_source in any::<bool>(),
+        ) {
+            let bytes = body_fixture(&format!(
+                "<w:p><w:r><w:t>{left} 左 対象語 右 {right}</w:t></w:r></w:p>"
+            ));
+            let mut server = test_server();
+            let session = reopen(&mut server, &bytes);
+            let add = |query, text| json!({
+                "type": "add_comment_by_text", "query": query, "text": text, "author": "Reviewer",
+            });
+            protected_batch(&mut server, &session, json!([
+                add("対象", "Short"), add("対象語", "Long"),
+            ]), false).unwrap();
+            let before = export_bytes(&mut server, &session);
+            let session = if reopen_source { reopen(&mut server, &before) } else { session };
+            let before = export_bytes(&mut server, &session);
+            let threads = comment_threads(&mut server, &session);
+            let anchor_start = left.len() + " 左 ".len();
+            let inspection = try_tool(&mut server, "query", json!({
+                "session_id": session,
+                "queries": [
+                    { "type": "search_text", "query": "左" },
+                    { "type": "search_text", "query": "対象" },
+                    { "type": "paragraph_slice", "max_paragraphs": 1 },
+                ],
+            })).unwrap();
+            prop_assert!(inspection["results"][0]["matches"][0]["edit_limitation"].is_null());
+            prop_assert_eq!(
+                &inspection["results"][1]["matches"][0]["edit_limitation"],
+                &json!("editing a paragraph covered by a comment is not supported"),
+            );
+            let spans = inspection["results"][2]["paragraphs"][0]["protected_comment_ranges"].as_array().unwrap();
+            for anchor in ["対象", "対象語"] {
+                let span = json!({
+                    "start_offset": anchor_start, "end_offset": anchor_start + anchor.len(),
+                });
+                prop_assert!(spans.contains(&span), "missing span {span} in {spans:?}");
+            }
+            let touching = json!([{ "type": "insert_text", "paragraph": 0,
+                "offset": anchor_start, "text": "Boundary" }]);
+            let error = protected_batch(&mut server, &session, touching, false).unwrap_err();
+            prop_assert!(error.contains("covered by a comment"), "{error}");
+            prop_assert_eq!(export_bytes(&mut server, &session), before.clone());
+
+            let suffix_start = anchor_start + "対象語 右 ".len();
+            let mut commands = vec![
+                json!({ "type": "replace_range", "start_paragraph": 0, "start_offset": suffix_start,
+                  "end_paragraph": 0, "end_offset": suffix_start + right.len(), "text": "終" }),
+                json!({ "type": "insert_text", "paragraph": 0, "offset": 0, "text": "前" }),
+            ];
+            if tracked {
+                commands.insert(0, json!({ "type": "start_change_tracking", "author": "法務" }));
+            }
+            let commands = Value::Array(commands);
+            protected_batch(&mut server, &session, commands.clone(), true).unwrap();
+            prop_assert_eq!(export_bytes(&mut server, &session), before);
+            protected_batch(&mut server, &session, commands, false).unwrap();
+
+            let expected = format!("前{left} 左 対象語 右 終");
+            let anchor_start = (anchor_start + "前".len()) as u64;
+            let anchors = vec![
+                (0, anchor_start, anchor_start + "対象".len() as u64),
+                (0, anchor_start, anchor_start + "対象語".len() as u64),
+            ];
+            let exported = export_bytes(&mut server, &session);
+            assert_docx_is_consistent(&exported, "inline edits outside overlapping comments");
+            let reopened = reopen(&mut server, &exported);
+            for id in [&session, &reopened] {
+                let mut text = paragraph_text(&mut server, id, 0);
+                let queried = try_tool(&mut server, "query", json!({
+                    "session_id": id, "queries": [{ "type": "revisions", "max_revisions": 10 }],
+                })).unwrap();
+                let changes = queried["results"][0]["revisions"].as_array().unwrap();
+                if tracked {
+                    prop_assert_eq!(changes.len(), 3);
+                    let deletion = changes.iter().find(|change| change["kind"] == "deleted").unwrap();
+                    let start = deletion["start_offset"].as_u64().unwrap() as usize;
+                    let end = deletion["end_offset"].as_u64().unwrap() as usize;
+                    prop_assert_eq!(&text[start..end], &right[..]);
+                    text.replace_range(start..end, "");
+                } else {
+                    prop_assert!(changes.is_empty());
+                }
+                prop_assert_eq!(text, &expected[..]);
+                prop_assert_eq!(comment_anchors(&mut server, id), &anchors[..]);
+                prop_assert_eq!(comment_threads(&mut server, id), threads.clone());
+            }
+        }
+
         /// A comment must attach anywhere in a paragraph that already carries
         /// tracked changes. review.docx paragraph 0 is "Hello World" with
         /// "Hello " inserted and "World" deleted by a reviewer, so every range

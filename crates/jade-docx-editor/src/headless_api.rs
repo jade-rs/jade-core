@@ -94,14 +94,15 @@ use jade_docx_headless_api::{
     HeadlessDocumentTheme, HeadlessDropCapKind, HeadlessEditRequest, HeadlessEquationPlacement,
     HeadlessHeaderFooterLine, HeadlessHeaderFooterSnapshot, HeadlessMultilevelListPreset,
     HeadlessOutlineItem, HeadlessPageSetupSnapshot, HeadlessParagraphIndent,
-    HeadlessParagraphSnapshot, HeadlessParagraphSpacing, HeadlessParagraphText, HeadlessQuery,
-    HeadlessQueryRequest, HeadlessQueryResponse, HeadlessQueryResult, HeadlessRevisionKindFilter,
-    HeadlessRevisionSnapshot, HeadlessRevisionTarget, HeadlessRunSnapshot, HeadlessRunStyle,
-    HeadlessSearchMatch, HeadlessSectionBreakType, HeadlessShapeKind, HeadlessStyleKindFilter,
-    HeadlessStyleSnapshot, HeadlessTableCellDeleteDirection, HeadlessTableCellInsertDirection,
-    HeadlessTableCellSelection, HeadlessTableCellSnapshot, HeadlessTableColumnDetailSnapshot,
-    HeadlessTableColumnSnapshot, HeadlessTableFitMode, HeadlessTableRowSnapshot,
-    HeadlessTableSnapshot, HeadlessTableTextWrapping,
+    HeadlessParagraphSnapshot, HeadlessParagraphSpacing, HeadlessParagraphText,
+    HeadlessProtectedCommentRange, HeadlessQuery, HeadlessQueryRequest, HeadlessQueryResponse,
+    HeadlessQueryResult, HeadlessRevisionKindFilter, HeadlessRevisionSnapshot,
+    HeadlessRevisionTarget, HeadlessRunSnapshot, HeadlessRunStyle, HeadlessSearchMatch,
+    HeadlessSectionBreakType, HeadlessShapeKind, HeadlessStyleKindFilter, HeadlessStyleSnapshot,
+    HeadlessTableCellDeleteDirection, HeadlessTableCellInsertDirection, HeadlessTableCellSelection,
+    HeadlessTableCellSnapshot, HeadlessTableColumnDetailSnapshot, HeadlessTableColumnSnapshot,
+    HeadlessTableFitMode, HeadlessTableRowSnapshot, HeadlessTableSnapshot,
+    HeadlessTableTextWrapping,
 };
 use jade_docx_layout::selection::{SelectionRange, TextPosition};
 use jade_docx_reader::docx_xml::{XmlElement, XmlNode};
@@ -5530,17 +5531,18 @@ fn execute_headless_query(
             for paragraph_index in start..end {
                 let (text, offset_basis) =
                     inspection_paragraph_text(word_doc, paragraph_index).unwrap_or_default();
+                let (edit_limitation, protected_comment_ranges) =
+                    match inline_edit_protection(word_doc, paragraph_index) {
+                        Ok(ranges) => (None, ranges),
+                        Err(reason) => (Some(reason.to_owned()), Vec::new()),
+                    };
                 paragraphs.push(HeadlessParagraphText {
                     paragraph: paragraph_index,
                     deleted_table_row: deleted_rows.contains(&paragraph_index),
                     text,
                     offset_basis: offset_basis.map(str::to_owned),
-                    edit_limitation: protected_paragraph_limitation(
-                        word_doc,
-                        paragraph_index,
-                        false,
-                    )
-                    .map(str::to_owned),
+                    edit_limitation,
+                    protected_comment_ranges,
                     numbering_text: numbering_texts.get(paragraph_index).cloned().flatten(),
                 });
             }
@@ -5591,7 +5593,7 @@ fn execute_headless_query(
                 } else {
                     text.clone()
                 };
-                let mut edit_limitation = None;
+                let mut protection = None;
                 for (start_offset, folded_match) in haystack.match_indices(needle.as_str()) {
                     let end_offset = start_offset + folded_match.len();
                     // Report the document's own casing, not the folded form.
@@ -5611,15 +5613,19 @@ fn execute_headless_query(
                         start_offset,
                         end_offset,
                     );
+                    let edit_limitation = match protection
+                        .get_or_insert_with(|| inline_edit_protection(word_doc, paragraph_index))
+                    {
+                        Err(reason) => Some(*reason),
+                        Ok(ranges) => ranges
+                            .iter()
+                            .any(|range| range.touches(start_offset, end_offset))
+                            .then_some(COMMENT_EDIT_LIMITATION),
+                    };
                     matches.push(HeadlessSearchMatch {
                         paragraph: paragraph_index,
                         offset_basis: offset_basis.map(str::to_owned),
-                        edit_limitation: edit_limitation
-                            .get_or_insert_with(|| {
-                                protected_paragraph_limitation(word_doc, paragraph_index, false)
-                                    .map(str::to_owned)
-                            })
-                            .clone(),
+                        edit_limitation: edit_limitation.map(str::to_owned),
                         start_offset,
                         end_offset,
                         start_char_offset,
@@ -6188,6 +6194,8 @@ fn comment_anchor(tag: &str) -> bool {
     )
 }
 
+const COMMENT_EDIT_LIMITATION: &str = "editing a paragraph covered by a comment is not supported";
+
 /// Return a static diagnostic. Callers can safely forward it without
 /// disclosing the contents of the DOCX.
 pub fn protected_paragraph_limitation(
@@ -6202,25 +6210,109 @@ pub fn protected_paragraph_limitation(
     if !allow_existing_comments
         && (!paragraph.comment_ranges.is_empty() || !paragraph.comment_markers.is_empty())
     {
-        return Some("editing a paragraph covered by a comment is not supported");
+        return Some(COMMENT_EDIT_LIMITATION);
     }
     let xml = doc.paragraph_xml_element(index);
-    if doc.is_in_merged_table_cell(index)
-        || paragraph.runs.iter().any(|run| run.field.is_some())
-        || xml
-            .as_ref()
-            .is_some_and(|element| xml_has_tag(element, protected_structure))
-    {
-        return Some("editing a paragraph containing a protected DOCX structure is not supported");
+    if let Some(reason) = paragraph_structure_limitation(doc, index, paragraph, xml.as_ref()) {
+        return Some(reason);
     }
     if !allow_existing_comments
         && xml
             .as_ref()
             .is_some_and(|element| xml_has_tag(element, comment_anchor))
     {
-        return Some("editing a paragraph covered by a comment is not supported");
+        return Some(COMMENT_EDIT_LIMITATION);
     }
     None
+}
+
+fn paragraph_structure_limitation(
+    doc: &WordDocument,
+    index: usize,
+    paragraph: &Paragraph,
+    xml: Option<&XmlElement>,
+) -> Option<&'static str> {
+    (doc.is_in_merged_table_cell(index)
+        || paragraph.runs.iter().any(|run| run.field.is_some())
+        || xml.is_some_and(|element| xml_has_tag(element, protected_structure)))
+    .then_some("editing a paragraph containing a protected DOCX structure is not supported")
+}
+
+fn xml_has_unmapped_comment_anchor<'a>(
+    element: &'a XmlElement,
+    paragraph: &Paragraph,
+    seen: &mut std::collections::HashSet<(&'a str, &'a str)>,
+) -> bool {
+    let tag = element.name.rsplit(':').next().unwrap_or_default();
+    if comment_anchor(tag) {
+        let Some(id) = element
+            .attributes
+            .iter()
+            .find(|attribute| attribute.name == "w:id")
+            .map(|attribute| attribute.value.as_str())
+        else {
+            return true;
+        };
+        let mapped = match element.name.as_str() {
+            "w:commentReference" => paragraph
+                .comment_markers
+                .iter()
+                .any(|marker| marker.id == id),
+            "w:commentRangeStart" | "w:commentRangeEnd" => {
+                paragraph.comment_ranges.iter().any(|range| range.id == id)
+            }
+            _ => false,
+        };
+        if !mapped || !seen.insert((tag, id)) {
+            return true;
+        }
+    }
+    element.children.iter().any(|node| match node {
+        XmlNode::Element(child) => xml_has_unmapped_comment_anchor(child, paragraph, seen),
+        _ => false,
+    })
+}
+
+fn inline_edit_protection(
+    doc: &WordDocument,
+    index: usize,
+) -> Result<Vec<HeadlessProtectedCommentRange>, &'static str> {
+    if !doc.is_body_paragraph_surface(index) {
+        return Err("editing non-body paragraphs is not supported");
+    }
+    let Some(paragraph) = doc.paragraph(index) else {
+        return Ok(Vec::new());
+    };
+    let xml = doc.paragraph_xml_element(index);
+    if let Some(reason) = paragraph_structure_limitation(doc, index, paragraph, xml.as_ref()) {
+        return Err(reason);
+    }
+    if xml.as_ref().is_some_and(|element| {
+        xml_has_unmapped_comment_anchor(element, paragraph, &mut std::collections::HashSet::new())
+    }) {
+        return Err(COMMENT_EDIT_LIMITATION);
+    }
+    let render = |start, end| {
+        let (start_offset, end_offset) = doc.model_text_range_to_rendered(index, start, end);
+        HeadlessProtectedCommentRange {
+            start_offset,
+            end_offset,
+        }
+    };
+    let mut ranges: Vec<_> = paragraph
+        .comment_ranges
+        .iter()
+        .map(|range| render(range.start, range.end))
+        .chain(
+            paragraph
+                .comment_markers
+                .iter()
+                .map(|marker| render(marker.position, marker.position)),
+        )
+        .collect();
+    ranges.sort_unstable_by_key(|range| (range.start_offset, range.end_offset));
+    ranges.dedup();
+    Ok(ranges)
 }
 
 fn validate_protected_edit(
@@ -6236,11 +6328,21 @@ fn validate_protected_edit(
         protected_paragraph_limitation(doc, paragraph, allow_existing_comments)
             .map_or(Ok(()), |reason| Err(fail(reason)))
     };
-    let validate_text_edit = |paragraph, from, to: Option<usize>| {
+    let validate_text_edit = |paragraph, from, to: Option<usize>, inline| {
         if doc.body_paragraph_is_in_deleted_row(paragraph) {
             return Err(fail("editing a deleted table row is not supported"));
         }
-        validate(paragraph, false)?;
+        if inline {
+            let ranges = inline_edit_protection(doc, paragraph).map_err(fail)?;
+            if ranges
+                .iter()
+                .any(|range| range.touches(from, to.unwrap_or(from)))
+            {
+                return Err(fail(COMMENT_EDIT_LIMITATION));
+            }
+        } else {
+            validate(paragraph, false)?;
+        }
         if let Some(source) = doc.paragraph(paragraph) {
             let to_model = |offset| {
                 doc.rendered_to_model_text_position(TextPosition::new(paragraph, offset))
@@ -6281,12 +6383,15 @@ fn validate_protected_edit(
     match command {
         HeadlessCommand::InsertText {
             paragraph, offset, ..
+        } => {
+            validate_text_offset(doc, index, *paragraph, *offset)?;
+            validate_text_edit(*paragraph, *offset, Some(*offset), true)?;
         }
-        | HeadlessCommand::InsertParagraphBreak {
+        HeadlessCommand::InsertParagraphBreak {
             paragraph, offset, ..
         } => {
             validate_text_offset(doc, index, *paragraph, *offset)?;
-            validate_text_edit(*paragraph, *offset, Some(*offset))?;
+            validate_text_edit(*paragraph, *offset, Some(*offset), false)?;
         }
         HeadlessCommand::ReplaceRange {
             start_paragraph,
@@ -6314,7 +6419,7 @@ fn validate_protected_edit(
                     0
                 };
                 let to = (paragraph == *end_paragraph).then_some(*end_offset);
-                validate_text_edit(paragraph, from, to)?;
+                validate_text_edit(paragraph, from, to, start_paragraph == end_paragraph)?;
             }
         }
         HeadlessCommand::InsertTable {
@@ -10066,6 +10171,7 @@ mod tests {
                         deleted_table_row: false,
                         offset_basis: None,
                         edit_limitation: None,
+                        protected_comment_ranges: Vec::new(),
                         paragraph: 1,
                         text: "beta".to_string(),
                         numbering_text: None
@@ -10074,6 +10180,7 @@ mod tests {
                         deleted_table_row: false,
                         offset_basis: None,
                         edit_limitation: None,
+                        protected_comment_ranges: Vec::new(),
                         paragraph: 2,
                         text: "gamma".to_string(),
                         numbering_text: None

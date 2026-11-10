@@ -311,9 +311,24 @@ pub struct HeadlessParagraphText {
     pub offset_basis: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub edit_limitation: Option<String>,
+    /// Rendered UTF-8 spans. Inline edits must stay clear of both endpoints.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub protected_comment_ranges: Vec<HeadlessProtectedCommentRange>,
     pub text: String,
     #[serde(default)]
     pub numbering_text: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct HeadlessProtectedCommentRange {
+    pub start_offset: usize,
+    pub end_offset: usize,
+}
+
+impl HeadlessProtectedCommentRange {
+    pub fn touches(&self, from: usize, to: usize) -> bool {
+        from <= self.end_offset && self.start_offset <= to
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
