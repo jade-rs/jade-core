@@ -2718,6 +2718,7 @@ fn horizontal_float_wrap_witness(document: &Document) -> Option<usize> {
 /// copy or relocate the document.
 pub struct LocalTextEditCache {
     no_comment_anchors: bool,
+    auxiliary_story_base: Option<(usize, AuxiliaryStoryBaseSnapshot)>,
     unanchored_footnote_body_count: Option<usize>,
     no_behind_text_objects: bool,
     no_horizontal_float_wrap: bool,
@@ -13081,6 +13082,7 @@ where
                 .then_some(&self.horizontal_float_wrap_cache)
         });
         LocalTextEditCache {
+            auxiliary_story_base: None,
             unanchored_footnote_body_count: self
                 .last_document
                 .as_ref()
@@ -13094,6 +13096,28 @@ where
             no_horizontal_float_wrap: float_cache.is_some_and(|cache| cache.witness.is_none()),
             horizontal_float_wrap_witness: float_cache.and_then(|cache| cache.witness),
         }
+    }
+
+    /// Capture the auxiliary count only when the old body paragraph hosts no
+    /// text-box paragraphs. The same check must pass after the local edit.
+    pub(crate) fn local_text_edit_cache_for_paragraph(
+        &self,
+        model: &WordDocument,
+        index: usize,
+    ) -> LocalTextEditCache {
+        let mut cache = self.local_text_edit_cache();
+        cache.auxiliary_story_base = model
+            .document
+            .as_ref()
+            .and_then(|document| self.cached_auxiliary_story_base(document))
+            .filter(|_| {
+                model.is_body_paragraph_surface(index)
+                    && model.paragraph(index).is_some_and(|paragraph| {
+                        paragraph.runs.iter().all(|run| run.text_box.is_none())
+                    })
+            })
+            .map(|snapshot| (index, snapshot));
+        cache
     }
 
     /// Reuse feature scans after a proven single-paragraph text edit, on this
@@ -13112,6 +13136,14 @@ where
         else {
             return;
         };
+        if let Some((index, snapshot)) = cache.auxiliary_story_base {
+            if index == paragraph_index
+                && model.is_body_paragraph_surface(index)
+                && paragraph.runs.iter().all(|run| run.text_box.is_none())
+            {
+                self.restore_auxiliary_story_base(document, snapshot);
+            }
+        }
         // All notes trailed the body before the edit. A local text edit
         // keeps them there if the edited paragraph adds no hosted surfaces.
         if let Some(count) = cache.unanchored_footnote_body_count.filter(|_| {
@@ -41885,6 +41917,44 @@ mod tests {
         renderer.restore_document_cache(replacement);
         assert_eq!(renderer.auxiliary_story_paragraph_base(), 18);
         assert_eq!(renderer.auxiliary_story_surface_scans(), 2);
+    }
+
+    #[test]
+    fn local_text_edit_reuses_auxiliary_count_only_without_text_box_surfaces() {
+        for (before_has_box, after_has_box) in [(false, false), (true, false), (false, true)] {
+            let (mut renderer, _) = recording_renderer();
+            let mut before = doc_with_paragraph_texts(&["body"]);
+            if before_has_box {
+                before.body.as_mut().unwrap().elements[0] = auxiliary_count_test_block(1);
+            }
+            let before = WordDocument::from_document(before);
+            let document = before.document.as_ref().unwrap();
+            renderer.restore_document_cache(Rc::clone(document));
+            assert_eq!(
+                renderer.auxiliary_story_paragraph_base(),
+                17 + 2 * usize::from(before_has_box)
+            );
+            let cache = renderer.local_text_edit_cache_for_paragraph(&before, 0);
+            renderer.drop_document_cache();
+            assert_eq!(Rc::weak_count(document), 0);
+
+            let mut after = doc_with_paragraph_texts(&["body text"]);
+            if after_has_box {
+                after.body.as_mut().unwrap().elements[0] = auxiliary_count_test_block(1);
+            }
+            let after = WordDocument::from_document(after);
+            let document = after.document.as_ref().unwrap();
+            renderer.restore_local_text_edit_cache(cache, &after, 0);
+            assert_eq!(
+                renderer.cached_auxiliary_story_base(document).is_some(),
+                !before_has_box && !after_has_box
+            );
+            renderer.restore_document_cache(Rc::clone(document));
+            assert_eq!(
+                renderer.auxiliary_story_paragraph_base(),
+                17 + 2 * usize::from(after_has_box)
+            );
+        }
     }
 
     #[test]
