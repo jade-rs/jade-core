@@ -196,24 +196,27 @@ where
 /// behind text.
 fn elements_have_behind_text_objects(elements: &[BodyElement]) -> bool {
     elements.iter().any(|element| match element {
-        BodyElement::Paragraph(paragraph) => paragraph.runs.iter().any(|run| {
-            let behind = |layout: &RunImageLayout| {
-                layout.kind == RunImageKind::Floating && layout.behind_doc
-            };
-            run.image
-                .as_ref()
-                .is_some_and(|image| behind(&image.layout))
-                || run
-                    .text_box
-                    .as_ref()
-                    .is_some_and(|text_box| behind(&text_box.layout))
-        }),
+        BodyElement::Paragraph(paragraph) => paragraph_has_behind_text_object(paragraph),
         BodyElement::Table(table) => table.rows.iter().any(|row| {
             row.cells
                 .iter()
                 .any(|cell| elements_have_behind_text_objects(&cell.blocks))
         }),
         BodyElement::Math(_) => false,
+    })
+}
+
+fn paragraph_has_behind_text_object(paragraph: &Paragraph) -> bool {
+    paragraph.runs.iter().any(|run| {
+        let behind =
+            |layout: &RunImageLayout| layout.kind == RunImageKind::Floating && layout.behind_doc;
+        run.image
+            .as_ref()
+            .is_some_and(|image| behind(&image.layout))
+            || run
+                .text_box
+                .as_ref()
+                .is_some_and(|text_box| behind(&text_box.layout))
     })
 }
 
@@ -350,6 +353,23 @@ where
             && self.host.supports_deferred_painting()
             && self.host.layers.behind_text_cache.get(document);
         self.host.layers.holds_body.set(holds_body);
+    }
+
+    pub(super) fn cached_no_behind_text_objects(&self, document: &Rc<Document>) -> bool {
+        let cache = &self.host.layers.behind_text_cache;
+        !cache.value && cache.document.ptr_eq(&Rc::downgrade(document))
+    }
+
+    pub(super) fn restore_no_behind_text_objects(
+        &mut self,
+        document: &Rc<Document>,
+        paragraph: &Paragraph,
+    ) {
+        if !paragraph_has_behind_text_object(paragraph) {
+            let cache = &mut self.host.layers.behind_text_cache;
+            cache.document = Rc::downgrade(document);
+            cache.value = false;
+        }
     }
 
     pub(super) fn invalidate_page_layers_document(&mut self) {
@@ -593,6 +613,32 @@ mod tests {
         renderer.render(document, &Options::default()).unwrap();
         let painter = renderer.host.painter();
         painter.inner().ops()
+    }
+
+    #[test]
+    fn local_edits_reuse_absence_of_behind_text_objects_until_one_is_added() {
+        let mut renderer = recording_renderer();
+        let mut document = Rc::new(document(vec![paragraph("Before"), paragraph("Later")]));
+        assert!(!renderer.host.layers.behind_text_cache.get(&document));
+        assert!(renderer.cached_no_behind_text_objects(&document));
+
+        for (edited, has_behind_object) in [
+            (paragraph("After"), false),
+            (shape_paragraph("After", "#ff0000", true, 10), true),
+        ] {
+            renderer.invalidate_page_layers_document();
+            Rc::make_mut(&mut document).body.as_mut().unwrap().elements[0] =
+                BodyElement::from_paragraph(edited.clone());
+            renderer.restore_no_behind_text_objects(&document, &edited);
+            assert_eq!(
+                renderer.cached_no_behind_text_objects(&document),
+                !has_behind_object
+            );
+            assert_eq!(
+                renderer.host.layers.behind_text_cache.get(&document),
+                has_behind_object
+            );
+        }
     }
 
     #[test]
