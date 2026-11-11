@@ -1622,12 +1622,36 @@ impl OffscreenDocumentView {
     }
 
     fn clear_composition_preview(&self) -> Result<Option<SelectionRange>, JsValue> {
-        if self.state.borrow().composition_preview.is_none() {
-            return Ok(None);
-        }
+        // A local preview and its rollback touch only the original body paragraph.
+        let edit_cache = {
+            let state = self.state.borrow();
+            let Some(preview) = state.composition_preview.as_ref() else {
+                return Ok(None);
+            };
+            preview
+                .base_selection
+                .filter(|_| preview.preserves_auxiliary_story_surfaces)
+                .zip(state.word_doc.as_ref())
+                .and_then(|(selection, word_doc)| {
+                    let index = selection.focus.paragraph;
+                    word_doc.is_body_paragraph_surface(index).then(|| {
+                        let cache = self
+                            .renderer
+                            .borrow()
+                            .local_text_edit_cache_for_paragraph(word_doc, index);
+                        (cache, index)
+                    })
+                })
+        };
         let _document_cache = self.drop_renderer_document_cache();
         let mut state = self.state.borrow_mut();
-        Self::clear_composition_preview_in_state(&mut state)
+        let selection = Self::clear_composition_preview_in_state(&mut state)?;
+        if let Some(((cache, index), word_doc)) = edit_cache.zip(state.word_doc.as_ref()) {
+            self.renderer
+                .borrow_mut()
+                .restore_local_text_edit_cache(cache, word_doc, index);
+        }
+        Ok(selection)
     }
 
     fn ensure_visible_page_range_for_edit(
