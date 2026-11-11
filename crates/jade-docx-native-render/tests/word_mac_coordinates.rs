@@ -580,8 +580,7 @@ fn mac_grid_tall_face_probes_match_word() {
 }
 
 /// A cell's `w:afterLines` follows the section's grid even though its lines do
-/// not: the baseline gaps within the cell, 22.56 and 19.68pt in Word, hold it.
-/// Where the table's first baseline falls is a separate matter.
+/// not. Compare both absolute baselines and gaps with the Word export.
 #[test]
 fn mac_table_cell_line_units_follow_the_section_grid() {
     let name = "word-mac-probe-grid-line-unit-table";
@@ -601,10 +600,20 @@ fn mac_table_cell_line_units_follow_the_section_grid() {
         .flat_map(|page| page["rows"].as_array().unwrap())
         .map(|row| row["baseline_pt"].as_f64().unwrap())
         .collect();
-    let (_, jade) = rows_of_every_story(&mut open_with_bundled_faces(&bytes));
+    let (page_count, jade) = rows_of_every_story(&mut open_with_bundled_faces(&bytes));
+    assert_eq!(Some(page_count as u64), reference["page_count"].as_u64());
     assert_eq!(jade.len(), word.len());
     assert_eq!(jade.len(), 6);
-    for (expected, actual) in word.chunks(3).zip(jade.chunks(3)) {
+    for (page_index, (expected, actual)) in word.chunks(3).zip(jade.chunks(3)).enumerate() {
+        for (row_index, (expected, (page, baseline, _))) in expected.iter().zip(actual).enumerate()
+        {
+            assert_eq!(*page, page_index + 1);
+            assert!(
+                (baseline - expected).abs() <= WORD_TOLERANCE_PT,
+                "page {page} row {} baseline: {expected} -> {baseline}",
+                row_index + 1,
+            );
+        }
         for pair in [0, 1] {
             let expected_gap = expected[pair + 1] - expected[pair];
             let actual_gap = actual[pair + 1].1 - actual[pair].1;
