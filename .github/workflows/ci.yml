@@ -169,9 +169,11 @@ jobs:
           rustup show
           cargo install --locked wasm-bindgen-cli --version 0.2.114
           llvm_bin="$(brew --prefix llvm)/bin"
-          if [ ! -x "$llvm_bin/llvm-ar" ]; then
+          if [ ! -x "$llvm_bin/clang" ] || [ ! -x "$llvm_bin/llvm-ar" ]; then
             brew install llvm
           fi
+          echo "CC_wasm32_unknown_unknown=$llvm_bin/clang" >> "$GITHUB_ENV"
+          echo "CXX_wasm32_unknown_unknown=$llvm_bin/clang++" >> "$GITHUB_ENV"
           echo "AR_wasm32_unknown_unknown=$llvm_bin/llvm-ar" >> "$GITHUB_ENV"
           echo "RANLIB_wasm32_unknown_unknown=$llvm_bin/llvm-ranlib" >> "$GITHUB_ENV"
       - name: Build the DOCX renderer
