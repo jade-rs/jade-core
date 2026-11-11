@@ -79,6 +79,7 @@ use jade_docx_headless_api::{
 };
 use jade_docx_layout::layout_cache::{DirtyRect, SelectionRect};
 use jade_docx_layout::selection::{CaretMovement, SelectionRange, TextPosition};
+use jade_docx_reader::docx_xml::DocxXmlIncrementalParser;
 
 /// Tracks which document area is currently being edited.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default, Serialize)]
@@ -197,6 +198,7 @@ struct CanvasDocumentState {
     /// The equation being edited in place, its caret inside the structure.
     equation_editor: Option<crate::word::equation::EquationEditor>,
     word_doc: Option<WordDocument>,
+    roundtrip_parser: Option<DocxXmlIncrementalParser>,
     crdt: Option<crate::crdt_live::LiveDocument>,
     crdt_actor: String,
     crdt_checkpoint: Option<WordDocument>,
@@ -10493,6 +10495,7 @@ impl OffscreenDocumentView {
             word_autocorrect: None,
             equation_editor: None,
             word_doc: None,
+            roundtrip_parser: None,
             crdt: None,
             crdt_actor: String::new(),
             crdt_checkpoint: None,
@@ -10864,6 +10867,7 @@ impl OffscreenDocumentView {
                     state_mut.paged_images = paged_images.unwrap_or_default();
                     state_mut.command_executor = CommandExecutor::new();
                     state_mut.outline_display = Default::default();
+                    state_mut.roundtrip_parser = None;
                     state_mut.composition_preview = None;
                     state_mut.selection = None;
                     state_mut.hf_body_selection = None;
@@ -11002,6 +11006,7 @@ impl OffscreenDocumentView {
                     state_mut.paged_images = Vec::new(); // Don't store ImageBitmaps
                     state_mut.command_executor = CommandExecutor::new();
                     state_mut.outline_display = Default::default();
+                    state_mut.roundtrip_parser = None;
                     state_mut.composition_preview = None;
                     state_mut.selection = None;
                     state_mut.hf_body_selection = None;
@@ -11226,6 +11231,7 @@ impl OffscreenDocumentView {
                     state_mut.paged_images = Vec::new();
                     state_mut.command_executor = CommandExecutor::new();
                     state_mut.outline_display = Default::default();
+                    state_mut.roundtrip_parser = None;
                     state_mut.composition_preview = None;
                     state_mut.selection = None;
                     state_mut.hf_body_selection = None;
@@ -16260,26 +16266,89 @@ impl OffscreenDocumentView {
     }
 
     /// Ensures edit/export preservation metadata is ready after a deferred
-    /// initial load. Returns true only when this call performed the parse.
+    /// initial load. Returns true only when this call completed preparation.
     #[wasm_bindgen(js_name = prepareRoundtripDocument)]
     pub fn prepare_roundtrip_document(&self) -> Result<bool, JsValue> {
-        let needs_preparation = self
-            .state
-            .borrow()
-            .word_doc
-            .as_ref()
-            .is_some_and(|doc| doc.raw_document.is_none());
-        // Preparation only attaches XML metadata to the laid-out document.
-        // Release the renderer's snapshot so the model can update it in place.
-        let _document_cache = needs_preparation.then(|| self.drop_renderer_document_cache());
+        self.prepare_roundtrip_document_with_budget(None)
+    }
+
+    /// Advances idle preservation work by a bounded number of XML events.
+    #[wasm_bindgen(js_name = prepareRoundtripDocumentStep)]
+    pub fn prepare_roundtrip_document_step(&self, event_budget: u32) -> Result<bool, JsValue> {
+        self.prepare_roundtrip_document_with_budget(Some(event_budget as usize))
+    }
+
+    fn prepare_roundtrip_document_with_budget(
+        &self,
+        event_budget: Option<usize>,
+    ) -> Result<bool, JsValue> {
+        let raw_xml = {
+            let mut state = self.state.borrow_mut();
+            let state = &mut *state;
+            let word_doc = state
+                .word_doc
+                .as_ref()
+                .ok_or_else(|| JsValue::from_str("document is not loaded"))?;
+            if word_doc.raw_document.is_some() {
+                state.roundtrip_parser = None;
+                return Ok(event_budget.is_some());
+            }
+            let source = &word_doc
+                .document_part
+                .as_ref()
+                .ok_or_else(|| JsValue::from_str("main document part is not loaded"))?
+                .content;
+            if let Some(budget) = event_budget {
+                if state.roundtrip_parser.is_none() {
+                    state.roundtrip_parser = Some(DocxXmlIncrementalParser::new(source.clone()));
+                }
+                let parser = state.roundtrip_parser.as_mut().expect("parser initialized");
+                match parser.advance(budget) {
+                    Ok(None) => return Ok(false),
+                    Ok(Some(xml)) if parser.source() == source => {
+                        state.roundtrip_parser = None;
+                        Some(xml)
+                    }
+                    Ok(Some(_)) => {
+                        state.roundtrip_parser = None;
+                        return Ok(false);
+                    }
+                    Err(error) => {
+                        state.roundtrip_parser = None;
+                        return Err(JsValue::from_str(&error.to_string()));
+                    }
+                }
+            } else if let Some(mut parser) = state
+                .roundtrip_parser
+                .take()
+                .filter(|parser| parser.source() == source)
+            {
+                parser
+                    .advance(usize::MAX)
+                    .map_err(|error| JsValue::from_str(&error.to_string()))?
+            } else {
+                None
+            }
+        };
+
+        // Linking only changes preservation metadata. Drop the renderer's
+        // snapshot during this final phase so the semantic model stays in place.
+        let _document_cache = self.drop_renderer_document_cache();
         let mut state = self.state.borrow_mut();
         let word_doc = state
             .word_doc
             .as_mut()
             .ok_or_else(|| JsValue::from_str("document is not loaded"))?;
-        word_doc
-            .ensure_roundtrip_xml()
-            .map_err(|err| JsValue::from_str(&err.to_string()))
+        if let Some(raw_xml) = raw_xml {
+            word_doc
+                .attach_roundtrip_xml(raw_xml)
+                .map_err(|error| JsValue::from_str(&error.to_string()))?;
+            Ok(true)
+        } else {
+            word_doc
+                .ensure_roundtrip_xml()
+                .map_err(|error| JsValue::from_str(&error.to_string()))
+        }
     }
 
     #[wasm_bindgen]
