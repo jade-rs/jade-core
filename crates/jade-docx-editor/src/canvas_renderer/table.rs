@@ -14538,6 +14538,22 @@ fn layout_nested_table<P: Painter<Error: PainterError>>(
 ) -> Result<NestedTableLayout, JsValue> {
     let column_count = compute_column_count(table).max(1);
     let mut column_widths = compute_column_widths(table, column_count, available_width);
+    // Word for Mac keeps the authored grid width of a single-column auto-width
+    // nested table even when its parent cell is narrower.
+    let available_width = match table.columns.as_slice() {
+        [column]
+            if column_count == 1
+                && jade_docx_layout::line_metrics::word_layout_platform()
+                    == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
+                && !table.style.contains_key("width")
+                && resolve_table_layout_mode(table) == TableLayoutMode::Autofit =>
+        {
+            column.width.map_or(available_width, |width| {
+                available_width.max(points_to_px(width))
+            })
+        }
+        _ => available_width,
+    };
     let (_, mut natural_paragraph_layouts) = apply_table_layout_width_for_table_with_content(
         wrap_context,
         table,
