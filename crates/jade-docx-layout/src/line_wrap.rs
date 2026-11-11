@@ -9746,7 +9746,9 @@ fn detach_remaining_split_latin_word(
 ) -> f64 {
     if !detached
         .last()
-        .is_some_and(|(cluster, _)| is_latin_word_grapheme(&cluster.text))
+        .is_some_and(|(cluster, _)| {
+            is_latin_word_grapheme(&cluster.text) || is_ascii_digit_grapheme(&cluster.text)
+        })
         || !has_preceding_latin_break_opportunity(current)
     {
         return 0.0;
@@ -24703,6 +24705,24 @@ mod tests {
             })
         })
         .collect()
+    }
+
+    #[test]
+    fn width_repair_keeps_a_word_with_a_trailing_digit_together() {
+        let mut lines = final_line_repair_fixture("ab L1");
+        let line = &mut lines[1];
+        let mut detached = vec![detach_trailing_cluster(line).unwrap()];
+
+        assert_eq!(detach_remaining_split_latin_word(line, &mut detached), 1.0);
+        assert_eq!(
+            detached
+                .iter()
+                .rev()
+                .map(|(cluster, _)| cluster.text.as_str())
+                .collect::<String>(),
+            "L1"
+        );
+        assert_eq!(collect_line_infos(&lines)[1].text, "ab ");
     }
 
     #[test]
