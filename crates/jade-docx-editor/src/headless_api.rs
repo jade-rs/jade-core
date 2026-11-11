@@ -9337,7 +9337,8 @@ mod tests {
         let paragraph = 1;
         assert_eq!(paragraph_text(&original, paragraph), "World");
         for tracking in [false, true] {
-            for (start_offset, end_offset, text) in [(1, 1, "かな"), (1, 3, "o語"), (1, 3, "or")] {
+            for (start_offset, end_offset, text) in [(1, 1, "かな"), (1, 3, "o語"), (1, 3, "or")]
+            {
                 let mut headless_doc = original.clone();
                 if tracking {
                     headless_doc.set_revision_session(Some(RevisionSession {
