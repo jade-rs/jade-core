@@ -37,7 +37,7 @@ use std::fmt;
 
 use jade_docx_document_core::commands::CommandExecutor;
 use jade_docx_document_core::headless_api::{
-    apply_headless_commands_with_executor_to_document, execute_headless_queries_on_document,
+    apply_headless_commands_with_executor_to_document, inspect_headless_document,
 };
 use jade_docx_document_core::word_document::WordDocument;
 
@@ -77,9 +77,8 @@ impl ToolContext<'_> {
     /// Runs queries against the session document — the same `HeadlessQuery`
     /// values the built-in `query` tool takes.
     pub fn query(&self, queries: Vec<HeadlessQuery>) -> Result<Value, String> {
-        let response =
-            execute_headless_queries_on_document(self.document, &HeadlessQueryRequest { queries })
-                .map_err(|err| format!("query failed: {err}"))?;
+        let response = inspect_headless_document(self.document, &HeadlessQueryRequest { queries })
+            .map_err(|err| format!("query failed: {err}"))?;
         serde_json::to_value(response).map_err(|err| err.to_string())
     }
 

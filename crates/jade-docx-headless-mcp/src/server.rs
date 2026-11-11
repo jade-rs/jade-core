@@ -20,7 +20,7 @@ use jade_docx_document_core::headless_api::{
     apply_headless_commands_with_executor_to_document,
     apply_protected_headless_commands_with_executor_to_document,
     apply_snapshot_headless_commands_with_executor_to_document,
-    execute_headless_queries_on_document,
+    execute_headless_queries_on_document, inspect_headless_document,
 };
 use jade_docx_document_core::word_document::{ParagraphStory, WordDocument};
 use jade_docx_document_core::Options;
@@ -527,7 +527,7 @@ impl Server {
             });
             if !queries.is_empty() {
                 response["query"] = serde_json::to_value(
-                    execute_headless_queries_on_document(&doc, &HeadlessQueryRequest { queries })
+                    inspect_headless_document(&doc, &HeadlessQueryRequest { queries })
                         .map_err(|err| format!("query failed: {err}"))?,
                 )
                 .map_err(|err| err.to_string())?;
@@ -566,7 +566,7 @@ impl Server {
             )
             .map_err(|err| format!("apply failed: {err}"))?;
             if !queries.is_empty() {
-                execute_headless_queries_on_document(
+                inspect_headless_document(
                     &preview_doc,
                     &HeadlessQueryRequest {
                         queries: queries.clone(),
@@ -614,11 +614,8 @@ impl Server {
         });
         if !queries.is_empty() {
             response["query"] = serde_json::to_value(
-                execute_headless_queries_on_document(
-                    &session.doc,
-                    &HeadlessQueryRequest { queries },
-                )
-                .map_err(|err| format!("query failed: {err}"))?,
+                inspect_headless_document(&session.doc, &HeadlessQueryRequest { queries })
+                    .map_err(|err| format!("query failed: {err}"))?,
             )
             .map_err(|err| err.to_string())?;
         }
@@ -796,9 +793,8 @@ impl Server {
             "max_revisions": 100_000,
         }]))
         .map_err(|err| err.to_string())?;
-        let response =
-            execute_headless_queries_on_document(&session.doc, &HeadlessQueryRequest { queries })
-                .map_err(|err| format!("revision lookup failed: {err}"))?;
+        let response = inspect_headless_document(&session.doc, &HeadlessQueryRequest { queries })
+            .map_err(|err| format!("revision lookup failed: {err}"))?;
         let response = serde_json::to_value(response).map_err(|err| err.to_string())?;
         let Some(revisions) = response["results"][0]["revisions"].as_array() else {
             return Ok(());
@@ -958,7 +954,7 @@ impl Server {
         }]))
         .map_err(|err| err.to_string())?;
         let doc = &self.session_ref(args)?.doc;
-        let response = execute_headless_queries_on_document(doc, &HeadlessQueryRequest { queries })
+        let response = inspect_headless_document(doc, &HeadlessQueryRequest { queries })
             .map_err(|err| format!("query failed: {err}"))?;
         let response = serde_json::to_value(response).map_err(|err| err.to_string())?;
         Ok(response["results"][0].clone())
@@ -1054,7 +1050,7 @@ impl Server {
             .map_err(|err| format!("invalid queries: {err}"))?;
         let doc = &self.session_ref(args)?.doc;
         let request = HeadlessQueryRequest { queries };
-        let response = execute_headless_queries_on_document(doc, &request)
+        let response = inspect_headless_document(doc, &request)
             .map_err(|err| format!("query failed: {err}"))?;
         serde_json::to_value(response).map_err(|err| err.to_string())
     }
@@ -1165,7 +1161,7 @@ fn parse_queries_arg(args: &Value) -> Result<Vec<HeadlessQuery>, String> {
 fn document_stats(doc: &WordDocument) -> Result<Value, String> {
     let queries: Vec<HeadlessQuery> = serde_json::from_value(json!([{ "type": "document_stats" }]))
         .map_err(|err| err.to_string())?;
-    let response = execute_headless_queries_on_document(doc, &HeadlessQueryRequest { queries })
+    let response = inspect_headless_document(doc, &HeadlessQueryRequest { queries })
         .map_err(|err| format!("stats query failed: {err}"))?;
     serde_json::to_value(response.results.into_iter().next()).map_err(|err| err.to_string())
 }
@@ -9929,7 +9925,7 @@ mod tests {
                 let at = seed % body.len();
                 let (commands, changed, removed) = match op {
                     0 => {
-                        body[at].insert_str(0, "甲");
+                        body[at].insert(0, '甲');
                         (json!([{ "type": "insert_text", "paragraph": at, "offset": 0, "text": "甲" }]), vec![at], vec![])
                     }
                     1 if body[at].chars().count() > 1 => {
@@ -9964,7 +9960,7 @@ mod tests {
                         ]), vec![tail_index], vec![])
                     }
                     5 if !tracked_tail_deletion => {
-                        tail.insert_str(0, "終");
+                        tail.insert(0, '終');
                         (json!([{ "type": "insert_text", "paragraph": tail_index, "offset": 0, "text": "終" }]), vec![tail_index], vec![])
                     }
                     7 if !rows.is_empty() => {
@@ -10040,7 +10036,7 @@ mod tests {
                         continue;
                     }
                     _ => {
-                        body[at].insert_str(0, "甲");
+                        body[at].insert(0, '甲');
                         (json!([{ "type": "insert_text", "paragraph": at, "offset": 0, "text": "甲" }]), vec![at], vec![])
                     }
                 };
@@ -10202,6 +10198,13 @@ mod tests {
                 prop_assert_eq!(&found["start_offset"], &json!("契約😀".len()));
                 prop_assert_eq!(&found["end_offset"], &json!("契約😀".len() + cached.len()));
                 prop_assert_eq!(&found["matched_text"], &json!(cached));
+            }
+            for regex in [false, true] {
+                let replacement = try_tool(&mut server, "replace_text", json!({
+                    "session_id": session, "find": cached, "replace": "変更",
+                    "regex": regex, "dry_run": true, "end_paragraph": 1,
+                })).unwrap();
+                prop_assert_eq!(&replacement["replaced"], &json!(0));
             }
             let before = export_bytes(&mut server, &session);
             let error = protected_batch(&mut server, &session, json!([
@@ -10758,7 +10761,7 @@ mod tests {
 
             let expected = format!("前{left} 左 対象語 右 終");
             let anchor_start = (anchor_start + "前".len()) as u64;
-            let anchors = vec![
+            let anchors = [
                 (0, anchor_start, anchor_start + "対象".len() as u64),
                 (0, anchor_start, anchor_start + "対象語".len() as u64),
             ];

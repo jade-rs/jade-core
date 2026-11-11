@@ -5449,13 +5449,30 @@ pub fn execute_headless_queries_on_document(
     word_doc: &WordDocument,
     request: &HeadlessQueryRequest,
 ) -> Result<HeadlessQueryResponse, HeadlessApiQueryError> {
+    execute_headless_queries(word_doc, request, false)
+}
+
+/// Inspect a document with cached field results in the display text.
+/// Display offsets cannot be used as editing or selection coordinates.
+pub fn inspect_headless_document(
+    word_doc: &WordDocument,
+    request: &HeadlessQueryRequest,
+) -> Result<HeadlessQueryResponse, HeadlessApiQueryError> {
+    execute_headless_queries(word_doc, request, true)
+}
+
+fn execute_headless_queries(
+    word_doc: &WordDocument,
+    request: &HeadlessQueryRequest,
+    include_cached_fields: bool,
+) -> Result<HeadlessQueryResponse, HeadlessApiQueryError> {
     if request.queries.is_empty() {
         return Err(HeadlessApiQueryError::EmptyQueries);
     }
 
     let mut results = Vec::with_capacity(request.queries.len());
     for (index, query) in request.queries.iter().enumerate() {
-        let result = execute_headless_query(word_doc, index, query)?;
+        let result = execute_headless_query(word_doc, index, query, include_cached_fields)?;
         results.push(result);
     }
 
@@ -5466,7 +5483,15 @@ fn execute_headless_query(
     word_doc: &WordDocument,
     index: usize,
     query: &HeadlessQuery,
+    include_cached_fields: bool,
 ) -> Result<HeadlessQueryResult, HeadlessApiQueryError> {
+    let query_text = |paragraph_index| {
+        if include_cached_fields {
+            inspection_paragraph_text(word_doc, paragraph_index)
+        } else {
+            paragraph_text(word_doc, paragraph_index).map(|text| (text, None))
+        }
+    };
     match query {
         HeadlessQuery::DocumentStats => Ok(HeadlessQueryResult::DocumentStats {
             stats: jade_docx_headless_api::HeadlessDocumentStats {
@@ -5529,8 +5554,7 @@ fn execute_headless_query(
             let mut paragraphs = Vec::with_capacity(end.saturating_sub(start));
 
             for paragraph_index in start..end {
-                let (text, offset_basis) =
-                    inspection_paragraph_text(word_doc, paragraph_index).unwrap_or_default();
+                let (text, offset_basis) = query_text(paragraph_index).unwrap_or_default();
                 let (edit_limitation, protected_comment_ranges) =
                     match inline_edit_protection(word_doc, paragraph_index) {
                         Ok(ranges) => (None, ranges),
@@ -5583,9 +5607,7 @@ fn execute_headless_query(
             };
 
             'paragraphs: for paragraph_index in start..total {
-                let Some((text, offset_basis)) =
-                    inspection_paragraph_text(word_doc, paragraph_index)
-                else {
+                let Some((text, offset_basis)) = query_text(paragraph_index) else {
                     continue;
                 };
                 let haystack = if *case_insensitive {
@@ -5608,11 +5630,15 @@ fn execute_headless_query(
                         );
                     let snippet = format!("{context_before}{matched_text}{context_after}");
 
-                    let (start_offset, end_offset) = word_doc.model_text_range_to_rendered(
-                        paragraph_index,
-                        start_offset,
-                        end_offset,
-                    );
+                    let (start_offset, end_offset) = if offset_basis.is_some() {
+                        (start_offset, end_offset)
+                    } else {
+                        word_doc.model_text_range_to_rendered(
+                            paragraph_index,
+                            start_offset,
+                            end_offset,
+                        )
+                    };
                     let edit_limitation = match protection
                         .get_or_insert_with(|| inline_edit_protection(word_doc, paragraph_index))
                     {

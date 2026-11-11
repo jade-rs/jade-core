@@ -212,4 +212,8 @@ fn an_eq_field_is_drawn_from_its_switches() {
         !text.contains("1/2"),
         "the saved result is not drawn too: {text:?}"
     );
+    assert!(document.find("1/2", false).is_empty());
+    let hits = document.find("a", false);
+    assert_eq!(hits.len(), 1);
+    assert_eq!((hits[0].start_offset, hits[0].end_offset), (0, 1));
 }
