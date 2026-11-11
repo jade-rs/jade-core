@@ -17,6 +17,7 @@ const finalRevisionView = new Set([
 const shapedArabic = new Set(['table-inline-image-mac', 'table-object-edge-cases-mac']);
 const arabicScript = /\p{Script=Arabic}/u;
 const textBoxes = new Map([
+  ['numbering-textbox-overflow-mac', 1],
   ['floating-wrap-sides-mac', 3], ['floating-inside-outside-mac', 4],
   ['floating-simple-position-mac', 1], ['floating-square-wrap-mac', 1],
   ['floating-through-concave-mac', 1], ['floating-tight-polygon-mac', 1],
@@ -29,9 +30,10 @@ const textBoxes = new Map([
   ['footnote-table-textbox-order-mac', 1], ['word-mac-probe-float-lookahead', 5],
 ]);
 
-const emptyTextBoxParagraphs = new Map([
+const textBoxParagraphsWithoutGlyphs = new Map([
   ['floating-z-order-mac', 1],
   ['textbox-tall-header-overlap-mac', 1],
+  ['numbering-textbox-overflow-mac', 5],
   ['word-mac-probe-float-lookahead', 5],
 ]);
 
@@ -129,7 +131,7 @@ function checkStories(name, actual) {
     assert.equal(actual.text_box_source_inventory_complete, true);
     assert.equal(actual.source_text_stories.length, textBoxes.get(name));
     assert.equal(actual.text_box_regions.length, textBoxes.get(name));
-    let emptyParagraphs = 0;
+    let paragraphsWithoutGlyphs = 0;
     for (const { kind, paragraphIndex, runIndex } of actual.source_text_stories) {
       assert.equal(kind, 'text_box');
       const regions = actual.text_box_regions.filter(region =>
@@ -142,10 +144,11 @@ function checkStories(name, actual) {
           entry.page === region.page - 1 && entry.story === 'text_box' &&
           entry.line.paragraph === paragraph &&
           entry.line.fragments?.some(fragment => fragment.glyphs?.some(glyph => visibleGlyph(glyph.text))));
-        if (!visible) emptyParagraphs++;
+        if (!visible) paragraphsWithoutGlyphs++;
       }
     }
-    assert.equal(emptyParagraphs, emptyTextBoxParagraphs.get(name) ?? 0, 'empty text box paragraphs');
+    assert.equal(paragraphsWithoutGlyphs, textBoxParagraphsWithoutGlyphs.get(name) ?? 0,
+      'text box paragraphs without visible glyphs');
   }
   assert.deepEqual(actual.known_uncaptured_stories, uncaptured);
 }
