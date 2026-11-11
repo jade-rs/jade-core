@@ -14,8 +14,12 @@ const finalRevisionView = new Set([
   'numbering-with-review-mac', 'review-duplicate-ids-mac', 'review-kinds-mac',
   'numbering-del-mac', 'numbering-del2-mac',
 ]);
-const shapedArabic = new Set(['table-inline-image-mac', 'table-object-edge-cases-mac']);
+const shapedArabic = new Set([
+  'table-inline-image-mac', 'table-object-edge-cases-mac', 'arabic-table-body-mac',
+]);
 const arabicScript = /\p{Script=Arabic}/u;
+const arabicMark = /(?=\p{Mark})\p{Script_Extensions=Arabic}/u;
+const isArabic = text => arabicScript.test(text) || arabicMark.test(text);
 const textBoxes = new Map([
   ['floating-wrap-sides-mac', 3], ['floating-inside-outside-mac', 4],
   ['floating-simple-position-mac', 1], ['floating-square-wrap-mac', 1],
@@ -281,21 +285,33 @@ function checkPages(name, reference, actual, manifest) {
   checkStories(name, actual);
   const tolerance = manifest.axisTolerancePt;
   const registration = manifest.horizontalPrintRegistration;
-  const compareAsGlyph = text => !shapedArabic.has(name) || !arabicScript.test(text);
+  const compareAsGlyph = text => !shapedArabic.has(name) || !isArabic(text);
+  const differences = [];
   if (shapedArabic.has(name)) {
-    // Browser shaping paints the Arabic span in a single Canvas operation.
     assert.equal(reference.length, 1);
-    const text = 'مرحبا';
-    const arabic = reference[0].body.filter(([glyph]) => arabicScript.test(glyph));
-    assert.equal(arabic.map(([glyph]) => glyph.normalize('NFKC')).join(''), text);
-    const x = Math.min(...arabic.map(([, origin]) => origin));
-    const y = arabic[0][2];
-    assert(actual.paintedArabic.length > 0, 'Arabic span was not painted');
-    for (const span of actual.paintedArabic) {
-      assert.equal(span.text, text);
-      assert(Math.abs(span.x * pt - x) <= tolerance, 'painted Arabic origin');
-      assert(Math.abs(span.y * pt - y) <= tolerance, 'painted Arabic baseline');
+    const arabic = reference[0].body.filter(([glyph]) => isArabic(glyph));
+    const lines = [];
+    for (const glyph of arabic) {
+      if (!lines.length || glyph[2] - lines.at(-1)[0][2] > 5) lines.push([]);
+      lines.at(-1).push(glyph);
     }
+    assert.equal(lines.length, name === 'arabic-table-body-mac' ? 9 : 1, 'Word Arabic line count');
+    const expected = lines.flatMap((line, index) => {
+      const spans = name === 'arabic-table-body-mac' && index === 4
+        ? [line.slice(0, 2), line.slice(2)] : [line];
+      return spans.map(glyphs => [
+        glyphs.map(([glyph]) => glyph.normalize('NFKC')).join(''),
+        Math.min(...glyphs.map(([, x]) => x)),
+        glyphs[0][2],
+      ]);
+    });
+    // The view can repaint a page at identical coordinates during capture.
+    const unique = new Map();
+    for (const { text, x, y } of actual.paintedArabic) {
+      unique.set(JSON.stringify([text, x, y]), [text, x * pt, y * pt]);
+    }
+    const { missing, extra } = compareGlyphs(expected, [...unique.values()], tolerance);
+    if (missing.length || extra.length) differences.push({ page: 1, arabic: { missing, extra } });
   }
   const glyphs = reference.map(() => []);
   const images = reference.map(() => []);
@@ -317,7 +333,6 @@ function checkPages(name, reference, actual, manifest) {
 
   const within = (expected, measured) => expected.every((v, i) => Math.abs(v - measured[i]) <= tolerance);
   const topToBottom = (a, b) => a[1] - b[1] || a[0] - b[0];
-  const differences = [];
   for (const [i, expected] of reference.entries()) {
     const page = i + 1;
     const size = actual.dimensions[i];
