@@ -4875,6 +4875,9 @@ pub struct RunImageLayout {
     pub dist_left: Option<f64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub dist_right: Option<f64>,
+    /// Space below an inline drawing's extent reserved by `wp:effectExtent@b`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub inline_effect_bottom: Option<f64>,
     /// The anchor's options and the object's name — kept apart so a run
     /// without them stays small.
     #[serde(default, skip_serializing_if = "Option::is_none")]

@@ -106,6 +106,13 @@ impl WordProportionalLineSizing {
                 (single * self.multiple).max(self.minimum_pt.unwrap_or(1.0) * 96.0 / 72.0)
             })
     }
+
+    /// Word places the extra leading from a minimum height above the text.
+    pub fn minimum_extra_above_px(self, content_height_px: f64) -> f64 {
+        self.minimum_pt.map_or(0.0, |minimum| {
+            (minimum * 96.0 / 72.0 - content_height_px).max(0.0)
+        })
+    }
 }
 
 pub const WORD_EAST_ASIAN_FE_LINE_SPACING_MULTIPLIER: f32 = 1.1375;
@@ -843,7 +850,7 @@ thread_local! {
 pub fn word_fixed_ascii_advance_px(font_descriptor: &str) -> Option<f64> {
     match word_ascii_metrics(font_descriptor)? {
         WordAsciiMetrics::Fixed(advance) => Some(advance),
-        WordAsciiMetrics::YuMincho(_)
+        WordAsciiMetrics::YuMincho(_, _)
         | WordAsciiMetrics::YuMinchoBold(_, _)
         | WordAsciiMetrics::YuGothicLight(_)
         | WordAsciiMetrics::Century(_)
@@ -860,15 +867,15 @@ pub fn word_fixed_ascii_advance_px(font_descriptor: &str) -> Option<f64> {
 pub(crate) enum WordAsciiMetrics {
     Fixed(f64),
     // Pixels per font unit, resolved once rather than divided per glyph.
-    YuMincho(f64),
     // Pixels per font unit; whether source-observed Mac upright facts apply.
+    YuMincho(f64, bool),
     YuMinchoBold(f64, bool),
     YuGothicLight(f64),
     Century(f64),
     NotoSansJp(f64),
     NotoSans(f64),
     Calibri(f64, bool),
-    Aptos(f64, bool),
+    Aptos(f64, usize),
     Bookman(f64),
     TimesNewRoman(f64, bool, bool),
 }
@@ -1213,20 +1220,473 @@ static WORD_CALIBRI_PAIR_UNITS: [i16; 95 * 95] = {
     units
 };
 
-// Numeric hmtx facts: 506 original Word PDF advances agree with Aptos 2.01
-// regular/Display units within 0.009pt. Only 21/5 observed characters are used;
-// unobserved characters/styles retain the host path.
-const WORD_APTOS_ASCII_UNITS: [u16; 95] = [
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 585, 0, 0, 1094, 1094, 1094, 1094, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 1207, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1618, 0, 0, 0, 0, 0, 0, 980, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 1088, 1149, 1075, 1148, 1079, 0, 0, 1129, 489, 0, 0, 0, 1747, 1129,
-    0, 0, 0, 0, 995, 662, 1144, 926, 0, 0, 0, 0, 0, 0, 0, 0,
+// Printable ASCII advances from embedded Word for Mac PDF font metrics.
+// Within each family the rows are regular, italic, bold, and bold italic.
+const WORD_APTOS_ASCII_UNITS: [[u16; 95]; 8] = [
+    // Aptos
+    [
+        416, 600, 757, 1100, 1094, 1692, 1317, 431, 600, 600, 936, 1094, 585, 697, 585, 695, 1094,
+        1094, 1094, 1094, 1094, 1094, 1094, 1094, 1094, 1094, 585, 585, 1094, 1094, 1094, 1027,
+        1832, 1207, 1237, 1418, 1405, 1139, 1074, 1451, 1448, 533, 678, 1164, 1023, 1618, 1446,
+        1500, 1182, 1500, 1241, 1159, 980, 1395, 1199, 1827, 1132, 1105, 1056, 603, 695, 603, 1094,
+        942, 1130, 1088, 1149, 1075, 1148, 1079, 617, 992, 1129, 489, 489, 997, 533, 1747, 1129,
+        1130, 1149, 1148, 685, 995, 662, 1144, 926, 1476, 906, 926, 897, 603, 553, 603, 1094,
+    ],
+    // Aptos-Italic
+    [
+        416, 600, 735, 1100, 1094, 1790, 1352, 406, 600, 600, 780, 1094, 553, 696, 587, 695, 1094,
+        1094, 1094, 1094, 1094, 1094, 1094, 1094, 1094, 1094, 587, 553, 1094, 1094, 1094, 1026,
+        1821, 1207, 1250, 1428, 1403, 1139, 1113, 1450, 1448, 533, 677, 1148, 1021, 1618, 1446,
+        1500, 1210, 1500, 1241, 1159, 982, 1394, 1197, 1828, 1132, 1105, 1042, 598, 695, 592, 1094,
+        942, 1130, 1089, 1148, 1085, 1148, 1086, 590, 992, 1128, 474, 474, 1000, 533, 1750, 1129,
+        1130, 1149, 1146, 682, 994, 642, 1129, 926, 1476, 906, 926, 897, 654, 553, 654, 1094,
+    ],
+    // Aptos-Bold
+    [
+        416, 600, 860, 1100, 1094, 1723, 1386, 475, 600, 600, 936, 1094, 614, 697, 614, 792, 1094,
+        1094, 1094, 1094, 1094, 1094, 1094, 1094, 1094, 1094, 614, 614, 1094, 1094, 1094, 1060,
+        1843, 1270, 1268, 1447, 1448, 1174, 1099, 1470, 1493, 602, 751, 1276, 1048, 1681, 1480,
+        1510, 1240, 1510, 1298, 1225, 1035, 1426, 1263, 1926, 1227, 1200, 1121, 690, 792, 690,
+        1094, 942, 1130, 1130, 1201, 1124, 1200, 1139, 686, 1047, 1186, 549, 549, 1094, 606, 1821,
+        1186, 1174, 1201, 1200, 756, 1056, 728, 1191, 1011, 1559, 1014, 1011, 954, 690, 553, 690,
+        1094,
+    ],
+    // Aptos-BoldItalic
+    [
+        416, 600, 828, 1100, 1094, 1865, 1420, 441, 600, 600, 879, 1094, 610, 696, 615, 792, 1094,
+        1094, 1094, 1094, 1094, 1094, 1094, 1094, 1094, 1094, 615, 610, 1094, 1094, 1094, 1057,
+        1838, 1270, 1286, 1458, 1448, 1174, 1138, 1470, 1493, 602, 750, 1252, 1048, 1681, 1480,
+        1510, 1269, 1510, 1298, 1225, 1037, 1425, 1262, 1927, 1227, 1200, 1106, 676, 792, 658,
+        1094, 942, 1130, 1141, 1202, 1136, 1202, 1149, 665, 1047, 1185, 545, 545, 1088, 606, 1821,
+        1186, 1174, 1202, 1199, 749, 1056, 707, 1187, 1011, 1559, 1014, 1011, 954, 708, 553, 708,
+        1094,
+    ],
+    // AptosDisplay
+    [
+        395, 504, 757, 1082, 1071, 1690, 1276, 431, 603, 603, 780, 1071, 504, 714, 504, 695, 1071,
+        1071, 1071, 1071, 1071, 1071, 1071, 1071, 1071, 1071, 504, 504, 1071, 1071, 1071, 996,
+        1799, 1188, 1193, 1343, 1341, 1107, 1043, 1375, 1355, 481, 650, 1134, 992, 1567, 1394,
+        1424, 1138, 1424, 1209, 1118, 977, 1333, 1175, 1814, 1127, 1095, 1056, 603, 695, 603, 1071,
+        942, 1130, 1002, 1062, 1009, 1062, 1012, 580, 900, 1036, 431, 431, 916, 499, 1638, 1036,
+        1050, 1062, 1062, 635, 948, 622, 1036, 886, 1466, 902, 886, 872, 603, 449, 603, 1071,
+    ],
+    // AptosDisplay-Italic
+    [
+        395, 504, 735, 1082, 1071, 1798, 1281, 432, 603, 603, 780, 1071, 507, 713, 504, 695, 1071,
+        1071, 1071, 1071, 1071, 1071, 1071, 1071, 1071, 1071, 507, 509, 1071, 1071, 1071, 995,
+        1788, 1188, 1183, 1353, 1355, 1107, 1043, 1375, 1355, 481, 650, 1134, 992, 1567, 1394,
+        1424, 1143, 1424, 1192, 1118, 977, 1333, 1175, 1814, 1127, 1095, 1054, 603, 688, 603, 1071,
+        942, 1130, 1001, 1063, 1006, 1062, 1006, 580, 900, 1036, 431, 431, 916, 499, 1627, 1036,
+        1050, 1064, 1059, 635, 948, 622, 1036, 886, 1466, 902, 886, 872, 603, 459, 603, 1071,
+    ],
+    // AptosDisplay-Bold
+    [
+        395, 535, 860, 1149, 1106, 1719, 1342, 475, 690, 690, 879, 1106, 535, 747, 535, 792, 1106,
+        1106, 1106, 1106, 1106, 1106, 1106, 1106, 1106, 1106, 535, 535, 1106, 1106, 1106, 1029,
+        1818, 1250, 1227, 1382, 1388, 1125, 1058, 1404, 1398, 547, 714, 1235, 1007, 1626, 1426,
+        1443, 1199, 1443, 1250, 1175, 1022, 1372, 1230, 1886, 1212, 1172, 1121, 690, 792, 690,
+        1106, 942, 1130, 1039, 1109, 1040, 1110, 1054, 651, 967, 1092, 492, 492, 1023, 572, 1721,
+        1092, 1085, 1109, 1110, 702, 991, 683, 1093, 973, 1531, 1001, 973, 921, 690, 515, 690,
+        1106,
+    ],
+    // AptosDisplay-BoldItalic
+    [
+        395, 535, 828, 1149, 1106, 1889, 1359, 475, 690, 690, 879, 1106, 536, 746, 535, 792, 1106,
+        1106, 1106, 1106, 1106, 1106, 1106, 1106, 1106, 1106, 537, 542, 1106, 1106, 1106, 1030,
+        1803, 1250, 1215, 1391, 1393, 1125, 1058, 1402, 1398, 547, 713, 1235, 1007, 1626, 1425,
+        1443, 1198, 1443, 1241, 1175, 1022, 1371, 1230, 1885, 1212, 1172, 1114, 690, 773, 690,
+        1106, 942, 1130, 1048, 1111, 1048, 1111, 1060, 651, 967, 1091, 492, 492, 1023, 572, 1716,
+        1092, 1085, 1111, 1108, 702, 991, 683, 1092, 973, 1531, 1001, 973, 921, 690, 549, 690,
+        1106,
+    ],
 ];
-const WORD_APTOS_DISPLAY_ASCII_UNITS: [u16; 95] = [
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 977, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 1062, 0, 0, 1012, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 948, 622, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0,
+
+// Pair origin shifts measured with Word kerning enabled and disabled.
+// i16::MIN marks an unmeasured face.
+const WORD_APTOS_PAIR_UNITS: &[([u8; 2], [i16; 8])] = &[
+    (*b" 1", [0, 0, 0, 0, 0, 0, 0, 0]),
+    (*b" A", [0, 0, 0, 0, 0, 0, 0, 0]),
+    (*b" F", [0, 0, 0, 0, 0, 0, 0, 0]),
+    (*b" L", [0, 0, 0, 0, 0, 0, 0, 0]),
+    (*b" P", [0, 0, 0, 0, 0, 0, 0, 0]),
+    (*b" T", [0, 0, 0, 0, 0, 0, 0, 0]),
+    (*b" V", [0, 0, 0, 0, 0, 0, 0, 0]),
+    (*b" W", [0, 0, 0, 0, 0, 0, 0, 0]),
+    (*b" X", [0, 0, 0, 0, 0, 0, 0, 0]),
+    (*b" Y", [0, 0, 0, 0, 0, 0, 0, 0]),
+    (*b" r", [0, 0, 0, 0, 0, 0, 0, 0]),
+    (*b" t", [0, 0, 0, 0, 0, 0, 0, 0]),
+    (*b" w", [0, 0, 0, 0, 0, 0, 0, 0]),
+    (
+        *b"-1",
+        [
+            -154,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+        ],
+    ),
+    (*b".3", [0, 0, 0, 0, 0, 0, 0, 0]),
+    (*b"1 ", [0, 0, 0, 0, 0, 0, 0, 0]),
+    (*b"2 ", [0, 0, 0, 0, 0, 0, 0, 0]),
+    (*b"2.", [0, 0, 0, 0, 0, 0, 0, 0]),
+    (*b"3 ", [0, 0, 0, 0, 0, 0, 0, 0]),
+    (*b"A ", [0, 0, 0, 0, 0, 0, 0, 0]),
+    (*b"AV", [-77, -133, -86, -113, -77, -133, -86, -113]),
+    (*b"AW", [-30, -70, -49, -91, -30, -72, -49, -91]),
+    (*b"AY", [-110, -161, -125, -158, -110, -161, -125, -158]),
+    (
+        *b"Ad",
+        [
+            0,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+        ],
+    ),
+    (*b"FA", [-67, -52, -58, -50, -67, -52, -58, -52]),
+    (*b"LT", [-126, -157, -131, -142, -126, -157, -131, -144]),
+    (*b"LV", [-126, -184, -111, -158, -126, -184, -113, -158]),
+    (*b"LY", [-154, -159, -135, -150, -154, -159, -135, -150]),
+    (
+        *b"Mm",
+        [
+            0,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+        ],
+    ),
+    (*b"PA", [-103, -88, -102, -64, -101, -90, -102, -64]),
+    (*b"T ", [0, 0, 0, 0, 0, 0, 0, 0]),
+    (*b"Ta", [-154, -133, -155, -133, -152, -133, -153, -133]),
+    (*b"Te", [-164, -164, -164, -164, -164, -164, -164, -164]),
+    (*b"To", [-165, -164, -166, -166, -162, -164, -164, -164]),
+    (*b"Tr", [-93, -90, -93, -93, -93, -90, -93, -93]),
+    (
+        *b"Tt",
+        [
+            0,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+        ],
+    ),
+    (*b"Ty", [-73, -70, -72, -72, -71, -72, -72, -72]),
+    (*b"V ", [0, 0, 0, 0, 0, 0, 0, 0]),
+    (*b"VA", [-77, -82, -84, -62, -77, -82, -86, -62]),
+    (*b"Vo", [-87, -86, -94, -97, -87, -88, -96, -95]),
+    (*b"W ", [0, 0, 0, 0, 0, 0, 0, 0]),
+    (*b"WA", [-30, -25, -49, -36, -28, -23, -49, -36]),
+    (*b"We", [-53, -52, -70, -72, -50, -49, -70, -72]),
+    (*b"Wo", [-53, -52, -70, -72, -50, -49, -70, -72]),
+    (*b"Y ", [0, 0, 0, 0, 0, 0, 0, 0]),
+    (*b"Ya", [-148, -117, -178, -148, -148, -117, -180, -148]),
+    (*b"Yo", [-142, -135, -143, -142, -142, -135, -143, -142]),
+    (*b"a ", [0, 0, 0, 0, 0, 0, 0, 0]),
+    (
+        *b"ae",
+        [
+            0,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+        ],
+    ),
+    (
+        *b"ah",
+        [
+            0,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+        ],
+    ),
+    (*b"ai", [0, 0, 0, 0, 0, 0, 0, 0]),
+    (*b"al", [0, 0, 0, 0, 0, 0, 0, 0]),
+    (
+        *b"an",
+        [
+            0,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+        ],
+    ),
+    (*b"ay", [0, -20, -8, -20, 0, -34, -7, -19]),
+    (
+        *b"bb",
+        [
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+            0,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+        ],
+    ),
+    (
+        *b"ce",
+        [
+            0,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+        ],
+    ),
+    (
+        *b"dv",
+        [
+            0,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+        ],
+    ),
+    (*b"e ", [0, 0, 0, 0, 0, 0, 0, 0]),
+    (
+        *b"ea",
+        [
+            0,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+        ],
+    ),
+    (*b"er", [0, 0, 0, 0, 0, 0, 0, 0]),
+    (*b"es", [-10, -9, -9, -9, -10, -9, -11, -11]),
+    (
+        *b"eu",
+        [
+            0,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+        ],
+    ),
+    (*b"ex", [-32, -32, -32, -32, -30, -30, -32, -32]),
+    (
+        *b"ht",
+        [
+            0,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+        ],
+    ),
+    (
+        *b"hu",
+        [
+            0,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+        ],
+    ),
+    (*b"ia", [-9, -11, -9, -9, -11, -11, -11, -11]),
+    (*b"it", [-5, -5, 5, 5, -5, -5, 3, 3]),
+    (*b"iv", [0, 0, 0, 0, 0, 0, 0, 0]),
+    (*b"l ", [0, 0, 0, 0, 0, 0, 0, 0]),
+    (*b"le", [0, -21, 0, -20, 0, -19, 0, -19]),
+    (
+        *b"mm",
+        [
+            0,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+        ],
+    ),
+    (
+        *b"nc",
+        [
+            0,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+        ],
+    ),
+    (*b"o ", [0, 0, 0, 0, 0, 0, 0, 0]),
+    (*b"r ", [0, 0, 0, 0, 0, 0, 0, 0]),
+    (*b"ra", [-61, -49, -61, -44, -49, -44, -44, -29]),
+    (*b"re", [-28, -25, -24, -18, -25, -25, -15, -15]),
+    (*b"ri", [0, 0, 0, 0, 0, 0, 0, 0]),
+    (*b"rv", [31, 5, 31, -5, 32, 34, 32, 38]),
+    (*b"se", [-11, -11, -15, -15, -13, -13, -17, -17]),
+    (*b"st", [-12, -11, -15, -15, -12, -13, -17, -17]),
+    (*b"t ", [0, 0, 0, 0, 0, 0, 0, 0]),
+    (
+        *b"te",
+        [
+            -10,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+        ],
+    ),
+    (
+        *b"th",
+        [
+            0,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+        ],
+    ),
+    (*b"ti", [0, 0, 0, 0, 0, 0, 0, 0]),
+    (*b"tl", [0, 0, 0, 0, 0, 0, 0, 0]),
+    (
+        *b"ts",
+        [
+            -8,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+        ],
+    ),
+    (
+        *b"tt",
+        [
+            0,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+        ],
+    ),
+    (
+        *b"tu",
+        [
+            0,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+        ],
+    ),
+    (
+        *b"ue",
+        [
+            0,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+        ],
+    ),
+    (
+        *b"uu",
+        [
+            0,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+        ],
+    ),
+    (
+        *b"va",
+        [
+            -7,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+        ],
+    ),
+    (*b"ve", [-20, 0, -20, 0, -19, -15, -19, -3]),
+    (*b"wa", [-7, -7, -22, -22, -7, -7, -21, -21]),
+    (*b"xt", [5, 5, 13, 13, 5, 5, 13, 13]),
+    (*b"y ", [0, 0, 0, 0, 0, 0, 0, 0]),
 ];
 
 impl WordAsciiMetrics {
@@ -1237,46 +1697,15 @@ impl WordAsciiMetrics {
     #[inline]
     pub(crate) fn pair_kerning_px(self, left: u8, right: u8) -> Option<f64> {
         match (self, left, right) {
-            (Self::Aptos(unit_px, display), left, right) => {
-                let units = if display {
-                    match (left, right) {
-                        (b'T', b'e') => -164,
-                        (b'e', b's') => -10,
-                        (b's', b't') => -12,
-                        (b'b', b'b') => 0,
-                        _ => return None,
-                    }
-                } else {
-                    match (left, right) {
-                        (b'T', b'e') => -164,
-                        (b'T', b'a') => -154,
-                        (b'e', b's') | (b't', b'e') => -10,
-                        (b's', b't') => -12,
-                        (b't', b's') => -8,
-                        (b'v', b'a') => -7,
-                        (b'T', b't')
-                        | (b't', b't')
-                        | (b'A', b'd')
-                        | (b'M', b'm')
-                        | (b'a', b'e')
-                        | (b'a', b'h')
-                        | (b'a', b'n')
-                        | (b'c', b'e')
-                        | (b'd', b'v')
-                        | (b'e', b'a')
-                        | (b'e', b'u')
-                        | (b'h', b't')
-                        | (b'h', b'u')
-                        | (b'm', b'm')
-                        | (b'n', b'c')
-                        | (b't', b'h')
-                        | (b't', b'u')
-                        | (b'u', b'e')
-                        | (b'u', b'u') => 0,
-                        _ => return None,
-                    }
-                };
-                Some(unit_px * f64::from(units))
+            (Self::Aptos(..), left, right) if left.is_ascii_digit() && right.is_ascii_digit() => {
+                Some(0.0)
+            }
+            (Self::Aptos(unit_px, face), left, right) => {
+                let index = WORD_APTOS_PAIR_UNITS
+                    .binary_search_by_key(&[left, right], |(pair, _)| *pair)
+                    .ok()?;
+                let units = WORD_APTOS_PAIR_UNITS[index].1[face];
+                (units != i16::MIN).then_some(unit_px * f64::from(units))
             }
             (Self::Calibri(unit_px, false), left, right)
                 if (b' '..=b'~').contains(&left) && (b' '..=b'~').contains(&right) =>
@@ -1285,7 +1714,7 @@ impl WordAsciiMetrics {
                     [usize::from(left - b' ') * 95 + usize::from(right - b' ')];
                 (units != i16::MIN).then_some(unit_px * f64::from(units))
             }
-            (Self::YuMincho(unit_px), left, right)
+            (Self::YuMincho(unit_px, _), left, right)
                 if (b' '..=b'~').contains(&left) && (b' '..=b'~').contains(&right) =>
             {
                 let units = WORD_YU_MINCHO_PAIR_UNITS
@@ -1385,13 +1814,9 @@ impl WordAsciiMetrics {
                 };
                 Some(unit_px * units)
             }
-            Self::Aptos(unit_px, display) => {
-                let units = if display {
-                    WORD_APTOS_DISPLAY_ASCII_UNITS[usize::from(ascii - b' ')]
-                } else {
-                    WORD_APTOS_ASCII_UNITS[usize::from(ascii - b' ')]
-                };
-                (units != 0).then_some(unit_px * f64::from(units))
+            Self::Aptos(unit_px, face) => {
+                let units = WORD_APTOS_ASCII_UNITS[face][usize::from(ascii - b' ')];
+                Some(unit_px * f64::from(units))
             }
             Self::Calibri(unit_px, bold) => {
                 let units = if bold {
@@ -1463,8 +1888,14 @@ impl WordAsciiMetrics {
                 let units = CENTURY_ASCII_UNITS[usize::from(ascii - b' ')];
                 (units > 0).then_some(unit_px * f64::from(units))
             }
-            Self::YuMincho(unit_px) | Self::YuMinchoBold(unit_px, _) => {
-                let units = YU_MINCHO_ASCII_UNITS[usize::from(ascii - b' ')];
+            Self::YuMincho(unit_px, _) | Self::YuMinchoBold(unit_px, _) => {
+                // The Word for Mac alignment fixture's YuMincho-Regular subset
+                // supplies these 2048-upem hmtx advances for ASCII punctuation.
+                let units = match (self, ascii) {
+                    (Self::YuMincho(_, true), b'(' | b')') => 883,
+                    (Self::YuMincho(_, true), b'-') => 805,
+                    _ => YU_MINCHO_ASCII_UNITS[usize::from(ascii - b' ')],
+                };
                 // The original Word headers/footer leave ASCII spaces unemboldened.
                 // Resolve the platform/style once with the cached metrics.
                 let plain_space = ascii == b' ' && matches!(self, Self::YuMinchoBold(_, true));
@@ -1689,16 +2120,16 @@ static WORD_YU_MINCHO_PAIR_UNITS: [i16; 95 * 95] = {
     units
 };
 
-// Numeric hmtx facts from YuMincho-Regular subsets embedded in the 38
-// unchanged Word PDFs in mac-glyph-corpus-20261010; every observed value agrees.
-// Zero means unobserved, so those characters retain host measurement. No font
-// program or glyph outlines are included. Index is printable ASCII minus 0x20.
+// Numeric hmtx facts from YuMincho-Regular subsets embedded in the Word for
+// Mac glyph corpus and the ASCII punctuation fixture. Zero leaves unobserved
+// characters to host measurement. Index is printable ASCII minus 0x20.
 const YU_MINCHO_ASCII_UNITS: [u16; 95] = [
-    532, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 559, 0, 559, 0, 1110, 1110, 1110, 1110, 1110, 1110, 1110,
-    1110, 1110, 1110, 0, 0, 0, 0, 0, 0, 0, 1448, 1411, 1495, 1706, 1313, 1235, 1653, 1686, 733, 0,
-    0, 1309, 0, 1645, 1735, 1358, 0, 1405, 1145, 1487, 0, 0, 2013, 0, 0, 0, 0, 0, 0, 0, 0, 0, 981,
-    1141, 948, 1149, 1004, 682, 1073, 1159, 588, 0, 1036, 549, 1743, 1190, 1096, 1163, 0, 795, 838,
-    709, 1157, 993, 1477, 969, 997, 0, 0, 0, 0, 0,
+    532, 655, 809, 1110, 1110, 1870, 1522, 469, 883, 883, 928, 1454, 559, 805, 559, 963, 1110,
+    1110, 1110, 1110, 1110, 1110, 1110, 1110, 1110, 1110, 590, 590, 1454, 1454, 1454, 1061, 1774,
+    1448, 1411, 1495, 1706, 1313, 1235, 1653, 1686, 733, 0, 0, 1309, 0, 1645, 1735, 1358, 0, 1405,
+    1145, 1487, 0, 0, 2013, 1378, 0, 0, 883, 1110, 883, 1106, 1024, 1024, 981, 1141, 948, 1149,
+    1004, 682, 1073, 1159, 588, 0, 1036, 549, 1743, 1190, 1096, 1163, 0, 795, 838, 709, 1157, 993,
+    1477, 969, 997, 0, 883, 795, 883, 1397,
 ];
 
 // Numeric hmtx facts from regular Century's MacRomanEncoding subsets in the
@@ -1914,7 +2345,10 @@ fn parse_word_ascii_metrics(
                 !italic && platform == WordLayoutPlatform::Mac,
             )
         } else {
-            WordAsciiMetrics::YuMincho(em_px / 2048.0)
+            WordAsciiMetrics::YuMincho(
+                em_px / 2048.0,
+                !italic && platform == WordLayoutPlatform::Mac,
+            )
         }),
         "游ゴシック Light" | "Yu Gothic Light" | "YuGothic-Light" if !bold && !italic => {
             Some(WordAsciiMetrics::YuGothicLight(em_px / 2048.0))
@@ -1925,11 +2359,10 @@ fn parse_word_ascii_metrics(
         "Century" if !bold && !italic => Some(WordAsciiMetrics::Century(em_px / 2048.0)),
         "Bookman Old Style" if !bold && !italic => Some(WordAsciiMetrics::Bookman(em_px / 2048.0)),
         "Calibri" if !italic => Some(WordAsciiMetrics::Calibri(em_px / 2048.0, bold)),
-        "Aptos" if !bold && !italic && platform == WordLayoutPlatform::Mac => {
-            Some(WordAsciiMetrics::Aptos(em_px / 2048.0, false))
-        }
-        "Aptos Display" if !bold && !italic && platform == WordLayoutPlatform::Mac => {
-            Some(WordAsciiMetrics::Aptos(em_px / 2048.0, true))
+        "Aptos" | "Aptos Display" if platform == WordLayoutPlatform::Mac => {
+            let family_offset = if family == "Aptos Display" { 4 } else { 0 };
+            let face = family_offset + 2 * usize::from(bold) + usize::from(italic);
+            Some(WordAsciiMetrics::Aptos(em_px / 2048.0, face))
         }
         "Noto Sans" if !bold && !italic => Some(WordAsciiMetrics::NotoSans(em_px / 2048.0)),
         "Noto Sans JP" | "NotoSansJP" if !bold && !italic => {
@@ -2032,6 +2465,74 @@ pub fn word_monospace_advance_px(font_descriptor: &str, grapheme: &str) -> Optio
     Some(word_monospace_em_px(font_descriptor)? * cell)
 }
 
+// MS PGothic uses a 256-unit em with proportional kana and punctuation.
+// These advances are used by the Mac profile even when the host substitutes
+// a fixed-pitch Japanese face. Zero entries leave unsupported glyphs to it.
+const MS_PGOTHIC_ASCII_UNITS: [u16; 95] = [
+    78, 56, 128, 128, 128, 128, 152, 52, 78, 78, 128, 128, 52, 128, 52, 128, 128, 128, 128, 128,
+    128, 128, 128, 128, 128, 128, 52, 52, 128, 128, 128, 116, 171, 162, 163, 170, 166, 145, 141,
+    174, 164, 63, 139, 153, 138, 190, 164, 181, 158, 181, 160, 154, 151, 164, 162, 190, 154, 151,
+    145, 86, 129, 86, 106, 78, 106, 122, 127, 128, 127, 128, 78, 118, 128, 54, 56, 118, 54, 188,
+    128, 130, 127, 127, 89, 118, 90, 128, 122, 166, 118, 122, 117, 60, 60, 60, 106,
+];
+const MS_PGOTHIC_PUNCTUATION_UNITS: [u16; 33] = [
+    170, 170, 170, 256, 256, 256, 256, 256, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128, 256,
+    256, 128, 128, 256, 256, 256, 256, 256, 256, 256, 256, 256, 256, 256,
+];
+const MS_PGOTHIC_KANA_UNITS: [u16; 191] = [
+    191, 241, 206, 242, 154, 181, 192, 231, 206, 242, 256, 256, 216, 231, 151, 209, 242, 251, 204,
+    229, 196, 226, 196, 196, 246, 251, 256, 256, 236, 246, 236, 236, 221, 231, 206, 244, 245, 231,
+    231, 196, 226, 231, 241, 256, 256, 256, 256, 256, 256, 246, 246, 246, 256, 256, 256, 256, 256,
+    256, 256, 256, 256, 228, 256, 251, 251, 206, 216, 256, 216, 251, 186, 221, 206, 191, 221, 256,
+    216, 221, 256, 256, 256, 219, 246, 211, 211, 211, 0, 0, 256, 256, 128, 128, 188, 179, 256, 256,
+    194, 230, 167, 211, 193, 241, 190, 229, 207, 239, 211, 236, 246, 247, 206, 241, 238, 246, 204,
+    228, 256, 256, 230, 230, 231, 247, 234, 251, 206, 226, 196, 236, 233, 246, 188, 221, 236, 227,
+    246, 166, 181, 241, 233, 211, 238, 181, 256, 256, 256, 196, 221, 221, 206, 226, 226, 242, 242,
+    242, 236, 244, 244, 231, 171, 250, 184, 230, 206, 251, 208, 246, 161, 186, 207, 191, 256, 218,
+    221, 196, 241, 256, 256, 206, 221, 246, 186, 199, 233, 246, 247, 236, 128, 246, 191, 191, 256,
+];
+const MS_PGOTHIC_WIDTH_FORMS_UNITS: [u16; 159] = [
+    256, 256, 256, 256, 256, 256, 256, 128, 128, 256, 256, 170, 256, 170, 256, 175, 175, 175, 175,
+    175, 175, 175, 175, 175, 175, 128, 128, 256, 256, 256, 256, 256, 183, 199, 190, 194, 182, 162,
+    198, 197, 70, 155, 193, 161, 239, 197, 206, 182, 206, 194, 190, 158, 197, 183, 251, 167, 166,
+    166, 128, 256, 128, 128, 256, 128, 147, 154, 144, 154, 144, 76, 148, 159, 64, 64, 152, 64, 240,
+    159, 155, 155, 154, 97, 146, 86, 159, 131, 199, 133, 127, 130, 128, 256, 128, 256, 128, 128,
+    113, 113, 113, 113, 113, 140, 134, 114, 123, 120, 132, 134, 129, 112, 128, 164, 158, 145, 160,
+    153, 163, 144, 167, 138, 159, 134, 170, 151, 163, 165, 142, 135, 154, 154, 154, 118, 165, 153,
+    148, 166, 126, 163, 132, 140, 157, 164, 155, 116, 169, 130, 156, 170, 164, 133, 143, 131, 168,
+    145, 143, 151, 144, 64, 59,
+];
+
+pub(crate) fn word_mac_ms_pgothic_advance_px(font_descriptor: &str, grapheme: &str) -> Option<f64> {
+    if word_layout_platform() != WordLayoutPlatform::Mac {
+        return None;
+    }
+    let (size_pt, family) = split_font_descriptor(font_descriptor)?;
+    if !size_pt.is_finite()
+        || size_pt <= 0.0
+        || !matches!(
+            family.trim_matches(|ch| ch == '\'' || ch == '"'),
+            "ＭＳ Ｐゴシック" | "ＭＳＰゴシック" | "MS P Gothic" | "MS PGothic" | "MS-PGothic"
+        )
+    {
+        return None;
+    }
+    let mut chars = grapheme.chars();
+    let codepoint = chars.next()? as usize;
+    if chars.next().is_some() {
+        return None;
+    }
+    let units = match codepoint {
+        0x0020..=0x007e => MS_PGOTHIC_ASCII_UNITS[codepoint - 0x0020],
+        0x3000..=0x3020 => MS_PGOTHIC_PUNCTUATION_UNITS[codepoint - 0x3000],
+        0x3041..=0x30ff => MS_PGOTHIC_KANA_UNITS[codepoint - 0x3041],
+        0x3400..=0x4dbf | 0x4e00..=0x9fff | 0xf900..=0xfaff => 256,
+        0xff01..=0xff9f => MS_PGOTHIC_WIDTH_FORMS_UNITS[codepoint - 0xff01],
+        _ => return None,
+    };
+    (units != 0).then_some(f64::from(units) * f64::from(size_pt) / 192.0)
+}
+
 #[cfg(test)]
 thread_local! {
     pub(crate) static WORD_FIXED_CJK_DESCRIPTOR_PARSES: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
@@ -2108,30 +2609,55 @@ pub(crate) fn word_fixed_east_asian_em_px(font_descriptor: &str) -> Option<f64> 
 /// hmtx advance, despite selecting the HAnsi slot (General Punctuation).
 /// Calibri Bold's U+2014 has 1854/2048em in both original section headings.
 /// Regular Noto Sans U+25CB has 1237/2048em in the original Yokohama title.
+/// The inline emoji probe gives the text heart a half-em in MS Mincho
+/// and a full em in Yu Mincho.
 /// This is an observed face metric, not a Unicode-wide width assumption.
 /// Unknown characters/faces/styles retain the host measurement.
 #[inline]
 pub fn word_observed_unicode_advance_px(font_descriptor: &str, grapheme: &str) -> Option<f64> {
-    if !matches!(grapheme, "…" | "—" | "○") {
+    if !matches!(grapheme, "…" | "—" | "○" | "\u{a0}" | "△" | "♥") {
         return None;
     }
     let (size_pt, family) = split_font_descriptor(font_descriptor)?;
     if !size_pt.is_finite() || size_pt <= 0.0 {
         return None;
     }
+    let family = family.trim_matches(|ch| ch == '\'' || ch == '"');
+    if grapheme == "△" {
+        return matches!(family, "Cambria Math" | "CambriaMath")
+            .then_some(f64::from(size_pt) * 96.0 / 72.0 * 1482.0 / 2048.0);
+    }
+    if grapheme == "\u{a0}" {
+        let units = match family {
+            "游明朝" | "Yu Mincho" | "YuMincho" | "YuMincho-Regular" => YU_MINCHO_ASCII_UNITS[0],
+            "游ゴシック Light" | "Yu Gothic Light" | "YuGothic-Light" => 584,
+            _ => return None,
+        };
+        return Some(f64::from(size_pt) * 96.0 / 72.0 * f64::from(units) / 2048.0);
+    }
     let (bold, italic) = font_descriptor_style(font_descriptor);
     if grapheme == "—" {
-        return (bold && !italic && family.trim_matches(|ch| ch == '\'' || ch == '"') == "Calibri")
+        return (bold && !italic && family == "Calibri")
             .then_some(f64::from(size_pt) * 96.0 / 72.0 * 1854.0 / 2048.0);
     }
     if bold || italic {
         return None;
     }
+    if grapheme == "♥" {
+        let cell = match family {
+            "ＭＳ 明朝" | "MS 明朝" | "MS Mincho" | "ＭＳ明朝" | "MS-Mincho" | "Mincho" => {
+                0.5
+            }
+            "游明朝" | "Yu Mincho" | "YuMincho" | "YuMincho-Regular" => 1.0,
+            _ => return None,
+        };
+        return Some(f64::from(size_pt) * 96.0 / 72.0 * cell);
+    }
     if grapheme == "○" {
-        return (family.trim_matches(|ch| ch == '\'' || ch == '"') == "Noto Sans")
+        return (family == "Noto Sans")
             .then_some(f64::from(size_pt) * 96.0 / 72.0 * 1237.0 / 2048.0);
     }
-    match family.trim_matches(|ch| ch == '\'' || ch == '"') {
+    match family {
         "ＭＳ 明朝"
         | "MS 明朝"
         | "MS Mincho"
@@ -2140,6 +2666,37 @@ pub fn word_observed_unicode_advance_px(font_descriptor: &str, grapheme: &str) -
         | "游ゴシック Light"
         | "Yu Gothic Light"
         | "YuGothic-Light" => Some(f64::from(size_pt) * 96.0 / 72.0),
+        _ => None,
+    }
+}
+
+/// Yu Mincho pair advances verified against Word for Mac's PDF output.
+pub(crate) fn word_mac_cjk_pair_kerning_px(
+    font_descriptor: &str,
+    previous: &str,
+    current: &str,
+) -> Option<f64> {
+    if word_layout_platform() != WordLayoutPlatform::Mac {
+        return None;
+    }
+    let units = match (previous, current) {
+        // Word keeps these Yu Mincho pairs at full pitch. CoreText can
+        // otherwise apply different kana kerning across macOS versions.
+        ("メ", "ー") | ("ー", "ル") => 0.0,
+        ("す", "。") | ("ず", "、") => -307.0,
+        ("ぎ", "、") => -266.0,
+        ("え", "で" | "て") => -143.0,
+        ("プ", "ル") | ("っ", "て") | ("げ", "の" | "た" | "が" | "る") | ("ダ", "ク") => {
+            -123.0
+        }
+        ("し", "て") | ("ど", "の" | "う") => -102.0,
+        ("す", "べ") => -82.0,
+        _ => return None,
+    };
+    match word_ascii_metrics(font_descriptor)? {
+        WordAsciiMetrics::YuMincho(unit_px, _) | WordAsciiMetrics::YuMinchoBold(unit_px, _) => {
+            Some(units * unit_px)
+        }
         _ => None,
     }
 }
@@ -2957,7 +3514,7 @@ fn proportional_line_multiple(spacing: Option<&Spacing>) -> Option<f32> {
 /// Word for Mac sizes an unsnapped atLeast line from its fonts and only then
 /// applies w:line as a lower bound. Keep the existing Windows policy until
 /// its font metrics are independently verified.
-fn word_minimum_line_height_pt(spacing: Option<&Spacing>) -> Option<f32> {
+pub fn word_minimum_line_height_pt(spacing: Option<&Spacing>) -> Option<f32> {
     if word_layout_platform() != WordLayoutPlatform::Mac {
         return None;
     }
@@ -4054,6 +4611,41 @@ mod tests {
     }
 
     #[test]
+    fn mac_litigation_faces_use_observed_font_advances() {
+        set_word_layout_platform(WordLayoutPlatform::Mac);
+        let font = "12.00pt 'Yu Mincho'";
+        assert_eq!(
+            word_observed_unicode_advance_px("12.00pt 'Cambria Math'", "△"),
+            Some(1482.0 / 128.0)
+        );
+        assert_eq!(
+            word_ascii_metrics("italic 12.00pt Aptos")
+                .unwrap()
+                .advance_px(b'1'),
+            Some(1094.0 / 128.0)
+        );
+        assert_eq!(
+            word_observed_unicode_advance_px(font, "\u{a0}"),
+            Some(532.0 / 128.0)
+        );
+        assert_eq!(
+            word_observed_unicode_advance_px("12.00pt 'Yu Gothic Light'", "\u{a0}"),
+            Some(584.0 / 128.0)
+        );
+        assert_eq!(
+            word_mac_cjk_pair_kerning_px(font, "す", "。"),
+            Some(-307.0 / 128.0)
+        );
+        assert_eq!(
+            word_mac_cjk_pair_kerning_px(font, "し", "て"),
+            Some(-102.0 / 128.0)
+        );
+        assert_eq!(word_mac_cjk_pair_kerning_px(font, "メ", "ー"), Some(0.0));
+        assert_eq!(word_mac_cjk_pair_kerning_px(font, "ー", "ル"), Some(0.0));
+        assert_eq!(word_mac_cjk_pair_kerning_px(font, "る", "。"), None);
+    }
+
+    #[test]
     fn mac_body_before_spacing_preserves_section_and_inline_break_contracts() {
         set_word_layout_platform(WordLayoutPlatform::Mac);
         assert_eq!(
@@ -5020,38 +5612,38 @@ mod tests {
     }
 
     #[test]
-    fn aptos_regular_advances_and_pairs_use_original_word_numeric_metrics() {
+    fn aptos_advances_and_pairs_use_original_word_numeric_metrics() {
         set_word_layout_platform(WordLayoutPlatform::Mac);
-        for (descriptor, character, units) in [
-            ("12.00pt Aptos", b'T', 980.0),
-            ("12.00pt Aptos", b'e', 1079.0),
-            ("12.00pt Aptos", b'1', 1094.0),
-            ("20.00pt 'Aptos Display'", b'T', 977.0),
-            ("20.00pt 'Aptos Display'", b'b', 1062.0),
+        for (descriptor, character, advance, [left, right], kern) in [
+            ("12.00pt Aptos", b'T', 980.0, *b"Te", -164.0),
+            ("italic 12.00pt Aptos", b'r', 682.0, *b"To", -164.0),
+            ("bold 12.00pt Aptos", b'A', 1270.0, *b"AV", -86.0),
+            ("bold italic 12.00pt Aptos", b'W', 1927.0, *b"WA", -36.0),
+            ("12.00pt 'Aptos Display'", b'b', 1062.0, *b"Te", -164.0),
+            (
+                "italic 12.00pt 'Aptos Display'",
+                b'p',
+                1064.0,
+                *b"To",
+                -164.0,
+            ),
+            ("bold 12.00pt 'Aptos Display'", b'V', 1230.0, *b"AV", -86.0),
+            (
+                "bold italic 12.00pt 'Aptos Display'",
+                b'a',
+                1048.0,
+                *b"WA",
+                -36.0,
+            ),
         ] {
             let metrics = word_ascii_metrics(descriptor).expect("original Word Aptos face");
-            let size = if descriptor.starts_with("20") {
-                20.0
-            } else {
-                12.0
-            };
-            assert!(
-                (metrics.advance_px(character).unwrap() - size * 96.0 / 72.0 * units / 2048.0)
-                    .abs()
-                    < 1e-9
-            );
-            assert_eq!(metrics.advance_px(b'~'), None);
-            assert_eq!(metrics.advance_px(b' '), None);
+            assert_eq!(metrics.advance_px(character), Some(advance / 128.0));
+            assert_eq!(metrics.pair_kerning_px(left, right), Some(kern / 128.0));
+            assert_eq!(metrics.pair_kerning_px(b'1', b'1'), Some(0.0));
+            assert_eq!(metrics.pair_kerning_px(b'1', b'2'), Some(0.0));
+            assert_eq!(metrics.advance_px(0), None);
             assert_eq!(metrics.pair_kerning_px(b'~', b'~'), None);
-            assert!(
-                (metrics.pair_kerning_px(b'T', b'e').unwrap()
-                    + size * 96.0 / 72.0 * 164.0 / 2048.0)
-                    .abs()
-                    < 1e-9
-            );
         }
-        assert!(word_ascii_metrics("bold 12.00pt Aptos").is_none());
-        assert!(word_ascii_metrics("italic 12.00pt Aptos").is_none());
         set_word_layout_platform(WordLayoutPlatform::Windows);
         assert!(word_ascii_metrics("12.00pt Aptos").is_none());
         assert!(word_ascii_metrics("20.00pt 'Aptos Display'").is_none());

@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "sourceSha256": "d8522127159e678d3613aaae07d1591876e84afa496ef17cdcc6e28e48c83baa",
+  "reference": {
+    "application": "Microsoft Word",
+    "platform": "mac",
+    "version": "16.114",
+    "export": "Save As > PDF",
+    "pdfSha256": "fb7e33102f554503f5917c1476201acfc55351a4995acb96b82c3f3724894f04",
+    "build": "16.114.26101123",
+    "osVersion": "macOS 27.0.1",
+    "extractor": "SDK macOS Word glyph reference using captured row baselines"
+  },
+  "pages": 3,
+  "axisTolerancePt": 0.65,
+  "coordinatesSha256": "733a94e355ebc33c91f6d2a3f2a0ed11157fab8a9e53c250cd22d626e8b9a4e0"
+}

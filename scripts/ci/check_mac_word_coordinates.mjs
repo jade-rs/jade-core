@@ -1,0 +1,309 @@
+import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
+import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
+import { createRequire } from 'node:module';
+import { gunzipSync } from 'node:zlib';
+
+const { chromium } = createRequire(import.meta.url)('playwright');
+const root = new URL('../../', import.meta.url);
+const corpus = new URL('tests/word-oracle/mac-elsa-synthetic/', root);
+const wasm = new URL('crates/jade-docx-editor/pkg/', root);
+const report = new URL('target/word-mac-browser-differences.json', root);
+const pt = 72 / 96;
+const finalRevisionView = new Set([
+  'numbering-with-review-mac', 'review-duplicate-ids-mac', 'review-kinds-mac',
+  'numbering-del-mac', 'numbering-del2-mac',
+]);
+const shapedArabic = new Set(['table-inline-image-mac', 'table-object-edge-cases-mac']);
+const arabicScript = /\p{Script=Arabic}/u;
+const textBoxes = new Map([
+  ['floating-wrap-sides-mac', 3], ['floating-inside-outside-mac', 4],
+  ['floating-simple-position-mac', 1], ['floating-square-wrap-mac', 1],
+  ['floating-through-concave-mac', 1], ['floating-tight-polygon-mac', 1],
+  ['floating-top-bottom-offset-mac', 1], ['floating-z-order-mac', 3],
+  ['numbering-textbox-full-matrix-mac', 1], ['textbox-fixed-pitch-matrix-mac', 1],
+  ['textbox-body-properties-mac', 1], ['textbox-dashed-mac', 1],
+  ['textbox-tall-header-overlap-mac', 1], ['document-variable-fields-mac', 1],
+  ['word-compat-comprehensive-mac', 1], ['table-object-edge-cases-mac', 1],
+  ['table-inline-image-mac', 1],
+  ['footnote-table-textbox-order-mac', 1],
+]);
+
+function hash(bytes) {
+  return createHash('sha256').update(bytes).digest('hex');
+}
+
+function visibleGlyph(text = '') {
+  const normalized = text.trim().normalize('NFC')
+    .replace(/[\u2F00-\u2FD5]/g, radical => radical.normalize('NFKC'))
+    .replaceAll('⻑', '長').replaceAll('⺠', '民').replaceAll('⻘', '青').replaceAll('⻲', '亀');
+  return /\p{Extended_Pictographic}/u.test(normalized)
+    ? normalized.replace(/[\uFE0F\u200D]/g, '')
+    : normalized;
+}
+
+function compareGlyphs(expected, actual, tolerance, toleranceX = tolerance) {
+  const candidates = new Map();
+  for (const glyph of actual) {
+    const [text] = glyph;
+    if (!candidates.has(text)) candidates.set(text, []);
+    candidates.get(text).push(glyph);
+  }
+  const missing = [];
+  for (const glyph of expected) {
+    const [text, x, y] = glyph;
+    const positions = candidates.get(text);
+    const match = positions?.findIndex(([, ax, ay]) =>
+      Math.abs(ax - x) <= toleranceX && Math.abs(ay - y) <= tolerance) ?? -1;
+    if (match === -1) missing.push(glyph);
+    else positions.splice(match, 1);
+  }
+  return { missing, extra: [...candidates.values()].flat() };
+}
+
+async function capture(page, bytes, name) {
+  await page.route('https://word-coordinates.test/document.docx', route => route.fulfill({
+    body: bytes,
+  }));
+  try {
+    return await page.evaluate(async ({ revisionFinal, captureArabic }) => {
+      const paintedArabic = [];
+      const context = OffscreenCanvasRenderingContext2D.prototype;
+      const fillText = context.fillText;
+      if (captureArabic) {
+        context.fillText = function(text, x, y, ...rest) {
+          const start = text.search(/\p{Script=Arabic}/u);
+          if (start >= 0) {
+            const offset = this.measureText(text.slice(0, start)).width;
+            const origin = this.getTransform().transformPoint({ x: x + offset, y });
+            paintedArabic.push({ text: text.slice(start), x: origin.x, y: origin.y });
+          }
+          return fillText.call(this, text, x, y, ...rest);
+        };
+      }
+      const wasm = await import('/wasm/jade_docx.js');
+      await wasm.default();
+      wasm.setWordLayoutPlatform('mac');
+      const options = new wasm.Options();
+      options.show_formatting_marks = false;
+      if (revisionFinal) options.renderChanges = false;
+      else options.useDocumentRevisionView();
+      const view = new wasm.OffscreenDocumentView(new OffscreenCanvas(816, 1056), options, 1);
+      try {
+        const response = await fetch('/document.docx');
+        await view.load_docx(new Uint8Array(await response.arrayBuffer()));
+        await view.waitForPendingImages();
+        const layout = view.captureFullLayoutDebug();
+        return {
+          ...layout,
+          paintedArabic,
+          dimensions: Array.from({ length: layout.page_count }, (_, i) => view.page_dimensions(i)),
+        };
+      } finally {
+        context.fillText = fillText;
+        view.free();
+      }
+    }, { revisionFinal: finalRevisionView.has(name), captureArabic: shapedArabic.has(name) });
+  } finally {
+    await page.unroute('https://word-coordinates.test/document.docx');
+  }
+}
+
+function checkStories(name, actual) {
+  const uncaptured = [];
+  if (name === 'footnote-table-textbox-order-mac') {
+    // Word omits the note referenced from inside the text box.
+    uncaptured.push('footnotes');
+    assert.equal(actual.auxiliary_lines.filter(entry => entry.story === 'footnote').length, 7);
+    assert.equal(actual.auxiliary_lines.filter(entry => entry.story === 'endnote').length, 2);
+  }
+  if (textBoxes.has(name)) {
+    uncaptured.push('text_boxes');
+    assert.equal(actual.source_surface_indices_complete, true);
+    assert.equal(actual.text_box_source_inventory_complete, true);
+    assert.equal(actual.source_text_stories.length, textBoxes.get(name));
+    assert.equal(actual.text_box_regions.length, textBoxes.get(name));
+    let emptyParagraphs = 0;
+    for (const { kind, paragraphIndex, runIndex } of actual.source_text_stories) {
+      assert.equal(kind, 'text_box');
+      const regions = actual.text_box_regions.filter(region =>
+        region.paragraphIndex === paragraphIndex && region.runIndex === runIndex);
+      assert.equal(regions.length, 1);
+      const [region] = regions;
+      assert(region.contentParagraphEnd > region.contentParagraphStart);
+      for (let paragraph = region.contentParagraphStart; paragraph < region.contentParagraphEnd; paragraph++) {
+        const visible = actual.auxiliary_lines.some(entry =>
+          entry.page === region.page - 1 && entry.story === 'text_box' &&
+          entry.line.paragraph === paragraph &&
+          entry.line.fragments?.some(fragment => fragment.glyphs?.some(glyph => visibleGlyph(glyph.text))));
+        if (!visible) emptyParagraphs++;
+      }
+    }
+    const hasEmptyParagraph = name === 'floating-z-order-mac' || name === 'textbox-tall-header-overlap-mac';
+    assert.equal(emptyParagraphs, Number(hasEmptyParagraph), 'empty text box paragraphs');
+  }
+  assert.deepEqual(actual.known_uncaptured_stories, uncaptured);
+}
+
+function referenceGlyphs(name, page) {
+  if (name === 'hidden-text-character-effects-mac') {
+    // Word exports the decorative paragraphs as paths and multiple PDF layers.
+    const visible = page.body.filter(([, , y]) => y > 150 && y < 165);
+    assert.equal(visible.map(([text]) => text).join(''), 'Visibletail');
+    return visible;
+  }
+  if (name === 'unicode-segmentation-mac') {
+    assert.equal(page.body.filter(([text]) => text === '禰' || text === '🧑🧑🧒🧒').length, 2);
+    const kana = page.body.findIndex(([text]) => text === 'ﾌ');
+    assert.deepEqual(page.body.slice(kana, kana + 2).map(([text]) => text), ['ﾌ', 'ﾟ']);
+    // Map the PDF text layer back to the graphemes whose origins Word exported.
+    const graphemes = { '禰': '禰󠄀', '🧑🧑🧒🧒': '👨👨👧👦', 'ﾌ': 'ﾌﾟ' };
+    return page.body.flatMap(([text, x, y], i) => i === kana + 1 ? [] : [[graphemes[text] ?? text, x, y]]);
+  }
+  return [...page.header, ...page.body, ...page.footer];
+}
+
+function checkPages(name, reference, actual, manifest) {
+  assert.equal(actual.complete, true, 'layout capture is incomplete');
+  assert.equal(actual.page_count, reference.length, 'page count');
+  assert(Array.isArray(actual.objects), 'missing object bounds');
+  checkStories(name, actual);
+  const tolerance = manifest.axisTolerancePt;
+  const registration = manifest.horizontalPrintRegistration;
+  const compareAsGlyph = text => !shapedArabic.has(name) || !arabicScript.test(text);
+  if (shapedArabic.has(name)) {
+    // Browser shaping paints the Arabic span in a single Canvas operation.
+    assert.equal(reference.length, 1);
+    const text = 'مرحبا';
+    const arabic = reference[0].body.filter(([glyph]) => arabicScript.test(glyph));
+    assert.equal(arabic.map(([glyph]) => glyph.normalize('NFKC')).join(''), text);
+    const x = Math.min(...arabic.map(([, origin]) => origin));
+    const y = arabic[0][2];
+    assert(actual.paintedArabic.length > 0, 'Arabic span was not painted');
+    for (const span of actual.paintedArabic) {
+      assert.equal(span.text, text);
+      assert(Math.abs(span.x * pt - x) <= tolerance, 'painted Arabic origin');
+      assert(Math.abs(span.y * pt - y) <= tolerance, 'painted Arabic baseline');
+    }
+  }
+  const glyphs = reference.map(() => []);
+  const images = reference.map(() => []);
+  const entries = actual.body_lines.map(line => ({ page: line.page, line }));
+  const lines = name === 'hidden-text-character-effects-mac'
+    ? entries.filter(({ line }) => line.paragraph === 4)
+    : [...entries, ...actual.auxiliary_lines];
+  for (const { page, line } of lines) {
+    for (const fragment of line.fragments ?? []) {
+      for (const glyph of fragment.glyphs ?? []) {
+        const text = visibleGlyph(glyph.text);
+        const x = fragment.x + glyph.x - 2 * line.report_x_offset;
+        if (text && compareAsGlyph(text)) glyphs[page].push([text, x * pt, fragment.baseline * pt]);
+      }
+    }
+  }
+  for (const { kind, page, x, y, width, height, rotationDeg } of actual.objects) {
+    if (kind !== 'image') continue;
+    assert.equal(rotationDeg, 0, `page ${page} image rotation`);
+    images[page - 1].push([x * pt, y * pt, (x + width) * pt, (y + height) * pt]);
+  }
+
+  const within = (expected, measured) => expected.every((v, i) => Math.abs(v - measured[i]) <= tolerance);
+  const topToBottom = (a, b) => a[1] - b[1] || a[0] - b[0];
+  const differences = [];
+  for (const [i, expected] of reference.entries()) {
+    const page = i + 1;
+    const size = actual.dimensions[i];
+    if (!size || !within(expected.size, [size.width * pt, size.height * pt])) {
+      differences.push({ page, expectedSize: expected.size, actualSize: size });
+    }
+    let offset = 0;
+    if (registration) {
+      const firstX = expected.body[0][1];
+      offset = firstX - registration.bodyLeftMarginPt;
+      const lines = actual.body_lines.filter(line => line.page === i);
+      assert.equal(lines.length, expected.bodyLineEnds.length, `page ${page} line count`);
+      for (const [j, [x, y]] of expected.bodyLineEnds.entries()) {
+        const line = lines[j];
+        if (line.report_x_offset !== 0 ||
+            !within([firstX, x, y], [line.start_x * pt, line.end_x * pt, line.baseline * pt])) {
+          differences.push({ page, line: j + 1, expected: [firstX, x, y], actual: line });
+        }
+      }
+    }
+    const origins = referenceGlyphs(name, expected)
+      .filter(([text]) => compareAsGlyph(text))
+      .map(([text, x, y]) => [visibleGlyph(text), x - offset, y]);
+    const { missing, extra } = compareGlyphs(origins, glyphs[i], tolerance, registration?.glyphTolerancePt);
+    if (missing.length || extra.length) differences.push({ page, missing, extra });
+    const expectedImages = [...expected.images].sort(topToBottom);
+    const actualImages = images[i].sort(topToBottom);
+    if (expectedImages.length !== actualImages.length ||
+        expectedImages.some((bounds, j) => !within(bounds, actualImages[j]))) {
+      differences.push({ page, expectedImages, actualImages });
+    }
+  }
+  return differences;
+}
+
+const directories = (await readdir(corpus, { withFileTypes: true }))
+  .filter(entry => entry.isDirectory()).map(entry => entry.name).sort();
+assert(directories.length > 0, 'no Word coordinate fixtures found');
+const names = process.argv.length > 2 ? process.argv.slice(2) : directories;
+const browser = await chromium.launch();
+const failures = [];
+try {
+  const page = await browser.newPage();
+  await page.route('https://word-coordinates.test/', route => route.fulfill({
+    contentType: 'text/html', body: '<!doctype html><title>Word coordinate comparison</title>',
+  }));
+  const assets = new Map();
+  await page.route('https://word-coordinates.test/wasm/**', async route => {
+    const filename = new URL(route.request().url()).pathname.slice('/wasm/'.length);
+    if (!/^(jade_docx\.js|jade_docx_bg\.wasm|snippets\/[a-z0-9-]+\/[a-z0-9]+\.js)$/.test(filename)) {
+      await route.fulfill({ status: 404 });
+      return;
+    }
+    if (!assets.has(filename)) assets.set(filename, await readFile(new URL(filename, wasm)));
+    await route.fulfill({
+      body: assets.get(filename),
+      contentType: filename.endsWith('.wasm') ? 'application/wasm' : 'text/javascript',
+    });
+  });
+  for (const name of names) {
+    try {
+      assert(directories.includes(name), `unknown fixture: ${name}`);
+      const dir = new URL(`${name}/`, corpus);
+      const [manifestBytes, bytes, compressed] = await Promise.all(
+        ['manifest.json', 'source.docx', 'pages.json.gz'].map(filename => readFile(new URL(filename, dir))),
+      );
+      const manifest = JSON.parse(manifestBytes);
+      assert.equal(manifest.schema, 1);
+      assert.equal(manifest.reference.platform, 'mac');
+      assert.equal(hash(bytes), manifest.sourceSha256, 'DOCX digest');
+      assert.equal(hash(compressed), manifest.coordinatesSha256, 'Word reference digest');
+      const reference = JSON.parse(gunzipSync(compressed));
+      assert.equal(reference.length, manifest.pages, 'reference page count');
+      await page.goto('https://word-coordinates.test/');
+      const actual = await capture(page, bytes, name);
+      const differences = checkPages(name, reference, actual, manifest);
+      if (differences.length) {
+        failures.push({ name, differences });
+        const pages = [...new Set(differences.map(difference => difference.page))];
+        console.error(`${name}: coordinates differ on pages ${pages.join(', ')}`);
+      } else {
+        console.log(`${name}: ${manifest.pages} pages within ${manifest.axisTolerancePt} pt`);
+      }
+    } catch (error) {
+      failures.push({ name, error: error.message });
+      console.error(`${name}: ${error.message}`);
+    }
+  }
+} finally {
+  await browser.close();
+}
+console.log(`${names.length - failures.length}/${names.length} Word coordinate fixtures passed`);
+if (failures.length) {
+  await mkdir(new URL('.', report), { recursive: true });
+  await writeFile(report, JSON.stringify(failures, null, 2) + '\n');
+  process.exitCode = 1;
+}

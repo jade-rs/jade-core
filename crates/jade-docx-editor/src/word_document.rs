@@ -5087,7 +5087,7 @@ impl WordDocument {
     /// that `target` leaves unset from `fallback`: a paragraph that sets only
     /// `w:after` keeps the line spacing it inherits. Each is taken whole, so an
     /// inherited `w:beforeLines` never sits beside a nearer `w:before`.
-    fn fill_missing_spacing(target: &mut Spacing, fallback: &Spacing) {
+    pub(crate) fn fill_missing_spacing(target: &mut Spacing, fallback: &Spacing) {
         target.inherit_spacing_sides_from(fallback);
         if target.line.is_none() && target.line_rule.is_none() {
             target.line = fallback.line;
