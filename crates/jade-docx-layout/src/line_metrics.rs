@@ -2555,10 +2555,7 @@ const MS_PGOTHIC_WIDTH_FORMS_UNITS: [u16; 159] = [
     145, 143, 151, 144, 64, 59,
 ];
 
-pub(crate) fn word_mac_ms_pgothic_advance_px(font_descriptor: &str, grapheme: &str) -> Option<f64> {
-    if word_layout_platform() != WordLayoutPlatform::Mac {
-        return None;
-    }
+fn ms_pgothic_advance_px(font_descriptor: &str, grapheme: &str) -> Option<f64> {
     let (size_pt, family) = split_font_descriptor(font_descriptor)?;
     if !size_pt.is_finite()
         || size_pt <= 0.0
@@ -3175,6 +3172,34 @@ pub fn word_mac_emoji_advance_px(grapheme: &str, font_descriptor: &str) -> Optio
     {
         return None;
     }
+    emoji_advance_px(font_descriptor)
+}
+
+/// Word for Mac supplies these advances independently of the substituted face.
+#[inline]
+pub(crate) fn word_mac_substitute_advance_px(
+    font_descriptor: &str,
+    grapheme: &str,
+    high_ansi_descriptor: &str,
+    mac_paragraph: bool,
+) -> Option<f64> {
+    if word_layout_platform() == WordLayoutPlatform::Mac {
+        if let Some(width) = ms_pgothic_advance_px(font_descriptor, grapheme) {
+            return Some(width);
+        }
+        if is_emoji_presentation_cluster(grapheme) {
+            return emoji_advance_px(font_descriptor);
+        }
+    }
+    // Word measures this symbol in the authored high-ANSI Cambria Math
+    // face even when the paragraph classifies it as East Asian.
+    if mac_paragraph && grapheme == "△" {
+        return word_observed_unicode_advance_px(high_ansi_descriptor, grapheme);
+    }
+    None
+}
+
+fn emoji_advance_px(font_descriptor: &str) -> Option<f64> {
     let (size_pt, _) = split_font_descriptor(font_descriptor)?;
     Some(f64::from(size_pt) * 96.0 / 72.0)
 }
