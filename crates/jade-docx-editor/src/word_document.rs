@@ -3026,6 +3026,14 @@ impl WordDocument {
             .as_ref()
             .ok_or("main document part is not loaded")?;
         let raw_xml = DocxXmlDocument::parse(&doc_part.content)?;
+        self.attach_roundtrip_xml(raw_xml)?;
+        Ok(true)
+    }
+
+    pub(crate) fn attach_roundtrip_xml(
+        &mut self,
+        raw_xml: DocxXmlDocument,
+    ) -> Result<(), Box<dyn std::error::Error>> {
         let parsed_doc = self
             .document_mut()
             .ok_or("semantic document is not loaded")?;
@@ -3045,7 +3053,7 @@ impl WordDocument {
         let text_metrics_cache = self.text_metrics_cache.get_mut().clone();
         self.rebuild_paragraph_surfaces();
         *self.text_metrics_cache.get_mut() = text_metrics_cache;
-        Ok(true)
+        Ok(())
     }
 
     fn normalize_document_property_name(name: &str) -> String {

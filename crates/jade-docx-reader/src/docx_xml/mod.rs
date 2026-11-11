@@ -10,6 +10,7 @@ use quick_xml::events::{attributes::Attribute, BytesDecl, Event};
 use quick_xml::Reader;
 use std::collections::{HashMap, HashSet};
 use std::hash::{BuildHasherDefault, Hasher};
+use std::io::Cursor;
 
 pub use mapping::{
     attach_block_xml_ids, attach_document_xml_ids, attach_paragraph_xml_ids,
@@ -977,6 +978,54 @@ impl DocxXmlDocument {
                 self.reassign_ids(child_element);
             }
         }
+    }
+}
+
+/// Owns the input and the partially built preservation tree between calls.
+pub struct DocxXmlIncrementalParser {
+    reader: Reader<Cursor<String>>,
+    builder: Option<DocxXmlTreeBuilder>,
+    event_buffer: Vec<u8>,
+}
+
+impl DocxXmlIncrementalParser {
+    pub fn new(xml: String) -> Self {
+        Self {
+            reader: Reader::from_reader(Cursor::new(xml)),
+            builder: Some(DocxXmlTreeBuilder::new()),
+            event_buffer: Vec::new(),
+        }
+    }
+
+    pub fn source(&self) -> &str {
+        self.reader.get_ref().get_ref()
+    }
+
+    /// Consumes at most `event_budget` events. The parser is finished once
+    /// this returns a tree or an error.
+    pub fn advance(
+        &mut self,
+        event_budget: usize,
+    ) -> Result<Option<DocxXmlDocument>, DocxXmlError> {
+        let mut builder = self
+            .builder
+            .take()
+            .ok_or_else(|| DocxXmlError::Malformed("XML parser already finished".into()))?;
+        for _ in 0..event_budget {
+            self.event_buffer.clear();
+            let event = self
+                .reader
+                .read_event_into(&mut self.event_buffer)
+                .map_err(|err| DocxXmlError::Malformed(err.to_string()))?;
+            if matches!(event, Event::Eof) {
+                let mut document = builder.finish()?;
+                document.set_source_len(self.source().len());
+                return Ok(Some(document));
+            }
+            builder.observe(&event)?;
+        }
+        self.builder = Some(builder);
+        Ok(None)
     }
 }
 
@@ -2185,6 +2234,24 @@ pub(crate) mod tests {
             DocxXmlDocument::parse(""),
             Err(DocxXmlError::Malformed(_))
         ));
+    }
+
+    #[test]
+    fn incremental_parse_matches_standalone_parse() {
+        let xml = SAMPLE_XML.replace("見出し", "見出し&amp;&#65;");
+        let expected = DocxXmlDocument::parse(&xml).expect("standalone parse");
+        let mut parser = DocxXmlIncrementalParser::new(xml);
+        assert!(parser.advance(1).expect("first event").is_none());
+        let document = loop {
+            if let Some(document) = parser.advance(3).expect("parse next events") {
+                break document;
+            }
+        };
+        assert_eq!(document.to_string().unwrap(), expected.to_string().unwrap());
+
+        let mut parser = DocxXmlIncrementalParser::new("<root><a></root>".into());
+        assert!(parser.advance(2).unwrap().is_none());
+        assert!(parser.advance(2).is_err());
     }
 
     #[test]
