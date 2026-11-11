@@ -10,4 +10,6 @@ These synthetic DOCX files are awaiting coordinate capture from Word for Mac.
 - `hebrew-bidi-combining.docx` varies paragraph direction and alignment with pointed Hebrew, Latin text, parentheses, and decimals. It also splits one Hebrew word into runs.
 - `devanagari-cluster-boundaries.docx` compares contiguous and split runs with a pre-base vowel, conjunct, and reph. Latin brackets and text mark the positions on either side.
 
+- `thai-line-breaks-combining.docx` varies paragraph width for Thai text without spaces and splits combining sequences across run boundaries. Latin brackets mark the edges of the mixed-script lines.
+
 Export each source from Word for Mac before recording page sizes, glyph origins, and shaped span origins for the CI coordinate checker.
