@@ -450,7 +450,8 @@ fn mac_table_cell_line_units_follow_the_section_grid() {
     assert_eq!(jade.len(), word.len());
     assert_eq!(jade.len(), 6);
     for (page_index, (expected, actual)) in word.chunks(3).zip(jade.chunks(3)).enumerate() {
-        for (row_index, (expected, (page, baseline, _))) in expected.iter().zip(actual).enumerate() {
+        for (row_index, (expected, (page, baseline, _))) in expected.iter().zip(actual).enumerate()
+        {
             assert_eq!(*page, page_index + 1);
             assert!(
                 (baseline - expected).abs() <= WORD_TOLERANCE_PT,
