@@ -55,9 +55,9 @@ use crate::document::{
     WrapMode, WrapTextSide, DEFAULT_VERTICAL_CELL_MARGIN_PT,
 };
 use crate::headless_api::{
-    apply_headless_commands_with_executor_to_document, next_revision_from,
-    plain_text_paste_commands, rebase_position_after_decision, revision_snapshots,
-    revision_targets_for, select_revisions, RevisionSelector,
+    apply_headless_commands_with_executor_to_document, apply_headless_text_replacement,
+    next_revision_from, plain_text_paste_commands, rebase_position_after_decision,
+    revision_snapshots, revision_targets_for, select_revisions, RevisionSelector,
 };
 use crate::render_host::{BoxedRenderHost, OffscreenRenderHost};
 use crate::styles::{merge_paragraph_properties_override, merge_run_properties_override};
@@ -8296,12 +8296,23 @@ impl OffscreenDocumentView {
                 if grouped_autoformat {
                     command_executor.begin_group();
                 }
-                let apply_result = apply_headless_commands_with_executor_to_document(
-                    &mut word_doc,
-                    &mut command_executor,
-                    state.selection,
-                    &request,
-                );
+                let apply_result = if let [replacement @ HeadlessCommand::ReplaceRange { .. }] =
+                    request.commands.as_slice()
+                {
+                    apply_headless_text_replacement(
+                        &mut word_doc,
+                        &mut command_executor,
+                        state.selection,
+                        replacement,
+                    )
+                } else {
+                    apply_headless_commands_with_executor_to_document(
+                        &mut word_doc,
+                        &mut command_executor,
+                        state.selection,
+                        &request,
+                    )
+                };
                 if grouped_autoformat {
                     if apply_result.is_ok() {
                         command_executor.end_group();
