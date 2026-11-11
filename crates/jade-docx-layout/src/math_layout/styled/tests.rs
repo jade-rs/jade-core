@@ -648,14 +648,10 @@ fn display_lines_break_where_asked_and_where_they_overflow() {
 
 #[test]
 fn mac_rtl_display_math_uses_the_first_relation_and_the_right_edge() {
-    use crate::line_metrics::{set_word_layout_platform, word_layout_platform, WordLayoutPlatform};
-
     let math = parse("<m:r><m:t>a=b+c+d+e+f+g+h</m:t></m:r>");
-    let previous = word_layout_platform();
-    set_word_layout_platform(WordLayoutPlatform::Mac);
     let settings = MathSettings {
         use_display_defaults: false,
-        right_to_left_paragraph: true,
+        word_mac_rtl_paragraph: true,
         wrap_indent_px: 0.0,
         default_justification: MathJustification::Left,
         ..Default::default()
@@ -686,7 +682,6 @@ fn mac_rtl_display_math_uses_the_first_relation_and_the_right_edge() {
             ..display()
         },
     );
-    set_word_layout_platform(previous);
 
     assert_eq!(wrapped.alignment, MathParagraphAlignment::Right);
     assert_eq!(unwrapped.alignment, MathParagraphAlignment::Right);

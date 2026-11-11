@@ -277,8 +277,8 @@ pub struct MathSettings {
     pub display_margins_px: (f64, f64),
     /// `m:dispDef`: use special display defaults rather than paragraph settings.
     pub use_display_defaults: bool,
-    /// The display equation inherits a right-to-left text paragraph.
-    pub right_to_left_paragraph: bool,
+    /// Word for Mac display math inherits a right-to-left text paragraph.
+    pub word_mac_rtl_paragraph: bool,
     /// `m:defJc`: the default justification of display math.
     pub default_justification: MathJustification,
 }
@@ -295,7 +295,7 @@ impl Default for MathSettings {
             break_binary_subtraction: BreakBinarySubtraction::MinusMinus,
             display_margins_px: (0.0, 0.0),
             use_display_defaults: true,
-            right_to_left_paragraph: false,
+            word_mac_rtl_paragraph: false,
             default_justification: MathJustification::CenterGroup,
         }
     }
@@ -399,11 +399,7 @@ pub const WORD_SCRIPT_SCALES: (f64, f64) = (0.70, 0.60);
 
 impl MathLayoutOptions<'_> {
     fn word_mac_rtl(&self) -> bool {
-        self.display
-            && self.settings.right_to_left_paragraph
-            && !self.settings.use_display_defaults
-            && crate::line_metrics::word_layout_platform()
-                == crate::line_metrics::WordLayoutPlatform::Mac
+        self.settings.word_mac_rtl_paragraph && self.display
     }
 
     pub fn inline() -> Self {
