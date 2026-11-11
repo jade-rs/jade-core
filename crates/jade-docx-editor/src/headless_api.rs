@@ -2026,6 +2026,10 @@ fn try_apply_headless_text_command(
 /// Applies the interactive editor's single text replacement with the same
 /// validation and placeholder handling as a headless request.
 #[inline(never)]
+#[allow(
+    dead_code,
+    reason = "The document-core crate shares this module without the canvas editor"
+)]
 pub(crate) fn apply_headless_text_replacement(
     word_doc: &mut WordDocument,
     command_executor: &mut CommandExecutor,
