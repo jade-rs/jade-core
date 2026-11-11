@@ -35,6 +35,4 @@ To check them again, export each DOCX to PDF from Word for Mac and run
 - A document with no paragraph style named `Normal` does not apply widow control
   in Word for Mac: an earlier version of `kinsoku-widow` without one left a last
   line alone. jade follows the specification's default there.
-- A table's first baseline after an exact-spaced body line: jade is about 2.5pt
-  lower. `grid-line-unit-table` therefore compares gaps inside the cell only.
 - A `snapToChars` section spreads two-character lines across the measure in Word.
