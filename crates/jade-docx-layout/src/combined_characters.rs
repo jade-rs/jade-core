@@ -12,6 +12,7 @@ use std::rc::Rc;
 
 use jade_docx_reader::RunProperties;
 
+use crate::line_metrics::{word_layout_platform, WordLayoutPlatform};
 use crate::line_wrap::{wrap_text_into_lines, LineWrapContext, ParagraphStyle, RunStyle};
 
 /// `w:combineBrackets`' opening and closing brackets.
@@ -97,7 +98,21 @@ pub fn combined_run_properties<C: LineWrapContext>(
     }
     let bracket_width = match combine_brackets(layout.combine_brackets.as_deref()) {
         Some((open, close)) => {
-            natural_width(ctx, open, properties)? + natural_width(ctx, close, properties)?
+            let mut bracket_properties = properties.clone();
+            if word_layout_platform() == WordLayoutPlatform::Mac {
+                if let Some(fonts) = bracket_properties.fonts.as_mut() {
+                    // Word uses the East Asian face for combine punctuation,
+                    // even though these bracket characters are ASCII.
+                    if let Some(face) = fonts.east_asia.clone() {
+                        fonts.ascii = Some(Rc::clone(&face));
+                        fonts.h_ansi = Some(face);
+                        fonts.ascii_theme = None;
+                        fonts.h_ansi_theme = None;
+                    }
+                }
+            }
+            natural_width(ctx, open, &bracket_properties)?
+                + natural_width(ctx, close, &bracket_properties)?
         }
         None => 0.0,
     };
