@@ -163,6 +163,68 @@ function referenceGlyphs(name, page) {
   return [...page.header, ...page.body, ...page.footer];
 }
 
+function* glyphOrigins(line) {
+  for (const fragment of line.fragments ?? []) {
+    for (const glyph of fragment.glyphs ?? []) {
+      const x = fragment.x + glyph.x - 2 * line.report_x_offset;
+      yield [glyph.text, x * pt, fragment.baseline * pt];
+    }
+  }
+}
+
+const tallGridName = 'word-mac-grid-tall-face';
+const tallGridDirectory = new URL('tests/word-oracle/mac-probes-20261107/', root);
+const tallGridTolerancePt = 0.65;
+
+async function checkTallGrid(page) {
+  const [bytes, referenceJson] = await Promise.all([
+    readFile(new URL(`${tallGridName}.docx`, tallGridDirectory)),
+    readFile(new URL(`${tallGridName}.pages.json`, tallGridDirectory)),
+  ]);
+  const reference = JSON.parse(referenceJson);
+  assert.equal(hash(bytes), reference.docx_sha256, 'DOCX digest');
+  assert.equal(reference.page_count, 265, 'reference page count');
+  assert.equal(reference.pages.length, reference.page_count);
+  assert.equal(reference.pages.reduce((total, { rows }) => total + rows.length, 0), 4692);
+  const actual = await capture(page, bytes, tallGridName);
+  assert.equal(actual.complete, true, 'layout capture is incomplete');
+  assert.equal(actual.page_count, reference.page_count, 'page count');
+  checkStories(tallGridName, actual);
+  const glyphs = reference.pages.map(() => []);
+  for (const { page: index, line } of [
+    ...actual.body_lines.map(line => ({ page: line.page, line })), ...actual.auxiliary_lines,
+  ]) {
+    for (const glyph of glyphOrigins(line)) {
+      if (glyph[0].trim()) glyphs[index].push(glyph);
+    }
+  }
+  const differences = [];
+  for (const [index, { page: number, rows: expected }] of reference.pages.entries()) {
+    assert.equal(number, index + 1, 'reference page number');
+    const rows = [];
+    for (const [text, x, baseline] of glyphs[index].sort((a, b) => a[2] - b[2] || a[1] - b[1])) {
+      let row = rows.at(-1);
+      if (!row || baseline - row.baseline >= 1) {
+        row = { baseline, glyphs: [] };
+        rows.push(row);
+      }
+      row.glyphs.push([x, text]);
+    }
+    if (rows.length !== expected.length) {
+      differences.push({ page: number, expectedRows: expected.length, actualRows: rows.length });
+    }
+    for (const [i, { baseline, glyphs: rowGlyphs }] of rows.entries()) {
+      if (i >= expected.length) break;
+      const text = rowGlyphs.sort((a, b) => a[0] - b[0]).map(([, text]) => text).join('');
+      const [wordBaseline, wordText] = expected[i];
+      if (text !== wordText || Math.abs(baseline - wordBaseline) > tallGridTolerancePt) {
+        differences.push({ page: number, row: i + 1, expected: expected[i], actual: [baseline, text] });
+      }
+    }
+  }
+  return differences;
+}
+
 function checkPages(name, reference, actual, manifest) {
   assert.equal(actual.complete, true, 'layout capture is incomplete');
   assert.equal(actual.page_count, reference.length, 'page count');
@@ -193,12 +255,9 @@ function checkPages(name, reference, actual, manifest) {
     ? entries.filter(({ line }) => line.paragraph === 4)
     : [...entries, ...actual.auxiliary_lines];
   for (const { page, line } of lines) {
-    for (const fragment of line.fragments ?? []) {
-      for (const glyph of fragment.glyphs ?? []) {
-        const text = visibleGlyph(glyph.text);
-        const x = fragment.x + glyph.x - 2 * line.report_x_offset;
-        if (text && compareAsGlyph(text)) glyphs[page].push([text, x * pt, fragment.baseline * pt]);
-      }
+    for (const [rawText, x, baseline] of glyphOrigins(line)) {
+      const text = visibleGlyph(rawText);
+      if (text && compareAsGlyph(text)) glyphs[page].push([text, x, baseline]);
     }
   }
   for (const { kind, page, x, y, width, height, rotationDeg } of actual.objects) {
@@ -248,7 +307,7 @@ function checkPages(name, reference, actual, manifest) {
 const directories = (await readdir(corpus, { withFileTypes: true }))
   .filter(entry => entry.isDirectory()).map(entry => entry.name).sort();
 assert(directories.length > 0, 'no Word coordinate fixtures found');
-const names = process.argv.length > 2 ? process.argv.slice(2) : directories;
+const names = process.argv.length > 2 ? process.argv.slice(2) : [...directories, tallGridName];
 const browser = await chromium.launch();
 const failures = [];
 try {
@@ -271,6 +330,17 @@ try {
   });
   for (const name of names) {
     try {
+      if (name === tallGridName) {
+        await page.goto('https://word-coordinates.test/');
+        const differences = await checkTallGrid(page);
+        if (differences.length) {
+          failures.push({ name, differences });
+          console.error(`${name}: ${differences.length} pagination or baseline differences`);
+        } else {
+          console.log(`${name}: 265 pages and 4692 row baselines within ${tallGridTolerancePt} pt`);
+        }
+        continue;
+      }
       assert(directories.includes(name), `unknown fixture: ${name}`);
       const dir = new URL(`${name}/`, corpus);
       const [manifestBytes, bytes, compressed] = await Promise.all(
