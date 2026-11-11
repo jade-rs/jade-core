@@ -29,7 +29,7 @@ variants = (
     "line grid",
     "18 pt",
 )
-for direction in ("tbRl", "tbRlV"):
+for direction in ("tbRl", "tbRlV", "tbLrV"):
     for variant in variants:
         content = deepcopy(paragraph)
         if variant == "18 pt":
@@ -57,7 +57,7 @@ for direction in ("tbRl", "tbRlV"):
             margins.set(w("right"), "2160")
         if variant == "line grid":
             ET.SubElement(section, w("docGrid"), {w("type"): "lines", w("linePitch"): "360"})
-        if direction == "tbRlV" and variant == variants[-1]:
+        if direction == "tbLrV" and variant == variants[-1]:
             body.append(section)
         else:
             body.append(section_break)

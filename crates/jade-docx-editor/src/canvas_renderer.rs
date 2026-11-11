@@ -58,8 +58,9 @@ use jade_docx_layout::note_area::{
     NoteAreaReserve, MIN_NOTE_LINE_PT,
 };
 use jade_docx_layout::section_transition::{
-    resolve_page_margins, resolve_section_transition, SectionBreakType, SectionTransition,
-    DEFAULT_MARGIN_PT, DEFAULT_PAGE_HEIGHT_PT, DEFAULT_PAGE_WIDTH_PT,
+    resolve_page_margins, resolve_section_transition, word_section_text_direction,
+    SectionBreakType, SectionTransition, DEFAULT_MARGIN_PT, DEFAULT_PAGE_HEIGHT_PT,
+    DEFAULT_PAGE_WIDTH_PT,
 };
 pub use jade_docx_layout::selection::CaretAffinity;
 use jade_docx_layout::selection::{
@@ -7017,7 +7018,8 @@ where
             .get(self.active_section_index)
             .and_then(|section| section.properties.as_ref())
             .or(document.default_section.as_ref())
-            .and_then(|props| props.text_direction);
+            .and_then(|props| props.text_direction)
+            .map(word_section_text_direction);
 
         // Endnotes use indices after the body even when drawn between sections.
         // Restore the body counter for the next section, but retain the note
@@ -7105,7 +7107,8 @@ where
         self.current_text_direction = document
             .default_section
             .as_ref()
-            .and_then(|props| props.text_direction);
+            .and_then(|props| props.text_direction)
+            .map(word_section_text_direction);
 
         let result = self.render_notes_content_from(
             document,
@@ -14880,7 +14883,8 @@ where
         self.current_text_direction = document
             .default_section
             .as_ref()
-            .and_then(|props| props.text_direction);
+            .and_then(|props| props.text_direction)
+            .map(word_section_text_direction);
 
         let explicit_disable = self.disable_seek_replay_once;
         let horizontal_float_wrap = self.horizontal_float_wrap_cache.get(&document_rc);
@@ -17373,6 +17377,7 @@ where
                     .as_ref()
                     .and_then(|props| props.text_direction)
             })
+            .map(word_section_text_direction)
     }
 
     fn update_doc_grid(&mut self, section_props: Option<&SectionProperties>, document: &Document) {
@@ -63839,6 +63844,29 @@ mod tests {
         assert!((painted[0].2 - painted[1].2).abs() < 0.5, "{painted:?}");
         assert!((painted[1].2 - painted[2].2).abs() < 0.5, "{painted:?}");
         assert_eq!(renderer.current_page_number, 1);
+    }
+
+    #[test]
+    fn word_vertical_section_aliases_paint_upright_columns_left_to_right() {
+        let paint = |direction| {
+            let (mut renderer, painter) = recording_renderer();
+            let mut document = vertical_document(&["あい", "か", "さ"]);
+            document.default_section.as_mut().unwrap().text_direction = Some(direction);
+            renderer
+                .render(&document, &options_for_seek_tests())
+                .unwrap();
+            painted_at(&painter.ops(), &["あ", "い", "か", "さ"])
+        };
+
+        let painted = paint(TextDirection::TbRlV);
+        assert_eq!(painted, paint(TextDirection::TbLrV));
+        assert_eq!(painted.len(), 4, "{painted:?}");
+        assert!(painted[0].2 < painted[1].2, "{painted:?}");
+        assert!((painted[0].1 - painted[1].1).abs() < 0.5, "{painted:?}");
+        assert!(
+            painted[0].1 < painted[2].1 && painted[2].1 < painted[3].1,
+            "{painted:?}"
+        );
     }
 
     #[test]
