@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { gunzipSync } from 'node:zlib';
+import { compareGlyphs, matchImageBounds } from './word_coordinate_matching.mjs';
 
 const { chromium } = createRequire(import.meta.url)('playwright');
 const root = new URL('../../', import.meta.url);
@@ -50,43 +51,6 @@ function visibleGlyph(text = '') {
     : normalized;
 }
 
-// Nearby images can change vertical sort order within the coordinate tolerance.
-function matchImageBounds(expected, actual, within) {
-  if (expected.length !== actual.length) return false;
-
-  const matched = new Map();
-  function assign(index, visited) {
-    for (const [candidate, bounds] of actual.entries()) {
-      if (visited.has(candidate) || !within(expected[index], bounds)) continue;
-      visited.add(candidate);
-      if (!matched.has(candidate) || assign(matched.get(candidate), visited)) {
-        matched.set(candidate, index);
-        return true;
-      }
-    }
-    return false;
-  }
-
-  return expected.every((_, index) => assign(index, new Set()));
-}
-
-function compareGlyphs(expected, actual, tolerance, toleranceX = tolerance) {
-  const candidates = new Map();
-  for (const glyph of actual) {
-    const [text] = glyph;
-    if (!candidates.has(text)) candidates.set(text, []);
-    candidates.get(text).push(glyph);
-  }
-  const missing = [];
-  for (const glyph of expected) {
-    const [text, x, y] = glyph;
-    const positions = candidates.get(text);
-    const match = positions?.findIndex(([, ax, ay]) =>
-      Math.abs(ax - x) <= toleranceX && Math.abs(ay - y) <= tolerance) ?? -1;
-    if (match === -1) missing.push(glyph);
-    else positions.splice(match, 1);
-  }
-  return { missing, extra: [...candidates.values()].flat() };
 }
 
 async function capture(page, bytes, name) {
