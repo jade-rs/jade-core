@@ -3181,6 +3181,7 @@ pub struct DecorationInvalidationOutcome {
 #[derive(Debug, Default)]
 struct ParagraphRenderCache {
     entries: Vec<Option<CachedParagraphRender>>,
+    retained_pages: Option<(usize, usize)>,
     hits: u64,
     misses: u64,
 }
@@ -3347,6 +3348,11 @@ impl ParagraphRenderCache {
     }
 
     fn insert(&mut self, paragraph_index: usize, entry: CachedParagraphRender) {
+        if let Some((start, end)) = self.retained_pages {
+            if entry.start_page < start || entry.start_page > end {
+                self.retained_pages = None;
+            }
+        }
         if paragraph_index >= self.entries.len() {
             self.entries.resize_with(paragraph_index + 1, || None);
         }
@@ -3372,6 +3378,14 @@ impl ParagraphRenderCache {
     /// draw-command list for every paragraph ever scrolled past on a large
     /// document (a primary unbounded retainer behind the OOM crash).
     fn retain_pages(&mut self, keep_start_page: usize, keep_end_page: usize) -> usize {
+        // Inserts within the window and removals preserve this bound, so
+        // successive edits on the same page need not scan every slot.
+        if let Some((start, end)) = self.retained_pages {
+            if keep_start_page <= start && end <= keep_end_page {
+                return 0;
+            }
+        }
+        self.retained_pages = Some((keep_start_page, keep_end_page));
         let mut released = 0;
         for slot in &mut self.entries {
             if let Some(entry) = slot {
