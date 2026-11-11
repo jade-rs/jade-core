@@ -51,8 +51,6 @@ function visibleGlyph(text = '') {
     : normalized;
 }
 
-}
-
 async function capture(page, bytes, name) {
   await page.route('https://word-coordinates.test/document.docx', route => route.fulfill({
     body: bytes,
