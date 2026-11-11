@@ -3034,7 +3034,7 @@ impl WordDocument {
         attach_text_box_xml_ids(parsed_doc, &raw_xml);
         content_controls::forms::annotate_form_check_boxes(parsed_doc, &raw_xml);
         if let Some(body) = parsed_doc.body.as_mut() {
-            Self::capture_preserved_run_props(&mut body.elements, &raw_xml);
+            Self::capture_preserved_run_props_from_fresh_xml(&mut body.elements, &raw_xml);
         }
 
         self.raw_document = Some(raw_xml);
@@ -40242,23 +40242,66 @@ impl WordDocument {
     /// unmodeled `w:rPr` children from the raw XML onto its model
     /// `RunProperties::preserved_rpr`.
     fn capture_preserved_run_props(elements: &mut [BodyElement], raw: &DocxXmlDocument) {
+        Self::capture_preserved_run_props_with_lookup(elements, &|id| raw.element(id));
+    }
+
+    fn capture_preserved_run_props_from_fresh_xml(
+        elements: &mut [BodyElement],
+        raw: &DocxXmlDocument,
+    ) {
+        fn index_elements<'a>(element: &'a XmlElement, index: &mut Vec<Option<&'a XmlElement>>) {
+            if matches!(element.name.as_str(), "w:p" | "w:r") {
+                let slot = element.id.raw() as usize;
+                if slot >= index.len() {
+                    index.resize(slot + 1, None);
+                }
+                index[slot] = Some(element);
+            }
+            for child in &element.children {
+                if let XmlNode::Element(child) = child {
+                    index_elements(child, index);
+                }
+            }
+        }
+
+        // A freshly parsed tree has dense parser-assigned IDs. Resolve the
+        // body paragraph and run elements in one walk, then read them directly
+        // while capturing formatting. Other node kinds use the ordinary path.
+        let mut index = Vec::new();
+        index_elements(raw.root(), &mut index);
+        Self::capture_preserved_run_props_with_lookup(elements, &|id| {
+            index
+                .get(id.raw() as usize)
+                .copied()
+                .flatten()
+                .or_else(|| raw.element(id))
+        });
+    }
+
+    fn capture_preserved_run_props_with_lookup<'a>(
+        elements: &mut [BodyElement],
+        lookup: &impl Fn(XmlNodeId) -> Option<&'a XmlElement>,
+    ) {
         for element in elements.iter_mut() {
             match element {
                 BodyElement::Paragraph(paragraph) => {
-                    Self::capture_preserved_run_props_in_paragraph(paragraph, raw);
+                    Self::capture_preserved_run_props_in_paragraph(paragraph, lookup);
                     // A text box's runs are bound to its `w:txbxContent` like
                     // any other: left out, every font they inherit counted as
                     // their own, and typing in the box wrote it into them.
                     for run in paragraph.runs.iter_mut() {
                         if let Some(text_box) = run.text_box.as_mut() {
-                            Self::capture_preserved_run_props(&mut text_box.blocks, raw);
+                            Self::capture_preserved_run_props_with_lookup(
+                                &mut text_box.blocks,
+                                lookup,
+                            );
                         }
                     }
                 }
                 BodyElement::Table(table) => {
                     for row in table.rows.iter_mut() {
                         for cell in row.cells.iter_mut() {
-                            Self::capture_preserved_run_props(&mut cell.blocks, raw);
+                            Self::capture_preserved_run_props_with_lookup(&mut cell.blocks, lookup);
                         }
                     }
                 }
@@ -40330,24 +40373,23 @@ impl WordDocument {
         }
     }
 
-    fn capture_preserved_run_props_in_paragraph(paragraph: &mut Paragraph, raw: &DocxXmlDocument) {
+    fn capture_preserved_run_props_in_paragraph<'a>(
+        paragraph: &mut Paragraph,
+        lookup: &impl Fn(XmlNodeId) -> Option<&'a XmlElement>,
+    ) {
         // Paragraph marks have their own run properties. Keep the same raw
         // properties as text runs so editing and undo can round-trip them.
-        if let Some(rpr) = paragraph
-            .node_id
-            .and_then(|id| raw.element(id))
-            .and_then(|p| {
-                p.children.iter().find_map(|child| match child {
-                    XmlNode::Element(ppr) if ppr.name == "w:pPr" => {
-                        ppr.children.iter().find_map(|child| match child {
-                            XmlNode::Element(rpr) if rpr.name == "w:rPr" => Some(rpr),
-                            _ => None,
-                        })
-                    }
-                    _ => None,
-                })
+        if let Some(rpr) = paragraph.node_id.and_then(lookup).and_then(|p| {
+            p.children.iter().find_map(|child| match child {
+                XmlNode::Element(ppr) if ppr.name == "w:pPr" => {
+                    ppr.children.iter().find_map(|child| match child {
+                        XmlNode::Element(rpr) if rpr.name == "w:rPr" => Some(rpr),
+                        _ => None,
+                    })
+                }
+                _ => None,
             })
-        {
+        }) {
             let preserved = rpr
                 .children
                 .iter()
@@ -40376,7 +40418,7 @@ impl WordDocument {
             let Some(node_id) = run.node_id else {
                 continue;
             };
-            let Some(run_element) = raw.element(node_id) else {
+            let Some(run_element) = lookup(node_id) else {
                 continue;
             };
             let Some(rpr) = run_element.children.iter().find_map(|child| match child {
