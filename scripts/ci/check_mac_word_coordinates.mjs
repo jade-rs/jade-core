@@ -16,6 +16,12 @@ const finalRevisionView = new Set([
   'numbering-del-mac', 'numbering-del2-mac',
 ]);
 const shapedArabic = new Set(['table-inline-image-mac', 'table-object-edge-cases-mac']);
+const renderedHyphenFixtures = new Set([
+  'explicit-hyphen-wrap-boundaries',
+  'hyphenation-automatic-narrow-paragraphs',
+  'hyphenation-manual-narrow-paragraphs',
+]);
+const hyphenGlyph = /^[-\u00ad\u2010\u2011]$/u;
 const arabicScript = /\p{Script=Arabic}/u;
 const textBoxes = new Map([
   ['floating-wrap-sides-mac', 3], ['floating-inside-outside-mac', 4],
@@ -72,7 +78,7 @@ async function capture(page, bytes, name) {
     body: bytes,
   }));
   try {
-    return await page.evaluate(async ({ revisionFinal, captureArabic }) => {
+    return await page.evaluate(async ({ revisionFinal, captureArabic, captureHyphens }) => {
       const paintedArabic = [];
       const context = OffscreenCanvasRenderingContext2D.prototype;
       const fillText = context.fillText;
@@ -99,17 +105,29 @@ async function capture(page, bytes, name) {
         const response = await fetch('/document.docx');
         await view.load_docx(new Uint8Array(await response.arrayBuffer()));
         await view.waitForPendingImages();
+        if (captureHyphens) view.beginPdfTextCapture();
         const layout = view.captureFullLayoutDebug();
+        const paintedHyphens = captureHyphens
+          ? Array.from({ length: layout.page_count }, (_, i) => view.takePagePdfTextRuns(i)
+            .filter(({ text }) => /^[-\u2010\u2011]$/u.test(text))
+            .map(({ text, transform: [, , , , x, y] }) => [text, x, y]))
+          : [];
         return {
           ...layout,
           paintedArabic,
+          paintedHyphens,
           dimensions: Array.from({ length: layout.page_count }, (_, i) => view.page_dimensions(i)),
         };
       } finally {
         context.fillText = fillText;
+        if (captureHyphens) view.endPdfTextCapture();
         view.free();
       }
-    }, { revisionFinal: finalRevisionView.has(name), captureArabic: shapedArabic.has(name) });
+    }, {
+      revisionFinal: finalRevisionView.has(name),
+      captureArabic: shapedArabic.has(name),
+      captureHyphens: renderedHyphenFixtures.has(name),
+    });
   } finally {
     await page.unroute('https://word-coordinates.test/document.docx');
   }
@@ -304,7 +322,10 @@ function checkPages(name, reference, actual, manifest) {
       assert(Math.abs(span.y * pt - y) <= tolerance, 'painted Arabic baseline');
     }
   }
-  const glyphs = reference.map(() => []);
+  const captureHyphens = renderedHyphenFixtures.has(name);
+  const glyphs = reference.map((_, page) => captureHyphens
+    ? actual.paintedHyphens[page].map(([text, x, y]) => [text, x * pt, y * pt])
+    : []);
   const images = reference.map(() => []);
   const entries = actual.body_lines.map(line => ({ page: line.page, line }));
   const lines = name === 'hidden-text-character-effects-mac'
@@ -313,7 +334,10 @@ function checkPages(name, reference, actual, manifest) {
   for (const { page, line } of lines) {
     for (const [rawText, x, baseline] of glyphOrigins(line)) {
       const text = visibleGlyph(rawText);
-      if (text && compareAsGlyph(text)) glyphs[page].push([text, x, baseline]);
+      // Line-end hyphens can paint independently of the source glyphs.
+      if (text && compareAsGlyph(text) && !(captureHyphens && hyphenGlyph.test(text))) {
+        glyphs[page].push([text, x, baseline]);
+      }
     }
   }
   for (const object of actual.objects) {
