@@ -62,6 +62,7 @@ fn capture_coordinates(doc: &NativeDocument) -> Value {
 
 // Whole probes already within half a CSS pixel of the Word for Mac PDF.
 const STRICT_WORD_FIXTURES: &[&str] = &[
+    "word-mac-probe-merged-rows",
     "word-mac-probe-pairs-kerned",
     "word-mac-probe-squeeze-comma",
     "word-mac-probe-squeeze-conditions-compress",
