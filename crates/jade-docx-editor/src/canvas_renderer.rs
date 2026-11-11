@@ -16380,6 +16380,7 @@ where
         &mut self,
         math: &MathParagraph,
         mut metrics: jade_docx_layout::math_layout::MathMetrics,
+        last_baseline: f64,
         style: jade_docx_layout::math_layout::styled::MathTextStyle<'_>,
     ) -> Result<Option<(jade_docx_layout::math_layout::MathBlockLineBox, f64)>, JsValue> {
         use jade_docx_layout::line_metrics::{
@@ -16402,7 +16403,9 @@ where
             // whose ink fits well above the baseline, such as a single digit.
             // The hhea ascent and descent are 1946 and 455 units at 2048 UPM.
             metrics.ascent = metrics.ascent.max(style.size_px * (1946.0 / 2048.0));
-            metrics.descent = metrics.descent.max(style.size_px * (455.0 / 2048.0));
+            metrics.descent = metrics
+                .descent
+                .max(last_baseline + style.size_px * (455.0 / 2048.0));
         }
         let line_box = jade_docx_layout::math_layout::math_block_line_box(
             metrics,
@@ -16456,7 +16459,10 @@ where
         char_unit_pt: f64,
         marker: Option<&DisplayMathNoteMarker<'_>>,
     ) -> Result<(), JsValue> {
-        let Some((line_box, after)) = self.place_math_block(math, plan.line_metrics, style)? else {
+        let last_baseline = plan.lines.last().map_or(0.0, |line| line.baseline);
+        let Some((line_box, after)) =
+            self.place_math_block(math, plan.line_metrics, last_baseline, style)?
+        else {
             return Ok(());
         };
         if self.measuring_notes {

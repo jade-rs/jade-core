@@ -16,6 +16,23 @@ struct StyledPainterMeasure<'a, P> {
     painter: &'a P,
     font: RefCell<Option<(String, f64)>>,
 }
+fn cambria_math_advance(text: &str, style: MathTextStyle<'_>) -> Option<f64> {
+    use jade_docx_layout::line_metrics::{word_layout_platform, WordLayoutPlatform};
+    if !style.family.eq_ignore_ascii_case("Cambria Math")
+        || word_layout_platform() != WordLayoutPlatform::Mac
+    {
+        return None;
+    }
+    // Cambria Math advances in 2048 units per em, also observed in Word's
+    // printed display equations. Canvas may be measuring a substituted face.
+    let units = match text {
+        "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" => 1134.0,
+        "+" | "=" => 1530.0,
+        _ => return None,
+    };
+    Some(style.size_px * units / 2048.0)
+}
+
 impl<P: Painter> StyledMathMeasure for StyledPainterMeasure<'_, P> {
     type Error = P::Error;
     fn measure_glyph(
@@ -48,7 +65,7 @@ impl<P: Painter> StyledMathMeasure for StyledPainterMeasure<'_, P> {
             style.size_px * 0.2
         };
         Ok(MathMetrics {
-            width: measured.width,
+            width: cambria_math_advance(text, style).unwrap_or(measured.width),
             ascent,
             descent,
         })

@@ -22,6 +22,8 @@ pub(crate) struct BreakCandidate {
     pub(crate) align_point: bool,
     /// A subtraction character in a run, rather than a whole operator box.
     pub(crate) subtraction: bool,
+    /// Space before this operator, omitted at the preceding line end.
+    pub(crate) preceding_space: f64,
 }
 
 /// A laid-out line before stacking: the plan items in `start..end`, on a
@@ -193,9 +195,9 @@ fn break_lines<'a, C: StyledMathMeasure>(
             };
             operator_x + width
         } else {
-            operator_x
+            operator_x - c.preceding_space
         };
-        let x = if settings.break_binary == BreakBinary::After {
+        let x = if settings.break_binary == BreakBinary::After && keeps_operator {
             fit_x
         } else {
             operator_x
@@ -433,13 +435,17 @@ pub(crate) fn stack<'a, C: StyledMathMeasure>(
     let width = group_widths.iter().copied().fold(0.0, f64::max);
     let justification = b.justification();
     let size = b.base_size;
+    let word_mac_cambria = b.style.family.eq_ignore_ascii_case("Cambria Math")
+        && crate::line_metrics::word_layout_platform()
+            == crate::line_metrics::WordLayoutPlatform::Mac;
+    let min_gap = size * if word_mac_cambria { 1.18 } else { 1.2 };
     let gap = super::MathConstants::cambria(size).leading;
     let mut baseline = 0.0;
     let mut previous: Option<MathMetrics> = None;
     let mut total = MathMetrics::default();
     for line in lines {
         if let Some(prev) = previous {
-            baseline += (prev.descent + line.metrics.ascent + gap).max(size * 1.2);
+            baseline += (prev.descent + line.metrics.ascent + gap).max(min_gap);
         }
         let group_w = group_widths[line.group];
         let group_x = match justification {

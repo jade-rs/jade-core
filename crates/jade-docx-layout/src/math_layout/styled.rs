@@ -954,7 +954,13 @@ impl<'a, C: StyledMathMeasure> Builder<'_, 'a, C> {
                 }
                 self.prev = Some(class);
                 if matches!(class, AtomClass::Bin | AtomClass::Rel) {
-                    self.break_candidate(class, false, None, matches!(first_char, '-' | '−'));
+                    self.break_candidate(
+                        class,
+                        false,
+                        None,
+                        matches!(first_char, '-' | '−'),
+                        space,
+                    );
                 }
             } else if plain {
                 self.prev = Some(AtomClass::Ord);
@@ -1003,6 +1009,7 @@ impl<'a, C: StyledMathMeasure> Builder<'_, 'a, C> {
         manual: bool,
         align_at: Option<u32>,
         subtraction: bool,
+        preceding_space: f64,
     ) {
         if self.depth != 0 {
             return;
@@ -1016,6 +1023,7 @@ impl<'a, C: StyledMathMeasure> Builder<'_, 'a, C> {
                 align_at,
                 align_point: false,
                 subtraction,
+                preceding_space,
             });
         }
     }
@@ -1034,6 +1042,7 @@ impl<'a, C: StyledMathMeasure> Builder<'_, 'a, C> {
                 align_at: None,
                 align_point: true,
                 subtraction: false,
+                preceding_space: 0.0,
             });
         }
     }
@@ -1189,7 +1198,7 @@ impl<'a, C: StyledMathMeasure> Builder<'_, 'a, C> {
         }
         self.first = None;
         if structure && matches!(class.0, AtomClass::Bin | AtomClass::Rel) {
-            self.break_candidate(class.0, false, None, false);
+            self.break_candidate(class.0, false, None, false, lead);
         }
         let metrics = match e.kind {
             Run => self.run(e)?,
@@ -1268,7 +1277,7 @@ impl<'a, C: StyledMathMeasure> Builder<'_, 'a, C> {
             if let Some(class @ (AtomClass::Bin | AtomClass::Rel | AtomClass::Op)) =
                 first.map(alphabet::char_class)
             {
-                self.break_candidate(class, true, align_at, false);
+                self.break_candidate(class, true, align_at, false, 0.0);
             }
         }
         if run.align_point {
