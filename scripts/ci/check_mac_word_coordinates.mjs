@@ -15,14 +15,6 @@ const finalRevisionView = new Set([
   'numbering-with-review-mac', 'review-duplicate-ids-mac', 'review-kinds-mac',
   'numbering-del-mac', 'numbering-del2-mac',
 ]);
-const renderedHyphenFixtures = new Set([
-  'aligned-hyphen-hanging-indent',
-  'discretionary-hyphen-page-origins',
-  'explicit-hyphen-wrap-boundaries',
-  'hyphenation-automatic-narrow-paragraphs',
-  'hyphenation-manual-narrow-paragraphs',
-  'styled-hyphen-body-table',
-]);
 const hyphenGlyph = /^[-\u00ad\u2010\u2011]$/u;
 const arabicPattern = /\p{Script=Arabic}|(?=\p{Mark})\p{Script_Extensions=Arabic}/u;
 const isArabic = text => arabicPattern.test(text);
@@ -78,7 +70,7 @@ function imageBoundsPt({ x, y, width, height, rotationDeg }) {
   ];
 }
 
-async function capture(page, bytes, name, captureArabic = false) {
+async function capture(page, bytes, name, { captureArabic = false, captureHyphens = false } = {}) {
   await page.route('https://word-coordinates.test/document.docx', route => route.fulfill({
     body: bytes,
   }));
@@ -124,7 +116,7 @@ async function capture(page, bytes, name, captureArabic = false) {
     }, {
       revisionFinal: finalRevisionView.has(name),
       arabicPatternSource: captureArabic ? arabicPattern.source : null,
-      captureHyphens: renderedHyphenFixtures.has(name),
+      captureHyphens,
       pointsPerPixel: pt,
     });
   } finally {
@@ -323,7 +315,7 @@ function checkPages(name, reference, actual, manifest, expectedArabic) {
   const tolerance = manifest.axisTolerancePt;
   const registration = manifest.horizontalPrintRegistration;
   const compareAsGlyph = text => !expectedArabic || !isArabic(text);
-  const captureHyphens = renderedHyphenFixtures.has(name);
+  const captureHyphens = manifest.capturePaintedHyphens === true;
   const glyphs = reference.map((_, i) => captureHyphens ? actual.paintedHyphens[i] : []);
   const images = reference.map(() => []);
   const entries = actual.body_lines.map(line => ({ page: line.page, line }));
@@ -427,7 +419,12 @@ try {
         : loadSyntheticFixture(name));
       await page.goto('https://word-coordinates.test/');
       const expectedArabic = referenceArabicSpans(name, reference);
-      const actual = await capture(page, bytes, name, expectedArabic !== null);
+      assert(manifest.capturePaintedHyphens === undefined || typeof manifest.capturePaintedHyphens === 'boolean',
+        'capturePaintedHyphens must be a boolean');
+      const actual = await capture(page, bytes, name, {
+        captureArabic: expectedArabic !== null,
+        captureHyphens: manifest.capturePaintedHyphens === true,
+      });
       const differences = checkPages(name, reference, actual, manifest, expectedArabic);
       if (differences.length) {
         failures.push({ name, differences });
