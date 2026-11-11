@@ -85,7 +85,7 @@ use unicode_segmentation::UnicodeSegmentation;
 use wasm_bindgen::{closure::Closure, JsCast, JsValue};
 use web_sys::{
     Blob, BlobPropertyBag, CanvasRenderingContext2d, HtmlCanvasElement, ImageBitmap,
-    WorkerGlobalScope,
+    OffscreenCanvasRenderingContext2d, WorkerGlobalScope,
 };
 
 fn append_style_reference_text(text: &mut String, run_text: &str) {
@@ -37338,6 +37338,14 @@ where
     /// Creates an ImageBitmap for a specific page without destroying the canvas.
     pub fn create_page_bitmap(&self, page_index: usize) -> Result<Promise, JsValue> {
         self.host.create_page_bitmap(page_index)
+    }
+
+    pub fn copy_page_pixels_to(
+        &self,
+        page_index: usize,
+        target: &OffscreenCanvasRenderingContext2d,
+    ) -> Result<(), JsValue> {
+        self.host.copy_page_pixels_to(page_index, target)
     }
 
     /// Transfers an ImageBitmap for a specific page using `transferToImageBitmap()`.

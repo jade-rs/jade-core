@@ -26,7 +26,13 @@ const textBoxes = new Map([
   ['textbox-tall-header-overlap-mac', 1], ['document-variable-fields-mac', 1],
   ['word-compat-comprehensive-mac', 1], ['table-object-edge-cases-mac', 1],
   ['table-inline-image-mac', 1],
-  ['footnote-table-textbox-order-mac', 1],
+  ['footnote-table-textbox-order-mac', 1], ['word-mac-probe-float-lookahead', 5],
+]);
+
+const emptyTextBoxParagraphs = new Map([
+  ['floating-z-order-mac', 1],
+  ['textbox-tall-header-overlap-mac', 1],
+  ['word-mac-probe-float-lookahead', 5],
 ]);
 
 function hash(bytes) {
@@ -139,8 +145,7 @@ function checkStories(name, actual) {
         if (!visible) emptyParagraphs++;
       }
     }
-    const hasEmptyParagraph = name === 'floating-z-order-mac' || name === 'textbox-tall-header-overlap-mac';
-    assert.equal(emptyParagraphs, Number(hasEmptyParagraph), 'empty text box paragraphs');
+    assert.equal(emptyParagraphs, emptyTextBoxParagraphs.get(name) ?? 0, 'empty text box paragraphs');
   }
   assert.deepEqual(actual.known_uncaptured_stories, uncaptured);
 }

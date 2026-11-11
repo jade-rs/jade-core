@@ -1,6 +1,7 @@
 //! Unadjusted Mac layout coordinates using bundled faces, plus opt-in Office-font probes.
 mod common;
 use common::{assert_word_source_hash, repo_path};
+use jade_docx_editor::word_document::FloatingObjectKind;
 use jade_docx_layout::line_metrics::{set_word_layout_platform, WordLayoutPlatform};
 use jade_docx_native_render::{FaceSpec, FontFace, NativeDocument};
 use serde_json::{json, Value};
@@ -62,6 +63,11 @@ fn capture_coordinates(doc: &NativeDocument) -> Value {
 
 // Whole probes already within half a CSS pixel of the Word for Mac PDF.
 const STRICT_WORD_FIXTURES: &[&str] = &[
+    "word-mac-probe-distribute-single",
+    "word-mac-probe-exact-grid",
+    "word-mac-probe-exact-nogrid",
+    "word-mac-probe-inline-image-grid",
+    "word-mac-probe-inline-image-nogrid",
     "word-mac-probe-merged-rows",
     "word-mac-probe-pairs-kerned",
     "word-mac-probe-squeeze-comma",
@@ -81,6 +87,101 @@ const WORD_TOLERANCE_PT: f64 = 0.375; // Half a CSS pixel, without origin alignm
 fn sha256(bytes: &[u8]) -> String {
     use sha2::{Digest, Sha256};
     format!("{:x}", Sha256::digest(bytes))
+}
+
+#[test]
+fn mac_image_bounds_match_word() {
+    for fixture in [
+        "fractional-picture-anchors-mac",
+        "image-crop-edge-cases-mac",
+        "inline-picture-bounds-mac",
+        "story-inline-picture-metrics-mac",
+        "table-inline-image-mac",
+    ] {
+        assert_mac_image_bounds(fixture, open_with_bundled_faces);
+    }
+}
+
+#[test]
+#[ignore = "requires JADE_OFFICE_ARIAL pointing to the captured Office font"]
+fn mac_table_image_bounds_match_word_with_office_arial() {
+    set_word_layout_platform(WordLayoutPlatform::Mac);
+    let font = office_arial_path();
+    let faces = [FaceSpec {
+        family: "Arial",
+        weight: 400,
+        path: std::path::Path::new(&font),
+    }];
+    for fixture in [
+        "table-inline-picture-line-spacing-mac",
+        "table-inline-picture-metrics-mac",
+    ] {
+        assert_mac_image_bounds(fixture, |bytes| {
+            NativeDocument::open(bytes, 816.0, 1056.0, &faces).unwrap()
+        });
+    }
+}
+
+fn assert_mac_image_bounds(fixture: &str, open: impl FnOnce(&[u8]) -> NativeDocument) {
+    let root = repo_path(&format!("tests/word-oracle/mac-elsa-synthetic/{fixture}"));
+    let bytes = std::fs::read(root.join("source.docx")).unwrap();
+    let compressed = std::fs::read(root.join("pages.json.gz")).unwrap();
+    let manifest: Value =
+        serde_json::from_slice(&std::fs::read(root.join("manifest.json")).unwrap()).unwrap();
+    assert_eq!(manifest["sourceSha256"], sha256(&bytes), "{fixture}");
+    assert_eq!(
+        manifest["coordinatesSha256"],
+        sha256(&compressed),
+        "{fixture}"
+    );
+    let decoder = flate2::read::GzDecoder::new(compressed.as_slice());
+    let pages: Vec<Value> = serde_json::from_reader(decoder).unwrap();
+
+    let mut doc = open(&bytes);
+    let capture = doc.capture_full_layout_debug().unwrap();
+    assert!(capture.complete, "{fixture}: incomplete layout capture");
+    assert_eq!(manifest["pages"], capture.page_count, "{fixture}");
+    assert_eq!(pages.len(), capture.page_count, "{fixture}");
+    let mut actual = vec![Vec::new(); capture.page_count];
+    for image in capture.objects {
+        if image.kind != FloatingObjectKind::Image {
+            continue;
+        }
+        assert_eq!(image.rotation_deg, 0.0, "{fixture}: rotated image");
+        actual[image.page - 1].push([
+            image.x * 0.75,
+            image.y * 0.75,
+            (image.x + image.width) * 0.75,
+            (image.y + image.height) * 0.75,
+        ]);
+    }
+
+    let order = |a: &[f64; 4], b: &[f64; 4]| a[1].total_cmp(&b[1]).then(a[0].total_cmp(&b[0]));
+    let mut image_count = 0;
+    for (index, (reference, mut actual)) in pages.into_iter().zip(actual).enumerate() {
+        let page = index + 1;
+        let mut expected: Vec<[f64; 4]> =
+            serde_json::from_value(reference["images"].clone()).unwrap();
+        assert_eq!(
+            expected.len(),
+            actual.len(),
+            "{fixture} page {page}: image count"
+        );
+        image_count += expected.len();
+        expected.sort_by(order);
+        actual.sort_by(order);
+        for (image, (expected, actual)) in expected.into_iter().zip(actual).enumerate() {
+            assert!(
+                expected
+                    .iter()
+                    .zip(actual)
+                    .all(|(a, b)| (a - b).abs() <= WORD_TOLERANCE_PT),
+                "{fixture} page {page} image {}: Word {expected:?}, jade {actual:?}",
+                image + 1
+            );
+        }
+    }
+    assert!(image_count > 0, "{fixture}: empty Word image reference");
 }
 
 #[test]
@@ -394,6 +495,60 @@ fn word_layout(reference: &Value) -> Value {
         }
     }
     spatial_order(&json!({"page_count": reference["page_count"], "glyphs": glyphs}))
+}
+
+/// These probes require the original Office face metrics for absolute coordinates.
+#[test]
+#[ignore = "requires JADE_OFFICE_FONT_DIR pointing to Word for Mac's DFonts"]
+fn mac_regular_office_faces_match_word() {
+    set_word_layout_platform(WordLayoutPlatform::Mac);
+    let directory = std::path::PathBuf::from(
+        std::env::var_os("JADE_OFFICE_FONT_DIR").expect("set JADE_OFFICE_FONT_DIR"),
+    );
+    let faces = [
+        ("Arial", "arial.ttf"),
+        ("Times New Roman", "times.ttf"),
+        ("Calibri", "Calibri.ttf"),
+        ("Cambria", "Cambria.ttc"),
+        ("Century", "Century.ttf"),
+        ("Yu Mincho", "yumin.ttf"),
+        ("游明朝", "yumin.ttf"),
+        ("MS Mincho", "msmincho.ttc"),
+        ("ＭＳ 明朝", "msmincho.ttc"),
+    ]
+    .map(|(family, filename)| FontFace {
+        family: family.to_owned(),
+        weight: 400,
+        italic: false,
+        path: directory.join(filename),
+        index: 0,
+    });
+    for (name, archive) in [
+        ("word-mac-probe-kern-default", "mac-probes-20261019"),
+        ("word-mac-probe-line-pitch", "mac-probes-20261019"),
+        ("word-mac-probe-object-lines", "mac-probes-20261019"),
+        ("word-mac-probe-object-spaces", "mac-probes-20261019"),
+        ("word-mac-probe-partial-grid", "mac-probes-20261019"),
+        // This capture records the actual baseline of each shifted glyph.
+        ("word-mac-probe-vert-align", "mac-probes-20261030"),
+    ] {
+        let bytes = std::fs::read(repo_path(&format!("public/fixtures/{name}.docx"))).unwrap();
+        let reference: Value = serde_json::from_slice(
+            &std::fs::read(repo_path(&format!(
+                "tests/word-oracle/{archive}/{name}.json"
+            )))
+            .unwrap(),
+        )
+        .unwrap();
+        assert_word_source_hash(name, &reference["docx_sha256"], &sha256(&bytes));
+        let doc = NativeDocument::open_with_font_faces(&bytes, 816.0, 1056.0, &faces).unwrap();
+        compare(
+            &word_layout(&reference),
+            &spatial_order(&capture_coordinates(&doc)),
+            WORD_TOLERANCE_PT,
+        )
+        .unwrap_or_else(|error| panic!("{name}: {error}"));
+    }
 }
 
 /// Word for Mac 16.114 probes for the rules `word-mac-grid-tall-face` needs
@@ -783,11 +938,7 @@ fn comparator_rejects_shifted_missing_reordered_or_repaginated_glyphs() {
     assert!(compare(&expected, &shifted, WORD_TOLERANCE_PT).is_err());
 }
 
-/// Local opt-in parity check; CI cannot redistribute the Office Arial face.
-#[test]
-#[ignore = "requires JADE_OFFICE_ARIAL pointing to the captured Office font"]
-fn floating_tables_match_word_with_office_arial() {
-    set_word_layout_platform(WordLayoutPlatform::Mac);
+fn office_arial_path() -> String {
     let font = std::env::var("JADE_OFFICE_ARIAL")
         .expect("set JADE_OFFICE_ARIAL to Office Arial arial.ttf");
     assert_eq!(
@@ -795,6 +946,15 @@ fn floating_tables_match_word_with_office_arial() {
         "15663c7e8495594c6136eb51b11983eb8f5bbcdd07bb2c327e0d1e83415b0f06",
         "font differs from the Word capture; remeasure rather than fitting coordinates"
     );
+    font
+}
+
+/// Local opt-in parity check; CI cannot redistribute the Office Arial face.
+#[test]
+#[ignore = "requires JADE_OFFICE_ARIAL pointing to the captured Office font"]
+fn floating_tables_match_word_with_office_arial() {
+    set_word_layout_platform(WordLayoutPlatform::Mac);
+    let font = office_arial_path();
     let faces = [FaceSpec {
         family: "Arial",
         weight: 400,

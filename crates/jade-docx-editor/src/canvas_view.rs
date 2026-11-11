@@ -13,7 +13,9 @@ use wasm_bindgen::closure::Closure;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 use wasm_bindgen_futures::{future_to_promise, JsFuture};
-use web_sys::{self, ImageBitmap, OffscreenCanvas, WorkerGlobalScope};
+use web_sys::{
+    self, ImageBitmap, OffscreenCanvas, OffscreenCanvasRenderingContext2d, WorkerGlobalScope,
+};
 
 use crate::canvas_renderer::{
     CanvasRenderer, FieldDateTime, TableResizeHandleKind, TableResizeMetadata,
@@ -18873,6 +18875,19 @@ impl OffscreenDocumentView {
     pub fn create_page_bitmap(&self, page_index: usize) -> Result<js_sys::Promise, JsValue> {
         let renderer = self.renderer.borrow();
         renderer.create_page_bitmap(page_index)
+    }
+
+    /// Copies a rendered page into a separate, dedicated offscreen 2D context.
+    /// The caller must complete pending image draws before copying the page.
+    #[wasm_bindgen(js_name = copyPagePixelsTo)]
+    pub fn copy_page_pixels_to(
+        &self,
+        page_index: usize,
+        target: &OffscreenCanvasRenderingContext2d,
+    ) -> Result<(), JsValue> {
+        self.renderer
+            .borrow()
+            .copy_page_pixels_to(page_index, target)
     }
 
     /// Transfers an ImageBitmap for a specific page using `transferToImageBitmap()`.
