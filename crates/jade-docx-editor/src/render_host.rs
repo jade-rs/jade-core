@@ -378,6 +378,16 @@ pub trait CanvasRenderHost {
         true
     }
 
+    fn copy_page_pixels_to(
+        &self,
+        _page_index: usize,
+        _target: &OffscreenCanvasRenderingContext2d,
+    ) -> Result<(), JsValue> {
+        Err(JsValue::from_str(
+            "Page pixel copying requires an offscreen render host",
+        ))
+    }
+
     /// Retained native surfaces require a complete page paint unless a band
     /// plan proves that the existing pixels outside its clip remain valid.
     fn requires_full_page_repaint_without_band(&self) -> bool {
@@ -1988,6 +1998,42 @@ impl CanvasRenderHost for OffscreenRenderHost {
         } else if let Some(flag) = self.page_materialized.get_mut(page_index - 1) {
             *flag = false;
         }
+    }
+
+    fn copy_page_pixels_to(
+        &self,
+        page_index: usize,
+        target: &OffscreenCanvasRenderingContext2d,
+    ) -> Result<(), JsValue> {
+        if self.pageless_mode || !self.page_has_rendered_pixels(page_index) {
+            return Err(JsValue::from_str("Page has no rendered pixels to copy"));
+        }
+        let source = if page_index == 0 {
+            &self.base_canvas
+        } else {
+            self.extra_canvases
+                .get(page_index - 1)
+                .ok_or_else(|| JsValue::from_str("Page index out of range"))?
+        };
+        let destination = target.canvas();
+        if destination == *source {
+            return Err(JsValue::from_str("Page copy requires a separate canvas"));
+        }
+        if destination.width() != source.width() {
+            destination.set_width(source.width());
+        }
+        if destination.height() != source.height() {
+            destination.set_height(source.height());
+        }
+        target.save();
+        let result = (|| {
+            target.reset_transform()?;
+            target.set_global_alpha(1.0);
+            target.set_global_composite_operation("copy")?;
+            target.draw_image_with_offscreen_canvas(source, 0.0, 0.0)
+        })();
+        target.restore();
+        result
     }
 
     fn mark_page_rendered(&mut self, page_index: usize) {

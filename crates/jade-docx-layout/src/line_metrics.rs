@@ -886,8 +886,8 @@ pub(crate) enum WordAsciiMetrics {
 // partial-grid Word coordinate probe (regular X). Index is printable ASCII
 // minus space. Zero keeps host metrics for unobserved glyphs.
 const WORD_CALIBRI_ASCII_UNITS: [u16; 95] = [
-    463, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 627, 0, 791, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 1185, 1114, 1092, 1260, 1000, 941, 1292, 1276, 516, 0, 1064, 861, 1751, 1322, 1356,
+    463, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 627, 517, 791, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 1185, 1114, 1092, 1260, 1000, 941, 1292, 1276, 516, 0, 1064, 861, 1751, 1322, 1356,
     1058, 1378, 1112, 941, 998, 0, 1162, 1822, 1063, 998, 959, 0, 0, 0, 0, 0, 0, 981, 1076, 866,
     1076, 1019, 625, 964, 1076, 470, 490, 931, 470, 1636, 1076, 1080, 1076, 1076, 714, 801, 686,
     1076, 925, 1464, 887, 927, 809, 0, 0, 0, 0,
@@ -903,10 +903,14 @@ const WORD_CALIBRI_BOLD_ASCII_UNITS: [u16; 95] = [
 // Source-matched Calibri Title runs in 40 original Word PDFs, at 22/24pt.
 // Subtract the observed hmtx and source tracking from adjacent origins;
 // round median design units, treating <2 units as PDF positioning noise.
-// The 304 observed pairs include zero adjustments; missing pairs keep the
+// The observed pairs include zero adjustments; missing pairs keep the
 // host path. A fixed compile-time table avoids per-glyph maps/allocations.
 static WORD_CALIBRI_PAIR_UNITS: [i16; 95 * 95] = {
     let pairs = [
+        // Also observed in the 20pt Word Mac kern-default probe.
+        (b'A', b'V', -90),
+        (b'T', b'x', -91),
+        (b'W', b'a', -70),
         (b' ', b'/', 0),
         (b' ', b'A', 0),
         (b' ', b'B', 0),
@@ -1716,6 +1720,31 @@ impl WordAsciiMetrics {
                     [usize::from(left - b' ') * 95 + usize::from(right - b' ')];
                 (units != i16::MIN).then_some(unit_px * f64::from(units))
             }
+            // Regular-face kerning from adjacent glyph origins in the
+            // archived Word Mac kern-default probe, minus the hmtx advance.
+            (Self::Century(unit_px), left, right) => {
+                let units = match (left, right) {
+                    (b'A', b'V') => -228,
+                    (b'T', b'o') => -188,
+                    (b'1', b'1') => -112,
+                    (b'W', b'a') => -152,
+                    _ => return None,
+                };
+                Some(unit_px * f64::from(units))
+            }
+            (Self::Cambria(unit_px), left, right) => {
+                let units = match (left, right) {
+                    (b'A', b'V') => -121,
+                    (b'1', b'1') => 0,
+                    (b'V', b'x') => -99,
+                    (b'T', b'o') => -167,
+                    (b'o', b'x') => -30,
+                    (b'T', b'x') => -71,
+                    (b'W', b'a') => -89,
+                    _ => return None,
+                };
+                Some(unit_px * f64::from(units))
+            }
             (Self::YuMincho(unit_px, _), left, right)
                 if (b' '..=b'~').contains(&left) && (b' '..=b'~').contains(&right) =>
             {
@@ -1838,13 +1867,18 @@ impl WordAsciiMetrics {
             }
             Self::Cambria(unit_px) => {
                 // Upright advances from Cambria subsets in the Word for Mac
-                // PDFs for the nested-sizing-mode fixtures.
+                // PDFs for the nested-sizing-mode and kern-default fixtures.
                 let units = match ascii {
                     b' ' => 451.0,
                     b'.' => 420.0,
                     b'0' | b'1' | b'2' | b'4' | b'5' | b'6' | b'8' => 1134.0,
+                    b'A' => 1276.0,
+                    b'L' => 1099.0,
                     b'N' => 1394.0,
                     b'T' => 1214.0,
+                    b'V' => 1236.0,
+                    b'W' => 1887.0,
+                    b'a' => 1000.0,
                     b'c' => 903.0,
                     b'd' => 1136.0,
                     b'e' => 999.0,
@@ -2176,14 +2210,16 @@ const YU_MINCHO_ASCII_UNITS: [u16; 95] = [
 
 // Numeric hmtx facts from regular Century's MacRomanEncoding subsets in the
 // unchanged math, scroll-offset-repro, trust-beneficiary-sale-keep-next and
-// wrong-num Word PDFs and the archived line-pitch Word coordinate probe.
+// wrong-num Word PDFs and the archived line-pitch and kern-default probes.
+// B is from Word for Mac’s Century.ttf; distribute-single confirms its width
+// at the right edge of a distributed line.
 // Zero keeps host metrics.
 const CENTURY_ASCII_UNITS: [u16; 95] = [
     569, 0, 0, 0, 0, 0, 0, 0, 682, 682, 0, 1241, 0, 0, 569, 0, 1139, 1139, 1139, 1139, 1139, 1139,
-    1139, 1139, 1139, 1139, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1479, 0, 0, 0, 0, 0, 0, 0, 0, 1366, 1933,
-    1669, 0, 0, 0, 1479, 0, 1366, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1139, 1139, 909, 0, 1024,
-    682, 0, 1251, 645, 0, 0, 0, 1821, 1251, 1024, 1176, 0, 909, 948, 797, 1251, 0, 1593, 0, 1100,
-    0, 0, 0, 0, 0,
+    1139, 1139, 1139, 1139, 0, 0, 0, 0, 0, 0, 0, 1479, 1479, 1479, 0, 0, 0, 0, 0, 0, 0, 0, 1366,
+    1933, 1669, 0, 0, 0, 1479, 0, 1366, 0, 1479, 2009, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1139, 1139, 909,
+    0, 1024, 682, 0, 1251, 645, 0, 0, 0, 1821, 1251, 1024, 1176, 0, 909, 948, 797, 1251, 0, 1593,
+    1100, 1100, 0, 0, 0, 0, 0,
 ];
 
 #[inline]
@@ -2929,6 +2965,18 @@ pub fn word_east_asian_font_vertical_units(family: &str) -> Option<(f32, f32, f3
         {
             Some((880.0, 120.0, 1000.0))
         }
+        // macOS Hiragino Mincho ProN W3 and W6 have the same hhea box as
+        // Kaku Gothic. Word excludes the Latin line gap here too.
+        "ヒラギノ明朝 ProN"
+        | "ヒラギノ明朝 ProN W3"
+        | "ヒラギノ明朝 ProN W6"
+        | "Hiragino Mincho ProN"
+        | "Hiragino Mincho ProN W3"
+        | "Hiragino Mincho ProN W6"
+            if word_layout_platform() == WordLayoutPlatform::Mac =>
+        {
+            Some((880.0, 120.0, 1000.0))
+        }
         // Source-matched HG Maru subsets in the unchanged Word Mac math PDF:
         // hhea 220/-36, 256 units/em, no line gap.
         "HG丸ｺﾞｼｯｸM-PRO" | "HGMaruGothicMPRO"
@@ -3117,6 +3165,9 @@ fn word_latin_font_vertical_units(family: &str) -> Option<(f32, f32)> {
     match family {
         "Calibri" | "Calibri Light" => Some((1950.0, 550.0)),
         "Cambria" => Some((1946.0, 455.0)),
+        "Cambria Math" if word_layout_platform() == WordLayoutPlatform::Mac => {
+            Some((1946.0, 455.0))
+        }
         "Arial" => Some((1921.0, 434.0)),
         "Times New Roman" => Some((1912.0, 443.0)),
         "Century" => Some((2019.0, 443.0)),
@@ -5995,6 +6046,18 @@ mod tests {
                 ascent * 0.75
             );
         }
+        set_word_layout_platform(WordLayoutPlatform::Windows);
+    }
+
+    #[test]
+    fn hiragino_mincho_pro_n_matches_word_mac_minimum_cell_baselines() {
+        set_word_layout_platform(WordLayoutPlatform::Mac);
+        let (ascent, descent) = word_font_vertical_metrics_px("11pt 'Hiragino Mincho ProN', serif")
+            .expect("Hiragino Mincho metrics");
+        // Word prints 11.28pt below the first cell top at a 14pt minimum,
+        // and 22.97pt below the second cell top at a 26pt minimum.
+        assert!((ascent * 0.75 - 11.28).abs() <= 0.1);
+        assert!((26.0 - descent * 0.75 - 22.97).abs() <= 0.1);
         set_word_layout_platform(WordLayoutPlatform::Windows);
     }
 
