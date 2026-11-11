@@ -173,13 +173,19 @@ function* glyphOrigins(line) {
 }
 
 const tallGridName = 'word-mac-grid-tall-face';
-const tallGridDirectory = new URL('tests/word-oracle/mac-probes-20261107/', root);
+const gridProbes = new URL('tests/word-oracle/mac-probes-20261107/', root);
+const gridGlyphNames = [
+  'word-mac-probe-grid-line-unit',
+  'word-mac-probe-grid-line-unit-table',
+  'word-mac-probe-kinsoku-widow',
+  'word-mac-probe-latin-east-asia-face',
+];
 const tallGridTolerancePt = 0.65;
 
 async function checkTallGrid(page) {
   const [bytes, referenceJson] = await Promise.all([
-    readFile(new URL(`${tallGridName}.docx`, tallGridDirectory)),
-    readFile(new URL(`${tallGridName}.pages.json`, tallGridDirectory)),
+    readFile(new URL(`${tallGridName}.docx`, gridProbes)),
+    readFile(new URL(`${tallGridName}.pages.json`, gridProbes)),
   ]);
   const reference = JSON.parse(referenceJson);
   assert.equal(hash(bytes), reference.docx_sha256, 'DOCX digest');
@@ -223,6 +229,44 @@ async function checkTallGrid(page) {
     }
   }
   return differences;
+}
+
+async function loadGridGlyphFixture(name) {
+  const [bytes, referenceJson] = await Promise.all([
+    readFile(new URL(`public/fixtures/${name}.docx`, root)),
+    readFile(new URL(`${name}.json`, gridProbes)),
+  ]);
+  const word = JSON.parse(referenceJson);
+  assert.equal(hash(bytes), word.docx_sha256, 'DOCX digest');
+  assert.equal(word.pages.length, word.page_count, 'reference page count');
+  const reference = word.pages.map((page, index) => {
+    assert.equal(page.page, index + 1, 'reference page number');
+    return {
+      size: [page.width_pt, page.height_pt],
+      body: page.rows.flatMap(row => row.characters
+        .filter(glyph => glyph.text.trim())
+        .map(glyph => [glyph.text, glyph.x_pt, glyph.baseline_pt ?? row.baseline_pt])),
+      header: [],
+      footer: [],
+      images: [],
+    };
+  });
+  return { bytes, reference, manifest: { pages: word.page_count, axisTolerancePt: 0.65 } };
+}
+
+async function loadSyntheticFixture(name) {
+  const dir = new URL(`${name}/`, corpus);
+  const [manifestBytes, bytes, compressed] = await Promise.all(
+    ['manifest.json', 'source.docx', 'pages.json.gz'].map(filename => readFile(new URL(filename, dir))),
+  );
+  const manifest = JSON.parse(manifestBytes);
+  assert.equal(manifest.schema, 1);
+  assert.equal(manifest.reference.platform, 'mac');
+  assert.equal(hash(bytes), manifest.sourceSha256, 'DOCX digest');
+  assert.equal(hash(compressed), manifest.coordinatesSha256, 'Word reference digest');
+  const reference = JSON.parse(gunzipSync(compressed));
+  assert.equal(reference.length, manifest.pages, 'reference page count');
+  return { bytes, reference, manifest };
 }
 
 function checkPages(name, reference, actual, manifest) {
@@ -307,7 +351,7 @@ function checkPages(name, reference, actual, manifest) {
 const directories = (await readdir(corpus, { withFileTypes: true }))
   .filter(entry => entry.isDirectory()).map(entry => entry.name).sort();
 assert(directories.length > 0, 'no Word coordinate fixtures found');
-const names = process.argv.length > 2 ? process.argv.slice(2) : [...directories, tallGridName];
+const names = process.argv.length > 2 ? process.argv.slice(2) : [...directories, ...gridGlyphNames, tallGridName];
 const browser = await chromium.launch();
 const failures = [];
 try {
@@ -341,18 +385,11 @@ try {
         }
         continue;
       }
-      assert(directories.includes(name), `unknown fixture: ${name}`);
-      const dir = new URL(`${name}/`, corpus);
-      const [manifestBytes, bytes, compressed] = await Promise.all(
-        ['manifest.json', 'source.docx', 'pages.json.gz'].map(filename => readFile(new URL(filename, dir))),
-      );
-      const manifest = JSON.parse(manifestBytes);
-      assert.equal(manifest.schema, 1);
-      assert.equal(manifest.reference.platform, 'mac');
-      assert.equal(hash(bytes), manifest.sourceSha256, 'DOCX digest');
-      assert.equal(hash(compressed), manifest.coordinatesSha256, 'Word reference digest');
-      const reference = JSON.parse(gunzipSync(compressed));
-      assert.equal(reference.length, manifest.pages, 'reference page count');
+      const isGridProbe = gridGlyphNames.includes(name);
+      assert(isGridProbe || directories.includes(name), `unknown fixture: ${name}`);
+      const { bytes, reference, manifest } = await (isGridProbe
+        ? loadGridGlyphFixture(name)
+        : loadSyntheticFixture(name));
       await page.goto('https://word-coordinates.test/');
       const actual = await capture(page, bytes, name);
       const differences = checkPages(name, reference, actual, manifest);
