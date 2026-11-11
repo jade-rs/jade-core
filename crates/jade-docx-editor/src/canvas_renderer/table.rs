@@ -3996,7 +3996,7 @@ where
                 line_height,
                 numbering_part,
                 numbering_counter,
-                None,
+                TableProjectionClip::default(),
                 bands,
             )?;
             if !indices_preassigned {
@@ -4068,7 +4068,7 @@ where
         line_height: f64,
         numbering_part: Option<&NumberingPart>,
         numbering_counter: &mut NumberingCounter,
-        ancestor_clip: Option<(f64, f64)>,
+        ancestor_clip: TableProjectionClip,
         bands: HorizontalBorderBands,
     ) -> Result<f64, JsValue> {
         let tagged = self.begin_structure_cell(cell.column_index);
@@ -4117,7 +4117,7 @@ where
         line_height: f64,
         numbering_part: Option<&NumberingPart>,
         numbering_counter: &mut NumberingCounter,
-        ancestor_clip: Option<(f64, f64)>,
+        ancestor_clip: TableProjectionClip,
         bands: HorizontalBorderBands,
     ) -> Result<f64, JsValue> {
         let padding = bands.content_padding(cell);
@@ -4143,10 +4143,13 @@ where
                     && y_top.is_finite()
                     && row_height.is_finite())
                 .then_some((clip_top, clip_top + clip_height));
-                intersect_vertical_clips(local, ancestor_clip)
+                intersect_vertical_clips(local, ancestor_clip.vertical)
             } else {
                 None
             };
+        let projection_right = ancestor_clip
+            .right
+            .map(|right| right.min(x_start + cell_width));
         let line_projection_clip =
             projection_clip.filter(|_| cell_ink_projection_is_horizontal(cell.text_direction));
         // Named so the painter outlives the guard that borrows it, and owning so
@@ -4540,6 +4543,7 @@ where
                                     line,
                                     &selection_line,
                                     clip,
+                                    projection_right,
                                 )?;
                             }
                             self.draw_selection_highlight(paragraph_index, &selection_line)?;
@@ -4611,6 +4615,18 @@ where
                         continue;
                     }
 
+                    // Word for Mac can lay out an auto-width nested table past
+                    // the parent cell edge. The cell clip still masks its ink.
+                    let right = if projection_clip.is_some()
+                        && jade_docx_layout::line_metrics::word_layout_platform()
+                            == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
+                        && nested_table.width > content_width
+                        && !table_floats(&nested_table.table)
+                    {
+                        Some(projection_right.unwrap_or(x_start + cell_width))
+                    } else {
+                        projection_right
+                    };
                     let nested_height = self.render_nested_table(
                         nested_table,
                         numbering_part,
@@ -4618,7 +4634,10 @@ where
                         x_start + pad_left + border_left_inset,
                         block_top,
                         content_width,
-                        projection_clip,
+                        TableProjectionClip {
+                            vertical: projection_clip,
+                            right,
+                        },
                     )?;
 
                     let consumed = nested_height.max(block.height.max(line_height));
@@ -5888,14 +5907,20 @@ where
         line: &LineLayout,
         selection_line: &SelectionLineLayout,
         (clip_top, clip_bottom): (f64, f64),
+        clip_right: Option<f64>,
     ) -> Result<(), JsValue> {
         let empty_clip = clip_bottom <= clip_top;
-        if (!empty_clip && line.word_baseline_offset.is_none())
-            || line.text.is_empty()
-            || (!empty_clip
-                && selection_line.top >= clip_top
-                && selection_line.top + selection_line.height <= clip_bottom)
-        {
+        let check_vertical = empty_clip
+            || (line.word_baseline_offset.is_some()
+                && (selection_line.top < clip_top
+                    || selection_line.top + selection_line.height > clip_bottom));
+        let clip_right = clip_right.filter(|right| {
+            selection_line
+                .fragments
+                .iter()
+                .any(|fragment| fragment.x + fragment.width >= *right)
+        });
+        if line.text.is_empty() || (!check_vertical && clip_right.is_none()) {
             return Ok(());
         }
         let spans = if empty_clip {
@@ -5929,7 +5954,7 @@ where
             let baseline = selection_line.baseline + fragment.baseline_shift_px;
             let mut glyphs = Vec::with_capacity(fragment.glyphs.len());
             for glyph in fragment.glyphs.iter() {
-                if empty_clip {
+                if empty_clip || clip_right.is_some_and(|right| fragment.x + glyph.x >= right) {
                     continue;
                 }
                 while spans
@@ -5962,13 +5987,15 @@ where
                         metrics.actual_bounding_box_descent,
                     ))
                 })?;
-                if glyph_ink_intersects_vertical_clip(
-                    baseline,
-                    ascent,
-                    descent,
-                    clip_top,
-                    clip_bottom,
-                ) {
+                if !check_vertical
+                    || glyph_ink_intersects_vertical_clip(
+                        baseline,
+                        ascent,
+                        descent,
+                        clip_top,
+                        clip_bottom,
+                    )
+                {
                     glyphs.push(LayoutGlyphDebug {
                         start: glyph.start,
                         end: glyph.end,
@@ -7249,7 +7276,7 @@ where
         x_start: f64,
         y_start: f64,
         available_width: f64,
-        ancestor_clip: Option<(f64, f64)>,
+        ancestor_clip: TableProjectionClip,
     ) -> Result<f64, JsValue> {
         let mut total_height = layout.margin_top + layout.margin_bottom;
         if layout.rows.is_empty() {
@@ -11112,6 +11139,12 @@ fn resolve_row_height(
 
 fn cell_ink_projection_is_horizontal(direction: Option<TextDirection>) -> bool {
     direction.is_none_or(|direction| direction == TextDirection::LrTb)
+}
+
+#[derive(Clone, Copy, Default)]
+struct TableProjectionClip {
+    vertical: Option<(f64, f64)>,
+    right: Option<f64>,
 }
 
 fn intersect_vertical_clips(
@@ -20585,7 +20618,7 @@ mod tests {
                             24.0,
                             None,
                             &mut NumberingCounter::default(),
-                            None,
+                            TableProjectionClip::default(),
                             HorizontalBorderBands::default(),
                         )
                         .unwrap();
@@ -24217,7 +24250,7 @@ mod tests {
                             100.0,
                             40.0,
                             200.0,
-                            None,
+                            TableProjectionClip::default(),
                         )
                         .unwrap();
                 }
@@ -24423,7 +24456,7 @@ mod tests {
                                 100.0,
                                 40.0,
                                 200.0,
-                                None,
+                                TableProjectionClip::default(),
                             )
                             .unwrap();
                     }
@@ -24597,7 +24630,7 @@ mod tests {
                             100.0,
                             40.0,
                             200.0,
-                            None,
+                            TableProjectionClip::default(),
                         )
                         .unwrap();
                 }
@@ -24764,7 +24797,7 @@ mod tests {
                                 100.0,
                                 40.0,
                                 200.0,
-                                None,
+                                TableProjectionClip::default(),
                             )
                             .unwrap();
                     }
@@ -24887,7 +24920,7 @@ mod tests {
                     100.0,
                     40.0,
                     200.0,
-                    None,
+                    TableProjectionClip::default(),
                 )
                 .unwrap();
             let repeated_painter = RecordingPainter::with_width_per_char(7.0);
@@ -24936,7 +24969,7 @@ mod tests {
                 100.0,
                 40.0,
                 200.0,
-                None,
+                TableProjectionClip::default(),
             )
             .unwrap();
         let repeated_painter = RecordingPainter::with_width_per_char(7.0);

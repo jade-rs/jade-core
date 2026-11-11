@@ -857,6 +857,7 @@ pub fn word_fixed_ascii_advance_px(font_descriptor: &str) -> Option<f64> {
         | WordAsciiMetrics::NotoSansJp(_)
         | WordAsciiMetrics::NotoSans(_)
         | WordAsciiMetrics::Calibri(_, _)
+        | WordAsciiMetrics::Cambria(_)
         | WordAsciiMetrics::Aptos(_, _)
         | WordAsciiMetrics::Bookman(_)
         | WordAsciiMetrics::TimesNewRoman(_, _, _) => None,
@@ -875,6 +876,7 @@ pub(crate) enum WordAsciiMetrics {
     NotoSansJp(f64),
     NotoSans(f64),
     Calibri(f64, bool),
+    Cambria(f64),
     Aptos(f64, usize),
     Bookman(f64),
     TimesNewRoman(f64, bool, bool),
@@ -1826,6 +1828,34 @@ impl WordAsciiMetrics {
                 };
                 (units != 0).then_some(unit_px * f64::from(units))
             }
+            Self::Cambria(unit_px) => {
+                // Upright advances from Cambria subsets in the Word for Mac
+                // PDFs for the nested-sizing-mode fixtures.
+                let units = match ascii {
+                    b' ' => 451.0,
+                    b'.' => 420.0,
+                    b'0' | b'1' | b'2' | b'4' | b'5' | b'6' | b'8' => 1134.0,
+                    b'N' => 1394.0,
+                    b'T' => 1214.0,
+                    b'c' => 903.0,
+                    b'd' => 1136.0,
+                    b'e' => 999.0,
+                    b'f' => 620.0,
+                    b'g' => 1012.0,
+                    b'h' => 1130.0,
+                    b'i' => 569.0,
+                    b'l' => 556.0,
+                    b'n' => 1143.0,
+                    b'o' => 1087.0,
+                    b'p' => 1139.0,
+                    b'r' => 847.0,
+                    b's' => 880.0,
+                    b't' => 693.0,
+                    b'x' => 990.0,
+                    _ => return None,
+                };
+                Some(unit_px * units)
+            }
             Self::TimesNewRoman(unit_px, bold, italic) => {
                 // Windows hmtx facts validated against both Word boundary
                 // sweeps. Unobserved glyphs retain host font measurement.
@@ -2359,6 +2389,9 @@ fn parse_word_ascii_metrics(
         "Century" if !bold && !italic => Some(WordAsciiMetrics::Century(em_px / 2048.0)),
         "Bookman Old Style" if !bold && !italic => Some(WordAsciiMetrics::Bookman(em_px / 2048.0)),
         "Calibri" if !italic => Some(WordAsciiMetrics::Calibri(em_px / 2048.0, bold)),
+        "Cambria" if platform == WordLayoutPlatform::Mac && !bold && !italic => {
+            Some(WordAsciiMetrics::Cambria(em_px / 2048.0))
+        }
         "Aptos" | "Aptos Display" if platform == WordLayoutPlatform::Mac => {
             let family_offset = if family == "Aptos Display" { 4 } else { 0 };
             let face = family_offset + 2 * usize::from(bold) + usize::from(italic);
