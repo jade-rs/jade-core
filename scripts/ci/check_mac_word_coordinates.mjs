@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { gunzipSync } from 'node:zlib';
+import { compareGlyphs, matchImageBounds } from './word_coordinate_matching.mjs';
 
 const { chromium } = createRequire(import.meta.url)('playwright');
 const root = new URL('../../', import.meta.url);
@@ -48,25 +49,6 @@ function visibleGlyph(text = '') {
   return /\p{Extended_Pictographic}/u.test(normalized)
     ? normalized.replace(/[\uFE0F\u200D]/g, '')
     : normalized;
-}
-
-function compareGlyphs(expected, actual, tolerance, toleranceX = tolerance) {
-  const candidates = new Map();
-  for (const glyph of actual) {
-    const [text] = glyph;
-    if (!candidates.has(text)) candidates.set(text, []);
-    candidates.get(text).push(glyph);
-  }
-  const missing = [];
-  for (const glyph of expected) {
-    const [text, x, y] = glyph;
-    const positions = candidates.get(text);
-    const match = positions?.findIndex(([, ax, ay]) =>
-      Math.abs(ax - x) <= toleranceX && Math.abs(ay - y) <= tolerance) ?? -1;
-    if (match === -1) missing.push(glyph);
-    else positions.splice(match, 1);
-  }
-  return { missing, extra: [...candidates.values()].flat() };
 }
 
 async function capture(page, bytes, name, captureArabic = false) {
@@ -305,7 +287,6 @@ function checkPages(name, reference, actual, manifest, expectedArabic) {
   const tolerance = manifest.axisTolerancePt;
   const registration = manifest.horizontalPrintRegistration;
   const compareAsGlyph = text => !expectedArabic || !isArabic(text);
-  const differences = [];
   const glyphs = reference.map(() => []);
   const images = reference.map(() => []);
   const entries = actual.body_lines.map(line => ({ page: line.page, line }));
@@ -325,7 +306,7 @@ function checkPages(name, reference, actual, manifest, expectedArabic) {
   }
 
   const within = (expected, measured) => expected.every((v, i) => Math.abs(v - measured[i]) <= tolerance);
-  const topToBottom = (a, b) => a[1] - b[1] || a[0] - b[0];
+  const differences = [];
   for (const [i, expected] of reference.entries()) {
     const page = i + 1;
     if (expectedArabic) {
@@ -355,10 +336,9 @@ function checkPages(name, reference, actual, manifest, expectedArabic) {
       .map(([text, x, y]) => [visibleGlyph(text), x - offset, y]);
     const { missing, extra } = compareGlyphs(origins, glyphs[i], tolerance, registration?.glyphTolerancePt);
     if (missing.length || extra.length) differences.push({ page, missing, extra });
-    const expectedImages = [...expected.images].sort(topToBottom);
-    const actualImages = images[i].sort(topToBottom);
-    if (expectedImages.length !== actualImages.length ||
-        expectedImages.some((bounds, j) => !within(bounds, actualImages[j]))) {
+    const expectedImages = expected.images;
+    const actualImages = images[i];
+    if (!matchImageBounds(expectedImages, actualImages, within)) {
       differences.push({ page, expectedImages, actualImages });
     }
   }
