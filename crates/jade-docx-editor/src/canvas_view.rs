@@ -19425,8 +19425,11 @@ impl OffscreenDocumentView {
     /// revision display does.
     #[wasm_bindgen(js_name = clearDecorationCache)]
     pub fn clear_decoration_cache(&self) -> Result<JsValue, JsValue> {
-        self.renderer.borrow().clear_decoration_cache();
-        self.rerender_after_display_change(|_| {})
+        self.rerender_after_display_change(|renderer| {
+            renderer.clear_decoration_cache();
+            // Cached drawing commands include plugin ink and bypass decoration lookup.
+            renderer.clear_paragraph_render_cache();
+        })
     }
 
     #[wasm_bindgen(js_name = applyDecorationResults)]
