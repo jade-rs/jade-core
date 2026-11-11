@@ -13,7 +13,9 @@ use wasm_bindgen::closure::Closure;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 use wasm_bindgen_futures::{future_to_promise, JsFuture};
-use web_sys::{self, ImageBitmap, OffscreenCanvas, WorkerGlobalScope};
+use web_sys::{
+    self, ImageBitmap, OffscreenCanvas, OffscreenCanvasRenderingContext2d, WorkerGlobalScope,
+};
 
 use crate::canvas_renderer::{
     CanvasRenderer, FieldDateTime, TableResizeHandleKind, TableResizeMetadata,
@@ -18875,6 +18877,19 @@ impl OffscreenDocumentView {
         renderer.create_page_bitmap(page_index)
     }
 
+    /// Copies a rendered page into a separate, dedicated offscreen 2D context.
+    /// The caller must complete pending image draws before copying the page.
+    #[wasm_bindgen(js_name = copyPagePixelsTo)]
+    pub fn copy_page_pixels_to(
+        &self,
+        page_index: usize,
+        target: &OffscreenCanvasRenderingContext2d,
+    ) -> Result<(), JsValue> {
+        self.renderer
+            .borrow()
+            .copy_page_pixels_to(page_index, target)
+    }
+
     /// Transfers an ImageBitmap for a specific page using `transferToImageBitmap()`.
     /// Synchronous and ~10x faster than `create_page_bitmap`, but **clears the
     /// canvas**. The page must be re-rendered before another bitmap can be taken.
@@ -19425,8 +19440,11 @@ impl OffscreenDocumentView {
     /// revision display does.
     #[wasm_bindgen(js_name = clearDecorationCache)]
     pub fn clear_decoration_cache(&self) -> Result<JsValue, JsValue> {
-        self.renderer.borrow().clear_decoration_cache();
-        self.rerender_after_display_change(|_| {})
+        self.rerender_after_display_change(|renderer| {
+            renderer.clear_decoration_cache();
+            // Cached drawing commands include plugin ink and bypass decoration lookup.
+            renderer.clear_paragraph_render_cache();
+        })
     }
 
     #[wasm_bindgen(js_name = applyDecorationResults)]

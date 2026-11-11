@@ -26,7 +26,13 @@ const textBoxes = new Map([
   ['textbox-tall-header-overlap-mac', 1], ['document-variable-fields-mac', 1],
   ['word-compat-comprehensive-mac', 1], ['table-object-edge-cases-mac', 1],
   ['table-inline-image-mac', 1],
-  ['footnote-table-textbox-order-mac', 1],
+  ['footnote-table-textbox-order-mac', 1], ['word-mac-probe-float-lookahead', 5],
+]);
+
+const emptyTextBoxParagraphs = new Map([
+  ['floating-z-order-mac', 1],
+  ['textbox-tall-header-overlap-mac', 1],
+  ['word-mac-probe-float-lookahead', 5],
 ]);
 
 function hash(bytes) {
@@ -157,8 +163,7 @@ function checkStories(name, actual) {
         if (!visible) emptyParagraphs++;
       }
     }
-    const hasEmptyParagraph = name === 'floating-z-order-mac' || name === 'textbox-tall-header-overlap-mac';
-    assert.equal(emptyParagraphs, Number(hasEmptyParagraph), 'empty text box paragraphs');
+    assert.equal(emptyParagraphs, emptyTextBoxParagraphs.get(name) ?? 0, 'empty text box paragraphs');
   }
   assert.deepEqual(actual.known_uncaptured_stories, uncaptured);
 }
@@ -179,6 +184,119 @@ function referenceGlyphs(name, page) {
     return page.body.flatMap(([text, x, y], i) => i === kana + 1 ? [] : [[graphemes[text] ?? text, x, y]]);
   }
   return [...page.header, ...page.body, ...page.footer];
+}
+
+function* glyphOrigins(line) {
+  for (const fragment of line.fragments ?? []) {
+    for (const glyph of fragment.glyphs ?? []) {
+      const x = fragment.x + glyph.x - 2 * line.report_x_offset;
+      yield [glyph.text, x * pt, fragment.baseline * pt];
+    }
+  }
+}
+
+const tallGridName = 'word-mac-grid-tall-face';
+const gridProbes = new URL('tests/word-oracle/mac-probes-20261107/', root);
+const rubyProbes = new URL('tests/word-oracle/mac-probes-16114/', root);
+const archivedGlyphProbes = new Map([
+  ['word-mac-probe-grid-line-unit', gridProbes],
+  ['word-mac-probe-grid-line-unit-table', gridProbes],
+  ['word-mac-probe-kinsoku-widow', gridProbes],
+  ['word-mac-probe-latin-east-asia-face', gridProbes],
+  ['word-mac-probe-eqruby-grid', rubyProbes],
+  ['word-mac-probe-eqruby-nogrid', rubyProbes],
+  ['word-mac-probe-ruby-grid', rubyProbes],
+  ['word-mac-probe-ruby-nogrid', rubyProbes],
+  ['word-mac-probe-ruby-wide-grid', rubyProbes],
+  ['word-mac-probe-ruby-wide-nogrid', rubyProbes],
+]);
+const tallGridTolerancePt = 0.65;
+
+async function checkTallGrid(page) {
+  const [bytes, referenceJson] = await Promise.all([
+    readFile(new URL(`${tallGridName}.docx`, gridProbes)),
+    readFile(new URL(`${tallGridName}.pages.json`, gridProbes)),
+  ]);
+  const reference = JSON.parse(referenceJson);
+  assert.equal(hash(bytes), reference.docx_sha256, 'DOCX digest');
+  assert.equal(reference.page_count, 265, 'reference page count');
+  assert.equal(reference.pages.length, reference.page_count);
+  assert.equal(reference.pages.reduce((total, { rows }) => total + rows.length, 0), 4692);
+  const actual = await capture(page, bytes, tallGridName);
+  assert.equal(actual.complete, true, 'layout capture is incomplete');
+  assert.equal(actual.page_count, reference.page_count, 'page count');
+  checkStories(tallGridName, actual);
+  const glyphs = reference.pages.map(() => []);
+  for (const { page: index, line } of [
+    ...actual.body_lines.map(line => ({ page: line.page, line })), ...actual.auxiliary_lines,
+  ]) {
+    for (const glyph of glyphOrigins(line)) {
+      if (glyph[0].trim()) glyphs[index].push(glyph);
+    }
+  }
+  const differences = [];
+  for (const [index, { page: number, rows: expected }] of reference.pages.entries()) {
+    assert.equal(number, index + 1, 'reference page number');
+    const rows = [];
+    for (const [text, x, baseline] of glyphs[index].sort((a, b) => a[2] - b[2] || a[1] - b[1])) {
+      let row = rows.at(-1);
+      if (!row || baseline - row.baseline >= 1) {
+        row = { baseline, glyphs: [] };
+        rows.push(row);
+      }
+      row.glyphs.push([x, text]);
+    }
+    if (rows.length !== expected.length) {
+      differences.push({ page: number, expectedRows: expected.length, actualRows: rows.length });
+    }
+    for (const [i, { baseline, glyphs: rowGlyphs }] of rows.entries()) {
+      if (i >= expected.length) break;
+      const text = rowGlyphs.sort((a, b) => a[0] - b[0]).map(([, text]) => text).join('');
+      const [wordBaseline, wordText] = expected[i];
+      if (text !== wordText || Math.abs(baseline - wordBaseline) > tallGridTolerancePt) {
+        differences.push({ page: number, row: i + 1, expected: expected[i], actual: [baseline, text] });
+      }
+    }
+  }
+  return differences;
+}
+
+async function loadArchivedGlyphFixture(name) {
+  const [bytes, referenceJson] = await Promise.all([
+    readFile(new URL(`public/fixtures/${name}.docx`, root)),
+    readFile(new URL(`${name}.json`, archivedGlyphProbes.get(name))),
+  ]);
+  const word = JSON.parse(referenceJson);
+  assert.equal(hash(bytes), word.docx_sha256, 'DOCX digest');
+  assert.equal(word.pages.length, word.page_count, 'reference page count');
+  const reference = word.pages.map((page, index) => {
+    assert.equal(page.page, index + 1, 'reference page number');
+    return {
+      size: [page.width_pt, page.height_pt],
+      body: page.rows.flatMap(row => row.characters
+        .filter(glyph => glyph.text.trim())
+        .map(glyph => [glyph.text, glyph.x_pt, glyph.baseline_pt ?? row.baseline_pt])),
+      header: [],
+      footer: [],
+      images: [],
+    };
+  });
+  return { bytes, reference, manifest: { pages: word.page_count, axisTolerancePt: 0.65 } };
+}
+
+async function loadSyntheticFixture(name) {
+  const dir = new URL(`${name}/`, corpus);
+  const [manifestBytes, bytes, compressed] = await Promise.all(
+    ['manifest.json', 'source.docx', 'pages.json.gz'].map(filename => readFile(new URL(filename, dir))),
+  );
+  const manifest = JSON.parse(manifestBytes);
+  assert.equal(manifest.schema, 1);
+  assert.equal(manifest.reference.platform, 'mac');
+  assert.equal(hash(bytes), manifest.sourceSha256, 'DOCX digest');
+  assert.equal(hash(compressed), manifest.coordinatesSha256, 'Word reference digest');
+  const reference = JSON.parse(gunzipSync(compressed));
+  assert.equal(reference.length, manifest.pages, 'reference page count');
+  return { bytes, reference, manifest };
 }
 
 function checkPages(name, reference, actual, manifest) {
@@ -211,12 +329,9 @@ function checkPages(name, reference, actual, manifest) {
     ? entries.filter(({ line }) => line.paragraph === 4)
     : [...entries, ...actual.auxiliary_lines];
   for (const { page, line } of lines) {
-    for (const fragment of line.fragments ?? []) {
-      for (const glyph of fragment.glyphs ?? []) {
-        const text = visibleGlyph(glyph.text);
-        const x = fragment.x + glyph.x - 2 * line.report_x_offset;
-        if (text && compareAsGlyph(text)) glyphs[page].push([text, x * pt, fragment.baseline * pt]);
-      }
+    for (const [rawText, x, baseline] of glyphOrigins(line)) {
+      const text = visibleGlyph(rawText);
+      if (text && compareAsGlyph(text)) glyphs[page].push([text, x, baseline]);
     }
   }
   for (const object of actual.objects) {
@@ -265,7 +380,7 @@ function checkPages(name, reference, actual, manifest) {
 const directories = (await readdir(corpus, { withFileTypes: true }))
   .filter(entry => entry.isDirectory()).map(entry => entry.name).sort();
 assert(directories.length > 0, 'no Word coordinate fixtures found');
-const names = process.argv.length > 2 ? process.argv.slice(2) : directories;
+const names = process.argv.length > 2 ? process.argv.slice(2) : [...directories, ...archivedGlyphProbes.keys(), tallGridName];
 const browser = await chromium.launch();
 const failures = [];
 try {
@@ -288,18 +403,22 @@ try {
   });
   for (const name of names) {
     try {
-      assert(directories.includes(name), `unknown fixture: ${name}`);
-      const dir = new URL(`${name}/`, corpus);
-      const [manifestBytes, bytes, compressed] = await Promise.all(
-        ['manifest.json', 'source.docx', 'pages.json.gz'].map(filename => readFile(new URL(filename, dir))),
-      );
-      const manifest = JSON.parse(manifestBytes);
-      assert.equal(manifest.schema, 1);
-      assert.equal(manifest.reference.platform, 'mac');
-      assert.equal(hash(bytes), manifest.sourceSha256, 'DOCX digest');
-      assert.equal(hash(compressed), manifest.coordinatesSha256, 'Word reference digest');
-      const reference = JSON.parse(gunzipSync(compressed));
-      assert.equal(reference.length, manifest.pages, 'reference page count');
+      if (name === tallGridName) {
+        await page.goto('https://word-coordinates.test/');
+        const differences = await checkTallGrid(page);
+        if (differences.length) {
+          failures.push({ name, differences });
+          console.error(`${name}: ${differences.length} pagination or baseline differences`);
+        } else {
+          console.log(`${name}: 265 pages and 4692 row baselines within ${tallGridTolerancePt} pt`);
+        }
+        continue;
+      }
+      const isArchivedProbe = archivedGlyphProbes.has(name);
+      assert(isArchivedProbe || directories.includes(name), `unknown fixture: ${name}`);
+      const { bytes, reference, manifest } = await (isArchivedProbe
+        ? loadArchivedGlyphFixture(name)
+        : loadSyntheticFixture(name));
       await page.goto('https://word-coordinates.test/');
       const actual = await capture(page, bytes, name);
       const differences = checkPages(name, reference, actual, manifest);

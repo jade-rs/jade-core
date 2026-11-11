@@ -1,0 +1,16 @@
+{
+  "schema": 1,
+  "sourceSha256": "63829ded26a781a5b266cfc4ed09e80f9db45e3397966dae82cfe5e588ccd0f2",
+  "reference": {
+    "application": "Microsoft Word",
+    "platform": "mac",
+    "version": "16.114",
+    "build": "16.114.26101123",
+    "export": "Save As > PDF",
+    "pdfSha256": "d4789d4aff28fe76982a70dfd41a1cc1c3cc53798ddc0d8f03c0c8a8ec41f810",
+    "coordinateSource": "tests/word-oracle/mac-probes-16114/word-mac-probe-squeeze-comma.json"
+  },
+  "pages": 5,
+  "axisTolerancePt": 0.65,
+  "coordinatesSha256": "77e376ffbb253a9af6f8b5d9b497e7f3e71636c2241e0775a428d62efb520665"
+}

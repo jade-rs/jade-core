@@ -1,0 +1,16 @@
+{
+  "schema": 1,
+  "sourceSha256": "de22684e8336b303741c28a5c5c497899bafd568f4aa7021b40c257fba90c739",
+  "reference": {
+    "application": "Microsoft Word",
+    "platform": "mac",
+    "version": "16.114",
+    "build": "16.114.26101123",
+    "export": "Save As > PDF",
+    "pdfSha256": "9633d00b66edd775d5c40d60fccc89dee9d4a2a545ae4770d95ba28fe02ceb68",
+    "coordinateSource": "tests/word-oracle/mac-probes-16114/word-mac-probe-exact-grid.json"
+  },
+  "pages": 16,
+  "axisTolerancePt": 0.65,
+  "coordinatesSha256": "4c3e7b08a7d667475c697b2531ab198067d5d67f7ae1e736a3fb4f91017e4f1a"
+}
