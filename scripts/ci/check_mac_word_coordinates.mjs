@@ -17,6 +17,7 @@ const finalRevisionView = new Set([
 const shapedArabic = new Set(['table-inline-image-mac', 'table-object-edge-cases-mac']);
 const arabicScript = /\p{Script=Arabic}/u;
 const textBoxes = new Map([
+  ['numbering-textbox-overflow-mac', 1],
   ['floating-wrap-sides-mac', 3], ['floating-inside-outside-mac', 4],
   ['floating-simple-position-mac', 1], ['floating-square-wrap-mac', 1],
   ['floating-through-concave-mac', 1], ['floating-tight-polygon-mac', 1],
@@ -26,7 +27,14 @@ const textBoxes = new Map([
   ['textbox-tall-header-overlap-mac', 1], ['document-variable-fields-mac', 1],
   ['word-compat-comprehensive-mac', 1], ['table-object-edge-cases-mac', 1],
   ['table-inline-image-mac', 1],
-  ['footnote-table-textbox-order-mac', 1],
+  ['footnote-table-textbox-order-mac', 1], ['word-mac-probe-float-lookahead', 5],
+]);
+
+const textBoxParagraphsWithoutGlyphs = new Map([
+  ['floating-z-order-mac', 1],
+  ['textbox-tall-header-overlap-mac', 1],
+  ['numbering-textbox-overflow-mac', 5],
+  ['word-mac-probe-float-lookahead', 5],
 ]);
 
 function hash(bytes) {
@@ -123,7 +131,7 @@ function checkStories(name, actual) {
     assert.equal(actual.text_box_source_inventory_complete, true);
     assert.equal(actual.source_text_stories.length, textBoxes.get(name));
     assert.equal(actual.text_box_regions.length, textBoxes.get(name));
-    let emptyParagraphs = 0;
+    let paragraphsWithoutGlyphs = 0;
     for (const { kind, paragraphIndex, runIndex } of actual.source_text_stories) {
       assert.equal(kind, 'text_box');
       const regions = actual.text_box_regions.filter(region =>
@@ -136,11 +144,11 @@ function checkStories(name, actual) {
           entry.page === region.page - 1 && entry.story === 'text_box' &&
           entry.line.paragraph === paragraph &&
           entry.line.fragments?.some(fragment => fragment.glyphs?.some(glyph => visibleGlyph(glyph.text))));
-        if (!visible) emptyParagraphs++;
+        if (!visible) paragraphsWithoutGlyphs++;
       }
     }
-    const hasEmptyParagraph = name === 'floating-z-order-mac' || name === 'textbox-tall-header-overlap-mac';
-    assert.equal(emptyParagraphs, Number(hasEmptyParagraph), 'empty text box paragraphs');
+    assert.equal(paragraphsWithoutGlyphs, textBoxParagraphsWithoutGlyphs.get(name) ?? 0,
+      'text box paragraphs without visible glyphs');
   }
   assert.deepEqual(actual.known_uncaptured_stories, uncaptured);
 }
@@ -174,12 +182,19 @@ function* glyphOrigins(line) {
 
 const tallGridName = 'word-mac-grid-tall-face';
 const gridProbes = new URL('tests/word-oracle/mac-probes-20261107/', root);
-const gridGlyphNames = [
-  'word-mac-probe-grid-line-unit',
-  'word-mac-probe-grid-line-unit-table',
-  'word-mac-probe-kinsoku-widow',
-  'word-mac-probe-latin-east-asia-face',
-];
+const rubyProbes = new URL('tests/word-oracle/mac-probes-16114/', root);
+const archivedGlyphProbes = new Map([
+  ['word-mac-probe-grid-line-unit', gridProbes],
+  ['word-mac-probe-grid-line-unit-table', gridProbes],
+  ['word-mac-probe-kinsoku-widow', gridProbes],
+  ['word-mac-probe-latin-east-asia-face', gridProbes],
+  ['word-mac-probe-eqruby-grid', rubyProbes],
+  ['word-mac-probe-eqruby-nogrid', rubyProbes],
+  ['word-mac-probe-ruby-grid', rubyProbes],
+  ['word-mac-probe-ruby-nogrid', rubyProbes],
+  ['word-mac-probe-ruby-wide-grid', rubyProbes],
+  ['word-mac-probe-ruby-wide-nogrid', rubyProbes],
+]);
 const tallGridTolerancePt = 0.65;
 
 async function checkTallGrid(page) {
@@ -231,10 +246,10 @@ async function checkTallGrid(page) {
   return differences;
 }
 
-async function loadGridGlyphFixture(name) {
+async function loadArchivedGlyphFixture(name) {
   const [bytes, referenceJson] = await Promise.all([
     readFile(new URL(`public/fixtures/${name}.docx`, root)),
-    readFile(new URL(`${name}.json`, gridProbes)),
+    readFile(new URL(`${name}.json`, archivedGlyphProbes.get(name))),
   ]);
   const word = JSON.parse(referenceJson);
   assert.equal(hash(bytes), word.docx_sha256, 'DOCX digest');
@@ -351,7 +366,7 @@ function checkPages(name, reference, actual, manifest) {
 const directories = (await readdir(corpus, { withFileTypes: true }))
   .filter(entry => entry.isDirectory()).map(entry => entry.name).sort();
 assert(directories.length > 0, 'no Word coordinate fixtures found');
-const names = process.argv.length > 2 ? process.argv.slice(2) : [...directories, ...gridGlyphNames, tallGridName];
+const names = process.argv.length > 2 ? process.argv.slice(2) : [...directories, ...archivedGlyphProbes.keys(), tallGridName];
 const browser = await chromium.launch();
 const failures = [];
 try {
@@ -385,10 +400,10 @@ try {
         }
         continue;
       }
-      const isGridProbe = gridGlyphNames.includes(name);
-      assert(isGridProbe || directories.includes(name), `unknown fixture: ${name}`);
-      const { bytes, reference, manifest } = await (isGridProbe
-        ? loadGridGlyphFixture(name)
+      const isArchivedProbe = archivedGlyphProbes.has(name);
+      assert(isArchivedProbe || directories.includes(name), `unknown fixture: ${name}`);
+      const { bytes, reference, manifest } = await (isArchivedProbe
+        ? loadArchivedGlyphFixture(name)
         : loadSyntheticFixture(name));
       await page.goto('https://word-coordinates.test/');
       const actual = await capture(page, bytes, name);

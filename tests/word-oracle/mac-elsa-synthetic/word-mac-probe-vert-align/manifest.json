@@ -1,0 +1,16 @@
+{
+  "schema": 1,
+  "sourceSha256": "81861a061b5460c034373cd1fc459fd044a6b34c4209eca1bce70c0598ca5236",
+  "reference": {
+    "application": "Microsoft Word",
+    "platform": "mac",
+    "version": "16.114.2",
+    "build": "16.114.26102345",
+    "export": "Save As > PDF",
+    "pdfSha256": "d79ed77e8b56bcc4260c4dcb2e2835a6145ea66bbc79ca161f3d6a2047001e21",
+    "coordinateSource": "tests/word-oracle/mac-probes-20261030/word-mac-probe-vert-align.json"
+  },
+  "pages": 2,
+  "axisTolerancePt": 0.65,
+  "coordinatesSha256": "aa3d2a2e1085f8b16d2849d0b10a0f6c1c3561dc05ba34f0b2e378a2f1e2a607"
+}
