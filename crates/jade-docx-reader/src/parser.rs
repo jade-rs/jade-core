@@ -7960,13 +7960,16 @@ impl DocumentParser {
                 }
             }
             b"wp:effectExtent" if image.layout.kind == RunImageKind::Inline => {
-                image.layout.inline_effect_bottom = element
+                if let Some(bottom) = element
                     .attributes()
                     .flatten()
                     .find(|attr| attr.key.as_ref() == b"b")
                     .and_then(|attr| Self::parse_f64_attr(&attr))
                     .filter(|value| value.is_finite() && *value > 0.0)
-                    .map(Self::emu_to_px);
+                    .map(Self::emu_to_px)
+                {
+                    image.layout.options_mut().inline_effect_bottom = Some(bottom);
+                }
             }
             b"wp:extent" | b"a:ext" => {
                 let is_outer_extent = element.name().as_ref() == b"wp:extent";

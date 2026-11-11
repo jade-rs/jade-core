@@ -1932,6 +1932,10 @@ impl WordAsciiMetrics {
                 let units = match (self, ascii) {
                     (Self::YuMincho(_, true), b'(' | b')') => 883,
                     (Self::YuMincho(_, true), b'-') => 805,
+                    // Advances from repeated glyphs in Word's inline picture probes.
+                    (Self::YuMincho(_, true), b'j') => 589,
+                    (Self::YuMincho(_, true), b'q') => 1143,
+                    (Self::YuMincho(_, true), b'z') => 949,
                     _ => YU_MINCHO_ASCII_UNITS[usize::from(ascii - b' ')],
                 };
                 // The original Word headers/footer leave ASCII spaces unemboldened.

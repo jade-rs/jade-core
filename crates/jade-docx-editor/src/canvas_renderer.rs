@@ -20405,7 +20405,7 @@ where
                     if let (Some(object), Some((_, image))) =
                         (&mut style.inline_object, inline_images.get(&style.start))
                     {
-                        object.descent = image.layout.inline_effect_bottom.unwrap_or(0.0);
+                        object.descent = image.layout.options().inline_effect_bottom.unwrap_or(0.0);
                     }
                 }
             }
