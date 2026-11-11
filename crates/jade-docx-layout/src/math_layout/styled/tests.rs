@@ -647,6 +647,62 @@ fn display_lines_break_where_asked_and_where_they_overflow() {
 }
 
 #[test]
+fn mac_rtl_display_math_uses_the_first_relation_and_the_right_edge() {
+    use crate::line_metrics::{set_word_layout_platform, word_layout_platform, WordLayoutPlatform};
+
+    let math = parse("<m:r><m:t>a=b+c+d+e+f+g+h</m:t></m:r>");
+    let previous = word_layout_platform();
+    set_word_layout_platform(WordLayoutPlatform::Mac);
+    let settings = MathSettings {
+        use_display_defaults: false,
+        right_to_left_paragraph: true,
+        wrap_indent_px: 0.0,
+        default_justification: MathJustification::Left,
+        ..Default::default()
+    };
+    let wrapped = plan_with(
+        &math,
+        MathLayoutOptions {
+            max_width: Some(80.0),
+            settings,
+            ..display()
+        },
+    );
+    let unwrapped = plan_with(
+        &math,
+        MathLayoutOptions {
+            max_width: Some(400.0),
+            settings,
+            ..display()
+        },
+    );
+    let manual_break =
+        parse("<m:r><m:t>a=b+c</m:t></m:r><m:r><m:rPr><m:brk/></m:rPr><m:t>+d+e</m:t></m:r>");
+    let manual = plan_with(
+        &manual_break,
+        MathLayoutOptions {
+            max_width: Some(80.0),
+            settings,
+            ..display()
+        },
+    );
+    set_word_layout_platform(previous);
+
+    assert_eq!(wrapped.alignment, MathParagraphAlignment::Right);
+    assert_eq!(unwrapped.alignment, MathParagraphAlignment::Right);
+    assert!(wrapped.lines.len() >= 3);
+    assert_eq!(unwrapped.lines.len(), 1);
+    assert_eq!(manual.lines.len(), 2);
+    assert_eq!(glyph(&manual, "=").baseline, manual.lines[0].baseline);
+    assert_eq!(glyph(&wrapped, "𝑎").baseline, wrapped.lines[0].baseline);
+    assert_eq!(glyph(&wrapped, "=").baseline, wrapped.lines[1].baseline);
+    for line in &wrapped.lines {
+        assert!((line.x + line.width - wrapped.metrics.width).abs() < 1e-9);
+        assert!(line.width <= 80.0);
+    }
+}
+
+#[test]
 fn manual_break_on_a_run_that_does_not_start_with_an_operator_is_ignored() {
     for text in ["23+4", "x=1", "", " +2"] {
         let before = "<m:r><m:t>a=b</m:t></m:r>";

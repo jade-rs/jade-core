@@ -666,6 +666,7 @@ impl DisplayMathStyle<'_> {
                 .or_else(|| inherited.as_ref().and_then(|p| p.bidi))
                 .or_else(|| defaults.and_then(|p| p.bidi))
                 .unwrap_or(false);
+            settings.right_to_left_paragraph = bidi;
             let alignment = properties
                 .and_then(|p| p.alignment.as_deref())
                 .or_else(|| inherited.as_ref().and_then(|p| p.alignment.as_deref()))

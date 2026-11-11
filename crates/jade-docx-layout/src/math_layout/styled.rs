@@ -277,6 +277,8 @@ pub struct MathSettings {
     pub display_margins_px: (f64, f64),
     /// `m:dispDef`: use special display defaults rather than paragraph settings.
     pub use_display_defaults: bool,
+    /// The display equation inherits a right-to-left text paragraph.
+    pub right_to_left_paragraph: bool,
     /// `m:defJc`: the default justification of display math.
     pub default_justification: MathJustification,
 }
@@ -293,6 +295,7 @@ impl Default for MathSettings {
             break_binary_subtraction: BreakBinarySubtraction::MinusMinus,
             display_margins_px: (0.0, 0.0),
             use_display_defaults: true,
+            right_to_left_paragraph: false,
             default_justification: MathJustification::CenterGroup,
         }
     }
@@ -395,6 +398,14 @@ impl Default for MathLayoutOptions<'_> {
 pub const WORD_SCRIPT_SCALES: (f64, f64) = (0.70, 0.60);
 
 impl MathLayoutOptions<'_> {
+    fn word_mac_rtl(&self) -> bool {
+        self.display
+            && self.settings.right_to_left_paragraph
+            && !self.settings.use_display_defaults
+            && crate::line_metrics::word_layout_platform()
+                == crate::line_metrics::WordLayoutPlatform::Mac
+    }
+
     pub fn inline() -> Self {
         Self {
             display: false,
@@ -619,7 +630,7 @@ pub fn layout_styled_elements<'a, C: StyledMathMeasure>(
     style: MathTextStyle<'a>,
     options: &MathLayoutOptions<'a>,
 ) -> Result<StyledMathLayout<'a>, C::Error> {
-    let alignment = elements
+    let mut alignment = elements
         .iter()
         .find_map(MathParagraphAlignment::from_element)
         .unwrap_or(match options.settings.default_justification {
@@ -627,10 +638,14 @@ pub fn layout_styled_elements<'a, C: StyledMathMeasure>(
             MathJustification::Right => MathParagraphAlignment::Right,
             _ => MathParagraphAlignment::Center,
         });
-    let justify = elements
+    let mut justify = elements
         .iter()
         .find_map(paragraph_justification)
         .unwrap_or(options.settings.default_justification);
+    if options.word_mac_rtl() {
+        alignment = MathParagraphAlignment::Right;
+        justify = MathJustification::Right;
+    }
     let mut builder = Builder {
         context,
         justify,
