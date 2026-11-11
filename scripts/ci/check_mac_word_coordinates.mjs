@@ -174,12 +174,19 @@ function* glyphOrigins(line) {
 
 const tallGridName = 'word-mac-grid-tall-face';
 const gridProbes = new URL('tests/word-oracle/mac-probes-20261107/', root);
-const gridGlyphNames = [
-  'word-mac-probe-grid-line-unit',
-  'word-mac-probe-grid-line-unit-table',
-  'word-mac-probe-kinsoku-widow',
-  'word-mac-probe-latin-east-asia-face',
-];
+const rubyProbes = new URL('tests/word-oracle/mac-probes-16114/', root);
+const archivedGlyphProbes = new Map([
+  ['word-mac-probe-grid-line-unit', gridProbes],
+  ['word-mac-probe-grid-line-unit-table', gridProbes],
+  ['word-mac-probe-kinsoku-widow', gridProbes],
+  ['word-mac-probe-latin-east-asia-face', gridProbes],
+  ['word-mac-probe-eqruby-grid', rubyProbes],
+  ['word-mac-probe-eqruby-nogrid', rubyProbes],
+  ['word-mac-probe-ruby-grid', rubyProbes],
+  ['word-mac-probe-ruby-nogrid', rubyProbes],
+  ['word-mac-probe-ruby-wide-grid', rubyProbes],
+  ['word-mac-probe-ruby-wide-nogrid', rubyProbes],
+]);
 const tallGridTolerancePt = 0.65;
 
 async function checkTallGrid(page) {
@@ -231,10 +238,10 @@ async function checkTallGrid(page) {
   return differences;
 }
 
-async function loadGridGlyphFixture(name) {
+async function loadArchivedGlyphFixture(name) {
   const [bytes, referenceJson] = await Promise.all([
     readFile(new URL(`public/fixtures/${name}.docx`, root)),
-    readFile(new URL(`${name}.json`, gridProbes)),
+    readFile(new URL(`${name}.json`, archivedGlyphProbes.get(name))),
   ]);
   const word = JSON.parse(referenceJson);
   assert.equal(hash(bytes), word.docx_sha256, 'DOCX digest');
@@ -351,7 +358,7 @@ function checkPages(name, reference, actual, manifest) {
 const directories = (await readdir(corpus, { withFileTypes: true }))
   .filter(entry => entry.isDirectory()).map(entry => entry.name).sort();
 assert(directories.length > 0, 'no Word coordinate fixtures found');
-const names = process.argv.length > 2 ? process.argv.slice(2) : [...directories, ...gridGlyphNames, tallGridName];
+const names = process.argv.length > 2 ? process.argv.slice(2) : [...directories, ...archivedGlyphProbes.keys(), tallGridName];
 const browser = await chromium.launch();
 const failures = [];
 try {
@@ -385,10 +392,10 @@ try {
         }
         continue;
       }
-      const isGridProbe = gridGlyphNames.includes(name);
-      assert(isGridProbe || directories.includes(name), `unknown fixture: ${name}`);
-      const { bytes, reference, manifest } = await (isGridProbe
-        ? loadGridGlyphFixture(name)
+      const isArchivedProbe = archivedGlyphProbes.has(name);
+      assert(isArchivedProbe || directories.includes(name), `unknown fixture: ${name}`);
+      const { bytes, reference, manifest } = await (isArchivedProbe
+        ? loadArchivedGlyphFixture(name)
         : loadSyntheticFixture(name));
       await page.goto('https://word-coordinates.test/');
       const actual = await capture(page, bytes, name);
