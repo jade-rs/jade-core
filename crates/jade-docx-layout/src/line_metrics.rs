@@ -1826,6 +1826,14 @@ impl WordAsciiMetrics {
                 } else {
                     WORD_CALIBRI_ASCII_UNITS[usize::from(ascii - b' ')]
                 };
+                // Calibri's tabular figures share a 1038-unit advance.
+                // Word's shifted-script PDF confirms this for 1 and 2.
+                let units = if cfg!(target_arch = "wasm32") && units == 0 && ascii.is_ascii_digit()
+                {
+                    1038
+                } else {
+                    units
+                };
                 (units != 0).then_some(unit_px * f64::from(units))
             }
             Self::Cambria(unit_px) => {
