@@ -50,6 +50,26 @@ function visibleGlyph(text = '') {
     : normalized;
 }
 
+// Nearby images can change vertical sort order within the coordinate tolerance.
+function matchImageBounds(expected, actual, within) {
+  if (expected.length !== actual.length) return false;
+
+  const matched = new Map();
+  function assign(index, visited) {
+    for (const [candidate, bounds] of actual.entries()) {
+      if (visited.has(candidate) || !within(expected[index], bounds)) continue;
+      visited.add(candidate);
+      if (!matched.has(candidate) || assign(matched.get(candidate), visited)) {
+        matched.set(candidate, index);
+        return true;
+      }
+    }
+    return false;
+  }
+
+  return expected.every((_, index) => assign(index, new Set()));
+}
+
 function compareGlyphs(expected, actual, tolerance, toleranceX = tolerance) {
   const candidates = new Map();
   for (const glyph of actual) {
@@ -326,7 +346,6 @@ function checkPages(name, reference, actual, manifest) {
   }
 
   const within = (expected, measured) => expected.every((v, i) => Math.abs(v - measured[i]) <= tolerance);
-  const topToBottom = (a, b) => a[1] - b[1] || a[0] - b[0];
   const differences = [];
   for (const [i, expected] of reference.entries()) {
     const page = i + 1;
@@ -353,10 +372,9 @@ function checkPages(name, reference, actual, manifest) {
       .map(([text, x, y]) => [visibleGlyph(text), x - offset, y]);
     const { missing, extra } = compareGlyphs(origins, glyphs[i], tolerance, registration?.glyphTolerancePt);
     if (missing.length || extra.length) differences.push({ page, missing, extra });
-    const expectedImages = [...expected.images].sort(topToBottom);
-    const actualImages = images[i].sort(topToBottom);
-    if (expectedImages.length !== actualImages.length ||
-        expectedImages.some((bounds, j) => !within(bounds, actualImages[j]))) {
+    const expectedImages = expected.images;
+    const actualImages = images[i];
+    if (!matchImageBounds(expectedImages, actualImages, within)) {
       differences.push({ page, expectedImages, actualImages });
     }
   }
