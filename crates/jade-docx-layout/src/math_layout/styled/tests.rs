@@ -40,6 +40,31 @@ fn break_after_reserves_the_trailing_operator_width() {
 }
 
 #[test]
+fn break_after_keeps_a_fraction_inside_the_continuation() {
+    let math = parse(concat!(
+        "<m:r><m:t>1234+</m:t></m:r>",
+        "<m:f><m:num><m:r><m:t>1</m:t></m:r></m:num>",
+        "<m:den><m:r><m:t>23456</m:t></m:r></m:den></m:f>",
+    ));
+    let plan = plan_with(
+        &math,
+        MathLayoutOptions {
+            max_width: Some(58.0),
+            settings: MathSettings {
+                break_binary: BreakBinary::After,
+                wrap_indent_px: 8.0,
+                ..Default::default()
+            },
+            ..display()
+        },
+    );
+    assert_eq!(plan.lines.len(), 2);
+    let continuation = &plan.lines[1];
+    assert!(plan.rules[0].x >= continuation.x - 1e-9);
+    assert!(plan.glyphs[5].x > plan.glyphs[6].x);
+}
+
+#[test]
 fn break_repeat_places_the_same_operator_on_both_lines() {
     let math = parse("<m:r><m:t>aa+bb+cc+dd+ee+ff+gg+hh</m:t></m:r>");
     // A continuation between two plus signs is about 34 px before indent.

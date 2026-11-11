@@ -22,6 +22,10 @@ pub(crate) struct BreakCandidate {
     pub(crate) align_point: bool,
     /// A subtraction character in a run, rather than a whole operator box.
     pub(crate) subtraction: bool,
+    /// Space before this operator, omitted at the preceding line end.
+    pub(crate) preceding_space: f64,
+    /// Space before the next atom, omitted at the continuation's start.
+    pub(crate) following_space: f64,
 }
 
 /// A laid-out line before stacking: the plan items in `start..end`, on a
@@ -193,10 +197,10 @@ fn break_lines<'a, C: StyledMathMeasure>(
             };
             operator_x + width
         } else {
-            operator_x
+            operator_x - c.preceding_space
         };
-        let x = if settings.break_binary == BreakBinary::After {
-            fit_x
+        let x = if settings.break_binary == BreakBinary::After && keeps_operator {
+            fit_x + c.following_space
         } else {
             operator_x
         };
@@ -250,14 +254,10 @@ fn break_lines<'a, C: StyledMathMeasure>(
     let mut bounds: Vec<(Mark, f64, Option<BreakCandidate>)> = vec![(start, 0.0, None)];
     for (c, x) in &chosen {
         let mut mark = c.mark;
-        let mut at = *x;
         if after && !c.manual && c.class == AtomClass::Bin {
-            if let Some(g) = b.plan.glyphs.get(mark.glyphs) {
-                at = g.x + g.width;
-                mark.glyphs += 1;
-            }
+            mark.glyphs += 1;
         }
-        bounds.push((mark, at, Some(*c)));
+        bounds.push((mark, *x, Some(*c)));
     }
     let mut lines = Vec::new();
     // The x of every operator on the first line, for alnAt and the default
@@ -433,13 +433,35 @@ pub(crate) fn stack<'a, C: StyledMathMeasure>(
     let width = group_widths.iter().copied().fold(0.0, f64::max);
     let justification = b.justification();
     let size = b.base_size;
+    let word_mac_cambria = b.style.family.eq_ignore_ascii_case("Cambria Math")
+        && crate::line_metrics::word_layout_platform()
+            == crate::line_metrics::WordLayoutPlatform::Mac;
+    let min_gap = size * if word_mac_cambria { 1.18 } else { 1.2 };
     let gap = super::MathConstants::cambria(size).leading;
+    let mac_wrapped = word_mac_cambria && lines.len() > 1;
+    let tall_ascent = size * (1946.0 / 2048.0);
+    #[cfg(feature = "opentype-math")]
+    let needs_top_leading = mac_wrapped && b.context.font_parameters(b.style).is_none();
+    #[cfg(not(feature = "opentype-math"))]
+    let needs_top_leading = mac_wrapped;
     let mut baseline = 0.0;
     let mut previous: Option<MathMetrics> = None;
     let mut total = MathMetrics::default();
     for line in lines {
         if let Some(prev) = previous {
-            baseline += (prev.descent + line.metrics.ascent + gap).max(size * 1.2);
+            let mut ascent = line.metrics.ascent;
+            let mut descent = prev.descent;
+            // Ink alone underestimates the adjoining text row when a tall
+            // formula expands the baseline interval beyond the usual pitch.
+            if mac_wrapped && prev.ascent > tall_ascent {
+                ascent = ascent.max(size * 0.8);
+            }
+            if mac_wrapped && ascent > tall_ascent {
+                descent = descent.max(size * 0.25);
+            }
+            baseline += (descent + ascent + gap).max(min_gap);
+        } else if needs_top_leading && line.metrics.ascent > tall_ascent {
+            total.ascent = line.metrics.ascent + gap;
         }
         let group_w = group_widths[line.group];
         let group_x = match justification {

@@ -16,6 +16,31 @@ struct StyledPainterMeasure<'a, P> {
     painter: &'a P,
     font: RefCell<Option<(String, f64)>>,
 }
+fn cambria_math_metrics(text: &str, style: MathTextStyle<'_>) -> Option<(f64, f64)> {
+    use jade_docx_layout::line_metrics::{word_layout_platform, WordLayoutPlatform};
+    if !style.family.eq_ignore_ascii_case("Cambria Math")
+        || word_layout_platform() != WordLayoutPlatform::Mac
+    {
+        return None;
+    }
+    // Cambria Math advances in 2048 units per em, also observed in Word's
+    // printed display equations. Canvas may be measuring a substituted face.
+    let (advance, italic) = match text {
+        "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" => (1134.0, 0.0),
+        "+" | "=" => (1530.0, 0.0),
+        "𝑎" => (1141.0, 50.0),
+        "𝑏" => (1104.0, 45.0),
+        "𝑐" => (942.0, 65.0),
+        "𝑑" => (1187.0, 65.0),
+        "𝑥" => (1090.0, 62.0),
+        "𝑦" => (1146.0, 35.0),
+        "𝑧" => (990.0, 35.0),
+        _ => return None,
+    };
+    let scale = style.size_px / 2048.0;
+    Some((advance * scale, italic * scale))
+}
+
 impl<P: Painter> StyledMathMeasure for StyledPainterMeasure<'_, P> {
     type Error = P::Error;
     fn measure_glyph(
@@ -48,11 +73,15 @@ impl<P: Painter> StyledMathMeasure for StyledPainterMeasure<'_, P> {
             style.size_px * 0.2
         };
         Ok(MathMetrics {
-            width: measured.width,
+            width: cambria_math_metrics(text, style).map_or(measured.width, |(advance, _)| advance),
             ascent,
             descent,
         })
     }
+    fn fallback_italic_correction(&self, text: &str, style: MathTextStyle<'_>) -> f64 {
+        cambria_math_metrics(text, style).map_or(0.0, |(_, italic)| italic)
+    }
+
     fn script_scale(&self, style: MathTextStyle<'_>, level: u32) -> f64 {
         match level {
             0 => 1.0,

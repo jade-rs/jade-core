@@ -315,7 +315,15 @@ impl<'a, C: StyledMathMeasure> Builder<'_, 'a, C> {
                     }
                     (up, down)
                 };
-                let pad = self.size() * 0.12;
+                let pad = if display
+                    && self.style.family.eq_ignore_ascii_case("Cambria Math")
+                    && crate::line_metrics::word_layout_platform()
+                        == crate::line_metrics::WordLayoutPlatform::Mac
+                {
+                    0.0
+                } else {
+                    self.size() * 0.12
+                };
                 let width = n.width.max(d.width) + 2.0 * pad;
                 self.shift_range(n0, n1, (width - n.width) / 2.0, -up);
                 self.shift(d0, (width - d.width) / 2.0, down);
