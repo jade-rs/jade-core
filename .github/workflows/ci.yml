@@ -187,6 +187,7 @@ jobs:
       - name: Compare synthetic DOCX layouts with Word coordinates
         run: |
           export NODE_PATH="$RUNNER_TEMP/word-coordinate-tools/node_modules"
+          node --test scripts/ci/word_coordinate_matching.test.mjs
           node scripts/ci/check_mac_word_coordinates.mjs
       - name: Upload browser coordinate differences
         if: failure()
