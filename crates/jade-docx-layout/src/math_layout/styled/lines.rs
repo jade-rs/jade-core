@@ -438,12 +438,30 @@ pub(crate) fn stack<'a, C: StyledMathMeasure>(
             == crate::line_metrics::WordLayoutPlatform::Mac;
     let min_gap = size * if word_mac_cambria { 1.18 } else { 1.2 };
     let gap = super::MathConstants::cambria(size).leading;
+    let mac_wrapped = word_mac_cambria && lines.len() > 1;
+    let tall_ascent = size * (1946.0 / 2048.0);
+    #[cfg(feature = "opentype-math")]
+    let needs_top_leading = mac_wrapped && b.context.font_parameters(b.style).is_none();
+    #[cfg(not(feature = "opentype-math"))]
+    let needs_top_leading = mac_wrapped;
     let mut baseline = 0.0;
     let mut previous: Option<MathMetrics> = None;
     let mut total = MathMetrics::default();
     for line in lines {
         if let Some(prev) = previous {
-            baseline += (prev.descent + line.metrics.ascent + gap).max(min_gap);
+            let mut ascent = line.metrics.ascent;
+            let mut descent = prev.descent;
+            // Ink alone underestimates the adjoining text row when a tall
+            // formula expands the baseline interval beyond the usual pitch.
+            if mac_wrapped && prev.ascent > tall_ascent {
+                ascent = ascent.max(size * 0.8);
+            }
+            if mac_wrapped && ascent > tall_ascent {
+                descent = descent.max(size * 0.25);
+            }
+            baseline += (descent + ascent + gap).max(min_gap);
+        } else if needs_top_leading && line.metrics.ascent > tall_ascent {
+            total.ascent = line.metrics.ascent + gap;
         }
         let group_w = group_widths[line.group];
         let group_x = match justification {
