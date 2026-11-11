@@ -400,6 +400,57 @@ fn word_layout(reference: &Value) -> Value {
     spatial_order(&json!({"page_count": reference["page_count"], "glyphs": glyphs}))
 }
 
+/// These probes require the original Office face metrics for absolute coordinates.
+#[test]
+#[ignore = "requires JADE_OFFICE_FONT_DIR pointing to Word for Mac's DFonts"]
+fn mac_regular_office_faces_match_word() {
+    set_word_layout_platform(WordLayoutPlatform::Mac);
+    let directory = std::path::PathBuf::from(
+        std::env::var_os("JADE_OFFICE_FONT_DIR").expect("set JADE_OFFICE_FONT_DIR"),
+    );
+    let faces = [
+        ("Arial", "arial.ttf"),
+        ("Times New Roman", "times.ttf"),
+        ("Calibri", "Calibri.ttf"),
+        ("Cambria", "Cambria.ttc"),
+        ("Century", "Century.ttf"),
+        ("Yu Mincho", "yumin.ttf"),
+        ("游明朝", "yumin.ttf"),
+        ("MS Mincho", "msmincho.ttc"),
+        ("ＭＳ 明朝", "msmincho.ttc"),
+    ]
+    .map(|(family, filename)| FontFace {
+        family: family.to_owned(),
+        weight: 400,
+        italic: false,
+        path: directory.join(filename),
+        index: 0,
+    });
+    for (name, archive) in [
+        ("word-mac-probe-kern-default", "mac-probes-20261019"),
+        ("word-mac-probe-line-pitch", "mac-probes-20261019"),
+        // This capture records the actual baseline of each shifted glyph.
+        ("word-mac-probe-vert-align", "mac-probes-20261030"),
+    ] {
+        let bytes = std::fs::read(repo_path(&format!("public/fixtures/{name}.docx"))).unwrap();
+        let reference: Value = serde_json::from_slice(
+            &std::fs::read(repo_path(&format!(
+                "tests/word-oracle/{archive}/{name}.json"
+            )))
+            .unwrap(),
+        )
+        .unwrap();
+        assert_word_source_hash(name, &reference["docx_sha256"], &sha256(&bytes));
+        let doc = NativeDocument::open_with_font_faces(&bytes, 816.0, 1056.0, &faces).unwrap();
+        compare(
+            &word_layout(&reference),
+            &spatial_order(&capture_coordinates(&doc)),
+            WORD_TOLERANCE_PT,
+        )
+        .unwrap_or_else(|error| panic!("{name}: {error}"));
+    }
+}
+
 /// Word for Mac 16.114 probes for the rules `word-mac-grid-tall-face` needs
 /// (`tests/word-oracle/mac-probes-20261107/README.md`). They are held to Word
 /// directly rather than to a snapshot of jade.
