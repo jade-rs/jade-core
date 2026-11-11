@@ -712,7 +712,7 @@ mod tests {
     }
 
     #[test]
-    fn repeated_subtraction_settings_reach_both_math_painters() {
+    fn repeated_subtraction_settings_reach_available_math_painters() {
         use jade_docx_layout::math_layout::styled::MathLayoutOptions;
         use jade_docx_reader::{parser::math::parse_math_paragraph, settings::DocumentSettings};
         use jade_painter::recording::{Op, RecordingPainter};
@@ -749,11 +749,16 @@ mod tests {
             assert!(plan.lines.len() > 1);
             assert_eq!(plan.text, "11−22−33−44−55−66");
             let owned = OwnedMathPlan::from_plan(&plan);
-            for draw_owned in [false, true] {
+            for draw_owned in [
+                #[cfg(feature = "opentype-math")]
+                false,
+                true,
+            ] {
                 painter.clear();
                 if draw_owned {
                     owned.paint(&painter, 0.0, 0.0).unwrap();
                 } else {
+                    #[cfg(feature = "opentype-math")]
                     paint_boxed_math(&painter, &plan, 0.0, 0.0).unwrap();
                 }
                 let ops = painter.ops();
