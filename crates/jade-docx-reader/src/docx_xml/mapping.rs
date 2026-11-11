@@ -411,7 +411,7 @@ fn collect_run_slots<'a>(
         // left neighbour's element and the next edit re-emits that
         // neighbour's formatting (jlsi/jade#402). Removing a comment reference
         // run leaves exactly `<w:r/>` behind.
-        if doc.is_self_closing(element.id) && element.name != "w:fldSimple" {
+        if element.name != "w:fldSimple" && doc.is_self_closing_element(element) {
             continue;
         }
         match element.name.as_str() {

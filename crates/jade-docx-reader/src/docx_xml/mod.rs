@@ -180,15 +180,23 @@ impl DocxXmlDocument {
     /// element before its own, and a rejected or accepted formatting change
     /// put one run's formatting on the next.
     pub fn is_self_closing(&self, id: XmlNodeId) -> bool {
+        self.is_self_closing_with(id, || self.element(id).is_some_and(Self::writes_empty_tag))
+    }
+
+    fn is_self_closing_element(&self, element: &XmlElement) -> bool {
+        // Mapping already walks the XML tree in document order.
+        self.is_self_closing_with(element.id, || Self::writes_empty_tag(element))
+    }
+
+    fn is_self_closing_with(&self, id: XmlNodeId, fallback: impl FnOnce() -> bool) -> bool {
         if self.self_closing_elements.contains(&id) {
             return true;
         }
-        if self.explicit_empty_elements.contains(&id) {
-            return false;
-        }
-        self.element(id).is_some_and(|element| {
-            element.children.is_empty() && SELF_CLOSING_TRACKED.contains(&element.name.as_str())
-        })
+        !self.explicit_empty_elements.contains(&id) && fallback()
+    }
+
+    fn writes_empty_tag(element: &XmlElement) -> bool {
+        element.children.is_empty() && SELF_CLOSING_TRACKED.contains(&element.name.as_str())
     }
 
     /// 文字列から XML ツリーを構築する。
