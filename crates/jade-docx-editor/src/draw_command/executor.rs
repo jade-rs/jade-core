@@ -1436,7 +1436,14 @@ fn try_execute_bmp_glyph_run_batch<P: Painter>(
         .clamp(glyphs.len(), glyphs.len().saturating_mul(3));
     // Cached runs normally reference consecutive characters. Borrow that source
     // span until a gap, repetition or reordering requires a concatenated copy.
-    let text_start = glyphs.first().map_or(0, |glyph| glyph.text_start as usize);
+    let Some(first_glyph) = glyphs.first() else {
+        return Ok(false);
+    };
+    let first_font_index = first_glyph.font_index;
+    let Some(first_font) = fonts.get(first_font_index as usize) else {
+        return Ok(false);
+    };
+    let text_start = first_glyph.text_start as usize;
     let mut text_end = text_start;
     let mut copied_text: Option<String> = None;
     // Runs up to 64 glyphs use a stack buffer. Longer runs keep the
@@ -1450,13 +1457,9 @@ fn try_execute_bmp_glyph_run_batch<P: Painter>(
         heap_positions = vec![0.0; glyphs.len()];
         &mut heap_positions[..]
     };
-    let mut single_font_index: Option<u16> = None;
     let mut single_font_run = true;
 
     for (glyph, x_position) in glyphs.iter().zip(x_positions.iter_mut()) {
-        if fonts.get(glyph.font_index as usize).is_none() {
-            return Ok(false);
-        }
         let Some(glyph_text) = glyph.text(run_text) else {
             return Ok(false);
         };
@@ -1474,12 +1477,11 @@ fn try_execute_bmp_glyph_run_batch<P: Painter>(
             text.push_str(glyph_text);
             copied_text = Some(text);
         }
-        match single_font_index {
-            Some(index) if index != glyph.font_index => {
-                single_font_run = false;
+        if glyph.font_index != first_font_index {
+            if fonts.get(glyph.font_index as usize).is_none() {
+                return Ok(false);
             }
-            None => single_font_index = Some(glyph.font_index),
-            _ => {}
+            single_font_run = false;
         }
         *x_position = x + glyph.x_offset;
     }
@@ -1489,11 +1491,7 @@ fn try_execute_bmp_glyph_run_batch<P: Painter>(
         .as_deref()
         .unwrap_or(&run_text[text_start..text_end]);
     if single_font_run {
-        let Some(font_descriptor) = single_font_index.and_then(|index| fonts.get(index as usize))
-        else {
-            return Ok(false);
-        };
-        font_state.set_font_rc_if_changed(context, font_descriptor);
+        font_state.set_font_rc_if_changed(context, first_font);
         if !context.try_fill_glyph_run_batch(text, x_positions, y)? {
             return Ok(false);
         }
