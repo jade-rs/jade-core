@@ -1838,13 +1838,16 @@ impl WordAsciiMetrics {
             }
             Self::Cambria(unit_px) => {
                 // Upright advances from Cambria subsets in the Word for Mac
-                // PDFs for the nested-sizing-mode fixtures.
+                // PDFs for the nested table and exact-line text box fixtures.
                 let units = match ascii {
                     b' ' => 451.0,
                     b'.' => 420.0,
-                    b'0' | b'1' | b'2' | b'4' | b'5' | b'6' | b'8' => 1134.0,
+                    b'0' | b'1' | b'2' | b'3' | b'4' | b'5' | b'6' | b'8' => 1134.0,
+                    b'C' => 1152.0,
                     b'N' => 1394.0,
                     b'T' => 1214.0,
+                    b'a' => 1000.0,
+                    b'b' => 1121.0,
                     b'c' => 903.0,
                     b'd' => 1136.0,
                     b'e' => 999.0,
@@ -1853,12 +1856,14 @@ impl WordAsciiMetrics {
                     b'h' => 1130.0,
                     b'i' => 569.0,
                     b'l' => 556.0,
+                    b'm' => 1704.0,
                     b'n' => 1143.0,
                     b'o' => 1087.0,
                     b'p' => 1139.0,
                     b'r' => 847.0,
                     b's' => 880.0,
                     b't' => 693.0,
+                    b'w' => 1586.0,
                     b'x' => 990.0,
                     _ => return None,
                 };
