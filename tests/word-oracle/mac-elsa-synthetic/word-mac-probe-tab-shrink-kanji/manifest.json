@@ -1,0 +1,16 @@
+{
+  "schema": 1,
+  "sourceSha256": "cdf94d1c874a5b2b90c0dc5af2b0a8a1f0569949e9108f3a43d502861498dbfc",
+  "reference": {
+    "application": "Microsoft Word",
+    "platform": "mac",
+    "version": "16.114",
+    "build": "16.114.26101123",
+    "export": "Save As > PDF",
+    "pdfSha256": "3237d52c56ac4bc608915d9cfb29729768d69714a8761e7734c332f44bd792f9",
+    "coordinateSource": "tests/word-oracle/mac-probes-16114/word-mac-probe-tab-shrink-kanji.json"
+  },
+  "pages": 1,
+  "axisTolerancePt": 0.65,
+  "coordinatesSha256": "83ef1c735ac3dd2ec59f6dd67229791a8c6ed78549aa949572d6a0d392108949"
+}
