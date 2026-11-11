@@ -23,7 +23,7 @@ const textBoxes = new Map([
   ['floating-through-concave-mac', 1], ['floating-tight-polygon-mac', 1],
   ['floating-top-bottom-offset-mac', 1], ['floating-z-order-mac', 3],
   ['numbering-textbox-full-matrix-mac', 1], ['textbox-fixed-pitch-matrix-mac', 1],
-  ['textbox-body-properties-mac', 1], ['textbox-dashed-mac', 1],
+  ['textbox-exact-line-matrix-mac', 1], ['textbox-body-properties-mac', 1], ['textbox-dashed-mac', 1],
   ['textbox-tall-header-overlap-mac', 1], ['document-variable-fields-mac', 1],
   ['word-compat-comprehensive-mac', 1], ['table-object-edge-cases-mac', 1],
   ['table-inline-image-mac', 1],
