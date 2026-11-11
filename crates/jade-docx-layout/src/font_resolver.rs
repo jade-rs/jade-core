@@ -1331,9 +1331,23 @@ impl ResolvedRunStyle {
     }
 
     #[inline]
-    pub(crate) fn ascii_pair_kerning_px(&self, left: u8, right: u8) -> Option<f64> {
-        self.ascii_metrics()
-            .and_then(|metrics| metrics.pair_kerning_px(left, right))
+    pub(crate) fn ascii_pair_kerning_px(
+        &self,
+        left: u8,
+        right: u8,
+        modern_word_layout: bool,
+    ) -> Option<f64> {
+        use crate::line_metrics::WordAsciiMetrics;
+
+        let metrics = self.ascii_metrics()?;
+        // Aptos uses the full hyphen advance before 1 in pre-2013 Word layouts.
+        if matches!(metrics, WordAsciiMetrics::Aptos(..))
+            && [left, right] == *b"-1"
+            && !modern_word_layout
+        {
+            return Some(0.0);
+        }
+        metrics.pair_kerning_px(left, right)
     }
 
     #[inline]

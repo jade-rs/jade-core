@@ -3392,7 +3392,7 @@ fn ensure_numbering(style: &mut StyleDefinition) {
     }
 }
 
-fn parse_tab_definition(element: &BytesStart) -> Option<TabStop> {
+pub(crate) fn parse_tab_definition(element: &BytesStart) -> Option<TabStop> {
     let mut stop = TabStop::default();
     for attr in element.attributes().flatten() {
         match attr.key.as_ref() {

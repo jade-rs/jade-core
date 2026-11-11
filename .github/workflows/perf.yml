@@ -40,7 +40,7 @@ env:
 
 jobs:
   callgrind:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 90
     steps:
       - name: Checkout head
@@ -99,8 +99,25 @@ jobs:
 
       - name: Install valgrind
         run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends valgrind
+          apt_options=(-o Acquire::Retries=1 -o Acquire::http::Timeout=20 -o Acquire::https::Timeout=20)
+          if sudo apt-get "${apt_options[@]}" -o APT::Update::Error-Mode=any update &&
+             sudo apt-get "${apt_options[@]}" install -y --no-install-recommends valgrind; then
+            exit 0
+          fi
+
+          # Keep using Ubuntu-signed indexes when the runner's Azure mirror is unavailable.
+          . /etc/os-release
+          sources="$RUNNER_TEMP/ubuntu-valgrind.sources"
+          cat > "$sources" <<EOF
+          Types: deb
+          URIs: https://mirror.csclub.uwaterloo.ca/ubuntu/
+          Suites: $VERSION_CODENAME $VERSION_CODENAME-updates $VERSION_CODENAME-security
+          Components: main
+          Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg
+          EOF
+          apt_options+=(-o "Dir::Etc::sourcelist=$sources" -o Dir::Etc::sourceparts=-)
+          sudo apt-get "${apt_options[@]}" -o APT::Update::Error-Mode=any update
+          sudo apt-get "${apt_options[@]}" install -y --no-install-recommends valgrind
 
       - name: Build head
         working-directory: head

@@ -4,7 +4,7 @@ use crate::document::{MathElement, MathElementKind};
 pub(crate) use jade_docx_layout::math_layout::math_text;
 use jade_docx_layout::math_layout::MathMetrics;
 use jade_docx_layout::units::points_to_px;
-use jade_docx_reader::{StylesPart, ThemePart};
+use jade_docx_reader::{ParagraphProperties, StylesPart, ThemePart};
 use jade_painter::Painter;
 #[cfg(feature = "opentype-math")]
 use std::rc::Rc;
@@ -532,6 +532,34 @@ pub(super) struct DisplayMathStyle<'a> {
 }
 
 impl DisplayMathStyle<'_> {
+    pub(super) fn line_properties(
+        styles: Option<&StylesPart>,
+        math: &MathParagraph,
+    ) -> ParagraphProperties {
+        let mut properties = math.properties.as_deref().cloned().unwrap_or_default();
+        let Some(styles) = styles else {
+            return properties;
+        };
+        let style = properties
+            .style
+            .as_deref()
+            .or_else(|| styles.default_paragraph_style_id())
+            .and_then(|id| styles.resolve_paragraph_properties(id));
+        let defaults = styles.doc_default_paragraph_properties();
+        for spacing in [style.as_ref(), defaults]
+            .into_iter()
+            .flatten()
+            .filter_map(|properties| properties.spacing.as_ref())
+        {
+            if let Some(direct) = properties.spacing.as_mut() {
+                crate::word_document::WordDocument::fill_missing_spacing(direct, spacing);
+            } else {
+                properties.spacing = Some(spacing.clone());
+            }
+        }
+        properties
+    }
+
     /// The text face inherited by `m:nor` (normal text) runs from the
     /// containing paragraph style and document defaults.
     pub(super) fn math_text_family(&self, paragraph_style: Option<&str>) -> String {
@@ -684,7 +712,7 @@ mod tests {
     }
 
     #[test]
-    fn repeated_subtraction_settings_reach_both_math_painters() {
+    fn repeated_subtraction_settings_reach_available_math_painters() {
         use jade_docx_layout::math_layout::styled::MathLayoutOptions;
         use jade_docx_reader::{parser::math::parse_math_paragraph, settings::DocumentSettings};
         use jade_painter::recording::{Op, RecordingPainter};
@@ -721,11 +749,16 @@ mod tests {
             assert!(plan.lines.len() > 1);
             assert_eq!(plan.text, "11−22−33−44−55−66");
             let owned = OwnedMathPlan::from_plan(&plan);
-            for draw_owned in [false, true] {
+            for draw_owned in [
+                #[cfg(feature = "opentype-math")]
+                false,
+                true,
+            ] {
                 painter.clear();
                 if draw_owned {
                     owned.paint(&painter, 0.0, 0.0).unwrap();
                 } else {
+                    #[cfg(feature = "opentype-math")]
                     paint_boxed_math(&painter, &plan, 0.0, 0.0).unwrap();
                 }
                 let ops = painter.ops();

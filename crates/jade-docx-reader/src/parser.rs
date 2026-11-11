@@ -435,7 +435,10 @@ impl DocumentParser {
                                 )
                                 .into());
                             }
-                            container_stack.push(ContainerContext::Table(Box::default()));
+                            let mut table = Box::<Table>::default();
+                            // Initial rendering can defer the raw XML tree and its node IDs.
+                            table.style.insert("ooxml-table".into(), "true".into());
+                            container_stack.push(ContainerContext::Table(table));
                         }
                         b"w:altChunk" => {
                             Self::record_alt_chunk(&mut document, e.attributes());
@@ -7954,6 +7957,18 @@ impl DocumentParser {
                         traces: Vec::new(),
                     }));
                     *has_embed = true;
+                }
+            }
+            b"wp:effectExtent" if image.layout.kind == RunImageKind::Inline => {
+                if let Some(bottom) = element
+                    .attributes()
+                    .flatten()
+                    .find(|attr| attr.key.as_ref() == b"b")
+                    .and_then(|attr| Self::parse_f64_attr(&attr))
+                    .filter(|value| value.is_finite() && *value > 0.0)
+                    .map(Self::emu_to_px)
+                {
+                    image.layout.options_mut().inline_effect_bottom = Some(bottom);
                 }
             }
             b"wp:extent" | b"a:ext" => {

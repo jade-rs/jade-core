@@ -493,6 +493,14 @@ pub(super) struct CellParagraph {
     keep_lines: bool,
     widow_control: bool,
     note_anchors: Vec<TableNoteAnchor>,
+    numbering: Option<Rc<CellNumbering>>,
+}
+
+#[derive(Clone, Debug)]
+struct CellNumbering {
+    left_inset: f64,
+    style: ParagraphStyle,
+    marker: PendingNumberingRender,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -603,6 +611,7 @@ impl CellParagraph {
             segment_start,
             keep_lines: self.keep_lines,
             widow_control: self.widow_control,
+            numbering: self.numbering.clone(),
             note_anchors: self.note_anchors.clone(),
         }
     }
@@ -1460,6 +1469,20 @@ struct SplitPreparedRow {
     tail_height: f64,
 }
 
+impl SplitPreparedRow {
+    fn starts_all_cells(&self) -> bool {
+        let has_content = |cell: &PreparedCell| {
+            cell.blocks
+                .iter()
+                .any(|block| !matches!(block.kind, CellBlockKind::Spacing))
+        };
+        self.head_cells
+            .iter()
+            .zip(&self.tail_cells)
+            .all(|(head, tail)| head.skip_render || has_content(head) || !has_content(tail))
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 struct VerticalMergeContinuationBorderSides {
     top: bool,
@@ -1639,6 +1662,7 @@ struct LayoutConfig {
     /// provisional until each row registers its notes at placement (see
     /// `CanvasRenderer::register_table_row_notes`).
     note_markers: NoteMarkers,
+    paragraph_numbering: FxHashMap<usize, Rc<CellNumbering>>,
     doc_grid: Option<DocGrid>,
     /// What a `w:beforeLines`/`w:afterLines` unit measures: the section's line
     /// grid pitch, which reaches cells even when `doc_grid` drops it for lines.
@@ -1716,7 +1740,15 @@ impl LayoutConfig {
             .unwrap_or(self.line_height)
     }
 
+    fn paragraph_numbering(&self, paragraph: &Paragraph) -> Option<&Rc<CellNumbering>> {
+        self.paragraph_numbering
+            .get(&(paragraph as *const Paragraph as usize))
+    }
+
     fn paragraph_style(&self, paragraph: &Paragraph) -> (f64, ParagraphStyle) {
+        if let Some(numbering) = self.paragraph_numbering(paragraph) {
+            return (numbering.left_inset, numbering.style.clone());
+        }
         let authored = paragraph
             .properties
             .as_ref()
@@ -1779,6 +1811,22 @@ impl LayoutConfig {
             .properties
             .as_ref()
             .and_then(|props| props.text_alignment.as_deref());
+        if style.word_platform == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
+            && matches!(text_alignment, None | Some("auto" | "baseline"))
+            && !jade_docx_layout::line_metrics::word_grid_line_centres_text(
+                enabled,
+                self.doc_grid.as_ref(),
+            )
+        {
+            style.word_minimum_cell_line_height_px =
+                jade_docx_layout::line_metrics::word_minimum_line_height_pt(
+                    paragraph
+                        .properties
+                        .as_ref()
+                        .and_then(|props| props.spacing.as_ref()),
+                )
+                .map(points_to_px);
+        }
         // Explicit placement needs ascent/descent for Latin-only cells too.
         // This flag also keys the wrap cache's font-metric policy.
         style.word_east_asian_font_line_box |= style.exact_line_spacing
@@ -1838,15 +1886,18 @@ impl LayoutConfig {
                         self.doc_grid.as_ref(),
                         enabled,
                     );
+                let has_numbering = style.word_platform
+                    == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
+                    && properties
+                        .numbering
+                        .as_ref()
+                        .and_then(Numbering::list_id)
+                        .is_some();
                 apply_paragraph_indent_with_char_unit(
                     &mut left_inset,
                     &mut style,
                     indent,
-                    properties
-                        .numbering
-                        .as_ref()
-                        .and_then(Numbering::list_id)
-                        .is_some(),
+                    has_numbering,
                     char_unit,
                 );
             }
@@ -2445,6 +2496,71 @@ where
         changed
     }
 
+    fn collect_cell_numbering(
+        &self,
+        table: &Table,
+        numbering_part: &NumberingPart,
+        numbering_counter: &mut NumberingCounter,
+        config: &mut LayoutConfig,
+    ) -> Result<(), JsValue> {
+        for cell in table
+            .rows
+            .iter()
+            .filter(|row| !table_row_is_hidden(row))
+            .flat_map(|row| &row.cells)
+        {
+            if matches!(cell.vertical_merge.as_deref(), Some("continue")) {
+                continue;
+            }
+            let render_horizontal_paragraphs = cell
+                .text_direction
+                .is_none_or(|direction| direction == TextDirection::LrTb)
+                && !cell_contains_only_hidden_end_marker(cell);
+            for block in &cell.blocks {
+                match block {
+                    BodyElement::Table(nested) => {
+                        self.collect_cell_numbering(
+                            nested,
+                            numbering_part,
+                            numbering_counter,
+                            config,
+                        )?;
+                    }
+                    BodyElement::Paragraph(paragraph) if render_horizontal_paragraphs => {
+                        let Some(props) = paragraph.properties.as_ref() else {
+                            continue;
+                        };
+                        if props.numbering.is_none() {
+                            continue;
+                        }
+                        let (left_inset, mut style) = config.paragraph_style(paragraph);
+                        style.tab_stops =
+                            jade_docx_layout::line_wrap::resolve_tab_stops(&props.tabs);
+                        if let Some((left_inset, marker)) = self.bounded_paragraph_numbering(
+                            paragraph,
+                            props,
+                            numbering_part,
+                            numbering_counter,
+                            left_inset,
+                            &mut style,
+                        )? {
+                            config.paragraph_numbering.insert(
+                                paragraph.as_ref() as *const Paragraph as usize,
+                                Rc::new(CellNumbering {
+                                    left_inset,
+                                    style,
+                                    marker,
+                                }),
+                            );
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        }
+        Ok(())
+    }
+
     pub(super) fn render_table_with_numbering(
         &mut self,
         table: &Table,
@@ -2474,6 +2590,7 @@ where
         numbering_counter: &mut NumberingCounter,
         _deleted_numbering_offsets: &mut HashMap<String, Vec<u32>>,
     ) -> Result<(), JsValue> {
+        let measure_keep_next_prefix = std::mem::take(&mut self.keep_next_table_prefix);
         // 表の描画は本文と経路が分かれていて Options を持ち回っていない。
         // 描く関数から見えるように、ここで置いておく。
         self.table_render_changes.set(options.render_changes);
@@ -2488,7 +2605,7 @@ where
         // cache-miss path that promotes pages to dirty never fires for them.
         // Explicitly promote the current page so incremental rendering after
         // table-resize commands correctly repaints the table content.
-        if !self.pageless_mode {
+        if !self.pageless_mode && !measure_keep_next_prefix {
             self.promote_page_to_dirty_for_current_render(self.current_page_number)?;
         }
 
@@ -2574,6 +2691,7 @@ where
             render_changes: options.render_changes,
             render_original: options.render_original,
             note_markers,
+            paragraph_numbering: FxHashMap::default(),
             doc_grid: table_doc_grid,
             spacing_grid_pitch_pt: jade_docx_layout::line_metrics::doc_grid_line_unit_pitch_pt(
                 self.current_doc_grid.as_ref(),
@@ -2598,6 +2716,22 @@ where
             hyphenation: self.document_hyphenation,
         };
 
+        if jade_docx_layout::line_metrics::word_layout_platform()
+            == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
+        {
+            if let Some(numbering_part) = numbering_part {
+                // Keep-with-next measures a speculative table prefix.
+                let mut provisional_counter;
+                let counter = if measure_keep_next_prefix {
+                    provisional_counter = numbering_counter.clone();
+                    &mut provisional_counter
+                } else {
+                    &mut *numbering_counter
+                };
+                self.collect_cell_numbering(table, numbering_part, counter, &mut layout_config)?;
+            }
+        }
+
         let column_count = compute_column_count(table);
         let sizing_width = word_pre_2013_table_sizing_width_px(
             table,
@@ -2613,8 +2747,10 @@ where
                 word_autofit_width_limit_px(table, sizing_width),
                 padding_x,
                 &|paragraph| layout_config.line_height_for(paragraph),
-                (self.table_autofit_cache_enabled && table_autofit_cache_supported(table))
-                    .then_some(&self.table_autofit_cache),
+                (self.table_autofit_cache_enabled
+                    && layout_config.paragraph_numbering.is_empty()
+                    && table_autofit_cache_supported(table))
+                .then_some(&self.table_autofit_cache),
                 &|field| self.resolve_run_field(field),
                 Some(&layout_config),
             )?;
@@ -2815,6 +2951,36 @@ where
             &mut row_heights,
             true,
         );
+        let first_visible_row = hidden_rows.iter().position(|hidden| !hidden);
+        let keep_leading_rows = !self.pageless_mode
+            && !table_floats(table)
+            && jade_docx_layout::line_metrics::word_layout_platform()
+                == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
+            && first_visible_row.is_some_and(|index| table_row_keeps_with_next(&table.rows[index]));
+        if measure_keep_next_prefix || keep_leading_rows {
+            let mut height = 0.0;
+            for ((row, height_px), hidden) in table.rows.iter().zip(&row_heights).zip(&hidden_rows)
+            {
+                if *hidden {
+                    continue;
+                }
+                height += height_px;
+                if !table_row_keeps_with_next(row) {
+                    break;
+                }
+            }
+            if measure_keep_next_prefix {
+                self.keep_next_tail_bottom = Some(self.current_y + height);
+                return Ok(());
+            }
+            // Move the leading rows together before painting any of them.
+            // Otherwise a heading can appear alone at the foot of a page and
+            // be repeated above the first body row on the following page.
+            let page_content_height = self.page_height - self.margin_top - self.margin_bottom;
+            if height <= page_content_height && self.ensure_table_row_space(height)? {
+                self.configure_table_context();
+            }
+        }
         let row_refs: Vec<&[PreparedCell]> = prepared_rows.iter().map(Vec::as_slice).collect();
         let row_spans = compute_vertical_merge_row_spans(&row_refs);
 
@@ -2884,7 +3050,6 @@ where
             None
         };
 
-        let first_visible_row = hidden_rows.iter().position(|hidden| !hidden);
         let last_visible_row = hidden_rows.iter().rposition(|hidden| !hidden);
         let mut last_visible_row_index = None;
         let mut previous_spaced_frame: Option<(usize, usize, f64)> = None;
@@ -2926,6 +3091,7 @@ where
             let mut pending_cells = prepared_row.clone();
             let mut pending_height = original_row_height;
             let mut row_start = true;
+            let mut fresh_page_segment = None;
             let mut row_notes_registered = (!options.render_footnotes && !options.render_endnotes)
                 || !table_row_has_note_references(row);
 
@@ -2997,13 +3163,23 @@ where
                                     &header_heights_snapshot,
                                     header_row_count,
                                 ) <= full_page_content_height;
-                        let mut split = split_prepared_row_for_available_height(
-                            &pending_cells,
-                            available_height,
-                            line_height,
-                            full_page_content_height,
-                            tail_has_header,
-                        );
+                        // Word for Mac moves a new row that fits on the next page
+                        // when an occupied cell cannot start on this page.
+                        let require_all_cells = row_start
+                            && pending_height <= full_page_content_height + ROW_SPLIT_EPSILON
+                            && jade_docx_layout::line_metrics::word_layout_platform()
+                                == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac;
+                        let split_row = |cells: &[PreparedCell], height| {
+                            split_prepared_row_for_available_height(
+                                cells,
+                                height,
+                                line_height,
+                                full_page_content_height,
+                                tail_has_header,
+                            )
+                            .filter(|split| !require_all_cells || split.starts_all_cells())
+                        };
+                        let mut split = split_row(pending_cells.as_slice(), available_height);
                         if split.as_ref().is_some_and(|split| {
                             !prepared_row_note_anchors(&split.head_cells).is_empty()
                         }) && !row_notes_registered
@@ -3062,13 +3238,7 @@ where
                                         (self.table_row_bottom_limit() - self.current_y).max(0.0),
                                     );
                                 }
-                                let next = split_prepared_row_for_available_height(
-                                    &pending_cells,
-                                    budget,
-                                    line_height,
-                                    full_page_content_height,
-                                    tail_has_header,
-                                );
+                                let next = split_row(pending_cells.as_slice(), budget);
                                 let next_references = next.as_ref().map(|next| {
                                     prepared_row_note_anchors(&next.head_cells)
                                         .into_iter()
@@ -3204,6 +3374,7 @@ where
                             pending_cells = split.tail_cells;
                             pending_height = split.tail_height;
                             row_start = false;
+                            fresh_page_segment = None;
                             continue;
                         }
                     }
@@ -3214,10 +3385,13 @@ where
                 } else {
                     pending_height
                 };
-                let mut segment_starts_page = !self.pageless_mode
-                    && (self.current_y - self.margin_top).abs() <= ROW_SPLIT_EPSILON;
+                let mut segment_starts_page = fresh_page_segment.unwrap_or(
+                    !self.pageless_mode
+                        && (self.current_y - self.margin_top).abs() <= ROW_SPLIT_EPSILON,
+                );
                 let mut continued_row_opening_rule = 0.0;
-                if self.table_row_needs_page_break(required_height) {
+                if fresh_page_segment.is_none() && self.table_row_needs_page_break(required_height)
+                {
                     if let Some((previous_row, page, bottom)) = previous_spaced_frame {
                         if page == self.current_page_number {
                             self.draw_spaced_table_frame_segment(
@@ -3235,7 +3409,7 @@ where
                         }
                     }
                 }
-                if self.ensure_table_row_space(required_height)? {
+                if fresh_page_segment.is_none() && self.ensure_table_row_space(required_height)? {
                     self.configure_table_context();
                     segment_starts_page = true;
                     // A page boundary was crossed mid-table: redraw the header
@@ -3290,6 +3464,16 @@ where
                                 };
                             self.current_y += (opening_rule - already_reserved).max(0.0);
                         }
+                    }
+                    // A short remainder can prevent a split on the previous page.
+                    // Try again above the new page's bottom margin after drawing
+                    // any repeated headers. An unsplittable row still falls back
+                    // to placement here without another page break.
+                    if continued_row_opening_rule == 0.0
+                        && self.table_row_needs_page_break(pending_height)
+                    {
+                        fresh_page_segment = Some(segment_starts_page);
+                        continue;
                     }
                 }
                 // The whole row lands on the current page (after any advance
@@ -3812,7 +3996,7 @@ where
                 line_height,
                 numbering_part,
                 numbering_counter,
-                None,
+                TableProjectionClip::default(),
                 bands,
             )?;
             if !indices_preassigned {
@@ -3884,7 +4068,7 @@ where
         line_height: f64,
         numbering_part: Option<&NumberingPart>,
         numbering_counter: &mut NumberingCounter,
-        ancestor_clip: Option<(f64, f64)>,
+        ancestor_clip: TableProjectionClip,
         bands: HorizontalBorderBands,
     ) -> Result<f64, JsValue> {
         let tagged = self.begin_structure_cell(cell.column_index);
@@ -3933,7 +4117,7 @@ where
         line_height: f64,
         numbering_part: Option<&NumberingPart>,
         numbering_counter: &mut NumberingCounter,
-        ancestor_clip: Option<(f64, f64)>,
+        ancestor_clip: TableProjectionClip,
         bands: HorizontalBorderBands,
     ) -> Result<f64, JsValue> {
         let padding = bands.content_padding(cell);
@@ -3959,10 +4143,13 @@ where
                     && y_top.is_finite()
                     && row_height.is_finite())
                 .then_some((clip_top, clip_top + clip_height));
-                intersect_vertical_clips(local, ancestor_clip)
+                intersect_vertical_clips(local, ancestor_clip.vertical)
             } else {
                 None
             };
+        let projection_right = ancestor_clip
+            .right
+            .map(|right| right.min(x_start + cell_width));
         let line_projection_clip =
             projection_clip.filter(|_| cell_ink_projection_is_horizontal(cell.text_direction));
         // Named so the painter outlives the guard that borrows it, and owning so
@@ -4195,7 +4382,7 @@ where
                         self.last_line_baseline = baseline;
                         text_y += line_height;
                     } else {
-                        for line in paragraph.lines.iter() {
+                        for (line_index, line) in paragraph.lines.iter().enumerate() {
                             let line_height = paragraph.line_advance(line);
                             let line_top = text_y;
                             let text_x = line.aligned_start_x(
@@ -4203,6 +4390,17 @@ where
                                 cell_width - pad_horizontal,
                                 align,
                             );
+
+                            if draw_enabled && line_index == 0 && !paragraph.is_continuation {
+                                self.draw_cell_numbering(
+                                    paragraph,
+                                    line,
+                                    x_start + pad_left,
+                                    line_top,
+                                    line_height,
+                                    paragraph_index,
+                                )?;
+                            }
 
                             if !line.text.is_empty() {
                                 if matches!(cell.text_direction, Some(TextDirection::LrTbV)) {
@@ -4345,6 +4543,7 @@ where
                                     line,
                                     &selection_line,
                                     clip,
+                                    projection_right,
                                 )?;
                             }
                             self.draw_selection_highlight(paragraph_index, &selection_line)?;
@@ -4416,6 +4615,18 @@ where
                         continue;
                     }
 
+                    // Word for Mac can lay out an auto-width nested table past
+                    // the parent cell edge. The cell clip still masks its ink.
+                    let right = if projection_clip.is_some()
+                        && jade_docx_layout::line_metrics::word_layout_platform()
+                            == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
+                        && nested_table.width > content_width
+                        && !table_floats(&nested_table.table)
+                    {
+                        Some(projection_right.unwrap_or(x_start + cell_width))
+                    } else {
+                        projection_right
+                    };
                     let nested_height = self.render_nested_table(
                         nested_table,
                         numbering_part,
@@ -4423,7 +4634,10 @@ where
                         x_start + pad_left + border_left_inset,
                         block_top,
                         content_width,
-                        projection_clip,
+                        TableProjectionClip {
+                            vertical: projection_clip,
+                            right,
+                        },
                     )?;
 
                     let consumed = nested_height.max(block.height.max(line_height));
@@ -5244,6 +5458,16 @@ where
                         cell_width - pad_horizontal,
                         align,
                     );
+                    if line_index == 0 && !paragraph.is_continuation {
+                        self.draw_cell_numbering(
+                            paragraph,
+                            line,
+                            x_start + pad_left,
+                            line_top,
+                            line_height,
+                            capture_paragraph,
+                        )?;
+                    }
                     if !line.text.is_empty() {
                         if matches!(cell.text_direction, Some(TextDirection::LrTbV)) {
                             let _ = self.draw_lr_tbv_line(
@@ -5683,14 +5907,20 @@ where
         line: &LineLayout,
         selection_line: &SelectionLineLayout,
         (clip_top, clip_bottom): (f64, f64),
+        clip_right: Option<f64>,
     ) -> Result<(), JsValue> {
         let empty_clip = clip_bottom <= clip_top;
-        if (!empty_clip && line.word_baseline_offset.is_none())
-            || line.text.is_empty()
-            || (!empty_clip
-                && selection_line.top >= clip_top
-                && selection_line.top + selection_line.height <= clip_bottom)
-        {
+        let check_vertical = empty_clip
+            || (line.word_baseline_offset.is_some()
+                && (selection_line.top < clip_top
+                    || selection_line.top + selection_line.height > clip_bottom));
+        let clip_right = clip_right.filter(|right| {
+            selection_line
+                .fragments
+                .iter()
+                .any(|fragment| fragment.x + fragment.width >= *right)
+        });
+        if line.text.is_empty() || (!check_vertical && clip_right.is_none()) {
             return Ok(());
         }
         let spans = if empty_clip {
@@ -5724,7 +5954,7 @@ where
             let baseline = selection_line.baseline + fragment.baseline_shift_px;
             let mut glyphs = Vec::with_capacity(fragment.glyphs.len());
             for glyph in fragment.glyphs.iter() {
-                if empty_clip {
+                if empty_clip || clip_right.is_some_and(|right| fragment.x + glyph.x >= right) {
                     continue;
                 }
                 while spans
@@ -5757,13 +5987,15 @@ where
                         metrics.actual_bounding_box_descent,
                     ))
                 })?;
-                if glyph_ink_intersects_vertical_clip(
-                    baseline,
-                    ascent,
-                    descent,
-                    clip_top,
-                    clip_bottom,
-                ) {
+                if !check_vertical
+                    || glyph_ink_intersects_vertical_clip(
+                        baseline,
+                        ascent,
+                        descent,
+                        clip_top,
+                        clip_bottom,
+                    )
+                {
                     glyphs.push(LayoutGlyphDebug {
                         start: glyph.start,
                         end: glyph.end,
@@ -5936,6 +6168,36 @@ where
             });
     }
 
+    fn draw_cell_numbering(
+        &mut self,
+        paragraph: &CellParagraph,
+        line: &LineLayout,
+        content_x: f64,
+        line_top: f64,
+        line_height: f64,
+        paragraph_index: usize,
+    ) -> Result<(), JsValue> {
+        let Some(numbering) = &paragraph.numbering else {
+            return Ok(());
+        };
+        let mut marker = numbering.marker.clone();
+        marker.number_x += content_x;
+        marker.paragraph_index = paragraph_index;
+        let painter = self.host.painter();
+        painter.save();
+        let result = self.draw_pending_numbering_marker(
+            &marker,
+            line_top + line.word_baseline_offset.unwrap_or(line_height),
+            line_height,
+            Some(&numbering.style),
+            &mut None,
+        );
+        painter.restore();
+        self.reset_font_state();
+        self.reset_fill_style_state();
+        result
+    }
+
     fn draw_horizontal_line_with_run_styles(
         &self,
         paragraph: &CellParagraph,
@@ -6105,6 +6367,21 @@ where
                 paragraph_index,
                 run_index: picture.run_index,
             };
+            if self.auxiliary_story_capture_mode == AuxiliaryStoryCaptureMode::Full
+                && !image.layout.hidden()
+            {
+                self.table_picture_debug_regions.push(ObjectDebugInfo {
+                    kind: FloatingObjectKind::Image,
+                    paragraph_index,
+                    run_index: draw_spec.run_index,
+                    page: self.current_page_number,
+                    x: draw_spec.x,
+                    y: draw_spec.y,
+                    width: draw_spec.width,
+                    height: draw_spec.height,
+                    rotation_deg: draw_spec.rotation_deg,
+                });
+            }
             if image.data_uri.is_some() || super::has_ink_strokes(image) {
                 self.draw_image_element(image, draw_spec)?;
             } else if let Some(group) = image.shape_group.as_ref() {
@@ -6612,27 +6889,13 @@ where
         let resolved_style = run_props.map_or_else(default_table_run_style, |props| {
             resolve_run_style_for_wrap(Some(props), None)
         });
-        // Joining scripts need the neighboring letters in the painter's
-        // shaping context. Preserve the span path for those scripts; Latin
-        // and East Asian text can use each authoritative glyph origin.
-        let contextual_shaping = glyphs.iter().any(|glyph| {
-            classify_script(&paragraph.text[glyph.start..glyph.end]) == ScriptCategory::Complex
-        });
-        let origin = glyphs.first().map_or(0.0, |glyph| glyph.x);
-        let steps = glyphs
-            .iter()
-            .filter(|_| combined_properties.is_some() || !contextual_shaping)
-            .map(|glyph| {
-                let glyph_text = &paragraph.text[glyph.start..glyph.end];
-                PlannedGlyphLayoutStep {
-                    text_start: (glyph.start - start) as u32,
-                    text_end: (glyph.end - start) as u32,
-                    font_slot: resolved_style
-                        .font_slot_for_grapheme(glyph_text, classify_script(glyph_text)),
-                    x_offset: glyph.x - origin,
-                }
-            })
-            .collect::<Vec<_>>();
+        let steps = table_text_steps(
+            &paragraph.text,
+            start,
+            glyphs,
+            &resolved_style,
+            combined_properties.is_none(),
+        );
         self.reset_font_state();
         if let Some(properties) = combined_properties.as_ref() {
             let applied = self.resolve_applied_run_style_uncached(Some(properties));
@@ -7013,7 +7276,7 @@ where
         x_start: f64,
         y_start: f64,
         available_width: f64,
-        ancestor_clip: Option<(f64, f64)>,
+        ancestor_clip: TableProjectionClip,
     ) -> Result<f64, JsValue> {
         let mut total_height = layout.margin_top + layout.margin_bottom;
         if layout.rows.is_empty() {
@@ -10155,6 +10418,19 @@ fn autofit_content_widths<C: TableAutofitContext>(
     let mut minimums = no_wrap_absolute_minimum_widths(table, column_widths);
     let mut preferred = vec![0.0_f64; column_widths.len()];
     let mut explicit_width_columns = vec![false; column_widths.len()];
+    // A saved percentage grid in Word for Mac wraps cell text at the
+    // preferred column widths unless the content itself cannot break.
+    let has_mac_percentage_grid = jade_docx_layout::line_metrics::word_layout_platform()
+        == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
+        && table.columns.len() == column_widths.len()
+        && table
+            .columns
+            .iter()
+            .all(|column| column.width.is_some_and(|width| width > 0.0))
+        && table
+            .style
+            .get("width")
+            .is_some_and(|width| width.trim().ends_with('%'));
     // Widest piece of content that cannot wrap, per column.
     let mut unbreakable_widths = vec![0.0_f64; column_widths.len()];
     let mut natural_paragraph_layouts = Vec::new();
@@ -10186,7 +10462,13 @@ fn autofit_content_widths<C: TableAutofitContext>(
                 .style
                 .get("no-wrap")
                 .is_some_and(|value| value.eq_ignore_ascii_case("true"));
-            if cell_has_absolute_preferred_width(cell) {
+            if cell_has_absolute_preferred_width(cell)
+                || (has_mac_percentage_grid
+                    && cell
+                        .style
+                        .get("width")
+                        .is_some_and(|width| width.trim().ends_with('%')))
+            {
                 explicit_width_columns[start..end].fill(true);
             }
 
@@ -10313,6 +10595,8 @@ fn autofit_content_widths<C: TableAutofitContext>(
     // natural content width. Only content that cannot wrap widens such a
     // column (a 40-letter word takes a 4500-dxa column to 291pt, from its
     // neighbour), so its preferred width is its widest unbreakable piece.
+    // Word for Mac also wraps percentage-width cells at the declared grid
+    // in percentage-width tables instead of borrowing space for wrapped text.
     for (index, explicit) in explicit_width_columns.iter().enumerate() {
         if *explicit {
             preferred[index] = unbreakable_widths[index];
@@ -10857,6 +11141,12 @@ fn cell_ink_projection_is_horizontal(direction: Option<TextDirection>) -> bool {
     direction.is_none_or(|direction| direction == TextDirection::LrTb)
 }
 
+#[derive(Clone, Copy, Default)]
+struct TableProjectionClip {
+    vertical: Option<(f64, f64)>,
+    right: Option<f64>,
+}
+
 fn intersect_vertical_clips(
     local: Option<(f64, f64)>,
     ancestor: Option<(f64, f64)>,
@@ -11396,6 +11686,17 @@ fn table_row_is_hidden(row: &TableRow) -> bool {
         })
 }
 
+fn table_row_keeps_with_next(row: &TableRow) -> bool {
+    row.cells.iter().all(|cell| {
+        cell.blocks
+            .last()
+            .and_then(BodyElement::as_paragraph)
+            .and_then(|paragraph| paragraph.properties.as_ref())
+            .and_then(|props| props.keep_next)
+            .unwrap_or(false)
+    })
+}
+
 /// Counts the leading header rows of a table (`w:tblHeader`, ECMA-376 Part 1
 /// §17.4.41 / §17.4.50). Word only repeats the *contiguous block of header
 /// rows at the very top of the table* across page breaks, so a non-header row
@@ -11466,7 +11767,6 @@ fn split_cell_paragraph(
     };
     if paragraph.vertical_layout.is_some()
         || paragraph.lines.len() < 2
-        || (paragraph.keep_lines && block.height <= fresh_page_height + ROW_SPLIT_EPSILON)
         || paragraph.line_height <= 0.0
     {
         return None;
@@ -11481,8 +11781,22 @@ fn split_cell_paragraph(
             used <= room
         })
         .count();
-    if paragraph.widow_control {
-        use jade_docx_layout::line_metrics::{resolve_widow_orphan_decision, WidowOrphanDecision};
+    use jade_docx_layout::line_metrics::{
+        resolve_widow_orphan_decision, word_layout_platform, WidowOrphanDecision,
+        WordLayoutPlatform,
+    };
+    // Word for Mac permits splits at manual breaks inside cells even with
+    // paragraph pagination controls. The row's cantSplit is checked separately.
+    let mac_manual_break = fits > 0
+        && paragraph.lines[fits - 1].break_kind == LineBreakKind::Hard
+        && word_layout_platform() == WordLayoutPlatform::Mac;
+    if !mac_manual_break
+        && paragraph.keep_lines
+        && block.height <= fresh_page_height + ROW_SPLIT_EPSILON
+    {
+        return None;
+    }
+    if paragraph.widow_control && !mac_manual_break {
         match resolve_widow_orphan_decision(paragraph.lines.len(), fits) {
             WidowOrphanDecision::MoveWholeParagraph => return None,
             WidowOrphanDecision::BreakBeforeLine(line) => fits = line,
@@ -12638,8 +12952,14 @@ fn row_exception_inside_edge(
 
 fn has_document_table_border_defaults(row: &TableRow, table: &Table) -> bool {
     // A resolved package style supplies the border default even when its
-    // edges are absent. Do not replace that absence with the bare SDK grid.
-    row.borders.is_some() || table.borders.is_some() || table.resolved_style.is_some()
+    // edges are absent. Word for Mac also leaves an XML-backed table without
+    // borders when the package supplies no table style or border defaults.
+    row.borders.is_some()
+        || table.borders.is_some()
+        || table.resolved_style.is_some()
+        || (table.style.contains_key("ooxml-table")
+            && jade_docx_layout::line_metrics::word_layout_platform()
+                == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac)
 }
 
 /// Resolve each edge through row exception, direct table and whole-table style.
@@ -13723,6 +14043,7 @@ fn prepare_row_layout<P: Painter<Error: PainterError>>(
                     BodyElement::Paragraph(paragraph) => {
                         let paragraph_line_height = config.line_height_for(paragraph);
                         let (left_inset, mut paragraph_style) = config.paragraph_style(paragraph);
+                        let numbering = config.paragraph_numbering(paragraph);
                         let math_context = wrap_context.math.as_ref().filter(|_| {
                             !cell
                                 .text_direction
@@ -13876,11 +14197,13 @@ fn prepare_row_layout<P: Painter<Error: PainterError>>(
                         // layout is only reusable while the cell paragraph
                         // adds no East Asian rules (auto-spacing, kinsoku) or
                         // Word font line box of its own.
-                        let reusable_natural_layout = (!fit_text
+                        let reusable_natural_layout = (numbering.is_none()
+                            && !fit_text
                             && cell.text_direction.is_none()
                             && !paragraph_style.doc_grid_snap_to_chars
                             && !paragraph_style.enable_line_break_rules
                             && !paragraph_style.word_east_asian_font_line_box
+                            && paragraph_style.word_minimum_cell_line_height_px.is_none()
                             && !matches!(
                                 paragraph_style.text_alignment.as_deref(),
                                 Some("top" | "center" | "bottom")
@@ -13917,6 +14240,30 @@ fn prepare_row_layout<P: Painter<Error: PainterError>>(
                                 left_inset,
                             )?
                         };
+                        cell_paragraph.numbering = numbering.cloned();
+                        if cell
+                            .text_direction
+                            .is_none_or(|direction| matches!(direction, TextDirection::LrTbV))
+                            && paragraph_style.word_platform
+                                == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
+                            && !paragraph_style.exact_line_spacing
+                            && paragraph_style.word_grid_line_sizing.is_none()
+                            && matches!(
+                                paragraph_style.text_alignment.as_deref(),
+                                None | Some("auto" | "baseline")
+                            )
+                            && styled_runs.iter().any(|run| {
+                                matches!(run.inline_object, Some(CellInlineObject::Picture(_)))
+                            })
+                        {
+                            apply_mac_cell_picture_line_spacing(
+                                &mut cell_paragraph,
+                                paragraph,
+                                &styled_runs,
+                                config.styles_part.as_deref(),
+                                wrap_context,
+                            )?;
+                        }
                         if let Some(target_height) = vertical_fit_target {
                             cell_paragraph.height = target_height;
                             if let Some(layout) = cell_paragraph.vertical_layout.as_mut() {
@@ -14161,6 +14508,31 @@ fn prepare_row_layout<P: Painter<Error: PainterError>>(
         column_index = (start + span).min(total_columns);
     }
 
+    if !separated
+        && jade_docx_layout::line_metrics::word_layout_platform()
+            == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
+        && layouts.iter().all(|cell| {
+            cell.vertical_merge.is_none()
+                && !cell.text_direction.is_some_and(|direction| {
+                    direction_requires_rotated_layout(direction)
+                        || direction_requires_vertical_stack(direction)
+                })
+        })
+    {
+        // Word uses the largest top and bottom margins of the row's cells
+        // for both the row height and each cell's vertical alignment.
+        let (top, bottom) = layouts
+            .iter()
+            .fold((0.0_f64, 0.0_f64), |(top, bottom), cell| {
+                (top.max(cell.padding.top), bottom.max(cell.padding.bottom))
+            });
+        for cell in &mut layouts {
+            cell.height += (top - cell.padding.top) + (bottom - cell.padding.bottom);
+            cell.padding.top = top;
+            cell.padding.bottom = bottom;
+        }
+    }
+
     if !config.word_modern_border_insets {
         resolve_row_shared_vertical_border_conflicts(&mut layouts, table.bidi_visual, cell_spacing);
     }
@@ -14199,6 +14571,22 @@ fn layout_nested_table<P: Painter<Error: PainterError>>(
 ) -> Result<NestedTableLayout, JsValue> {
     let column_count = compute_column_count(table).max(1);
     let mut column_widths = compute_column_widths(table, column_count, available_width);
+    // Word for Mac keeps the authored grid width of a single-column auto-width
+    // nested table even when its parent cell is narrower.
+    let available_width = match table.columns.as_slice() {
+        [column]
+            if column_count == 1
+                && jade_docx_layout::line_metrics::word_layout_platform()
+                    == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
+                && !table.style.contains_key("width")
+                && resolve_table_layout_mode(table) == TableLayoutMode::Autofit =>
+        {
+            column.width.map_or(available_width, |width| {
+                available_width.max(points_to_px(width))
+            })
+        }
+        _ => available_width,
+    };
     let (_, mut natural_paragraph_layouts) = apply_table_layout_width_for_table_with_content(
         wrap_context,
         table,
@@ -14763,6 +15151,48 @@ fn line_style_spans(
     spans
 }
 
+// Canvas shapes each step as a unit. Keep neighboring complex-script
+// glyphs together in source order while using the first visual glyph's
+// origin. Other glyphs retain their own font and layout position.
+fn table_text_steps(
+    paragraph_text: &str,
+    span_start: usize,
+    glyphs: &[&GlyphBox],
+    style: &ResolvedRunStyle,
+    join_complex: bool,
+) -> Vec<PlannedGlyphLayoutStep> {
+    let origin = glyphs.first().map_or(0.0, |glyph| glyph.x);
+    let mut steps: Vec<PlannedGlyphLayoutStep> = Vec::with_capacity(glyphs.len());
+    let mut previous_complex = false;
+    for glyph in glyphs {
+        let text = &paragraph_text[glyph.start..glyph.end];
+        let script = classify_script(text);
+        let slot = style.font_slot_for_grapheme(text, script);
+        let complex = join_complex && script == ScriptCategory::Complex;
+        let start = (glyph.start - span_start) as u32;
+        let end = (glyph.end - span_start) as u32;
+        if complex && previous_complex {
+            if let Some(previous) = steps.last_mut() {
+                if previous.font_slot == slot
+                    && (previous.text_end == start || end == previous.text_start)
+                {
+                    previous.text_start = previous.text_start.min(start);
+                    previous.text_end = previous.text_end.max(end);
+                    continue;
+                }
+            }
+        }
+        steps.push(PlannedGlyphLayoutStep {
+            text_start: start,
+            text_end: end,
+            font_slot: slot,
+            x_offset: glyph.x - origin,
+        });
+        previous_complex = complex;
+    }
+    steps
+}
+
 fn table_font_descriptor_for_text(
     run_props: Option<&RunProperties>,
     text: &str,
@@ -14925,8 +15355,14 @@ fn line_range_width(line: &LineLayout, start: usize, end: usize) -> f64 {
 }
 
 fn wrapped_line_range(line: &WrappedLine) -> (usize, usize) {
-    if let (Some(first), Some(last)) = (line.clusters.first(), line.clusters.last()) {
-        return (first.start, last.end);
+    if let Some(first) = line.clusters.first() {
+        // Bidi layout stores clusters in visual order. The paint spans still
+        // need the full range in the paragraph's logical text.
+        return line.clusters[1..]
+            .iter()
+            .fold((first.start, first.end), |(start, end), cluster| {
+                (start.min(cluster.start), end.max(cluster.end))
+            });
     }
     if let (Some(first), Some(last)) = (line.segments.first(), line.segments.last()) {
         return (first.start, last.end);
@@ -15475,6 +15911,95 @@ fn layout_horizontal_paragraph_with_run_styles_context_offset<C: LineWrapContext
     ))
 }
 
+fn apply_mac_cell_picture_line_spacing<P: Painter<Error: PainterError>>(
+    layout: &mut CellParagraph,
+    paragraph: &Paragraph,
+    runs: &[StyledRunRange],
+    styles: Option<&StylesPart>,
+    context: &TableLineWrapContext<'_, P>,
+) -> Result<(), JsValue> {
+    use jade_docx_layout::line_metrics::{
+        word_auto_line_multiple, word_latin_font_line_height_pt, word_minimum_line_height_pt,
+    };
+
+    let properties = paragraph.properties.as_ref();
+    let style_id = properties
+        .and_then(|props| props.style.as_deref())
+        .or_else(|| styles.and_then(StylesPart::default_paragraph_style_id));
+    let style = styles.and_then(|styles| styles.resolve_paragraph_properties(style_id?));
+    let default_properties = styles.and_then(StylesPart::doc_default_paragraph_properties);
+    let spacing = [properties, style.as_ref(), default_properties]
+        .into_iter()
+        .flatten()
+        .filter_map(|props| props.spacing.as_ref())
+        .find(|spacing| spacing.line.is_some());
+    let multiple = word_auto_line_multiple(spacing).filter(|multiple| *multiple >= 1.0);
+    let minimum = word_minimum_line_height_pt(spacing).map(points_to_px);
+    if multiple.is_none() && minimum.is_none() {
+        return Ok(());
+    }
+
+    let direct_mark = properties.and_then(|props| props.mark_run_properties.as_ref());
+    let mark = styles
+        .and_then(|styles| styles.resolve_effective_run_properties(style_id, direct_mark))
+        .or_else(|| direct_mark.cloned());
+    let mark_style = context.resolve_run_style(mark.as_ref())?;
+    let Some(single) =
+        word_latin_font_line_height_pt(&mark_style.font_descriptor_latin_ascii).map(points_to_px)
+    else {
+        return Ok(());
+    };
+
+    let mut objects = runs
+        .iter()
+        .filter(|run| run.inline_object.is_some())
+        .peekable();
+    for line in Rc::make_mut(&mut layout.lines) {
+        let mut has_picture = false;
+        let mut has_math = false;
+        while objects.peek().is_some_and(|run| run.start < line.end) {
+            let Some(run) = objects.next() else { break };
+            if run.start >= line.start {
+                has_picture |= matches!(run.inline_object, Some(CellInlineObject::Picture(_)));
+                has_math |= matches!(run.inline_object, Some(CellInlineObject::Math(_)));
+            }
+        }
+        if !has_picture {
+            continue;
+        }
+        let Some(mut baseline) = line.word_baseline_offset else {
+            continue;
+        };
+        let mut advance = line.min_advance;
+        if !has_math
+            && line
+                .text
+                .chars()
+                .all(|ch| ch == CELL_INLINE_OBJECT_CHAR || ch.is_whitespace())
+        {
+            // Word places a short picture at the bottom of the paragraph mark's
+            // single line box. A tall picture establishes its own baseline.
+            baseline = baseline.max(single);
+            advance = advance.max(baseline);
+        }
+        if let Some(multiple) = multiple {
+            // Automatic spacing adds only the mark's extra leading below
+            // the line, leaving the picture's baseline in place.
+            advance += single * (multiple - 1.0);
+        }
+        if let Some(minimum) = minimum {
+            // The minimum contributes the unused space above the picture.
+            let leading = (minimum - advance).max(0.0);
+            baseline += leading;
+            advance += leading;
+        }
+        line.word_baseline_offset = Some(baseline);
+        line.min_advance = advance;
+    }
+    layout.height = layout.lines_height(&layout.lines).max(layout.line_height);
+    Ok(())
+}
+
 fn horizontal_cell_paragraph_from_wrapped_lines(
     text: &str,
     line_height: f64,
@@ -15563,6 +16088,17 @@ fn horizontal_cell_paragraph_from_wrapped_lines(
                 };
             } else if has_ruby {
                 line.word_baseline_offset = wrapped.font_box_px().map(|(ascent, _)| ascent);
+            } else if let Some((minimum, descent)) = paragraph_style
+                .word_minimum_cell_line_height_px
+                .filter(|_| line.min_advance <= 0.0)
+                .and_then(|minimum| {
+                    let (ascent, descent) = wrapped.font_box_px()?;
+                    (minimum > ascent + descent).then_some((minimum, descent))
+                })
+            {
+                // Word adds spare minimum height above a baseline-aligned line.
+                line.word_baseline_offset = Some(minimum - descent);
+                line.min_advance = minimum;
             } else if paragraph_style.word_east_asian_font_line_box && line.min_advance <= 0.0 {
                 line.word_baseline_offset =
                     jade_docx_layout::line_wrap::wrapped_line_grid_baseline_offset(
@@ -16734,6 +17270,7 @@ mod tests {
                 render_changes: false,
                 render_original: false,
                 note_markers: NoteMarkers::default(),
+                paragraph_numbering: FxHashMap::default(),
                 doc_grid: None,
                 spacing_grid_pitch_pt: None,
                 document_snap_to_grid_default: false,
@@ -16846,6 +17383,7 @@ mod tests {
             render_changes: false,
             render_original: false,
             note_markers: NoteMarkers::default(),
+            paragraph_numbering: FxHashMap::default(),
             doc_grid: None,
             spacing_grid_pitch_pt: None,
             document_snap_to_grid_default: false,
@@ -18764,6 +19302,35 @@ mod tests {
     }
 
     #[test]
+    fn table_line_preserves_the_logical_range_of_reordered_clusters() {
+        use jade_docx_layout::line_wrap::InlineCluster;
+
+        let wrapped = WrappedLine {
+            segments: Vec::new(),
+            clusters: [("A", 0, 1), ("ا", 5, 7), ("ب", 3, 5), ("ح", 1, 3)]
+                .into_iter()
+                .map(|(text, start, end)| {
+                    InlineCluster::grapheme(start, end, 10.0, text, false, false, false)
+                })
+                .collect(),
+            break_kind: LineBreakKind::ParagraphEnd,
+            break_range: None,
+            break_properties: None,
+            leaders: Vec::new(),
+            tab_stops: Vec::new(),
+            hyphen: None,
+        };
+        let line = build_line_layout_from_wrapped_line(&wrapped);
+        assert_eq!((line.start, line.end), (0, 7));
+        let visual_starts = line
+            .glyphs
+            .iter()
+            .map(|glyph| glyph.start)
+            .collect::<Vec<_>>();
+        assert_eq!(visual_starts, [0, 5, 3, 1]);
+    }
+
+    #[test]
     fn table_grid_baseline_centres_the_shared_font_box() {
         use jade_docx_layout::font_resolver::ResolvedFontSlot;
         use jade_docx_layout::line_metrics::{
@@ -18918,6 +19485,7 @@ mod tests {
             render_changes: false,
             render_original: false,
             note_markers: NoteMarkers::default(),
+            paragraph_numbering: FxHashMap::default(),
             doc_grid: None,
             spacing_grid_pitch_pt: None,
             document_snap_to_grid_default: false,
@@ -20050,7 +20618,7 @@ mod tests {
                             24.0,
                             None,
                             &mut NumberingCounter::default(),
-                            None,
+                            TableProjectionClip::default(),
                             HorizontalBorderBands::default(),
                         )
                         .unwrap();
@@ -20352,6 +20920,7 @@ mod tests {
             render_changes: false,
             render_original: false,
             note_markers: NoteMarkers::default(),
+            paragraph_numbering: FxHashMap::default(),
             doc_grid: None,
             spacing_grid_pitch_pt: None,
             document_snap_to_grid_default: false,
@@ -21934,6 +22503,7 @@ mod tests {
             render_changes: false,
             render_original: false,
             note_markers: NoteMarkers::default(),
+            paragraph_numbering: FxHashMap::default(),
             doc_grid: None,
             spacing_grid_pitch_pt: None,
             document_snap_to_grid_default: false,
@@ -23477,6 +24047,7 @@ mod tests {
             render_changes: false,
             render_original: false,
             note_markers: NoteMarkers::default(),
+            paragraph_numbering: FxHashMap::default(),
             doc_grid: None,
             spacing_grid_pitch_pt: None,
             document_snap_to_grid_default: false,
@@ -23600,6 +24171,7 @@ mod tests {
             render_changes: false,
             render_original: false,
             note_markers: NoteMarkers::default(),
+            paragraph_numbering: FxHashMap::default(),
             doc_grid: None,
             spacing_grid_pitch_pt: None,
             document_snap_to_grid_default: false,
@@ -23678,7 +24250,7 @@ mod tests {
                             100.0,
                             40.0,
                             200.0,
-                            None,
+                            TableProjectionClip::default(),
                         )
                         .unwrap();
                 }
@@ -23733,6 +24305,7 @@ mod tests {
             render_changes: false,
             render_original: false,
             note_markers: NoteMarkers::default(),
+            paragraph_numbering: FxHashMap::default(),
             doc_grid: None,
             spacing_grid_pitch_pt: None,
             document_snap_to_grid_default: false,
@@ -23883,7 +24456,7 @@ mod tests {
                                 100.0,
                                 40.0,
                                 200.0,
-                                None,
+                                TableProjectionClip::default(),
                             )
                             .unwrap();
                     }
@@ -23975,6 +24548,7 @@ mod tests {
             render_changes: false,
             render_original: false,
             note_markers: NoteMarkers::default(),
+            paragraph_numbering: FxHashMap::default(),
             doc_grid: None,
             spacing_grid_pitch_pt: None,
             document_snap_to_grid_default: false,
@@ -24056,7 +24630,7 @@ mod tests {
                             100.0,
                             40.0,
                             200.0,
-                            None,
+                            TableProjectionClip::default(),
                         )
                         .unwrap();
                 }
@@ -24117,6 +24691,7 @@ mod tests {
             render_changes: false,
             render_original: false,
             note_markers: NoteMarkers::default(),
+            paragraph_numbering: FxHashMap::default(),
             doc_grid: None,
             spacing_grid_pitch_pt: None,
             document_snap_to_grid_default: false,
@@ -24222,7 +24797,7 @@ mod tests {
                                 100.0,
                                 40.0,
                                 200.0,
-                                None,
+                                TableProjectionClip::default(),
                             )
                             .unwrap();
                     }
@@ -24296,6 +24871,7 @@ mod tests {
             render_changes: false,
             render_original: false,
             note_markers: NoteMarkers::default(),
+            paragraph_numbering: FxHashMap::default(),
             doc_grid: None,
             spacing_grid_pitch_pt: None,
             document_snap_to_grid_default: false,
@@ -24344,7 +24920,7 @@ mod tests {
                     100.0,
                     40.0,
                     200.0,
-                    None,
+                    TableProjectionClip::default(),
                 )
                 .unwrap();
             let repeated_painter = RecordingPainter::with_width_per_char(7.0);
@@ -24393,7 +24969,7 @@ mod tests {
                 100.0,
                 40.0,
                 200.0,
-                None,
+                TableProjectionClip::default(),
             )
             .unwrap();
         let repeated_painter = RecordingPainter::with_width_per_char(7.0);
@@ -25430,6 +26006,22 @@ mod tests {
     }
 
     #[test]
+    fn split_prepared_row_detects_a_cell_that_starts_on_the_next_page() {
+        let mut label = make_prepared_cell(0, 1, None, false);
+        label.blocks = vec![make_cell_block(12.0)];
+        let mut body = make_prepared_cell(1, 1, None, false);
+        body.blocks = vec![make_cell_block(24.0), make_cell_block(24.0)];
+        let row = [label, body];
+
+        let split = split_prepared_row_for_available_height(&row, 28.0, 12.0, 100.0, false)
+            .expect("only the label fits");
+        assert!(!split.starts_all_cells());
+        let split = split_prepared_row_for_available_height(&row, 38.0, 12.0, 100.0, false)
+            .expect("both cells fit their first block");
+        assert!(split.starts_all_cells());
+    }
+
+    #[test]
     fn column_resize_boundaries_exclude_horizontal_merge_interiors() {
         let cells = vec![
             make_prepared_cell(0, 2, None, false),
@@ -25462,6 +26054,7 @@ mod tests {
             render_changes: false,
             render_original: false,
             note_markers: NoteMarkers::default(),
+            paragraph_numbering: FxHashMap::default(),
             doc_grid: None,
             spacing_grid_pitch_pt: None,
             styles_part: None,
