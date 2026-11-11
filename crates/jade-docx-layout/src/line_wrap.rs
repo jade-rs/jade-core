@@ -1524,7 +1524,7 @@ fn compute_grapheme_advance_for_grid<const SNAP_TO_GRID: bool>(
         } else {
             paragraph_style
                 .map(|style| {
-                    implicit_latin_east_asian_gap_width(
+                    let (mut leading, trailing) = implicit_latin_east_asian_gap_width(
                         style,
                         grapheme,
                         script,
@@ -1532,7 +1532,20 @@ fn compute_grapheme_advance_for_grid<const SNAP_TO_GRID: bool>(
                         prev_grapheme,
                         next_grapheme,
                         font_descriptor,
-                    )
+                    );
+                    // Word for Mac leaves a 3.5pt gap after 14pt kanji before
+                    // 18pt Arial in table-minimum-line-cjk-mac.
+                    if leading > 0.0
+                        && style.word_platform == crate::line_metrics::WordLayoutPlatform::Mac
+                        && prev_grapheme
+                            .and_then(|text| text.chars().next())
+                            .is_some_and(|ch| ch.script() == UnicodeScriptKind::Han)
+                    {
+                        if let Some(width) = prev_glyph_width.filter(|width| *width > 0.0) {
+                            leading = leading.min(width * 0.25);
+                        }
+                    }
+                    (leading, trailing)
                 })
                 .unwrap_or((0.0, 0.0))
         };
