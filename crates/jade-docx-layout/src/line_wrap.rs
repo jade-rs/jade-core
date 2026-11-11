@@ -5849,6 +5849,86 @@ fn requires_bidi_resolution(line: &WrappedLine, base_rtl: bool) -> bool {
     })
 }
 
+/// The width used to position the next run must be the advance of the
+/// joined Arabic text, which can differ substantially from the sum of the
+/// standalone graphemes. Keep original run boundaries for table painting.
+fn apply_arabic_span_advances<C: LineWrapContext>(
+    ctx: &C,
+    text: &str,
+    run_styles: &[RunStyle],
+    line: &mut WrappedLine,
+    base_offset: usize,
+) -> Result<(), C::Error> {
+    let arabic_slot = |cluster: &InlineCluster| {
+        let layout = cluster.layout.as_ref()?;
+        (layout.script == ScriptCategory::Complex
+            && cluster.text.chars().next().is_some_and(|ch| {
+                ch.script() == UnicodeScriptKind::Arabic && bidi_class(ch) == BidiClass::AL
+            }))
+        .then_some(layout.font_slot)
+    };
+    let mut start = 0;
+    while start + 1 < line.clusters.len() {
+        let Some(slot) = arabic_slot(&line.clusters[start]) else {
+            start += 1;
+            continue;
+        };
+        let first = &line.clusters[start];
+        let source_start = first.start - base_offset;
+        let run_index = run_styles.partition_point(|run| run.end <= source_start);
+        let Some(run) = run_styles
+            .get(run_index)
+            .filter(|run| run.start <= source_start)
+        else {
+            start += 1;
+            continue;
+        };
+        let mut end = start + 1;
+        while let Some(next) = line.clusters.get(end) {
+            if next.start != line.clusters[end - 1].end
+                || next.end - base_offset > run.end
+                || arabic_slot(next) != Some(slot)
+            {
+                break;
+            }
+            end += 1;
+        }
+        let can_shape = run.properties.as_ref().is_none_or(|properties| {
+            properties.fit_text.is_none()
+                && properties.char_spacing.is_none_or(|spacing| spacing == 0.0)
+                && properties.border.is_none()
+        });
+        if can_shape && end - start > 1 {
+            let source_end = line.clusters[end - 1].end - base_offset;
+            let clusters = &mut line.clusters[start..end];
+            let raw_width: f64 = clusters
+                .iter()
+                .filter_map(|cluster| cluster.layout.as_ref())
+                .map(|layout| layout.measured_glyph_width)
+                .sum();
+            let style = ctx.resolve_run_style_rc(run.properties.as_ref())?;
+            let shaped_width = ctx.measure_text(
+                &text[source_start..source_end],
+                style.descriptor_for_slot(slot),
+            )?;
+            if raw_width > f64::EPSILON && shaped_width.is_finite() && shaped_width > 0.0 {
+                let factor = shaped_width / raw_width;
+                // The scalar metrics are only used to partition the shaped span
+                // into hit boxes. Preserve leading and inter-script spacing.
+                for cluster in clusters {
+                    let layout = cluster.layout.as_mut().unwrap();
+                    let delta = (factor - 1.0) * layout.measured_glyph_width * style.text_scale_x;
+                    layout.glyph_box_width += delta;
+                    layout.adjusted_glyph_width += delta;
+                    cluster.width += delta;
+                }
+            }
+        }
+        start = end;
+    }
+    Ok(())
+}
+
 fn apply_bidi_visual_order(line: &mut WrappedLine, base_rtl: bool) {
     if line.clusters.len() < 2 || !requires_bidi_resolution(line, base_rtl) {
         return;
@@ -8020,6 +8100,17 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
     for (epoch, line) in lines.iter_mut().enumerate() {
         let reorder_gaps =
             !fitted_visual_gaps.is_empty() && requires_bidi_resolution(line, paragraph_style.bidi);
+        if paragraph_style.word_platform == crate::line_metrics::WordLayoutPlatform::Mac
+            && paragraph_style.oracle_advance_px_by_text_offset.is_none()
+            && line.clusters.iter().any(|cluster| {
+                cluster
+                    .layout
+                    .as_ref()
+                    .is_some_and(|layout| layout.script == ScriptCategory::Complex)
+            })
+        {
+            apply_arabic_span_advances(ctx, text, run_styles, line, base_offset)?;
+        }
         apply_bidi_visual_order(line, paragraph_style.bidi);
         if reorder_gaps {
             reorder_fitted_visual_gaps(line, &mut fitted_visual_gaps, epoch);

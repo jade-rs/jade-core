@@ -23334,6 +23334,7 @@ where
             } else {
                 Cow::Borrowed(wrapped_line.segments.as_slice())
             };
+            let aligned_segments = Self::group_arabic_visual_segments(&aligned_segments);
             let mut prepared_segments =
                 BumpVec::with_capacity_in(wrapped_line.segments.len(), &render_pass_arena);
             let mut segment_line_width = 0.0;
@@ -31775,6 +31776,57 @@ where
         )
     }
 
+    fn group_arabic_visual_segments(segments: &[TextSegment]) -> Cow<'_, [TextSegment]> {
+        use unicode_script::{Script, UnicodeScript};
+
+        let joins = |left: &TextSegment, right: &TextSegment| {
+            left.start == right.end
+                && left
+                    .text
+                    .chars()
+                    .next()
+                    .is_some_and(|ch| ch.script() == Script::Arabic)
+                && right
+                    .text
+                    .chars()
+                    .next()
+                    .is_some_and(|ch| ch.script() == Script::Arabic)
+                && left.properties == right.properties
+                && left.revision == right.revision
+                && left.hyperlink == right.hyperlink
+                && left.leading_width == 0.0
+                && right.leading_width == 0.0
+        };
+        let Some(first) = segments
+            .windows(2)
+            .position(|pair| joins(&pair[0], &pair[1]))
+        else {
+            return Cow::Borrowed(segments);
+        };
+
+        let mut grouped = Vec::with_capacity(segments.len());
+        grouped.extend_from_slice(&segments[..first]);
+        let mut start = first;
+        while start < segments.len() {
+            let mut end = start + 1;
+            while end < segments.len() && joins(&segments[end - 1], &segments[end]) {
+                end += 1;
+            }
+            let mut segment = segments[start].clone();
+            if end - start > 1 {
+                segment.start = segments[end - 1].start;
+                segment.text = segments[start..end]
+                    .iter()
+                    .rev()
+                    .map(|part| part.text.as_str())
+                    .collect();
+            }
+            grouped.push(segment);
+            start = end;
+        }
+        Cow::Owned(grouped)
+    }
+
     #[inline]
     fn line_clusters_for_segment<'a>(
         segment: &TextSegment,
@@ -31981,6 +32033,17 @@ where
             prev_adjusted_glyph_width = Some(layout.adjusted_glyph_width);
             prev_raw_glyph_width = Some(layout.measured_glyph_width);
             prev_font_descriptor_hash = Some(layout.font_descriptor_hash);
+        }
+
+        // The clusters remain in visual order for selection. Pass the logical
+        // text to the painter so Arabic joining and mark placement have context.
+        if glyph_steps.len() > 1
+            && glyph_steps.windows(2).all(|pair| {
+                pair[0].text_start == pair[1].text_end && pair[0].font_slot == pair[1].font_slot
+            })
+        {
+            glyph_steps[0].text_start = glyph_steps.last().unwrap().text_start;
+            glyph_steps.truncate(1);
         }
 
         // When visuals are requested, every slot is written exactly once. Early returns
