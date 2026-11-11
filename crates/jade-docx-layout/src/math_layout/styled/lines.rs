@@ -133,6 +133,7 @@ fn break_lines<'a, C: StyledMathMeasure>(
     }
     let max_width = b.options.max_width.filter(|w| *w > 0.0);
     let settings = b.options.settings;
+    let word_mac_rtl = b.options.word_mac_rtl();
     let substitute_start = settings.break_binary_subtraction == BreakBinarySubtraction::MinusPlus;
     let substitute_end = settings.break_binary_subtraction == BreakBinarySubtraction::PlusMinus;
     let repeats = |c: BreakCandidate| {
@@ -178,7 +179,29 @@ fn break_lines<'a, C: StyledMathMeasure>(
     let mut leading_delta = 0.0;
     let mut indent = 0.0;
     let mut last_fit: Option<(BreakCandidate, f64)> = None;
-    for c in &candidates {
+    let mut candidates_to_scan = candidates.as_slice();
+    if let Some(width) = max_width.filter(|width| word_mac_rtl && metrics.width > *width) {
+        let first_segment_width = candidates
+            .iter()
+            .find(|c| c.manual)
+            .and_then(|c| x_of(b, c.mark).map(|x| x - c.preceding_space))
+            .unwrap_or(metrics.width);
+        // Word starts the continuation at the first relation when an RTL
+        // equation inherits the text paragraph's display settings.
+        if let Some((index, relation, x)) = candidates
+            .iter()
+            .enumerate()
+            .take_while(|(_, c)| !c.manual)
+            .filter(|(_, c)| c.class == AtomClass::Rel)
+            .filter_map(|(i, c)| x_of(b, c.mark).map(|x| (i, *c, x)))
+            .find(|(_, c, x)| first_segment_width > width && x - c.preceding_space <= width)
+        {
+            chosen.push((relation, x));
+            line_start_x = x;
+            candidates_to_scan = &candidates[index + 1..];
+        }
+    }
+    for c in candidates_to_scan {
         let Some(operator_x) = x_of(b, c.mark) else {
             continue;
         };
@@ -470,6 +493,7 @@ pub(crate) fn stack<'a, C: StyledMathMeasure>(
             _ => (width - group_w) / 2.0,
         };
         let x = match justification {
+            MathJustification::Right if b.options.word_mac_rtl() => width - line.metrics.width,
             MathJustification::Center => group_x + (group_w - line.metrics.width) / 2.0,
             _ => group_x + line.x,
         };
