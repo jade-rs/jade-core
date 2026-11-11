@@ -42,6 +42,24 @@ function visibleGlyph(text = '') {
     : normalized;
 }
 
+// Canvas rotates the image around its center. Word's PDF reports the
+// axis-aligned page bounds after that transform.
+function imageBoundsPt({ x, y, width, height, rotationDeg }) {
+  const radians = rotationDeg * Math.PI / 180;
+  const cos = Math.abs(Math.cos(radians));
+  const sin = Math.abs(Math.sin(radians));
+  const halfWidth = (width * cos + height * sin) / 2;
+  const halfHeight = (width * sin + height * cos) / 2;
+  const centerX = x + width / 2;
+  const centerY = y + height / 2;
+  return [
+    (centerX - halfWidth) * pt,
+    (centerY - halfHeight) * pt,
+    (centerX + halfWidth) * pt,
+    (centerY + halfHeight) * pt,
+  ];
+}
+
 function compareGlyphs(expected, actual, tolerance, toleranceX = tolerance) {
   const candidates = new Map();
   for (const glyph of actual) {
@@ -201,10 +219,9 @@ function checkPages(name, reference, actual, manifest) {
       }
     }
   }
-  for (const { kind, page, x, y, width, height, rotationDeg } of actual.objects) {
-    if (kind !== 'image') continue;
-    assert.equal(rotationDeg, 0, `page ${page} image rotation`);
-    images[page - 1].push([x * pt, y * pt, (x + width) * pt, (y + height) * pt]);
+  for (const object of actual.objects) {
+    if (object.kind !== 'image') continue;
+    images[object.page - 1].push(imageBoundsPt(object));
   }
 
   const within = (expected, measured) => expected.every((v, i) => Math.abs(v - measured[i]) <= tolerance);
