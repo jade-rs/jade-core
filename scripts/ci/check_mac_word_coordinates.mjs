@@ -14,12 +14,8 @@ const finalRevisionView = new Set([
   'numbering-with-review-mac', 'review-duplicate-ids-mac', 'review-kinds-mac',
   'numbering-del-mac', 'numbering-del2-mac',
 ]);
-const shapedArabic = new Set([
-  'table-inline-image-mac', 'table-object-edge-cases-mac', 'arabic-table-body-mac',
-]);
-const arabicScript = /\p{Script=Arabic}/u;
-const arabicMark = /(?=\p{Mark})\p{Script_Extensions=Arabic}/u;
-const isArabic = text => arabicScript.test(text) || arabicMark.test(text);
+const arabicPattern = /\p{Script=Arabic}|(?=\p{Mark})\p{Script_Extensions=Arabic}/u;
+const isArabic = text => arabicPattern.test(text);
 const textBoxes = new Map([
   ['floating-wrap-sides-mac', 3], ['floating-inside-outside-mac', 4],
   ['floating-simple-position-mac', 1], ['floating-square-wrap-mac', 1],
@@ -71,26 +67,13 @@ function compareGlyphs(expected, actual, tolerance, toleranceX = tolerance) {
   return { missing, extra: [...candidates.values()].flat() };
 }
 
-async function capture(page, bytes, name) {
+async function capture(page, bytes, name, captureArabic = false) {
   await page.route('https://word-coordinates.test/document.docx', route => route.fulfill({
     body: bytes,
   }));
   try {
-    return await page.evaluate(async ({ revisionFinal, captureArabic }) => {
-      const paintedArabic = [];
-      const context = OffscreenCanvasRenderingContext2D.prototype;
-      const fillText = context.fillText;
-      if (captureArabic) {
-        context.fillText = function(text, x, y, ...rest) {
-          const start = text.search(/\p{Script=Arabic}/u);
-          if (start >= 0) {
-            const offset = this.measureText(text.slice(0, start)).width;
-            const origin = this.getTransform().transformPoint({ x: x + offset, y });
-            paintedArabic.push({ text: text.slice(start), x: origin.x, y: origin.y });
-          }
-          return fillText.call(this, text, x, y, ...rest);
-        };
-      }
+    return await page.evaluate(async ({ revisionFinal, arabicPatternSource, pointsPerPixel }) => {
+      const arabic = arabicPatternSource && new RegExp(arabicPatternSource, 'u');
       const wasm = await import('/wasm/jade_docx.js');
       await wasm.default();
       wasm.setWordLayoutPlatform('mac');
@@ -103,17 +86,27 @@ async function capture(page, bytes, name) {
         const response = await fetch('/document.docx');
         await view.load_docx(new Uint8Array(await response.arrayBuffer()));
         await view.waitForPendingImages();
+        if (arabic) view.beginPdfTextCapture();
         const layout = view.captureFullLayoutDebug();
+        const paintedArabic = arabic
+          ? Array.from({ length: layout.page_count }, (_, i) => view.takePagePdfTextRuns(i)
+            .filter(({ text }) => arabic.test(text))
+            .map(({ text, transform: [, , , , x, y] }) => [text, x * pointsPerPixel, y * pointsPerPixel]))
+          : [];
         return {
           ...layout,
           paintedArabic,
           dimensions: Array.from({ length: layout.page_count }, (_, i) => view.page_dimensions(i)),
         };
       } finally {
-        context.fillText = fillText;
+        if (arabic) view.endPdfTextCapture();
         view.free();
       }
-    }, { revisionFinal: finalRevisionView.has(name), captureArabic: shapedArabic.has(name) });
+    }, {
+      revisionFinal: finalRevisionView.has(name),
+      arabicPatternSource: captureArabic ? arabicPattern.source : null,
+      pointsPerPixel: pt,
+    });
   } finally {
     await page.unroute('https://word-coordinates.test/document.docx');
   }
@@ -278,41 +271,31 @@ async function loadSyntheticFixture(name) {
   return { bytes, reference, manifest };
 }
 
-function checkPages(name, reference, actual, manifest) {
+function referenceArabicSpans(name, reference) {
+  if (!reference.some(page => Object.hasOwn(page, 'arabicSpans'))) return null;
+  return reference.map((page, i) => {
+    const { arabicSpans } = page;
+    assert(Array.isArray(arabicSpans), `page ${i + 1} Arabic spans`);
+    if (referenceGlyphs(name, page).some(([text]) => isArabic(text))) {
+      assert(arabicSpans.length > 0, `page ${i + 1} missing Word Arabic spans`);
+    }
+    for (const [text, x, y] of arabicSpans) {
+      assert(isArabic(text) && Number.isFinite(x) && Number.isFinite(y),
+        `page ${i + 1} invalid Word Arabic span`);
+    }
+    return arabicSpans;
+  });
+}
+
+function checkPages(name, reference, actual, manifest, expectedArabic) {
   assert.equal(actual.complete, true, 'layout capture is incomplete');
   assert.equal(actual.page_count, reference.length, 'page count');
   assert(Array.isArray(actual.objects), 'missing object bounds');
   checkStories(name, actual);
   const tolerance = manifest.axisTolerancePt;
   const registration = manifest.horizontalPrintRegistration;
-  const compareAsGlyph = text => !shapedArabic.has(name) || !isArabic(text);
+  const compareAsGlyph = text => !expectedArabic || !isArabic(text);
   const differences = [];
-  if (shapedArabic.has(name)) {
-    assert.equal(reference.length, 1);
-    const arabic = reference[0].body.filter(([glyph]) => isArabic(glyph));
-    const lines = [];
-    for (const glyph of arabic) {
-      if (!lines.length || glyph[2] - lines.at(-1)[0][2] > 5) lines.push([]);
-      lines.at(-1).push(glyph);
-    }
-    assert.equal(lines.length, name === 'arabic-table-body-mac' ? 9 : 1, 'Word Arabic line count');
-    const expected = lines.flatMap((line, index) => {
-      const spans = name === 'arabic-table-body-mac' && index === 4
-        ? [line.slice(0, 2), line.slice(2)] : [line];
-      return spans.map(glyphs => [
-        glyphs.map(([glyph]) => glyph.normalize('NFKC')).join(''),
-        Math.min(...glyphs.map(([, x]) => x)),
-        glyphs[0][2],
-      ]);
-    });
-    // The view can repaint a page at identical coordinates during capture.
-    const unique = new Map();
-    for (const { text, x, y } of actual.paintedArabic) {
-      unique.set(JSON.stringify([text, x, y]), [text, x * pt, y * pt]);
-    }
-    const { missing, extra } = compareGlyphs(expected, [...unique.values()], tolerance);
-    if (missing.length || extra.length) differences.push({ page: 1, arabic: { missing, extra } });
-  }
   const glyphs = reference.map(() => []);
   const images = reference.map(() => []);
   const entries = actual.body_lines.map(line => ({ page: line.page, line }));
@@ -335,6 +318,10 @@ function checkPages(name, reference, actual, manifest) {
   const topToBottom = (a, b) => a[1] - b[1] || a[0] - b[0];
   for (const [i, expected] of reference.entries()) {
     const page = i + 1;
+    if (expectedArabic) {
+      const { missing, extra } = compareGlyphs(expectedArabic[i], actual.paintedArabic[i], tolerance);
+      if (missing.length || extra.length) differences.push({ page, arabic: { missing, extra } });
+    }
     const size = actual.dimensions[i];
     if (!size || !within(expected.size, [size.width * pt, size.height * pt])) {
       differences.push({ page, expectedSize: expected.size, actualSize: size });
@@ -411,8 +398,9 @@ try {
         ? loadGridGlyphFixture(name)
         : loadSyntheticFixture(name));
       await page.goto('https://word-coordinates.test/');
-      const actual = await capture(page, bytes, name);
-      const differences = checkPages(name, reference, actual, manifest);
+      const expectedArabic = referenceArabicSpans(name, reference);
+      const actual = await capture(page, bytes, name, expectedArabic !== null);
+      const differences = checkPages(name, reference, actual, manifest, expectedArabic);
       if (differences.length) {
         failures.push({ name, differences });
         const pages = [...new Set(differences.map(difference => difference.page))];
