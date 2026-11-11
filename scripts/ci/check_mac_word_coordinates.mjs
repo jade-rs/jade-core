@@ -17,6 +17,7 @@ const finalRevisionView = new Set([
 ]);
 const shapedArabic = new Set(['table-inline-image-mac', 'table-object-edge-cases-mac']);
 const renderedHyphenFixtures = new Set([
+  'aligned-hyphen-hanging-indent',
   'explicit-hyphen-wrap-boundaries',
   'hyphenation-automatic-narrow-paragraphs',
   'hyphenation-manual-narrow-paragraphs',
