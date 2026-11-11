@@ -2389,7 +2389,14 @@ fn parse_word_ascii_metrics(
         "Century" if !bold && !italic => Some(WordAsciiMetrics::Century(em_px / 2048.0)),
         "Bookman Old Style" if !bold && !italic => Some(WordAsciiMetrics::Bookman(em_px / 2048.0)),
         "Calibri" if !italic => Some(WordAsciiMetrics::Calibri(em_px / 2048.0, bold)),
-        "Cambria" if platform == WordLayoutPlatform::Mac && !bold && !italic => {
+        // Browser hosts may substitute Cambria. Native painting retains the
+        // selected face's existing advance and pair-kerning measurements.
+        "Cambria"
+            if cfg!(target_arch = "wasm32")
+                && platform == WordLayoutPlatform::Mac
+                && !bold
+                && !italic =>
+        {
             Some(WordAsciiMetrics::Cambria(em_px / 2048.0))
         }
         "Aptos" | "Aptos Display" if platform == WordLayoutPlatform::Mac => {
