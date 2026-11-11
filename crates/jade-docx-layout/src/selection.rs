@@ -928,22 +928,30 @@ impl SelectionManager {
 
         cell.paragraphs.sort_unstable();
         cell.paragraphs.dedup();
-        let paragraph_indices = cell.paragraphs.clone();
         // The same cell laid out again in one render pass (a lazy-page
         // re-entry) replaces its earlier record rather than adding a twin.
-        let existing = paragraph_indices
-            .first()
-            .and_then(|index| self.paragraph_to_cell.get(index).copied())
-            .filter(|id| {
-                self.cells.get(*id).is_some_and(|recorded| {
-                    recorded.paragraphs == paragraph_indices
-                        && (!fragment
-                            || (recorded.table_id == cell.table_id
-                                && recorded.row == cell.row
-                                && recorded.column == cell.column
-                                && recorded.column_span == cell.column_span))
-                })
-            });
+        let cell_id = self.cells.len();
+        let first = cell.paragraphs[0];
+        let existing = match self.paragraph_to_cell.entry(first) {
+            std::collections::hash_map::Entry::Vacant(entry) => {
+                entry.insert(cell_id);
+                for &index in &cell.paragraphs[1..] {
+                    self.paragraph_to_cell.insert(index, cell_id);
+                }
+                self.cells.push(cell);
+                return;
+            }
+            std::collections::hash_map::Entry::Occupied(entry) => *entry.get(),
+        };
+        let existing = self.cells.get(existing).and_then(|recorded| {
+            (recorded.paragraphs == cell.paragraphs
+                && (!fragment
+                    || (recorded.table_id == cell.table_id
+                        && recorded.row == cell.row
+                        && recorded.column == cell.column
+                        && recorded.column_span == cell.column_span)))
+                .then_some(existing)
+        });
         if let Some(existing) = existing {
             let recorded = &self.cells[existing];
             if fragment {
@@ -962,11 +970,10 @@ impl SelectionManager {
                 return;
             }
         }
-        let cell_id = self.cells.len();
-        self.cells.push(cell);
-        for index in paragraph_indices {
+        for &index in &cell.paragraphs {
             self.paragraph_to_cell.insert(index, cell_id);
         }
+        self.cells.push(cell);
     }
 
     /// Add another physical fragment of the same logical table cell. Its
