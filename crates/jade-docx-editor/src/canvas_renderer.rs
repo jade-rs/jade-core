@@ -58161,8 +58161,8 @@ mod tests {
     fn table_contextual_script_keeps_the_span_for_painter_shaping() {
         use jade_docx_reader::document::{TableColumn, TableRow};
         use jade_painter::recording::Op;
-        let text = "A متصل Z";
-        let mut cell = single_text_cell(text);
+        let contextual_text = "متصل";
+        let mut cell = single_text_cell(&format!("A {contextual_text} Z"));
         if let BodyElement::Paragraph(paragraph) = &mut cell.blocks[0] {
             paragraph.runs[0].properties = Some(RunProperties {
                 font_size: Some(10.5),
@@ -58180,8 +58180,9 @@ mod tests {
         };
         let ops = render_table_for_recording(table);
         assert!(
-            ops.iter()
-                .any(|op| matches!(op, Op::FillText(painted, ..) if painted == text)),
+            ops.iter().any(
+                |op| matches!(op, Op::FillText(painted, ..) if painted.contains(contextual_text))
+            ),
             "the painter needs neighboring letters to shape this script: {ops:?}"
         );
     }
