@@ -70,13 +70,14 @@ function imageBoundsPt({ x, y, width, height, rotationDeg }) {
   ];
 }
 
-async function capture(page, bytes, name, { captureArabic = false, captureHyphens = false } = {}) {
+async function capture(page, bytes, name, { captureArabic = false, captureHyphens = false, captureAllGlyphs = false } = {}) {
   await page.route('https://word-coordinates.test/document.docx', route => route.fulfill({
     body: bytes,
   }));
   try {
-    return await page.evaluate(async ({ revisionFinal, arabicPatternSource, captureHyphens, pointsPerPixel }) => {
+    return await page.evaluate(async ({ revisionFinal, arabicPatternSource, captureHyphens, captureAllGlyphs, pointsPerPixel }) => {
       const arabic = arabicPatternSource && new RegExp(arabicPatternSource, 'u');
+      const capturePaintedText = arabic || captureHyphens || captureAllGlyphs;
       const wasm = await import('/wasm/jade_docx.js');
       await wasm.default();
       wasm.setWordLayoutPlatform('mac');
@@ -89,7 +90,6 @@ async function capture(page, bytes, name, { captureArabic = false, captureHyphen
         const response = await fetch('/document.docx');
         await view.load_docx(new Uint8Array(await response.arrayBuffer()));
         await view.waitForPendingImages();
-        const capturePaintedText = arabic || captureHyphens;
         if (capturePaintedText) view.beginPdfTextCapture();
         const layout = view.captureFullLayoutDebug();
         const paintedPages = capturePaintedText
@@ -107,16 +107,18 @@ async function capture(page, bytes, name, { captureArabic = false, captureHyphen
           ...layout,
           paintedArabic,
           paintedHyphens,
+          paintedGlyphs: captureAllGlyphs ? paintedPages.map(page => page.map(glyphOrigins)) : [],
           dimensions: Array.from({ length: layout.page_count }, (_, i) => view.page_dimensions(i)),
         };
       } finally {
-        if (arabic || captureHyphens) view.endPdfTextCapture();
+        if (capturePaintedText) view.endPdfTextCapture();
         view.free();
       }
     }, {
       revisionFinal: finalRevisionView.has(name),
       arabicPatternSource: captureArabic ? arabicPattern.source : null,
       captureHyphens,
+      captureAllGlyphs,
       pointsPerPixel: pt,
     });
   } finally {
@@ -319,9 +321,18 @@ function checkPages(name, reference, actual, manifest, expectedArabic) {
   const glyphs = reference.map((_, i) => captureHyphens ? actual.paintedHyphens[i] : []);
   const images = reference.map(() => []);
   const entries = actual.body_lines.map(line => ({ page: line.page, line }));
-  const lines = name === 'hidden-text-character-effects-mac'
+  const layoutLines = name === 'hidden-text-character-effects-mac'
     ? entries.filter(({ line }) => line.paragraph === 4)
     : [...entries, ...actual.auxiliary_lines];
+  const lines = manifest.capturePaintedGlyphs ? [] : layoutLines;
+  if (manifest.capturePaintedGlyphs) {
+    for (const [i, runs] of actual.paintedGlyphs.entries()) {
+      for (const [rawText, x, y] of runs) {
+        const text = visibleGlyph(rawText);
+        if (text) glyphs[i].push([text, x, y]);
+      }
+    }
+  }
   for (const { page, line } of lines) {
     for (const [rawText, x, baseline] of glyphOrigins(line)) {
       const text = visibleGlyph(rawText);
@@ -425,7 +436,14 @@ try {
       }
       assert(manifest.capturePaintedHyphens === undefined || typeof manifest.capturePaintedHyphens === 'boolean',
         'capturePaintedHyphens must be a boolean');
+      assert(manifest.capturePaintedGlyphs === undefined || typeof manifest.capturePaintedGlyphs === 'boolean',
+        'capturePaintedGlyphs must be a boolean');
+      if (manifest.capturePaintedGlyphs) {
+        assert(manifest.bodyOnly && !expectedArabic && !manifest.capturePaintedHyphens,
+          'capturePaintedGlyphs requires a body-only fixture without separate glyph capture');
+      }
       const actual = await capture(page, bytes, name, {
+        captureAllGlyphs: manifest.capturePaintedGlyphs === true,
         captureArabic: expectedArabic !== null,
         captureHyphens: manifest.capturePaintedHyphens === true,
       });
