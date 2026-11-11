@@ -40301,10 +40301,7 @@ impl WordDocument {
                 BodyElement::Table(table) => {
                     for row in table.rows.iter_mut() {
                         for cell in row.cells.iter_mut() {
-                            Self::capture_preserved_run_props_with_lookup(
-                                &mut cell.blocks,
-                                lookup,
-                            );
+                            Self::capture_preserved_run_props_with_lookup(&mut cell.blocks, lookup);
                         }
                     }
                 }
@@ -40382,21 +40379,17 @@ impl WordDocument {
     ) {
         // Paragraph marks have their own run properties. Keep the same raw
         // properties as text runs so editing and undo can round-trip them.
-        if let Some(rpr) = paragraph
-            .node_id
-            .and_then(lookup)
-            .and_then(|p| {
-                p.children.iter().find_map(|child| match child {
-                    XmlNode::Element(ppr) if ppr.name == "w:pPr" => {
-                        ppr.children.iter().find_map(|child| match child {
-                            XmlNode::Element(rpr) if rpr.name == "w:rPr" => Some(rpr),
-                            _ => None,
-                        })
-                    }
-                    _ => None,
-                })
+        if let Some(rpr) = paragraph.node_id.and_then(lookup).and_then(|p| {
+            p.children.iter().find_map(|child| match child {
+                XmlNode::Element(ppr) if ppr.name == "w:pPr" => {
+                    ppr.children.iter().find_map(|child| match child {
+                        XmlNode::Element(rpr) if rpr.name == "w:rPr" => Some(rpr),
+                        _ => None,
+                    })
+                }
+                _ => None,
             })
-        {
+        }) {
             let preserved = rpr
                 .children
                 .iter()
