@@ -20,6 +20,7 @@ const renderedHyphenFixtures = new Set([
   'explicit-hyphen-wrap-boundaries',
   'hyphenation-automatic-narrow-paragraphs',
   'hyphenation-manual-narrow-paragraphs',
+  'styled-hyphen-body-table',
 ]);
 const hyphenGlyph = /^[-\u00ad\u2010\u2011]$/u;
 const arabicScript = /\p{Script=Arabic}/u;
