@@ -1,0 +1,16 @@
+{
+  "schema": 1,
+  "sourceSha256": "541dbfdcf6d480ecd2888f3177d7f8a089b986a0ee82fdf19caa7579f35ee386",
+  "reference": {
+    "application": "Microsoft Word",
+    "platform": "mac",
+    "version": "16.114",
+    "build": "16.114.26101123",
+    "export": "Save As > PDF",
+    "pdfSha256": "d10a10398bb98a0a7184750245bc654f986d04bd8942187efb0900c2a7712023",
+    "coordinateSource": "tests/word-oracle/mac-probes-20261019/word-mac-probe-line-pitch.json"
+  },
+  "pages": 6,
+  "axisTolerancePt": 0.65,
+  "coordinatesSha256": "596569076f4e2caf25151e592f42f566a7752efddd16cec37e4eb71d21c70fd1"
+}
