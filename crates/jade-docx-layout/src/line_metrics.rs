@@ -882,15 +882,15 @@ pub(crate) enum WordAsciiMetrics {
     TimesNewRoman(f64, bool, bool),
 }
 
-// Numeric hmtx facts only: 52 regular / 55 bold ASCII mappings in 42 / 11
-// unchanged Word Mac PDFs. Index is printable ASCII minus space. Zero marks
-// an unobserved glyph and keeps host fallback, not a zero-width character.
+// Numeric hmtx facts from unchanged Word Mac PDFs and the archived
+// partial-grid Word coordinate probe (regular X). Index is printable ASCII
+// minus space. Zero keeps host metrics for unobserved glyphs.
 const WORD_CALIBRI_ASCII_UNITS: [u16; 95] = [
     463, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 627, 0, 791, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     0, 0, 0, 1185, 1114, 1092, 1260, 1000, 941, 1292, 1276, 516, 0, 1064, 861, 1751, 1322, 1356,
-    1058, 1378, 1112, 941, 998, 0, 1162, 1822, 0, 998, 959, 0, 0, 0, 0, 0, 0, 981, 1076, 866, 1076,
-    1019, 625, 964, 1076, 470, 490, 931, 470, 1636, 1076, 1080, 1076, 1076, 714, 801, 686, 1076,
-    925, 1464, 887, 927, 809, 0, 0, 0, 0,
+    1058, 1378, 1112, 941, 998, 0, 1162, 1822, 1063, 998, 959, 0, 0, 0, 0, 0, 0, 981, 1076, 866,
+    1076, 1019, 625, 964, 1076, 470, 490, 931, 470, 1636, 1076, 1080, 1076, 1076, 714, 801, 686,
+    1076, 925, 1464, 887, 927, 809, 0, 0, 0, 0,
 ];
 const WORD_CALIBRI_BOLD_ASCII_UNITS: [u16; 95] = [
     463, 0, 0, 0, 0, 0, 0, 0, 638, 638, 0, 0, 528, 627, 547, 0, 0, 1038, 1038, 1038, 1038, 0, 0, 0,
@@ -2176,12 +2176,14 @@ const YU_MINCHO_ASCII_UNITS: [u16; 95] = [
 
 // Numeric hmtx facts from regular Century's MacRomanEncoding subsets in the
 // unchanged math, scroll-offset-repro, trust-beneficiary-sale-keep-next and
-// wrong-num Word PDFs. All 35 observed advances agree; zero keeps host metrics.
+// wrong-num Word PDFs and the archived line-pitch Word coordinate probe.
+// Zero keeps host metrics.
 const CENTURY_ASCII_UNITS: [u16; 95] = [
     569, 0, 0, 0, 0, 0, 0, 0, 682, 682, 0, 1241, 0, 0, 569, 0, 1139, 1139, 1139, 1139, 1139, 1139,
-    1139, 1139, 1139, 1139, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1479, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1933, 1669,
-    0, 0, 0, 1479, 0, 1366, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1139, 1139, 909, 0, 1024, 682, 0,
-    1251, 645, 0, 0, 0, 1821, 1251, 1024, 1176, 0, 909, 948, 797, 0, 0, 1593, 0, 0, 0, 0, 0, 0, 0,
+    1139, 1139, 1139, 1139, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1479, 0, 0, 0, 0, 0, 0, 0, 0, 1366, 1933,
+    1669, 0, 0, 0, 1479, 0, 1366, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1139, 1139, 909, 0, 1024,
+    682, 0, 1251, 645, 0, 0, 0, 1821, 1251, 1024, 1176, 0, 909, 948, 797, 1251, 0, 1593, 0, 1100,
+    0, 0, 0, 0, 0,
 ];
 
 #[inline]
