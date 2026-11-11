@@ -651,8 +651,7 @@ impl DisplayMathStyle<'_> {
         use jade_docx_layout::math_layout::styled::MathJustification;
         let mut settings = self.settings;
         if !settings.use_display_defaults {
-            // dispDef=false uses text paragraph settings instead of defJc,
-            // wrapIndent and wrapRight. Explicit m:jc still wins in the planner.
+            // dispDef=false inherits paragraph settings for alignment and wrapping.
             let properties = math.properties.as_deref();
             let styles = self.styles;
             let inherited = styles.and_then(|styles| {
@@ -666,6 +665,9 @@ impl DisplayMathStyle<'_> {
                 .or_else(|| inherited.as_ref().and_then(|p| p.bidi))
                 .or_else(|| defaults.and_then(|p| p.bidi))
                 .unwrap_or(false);
+            settings.word_mac_rtl_paragraph = bidi
+                && jade_docx_layout::line_metrics::word_layout_platform()
+                    == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac;
             let alignment = properties
                 .and_then(|p| p.alignment.as_deref())
                 .or_else(|| inherited.as_ref().and_then(|p| p.alignment.as_deref()))

@@ -15,7 +15,6 @@ const finalRevisionView = new Set([
   'numbering-with-review-mac', 'review-duplicate-ids-mac', 'review-kinds-mac',
   'numbering-del-mac', 'numbering-del2-mac',
 ]);
-const shapedArabic = new Set(['table-inline-image-mac', 'table-object-edge-cases-mac']);
 const renderedHyphenFixtures = new Set([
   'aligned-hyphen-hanging-indent',
   'discretionary-hyphen-page-origins',
@@ -25,23 +24,26 @@ const renderedHyphenFixtures = new Set([
   'styled-hyphen-body-table',
 ]);
 const hyphenGlyph = /^[-\u00ad\u2010\u2011]$/u;
-const arabicScript = /\p{Script=Arabic}/u;
+const arabicPattern = /\p{Script=Arabic}|(?=\p{Mark})\p{Script_Extensions=Arabic}/u;
+const isArabic = text => arabicPattern.test(text);
 const textBoxes = new Map([
+  ['numbering-textbox-overflow-mac', 1],
   ['floating-wrap-sides-mac', 3], ['floating-inside-outside-mac', 4],
   ['floating-simple-position-mac', 1], ['floating-square-wrap-mac', 1],
   ['floating-through-concave-mac', 1], ['floating-tight-polygon-mac', 1],
   ['floating-top-bottom-offset-mac', 1], ['floating-z-order-mac', 3],
   ['numbering-textbox-full-matrix-mac', 1], ['textbox-fixed-pitch-matrix-mac', 1],
-  ['textbox-body-properties-mac', 1], ['textbox-dashed-mac', 1],
+  ['textbox-exact-line-matrix-mac', 1], ['textbox-body-properties-mac', 1], ['textbox-dashed-mac', 1],
   ['textbox-tall-header-overlap-mac', 1], ['document-variable-fields-mac', 1],
   ['word-compat-comprehensive-mac', 1], ['table-object-edge-cases-mac', 1],
   ['table-inline-image-mac', 1],
   ['footnote-table-textbox-order-mac', 1], ['word-mac-probe-float-lookahead', 5],
 ]);
 
-const emptyTextBoxParagraphs = new Map([
+const textBoxParagraphsWithoutGlyphs = new Map([
   ['floating-z-order-mac', 1],
   ['textbox-tall-header-overlap-mac', 1],
+  ['numbering-textbox-overflow-mac', 5],
   ['word-mac-probe-float-lookahead', 5],
 ]);
 
@@ -76,26 +78,13 @@ function imageBoundsPt({ x, y, width, height, rotationDeg }) {
   ];
 }
 
-async function capture(page, bytes, name) {
+async function capture(page, bytes, name, captureArabic = false) {
   await page.route('https://word-coordinates.test/document.docx', route => route.fulfill({
     body: bytes,
   }));
   try {
-    return await page.evaluate(async ({ revisionFinal, captureArabic, captureHyphens }) => {
-      const paintedArabic = [];
-      const context = OffscreenCanvasRenderingContext2D.prototype;
-      const fillText = context.fillText;
-      if (captureArabic) {
-        context.fillText = function(text, x, y, ...rest) {
-          const start = text.search(/\p{Script=Arabic}/u);
-          if (start >= 0) {
-            const offset = this.measureText(text.slice(0, start)).width;
-            const origin = this.getTransform().transformPoint({ x: x + offset, y });
-            paintedArabic.push({ text: text.slice(start), x: origin.x, y: origin.y });
-          }
-          return fillText.call(this, text, x, y, ...rest);
-        };
-      }
+    return await page.evaluate(async ({ revisionFinal, arabicPatternSource, captureHyphens, pointsPerPixel }) => {
+      const arabic = arabicPatternSource && new RegExp(arabicPatternSource, 'u');
       const wasm = await import('/wasm/jade_docx.js');
       await wasm.default();
       wasm.setWordLayoutPlatform('mac');
@@ -108,12 +97,19 @@ async function capture(page, bytes, name) {
         const response = await fetch('/document.docx');
         await view.load_docx(new Uint8Array(await response.arrayBuffer()));
         await view.waitForPendingImages();
-        if (captureHyphens) view.beginPdfTextCapture();
+        const capturePaintedText = arabic || captureHyphens;
+        if (capturePaintedText) view.beginPdfTextCapture();
         const layout = view.captureFullLayoutDebug();
+        const paintedPages = capturePaintedText
+          ? Array.from({ length: layout.page_count }, (_, i) => view.takePagePdfTextRuns(i))
+          : [];
+        const glyphOrigins = ({ text, transform: [, , , , x, y] }) =>
+          [text, x * pointsPerPixel, y * pointsPerPixel];
+        const paintedArabic = arabic
+          ? paintedPages.map(page => page.filter(({ text }) => arabic.test(text)).map(glyphOrigins))
+          : [];
         const paintedHyphens = captureHyphens
-          ? Array.from({ length: layout.page_count }, (_, i) => view.takePagePdfTextRuns(i)
-            .filter(({ text }) => /^[-\u2010\u2011]$/u.test(text))
-            .map(({ text, transform: [, , , , x, y] }) => [text, x, y]))
+          ? paintedPages.map(page => page.filter(({ text }) => /^[-\u2010\u2011]$/u.test(text)).map(glyphOrigins))
           : [];
         return {
           ...layout,
@@ -122,14 +118,14 @@ async function capture(page, bytes, name) {
           dimensions: Array.from({ length: layout.page_count }, (_, i) => view.page_dimensions(i)),
         };
       } finally {
-        context.fillText = fillText;
-        if (captureHyphens) view.endPdfTextCapture();
+        if (arabic || captureHyphens) view.endPdfTextCapture();
         view.free();
       }
     }, {
       revisionFinal: finalRevisionView.has(name),
-      captureArabic: shapedArabic.has(name),
+      arabicPatternSource: captureArabic ? arabicPattern.source : null,
       captureHyphens: renderedHyphenFixtures.has(name),
+      pointsPerPixel: pt,
     });
   } finally {
     await page.unroute('https://word-coordinates.test/document.docx');
@@ -150,7 +146,7 @@ function checkStories(name, actual) {
     assert.equal(actual.text_box_source_inventory_complete, true);
     assert.equal(actual.source_text_stories.length, textBoxes.get(name));
     assert.equal(actual.text_box_regions.length, textBoxes.get(name));
-    let emptyParagraphs = 0;
+    let paragraphsWithoutGlyphs = 0;
     for (const { kind, paragraphIndex, runIndex } of actual.source_text_stories) {
       assert.equal(kind, 'text_box');
       const regions = actual.text_box_regions.filter(region =>
@@ -163,10 +159,11 @@ function checkStories(name, actual) {
           entry.page === region.page - 1 && entry.story === 'text_box' &&
           entry.line.paragraph === paragraph &&
           entry.line.fragments?.some(fragment => fragment.glyphs?.some(glyph => visibleGlyph(glyph.text))));
-        if (!visible) emptyParagraphs++;
+        if (!visible) paragraphsWithoutGlyphs++;
       }
     }
-    assert.equal(emptyParagraphs, emptyTextBoxParagraphs.get(name) ?? 0, 'empty text box paragraphs');
+    assert.equal(paragraphsWithoutGlyphs, textBoxParagraphsWithoutGlyphs.get(name) ?? 0,
+      'text box paragraphs without visible glyphs');
   }
   assert.deepEqual(actual.known_uncaptured_stories, uncaptured);
 }
@@ -302,33 +299,32 @@ async function loadSyntheticFixture(name) {
   return { bytes, reference, manifest };
 }
 
-function checkPages(name, reference, actual, manifest) {
+function referenceArabicSpans(name, reference) {
+  if (!reference.some(page => Object.hasOwn(page, 'arabicSpans'))) return null;
+  return reference.map((page, i) => {
+    const { arabicSpans } = page;
+    assert(Array.isArray(arabicSpans), `page ${i + 1} Arabic spans`);
+    if (referenceGlyphs(name, page).some(([text]) => isArabic(text))) {
+      assert(arabicSpans.length > 0, `page ${i + 1} missing Word Arabic spans`);
+    }
+    for (const [text, x, y] of arabicSpans) {
+      assert(isArabic(text) && Number.isFinite(x) && Number.isFinite(y),
+        `page ${i + 1} invalid Word Arabic span`);
+    }
+    return arabicSpans;
+  });
+}
+
+function checkPages(name, reference, actual, manifest, expectedArabic) {
   assert.equal(actual.complete, true, 'layout capture is incomplete');
   assert.equal(actual.page_count, reference.length, 'page count');
   assert(Array.isArray(actual.objects), 'missing object bounds');
   checkStories(name, actual);
   const tolerance = manifest.axisTolerancePt;
   const registration = manifest.horizontalPrintRegistration;
-  const compareAsGlyph = text => !shapedArabic.has(name) || !arabicScript.test(text);
-  if (shapedArabic.has(name)) {
-    // Browser shaping paints the Arabic span in a single Canvas operation.
-    assert.equal(reference.length, 1);
-    const text = 'مرحبا';
-    const arabic = reference[0].body.filter(([glyph]) => arabicScript.test(glyph));
-    assert.equal(arabic.map(([glyph]) => glyph.normalize('NFKC')).join(''), text);
-    const x = Math.min(...arabic.map(([, origin]) => origin));
-    const y = arabic[0][2];
-    assert(actual.paintedArabic.length > 0, 'Arabic span was not painted');
-    for (const span of actual.paintedArabic) {
-      assert.equal(span.text, text);
-      assert(Math.abs(span.x * pt - x) <= tolerance, 'painted Arabic origin');
-      assert(Math.abs(span.y * pt - y) <= tolerance, 'painted Arabic baseline');
-    }
-  }
+  const compareAsGlyph = text => !expectedArabic || !isArabic(text);
   const captureHyphens = renderedHyphenFixtures.has(name);
-  const glyphs = reference.map((_, page) => captureHyphens
-    ? actual.paintedHyphens[page].map(([text, x, y]) => [text, x * pt, y * pt])
-    : []);
+  const glyphs = reference.map((_, i) => captureHyphens ? actual.paintedHyphens[i] : []);
   const images = reference.map(() => []);
   const entries = actual.body_lines.map(line => ({ page: line.page, line }));
   const lines = name === 'hidden-text-character-effects-mac'
@@ -337,7 +333,6 @@ function checkPages(name, reference, actual, manifest) {
   for (const { page, line } of lines) {
     for (const [rawText, x, baseline] of glyphOrigins(line)) {
       const text = visibleGlyph(rawText);
-      // Line-end hyphens can paint independently of the source glyphs.
       if (text && compareAsGlyph(text) && !(captureHyphens && hyphenGlyph.test(text))) {
         glyphs[page].push([text, x, baseline]);
       }
@@ -352,6 +347,10 @@ function checkPages(name, reference, actual, manifest) {
   const differences = [];
   for (const [i, expected] of reference.entries()) {
     const page = i + 1;
+    if (expectedArabic) {
+      const { missing, extra } = compareGlyphs(expectedArabic[i], actual.paintedArabic[i], tolerance);
+      if (missing.length || extra.length) differences.push({ page, arabic: { missing, extra } });
+    }
     const size = actual.dimensions[i];
     if (!size || !within(expected.size, [size.width * pt, size.height * pt])) {
       differences.push({ page, expectedSize: expected.size, actualSize: size });
@@ -427,8 +426,9 @@ try {
         ? loadArchivedGlyphFixture(name)
         : loadSyntheticFixture(name));
       await page.goto('https://word-coordinates.test/');
-      const actual = await capture(page, bytes, name);
-      const differences = checkPages(name, reference, actual, manifest);
+      const expectedArabic = referenceArabicSpans(name, reference);
+      const actual = await capture(page, bytes, name, expectedArabic !== null);
+      const differences = checkPages(name, reference, actual, manifest, expectedArabic);
       if (differences.length) {
         failures.push({ name, differences });
         const pages = [...new Set(differences.map(difference => difference.page))];

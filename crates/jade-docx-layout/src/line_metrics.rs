@@ -1867,18 +1867,20 @@ impl WordAsciiMetrics {
             }
             Self::Cambria(unit_px) => {
                 // Upright advances from Cambria subsets in the Word for Mac
-                // PDFs for the nested-sizing-mode and kern-default fixtures.
+                // PDFs for the nested table, kern-default, and exact-line text box fixtures.
                 let units = match ascii {
                     b' ' => 451.0,
                     b'.' => 420.0,
-                    b'0' | b'1' | b'2' | b'4' | b'5' | b'6' | b'8' => 1134.0,
+                    b'0' | b'1' | b'2' | b'3' | b'4' | b'5' | b'6' | b'8' => 1134.0,
                     b'A' => 1276.0,
+                    b'C' => 1152.0,
                     b'L' => 1099.0,
                     b'N' => 1394.0,
                     b'T' => 1214.0,
                     b'V' => 1236.0,
                     b'W' => 1887.0,
                     b'a' => 1000.0,
+                    b'b' => 1121.0,
                     b'c' => 903.0,
                     b'd' => 1136.0,
                     b'e' => 999.0,
@@ -1887,12 +1889,14 @@ impl WordAsciiMetrics {
                     b'h' => 1130.0,
                     b'i' => 569.0,
                     b'l' => 556.0,
+                    b'm' => 1704.0,
                     b'n' => 1143.0,
                     b'o' => 1087.0,
                     b'p' => 1139.0,
                     b'r' => 847.0,
                     b's' => 880.0,
                     b't' => 693.0,
+                    b'w' => 1586.0,
                     b'x' => 990.0,
                     _ => return None,
                 };
@@ -2965,6 +2969,18 @@ pub fn word_east_asian_font_vertical_units(family: &str) -> Option<(f32, f32, f3
         {
             Some((880.0, 120.0, 1000.0))
         }
+        // macOS Hiragino Mincho ProN W3 and W6 have the same hhea box as
+        // Kaku Gothic. Word excludes the Latin line gap here too.
+        "ヒラギノ明朝 ProN"
+        | "ヒラギノ明朝 ProN W3"
+        | "ヒラギノ明朝 ProN W6"
+        | "Hiragino Mincho ProN"
+        | "Hiragino Mincho ProN W3"
+        | "Hiragino Mincho ProN W6"
+            if word_layout_platform() == WordLayoutPlatform::Mac =>
+        {
+            Some((880.0, 120.0, 1000.0))
+        }
         // Source-matched HG Maru subsets in the unchanged Word Mac math PDF:
         // hhea 220/-36, 256 units/em, no line gap.
         "HG丸ｺﾞｼｯｸM-PRO" | "HGMaruGothicMPRO"
@@ -3153,6 +3169,9 @@ fn word_latin_font_vertical_units(family: &str) -> Option<(f32, f32)> {
     match family {
         "Calibri" | "Calibri Light" => Some((1950.0, 550.0)),
         "Cambria" => Some((1946.0, 455.0)),
+        "Cambria Math" if word_layout_platform() == WordLayoutPlatform::Mac => {
+            Some((1946.0, 455.0))
+        }
         "Arial" => Some((1921.0, 434.0)),
         "Times New Roman" => Some((1912.0, 443.0)),
         "Century" => Some((2019.0, 443.0)),
@@ -6031,6 +6050,18 @@ mod tests {
                 ascent * 0.75
             );
         }
+        set_word_layout_platform(WordLayoutPlatform::Windows);
+    }
+
+    #[test]
+    fn hiragino_mincho_pro_n_matches_word_mac_minimum_cell_baselines() {
+        set_word_layout_platform(WordLayoutPlatform::Mac);
+        let (ascent, descent) = word_font_vertical_metrics_px("11pt 'Hiragino Mincho ProN', serif")
+            .expect("Hiragino Mincho metrics");
+        // Word prints 11.28pt below the first cell top at a 14pt minimum,
+        // and 22.97pt below the second cell top at a 26pt minimum.
+        assert!((ascent * 0.75 - 11.28).abs() <= 0.1);
+        assert!((26.0 - descent * 0.75 - 22.97).abs() <= 0.1);
         set_word_layout_platform(WordLayoutPlatform::Windows);
     }
 

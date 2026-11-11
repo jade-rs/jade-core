@@ -23334,6 +23334,7 @@ where
             } else {
                 Cow::Borrowed(wrapped_line.segments.as_slice())
             };
+            let aligned_segments = Self::group_arabic_visual_segments(&aligned_segments);
             let mut prepared_segments =
                 BumpVec::with_capacity_in(wrapped_line.segments.len(), &render_pass_arena);
             let mut segment_line_width = 0.0;
@@ -28326,7 +28327,7 @@ where
         paragraph_index: usize,
         run_index: usize,
         transform: FloatingObjectTransform,
-        render_changes: bool,
+        _render_changes: bool,
     ) -> Result<Option<f64>, JsValue> {
         let draw_x = transform.x;
         let draw_y = transform.y;
@@ -28425,37 +28426,36 @@ where
             context.set_fill_style_str(text_color.as_ref());
             context.set_font("12pt 'Times New Roman', serif");
         }
-        let (content_left, content_top, content_right, box_bottom) =
-            if jade_docx_layout::line_metrics::word_layout_platform()
-                == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
-            {
-                let bounds = jade_docx_layout::text_box_geometry::text_box_content_bounds(
-                    text_box.shape,
-                    width,
-                    height,
-                    text_box.insets,
-                    if border.style == TextBoxBorderStyle::None {
-                        0.0
-                    } else {
-                        border_width
-                    },
-                );
-                (
-                    draw_x + bounds.left,
-                    draw_y + bounds.top,
-                    draw_x + bounds.right,
-                    draw_y + bounds.bottom,
-                )
-            } else {
-                let left = (draw_x + text_box.insets.left_px).min(draw_x + width);
-                let top = (draw_y + text_box.insets.top_px).min(draw_y + height);
-                (
-                    left,
-                    top,
-                    (draw_x + width - text_box.insets.right_px).max(left),
-                    (draw_y + height - text_box.insets.bottom_px).max(top),
-                )
-            };
+        let mac_layout = jade_docx_layout::line_metrics::word_layout_platform()
+            == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac;
+        let (content_left, content_top, content_right, box_bottom) = if mac_layout {
+            let bounds = jade_docx_layout::text_box_geometry::text_box_content_bounds(
+                text_box.shape,
+                width,
+                height,
+                text_box.insets,
+                if border.style == TextBoxBorderStyle::None {
+                    0.0
+                } else {
+                    border_width
+                },
+            );
+            (
+                draw_x + bounds.left,
+                draw_y + bounds.top,
+                draw_x + bounds.right,
+                draw_y + bounds.bottom,
+            )
+        } else {
+            let left = (draw_x + text_box.insets.left_px).min(draw_x + width);
+            let top = (draw_y + text_box.insets.top_px).min(draw_y + height);
+            (
+                left,
+                top,
+                (draw_x + width - text_box.insets.right_px).max(left),
+                (draw_y + height - text_box.insets.bottom_px).max(top),
+            )
+        };
         // Word does not display note references inside a text-box story.
         // Keep their authored data and model surfaces without reserving notes.
         let TextBoxBlockLayout {
@@ -28468,9 +28468,7 @@ where
             content_right,
             &mut NumberingCounter::new(),
         )?;
-        let content_height = if jade_docx_layout::line_metrics::word_layout_platform()
-            == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
-        {
+        let content_height = if mac_layout {
             content_height
         } else {
             content_height.max(TEXT_BOX_LINE_HEIGHT)
@@ -28546,7 +28544,7 @@ where
                 content_right,
                 &mut cursor_y,
                 box_bottom,
-                render_changes,
+                mac_layout && chain.is_none(),
                 &mut NumberingCounter::new(),
                 vertical_layout.line_gap,
                 &mut remaining_line_gaps,
@@ -29512,7 +29510,7 @@ where
         content_right: f64,
         cursor_y: &mut f64,
         box_bottom: f64,
-        render_changes: bool,
+        allow_line_overflow: bool,
         numbering_counter: &mut NumberingCounter,
         line_gap: f64,
         remaining_line_gaps: &mut usize,
@@ -29538,7 +29536,7 @@ where
                         content_right,
                         cursor_y,
                         box_bottom,
-                        render_changes,
+                        allow_line_overflow,
                         true,
                         line_gap,
                         remaining_line_gaps,
@@ -29554,7 +29552,7 @@ where
                                 content_right,
                                 cursor_y,
                                 box_bottom,
-                                render_changes,
+                                allow_line_overflow,
                                 numbering_counter,
                                 line_gap,
                                 remaining_line_gaps,
@@ -29701,7 +29699,7 @@ where
         content_right: f64,
         cursor_y: &mut f64,
         box_bottom: f64,
-        _render_changes: bool,
+        allow_line_overflow: bool,
         record_layout: bool,
         line_gap: f64,
         remaining_line_gaps: &mut usize,
@@ -29731,6 +29729,7 @@ where
         let mut rendered_line = false;
         let mut first_spacing_applied = false;
         let mut last_pitch = TEXT_BOX_LINE_HEIGHT;
+        let mut clipped_nonempty_paragraph = false;
 
         // テキストボックス内の段落は本文と同じ `wrap_text_into_lines` を経由して折り返す。
         // こうすることでグリフ単位の幅計測とカーソル位置計算を SelectionManager と共有できる。
@@ -29768,7 +29767,16 @@ where
                     first_spacing_applied = true;
                 }
                 last_pitch = line_pitch;
-                if *cursor_y + line_ascent > box_bottom {
+                let baseline = *cursor_y + line_ascent;
+                // Word for Mac admits the line when its top is within the
+                // text area, even if its baseline extends into the inset.
+                let line_limit = if allow_line_overflow {
+                    *cursor_y
+                } else {
+                    baseline
+                };
+                if line_limit > box_bottom {
+                    clipped_nonempty_paragraph = allow_line_overflow;
                     break;
                 }
 
@@ -29954,11 +29962,6 @@ where
                     fragments.sort_by(|a, b| a.start.cmp(&b.start));
                 }
                 let line_width = (cursor_x - line_origin).max(0.0);
-                let baseline = *cursor_y + line_ascent;
-                if baseline > box_bottom {
-                    break;
-                }
-
                 // Centre / right alignment shifts the planned fragments as a
                 // block; the wrap engine already sized the line for it.
                 let line_start_x = Self::resolve_line_start(
@@ -30251,12 +30254,17 @@ where
             }
 
             start_offset += chunk.len();
-            if *cursor_y + TEXT_BOX_FONT_ASCENT > box_bottom {
+            let next_line_limit = if allow_line_overflow {
+                *cursor_y
+            } else {
+                *cursor_y + TEXT_BOX_FONT_ASCENT
+            };
+            if next_line_limit > box_bottom {
                 break;
             }
         }
 
-        if !rendered_line {
+        if !rendered_line && !clipped_nonempty_paragraph {
             if !first_spacing_applied {
                 let before =
                     Self::text_box_paragraph_spacing_px(format, TEXT_BOX_LINE_HEIGHT, true);
@@ -31768,6 +31776,57 @@ where
         )
     }
 
+    fn group_arabic_visual_segments(segments: &[TextSegment]) -> Cow<'_, [TextSegment]> {
+        use unicode_script::{Script, UnicodeScript};
+
+        let joins = |left: &TextSegment, right: &TextSegment| {
+            left.start == right.end
+                && left
+                    .text
+                    .chars()
+                    .next()
+                    .is_some_and(|ch| ch.script() == Script::Arabic)
+                && right
+                    .text
+                    .chars()
+                    .next()
+                    .is_some_and(|ch| ch.script() == Script::Arabic)
+                && left.properties == right.properties
+                && left.revision == right.revision
+                && left.hyperlink == right.hyperlink
+                && left.leading_width == 0.0
+                && right.leading_width == 0.0
+        };
+        let Some(first) = segments
+            .windows(2)
+            .position(|pair| joins(&pair[0], &pair[1]))
+        else {
+            return Cow::Borrowed(segments);
+        };
+
+        let mut grouped = Vec::with_capacity(segments.len());
+        grouped.extend_from_slice(&segments[..first]);
+        let mut start = first;
+        while start < segments.len() {
+            let mut end = start + 1;
+            while end < segments.len() && joins(&segments[end - 1], &segments[end]) {
+                end += 1;
+            }
+            let mut segment = segments[start].clone();
+            if end - start > 1 {
+                segment.start = segments[end - 1].start;
+                segment.text = segments[start..end]
+                    .iter()
+                    .rev()
+                    .map(|part| part.text.as_str())
+                    .collect();
+            }
+            grouped.push(segment);
+            start = end;
+        }
+        Cow::Owned(grouped)
+    }
+
     #[inline]
     fn line_clusters_for_segment<'a>(
         segment: &TextSegment,
@@ -31974,6 +32033,17 @@ where
             prev_adjusted_glyph_width = Some(layout.adjusted_glyph_width);
             prev_raw_glyph_width = Some(layout.measured_glyph_width);
             prev_font_descriptor_hash = Some(layout.font_descriptor_hash);
+        }
+
+        // The clusters remain in visual order for selection. Pass the logical
+        // text to the painter so Arabic joining and mark placement have context.
+        if glyph_steps.len() > 1
+            && glyph_steps.windows(2).all(|pair| {
+                pair[0].text_start == pair[1].text_end && pair[0].font_slot == pair[1].font_slot
+            })
+        {
+            glyph_steps[0].text_start = glyph_steps.last().unwrap().text_start;
+            glyph_steps.truncate(1);
         }
 
         // When visuals are requested, every slot is written exactly once. Early returns
