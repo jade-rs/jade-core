@@ -2929,6 +2929,18 @@ pub fn word_east_asian_font_vertical_units(family: &str) -> Option<(f32, f32, f3
         {
             Some((880.0, 120.0, 1000.0))
         }
+        // macOS Hiragino Mincho ProN W3 and W6 have the same hhea box as
+        // Kaku Gothic. Word excludes the Latin line gap here too.
+        "ヒラギノ明朝 ProN"
+        | "ヒラギノ明朝 ProN W3"
+        | "ヒラギノ明朝 ProN W6"
+        | "Hiragino Mincho ProN"
+        | "Hiragino Mincho ProN W3"
+        | "Hiragino Mincho ProN W6"
+            if word_layout_platform() == WordLayoutPlatform::Mac =>
+        {
+            Some((880.0, 120.0, 1000.0))
+        }
         // Source-matched HG Maru subsets in the unchanged Word Mac math PDF:
         // hhea 220/-36, 256 units/em, no line gap.
         "HG丸ｺﾞｼｯｸM-PRO" | "HGMaruGothicMPRO"
@@ -3117,6 +3129,9 @@ fn word_latin_font_vertical_units(family: &str) -> Option<(f32, f32)> {
     match family {
         "Calibri" | "Calibri Light" => Some((1950.0, 550.0)),
         "Cambria" => Some((1946.0, 455.0)),
+        "Cambria Math" if word_layout_platform() == WordLayoutPlatform::Mac => {
+            Some((1946.0, 455.0))
+        }
         "Arial" => Some((1921.0, 434.0)),
         "Times New Roman" => Some((1912.0, 443.0)),
         "Century" => Some((2019.0, 443.0)),
@@ -5995,6 +6010,18 @@ mod tests {
                 ascent * 0.75
             );
         }
+        set_word_layout_platform(WordLayoutPlatform::Windows);
+    }
+
+    #[test]
+    fn hiragino_mincho_pro_n_matches_word_mac_minimum_cell_baselines() {
+        set_word_layout_platform(WordLayoutPlatform::Mac);
+        let (ascent, descent) = word_font_vertical_metrics_px("11pt 'Hiragino Mincho ProN', serif")
+            .expect("Hiragino Mincho metrics");
+        // Word prints 11.28pt below the first cell top at a 14pt minimum,
+        // and 22.97pt below the second cell top at a 26pt minimum.
+        assert!((ascent * 0.75 - 11.28).abs() <= 0.1);
+        assert!((26.0 - descent * 0.75 - 22.97).abs() <= 0.1);
         set_word_layout_platform(WordLayoutPlatform::Windows);
     }
 
