@@ -28,6 +28,10 @@ variants = (
     "asymmetric margins",
     "line grid",
     "18 pt",
+    "plain CJK",
+    "two digits",
+    "four digits",
+    "six digits",
 )
 for direction in ("tbRl", "tbRlV", "tbLrV"):
     for variant in variants:
@@ -35,6 +39,16 @@ for direction in ("tbRl", "tbRlV", "tbLrV"):
         if variant == "18 pt":
             for size in content.iter(w("sz")):
                 size.set(w("val"), "36")
+        runs = content.findall(w("r"))
+        if variant == "plain CJK":
+            content.remove(runs[1])
+            content.remove(runs[3])
+        elif variant == "two digits":
+            content.remove(runs[3])
+        elif variant in ("four digits", "six digits"):
+            length = 4 if variant == "four digits" else 6
+            digits = runs[3].find(w("t"))
+            digits.text = digits.text[:length]
         body.append(content)
 
         # A second column exposes the flow direction independently of the
