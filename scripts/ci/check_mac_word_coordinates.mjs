@@ -419,6 +419,10 @@ try {
         : loadSyntheticFixture(name));
       await page.goto('https://word-coordinates.test/');
       const expectedArabic = referenceArabicSpans(name, reference);
+      if (manifest.arabicRuns !== undefined) {
+        assert.deepEqual(expectedArabic?.map(spans => spans.map(([text]) => text)),
+          manifest.arabicRuns, 'Word Arabic spans differ from the extraction recipe');
+      }
       assert(manifest.capturePaintedHyphens === undefined || typeof manifest.capturePaintedHyphens === 'boolean',
         'capturePaintedHyphens must be a boolean');
       const actual = await capture(page, bytes, name, {

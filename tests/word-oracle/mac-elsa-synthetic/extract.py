@@ -2,6 +2,7 @@
 import argparse
 import gzip
 import json
+import unicodedata
 from hashlib import sha256
 from itertools import chain, groupby
 from pathlib import Path
@@ -128,6 +129,35 @@ def page_geometry(page, *, body_only, print_registration=False, rectangular_imag
     return geometry
 
 
+def arabic_spans(body, expected_runs):
+    glyphs = [
+        (text, x, y)
+        for text, x, y in body
+        if any("ARABIC" in unicodedata.name(char, "") for char in text)
+    ]
+    spans = []
+    remaining = iter(glyphs)
+    for expected in expected_runs:
+        text = ""
+        origins = []
+        baselines = set()
+        while len(text) < len(expected):
+            glyph = next(remaining, None)
+            if glyph is None:
+                raise ValueError(f"Missing Arabic glyph for {expected!r}")
+            char, x, y = glyph
+            text = unicodedata.normalize("NFKC", text + char)
+            origins.append(x)
+            if not unicodedata.category(char[0]).startswith("M"):
+                baselines.add(y)
+        if text != expected or len(baselines) != 1:
+            raise ValueError(f"Word Arabic run differs from the expected text or crosses baselines: {expected!r}")
+        spans.append([text, min(origins), baselines.pop()])
+    if next(remaining, None) is not None:
+        raise ValueError("Unassigned Arabic glyphs in the Word export")
+    return spans
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("fixture", type=Path, help="directory containing source.docx and manifest.json")
@@ -156,6 +186,12 @@ def main():
             )
             for page in document
         ]
+    if "arabicRuns" in manifest:
+        runs = manifest["arabicRuns"]
+        if len(runs) != len(pages):
+            raise ValueError("Arabic run recipe has the wrong page count")
+        for page, expected_runs in zip(pages, runs):
+            page["arabicSpans"] = arabic_spans(page["body"], expected_runs)
     data = gzip.compress(json.dumps(pages, ensure_ascii=False, separators=(",", ":")).encode(), mtime=0)
     (fixture / "pages.json.gz").write_bytes(data)
     manifest["coordinatesSha256"] = sha256(data).hexdigest()
