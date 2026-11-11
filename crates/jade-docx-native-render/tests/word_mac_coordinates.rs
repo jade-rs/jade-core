@@ -62,6 +62,7 @@ fn capture_coordinates(doc: &NativeDocument) -> Value {
 
 // Whole probes already within half a CSS pixel of the Word for Mac PDF.
 const STRICT_WORD_FIXTURES: &[&str] = &[
+    "word-mac-probe-distribute-single",
     "word-mac-probe-exact-grid",
     "word-mac-probe-exact-nogrid",
     "word-mac-probe-inline-image-grid",
@@ -429,6 +430,9 @@ fn mac_regular_office_faces_match_word() {
     for (name, archive) in [
         ("word-mac-probe-kern-default", "mac-probes-20261019"),
         ("word-mac-probe-line-pitch", "mac-probes-20261019"),
+        ("word-mac-probe-object-lines", "mac-probes-20261019"),
+        ("word-mac-probe-object-spaces", "mac-probes-20261019"),
+        ("word-mac-probe-partial-grid", "mac-probes-20261019"),
         // This capture records the actual baseline of each shifted glyph.
         ("word-mac-probe-vert-align", "mac-probes-20261030"),
     ] {

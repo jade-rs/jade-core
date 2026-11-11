@@ -2211,12 +2211,14 @@ const YU_MINCHO_ASCII_UNITS: [u16; 95] = [
 // Numeric hmtx facts from regular Century's MacRomanEncoding subsets in the
 // unchanged math, scroll-offset-repro, trust-beneficiary-sale-keep-next and
 // wrong-num Word PDFs and the archived line-pitch and kern-default probes.
+// B is from Word for Mac’s Century.ttf; distribute-single confirms its width
+// at the right edge of a distributed line.
 // Zero keeps host metrics.
 const CENTURY_ASCII_UNITS: [u16; 95] = [
     569, 0, 0, 0, 0, 0, 0, 0, 682, 682, 0, 1241, 0, 0, 569, 0, 1139, 1139, 1139, 1139, 1139, 1139,
-    1139, 1139, 1139, 1139, 0, 0, 0, 0, 0, 0, 0, 1479, 0, 1479, 0, 0, 0, 0, 0, 0, 0, 0, 1366, 1933,
-    1669, 0, 0, 0, 1479, 0, 1366, 0, 1479, 2009, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1139, 1139, 909, 0,
-    1024, 682, 0, 1251, 645, 0, 0, 0, 1821, 1251, 1024, 1176, 0, 909, 948, 797, 1251, 0, 1593,
+    1139, 1139, 1139, 1139, 0, 0, 0, 0, 0, 0, 0, 1479, 1479, 1479, 0, 0, 0, 0, 0, 0, 0, 0, 1366,
+    1933, 1669, 0, 0, 0, 1479, 0, 1366, 0, 1479, 2009, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1139, 1139, 909,
+    0, 1024, 682, 0, 1251, 645, 0, 0, 0, 1821, 1251, 1024, 1176, 0, 909, 948, 797, 1251, 0, 1593,
     1100, 1100, 0, 0, 0, 0, 0,
 ];
 
