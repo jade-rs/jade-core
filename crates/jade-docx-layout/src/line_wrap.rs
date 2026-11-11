@@ -9744,12 +9744,9 @@ fn detach_remaining_split_latin_word(
     current: &mut WrappedLine,
     detached: &mut Vec<(InlineCluster, TextSegment)>,
 ) -> f64 {
-    if !detached
-        .last()
-        .is_some_and(|(cluster, _)| {
-            is_latin_word_grapheme(&cluster.text) || is_ascii_digit_grapheme(&cluster.text)
-        })
-        || !has_preceding_latin_break_opportunity(current)
+    if !detached.last().is_some_and(|(cluster, _)| {
+        is_latin_word_grapheme(&cluster.text) || is_ascii_digit_grapheme(&cluster.text)
+    }) || !has_preceding_latin_break_opportunity(current)
     {
         return 0.0;
     }
