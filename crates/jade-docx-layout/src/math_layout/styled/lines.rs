@@ -24,6 +24,8 @@ pub(crate) struct BreakCandidate {
     pub(crate) subtraction: bool,
     /// Space before this operator, omitted at the preceding line end.
     pub(crate) preceding_space: f64,
+    /// Space before the next atom, omitted at the continuation's start.
+    pub(crate) following_space: f64,
 }
 
 /// A laid-out line before stacking: the plan items in `start..end`, on a
@@ -198,7 +200,7 @@ fn break_lines<'a, C: StyledMathMeasure>(
             operator_x - c.preceding_space
         };
         let x = if settings.break_binary == BreakBinary::After && keeps_operator {
-            fit_x
+            fit_x + c.following_space
         } else {
             operator_x
         };
@@ -252,14 +254,10 @@ fn break_lines<'a, C: StyledMathMeasure>(
     let mut bounds: Vec<(Mark, f64, Option<BreakCandidate>)> = vec![(start, 0.0, None)];
     for (c, x) in &chosen {
         let mut mark = c.mark;
-        let mut at = *x;
         if after && !c.manual && c.class == AtomClass::Bin {
-            if let Some(g) = b.plan.glyphs.get(mark.glyphs) {
-                at = g.x + g.width;
-                mark.glyphs += 1;
-            }
+            mark.glyphs += 1;
         }
-        bounds.push((mark, at, Some(*c)));
+        bounds.push((mark, *x, Some(*c)));
     }
     let mut lines = Vec::new();
     // The x of every operator on the first line, for alnAt and the default

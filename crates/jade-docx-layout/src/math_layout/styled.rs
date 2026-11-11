@@ -47,6 +47,9 @@ pub trait StyledMathMeasure {
         text: &str,
         style: MathTextStyle<'_>,
     ) -> Result<MathMetrics, Self::Error>;
+    fn fallback_italic_correction(&self, _text: &str, _style: MathTextStyle<'_>) -> f64 {
+        0.0
+    }
     /// The host binds font bytes to the actual authored face. Prepared metrics
     /// and outlines must identify the same glyph; no painter substitution.
     #[cfg(feature = "opentype-math")]
@@ -953,6 +956,7 @@ impl<'a, C: StyledMathMeasure> Builder<'_, 'a, C> {
                     self.first = Some(class);
                 }
                 self.prev = Some(class);
+                self.note_space_after_binary(space);
                 if matches!(class, AtomClass::Bin | AtomClass::Rel) {
                     self.break_candidate(
                         class,
@@ -1024,7 +1028,23 @@ impl<'a, C: StyledMathMeasure> Builder<'_, 'a, C> {
                 align_point: false,
                 subtraction,
                 preceding_space,
+                following_space: 0.0,
             });
+        }
+    }
+
+    fn note_space_after_binary(&mut self, space: f64) {
+        if self.depth != 0 || self.options.settings.break_binary != BreakBinary::After {
+            return;
+        }
+        let glyphs = self.plan.glyphs.len();
+        if let Some(candidate) = self.breaks.as_mut().and_then(|breaks| breaks.last_mut()) {
+            if candidate.class == AtomClass::Bin
+                && !candidate.manual
+                && candidate.mark.glyphs + 1 == glyphs
+            {
+                candidate.following_space = space;
+            }
         }
     }
 
@@ -1043,6 +1063,7 @@ impl<'a, C: StyledMathMeasure> Builder<'_, 'a, C> {
                 align_point: true,
                 subtraction: false,
                 preceding_space: 0.0,
+                following_space: 0.0,
             });
         }
     }
@@ -1080,7 +1101,13 @@ impl<'a, C: StyledMathMeasure> Builder<'_, 'a, C> {
             }
         }
         let metrics = self.context.measure_glyph(text, style)?;
-        Ok((metrics, GlyphInfo::default(), None))
+        Ok((
+            metrics,
+            GlyphInfo {
+                italic: self.context.fallback_italic_correction(text, style),
+            },
+            None,
+        ))
     }
 
     /// Lays out a sequence of siblings left to right with TeX's spacing.
@@ -1195,6 +1222,7 @@ impl<'a, C: StyledMathMeasure> Builder<'_, 'a, C> {
                 lead = alphabet::atom_space(prev, left, self.level > 0) * self.size() / 18.0;
             }
             lead += std::mem::take(&mut self.pending_italic);
+            self.note_space_after_binary(lead);
         }
         self.first = None;
         if structure && matches!(class.0, AtomClass::Bin | AtomClass::Rel) {
