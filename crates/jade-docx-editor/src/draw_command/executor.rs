@@ -987,12 +987,23 @@ fn draw_combined_characters<P: Painter>(
         last.x_offset - glyphs[0].x_offset
             + widths.last().copied().unwrap_or(0.0) * style.text_scale_x
     });
-    let mut bracket_width = 0.0;
-    if let (Some((open, close)), Some(font)) = (combine.brackets.as_ref(), first_font) {
-        font_state.set_font_rc_if_changed(context, font);
-        bracket_width =
-            (context.measure_text_width(open)? + context.measure_text_width(close)?) * 2.0;
-    }
+    let (open_width, close_width) = match (combine.brackets.as_ref(), first_font) {
+        (Some((open, close)), Some(font)) => {
+            font_state.set_font_rc_if_changed(context, font);
+            let advance = |mark: &str| -> Result<f64, P::Error> {
+                let width =
+                    match jade_docx_layout::combined_characters::word_combined_bracket_advance_px(
+                        font, mark,
+                    ) {
+                        Some(width) => width,
+                        None => context.measure_text_width(mark)?,
+                    };
+                Ok(width * 2.0)
+            };
+            (advance(open)?, advance(close)?)
+        }
+        _ => (0.0, 0.0),
+    };
     // Layout scales both glyphs and tracking when flattening the group.
     // Dividing tracking by that scale recovers its distance in the raw
     // half-size font coordinates; the outer transform restores w:w alone.
@@ -1004,7 +1015,7 @@ fn draw_combined_characters<P: Painter>(
     let row_width =
         |row: &[f64]| row.iter().sum::<f64>() + row.len().saturating_sub(1) as f64 * spacing;
     let stacked_width =
-        row_width(&widths[..split]).max(row_width(&widths[split..])) + bracket_width;
+        row_width(&widths[..split]).max(row_width(&widths[split..])) + open_width + close_width;
     let scale = allocated_width / stacked_width;
     let scaled = scale.is_finite() && scale > 0.0 && (scale - 1.0).abs() > 1e-9;
     if scaled {
@@ -1015,21 +1026,21 @@ fn draw_combined_characters<P: Painter>(
     }
     // A bracket at twice the run's size, sitting on the line's baseline.
     let bracket =
-        |mark: &str, at: f64, font_state: &mut FontStateTracker| -> Result<f64, P::Error> {
+        |mark: &str, at: f64, font_state: &mut FontStateTracker| -> Result<(), P::Error> {
             if let Some(font) = first_font {
                 font_state.set_font_rc_if_changed(context, font);
             }
-            let width = context.measure_text_width(mark)? * 2.0;
             context.save();
             context.translate(at, y)?;
             context.scale(2.0, 2.0)?;
             context.fill_text(mark, 0.0, 0.0)?;
             context.restore();
             font_state.invalidate();
-            Ok(width)
+            Ok(())
         };
     if let Some((open, _)) = combine.brackets.as_ref() {
-        start_x += bracket(open, start_x, font_state)?;
+        bracket(open, start_x, font_state)?;
+        start_x += open_width;
     }
     let mut widest = start_x;
     for (line, line_widths, baseline) in [
