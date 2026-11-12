@@ -22,3 +22,7 @@ characters across run boundaries, in body text, and in narrow table cells.
 
 The Geeza Pro line-box fixture checks baseline placement in one- and two-line
 Arabic table cells at 10.5, 14, and 21 pt.
+
+The Indic line-box fixtures check glyph baselines and following paragraph
+origins across three pages at 10.5, 14, and 18 pt for Kohinoor Devanagari,
+Devanagari Sangam MN, Kohinoor Bangla, and Kohinoor Gujarati.
