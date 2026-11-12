@@ -1501,17 +1501,6 @@ impl SplitPreparedRow {
             .zip(&self.tail_cells)
             .all(|(head, tail)| head.skip_render || has_content(head) || !has_content(tail))
     }
-
-    fn continues_content(&self) -> bool {
-        self.tail_cells
-            .iter()
-            .filter(|cell| !cell.skip_render)
-            .any(|cell| {
-                cell.blocks
-                    .iter()
-                    .any(|block| !matches!(block.kind, CellBlockKind::Spacing))
-            })
-    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -3195,8 +3184,8 @@ where
                                     header_row_count,
                                 ) <= full_page_content_height;
                         // Word for Mac moves a new row that fits on the next page
-                        // if a cell cannot start here or only after-spacing would continue.
-                        let require_content_on_both_pages = row_start
+                        // when an occupied cell cannot start here with its spacing.
+                        let keep_after_spacing = row_start
                             && pending_height <= full_page_content_height + ROW_SPLIT_EPSILON
                             && jade_docx_layout::line_metrics::word_layout_platform()
                                 == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac;
@@ -3207,11 +3196,9 @@ where
                                 line_height,
                                 full_page_content_height,
                                 tail_has_header,
+                                keep_after_spacing,
                             )
-                            .filter(|split| {
-                                !require_content_on_both_pages
-                                    || (split.starts_all_cells() && split.continues_content())
-                            })
+                            .filter(|split| !keep_after_spacing || split.starts_all_cells())
                         };
                         let mut split = split_row(pending_cells.as_slice(), available_height);
                         if split.as_ref().is_some_and(|split| {
@@ -11823,6 +11810,7 @@ fn split_cell_paragraph(
     block: &CellBlock,
     available: f64,
     fresh_page_height: f64,
+    keep_after_spacing: bool,
 ) -> Option<(CellBlock, CellBlock)> {
     let CellBlockKind::Paragraph(paragraph) = &block.kind else {
         return None;
@@ -11838,8 +11826,12 @@ fn split_cell_paragraph(
     let mut fits = paragraph
         .lines
         .iter()
-        .take_while(|line| {
+        .enumerate()
+        .take_while(|(index, line)| {
             used += paragraph.line_advance(line);
+            if keep_after_spacing && *index + 1 == paragraph.lines.len() {
+                used += paragraph.spacing_after;
+            }
             used <= room
         })
         .count();
@@ -11896,6 +11888,7 @@ fn split_prepared_row_for_available_height(
     line_height: f64,
     full_page_content_height: f64,
     tail_has_header: bool,
+    keep_after_spacing: bool,
 ) -> Option<SplitPreparedRow> {
     if available_height <= ROW_SPLIT_EPSILON {
         return None;
@@ -11976,7 +11969,7 @@ fn split_prepared_row_for_available_height(
                     } else {
                         0
                     };
-                    if line_count > 0 && head_count >= line_count {
+                    if !keep_after_spacing && line_count > 0 && head_count >= line_count {
                         // All text fits. Continue only the overflowing margin,
                         // rather than moving this paragraph's text to the next page.
                         let remaining = (content_limit
@@ -12008,6 +12001,7 @@ fn split_prepared_row_for_available_height(
                             - cell.padding.vertical()
                             - 2.0 * cell.cell_spacing)
                             .max(0.0),
+                        keep_after_spacing,
                     ) {
                         head_blocks.push(head);
                         tail_blocks.push(tail);
@@ -12133,6 +12127,7 @@ fn split_nested_table_for_available_height(
                 available_height - consumed,
                 layout.line_height,
                 body_page_height,
+                false,
                 false,
             ) {
                 head_rows.push(NestedRowLayout {
@@ -18792,7 +18787,7 @@ mod tests {
                 paragraph_indices: vec![0],
                 source_index: 0,
             };
-            let (head, tail) = split_cell_paragraph(&block, 16.0, 100.0).unwrap();
+            let (head, tail) = split_cell_paragraph(&block, 16.0, 100.0, false).unwrap();
             assert_eq!((head.height, tail.height), (16.0, 32.0));
             let CellBlockKind::Paragraph(tail) = tail.kind else {
                 panic!("paragraph")
@@ -21220,6 +21215,7 @@ mod tests {
             23.0,
             10.0,
             100.0,
+            false,
             false
         )
         .is_none());
@@ -21230,6 +21226,7 @@ mod tests {
                 10.0,
                 100.0,
                 has_header,
+                false,
             )
             .unwrap();
             assert_eq!(split.head_height, 24.0);
@@ -25948,7 +25945,8 @@ mod tests {
             paragraph_indices: vec![42],
         }];
         let split =
-            split_prepared_row_for_available_height(&[cell], 26.0, 12.0, 100.0, false).unwrap();
+            split_prepared_row_for_available_height(&[cell], 26.0, 12.0, 100.0, false, false)
+                .unwrap();
         let ranges = |cells: &[PreparedCell]| {
             let CellBlockKind::Paragraph(paragraph) = &cells[0].blocks[0].kind else {
                 panic!("paragraph")
@@ -25993,22 +25991,23 @@ mod tests {
             kind: CellBlockKind::Paragraph(paragraph),
             paragraph_indices: vec![0],
         };
-        let (head, tail) = split_cell_paragraph(&make(paragraph.clone()), 36.0, 100.0).unwrap();
+        let (head, tail) =
+            split_cell_paragraph(&make(paragraph.clone()), 36.0, 100.0, false).unwrap();
         assert_eq!(head.height, 24.0);
         assert_eq!(tail.height, 24.0);
-        assert!(split_cell_paragraph(&make(paragraph.clone()), 12.0, 100.0).is_none());
+        assert!(split_cell_paragraph(&make(paragraph.clone()), 12.0, 100.0, false).is_none());
         paragraph.widow_control = false;
         assert_eq!(
-            split_cell_paragraph(&make(paragraph.clone()), 36.0, 100.0)
+            split_cell_paragraph(&make(paragraph.clone()), 36.0, 100.0, false)
                 .unwrap()
                 .0
                 .height,
             36.0
         );
         paragraph.keep_lines = true;
-        assert!(split_cell_paragraph(&make(paragraph.clone()), 36.0, 100.0).is_none());
+        assert!(split_cell_paragraph(&make(paragraph.clone()), 36.0, 100.0, false).is_none());
         assert!(
-            split_cell_paragraph(&make(paragraph), 36.0, 36.0).is_some(),
+            split_cell_paragraph(&make(paragraph), 36.0, 36.0, false).is_some(),
             "an oversized paragraph can continue"
         );
     }
@@ -26025,8 +26024,9 @@ mod tests {
         cell.logical_paragraph_count = 3;
         let row = vec![cell];
 
-        let split = split_prepared_row_for_available_height(&row, 28.0, 12.0, f64::INFINITY, false)
-            .expect("row should split");
+        let split =
+            split_prepared_row_for_available_height(&row, 28.0, 12.0, f64::INFINITY, false, false)
+                .expect("row should split");
 
         assert_eq!(split.head_cells.len(), 1);
         assert_eq!(split.tail_cells.len(), 1);
@@ -26050,8 +26050,9 @@ mod tests {
         cell.height = 76.8;
         let row = vec![cell];
 
-        let split = split_prepared_row_for_available_height(&row, 64.0, 19.2, f64::INFINITY, false)
-            .expect("row should split after the third zero-margin paragraph");
+        let split =
+            split_prepared_row_for_available_height(&row, 64.0, 19.2, f64::INFINITY, false, false)
+                .expect("row should split after the third zero-margin paragraph");
 
         assert_eq!(split.head_cells[0].blocks.len(), 3);
         assert_eq!(split.tail_cells[0].blocks.len(), 1);
@@ -26065,7 +26066,8 @@ mod tests {
         cell.height = 38.0;
         let row = vec![cell];
 
-        let split = split_prepared_row_for_available_height(&row, 28.0, 12.0, f64::INFINITY, false);
+        let split =
+            split_prepared_row_for_available_height(&row, 28.0, 12.0, f64::INFINITY, false, false);
         assert!(split.is_none());
     }
 
@@ -26077,10 +26079,10 @@ mod tests {
         body.blocks = vec![make_cell_block(24.0), make_cell_block(24.0)];
         let row = [label, body];
 
-        let split = split_prepared_row_for_available_height(&row, 28.0, 12.0, 100.0, false)
+        let split = split_prepared_row_for_available_height(&row, 28.0, 12.0, 100.0, false, false)
             .expect("only the label fits");
         assert!(!split.starts_all_cells());
-        let split = split_prepared_row_for_available_height(&row, 38.0, 12.0, 100.0, false)
+        let split = split_prepared_row_for_available_height(&row, 38.0, 12.0, 100.0, false, false)
             .expect("both cells fit their first block");
         assert!(split.starts_all_cells());
     }
@@ -26293,7 +26295,8 @@ mod tests {
             }];
             cell.height = 80.0;
             let split =
-                split_prepared_row_for_available_height(&[cell], 44.0, 12.0, 800.0, false).unwrap();
+                split_prepared_row_for_available_height(&[cell], 44.0, 12.0, 800.0, false, false)
+                    .unwrap();
             let CellBlockKind::Paragraph(head) = &split.head_cells[0].blocks[0].kind else {
                 panic!()
             };
@@ -26348,8 +26351,9 @@ mod tests {
                 paragraph_indices: vec![17],
             }];
             cell.height = 80.0;
-            let split = split_prepared_row_for_available_height(&[cell], 44.0, 12.0, 800.0, false)
-                .expect("a paragraph taller than the remainder splits at a shared line");
+            let split =
+                split_prepared_row_for_available_height(&[cell], 44.0, 12.0, 800.0, false, false)
+                    .expect("a paragraph taller than the remainder splits at a shared line");
             let head = &split.head_cells[0].blocks[0];
             let tail = &split.tail_cells[0].blocks[0];
             assert_eq!(head.paragraph_indices, [17]);
@@ -26391,6 +26395,7 @@ mod tests {
                 32.0,
                 12.0,
                 800.0,
+                false,
                 false,
             )
             .expect("a continuation can split again");
@@ -26438,8 +26443,9 @@ mod tests {
                 paragraph_indices: vec![17],
             }];
             cell.height = 104.0;
-            let split = split_prepared_row_for_available_height(&[cell], 44.0, 12.0, 800.0, false)
-                .expect("a paragraph taller than the remainder splits at a shared line");
+            let split =
+                split_prepared_row_for_available_height(&[cell], 44.0, 12.0, 800.0, false, false)
+                    .expect("a paragraph taller than the remainder splits at a shared line");
             let head = &split.head_cells[0].blocks[0];
             let tail = &split.tail_cells[0].blocks[0];
             assert_eq!(head.paragraph_indices, [17]);
@@ -26486,6 +26492,7 @@ mod tests {
                 12.0,
                 800.0,
                 false,
+                false,
             )
             .expect("a continuation can split again");
             let CellBlockKind::Paragraph(last) = &again.tail_cells[0].blocks[0].kind else {
@@ -26518,9 +26525,9 @@ mod tests {
                 paragraph_indices: vec![17],
             }];
             cell.height = 88.0;
-            let split = split_prepared_row_for_available_height(&[cell], 36.0, 12.0, 800.0, false)
-                .expect("only the margin must continue");
-            assert!(!split.continues_content());
+            let split =
+                split_prepared_row_for_available_height(&[cell], 36.0, 12.0, 800.0, false, false)
+                    .expect("only the margin must continue");
             let head = &split.head_cells[0].blocks[0];
             let tail = &split.tail_cells[0].blocks[0];
             let CellBlockKind::Paragraph(paragraph) = &head.kind else {
@@ -26539,6 +26546,7 @@ mod tests {
                 32.0,
                 12.0,
                 800.0,
+                false,
                 false,
             )
             .expect("a large margin can continue again without creating text");
@@ -26692,7 +26700,8 @@ mod tests {
             assign_row_paragraph_indices(&mut cells, 20, &HashMap::new());
             // Full page 88 - outer padding 8 = body 80; nested headers do not repeat.
             // Current remainder 48 leaves only 24px for body content.
-            let split = split_prepared_row_for_available_height(&cells, 48.0, 12.0, 88.0, false);
+            let split =
+                split_prepared_row_for_available_height(&cells, 48.0, 12.0, 88.0, false, false);
             assert_eq!(split.is_some(), should_split, "{block_count} blocks");
             if let Some(split) = split {
                 let CellBlockKind::Table(head) = &split.head_cells[0].blocks[0].kind else {
@@ -26756,7 +26765,8 @@ mod tests {
             16
         );
         let split =
-            split_prepared_row_for_available_height(&cells, 44.0, 12.0, 800.0, false).unwrap();
+            split_prepared_row_for_available_height(&cells, 44.0, 12.0, 800.0, false, false)
+                .unwrap();
         assert_eq!(
             collect_cell_paragraph_indices(&split.head_cells[1]),
             vec![15]
@@ -26970,8 +26980,9 @@ mod tests {
 
         // available_height 28 with 4px padding on each side leaves a 20px content
         // budget: the left cell fits two 8px blocks (16px) but not three (24px).
-        let split = split_prepared_row_for_available_height(&row, 28.0, 12.0, f64::INFINITY, false)
-            .expect("row should split");
+        let split =
+            split_prepared_row_for_available_height(&row, 28.0, 12.0, f64::INFINITY, false, false)
+                .expect("row should split");
 
         // Head: left cell's first two paragraphs (0, 1) plus the right cell (4).
         assert_eq!(block_indices(&split.head_cells[0]), vec![vec![0], vec![1]]);
