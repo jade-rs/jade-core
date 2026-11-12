@@ -19,3 +19,6 @@ checks both the dash and the continuation where a soft break changes wrapping.
 The explicit hyphen wrap fixture checks authored soft, nonbreaking, and literal
 hyphens around wrap boundaries. The styled hyphen fixture checks those
 characters across run boundaries, in body text, and in narrow table cells.
+
+The Geeza Pro line-box fixture checks baseline placement in one- and two-line
+Arabic table cells at 10.5, 14, and 21 pt.
