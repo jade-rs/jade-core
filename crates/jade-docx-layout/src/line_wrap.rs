@@ -7312,16 +7312,25 @@ pub fn wrap_text_into_lines<C: LineWrapContext>(
 ) -> Result<Vec<WrappedLine>, C::Error> {
     // Keep shaping state out of the normal wrapping loop. The byte scan
     // skips ASCII and most CJK without looking up their Unicode scripts.
-    let has_arabic = paragraph_style.word_platform
-        == crate::line_metrics::WordLayoutPlatform::Mac
+    let has_arabic = paragraph_style.word_platform == crate::line_metrics::WordLayoutPlatform::Mac
         && paragraph_style.oracle_advance_px_by_text_offset.is_none()
-        && text.bytes().any(|byte| matches!(byte, 0xd8..=0xdb | 0xdd | 0xe0 | 0xef | 0xf0));
+        && text
+            .bytes()
+            .any(|byte| matches!(byte, 0xd8..=0xdb | 0xdd | 0xe0 | 0xef | 0xf0));
     let wrap = if has_arabic {
         wrap_text_with_shaping::<C, true>
     } else {
         wrap_text_with_shaping::<C, false>
     };
-    wrap(ctx, text, run_styles, base_x, paragraph_style, base_offset, column_right_edge)
+    wrap(
+        ctx,
+        text,
+        run_styles,
+        base_x,
+        paragraph_style,
+        base_offset,
+        column_right_edge,
+    )
 }
 
 fn wrap_text_with_shaping<C: LineWrapContext, const SHAPE_ARABIC: bool>(
@@ -7576,7 +7585,8 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext, const SHAPE_
         let mut buffer_is_whitespace: Option<bool> = None;
         let mut active_script = ScriptCategory::Latin;
         let mut arabic_span = ArabicWrapSpan::default();
-        let shape_arabic_wrap = SHAPE_ARABIC && can_shape_arabic_wrap(paragraph_style, run_properties.as_deref());
+        let shape_arabic_wrap =
+            SHAPE_ARABIC && can_shape_arabic_wrap(paragraph_style, run_properties.as_deref());
 
         let mut grapheme_iter = crate::graphemes::grapheme_indices(run_text).peekable();
         while let Some((rel_offset, grapheme)) = grapheme_iter.next() {
@@ -9011,7 +9021,10 @@ fn trailing_whitespace_width(clusters: &[InlineCluster]) -> f64 {
         .sum()
 }
 
-fn compress_justified_word_spaces_to_available_width<C: LineWrapContext, const SHAPE_ARABIC: bool>(
+fn compress_justified_word_spaces_to_available_width<
+    C: LineWrapContext,
+    const SHAPE_ARABIC: bool,
+>(
     ctx: &C,
     lines: &mut [WrappedLine],
     base_x: f64,
@@ -9666,14 +9679,15 @@ fn ensure_lines_fit_available_width<C: LineWrapContext, const SHAPE_ARABIC: bool
                                 &mut without_trailing_punctuation,
                             );
                         }
-                        let width_without_trailing_punctuation = measure_wrapped_line_width::<C, SHAPE_ARABIC>(
-                            ctx,
-                            &without_trailing_punctuation,
-                            paragraph_style,
-                            character_borders,
-                            source,
-                            snap_to_chars_cell_width_cache,
-                        )?;
+                        let width_without_trailing_punctuation =
+                            measure_wrapped_line_width::<C, SHAPE_ARABIC>(
+                                ctx,
+                                &without_trailing_punctuation,
+                                paragraph_style,
+                                character_borders,
+                                source,
+                                snap_to_chars_cell_width_cache,
+                            )?;
                         if width_without_trailing_punctuation
                             <= effective_available + WRAP_FIT_TOLERANCE_PX
                         {
@@ -9686,7 +9700,7 @@ fn ensure_lines_fit_available_width<C: LineWrapContext, const SHAPE_ARABIC: bool
             if line.clusters.len() <= 1 {
                 break;
             }
-            if SHAPE_ARABIC && let [segment] = line.segments.as_slice() {
+            if let (true, [segment]) = (SHAPE_ARABIC, line.segments.as_slice()) {
                 if can_shape_arabic_wrap(paragraph_style, segment.properties.as_deref())
                     && line
                         .clusters
