@@ -3180,7 +3180,7 @@ fn word_latin_font_vertical_units(family: &str) -> Option<(f32, f32)> {
         }
         // Word for Mac puts the hhea leading above these Indic faces.
         // Kohinoor uses a 1000-unit em.
-        "Kohinoor Devanagari" | "Kohinoor Bangla"
+        "Kohinoor Devanagari" | "Kohinoor Bangla" | "Kohinoor Telugu"
             if word_layout_platform() == WordLayoutPlatform::Mac =>
         {
             Some((1150.0 * 2048.0 / 1000.0, 350.0 * 2048.0 / 1000.0))
@@ -3190,6 +3190,22 @@ fn word_latin_font_vertical_units(family: &str) -> Option<(f32, f32)> {
         }
         "Devanagari Sangam MN" if word_layout_platform() == WordLayoutPlatform::Mac => {
             Some((2180.0, 874.0))
+        }
+        "Tamil Sangam MN" if word_layout_platform() == WordLayoutPlatform::Mac => {
+            Some((1340.0, 717.0))
+        }
+        "Kannada Sangam MN" if word_layout_platform() == WordLayoutPlatform::Mac => {
+            Some((2687.0, 646.0))
+        }
+        "Malayalam Sangam MN" if word_layout_platform() == WordLayoutPlatform::Mac => {
+            Some((1904.0, 768.0))
+        }
+        "Gurmukhi Sangam MN" if word_layout_platform() == WordLayoutPlatform::Mac => {
+            Some((2045.0, 613.0))
+        }
+        // Oriya Sangam MN has a 1747-unit em.
+        "Oriya Sangam MN" if word_layout_platform() == WordLayoutPlatform::Mac => {
+            Some((2009.0 * 2048.0 / 1747.0, 611.0 * 2048.0 / 1747.0))
         }
         "Times New Roman" => Some((1912.0, 443.0)),
         "Century" => Some((2019.0, 443.0)),
