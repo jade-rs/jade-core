@@ -629,6 +629,11 @@ impl CellParagraph {
         self.max_line_width.max(line_height).max(1.0)
     }
 
+    pub(super) fn snap_vertical_column_pitch(&mut self, line_height: f64, grid_pitch: f64) {
+        self.max_line_width =
+            (self.vertical_column_pitch(line_height) / grid_pitch).ceil() * grid_pitch;
+    }
+
     /// The same paragraph with only `columns` of its vertical columns, for
     /// the part of it that fits on a page. Line indices are kept, so the
     /// selection still finds every character where it is drawn.

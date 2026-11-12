@@ -76,9 +76,30 @@ for direction in ("tbRl", "tbRlV", "tbLrV"):
         else:
             body.append(section_break)
 
-parts["word/document.xml"] = ET.tostring(document, encoding="utf-8", xml_declaration=True)
-with ZipFile(ROOT / "vertical-section-origins.docx", "w") as output:
-    for name, data in parts.items():
-        entry = ZipInfo(name)
-        entry.compress_type = ZIP_DEFLATED
-        output.writestr(entry, data)
+def write_docx(path):
+    parts["word/document.xml"] = ET.tostring(document, encoding="utf-8", xml_declaration=True)
+    with ZipFile(path, "w") as output:
+        for name, data in parts.items():
+            entry = ZipInfo(name)
+            entry.compress_type = ZIP_DEFLATED
+            output.writestr(entry, data)
+
+
+write_docx(ROOT / "vertical-section-origins.docx")
+
+origins = list(body)
+body.clear()
+for direction_index in range(2):
+    for pitch in (12, 16, 18, 20, 24):
+        for variant_index in (0, 5, 7, 8):
+            start = (direction_index * len(variants) + variant_index) * 3
+            content, second_column, section_break = deepcopy(origins[start:start + 3])
+            body.extend((content, second_column))
+            section = section_break.find(f"{w('pPr')}/{w('sectPr')}")
+            ET.SubElement(section, w("docGrid"), {w("type"): "lines", w("linePitch"): str(pitch * 20)})
+            if direction_index == 1 and pitch == 24 and variant_index == 8:
+                body.append(section)
+            else:
+                body.append(section_break)
+
+write_docx(ROOT.parent / "mac-elsa-synthetic" / "vertical-grid-pitch-matrix-mac" / "source.docx")

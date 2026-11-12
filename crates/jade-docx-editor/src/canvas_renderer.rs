@@ -21729,6 +21729,8 @@ where
         ),
         JsValue,
     > {
+        use jade_docx_layout::line_metrics::{word_layout_platform, WordLayoutPlatform};
+
         let base_font_size = Self::estimate_paragraph_font_size(paragraph);
         let spacing_ref = paragraph
             .properties
@@ -21736,7 +21738,18 @@ where
             .and_then(|props| props.spacing.as_ref());
         let snap_to_grid = self.resolve_paragraph_snap_to_grid(paragraph);
         let body_px = (self.page_height - self.margin_top - self.margin_bottom).max(0.0);
-        let section_content_height_pt = (body_px * 72.0 / 96.0) as f32;
+        // The horizontal body-height fallback does not apply to vertical columns.
+        let section_content_height_pt = (!matches!(
+            self.current_text_direction,
+            Some(
+                TextDirection::TbRl
+                    | TextDirection::TbRlV
+                    | TextDirection::BtLr
+                    | TextDirection::BtLrV
+                    | TextDirection::TbLrV
+            )
+        ) || word_layout_platform() != WordLayoutPlatform::Mac)
+            .then_some((body_px * 72.0 / 96.0) as f32);
         let current_doc_grid = self.current_doc_grid.as_ref();
         let word_font_line_box = word_east_asian_font_line_box_applies(
             spacing_ref,
@@ -21785,7 +21798,7 @@ where
             spacing_ref,
             current_doc_grid,
             snap_to_grid,
-            Some(section_content_height_pt),
+            section_content_height_pt,
             implicit_line_box_pt,
             default_line_spacing_multiplier,
         );
@@ -31524,7 +31537,7 @@ where
 
         let column_right = self.current_column_x() + self.current_column_width();
         let available_width = (column_right - base_x).max(1.0);
-        let paragraph_layout = match direction {
+        let mut paragraph_layout = match direction {
             TextDirection::TbRl
             | TextDirection::TbRlV
             | TextDirection::BtLr
@@ -31566,6 +31579,18 @@ where
             return Ok(());
         }
         let align = Self::paragraph_table_align(paragraph_style, direction);
+        if paragraph_style.word_platform == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
+            && paragraph_style.word_grid_line_sizing.is_some()
+        {
+            if let Some(grid_pitch) = self
+                .current_doc_grid
+                .as_ref()
+                .and_then(|grid| grid.line_pitch)
+                .filter(|pitch| pitch.is_finite() && *pitch > 0.0)
+            {
+                paragraph_layout.snap_vertical_column_pitch(line_height, points_to_px(grid_pitch));
+            }
+        }
         let pitch = paragraph_layout.vertical_column_pitch(line_height);
         let total = paragraph_layout.vertical_columns().max(1);
         let mut drawn = 0;
