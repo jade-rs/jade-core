@@ -9,8 +9,3 @@ python tests/word-oracle/mac-elsa-synthetic/extract.py path/to/fixture path/to/w
 ```
 
 Commit the synthetic DOCX, manifest, and generated `pages.json.gz`.
-
-The inline picture rotation fixtures compare body images with and without a
-document grid, plus a 270-degree picture in a table cell. Their manifests record
-the source bitmap size and the number of complete images per page so the
-extractor can exclude the border samples emitted by Quartz.
