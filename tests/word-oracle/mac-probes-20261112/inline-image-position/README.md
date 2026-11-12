@@ -22,3 +22,6 @@ paragraph's text baseline.
 For the rotation cases compare the page-space bounds of the transformed image
 and the glyph origins before and after it. Use the original geometry cases as
 controls for rotation-induced changes in wrapping and baselines.
+
+Browser coordinate CI covers the four geometry and run-position fixtures,
+with and without a line grid. Rotation remains part of the probe corpus.

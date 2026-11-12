@@ -19,3 +19,6 @@ Export each source from Word for Mac with Save As PDF, Best for printing.
 Compare page size, equation wrapping and each visible glyph origin. Include
 the paragraphs following the equations in the comparison so that line box
 height regressions are detected.
+
+Browser coordinate CI includes the unequal-columns fixture and compares the
+equations and their following text in both columns.
