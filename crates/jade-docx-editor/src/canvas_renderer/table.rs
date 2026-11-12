@@ -104,7 +104,8 @@ const ROW_SPLIT_EPSILON: f64 = 0.001;
 /// measurement can accumulate a few millionths of a pixel across mixed runs;
 /// without this tolerance an exactly fitted final word may wrap by itself.
 const CELL_FIT_TEXT_EPSILON_PX: f64 = 0.01;
-const TABLE_AUTOFIT_CACHE_CAPACITY: usize = 64;
+// Keep enough entries for a full layout walk of long, table-heavy documents.
+const TABLE_AUTOFIT_CACHE_CAPACITY: usize = 128;
 const TABLE_ASCII_MEASURE_MEMO_CAPACITY: usize = 4096;
 
 fn resolve_table_border_stroke_color(requested: &str, dark_mode: bool) -> Cow<'_, str> {
