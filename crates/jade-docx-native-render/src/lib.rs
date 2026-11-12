@@ -479,6 +479,7 @@ impl CanvasRenderHost for SkiaRenderHost {
             font_bounding_box_descent: font_descent,
             actual_bounding_box_ascent: ink_ascent,
             actual_bounding_box_descent: ink_descent,
+            actual_bounding_box_left: 0.0,
             actual_bounding_box_right: width,
         })
     }

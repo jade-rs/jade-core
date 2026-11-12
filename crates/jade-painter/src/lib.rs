@@ -60,6 +60,9 @@ pub struct TextMetrics {
     pub actual_bounding_box_ascent: f64,
     /// Descent of the inked area of this particular string, positive downwards.
     pub actual_bounding_box_descent: f64,
+    /// Distance from the left edge of the ink to the text origin.
+    /// Negative when the ink begins to the right of the origin.
+    pub actual_bounding_box_left: f64,
     /// Distance from the text origin to the right edge of the inked area. Wider
     /// than `width` when the last glyph overhangs its advance.
     pub actual_bounding_box_right: f64,

@@ -232,6 +232,7 @@ impl<C: Borrow<CanvasRenderingContext2d>, I: CanvasImages> Painter for Canvas2dP
             font_bounding_box_descent: metrics.font_bounding_box_descent(),
             actual_bounding_box_ascent: metrics.actual_bounding_box_ascent(),
             actual_bounding_box_descent: metrics.actual_bounding_box_descent(),
+            actual_bounding_box_left: metrics.actual_bounding_box_left(),
             actual_bounding_box_right: metrics.actual_bounding_box_right(),
         })
     }

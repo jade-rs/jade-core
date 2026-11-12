@@ -204,6 +204,7 @@ impl CanvasRenderHost for EmHost {
             font_bounding_box_descent: 0.12 * EM_PX,
             actual_bounding_box_ascent: 0.88 * EM_PX,
             actual_bounding_box_descent: 0.12 * EM_PX,
+            actual_bounding_box_left: 0.0,
             actual_bounding_box_right: width,
         })
     }
