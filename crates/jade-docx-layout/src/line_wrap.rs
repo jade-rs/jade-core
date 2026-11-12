@@ -6057,14 +6057,26 @@ fn measure_arabic_wrap_clusters<C: LineWrapContext>(
             return Ok(None);
         }
         starts.push(text.len());
-        return starts
+        let mut clusters = starts
             .windows(2)
             .map(|range| {
                 ctx.measure_text(&text[range[0]..range[1]], font)
                     .map(|width| (range[0], width))
             })
-            .collect::<Result<Vec<_>, _>>()
-            .map(Some);
+            .collect::<Result<Vec<_>, _>>()?;
+        let isolated_width: f64 = clusters.iter().map(|(_, width)| width).sum();
+        if clusters.len() > 1 && isolated_width > f64::EPSILON {
+            // Canvas exposes the shaped span width but no glyph advances.
+            // Use that width for wrapping and retain the cluster boundaries.
+            let shaped_width = ctx.measure_text(text, font)?;
+            if shaped_width.is_finite() && shaped_width > 0.0 {
+                let scale = shaped_width / isolated_width;
+                for (_, width) in &mut clusters {
+                    *width *= scale;
+                }
+            }
+        }
+        return Ok(Some(clusters));
     };
     let mut retained = 0;
     for index in 0..clusters.len() {

@@ -31,6 +31,13 @@ cells at 10.5, 14, 18, and 21 pt.
 The Geeza Pro line-box fixture checks baseline placement in one- and two-line
 Arabic table cells at 10.5, 14, and 21 pt.
 
+The Arabic row-fragment fixtures cover lam–alef wrapping at varying cell
+widths, at the bottom of a page, and with different paragraph after-spacing
+and row-splitting settings. An `arabicRuns` entry may be a pair of the text
+extracted from Word's PDF and the logical DOCX cluster, for example when the
+PDF text layer omits a combining mark. The extractor still verifies the PDF
+text and the comparison uses its measured origin.
+
 The Indic line-box fixtures check glyph baselines and following paragraph
 origins across three pages at 10.5, 14, and 18 pt for Kohinoor Devanagari,
 Devanagari Sangam MN, Kohinoor Bangla, Kohinoor Gujarati, Kohinoor Telugu,

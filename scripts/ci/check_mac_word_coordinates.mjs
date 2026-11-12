@@ -443,8 +443,22 @@ try {
       await page.goto('https://word-coordinates.test/');
       const expectedArabic = referenceArabicSpans(name, reference);
       if (manifest.arabicRuns !== undefined) {
+        const pdfRuns = manifest.arabicRuns.map(runs => runs.map(run => {
+          if (typeof run === 'string') return run;
+          assert(Array.isArray(run) && run.length === 2 && run.every(text =>
+            typeof text === 'string' && isArabic(text)), 'invalid Arabic run recipe');
+          return run[0];
+        }));
         assert.deepEqual(expectedArabic?.map(spans => spans.map(([text]) => text)),
-          manifest.arabicRuns, 'Word Arabic spans differ from the extraction recipe');
+          pdfRuns, 'Word Arabic spans differ from the extraction recipe');
+        // Word's PDF text layer may omit a joining control or combining mark.
+        // Keep its measured origin and compare the source DOCX's shaped text.
+        for (const [i, spans] of expectedArabic.entries()) {
+          for (const [j, span] of spans.entries()) {
+            const run = manifest.arabicRuns[i][j];
+            if (Array.isArray(run)) span[0] = run[1];
+          }
+        }
       }
       assert(manifest.capturePaintedHyphens === undefined || typeof manifest.capturePaintedHyphens === 'boolean',
         'capturePaintedHyphens must be a boolean');
