@@ -8070,8 +8070,15 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext, const SHAPE_
                         (hangs || squeeze > 0.0)
                             && candidate_overflow <= hang + squeeze + WRAP_FIT_TOLERANCE_PX
                     };
+                // Word for Mac can place a zero-width space on its own line
+                // before a glyph that is wider than the available column.
                 if candidate_overflow > WRAP_FIT_TOLERANCE_PX
-                    && current_width > 0.0
+                    && (current_width > 0.0
+                        || (paragraph_style.word_platform
+                            == crate::line_metrics::WordLayoutPlatform::Mac
+                            && current_line_clusters
+                                .last()
+                                .is_some_and(|cluster| cluster.text.as_str() == "\u{200b}")))
                     && !is_whitespace
                     && !shaped_arabic.is_some_and(|(_, continuation)| continuation)
                     && !zero_width_oracle_glyph

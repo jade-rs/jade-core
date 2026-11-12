@@ -20,6 +20,11 @@ The explicit hyphen wrap fixture checks authored soft, nonbreaking, and literal
 hyphens around wrap boundaries. The styled hyphen fixture checks those
 characters across run boundaries, in body text, and in narrow table cells.
 
+The Latin zero-width space fixture checks six narrow table cells. When the
+following letter is wider than the cell, Word can place the break opportunity on
+a line of its own. The fixture checks where the visible letters land, including
+when each letter fits the cell and when the text contains no break opportunity.
+
 The Geeza Pro line-box fixture checks baseline placement in one- and two-line
 Arabic table cells at 10.5, 14, and 21 pt.
 

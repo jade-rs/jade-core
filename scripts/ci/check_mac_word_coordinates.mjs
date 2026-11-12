@@ -44,7 +44,7 @@ function hash(bytes) {
 }
 
 function visibleGlyph(text = '') {
-  const normalized = text.trim().normalize('NFC')
+  const normalized = text.replaceAll('\u200B', '').trim().normalize('NFC')
     .replace(/[\u2F00-\u2FD5]/g, radical => radical.normalize('NFKC'))
     .replaceAll('⻑', '長').replaceAll('⺠', '民').replaceAll('⻘', '青').replaceAll('⻲', '亀');
   return /\p{Extended_Pictographic}/u.test(normalized)
