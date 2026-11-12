@@ -3131,7 +3131,7 @@ pub fn word_sizes_east_asian_lines_from_faces(_document_uses_east_asian_layout: 
 /// Like [`word_east_asian_font_vertical_units`], this depends on the
 /// requested face, not on the host's stand-in for it.
 pub fn word_latin_font_line_height_em(family: &str) -> Option<f32> {
-    let (ascent, descent) = word_latin_font_vertical_units(family)?;
+    let (ascent, descent) = word_latin_font_vertical_units(family, None)?;
     Some((ascent + descent) / 2048.0)
 }
 
@@ -3139,7 +3139,10 @@ pub fn word_latin_font_line_height_em(family: &str) -> Option<f32> {
 /// the Latin faces in [`word_latin_font_line_height_em`]. Word sets the line
 /// gap above the glyphs: the first baseline of a Times New Roman page is
 /// 1912/2048 em below the top margin, not 1825/2048.
-fn word_latin_font_vertical_units(family: &str) -> Option<(f32, f32)> {
+fn word_latin_font_vertical_units(
+    family: &str,
+    font_descriptor: Option<&str>,
+) -> Option<(f32, f32)> {
     let family = family
         .trim()
         .trim_matches(|ch| ch == '\'' || ch == '"')
@@ -3191,6 +3194,16 @@ fn word_latin_font_vertical_units(family: &str) -> Option<(f32, f32)> {
         "Noto Sans" if word_layout_platform() == WordLayoutPlatform::Mac => Some((2189.0, 600.0)),
         // Word for Mac uses the hhea ascent, descent, and line gap for
         // these Thai faces, including the 10 units above Sukhumvit Set.
+        "Angsana New" if word_layout_platform() == WordLayoutPlatform::Mac => {
+            let style = font_descriptor.map_or((false, false), font_descriptor_style);
+            let (ascent, descent) = match style {
+                (false, false) => (3854.0, 1679.0),
+                (true, false) => (3949.0, 1724.0),
+                (false, true) => (3854.0, 1636.0),
+                (true, true) => (4066.0, 1725.0),
+            };
+            Some((ascent / 2.0, descent / 2.0))
+        }
         "Ayuthaya" if word_layout_platform() == WordLayoutPlatform::Mac => {
             Some((2241.0 * 2048.0 / 2100.0, 674.0 * 2048.0 / 2100.0))
         }
@@ -3226,7 +3239,7 @@ pub fn word_font_vertical_metrics_px(font_descriptor: &str) -> Option<(f64, f64)
         return Some(metrics);
     }
     let (size_pt, family) = split_font_descriptor(font_descriptor)?;
-    let (ascent, descent) = word_latin_font_vertical_units(family)?;
+    let (ascent, descent) = word_latin_font_vertical_units(family, Some(font_descriptor))?;
     let size_px = f64::from(size_pt) * 96.0 / 72.0 / 2048.0;
     Some((f64::from(ascent) * size_px, f64::from(descent) * size_px))
 }
@@ -3240,7 +3253,7 @@ pub(crate) fn word_mac_join_control_line_height_px(
     let units = match (control, family) {
         // These ZWJ lines use the same effective box as Calibri.
         ("\u{200d}", "Arial" | "Calibri" | "Cambria" | "Times New Roman") => {
-            let (ascent, descent) = word_latin_font_vertical_units("Calibri")?;
+            let (ascent, descent) = word_latin_font_vertical_units("Calibri", None)?;
             ascent + descent
         }
         // Measured from the baseline advance across an isolated ZWNJ line.
@@ -3298,6 +3311,9 @@ pub(crate) fn word_mac_substitute_advance_px(
         if is_emoji_presentation_cluster(grapheme) {
             return emoji_advance_px(font_descriptor);
         }
+        if let Some(width) = word_mac_angsana_advance_px(font_descriptor, grapheme) {
+            return Some(width);
+        }
     }
     // Word measures this symbol in the authored high-ANSI Cambria Math
     // face even when the paragraph classifies it as East Asian.
@@ -3305,6 +3321,64 @@ pub(crate) fn word_mac_substitute_advance_px(
         return word_observed_unicode_advance_px(high_ansi_descriptor, grapheme);
     }
     None
+}
+
+/// Word's Angsana New advances, in the font's 4096-unit em. Browsers may
+/// fall back to a system Thai face when Angsana New is available only to Office.
+fn word_mac_angsana_advance_px(font_descriptor: &str, grapheme: &str) -> Option<f64> {
+    const THAI_ADVANCES: [u16; 96] = [
+        0, 1622, 1630, 1860, 1630, 1638, 1982, 1290, 1454, 1753, 1659, 1802, 2073, 2138, 1720,
+        1741, 1548, 2146, 2134, 2187, 1638, 1642, 1618, 1843, 1556, 1884, 1843, 1843, 1602, 1602,
+        1901, 1901, 1696, 1720, 1405, 1401, 1618, 1618, 1700, 1450, 1597, 1806, 1802, 1913, 1864,
+        1614, 1520, 1638, 1466, 0, 1167, 1167, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1803, 688, 1544,
+        1401, 1253, 1409, 1196, 1741, 0, 0, 0, 0, 0, 0, 0, 0, 1753, 1647, 1655, 2327, 2089, 2097,
+        2163, 1749, 2195, 2056, 1671, 1929, 3342, 0, 0, 0, 0,
+    ];
+    const BOLD_THAI_ADVANCES: [u16; 96] = [
+        0, 1569, 1700, 1855, 1655, 1716, 2044, 1327, 1556, 1745, 1651, 1925, 2159, 2232, 1819,
+        1839, 1581, 2154, 2298, 2224, 1683, 1712, 1630, 1831, 1569, 1884, 1810, 1819, 1696, 1696,
+        2023, 2023, 1774, 1782, 1516, 1430, 1585, 1569, 1790, 1475, 1708, 1810, 1720, 1892, 2327,
+        1569, 1532, 1802, 1434, 0, 1163, 1163, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1803, 713, 1458,
+        1028, 950, 1192, 1229, 1384, 0, 0, 0, 0, 0, 0, 0, 0, 1462, 1556, 1466, 2167, 2040, 2032,
+        2081, 1458, 2109, 2060, 1589, 2011, 3363, 0, 0, 0, 0,
+    ];
+    let first = grapheme.chars().next()?;
+    if !matches!(first, ' ' | '\u{0e00}'..='\u{0e5f}') {
+        return None;
+    }
+    let (size, family) = split_font_descriptor(font_descriptor)?;
+    if !family
+        .trim_matches(['\'', '"'])
+        .eq_ignore_ascii_case("Angsana New")
+    {
+        return None;
+    }
+    let (bold, italic) = font_descriptor_style(font_descriptor);
+    let advance = if grapheme == " " {
+        676
+    } else {
+        let mut total = 0;
+        for ch in grapheme.chars() {
+            if !matches!(ch, '\u{0e01}'..='\u{0e3a}' | '\u{0e3f}'..='\u{0e5b}') {
+                return None;
+            }
+            let index = ch as usize - 0x0e00;
+            let units = match (bold, italic, ch) {
+                (false, true, '\u{0e16}') => 1614,
+                (false, true, '\u{0e1d}') => 1597,
+                (false, true, '\u{0e33}') => 1188,
+                (false, true, '\u{0e3f}') => 1802,
+                (true, true, '\u{0e10}') => 1487,
+                (true, true, '\u{0e1f}') => 2003,
+                (true, true, '\u{0e3f}') => 1835,
+                (true, _, _) => BOLD_THAI_ADVANCES[index],
+                (false, _, _) => THAI_ADVANCES[index],
+            };
+            total += u32::from(units);
+        }
+        total
+    };
+    Some(f64::from(advance) * f64::from(size) * 96.0 / (72.0 * 4096.0))
 }
 
 fn emoji_advance_px(font_descriptor: &str) -> Option<f64> {
@@ -3341,7 +3415,8 @@ pub fn word_vertical_glyph_metrics_px(font_descriptor: &str) -> Option<(f64, f64
 /// [`word_latin_font_line_height_em`] for a CSS font shorthand, in points.
 pub fn word_latin_font_line_height_pt(font_descriptor: &str) -> Option<f32> {
     let (size_pt, family) = split_font_descriptor(font_descriptor)?;
-    Some(size_pt * word_latin_font_line_height_em(family)?)
+    let (ascent, descent) = word_latin_font_vertical_units(family, Some(font_descriptor))?;
+    Some(size_pt * ((ascent + descent) / 2048.0))
 }
 
 /// The ascent and descent, in points, Word gives text set in
@@ -3361,7 +3436,7 @@ pub fn word_face_vertical_extent_pt(
         Some(metrics) => metrics,
         None => {
             let (size_pt, family) = split_font_descriptor(font_descriptor)?;
-            let (ascent, descent) = word_latin_font_vertical_units(family)?;
+            let (ascent, descent) = word_latin_font_vertical_units(family, Some(font_descriptor))?;
             let size_px = f64::from(size_pt) * 96.0 / 72.0 / 2048.0;
             (f64::from(ascent) * size_px, f64::from(descent) * size_px)
         }
