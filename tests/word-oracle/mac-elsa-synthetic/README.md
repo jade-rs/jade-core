@@ -32,3 +32,8 @@ The Indic line-box fixtures check glyph baselines and following paragraph
 origins across three pages at 10.5, 14, and 18 pt for Kohinoor Devanagari,
 Devanagari Sangam MN, Kohinoor Bangla, Kohinoor Gujarati, Kohinoor Telugu,
 and the Kannada, Malayalam, Tamil, Gurmukhi, and Oriya Sangam MN faces.
+
+`latin-join-controls-fit-boundaries` covers ZWNJ and ZWJ around Latin
+letters in fixed-width Arial table cells, including controls in separate
+runs and cells narrow enough to force emergency wrapping. The five pages
+also cover zero-width spaces and widths where the letters fit together.
