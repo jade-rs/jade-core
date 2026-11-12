@@ -690,8 +690,6 @@ fn page_valign_offsets_from_sections(
 
 #[derive(Clone, Debug, Serialize)]
 pub struct CommentAnnotation {
-    #[serde(skip)]
-    paragraph_index: usize,
     pub id: String,
     pub page: usize,
     pub x: f64,
@@ -702,6 +700,55 @@ pub struct CommentAnnotation {
     pub author: Option<String>,
     pub initials: Option<String>,
     pub date: Option<String>,
+}
+
+#[derive(Default)]
+struct CommentAnnotations {
+    entries: Vec<CommentAnnotation>,
+    paragraphs: Vec<usize>,
+}
+
+impl CommentAnnotations {
+    fn push(&mut self, paragraph: usize, annotation: CommentAnnotation) {
+        self.entries.push(annotation);
+        self.paragraphs.push(paragraph);
+    }
+
+    fn clear(&mut self) {
+        self.truncate(0);
+    }
+
+    fn truncate(&mut self, len: usize) {
+        self.entries.truncate(len);
+        self.paragraphs.truncate(len);
+    }
+
+    fn restore_unchanged(
+        &mut self,
+        previous: Self,
+        edited: usize,
+        window: Option<&std::ops::RangeInclusive<usize>>,
+    ) {
+        if previous.entries.is_empty() {
+            return;
+        }
+        let mut entries = std::mem::take(&mut self.entries)
+            .into_iter()
+            .zip(std::mem::take(&mut self.paragraphs))
+            .collect();
+        let previous = previous
+            .entries
+            .into_iter()
+            .zip(previous.paragraphs)
+            .filter(|(region, _)| window.is_none_or(|range| range.contains(&region.page)));
+        restore_unchanged_paragraph_regions(
+            &mut entries,
+            previous,
+            edited,
+            |(region, paragraph)| (region.page, *paragraph),
+        );
+        (self.entries, self.paragraphs) = entries.into_iter().unzip();
+    }
 }
 
 /// Reuses the existing one-byte capture slot without exposing body-only
@@ -1255,8 +1302,6 @@ pub(crate) struct LinkedStory {
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ObjectDebugInfo {
-    #[serde(skip)]
-    inline_picture: bool,
     pub kind: FloatingObjectKind,
     pub paragraph_index: usize,
     pub run_index: usize,
@@ -1266,6 +1311,22 @@ pub struct ObjectDebugInfo {
     pub width: f64,
     pub height: f64,
     pub rotation_deg: f64,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(transparent)]
+struct RegisteredObjectRegion {
+    region: ObjectDebugInfo,
+    #[serde(skip)]
+    inline_picture: bool,
+}
+
+impl std::ops::Deref for RegisteredObjectRegion {
+    type Target = ObjectDebugInfo;
+
+    fn deref(&self) -> &Self::Target {
+        &self.region
+    }
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -3988,7 +4049,7 @@ where
     paragraph_counter: usize,
     page_offset_y: f64,
     comment_store: HashMap<String, DocumentComment>,
-    comment_annotations: Vec<CommentAnnotation>,
+    comment_annotations: CommentAnnotations,
     hyperlink_regions: Vec<HyperlinkRegion>,
     hyperlink_regions_js_cache: RefCell<Option<JsValue>>,
     footnote_counter: usize,
@@ -4083,7 +4144,7 @@ where
     structure: RefCell<structure::StructureState>,
     text_box_debug_regions: RefCell<Vec<TextBoxDebugInfo>>,
     grouped_shape_text_regions: RefCell<Vec<GroupedShapeTextDebugInfo>>,
-    object_debug_regions: RefCell<Vec<ObjectDebugInfo>>,
+    object_debug_regions: RefCell<Vec<RegisteredObjectRegion>>,
     table_picture_debug_regions: Vec<ObjectDebugInfo>,
     /// Linked text box chains, by id, for the document last rendered.
     linked_stories: RefCell<HashMap<u32, Rc<LinkedStory>>>,
@@ -9003,7 +9064,7 @@ where
             paragraph_counter: 0,
             page_offset_y: 0.0,
             comment_store: HashMap::new(),
-            comment_annotations: Vec::new(),
+            comment_annotations: CommentAnnotations::default(),
             hyperlink_regions: Vec::new(),
             hyperlink_regions_js_cache: RefCell::new(None),
             footnote_counter: 0,
@@ -15739,15 +15800,11 @@ where
                 self.selection.restore_cell_layouts(previous_cells);
             }
             if let Some((edited, comments, images, objects)) = stable_edit_metadata {
-                if options.render_comments {
-                    let window = self.visible_page_range.as_ref();
-                    restore_unchanged_paragraph_regions(
-                        &mut self.comment_annotations,
-                        comments.into_iter().filter(|region| {
-                            window.is_none_or(|range| range.contains(&region.page))
-                        }),
+                if options.render_comments && !self.render_skip_draw {
+                    self.comment_annotations.restore_unchanged(
+                        comments,
                         edited,
-                        |region| (region.page, region.paragraph_index),
+                        self.visible_page_range.as_ref(),
                     );
                 }
                 restore_unchanged_paragraph_regions(
@@ -24679,17 +24736,19 @@ where
                 // clicked on the page.
                 self.object_debug_regions
                     .borrow_mut()
-                    .extend((!image.layout.hidden()).then_some(ObjectDebugInfo {
+                    .extend((!image.layout.hidden()).then_some(RegisteredObjectRegion {
                         inline_picture: image.shape_group.is_none(),
-                        kind: FloatingObjectKind::Image,
-                        paragraph_index,
-                        run_index: *run_index,
-                        page: self.current_page_number,
-                        x: *image_x,
-                        y: *image_y,
-                        width: *image_width,
-                        height: *image_height,
-                        rotation_deg: image.layout.rotation_deg.unwrap_or(0.0),
+                        region: ObjectDebugInfo {
+                            kind: FloatingObjectKind::Image,
+                            paragraph_index,
+                            run_index: *run_index,
+                            page: self.current_page_number,
+                            x: *image_x,
+                            y: *image_y,
+                            width: *image_width,
+                            height: *image_height,
+                            rotation_deg: image.layout.rotation_deg.unwrap_or(0.0),
+                        },
                     }));
                 let draw_spec = ImageDrawSpec {
                     x: *image_x,
@@ -25598,17 +25657,19 @@ where
         // even when drawing is skipped (e.g. page not in dirty set).
         self.object_debug_regions
             .borrow_mut()
-            .extend((!image.layout.hidden()).then_some(ObjectDebugInfo {
+            .extend((!image.layout.hidden()).then_some(RegisteredObjectRegion {
                 inline_picture: false,
-                kind: FloatingObjectKind::Image,
-                paragraph_index,
-                run_index,
-                page: self.current_page_number,
-                x: transform.x,
-                y: transform.y,
-                width: transform.width,
-                height: transform.height,
-                rotation_deg: transform.rotation_deg,
+                region: ObjectDebugInfo {
+                    kind: FloatingObjectKind::Image,
+                    paragraph_index,
+                    run_index,
+                    page: self.current_page_number,
+                    x: transform.x,
+                    y: transform.y,
+                    width: transform.width,
+                    height: transform.height,
+                    rotation_deg: transform.rotation_deg,
+                },
             }));
 
         let draw_spec = ImageDrawSpec {
@@ -28926,17 +28987,19 @@ where
             });
         self.object_debug_regions
             .borrow_mut()
-            .push(ObjectDebugInfo {
+            .push(RegisteredObjectRegion {
                 inline_picture: false,
-                kind: FloatingObjectKind::TextBox,
-                paragraph_index,
-                run_index,
-                page: self.current_page_number,
-                x: draw_x,
-                y: draw_y,
-                width,
-                height,
-                rotation_deg: transform.rotation_deg,
+                region: ObjectDebugInfo {
+                    kind: FloatingObjectKind::TextBox,
+                    paragraph_index,
+                    run_index,
+                    page: self.current_page_number,
+                    x: draw_x,
+                    y: draw_y,
+                    width,
+                    height,
+                    rotation_deg: transform.rotation_deg,
+                },
             });
 
         let wrap_bottom_outset = text_box_wrap_bottom_outset_px(&border);
@@ -29038,7 +29101,7 @@ where
         let saved_counter = self.paragraph_counter;
         let saved_selection = std::mem::take(&mut self.selection);
         let saved_hyperlinks = self.hyperlink_regions.len();
-        let saved_comments = self.comment_annotations.len();
+        let saved_comments = self.comment_annotations.entries.len();
         let saved_images = self.image_debug_regions.borrow().len();
         let saved_text_boxes = self.text_box_debug_regions.borrow().len();
         let saved_grouped = self.grouped_shape_text_regions.borrow().len();
@@ -32897,19 +32960,21 @@ where
             None => (String::new(), None, None, None),
         };
 
-        self.comment_annotations.push(CommentAnnotation {
+        self.comment_annotations.push(
             paragraph_index,
-            id: marker.id.clone(),
-            page: self.current_page_number,
-            x: top_left_x,
-            y: top_left_y,
-            width: COMMENT_MARKER_RADIUS * 2.0,
-            height: COMMENT_MARKER_RADIUS * 2.0,
-            text,
-            author,
-            initials,
-            date,
-        });
+            CommentAnnotation {
+                id: marker.id.clone(),
+                page: self.current_page_number,
+                x: top_left_x,
+                y: top_left_y,
+                width: COMMENT_MARKER_RADIUS * 2.0,
+                height: COMMENT_MARKER_RADIUS * 2.0,
+                text,
+                author,
+                initials,
+                date,
+            },
+        );
     }
 
     fn apply_run_style(
@@ -36654,7 +36719,7 @@ where
                     .object_debug_regions
                     .borrow()
                     .iter()
-                    .cloned()
+                    .map(|registered| registered.region.clone())
                     .chain(table_pictures)
                     .collect(),
                 text_box_regions: self.text_box_debug_regions.borrow().clone(),
@@ -36779,7 +36844,7 @@ where
     }
 
     pub fn comment_annotations(&self) -> &[CommentAnnotation] {
-        &self.comment_annotations
+        &self.comment_annotations.entries
     }
 
     pub fn hyperlink_regions(&self) -> &[HyperlinkRegion] {
@@ -37039,7 +37104,7 @@ where
                 let local_y = dx * radians.sin() + dy * radians.cos();
                 local_x.abs() <= region.width / 2.0 && local_y.abs() <= region.height / 2.0
             })
-            .cloned()
+            .map(|registered| registered.region.clone())
     }
 
     pub fn object_region(&self, target: FloatingObjectTarget) -> Option<ObjectDebugInfo> {
@@ -37051,7 +37116,7 @@ where
                     && region.paragraph_index == target.paragraph_index
                     && region.run_index == target.run_index
             })
-            .cloned()
+            .map(|registered| registered.region.clone())
     }
 
     pub fn mark_object_target_page_dirty(&self, target: FloatingObjectTarget) {
@@ -38884,7 +38949,7 @@ where
         let saved_selection = std::mem::take(&mut self.selection);
 
         let saved_hyperlinks = self.hyperlink_regions.len();
-        let saved_comments = self.comment_annotations.len();
+        let saved_comments = self.comment_annotations.entries.len();
         let saved_images = self.image_debug_regions.borrow().len();
         let saved_text_boxes = self.text_box_debug_regions.borrow().len();
         let saved_grouped_shape_text = self.grouped_shape_text_regions.borrow().len();
@@ -60544,7 +60609,7 @@ mod tests {
                 proptest::prop_assert_eq!(renderer.is_seek_compatible_options(&options), kind == 3);
                 proptest::prop_assert_eq!(renderer.can_use_unchecked_cache_replay(&options), kind == 3);
                 if kind == 1 {
-                    proptest::prop_assert!(renderer.comment_annotations.iter().any(|annotation| annotation.id == "1"));
+                    proptest::prop_assert!(renderer.comment_annotations().iter().any(|annotation| annotation.id == "1"));
                 }
                 proptest::prop_assert_eq!(renderer.comment_store.contains_key("1"), has_metadata);
             }
@@ -60591,7 +60656,7 @@ mod tests {
             .unwrap();
         assert!(renderer.document_has_comments);
         assert!(renderer
-            .comment_annotations
+            .comment_annotations()
             .iter()
             .any(|annotation| annotation.id == "1"));
         assert_eq!(renderer.comment_anchor_document_scans.get(), 1);
@@ -60612,7 +60677,7 @@ mod tests {
             .render_with_numbering_rc(Rc::clone(&document), &options, None, None, None, None)
             .unwrap();
         assert!(!renderer.document_has_comments);
-        assert!(renderer.comment_annotations.is_empty());
+        assert!(renderer.comment_annotations().is_empty());
         assert_eq!(renderer.comment_anchor_document_scans.get(), 2);
     }
 
@@ -65303,17 +65368,19 @@ mod tests {
         renderer
             .object_debug_regions
             .borrow_mut()
-            .push(ObjectDebugInfo {
+            .push(RegisteredObjectRegion {
                 inline_picture: false,
-                kind: FloatingObjectKind::Image,
-                paragraph_index: 5,
-                run_index: 0,
-                page: 2,
-                x: 96.0,
-                y: 96.0,
-                width: 100.0,
-                height: 100.0,
-                rotation_deg: 0.0,
+                region: ObjectDebugInfo {
+                    kind: FloatingObjectKind::Image,
+                    paragraph_index: 5,
+                    run_index: 0,
+                    page: 2,
+                    x: 96.0,
+                    y: 96.0,
+                    width: 100.0,
+                    height: 100.0,
+                    rotation_deg: 0.0,
+                },
             });
 
         assert!(!renderer.prepare_completed_pagination_edit(0, 20.0));
