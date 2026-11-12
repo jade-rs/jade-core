@@ -6194,12 +6194,6 @@ where
         Some(entry.start_page)
     }
 
-    /// Returns the cached end page (1-indexed) for a paragraph, if present.
-    pub(crate) fn cached_paragraph_end_page(&self, paragraph_index: usize) -> Option<usize> {
-        let cache = self.paragraph_layout_cache.borrow();
-        Some(cache.get_entry(paragraph_index)?.end_page.saturating_add(1))
-    }
-
     /// Top-left of the paragraph's first laid-out line in page-local CSS
     /// coordinates. Consumers such as an ink overlay must use this shared
     /// layout result rather than estimating margins or line heights.
