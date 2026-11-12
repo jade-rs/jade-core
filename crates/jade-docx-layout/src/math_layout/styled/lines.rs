@@ -134,10 +134,15 @@ fn break_lines<'a, C: StyledMathMeasure>(
     let max_width = b.options.max_width.filter(|w| *w > 0.0);
     let settings = b.options.settings;
     let word_mac_rtl = b.options.word_mac_rtl();
+    let prefers_relation = !word_mac_rtl
+        && crate::line_metrics::word_layout_platform()
+            == crate::line_metrics::WordLayoutPlatform::Mac;
+    let breaks_after_operator =
+        |class| class == AtomClass::Bin || prefers_relation && class == AtomClass::Rel;
     let substitute_start = settings.break_binary_subtraction == BreakBinarySubtraction::MinusPlus;
     let substitute_end = settings.break_binary_subtraction == BreakBinarySubtraction::PlusMinus;
     let repeats = |c: BreakCandidate| {
-        settings.break_binary == BreakBinary::Repeat && !c.manual && c.class == AtomClass::Bin
+        settings.break_binary == BreakBinary::Repeat && !c.manual && breaks_after_operator(c.class)
     };
     let mut plus_signs = HashMap::new();
     if max_width.is_some_and(|width| metrics.width > width) && (substitute_start || substitute_end)
@@ -201,14 +206,18 @@ fn break_lines<'a, C: StyledMathMeasure>(
             candidates_to_scan = &candidates[index + 1..];
         }
     }
+    let after = settings.break_binary == BreakBinary::After;
+    let mut preferred_relation = None;
+    let mut saw_binary = false;
     for c in candidates_to_scan {
         let Some(operator_x) = x_of(b, c.mark) else {
             continue;
         };
         // Both `after` and `repeat` leave an operator on the preceding line.
         // With `repeat`, the continuation still starts at the operator.
-        let keeps_operator =
-            settings.break_binary != BreakBinary::Before && !c.manual && c.class == AtomClass::Bin;
+        let keeps_operator = !c.manual
+            && settings.break_binary != BreakBinary::Before
+            && breaks_after_operator(c.class);
         let fit_x = if keeps_operator {
             let glyph = &b.plan.glyphs[c.mark.glyphs];
             let width = if substitute_end {
@@ -233,11 +242,13 @@ fn break_lines<'a, C: StyledMathMeasure>(
             leading_delta = 0.0;
             indent = 0.0;
             last_fit = None;
+            preferred_relation = None;
+            saw_binary = false;
             continue;
         }
         if let Some(width) = max_width {
             if fit_x - line_start_x + leading_delta + indent > width {
-                if let Some((fit, fit_x)) = last_fit.take() {
+                if let Some((fit, fit_x)) = preferred_relation.take().or(last_fit.take()) {
                     chosen.push((fit, fit_x));
                     line_start_x = fit_x;
                     leading_delta = start_delta(fit, b);
@@ -249,10 +260,16 @@ fn break_lines<'a, C: StyledMathMeasure>(
                 }
             }
         }
+        // Word prefers a relation within the expression over a later binary
+        // operator. An initial assignment such as x= stays with its right side.
+        if prefers_relation && c.class == AtomClass::Rel && saw_binary {
+            preferred_relation = Some((*c, x));
+        }
+        saw_binary |= c.class == AtomClass::Bin;
         last_fit = Some((*c, x));
     }
     // The end of the equation may still overflow the last line.
-    if let (Some(width), Some((fit, fit_x))) = (max_width, last_fit) {
+    if let (Some(width), Some((fit, fit_x))) = (max_width, preferred_relation.or(last_fit)) {
         if metrics.width - line_start_x + leading_delta + indent > width
             && chosen
                 .last()
@@ -273,11 +290,10 @@ fn break_lines<'a, C: StyledMathMeasure>(
         }]);
     }
     // brkBin="after" keeps the operator at the end of the line above.
-    let after = settings.break_binary == BreakBinary::After;
     let mut bounds: Vec<(Mark, f64, Option<BreakCandidate>)> = vec![(start, 0.0, None)];
     for (c, x) in &chosen {
         let mut mark = c.mark;
-        if after && !c.manual && c.class == AtomClass::Bin {
+        if after && !c.manual && breaks_after_operator(c.class) {
             mark.glyphs += 1;
         }
         bounds.push((mark, *x, Some(*c)));
@@ -459,7 +475,9 @@ pub(crate) fn stack<'a, C: StyledMathMeasure>(
     let word_mac_cambria = b.style.family.eq_ignore_ascii_case("Cambria Math")
         && crate::line_metrics::word_layout_platform()
             == crate::line_metrics::WordLayoutPlatform::Mac;
-    let min_gap = size * if word_mac_cambria { 1.18 } else { 1.2 };
+    // Repeated wrapped Cambria Math rows in Word for Mac use about 14.10 pt
+    // between baselines at 12 pt, including across multiple display equations.
+    let min_gap = size * if word_mac_cambria { 1.175 } else { 1.2 };
     let gap = super::MathConstants::cambria(size).leading;
     let mac_wrapped = word_mac_cambria && lines.len() > 1;
     let tall_ascent = size * (1946.0 / 2048.0);
