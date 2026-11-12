@@ -22,6 +22,7 @@ pub fn math_block_content_box(
     column_width: f64,
     char_unit_pt: f64,
     page_is_even: bool,
+    use_display_defaults: bool,
 ) -> (f64, f64) {
     use crate::line_wrap::{
         mirror_indent_for_page, resolve_indent_first_line_pt, resolve_indent_left_pt,
@@ -35,6 +36,24 @@ pub fn math_block_content_box(
         return (column_left, column_width.max(1.0));
     };
     let bidi = properties.bidi.unwrap_or(false);
+    let inherited_mac = !use_display_defaults
+        && crate::line_metrics::word_layout_platform()
+            == crate::line_metrics::WordLayoutPlatform::Mac;
+    // Word for Mac uses the paragraph's leading and trailing indents for
+    // inherited display math, including the legacy w:left and w:right values.
+    let logical_indent;
+    let indent = if inherited_mac && bidi {
+        logical_indent = jade_docx_reader::Indent {
+            left: indent.right,
+            right: indent.left,
+            left_chars: indent.right_chars,
+            right_chars: indent.left_chars,
+            ..indent.clone()
+        };
+        &logical_indent
+    } else {
+        indent
+    };
     let indent = mirror_indent_for_page(
         indent,
         bidi,
@@ -44,11 +63,15 @@ pub fn math_block_content_box(
     let px = |value: Option<f64>| points_to_px(value.unwrap_or(0.0) as f32);
     let left = px(resolve_indent_left_pt(&indent, false, char_unit_pt));
     let right = px(resolve_indent_right_pt(&indent, false, char_unit_pt));
-    let first = px(resolve_indent_first_line_pt(
-        &indent,
-        char_unit_pt,
-        properties.numbering.is_none(),
-    ));
+    let first = if inherited_mac {
+        0.0
+    } else {
+        px(resolve_indent_first_line_pt(
+            &indent,
+            char_unit_pt,
+            properties.numbering.is_none(),
+        ))
+    };
     (
         column_left + left + first,
         (column_width - left - right - first).max(1.0),
@@ -689,24 +712,24 @@ mod tests {
             ..ParagraphProperties::default()
         };
         assert_eq!(
-            math_block_content_box(Some(&properties), 100.0, 300.0, 10.5, false),
+            math_block_content_box(Some(&properties), 100.0, 300.0, 10.5, false, true),
             (135.0, 251.0)
         );
         assert_eq!(
-            math_block_content_box(Some(&properties), 100.0, 300.0, 10.5, true),
+            math_block_content_box(Some(&properties), 100.0, 300.0, 10.5, true, true),
             (121.0, 251.0)
         );
         properties.bidi = Some(true);
         assert_eq!(
-            math_block_content_box(Some(&properties), 100.0, 300.0, 10.5, false),
+            math_block_content_box(Some(&properties), 100.0, 300.0, 10.5, false, true),
             (121.0, 251.0)
         );
         assert_eq!(
-            math_block_content_box(Some(&properties), 100.0, 300.0, 10.5, true),
+            math_block_content_box(Some(&properties), 100.0, 300.0, 10.5, true, true),
             (135.0, 251.0)
         );
         assert_eq!(
-            math_block_content_box(None, 100.0, 300.0, 10.5, false),
+            math_block_content_box(None, 100.0, 300.0, 10.5, false, true),
             (100.0, 300.0)
         );
     }
