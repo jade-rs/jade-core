@@ -12031,6 +12031,7 @@ fn split_prepared_row_for_available_height(
                     content_limit - consumed,
                     (full_page_content_height - cell.padding.vertical() - 2.0 * cell.cell_spacing)
                         .max(0.0),
+                    keep_after_spacing,
                 ) {
                     head_blocks.push(CellBlock {
                         height: head.height,
@@ -12118,6 +12119,7 @@ fn split_nested_table_for_available_height(
     layout: &NestedTableLayout,
     available_height: f64,
     full_page_content_height: f64,
+    keep_after_spacing: bool,
 ) -> Option<(NestedTableLayout, NestedTableLayout)> {
     // Word ignores repeated-header flags in nested tables. Only ancestor
     // insets reduce their full-page budget; outer headers are reserved by callers.
@@ -12143,7 +12145,7 @@ fn split_nested_table_for_available_height(
                 layout.line_height,
                 body_page_height,
                 false,
-                false,
+                keep_after_spacing,
             ) {
                 head_rows.push(NestedRowLayout {
                     cells: split.head_cells,
@@ -26623,9 +26625,9 @@ mod tests {
         nested.table.rows = vec![TableRow::default(); 2];
         nested.height = 104.0;
         assign_row_paragraph_indices(&mut nested.rows[0].cells, 30, &HashMap::new());
-        let (head, tail) = split_nested_table_for_available_height(&nested, 40.0, 100.0)
+        let (head, tail) = split_nested_table_for_available_height(&nested, 40.0, 100.0, false)
             .expect("vertical merge owner must split when its content exceeds available space");
-        let (second, third) = split_nested_table_for_available_height(&tail, 40.0, 100.0)
+        let (second, third) = split_nested_table_for_available_height(&tail, 40.0, 100.0, false)
             .expect("vertical merge tail must support another page boundary");
         let mut indices = Vec::new();
         for fragment in [&head, &second, &third] {
@@ -26662,7 +26664,7 @@ mod tests {
         });
         nested.height = 88.0;
         assign_row_paragraph_indices(&mut nested.rows[0].cells, 30, &HashMap::new());
-        let (head, tail) = split_nested_table_for_available_height(&nested, 40.0, 100.0)
+        let (head, tail) = split_nested_table_for_available_height(&nested, 40.0, 100.0, false)
             .expect("content-driven minimum row should split");
         assert_eq!(head.rows[0].cells[0].blocks.len(), 4);
         assert_eq!(tail.rows[0].cells[0].blocks.len(), 6);
@@ -26672,7 +26674,7 @@ mod tests {
             vec![34, 35, 36, 37, 38, 39]
         );
         nested.table.rows[0].height_rule = Some(TableRowHeightRule::Exact);
-        assert!(split_nested_table_for_available_height(&nested, 40.0, 100.0).is_none());
+        assert!(split_nested_table_for_available_height(&nested, 40.0, 100.0, false).is_none());
     }
 
     #[test]
@@ -26803,7 +26805,7 @@ mod tests {
         );
         assert_eq!(tail.height, 48.0);
         let (next_head, next_tail) =
-            split_nested_table_for_available_height(tail, 33.0, 800.0).unwrap();
+            split_nested_table_for_available_height(tail, 33.0, 800.0, false).unwrap();
         assert_eq!(next_head.rows[0].source_index, 2);
         assert_eq!(next_tail.rows[0].source_index, 4);
         assert_eq!(
@@ -26881,7 +26883,8 @@ mod tests {
             layout.table.rows.push(TableRow::default());
         }
         layout.height = 80.0;
-        let (head, tail) = split_nested_table_for_available_height(&layout, 33.0, 800.0).unwrap();
+        let (head, tail) =
+            split_nested_table_for_available_height(&layout, 33.0, 800.0, false).unwrap();
         assert_eq!(head.rows.len(), 2);
         let owner = &tail.rows[0].cells[0];
         assert!(!owner.skip_render);
@@ -26890,7 +26893,8 @@ mod tests {
         assert!(owner.blocks.is_empty());
         assert_eq!(owner.logical_paragraph_count, 0);
         assert!(collect_cell_paragraph_indices(owner).is_empty());
-        let (second, third) = split_nested_table_for_available_height(&tail, 17.0, 800.0).unwrap();
+        let (second, third) =
+            split_nested_table_for_available_height(&tail, 17.0, 800.0, false).unwrap();
         assert_eq!(second.rows[0].source_index, 2);
         assert_eq!(third.rows[0].source_index, 3);
         assert!(!third.rows[0].cells[0].skip_render);
