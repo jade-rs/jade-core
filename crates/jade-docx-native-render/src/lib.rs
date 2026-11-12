@@ -457,7 +457,9 @@ impl CanvasRenderHost for SkiaRenderHost {
 
     fn arabic_cluster_measurer(&self) -> Option<ArabicClusterMeasurer> {
         let measurer = Rc::clone(&self.measurer);
-        Some(Rc::new(move |text, font| measurer.measure_arabic_clusters(text, font)))
+        Some(Rc::new(move |text, font| {
+            measurer.measure_arabic_clusters(text, font)
+        }))
     }
 
     fn measure_text_metrics(&self, text: &str) -> Result<TextMetrics, JsValue> {

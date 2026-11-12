@@ -8303,9 +8303,8 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
         ctx,
         character_borders,
         &mut lines,
-        base_x,
+        base_x..column_right_edge,
         paragraph_style,
-        column_right_edge,
         source,
         &mut snap_to_chars_cell_width_cache,
     )?;
@@ -8325,9 +8324,8 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
                 ctx,
                 character_borders,
                 &mut lines,
-                base_x,
+                base_x..column_right_edge,
                 paragraph_style,
-                column_right_edge,
                 source,
                 &mut snap_to_chars_cell_width_cache,
             )?;
@@ -9477,9 +9475,8 @@ fn ensure_lines_fit_available_width<C: LineWrapContext>(
     ctx: &C,
     character_borders: bool,
     lines: &mut Vec<WrappedLine>,
-    base_x: f64,
+    column: Range<f64>,
     paragraph_style: &ParagraphStyle,
-    column_right_edge: f64,
     source: Option<ArabicWrapSource<'_>>,
     snap_to_chars_cell_width_cache: &mut FxHashMap<SnapToCharsCacheKey, f64>,
 ) -> Result<(), C::Error> {
@@ -9495,8 +9492,8 @@ fn ensure_lines_fit_available_width<C: LineWrapContext>(
             .map(|line| line.clusters.iter().map(|c| c.width).sum::<f64>())
             .collect::<Vec<_>>()
     });
-    let right_limit = column_right_edge - paragraph_style.right_indent;
-    let base_available = right_limit - base_x;
+    let right_limit = column.end - paragraph_style.right_indent;
+    let base_available = right_limit - column.start;
 
     let mut line_index = 0;
     let mut detached = Vec::new();
@@ -21240,9 +21237,8 @@ mod tests {
             &ctx,
             false,
             &mut lines,
-            0.0,
+            0.0..10.0,
             &ParagraphStyle::default(),
-            10.0,
             None,
             &mut FxHashMap::default(),
         )
@@ -25073,9 +25069,8 @@ mod tests {
             &ctx,
             false,
             &mut lines,
-            0.0,
+            0.0..3.5,
             &paragraph_style,
-            3.5,
             None,
             &mut cache,
         )
@@ -25152,9 +25147,8 @@ mod tests {
             &ctx,
             false,
             &mut lines,
-            0.0,
+            0.0..4.5,
             &paragraph_style,
-            4.5,
             None,
             &mut cache,
         )
@@ -25246,9 +25240,8 @@ mod tests {
             &ctx,
             false,
             &mut lines,
-            0.0,
+            0.0..4.5,
             &paragraph,
-            4.5,
             None,
             &mut FxHashMap::default(),
         )
@@ -25294,7 +25287,7 @@ mod tests {
                 ..ParagraphStyle::default()
             };
             ensure_lines_fit_available_width(&TestContext::new(1.0), false, &mut lines,
-                0.0, &paragraph, first_len.max(second_len) as f64 + 1.5, None,
+                0.0..first_len.max(second_len) as f64 + 1.5, &paragraph, None,
                 &mut FxHashMap::default()).unwrap();
             let output = lines.iter().flat_map(|line| line.segments.iter().map(|segment|
                 segment.text.as_str())).collect::<String>();
@@ -25376,9 +25369,8 @@ mod tests {
             &ctx,
             false,
             &mut lines,
-            0.0,
+            0.0..9.5,
             &paragraph_style,
-            9.5,
             None,
             &mut cache,
         )
@@ -25455,9 +25447,8 @@ mod tests {
             &ctx,
             false,
             &mut lines,
-            0.0,
+            0.0..3.5,
             &paragraph_style,
-            3.5,
             None,
             &mut cache,
         )
@@ -25536,9 +25527,8 @@ mod tests {
             &ctx,
             false,
             &mut lines,
-            0.0,
+            0.0..3.5,
             &paragraph_style,
-            3.5,
             None,
             &mut cache,
         )
@@ -25609,9 +25599,8 @@ mod tests {
             &ctx,
             false,
             &mut lines,
-            0.0,
+            0.0..3.0,
             &paragraph_style,
-            3.0,
             None,
             &mut cache,
         )
@@ -25670,7 +25659,7 @@ mod tests {
             let original_clusters = lines.iter().flat_map(|line| line.clusters.iter().map(|cluster| (cluster.start, cluster.end, cluster.text.clone()))).collect::<Vec<_>>();
             let expected_bold = lines.iter().flat_map(|line| line.segments.iter().map(|segment| ((segment.start, segment.end), segment.properties.as_deref().and_then(|p| p.bold)))).collect::<FxHashMap<_, _>>();
             let paragraph = ParagraphStyle { alignment: if justified { "both" } else { "left" }.into(), ..ParagraphStyle::default() };
-            ensure_lines_fit_available_width(&TestContext::new(1.0), false, &mut lines, 0.0, &paragraph, f64::from(available), None, &mut FxHashMap::default()).unwrap();
+            ensure_lines_fit_available_width(&TestContext::new(1.0), false, &mut lines, 0.0..f64::from(available), &paragraph, None, &mut FxHashMap::default()).unwrap();
             let output = lines.iter().flat_map(|line| line.segments.iter().map(|segment| segment.text.as_str())).collect::<String>();
             prop_assert_eq!(output, format!("{text}終"));
             let clusters = lines.iter().flat_map(|line| line.clusters.iter().map(|cluster| (cluster.start, cluster.end, cluster.text.clone()))).collect::<Vec<_>>();
