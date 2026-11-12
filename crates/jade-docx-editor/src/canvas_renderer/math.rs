@@ -665,22 +665,24 @@ impl DisplayMathStyle<'_> {
                 .or_else(|| inherited.as_ref().and_then(|p| p.bidi))
                 .or_else(|| defaults.and_then(|p| p.bidi))
                 .unwrap_or(false);
-            settings.word_mac_rtl_paragraph = bidi
-                && jade_docx_layout::line_metrics::word_layout_platform()
-                    == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac;
             let alignment = properties
                 .and_then(|p| p.alignment.as_deref())
                 .or_else(|| inherited.as_ref().and_then(|p| p.alignment.as_deref()))
                 .or_else(|| defaults.and_then(|p| p.alignment.as_deref()));
+            let word_mac = jade_docx_layout::line_metrics::word_layout_platform()
+                == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac;
             settings.default_justification = match alignment {
                 Some("center") => MathJustification::Center,
                 Some("right") => MathJustification::Right,
                 Some("left") => MathJustification::Left,
-                Some("end") if !bidi => MathJustification::Right,
+                Some("start") if word_mac => MathJustification::Left,
+                Some("end") if word_mac || !bidi => MathJustification::Right,
                 Some("end") => MathJustification::Left,
                 _ if bidi => MathJustification::Right,
                 _ => MathJustification::Left,
             };
+            settings.word_mac_rtl_paragraph =
+                word_mac && bidi && settings.default_justification == MathJustification::Right;
             settings.wrap_indent_px = 0.0;
             settings.wrap_right = false;
         }
