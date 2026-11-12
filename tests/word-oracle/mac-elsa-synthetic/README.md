@@ -15,3 +15,7 @@ alongside the other glyphs. The page-origins fixture covers authored soft and
 nonbreaking hyphens across three pages with different widths and indents. The
 width probe varies the available width from 26 to 90 pt over two pages and
 checks both the dash and the continuation where a soft break changes wrapping.
+
+The explicit hyphen wrap fixture checks authored soft, nonbreaking, and literal
+hyphens around wrap boundaries. The styled hyphen fixture checks those
+characters across run boundaries, in body text, and in narrow table cells.
