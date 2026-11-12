@@ -2809,9 +2809,10 @@ where
                         column_count,
                     )
                 })
-                .map(|widths| {
+                .and_then(|(widths, wrap_on_shared_grid)| {
                     table_width = widths.iter().sum();
-                    std::mem::replace(&mut column_widths, widths)
+                    let original = std::mem::replace(&mut column_widths, widths);
+                    (!wrap_on_shared_grid).then_some(original)
                 })
         } else {
             None
@@ -9873,10 +9874,50 @@ fn word_mac_constrained_fixed_grid(table: &Table, column_count: usize) -> Option
     {
         return None;
     }
+    let budget = absolute_table_width(table)?;
+    if let [row] = table.rows.as_slice() {
+        let mut widths = absolute_fixed_row_widths(row, column_count)?;
+        let total = widths.iter().sum::<f64>();
+        if total + 0.01 < budget || !fixed_grid_matches_widths(table, &widths) {
+            // A single row can carry the preferred geometry even when the
+            // serialized grid is stale. Scale it to the preferred table width.
+            for width in &mut widths {
+                *width *= budget / total;
+            }
+            return Some(widths);
+        }
+        return None;
+    }
     // Conflicting row widths can exceed the fixed table width. Distribute
     // that width across the largest cell preference in each column.
-    let budget = absolute_table_width(table)?;
     constrained_fixed_grid(table.rows.iter(), column_count, budget)
+}
+
+fn absolute_fixed_row_widths(row: &TableRow, column_count: usize) -> Option<Vec<f64>> {
+    if row.cells.len() != column_count
+        || row.grid_before.unwrap_or_default() != 0
+        || row.grid_after.unwrap_or_default() != 0
+    {
+        return None;
+    }
+    row.cells
+        .iter()
+        .map(|cell| {
+            if cell.span.unwrap_or(1) != 1 || !cell_has_absolute_preferred_width(cell) {
+                return None;
+            }
+            parse_length_to_px(cell.style.get("width")?).filter(|width| *width > 0.0)
+        })
+        .collect()
+}
+
+fn fixed_grid_matches_widths(table: &Table, widths: &[f64]) -> bool {
+    table.columns.len() == widths.len()
+        && table.columns.iter().zip(widths).all(|(column, width)| {
+            column
+                .width
+                .is_some_and(|points| (points_to_px(points) - width).abs() <= 0.01)
+        })
 }
 
 fn absolute_table_width(table: &Table) -> Option<f64> {
@@ -9892,7 +9933,7 @@ fn word_mac_adjacent_fixed_grid(
     index: usize,
     table: &Table,
     column_count: usize,
-) -> Option<Vec<f64>> {
+) -> Option<(Vec<f64>, bool)> {
     if jade_docx_layout::line_metrics::word_layout_platform()
         != jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
         || column_count == 0
@@ -9933,6 +9974,32 @@ fn word_mac_adjacent_fixed_grid(
     if (first_grid_width - budget).abs() > 0.01 {
         return None;
     }
+    // When each table has a complete, consistent single-row grid, Word
+    // shrinks the group by the same ratio while preserving each row's columns.
+    let single_row_widths = group
+        .iter()
+        .map(|element| {
+            let table = element.as_table()?;
+            let [row] = table.rows.as_slice() else {
+                return None;
+            };
+            let widths = absolute_fixed_row_widths(row, column_count)?;
+            let total = widths.iter().sum::<f64>();
+            ((total - absolute_table_width(table)?).abs() <= 0.01
+                && fixed_grid_matches_widths(table, &widths))
+            .then_some(total)
+        })
+        .collect::<Option<Vec<_>>>();
+    if let Some(totals) = single_row_widths {
+        let widest = totals.into_iter().fold(0.0_f64, f64::max);
+        if widest > budget + 0.01 {
+            let mut widths = absolute_fixed_row_widths(&table.rows[0], column_count)?;
+            for width in &mut widths {
+                *width *= budget / widest;
+            }
+            return Some((widths, true));
+        }
+    }
     // Word shares the grid of consecutive tables with the same style. Each
     // source table still uses its own cell width for wrapping its paragraphs.
     constrained_fixed_grid(
@@ -9943,6 +10010,7 @@ fn word_mac_adjacent_fixed_grid(
         column_count,
         budget,
     )
+    .map(|widths| (widths, false))
 }
 
 fn constrained_fixed_grid<'a>(
