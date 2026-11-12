@@ -16108,7 +16108,7 @@ where
                 options,
                 numbering_part,
                 numbering_counter,
-                deleted_numbering_offsets,
+                body_element_index,
             ),
             BodyElement::Math(math) => self.render_math_block(math),
         }

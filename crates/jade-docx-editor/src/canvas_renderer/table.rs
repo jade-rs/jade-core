@@ -2593,7 +2593,7 @@ where
         options: &Options,
         numbering_part: Option<&NumberingPart>,
         numbering_counter: &mut NumberingCounter,
-        deleted_numbering_offsets: &mut HashMap<String, Vec<u32>>,
+        body_element_index: usize,
     ) -> Result<(), JsValue> {
         // A table's cells are nodes of a tagged PDF's structure.
         self.begin_structure_table();
@@ -2602,7 +2602,7 @@ where
             options,
             numbering_part,
             numbering_counter,
-            deleted_numbering_offsets,
+            body_element_index,
         );
         self.end_structure_table();
         result
@@ -2614,7 +2614,7 @@ where
         options: &Options,
         numbering_part: Option<&NumberingPart>,
         numbering_counter: &mut NumberingCounter,
-        _deleted_numbering_offsets: &mut HashMap<String, Vec<u32>>,
+        body_element_index: usize,
     ) -> Result<(), JsValue> {
         let measure_keep_next_prefix = std::mem::take(&mut self.keep_next_table_prefix);
         // 表の描画は本文と経路が分かれていて Options を持ち回っていない。
@@ -2766,7 +2766,7 @@ where
             self.document_east_asian_rules.compatibility_mode,
         );
         let mut column_widths = compute_column_widths(table, column_count, sizing_width);
-        let (table_width, mut natural_paragraph_layouts) =
+        let (mut table_width, mut natural_paragraph_layouts) =
             apply_table_layout_width_for_table_with_content(
                 &table_wrap_context,
                 table,
@@ -2783,6 +2783,26 @@ where
             )?;
 
         adjust_windows_negative_spacing_columns(table, &mut column_widths);
+        let original_widths = if !self.rendering_header_footer_story && !self.rendering_note_story {
+            self.last_document
+                .as_ref()
+                .and_then(|document| document.body.as_ref())
+                .and_then(|body| {
+                    word_mac_adjacent_fixed_grid(
+                        &body.elements,
+                        body_element_index,
+                        table,
+                        column_count,
+                    )
+                })
+                .map(|widths| {
+                    table_width = widths.iter().sum();
+                    std::mem::replace(&mut column_widths, widths)
+                })
+        } else {
+            None
+        };
+        let wrapping_widths = original_widths.as_deref().unwrap_or(&column_widths);
 
         let order_index = self.table_counter;
         self.table_counter += 1;
@@ -2888,7 +2908,7 @@ where
                     &table_wrap_context,
                     row,
                     table,
-                    &column_widths,
+                    wrapping_widths,
                     &layout_config,
                     row_height_hint,
                     visible_row_index,
@@ -3253,7 +3273,7 @@ where
                                         &table_wrap_context,
                                         row,
                                         table,
-                                        &column_widths,
+                                        wrapping_widths,
                                         &layout_config,
                                         hint,
                                         visible_index,
@@ -3304,7 +3324,7 @@ where
                                         &table_wrap_context,
                                         row,
                                         table,
-                                        &column_widths,
+                                        wrapping_widths,
                                         &layout_config,
                                         hint,
                                         visible_index,
@@ -3526,7 +3546,7 @@ where
                             &table_wrap_context,
                             row,
                             table,
-                            &column_widths,
+                            wrapping_widths,
                             &layout_config,
                             hint,
                             visible_index,
@@ -9736,6 +9756,10 @@ impl WindowsPositiveSpacingGrid {
 }
 
 fn compute_column_widths(table: &Table, column_count: usize, available_width: f64) -> Vec<f64> {
+    if let Some(widths) = word_mac_constrained_fixed_grid(table, column_count) {
+        return widths;
+    }
+
     let mut widths = vec![0.0_f64; column_count];
     let mut grid_defined = vec![false; column_count];
     let grid = if word_mac_sizes_without_grid(table, column_count) {
@@ -9805,6 +9829,126 @@ fn compute_column_widths(table: &Table, column_count: usize, available_width: f6
     }
 
     widths
+}
+
+fn word_mac_constrained_fixed_grid(table: &Table, column_count: usize) -> Option<Vec<f64>> {
+    if jade_docx_layout::line_metrics::word_layout_platform()
+        != jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
+        || resolve_table_layout_mode(table) != TableLayoutMode::Fixed
+        || column_count == 0
+    {
+        return None;
+    }
+    // Conflicting row widths can exceed the fixed table width. Distribute
+    // that width across the largest cell preference in each column.
+    let budget = absolute_table_width(table)?;
+    constrained_fixed_grid(table.rows.iter(), column_count, budget)
+}
+
+fn absolute_table_width(table: &Table) -> Option<f64> {
+    let width = table.style.get("width")?;
+    if !width.trim().ends_with("pt") {
+        return None;
+    }
+    parse_length_to_px(width).filter(|width| *width > 0.0)
+}
+
+fn word_mac_adjacent_fixed_grid(
+    elements: &[BodyElement],
+    index: usize,
+    table: &Table,
+    column_count: usize,
+) -> Option<Vec<f64>> {
+    if jade_docx_layout::line_metrics::word_layout_platform()
+        != jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
+        || column_count == 0
+        || table_floats(table)
+    {
+        return None;
+    }
+    let is_matching = |other: &&Table| {
+        other.style_name == table.style_name
+            && other.bidi_visual == table.bidi_visual
+            && resolve_table_layout_mode(other) == TableLayoutMode::Fixed
+            && !table_floats(other)
+            && other.columns.len() == column_count
+    };
+    let (element, next) = elements.get(index..)?.split_first()?;
+    if !std::ptr::eq(element.as_table().filter(is_matching)?, table) {
+        return None;
+    }
+    let previous_count = elements[..index]
+        .iter()
+        .rev()
+        .map_while(|element| element.as_table().filter(is_matching))
+        .count();
+    let next_count = next
+        .iter()
+        .map_while(|element| element.as_table().filter(is_matching))
+        .count();
+    if previous_count + next_count == 0 {
+        return None;
+    }
+    let group = &elements[index - previous_count..=index + next_count];
+    let first = group.first()?.as_table()?;
+    let budget = absolute_table_width(first)?;
+    let first_grid_width = first.columns.iter().try_fold(0.0, |width, column| {
+        column.width.map(|points| width + points_to_px(points))
+    })?;
+    // An explicit resize of the first table can leave tblW unchanged.
+    if (first_grid_width - budget).abs() > 0.01 {
+        return None;
+    }
+    // Word shares the grid of consecutive tables with the same style. Each
+    // source table still uses its own cell width for wrapping its paragraphs.
+    constrained_fixed_grid(
+        group
+            .iter()
+            .filter_map(BodyElement::as_table)
+            .flat_map(|table| &table.rows),
+        column_count,
+        budget,
+    )
+}
+
+fn constrained_fixed_grid<'a>(
+    rows: impl Iterator<Item = &'a TableRow>,
+    column_count: usize,
+    budget: f64,
+) -> Option<Vec<f64>> {
+    let mut widths = vec![0.0_f64; column_count];
+    let mut oversized_row = false;
+    let mut conflicting_rows = false;
+    for (row_index, row) in rows.enumerate() {
+        if row.cells.len() != column_count
+            || row.grid_before.unwrap_or_default() != 0
+            || row.grid_after.unwrap_or_default() != 0
+        {
+            return None;
+        }
+        let mut row_width = 0.0;
+        for (cell, column_width) in row.cells.iter().zip(&mut widths) {
+            if cell.span.unwrap_or(1) != 1 || !cell_has_absolute_preferred_width(cell) {
+                return None;
+            }
+            let width =
+                parse_length_to_px(cell.style.get("width")?).filter(|width| *width > 0.0)?;
+            conflicting_rows |= row_index > 0 && (width - *column_width).abs() > 0.01;
+            *column_width = column_width.max(width);
+            row_width += width;
+        }
+        oversized_row |= row_width > budget + 0.01;
+    }
+    // Uniform rows can also follow a resize that explicitly changed the
+    // grid and cell widths. Preserve that grid even if tblW is smaller.
+    if !oversized_row || !conflicting_rows {
+        return None;
+    }
+    let total: f64 = widths.iter().sum();
+    for width in &mut widths {
+        *width *= budget / total;
+    }
+    Some(widths)
 }
 
 /// Ensures the table has a measurable width when no column widths are defined.
