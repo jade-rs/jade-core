@@ -3185,10 +3185,12 @@ where
                                 ) <= full_page_content_height;
                         // Word for Mac moves a new row that fits on the next page
                         // when an occupied cell cannot start here with its spacing.
-                        let keep_after_spacing = row_start
-                            && pending_height <= full_page_content_height + ROW_SPLIT_EPSILON
-                            && jade_docx_layout::line_metrics::word_layout_platform()
+                        let keep_after_spacing =
+                            jade_docx_layout::line_metrics::word_layout_platform()
                                 == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac;
+                        let move_row_if_cell_cannot_start = keep_after_spacing
+                            && row_start
+                            && pending_height <= full_page_content_height + ROW_SPLIT_EPSILON;
                         let split_row = |cells: &[PreparedCell], height| {
                             split_prepared_row_for_available_height(
                                 cells,
@@ -3198,7 +3200,9 @@ where
                                 tail_has_header,
                                 keep_after_spacing,
                             )
-                            .filter(|split| !keep_after_spacing || split.starts_all_cells())
+                            .filter(|split| {
+                                !move_row_if_cell_cannot_start || split.starts_all_cells()
+                            })
                         };
                         let mut split = split_row(pending_cells.as_slice(), available_height);
                         if split.as_ref().is_some_and(|split| {
@@ -11961,6 +11965,20 @@ fn split_prepared_row_for_available_height(
                     // Consume the shared layout's existing lines without
                     // rewrapping or rebasing glyph/run/selection offsets.
                     let line_count = paragraph.lines.len();
+                    let fresh_cell_height = (full_page_content_height
+                        - cell.padding.vertical()
+                        - 2.0 * cell.cell_spacing)
+                        .max(0.0);
+                    let keep_paragraph_after_spacing = keep_after_spacing
+                        && paragraph.lines.last().is_some_and(|line| {
+                            let before = if line_count == 1 {
+                                paragraph.spacing_before
+                            } else {
+                                0.0
+                            };
+                            before + paragraph.line_advance(line) + paragraph.spacing_after
+                                <= fresh_cell_height + ROW_SPLIT_EPSILON
+                        });
                     let advance = paragraph.height / line_count.max(1) as f64;
                     let head_count = if advance > ROW_SPLIT_EPSILON {
                         ((content_limit - consumed - paragraph.spacing_before + ROW_SPLIT_EPSILON)
@@ -11969,7 +11987,7 @@ fn split_prepared_row_for_available_height(
                     } else {
                         0
                     };
-                    if !keep_after_spacing && line_count > 0 && head_count >= line_count {
+                    if !keep_paragraph_after_spacing && line_count > 0 && head_count >= line_count {
                         // All text fits. Continue only the overflowing margin,
                         // rather than moving this paragraph's text to the next page.
                         let remaining = (content_limit
@@ -11997,11 +12015,8 @@ fn split_prepared_row_for_available_height(
                     if let Some((head, tail)) = split_cell_paragraph(
                         block,
                         (content_limit - consumed).max(0.0),
-                        (full_page_content_height
-                            - cell.padding.vertical()
-                            - 2.0 * cell.cell_spacing)
-                            .max(0.0),
-                        keep_after_spacing,
+                        fresh_cell_height,
+                        keep_paragraph_after_spacing,
                     ) {
                         head_blocks.push(head);
                         tail_blocks.push(tail);
