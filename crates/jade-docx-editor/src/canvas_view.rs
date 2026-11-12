@@ -9311,6 +9311,7 @@ impl OffscreenDocumentView {
             _ => None,
         };
 
+        let mut bounded_history = None;
         {
             let mut renderer = self.renderer.borrow_mut();
             let retained_height = retained_paragraph.and_then(|index| {
@@ -9343,6 +9344,27 @@ impl OffscreenDocumentView {
                     .unwrap_or(1);
                 Self::ensure_visible_page_range_for_edit(&mut renderer, lazy_mode, anchor_page);
                 if lazy_mode {
+                    // A completed layout can keep its authoritative page count.
+                    // An already-partial layout can instead repaint the edit
+                    // window, as typing does. Leave wider selections and
+                    // object selections on the regular history path.
+                    if !renderer.last_layout_complete()
+                        && selected_object_before.is_none()
+                        && renderer.use_selection_overlay()
+                    {
+                        if let Some(selection) = new_selection.filter(|range| {
+                            range.is_collapsed()
+                                && retained_paragraph == Some(range.focus.paragraph)
+                                && renderer
+                                    .cached_paragraph_start_page(range.focus.paragraph)
+                                    .is_some()
+                        }) {
+                            bounded_history = Some((
+                                Self::lazy_visible_end(&renderer, anchor_page),
+                                selection.focus,
+                            ));
+                        }
+                    }
                     // Same visible-window seek as insert-text: a single-paragraph
                     // restore cannot change the paragraph count, so resuming at
                     // the first visible page (never past `dirty_from`) is as safe
@@ -9397,14 +9419,40 @@ impl OffscreenDocumentView {
                         renderer.restore_local_text_edit_cache(edit_cache, word_doc, index);
                     }
                     renderer.prepare_wrap_cache_capacity(word_doc);
-                    renderer.render_with_numbering_rc(
-                        Rc::clone(document),
-                        &options,
-                        numbering_part.as_ref(),
-                        header_lines.as_deref(),
-                        footer_lines.as_deref(),
-                        Some(&word_doc.comments),
-                    )?;
+                    let render_history = |renderer: &mut CanvasRenderer| {
+                        renderer.render_with_numbering_rc(
+                            Rc::clone(document),
+                            &options,
+                            numbering_part.as_ref(),
+                            header_lines.as_deref(),
+                            footer_lines.as_deref(),
+                            Some(&word_doc.comments),
+                        )
+                    };
+                    let previous_limit = renderer.layout_page_limit();
+                    if let Some((limit, caret)) = bounded_history.filter(|&(limit, _)| {
+                        previous_limit.is_none_or(|previous| limit < previous)
+                    }) {
+                        renderer.set_layout_page_limit(Some(limit));
+                        let rendered = render_history(&mut renderer);
+                        renderer.set_layout_page_limit(previous_limit);
+                        rendered?;
+
+                        // A restored paragraph can span the window boundary.
+                        // Keep the regular history path if its end or restored
+                        // caret is outside the layout produced above.
+                        if !renderer
+                            .cached_paragraph_end_page(caret.paragraph)
+                            .is_some_and(|end_page| end_page <= limit)
+                            || renderer.clamp_text_position(caret) != caret
+                            || renderer.caret_metrics_at(caret).is_none()
+                        {
+                            renderer.skip_change_detection_once();
+                            render_history(&mut renderer)?;
+                        }
+                    } else {
+                        render_history(&mut renderer)?;
+                    }
                 }
             }
         }
