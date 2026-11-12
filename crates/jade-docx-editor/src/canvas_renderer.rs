@@ -2762,6 +2762,50 @@ fn restore_unchanged_paragraph_regions<T>(
     current.sort_by_key(owner);
 }
 
+struct StableEditMetadata {
+    comments: CommentAnnotations,
+    images: Vec<ImageDebugInfo>,
+    objects: Vec<RegisteredObjectRegion>,
+}
+
+impl StableEditMetadata {
+    // Keep metadata preservation out of the full-render code path.
+    #[inline(never)]
+    fn capture(
+        comments: &mut CommentAnnotations,
+        images: &mut Vec<ImageDebugInfo>,
+        objects: &[RegisteredObjectRegion],
+    ) -> Self {
+        Self {
+            comments: std::mem::take(comments),
+            images: std::mem::take(images),
+            objects: objects.to_vec(),
+        }
+    }
+
+    #[inline(never)]
+    fn restore(
+        self,
+        edited: usize,
+        comments: Option<(
+            &mut CommentAnnotations,
+            Option<&std::ops::RangeInclusive<usize>>,
+        )>,
+        images: &mut Vec<ImageDebugInfo>,
+        objects: &mut Vec<RegisteredObjectRegion>,
+    ) {
+        if let Some((comments, window)) = comments {
+            comments.restore_unchanged(self.comments, edited, window);
+        }
+        restore_unchanged_paragraph_regions(images, self.images, edited, |region| {
+            (region.page, region.paragraph_index)
+        });
+        restore_unchanged_paragraph_regions(objects, self.objects, edited, |region| {
+            (region.page, region.paragraph_index)
+        });
+    }
+}
+
 fn paragraph_has_floating_or_math(paragraph: &Paragraph) -> bool {
     paragraph
         .runs
@@ -14852,12 +14896,12 @@ where
             .fast_replay_trigger
             .filter(|_| preserve_stable_edit_pagination)
             .map(|(paragraph, _)| {
-                (
-                    paragraph,
-                    std::mem::take(&mut self.comment_annotations),
-                    std::mem::take(self.image_debug_regions.get_mut()),
-                    self.object_debug_regions.borrow().clone(),
-                )
+                let metadata = StableEditMetadata::capture(
+                    &mut self.comment_annotations,
+                    self.image_debug_regions.get_mut(),
+                    self.object_debug_regions.get_mut(),
+                );
+                (paragraph, metadata)
             });
         self.comment_annotations.clear();
         // The stable-edit exit leaves the paragraphs after the edited one
@@ -15799,25 +15843,16 @@ where
             if preserve_stable_edit_pagination {
                 self.selection.restore_cell_layouts(previous_cells);
             }
-            if let Some((edited, comments, images, objects)) = stable_edit_metadata {
-                if options.render_comments && !self.render_skip_draw {
-                    self.comment_annotations.restore_unchanged(
-                        comments,
-                        edited,
-                        self.visible_page_range.as_ref(),
-                    );
-                }
-                restore_unchanged_paragraph_regions(
+            if let Some((edited, metadata)) = stable_edit_metadata {
+                let comments = (options.render_comments && !self.render_skip_draw).then_some((
+                    &mut self.comment_annotations,
+                    self.visible_page_range.as_ref(),
+                ));
+                metadata.restore(
+                    edited,
+                    comments,
                     self.image_debug_regions.get_mut(),
-                    images,
-                    edited,
-                    |region| (region.page, region.paragraph_index),
-                );
-                restore_unchanged_paragraph_regions(
                     self.object_debug_regions.get_mut(),
-                    objects,
-                    edited,
-                    |region| (region.page, region.paragraph_index),
                 );
             }
         }
