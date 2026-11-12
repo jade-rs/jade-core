@@ -37,3 +37,7 @@ and the Kannada, Malayalam, Tamil, Gurmukhi, and Oriya Sangam MN faces.
 letters in fixed-width Arial table cells, including controls in separate
 runs and cells narrow enough to force emergency wrapping. The five pages
 also cover zero-width spaces and widths where the letters fit together.
+
+`latin-join-control-line-metrics` checks the extra line height of a
+soft-wrapped ZWJ in narrow Arial table cells. Its twelve pages cover four
+font sizes, single and 1.15 line spacing, and inherited and explicit spacing.

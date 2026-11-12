@@ -3806,6 +3806,36 @@ impl WrappedLine {
         extent
     }
 
+    /// A soft-wrapped line containing only ZWJs uses a fallback font box on Mac.
+    pub fn mac_joiner_line_box_px(&self) -> Option<f64> {
+        if self.break_kind != LineBreakKind::Soft
+            || !self
+                .clusters
+                .first()
+                .is_some_and(|cluster| cluster.text == "\u{200d}")
+            || crate::line_metrics::word_layout_platform()
+                != crate::line_metrics::WordLayoutPlatform::Mac
+            || !self
+                .clusters
+                .iter()
+                .all(|cluster| cluster.text == "\u{200d}")
+        {
+            return None;
+        }
+        self.segments
+            .iter()
+            .filter_map(|segment| {
+                let style = crate::font_resolver::resolve_run_style_for_wrap(
+                    segment.properties.as_deref(),
+                    None,
+                );
+                crate::line_metrics::word_mac_joiner_line_height_px(
+                    &style.font_descriptor_latin_ascii,
+                )
+            })
+            .reduce(f64::max)
+    }
+
     pub fn line_height_px(&self, style: &ParagraphStyle, fallback_px: f64) -> f64 {
         if style.exact_line_spacing {
             return fallback_px;
