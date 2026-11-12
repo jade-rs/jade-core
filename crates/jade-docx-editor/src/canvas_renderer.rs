@@ -24805,8 +24805,7 @@ where
                     &prepared.glyph_steps,
                 )
                 .map_err(PainterError::into_js_value)?;
-                // Automatic hyphenation's hyphen, after the line's last
-                // letter in its run's style: not in the text, only drawn.
+                // Paint the line-end hyphen in the final cluster's run style.
                 if let (Some(hyphen), Some(last_step), true) = (
                     wrapped_line.hyphen,
                     prepared.glyph_steps.last(),

@@ -3416,14 +3416,12 @@ pub struct WrappedLine {
     pub leaders: Vec<TabLeaderSegment>,
     pub tab_stops: Vec<TabStopSegment>,
     pub clusters: Vec<InlineCluster>,
-    /// The hyphen automatic hyphenation ends this line with, drawn after its
-    /// last character in that character's run style. Its width is already
-    /// in the last cluster's advance, so alignment and justification count it.
+    /// The hyphen drawn at an automatic or discretionary break, using the
+    /// final cluster's run style. Its width is included in that cluster's advance.
     pub hyphen: Option<LineHyphen>,
 }
 
-/// A hyphen Word's automatic hyphenation adds at a line end: not in the
-/// document's text, only drawn.
+/// The painted hyphen at a hyphenation break.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct LineHyphen {
     /// Advance of the hyphen in px.
@@ -8123,6 +8121,9 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
         }
     }
     reconcile_mac_cjk_wrap_kerning(ctx, paragraph_style, &initial_soft_starts, &mut lines)?;
+    if text.contains('\u{ad}') {
+        hyphenate::show_discretionary_hyphens(ctx, &mut lines, paragraph_style, base_available)?;
+    }
     hyphenate::hyphenate_lines(ctx, &mut lines, paragraph_style, base_available)?;
     // Border detection already checked every original segment. Ordinary text
     // cannot acquire a border while clusters move, so reuse that result and
