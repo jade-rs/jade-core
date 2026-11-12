@@ -178,6 +178,29 @@ def arabic_spans(body, expected_runs):
     return spans
 
 
+def shaped_glyph_clusters(body, expected_clusters):
+    """Group Word's visual-order glyphs for a logical DOCX cluster."""
+    output = []
+    start = 0
+    for visual, logical in expected_clusters:
+        if not visual or sorted("".join(visual)) != sorted(logical):
+            raise ValueError(f"Invalid shaped glyph cluster: {visual!r}, {logical!r}")
+        for index in range(start, len(body) - len(visual) + 1):
+            glyphs = body[index:index + len(visual)]
+            if [glyph[0] for glyph in glyphs] != visual:
+                continue
+            if len({glyph[2] for glyph in glyphs}) != 1:
+                raise ValueError(f"Shaped glyph cluster crosses baselines: {visual!r}")
+            output.extend(body[start:index])
+            output.append([logical, min(glyph[1] for glyph in glyphs), glyphs[0][2]])
+            start = index + len(visual)
+            break
+        else:
+            raise ValueError(f"Missing shaped glyph cluster in the Word export: {visual!r}")
+    output.extend(body[start:])
+    return output
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("fixture", type=Path, help="directory containing source.docx and manifest.json")
@@ -218,6 +241,12 @@ def main():
             raise ValueError("Arabic run recipe has the wrong page count")
         for page, expected_runs in zip(pages, runs):
             page["arabicSpans"] = arabic_spans(page["body"], expected_runs)
+    if "shapedGlyphClusters" in manifest:
+        clusters = manifest["shapedGlyphClusters"]
+        if len(clusters) != len(pages):
+            raise ValueError("Shaped glyph cluster recipe has the wrong page count")
+        for page, expected_clusters in zip(pages, clusters):
+            page["body"] = shaped_glyph_clusters(page["body"], expected_clusters)
     data = gzip.compress(json.dumps(pages, ensure_ascii=False, separators=(",", ":")).encode(), mtime=0)
     (fixture / "pages.json.gz").write_bytes(data)
     manifest["coordinatesSha256"] = sha256(data).hexdigest()
