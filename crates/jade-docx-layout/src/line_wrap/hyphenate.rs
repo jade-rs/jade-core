@@ -27,6 +27,7 @@ pub(super) fn show_discretionary_hyphens<C: LineWrapContext>(
         return Ok(());
     }
     let available = |index| paragraph_style.available_width_for_line(base_available, index);
+    let word_mac = paragraph_style.word_platform == crate::line_metrics::WordLayoutPlatform::Mac;
     let mut index = 0;
     while index + 1 < lines.len() {
         if let Some((candidate, width)) =
@@ -47,12 +48,16 @@ pub(super) fn show_discretionary_hyphens<C: LineWrapContext>(
                         .clusters
                         .iter()
                         .all(|c| c.kind == InlineClusterKind::Grapheme);
-                if fits || has_word_continuation(&lines[index + 1..]) {
+                let can_reflow = !fits && word_mac && has_plain_latin_lines(&lines[index + 1..]);
+                if fits || can_reflow || has_word_continuation(&lines[index + 1..]) {
                     let (head, tail) = lines.split_at_mut(index + 1);
                     move_discretionary_suffix(&mut head[index], &mut tail[0], candidate + 1);
                     mark_hyphen(&mut head[index], width);
                     if !fits {
-                        refit_word_continuation(lines, index + 1, &available);
+                        refit_word_continuation(lines, index + 1, &available, can_reflow);
+                        if can_reflow {
+                            reflow_after(lines, index + 1, &available);
+                        }
                     }
                 }
             }
@@ -115,6 +120,25 @@ fn has_word_continuation(lines: &[WrappedLine]) -> bool {
     false
 }
 
+fn has_plain_latin_lines(lines: &[WrappedLine]) -> bool {
+    for line in lines {
+        if line.hyphen.is_some()
+            || !line.clusters.iter().all(|cluster| {
+                cluster.kind == InlineClusterKind::Grapheme
+                    && (cluster.is_whitespace
+                        || is_word_letter(&cluster.text)
+                        || cluster.text.chars().all(|ch| ch.is_ascii_punctuation()))
+            })
+        {
+            return false;
+        }
+        if line.break_kind != LineBreakKind::Soft {
+            return true;
+        }
+    }
+    false
+}
+
 fn move_discretionary_suffix(line: &mut WrappedLine, next: &mut WrappedLine, keep: usize) {
     while line.clusters.len() > keep {
         let Some((cluster, segment)) = detach_trailing_cluster(line) else {
@@ -129,11 +153,12 @@ fn refit_word_continuation(
     lines: &mut Vec<WrappedLine>,
     start: usize,
     available: &impl Fn(usize) -> f64,
+    preserve_words: bool,
 ) {
     let mut index = start;
     loop {
         let mut used = 0.0;
-        let keep = lines[index]
+        let mut keep = lines[index]
             .clusters
             .iter()
             .take_while(|cluster| {
@@ -144,6 +169,18 @@ fn refit_word_continuation(
             .max(1);
         if keep >= lines[index].clusters.len() {
             break;
+        }
+        if preserve_words
+            && is_word_letter(&lines[index].clusters[keep - 1].text)
+            && is_word_letter(&lines[index].clusters[keep].text)
+        {
+            if let Some(separator) = lines[index].clusters[..keep]
+                .iter()
+                .rposition(|cluster| cluster.is_whitespace)
+                .filter(|position| *position > 0)
+            {
+                keep = separator + 1;
+            }
         }
         if lines[index].break_kind != LineBreakKind::Soft {
             let line = &mut lines[index];

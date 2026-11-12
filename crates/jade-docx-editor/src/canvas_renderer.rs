@@ -22981,23 +22981,23 @@ where
                     + content_height)
                     .min(height)
             };
-            let lines_fit = if line_heights.is_some() {
+            let (mut lines_fit, occupied) = if line_heights.is_some() {
                 let mut occupied = 0.0;
                 let mut fit = 0;
                 while fit < band_count && occupied + band_height(fit) <= remaining + 1e-6 {
                     occupied += band_height(fit);
                     fit += 1;
                 }
-                // Only the first band past the foot can stay by its padding,
-                // and its font box walks the line's clusters: a paragraph that
-                // fits, the usual case for every keystroke, never pays for it.
-                if fit < band_count && occupied + band_fit_height(fit) <= remaining + 1e-6 {
-                    fit += 1;
-                }
-                fit
+                (fit, occupied)
             } else {
-                ((remaining + 1e-6) / line_height).floor() as usize
+                let fit = ((remaining + 1e-6) / line_height).floor() as usize;
+                (fit, fit as f64 * line_height)
             };
+            // A constant-height plan can also keep one more band if only
+            // the leading below its text crosses the page foot.
+            if lines_fit < band_count && occupied + band_fit_height(lines_fit) <= remaining + 1e-6 {
+                lines_fit += 1;
+            }
             match resolve_widow_orphan_decision(band_count, lines_fit) {
                 WidowOrphanDecision::MoveWholeParagraph => {
                     self.ensure_space(paragraph_height)?;
