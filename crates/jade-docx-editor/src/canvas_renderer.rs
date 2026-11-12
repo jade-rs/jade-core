@@ -43873,6 +43873,7 @@ mod tests {
                 font_bounding_box_descent: 2.0,
                 actual_bounding_box_ascent: 8.0,
                 actual_bounding_box_descent: 2.0,
+                actual_bounding_box_left: 0.0,
                 actual_bounding_box_right: width,
             })
         }
@@ -44138,6 +44139,7 @@ mod tests {
                 font_bounding_box_descent: 2.0,
                 actual_bounding_box_ascent: 8.0,
                 actual_bounding_box_descent: 2.0,
+                actual_bounding_box_left: 0.0,
                 actual_bounding_box_right: width,
             })
         }

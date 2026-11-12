@@ -104,6 +104,8 @@ const ROW_SPLIT_EPSILON: f64 = 0.001;
 /// measurement can accumulate a few millionths of a pixel across mixed runs;
 /// without this tolerance an exactly fitted final word may wrap by itself.
 const CELL_FIT_TEXT_EPSILON_PX: f64 = 0.01;
+// Preserve origins at the edge when font rasterizers disagree on subpixel bearings.
+const CELL_CAPTURE_INK_EDGE_TOLERANCE_PX: f64 = 0.25;
 // Keep enough entries for a full layout walk of long, table-heavy documents.
 const TABLE_AUTOFIT_CACHE_CAPACITY: usize = 128;
 const TABLE_ASCII_MEASURE_MEMO_CAPACITY: usize = 4096;
@@ -4605,8 +4607,11 @@ where
                                     paragraph,
                                     line,
                                     &selection_line,
-                                    clip,
-                                    projection_right,
+                                    TableLineClip {
+                                        vertical: clip,
+                                        ancestor_right: projection_right,
+                                        cell_right: x_start + cell_width,
+                                    },
                                 )?;
                             }
                             self.draw_selection_highlight(paragraph_index, &selection_line)?;
@@ -5984,21 +5989,25 @@ where
         paragraph: &CellParagraph,
         line: &LineLayout,
         selection_line: &SelectionLineLayout,
-        (clip_top, clip_bottom): (f64, f64),
-        clip_right: Option<f64>,
+        clip: TableLineClip,
     ) -> Result<(), JsValue> {
+        let (clip_top, clip_bottom) = clip.vertical;
         let empty_clip = clip_bottom <= clip_top;
         let check_vertical = empty_clip
             || (line.word_baseline_offset.is_some()
                 && (selection_line.top < clip_top
                     || selection_line.top + selection_line.height > clip_bottom));
-        let clip_right = clip_right.filter(|right| {
+        let reaches_right = |right: f64| {
             selection_line
                 .fragments
                 .iter()
-                .any(|fragment| fragment.x + fragment.width >= *right)
-        });
-        if line.text.is_empty() || (!check_vertical && clip_right.is_none()) {
+                .any(|fragment| fragment.x + fragment.width >= right)
+        };
+        let clip_right = clip.ancestor_right.filter(|right| reaches_right(*right));
+        let check_cell_right = jade_docx_layout::line_metrics::word_layout_platform()
+            == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
+            && reaches_right(clip.cell_right);
+        if line.text.is_empty() || (!check_vertical && clip_right.is_none() && !check_cell_right) {
             return Ok(());
         }
         let spans = if empty_clip {
@@ -6056,20 +6065,30 @@ where
                     active_span = Some(span_index);
                     ink_cache.clear();
                 }
-                let (ascent, descent) = ink_cache.measure(text, || {
+                let metrics = ink_cache.measure(text, || {
                     let metrics = painter
                         .measure_text_metrics(text)
                         .map_err(PainterError::into_js_value)?;
-                    Ok::<_, JsValue>((
-                        metrics.actual_bounding_box_ascent,
-                        metrics.actual_bounding_box_descent,
-                    ))
+                    Ok::<_, JsValue>(GlyphInk {
+                        ascent: metrics.actual_bounding_box_ascent,
+                        descent: metrics.actual_bounding_box_descent,
+                        left: metrics.actual_bounding_box_left,
+                        right: metrics.actual_bounding_box_right,
+                    })
                 })?;
+                if check_cell_right
+                    && metrics.left.is_finite()
+                    && metrics.right + metrics.left > 0.0
+                    && fragment.x + glyph.x - metrics.left
+                        >= clip.cell_right + CELL_CAPTURE_INK_EDGE_TOLERANCE_PX
+                {
+                    continue;
+                }
                 if !check_vertical
                     || glyph_ink_intersects_vertical_clip(
                         baseline,
-                        ascent,
-                        descent,
+                        metrics.ascent,
+                        metrics.descent,
                         clip_top,
                         clip_bottom,
                     )
@@ -11398,6 +11417,12 @@ struct TableProjectionClip {
     right: Option<f64>,
 }
 
+struct TableLineClip {
+    vertical: (f64, f64),
+    ancestor_right: Option<f64>,
+    cell_right: f64,
+}
+
 fn intersect_vertical_clips(
     local: Option<(f64, f64)>,
     ancestor: Option<(f64, f64)>,
@@ -11408,10 +11433,18 @@ fn intersect_vertical_clips(
     }
 }
 
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+struct GlyphInk {
+    ascent: f64,
+    descent: f64,
+    left: f64,
+    right: f64,
+}
+
 /// Capture-local, bounded borrowed keys; no heap or persistent font cache.
 #[derive(Default)]
 struct ClippedGlyphInkCache<'a> {
-    slots: [Option<(&'a str, (f64, f64))>; 16],
+    slots: [Option<(&'a str, GlyphInk)>; 16],
     next: usize,
 }
 
@@ -11424,8 +11457,8 @@ impl<'a> ClippedGlyphInkCache<'a> {
     fn measure<E>(
         &mut self,
         text: &'a str,
-        measure: impl FnOnce() -> Result<(f64, f64), E>,
-    ) -> Result<(f64, f64), E> {
+        measure: impl FnOnce() -> Result<GlyphInk, E>,
+    ) -> Result<GlyphInk, E> {
         if let Some((_, ink)) = self.slots.iter().flatten().find(|(key, _)| *key == text) {
             return Ok(*ink);
         }
@@ -23826,35 +23859,40 @@ mod tests {
 
     #[test]
     fn clipped_ink_cache_reuses_glyphs_resets_fonts_and_retries_errors() {
+        let ink = |ascent, descent| GlyphInk {
+            ascent,
+            descent,
+            ..GlyphInk::default()
+        };
         let mut cache = ClippedGlyphInkCache::default();
         assert_eq!(
-            cache.measure("a", || Ok::<_, ()>((10.0, 1.0))),
-            Ok((10.0, 1.0))
+            cache.measure("a", || Ok::<_, ()>(ink(10.0, 1.0))),
+            Ok(ink(10.0, 1.0))
         );
         assert_eq!(
             cache.measure("a", || -> Result<_, ()> { panic!("duplicate measure") }),
-            Ok((10.0, 1.0))
+            Ok(ink(10.0, 1.0))
         );
         cache.clear();
         assert_eq!(
-            cache.measure("a", || Ok::<_, ()>((12.0, 2.0))),
-            Ok((12.0, 2.0))
+            cache.measure("a", || Ok::<_, ()>(ink(12.0, 2.0))),
+            Ok(ink(12.0, 2.0))
         );
-        assert_eq!(cache.measure("b", || Err::<(f64, f64), _>(())), Err(()));
+        assert_eq!(cache.measure("b", || Err::<GlyphInk, _>(())), Err(()));
         assert_eq!(
-            cache.measure("b", || Ok::<_, ()>((7.0, 0.0))),
-            Ok((7.0, 0.0))
+            cache.measure("b", || Ok::<_, ()>(ink(7.0, 0.0))),
+            Ok(ink(7.0, 0.0))
         );
         let text = "abcdefghijklmnopq";
         cache.clear();
         for i in 0..text.len() {
             cache
-                .measure(&text[i..i + 1], || Ok::<_, ()>((1.0, 0.0)))
+                .measure(&text[i..i + 1], || Ok::<_, ()>(ink(1.0, 0.0)))
                 .unwrap();
         }
         assert_eq!(
-            cache.measure("a", || Ok::<_, ()>((3.0, 0.0))),
-            Ok((3.0, 0.0))
+            cache.measure("a", || Ok::<_, ()>(ink(3.0, 0.0))),
+            Ok(ink(3.0, 0.0))
         );
         eprintln!(
             "native_capture_ink_cache_bytes={}",

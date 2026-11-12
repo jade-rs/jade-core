@@ -61,6 +61,8 @@ impl PerfPainter {
             .measurer
             .measure_font_vertical_metrics(&font)
             .unwrap_or((ascent, descent));
+        // The perf harness also builds against the baseline painter API.
+        #[allow(clippy::needless_update)]
         TextMetrics {
             width,
             font_bounding_box_ascent: ascent,
@@ -68,6 +70,7 @@ impl PerfPainter {
             actual_bounding_box_ascent: ink_ascent,
             actual_bounding_box_descent: ink_descent,
             actual_bounding_box_right: width,
+            ..TextMetrics::default()
         }
     }
 }
