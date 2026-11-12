@@ -30,11 +30,15 @@ const CANONICAL_NAMESPACES: &[(&str, &str)] = &[
 ];
 
 fn canonical_prefix(uri: &str, include_drawings: bool) -> Option<&'static str> {
-    CANONICAL_NAMESPACES
+    if uri == WORD {
+        return Some("w");
+    }
+    if !include_drawings {
+        return None;
+    }
+    CANONICAL_NAMESPACES[1..]
         .iter()
-        .find_map(|&(prefix, known_uri)| {
-            (uri == known_uri && (include_drawings || prefix == "w")).then_some(prefix)
-        })
+        .find_map(|&(prefix, known_uri)| (uri == known_uri).then_some(prefix))
 }
 
 type NameChange = (Range<usize>, String);
@@ -110,7 +114,7 @@ fn source_range(xml: &str, name: QName<'_>) -> Result<Range<usize>, Error> {
 pub fn normalize(xml: &str) -> Result<Cow<'_, str>, Error> {
     // Image references have a blip element, whose local name survives
     // aliasing. Shape-only parts can keep the Word namespace fast path.
-    normalize_namespaces(xml, xml.contains("blip"))
+    normalize_namespaces(xml, memchr::memmem::find(xml.as_bytes(), b"blip").is_some())
 }
 
 /// Preserve DrawingML spellings in the editable tree.
@@ -206,7 +210,9 @@ fn normalize_namespaces(xml: &str, include_drawings: bool) -> Result<Cow<'_, str
             // Most Word files declare namespaces once, on the root. Avoid a
             // second tokenization of their potentially very large body.
             let after_root = reader.buffer_position() as usize;
-            if canonical_binding && !aliased_namespace && !xml[after_root..].contains("xmlns") {
+            if canonical_binding
+                && !aliased_namespace
+                && memchr::memmem::find(&xml.as_bytes()[after_root..], b"xmlns").is_none() {
                 return Ok(Cow::Borrowed(xml));
             }
             if !canonical_binding {
