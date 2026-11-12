@@ -3195,6 +3195,21 @@ fn word_latin_font_vertical_units(family: &str) -> Option<(f32, f32)> {
         "Century" => Some((2019.0, 443.0)),
         // Unchanged Word Mac Noto PDF: hhea 2189/-600, no gap, 2048 upem.
         "Noto Sans" if word_layout_platform() == WordLayoutPlatform::Mac => Some((2189.0, 600.0)),
+        // Word for Mac uses the hhea ascent, descent, and line gap for
+        // these Thai faces, including the 10 units above Sukhumvit Set.
+        "Ayuthaya" if word_layout_platform() == WordLayoutPlatform::Mac => {
+            Some((2241.0 * 2048.0 / 2100.0, 674.0 * 2048.0 / 2100.0))
+        }
+        "Sukhumvit Set" if word_layout_platform() == WordLayoutPlatform::Mac => {
+            Some((1113.0 * 2048.0 / 1000.0, 474.0 * 2048.0 / 1000.0))
+        }
+        "Krungthep" if word_layout_platform() == WordLayoutPlatform::Mac => {
+            Some((2587.0 * 2048.0 / 2560.0, 672.0 * 2048.0 / 2560.0))
+        }
+        "Silom" if word_layout_platform() == WordLayoutPlatform::Mac => {
+            Some((959.0 * 2048.0 / 1000.0, 316.0 * 2048.0 / 1000.0))
+        }
+        "Tahoma" if word_layout_platform() == WordLayoutPlatform::Mac => Some((2049.0, 423.0)),
         "Verdana" => Some((2059.0, 430.0)),
         "Aptos" | "Aptos Display" if word_layout_platform() == WordLayoutPlatform::Mac => {
             Some((1923.0, 577.0))
