@@ -1695,6 +1695,17 @@ const WORD_APTOS_PAIR_UNITS: &[([u8; 2], [i16; 8])] = &[
     (*b"y ", [0, 0, 0, 0, 0, 0, 0, 0]),
 ];
 
+// Regular Cambria hmtx advances for printable ASCII, in 2048 units per em.
+// Verified against glyph origins from Word for Mac.
+const WORD_CAMBRIA_ASCII_UNITS: [u16; 95] = [
+    451, 585, 805, 1268, 1036, 1822, 1408, 485, 782, 782, 875, 1134, 420, 680, 420, 1004, 1134,
+    1134, 1134, 1134, 1134, 1134, 1134, 1134, 1134, 1134, 540, 540, 1134, 1134, 1134, 865, 1813,
+    1276, 1252, 1152, 1355, 1178, 1099, 1251, 1406, 664, 628, 1289, 1099, 1670, 1394, 1338, 1163,
+    1338, 1272, 1016, 1214, 1327, 1236, 1887, 1170, 1168, 1101, 717, 1004, 717, 1134, 759, 583,
+    1000, 1121, 903, 1136, 999, 620, 1012, 1130, 569, 545, 1074, 556, 1704, 1143, 1087, 1139, 1120,
+    847, 880, 693, 1131, 1032, 1586, 990, 1032, 931, 793, 648, 793, 1459,
+];
+
 impl WordAsciiMetrics {
     /// Source-matched pair origins in the original Word PDFs. For example,
     /// Yu Mincho's 10.5pt W/o pitch is 2013 - 123 design units. Unobserved
@@ -1866,41 +1877,8 @@ impl WordAsciiMetrics {
                 (units != 0).then_some(unit_px * f64::from(units))
             }
             Self::Cambria(unit_px) => {
-                // Upright advances from Cambria subsets in the Word for Mac
-                // PDFs for the nested table, kern-default, and exact-line text box fixtures.
-                let units = match ascii {
-                    b' ' => 451.0,
-                    b'.' => 420.0,
-                    b'0' | b'1' | b'2' | b'3' | b'4' | b'5' | b'6' | b'8' => 1134.0,
-                    b'A' => 1276.0,
-                    b'C' => 1152.0,
-                    b'L' => 1099.0,
-                    b'N' => 1394.0,
-                    b'T' => 1214.0,
-                    b'V' => 1236.0,
-                    b'W' => 1887.0,
-                    b'a' => 1000.0,
-                    b'b' => 1121.0,
-                    b'c' => 903.0,
-                    b'd' => 1136.0,
-                    b'e' => 999.0,
-                    b'f' => 620.0,
-                    b'g' => 1012.0,
-                    b'h' => 1130.0,
-                    b'i' => 569.0,
-                    b'l' => 556.0,
-                    b'm' => 1704.0,
-                    b'n' => 1143.0,
-                    b'o' => 1087.0,
-                    b'p' => 1139.0,
-                    b'r' => 847.0,
-                    b's' => 880.0,
-                    b't' => 693.0,
-                    b'w' => 1586.0,
-                    b'x' => 990.0,
-                    _ => return None,
-                };
-                Some(unit_px * units)
+                let units = WORD_CAMBRIA_ASCII_UNITS[usize::from(ascii - b' ')];
+                Some(unit_px * f64::from(units))
             }
             Self::TimesNewRoman(unit_px, bold, italic) => {
                 // Windows hmtx facts validated against both Word boundary
