@@ -103,10 +103,13 @@ fn inline_image_uses_scoped_drawing_and_relationship_namespace_aliases() {
     assert_eq!((image.width_px, image.height_px), (Some(96.0), Some(48.0)));
 
     let raw = tree.unwrap().to_string().unwrap();
-    assert!(raw.contains("<pic:pic"));
+    assert!(raw.contains("<photo:pic"));
     assert!(raw.contains("x:keep=\"img:custom\""));
     assert_eq!(
-        jade_docx_reader::word_namespaces::normalize(&raw).unwrap(),
+        jade_docx_reader::DocxXmlDocument::parse(&xml)
+            .unwrap()
+            .to_string()
+            .unwrap(),
         raw
     );
 }

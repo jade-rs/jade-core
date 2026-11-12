@@ -29,10 +29,12 @@ const CANONICAL_NAMESPACES: &[(&str, &str)] = &[
     ),
 ];
 
-fn canonical_prefix(uri: &str) -> Option<&'static str> {
+fn canonical_prefix(uri: &str, include_drawings: bool) -> Option<&'static str> {
     CANONICAL_NAMESPACES
         .iter()
-        .find_map(|&(prefix, known_uri)| (uri == known_uri).then_some(prefix))
+        .find_map(|&(prefix, known_uri)| {
+            (uri == known_uri && (include_drawings || prefix == "w")).then_some(prefix)
+        })
 }
 
 type NameChange = (Range<usize>, String);
@@ -44,8 +46,9 @@ fn canonical_name(
     local: &[u8],
     uri: Option<&str>,
     declarations: &mut HashSet<&'static str>,
+    include_drawings: bool,
 ) -> Result<Option<NameChange>, Error> {
-    let Some(prefix) = uri.and_then(canonical_prefix) else {
+    let Some(prefix) = uri.and_then(|uri| canonical_prefix(uri, include_drawings)) else {
         return Ok(None);
     };
     if name
@@ -99,13 +102,23 @@ fn source_range(xml: &str, name: QName<'_>) -> Result<Range<usize>, Error> {
     Ok(start..end)
 }
 
-/// Canonicalize recognized namespaces within WordprocessingML parts. The
-/// semantic parser and raw editor consume the same canonical names.
+/// Canonicalize recognized namespaces for semantic parsing.
 /// Non-Word XML parts and ordinary canonical documents remain borrowed.
 ///
 /// Original declarations and QName-valued attributes remain intact. A binding
 /// of `w` to a foreign namespace is rejected rather than changing their meaning.
 pub fn normalize(xml: &str) -> Result<Cow<'_, str>, Error> {
+    // Image references have a blip element, whose local name survives
+    // aliasing. Shape-only parts can keep the Word namespace fast path.
+    normalize_namespaces(xml, xml.contains("blip"))
+}
+
+/// Preserve DrawingML spellings in the editable tree.
+pub(crate) fn normalize_word_only(xml: &str) -> Result<Cow<'_, str>, Error> {
+    normalize_namespaces(xml, false)
+}
+
+fn normalize_namespaces(xml: &str, include_drawings: bool) -> Result<Cow<'_, str>, Error> {
     let mut reader = NsReader::from_str(xml);
     let mut changes = Vec::new();
     let mut declarations = HashSet::new();
@@ -143,6 +156,7 @@ pub fn normalize(xml: &str) -> Result<Cow<'_, str>, Error> {
             local.as_ref(),
             resolved.as_deref(),
             &mut declarations,
+            include_drawings,
         )?);
         let (Event::Start(element) | Event::Empty(element)) = &event else {
             continue;
@@ -164,7 +178,7 @@ pub fn normalize(xml: &str) -> Result<Cow<'_, str>, Error> {
                     }
                     canonical_binding = true;
                 }
-                if let Some(prefix) = canonical_prefix(&uri) {
+                if let Some(prefix) = canonical_prefix(&uri, include_drawings) {
                     aliased_namespace |=
                         attribute.key.0.strip_prefix(b"xmlns:") != Some(prefix.as_bytes());
                 }
@@ -185,6 +199,7 @@ pub fn normalize(xml: &str) -> Result<Cow<'_, str>, Error> {
                 local.as_ref(),
                 resolved.as_deref(),
                 &mut declarations,
+                include_drawings,
             )?);
         }
         if is_root {
