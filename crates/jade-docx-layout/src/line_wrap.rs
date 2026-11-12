@@ -62,6 +62,11 @@ fn is_whitespace_text(text: &str) -> bool {
     text.chars().all(char::is_whitespace)
 }
 
+fn is_word_mac_join_control(text: &str) -> bool {
+    text.starts_with(['\u{200c}', '\u{200d}'])
+        && text.chars().all(|ch| matches!(ch, '\u{200c}' | '\u{200d}'))
+}
+
 /// Whether a Word paragraph-justification token distributes the line width.
 pub fn is_justified_alignment(alignment: &str) -> bool {
     // Compared in place: the wrap loop asks this for overflowing graphemes, and
@@ -7589,15 +7594,26 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext, const SHAPE_
             SHAPE_ARABIC && can_shape_arabic_wrap(paragraph_style, run_properties.as_deref());
 
         let mut grapheme_iter = crate::graphemes::grapheme_indices(run_text).peekable();
-        while let Some((rel_offset, grapheme)) = grapheme_iter.next() {
+        let mut split_prefix = None;
+        let mut split_suffix = None;
+        'graphemes: while let Some((rel_offset, grapheme)) = split_prefix
+            .take()
+            .or_else(|| split_suffix.take())
+            .or_else(|| grapheme_iter.next())
+        {
             let grapheme_start_abs = base_offset + start_aligned + rel_offset;
             let grapheme_end_abs = grapheme_start_abs + grapheme.len();
             // Fast path: peek the next grapheme from the same run iterator.
             // Only fall back to the expensive cross-run lookup for the last grapheme in a run.
-            let next_grapheme = match grapheme_iter.peek() {
-                Some(&(_, next_g)) => Some(next_g),
-                None => next_grapheme_at_absolute_offset(text, base_offset, grapheme_end_abs),
-            };
+            let next_grapheme =
+                split_suffix
+                    .map(|(_, suffix)| suffix)
+                    .or_else(|| match grapheme_iter.peek() {
+                        Some(&(_, next_g)) => Some(next_g),
+                        None => {
+                            next_grapheme_at_absolute_offset(text, base_offset, grapheme_end_abs)
+                        }
+                    });
 
             if grapheme == "\r" {
                 continue;
@@ -7990,6 +8006,22 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext, const SHAPE_
 
                 let candidate_overflow =
                     current_width + candidate_width + trailing_overhang - effective_available;
+                let mac_overflow = candidate_overflow > WRAP_FIT_TOLERANCE_PX
+                    && paragraph_style.word_platform
+                        == crate::line_metrics::WordLayoutPlatform::Mac;
+                // Emergency wrapping can break before a join control attached to an
+                // overwide Latin grapheme. Keep normal shaping clusters in wider lines.
+                if mac_overflow && current_width <= f64::EPSILON && script == ScriptCategory::Latin
+                {
+                    let prefix = grapheme.trim_end_matches(['\u{200c}', '\u{200d}']);
+                    if prefix.len() < grapheme.len()
+                        && prefix.chars().next().is_some_and(char::is_alphabetic)
+                    {
+                        split_prefix = Some((rel_offset, prefix));
+                        split_suffix = Some((rel_offset + prefix.len(), &grapheme[prefix.len()..]));
+                        continue 'graphemes;
+                    }
+                }
                 let fits_with_justified_space_shrink = candidate_overflow > 0.0
                     && is_justified_alignment(&paragraph_style.alignment)
                     && justified_word_space_shrink_capacity(
@@ -8070,18 +8102,19 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext, const SHAPE_
                         (hangs || squeeze > 0.0)
                             && candidate_overflow <= hang + squeeze + WRAP_FIT_TOLERANCE_PX
                     };
-                // Word for Mac can place a zero-width space on its own line
-                // before a glyph that is wider than the available column.
+                // Word for Mac can place an invisible break opportunity on
+                // its own line between overwide glyphs.
                 if candidate_overflow > WRAP_FIT_TOLERANCE_PX
                     && (current_width > 0.0
-                        || (paragraph_style.word_platform
-                            == crate::line_metrics::WordLayoutPlatform::Mac
-                            && current_line_clusters
-                                .last()
-                                .is_some_and(|cluster| cluster.text.as_str() == "\u{200b}")))
+                        || (mac_overflow
+                            && current_line_clusters.last().is_some_and(|cluster| {
+                                cluster.text.as_str() == "\u{200b}"
+                                    || is_word_mac_join_control(&cluster.text)
+                            })))
                     && !is_whitespace
                     && !shaped_arabic.is_some_and(|(_, continuation)| continuation)
-                    && !zero_width_oracle_glyph
+                    && (!zero_width_oracle_glyph
+                        || (mac_overflow && is_word_mac_join_control(grapheme)))
                     && !fits_with_justified_space_shrink
                     && !fits_with_mac_punctuation_squeeze
                     && !keeps_line_start_forbidden_character
@@ -21224,6 +21257,63 @@ mod tests {
         // Browser oracle replay should keep that zero-width glyph on the line
         // instead of applying the normal wrap safety margin to it.
         assert_eq!(first_line_text, "ab");
+    }
+
+    #[test]
+    fn mac_emergency_wrap_preserves_join_control_lines() {
+        let ctx = TestContext::new(12.0);
+        for (text, width, expected) in [
+            ("A\u{200c}B", 8.0, vec!["A", "\u{200c}", "B"]),
+            ("A\u{200d}i", 8.0, vec!["A", "\u{200d}i"]),
+            ("A\u{200c}\u{200c}", 8.0, vec!["A", "\u{200c}\u{200c}"]),
+            ("\u{200d}B", 8.0, vec!["\u{200d}", "B"]),
+            ("A\u{200c}i", 20.0, vec!["A\u{200c}i"]),
+            ("👩\u{200d}💻", 8.0, vec!["👩\u{200d}💻"]),
+        ] {
+            let paragraph_style = ParagraphStyle {
+                word_platform: crate::line_metrics::WordLayoutPlatform::Mac,
+                oracle_advance_px_by_text_offset: Some(Rc::new(
+                    text.char_indices()
+                        .map(|(offset, ch)| {
+                            let advance = match ch {
+                                '\u{200c}' | '\u{200d}' => 0.0,
+                                'i' => 2.0,
+                                _ => 12.0,
+                            };
+                            (offset, advance)
+                        })
+                        .collect(),
+                )),
+                ..ParagraphStyle::default()
+            };
+            let lines = wrap_text_into_lines(
+                &ctx,
+                text,
+                &[make_run(text)],
+                0.0,
+                &paragraph_style,
+                0,
+                width,
+            )
+            .expect("wrap");
+            let line_text: Vec<String> = lines
+                .iter()
+                .map(|line| {
+                    line.segments
+                        .iter()
+                        .map(|segment| segment.text.as_str())
+                        .collect()
+                })
+                .collect();
+            assert_eq!(line_text, expected, "{text:?} at {width}px");
+            let ranges: Vec<_> = lines
+                .iter()
+                .flat_map(|line| &line.clusters)
+                .map(|cluster| cluster.start..cluster.end)
+                .collect();
+            assert_eq!(ranges.last().unwrap().end, text.len());
+            assert!(ranges.windows(2).all(|pair| pair[0].end == pair[1].start));
+        }
     }
 
     #[test]
