@@ -1465,9 +1465,6 @@ fn try_execute_bmp_glyph_run_batch<P: Painter>(
     let mut single_font_run = true;
 
     for (glyph, x_position) in glyphs.iter().zip(x_positions.iter_mut()) {
-        if fonts.get(glyph.font_index as usize).is_none() {
-            return Ok(false);
-        }
         let Some(glyph_text) = glyph.text(run_text) else {
             return Ok(false);
         };
@@ -1509,6 +1506,14 @@ fn try_execute_bmp_glyph_run_batch<P: Painter>(
             return Ok(false);
         }
     } else {
+        // A single-font batch validates its sole index above. Check every
+        // index only when the batch actually uses multiple fonts.
+        if glyphs
+            .iter()
+            .any(|glyph| glyph.font_index as usize >= fonts.len())
+        {
+            return Ok(false);
+        }
         // Build indexes only for a validated multi-font batch, keeping buffer
         // management out of the common single-font loop. Short runs use stack
         // storage; longer runs retain their complete index list on the heap.
