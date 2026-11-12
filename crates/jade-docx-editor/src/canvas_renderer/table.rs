@@ -13877,15 +13877,25 @@ fn refresh_prepared_row_text<P: Painter<Error: PainterError>>(
                             .sum::<f64>()
                             - cell.padding.horizontal()
                             - 2.0 * cell.cell_spacing;
-                        let reflowed = layout_horizontal_paragraph_with_run_styles_context_offset(
-                            wrap_context,
-                            text,
-                            (width - left_inset).max(1.0),
-                            paragraph.line_height,
-                            &styled_run_styles(text, &styles),
-                            &style,
-                            start,
-                        )?;
+                        let mut reflowed =
+                            layout_horizontal_paragraph_with_run_styles_context_offset(
+                                wrap_context,
+                                text,
+                                (width - left_inset).max(1.0),
+                                paragraph.line_height,
+                                &styled_run_styles(text, &styles),
+                                &style,
+                                start,
+                            )?;
+                        if let Some(BodyElement::Paragraph(source)) = source {
+                            apply_mac_terminal_join_control_line_spacing(
+                                &mut reflowed,
+                                &style,
+                                source,
+                                config.styles_part.as_deref(),
+                                wrap_context,
+                            )?;
+                        }
                         paragraph.lines = reflowed.lines;
                         for line in Rc::make_mut(&mut paragraph.lines) {
                             line.left_inset += left_inset;
@@ -14492,6 +14502,13 @@ fn prepare_row_layout<P: Painter<Error: PainterError>>(
                             )?
                         };
                         cell_paragraph.numbering = numbering.cloned();
+                        apply_mac_terminal_join_control_line_spacing(
+                            &mut cell_paragraph,
+                            &paragraph_style,
+                            paragraph,
+                            config.styles_part.as_deref(),
+                            wrap_context,
+                        )?;
                         if cell
                             .text_direction
                             .is_none_or(|direction| matches!(direction, TextDirection::LrTbV))
@@ -16202,6 +16219,60 @@ fn cell_paragraph_spacing(
         .find(|spacing| spacing.line.is_some())
         .cloned();
     spacing
+}
+
+fn apply_mac_terminal_join_control_line_spacing<P: Painter<Error: PainterError>>(
+    layout: &mut CellParagraph,
+    style: &ParagraphStyle,
+    paragraph: &Paragraph,
+    styles: Option<&StylesPart>,
+    context: &TableLineWrapContext<'_, P>,
+) -> Result<(), JsValue> {
+    use jade_docx_layout::line_metrics::word_latin_font_line_height_pt;
+
+    if style.word_platform != jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
+        || style.exact_line_spacing
+    {
+        return Ok(());
+    }
+    let Some(sizing) = style.word_proportional_line_sizing else {
+        return Ok(());
+    };
+    let [.., previous, terminal] = layout.lines.as_slice() else {
+        return Ok(());
+    };
+    if layout.vertical_layout.is_some()
+        || previous.break_kind != LineBreakKind::Soft
+        || terminal.break_kind != LineBreakKind::ParagraphEnd
+        || terminal.text.is_empty()
+        || !terminal
+            .text
+            .chars()
+            .all(|ch| matches!(ch, '\u{200c}' | '\u{200d}'))
+    {
+        return Ok(());
+    }
+    let properties = paragraph.properties.as_ref();
+    let style_id = properties
+        .and_then(|props| props.style.as_deref())
+        .or_else(|| styles.and_then(StylesPart::default_paragraph_style_id));
+    let direct_mark = properties.and_then(|props| props.mark_run_properties.as_ref());
+    let mark = styles
+        .and_then(|styles| styles.resolve_effective_run_properties(style_id, direct_mark))
+        .or_else(|| direct_mark.cloned());
+    let mark_style = context.resolve_run_style(mark.as_ref())?;
+    let Some(single) =
+        word_latin_font_line_height_pt(&mark_style.font_descriptor_latin_ascii).map(points_to_px)
+    else {
+        return Ok(());
+    };
+
+    let lines = Rc::make_mut(&mut layout.lines);
+    if let Some(line) = lines.last_mut() {
+        line.shorter_line_advance = sizing.line_height_px(Some(single), layout.line_height);
+    }
+    layout.height = layout.lines_height(&layout.lines).max(layout.line_height);
+    Ok(())
 }
 
 fn apply_mac_cell_picture_line_spacing<P: Painter<Error: PainterError>>(
