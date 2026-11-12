@@ -1201,7 +1201,7 @@ pub fn compute_grapheme_advance(context: GraphemeAdvanceContext<'_>) -> Grapheme
     } else {
         None
     };
-    compute_grapheme_advance_with_ascii_width(context, requested_ascii_width, None)
+    compute_grapheme_advance_with_ascii_width(context, requested_ascii_width, None, None)
 }
 
 fn uses_requested_ascii_width(context: &GraphemeAdvanceContext<'_>) -> bool {
@@ -1238,6 +1238,7 @@ fn compute_resolved_grapheme_advance(
     context: GraphemeAdvanceContext<'_>,
     style: &ResolvedRunStyle,
     requested_ascii_width_override: Option<f64>,
+    cross_font_previous_width: Option<f64>,
 ) -> GraphemeAdvance {
     let requested_ascii_width = if requested_ascii_width_override.is_some() {
         requested_ascii_width_override
@@ -1271,7 +1272,12 @@ fn compute_resolved_grapheme_advance(
     } else {
         None
     };
-    compute_grapheme_advance_with_ascii_width(context, requested_ascii_width, Some(style))
+    compute_grapheme_advance_with_ascii_width(
+        context,
+        requested_ascii_width,
+        Some(style),
+        cross_font_previous_width,
+    )
 }
 
 #[inline]
@@ -1348,11 +1354,22 @@ fn compute_grapheme_advance_with_ascii_width(
     context: GraphemeAdvanceContext<'_>,
     requested_ascii_width: Option<f64>,
     resolved_style: Option<&ResolvedRunStyle>,
+    cross_font_previous_width: Option<f64>,
 ) -> GraphemeAdvance {
     if context.snap_to_grid {
-        compute_grapheme_advance_for_grid::<true>(context, requested_ascii_width, resolved_style)
+        compute_grapheme_advance_for_grid::<true>(
+            context,
+            requested_ascii_width,
+            resolved_style,
+            cross_font_previous_width,
+        )
     } else {
-        compute_grapheme_advance_for_grid::<false>(context, requested_ascii_width, resolved_style)
+        compute_grapheme_advance_for_grid::<false>(
+            context,
+            requested_ascii_width,
+            resolved_style,
+            cross_font_previous_width,
+        )
     }
 }
 
@@ -1360,6 +1377,7 @@ fn compute_grapheme_advance_for_grid<const SNAP_TO_GRID: bool>(
     context: GraphemeAdvanceContext<'_>,
     requested_ascii_width: Option<f64>,
     resolved_style: Option<&ResolvedRunStyle>,
+    cross_font_previous_width: Option<f64>,
 ) -> GraphemeAdvance {
     let GraphemeAdvanceContext {
         snap_to_grid: _,
@@ -1538,8 +1556,15 @@ fn compute_grapheme_advance_for_grid<const SNAP_TO_GRID: bool>(
                     if leading > 0.0
                         && style.word_platform == crate::line_metrics::WordLayoutPlatform::Mac
                     {
-                        if let Some(width) = prev_glyph_width.filter(|width| *width > 0.0) {
+                        if let Some(width) = cross_font_previous_width {
                             leading = width * 0.25;
+                        } else if let Some(width) = prev_glyph_width.filter(|width| {
+                            *width > 0.0
+                                && prev_grapheme
+                                    .and_then(|text| text.chars().next())
+                                    .is_some_and(|ch| ch.script() == UnicodeScriptKind::Han)
+                        }) {
+                            leading = leading.min(width * 0.25);
                         }
                     }
                     (leading, trailing)
@@ -1569,6 +1594,7 @@ fn compute_grapheme_advance_for_grid<const SNAP_TO_GRID: bool>(
                         prev_auto_space,
                     },
                     resolved_style,
+                    cross_font_previous_width,
                 )
             })
             .unwrap_or(0.0)
@@ -1853,13 +1879,14 @@ pub fn implicit_numeric_east_asian_gap_width(
     paragraph_style: &ParagraphStyle,
     context: ImplicitNumericGapContext<'_>,
 ) -> f64 {
-    implicit_numeric_east_asian_gap_width_with_style(paragraph_style, context, None)
+    implicit_numeric_east_asian_gap_width_with_style(paragraph_style, context, None, None)
 }
 
 fn implicit_numeric_east_asian_gap_width_with_style(
     paragraph_style: &ParagraphStyle,
     context: ImplicitNumericGapContext<'_>,
     resolved_style: Option<&ResolvedRunStyle>,
+    cross_font_previous_width: Option<f64>,
 ) -> f64 {
     let ImplicitNumericGapContext {
         grapheme,
@@ -1956,8 +1983,7 @@ fn implicit_numeric_east_asian_gap_width_with_style(
                 )
             })
             .map(|metrics| {
-                prev_glyph_width
-                    .filter(|width| *width > 0.0)
+                cross_font_previous_width
                     .map_or_else(|| metrics.leading_gap_px(), |width| width * 0.25)
             })
     } else {
@@ -3095,6 +3121,9 @@ fn compute_text_advance_step_with_descriptor<'a, C: LineWrapContext>(
                 )
             })
             .or(requested_ascii_measure),
+        state.prev_adjusted_glyph_width.filter(|width| {
+            *width > 0.0 && state.prev_font_descriptor_hash != Some(font_descriptor_hash)
+        }),
     );
     // When the resolved font slot is genuinely Default, Word for Windows keeps
     // numeric text in the ANSI classification and does not add the East-Asian
