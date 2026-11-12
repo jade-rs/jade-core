@@ -3173,6 +3173,11 @@ fn word_latin_font_vertical_units(family: &str) -> Option<(f32, f32)> {
             Some((1946.0, 455.0))
         }
         "Arial" => Some((1921.0, 434.0)),
+        // Word for Mac includes Geeza Pro's 300 units of hhea leading in
+        // the ascent. Normalize the 2212-unit em to the table's 2048 units.
+        "Geeza Pro" if word_layout_platform() == WordLayoutPlatform::Mac => {
+            Some((2280.0 * 2048.0 / 2212.0, 732.0 * 2048.0 / 2212.0))
+        }
         "Times New Roman" => Some((1912.0, 443.0)),
         "Century" => Some((2019.0, 443.0)),
         // Unchanged Word Mac Noto PDF: hhea 2189/-600, no gap, 2048 upem.
