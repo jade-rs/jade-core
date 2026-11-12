@@ -8171,9 +8171,16 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext, const SHAPE_
                 let mac_overflow = candidate_overflow > WRAP_FIT_TOLERANCE_PX
                     && paragraph_style.word_platform
                         == crate::line_metrics::WordLayoutPlatform::Mac;
-                // Emergency wrapping can break before a join control attached to an
-                // overwide Latin grapheme. Keep normal shaping clusters in wider lines.
-                if mac_overflow && current_width <= f64::EPSILON && script == ScriptCategory::Latin
+                // Legacy Word Mac layout can break before a join control attached
+                // to an overwide Latin grapheme. Modern compatibility keeps it
+                // attached to the preceding Latin glyph.
+                if mac_overflow
+                    && current_width <= f64::EPSILON
+                    && script == ScriptCategory::Latin
+                    && paragraph_style
+                        .east_asian_rules
+                        .compatibility_mode
+                        .is_none_or(|mode| mode < 15)
                 {
                     let prefix = grapheme.trim_end_matches(['\u{200c}', '\u{200d}']);
                     if prefix.len() < grapheme.len()
