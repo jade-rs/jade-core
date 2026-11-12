@@ -6064,6 +6064,44 @@ fn can_shape_arabic_wrap(
         })
 }
 
+/// Whether two source spans share a joining boundary in an Arabic word.
+pub fn arabic_spans_join(text: &str, following: &str) -> bool {
+    use unicode_joining_type::{get_joining_type, JoiningType};
+
+    if following.as_bytes().first().is_none_or(u8::is_ascii)
+        || !following
+            .graphemes(true)
+            .next()
+            .is_some_and(is_arabic_letter_cluster)
+        || !text
+            .graphemes(true)
+            .next_back()
+            .is_some_and(is_arabic_letter_cluster)
+    {
+        return false;
+    }
+    let previous = text
+        .chars()
+        .rev()
+        .map(get_joining_type)
+        .find(|kind| *kind != JoiningType::Transparent);
+    matches!(
+        previous,
+        Some(JoiningType::DualJoining | JoiningType::LeftJoining)
+    ) && following.chars().next().is_some_and(|ch| {
+        matches!(
+            get_joining_type(ch),
+            JoiningType::DualJoining | JoiningType::RightJoining
+        )
+    })
+}
+
+pub fn arabic_span_with_forward_join(text: &str, following: &str) -> Option<String> {
+    (arabic_spans_join(text, following) && text.graphemes(true).all(is_arabic_letter_cluster))
+        // The Arabic letter mark keeps the joining suffix in the Arabic bidi run.
+        .then(|| format!("{text}\u{200d}\u{061c}"))
+}
+
 fn arabic_wrap_unit_continues(previous: &str, next: &str) -> bool {
     previous.ends_with('\u{200d}')
         || (previous.starts_with('ل')
@@ -6196,10 +6234,63 @@ impl ArabicWrapSpan {
     }
 }
 
+/// A color or decoration change can divide an Arabic word into source runs
+/// without changing the font metrics used to wrap it.
+#[cold]
+#[inline(never)]
+fn arabic_shaping_end<C: LineWrapContext>(
+    ctx: &C,
+    text: &str,
+    runs_after: &[RunStyle],
+    paragraph: &ParagraphStyle,
+    mut end: usize,
+    font: &str,
+    scale: f64,
+) -> Result<usize, C::Error> {
+    if !text
+        .get(..end)
+        .and_then(|prefix| prefix.graphemes(true).next_back())
+        .is_some_and(is_arabic_letter_cluster)
+    {
+        return Ok(end);
+    }
+    for run in runs_after {
+        if run.start != end
+            || run.inline_object.is_some()
+            || !can_shape_arabic_wrap(paragraph, run.properties.as_deref())
+        {
+            break;
+        }
+        let Some(next) = text.get(run.start..run.end) else {
+            break;
+        };
+        let Some(first) = next.graphemes(true).next() else {
+            break;
+        };
+        if !is_arabic_letter_cluster(first) {
+            break;
+        }
+        let style = ctx.resolve_run_style_rc(run.properties.as_ref())?;
+        if &*style.font_descriptor_complex != font || style.text_scale_x.max(0.01) != scale {
+            break;
+        }
+        end = run.end;
+        if !next
+            .graphemes(true)
+            .next_back()
+            .is_some_and(is_arabic_letter_cluster)
+        {
+            break;
+        }
+    }
+    Ok(end)
+}
+
 fn apply_arabic_span_advances<C: LineWrapContext>(
     ctx: &C,
     text: &str,
     run_styles: &[RunStyle],
+    paragraph: &ParagraphStyle,
     line: &mut WrappedLine,
     base_offset: usize,
 ) -> Result<(), C::Error> {
@@ -6209,7 +6300,7 @@ fn apply_arabic_span_advances<C: LineWrapContext>(
             .then_some(layout.font_slot)
     };
     let mut start = 0;
-    while start + 1 < line.clusters.len() {
+    while start < line.clusters.len() {
         let Some(slot) = arabic_slot(&line.clusters[start]) else {
             start += 1;
             continue;
@@ -6234,24 +6325,44 @@ fn apply_arabic_span_advances<C: LineWrapContext>(
             }
             end += 1;
         }
-        let can_shape = run.properties.as_ref().is_none_or(|properties| {
-            properties.fit_text.is_none()
-                && properties.char_spacing.is_none_or(|spacing| spacing == 0.0)
-                && properties.border.is_none()
-        });
-        if can_shape && end - start > 1 {
+        if can_shape_arabic_wrap(paragraph, run.properties.as_deref()) {
             let source_end = line.clusters[end - 1].end - base_offset;
+            let style = ctx.resolve_run_style_rc(run.properties.as_ref())?;
+            let descriptor = style.descriptor_for_slot(slot);
+            let span = &text[source_start..source_end];
+            let following_run = if source_end < run.end {
+                Some(run)
+            } else {
+                run_styles
+                    .get(run_index + 1)
+                    .filter(|next| next.start == source_end)
+            };
+            let joined = if let Some(next) = following_run.filter(|next| {
+                next.inline_object.is_none()
+                    && can_shape_arabic_wrap(paragraph, next.properties.as_deref())
+            }) {
+                let next_style = ctx.resolve_run_style_rc(next.properties.as_ref())?;
+                if next_style.descriptor_for_slot(slot) == descriptor
+                    && next_style.text_scale_x == style.text_scale_x
+                {
+                    arabic_span_with_forward_join(span, &text[source_end..next.end])
+                } else {
+                    None
+                }
+            } else {
+                None
+            };
+            if end - start == 1 && joined.is_none() {
+                start = end;
+                continue;
+            }
             let clusters = &mut line.clusters[start..end];
             let raw_width: f64 = clusters
                 .iter()
                 .filter_map(|cluster| cluster.layout.as_ref())
                 .map(|layout| layout.measured_glyph_width)
                 .sum();
-            let style = ctx.resolve_run_style_rc(run.properties.as_ref())?;
-            let shaped_width = ctx.measure_text(
-                &text[source_start..source_end],
-                style.descriptor_for_slot(slot),
-            )?;
+            let shaped_width = ctx.measure_text(joined.as_deref().unwrap_or(span), descriptor)?;
             if raw_width > f64::EPSILON && shaped_width.is_finite() && shaped_width > 0.0 {
                 let factor = shaped_width / raw_width;
                 // The scalar metrics are only used to partition the shaped span
@@ -7587,6 +7698,7 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext, const SHAPE_
     let mut current_line_clusters: Vec<InlineCluster> = Vec::new();
     let mut current_line_tab_stops: Vec<TabStopSegment> = Vec::new();
     let mut pending_leading_width = 0.0;
+    let mut arabic_span = ArabicWrapSpan::default();
     let mut snap_to_chars_cell_width_cache: FxHashMap<SnapToCharsCacheKey, f64> =
         FxHashMap::default();
     let mut font_vertical_metrics_cache: FxHashMap<u64, Option<(f64, f64)>> = FxHashMap::default();
@@ -7692,7 +7804,6 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext, const SHAPE_
         let mut buffer_start_abs = base_offset + start_aligned;
         let mut buffer_is_whitespace: Option<bool> = None;
         let mut active_script = ScriptCategory::Latin;
-        let mut arabic_span = ArabicWrapSpan::default();
         let shape_arabic_wrap =
             SHAPE_ARABIC && can_shape_arabic_wrap(paragraph_style, run_properties.as_deref());
 
@@ -8077,7 +8188,21 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext, const SHAPE_
                     && shape_arabic_wrap
                     && is_arabic_letter_cluster(grapheme)
                 {
-                    arabic_span.advance(ctx, run_text, rel_offset, font_desc)?
+                    let offset = start_aligned + rel_offset;
+                    let shaping_end = if offset >= arabic_span.end {
+                        arabic_shaping_end(
+                            ctx,
+                            text,
+                            &run_styles[run_index + 1..],
+                            paragraph_style,
+                            end,
+                            font_desc,
+                            text_scale_x,
+                        )?
+                    } else {
+                        arabic_span.end
+                    };
+                    arabic_span.advance(ctx, &text[..shaping_end], offset, font_desc)?
                 } else {
                     None
                 };
@@ -8561,7 +8686,7 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext, const SHAPE_
                     .is_some_and(|layout| layout.script == ScriptCategory::Complex)
             })
         {
-            apply_arabic_span_advances(ctx, text, run_styles, line, base_offset)?;
+            apply_arabic_span_advances(ctx, text, run_styles, paragraph_style, line, base_offset)?;
         }
         apply_bidi_visual_order(line, paragraph_style.bidi);
         if reorder_gaps {
@@ -9563,14 +9688,46 @@ struct ArabicWrapSource<'a> {
 }
 
 impl<'a> ArabicWrapSource<'a> {
-    fn text_from(self, segment_start: usize) -> Option<&'a str> {
-        let start = segment_start.checked_sub(self.base_offset)?;
-        let run = self
+    fn text_for_segment<C: LineWrapContext>(
+        self,
+        ctx: &C,
+        segment: &TextSegment,
+        paragraph: &ParagraphStyle,
+        font: &str,
+        scale: f64,
+    ) -> Result<Option<(&'a str, usize)>, C::Error> {
+        let Some(start) = segment.start.checked_sub(self.base_offset) else {
+            return Ok(None);
+        };
+        if !self
+            .text
+            .get(start..)
+            .is_some_and(|tail| tail.starts_with(&segment.text))
+        {
+            return Ok(None);
+        }
+        let run_index = self.run_styles.partition_point(|run| run.end <= start);
+        let Some(run) = self
             .run_styles
-            .get(self.run_styles.partition_point(|run| run.end <= start))?;
-        (run.start <= start)
-            .then(|| self.text.get(start..run.end))
-            .flatten()
+            .get(run_index)
+            .filter(|run| run.start <= start)
+        else {
+            return Ok(None);
+        };
+        let end = arabic_shaping_end(
+            ctx,
+            self.text,
+            &self.run_styles[run_index + 1..],
+            paragraph,
+            run.end,
+            font,
+            scale,
+        )?;
+        Ok(self
+            .text
+            .get(..end)
+            .filter(|prefix| prefix.len() >= start + segment.text.len())
+            .map(|prefix| (prefix, start)))
     }
 }
 
@@ -9587,6 +9744,7 @@ fn measure_wrapped_line_width<C: LineWrapContext, const SHAPE_ARABIC: bool>(
     }
     let mut width = 0.0;
     let mut state = TextAdvanceState::default();
+    let mut arabic_span = ArabicWrapSpan::default();
     for (segment_index, segment) in line.segments.iter().enumerate() {
         if segment.text.is_empty() {
             continue;
@@ -9600,7 +9758,7 @@ fn measure_wrapped_line_width<C: LineWrapContext, const SHAPE_ARABIC: bool>(
             .find_map(|next| next.text.graphemes(true).next());
         let segment_width = {
             let mut segment_width = 0.0;
-            let mut arabic_span = ArabicWrapSpan::default();
+            let mut isolated_arabic_span = ArabicWrapSpan::default();
             let mut shaping_text = None;
             let shape_arabic = SHAPE_ARABIC
                 && can_shape_arabic_wrap(paragraph_style, segment.properties.as_deref());
@@ -9619,19 +9777,37 @@ fn measure_wrapped_line_width<C: LineWrapContext, const SHAPE_ARABIC: bool>(
                         && shape_arabic
                         && is_arabic_letter_cluster(step.grapheme)
                     {
-                        if let Some((advance, _)) = arabic_span.advance(
-                            ctx,
-                            shaping_text.get_or_insert_with(|| {
-                                source
-                                    .and_then(|source| source.text_from(segment.start))
-                                    .filter(|source| source.starts_with(&segment.text))
-                                    .unwrap_or(&segment.text)
-                            }),
-                            step.rel_offset,
-                            step.font_descriptor,
-                        )? {
-                            glyph_box_width += advance * style.text_scale_x.max(0.01)
-                                - step.advance.adjusted_glyph_width;
+                        let scale = style.text_scale_x.max(0.01);
+                        if shaping_text.is_none() {
+                            shaping_text = Some(match source {
+                                Some(source) => source.text_for_segment(
+                                    ctx,
+                                    segment,
+                                    paragraph_style,
+                                    step.font_descriptor,
+                                    scale,
+                                )?,
+                                None => None,
+                            });
+                        }
+                        let advance = if let Some(Some((text, start))) = shaping_text {
+                            arabic_span.advance(
+                                ctx,
+                                text,
+                                start + step.rel_offset,
+                                step.font_descriptor,
+                            )?
+                        } else {
+                            arabic_span.end = 0;
+                            isolated_arabic_span.advance(
+                                ctx,
+                                &segment.text,
+                                step.rel_offset,
+                                step.font_descriptor,
+                            )?
+                        };
+                        if let Some((advance, _)) = advance {
+                            glyph_box_width += advance * scale - step.advance.adjusted_glyph_width;
                         }
                     }
                     segment_width += step.advance.implicit_latin_gap

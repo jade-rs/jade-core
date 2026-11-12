@@ -6670,7 +6670,32 @@ where
             top: line_top,
             height: line_height,
         } = placement;
-        let spans = line.styled_spans(&paragraph.styled_runs);
+        let mut spans = line.styled_spans(&paragraph.styled_runs);
+        spans.dedup_by(|right, left| {
+            let runs = &paragraph.styled_runs;
+            let (Some(left_run), Some(right_run)) = (
+                left.run_index.and_then(|index| runs.get(index)),
+                right.run_index.and_then(|index| runs.get(index)),
+            ) else {
+                return false;
+            };
+            let joined = left.end == right.start
+                && jade_docx_layout::line_wrap::arabic_spans_join(
+                    &paragraph.text[left.start..left.end],
+                    &paragraph.text[right.start..right.end],
+                )
+                && left_run.inline_object.is_none()
+                && right_run.inline_object.is_none()
+                && left_run.properties == right_run.properties
+                && left_run.revision == right_run.revision
+                && line.text_alignment_shift(left.start) == line.text_alignment_shift(right.start)
+                && jade_docx_layout::line_metrics::word_layout_platform()
+                    == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac;
+            if joined {
+                left.end = right.end;
+            }
+            joined
+        });
         let mut pen_x = start_x;
         for span in spans {
             if span.end <= span.start {
@@ -7008,6 +7033,51 @@ where
             &resolved_style,
             combined_properties.is_none(),
         );
+        let joined_step = steps.iter().find_map(|step| {
+            let step_end = start + step.text_end as usize;
+            let step_text = step.text(text);
+            let following = paragraph.text.get(step_end..)?;
+            if step_text.is_ascii()
+                || following.is_empty()
+                || jade_docx_layout::line_metrics::word_layout_platform()
+                    != jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
+                || !table_run_allows_arabic_join(run_props)
+            {
+                return None;
+            }
+            let runs = &paragraph.styled_runs;
+            let next = runs.get(runs.partition_point(|run| run.end <= step_end))?;
+            if next.start > step_end
+                || next.inline_object.is_some()
+                || !table_run_allows_arabic_join(next.properties.as_ref())
+            {
+                return None;
+            }
+            let shaped =
+                jade_docx_layout::line_wrap::arabic_span_with_forward_join(step_text, following)?;
+            let next_style = next
+                .properties
+                .as_ref()
+                .map_or_else(default_table_run_style, |props| {
+                    resolve_run_style_for_wrap(Some(props), None)
+                });
+            if next_style.descriptor_for_slot(step.font_slot)
+                != resolved_style.descriptor_for_slot(step.font_slot)
+                || next_style.text_scale_x != text_scale_x
+            {
+                return None;
+            }
+            Some((step.text_start, shaped))
+        });
+        let fill_step = |step: &PlannedGlyphLayoutStep, x, y| {
+            let text = step.text(text);
+            match &joined_step {
+                Some((start, shaped)) if *start == step.text_start => {
+                    context.fill_text_with_shaping_context(text, shaped, x, y)
+                }
+                _ => context.fill_text(text, x, y),
+            }
+        };
         self.reset_font_state();
         if let Some(properties) = combined_properties.as_ref() {
             let applied = self.resolve_applied_run_style_uncached(Some(properties));
@@ -7056,23 +7126,21 @@ where
                     context,
                     resolved_style.descriptor_for_slot(step.font_slot),
                 );
-                context
-                    .fill_text(step.text(text), step.x_offset / text_scale_x, 0.0)
+                fill_step(step, step.x_offset / text_scale_x, 0.0)
                     .map_err(PainterError::into_js_value)?;
             }
             context.restore();
-        } else if !self
-            .try_draw_planned_text_batch(context, x, text_y, text, &resolved_style, &steps)
-            .map_err(PainterError::into_js_value)?
+        } else if joined_step.is_some()
+            || !self
+                .try_draw_planned_text_batch(context, x, text_y, text, &resolved_style, &steps)
+                .map_err(PainterError::into_js_value)?
         {
             for step in &steps {
                 self.set_font_if_changed_rc(
                     context,
                     resolved_style.descriptor_for_slot(step.font_slot),
                 );
-                context
-                    .fill_text(step.text(text), x + step.x_offset, text_y)
-                    .map_err(PainterError::into_js_value)?;
+                fill_step(step, x + step.x_offset, text_y).map_err(PainterError::into_js_value)?;
             }
         }
         self.reset_font_state();
@@ -15556,6 +15624,14 @@ fn line_style_spans(
     }
 
     spans
+}
+
+fn table_run_allows_arabic_join(properties: Option<&RunProperties>) -> bool {
+    properties.is_none_or(|properties| {
+        properties.fit_text.is_none()
+            && properties.char_spacing.is_none_or(|spacing| spacing == 0.0)
+            && properties.border.is_none()
+    })
 }
 
 // Canvas shapes each step as a unit. Keep neighboring complex-script
