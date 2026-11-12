@@ -270,6 +270,17 @@ pub(super) fn hyphenate_lines<C: LineWrapContext>(
     if lines.len() < 2 || !paragraph_style.float_line_segments.is_empty() || paragraph_style.bidi {
         return Ok(());
     }
+    hyphenate_enabled_lines(ctx, lines, paragraph_style, base_available, settings)
+}
+
+#[inline(never)]
+fn hyphenate_enabled_lines<C: LineWrapContext>(
+    ctx: &C,
+    lines: &mut Vec<WrappedLine>,
+    paragraph_style: &ParagraphStyle,
+    base_available: f64,
+    settings: ParagraphHyphenation,
+) -> Result<(), C::Error> {
     let available = |index: usize| {
         paragraph_style
             .available_width_for_line(base_available, index)
