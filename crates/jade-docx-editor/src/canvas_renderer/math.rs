@@ -1,8 +1,8 @@
 use crate::document::MathParagraph;
 #[cfg(test)]
 use crate::document::{MathElement, MathElementKind};
-use jade_docx_layout::math_layout::MathMetrics;
 pub(crate) use jade_docx_layout::math_layout::math_text;
+use jade_docx_layout::math_layout::MathMetrics;
 use jade_docx_layout::units::points_to_px;
 use jade_docx_reader::{ParagraphProperties, StylesPart, ThemePart};
 use jade_painter::Painter;
@@ -17,7 +17,7 @@ struct StyledPainterMeasure<'a, P> {
     font: RefCell<Option<(String, f64)>>,
 }
 fn cambria_math_metrics(text: &str, style: MathTextStyle<'_>) -> Option<(f64, f64)> {
-    use jade_docx_layout::line_metrics::{WordLayoutPlatform, word_layout_platform};
+    use jade_docx_layout::line_metrics::{word_layout_platform, WordLayoutPlatform};
     if !style.family.eq_ignore_ascii_case("Cambria Math")
         || word_layout_platform() != WordLayoutPlatform::Mac
     {
