@@ -3178,6 +3178,19 @@ fn word_latin_font_vertical_units(family: &str) -> Option<(f32, f32)> {
         "Geeza Pro" if word_layout_platform() == WordLayoutPlatform::Mac => {
             Some((2280.0 * 2048.0 / 2212.0, 732.0 * 2048.0 / 2212.0))
         }
+        // Word for Mac puts the hhea leading above these Indic faces.
+        // Kohinoor uses a 1000-unit em.
+        "Kohinoor Devanagari" | "Kohinoor Bangla"
+            if word_layout_platform() == WordLayoutPlatform::Mac =>
+        {
+            Some((1150.0 * 2048.0 / 1000.0, 350.0 * 2048.0 / 1000.0))
+        }
+        "Kohinoor Gujarati" if word_layout_platform() == WordLayoutPlatform::Mac => {
+            Some((1050.0 * 2048.0 / 1000.0, 450.0 * 2048.0 / 1000.0))
+        }
+        "Devanagari Sangam MN" if word_layout_platform() == WordLayoutPlatform::Mac => {
+            Some((2180.0, 874.0))
+        }
         "Times New Roman" => Some((1912.0, 443.0)),
         "Century" => Some((2019.0, 443.0)),
         // Unchanged Word Mac Noto PDF: hhea 2189/-600, no gap, 2048 upem.
