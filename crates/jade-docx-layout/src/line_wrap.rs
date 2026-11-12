@@ -3744,6 +3744,14 @@ impl WrappedLine {
     }
 
     fn line_box_px(&self, include_objects: bool) -> Option<(f64, f64)> {
+        self.line_box_with_face_height_px::<false>(include_objects)
+            .map(|(ascent, descent, _)| (ascent, descent))
+    }
+
+    fn line_box_with_face_height_px<const TRACK_FACE_HEIGHT: bool>(
+        &self,
+        include_objects: bool,
+    ) -> Option<(f64, f64, f64)> {
         if self.clusters.is_empty()
             && self.break_kind == LineBreakKind::Hard
             && crate::line_metrics::word_layout_platform()
@@ -3772,11 +3780,16 @@ impl WrappedLine {
             let border = points_to_px(crate::line_metrics::word_run_border_extent_pt(Some(
                 properties,
             )));
-            return Some((ascent + border, descent + border));
+            return Some((
+                ascent + border,
+                descent + border,
+                ascent + descent + 2.0 * border,
+            ));
         }
         let visible = self.clusters.iter().any(|cluster| !cluster.is_whitespace);
         let mut extent: Option<(f64, f64)> = None;
         let mut previous_box = None;
+        let mut tallest_face = 0.0_f64;
         for cluster in &self.clusters {
             if visible && cluster.is_whitespace {
                 continue;
@@ -3800,10 +3813,13 @@ impl WrappedLine {
                 return None;
             }
             previous_box = Some((a, d));
+            if TRACK_FACE_HEIGHT {
+                tallest_face = tallest_face.max(a + d);
+            }
             extent =
                 Some(extent.map_or((a, d), |(ascent, descent)| (ascent.max(a), descent.max(d))));
         }
-        extent
+        extent.map(|(ascent, descent)| (ascent, descent, tallest_face))
     }
 
     /// An isolated join control can use a different font box on Word for Mac.
@@ -3845,7 +3861,20 @@ impl WrappedLine {
         style
             .word_proportional_line_sizing
             .map_or(fallback_px, |sizing| {
-                sizing.line_height_px(self.font_box_px().map(|(a, d)| a + d), fallback_px)
+                if sizing.multiple() > 1.0 {
+                    // A mixed-script line can take its ascent and descent from
+                    // different faces. Mac Word adds leading based on the
+                    // tallest individual face to that combined content box.
+                    self.line_box_with_face_height_px::<true>(false).map_or(
+                        fallback_px,
+                        |(ascent, descent, face_height)| {
+                            (ascent + descent + face_height * (sizing.multiple() - 1.0))
+                                .max(96.0 / 72.0)
+                        },
+                    )
+                } else {
+                    sizing.line_height_px(self.font_box_px().map(|(a, d)| a + d), fallback_px)
+                }
             })
     }
 
