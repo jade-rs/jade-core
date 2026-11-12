@@ -702,6 +702,55 @@ pub struct CommentAnnotation {
     pub date: Option<String>,
 }
 
+#[derive(Default)]
+struct CommentAnnotations {
+    entries: Vec<CommentAnnotation>,
+    paragraphs: Vec<usize>,
+}
+
+impl CommentAnnotations {
+    fn push(&mut self, paragraph: usize, annotation: CommentAnnotation) {
+        self.entries.push(annotation);
+        self.paragraphs.push(paragraph);
+    }
+
+    fn clear(&mut self) {
+        self.truncate(0);
+    }
+
+    fn truncate(&mut self, len: usize) {
+        self.entries.truncate(len);
+        self.paragraphs.truncate(len);
+    }
+
+    fn restore_unchanged(
+        &mut self,
+        previous: Self,
+        edited: usize,
+        window: Option<&std::ops::RangeInclusive<usize>>,
+    ) {
+        if previous.entries.is_empty() {
+            return;
+        }
+        let mut entries = std::mem::take(&mut self.entries)
+            .into_iter()
+            .zip(std::mem::take(&mut self.paragraphs))
+            .collect();
+        let previous = previous
+            .entries
+            .into_iter()
+            .zip(previous.paragraphs)
+            .filter(|(region, _)| window.is_none_or(|range| range.contains(&region.page)));
+        restore_unchanged_paragraph_regions(
+            &mut entries,
+            previous,
+            edited,
+            |(region, paragraph)| (region.page, *paragraph),
+        );
+        (self.entries, self.paragraphs) = entries.into_iter().unzip();
+    }
+}
+
 /// Reuses the existing one-byte capture slot without exposing body-only
 /// clipping projections through the auxiliary-story API.
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -1262,6 +1311,22 @@ pub struct ObjectDebugInfo {
     pub width: f64,
     pub height: f64,
     pub rotation_deg: f64,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(transparent)]
+struct RegisteredObjectRegion {
+    region: ObjectDebugInfo,
+    #[serde(skip)]
+    inline_picture: bool,
+}
+
+impl std::ops::Deref for RegisteredObjectRegion {
+    type Target = ObjectDebugInfo;
+
+    fn deref(&self) -> &Self::Target {
+        &self.region
+    }
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -2669,6 +2734,78 @@ fn mac_inline_text_box_outline_px(text_box: &RunTextBox) -> f64 {
     (width / STEP_PX).round() * STEP_PX
 }
 
+// Band clipping can record only part of an untouched paragraph's regions.
+// Keep its previous registrations where available and add newly seen pages.
+fn restore_unchanged_paragraph_regions<T>(
+    current: &mut Vec<T>,
+    previous: impl IntoIterator<Item = T>,
+    edited: usize,
+    owner: impl Fn(&T) -> (usize, usize),
+) {
+    let mut owners = HashSet::new();
+    let previous = previous
+        .into_iter()
+        .filter(|region| {
+            let key = owner(region);
+            if key.1 == edited {
+                return false;
+            }
+            owners.insert(key);
+            true
+        })
+        .collect::<Vec<_>>();
+    if previous.is_empty() {
+        return;
+    }
+    current.retain(|region| !owners.contains(&owner(region)));
+    current.extend(previous);
+    current.sort_by_key(owner);
+}
+
+struct StableEditMetadata {
+    comments: CommentAnnotations,
+    images: Vec<ImageDebugInfo>,
+    objects: Vec<RegisteredObjectRegion>,
+}
+
+impl StableEditMetadata {
+    // Keep metadata preservation out of the full-render code path.
+    #[inline(never)]
+    fn capture(
+        comments: &mut CommentAnnotations,
+        images: &mut Vec<ImageDebugInfo>,
+        objects: &[RegisteredObjectRegion],
+    ) -> Self {
+        Self {
+            comments: std::mem::take(comments),
+            images: std::mem::take(images),
+            objects: objects.to_vec(),
+        }
+    }
+
+    #[inline(never)]
+    fn restore(
+        self,
+        edited: usize,
+        comments: Option<(
+            &mut CommentAnnotations,
+            Option<&std::ops::RangeInclusive<usize>>,
+        )>,
+        images: &mut Vec<ImageDebugInfo>,
+        objects: &mut Vec<RegisteredObjectRegion>,
+    ) {
+        if let Some((comments, window)) = comments {
+            comments.restore_unchanged(self.comments, edited, window);
+        }
+        restore_unchanged_paragraph_regions(images, self.images, edited, |region| {
+            (region.page, region.paragraph_index)
+        });
+        restore_unchanged_paragraph_regions(objects, self.objects, edited, |region| {
+            (region.page, region.paragraph_index)
+        });
+    }
+}
+
 fn paragraph_has_floating_or_math(paragraph: &Paragraph) -> bool {
     paragraph
         .runs
@@ -3956,7 +4093,7 @@ where
     paragraph_counter: usize,
     page_offset_y: f64,
     comment_store: HashMap<String, DocumentComment>,
-    comment_annotations: Vec<CommentAnnotation>,
+    comment_annotations: CommentAnnotations,
     hyperlink_regions: Vec<HyperlinkRegion>,
     hyperlink_regions_js_cache: RefCell<Option<JsValue>>,
     footnote_counter: usize,
@@ -4051,7 +4188,7 @@ where
     structure: RefCell<structure::StructureState>,
     text_box_debug_regions: RefCell<Vec<TextBoxDebugInfo>>,
     grouped_shape_text_regions: RefCell<Vec<GroupedShapeTextDebugInfo>>,
-    object_debug_regions: RefCell<Vec<ObjectDebugInfo>>,
+    object_debug_regions: RefCell<Vec<RegisteredObjectRegion>>,
     table_picture_debug_regions: Vec<ObjectDebugInfo>,
     /// Linked text box chains, by id, for the document last rendered.
     linked_stories: RefCell<HashMap<u32, Rc<LinkedStory>>>,
@@ -6324,12 +6461,12 @@ where
             // Inline selection highlights belong to the page pixels. A
             // selection change can invalidate pages beyond the edited one.
             || self.inline_selection_paint_dirty
-            // Comment annotations are rebuilt by the regular paragraph walk.
-            || self.document_has_comments
             || self.pageless_mode
-            // An early exit does not rebuild the object hit regions on
-            // untouched pages. Keep the regular walk for these documents.
-            || !self.object_debug_regions.borrow().is_empty()
+            // Inline pictures belong to a single paragraph. Floating objects
+            // and shape groups can affect other paragraphs' paint or layout.
+            || self.object_debug_regions.borrow().iter().any(|region| {
+                !region.inline_picture || region.paragraph_index == paragraph_index
+            })
             // A cell's text height alone does not prove that its table kept
             // the same column widths and positions of the other cells.
             || self.selection.cell_id_for_paragraph(paragraph_index).is_some()
@@ -6359,7 +6496,10 @@ where
         if self.pageless_mode {
             // One page either way; there is no later page to lose.
             self.set_fast_replay_trigger(paragraph_index, old_height);
-        } else if !self.prepare_completed_pagination_edit(paragraph_index, old_height) {
+        } else if self.document_has_comments
+            || !self.object_debug_regions.borrow().is_empty()
+            || !self.prepare_completed_pagination_edit(paragraph_index, old_height)
+        {
             self.clear_fast_replay();
         }
     }
@@ -8968,7 +9108,7 @@ where
             paragraph_counter: 0,
             page_offset_y: 0.0,
             comment_store: HashMap::new(),
-            comment_annotations: Vec::new(),
+            comment_annotations: CommentAnnotations::default(),
             hyperlink_regions: Vec::new(),
             hyperlink_regions_js_cache: RefCell::new(None),
             footnote_counter: 0,
@@ -14752,6 +14892,17 @@ where
         // during a full repaint and turned into `page_valign_offsets` at the end.
         self.valign_used_heights.clear();
         self.valign_available_heights.clear();
+        let stable_edit_metadata = self
+            .fast_replay_trigger
+            .filter(|_| preserve_stable_edit_pagination)
+            .map(|(paragraph, _)| {
+                let metadata = StableEditMetadata::capture(
+                    &mut self.comment_annotations,
+                    self.image_debug_regions.get_mut(),
+                    self.object_debug_regions.get_mut(),
+                );
+                (paragraph, metadata)
+            });
         self.comment_annotations.clear();
         // The stable-edit exit leaves the paragraphs after the edited one
         // unwalked, so set their regions aside with the selection tail rather
@@ -15691,6 +15842,18 @@ where
             }
             if preserve_stable_edit_pagination {
                 self.selection.restore_cell_layouts(previous_cells);
+            }
+            if let Some((edited, metadata)) = stable_edit_metadata {
+                let comments = (options.render_comments && !self.render_skip_draw).then_some((
+                    &mut self.comment_annotations,
+                    self.visible_page_range.as_ref(),
+                ));
+                metadata.restore(
+                    edited,
+                    comments,
+                    self.image_debug_regions.get_mut(),
+                    self.object_debug_regions.get_mut(),
+                );
             }
         }
         if preserve_pixel_pagination
@@ -21121,7 +21284,8 @@ where
                     && stable_column
                     && stable_offset
                     && self.joined_render.is_none()
-                    && (!self.preserve_completed_pagination_on_stable_edit || stable_cached_extent);
+                    && (!self.preserve_completed_pagination_on_stable_edit
+                        || (stable_cached_extent && !paragraph_has_floating_or_math(paragraph)));
                 if stable {
                     if self.paragraph_break_pending {
                         // For paragraph break operations where the edited paragraph's
@@ -24101,7 +24265,7 @@ where
                     self.draw_comment_highlights(&line_layout, comment_ranges)?;
                 }
                 if !comment_markers.is_empty() {
-                    self.draw_comment_markers(&line_layout, comment_markers)?;
+                    self.draw_comment_markers(paragraph_index, &line_layout, comment_markers)?;
                 }
                 self.draw_selection_highlight(paragraph_index, &line_layout)?;
 
@@ -24523,7 +24687,7 @@ where
                 self.reset_fill_style_state();
             }
             if !comment_markers.is_empty() {
-                self.draw_comment_markers(&line_layout, comment_markers)?;
+                self.draw_comment_markers(paragraph_index, &line_layout, comment_markers)?;
                 self.reset_fill_style_state();
             }
             self.draw_selection_highlight(paragraph_index, &line_layout)?;
@@ -24607,16 +24771,19 @@ where
                 // clicked on the page.
                 self.object_debug_regions
                     .borrow_mut()
-                    .extend((!image.layout.hidden()).then_some(ObjectDebugInfo {
-                        kind: FloatingObjectKind::Image,
-                        paragraph_index,
-                        run_index: *run_index,
-                        page: self.current_page_number,
-                        x: *image_x,
-                        y: *image_y,
-                        width: *image_width,
-                        height: *image_height,
-                        rotation_deg: image.layout.rotation_deg.unwrap_or(0.0),
+                    .extend((!image.layout.hidden()).then_some(RegisteredObjectRegion {
+                        inline_picture: image.shape_group.is_none(),
+                        region: ObjectDebugInfo {
+                            kind: FloatingObjectKind::Image,
+                            paragraph_index,
+                            run_index: *run_index,
+                            page: self.current_page_number,
+                            x: *image_x,
+                            y: *image_y,
+                            width: *image_width,
+                            height: *image_height,
+                            rotation_deg: image.layout.rotation_deg.unwrap_or(0.0),
+                        },
                     }));
                 let draw_spec = ImageDrawSpec {
                     x: *image_x,
@@ -25525,16 +25692,19 @@ where
         // even when drawing is skipped (e.g. page not in dirty set).
         self.object_debug_regions
             .borrow_mut()
-            .extend((!image.layout.hidden()).then_some(ObjectDebugInfo {
-                kind: FloatingObjectKind::Image,
-                paragraph_index,
-                run_index,
-                page: self.current_page_number,
-                x: transform.x,
-                y: transform.y,
-                width: transform.width,
-                height: transform.height,
-                rotation_deg: transform.rotation_deg,
+            .extend((!image.layout.hidden()).then_some(RegisteredObjectRegion {
+                inline_picture: false,
+                region: ObjectDebugInfo {
+                    kind: FloatingObjectKind::Image,
+                    paragraph_index,
+                    run_index,
+                    page: self.current_page_number,
+                    x: transform.x,
+                    y: transform.y,
+                    width: transform.width,
+                    height: transform.height,
+                    rotation_deg: transform.rotation_deg,
+                },
             }));
 
         let draw_spec = ImageDrawSpec {
@@ -28852,16 +29022,19 @@ where
             });
         self.object_debug_regions
             .borrow_mut()
-            .push(ObjectDebugInfo {
-                kind: FloatingObjectKind::TextBox,
-                paragraph_index,
-                run_index,
-                page: self.current_page_number,
-                x: draw_x,
-                y: draw_y,
-                width,
-                height,
-                rotation_deg: transform.rotation_deg,
+            .push(RegisteredObjectRegion {
+                inline_picture: false,
+                region: ObjectDebugInfo {
+                    kind: FloatingObjectKind::TextBox,
+                    paragraph_index,
+                    run_index,
+                    page: self.current_page_number,
+                    x: draw_x,
+                    y: draw_y,
+                    width,
+                    height,
+                    rotation_deg: transform.rotation_deg,
+                },
             });
 
         let wrap_bottom_outset = text_box_wrap_bottom_outset_px(&border);
@@ -28963,7 +29136,7 @@ where
         let saved_counter = self.paragraph_counter;
         let saved_selection = std::mem::take(&mut self.selection);
         let saved_hyperlinks = self.hyperlink_regions.len();
-        let saved_comments = self.comment_annotations.len();
+        let saved_comments = self.comment_annotations.entries.len();
         let saved_images = self.image_debug_regions.borrow().len();
         let saved_text_boxes = self.text_box_debug_regions.borrow().len();
         let saved_grouped = self.grouped_shape_text_regions.borrow().len();
@@ -32454,6 +32627,7 @@ where
 
     fn draw_comment_markers(
         &mut self,
+        paragraph_index: usize,
         line: &SelectionLineLayout,
         comment_markers: &[CommentMarker],
     ) -> Result<(), JsValue> {
@@ -32474,7 +32648,7 @@ where
                         base_top + line.content_height + COMMENT_MARKER_RADIUS + COMMENT_MARKER_GAP;
                 }
                 let center_x = x + COMMENT_MARKER_RADIUS;
-                self.record_comment_annotation(marker, center_x, center_y, line);
+                self.record_comment_annotation(paragraph_index, marker, center_x, center_y, line);
                 centers.push((center_x, center_y, marker));
             }
         }
@@ -32802,6 +32976,7 @@ where
 
     fn record_comment_annotation(
         &mut self,
+        paragraph_index: usize,
         marker: &CommentMarker,
         center_x: f64,
         center_y: f64,
@@ -32820,18 +32995,21 @@ where
             None => (String::new(), None, None, None),
         };
 
-        self.comment_annotations.push(CommentAnnotation {
-            id: marker.id.clone(),
-            page: self.current_page_number,
-            x: top_left_x,
-            y: top_left_y,
-            width: COMMENT_MARKER_RADIUS * 2.0,
-            height: COMMENT_MARKER_RADIUS * 2.0,
-            text,
-            author,
-            initials,
-            date,
-        });
+        self.comment_annotations.push(
+            paragraph_index,
+            CommentAnnotation {
+                id: marker.id.clone(),
+                page: self.current_page_number,
+                x: top_left_x,
+                y: top_left_y,
+                width: COMMENT_MARKER_RADIUS * 2.0,
+                height: COMMENT_MARKER_RADIUS * 2.0,
+                text,
+                author,
+                initials,
+                date,
+            },
+        );
     }
 
     fn apply_run_style(
@@ -36576,7 +36754,7 @@ where
                     .object_debug_regions
                     .borrow()
                     .iter()
-                    .cloned()
+                    .map(|registered| registered.region.clone())
                     .chain(table_pictures)
                     .collect(),
                 text_box_regions: self.text_box_debug_regions.borrow().clone(),
@@ -36701,7 +36879,7 @@ where
     }
 
     pub fn comment_annotations(&self) -> &[CommentAnnotation] {
-        &self.comment_annotations
+        &self.comment_annotations.entries
     }
 
     pub fn hyperlink_regions(&self) -> &[HyperlinkRegion] {
@@ -36961,7 +37139,7 @@ where
                 let local_y = dx * radians.sin() + dy * radians.cos();
                 local_x.abs() <= region.width / 2.0 && local_y.abs() <= region.height / 2.0
             })
-            .cloned()
+            .map(|registered| registered.region.clone())
     }
 
     pub fn object_region(&self, target: FloatingObjectTarget) -> Option<ObjectDebugInfo> {
@@ -36973,7 +37151,7 @@ where
                     && region.paragraph_index == target.paragraph_index
                     && region.run_index == target.run_index
             })
-            .cloned()
+            .map(|registered| registered.region.clone())
     }
 
     pub fn mark_object_target_page_dirty(&self, target: FloatingObjectTarget) {
@@ -38806,7 +38984,7 @@ where
         let saved_selection = std::mem::take(&mut self.selection);
 
         let saved_hyperlinks = self.hyperlink_regions.len();
-        let saved_comments = self.comment_annotations.len();
+        let saved_comments = self.comment_annotations.entries.len();
         let saved_images = self.image_debug_regions.borrow().len();
         let saved_text_boxes = self.text_box_debug_regions.borrow().len();
         let saved_grouped_shape_text = self.grouped_shape_text_regions.borrow().len();
@@ -60466,7 +60644,7 @@ mod tests {
                 proptest::prop_assert_eq!(renderer.is_seek_compatible_options(&options), kind == 3);
                 proptest::prop_assert_eq!(renderer.can_use_unchecked_cache_replay(&options), kind == 3);
                 if kind == 1 {
-                    proptest::prop_assert!(renderer.comment_annotations.iter().any(|annotation| annotation.id == "1"));
+                    proptest::prop_assert!(renderer.comment_annotations().iter().any(|annotation| annotation.id == "1"));
                 }
                 proptest::prop_assert_eq!(renderer.comment_store.contains_key("1"), has_metadata);
             }
@@ -60513,7 +60691,7 @@ mod tests {
             .unwrap();
         assert!(renderer.document_has_comments);
         assert!(renderer
-            .comment_annotations
+            .comment_annotations()
             .iter()
             .any(|annotation| annotation.id == "1"));
         assert_eq!(renderer.comment_anchor_document_scans.get(), 1);
@@ -60534,7 +60712,7 @@ mod tests {
             .render_with_numbering_rc(Rc::clone(&document), &options, None, None, None, None)
             .unwrap();
         assert!(!renderer.document_has_comments);
-        assert!(renderer.comment_annotations.is_empty());
+        assert!(renderer.comment_annotations().is_empty());
         assert_eq!(renderer.comment_anchor_document_scans.get(), 2);
     }
 
@@ -62518,6 +62696,77 @@ mod tests {
             });
         }
         document
+    }
+
+    #[test]
+    fn stable_local_edit_preserves_comments_and_inline_picture_hit_testing() {
+        let mut document = object_region_test_document();
+        let body = document.body.as_mut().unwrap();
+        let text = doc_with_paragraph_texts(&["original text", "later comment"]);
+        body.elements.splice(..2, text.body.unwrap().elements);
+        for (index, id) in [(0, "1"), (1, "2")] {
+            let BodyElement::Paragraph(paragraph) = &mut body.elements[index] else {
+                unreachable!()
+            };
+            paragraph.comment_markers.push(CommentMarker {
+                id: id.into(),
+                position: 4,
+            });
+        }
+        let BodyElement::Paragraph(paragraph) = &mut body.elements[1] else {
+            unreachable!()
+        };
+        paragraph.properties = Some(ParagraphProperties {
+            page_break_before: Some(true),
+            ..Default::default()
+        });
+        let mut options = options_for_seek_tests();
+        options.render_comments = true;
+        let (host, _) = PerPageRecordingHost::new(20);
+        let mut renderer = CanvasRenderer::with_host(Box::new(host), false).unwrap();
+        renderer.render(&document, &options).unwrap();
+        let pages = renderer.host.page_count();
+        let image_target = FloatingObjectTarget {
+            kind: FloatingObjectKind::Image,
+            paragraph_index: 8,
+            run_index: 0,
+        };
+        let image = renderer.object_region(image_target).unwrap();
+        let image_x = image.x + 1.0;
+        let image_y = renderer.page_top_y(image.page - 1) + image.y + 1.0;
+        assert!(renderer.hit_test_object(image_x, image_y).is_some());
+        assert_eq!(renderer.comment_annotations().len(), 2);
+        let old_comment_x = renderer.comment_annotations()[0].x;
+        let height = renderer.cached_paragraph_height(0).unwrap();
+
+        let BodyElement::Paragraph(paragraph) = &mut document.body.as_mut().unwrap().elements[0]
+        else {
+            unreachable!()
+        };
+        paragraph.runs[0].text.insert_str(0, "new ");
+        paragraph.comment_markers[0].position += 4;
+        renderer.set_incremental_dirty_from(0);
+        renderer.mark_paragraph_dirty(0);
+        assert!(renderer.prepare_completed_pagination_edit(0, height));
+        renderer.render(&document, &options).unwrap();
+
+        assert!(renderer.last_completed_pagination_edit_preserved());
+        assert_eq!(renderer.host.page_count(), pages);
+        assert!(renderer.last_render_body_element_count() < 10);
+        assert!(renderer.object_region(image_target).is_some());
+        assert!(renderer.hit_test_object(image_x, image_y).is_some());
+        assert_ne!(renderer.comment_annotations()[0].x, old_comment_x);
+        let (host, _) = PerPageRecordingHost::new(20);
+        let mut reference = CanvasRenderer::with_host(Box::new(host), false).unwrap();
+        reference.render(&document, &options).unwrap();
+        assert_eq!(
+            serde_json::to_value(renderer.comment_annotations()).unwrap(),
+            serde_json::to_value(reference.comment_annotations()).unwrap()
+        );
+        assert_eq!(
+            serde_json::to_value(renderer.image_debug_regions()).unwrap(),
+            serde_json::to_value(reference.image_debug_regions()).unwrap()
+        );
     }
 
     #[test]
@@ -65154,16 +65403,19 @@ mod tests {
         renderer
             .object_debug_regions
             .borrow_mut()
-            .push(ObjectDebugInfo {
-                kind: FloatingObjectKind::Image,
-                paragraph_index: 5,
-                run_index: 0,
-                page: 2,
-                x: 96.0,
-                y: 96.0,
-                width: 100.0,
-                height: 100.0,
-                rotation_deg: 0.0,
+            .push(RegisteredObjectRegion {
+                inline_picture: false,
+                region: ObjectDebugInfo {
+                    kind: FloatingObjectKind::Image,
+                    paragraph_index: 5,
+                    run_index: 0,
+                    page: 2,
+                    x: 96.0,
+                    y: 96.0,
+                    width: 100.0,
+                    height: 100.0,
+                    rotation_deg: 0.0,
+                },
             });
 
         assert!(!renderer.prepare_completed_pagination_edit(0, 20.0));
@@ -65172,13 +65424,27 @@ mod tests {
     }
 
     #[test]
-    fn completed_pagination_edit_does_not_skip_comment_registration() {
-        let mut renderer = test_renderer();
-        renderer.document_has_comments = true;
-
-        assert!(!renderer.prepare_completed_pagination_edit(0, 20.0));
-        assert!(!renderer.preserve_completed_pagination_on_stable_edit);
-        assert!(renderer.fast_replay_trigger.is_none());
+    fn completed_pagination_edit_uses_fresh_metadata_only_for_edited_or_new_paragraphs() {
+        let mut regions = vec![(1, 1, "edited"), (1, 2, "partial"), (3, 4, "new")];
+        let previous = [
+            (1, 1, "old edit"),
+            (1, 2, "first marker"),
+            (1, 2, "second marker"),
+            (2, 3, "untouched page"),
+        ];
+        restore_unchanged_paragraph_regions(&mut regions, previous, 1, |region| {
+            (region.0, region.1)
+        });
+        assert_eq!(
+            regions,
+            [
+                (1, 1, "edited"),
+                (1, 2, "first marker"),
+                (1, 2, "second marker"),
+                (2, 3, "untouched page"),
+                (3, 4, "new"),
+            ]
+        );
     }
 
     #[test]
