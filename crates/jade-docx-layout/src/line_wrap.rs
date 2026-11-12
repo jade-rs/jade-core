@@ -6071,6 +6071,14 @@ fn arabic_wrap_unit_continues(previous: &str, next: &str) -> bool {
             && next.starts_with(['ا', 'أ', 'إ', 'آ']))
 }
 
+fn is_geeza_pro(font: &str) -> bool {
+    crate::line_metrics::split_font_descriptor(font).is_some_and(|(_, family)| {
+        family
+            .trim_matches(['\'', '"'])
+            .eq_ignore_ascii_case("Geeza Pro")
+    })
+}
+
 fn measure_arabic_wrap_clusters<C: LineWrapContext>(
     ctx: &C,
     text: &str,
@@ -6089,6 +6097,19 @@ fn measure_arabic_wrap_clusters<C: LineWrapContext>(
             .map(|width| Some(vec![(0, width)]));
     }
     let Some(mut clusters) = ctx.measure_arabic_clusters(text, font) else {
+        // Geeza Pro shapes an initial alef separately from the lam-lam-heh
+        // ligature. Canvas provides a width for each shaped part.
+        if matches!(text, "الله" | "لله") && is_geeza_pro(font) {
+            let clusters = if let Some(suffix) = text.strip_prefix('ا') {
+                vec![
+                    (0, ctx.measure_text("ا", font)?),
+                    ('ا'.len_utf8(), ctx.measure_text(suffix, font)?),
+                ]
+            } else {
+                vec![(0, ctx.measure_text(text, font)?)]
+            };
+            return Ok(Some(clusters));
+        }
         let mut starts = vec![0];
         let mut previous = "";
         for (start, grapheme) in crate::graphemes::grapheme_indices(text) {
@@ -8093,7 +8114,12 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext, const SHAPE_
                         == crate::line_metrics::WordLayoutPlatform::Mac;
                 // Emergency wrapping can break before a join control attached to an
                 // overwide Latin grapheme. Keep normal shaping clusters in wider lines.
-                if mac_overflow && current_width <= f64::EPSILON && script == ScriptCategory::Latin
+                if mac_overflow
+                    && current_width <= f64::EPSILON
+                    && (script == ScriptCategory::Latin
+                        || (script == ScriptCategory::Complex
+                            && grapheme.ends_with('\u{200c}')
+                            && is_geeza_pro(font_desc)))
                 {
                     let prefix = grapheme.trim_end_matches(['\u{200c}', '\u{200d}']);
                     if prefix.len() < grapheme.len()
