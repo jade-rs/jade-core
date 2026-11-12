@@ -9,3 +9,9 @@ python tests/word-oracle/mac-elsa-synthetic/extract.py path/to/fixture path/to/w
 ```
 
 Commit the synthetic DOCX, manifest, and generated `pages.json.gz`.
+
+The discretionary-hyphen fixtures compare the positions of painted dashes
+alongside the other glyphs. The page-origins fixture covers authored soft and
+nonbreaking hyphens across three pages with different widths and indents. The
+width probe varies the available width from 26 to 90 pt over two pages and
+checks both the dash and the continuation where a soft break changes wrapping.

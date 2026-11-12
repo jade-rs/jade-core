@@ -318,7 +318,10 @@ function checkPages(name, reference, actual, manifest, expectedArabic) {
   const registration = manifest.horizontalPrintRegistration;
   const compareAsGlyph = text => !expectedArabic || !isArabic(text);
   const captureHyphens = manifest.capturePaintedHyphens === true;
-  const glyphs = reference.map((_, i) => captureHyphens ? actual.paintedHyphens[i] : []);
+  // Word's PDF encodes the nonbreaking hyphen as an ASCII dash.
+  const glyphs = reference.map((_, i) => captureHyphens
+    ? actual.paintedHyphens[i].map(([text, x, y]) => [text === '\u2011' ? '-' : text, x, y])
+    : []);
   const images = reference.map(() => []);
   const entries = actual.body_lines.map(line => ({ page: line.page, line }));
   const layoutLines = name === 'hidden-text-character-effects-mac'
