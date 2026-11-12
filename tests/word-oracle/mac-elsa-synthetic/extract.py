@@ -156,7 +156,8 @@ def arabic_spans(body, expected_runs):
     ]
     spans = []
     remaining = iter(glyphs)
-    for expected in expected_runs:
+    for run in expected_runs:
+        expected = run if isinstance(run, str) else run[0]
         text = ""
         origins = []
         baselines = set()
