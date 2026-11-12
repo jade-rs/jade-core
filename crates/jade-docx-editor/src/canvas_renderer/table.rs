@@ -12156,7 +12156,19 @@ fn split_cell_paragraph(
     {
         return None;
     }
-    if paragraph.widow_control && !mac_manual_break {
+    // A trailing join-control line can continue on the next page without
+    // carrying its preceding visible line with it.
+    let mac_invisible_tail = paragraph.widow_control
+        && fits > 0
+        && fits + 1 == paragraph.lines.len()
+        && paragraph.lines[fits - 1].break_kind == LineBreakKind::Soft
+        && word_layout_platform() == WordLayoutPlatform::Mac
+        && !paragraph.lines[fits].text.is_empty()
+        && paragraph.lines[fits]
+            .text
+            .chars()
+            .all(|ch| matches!(ch, '\u{200c}' | '\u{200d}'));
+    if paragraph.widow_control && !mac_manual_break && !mac_invisible_tail {
         match resolve_widow_orphan_decision(paragraph.lines.len(), fits) {
             WidowOrphanDecision::MoveWholeParagraph => return None,
             WidowOrphanDecision::BreakBeforeLine(line) => fits = line,

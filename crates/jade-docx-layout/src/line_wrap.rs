@@ -3830,9 +3830,16 @@ impl WrappedLine {
         {
             return None;
         }
-        let control = self.clusters.first()?.text.as_str();
-        if !matches!(control, "\u{200c}" | "\u{200d}")
-            || !self.clusters.iter().all(|cluster| cluster.text == control)
+        let control = self.clusters.first()?.text.chars().next()?;
+        let control_text = match control {
+            '\u{200c}' => "\u{200c}",
+            '\u{200d}' => "\u{200d}",
+            _ => return None,
+        };
+        if !self
+            .clusters
+            .iter()
+            .all(|cluster| cluster.text.chars().all(|ch| ch == control))
         {
             return None;
         }
@@ -3845,7 +3852,7 @@ impl WrappedLine {
                 );
                 crate::line_metrics::word_mac_join_control_line_height_px(
                     &style.font_descriptor_latin_ascii,
-                    control,
+                    control_text,
                 )
             })
             .reduce(f64::max)
