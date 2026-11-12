@@ -8232,8 +8232,28 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext, const SHAPE_
                 let zero_width_oracle_glyph =
                     computed.measured_width_is_oracle && candidate_width <= f64::EPSILON;
 
+                // Word breaks at the preceding space before emergency-wrapping
+                // an Arabic word, even when that word exceeds a full line.
+                let remaining_word_width = if shaped_arabic.is_some()
+                    && arabic_span.start == start_aligned + rel_offset
+                    && current_width > 0.0
+                    && current_line_clusters
+                        .last()
+                        .is_some_and(|cluster| cluster.text == " ")
+                {
+                    arabic_span
+                        .clusters
+                        .iter()
+                        .skip(1)
+                        .map(|&(_, advance)| advance)
+                        .sum::<f64>()
+                        * text_scale_x
+                } else {
+                    0.0
+                };
                 let candidate_overflow =
-                    current_width + candidate_width + trailing_overhang - effective_available;
+                    current_width + candidate_width + remaining_word_width + trailing_overhang
+                        - effective_available;
                 let mac_overflow = candidate_overflow > WRAP_FIT_TOLERANCE_PX
                     && paragraph_style.word_platform
                         == crate::line_metrics::WordLayoutPlatform::Mac;
