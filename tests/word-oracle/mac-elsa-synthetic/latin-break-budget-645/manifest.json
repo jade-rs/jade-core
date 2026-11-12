@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "sourceSha256": "f4eae732b9eb4d596e79b7754d404830a82b52d5c2bf76debb35d0e207b7c891",
+  "reference": {
+    "application": "Microsoft Word",
+    "platform": "mac",
+    "export": "Save As > PDF",
+    "pdfSha256": "e1c9d1fe07850debfc4074fc5a1616e6976ac8ec9810db119823f974619a49f8",
+    "extractor": "PyMuPDF 1.26.5"
+  },
+  "pages": 2,
+  "axisTolerancePt": 0.65,
+  "bodyOnly": true,
+  "coordinatesSha256": "9c3a57247a859a6491de13e058b9f47115eb17861b93195870128bdbd6d6007f"
+}
