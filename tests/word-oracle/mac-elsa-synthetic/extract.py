@@ -183,16 +183,28 @@ def shaped_glyph_clusters(body, expected_clusters):
     output = []
     start = 0
     for visual, logical in expected_clusters:
-        if not visual or sorted("".join(visual)) != sorted(logical):
+        thai = bool(logical) and all("\u0e00" <= char <= "\u0e7f" for char in logical)
+        visual_text = "".join(visual)
+        logical_text = logical
+        if thai:
+            # Word's PDF splits sara am and can encode a raised mai tho as
+            # an apostrophe above another mark. Keep the original base origin.
+            logical_text = logical.replace("\u0e33", "\u0e4d\u0e32")
+            if logical.endswith("\u0e49") and len(logical) > 2 and visual_text.endswith("'"):
+                visual_text = visual_text[:-1] + "\u0e49"
+        if not visual or sorted(visual_text) != sorted(logical_text):
             raise ValueError(f"Invalid shaped glyph cluster: {visual!r}, {logical!r}")
         for index in range(start, len(body) - len(visual) + 1):
             glyphs = body[index:index + len(visual)]
             if [glyph[0] for glyph in glyphs] != visual:
                 continue
-            if len({glyph[2] for glyph in glyphs}) != 1:
+            baseline = glyphs[0][2]
+            baseline_tolerance = 0.65 if thai else 0
+            if any(abs(glyph[2] - baseline) > baseline_tolerance for glyph in glyphs):
                 raise ValueError(f"Shaped glyph cluster crosses baselines: {visual!r}")
             output.extend(body[start:index])
-            output.append([logical, min(glyph[1] for glyph in glyphs), glyphs[0][2]])
+            x = glyphs[0][1] if thai else min(glyph[1] for glyph in glyphs)
+            output.append([logical, x, baseline])
             start = index + len(visual)
             break
         else:
