@@ -976,7 +976,7 @@ impl<'a, C: StyledMathMeasure> Builder<'_, 'a, C> {
                     self.first = Some(class);
                 }
                 self.prev = Some(class);
-                self.note_space_after_operator(space);
+                self.note_space_after_operator(space, self.plan.glyphs.len());
                 if matches!(class, AtomClass::Bin | AtomClass::Rel) {
                     self.break_candidate(
                         class,
@@ -1054,11 +1054,10 @@ impl<'a, C: StyledMathMeasure> Builder<'_, 'a, C> {
         }
     }
 
-    fn note_space_after_operator(&mut self, space: f64) {
+    fn note_space_after_operator(&mut self, space: f64, glyphs: usize) {
         if self.depth != 0 || self.options.settings.break_binary != BreakBinary::After {
             return;
         }
-        let glyphs = self.plan.glyphs.len();
         if let Some(candidate) = self.breaks.as_mut().and_then(|breaks| breaks.last_mut()) {
             if (candidate.class == AtomClass::Bin
                 || candidate.class == AtomClass::Rel
@@ -1237,16 +1236,20 @@ impl<'a, C: StyledMathMeasure> Builder<'_, 'a, C> {
         let class = structure_class(e);
         // Structures space as one atom against their neighbours.
         let mut lead = 0.0;
+        let mut atom_space = 0.0;
         let structure = !matches!(e.kind, Run | Text | Math | MathParagraph | Unknown)
             || e.local_name().starts_with("eq");
         if structure {
             if let Some(prev) = self.prev {
                 let left = class.0;
                 let left = alphabet::resolve_binary(Some(prev), left);
-                lead = alphabet::atom_space(prev, left, self.level > 0) * self.size() / 18.0;
+                atom_space = alphabet::atom_space(prev, left, self.level > 0);
+                lead = atom_space * self.size() / 18.0;
             }
             lead += std::mem::take(&mut self.pending_italic);
-            self.note_space_after_operator(lead);
+            if e.kind != Fraction {
+                self.note_space_after_operator(lead, start.glyphs);
+            }
         }
         self.first = None;
         if structure && matches!(class.0, AtomClass::Bin | AtomClass::Rel) {
@@ -1264,7 +1267,14 @@ impl<'a, C: StyledMathMeasure> Builder<'_, 'a, C> {
                 self.depth -= 1;
                 m
             }
-            Fraction => self.fraction(e)?,
+            Fraction => {
+                let (metrics, fraction_size) = self.fraction(e)?;
+                if let Some(size) = fraction_size {
+                    lead += atom_space * (size - self.size()) / 18.0;
+                }
+                self.note_space_after_operator(lead, start.glyphs);
+                metrics
+            }
             Superscript | Subscript | SubSup => self.scripts(e)?,
             PreSubSuper => self.prescripts(e)?,
             Nary => self.nary(e)?,
