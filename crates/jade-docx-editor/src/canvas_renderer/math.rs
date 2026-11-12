@@ -1,8 +1,8 @@
 use crate::document::MathParagraph;
 #[cfg(test)]
 use crate::document::{MathElement, MathElementKind};
-pub(crate) use jade_docx_layout::math_layout::math_text;
 use jade_docx_layout::math_layout::MathMetrics;
+pub(crate) use jade_docx_layout::math_layout::math_text;
 use jade_docx_layout::units::points_to_px;
 use jade_docx_reader::{ParagraphProperties, StylesPart, ThemePart};
 use jade_painter::Painter;
@@ -17,7 +17,7 @@ struct StyledPainterMeasure<'a, P> {
     font: RefCell<Option<(String, f64)>>,
 }
 fn cambria_math_metrics(text: &str, style: MathTextStyle<'_>) -> Option<(f64, f64)> {
-    use jade_docx_layout::line_metrics::{word_layout_platform, WordLayoutPlatform};
+    use jade_docx_layout::line_metrics::{WordLayoutPlatform, word_layout_platform};
     if !style.family.eq_ignore_ascii_case("Cambria Math")
         || word_layout_platform() != WordLayoutPlatform::Mac
     {
@@ -34,8 +34,8 @@ fn cambria_math_metrics(text: &str, style: MathTextStyle<'_>) -> Option<(f64, f6
         (1251, 80), // F
         (1290, 90), // G
         (1491, 60), // H
-        (776, 65), // I
-        (782, 40), // J
+        (776, 65),  // I
+        (782, 40),  // J
         (1430, 62), // K
         (1089, 42), // L
         (1743, 50), // M
@@ -54,30 +54,30 @@ fn cambria_math_metrics(text: &str, style: MathTextStyle<'_>) -> Option<(f64, f6
         (1213, 50), // Z
         (1141, 50), // a
         (1104, 45), // b
-        (942, 65), // c
+        (942, 65),  // c
         (1187, 65), // d
         (1016, 45), // e
         (1126, 60), // f
         (1253, 35), // g
         (1136, 35), // h
-        (649, 65), // i
-        (736, 35), // j
+        (649, 65),  // i
+        (736, 35),  // j
         (1130, 60), // k
-        (647, 65), // l
+        (647, 65),  // l
         (1717, 35), // m
         (1175, 35), // n
         (1091, 45), // o
         (1142, 25), // p
         (1103, 62), // q
-        (974, 45), // r
-        (946, 42), // s
-        (808, 50), // t
+        (974, 45),  // r
+        (946, 42),  // s
+        (808, 50),  // t
         (1175, 52), // u
         (1114, 60), // v
         (1513, 60), // w
         (1090, 62), // x
         (1146, 35), // y
-        (990, 35), // z
+        (990, 35),  // z
     ];
     let mut characters = text.chars();
     let character = characters.next()?;
