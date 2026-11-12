@@ -6079,19 +6079,11 @@ fn measure_arabic_wrap_clusters<C: LineWrapContext>(
     let Some(mut clusters) = ctx.measure_arabic_clusters(text, font) else {
         let mut starts = vec![0];
         let mut previous = "";
-        let mut merged = false;
         for (start, grapheme) in crate::graphemes::grapheme_indices(text) {
-            if start != 0 {
-                if arabic_wrap_unit_continues(previous, grapheme) {
-                    merged = true;
-                } else {
-                    starts.push(start);
-                }
+            if start != 0 && !arabic_wrap_unit_continues(previous, grapheme) {
+                starts.push(start);
             }
             previous = grapheme;
-        }
-        if !merged {
-            return Ok(None);
         }
         starts.push(text.len());
         let mut clusters = starts
