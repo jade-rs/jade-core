@@ -1201,7 +1201,7 @@ pub fn compute_grapheme_advance(context: GraphemeAdvanceContext<'_>) -> Grapheme
     } else {
         None
     };
-    compute_grapheme_advance_with_ascii_width(context, requested_ascii_width, None, None)
+    compute_grapheme_advance_with_ascii_width(context, requested_ascii_width, None)
 }
 
 fn uses_requested_ascii_width(context: &GraphemeAdvanceContext<'_>) -> bool {
@@ -1238,7 +1238,6 @@ fn compute_resolved_grapheme_advance(
     context: GraphemeAdvanceContext<'_>,
     style: &ResolvedRunStyle,
     requested_ascii_width_override: Option<f64>,
-    cross_font_previous_width: Option<f64>,
 ) -> GraphemeAdvance {
     let requested_ascii_width = if requested_ascii_width_override.is_some() {
         requested_ascii_width_override
@@ -1272,12 +1271,7 @@ fn compute_resolved_grapheme_advance(
     } else {
         None
     };
-    compute_grapheme_advance_with_ascii_width(
-        context,
-        requested_ascii_width,
-        Some(style),
-        cross_font_previous_width,
-    )
+    compute_grapheme_advance_with_ascii_width(context, requested_ascii_width, Some(style))
 }
 
 #[inline]
@@ -1354,22 +1348,11 @@ fn compute_grapheme_advance_with_ascii_width(
     context: GraphemeAdvanceContext<'_>,
     requested_ascii_width: Option<f64>,
     resolved_style: Option<&ResolvedRunStyle>,
-    cross_font_previous_width: Option<f64>,
 ) -> GraphemeAdvance {
     if context.snap_to_grid {
-        compute_grapheme_advance_for_grid::<true>(
-            context,
-            requested_ascii_width,
-            resolved_style,
-            cross_font_previous_width,
-        )
+        compute_grapheme_advance_for_grid::<true>(context, requested_ascii_width, resolved_style)
     } else {
-        compute_grapheme_advance_for_grid::<false>(
-            context,
-            requested_ascii_width,
-            resolved_style,
-            cross_font_previous_width,
-        )
+        compute_grapheme_advance_for_grid::<false>(context, requested_ascii_width, resolved_style)
     }
 }
 
@@ -1377,7 +1360,6 @@ fn compute_grapheme_advance_for_grid<const SNAP_TO_GRID: bool>(
     context: GraphemeAdvanceContext<'_>,
     requested_ascii_width: Option<f64>,
     resolved_style: Option<&ResolvedRunStyle>,
-    cross_font_previous_width: Option<f64>,
 ) -> GraphemeAdvance {
     let GraphemeAdvanceContext {
         snap_to_grid: _,
@@ -1551,19 +1533,15 @@ fn compute_grapheme_advance_for_grid<const SNAP_TO_GRID: bool>(
                         next_grapheme,
                         font_descriptor,
                     );
-                    // Word for Mac bases the leading gap on the preceding
-                    // East Asian character's width at mixed-size boundaries.
+                    // Word for Mac leaves a 3.5pt gap after 14pt kanji before
+                    // 18pt Arial in table-minimum-line-cjk-mac.
                     if leading > 0.0
                         && style.word_platform == crate::line_metrics::WordLayoutPlatform::Mac
+                        && prev_grapheme
+                            .and_then(|text| text.chars().next())
+                            .is_some_and(|ch| ch.script() == UnicodeScriptKind::Han)
                     {
-                        if let Some(width) = cross_font_previous_width {
-                            leading = width * 0.25;
-                        } else if let Some(width) = prev_glyph_width.filter(|width| {
-                            *width > 0.0
-                                && prev_grapheme
-                                    .and_then(|text| text.chars().next())
-                                    .is_some_and(|ch| ch.script() == UnicodeScriptKind::Han)
-                        }) {
+                        if let Some(width) = prev_glyph_width.filter(|width| *width > 0.0) {
                             leading = leading.min(width * 0.25);
                         }
                     }
@@ -1594,7 +1572,6 @@ fn compute_grapheme_advance_for_grid<const SNAP_TO_GRID: bool>(
                         prev_auto_space,
                     },
                     resolved_style,
-                    cross_font_previous_width,
                 )
             })
             .unwrap_or(0.0)
@@ -1879,14 +1856,13 @@ pub fn implicit_numeric_east_asian_gap_width(
     paragraph_style: &ParagraphStyle,
     context: ImplicitNumericGapContext<'_>,
 ) -> f64 {
-    implicit_numeric_east_asian_gap_width_with_style(paragraph_style, context, None, None)
+    implicit_numeric_east_asian_gap_width_with_style(paragraph_style, context, None)
 }
 
 fn implicit_numeric_east_asian_gap_width_with_style(
     paragraph_style: &ParagraphStyle,
     context: ImplicitNumericGapContext<'_>,
     resolved_style: Option<&ResolvedRunStyle>,
-    cross_font_previous_width: Option<f64>,
 ) -> f64 {
     let ImplicitNumericGapContext {
         grapheme,
@@ -1982,10 +1958,7 @@ fn implicit_numeric_east_asian_gap_width_with_style(
                         .balance_single_byte_double_byte_width,
                 )
             })
-            .map(|metrics| {
-                cross_font_previous_width
-                    .map_or_else(|| metrics.leading_gap_px(), |width| width * 0.25)
-            })
+            .map(crate::line_metrics::WordAutoSpace::leading_gap_px)
     } else {
         let balance = paragraph_style
             .east_asian_rules
@@ -3121,10 +3094,18 @@ fn compute_text_advance_step_with_descriptor<'a, C: LineWrapContext>(
                 )
             })
             .or(requested_ascii_measure),
-        state.prev_adjusted_glyph_width.filter(|width| {
-            *width > 0.0 && state.prev_font_descriptor_hash != Some(font_descriptor_hash)
-        }),
     );
+    if advance.implicit_latin_gap + advance.implicit_numeric_gap > 0.0 {
+        adjust_mac_leading_auto_space(
+            &mut advance,
+            paragraph_style,
+            style,
+            state,
+            grapheme,
+            font_descriptor,
+            font_descriptor_hash,
+        );
+    }
     // When the resolved font slot is genuinely Default, Word for Windows keeps
     // numeric text in the ANSI classification and does not add the East-Asian
     // autoSpaceDN boundary gap. Renderer-side OOXML resolution only produces
@@ -3162,6 +3143,72 @@ fn compute_text_advance_step_with_descriptor<'a, C: LineWrapContext>(
         monospace_cell,
         advance,
     })
+}
+
+/// Correct Word's leading auto spacing once an actual boundary has been found.
+#[inline(never)]
+fn adjust_mac_leading_auto_space(
+    advance: &mut GraphemeAdvance,
+    paragraph_style: Option<&ParagraphStyle>,
+    style: &ResolvedRunStyle,
+    state: &TextAdvanceState,
+    grapheme: &str,
+    font_descriptor: &str,
+    font_descriptor_hash: u64,
+) {
+    let Some(paragraph) = paragraph_style.filter(|paragraph| {
+        paragraph.word_platform == crate::line_metrics::WordLayoutPlatform::Mac
+    }) else {
+        return;
+    };
+    let Some(width) = state.prev_adjusted_glyph_width.filter(|width| *width > 0.0) else {
+        return;
+    };
+    let different_font = state.prev_font_descriptor_hash != Some(font_descriptor_hash);
+    let grid_gap = paragraph
+        .doc_grid_char_space_px
+        .filter(|space| style.snap_to_grid && !paragraph.doc_grid_snap_to_chars && *space > 0.0)
+        .map_or(0.0, |space| (space + 2.0 * style.letter_spacing_px) * 0.25);
+    let new_latin_gap = if advance.implicit_latin_gap > 0.0 {
+        let quarter_width = width * 0.25 + grid_gap;
+        if different_font {
+            quarter_width
+        } else if state
+            .prev_grapheme
+            .as_deref()
+            .and_then(|text| text.chars().next())
+            .is_some_and(|ch| ch.script() == UnicodeScriptKind::Han)
+        {
+            advance.implicit_latin_gap.min(quarter_width)
+        } else {
+            advance.implicit_latin_gap
+        }
+    } else {
+        0.0
+    };
+    let new_numeric_gap = if advance.implicit_numeric_gap > 0.0
+        && different_font
+        && is_ascii_digit_grapheme(grapheme)
+        && crate::line_metrics::word_auto_space_metrics_with_balance(
+            font_descriptor,
+            paragraph
+                .east_asian_rules
+                .balance_single_byte_double_byte_width,
+        )
+        .is_some()
+    {
+        crate::line_metrics::word_auto_space_gap_px(width * 0.25) + grid_gap
+    } else {
+        advance.implicit_numeric_gap
+    };
+    advance.implicit_latin_gap = new_latin_gap;
+    advance.implicit_numeric_gap = new_numeric_gap;
+    advance.total_advance = (new_latin_gap
+        + new_numeric_gap
+        + advance.kerning_adjustment
+        + advance.snap_leading
+        + advance.glyph_box_width)
+        .max(0.0);
 }
 
 #[allow(clippy::too_many_arguments)]
