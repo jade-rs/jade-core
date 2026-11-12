@@ -14,7 +14,8 @@ use crate::line_wrap::{
     ParagraphStyle, RunStyle, DEFAULT_INDENT_CHAR_UNIT_PT,
 };
 use crate::section_transition::{
-    resolve_page_margins, resolve_section_transition, SectionBreakType, SectionTransition,
+    resolve_page_margins, resolve_section_transition, word_section_text_direction,
+    SectionBreakType, SectionTransition,
 };
 use crate::units::points_to_px;
 use jade_docx_reader::PAGE_BREAK_CHAR;
@@ -293,7 +294,8 @@ impl SectionLayoutGeometry {
                         .default_section
                         .as_ref()
                         .and_then(|properties| properties.text_direction)
-                }),
+                })
+                .map(word_section_text_direction),
         }
     }
 

@@ -90,7 +90,7 @@ async function capture(page, bytes, name, { captureArabic = false, captureHyphen
         const response = await fetch('/document.docx');
         await view.load_docx(new Uint8Array(await response.arrayBuffer()));
         await view.waitForPendingImages();
-        if (capturePaintedText) view.beginPdfTextCapture();
+        if (capturePaintedText) view.beginPdfTextCapture(captureAllGlyphs);
         const layout = view.captureFullLayoutDebug();
         const paintedPages = capturePaintedText
           ? Array.from({ length: layout.page_count }, (_, i) => view.takePagePdfTextRuns(i))
@@ -107,7 +107,12 @@ async function capture(page, bytes, name, { captureArabic = false, captureHyphen
           ...layout,
           paintedArabic,
           paintedHyphens,
-          paintedGlyphs: captureAllGlyphs ? paintedPages.map(page => page.map(glyphOrigins)) : [],
+          paintedGlyphs: captureAllGlyphs ? paintedPages.map(page => page.flatMap(run => {
+            if (!run.digitOffsets) return [glyphOrigins(run)];
+            const [a, b, , , x, y] = run.transform;
+            return run.digitOffsets.map((advance, i) =>
+              [run.text[i], (x + a * advance) * pointsPerPixel, (y + b * advance) * pointsPerPixel]);
+          })) : [],
           dimensions: Array.from({ length: layout.page_count }, (_, i) => view.page_dimensions(i)),
         };
       } finally {

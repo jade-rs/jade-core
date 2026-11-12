@@ -58,8 +58,9 @@ use jade_docx_layout::note_area::{
     NoteAreaReserve, MIN_NOTE_LINE_PT,
 };
 use jade_docx_layout::section_transition::{
-    resolve_page_margins, resolve_section_transition, SectionBreakType, SectionTransition,
-    DEFAULT_MARGIN_PT, DEFAULT_PAGE_HEIGHT_PT, DEFAULT_PAGE_WIDTH_PT,
+    resolve_page_margins, resolve_section_transition, word_section_text_direction,
+    SectionBreakType, SectionTransition, DEFAULT_MARGIN_PT, DEFAULT_PAGE_HEIGHT_PT,
+    DEFAULT_PAGE_WIDTH_PT,
 };
 pub use jade_docx_layout::selection::CaretAffinity;
 use jade_docx_layout::selection::{
@@ -7017,7 +7018,8 @@ where
             .get(self.active_section_index)
             .and_then(|section| section.properties.as_ref())
             .or(document.default_section.as_ref())
-            .and_then(|props| props.text_direction);
+            .and_then(|props| props.text_direction)
+            .map(word_section_text_direction);
 
         // Endnotes use indices after the body even when drawn between sections.
         // Restore the body counter for the next section, but retain the note
@@ -7105,7 +7107,8 @@ where
         self.current_text_direction = document
             .default_section
             .as_ref()
-            .and_then(|props| props.text_direction);
+            .and_then(|props| props.text_direction)
+            .map(word_section_text_direction);
 
         let result = self.render_notes_content_from(
             document,
@@ -14880,7 +14883,8 @@ where
         self.current_text_direction = document
             .default_section
             .as_ref()
-            .and_then(|props| props.text_direction);
+            .and_then(|props| props.text_direction)
+            .map(word_section_text_direction);
 
         let explicit_disable = self.disable_seek_replay_once;
         let horizontal_float_wrap = self.horizontal_float_wrap_cache.get(&document_rc);
@@ -17373,6 +17377,7 @@ where
                     .as_ref()
                     .and_then(|props| props.text_direction)
             })
+            .map(word_section_text_direction)
     }
 
     fn update_doc_grid(&mut self, section_props: Option<&SectionProperties>, document: &Document) {
@@ -20636,9 +20641,14 @@ where
                     | TextDirection::BtLrV
                     | TextDirection::TbLrV),
                 ) if !self.measuring_keep_next => {
-                    let (x, _) = self.place_vertical_columns(direction, line_height, 1)?;
+                    let pitch = self
+                        .vertical_section_grid_pitch(&paragraph_style)
+                        .map_or(line_height, |grid_pitch| {
+                            (line_height / grid_pitch).ceil() * grid_pitch
+                        });
+                    let (x, _) = self.place_vertical_columns(direction, pitch, 1)?;
                     self.current_y = self.effective_body_top() + self.current_page_valign_offset();
-                    Some(x)
+                    Some((x, pitch))
                 }
                 _ => None,
             };
@@ -20665,7 +20675,7 @@ where
                 0.0,
                 false,
             );
-            let line_start_x = vertical_column.unwrap_or(line_start_x);
+            let line_start_x = vertical_column.map_or(line_start_x, |(x, _)| x);
 
             let mut line_layout = SelectionLineLayout {
                 top,
@@ -20673,7 +20683,7 @@ where
                 height: line_height,
                 baseline,
                 start_x: line_start_x,
-                cursor_end_x: vertical_column.map_or(line_start_x, |x| x + line_height),
+                cursor_end_x: vertical_column.map_or(line_start_x, |(x, pitch)| x + pitch),
                 allowed_trailing_overflow_width: 0.0,
                 content_top,
                 absolute_content_top: self.page_offset_y + content_top,
@@ -21724,6 +21734,8 @@ where
         ),
         JsValue,
     > {
+        use jade_docx_layout::line_metrics::{word_layout_platform, WordLayoutPlatform};
+
         let base_font_size = Self::estimate_paragraph_font_size(paragraph);
         let spacing_ref = paragraph
             .properties
@@ -21731,7 +21743,18 @@ where
             .and_then(|props| props.spacing.as_ref());
         let snap_to_grid = self.resolve_paragraph_snap_to_grid(paragraph);
         let body_px = (self.page_height - self.margin_top - self.margin_bottom).max(0.0);
-        let section_content_height_pt = (body_px * 72.0 / 96.0) as f32;
+        // The horizontal body-height fallback does not apply to vertical columns.
+        let section_content_height_pt = (!matches!(
+            self.current_text_direction,
+            Some(
+                TextDirection::TbRl
+                    | TextDirection::TbRlV
+                    | TextDirection::BtLr
+                    | TextDirection::BtLrV
+                    | TextDirection::TbLrV
+            )
+        ) || word_layout_platform() != WordLayoutPlatform::Mac)
+            .then_some((body_px * 72.0 / 96.0) as f32);
         let current_doc_grid = self.current_doc_grid.as_ref();
         let word_font_line_box = word_east_asian_font_line_box_applies(
             spacing_ref,
@@ -21780,7 +21803,7 @@ where
             spacing_ref,
             current_doc_grid,
             snap_to_grid,
-            Some(section_content_height_pt),
+            section_content_height_pt,
             implicit_line_box_pt,
             default_line_spacing_multiplier,
         );
@@ -31512,7 +31535,12 @@ where
         if text.is_empty() {
             // An empty paragraph still takes a column, as an empty line does.
             if !self.measuring_keep_next {
-                self.place_vertical_columns(direction, line_height, 1)?;
+                let pitch = self
+                    .vertical_section_grid_pitch(paragraph_style)
+                    .map_or(line_height, |grid_pitch| {
+                        (line_height / grid_pitch).ceil() * grid_pitch
+                    });
+                self.place_vertical_columns(direction, pitch, 1)?;
             }
             return Ok(());
         }
@@ -31561,14 +31589,33 @@ where
             return Ok(());
         }
         let align = Self::paragraph_table_align(paragraph_style, direction);
-        let pitch = paragraph_layout.vertical_column_pitch(line_height);
+        let exact_pitch = paragraph_style.exact_line_spacing
+            && paragraph_style.word_platform
+                == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac;
+        let grid_pitch = self.vertical_section_grid_pitch(paragraph_style);
+        let pitch_for = |column| {
+            if exact_pitch {
+                line_height.max(1.0)
+            } else {
+                let natural_pitch =
+                    paragraph_layout.vertical_section_column_pitch(column, line_height);
+                grid_pitch.map_or(natural_pitch, |pitch| {
+                    (natural_pitch / pitch).ceil() * pitch
+                })
+            }
+        };
         let total = paragraph_layout.vertical_columns().max(1);
         let mut drawn = 0;
         let mut numbering = pending_numbering;
         while drawn < total {
             // As many of the paragraph's columns as the page still has room
             // for; the rest go on the next page.
-            let (x, count) = self.place_vertical_columns(direction, pitch, total - drawn)?;
+            let pitch = pitch_for(drawn);
+            let same_pitch_count = (drawn + 1..total)
+                .take_while(|&column| (pitch_for(column) - pitch).abs() < 1e-6)
+                .count()
+                + 1;
+            let (x, count) = self.place_vertical_columns(direction, pitch, same_pitch_count)?;
             if let Some(numbering) = numbering.take() {
                 let baseline = column_top + line_height;
                 self.draw_pending_numbering_marker(
@@ -31579,7 +31626,8 @@ where
                     commands_out,
                 )?;
             }
-            let part = paragraph_layout.with_vertical_columns(drawn..drawn + count);
+            let part =
+                paragraph_layout.with_vertical_columns(drawn..drawn + count, pitch, exact_pitch);
             let top = self.effective_body_top() + self.current_page_valign_offset();
             self.render_vertical_paragraph(
                 &part,
@@ -31601,6 +31649,19 @@ where
         self.current_y = column_top;
         self.last_line_baseline = self.current_y;
         Ok(())
+    }
+
+    fn vertical_section_grid_pitch(&self, style: &ParagraphStyle) -> Option<f64> {
+        if style.word_platform != jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
+            || style.word_grid_line_sizing.is_none()
+        {
+            return None;
+        }
+        self.current_doc_grid
+            .as_ref()
+            .and_then(|grid| grid.line_pitch)
+            .filter(|pitch| pitch.is_finite() && *pitch > 0.0)
+            .map(points_to_px)
     }
 
     /// Takes up to `wanted` columns `pitch` wide from what is left of the
@@ -63839,6 +63900,29 @@ mod tests {
         assert!((painted[0].2 - painted[1].2).abs() < 0.5, "{painted:?}");
         assert!((painted[1].2 - painted[2].2).abs() < 0.5, "{painted:?}");
         assert_eq!(renderer.current_page_number, 1);
+    }
+
+    #[test]
+    fn word_vertical_section_aliases_paint_upright_columns_left_to_right() {
+        let paint = |direction| {
+            let (mut renderer, painter) = recording_renderer();
+            let mut document = vertical_document(&["あい", "か", "さ"]);
+            document.default_section.as_mut().unwrap().text_direction = Some(direction);
+            renderer
+                .render(&document, &options_for_seek_tests())
+                .unwrap();
+            painted_at(&painter.ops(), &["あ", "い", "か", "さ"])
+        };
+
+        let painted = paint(TextDirection::TbRlV);
+        assert_eq!(painted, paint(TextDirection::TbLrV));
+        assert_eq!(painted.len(), 4, "{painted:?}");
+        assert!(painted[0].2 < painted[1].2, "{painted:?}");
+        assert!((painted[0].1 - painted[1].1).abs() < 0.5, "{painted:?}");
+        assert!(
+            painted[0].1 < painted[2].1 && painted[2].1 < painted[3].1,
+            "{painted:?}"
+        );
     }
 
     #[test]

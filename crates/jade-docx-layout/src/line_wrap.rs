@@ -4761,6 +4761,16 @@ pub struct VerticalWrappedLayout {
     pub column_ranges: Vec<Range<usize>>,
     pub column_height: f64,
     pub max_line_width: f64,
+    pub column_widths: Vec<f64>,
+}
+
+fn vertical_horizontal_group(
+    properties: Option<&RunProperties>,
+) -> Option<&jade_docx_reader::document::EastAsianLayout> {
+    properties
+        .filter(|props| props.fit_text.is_none())
+        .and_then(|props| props.east_asian_layout.as_deref())
+        .filter(|layout| layout.vert && !layout.combine)
 }
 
 /// Builds vertical-stack lines for table-like text paths while reusing the
@@ -4783,6 +4793,7 @@ pub fn layout_text_vertically<C: LineWrapContext>(
         available_height,
         line_height,
         None,
+        false,
     )
 }
 
@@ -4801,6 +4812,7 @@ fn layout_text_vertically_on_grid<C: LineWrapContext>(
     available_height: Option<f64>,
     line_height: f64,
     snap_char_space_px: Option<f64>,
+    mac_section: bool,
 ) -> Result<VerticalWrappedLayout, C::Error> {
     let joined_runs = join_equal_runs_inside_graphemes(text, run_styles);
     let run_styles = joined_runs.as_ref();
@@ -4966,16 +4978,12 @@ fn layout_text_vertically_on_grid<C: LineWrapContext>(
             None => None,
         };
         // 縦中横 (`w:eastAsianLayout w:vert`, ECMA-376 Part 1 §17.3.2.10):
-        // the run is one upright horizontal group taking one character's
-        // height in the column. Runs of the same group (one `w:id`) join it.
+        // The run is one upright horizontal group. Word for Mac uses the
+        // horizontal font box for a Latin group's advance down a section
+        // column. Runs of the same group (one `w:id`) join it.
         // Word ignores eastAsianLayout when fitText is present, and vert
         // when combine is enabled (MS-OI29500 §2.1.75).
-        let tate_chu_yoko = run_style
-            .properties
-            .as_deref()
-            .filter(|props| props.fit_text.is_none())
-            .and_then(|props| props.east_asian_layout.as_deref())
-            .filter(|layout| layout.vert && !layout.combine);
+        let tate_chu_yoko = vertical_horizontal_group(run_style.properties.as_deref());
         if let Some(layout) = tate_chu_yoko {
             let group_start = base_offset + start_aligned;
             let group_end = base_offset + end;
@@ -4983,14 +4991,8 @@ fn layout_text_vertically_on_grid<C: LineWrapContext>(
                 line.break_kind == LineBreakKind::Soft
                     && line.segments.last().is_some_and(|segment| {
                         segment.end == group_start
-                            && segment
-                                .properties
-                                .as_deref()
-                                .filter(|props| props.fit_text.is_none())
-                                .and_then(|props| props.east_asian_layout.as_deref())
-                                .is_some_and(|previous| {
-                                    previous.vert && !previous.combine && previous.id == layout.id
-                                })
+                            && vertical_horizontal_group(segment.properties.as_deref())
+                                .is_some_and(|previous| previous.id == layout.id)
                     })
             }) && pending_ascii.is_none();
             if joins {
@@ -5012,11 +5014,19 @@ fn layout_text_vertically_on_grid<C: LineWrapContext>(
                 * style.text_scale_x.max(0.01))
             .max(1.0);
             max_line_width = max_line_width.max(em);
+            let advance = if mac_section && run_text.is_ascii() {
+                crate::line_metrics::word_font_vertical_metrics_px(
+                    &style.font_descriptor_latin_hansi,
+                )
+                .map_or(em, |(ascent, descent)| ascent + descent)
+            } else {
+                em
+            };
             push_vertical_line(
                 &mut lines,
                 run_text.replace(['\r', '\n'], ""),
                 group_start..group_end,
-                em,
+                advance,
                 SegmentMeta {
                     properties: &run_style.properties,
                     revision: &run_style.revision,
@@ -5173,6 +5183,7 @@ fn layout_text_vertically_on_grid<C: LineWrapContext>(
         column_ranges,
         column_height,
         max_line_width,
+        column_widths: Vec::new(),
     })
 }
 
@@ -5216,6 +5227,8 @@ pub fn layout_section_text_vertically_on_grid<C: LineWrapContext>(
 ) -> Result<VerticalWrappedLayout, C::Error> {
     let joined_runs = join_equal_runs_inside_graphemes(text, run_styles);
     let run_styles = joined_runs.as_ref();
+    let mac_section =
+        crate::line_metrics::word_layout_platform() == crate::line_metrics::WordLayoutPlatform::Mac;
     let mut layout = layout_text_vertically_on_grid(
         ctx,
         text,
@@ -5225,7 +5238,40 @@ pub fn layout_section_text_vertically_on_grid<C: LineWrapContext>(
         available_height,
         line_height,
         snap_char_space_px,
+        mac_section,
     )?;
+    // Word for Mac reserves the width of an upright horizontal group
+    // across a section column. Its advance down the column is independent.
+    if mac_section {
+        for range in &layout.column_ranges {
+            let mut width: f64 = 0.0;
+            for line in &layout.lines[range.clone()] {
+                let group = line.segments.first().filter(|segment| {
+                    vertical_horizontal_group(segment.properties.as_deref()).is_some()
+                });
+                if let Some(segment) = group {
+                    let style = ctx.resolve_run_style_rc(segment.properties.as_ref())?;
+                    let font = if segment.text.is_ascii() {
+                        &style.font_descriptor_latin_hansi
+                    } else {
+                        &style.font_descriptor_east_asia
+                    };
+                    width = width.max(ctx.measure_text(&segment.text, font)?);
+                } else {
+                    for cluster in &line.clusters {
+                        width = width.max(
+                            cluster
+                                .layout
+                                .as_ref()
+                                .map_or(cluster.width, |layout| layout.measured_glyph_width),
+                        );
+                    }
+                }
+            }
+            layout.max_line_width = layout.max_line_width.max(width);
+            layout.column_widths.push(width);
+        }
+    }
     let mut run_index = 0;
     let mut resolved_index = None;
     let mut resolved = None;
@@ -5423,6 +5469,7 @@ pub fn project_cell_text_turned<C: LineWrapContext>(
             column_ranges,
             column_height: available_height.unwrap_or(natural_height).max(line_height),
             max_line_width: line_height,
+            column_widths: Vec::new(),
         },
         column_start_offsets: offsets,
     })

@@ -629,16 +629,33 @@ impl CellParagraph {
         self.max_line_width.max(line_height).max(1.0)
     }
 
+    pub(super) fn vertical_section_column_pitch(&self, index: usize, line_height: f64) -> f64 {
+        self.vertical_layout
+            .as_ref()
+            .and_then(|layout| layout.column_widths.get(index))
+            .map_or_else(
+                || self.vertical_column_pitch(line_height),
+                |width| width.max(line_height).max(1.0),
+            )
+    }
+
     /// The same paragraph with only `columns` of its vertical columns, for
     /// the part of it that fits on a page. Line indices are kept, so the
     /// selection still finds every character where it is drawn.
-    pub(super) fn with_vertical_columns(&self, columns: Range<usize>) -> Self {
+    pub(super) fn with_vertical_columns(
+        &self,
+        columns: Range<usize>,
+        pitch: f64,
+        exact_pitch: bool,
+    ) -> Self {
         let mut part = self.clone();
         if let Some(layout) = part.vertical_layout.as_mut() {
             let end = columns.end.min(layout.column_ranges.len());
             let start = columns.start.min(end);
             layout.column_ranges = layout.column_ranges[start..end].to_vec();
+            layout.section_column_pitch = Some(pitch);
         }
+        part.exact_line_spacing = exact_pitch;
         part.is_continuation = columns.start > 0;
         part
     }
@@ -674,6 +691,8 @@ impl CellParagraph {
 #[derive(Clone, Debug)]
 struct VerticalTextLayout {
     column_ranges: Vec<Range<usize>>,
+    column_widths: Rc<[f64]>,
+    section_column_pitch: Option<f64>,
     column_height: f64,
 }
 
@@ -4714,14 +4733,26 @@ where
         } else {
             fallback_layout_holder = Some(VerticalTextLayout {
                 column_ranges: std::iter::once(0..paragraph.lines.len()).collect(),
+                column_widths: Rc::from([]),
+                section_column_pitch: None,
                 column_height: paragraph.height.max(line_height),
             });
             fallback_layout_holder.as_ref().unwrap()
         };
         let _ = &fallback_layout_holder;
 
-        let column_width = paragraph.max_line_width.max(line_height).max(1.0);
         let column_count = layout.column_ranges.len().max(1);
+        let column_width = layout
+            .section_column_pitch
+            .unwrap_or_else(|| paragraph.vertical_column_pitch(line_height));
+        let exact_section_pitch = section && paragraph.exact_line_spacing;
+        let centered_offset = |glyph_width| {
+            if exact_section_pitch {
+                column_width * 0.2 - glyph_width * 0.5
+            } else {
+                (column_width - glyph_width) * 0.5
+            }
+        };
         let total_width = column_count as f64 * column_width;
         let content_left = x_start + padding_x;
         let content_right = (x_start + cell_width - padding_x).max(content_left);
@@ -4880,15 +4911,18 @@ where
                 let draw_text_x = if turned_angle.is_some() {
                     column_x + line.word_baseline_offset.unwrap_or(column_width * 0.5)
                 } else if center_glyphs {
+                    let glyph_width = line
+                        .glyphs
+                        .iter()
+                        .map(|glyph| glyph.x + glyph.width)
+                        .fold(0.0_f64, f64::max);
+                    let offset = centered_offset(glyph_width);
                     column_x
-                        + (column_width
-                            - line
-                                .glyphs
-                                .iter()
-                                .map(|glyph| glyph.x + glyph.width)
-                                .fold(0.0_f64, f64::max))
-                        .max(0.0)
-                            * 0.5
+                        + if exact_section_pitch {
+                            offset
+                        } else {
+                            offset.max(0.0)
+                        }
                 } else {
                     column_x
                 };
@@ -4959,7 +4993,7 @@ where
                         // when it extends beyond the surrounding vertical column.
                         let _guard = StateGuard::new(context);
                         context
-                            .translate(column_x + (column_width - width) * 0.5, paint_y)
+                            .translate(column_x + centered_offset(width), paint_y)
                             .map_err(PainterError::into_js_value)?;
                         context
                             .fill_text(&line.text, 0.0, 0.0)
@@ -15641,6 +15675,8 @@ fn layout_paragraph_with_table_context<P: Painter<Error: PainterError>>(
                 line_height,
                 vertical_layout: Some(Box::new(VerticalTextLayout {
                     column_ranges: result.layout.column_ranges,
+                    column_widths: result.layout.column_widths.into(),
+                    section_column_pitch: None,
                     column_height: result.layout.column_height,
                 })),
                 ..CellParagraph::default()
@@ -15816,6 +15852,8 @@ fn layout_vertical_paragraph_on_grid<C: LineWrapContext>(
         .collect::<Vec<_>>();
     let vertical_layout = VerticalTextLayout {
         column_ranges: wrapped.column_ranges,
+        column_widths: wrapped.column_widths.into(),
+        section_column_pitch: None,
         column_height: wrapped.column_height,
     };
 
