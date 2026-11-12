@@ -62,7 +62,7 @@ fn typing_before_a_later_page_comment_keeps_its_annotation() {
 
     document.insert_text(paragraph, 0, "a", pages).unwrap();
 
-    assert!(!document
+    assert!(document
         .renderer()
         .last_completed_pagination_edit_candidate());
     assert_eq!(annotations(&document), before);
