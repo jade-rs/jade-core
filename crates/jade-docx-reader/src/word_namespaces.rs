@@ -212,7 +212,8 @@ fn normalize_namespaces(xml: &str, include_drawings: bool) -> Result<Cow<'_, str
             let after_root = reader.buffer_position() as usize;
             if canonical_binding
                 && !aliased_namespace
-                && memchr::memmem::find(&xml.as_bytes()[after_root..], b"xmlns").is_none() {
+                && memchr::memmem::find(&xml.as_bytes()[after_root..], b"xmlns").is_none()
+            {
                 return Ok(Cow::Borrowed(xml));
             }
             if !canonical_binding {
