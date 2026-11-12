@@ -5974,6 +5974,118 @@ fn requires_bidi_resolution(line: &WrappedLine, base_rtl: bool) -> bool {
 /// The width used to position the next run must be the advance of the
 /// joined Arabic text, which can differ substantially from the sum of the
 /// standalone graphemes. Keep original run boundaries for table painting.
+fn is_arabic_letter_cluster(grapheme: &str) -> bool {
+    grapheme.chars().next().is_some_and(|ch| {
+        ch.script() == UnicodeScriptKind::Arabic && bidi_class(ch) == BidiClass::AL
+    })
+}
+
+fn can_shape_arabic_wrap(
+    paragraph_style: &ParagraphStyle,
+    properties: Option<&RunProperties>,
+) -> bool {
+    paragraph_style.word_platform == crate::line_metrics::WordLayoutPlatform::Mac
+        && paragraph_style.oracle_advance_px_by_text_offset.is_none()
+        && properties.is_none_or(|properties| {
+            properties.fit_text.is_none()
+                && properties.char_spacing.is_none_or(|spacing| spacing == 0.0)
+                && properties.border.is_none()
+        })
+}
+
+fn arabic_wrap_unit_continues(previous: &str, next: &str) -> bool {
+    previous.ends_with('\u{200d}')
+        || (previous.starts_with('ل')
+            && !previous.contains('\u{200c}')
+            && next.starts_with(['ا', 'أ', 'إ', 'آ']))
+}
+
+fn measure_arabic_wrap_clusters<C: LineWrapContext>(
+    ctx: &C,
+    text: &str,
+    font: &str,
+) -> Result<Option<Vec<(usize, f64)>>, C::Error> {
+    let Some(mut clusters) = ctx.measure_arabic_clusters(text, font) else {
+        let mut starts = vec![0];
+        let mut previous = "";
+        let mut merged = false;
+        for (start, grapheme) in crate::graphemes::grapheme_indices(text) {
+            if start != 0 {
+                if arabic_wrap_unit_continues(previous, grapheme) {
+                    merged = true;
+                } else {
+                    starts.push(start);
+                }
+            }
+            previous = grapheme;
+        }
+        if !merged {
+            return Ok(None);
+        }
+        starts.push(text.len());
+        return starts
+            .windows(2)
+            .map(|range| {
+                ctx.measure_text(&text[range[0]..range[1]], font)
+                    .map(|width| (range[0], width))
+            })
+            .collect::<Result<Vec<_>, _>>()
+            .map(Some);
+    };
+    let mut retained = 0;
+    for index in 0..clusters.len() {
+        let (start, width) = clusters[index];
+        // A zero-width joiner keeps the following letter on the same
+        // line in Word, even when the font emits two distinct glyphs.
+        if retained > 0 && text[..start].ends_with('\u{200d}') {
+            clusters[retained - 1].1 += width;
+        } else {
+            clusters[retained] = (start, width);
+            retained += 1;
+        }
+    }
+    clusters.truncate(retained);
+    Ok(Some(clusters))
+}
+
+#[derive(Default)]
+struct ArabicWrapSpan {
+    start: usize,
+    end: usize,
+    clusters: Vec<(usize, f64)>,
+}
+
+impl ArabicWrapSpan {
+    fn advance<C: LineWrapContext>(
+        &mut self,
+        ctx: &C,
+        text: &str,
+        offset: usize,
+        font: &str,
+    ) -> Result<Option<(f64, bool)>, C::Error> {
+        if offset < self.start || offset >= self.end {
+            self.start = offset;
+            self.end = crate::graphemes::grapheme_indices(&text[offset..])
+                .find(|(_, grapheme)| !is_arabic_letter_cluster(grapheme))
+                .map_or(text.len(), |(end, _)| offset + end);
+            self.clusters = measure_arabic_wrap_clusters(ctx, &text[offset..self.end], font)?
+                .unwrap_or_default();
+        }
+        if self.clusters.is_empty() {
+            return Ok(None);
+        }
+        Ok(Some(
+            match self
+                .clusters
+                .binary_search_by_key(&(offset - self.start), |&(start, _)| start)
+            {
+                Ok(index) => (self.clusters[index].1, false),
+                Err(_) => (0.0, true),
+            },
+        ))
+    }
+}
+
 fn apply_arabic_span_advances<C: LineWrapContext>(
     ctx: &C,
     text: &str,
@@ -5983,11 +6095,8 @@ fn apply_arabic_span_advances<C: LineWrapContext>(
 ) -> Result<(), C::Error> {
     let arabic_slot = |cluster: &InlineCluster| {
         let layout = cluster.layout.as_ref()?;
-        (layout.script == ScriptCategory::Complex
-            && cluster.text.chars().next().is_some_and(|ch| {
-                ch.script() == UnicodeScriptKind::Arabic && bidi_class(ch) == BidiClass::AL
-            }))
-        .then_some(layout.font_slot)
+        (layout.script == ScriptCategory::Complex && is_arabic_letter_cluster(&cluster.text))
+            .then_some(layout.font_slot)
     };
     let mut start = 0;
     while start + 1 < line.clusters.len() {
@@ -6266,6 +6375,10 @@ pub trait LineWrapContext {
     }
     /// Measures a text fragment using the provided font descriptor.
     fn measure_text(&self, text: &str, font_descriptor: &str) -> Result<f64, Self::Error>;
+    /// Logical UTF-8 starts and advances of an Arabic fragment's shaped clusters.
+    fn measure_arabic_clusters(&self, _text: &str, _font: &str) -> Option<Vec<(usize, f64)>> {
+        None
+    }
     /// Optional font-provided advance for an upright glyph, before text scaling.
     fn measure_upright_vertical_advance(
         &self,
@@ -7437,6 +7550,8 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
         let mut buffer_start_abs = base_offset + start_aligned;
         let mut buffer_is_whitespace: Option<bool> = None;
         let mut active_script = ScriptCategory::Latin;
+        let mut arabic_span = ArabicWrapSpan::default();
+        let shape_arabic_wrap = can_shape_arabic_wrap(paragraph_style, run_properties.as_deref());
 
         let mut grapheme_iter = crate::graphemes::grapheme_indices(run_text).peekable();
         while let Some((rel_offset, grapheme)) = grapheme_iter.next() {
@@ -7732,6 +7847,7 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
                 &mut snap_to_chars_cell_width_cache,
             )?;
             let glyph_total_width;
+            let fit_total_width;
             let is_whitespace = is_whitespace_text(grapheme);
             let auto_space;
             let cluster_layout = loop {
@@ -7803,13 +7919,24 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
                         current_line_indent,
                     )
                 };
-                let candidate_width = (marker_gap
+                let shaped_arabic = if active_script == ScriptCategory::Complex
+                    && shape_arabic_wrap
+                    && is_arabic_letter_cluster(grapheme)
+                {
+                    arabic_span.advance(ctx, run_text, rel_offset, font_desc)?
+                } else {
+                    None
+                };
+                let shaping_delta = shaped_arabic.map_or(0.0, |(advance, _)| {
+                    advance * text_scale_x - computed.advance.adjusted_glyph_width
+                });
+                let isolated_width = marker_gap
                     + computed.advance.total_advance
                     + fitted_gap
                     + ruby_leading
                     + ruby_trailing
-                    + advance_shift)
-                    .max(0.0);
+                    + advance_shift;
+                let candidate_width = (isolated_width + shaping_delta).max(0.0);
                 let trailing_overhang = if computed.monospace_cell
                     || !crate::line_metrics::word_wraps_on_trailing_ink(
                         paragraph_style.word_platform,
@@ -7909,6 +8036,7 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
                 if candidate_overflow > WRAP_FIT_TOLERANCE_PX
                     && current_width > 0.0
                     && !is_whitespace
+                    && !shaped_arabic.is_some_and(|(_, continuation)| continuation)
                     && !zero_width_oracle_glyph
                     && !fits_with_justified_space_shrink
                     && !fits_with_mac_punctuation_squeeze
@@ -7946,6 +8074,7 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
                         .max(1.0);
                     current_line_indent = paragraph_style.line_indent(lines.len());
                     advance_state_across_runs = TextAdvanceState::default();
+                    arabic_span.end = 0;
                     buffer_start_abs = grapheme_start_abs;
                     continue;
                 }
@@ -7970,7 +8099,10 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
                     buffer_start_abs = grapheme_start_abs;
                 }
 
-                glyph_total_width = candidate_width;
+                fit_total_width = candidate_width;
+                // Final line positioning applies its own contextual advance
+                // adjustment to these stored, isolated cluster widths.
+                glyph_total_width = isolated_width.max(0.0);
                 update_text_advance_state(
                     &mut advance_state_across_runs,
                     grapheme,
@@ -8104,7 +8236,7 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
                 single_char(grapheme).is_some_and(|character| char_set_contains(set, character))
             });
             current_line_clusters.push(cluster);
-            current_width += glyph_total_width;
+            current_width += fit_total_width;
         }
 
         if !buffer.is_empty() {
@@ -8162,6 +8294,11 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
     prevent_mid_word_breaks(text, paragraph_style, base_available, &mut lines);
     drop_line_start_auto_space(&mut lines);
     let character_borders = lines.iter().any(line_has_character_border);
+    let source = Some(ArabicWrapSource {
+        text,
+        run_styles,
+        base_offset,
+    });
     ensure_lines_fit_available_width(
         ctx,
         character_borders,
@@ -8169,6 +8306,7 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
         base_x,
         paragraph_style,
         column_right_edge,
+        source,
         &mut snap_to_chars_cell_width_cache,
     )?;
     // The final width repair can move a closing punctuation cluster to the
@@ -8190,6 +8328,7 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
                 base_x,
                 paragraph_style,
                 column_right_edge,
+                source,
                 &mut snap_to_chars_cell_width_cache,
             )?;
             kinsoku_moved = enforce_line_start_rules(paragraph_style, &mut lines);
@@ -8886,6 +9025,7 @@ fn compress_justified_word_spaces_to_available_width<C: LineWrapContext>(
             line,
             paragraph_style,
             character_borders && line_has_character_border(line),
+            None,
             snap_to_chars_cell_width_cache,
         )?;
         let overflow = (width - trailing_whitespace_width(&line.clusters) - available).max(0.0);
@@ -9224,11 +9364,31 @@ fn measure_tab_segment<C: LineWrapContext>(
     Ok((total, decimal_prefix_width.or(implicit_prefix)))
 }
 
+#[derive(Clone, Copy)]
+struct ArabicWrapSource<'a> {
+    text: &'a str,
+    run_styles: &'a [RunStyle],
+    base_offset: usize,
+}
+
+impl<'a> ArabicWrapSource<'a> {
+    fn text_from(self, segment_start: usize) -> Option<&'a str> {
+        let start = segment_start.checked_sub(self.base_offset)?;
+        let run = self
+            .run_styles
+            .get(self.run_styles.partition_point(|run| run.end <= start))?;
+        (run.start <= start)
+            .then(|| self.text.get(start..run.end))
+            .flatten()
+    }
+}
+
 fn measure_wrapped_line_width<C: LineWrapContext>(
     ctx: &C,
     line: &WrappedLine,
     paragraph_style: &ParagraphStyle,
     character_borders: bool,
+    source: Option<ArabicWrapSource<'_>>,
     snap_to_chars_cell_width_cache: &mut FxHashMap<SnapToCharsCacheKey, f64>,
 ) -> Result<f64, C::Error> {
     if character_borders {
@@ -9249,6 +9409,10 @@ fn measure_wrapped_line_width<C: LineWrapContext>(
             .find_map(|next| next.text.graphemes(true).next());
         let segment_width = {
             let mut segment_width = 0.0;
+            let mut arabic_span = ArabicWrapSpan::default();
+            let mut shaping_text = None;
+            let shape_arabic =
+                can_shape_arabic_wrap(paragraph_style, segment.properties.as_deref());
             let end_state = walk_text_advance_steps_at_offset(
                 ctx,
                 &segment.text,
@@ -9259,11 +9423,31 @@ fn measure_wrapped_line_width<C: LineWrapContext>(
                 Some(segment.start),
                 snap_to_chars_cell_width_cache,
                 |step| {
+                    let mut glyph_box_width = step.advance.glyph_box_width;
+                    if step.script == ScriptCategory::Complex
+                        && shape_arabic
+                        && is_arabic_letter_cluster(step.grapheme)
+                    {
+                        if let Some((advance, _)) = arabic_span.advance(
+                            ctx,
+                            shaping_text.get_or_insert_with(|| {
+                                source
+                                    .and_then(|source| source.text_from(segment.start))
+                                    .filter(|source| source.starts_with(&segment.text))
+                                    .unwrap_or(&segment.text)
+                            }),
+                            step.rel_offset,
+                            step.font_descriptor,
+                        )? {
+                            glyph_box_width += advance * style.text_scale_x.max(0.01)
+                                - step.advance.adjusted_glyph_width;
+                        }
+                    }
                     segment_width += step.advance.implicit_latin_gap
                         + step.advance.implicit_numeric_gap
                         + step.advance.kerning_adjustment
                         + step.advance.snap_leading
-                        + step.advance.glyph_box_width;
+                        + glyph_box_width;
                     Ok(())
                 },
             )?;
@@ -9296,6 +9480,7 @@ fn ensure_lines_fit_available_width<C: LineWrapContext>(
     base_x: f64,
     paragraph_style: &ParagraphStyle,
     column_right_edge: f64,
+    source: Option<ArabicWrapSource<'_>>,
     snap_to_chars_cell_width_cache: &mut FxHashMap<SnapToCharsCacheKey, f64>,
 ) -> Result<(), C::Error> {
     if lines.len() < 2 && !character_borders {
@@ -9326,6 +9511,7 @@ fn ensure_lines_fit_available_width<C: LineWrapContext>(
             &lines[line_index],
             paragraph_style,
             character_borders,
+            source,
             snap_to_chars_cell_width_cache,
         )?;
         loop {
@@ -9426,6 +9612,7 @@ fn ensure_lines_fit_available_width<C: LineWrapContext>(
                             current,
                             paragraph_style,
                             character_borders,
+                            source,
                             snap_to_chars_cell_width_cache,
                         )?;
                         continue;
@@ -9455,6 +9642,7 @@ fn ensure_lines_fit_available_width<C: LineWrapContext>(
                             &without_trailing_punctuation,
                             paragraph_style,
                             character_borders,
+                            source,
                             snap_to_chars_cell_width_cache,
                         )?;
                         if width_without_trailing_punctuation
@@ -9465,8 +9653,27 @@ fn ensure_lines_fit_available_width<C: LineWrapContext>(
                     }
                 }
             }
-            if lines[line_index].clusters.len() <= 1 {
+            let line = &lines[line_index];
+            if line.clusters.len() <= 1 {
                 break;
+            }
+            if let [segment] = line.segments.as_slice() {
+                if can_shape_arabic_wrap(paragraph_style, segment.properties.as_deref())
+                    && line
+                        .clusters
+                        .iter()
+                        .all(|cluster| is_arabic_letter_cluster(&cluster.text))
+                {
+                    let style = ctx.resolve_run_style_rc(segment.properties.as_ref())?;
+                    if let Some(layout) = line.clusters[0].layout.as_ref() {
+                        let font = style.descriptor_for_slot(layout.font_slot);
+                        if measure_arabic_wrap_clusters(ctx, &segment.text, font)?
+                            .is_some_and(|clusters| clusters.len() == 1)
+                        {
+                            break;
+                        }
+                    }
+                }
             }
             if line_index + 1 == lines.len() {
                 // Repair a final line when its completed-run measurement is
@@ -11730,6 +11937,78 @@ mod tests {
                     .vertical_width_per_grapheme
                     .unwrap_or(self.width_per_grapheme))
         }
+    }
+
+    #[test]
+    fn mac_arabic_width_repair_preserves_joined_prefix_at_soft_break() {
+        struct ArabicContext(TestContext);
+
+        impl LineWrapContext for ArabicContext {
+            type Error = ();
+
+            fn resolve_run_style(
+                &self,
+                properties: Option<&RunProperties>,
+            ) -> Result<Rc<ResolvedRunStyle>, Self::Error> {
+                self.0.resolve_run_style(properties)
+            }
+
+            fn measure_text(&self, text: &str, font: &str) -> Result<f64, Self::Error> {
+                self.0.measure_text(text, font)
+            }
+
+            fn measure_arabic_clusters(&self, text: &str, _: &str) -> Option<Vec<(usize, f64)>> {
+                // In the joined word, beh has a narrower medial form.
+                let advances: &[f64] = match text {
+                    "مرحبا" => &[4.0, 5.0, 5.5, 2.5, 3.5],
+                    "مرحب" => &[4.0, 5.0, 5.5, 7.5],
+                    "ا" => &[3.5],
+                    _ => return None,
+                };
+                Some(
+                    text.char_indices()
+                        .map(|(start, _)| start)
+                        .zip(advances.iter().copied())
+                        .collect(),
+                )
+            }
+        }
+
+        let text = "مرحبا";
+        let runs = [RunStyle {
+            start: 0,
+            end: text.len(),
+            properties: None,
+            revision: None,
+            hyperlink: None,
+            inline_object: None,
+        }];
+        let paragraph = ParagraphStyle {
+            word_platform: crate::line_metrics::WordLayoutPlatform::Mac,
+            ..ParagraphStyle::default()
+        };
+        let lines = wrap_text_into_lines(
+            &ArabicContext(TestContext::new(5.0)),
+            text,
+            &runs,
+            0.0,
+            &paragraph,
+            0,
+            19.0,
+        )
+        .unwrap();
+        let actual: Vec<String> = lines
+            .iter()
+            .map(|line| {
+                let mut segments: Vec<_> = line.segments.iter().collect();
+                segments.sort_unstable_by_key(|segment| segment.start);
+                segments
+                    .iter()
+                    .map(|segment| segment.text.as_str())
+                    .collect()
+            })
+            .collect();
+        assert_eq!(actual, ["مرحب", "ا"]);
     }
 
     #[test]
@@ -20964,6 +21243,7 @@ mod tests {
             0.0,
             &ParagraphStyle::default(),
             10.0,
+            None,
             &mut FxHashMap::default(),
         )
         .expect("refit overfull line");
@@ -24796,6 +25076,7 @@ mod tests {
             0.0,
             &paragraph_style,
             3.5,
+            None,
             &mut cache,
         )
         .expect("normalize widths");
@@ -24874,6 +25155,7 @@ mod tests {
             0.0,
             &paragraph_style,
             4.5,
+            None,
             &mut cache,
         )
         .expect("split breakable final continuation");
@@ -24967,6 +25249,7 @@ mod tests {
             0.0,
             &paragraph,
             4.5,
+            None,
             &mut FxHashMap::default(),
         )
         .unwrap();
@@ -25011,7 +25294,7 @@ mod tests {
                 ..ParagraphStyle::default()
             };
             ensure_lines_fit_available_width(&TestContext::new(1.0), false, &mut lines,
-                0.0, &paragraph, first_len.max(second_len) as f64 + 1.5,
+                0.0, &paragraph, first_len.max(second_len) as f64 + 1.5, None,
                 &mut FxHashMap::default()).unwrap();
             let output = lines.iter().flat_map(|line| line.segments.iter().map(|segment|
                 segment.text.as_str())).collect::<String>();
@@ -25096,6 +25379,7 @@ mod tests {
             0.0,
             &paragraph_style,
             9.5,
+            None,
             &mut cache,
         )
         .expect("normalize oracle widths");
@@ -25174,6 +25458,7 @@ mod tests {
             0.0,
             &paragraph_style,
             3.5,
+            None,
             &mut cache,
         )
         .expect("normalize widths");
@@ -25254,6 +25539,7 @@ mod tests {
             0.0,
             &paragraph_style,
             3.5,
+            None,
             &mut cache,
         )
         .expect("normalize widths");
@@ -25326,6 +25612,7 @@ mod tests {
             0.0,
             &paragraph_style,
             3.0,
+            None,
             &mut cache,
         )
         .expect("normalize widths");
@@ -25383,7 +25670,7 @@ mod tests {
             let original_clusters = lines.iter().flat_map(|line| line.clusters.iter().map(|cluster| (cluster.start, cluster.end, cluster.text.clone()))).collect::<Vec<_>>();
             let expected_bold = lines.iter().flat_map(|line| line.segments.iter().map(|segment| ((segment.start, segment.end), segment.properties.as_deref().and_then(|p| p.bold)))).collect::<FxHashMap<_, _>>();
             let paragraph = ParagraphStyle { alignment: if justified { "both" } else { "left" }.into(), ..ParagraphStyle::default() };
-            ensure_lines_fit_available_width(&TestContext::new(1.0), false, &mut lines, 0.0, &paragraph, f64::from(available), &mut FxHashMap::default()).unwrap();
+            ensure_lines_fit_available_width(&TestContext::new(1.0), false, &mut lines, 0.0, &paragraph, f64::from(available), None, &mut FxHashMap::default()).unwrap();
             let output = lines.iter().flat_map(|line| line.segments.iter().map(|segment| segment.text.as_str())).collect::<String>();
             prop_assert_eq!(output, format!("{text}終"));
             let clusters = lines.iter().flat_map(|line| line.clusters.iter().map(|cluster| (cluster.start, cluster.end, cluster.text.clone()))).collect::<Vec<_>>();

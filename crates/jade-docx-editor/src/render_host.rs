@@ -1,6 +1,7 @@
 use jade_canvas_painter::{Canvas2dPainter, PainterError};
 use jade_painter::{Painter, TextMetrics};
 use js_sys::{Object, Promise, Reflect};
+use std::rc::Rc;
 use wasm_bindgen::{JsCast, JsValue};
 use web_sys::{
     CanvasRenderingContext2d, HtmlCanvasElement, HtmlElement, ImageBitmap, ImageData,
@@ -35,6 +36,8 @@ pub const PAGE_GAP_PX: f64 = 16.0;
 /// painter instead of editing either.
 pub type BoxedRenderHost<P = Canvas2dPainter<CanvasRenderingContext2d>> =
     Box<dyn CanvasRenderHost<Painter = P>>;
+
+pub type ArabicClusterMeasurer = Rc<dyn Fn(&str, &str) -> Option<Vec<(usize, f64)>>>;
 
 /// Normalized source and destination rectangles for a cropped image.
 ///
@@ -248,6 +251,11 @@ pub trait CanvasRenderHost {
         self.painter()
             .measure_text_width(text)
             .map_err(PainterError::into_js_value)
+    }
+
+    /// An owned measurement handle that can also be used during table layout.
+    fn arabic_cluster_measurer(&self) -> Option<ArabicClusterMeasurer> {
+        None
     }
 
     /// Draws an image from a data URI, if the host can.
