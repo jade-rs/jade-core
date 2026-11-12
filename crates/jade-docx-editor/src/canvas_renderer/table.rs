@@ -94,6 +94,7 @@ const HIDDEN_BORDER_COLOR: &str = "#9A9A9A";
 const DARK_MODE_HIDDEN_BORDER_COLOR: &str = "#94A3B8";
 /// Horizontal padding (in points) applied on both sides of table cell content.
 const CELL_HORIZONTAL_PADDING_PT: f32 = 6.0;
+const MAC_UNSTYLED_CELL_HORIZONTAL_PADDING_PT: f32 = 0.5;
 /// Vertical padding (in points) applied above and below table cell content.
 const CELL_VERTICAL_PADDING_PT: f32 = DEFAULT_VERTICAL_CELL_MARGIN_PT;
 /// Word leaves a tiny visual gap between a table border and following paragraph.
@@ -8565,19 +8566,21 @@ where
     }
 }
 
-/// A resolved package style is the Mac table's padding default; absent
-/// horizontal margins do not add the SDK's bare-table editing padding.
+/// Word for Mac uses the package table style when present. An authored
+/// table without one uses the half-point inset of Word's implicit style.
 fn table_default_horizontal_padding_px(
     table: &Table,
     platform: jade_docx_layout::line_metrics::WordLayoutPlatform,
 ) -> f64 {
-    if platform == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
-        && table.resolved_style.is_some()
-    {
-        0.0
-    } else {
-        points_to_px(CELL_HORIZONTAL_PADDING_PT)
+    if platform == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac {
+        if table.resolved_style.is_some() {
+            return 0.0;
+        }
+        if table.node_id.is_some() {
+            return points_to_px(MAC_UNSTYLED_CELL_HORIZONTAL_PADDING_PT);
+        }
     }
+    points_to_px(CELL_HORIZONTAL_PADDING_PT)
 }
 
 /// How far a leading-aligned table moves toward the leading margin so its
