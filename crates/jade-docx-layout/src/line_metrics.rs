@@ -3227,6 +3227,10 @@ fn word_latin_font_vertical_units(family: &str) -> Option<(f32, f32)> {
         }
         "Tahoma" if word_layout_platform() == WordLayoutPlatform::Mac => Some((2049.0, 423.0)),
         "Verdana" => Some((2059.0, 430.0)),
+        // Word for Mac positions Courier New using the face's hhea box.
+        "Courier New" | "'Courier New'" if word_layout_platform() == WordLayoutPlatform::Mac => {
+            Some((1705.0, 615.0))
+        }
         "Aptos" | "Aptos Display" if word_layout_platform() == WordLayoutPlatform::Mac => {
             Some((1923.0, 577.0))
         }
