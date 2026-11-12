@@ -10,9 +10,9 @@
 //! `w:doNotHyphenateCaps` a word in capitals is left whole.
 
 use super::{
-    InlineCluster, InlineClusterKind, LineBreakKind, LineHyphen, LineWrapContext, ParagraphStyle,
-    TextSegment, WRAP_FIT_TOLERANCE_PX, WrappedLine, classify_script, detach_leading_cluster,
-    detach_trailing_cluster, prepend_cluster_to_line_preserving_rules,
+    classify_script, detach_leading_cluster, detach_trailing_cluster,
+    prepend_cluster_to_line_preserving_rules, InlineCluster, InlineClusterKind, LineBreakKind,
+    LineHyphen, LineWrapContext, ParagraphStyle, TextSegment, WrappedLine, WRAP_FIT_TOLERANCE_PX,
 };
 
 /// An authored soft hyphen is a preferred break within a word when its
@@ -468,7 +468,7 @@ fn leading_unit(clusters: &[InlineCluster]) -> usize {
 
 #[cfg(test)]
 mod tests {
-    use super::super::{ParagraphHyphenation, RunStyle, wrap_text_into_lines};
+    use super::super::{wrap_text_into_lines, ParagraphHyphenation, RunStyle};
     use super::*;
     use crate::font_resolver::ResolvedRunStyle;
     use jade_docx_reader::RunProperties;
