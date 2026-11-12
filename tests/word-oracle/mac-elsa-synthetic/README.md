@@ -44,3 +44,8 @@ also cover zero-width spaces and widths where the letters fit together.
 `latin-join-control-line-metrics` checks the extra line height of a
 soft-wrapped ZWJ in narrow Arial table cells. Its twelve pages cover four
 font sizes, single and 1.15 line spacing, and inherited and explicit spacing.
+
+`zwnj-table-line-metrics` checks isolated soft-wrapped ZWNJ lines in narrow
+Verdana and Courier New table cells. Its eight pages cover four sizes per
+font and check the position of both the following glyph and the paragraph
+after the table.

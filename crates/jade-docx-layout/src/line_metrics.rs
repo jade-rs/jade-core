@@ -3253,16 +3253,24 @@ pub fn word_font_vertical_metrics_px(font_descriptor: &str) -> Option<(f64, f64)
     Some((f64::from(ascent) * size_px, f64::from(descent) * size_px))
 }
 
-pub(crate) fn word_mac_joiner_line_height_px(font_descriptor: &str) -> Option<f64> {
+pub(crate) fn word_mac_join_control_line_height_px(
+    font_descriptor: &str,
+    control: &str,
+) -> Option<f64> {
     let (size_pt, family) = split_font_descriptor(font_descriptor)?;
     let family = family.trim_matches(['\'', '"']).trim();
-    // These faces switch to the same effective box as Calibri for an
-    // isolated soft-wrapped ZWJ. Preserve other faces' own sizing.
-    if !matches!(family, "Arial" | "Calibri" | "Cambria" | "Times New Roman") {
-        return None;
-    }
-    let (ascent, descent) = word_latin_font_vertical_units("Calibri")?;
-    Some(f64::from(size_pt) * 96.0 / 72.0 * f64::from(ascent + descent) / 2048.0)
+    let units = match (control, family) {
+        // These ZWJ lines use the same effective box as Calibri.
+        ("\u{200d}", "Arial" | "Calibri" | "Cambria" | "Times New Roman") => {
+            let (ascent, descent) = word_latin_font_vertical_units("Calibri")?;
+            ascent + descent
+        }
+        // Measured from the baseline advance across an isolated ZWNJ line.
+        ("\u{200c}", "Verdana") => 2365.0,
+        ("\u{200c}", "Courier New") => 2400.0,
+        _ => return None,
+    };
+    Some(f64::from(size_pt) * 96.0 / 72.0 * f64::from(units) / 2048.0)
 }
 
 /// The font box Word for Mac gives an emoji cluster, in px: the face that

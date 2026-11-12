@@ -487,6 +487,8 @@ pub(super) struct CellParagraph {
     line_height: f64,
     /// Authored fixed pitch also applies to inline pictures and page fragments.
     exact_line_spacing: bool,
+    // Soft-wrapped controls may use a shorter line box than the paragraph.
+    shorter_line_advances: Option<Rc<[(usize, f64)]>>,
     // Keep uncommon column geometry out of every cached paragraph.
     vertical_layout: Option<Box<VerticalTextLayout>>,
     /// Byte boundary already painted by an earlier page of this paragraph.
@@ -521,7 +523,12 @@ impl CellParagraph {
         if self.exact_line_spacing {
             self.line_height
         } else {
-            self.line_height.max(line.min_advance)
+            let line_height = self
+                .shorter_line_advances
+                .as_deref()
+                .and_then(|advances| advances.iter().find(|(start, _)| *start == line.start))
+                .map_or(self.line_height, |(_, height)| *height);
+            line_height.max(line.min_advance)
         }
     }
 
@@ -608,6 +615,7 @@ impl CellParagraph {
             height,
             line_height: self.line_height,
             exact_line_spacing: self.exact_line_spacing,
+            shorter_line_advances: self.shorter_line_advances.clone(),
             vertical_layout: self.vertical_layout.clone(),
             segment_start,
             keep_lines: self.keep_lines,
@@ -13694,6 +13702,14 @@ fn refresh_prepared_row_text<P: Painter<Error: PainterError>>(
                         };
                         style.first_line_indent = 0.0;
                         let text = paragraph.text.get(start..).unwrap_or("");
+                        if let Some(BodyElement::Paragraph(source)) = source {
+                            resolve_cell_join_control_sizing(
+                                &mut style,
+                                source,
+                                config.styles_part.as_deref(),
+                                text,
+                            );
+                        }
                         let styles = paragraph
                             .styled_runs
                             .iter()
@@ -13713,17 +13729,17 @@ fn refresh_prepared_row_text<P: Painter<Error: PainterError>>(
                             .sum::<f64>()
                             - cell.padding.horizontal()
                             - 2.0 * cell.cell_spacing;
-                        paragraph.lines =
-                            layout_horizontal_paragraph_with_run_styles_context_offset(
-                                wrap_context,
-                                text,
-                                (width - left_inset).max(1.0),
-                                paragraph.line_height,
-                                &styled_run_styles(text, &styles),
-                                &style,
-                                start,
-                            )?
-                            .lines;
+                        let reflowed = layout_horizontal_paragraph_with_run_styles_context_offset(
+                            wrap_context,
+                            text,
+                            (width - left_inset).max(1.0),
+                            paragraph.line_height,
+                            &styled_run_styles(text, &styles),
+                            &style,
+                            start,
+                        )?;
+                        paragraph.lines = reflowed.lines;
+                        paragraph.shorter_line_advances = reflowed.shorter_line_advances;
                         for line in Rc::make_mut(&mut paragraph.lines) {
                             line.left_inset += left_inset;
                         }
@@ -14138,20 +14154,12 @@ fn prepare_row_layout<P: Painter<Error: PainterError>>(
                             field_value_for,
                             math_context.is_some(),
                         );
-                        if paragraph_style.word_platform
-                            == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
-                            && paragraph_style.word_grid_line_sizing.is_none()
-                            && text.contains('\u{200d}')
-                        {
-                            let spacing =
-                                cell_paragraph_spacing(paragraph, config.styles_part.as_deref());
-                            paragraph_style.word_proportional_line_sizing =
-                                jade_docx_layout::line_metrics::WordProportionalLineSizing::new(
-                                    spacing.as_ref(),
-                                    false,
-                                    true,
-                                );
-                        }
+                        resolve_cell_join_control_sizing(
+                            &mut paragraph_style,
+                            paragraph,
+                            config.styles_part.as_deref(),
+                            &text,
+                        );
                         paragraph_style.inline_note_separator_offsets = note_anchors
                             .iter()
                             .filter_map(|anchor| {
@@ -16009,6 +16017,26 @@ fn layout_horizontal_paragraph_with_run_styles_context_offset<C: LineWrapContext
     ))
 }
 
+fn resolve_cell_join_control_sizing(
+    style: &mut ParagraphStyle,
+    paragraph: &Paragraph,
+    styles_part: Option<&StylesPart>,
+    text: &str,
+) {
+    if style.word_platform == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
+        && style.word_grid_line_sizing.is_none()
+        && text.contains(['\u{200c}', '\u{200d}'])
+    {
+        let spacing = cell_paragraph_spacing(paragraph, styles_part);
+        style.word_proportional_line_sizing =
+            jade_docx_layout::line_metrics::WordProportionalLineSizing::new(
+                spacing.as_ref(),
+                false,
+                true,
+            );
+    }
+}
+
 fn cell_paragraph_spacing(
     paragraph: &Paragraph,
     styles: Option<&StylesPart>,
@@ -16118,6 +16146,7 @@ fn horizontal_cell_paragraph_from_wrapped_lines(
     base_offset: usize,
     wrapped: &[WrappedLine],
 ) -> CellParagraph {
+    let mut shorter_line_advances = Vec::new();
     let mut lines = wrapped
         .iter()
         .enumerate()
@@ -16136,11 +16165,14 @@ fn horizontal_cell_paragraph_from_wrapped_lines(
             }
             if let Some((sizing, height)) = paragraph_style
                 .word_proportional_line_sizing
-                .and_then(|sizing| Some((sizing, wrapped.mac_joiner_line_box_px()?)))
+                .and_then(|sizing| Some((sizing, wrapped.mac_join_control_line_box_px()?)))
             {
-                line.min_advance = line
-                    .min_advance
-                    .max(sizing.line_height_px(Some(height), line_height));
+                let advance = sizing.line_height_px(Some(height), line_height);
+                if advance < line_height {
+                    shorter_line_advances.push((line.start, advance));
+                } else {
+                    line.min_advance = line.min_advance.max(advance);
+                }
             }
             line.left_inset = paragraph_style.line_indent(index);
             line.right_inset = paragraph_style.right_indent;
@@ -16262,19 +16294,7 @@ fn horizontal_cell_paragraph_from_wrapped_lines(
         max_line_width = max_line_width.max(line.visual_width);
     }
 
-    let height = lines
-        .iter()
-        .map(|line| {
-            if paragraph_style.exact_line_spacing {
-                line_height
-            } else {
-                line_height.max(line.min_advance)
-            }
-        })
-        .sum::<f64>()
-        .max(line_height);
-
-    CellParagraph {
+    let mut paragraph = CellParagraph {
         text: text.to_string(),
         is_continuation: false,
         spacing_before: 0.0,
@@ -16283,12 +16303,15 @@ fn horizontal_cell_paragraph_from_wrapped_lines(
         lines: Rc::new(lines),
         styled_runs: Vec::new(),
         max_line_width: max_line_width.max(line_height),
-        height,
+        shorter_line_advances: (!shorter_line_advances.is_empty())
+            .then(|| Rc::from(shorter_line_advances)),
         line_height,
         exact_line_spacing: paragraph_style.exact_line_spacing,
         vertical_layout: None,
         ..CellParagraph::default()
-    }
+    };
+    paragraph.height = paragraph.lines_height(&paragraph.lines).max(line_height);
+    paragraph
 }
 
 fn layout_rotated_paragraph<P: Painter<Error: PainterError>>(
