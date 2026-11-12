@@ -25,6 +25,9 @@ following letter is wider than the cell, Word can place the break opportunity on
 a line of its own. The fixture checks where the visible letters land, including
 when each letter fits the cell and when the text contains no break opportunity.
 
+The Courier New line-box fixture checks body baselines and fixed-width table
+cells at 10.5, 14, 18, and 21 pt.
+
 The Geeza Pro line-box fixture checks baseline placement in one- and two-line
 Arabic table cells at 10.5, 14, and 21 pt.
 
