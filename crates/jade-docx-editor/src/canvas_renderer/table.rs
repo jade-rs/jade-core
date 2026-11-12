@@ -1481,6 +1481,17 @@ impl SplitPreparedRow {
             .zip(&self.tail_cells)
             .all(|(head, tail)| head.skip_render || has_content(head) || !has_content(tail))
     }
+
+    fn continues_content(&self) -> bool {
+        self.tail_cells
+            .iter()
+            .filter(|cell| !cell.skip_render)
+            .any(|cell| {
+                cell.blocks
+                    .iter()
+                    .any(|block| !matches!(block.kind, CellBlockKind::Spacing))
+            })
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -3164,8 +3175,8 @@ where
                                     header_row_count,
                                 ) <= full_page_content_height;
                         // Word for Mac moves a new row that fits on the next page
-                        // when an occupied cell cannot start on this page.
-                        let require_all_cells = row_start
+                        // if a cell cannot start here or only after-spacing would continue.
+                        let require_content_on_both_pages = row_start
                             && pending_height <= full_page_content_height + ROW_SPLIT_EPSILON
                             && jade_docx_layout::line_metrics::word_layout_platform()
                                 == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac;
@@ -3177,7 +3188,10 @@ where
                                 full_page_content_height,
                                 tail_has_header,
                             )
-                            .filter(|split| !require_all_cells || split.starts_all_cells())
+                            .filter(|split| {
+                                !require_content_on_both_pages
+                                    || (split.starts_all_cells() && split.continues_content())
+                            })
                         };
                         let mut split = split_row(pending_cells.as_slice(), available_height);
                         if split.as_ref().is_some_and(|split| {
@@ -26456,6 +26470,7 @@ mod tests {
             cell.height = 88.0;
             let split = split_prepared_row_for_available_height(&[cell], 36.0, 12.0, 800.0, false)
                 .expect("only the margin must continue");
+            assert!(!split.continues_content());
             let head = &split.head_cells[0].blocks[0];
             let tail = &split.tail_cells[0].blocks[0];
             let CellBlockKind::Paragraph(paragraph) = &head.kind else {
