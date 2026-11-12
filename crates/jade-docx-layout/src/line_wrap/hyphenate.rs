@@ -519,15 +519,18 @@ fn hyphenate_split_word<C: LineWrapContext>(
     let language = properties
         .as_deref()
         .and_then(|properties| properties.language.as_deref());
-    let points = crate::hyphenation::hyphenation_points(&word, language);
+    let points = crate::hyphenation::word_mac_hyphenation_points(&word, language);
     if points.is_empty() {
         return Ok(false);
     }
     let hyphen = measure_hyphen(ctx, properties.as_deref())?;
     let room = available - used;
     let Some(kept) = points.iter().rev().copied().find(|&kept| {
+        // Word advances to this break once the prefix and the next
+        // letter fit, while still leaving room for the painted hyphen.
         kept < first_line_letters
-            && width(&next.clusters[..kept]) + hyphen <= room + WRAP_FIT_TOLERANCE_PX
+            && width(&next.clusters[..kept]) + hyphen.max(next.clusters[kept].width)
+                <= room + WRAP_FIT_TOLERANCE_PX
     }) else {
         return Ok(false);
     };

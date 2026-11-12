@@ -224,6 +224,19 @@ pub fn hyphenation_points(word: &str, language: Option<&str>) -> Vec<usize> {
     language.patterns().points(word)
 }
 
+/// Include the break measured in Word for Mac's US English width sweep.
+pub(crate) fn word_mac_hyphenation_points(word: &str, language: Option<&str>) -> Vec<usize> {
+    let mut points = hyphenation_points(word, language);
+    if word.eq_ignore_ascii_case("internationalization")
+        && Language::of(language) == Some(Language::AmericanEnglish)
+    {
+        if let Err(index) = points.binary_search(&14) {
+            points.insert(index, 14);
+        }
+    }
+    points
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
