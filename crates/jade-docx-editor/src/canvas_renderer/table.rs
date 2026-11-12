@@ -289,12 +289,26 @@ struct LineLayout {
     /// picture stands on the baseline and the text's descent hangs below it.
     /// Zero for a line of text only.
     min_advance: f64,
+    /// Positive when Word uses a shorter line box for an isolated join control.
+    shorter_line_advance: f64,
     /// Automatic hyphenation ended the line with a hyphen this wide, already
     /// part of its last glyph's advance (as in body paragraphs).
     hyphen: Option<f64>,
 }
 
 impl LineLayout {
+    fn advance(&self, paragraph_line_height: f64, exact_line_spacing: bool) -> f64 {
+        if exact_line_spacing {
+            return paragraph_line_height;
+        }
+        let line_height = if self.shorter_line_advance > 0.0 {
+            self.shorter_line_advance
+        } else {
+            paragraph_line_height
+        };
+        line_height.max(self.min_advance)
+    }
+
     fn text_alignment_shift(&self, offset: usize) -> f64 {
         self.text_alignment_shifts
             .iter()
@@ -487,8 +501,6 @@ pub(super) struct CellParagraph {
     line_height: f64,
     /// Authored fixed pitch also applies to inline pictures and page fragments.
     exact_line_spacing: bool,
-    // Soft-wrapped controls may use a shorter line box than the paragraph.
-    shorter_line_advances: Option<Rc<[(usize, f64)]>>,
     // Keep uncommon column geometry out of every cached paragraph.
     vertical_layout: Option<Box<VerticalTextLayout>>,
     /// Byte boundary already painted by an earlier page of this paragraph.
@@ -520,16 +532,7 @@ impl CellParagraph {
     /// How far `line` advances: the paragraph's line, or more for a line
     /// holding an inline picture.
     fn line_advance(&self, line: &LineLayout) -> f64 {
-        if self.exact_line_spacing {
-            self.line_height
-        } else {
-            let line_height = self
-                .shorter_line_advances
-                .as_deref()
-                .and_then(|advances| advances.iter().find(|(start, _)| *start == line.start))
-                .map_or(self.line_height, |(_, height)| *height);
-            line_height.max(line.min_advance)
-        }
+        line.advance(self.line_height, self.exact_line_spacing)
     }
 
     /// The height of `lines` laid out in this paragraph.
@@ -615,7 +618,6 @@ impl CellParagraph {
             height,
             line_height: self.line_height,
             exact_line_spacing: self.exact_line_spacing,
-            shorter_line_advances: self.shorter_line_advances.clone(),
             vertical_layout: self.vertical_layout.clone(),
             segment_start,
             keep_lines: self.keep_lines,
@@ -7248,6 +7250,7 @@ where
             vec![LineLayout {
                 hyphen: None,
                 min_advance: 0.0,
+                shorter_line_advance: 0.0,
                 left_inset: 0.0,
                 right_inset: 0.0,
                 text: String::new(),
@@ -13739,7 +13742,6 @@ fn refresh_prepared_row_text<P: Painter<Error: PainterError>>(
                             start,
                         )?;
                         paragraph.lines = reflowed.lines;
-                        paragraph.shorter_line_advances = reflowed.shorter_line_advances;
                         for line in Rc::make_mut(&mut paragraph.lines) {
                             line.left_inset += left_inset;
                         }
@@ -15548,6 +15550,7 @@ fn build_line_layout_from_wrapped_line(line: &WrappedLine) -> LineLayout {
         word_baseline_offset,
         text_alignment_shifts: Vec::new(),
         min_advance,
+        shorter_line_advance: 0.0,
     }
 }
 
@@ -16146,7 +16149,6 @@ fn horizontal_cell_paragraph_from_wrapped_lines(
     base_offset: usize,
     wrapped: &[WrappedLine],
 ) -> CellParagraph {
-    let mut shorter_line_advances = Vec::new();
     let mut lines = wrapped
         .iter()
         .enumerate()
@@ -16169,7 +16171,7 @@ fn horizontal_cell_paragraph_from_wrapped_lines(
             {
                 let advance = sizing.line_height_px(Some(height), line_height);
                 if advance < line_height {
-                    shorter_line_advances.push((line.start, advance));
+                    line.shorter_line_advance = advance;
                 } else {
                     line.min_advance = line.min_advance.max(advance);
                 }
@@ -16187,11 +16189,7 @@ fn horizontal_cell_paragraph_from_wrapped_lines(
             {
                 // Inline pictures already contribute to this shared baseline.
                 // Keep their minimum advance while positioning spare leading.
-                let advance = if paragraph_style.exact_line_spacing {
-                    line_height
-                } else {
-                    line_height.max(line.min_advance)
-                };
+                let advance = line.advance(line_height, paragraph_style.exact_line_spacing);
                 line.word_baseline_offset =
                     Some(ascent + (advance - ascent - descent).max(0.0) * share);
                 let mut shifts = wrapped
@@ -16266,6 +16264,7 @@ fn horizontal_cell_paragraph_from_wrapped_lines(
         lines.push(LineLayout {
             hyphen: None,
             min_advance: 0.0,
+            shorter_line_advance: 0.0,
             left_inset: paragraph_style.line_indent(0),
             right_inset: paragraph_style.right_indent,
             text: String::new(),
@@ -16303,8 +16302,6 @@ fn horizontal_cell_paragraph_from_wrapped_lines(
         lines: Rc::new(lines),
         styled_runs: Vec::new(),
         max_line_width: max_line_width.max(line_height),
-        shorter_line_advances: (!shorter_line_advances.is_empty())
-            .then(|| Rc::from(shorter_line_advances)),
         line_height,
         exact_line_spacing: paragraph_style.exact_line_spacing,
         vertical_layout: None,
@@ -16335,6 +16332,7 @@ fn empty_cell_paragraph(line_height: f64) -> CellParagraph {
         lines: Rc::new(vec![LineLayout {
             hyphen: None,
             min_advance: 0.0,
+            shorter_line_advance: 0.0,
             left_inset: 0.0,
             right_inset: 0.0,
             text: String::new(),
@@ -20050,6 +20048,7 @@ mod tests {
         let line = LineLayout {
             hyphen: None,
             min_advance: 0.0,
+            shorter_line_advance: 0.0,
             left_inset: 0.0,
             right_inset: 0.0,
             text: "ab".to_string(),
@@ -20090,6 +20089,7 @@ mod tests {
         let line = LineLayout {
             hyphen: None,
             min_advance: 0.0,
+            shorter_line_advance: 0.0,
             text: "AB ".into(),
             visual_width: 23.0,
             left_inset: 0.0,
@@ -20145,6 +20145,7 @@ mod tests {
         let line = LineLayout {
             hyphen: None,
             min_advance: 0.0,
+            shorter_line_advance: 0.0,
             left_inset: 0.0,
             right_inset: 0.0,
             text: "ab".to_string(),
