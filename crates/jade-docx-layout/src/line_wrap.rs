@@ -3831,7 +3831,7 @@ impl WrappedLine {
             return None;
         }
         let control = self.clusters.first()?.text.as_str();
-        if !matches!(control, "\u{200c}" | "\u{200d}")
+        if !matches!(control, "\u{200b}" | "\u{200c}" | "\u{200d}")
             || !self.clusters.iter().all(|cluster| cluster.text == control)
         {
             return None;

@@ -16329,7 +16329,7 @@ fn resolve_cell_join_control_sizing(
 ) {
     if style.word_platform == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
         && style.word_grid_line_sizing.is_none()
-        && text.contains(['\u{200c}', '\u{200d}'])
+        && text.contains(['\u{200b}', '\u{200c}', '\u{200d}'])
     {
         let spacing = cell_paragraph_spacing(paragraph, styles_part);
         style.word_proportional_line_sizing =
