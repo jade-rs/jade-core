@@ -3416,6 +3416,47 @@ impl ParagraphRenderCache {
     }
 }
 
+/// Word for Mac swaps the inline extents of pictures at a quarter-turn.
+fn mac_inline_picture_swaps_extents(image: &RunImage) -> bool {
+    use jade_docx_layout::line_metrics::{word_layout_platform, WordLayoutPlatform};
+
+    word_layout_platform() == WordLayoutPlatform::Mac
+        && image.data_uri.is_some()
+        && image
+            .layout
+            .rotation_deg
+            .is_some_and(|angle| angle.rem_euclid(180.0) == 90.0)
+}
+
+fn inline_picture_size(image: &RunImage, fallback: f64) -> (f64, f64) {
+    let width = image.width_px.unwrap_or(fallback).max(1.0);
+    let height = image.height_px.unwrap_or(fallback).max(1.0);
+    if mac_inline_picture_swaps_extents(image) {
+        (height, width)
+    } else {
+        (width, height)
+    }
+}
+
+fn inline_picture_draw_rect(
+    image: &RunImage,
+    x: f64,
+    y: f64,
+    width: f64,
+    height: f64,
+) -> (f64, f64, f64, f64) {
+    if mac_inline_picture_swaps_extents(image) {
+        (
+            x + (width - height) / 2.0,
+            y + (height - width) / 2.0,
+            height,
+            width,
+        )
+    } else {
+        (x, y, width, height)
+    }
+}
+
 /// The instruction of an EQ field this renderer draws as math: one the
 /// reader did not already model as ruby, an enclosure or distributed text.
 /// Whether a drawing is Word ink with strokes to draw (`RunImage::ink`).
@@ -19714,8 +19755,7 @@ where
                 }
                 layout_text.push('\u{fffc}');
                 current_pos = layout_text.len();
-                let width = image.width_px.unwrap_or(line_height).max(1.0);
-                let height = image.height_px.unwrap_or(line_height).max(1.0);
+                let (width, height) = inline_picture_size(image, line_height);
                 inline_images.insert(start_pos, (run_index, image.clone()));
                 run_styles.push(RunStyle {
                     start: start_pos,
@@ -24254,9 +24294,8 @@ where
                             } else {
                                 0.0
                             };
-                            inline_image_draws.push((
-                                *run_index,
-                                image.clone(),
+                            let (x, y, width, height) = inline_picture_draw_rect(
+                                image,
                                 cursor_x,
                                 baseline
                                     + object_shift
@@ -24265,6 +24304,14 @@ where
                                     + story_offset,
                                 object.width.max(1.0),
                                 object.height.max(1.0),
+                            );
+                            inline_image_draws.push((
+                                *run_index,
+                                image.clone(),
+                                x,
+                                y,
+                                width,
+                                height,
                             ));
                         }
                         if let (Some((run_index, text_box)), Some(object)) =

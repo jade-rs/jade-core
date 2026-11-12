@@ -439,11 +439,12 @@ pub(super) struct CellPicture {
 }
 
 impl CellPicture {
-    /// The picture's model size as the line wrapper's inline object.
+    /// The picture's extents for line wrapping.
     fn inline_object(&self) -> jade_docx_layout::line_wrap::InlineObject {
+        let (width, height) = inline_picture_size(&self.image, 1.0);
         jade_docx_layout::line_wrap::InlineObject {
-            width: self.image.width_px.unwrap_or(1.0).max(1.0),
-            height: self.image.height_px.unwrap_or(1.0).max(1.0),
+            width,
+            height,
             descent: 0.0,
         }
     }
@@ -6355,11 +6356,18 @@ where
             };
             let object = picture.inline_object();
             let image = picture.image.as_ref();
+            let (x, y, width, height) = inline_picture_draw_rect(
+                image,
+                text_x + glyph.x,
+                baseline + line.text_alignment_shift(glyph.start) - object.height,
+                object.width,
+                object.height,
+            );
             let draw_spec = ImageDrawSpec {
-                x: text_x + glyph.x,
-                y: baseline + line.text_alignment_shift(glyph.start) - object.height,
-                width: object.width,
-                height: object.height,
+                x,
+                y,
+                width,
+                height,
                 rotation_deg: image.layout.rotation_deg.unwrap_or(0.0),
                 flip_horizontal: image.layout.flip_horizontal,
                 flip_vertical: image.layout.flip_vertical,
