@@ -23342,6 +23342,16 @@ where
         // `(page, column, top, bottom)` of the previous line's band, for lines
         // that continue it on the far side of a `bothSides` float.
         let mut float_band: Option<(usize, usize, f64, f64)> = None;
+        let trim_mac_soft_spaces = paragraph_style.word_platform
+            == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
+            && paragraph_style.first_line_indent < 0.0
+            && lines.iter().any(|line| {
+                line.hyphen.is_some()
+                    && line
+                        .clusters
+                        .last()
+                        .is_some_and(|cluster| cluster.text == "\u{ad}")
+            });
         for (line_index, wrapped_line) in lines.iter().enumerate() {
             let line_height = line_heights
                 .as_ref()
@@ -24279,7 +24289,11 @@ where
                 right_limit,
                 current_column_right,
                 paragraph_style.right_indent,
-                wrapped_line.alignment_width_px(line_width, paragraph_style.word_platform),
+                if trim_mac_soft_spaces {
+                    wrapped_line.soft_line_alignment_width_px(line_width)
+                } else {
+                    wrapped_line.alignment_width_px(line_width, paragraph_style.word_platform)
+                },
                 justify,
             );
             line_layout.start_x = line_start_x;
