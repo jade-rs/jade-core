@@ -91,9 +91,13 @@ def rectangular_clip_image_bounds(page):
     return images
 
 
-def page_geometry(page, *, body_only, print_registration=False, rectangular_image_clips=False):
+def page_geometry(
+    page, *, body_only, print_registration=False, rectangular_image_clips=False,
+    source_image_size=None, source_image_count=None,
+):
     header, body, footer = [], [], []
-    images = [image["bbox"] for image in page.get_image_info()]
+    image_info = page.get_image_info()
+    images = [image["bbox"] for image in image_info]
     image_count = len(images)
     # These cutoffs lie in the blank gaps between the stories in this fixture.
     for glyph in chain(glyphs(page), color_emoji(page, images)):
@@ -105,6 +109,21 @@ def page_geometry(page, *, body_only, print_registration=False, rectangular_imag
         if len(images) != image_count:
             raise ValueError(f"Unexpected emoji bitmap in clipped image fixture on page {page.number + 1}")
         images = rectangular_clip_image_bounds(page)
+    if source_image_size is not None:
+        # Quartz emits small border samples around rotated source images.
+        # Their bounds describe sampling operations rather than document objects.
+        if rectangular_image_clips or len(images) != image_count:
+            raise ValueError(f"Unexpected image extraction mode on page {page.number + 1}")
+        width, height = source_image_size
+        images = []
+        for image in image_info:
+            size = (image["width"], image["height"])
+            if size == (width, height):
+                images.append(image["bbox"])
+            elif size not in {(1, 1), (1, height), (width, 1)}:
+                raise ValueError(f"Unexpected image size {size} on page {page.number + 1}")
+        if len(images) != source_image_count:
+            raise ValueError(f"Expected {source_image_count} source images on page {page.number + 1}")
     geometry = {
         "size": [round(page.rect.width, 3), round(page.rect.height, 3)],
         "header": header,
@@ -177,14 +196,20 @@ def main():
             is_word_pdf = document.metadata["creator"] == "Word"
         if not is_word_pdf or len(document) != manifest["pages"]:
             raise ValueError("Unexpected Word PDF metadata or page count")
+        source_images = manifest.get("pdfSourceImages")
+        source_image_counts = source_images["counts"] if source_images else [None] * len(document)
+        if len(source_image_counts) != len(document):
+            raise ValueError("Source image counts have the wrong page count")
         pages = [
             page_geometry(
                 page,
                 body_only=manifest.get("bodyOnly", False),
                 print_registration="horizontalPrintRegistration" in manifest,
                 rectangular_image_clips=manifest.get("rectangularImageClips", False),
+                source_image_size=source_images["sizePx"] if source_images else None,
+                source_image_count=source_image_count,
             )
-            for page in document
+            for page, source_image_count in zip(document, source_image_counts)
         ]
     if "arabicRuns" in manifest:
         runs = manifest["arabicRuns"]
