@@ -9441,9 +9441,9 @@ impl OffscreenDocumentView {
                         // A restored paragraph can span the window boundary.
                         // Keep the regular history path if its end or restored
                         // caret is outside the layout produced above.
-                        if !renderer
+                        if renderer
                             .cached_paragraph_end_page(caret.paragraph)
-                            .is_some_and(|end_page| end_page <= limit)
+                            .is_none_or(|end_page| end_page > limit)
                             || renderer.clamp_text_position(caret) != caret
                             || renderer.caret_metrics_at(caret).is_none()
                         {
