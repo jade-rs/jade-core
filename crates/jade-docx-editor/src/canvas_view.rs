@@ -9311,9 +9311,8 @@ impl OffscreenDocumentView {
             _ => None,
         };
 
-        let history_layout_end = {
+        {
             let mut renderer = self.renderer.borrow_mut();
-            let mut layout_end = None;
             let retained_height = retained_paragraph.and_then(|index| {
                 renderer
                     .cached_paragraph_height(index)
@@ -9363,7 +9362,6 @@ impl OffscreenDocumentView {
                 if lazy_mode {
                     let end_page_1idx = Self::lazy_visible_end(&renderer, anchor_page);
                     renderer.mark_dirty_from_paragraph_to_end_bounded(dirty_from, end_page_1idx);
-                    layout_end = retained_paragraph.map(|_| end_page_1idx);
                 } else {
                     renderer.mark_dirty_from_paragraph_to_end(dirty_from);
                 }
@@ -9379,8 +9377,7 @@ impl OffscreenDocumentView {
                 renderer.set_band_redraw_suppressed_for_structural_edit(true);
                 renderer.mark_paragraph_dirty(dirty_from);
             }
-            layout_end
-        };
+        }
 
         {
             let state_ref = self.state.borrow();
@@ -9400,25 +9397,14 @@ impl OffscreenDocumentView {
                         renderer.restore_local_text_edit_cache(edit_cache, word_doc, index);
                     }
                     renderer.prepare_wrap_cache_capacity(word_doc);
-                    // Like typing, restore a single body paragraph within the
-                    // visible window. If the edit invalidated downstream layout,
-                    // the host can extend it again outside the history action.
-                    let previous_limit = renderer.layout_page_limit();
-                    if let Some(end_page) = history_layout_end {
-                        renderer.set_layout_page_limit(Some(end_page));
-                    }
-                    let result = renderer.render_with_numbering_rc(
+                    renderer.render_with_numbering_rc(
                         Rc::clone(document),
                         &options,
                         numbering_part.as_ref(),
                         header_lines.as_deref(),
                         footer_lines.as_deref(),
                         Some(&word_doc.comments),
-                    );
-                    if history_layout_end.is_some() {
-                        renderer.set_layout_page_limit(previous_limit);
-                    }
-                    result?;
+                    )?;
                 }
             }
         }
