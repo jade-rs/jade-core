@@ -403,6 +403,14 @@ impl MathLayoutOptions<'_> {
         self.settings.word_mac_rtl_paragraph && self.display
     }
 
+    fn word_mac_inherited_before_wrap(&self) -> bool {
+        self.display
+            && !self.settings.use_display_defaults
+            && self.settings.break_binary == BreakBinary::Before
+            && crate::line_metrics::word_layout_platform()
+                == crate::line_metrics::WordLayoutPlatform::Mac
+    }
+
     pub fn inline() -> Self {
         Self {
             display: false,
