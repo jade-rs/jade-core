@@ -16424,8 +16424,7 @@ where
     fn place_math_block(
         &mut self,
         math: &MathParagraph,
-        mut metrics: jade_docx_layout::math_layout::MathMetrics,
-        last_baseline: f64,
+        plan: &jade_docx_layout::math_layout::styled::StyledMathLayout<'_>,
         style: jade_docx_layout::math_layout::styled::MathTextStyle<'_>,
     ) -> Result<Option<(jade_docx_layout::math_layout::MathBlockLineBox, f64)>, JsValue> {
         use jade_docx_layout::line_metrics::{
@@ -16440,6 +16439,7 @@ where
             self.document_snap_to_grid_default,
             grid,
         );
+        let mut metrics = plan.line_metrics;
         if word_layout_platform() == WordLayoutPlatform::Mac
             && style.family.eq_ignore_ascii_case("Cambria Math")
             && !word_grid_line_centres_text(snap, grid)
@@ -16447,10 +16447,24 @@ where
             // Word reserves the Cambria Math font line box even for equations
             // whose ink fits well above the baseline, such as a single digit.
             // The hhea ascent and descent are 1946 and 455 units at 2048 UPM.
-            metrics.ascent = metrics.ascent.max(style.size_px * (1946.0 / 2048.0));
+            let last_baseline = plan.lines.last().map_or(0.0, |line| line.baseline);
+            let mut first_size = style.size_px;
+            let mut last_size = style.size_px;
+            for glyph in &plan.glyphs {
+                if !glyph.visible || !glyph.style.family.eq_ignore_ascii_case("Cambria Math") {
+                    continue;
+                }
+                if glyph.baseline == 0.0 {
+                    first_size = first_size.max(glyph.style.size_px);
+                }
+                if glyph.baseline == last_baseline {
+                    last_size = last_size.max(glyph.style.size_px);
+                }
+            }
+            metrics.ascent = metrics.ascent.max(first_size * (1946.0 / 2048.0));
             metrics.descent = metrics
                 .descent
-                .max(last_baseline + style.size_px * (455.0 / 2048.0));
+                .max(last_baseline + last_size * (455.0 / 2048.0));
         }
         let line_box = jade_docx_layout::math_layout::math_block_line_box(
             metrics,
@@ -16504,10 +16518,7 @@ where
         char_unit_pt: f64,
         marker: Option<&DisplayMathNoteMarker<'_>>,
     ) -> Result<(), JsValue> {
-        let last_baseline = plan.lines.last().map_or(0.0, |line| line.baseline);
-        let Some((line_box, after)) =
-            self.place_math_block(math, plan.line_metrics, last_baseline, style)?
-        else {
+        let Some((line_box, after)) = self.place_math_block(math, &plan, style)? else {
             return Ok(());
         };
         if self.measuring_notes {

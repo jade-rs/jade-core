@@ -677,8 +677,17 @@ impl DisplayMathStyle<'_> {
         let mut style = self.boxed_math_style(family);
         if let Some(properties) = math.properties.as_deref() {
             let mark = properties.mark_run_properties.as_ref();
-            if let Some(size) = mark
-                .and_then(|p| p.font_size)
+            let word_mac = jade_docx_layout::line_metrics::word_layout_platform()
+                == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac;
+            // The paragraph mark has its own font size. Word for Mac
+            // leaves the equation at the inherited size unless its runs
+            // specify their own sizes.
+            let mark_size = if word_mac {
+                None
+            } else {
+                mark.and_then(|p| p.font_size)
+            };
+            if let Some(size) = mark_size
                 .or_else(|| {
                     properties
                         .style
