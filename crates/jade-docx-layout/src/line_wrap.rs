@@ -4110,15 +4110,23 @@ impl WrappedLine {
         shares
     }
 
-    /// Windows Word aligns visible content, excluding trailing spaces even
-    /// on the final line (`word-windows-edge-indents`). Mac retains its
-    /// independently measured alignment policy.
+    /// Windows Word excludes trailing spaces even on the final line.
     pub fn alignment_width_px(
         &self,
         natural_advance: f64,
         platform: crate::line_metrics::WordLayoutPlatform,
     ) -> f64 {
         if platform == crate::line_metrics::WordLayoutPlatform::Windows {
+            (natural_advance - trailing_whitespace_width(&self.clusters)).max(0.0)
+        } else {
+            natural_advance
+        }
+    }
+
+    /// Mac Word excludes trailing spaces on soft lines of hanging paragraphs
+    /// with a rendered discretionary break.
+    pub fn soft_line_alignment_width_px(&self, natural_advance: f64) -> f64 {
+        if self.break_kind == LineBreakKind::Soft {
             (natural_advance - trailing_whitespace_width(&self.clusters)).max(0.0)
         } else {
             natural_advance

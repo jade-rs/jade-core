@@ -30,9 +30,18 @@ pub(super) fn show_discretionary_hyphens<C: LineWrapContext>(
     let word_mac = paragraph_style.word_platform == crate::line_metrics::WordLayoutPlatform::Mac;
     let mut index = 0;
     while index + 1 < lines.len() {
-        if let Some((candidate, width)) =
+        if let Some((candidate, width, fits_current_line)) =
             discretionary_break(ctx, &lines[index], &lines[index + 1], available(index))?
         {
+            if !fits_current_line {
+                if word_mac && index == 0 && paragraph_style.first_line_indent < 0.0 {
+                    move_word_after_unfittable_discretionary_hyphen(
+                        lines, candidate, width, &available,
+                    );
+                }
+                index += 1;
+                continue;
+            }
             let trailing = &lines[index].clusters[candidate + 1..];
             if trailing.is_empty() {
                 mark_hyphen(&mut lines[index], width);
@@ -72,7 +81,7 @@ fn discretionary_break<C: LineWrapContext>(
     line: &WrappedLine,
     next: &WrappedLine,
     available: f64,
-) -> Result<Option<(usize, f64)>, C::Error> {
+) -> Result<Option<(usize, f64, bool)>, C::Error> {
     if line.break_kind != LineBreakKind::Soft
         || !next
             .clusters
@@ -103,7 +112,42 @@ fn discretionary_break<C: LineWrapContext>(
         .iter()
         .map(|cluster| cluster.width)
         .sum::<f64>();
-    Ok((used + width <= available + WRAP_FIT_TOLERANCE_PX).then_some((candidate, width)))
+    Ok(Some((
+        candidate,
+        width,
+        used + width <= available + WRAP_FIT_TOLERANCE_PX,
+    )))
+}
+
+/// When the hanging first line cannot fit the authored dash, Word tries the
+/// discretionary prefix at the start of the indented continuation line.
+fn move_word_after_unfittable_discretionary_hyphen(
+    lines: &mut Vec<WrappedLine>,
+    candidate: usize,
+    hyphen_width: f64,
+    available: &impl Fn(usize) -> f64,
+) {
+    let line = &lines[0];
+    let Some(start) = line.clusters[..candidate]
+        .iter()
+        .rposition(|cluster| !is_word_letter(&cluster.text))
+        .filter(|&index| index > 0 && line.clusters[index].is_whitespace)
+        .map(|index| index + 1)
+    else {
+        return;
+    };
+    let prefix_width = line.clusters[start..=candidate]
+        .iter()
+        .map(|cluster| cluster.width)
+        .sum::<f64>();
+    if prefix_width + hyphen_width > available(1) + WRAP_FIT_TOLERANCE_PX
+        || !has_plain_latin_lines(&lines[1..])
+    {
+        return;
+    }
+    let (head, tail) = lines.split_at_mut(1);
+    move_discretionary_suffix(&mut head[0], &mut tail[0], start);
+    refit_word_continuation(lines, 1, available, true);
 }
 
 fn has_word_continuation(lines: &[WrappedLine]) -> bool {
@@ -167,6 +211,14 @@ fn refit_word_continuation(
             })
             .count()
             .max(1);
+        if preserve_words {
+            keep += lines[index]
+                .clusters
+                .iter()
+                .skip(keep)
+                .take_while(|cluster| cluster.text == " ")
+                .count();
+        }
         if keep >= lines[index].clusters.len() {
             break;
         }
