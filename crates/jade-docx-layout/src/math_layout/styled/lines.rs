@@ -444,7 +444,6 @@ pub(crate) fn stack<'a, C: StyledMathMeasure>(
             == crate::line_metrics::WordLayoutPlatform::Mac;
     // A standalone tall display line reserves Cambria Math’s OS/2
     // typographic line gap. Wrapped displays use MATH leading.
-    let gap = super::MathConstants::cambria(size).leading;
     let tall_ascent = size * (1946.0 / 2048.0);
     let needs_top_leading = word_mac_cambria && (b.options.display || lines.len() > 1) && {
         #[cfg(feature = "opentype-math")]
@@ -484,7 +483,9 @@ pub(crate) fn stack<'a, C: StyledMathMeasure>(
                 metrics.ascent += line_size * (353.0 / 2048.0);
             }
             if optical_ascent > 0.0 {
-                metrics.ascent = metrics.ascent.max(optical_ascent + gap);
+                metrics.ascent = metrics
+                    .ascent
+                    .max(optical_ascent + super::MathConstants::cambria(size).leading);
             }
         }
         return metrics;
@@ -513,26 +514,39 @@ pub(crate) fn stack<'a, C: StyledMathMeasure>(
     let justification = b.justification();
     // Repeated wrapped Cambria Math rows in Word for Mac use about 14.10 pt
     // between baselines at 12 pt, including across multiple display equations.
-    let min_gap = size * if word_mac_cambria { 1.175 } else { 1.2 };
     let mac_wrapped = word_mac_cambria && lines.len() > 1;
     let mut baseline = 0.0;
-    let mut previous: Option<MathMetrics> = None;
+    let mut previous: Option<(MathMetrics, f64)> = None;
     let mut total = MathMetrics::default();
     for line in lines {
-        if let Some(prev) = previous {
+        let row_size = if mac_wrapped {
+            b.plan.glyphs[line.start.glyphs..line.end.glyphs]
+                .iter()
+                .filter(|glyph| glyph.visible && glyph.baseline == 0.0)
+                .map(|glyph| glyph.style.size_px)
+                .reduce(f64::max)
+                .unwrap_or(size)
+        } else {
+            size
+        };
+        let tall_row = line.metrics.ascent > row_size * (1946.0 / 2048.0);
+        if let Some((prev, prev_size)) = previous {
             let mut ascent = line.metrics.ascent;
             let mut descent = prev.descent;
             // Ink alone underestimates the adjoining text row when a tall
             // formula expands the baseline interval beyond the usual pitch.
-            if mac_wrapped && prev.ascent > tall_ascent {
-                ascent = ascent.max(size * 0.8);
+            if mac_wrapped && prev.ascent > prev_size * (1946.0 / 2048.0) {
+                ascent = ascent.max(row_size * 0.8);
             }
-            if mac_wrapped && ascent > tall_ascent {
-                descent = descent.max(size * 0.25);
+            if mac_wrapped && ascent > row_size * (1946.0 / 2048.0) {
+                descent = descent.max(prev_size * 0.25);
             }
+            let interval_size = row_size.max(prev_size);
+            let gap = super::MathConstants::cambria(interval_size).leading;
+            let min_gap = interval_size * if word_mac_cambria { 1.175 } else { 1.2 };
             baseline += (descent + ascent + gap).max(min_gap);
-        } else if needs_top_leading && line.metrics.ascent > tall_ascent {
-            total.ascent = line.metrics.ascent + gap;
+        } else if needs_top_leading && tall_row {
+            total.ascent = line.metrics.ascent + super::MathConstants::cambria(row_size).leading;
         }
         let group_w = group_widths[line.group];
         let group_x = match justification {
@@ -562,7 +576,7 @@ pub(crate) fn stack<'a, C: StyledMathMeasure>(
         });
         total.ascent = total.ascent.max(line.metrics.ascent - baseline);
         total.descent = total.descent.max(line.metrics.descent + baseline);
-        previous = Some(line.metrics);
+        previous = Some((line.metrics, row_size));
     }
     total.width = width;
     total

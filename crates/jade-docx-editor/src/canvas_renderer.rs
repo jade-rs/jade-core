@@ -16448,8 +16448,8 @@ where
             // whose ink fits well above the baseline, such as a single digit.
             // The hhea ascent and descent are 1946 and 455 units at 2048 UPM.
             let last_baseline = plan.lines.last().map_or(0.0, |line| line.baseline);
-            let mut first_size = style.size_px;
-            let mut last_size = style.size_px;
+            let mut first_size: f64 = 0.0;
+            let mut last_size: f64 = 0.0;
             for glyph in &plan.glyphs {
                 if !glyph.visible || !glyph.style.family.eq_ignore_ascii_case("Cambria Math") {
                     continue;
@@ -16460,6 +16460,12 @@ where
                 if glyph.baseline == last_baseline {
                     last_size = last_size.max(glyph.style.size_px);
                 }
+            }
+            if first_size == 0.0 {
+                first_size = style.size_px;
+            }
+            if last_size == 0.0 {
+                last_size = style.size_px;
             }
             metrics.ascent = metrics.ascent.max(first_size * (1946.0 / 2048.0));
             metrics.descent = metrics
