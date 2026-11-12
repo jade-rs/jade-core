@@ -4761,6 +4761,7 @@ pub struct VerticalWrappedLayout {
     pub column_ranges: Vec<Range<usize>>,
     pub column_height: f64,
     pub max_line_width: f64,
+    pub column_widths: Vec<f64>,
 }
 
 fn vertical_horizontal_group(
@@ -5182,6 +5183,7 @@ fn layout_text_vertically_on_grid<C: LineWrapContext>(
         column_ranges,
         column_height,
         max_line_width,
+        column_widths: Vec::new(),
     })
 }
 
@@ -5241,19 +5243,33 @@ pub fn layout_section_text_vertically_on_grid<C: LineWrapContext>(
     // Word for Mac reserves the width of an upright horizontal group
     // across a section column. Its advance down the column is independent.
     if mac_section {
-        for segment in layout.lines.iter().filter_map(|line| line.segments.first()) {
-            if vertical_horizontal_group(segment.properties.as_deref()).is_none() {
-                continue;
+        for range in &layout.column_ranges {
+            let mut width: f64 = 0.0;
+            for line in &layout.lines[range.clone()] {
+                let group = line.segments.first().filter(|segment| {
+                    vertical_horizontal_group(segment.properties.as_deref()).is_some()
+                });
+                if let Some(segment) = group {
+                    let style = ctx.resolve_run_style_rc(segment.properties.as_ref())?;
+                    let font = if segment.text.is_ascii() {
+                        &style.font_descriptor_latin_hansi
+                    } else {
+                        &style.font_descriptor_east_asia
+                    };
+                    width = width.max(ctx.measure_text(&segment.text, font)?);
+                } else {
+                    for cluster in &line.clusters {
+                        width = width.max(
+                            cluster
+                                .layout
+                                .as_ref()
+                                .map_or(cluster.width, |layout| layout.measured_glyph_width),
+                        );
+                    }
+                }
             }
-            let style = ctx.resolve_run_style_rc(segment.properties.as_ref())?;
-            let font = if segment.text.is_ascii() {
-                &style.font_descriptor_latin_hansi
-            } else {
-                &style.font_descriptor_east_asia
-            };
-            layout.max_line_width = layout
-                .max_line_width
-                .max(ctx.measure_text(&segment.text, font)?);
+            layout.max_line_width = layout.max_line_width.max(width);
+            layout.column_widths.push(width);
         }
     }
     let mut run_index = 0;
@@ -5453,6 +5469,7 @@ pub fn project_cell_text_turned<C: LineWrapContext>(
             column_ranges,
             column_height: available_height.unwrap_or(natural_height).max(line_height),
             max_line_width: line_height,
+            column_widths: Vec::new(),
         },
         column_start_offsets: offsets,
     })

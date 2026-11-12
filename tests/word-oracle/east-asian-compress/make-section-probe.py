@@ -6,6 +6,7 @@ from xml.etree import ElementTree as ET
 from zipfile import ZIP_DEFLATED, ZipFile, ZipInfo
 
 ROOT = Path(__file__).parent
+FIXTURES = ROOT.parent / "mac-elsa-synthetic"
 NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
 ET.register_namespace("w", NS)
 
@@ -102,4 +103,49 @@ for direction_index in range(2):
             else:
                 body.append(section_break)
 
-write_docx(ROOT.parent / "mac-elsa-synthetic" / "vertical-grid-pitch-matrix-mac" / "source.docx")
+write_docx(FIXTURES / "vertical-grid-pitch-matrix-mac" / "source.docx")
+
+grid_matrix = list(body)
+spacing_cases = (
+    ("snap off", None, False),
+    ("exact", 480, False),
+    ("atLeast", 480, False),
+    ("auto", 480, False),
+    ("empty before", None, False),
+    ("wrap", None, False),
+)
+exact_cases = tuple(
+    ("exact", pitch * 20, disable_grid)
+    for disable_grid in (False, True)
+    for pitch in (12, 24, 36)
+)
+for fixture, cases in (
+    ("vertical-grid-spacing-probe-mac", spacing_cases),
+    ("vertical-exact-column-probe-mac", exact_cases),
+):
+    body.clear()
+    for direction_index in range(2):
+        start = direction_index * 60
+        for case_index, (rule, line, disable_grid) in enumerate(cases):
+            content, second_column, section_break = deepcopy(grid_matrix[start:start + 3])
+            props = content.find(w("pPr"))
+            if props is None:
+                props = ET.Element(w("pPr"))
+                content.insert(0, props)
+            if line is not None:
+                ET.SubElement(props, w("spacing"), {w("line"): str(line), w("lineRule"): rule})
+            elif rule == "snap off":
+                ET.SubElement(props, w("snapToGrid"), {w("val"): "0"})
+            elif rule == "empty before":
+                body.append(ET.Element(w("p")))
+            elif rule == "wrap":
+                content.find(f"{w('r')}/{w('t')}").text *= 58
+            body.extend((content, second_column))
+            section = section_break.find(f"{w('pPr')}/{w('sectPr')}")
+            if disable_grid:
+                section.remove(section.find(w("docGrid")))
+            if direction_index == 1 and case_index == len(cases) - 1:
+                body.append(section)
+            else:
+                body.append(section_break)
+    write_docx(FIXTURES / fixture / "source.docx")
