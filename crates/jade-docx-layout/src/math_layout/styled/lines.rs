@@ -467,8 +467,20 @@ pub(crate) fn stack<'a, C: StyledMathMeasure>(
             descent: line.metrics.descent,
         });
         let mut metrics = line.metrics;
-        if needs_top_leading && metrics.ascent > tall_ascent {
-            metrics.ascent += top_leading;
+        if needs_top_leading {
+            let optical_ascent = b.plan.glyphs[line.start.glyphs..line.end.glyphs]
+                .iter()
+                .filter(|glyph| glyph.visible && glyph.optical_script && glyph.baseline < 0.0)
+                .map(|glyph| glyph.ascent - glyph.baseline)
+                .fold(0.0, f64::max);
+            // Optical scripts get MATH leading. A taller structure such as
+            // a fraction still reserves the standalone typographic gap.
+            if metrics.ascent > tall_ascent && metrics.ascent > optical_ascent {
+                metrics.ascent += top_leading;
+            }
+            if optical_ascent > 0.0 {
+                metrics.ascent = metrics.ascent.max(optical_ascent + gap);
+            }
         }
         return metrics;
     }
