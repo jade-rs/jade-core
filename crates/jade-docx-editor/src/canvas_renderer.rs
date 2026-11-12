@@ -6194,6 +6194,12 @@ where
         Some(entry.start_page)
     }
 
+    /// Returns the cached end page (1-indexed) for a paragraph, if present.
+    pub(crate) fn cached_paragraph_end_page(&self, paragraph_index: usize) -> Option<usize> {
+        let cache = self.paragraph_layout_cache.borrow();
+        Some(cache.get_entry(paragraph_index)?.end_page.saturating_add(1))
+    }
+
     /// Top-left of the paragraph's first laid-out line in page-local CSS
     /// coordinates. Consumers such as an ink overlay must use this shared
     /// layout result rather than estimating margins or line heights.
@@ -18159,8 +18165,13 @@ where
             }
         }
 
-        let comments_active = self.document_has_comments && options.render_comments;
-        let cache_eligible = !comments_active
+        // Cached commands do not register comment annotations. Comment
+        // ranges are resolved on each paragraph, so anchors elsewhere in the
+        // document do not affect this paragraph's eligibility.
+        let has_comment_anchors = self.document_has_comments
+            && options.render_comments
+            && Self::paragraph_contains_comment_anchors(paragraph);
+        let cache_eligible = !has_comment_anchors
             // Full diagnostics must rebuild auxiliary metadata absent from
             // cached draw commands. Keep normal editing caches intact.
             && self.auxiliary_story_capture_mode != AuxiliaryStoryCaptureMode::Full
@@ -60129,6 +60140,57 @@ mod tests {
                 assert!(!painted(&pages[page]).is_empty());
             }
         }
+    }
+
+    #[test]
+    fn unannotated_paragraphs_replay_without_losing_comment_paint() {
+        use jade_painter::recording::Op;
+
+        let (mut renderer, painter) = recording_renderer();
+        let mut document = doc_with_paragraph_texts(&["before", "reviewed text", "after"]);
+        let BodyElement::Paragraph(paragraph) = &mut document.body.as_mut().unwrap().elements[1]
+        else {
+            unreachable!()
+        };
+        paragraph.comment_ranges.push(CommentRange {
+            id: "1".into(),
+            start: 0,
+            end: 8,
+        });
+        paragraph.comment_markers.push(CommentMarker {
+            id: "1".into(),
+            position: 8,
+        });
+
+        let mut options = options_for_seek_tests();
+        options.render_comments = true;
+        let painted = || {
+            painter
+                .ops()
+                .into_iter()
+                .filter(|op| {
+                    matches!(
+                        op,
+                        Op::FillText(..) | Op::FillShapedText(..) | Op::FillRect(..) | Op::Arc(..)
+                    )
+                })
+                .collect::<Vec<_>>()
+        };
+        renderer.render(&document, &options).unwrap();
+        let first_paint = painted();
+        let first_annotations = serde_json::to_value(renderer.comment_annotations()).unwrap();
+        assert_eq!(renderer.comment_annotations().len(), 1);
+
+        painter.clear();
+        renderer.mark_full_repaint();
+        renderer.reset_paragraph_render_cache_stats();
+        renderer.render(&document, &options).unwrap();
+        assert!(renderer.paragraph_render_cache_stats().hits >= 2);
+        assert_eq!(painted(), first_paint);
+        assert_eq!(
+            serde_json::to_value(renderer.comment_annotations()).unwrap(),
+            first_annotations
+        );
     }
 
     #[test]
