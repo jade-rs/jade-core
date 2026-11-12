@@ -7315,7 +7315,7 @@ pub fn wrap_text_into_lines<C: LineWrapContext>(
     let has_arabic = paragraph_style.word_platform
         == crate::line_metrics::WordLayoutPlatform::Mac
         && paragraph_style.oracle_advance_px_by_text_offset.is_none()
-        && text.bytes().any(|byte| matches!(byte, 0xd8..=0xdb | 0xe0 | 0xef | 0xf0));
+        && text.bytes().any(|byte| matches!(byte, 0xd8..=0xdb | 0xdd | 0xe0 | 0xef | 0xf0));
     let wrap = if has_arabic {
         wrap_text_with_shaping::<C, true>
     } else {
