@@ -120,6 +120,14 @@ impl<H> WrapBackend<H> {
 impl<H: LineWrapContext> LineWrapContext for WrapBackend<H> {
     type Error = MeasureBackendError<H::Error>;
 
+    fn measure_arabic_clusters(&self, text: &str, font: &str) -> Option<Vec<(usize, f64)>> {
+        match self {
+            Self::Host(host) => host.measure_arabic_clusters(text, font),
+            #[cfg(feature = "native-shaping")]
+            Self::Shaping(context) => context.measure_arabic_clusters(text, font),
+        }
+    }
+
     fn resolve_run_style(
         &self,
         properties: Option<&RunProperties>,

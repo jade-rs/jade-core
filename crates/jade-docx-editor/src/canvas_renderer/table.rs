@@ -1928,6 +1928,7 @@ impl LayoutConfig {
 
 struct TableLineWrapContext<'a, P: Painter> {
     context: &'a P,
+    arabic_cluster_measurer: Option<crate::render_host::ArabicClusterMeasurer>,
     style: Rc<ResolvedRunStyle>,
     cache: Rc<RefCell<TextMeasureCache>>,
 
@@ -1962,6 +1963,7 @@ impl<'a, P: Painter> TableLineWrapContext<'a, P> {
     ) -> Self {
         let mut result = Self {
             context,
+            arabic_cluster_measurer: None,
             style: default_table_run_style(),
             cache,
             trailing_overhang_cache,
@@ -2159,6 +2161,10 @@ where
     P::Error: PainterError,
 {
     type Error = JsValue;
+
+    fn measure_arabic_clusters(&self, text: &str, font: &str) -> Option<Vec<(usize, f64)>> {
+        self.arabic_cluster_measurer.as_ref()?(text, font)
+    }
 
     fn resolve_run_style(
         &self,
@@ -2675,6 +2681,7 @@ where
         } else {
             TableLineWrapContext::new(&painter)
         };
+        table_wrap_context.arabic_cluster_measurer = self.host.arabic_cluster_measurer();
         if self.table_autofit_cache_enabled {
             table_wrap_context.wrap_cache = Some(Rc::clone(&self.paragraph_wrap_cache));
         }

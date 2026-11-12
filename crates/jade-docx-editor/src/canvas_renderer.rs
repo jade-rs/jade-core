@@ -39792,6 +39792,10 @@ where
 {
     type Error = JsValue;
 
+    fn measure_arabic_clusters(&self, text: &str, font: &str) -> Option<Vec<(usize, f64)>> {
+        self.host.arabic_cluster_measurer()?(text, font)
+    }
+
     fn resolve_run_style(
         &self,
         properties: Option<&RunProperties>,

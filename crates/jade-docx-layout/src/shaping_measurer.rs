@@ -592,24 +592,19 @@ thread_local! {
     static SHAPE_PLAN_BUILDS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
 }
 
-/// Shapes one run and returns its advance in font design units.
-fn shape_run_units(
+/// Shapes one run, retaining glyph positions in font design units.
+fn shape_run(
     entry: &RegisteredFace,
     text: &str,
     kern_enabled: bool,
     extra: &[Feature],
-) -> i32 {
+) -> GlyphBuffer {
     let mut buffer = UnicodeBuffer::new();
     buffer.push_str(text);
-    let shaped = entry
+    entry
         .shape_plans
         .borrow_mut()
-        .shape(&entry.face, buffer, kern_enabled, extra);
-    shaped
-        .glyph_positions()
-        .iter()
-        .map(|position| position.x_advance)
-        .sum()
+        .shape(&entry.face, buffer, kern_enabled, extra)
 }
 
 /// Picks the face for one character: the first family in the stack that has a
@@ -639,8 +634,49 @@ impl ShapingMeasurer {
             return 0.0;
         };
         let kern_enabled = !(cjk && self.options.disable_kern_for_cjk);
-        let units = shape_run_units(entry, text, kern_enabled, features);
+        let shaped = shape_run(entry, text, kern_enabled, features);
+        let units: i32 = shaped
+            .glyph_positions()
+            .iter()
+            .map(|position| position.x_advance)
+            .sum();
         f64::from(units) / f64::from(entry.face.units_per_em()) * size_px
+    }
+
+    /// Returns logical UTF-8 cluster starts and advances in pixels for an Arabic
+    /// fragment shaped in one face. Ligatures and their combining marks share a
+    /// cluster start even when the shaping buffer contains several glyphs.
+    pub fn measure_arabic_clusters(
+        &self,
+        text: &str,
+        font_descriptor: &str,
+    ) -> Option<Vec<(usize, f64)>> {
+        let stack = self.resolve_stack(font_descriptor)?;
+        let mut chars = text.chars();
+        let face_index = self.face_for_char(&stack, chars.next()?);
+        if chars.any(|ch| {
+            !matches!(ch, '\u{200c}' | '\u{200d}') && self.face_for_char(&stack, ch) != face_index
+        }) {
+            return None;
+        }
+        let entry = self.faces.get(face_index)?;
+        let scale = self.font_size_px(stack.size_pt) / f64::from(entry.face.units_per_em());
+        let shaped = shape_run(entry, text, true, &stack.features);
+        let mut clusters = Vec::<(usize, f64)>::new();
+        for (glyph, position) in shaped.glyph_infos().iter().zip(shaped.glyph_positions()) {
+            let start = glyph.cluster as usize;
+            let advance = f64::from(position.x_advance) * scale;
+            if let Some((_, width)) = clusters
+                .last_mut()
+                .filter(|(previous, _)| *previous == start)
+            {
+                *width += advance;
+            } else {
+                clusters.push((start, advance));
+            }
+        }
+        clusters.sort_unstable_by_key(|(start, _)| *start);
+        Some(clusters)
     }
 }
 
@@ -718,6 +754,10 @@ impl ShapingLineWrapContext {
 
 impl LineWrapContext for ShapingLineWrapContext {
     type Error = Box<dyn Error>;
+
+    fn measure_arabic_clusters(&self, text: &str, font: &str) -> Option<Vec<(usize, f64)>> {
+        self.measurer.measure_arabic_clusters(text, font)
+    }
 
     fn resolve_run_style(
         &self,
@@ -805,6 +845,36 @@ mod tests {
             1,
             "only one plan is needed for the same face/script/direction/features"
         );
+    }
+
+    #[test]
+    #[ignore = "requires macOS Arial and Geeza Pro system fonts"]
+    fn arabic_shaping_exposes_font_specific_ligature_boundaries() {
+        let mut measurer = ShapingMeasurer::with_options(12.0, ShapingOptions::CHROMIUM_PARITY);
+        for (family, path) in [
+            ("Arial", "/System/Library/Fonts/Supplemental/Arial.ttf"),
+            ("Geeza Pro", "/System/Library/Fonts/GeezaPro.ttc"),
+        ] {
+            measurer
+                .register_font_path(family, 400, RegisteredFontStyle::Normal, path)
+                .unwrap();
+        }
+        for (family, text, starts) in [
+            ("Arial", "لَا", &[0][..]),
+            ("Arial", "الله", &[0]),
+            ("Geeza Pro", "الله", &[0, 2]),
+            ("Geeza Pro", "سلام", &[0, 2, 6]),
+        ] {
+            let descriptor = format!("10.50pt '{family}'");
+            let clusters = measurer.measure_arabic_clusters(text, &descriptor).unwrap();
+            assert_eq!(
+                clusters.iter().map(|(start, _)| *start).collect::<Vec<_>>(),
+                starts,
+                "{family} {text}"
+            );
+            let width = clusters.iter().map(|(_, width)| width).sum::<f64>();
+            assert!((width - measurer.measure_text(text, &descriptor).unwrap()).abs() < 1e-9);
+        }
     }
 
     const DESC: &str = "10.50pt 'Noto Sans JP'";
