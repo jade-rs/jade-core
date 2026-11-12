@@ -25,20 +25,75 @@ fn cambria_math_metrics(text: &str, style: MathTextStyle<'_>) -> Option<(f64, f6
     }
     // Cambria Math advances in 2048 units per em, also observed in Word's
     // printed display equations. Canvas may be measuring a substituted face.
-    let (advance, italic) = match text {
-        "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" => (1134.0, 0.0),
-        "+" | "−" | "=" => (1530.0, 0.0),
-        "𝑎" => (1141.0, 50.0),
-        "𝑏" => (1104.0, 45.0),
-        "𝑐" => (942.0, 65.0),
-        "𝑑" => (1187.0, 65.0),
-        "𝑥" => (1090.0, 62.0),
-        "𝑦" => (1146.0, 35.0),
-        "𝑧" => (990.0, 35.0),
+    const ITALIC_LATIN: [(u16, u16); 52] = [
+        (1297, 20), // A
+        (1344, 55), // B
+        (1222, 90), // C
+        (1418, 60), // D
+        (1279, 80), // E
+        (1251, 80), // F
+        (1290, 90), // G
+        (1491, 60), // H
+        (776, 65), // I
+        (782, 40), // J
+        (1430, 62), // K
+        (1089, 42), // L
+        (1743, 50), // M
+        (1500, 50), // N
+        (1385, 50), // O
+        (1270, 50), // P
+        (1385, 60), // Q
+        (1305, 60), // R
+        (1084, 40), // S
+        (1219, 45), // T
+        (1411, 40), // U
+        (1281, 65), // V
+        (1945, 80), // W
+        (1321, 50), // X
+        (1234, 50), // Y
+        (1213, 50), // Z
+        (1141, 50), // a
+        (1104, 45), // b
+        (942, 65), // c
+        (1187, 65), // d
+        (1016, 45), // e
+        (1126, 60), // f
+        (1253, 35), // g
+        (1136, 35), // h
+        (649, 65), // i
+        (736, 35), // j
+        (1130, 60), // k
+        (647, 65), // l
+        (1717, 35), // m
+        (1175, 35), // n
+        (1091, 45), // o
+        (1142, 25), // p
+        (1103, 62), // q
+        (974, 45), // r
+        (946, 42), // s
+        (808, 50), // t
+        (1175, 52), // u
+        (1114, 60), // v
+        (1513, 60), // w
+        (1090, 62), // x
+        (1146, 35), // y
+        (990, 35), // z
+    ];
+    let mut characters = text.chars();
+    let character = characters.next()?;
+    if characters.next().is_some() {
+        return None;
+    }
+    let (advance, italic) = match character {
+        '0'..='9' => (1134, 0),
+        '+' | '−' | '=' => (1530, 0),
+        // Unicode uses the earlier PLANCK CONSTANT codepoint for italic h.
+        'ℎ' => ITALIC_LATIN[33],
+        '𝐴'..='𝑔' | '𝑖'..='𝑧' => ITALIC_LATIN[(character as u32 - 0x1D434) as usize],
         _ => return None,
     };
     let scale = style.size_px / 2048.0;
-    Some((advance * scale, italic * scale))
+    Some((f64::from(advance) * scale, f64::from(italic) * scale))
 }
 
 impl<P: Painter> StyledMathMeasure for StyledPainterMeasure<'_, P> {
