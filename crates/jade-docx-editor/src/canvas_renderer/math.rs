@@ -27,7 +27,7 @@ fn cambria_math_metrics(text: &str, style: MathTextStyle<'_>) -> Option<(f64, f6
     // printed display equations. Canvas may be measuring a substituted face.
     let (advance, italic) = match text {
         "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" => (1134.0, 0.0),
-        "+" | "=" => (1530.0, 0.0),
+        "+" | "−" | "=" => (1530.0, 0.0),
         "𝑎" => (1141.0, 50.0),
         "𝑏" => (1104.0, 45.0),
         "𝑐" => (942.0, 65.0),

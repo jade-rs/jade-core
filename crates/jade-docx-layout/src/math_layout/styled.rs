@@ -967,7 +967,7 @@ impl<'a, C: StyledMathMeasure> Builder<'_, 'a, C> {
                     self.first = Some(class);
                 }
                 self.prev = Some(class);
-                self.note_space_after_binary(space);
+                self.note_space_after_operator(space);
                 if matches!(class, AtomClass::Bin | AtomClass::Rel) {
                     self.break_candidate(
                         class,
@@ -1044,13 +1044,16 @@ impl<'a, C: StyledMathMeasure> Builder<'_, 'a, C> {
         }
     }
 
-    fn note_space_after_binary(&mut self, space: f64) {
+    fn note_space_after_operator(&mut self, space: f64) {
         if self.depth != 0 || self.options.settings.break_binary != BreakBinary::After {
             return;
         }
         let glyphs = self.plan.glyphs.len();
         if let Some(candidate) = self.breaks.as_mut().and_then(|breaks| breaks.last_mut()) {
-            if candidate.class == AtomClass::Bin
+            if (candidate.class == AtomClass::Bin
+                || candidate.class == AtomClass::Rel
+                    && crate::line_metrics::word_layout_platform()
+                        == crate::line_metrics::WordLayoutPlatform::Mac)
                 && !candidate.manual
                 && candidate.mark.glyphs + 1 == glyphs
             {
@@ -1233,7 +1236,7 @@ impl<'a, C: StyledMathMeasure> Builder<'_, 'a, C> {
                 lead = alphabet::atom_space(prev, left, self.level > 0) * self.size() / 18.0;
             }
             lead += std::mem::take(&mut self.pending_italic);
-            self.note_space_after_binary(lead);
+            self.note_space_after_operator(lead);
         }
         self.first = None;
         if structure && matches!(class.0, AtomClass::Bin | AtomClass::Rel) {
