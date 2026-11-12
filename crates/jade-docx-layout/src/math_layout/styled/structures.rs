@@ -264,7 +264,31 @@ impl<'a, C: StyledMathMeasure> Builder<'_, 'a, C> {
             _ => {
                 let bar = kind != "noBar";
                 let (n0, n1, n) = self.piece(|b| b.slot(num, level_up, false, false))?;
-                let (d0, _, d) = self.piece(|b| b.slot(den, level_up, false, true))?;
+                let (d0, d1, d) = self.piece(|b| b.slot(den, level_up, false, true))?;
+                let word_mac_cambria = display
+                    && self.style.family.eq_ignore_ascii_case("Cambria Math")
+                    && crate::line_metrics::word_layout_platform()
+                        == crate::line_metrics::WordLayoutPlatform::Mac;
+                // Explicit sizing on both parts of a display fraction also
+                // sets its vertical separation and rule metrics in Word.
+                let c = if word_mac_cambria && !self.font_bound() {
+                    let mut glyphs = self.plan.glyphs[n0.glyphs..d1.glyphs]
+                        .iter()
+                        .filter(|glyph| glyph.visible);
+                    glyphs
+                        .next()
+                        .filter(|first| {
+                            glyphs.all(|glyph| {
+                                glyph.style.family.eq_ignore_ascii_case("Cambria Math")
+                                    && glyph.style.size_px == first.style.size_px
+                                    && glyph.baseline == 0.0
+                            }) && first.style.family.eq_ignore_ascii_case("Cambria Math")
+                                && first.baseline == 0.0
+                        })
+                        .map_or(c, |glyph| MathConstants::cambria(glyph.style.size_px))
+                } else {
+                    c
+                };
                 let axis = c.axis_height;
                 let t = if bar { self.rule_thickness(&c) } else { 0.0 };
                 let (up, down) = if bar {
@@ -315,11 +339,7 @@ impl<'a, C: StyledMathMeasure> Builder<'_, 'a, C> {
                     }
                     (up, down)
                 };
-                let pad = if display
-                    && self.style.family.eq_ignore_ascii_case("Cambria Math")
-                    && crate::line_metrics::word_layout_platform()
-                        == crate::line_metrics::WordLayoutPlatform::Mac
-                {
+                let pad = if word_mac_cambria {
                     0.0
                 } else {
                     self.size() * 0.12

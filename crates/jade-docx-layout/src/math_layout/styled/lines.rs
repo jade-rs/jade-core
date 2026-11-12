@@ -444,7 +444,6 @@ pub(crate) fn stack<'a, C: StyledMathMeasure>(
             == crate::line_metrics::WordLayoutPlatform::Mac;
     // A standalone tall display line reserves Cambria Math’s OS/2
     // typographic line gap. Wrapped displays use MATH leading.
-    let top_leading = size * (353.0 / 2048.0);
     let gap = super::MathConstants::cambria(size).leading;
     let tall_ascent = size * (1946.0 / 2048.0);
     let needs_top_leading = word_mac_cambria && (b.options.display || lines.len() > 1) && {
@@ -476,7 +475,13 @@ pub(crate) fn stack<'a, C: StyledMathMeasure>(
             // Optical scripts get MATH leading. A taller structure such as
             // a fraction still reserves the standalone typographic gap.
             if metrics.ascent > tall_ascent && metrics.ascent > optical_ascent {
-                metrics.ascent += top_leading;
+                let line_size = b.plan.glyphs[line.start.glyphs..line.end.glyphs]
+                    .iter()
+                    .filter(|glyph| glyph.visible && glyph.baseline == 0.0)
+                    .map(|glyph| glyph.style.size_px)
+                    .reduce(f64::max)
+                    .unwrap_or(size);
+                metrics.ascent += line_size * (353.0 / 2048.0);
             }
             if optical_ascent > 0.0 {
                 metrics.ascent = metrics.ascent.max(optical_ascent + gap);
