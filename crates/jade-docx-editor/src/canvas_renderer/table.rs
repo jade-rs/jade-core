@@ -6390,10 +6390,16 @@ where
             };
             let object = picture.inline_object();
             let image = picture.image.as_ref();
+            let position = run
+                .properties
+                .as_ref()
+                .and_then(|properties| properties.text_position)
+                .filter(|position| position.is_finite())
+                .map_or(0.0, points_to_px);
             let (x, y, width, height) = inline_picture_draw_rect(
                 image,
                 text_x + glyph.x,
-                baseline + line.text_alignment_shift(glyph.start) - object.height,
+                baseline + line.text_alignment_shift(glyph.start) - object.height - position,
                 object.width,
                 object.height,
             );
@@ -15444,18 +15450,16 @@ fn build_line_layout_from_wrapped_line(line: &WrappedLine) -> LineLayout {
         cursor += width;
     }
 
-    // An inline picture stands on the baseline: the line's baseline sits
-    // the picture's height (or the text's ascent, when taller) below its top
-    // and the text's descent hangs below. Word for Mac draws a cell line of
-    // only an 89.1pt picture exactly 89.1pt tall (`table-object-edge-cases`).
-    let (object_height, object_descent) = line
+    // The line must contain the positioned object bounds and the text metrics.
+    // An unshifted picture contributes its full height above the baseline.
+    let (object_ascent, object_descent) = line
         .clusters
         .iter()
-        .filter_map(|cluster| cluster.inline_object)
-        .fold((0.0_f64, 0.0_f64), |(height, descent), object| {
-            (height.max(object.height), descent.max(object.descent))
+        .filter_map(|cluster| cluster.inline_object_bounds_px())
+        .fold((0.0_f64, 0.0_f64), |(ascent, descent), (top, bottom)| {
+            (ascent.max(-top), descent.max(bottom))
         });
-    let (word_baseline_offset, min_advance) = if object_height > 0.0 {
+    let (word_baseline_offset, min_advance) = if object_ascent > 0.0 || object_descent > 0.0 {
         let (text_ascent, text_descent) = line
             .clusters
             .iter()
@@ -15467,7 +15471,7 @@ fn build_line_layout_from_wrapped_line(line: &WrappedLine) -> LineLayout {
                     descent.max(layout.font_descent.unwrap_or(0.0)),
                 )
             });
-        let baseline = object_height.max(text_ascent);
+        let baseline = object_ascent.max(text_ascent);
         (Some(baseline), baseline + text_descent.max(object_descent))
     } else {
         (None, 0.0)
