@@ -10110,7 +10110,8 @@ fn apply_table_layout_width_for_table_with_content<C: TableAutofitContext>(
         }
         return Ok((table_width, NaturalParagraphLayoutCache::default()));
     }
-    let cache_signature = cache.and_then(|_| {
+    let cache_signature = cache.and_then(|cache| {
+        cache.borrow_mut().prepare_style_context(config);
         table_autofit_cache_signature(
             table,
             column_widths,
@@ -10118,7 +10119,6 @@ fn apply_table_layout_width_for_table_with_content<C: TableAutofitContext>(
             default_padding_x,
             line_height_for,
             field_value_for,
-            config,
         )
     });
     let cached = cache
@@ -10429,11 +10429,34 @@ struct TableAutofitCacheEntry {
     paragraph_measure_count: u64,
 }
 
+#[derive(Clone, Debug, Default)]
+struct TableAutofitStyleContext {
+    styles: Option<Rc<StylesPart>>,
+    theme: Option<Rc<ThemePart>>,
+    override_font_size: bool,
+}
+
+impl TableAutofitStyleContext {
+    fn matches(&self, other: &Self) -> bool {
+        fn same_allocation<T>(left: Option<&Rc<T>>, right: Option<&Rc<T>>) -> bool {
+            match (left, right) {
+                (Some(left), Some(right)) => Rc::ptr_eq(left, right),
+                (None, None) => true,
+                _ => false,
+            }
+        }
+        self.override_font_size == other.override_font_size
+            && same_allocation(self.styles.as_ref(), other.styles.as_ref())
+            && same_allocation(self.theme.as_ref(), other.theme.as_ref())
+    }
+}
+
 #[derive(Debug)]
 pub(super) struct TableAutofitCache {
     entries: FxHashMap<u64, TableAutofitCacheEntry>,
     lru: VecDeque<u64>,
     stats: TableAutofitCacheStats,
+    style_context: TableAutofitStyleContext,
 }
 
 impl Default for TableAutofitCache {
@@ -10441,6 +10464,7 @@ impl Default for TableAutofitCache {
         Self {
             entries: FxHashMap::default(),
             lru: VecDeque::new(),
+            style_context: TableAutofitStyleContext::default(),
             stats: TableAutofitCacheStats {
                 capacity: TABLE_AUTOFIT_CACHE_CAPACITY,
                 ..TableAutofitCacheStats::default()
@@ -10450,6 +10474,22 @@ impl Default for TableAutofitCache {
 }
 
 impl TableAutofitCache {
+    fn prepare_style_context(&mut self, config: Option<&LayoutConfig>) {
+        let context = config.map_or_else(TableAutofitStyleContext::default, |config| {
+            TableAutofitStyleContext {
+                styles: config.styles_part.clone(),
+                theme: config.theme_part.clone(),
+                override_font_size: config.override_table_style_font_size,
+            }
+        });
+        if !self.style_context.matches(&context) {
+            // Style and theme are shared by every table. A change invalidates
+            // the whole cache, so table lookups need not serialize either part.
+            self.clear();
+            self.style_context = context;
+        }
+    }
+
     fn get(&mut self, signature: &TableAutofitCacheSignature) -> Option<AutofitContentWidths> {
         let Some(entry) = self.entries.get(&signature.hash) else {
             self.stats.misses += 1;
@@ -10495,6 +10535,7 @@ impl TableAutofitCache {
         self.entries.clear();
         self.lru.clear();
         self.stats.size = 0;
+        self.style_context = TableAutofitStyleContext::default();
     }
 
     pub(super) fn stats(&self) -> TableAutofitCacheStats {
@@ -10509,7 +10550,6 @@ fn table_autofit_cache_signature(
     default_padding_x: f64,
     line_height_for: &dyn Fn(&Paragraph) -> f64,
     field_value_for: &dyn Fn(&RunField) -> Option<String>,
-    config: Option<&LayoutConfig>,
 ) -> Option<TableAutofitCacheSignature> {
     // A table's key runs to kilobytes: start there rather than growing from
     // a small serializer buffer on every paint.
@@ -10520,11 +10560,6 @@ fn table_autofit_cache_signature(
             == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows,
     ));
     ciborium::ser::into_writer(table, &mut bytes).ok()?;
-    if let Some(config) = config {
-        bytes.push(u8::from(config.override_table_style_font_size));
-        ciborium::ser::into_writer(&config.styles_part, &mut bytes).ok()?;
-        ciborium::ser::into_writer(&config.theme_part, &mut bytes).ok()?;
-    }
     // `resolved_style` is intentionally skipped by the document serializer but
     // affects table and first-row typography, so retain it in the cache key.
     std::io::Write::write_fmt(&mut bytes, format_args!("{:?}", table.resolved_style)).ok()?;
@@ -18342,7 +18377,7 @@ mod tests {
         };
         let widths = vec![240.0];
         let signature =
-            table_autofit_cache_signature(&table, &widths, 240.0, 8.0, &|_| 16.0, &|_| None, None)
+            table_autofit_cache_signature(&table, &widths, 240.0, 8.0, &|_| 16.0, &|_| None)
                 .expect("serializable table cache key");
         let measured = AutofitContentWidths {
             positive_spacing_grid: None,
@@ -18370,7 +18405,7 @@ mod tests {
 
         table.rows[0].cells[0].blocks = vec![BodyElement::from_paragraph(paragraph_with("edited"))];
         let edited =
-            table_autofit_cache_signature(&table, &widths, 240.0, 8.0, &|_| 16.0, &|_| None, None)
+            table_autofit_cache_signature(&table, &widths, 240.0, 8.0, &|_| 16.0, &|_| None)
                 .expect("edited table cache key");
         assert!(cache.get(&edited).is_none());
         assert_eq!(cache.stats().hits, 2);
@@ -24011,8 +24046,7 @@ mod tests {
         };
         let widths = [100.0, 200.0, 300.0];
         let signature = |table: &Table| {
-            table_autofit_cache_signature(table, &widths, 600.0, 5.0, &|_| 16.0, &|_| None, None)
-                .unwrap()
+            table_autofit_cache_signature(table, &widths, 600.0, 5.0, &|_| 16.0, &|_| None).unwrap()
         };
         let key = signature(&table);
         let measured = autofit_content_widths(
@@ -24694,28 +24728,36 @@ mod tests {
                         .as_deref(),
                     Some("Table Latin")
                 );
-                let signature = |config: &LayoutConfig| {
-                    table_autofit_cache_signature(
-                        &table,
-                        &[100.0, 100.0],
-                        200.0,
-                        7.2,
-                        &|_| 20.0,
-                        &|_| None,
-                        Some(config),
-                    )
-                    .unwrap()
-                    .bytes
-                };
-                let initial_key = signature(&config);
+                let signature = table_autofit_cache_signature(
+                    &table,
+                    &[100.0, 100.0],
+                    200.0,
+                    7.2,
+                    &|_| 20.0,
+                    &|_| None,
+                )
+                .unwrap();
+                let mut cache = TableAutofitCache::default();
+                cache.prepare_style_context(Some(&config));
+                cache.insert(signature.clone(), natural.clone());
+                cache.prepare_style_context(Some(&config));
+                assert!(cache.get(&signature).is_some());
+
                 config.override_table_style_font_size = true;
-                assert_ne!(initial_key, signature(&config));
-                config.override_table_style_font_size = false;
+                cache.prepare_style_context(Some(&config));
+                assert!(cache.get(&signature).is_none());
+                cache.insert(signature.clone(), natural.clone());
+
                 config.styles_part = Some(Rc::new(styles.clone()));
-                assert_ne!(initial_key, signature(&config));
-                config.styles_part = None;
+                cache.prepare_style_context(Some(&config));
+                assert!(cache.get(&signature).is_none());
+                cache.insert(signature.clone(), natural.clone());
+
                 let theme = config.theme_part.take();
-                assert_ne!(initial_key, signature(&config));
+                cache.prepare_style_context(Some(&config));
+                assert!(cache.get(&signature).is_none());
+                config.override_table_style_font_size = false;
+                config.styles_part = None;
                 config.theme_part = theme;
                 for repeated in [false, true] {
                     let painter = RecordingPainter::with_width_per_char(7.0);
