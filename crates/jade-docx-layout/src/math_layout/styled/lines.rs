@@ -438,6 +438,25 @@ pub(crate) fn stack<'a, C: StyledMathMeasure>(
     if lines.is_empty() {
         return MathMetrics::default();
     }
+    let size = b.base_size;
+    let word_mac_cambria = b.style.family.eq_ignore_ascii_case("Cambria Math")
+        && crate::line_metrics::word_layout_platform()
+            == crate::line_metrics::WordLayoutPlatform::Mac;
+    // A standalone tall display line reserves Cambria Math’s OS/2
+    // typographic line gap. Wrapped displays use MATH leading.
+    let top_leading = size * (353.0 / 2048.0);
+    let gap = super::MathConstants::cambria(size).leading;
+    let tall_ascent = size * (1946.0 / 2048.0);
+    let needs_top_leading = word_mac_cambria && (b.options.display || lines.len() > 1) && {
+        #[cfg(feature = "opentype-math")]
+        {
+            b.context.font_parameters(b.style).is_none()
+        }
+        #[cfg(not(feature = "opentype-math"))]
+        {
+            true
+        }
+    };
     if lines.len() == 1 && lines[0].x == 0.0 {
         let line = &lines[0];
         b.plan.lines.push(MathLine {
@@ -447,7 +466,11 @@ pub(crate) fn stack<'a, C: StyledMathMeasure>(
             ascent: line.metrics.ascent,
             descent: line.metrics.descent,
         });
-        return line.metrics;
+        let mut metrics = line.metrics;
+        if needs_top_leading && metrics.ascent > tall_ascent {
+            metrics.ascent += top_leading;
+        }
+        return metrics;
     }
     // Alignment points line up within a group.
     let groups = lines.iter().map(|l| l.group).max().unwrap_or(0) + 1;
@@ -471,20 +494,10 @@ pub(crate) fn stack<'a, C: StyledMathMeasure>(
     }
     let width = group_widths.iter().copied().fold(0.0, f64::max);
     let justification = b.justification();
-    let size = b.base_size;
-    let word_mac_cambria = b.style.family.eq_ignore_ascii_case("Cambria Math")
-        && crate::line_metrics::word_layout_platform()
-            == crate::line_metrics::WordLayoutPlatform::Mac;
     // Repeated wrapped Cambria Math rows in Word for Mac use about 14.10 pt
     // between baselines at 12 pt, including across multiple display equations.
     let min_gap = size * if word_mac_cambria { 1.175 } else { 1.2 };
-    let gap = super::MathConstants::cambria(size).leading;
     let mac_wrapped = word_mac_cambria && lines.len() > 1;
-    let tall_ascent = size * (1946.0 / 2048.0);
-    #[cfg(feature = "opentype-math")]
-    let needs_top_leading = mac_wrapped && b.context.font_parameters(b.style).is_none();
-    #[cfg(not(feature = "opentype-math"))]
-    let needs_top_leading = mac_wrapped;
     let mut baseline = 0.0;
     let mut previous: Option<MathMetrics> = None;
     let mut total = MathMetrics::default();
