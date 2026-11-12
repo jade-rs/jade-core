@@ -48,6 +48,9 @@ function visibleGlyph(text = '') {
     // Word's PDF omits standalone join controls and those following Latin
     // letters. Keep the joiners inside painted emoji and shaping clusters.
     .replace(/(^|[A-Za-z])[\u200C\u200D]+$/u, '$1')
+    // Chromium can append ZWNJ to a single Arabic letter's grapheme. Word
+    // exports the letter's origin without that invisible suffix.
+    .replace(/^(\p{Script=Arabic})\u200C+$/u, '$1')
     .trim().normalize('NFC')
     .replace(/[\u2F00-\u2FD5]/g, radical => radical.normalize('NFKC'))
     .replaceAll('⻑', '長').replaceAll('⺠', '民').replaceAll('⻘', '青').replaceAll('⻲', '亀');
