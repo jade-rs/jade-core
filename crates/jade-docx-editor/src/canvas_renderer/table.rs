@@ -14138,6 +14138,20 @@ fn prepare_row_layout<P: Painter<Error: PainterError>>(
                             field_value_for,
                             math_context.is_some(),
                         );
+                        if paragraph_style.word_platform
+                            == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
+                            && paragraph_style.word_grid_line_sizing.is_none()
+                            && text.contains('\u{200d}')
+                        {
+                            let spacing =
+                                cell_paragraph_spacing(paragraph, config.styles_part.as_deref());
+                            paragraph_style.word_proportional_line_sizing =
+                                jade_docx_layout::line_metrics::WordProportionalLineSizing::new(
+                                    spacing.as_ref(),
+                                    false,
+                                    true,
+                                );
+                        }
                         paragraph_style.inline_note_separator_offsets = note_anchors
                             .iter()
                             .filter_map(|anchor| {
@@ -14285,6 +14299,7 @@ fn prepare_row_layout<P: Painter<Error: PainterError>>(
                             && !paragraph_style.enable_line_break_rules
                             && !paragraph_style.word_east_asian_font_line_box
                             && paragraph_style.word_minimum_cell_line_height_px.is_none()
+                            && paragraph_style.word_proportional_line_sizing.is_none()
                             && !matches!(
                                 paragraph_style.text_alignment.as_deref(),
                                 Some("top" | "center" | "bottom")
@@ -15994,6 +16009,25 @@ fn layout_horizontal_paragraph_with_run_styles_context_offset<C: LineWrapContext
     ))
 }
 
+fn cell_paragraph_spacing(
+    paragraph: &Paragraph,
+    styles: Option<&StylesPart>,
+) -> Option<jade_docx_reader::Spacing> {
+    let properties = paragraph.properties.as_ref();
+    let style_id = properties
+        .and_then(|props| props.style.as_deref())
+        .or_else(|| styles.and_then(StylesPart::default_paragraph_style_id));
+    let style = styles.and_then(|styles| styles.resolve_paragraph_properties(style_id?));
+    let defaults = styles.and_then(StylesPart::doc_default_paragraph_properties);
+    let spacing = [properties, style.as_ref(), defaults]
+        .into_iter()
+        .flatten()
+        .filter_map(|props| props.spacing.as_ref())
+        .find(|spacing| spacing.line.is_some())
+        .cloned();
+    spacing
+}
+
 fn apply_mac_cell_picture_line_spacing<P: Painter<Error: PainterError>>(
     layout: &mut CellParagraph,
     paragraph: &Paragraph,
@@ -16009,15 +16043,9 @@ fn apply_mac_cell_picture_line_spacing<P: Painter<Error: PainterError>>(
     let style_id = properties
         .and_then(|props| props.style.as_deref())
         .or_else(|| styles.and_then(StylesPart::default_paragraph_style_id));
-    let style = styles.and_then(|styles| styles.resolve_paragraph_properties(style_id?));
-    let default_properties = styles.and_then(StylesPart::doc_default_paragraph_properties);
-    let spacing = [properties, style.as_ref(), default_properties]
-        .into_iter()
-        .flatten()
-        .filter_map(|props| props.spacing.as_ref())
-        .find(|spacing| spacing.line.is_some());
-    let multiple = word_auto_line_multiple(spacing).filter(|multiple| *multiple >= 1.0);
-    let minimum = word_minimum_line_height_pt(spacing).map(points_to_px);
+    let spacing = cell_paragraph_spacing(paragraph, styles);
+    let multiple = word_auto_line_multiple(spacing.as_ref()).filter(|multiple| *multiple >= 1.0);
+    let minimum = word_minimum_line_height_pt(spacing.as_ref()).map(points_to_px);
     if multiple.is_none() && minimum.is_none() {
         return Ok(());
     }
@@ -16105,6 +16133,14 @@ fn horizontal_cell_paragraph_from_wrapped_lines(
                 if let Some((ascent, descent)) = wrapped.font_box_px() {
                     line.min_advance = line.min_advance.max(ascent + descent);
                 }
+            }
+            if let Some((sizing, height)) = paragraph_style
+                .word_proportional_line_sizing
+                .and_then(|sizing| Some((sizing, wrapped.mac_joiner_line_box_px()?)))
+            {
+                line.min_advance = line
+                    .min_advance
+                    .max(sizing.line_height_px(Some(height), line_height));
             }
             line.left_inset = paragraph_style.line_indent(index);
             line.right_inset = paragraph_style.right_indent;

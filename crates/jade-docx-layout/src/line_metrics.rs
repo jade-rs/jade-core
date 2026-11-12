@@ -3249,6 +3249,18 @@ pub fn word_font_vertical_metrics_px(font_descriptor: &str) -> Option<(f64, f64)
     Some((f64::from(ascent) * size_px, f64::from(descent) * size_px))
 }
 
+pub(crate) fn word_mac_joiner_line_height_px(font_descriptor: &str) -> Option<f64> {
+    let (size_pt, family) = split_font_descriptor(font_descriptor)?;
+    let family = family.trim_matches(['\'', '"']).trim();
+    // These faces switch to the same effective box as Calibri for an
+    // isolated soft-wrapped ZWJ. Preserve other faces' own sizing.
+    if !matches!(family, "Arial" | "Calibri" | "Cambria" | "Times New Roman") {
+        return None;
+    }
+    let (ascent, descent) = word_latin_font_vertical_units("Calibri")?;
+    Some(f64::from(size_pt) * 96.0 / 72.0 * f64::from(ascent + descent) / 2048.0)
+}
+
 /// The font box Word for Mac gives an emoji cluster, in px: the face that
 /// draws it is Apple Color Emoji (hhea 800/-250, 800 units/em) whatever the
 /// run names, so its line is taller than the run's own face makes it
