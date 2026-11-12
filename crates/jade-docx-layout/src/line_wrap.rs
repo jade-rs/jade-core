@@ -6056,6 +6056,8 @@ struct ArabicWrapSpan {
 }
 
 impl ArabicWrapSpan {
+    #[cold]
+    #[inline(never)]
     fn advance<C: LineWrapContext>(
         &mut self,
         ctx: &C,
@@ -7927,16 +7929,18 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
                 } else {
                     None
                 };
-                let shaping_delta = shaped_arabic.map_or(0.0, |(advance, _)| {
-                    advance * text_scale_x - computed.advance.adjusted_glyph_width
-                });
                 let isolated_width = marker_gap
                     + computed.advance.total_advance
                     + fitted_gap
                     + ruby_leading
                     + ruby_trailing
                     + advance_shift;
-                let candidate_width = (isolated_width + shaping_delta).max(0.0);
+                let candidate_width = match shaped_arabic {
+                    Some((advance, _)) => (isolated_width
+                        + (advance * text_scale_x - computed.advance.adjusted_glyph_width))
+                        .max(0.0),
+                    None => isolated_width.max(0.0),
+                };
                 let trailing_overhang = if computed.monospace_cell
                     || !crate::line_metrics::word_wraps_on_trailing_ink(
                         paragraph_style.word_platform,
@@ -8102,7 +8106,11 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext>(
                 fit_total_width = candidate_width;
                 // Final line positioning applies its own contextual advance
                 // adjustment to these stored, isolated cluster widths.
-                glyph_total_width = isolated_width.max(0.0);
+                glyph_total_width = if shaped_arabic.is_some() {
+                    isolated_width.max(0.0)
+                } else {
+                    candidate_width
+                };
                 update_text_advance_state(
                     &mut advance_state_across_runs,
                     grapheme,
