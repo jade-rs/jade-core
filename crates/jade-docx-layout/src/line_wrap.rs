@@ -3095,6 +3095,17 @@ fn compute_text_advance_step_with_descriptor<'a, C: LineWrapContext>(
             })
             .or(requested_ascii_measure),
     );
+    if advance.implicit_latin_gap + advance.implicit_numeric_gap > 0.0 {
+        adjust_mac_leading_auto_space(
+            &mut advance,
+            paragraph_style,
+            style,
+            state,
+            grapheme,
+            font_descriptor,
+            font_descriptor_hash,
+        );
+    }
     // When the resolved font slot is genuinely Default, Word for Windows keeps
     // numeric text in the ANSI classification and does not add the East-Asian
     // autoSpaceDN boundary gap. Renderer-side OOXML resolution only produces
@@ -3132,6 +3143,72 @@ fn compute_text_advance_step_with_descriptor<'a, C: LineWrapContext>(
         monospace_cell,
         advance,
     })
+}
+
+/// Correct Word's leading auto spacing once an actual boundary has been found.
+#[inline(never)]
+fn adjust_mac_leading_auto_space(
+    advance: &mut GraphemeAdvance,
+    paragraph_style: Option<&ParagraphStyle>,
+    style: &ResolvedRunStyle,
+    state: &TextAdvanceState,
+    grapheme: &str,
+    font_descriptor: &str,
+    font_descriptor_hash: u64,
+) {
+    let Some(paragraph) = paragraph_style.filter(|paragraph| {
+        paragraph.word_platform == crate::line_metrics::WordLayoutPlatform::Mac
+    }) else {
+        return;
+    };
+    let Some(width) = state.prev_adjusted_glyph_width.filter(|width| *width > 0.0) else {
+        return;
+    };
+    let different_font = state.prev_font_descriptor_hash != Some(font_descriptor_hash);
+    let grid_gap = paragraph
+        .doc_grid_char_space_px
+        .filter(|space| style.snap_to_grid && !paragraph.doc_grid_snap_to_chars && *space > 0.0)
+        .map_or(0.0, |space| (space + 2.0 * style.letter_spacing_px) * 0.25);
+    let new_latin_gap = if advance.implicit_latin_gap > 0.0 {
+        let quarter_width = width * 0.25 + grid_gap;
+        if different_font {
+            quarter_width
+        } else if state
+            .prev_grapheme
+            .as_deref()
+            .and_then(|text| text.chars().next())
+            .is_some_and(|ch| ch.script() == UnicodeScriptKind::Han)
+        {
+            advance.implicit_latin_gap.min(quarter_width)
+        } else {
+            advance.implicit_latin_gap
+        }
+    } else {
+        0.0
+    };
+    let new_numeric_gap = if advance.implicit_numeric_gap > 0.0
+        && different_font
+        && is_ascii_digit_grapheme(grapheme)
+        && crate::line_metrics::word_auto_space_metrics_with_balance(
+            font_descriptor,
+            paragraph
+                .east_asian_rules
+                .balance_single_byte_double_byte_width,
+        )
+        .is_some()
+    {
+        crate::line_metrics::word_auto_space_gap_px(width * 0.25) + grid_gap
+    } else {
+        advance.implicit_numeric_gap
+    };
+    advance.implicit_latin_gap = new_latin_gap;
+    advance.implicit_numeric_gap = new_numeric_gap;
+    advance.total_advance = (new_latin_gap
+        + new_numeric_gap
+        + advance.kerning_adjustment
+        + advance.snap_leading
+        + advance.glyph_box_width)
+        .max(0.0);
 }
 
 #[allow(clippy::too_many_arguments)]
