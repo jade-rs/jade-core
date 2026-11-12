@@ -6245,16 +6245,103 @@ fn apply_arabic_span_advances<C: LineWrapContext>(
     Ok(())
 }
 
-fn apply_bidi_visual_order(line: &mut WrappedLine, base_rtl: bool) {
+/// Word for Mac isolates explicitly directed Hebrew runs from adjoining
+/// Latin text and numbers. Consecutive runs of the same direction stay
+/// together even when a formatting boundary splits the Hebrew text.
+fn mac_hebrew_run_directions(
+    line: &WrappedLine,
+    run_styles: &[RunStyle],
+    base_offset: usize,
+) -> Option<Vec<bool>> {
+    if !line.clusters.iter().any(|cluster| {
+        cluster
+            .text
+            .chars()
+            .any(|ch| matches!(ch, '\u{0590}'..='\u{05ff}' | '\u{fb1d}'..='\u{fb4f}'))
+    }) {
+        return None;
+    }
+    let mut directions = Vec::with_capacity(line.clusters.len());
+    let mut has_rtl_run = false;
+    for cluster in &line.clusters {
+        let offset = cluster.start.checked_sub(base_offset)?;
+        let run = run_styles.get(run_styles.partition_point(|run| run.end <= offset))?;
+        let rtl = run.start <= offset
+            && run
+                .properties
+                .as_ref()
+                .and_then(|properties| properties.rtl)
+                == Some(true);
+        // Leave other right-to-left scripts, unmarked Hebrew and explicit
+        // Unicode controls to normal UAX #9 resolution.
+        if cluster.text.chars().any(|ch| {
+            if ch.script() == UnicodeScriptKind::Hebrew {
+                !rtl
+            } else {
+                may_reorder(ch)
+                    && matches!(
+                        bidi_class(ch),
+                        BidiClass::R
+                            | BidiClass::AL
+                            | BidiClass::AN
+                            | BidiClass::LRI
+                            | BidiClass::RLI
+                            | BidiClass::FSI
+                            | BidiClass::PDI
+                            | BidiClass::LRE
+                            | BidiClass::RLE
+                            | BidiClass::LRO
+                            | BidiClass::RLO
+                            | BidiClass::PDF
+                    )
+            }
+        }) {
+            return None;
+        }
+        has_rtl_run |= rtl;
+        directions.push(rtl);
+    }
+    has_rtl_run.then_some(directions)
+}
+
+fn apply_bidi_visual_order(
+    line: &mut WrappedLine,
+    base_rtl: bool,
+    word_platform: crate::line_metrics::WordLayoutPlatform,
+    run_styles: &[RunStyle],
+    base_offset: usize,
+) {
     if line.clusters.len() < 2 || !requires_bidi_resolution(line, base_rtl) {
         return;
     }
+    let run_directions = if word_platform == crate::line_metrics::WordLayoutPlatform::Mac {
+        mac_hebrew_run_directions(line, run_styles, base_offset)
+    } else {
+        None
+    };
 
     let mut bidi_text = String::new();
-    let mut cluster_starts = Vec::with_capacity(line.clusters.len());
-    for cluster in &line.clusters {
-        cluster_starts.push(bidi_text.len());
+    let mut entries = Vec::with_capacity(line.clusters.len());
+    let mut previous_direction = None;
+    for (index, cluster) in line.clusters.iter().enumerate() {
+        if let Some(directions) = &run_directions {
+            let rtl = directions[index];
+            if previous_direction != Some(rtl) {
+                if previous_direction.is_some() {
+                    entries.push((bidi_text.len(), None));
+                    bidi_text.push('\u{2069}'); // PDI
+                }
+                entries.push((bidi_text.len(), None));
+                bidi_text.push(if rtl { '\u{2067}' } else { '\u{2066}' }); // RLI or LRI
+                previous_direction = Some(rtl);
+            }
+        }
+        entries.push((bidi_text.len(), Some(index)));
         bidi_text.push_str(cluster.text.as_str());
+    }
+    if previous_direction.is_some() {
+        entries.push((bidi_text.len(), None));
+        bidi_text.push('\u{2069}'); // PDI
     }
     if bidi_text.is_empty() {
         return;
@@ -6264,12 +6351,17 @@ fn apply_bidi_visual_order(line: &mut WrappedLine, base_rtl: bool) {
     let bidi = BidiInfo::new(&bidi_text, Some(base_level));
     let paragraph = &bidi.paragraphs[0];
     let resolved_levels = bidi.reordered_levels(paragraph, 0..bidi_text.len());
-    let levels = cluster_starts
+    // Keep the isolate controls' outer levels until visual reordering is
+    // complete, so the runs stay separate even when their inner levels match.
+    let levels = entries
         .iter()
-        .map(|start| resolved_levels[*start])
+        .map(|(start, _)| resolved_levels[*start])
         .collect::<Vec<_>>();
     let visual_order = BidiInfo::reorder_visual(&levels);
-    if visual_order.iter().copied().eq(0..line.clusters.len()) {
+    let logical_indices = visual_order
+        .into_iter()
+        .filter_map(|index| entries[index].1);
+    if logical_indices.clone().eq(0..line.clusters.len()) {
         return;
     }
 
@@ -6277,7 +6369,7 @@ fn apply_bidi_visual_order(line: &mut WrappedLine, base_rtl: bool) {
     let logical_segments = line.segments.clone();
     let mut visual_clusters = Vec::with_capacity(logical_clusters.len());
     let mut visual_segments = Vec::with_capacity(logical_segments.len());
-    for logical_index in visual_order {
+    for logical_index in logical_indices {
         let cluster = logical_clusters[logical_index].clone();
         if let Some(segment) = logical_segments
             .iter()
@@ -8533,7 +8625,13 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext, const SHAPE_
         {
             apply_arabic_span_advances(ctx, text, run_styles, line, base_offset)?;
         }
-        apply_bidi_visual_order(line, paragraph_style.bidi);
+        apply_bidi_visual_order(
+            line,
+            paragraph_style.bidi,
+            paragraph_style.word_platform,
+            run_styles,
+            base_offset,
+        );
         if reorder_gaps {
             reorder_fitted_visual_gaps(line, &mut fitted_visual_gaps, epoch);
         }
@@ -26038,7 +26136,13 @@ mod tests {
                 .map(|cluster| (cluster.start, cluster.end))
                 .collect::<Vec<_>>();
             let total_width = line.clusters.iter().map(|cluster| cluster.width).sum::<f64>();
-            apply_bidi_visual_order(&mut line, base_rtl);
+            apply_bidi_visual_order(
+                &mut line,
+                base_rtl,
+                crate::line_metrics::WordLayoutPlatform::Windows,
+                &[],
+                0,
+            );
 
             let base = if base_rtl { Level::rtl() } else { Level::ltr() };
             let bidi = BidiInfo::new(&text, Some(base));

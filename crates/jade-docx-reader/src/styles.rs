@@ -3024,6 +3024,9 @@ pub fn merge_run_properties_override(target: &mut RunProperties, source: &RunPro
     if source.bold_complex.is_some() {
         target.bold_complex = source.bold_complex;
     }
+    if source.rtl.is_some() {
+        target.rtl = source.rtl;
+    }
     if source.italic_complex.is_some() {
         target.italic_complex = source.italic_complex;
     }

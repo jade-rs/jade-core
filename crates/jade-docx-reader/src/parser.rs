@@ -1397,6 +1397,19 @@ impl DocumentParser {
                                 );
                             }
                         }
+                        b"w:rtl" => {
+                            if parsing_run_props {
+                                let flag = parse_run_on_off(e.attributes());
+                                Self::apply_to_active_run_props(
+                                    parsing_paragraph_run_props,
+                                    &mut current_paragraph_run_props,
+                                    &mut current_run_props,
+                                    |props| {
+                                        props.rtl = Some(flag);
+                                    },
+                                );
+                            }
+                        }
                         b"w:iCs" => {
                             if parsing_run_props {
                                 let flag = parse_run_on_off(e.attributes());
@@ -3029,6 +3042,19 @@ impl DocumentParser {
                                 &mut current_run_props,
                                 |props| {
                                     props.italic = Some(flag);
+                                },
+                            );
+                        }
+                    }
+                    b"w:rtl" => {
+                        if parsing_run_props {
+                            let flag = parse_run_on_off(e.attributes());
+                            Self::apply_to_active_run_props(
+                                parsing_paragraph_run_props,
+                                &mut current_paragraph_run_props,
+                                &mut current_run_props,
+                                |props| {
+                                    props.rtl = Some(flag);
                                 },
                             );
                         }
