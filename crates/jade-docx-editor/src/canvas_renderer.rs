@@ -690,6 +690,8 @@ fn page_valign_offsets_from_sections(
 
 #[derive(Clone, Debug, Serialize)]
 pub struct CommentAnnotation {
+    #[serde(skip)]
+    paragraph_index: usize,
     pub id: String,
     pub page: usize,
     pub x: f64,
@@ -1253,6 +1255,8 @@ pub(crate) struct LinkedStory {
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ObjectDebugInfo {
+    #[serde(skip)]
+    inline_picture: bool,
     pub kind: FloatingObjectKind,
     pub paragraph_index: usize,
     pub run_index: usize,
@@ -2667,6 +2671,34 @@ fn mac_inline_text_box_outline_px(text_box: &RunTextBox) -> f64 {
     const STEP_PX: f64 = 0.48 * 96.0 / 72.0;
     let width = text_box.border.width_px.unwrap_or(1.0).max(0.0);
     (width / STEP_PX).round() * STEP_PX
+}
+
+// Band clipping can record only part of an untouched paragraph's regions.
+// Keep its previous registrations where available and add newly seen pages.
+fn restore_unchanged_paragraph_regions<T>(
+    current: &mut Vec<T>,
+    previous: impl IntoIterator<Item = T>,
+    edited: usize,
+    owner: impl Fn(&T) -> (usize, usize),
+) {
+    let mut owners = HashSet::new();
+    let previous = previous
+        .into_iter()
+        .filter(|region| {
+            let key = owner(region);
+            if key.1 == edited {
+                return false;
+            }
+            owners.insert(key);
+            true
+        })
+        .collect::<Vec<_>>();
+    if previous.is_empty() {
+        return;
+    }
+    current.retain(|region| !owners.contains(&owner(region)));
+    current.extend(previous);
+    current.sort_by_key(owner);
 }
 
 fn paragraph_has_floating_or_math(paragraph: &Paragraph) -> bool {
@@ -6324,12 +6356,12 @@ where
             // Inline selection highlights belong to the page pixels. A
             // selection change can invalidate pages beyond the edited one.
             || self.inline_selection_paint_dirty
-            // Comment annotations are rebuilt by the regular paragraph walk.
-            || self.document_has_comments
             || self.pageless_mode
-            // An early exit does not rebuild the object hit regions on
-            // untouched pages. Keep the regular walk for these documents.
-            || !self.object_debug_regions.borrow().is_empty()
+            // Inline pictures belong to a single paragraph. Floating objects
+            // and shape groups can affect other paragraphs' paint or layout.
+            || self.object_debug_regions.borrow().iter().any(|region| {
+                !region.inline_picture || region.paragraph_index == paragraph_index
+            })
             // A cell's text height alone does not prove that its table kept
             // the same column widths and positions of the other cells.
             || self.selection.cell_id_for_paragraph(paragraph_index).is_some()
@@ -6359,7 +6391,10 @@ where
         if self.pageless_mode {
             // One page either way; there is no later page to lose.
             self.set_fast_replay_trigger(paragraph_index, old_height);
-        } else if !self.prepare_completed_pagination_edit(paragraph_index, old_height) {
+        } else if self.document_has_comments
+            || !self.object_debug_regions.borrow().is_empty()
+            || !self.prepare_completed_pagination_edit(paragraph_index, old_height)
+        {
             self.clear_fast_replay();
         }
     }
@@ -14752,6 +14787,17 @@ where
         // during a full repaint and turned into `page_valign_offsets` at the end.
         self.valign_used_heights.clear();
         self.valign_available_heights.clear();
+        let stable_edit_metadata = self
+            .fast_replay_trigger
+            .filter(|_| preserve_stable_edit_pagination)
+            .map(|(paragraph, _)| {
+                (
+                    paragraph,
+                    std::mem::take(&mut self.comment_annotations),
+                    std::mem::take(self.image_debug_regions.get_mut()),
+                    self.object_debug_regions.borrow().clone(),
+                )
+            });
         self.comment_annotations.clear();
         // The stable-edit exit leaves the paragraphs after the edited one
         // unwalked, so set their regions aside with the selection tail rather
@@ -15691,6 +15737,31 @@ where
             }
             if preserve_stable_edit_pagination {
                 self.selection.restore_cell_layouts(previous_cells);
+            }
+            if let Some((edited, comments, images, objects)) = stable_edit_metadata {
+                if options.render_comments {
+                    let window = self.visible_page_range.as_ref();
+                    restore_unchanged_paragraph_regions(
+                        &mut self.comment_annotations,
+                        comments.into_iter().filter(|region| {
+                            window.is_none_or(|range| range.contains(&region.page))
+                        }),
+                        edited,
+                        |region| (region.page, region.paragraph_index),
+                    );
+                }
+                restore_unchanged_paragraph_regions(
+                    self.image_debug_regions.get_mut(),
+                    images,
+                    edited,
+                    |region| (region.page, region.paragraph_index),
+                );
+                restore_unchanged_paragraph_regions(
+                    self.object_debug_regions.get_mut(),
+                    objects,
+                    edited,
+                    |region| (region.page, region.paragraph_index),
+                );
             }
         }
         if preserve_pixel_pagination
@@ -21121,7 +21192,8 @@ where
                     && stable_column
                     && stable_offset
                     && self.joined_render.is_none()
-                    && (!self.preserve_completed_pagination_on_stable_edit || stable_cached_extent);
+                    && (!self.preserve_completed_pagination_on_stable_edit
+                        || (stable_cached_extent && !paragraph_has_floating_or_math(paragraph)));
                 if stable {
                     if self.paragraph_break_pending {
                         // For paragraph break operations where the edited paragraph's
@@ -24101,7 +24173,7 @@ where
                     self.draw_comment_highlights(&line_layout, comment_ranges)?;
                 }
                 if !comment_markers.is_empty() {
-                    self.draw_comment_markers(&line_layout, comment_markers)?;
+                    self.draw_comment_markers(paragraph_index, &line_layout, comment_markers)?;
                 }
                 self.draw_selection_highlight(paragraph_index, &line_layout)?;
 
@@ -24523,7 +24595,7 @@ where
                 self.reset_fill_style_state();
             }
             if !comment_markers.is_empty() {
-                self.draw_comment_markers(&line_layout, comment_markers)?;
+                self.draw_comment_markers(paragraph_index, &line_layout, comment_markers)?;
                 self.reset_fill_style_state();
             }
             self.draw_selection_highlight(paragraph_index, &line_layout)?;
@@ -24608,6 +24680,7 @@ where
                 self.object_debug_regions
                     .borrow_mut()
                     .extend((!image.layout.hidden()).then_some(ObjectDebugInfo {
+                        inline_picture: image.shape_group.is_none(),
                         kind: FloatingObjectKind::Image,
                         paragraph_index,
                         run_index: *run_index,
@@ -25526,6 +25599,7 @@ where
         self.object_debug_regions
             .borrow_mut()
             .extend((!image.layout.hidden()).then_some(ObjectDebugInfo {
+                inline_picture: false,
                 kind: FloatingObjectKind::Image,
                 paragraph_index,
                 run_index,
@@ -28853,6 +28927,7 @@ where
         self.object_debug_regions
             .borrow_mut()
             .push(ObjectDebugInfo {
+                inline_picture: false,
                 kind: FloatingObjectKind::TextBox,
                 paragraph_index,
                 run_index,
@@ -32454,6 +32529,7 @@ where
 
     fn draw_comment_markers(
         &mut self,
+        paragraph_index: usize,
         line: &SelectionLineLayout,
         comment_markers: &[CommentMarker],
     ) -> Result<(), JsValue> {
@@ -32474,7 +32550,7 @@ where
                         base_top + line.content_height + COMMENT_MARKER_RADIUS + COMMENT_MARKER_GAP;
                 }
                 let center_x = x + COMMENT_MARKER_RADIUS;
-                self.record_comment_annotation(marker, center_x, center_y, line);
+                self.record_comment_annotation(paragraph_index, marker, center_x, center_y, line);
                 centers.push((center_x, center_y, marker));
             }
         }
@@ -32802,6 +32878,7 @@ where
 
     fn record_comment_annotation(
         &mut self,
+        paragraph_index: usize,
         marker: &CommentMarker,
         center_x: f64,
         center_y: f64,
@@ -32821,6 +32898,7 @@ where
         };
 
         self.comment_annotations.push(CommentAnnotation {
+            paragraph_index,
             id: marker.id.clone(),
             page: self.current_page_number,
             x: top_left_x,
@@ -62521,6 +62599,77 @@ mod tests {
     }
 
     #[test]
+    fn stable_local_edit_preserves_comments_and_inline_picture_hit_testing() {
+        let mut document = object_region_test_document();
+        let body = document.body.as_mut().unwrap();
+        let text = doc_with_paragraph_texts(&["original text", "later comment"]);
+        body.elements.splice(..2, text.body.unwrap().elements);
+        for (index, id) in [(0, "1"), (1, "2")] {
+            let BodyElement::Paragraph(paragraph) = &mut body.elements[index] else {
+                unreachable!()
+            };
+            paragraph.comment_markers.push(CommentMarker {
+                id: id.into(),
+                position: 4,
+            });
+        }
+        let BodyElement::Paragraph(paragraph) = &mut body.elements[1] else {
+            unreachable!()
+        };
+        paragraph.properties = Some(ParagraphProperties {
+            page_break_before: Some(true),
+            ..Default::default()
+        });
+        let mut options = options_for_seek_tests();
+        options.render_comments = true;
+        let (host, _) = PerPageRecordingHost::new(20);
+        let mut renderer = CanvasRenderer::with_host(Box::new(host), false).unwrap();
+        renderer.render(&document, &options).unwrap();
+        let pages = renderer.host.page_count();
+        let image_target = FloatingObjectTarget {
+            kind: FloatingObjectKind::Image,
+            paragraph_index: 8,
+            run_index: 0,
+        };
+        let image = renderer.object_region(image_target).unwrap();
+        let image_x = image.x + 1.0;
+        let image_y = renderer.page_top_y(image.page - 1) + image.y + 1.0;
+        assert!(renderer.hit_test_object(image_x, image_y).is_some());
+        assert_eq!(renderer.comment_annotations().len(), 2);
+        let old_comment_x = renderer.comment_annotations()[0].x;
+        let height = renderer.cached_paragraph_height(0).unwrap();
+
+        let BodyElement::Paragraph(paragraph) = &mut document.body.as_mut().unwrap().elements[0]
+        else {
+            unreachable!()
+        };
+        paragraph.runs[0].text.insert_str(0, "new ");
+        paragraph.comment_markers[0].position += 4;
+        renderer.set_incremental_dirty_from(0);
+        renderer.mark_paragraph_dirty(0);
+        assert!(renderer.prepare_completed_pagination_edit(0, height));
+        renderer.render(&document, &options).unwrap();
+
+        assert!(renderer.last_completed_pagination_edit_preserved());
+        assert_eq!(renderer.host.page_count(), pages);
+        assert!(renderer.last_render_body_element_count() < 10);
+        assert!(renderer.object_region(image_target).is_some());
+        assert!(renderer.hit_test_object(image_x, image_y).is_some());
+        assert_ne!(renderer.comment_annotations()[0].x, old_comment_x);
+        let (host, _) = PerPageRecordingHost::new(20);
+        let mut reference = CanvasRenderer::with_host(Box::new(host), false).unwrap();
+        reference.render(&document, &options).unwrap();
+        assert_eq!(
+            serde_json::to_value(renderer.comment_annotations()).unwrap(),
+            serde_json::to_value(reference.comment_annotations()).unwrap()
+        );
+        assert_eq!(
+            serde_json::to_value(renderer.image_debug_regions()).unwrap(),
+            serde_json::to_value(reference.image_debug_regions()).unwrap()
+        );
+    }
+
+    #[test]
     fn page_bitmap_rerenders_preserve_object_selection_and_hit_testing() {
         let document = object_region_test_document();
         let options = options_for_seek_tests();
@@ -65155,6 +65304,7 @@ mod tests {
             .object_debug_regions
             .borrow_mut()
             .push(ObjectDebugInfo {
+                inline_picture: false,
                 kind: FloatingObjectKind::Image,
                 paragraph_index: 5,
                 run_index: 0,
@@ -65172,13 +65322,27 @@ mod tests {
     }
 
     #[test]
-    fn completed_pagination_edit_does_not_skip_comment_registration() {
-        let mut renderer = test_renderer();
-        renderer.document_has_comments = true;
-
-        assert!(!renderer.prepare_completed_pagination_edit(0, 20.0));
-        assert!(!renderer.preserve_completed_pagination_on_stable_edit);
-        assert!(renderer.fast_replay_trigger.is_none());
+    fn completed_pagination_edit_uses_fresh_metadata_only_for_edited_or_new_paragraphs() {
+        let mut regions = vec![(1, 1, "edited"), (1, 2, "partial"), (3, 4, "new")];
+        let previous = [
+            (1, 1, "old edit"),
+            (1, 2, "first marker"),
+            (1, 2, "second marker"),
+            (2, 3, "untouched page"),
+        ];
+        restore_unchanged_paragraph_regions(&mut regions, previous, 1, |region| {
+            (region.0, region.1)
+        });
+        assert_eq!(
+            regions,
+            [
+                (1, 1, "edited"),
+                (1, 2, "first marker"),
+                (1, 2, "second marker"),
+                (2, 3, "untouched page"),
+                (3, 4, "new"),
+            ]
+        );
     }
 
     #[test]

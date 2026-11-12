@@ -6483,6 +6483,7 @@ where
                 && !image.layout.hidden()
             {
                 self.table_picture_debug_regions.push(ObjectDebugInfo {
+                    inline_picture: false,
                     kind: FloatingObjectKind::Image,
                     paragraph_index,
                     run_index: draw_spec.run_index,
