@@ -4,16 +4,13 @@
   "reference": {
     "application": "Microsoft Word",
     "platform": "mac",
-    "version": "16.114.4",
-    "osVersion": "27.0.1 (26A434)",
-    "export": "Save As > PDF",
+    "export": "Save As > PDF > Best for printing",
     "pdfSha256": "11c182e3ea67f21ca343d1dd16d44ef9babe0c44577763ea92e34782dcd2178d",
     "extractor": "PyMuPDF 1.26.5"
   },
   "pages": 1,
-  "bodyOnly": true,
   "axisTolerancePt": 0.65,
-  "coordinatesSha256": "0e27d1e8fefc90e5f3fe2ad31a741b78197c45062fdcacd9f0af2f559d8e5ef2",
+  "bodyOnly": true,
   "pdfSourceImages": {
     "sizePx": [
       4,
@@ -22,5 +19,6 @@
     "counts": [
       3
     ]
-  }
+  },
+  "coordinatesSha256": "0e27d1e8fefc90e5f3fe2ad31a741b78197c45062fdcacd9f0af2f559d8e5ef2"
 }

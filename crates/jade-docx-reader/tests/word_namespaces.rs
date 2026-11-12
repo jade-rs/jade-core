@@ -74,6 +74,46 @@ fn canonical_root_still_resolves_aliases_declared_in_the_body() {
         .contains("<w:t>Nested alias</w:t>"));
 }
 
+#[test]
+fn inline_image_uses_scoped_drawing_and_relationship_namespace_aliases() {
+    let xml = format!(
+        r#"<w:document xmlns:w="{WORD}" xmlns:x="urn:extension" x:keep="img:custom">
+        <w:body><w:p><w:r><w:drawing>
+        <frame:inline xmlns:frame="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing">
+            <frame:extent cx="914400" cy="457200"/>
+            <img:graphic xmlns:img="http://schemas.openxmlformats.org/drawingml/2006/main">
+                <img:graphicData><photo:pic xmlns:photo="http://schemas.openxmlformats.org/drawingml/2006/picture">
+                    <photo:blipFill><img:blip xmlns:link="http://schemas.openxmlformats.org/officeDocument/2006/relationships" link:embed="rId7"/></photo:blipFill>
+                </photo:pic></img:graphicData>
+            </img:graphic>
+        </frame:inline>
+        </w:drawing></w:r></w:p></w:body></w:document>"#
+    );
+    let parser = DocumentParser::new();
+    let (document, tree) = parser.parse_document_xml_with_raw_tree(&xml).unwrap();
+    let body = document.body.unwrap();
+    let image = body.elements[0]
+        .as_paragraph()
+        .unwrap()
+        .runs
+        .iter()
+        .find_map(|run| run.image.as_ref())
+        .expect("inline image");
+    assert_eq!(image.relationship_id.as_deref(), Some("rId7"));
+    assert_eq!((image.width_px, image.height_px), (Some(96.0), Some(48.0)));
+
+    let raw = tree.unwrap().to_string().unwrap();
+    assert!(raw.contains("<photo:pic"));
+    assert!(raw.contains("x:keep=\"img:custom\""));
+    assert_eq!(
+        jade_docx_reader::DocxXmlDocument::parse(&xml)
+            .unwrap()
+            .to_string()
+            .unwrap(),
+        raw
+    );
+}
+
 proptest! {
     #[test]
     fn arbitrary_word_prefix_matches_canonical_document(prefix in "ns[A-Za-z0-9_]{0,12}") {

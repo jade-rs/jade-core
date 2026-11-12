@@ -1,4 +1,4 @@
-//! Resolve WordprocessingML names before the semantic parser and XML editor
+//! Resolve Office Open XML names before the semantic parser and XML editor
 //! consume them. Keep declarations and values intact for unknown extensions.
 
 use std::{borrow::Cow, collections::HashSet, io, ops::Range};
@@ -6,11 +6,77 @@ use std::{borrow::Cow, collections::HashSet, io, ops::Range};
 use quick_xml::{
     escape::unescape,
     events::Event,
-    name::{QName, ResolveResult},
+    name::{NamespaceResolver, QName, ResolveResult},
     reader::NsReader,
 };
 
 const WORD: &str = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
+
+const CANONICAL_NAMESPACES: &[(&str, &str)] = &[
+    ("w", WORD),
+    (
+        "wp",
+        "http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing",
+    ),
+    ("a", "http://schemas.openxmlformats.org/drawingml/2006/main"),
+    (
+        "pic",
+        "http://schemas.openxmlformats.org/drawingml/2006/picture",
+    ),
+    (
+        "r",
+        "http://schemas.openxmlformats.org/officeDocument/2006/relationships",
+    ),
+];
+
+fn canonical_prefix(uri: &str, include_drawings: bool) -> Option<&'static str> {
+    if uri == WORD {
+        return Some("w");
+    }
+    if !include_drawings {
+        return None;
+    }
+    CANONICAL_NAMESPACES[1..]
+        .iter()
+        .find_map(|&(prefix, known_uri)| (uri == known_uri).then_some(prefix))
+}
+
+type NameChange = (Range<usize>, String);
+
+fn canonical_name(
+    xml: &str,
+    resolver: &NamespaceResolver,
+    name: QName<'_>,
+    local: &[u8],
+    uri: Option<&str>,
+    declarations: &mut HashSet<&'static str>,
+    include_drawings: bool,
+) -> Result<Option<NameChange>, Error> {
+    let Some(prefix) = uri.and_then(|uri| canonical_prefix(uri, include_drawings)) else {
+        return Ok(None);
+    };
+    if name
+        .prefix()
+        .is_some_and(|p| p.as_ref() == prefix.as_bytes())
+    {
+        return Ok(None);
+    }
+
+    let probe = format!("{prefix}:probe");
+    let (binding, _) = resolver.resolve_element(QName(probe.as_bytes()));
+    if matches!(binding, ResolveResult::Unknown(_)) {
+        declarations.insert(prefix);
+    } else if namespace(binding)?.as_deref() != uri {
+        return Err(invalid(format!(
+            "The reserved prefix {prefix} is bound to another namespace"
+        )));
+    }
+
+    Ok(Some((
+        source_range(xml, name)?,
+        format!("{prefix}:{}", std::str::from_utf8(local)?),
+    )))
+}
 
 type Error = Box<dyn std::error::Error>;
 
@@ -40,21 +106,32 @@ fn source_range(xml: &str, name: QName<'_>) -> Result<Range<usize>, Error> {
     Ok(start..end)
 }
 
-/// Canonicalize only names bound to the Word namespace. The parser still uses
-/// `w:` internally; the raw editor must receive exactly the same names.
+/// Canonicalize recognized namespaces for semantic parsing.
 /// Non-Word XML parts and ordinary canonical documents remain borrowed.
 ///
 /// Original declarations and QName-valued attributes remain intact. A binding
 /// of `w` to a foreign namespace is rejected rather than changing their meaning.
 pub fn normalize(xml: &str) -> Result<Cow<'_, str>, Error> {
+    // Image references have a blip element, whose local name survives
+    // aliasing. Shape-only parts can keep the Word namespace fast path.
+    normalize_namespaces(xml, memchr::memmem::find(xml.as_bytes(), b"blip").is_some())
+}
+
+/// Preserve DrawingML spellings in the editable tree.
+pub(crate) fn normalize_word_only(xml: &str) -> Result<Cow<'_, str>, Error> {
+    normalize_namespaces(xml, false)
+}
+
+fn normalize_namespaces(xml: &str, include_drawings: bool) -> Result<Cow<'_, str>, Error> {
     let mut reader = NsReader::from_str(xml);
-    let mut changes: Vec<(Range<usize>, String)> = Vec::new();
-    let mut root_seen = false;
+    let mut changes = Vec::new();
+    let mut declarations = HashSet::new();
+    let mut root_name_end = None;
     loop {
         let event = match reader.read_event() {
             Ok(event) => event,
             // Unrelated package parts are not validated by this adapter.
-            Err(_) if !root_seen => return Ok(Cow::Borrowed(xml)),
+            Err(_) if root_name_end.is_none() => return Ok(Cow::Borrowed(xml)),
             Err(error) => return Err(error.into()),
         };
         let name = match &event {
@@ -65,28 +142,31 @@ pub fn normalize(xml: &str) -> Result<Cow<'_, str>, Error> {
         };
         let resolver = reader.resolver();
         let (resolved, local) = resolver.resolve_element(name);
-        if !root_seen && matches!(resolved, ResolveResult::Unknown(_)) {
+        if root_name_end.is_none() && matches!(resolved, ResolveResult::Unknown(_)) {
             return Ok(Cow::Borrowed(xml));
         }
         let resolved = namespace(resolved)?;
-        let is_root = !root_seen;
+        let is_root = root_name_end.is_none();
         if is_root {
             if resolved.as_deref() != Some(WORD) {
                 return Ok(Cow::Borrowed(xml));
             }
-            root_seen = true;
+            root_name_end = Some(source_range(xml, name)?.end);
         }
-        if resolved.as_deref() == Some(WORD) && name.prefix().is_none_or(|p| p.as_ref() != b"w") {
-            changes.push((
-                source_range(xml, name)?,
-                format!("w:{}", std::str::from_utf8(local.as_ref())?),
-            ));
-        }
+        changes.extend(canonical_name(
+            xml,
+            resolver,
+            name,
+            local.as_ref(),
+            resolved.as_deref(),
+            &mut declarations,
+            include_drawings,
+        )?);
         let (Event::Start(element) | Event::Empty(element)) = &event else {
             continue;
         };
         let mut expanded = HashSet::new();
-        let mut aliased_word = false;
+        let mut aliased_namespace = false;
         let mut canonical_binding = false;
         for attribute in element.attributes() {
             let attribute = attribute?;
@@ -101,8 +181,10 @@ pub fn normalize(xml: &str) -> Result<Cow<'_, str>, Error> {
                         ));
                     }
                     canonical_binding = true;
-                } else if uri == WORD {
-                    aliased_word = true;
+                }
+                if let Some(prefix) = canonical_prefix(&uri, include_drawings) {
+                    aliased_namespace |=
+                        attribute.key.0.strip_prefix(b"xmlns:") != Some(prefix.as_bytes());
                 }
                 continue;
             }
@@ -114,25 +196,35 @@ pub fn normalize(xml: &str) -> Result<Cow<'_, str>, Error> {
             )) {
                 return Err(invalid("Duplicate expanded XML attribute name"));
             }
-            if resolved.as_deref() == Some(WORD)
-                && attribute.key.prefix().is_none_or(|p| p.as_ref() != b"w")
-            {
-                changes.push((
-                    source_range(xml, attribute.key)?,
-                    format!("w:{}", std::str::from_utf8(local.as_ref())?),
-                ));
-            }
+            changes.extend(canonical_name(
+                xml,
+                resolver,
+                attribute.key,
+                local.as_ref(),
+                resolved.as_deref(),
+                &mut declarations,
+                include_drawings,
+            )?);
         }
         if is_root {
             // Most Word files declare namespaces once, on the root. Avoid a
             // second tokenization of their potentially very large body.
             let after_root = reader.buffer_position() as usize;
-            if canonical_binding && !aliased_word && !xml[after_root..].contains("xmlns") {
+            if canonical_binding
+                && !aliased_namespace
+                && memchr::memmem::find(&xml.as_bytes()[after_root..], b"xmlns").is_none()
+            {
                 return Ok(Cow::Borrowed(xml));
             }
             if !canonical_binding {
-                let end = source_range(xml, name)?.end;
-                changes.push((end..end, format!(" xmlns:w=\"{WORD}\"")));
+                declarations.insert("w");
+            }
+        }
+    }
+    if let Some(end) = root_name_end {
+        for &(prefix, uri) in CANONICAL_NAMESPACES {
+            if declarations.contains(prefix) {
+                changes.push((end..end, format!(" xmlns:{prefix}=\"{uri}\"")));
             }
         }
     }
