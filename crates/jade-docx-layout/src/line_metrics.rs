@@ -3192,9 +3192,9 @@ fn word_latin_font_vertical_units(
         "Century" => Some((2019.0, 443.0)),
         // Unchanged Word Mac Noto PDF: hhea 2189/-600, no gap, 2048 upem.
         "Noto Sans" if word_layout_platform() == WordLayoutPlatform::Mac => Some((2189.0, 600.0)),
-        // Word for Mac uses the hhea ascent, descent, and line gap for
-        // these Thai faces, including the 10 units above Sukhumvit Set.
-        "Angsana New" if word_layout_platform() == WordLayoutPlatform::Mac => {
+        // Word for Mac uses the Angsana New hhea line box for both
+        // Angsana New and Thai text requested in Thonburi.
+        "Angsana New" | "Thonburi" if word_layout_platform() == WordLayoutPlatform::Mac => {
             let style = font_descriptor.map_or((false, false), font_descriptor_style);
             let (ascent, descent) = match style {
                 (false, false) => (3854.0, 1679.0),
@@ -3347,9 +3347,9 @@ fn word_mac_angsana_advance_px(font_descriptor: &str, grapheme: &str) -> Option<
         return None;
     }
     let (size, family) = split_font_descriptor(font_descriptor)?;
-    if !family
-        .trim_matches(['\'', '"'])
-        .eq_ignore_ascii_case("Angsana New")
+    let family = family.trim_matches(['\'', '"']);
+    if !(family.eq_ignore_ascii_case("Angsana New")
+        || (first != ' ' && family.eq_ignore_ascii_case("Thonburi")))
     {
         return None;
     }
