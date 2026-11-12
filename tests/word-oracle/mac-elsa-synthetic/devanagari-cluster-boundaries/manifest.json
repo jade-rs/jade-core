@@ -1,0 +1,70 @@
+{
+  "schema": 1,
+  "sourceSha256": "736b750fd64305157c2409850d0da9cd65f7d41851f03fb041e9955e23733d50",
+  "reference": {
+    "application": "Microsoft Word",
+    "platform": "mac",
+    "export": "Save As > PDF",
+    "pdfSha256": "68fbaa8239f20d3b10971950a147c509130f97d1ae5c4c68dae5306d9f84596a",
+    "extractor": "PyMuPDF 1.26.5"
+  },
+  "pages": 1,
+  "axisTolerancePt": 0.65,
+  "bodyOnly": true,
+  "coordinatesSha256": "3aed490bcc8f31c14ae2e096471c27a6ada63650836e0722691c27c4f3e9b04c",
+  "capturePaintedGlyphs": true,
+  "shapedGlyphClusters": [
+    [
+      [
+        [
+          "ि",
+          "क"
+        ],
+        "कि"
+      ],
+      [
+        [
+          "ि",
+          "क"
+        ],
+        "कि"
+      ],
+      [
+        [
+          "ि",
+          "क",
+          "्",
+          "ष"
+        ],
+        "क्षि"
+      ],
+      [
+        [
+          "ि",
+          "क",
+          "्",
+          "ष"
+        ],
+        "क्षि"
+      ],
+      [
+        [
+          "ि",
+          "क",
+          "र",
+          "्"
+        ],
+        "र्कि"
+      ],
+      [
+        [
+          "ि",
+          "क",
+          "र",
+          "्"
+        ],
+        "र्कि"
+      ]
+    ]
+  ]
+}

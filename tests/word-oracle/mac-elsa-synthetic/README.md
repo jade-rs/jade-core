@@ -36,6 +36,13 @@ origins across three pages at 10.5, 14, and 18 pt for Kohinoor Devanagari,
 Devanagari Sangam MN, Kohinoor Bangla, Kohinoor Gujarati, Kohinoor Telugu,
 and the Kannada, Malayalam, Tamil, Gurmukhi, and Oriya Sangam MN faces.
 
+`devanagari-cluster-boundaries` checks pre-base vowel signs, conjuncts, and
+reph alongside Latin text. The `shapedGlyphClusters` extraction recipe
+verifies the PDF's visual-order glyphs and combines their leftmost origin
+and shared baseline into the corresponding logical DOCX cluster.
+`devanagari-mixed-kohinoor` checks Latin and Kohinoor Devanagari sharing
+a line at different point sizes, including a manual line break.
+
 `latin-join-controls-fit-boundaries` covers ZWNJ and ZWJ around Latin
 letters in fixed-width Arial table cells, including controls in separate
 runs and cells narrow enough to force emergency wrapping. The five pages
