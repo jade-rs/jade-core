@@ -289,12 +289,26 @@ struct LineLayout {
     /// picture stands on the baseline and the text's descent hangs below it.
     /// Zero for a line of text only.
     min_advance: f64,
+    /// Positive when Word uses a shorter line box for an isolated join control.
+    shorter_line_advance: f64,
     /// Automatic hyphenation ended the line with a hyphen this wide, already
     /// part of its last glyph's advance (as in body paragraphs).
     hyphen: Option<f64>,
 }
 
 impl LineLayout {
+    fn advance(&self, paragraph_line_height: f64, exact_line_spacing: bool) -> f64 {
+        if exact_line_spacing {
+            return paragraph_line_height;
+        }
+        let line_height = if self.shorter_line_advance > 0.0 {
+            self.shorter_line_advance
+        } else {
+            paragraph_line_height
+        };
+        line_height.max(self.min_advance)
+    }
+
     fn text_alignment_shift(&self, offset: usize) -> f64 {
         self.text_alignment_shifts
             .iter()
@@ -518,11 +532,7 @@ impl CellParagraph {
     /// How far `line` advances: the paragraph's line, or more for a line
     /// holding an inline picture.
     fn line_advance(&self, line: &LineLayout) -> f64 {
-        if self.exact_line_spacing {
-            self.line_height
-        } else {
-            self.line_height.max(line.min_advance)
-        }
+        line.advance(self.line_height, self.exact_line_spacing)
     }
 
     /// The height of `lines` laid out in this paragraph.
@@ -7260,6 +7270,7 @@ where
             vec![LineLayout {
                 hyphen: None,
                 min_advance: 0.0,
+                shorter_line_advance: 0.0,
                 left_inset: 0.0,
                 right_inset: 0.0,
                 text: String::new(),
@@ -13838,6 +13849,14 @@ fn refresh_prepared_row_text<P: Painter<Error: PainterError>>(
                         };
                         style.first_line_indent = 0.0;
                         let text = paragraph.text.get(start..).unwrap_or("");
+                        if let Some(BodyElement::Paragraph(source)) = source {
+                            resolve_cell_join_control_sizing(
+                                &mut style,
+                                source,
+                                config.styles_part.as_deref(),
+                                text,
+                            );
+                        }
                         let styles = paragraph
                             .styled_runs
                             .iter()
@@ -13857,17 +13876,16 @@ fn refresh_prepared_row_text<P: Painter<Error: PainterError>>(
                             .sum::<f64>()
                             - cell.padding.horizontal()
                             - 2.0 * cell.cell_spacing;
-                        paragraph.lines =
-                            layout_horizontal_paragraph_with_run_styles_context_offset(
-                                wrap_context,
-                                text,
-                                (width - left_inset).max(1.0),
-                                paragraph.line_height,
-                                &styled_run_styles(text, &styles),
-                                &style,
-                                start,
-                            )?
-                            .lines;
+                        let reflowed = layout_horizontal_paragraph_with_run_styles_context_offset(
+                            wrap_context,
+                            text,
+                            (width - left_inset).max(1.0),
+                            paragraph.line_height,
+                            &styled_run_styles(text, &styles),
+                            &style,
+                            start,
+                        )?;
+                        paragraph.lines = reflowed.lines;
                         for line in Rc::make_mut(&mut paragraph.lines) {
                             line.left_inset += left_inset;
                         }
@@ -14282,20 +14300,12 @@ fn prepare_row_layout<P: Painter<Error: PainterError>>(
                             field_value_for,
                             math_context.is_some(),
                         );
-                        if paragraph_style.word_platform
-                            == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
-                            && paragraph_style.word_grid_line_sizing.is_none()
-                            && text.contains('\u{200d}')
-                        {
-                            let spacing =
-                                cell_paragraph_spacing(paragraph, config.styles_part.as_deref());
-                            paragraph_style.word_proportional_line_sizing =
-                                jade_docx_layout::line_metrics::WordProportionalLineSizing::new(
-                                    spacing.as_ref(),
-                                    false,
-                                    true,
-                                );
-                        }
+                        resolve_cell_join_control_sizing(
+                            &mut paragraph_style,
+                            paragraph,
+                            config.styles_part.as_deref(),
+                            &text,
+                        );
                         paragraph_style.inline_note_separator_offsets = note_anchors
                             .iter()
                             .filter_map(|anchor| {
@@ -15684,6 +15694,7 @@ fn build_line_layout_from_wrapped_line(line: &WrappedLine) -> LineLayout {
         word_baseline_offset,
         text_alignment_shifts: Vec::new(),
         min_advance,
+        shorter_line_advance: 0.0,
     }
 }
 
@@ -16153,6 +16164,26 @@ fn layout_horizontal_paragraph_with_run_styles_context_offset<C: LineWrapContext
     ))
 }
 
+fn resolve_cell_join_control_sizing(
+    style: &mut ParagraphStyle,
+    paragraph: &Paragraph,
+    styles_part: Option<&StylesPart>,
+    text: &str,
+) {
+    if style.word_platform == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
+        && style.word_grid_line_sizing.is_none()
+        && text.contains(['\u{200c}', '\u{200d}'])
+    {
+        let spacing = cell_paragraph_spacing(paragraph, styles_part);
+        style.word_proportional_line_sizing =
+            jade_docx_layout::line_metrics::WordProportionalLineSizing::new(
+                spacing.as_ref(),
+                false,
+                true,
+            );
+    }
+}
+
 fn cell_paragraph_spacing(
     paragraph: &Paragraph,
     styles: Option<&StylesPart>,
@@ -16280,11 +16311,14 @@ fn horizontal_cell_paragraph_from_wrapped_lines(
             }
             if let Some((sizing, height)) = paragraph_style
                 .word_proportional_line_sizing
-                .and_then(|sizing| Some((sizing, wrapped.mac_joiner_line_box_px()?)))
+                .and_then(|sizing| Some((sizing, wrapped.mac_join_control_line_box_px()?)))
             {
-                line.min_advance = line
-                    .min_advance
-                    .max(sizing.line_height_px(Some(height), line_height));
+                let advance = sizing.line_height_px(Some(height), line_height);
+                if advance < line_height {
+                    line.shorter_line_advance = advance;
+                } else {
+                    line.min_advance = line.min_advance.max(advance);
+                }
             }
             line.left_inset = paragraph_style.line_indent(index);
             line.right_inset = paragraph_style.right_indent;
@@ -16299,11 +16333,7 @@ fn horizontal_cell_paragraph_from_wrapped_lines(
             {
                 // Inline pictures already contribute to this shared baseline.
                 // Keep their minimum advance while positioning spare leading.
-                let advance = if paragraph_style.exact_line_spacing {
-                    line_height
-                } else {
-                    line_height.max(line.min_advance)
-                };
+                let advance = line.advance(line_height, paragraph_style.exact_line_spacing);
                 line.word_baseline_offset =
                     Some(ascent + (advance - ascent - descent).max(0.0) * share);
                 let mut shifts = wrapped
@@ -16378,6 +16408,7 @@ fn horizontal_cell_paragraph_from_wrapped_lines(
         lines.push(LineLayout {
             hyphen: None,
             min_advance: 0.0,
+            shorter_line_advance: 0.0,
             left_inset: paragraph_style.line_indent(0),
             right_inset: paragraph_style.right_indent,
             text: String::new(),
@@ -16406,19 +16437,7 @@ fn horizontal_cell_paragraph_from_wrapped_lines(
         max_line_width = max_line_width.max(line.visual_width);
     }
 
-    let height = lines
-        .iter()
-        .map(|line| {
-            if paragraph_style.exact_line_spacing {
-                line_height
-            } else {
-                line_height.max(line.min_advance)
-            }
-        })
-        .sum::<f64>()
-        .max(line_height);
-
-    CellParagraph {
+    let mut paragraph = CellParagraph {
         text: text.to_string(),
         is_continuation: false,
         spacing_before: 0.0,
@@ -16427,12 +16446,13 @@ fn horizontal_cell_paragraph_from_wrapped_lines(
         lines: Rc::new(lines),
         styled_runs: Vec::new(),
         max_line_width: max_line_width.max(line_height),
-        height,
         line_height,
         exact_line_spacing: paragraph_style.exact_line_spacing,
         vertical_layout: None,
         ..CellParagraph::default()
-    }
+    };
+    paragraph.height = paragraph.lines_height(&paragraph.lines).max(line_height);
+    paragraph
 }
 
 fn layout_rotated_paragraph<P: Painter<Error: PainterError>>(
@@ -16456,6 +16476,7 @@ fn empty_cell_paragraph(line_height: f64) -> CellParagraph {
         lines: Rc::new(vec![LineLayout {
             hyphen: None,
             min_advance: 0.0,
+            shorter_line_advance: 0.0,
             left_inset: 0.0,
             right_inset: 0.0,
             text: String::new(),
@@ -20171,6 +20192,7 @@ mod tests {
         let line = LineLayout {
             hyphen: None,
             min_advance: 0.0,
+            shorter_line_advance: 0.0,
             left_inset: 0.0,
             right_inset: 0.0,
             text: "ab".to_string(),
@@ -20211,6 +20233,7 @@ mod tests {
         let line = LineLayout {
             hyphen: None,
             min_advance: 0.0,
+            shorter_line_advance: 0.0,
             text: "AB ".into(),
             visual_width: 23.0,
             left_inset: 0.0,
@@ -20266,6 +20289,7 @@ mod tests {
         let line = LineLayout {
             hyphen: None,
             min_advance: 0.0,
+            shorter_line_advance: 0.0,
             left_inset: 0.0,
             right_inset: 0.0,
             text: "ab".to_string(),

@@ -3806,19 +3806,17 @@ impl WrappedLine {
         extent
     }
 
-    /// A soft-wrapped line containing only ZWJs uses a fallback font box on Mac.
-    pub fn mac_joiner_line_box_px(&self) -> Option<f64> {
+    /// An isolated join control can use a different font box on Word for Mac.
+    pub fn mac_join_control_line_box_px(&self) -> Option<f64> {
         if self.break_kind != LineBreakKind::Soft
-            || !self
-                .clusters
-                .first()
-                .is_some_and(|cluster| cluster.text == "\u{200d}")
             || crate::line_metrics::word_layout_platform()
                 != crate::line_metrics::WordLayoutPlatform::Mac
-            || !self
-                .clusters
-                .iter()
-                .all(|cluster| cluster.text == "\u{200d}")
+        {
+            return None;
+        }
+        let control = self.clusters.first()?.text.as_str();
+        if !matches!(control, "\u{200c}" | "\u{200d}")
+            || !self.clusters.iter().all(|cluster| cluster.text == control)
         {
             return None;
         }
@@ -3829,8 +3827,9 @@ impl WrappedLine {
                     segment.properties.as_deref(),
                     None,
                 );
-                crate::line_metrics::word_mac_joiner_line_height_px(
+                crate::line_metrics::word_mac_join_control_line_height_px(
                     &style.font_descriptor_latin_ascii,
+                    control,
                 )
             })
             .reduce(f64::max)
