@@ -505,7 +505,7 @@ impl<'a, C: StyledMathMeasure> Builder<'_, 'a, C> {
         )
     }
 
-    /// Mac Word places single italic letters using the optical script glyphs
+    /// Mac Word places scripts on single italic letters using optical glyphs
     /// and the face's side bearings at the standard script baseline shifts.
     fn place_cambria_italic_scripts(
         &mut self,
@@ -533,7 +533,11 @@ impl<'a, C: StyledMathMeasure> Builder<'_, 'a, C> {
         let em = glyph.style.size_px / 2048.0;
         let upper = match upper {
             Some((start, end, metrics)) => {
-                let (glyph, script) = self.cambria_italic_letter(start, end, metrics)?;
+                let glyph = self.cambria_script_candidate(start, end, metrics)?;
+                let script = match glyph.display_text(&self.plan.text) {
+                    "2" => CAMBRIA_SUPERSCRIPT_TWO,
+                    text => cambria_italic_letter_metrics(text)?,
+                };
                 let script_em = glyph.style.size_px / 2048.0;
                 let x = base.width
                     + italic
@@ -614,6 +618,17 @@ impl<'a, C: StyledMathMeasure> Builder<'_, 'a, C> {
         end: Mark,
         metrics: MathMetrics,
     ) -> Option<(&super::MathGlyph<'a>, ItalicLatinScript)> {
+        let glyph = self.cambria_script_candidate(start, end, metrics)?;
+        let data = cambria_italic_letter_metrics(glyph.display_text(&self.plan.text))?;
+        Some((glyph, data))
+    }
+
+    fn cambria_script_candidate(
+        &self,
+        start: Mark,
+        end: Mark,
+        metrics: MathMetrics,
+    ) -> Option<&super::MathGlyph<'a>> {
         if end.glyphs - start.glyphs != 1 || end.rules != start.rules || end.shapes != start.shapes
         {
             return None;
@@ -646,16 +661,7 @@ impl<'a, C: StyledMathMeasure> Builder<'_, 'a, C> {
         if glyph.font_glyph.is_some() {
             return None;
         }
-        let mut chars = glyph.display_text(&self.plan.text).chars();
-        let index = match chars.next()? {
-            'ℎ' => 33,
-            ch @ ('𝐴'..='𝑔' | '𝑖'..='𝑧') => (ch as u32 - 0x1d434) as usize,
-            _ => return None,
-        };
-        chars
-            .next()
-            .is_none()
-            .then_some((glyph, ITALIC_LATIN_SCRIPTS[index]))
+        Some(glyph)
     }
 
     /// The italic correction of a base that is one glyph.
@@ -1724,6 +1730,27 @@ impl ItalicLatinScript {
         }
     }
 }
+
+fn cambria_italic_letter_metrics(text: &str) -> Option<ItalicLatinScript> {
+    let mut chars = text.chars();
+    let index = match chars.next()? {
+        'ℎ' => 33,
+        ch @ ('𝐴'..='𝑔' | '𝑖'..='𝑧') => (ch as u32 - 0x1d434) as usize,
+        _ => return None,
+    };
+    chars
+        .next()
+        .is_none()
+        .then_some(ITALIC_LATIN_SCRIPTS[index])
+}
+
+const CAMBRIA_SUPERSCRIPT_TWO: ItalicLatinScript = ItalicLatinScript::new(
+    0,
+    [i16::MAX; 2],
+    [0; 3],
+    [1185, 1295, 0, 0],
+    [0, i16::MAX, 0],
+);
 
 #[rustfmt::skip]
 const ITALIC_LATIN_SCRIPTS: [ItalicLatinScript; 52] = [
