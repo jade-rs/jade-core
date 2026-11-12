@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "sourceSha256": "4139c3b07eea5b496b9efa8e458ab2b03addde5ac4208f46f3ebb8997271bc49",
+  "reference": {
+    "application": "Microsoft Word",
+    "platform": "mac",
+    "export": "Save As > PDF",
+    "pdfSha256": "18f49f8e787190fc87de730ef0a1edda711c1019ecabde0fba088f64746bb985",
+    "extractor": "PyMuPDF 1.26.5; mapped two unmapped Cambria Math script glyphs to italic x/y by matching the PDF subset outlines to the Office font"
+  },
+  "pages": 1,
+  "axisTolerancePt": 0.65,
+  "bodyOnly": true,
+  "coordinatesSha256": "2d85278928cfb5359f885b3ed526a75c792e0234aabc3923baea0807fa3a70d5"
+}

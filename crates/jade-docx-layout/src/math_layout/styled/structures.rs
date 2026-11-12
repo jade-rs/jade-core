@@ -264,7 +264,31 @@ impl<'a, C: StyledMathMeasure> Builder<'_, 'a, C> {
             _ => {
                 let bar = kind != "noBar";
                 let (n0, n1, n) = self.piece(|b| b.slot(num, level_up, false, false))?;
-                let (d0, _, d) = self.piece(|b| b.slot(den, level_up, false, true))?;
+                let (d0, d1, d) = self.piece(|b| b.slot(den, level_up, false, true))?;
+                let word_mac_cambria = display
+                    && self.style.family.eq_ignore_ascii_case("Cambria Math")
+                    && crate::line_metrics::word_layout_platform()
+                        == crate::line_metrics::WordLayoutPlatform::Mac;
+                // Explicit sizing on both parts of a display fraction also
+                // sets its vertical separation and rule metrics in Word.
+                let c = if word_mac_cambria && !self.font_bound() {
+                    let mut glyphs = self.plan.glyphs[n0.glyphs..d1.glyphs]
+                        .iter()
+                        .filter(|glyph| glyph.visible);
+                    glyphs
+                        .next()
+                        .filter(|first| {
+                            glyphs.all(|glyph| {
+                                glyph.style.family.eq_ignore_ascii_case("Cambria Math")
+                                    && glyph.style.size_px == first.style.size_px
+                                    && glyph.baseline == 0.0
+                            }) && first.style.family.eq_ignore_ascii_case("Cambria Math")
+                                && first.baseline == 0.0
+                        })
+                        .map_or(c, |glyph| MathConstants::cambria(glyph.style.size_px))
+                } else {
+                    c
+                };
                 let axis = c.axis_height;
                 let t = if bar { self.rule_thickness(&c) } else { 0.0 };
                 let (up, down) = if bar {
@@ -315,11 +339,7 @@ impl<'a, C: StyledMathMeasure> Builder<'_, 'a, C> {
                     }
                     (up, down)
                 };
-                let pad = if display
-                    && self.style.family.eq_ignore_ascii_case("Cambria Math")
-                    && crate::line_metrics::word_layout_platform()
-                        == crate::line_metrics::WordLayoutPlatform::Mac
-                {
+                let pad = if word_mac_cambria {
                     0.0
                 } else {
                     self.size() * 0.12
@@ -475,9 +495,167 @@ impl<'a, C: StyledMathMeasure> Builder<'_, 'a, C> {
         };
         let lower = self.script_piece(lower, true)?;
         let upper = self.script_piece(upper, self.cramped)?;
+        if let Some(metrics) =
+            self.place_cambria_italic_scripts(base_start, base_end, base, upper, lower)
+        {
+            return Ok(metrics);
+        }
         self.place_scripts(
             base_start, base_end, base, italic, upper, lower, false, true,
         )
+    }
+
+    /// Mac Word places single italic letters using the optical script glyphs
+    /// and the face's side bearings at the standard script baseline shifts.
+    fn place_cambria_italic_scripts(
+        &mut self,
+        base_start: Mark,
+        base_end: Mark,
+        base: MathMetrics,
+        upper: Option<(Mark, Mark, MathMetrics)>,
+        lower: Option<(Mark, Mark, MathMetrics)>,
+    ) -> Option<MathMetrics> {
+        use crate::line_metrics::{word_layout_platform, WordLayoutPlatform};
+        if self.level != 0
+            || self.cramped
+            || self.options.uniform
+            || word_layout_platform() != WordLayoutPlatform::Mac
+        {
+            return None;
+        }
+        let (glyph, data) = self.cambria_italic_letter(base_start, base_end, base)?;
+        let italic = self
+            .context
+            .fallback_italic_correction(glyph.display_text(&self.plan.text), glyph.style);
+        if italic <= 0.0 {
+            return None;
+        }
+        let em = glyph.style.size_px / 2048.0;
+        let upper = match upper {
+            Some((start, end, metrics)) => {
+                let (glyph, script) = self.cambria_italic_letter(start, end, metrics)?;
+                let script_em = glyph.style.size_px / 2048.0;
+                let x = base.width
+                    + italic
+                    + f64::from(data.top_right) * em
+                    + f64::from(script.bottom_left) * script_em;
+                Some((start, end, script, script_em, x))
+            }
+            None => None,
+        };
+        let lower = match lower {
+            Some((start, end, metrics)) => {
+                let (glyph, script) = self.cambria_italic_letter(start, end, metrics)?;
+                let script_em = glyph.style.size_px / 2048.0;
+                let height = f64::from(script.ascent) * script_em - 418.0 * em;
+                let index = data
+                    .bottom_right_heights
+                    .partition_point(|&value| f64::from(value) * em <= height);
+                let mut kern = f64::from(data.bottom_right_kerns[index]) * em;
+                if script.ascent >= script.top_left_height {
+                    kern += f64::from(script.top_left) * script_em;
+                }
+                let x = base.width + kern.max(f64::from(data.bottom_right_kerns[0]) * em);
+                Some((start, end, script, script_em, x))
+            }
+            None => None,
+        };
+        let mut up = 750.0 * em;
+        let mut down = 418.0 * em;
+        if let (Some((_, _, upper, upper_em, _)), Some((_, _, lower, lower_em, _))) = (upper, lower)
+        {
+            let upper_depth = -f64::from(upper.depth) * upper_em;
+            let lower_height = f64::from(lower.ascent) * lower_em;
+            let gap = up + down - upper_depth - lower_height;
+            let extra = (350.0 * em - gap).max(0.0) / 2.0;
+            if extra > 0.0 {
+                up = (up + extra).max(765.0 * em + upper_depth);
+                down += extra;
+            }
+        }
+        let mut total = base;
+        for ((start, end, script, script_em, x), y) in upper
+            .map(|piece| (piece, -up))
+            .into_iter()
+            .chain(lower.map(|piece| (piece, down)))
+        {
+            let metrics = MathMetrics {
+                width: f64::from(script.advance) * script_em,
+                ascent: f64::from(script.ascent) * script_em,
+                descent: -f64::from(script.depth) * script_em,
+            };
+            let glyph = &mut self.plan.glyphs[start.glyphs];
+            glyph.optical_script = true;
+            glyph.width = metrics.width;
+            glyph.ascent = metrics.ascent;
+            glyph.descent = metrics.descent;
+            for bounds in &mut self.plan.boxes[start.boxes..end.boxes] {
+                bounds.width = metrics.width;
+                bounds.ascent = metrics.ascent;
+                bounds.descent = metrics.descent;
+            }
+            self.shift_range(start, end, x, y);
+            total.include(
+                MathMetrics {
+                    width: metrics.width + f64::from(script.italic) * script_em,
+                    ..metrics
+                },
+                x,
+                y,
+            );
+        }
+        total.width += 96.0 * em;
+        Some(total)
+    }
+
+    fn cambria_italic_letter(
+        &self,
+        start: Mark,
+        end: Mark,
+        metrics: MathMetrics,
+    ) -> Option<(&super::MathGlyph<'a>, ItalicLatinScript)> {
+        if end.glyphs - start.glyphs != 1 || end.rules != start.rules || end.shapes != start.shapes
+        {
+            return None;
+        }
+        if self.plan.boxes[start.boxes..end.boxes]
+            .iter()
+            .any(|bounds| {
+                !matches!(
+                    bounds.kind,
+                    MathElementKind::Base
+                        | MathElementKind::SubArgument
+                        | MathElementKind::SuperArgument
+                        | MathElementKind::Run
+                        | MathElementKind::Text
+                )
+            })
+        {
+            return None;
+        }
+        let glyph = &self.plan.glyphs[start.glyphs];
+        if !glyph.visible
+            || glyph.x != 0.0
+            || glyph.baseline != 0.0
+            || glyph.width != metrics.width
+            || !glyph.style.family.eq_ignore_ascii_case("Cambria Math")
+        {
+            return None;
+        }
+        #[cfg(feature = "opentype-math")]
+        if glyph.font_glyph.is_some() {
+            return None;
+        }
+        let mut chars = glyph.display_text(&self.plan.text).chars();
+        let index = match chars.next()? {
+            'ℎ' => 33,
+            ch @ ('𝐴'..='𝑔' | '𝑖'..='𝑧') => (ch as u32 - 0x1d434) as usize,
+            _ => return None,
+        };
+        chars
+            .next()
+            .is_none()
+            .then_some((glyph, ITALIC_LATIN_SCRIPTS[index]))
     }
 
     /// The italic correction of a base that is one glyph.
@@ -1507,6 +1685,101 @@ fn starts_with_open(e: &MathElement) -> bool {
     }
     false
 }
+
+// Cambria Math base corner kerns and first ssty optical glyph metrics,
+// in font units. Missing kern thresholds use i16::MAX.
+#[derive(Clone, Copy)]
+struct ItalicLatinScript {
+    top_right: i16,
+    bottom_right_heights: [i16; 2],
+    bottom_right_kerns: [i16; 3],
+    advance: i16,
+    ascent: i16,
+    depth: i16,
+    italic: i16,
+    bottom_left: i16,
+    top_left_height: i16,
+    top_left: i16,
+}
+
+impl ItalicLatinScript {
+    const fn new(
+        top_right: i16,
+        bottom_right_heights: [i16; 2],
+        bottom_right_kerns: [i16; 3],
+        [advance, ascent, depth, italic]: [i16; 4],
+        [bottom_left, top_left_height, top_left]: [i16; 3],
+    ) -> Self {
+        Self {
+            top_right,
+            bottom_right_heights,
+            bottom_right_kerns,
+            advance,
+            ascent,
+            depth,
+            italic,
+            bottom_left,
+            top_left_height,
+            top_left,
+        }
+    }
+}
+
+#[rustfmt::skip]
+const ITALIC_LATIN_SCRIPTS: [ItalicLatinScript; 52] = [
+    ItalicLatinScript::new(-40, [32767, 32767], [0, 0, 0], [1356, 1314, 0, 20], [80, 480, -140]), // A
+    ItalicLatinScript::new(0, [424, 690], [-180, -90, 0], [1389, 1297, 0, 55], [0, 32767, 0]), // B
+    ItalicLatinScript::new(30, [688, 32767], [-120, 0, 0], [1242, 1316, -22, 90], [0, 32767, 0]), // C
+    ItalicLatinScript::new(0, [644, 32767], [-120, 0, 0], [1466, 1297, 0, 50], [0, 32767, 0]), // D
+    ItalicLatinScript::new(0, [690, 32767], [-110, 0, 0], [1309, 1297, 0, 80], [0, 32767, 0]), // E
+    ItalicLatinScript::new(0, [368, 684], [-400, -224, 0], [1282, 1297, 0, 70], [0, 32767, 0]), // F
+    ItalicLatinScript::new(35, [420, 690], [-120, -60, 0], [1339, 1316, -22, 90], [0, 32767, 0]), // G
+    ItalicLatinScript::new(0, [690, 32767], [-120, 0, 0], [1539, 1297, 0, 55], [0, 32767, 0]), // H
+    ItalicLatinScript::new(0, [690, 32767], [-120, 0, 0], [800, 1297, 0, 65], [0, 32767, 0]), // I
+    ItalicLatinScript::new(0, [690, 32767], [-120, 0, 0], [987, 1297, -364, 45], [80, 480, -140]), // J
+    ItalicLatinScript::new(45, [690, 32767], [-164, 0, 0], [1475, 1297, 0, 62], [0, 32767, 0]), // K
+    ItalicLatinScript::new(-160, [32767, 32767], [0, 0, 0], [1120, 1297, 0, 55], [0, 32767, 0]), // L
+    ItalicLatinScript::new(0, [690, 32767], [-120, 0, 0], [1802, 1297, 0, 50], [0, 32767, 0]), // M
+    ItalicLatinScript::new(62, [690, 32767], [-170, 0, 0], [1548, 1297, 0, 48], [0, 32767, 0]), // N
+    ItalicLatinScript::new(0, [420, 690], [-180, -90, 0], [1429, 1316, -22, 50], [0, 32767, 0]), // O
+    ItalicLatinScript::new(0, [420, 640], [-400, -220, 0], [1324, 1297, 0, 48], [0, 32767, 0]), // P
+    ItalicLatinScript::new(0, [690, 32767], [-65, 0, 0], [1429, 1316, -366, 55], [0, 32767, 0]), // Q
+    ItalicLatinScript::new(0, [690, 32767], [-35, 0, 0], [1346, 1297, 0, 62], [0, 32767, 0]), // R
+    ItalicLatinScript::new(65, [690, 32767], [-90, 0, 0], [1132, 1316, -22, 40], [65, 480, -80]), // S
+    ItalicLatinScript::new(65, [420, 748], [-280, -220, 0], [1258, 1297, 0, 62], [0, 880, 100]), // T
+    ItalicLatinScript::new(35, [700, 32767], [-125, 0, 0], [1481, 1297, -22, 52], [0, 32767, 0]), // U
+    ItalicLatinScript::new(48, [376, 772], [-480, -272, 4], [1335, 1297, -19, 62], [0, 32767, 0]), // V
+    ItalicLatinScript::new(48, [420, 720], [-440, -272, 0], [2008, 1297, -15, 40], [0, 32767, 0]), // W
+    ItalicLatinScript::new(48, [690, 32767], [-90, 0, 0], [1409, 1297, 0, 45], [80, 480, -50]), // X
+    ItalicLatinScript::new(35, [756, 32767], [-336, 0, 0], [1279, 1297, 0, 45], [0, 32767, 0]), // Y
+    ItalicLatinScript::new(35, [690, 32767], [-60, 0, 0], [1267, 1297, 0, 45], [65, 32767, 0]), // Z
+    ItalicLatinScript::new(0, [32767, 32767], [0, 0, 0], [1279, 1021, -18, 50], [0, 32767, 0]), // a
+    ItalicLatinScript::new(20, [690, 32767], [-65, 0, 0], [1226, 1365, -18, 55], [0, 32767, 0]), // b
+    ItalicLatinScript::new(35, [690, 32767], [-50, 0, 0], [1034, 1021, -18, 65], [0, 32767, 0]), // c
+    ItalicLatinScript::new(0, [32767, 32767], [0, 0, 0], [1309, 1365, -18, 65], [0, 32767, 0]), // d
+    ItalicLatinScript::new(65, [690, 32767], [-60, 0, 0], [1111, 1021, -18, 62], [0, 32767, 0]), // e
+    ItalicLatinScript::new(65, [420, 720], [-400, -320, 0], [1229, 1398, -398, 55], [0, 480, -170]), // f
+    ItalicLatinScript::new(0, [690, 32767], [-70, 0, 0], [1352, 1021, -402, 35], [80, 480, -120]), // g
+    ItalicLatinScript::new(0, [32767, 32767], [0, 0, 0], [1273, 1365, -18, 52], [0, 32767, 0]), // h
+    ItalicLatinScript::new(0, [32767, 32767], [0, 0, 0], [718, 1414, -18, 70], [0, 32767, 0]), // i
+    ItalicLatinScript::new(0, [424, 690], [-120, -70, 0], [961, 1414, -399, 70], [65, 480, -250]), // j
+    ItalicLatinScript::new(0, [32767, 32767], [0, 0, 0], [1239, 1365, -18, 60], [0, 32767, 0]), // k
+    ItalicLatinScript::new(0, [32767, 32767], [0, 0, 0], [722, 1365, -18, 70], [0, 32767, 0]), // l
+    ItalicLatinScript::new(0, [32767, 32767], [0, 0, 0], [1915, 1021, -18, 35], [0, 32767, 0]), // m
+    ItalicLatinScript::new(0, [32767, 32767], [0, 0, 0], [1330, 1021, -18, 35], [0, 32767, 0]), // n
+    ItalicLatinScript::new(20, [392, 690], [-80, -65, 0], [1206, 1021, -18, 45], [0, 32767, 0]), // o
+    ItalicLatinScript::new(20, [380, 690], [-80, -65, 0], [1289, 1021, -388, 25], [0, 32767, 0]), // p
+    ItalicLatinScript::new(0, [690, 32767], [-40, 0, 0], [1226, 1021, -388, 62], [0, 32767, 0]), // q
+    ItalicLatinScript::new(55, [424, 648], [-340, -225, 0], [1084, 1021, 0, 65], [0, 32767, 0]), // r
+    ItalicLatinScript::new(55, [392, 644], [-90, -50, 0], [991, 1021, -18, 42], [65, 32767, 0]), // s
+    ItalicLatinScript::new(-20, [690, 32767], [-30, 0, 0], [902, 1254, -18, 55], [0, 32767, 0]), // t
+    ItalicLatinScript::new(0, [32767, 32767], [0, 0, 0], [1330, 1021, -18, 35], [0, 32767, 0]), // u
+    ItalicLatinScript::new(60, [356, 640], [-120, -20, 0], [1158, 1021, -17, 52], [0, 32767, 0]), // v
+    ItalicLatinScript::new(-24, [420, 690], [-130, -68, 0], [1676, 1000, -16, 52], [0, 32767, 0]), // w
+    ItalicLatinScript::new(50, [690, 32767], [-20, 0, 0], [1210, 1021, -18, 55], [65, 32767, 0]), // x
+    ItalicLatinScript::new(65, [412, 690], [-180, -62, 0], [1297, 1021, -394, 50], [0, 32767, 0]), // y
+    ItalicLatinScript::new(65, [690, 32767], [-50, 0, 0], [1084, 1000, 0, 45], [80, 32767, 0]), // z
+];
 
 /// Superscript and subscript shifts from the MATH constants.
 fn script_shifts(

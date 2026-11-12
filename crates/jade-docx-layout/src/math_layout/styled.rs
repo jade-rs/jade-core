@@ -123,6 +123,7 @@ pub struct MathGlyph<'a> {
     /// shape instead, and a hidden phantom or an alignment mark not at all;
     /// their glyphs stay for the text and the caret.
     pub visible: bool,
+    pub(crate) optical_script: bool,
     #[cfg(feature = "opentype-math")]
     pub font_glyph: Option<font::PreparedMathGlyph>,
 }
@@ -938,6 +939,7 @@ impl<'a, C: StyledMathMeasure> Builder<'_, 'a, C> {
                     descent: 0.0,
                     style,
                     visible: false,
+                    optical_script: false,
                     #[cfg(feature = "opentype-math")]
                     font_glyph: None,
                 });
@@ -1015,6 +1017,7 @@ impl<'a, C: StyledMathMeasure> Builder<'_, 'a, C> {
                 descent: metrics.descent,
                 style,
                 visible: true,
+                optical_script: false,
                 #[cfg(feature = "opentype-math")]
                 font_glyph,
             });
