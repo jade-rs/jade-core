@@ -108,7 +108,7 @@ pub(crate) struct FontEnvironment {
 impl SkiaRenderHost {
     /// Builds a host whose pages are `page_width` x `page_height` CSS pixels.
     pub fn new(page_width: f64, page_height: f64) -> Option<Self> {
-        let first = SkiaPainter::new(page_width.ceil() as i32, page_height.ceil() as i32)?;
+        let first = SkiaPainter::new_scaled(page_width, page_height, 1.0)?;
         Some(Self {
             pages: Rc::new(RefCell::new(vec![first])),
             page_sizes: vec![(page_width, page_height)],

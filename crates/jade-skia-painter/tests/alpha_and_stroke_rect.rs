@@ -12,6 +12,20 @@ fn white_canvas(width: i32, height: i32) -> SkiaPainter {
     painter
 }
 
+#[test]
+fn scaled_page_readback_preserves_premultiplied_bgra() {
+    let native = SkiaPainter::new(12, 10).unwrap();
+    let scaled = SkiaPainter::new_scaled(6.0, 5.0, 2.0).unwrap();
+    for (painter, size) in [(&native, 4.0), (&scaled, 2.0)] {
+        painter.set_fill_style_str("#d03a78");
+        painter.set_global_alpha(0.5);
+        painter.fill_rect(size, size, size, size);
+    }
+    let actual = scaled.read_bgra_premultiplied().unwrap();
+    assert_eq!((actual.1, actual.2), (12, 10));
+    assert_eq!(actual, native.read_bgra_premultiplied().unwrap());
+}
+
 /// Skia has no canvas-style global alpha, so it is folded into every paint's
 /// colour. Half alpha over white must land halfway, not at either end.
 #[test]

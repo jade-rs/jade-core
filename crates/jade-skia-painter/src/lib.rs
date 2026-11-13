@@ -279,15 +279,19 @@ impl SkiaPainter {
     /// Drawing stays in CSS pixels: the scale is the canvas's base transform,
     /// below anything the renderer saves and restores, so a Retina screen gets
     /// glyphs rasterised at its own density rather than a 1x page stretched
-    /// to fit — which is what makes text look soft.
+    /// to fit — which is what makes text look soft. The raster uses the BGRA
+    /// byte order consumed by the desktop compositor.
     pub fn new_scaled(width: f64, height: f64, scale: f64) -> Option<Self> {
         if !width.is_finite() || !height.is_finite() || !scale.is_finite() || scale <= 0.0 {
             return None;
         }
-        let mut surface = surfaces::raster_n32_premul((
-            (width * scale).ceil() as i32,
-            (height * scale).ceil() as i32,
-        ))?;
+        let info = skia_safe::ImageInfo::new(
+            ((width * scale).ceil() as i32, (height * scale).ceil() as i32),
+            skia_safe::ColorType::BGRA8888,
+            skia_safe::AlphaType::Premul,
+            None,
+        );
+        let mut surface = surfaces::raster(&info, None, None)?;
         let canvas = surface.canvas();
         canvas.clear(Color::WHITE);
         canvas.scale((scale as f32, scale as f32));
@@ -1157,23 +1161,25 @@ impl SkiaPainter {
         let PaintSurface::Raster(surface) = &mut *target else {
             return None;
         };
-        let image = surface.image_snapshot();
-        let (width, height) = (image.width(), image.height());
+        let (width, height) = (surface.width(), surface.height());
+        let row_bytes = width as usize * 4;
+        if let Some(pixmap) = surface.peek_pixels() {
+            if pixmap.color_type() == skia_safe::ColorType::BGRA8888
+                && pixmap.alpha_type() == skia_safe::AlphaType::Premul
+                && pixmap.row_bytes() == row_bytes
+            {
+                return Some((pixmap.bytes()?.to_vec(), width, height));
+            }
+        }
         let info = skia_safe::ImageInfo::new(
             (width, height),
             skia_safe::ColorType::BGRA8888,
             skia_safe::AlphaType::Premul,
             None,
         );
-        let mut pixels = vec![0u8; (width * height * 4) as usize];
-        image
-            .read_pixels(
-                &info,
-                &mut pixels,
-                (width * 4) as usize,
-                (0, 0),
-                skia_safe::image::CachingHint::Allow,
-            )
+        let mut pixels = vec![0u8; row_bytes * height as usize];
+        surface
+            .read_pixels(&info, &mut pixels, row_bytes, (0, 0))
             .then_some((pixels, width, height))
     }
 
