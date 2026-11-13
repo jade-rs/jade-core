@@ -3929,6 +3929,30 @@ impl WrappedLine {
         self.justify_word_spaces_to_width_with(available_width, false);
     }
 
+    /// Word for Mac keeps the NBSP at its natural advance on an RTL line
+    /// that wraps between the letters of the following Arabic word.
+    pub fn keeps_mac_arabic_nbsp_advance(&self, next: &Self, style: &ParagraphStyle) -> bool {
+        self.break_kind == LineBreakKind::Soft
+            && style.bidi
+            && style.word_platform == crate::line_metrics::WordLayoutPlatform::Mac
+            && style.east_asian_rules.compatibility_mode == Some(14)
+            && has_internal_arabic_nbsp(&self.clusters)
+            && self
+                .clusters
+                .iter()
+                .max_by_key(|cluster| cluster.end)
+                .is_some_and(|last| {
+                    is_arabic_letter_cluster(&last.text)
+                        && next
+                            .clusters
+                            .iter()
+                            .min_by_key(|cluster| cluster.start)
+                            .is_some_and(|first| {
+                                last.end == first.start && is_arabic_letter_cluster(&first.text)
+                            })
+                })
+    }
+
     /// [`Self::justify_word_spaces_to_width`], spreading a line that ends in a
     /// manual line break too when `expand_breaks` (see
     /// [`ParagraphStyle::expand_lines_ending_in_breaks`]).
@@ -8526,6 +8550,32 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext, const SHAPE_
                         (hangs || squeeze > 0.0)
                             && candidate_overflow <= hang + squeeze + WRAP_FIT_TOLERANCE_PX
                     };
+                // Word Mac compatibility mode 14 lets one space hang after
+                // an Arabic word. Further spaces start a continuation when
+                // the first space has already exhausted the line.
+                let wraps_arabic_space = SHAPE_ARABIC
+                    && mac_overflow
+                    && paragraph_style.east_asian_rules.compatibility_mode == Some(14)
+                    && grapheme == " "
+                    && current_width > effective_available + WRAP_FIT_TOLERANCE_PX
+                    && current_line_clusters
+                        .split_last()
+                        .is_some_and(|(last, preceding)| {
+                            last.text == " "
+                                && preceding
+                                    .last()
+                                    .is_some_and(|cluster| is_arabic_letter_cluster(&cluster.text))
+                        });
+                // Unlike an ordinary space, a nonbreaking space cannot hang
+                // past the cell edge between two Arabic words.
+                let wraps_arabic_nbsp = SHAPE_ARABIC
+                    && mac_overflow
+                    && paragraph_style.east_asian_rules.compatibility_mode == Some(14)
+                    && grapheme == "\u{a0}"
+                    && current_line_clusters
+                        .last()
+                        .is_some_and(|cluster| is_arabic_letter_cluster(&cluster.text))
+                    && next_grapheme.is_some_and(is_arabic_letter_cluster);
                 // Word for Mac can place an invisible break opportunity on
                 // its own line between overwide glyphs.
                 if candidate_overflow > WRAP_FIT_TOLERANCE_PX
@@ -8535,7 +8585,7 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext, const SHAPE_
                                 cluster.text.as_str() == "\u{200b}"
                                     || is_word_mac_join_control(&cluster.text)
                             })))
-                    && !is_whitespace
+                    && (!is_whitespace || wraps_arabic_space || wraps_arabic_nbsp)
                     && !shaped_arabic.is_some_and(|(_, continuation)| continuation)
                     && (!zero_width_oracle_glyph
                         || (mac_overflow && is_word_mac_join_control(grapheme)))
@@ -8799,6 +8849,13 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext, const SHAPE_
     // line takes the digit before it along and splits the number (`2` |
     // `0％`, trust-beneficiary-sale-keep-next page 9), so mend words again.
     prevent_mid_word_breaks(text, paragraph_style, base_available, &mut lines);
+    let prefer_explicit_arabic_breaks = SHAPE_ARABIC
+        && paragraph_style.word_platform == crate::line_metrics::WordLayoutPlatform::Mac
+        && paragraph_style.east_asian_rules.compatibility_mode == Some(14)
+        && text.contains(['\u{200b}', '\u{a0}']);
+    if prefer_explicit_arabic_breaks {
+        prefer_arabic_separator_breaks(&mut lines);
+    }
     drop_line_start_auto_space(&mut lines);
     let character_borders = lines.iter().any(line_has_character_border);
     let source = SHAPE_ARABIC.then_some(ArabicWrapSource {
@@ -8841,6 +8898,18 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext, const SHAPE_
             rounds += 1;
         }
     }
+    // Contextual remeasurement can split a word that initially fit on one line.
+    if prefer_explicit_arabic_breaks && prefer_arabic_separator_breaks(&mut lines) {
+        ensure_lines_fit_available_width::<C, SHAPE_ARABIC>(
+            ctx,
+            character_borders,
+            &mut lines,
+            base_x..column_right_edge,
+            paragraph_style,
+            source,
+            &mut snap_to_chars_cell_width_cache,
+        )?;
+    }
     reconcile_mac_cjk_wrap_kerning(ctx, paragraph_style, &initial_soft_starts, &mut lines)?;
     if text.contains('\u{ad}') {
         hyphenate::show_discretionary_hyphens(ctx, &mut lines, paragraph_style, base_available)?;
@@ -8879,9 +8948,50 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext, const SHAPE_
         {
             apply_arabic_span_advances(ctx, text, run_styles, paragraph_style, line, base_offset)?;
         }
+        // In Word Mac compatibility mode 14, a single unmarked run that
+        // starts with Latin keeps its Latin-first order inside an RTL paragraph.
+        let unmarked_latin_first = SHAPE_ARABIC
+            && paragraph_style.bidi
+            && paragraph_style.word_platform == crate::line_metrics::WordLayoutPlatform::Mac
+            && paragraph_style.east_asian_rules.compatibility_mode == Some(14)
+            && matches!(run_styles, [run] if run.properties.as_ref().and_then(|p| p.rtl) != Some(true))
+            && line.clusters.first().is_some_and(|cluster| {
+                cluster
+                    .text
+                    .chars()
+                    .next()
+                    .is_some_and(|ch| ch.script() == UnicodeScriptKind::Latin)
+            })
+            && line
+                .clusters
+                .iter()
+                .any(|cluster| is_arabic_letter_cluster(&cluster.text));
+        // A nonbreaking space carried by an emergency Arabic wrap stays
+        // on the visual left of its word, also in a left-to-right paragraph.
+        let arabic_trailing_nbsp = prefer_explicit_arabic_breaks
+            && line.break_kind == LineBreakKind::Soft
+            && line.clusters.split_last().is_some_and(|(last, word)| {
+                last.text == "\u{a0}"
+                    && !word.is_empty()
+                    && word
+                        .iter()
+                        .all(|cluster| is_arabic_letter_cluster(&cluster.text))
+            });
+        // After emergency wrapping, Word paints a leading NBSP on the
+        // visual left even when the paragraph is right-to-left.
+        let arabic_leading_nbsp = prefer_explicit_arabic_breaks
+            && line.clusters.split_first().is_some_and(|(first, word)| {
+                first.text == "\u{a0}"
+                    && !word.is_empty()
+                    && word
+                        .iter()
+                        .all(|cluster| is_arabic_letter_cluster(&cluster.text))
+            });
         apply_bidi_visual_order(
             line,
-            paragraph_style.bidi,
+            (paragraph_style.bidi || arabic_trailing_nbsp)
+                && !unmarked_latin_first
+                && !arabic_leading_nbsp,
             paragraph_style.word_platform,
             run_styles,
             base_offset,
@@ -9957,6 +10067,14 @@ impl<'a> ArabicWrapSource<'a> {
     }
 }
 
+fn has_internal_arabic_nbsp(clusters: &[InlineCluster]) -> bool {
+    clusters.windows(3).any(|clusters| {
+        clusters[1].text == "\u{a0}"
+            && is_arabic_letter_cluster(&clusters[0].text)
+            && is_arabic_letter_cluster(&clusters[2].text)
+    })
+}
+
 fn measure_wrapped_line_width<C: LineWrapContext, const SHAPE_ARABIC: bool>(
     ctx: &C,
     line: &WrappedLine,
@@ -9968,6 +10086,13 @@ fn measure_wrapped_line_width<C: LineWrapContext, const SHAPE_ARABIC: bool>(
     if character_borders {
         return Ok(line.clusters.iter().map(|cluster| cluster.width).sum());
     }
+    // A break inside an Arabic word changes the forms at the line boundary.
+    // Word Mac mode 14 measures those forms when fitting a fragment after NBSP.
+    let shape_within_line = SHAPE_ARABIC
+        && paragraph_style.word_platform == crate::line_metrics::WordLayoutPlatform::Mac
+        && paragraph_style.east_asian_rules.compatibility_mode == Some(14)
+        && has_internal_arabic_nbsp(&line.clusters);
+    let source = source.filter(|_| !shape_within_line);
     let mut width = 0.0;
     let mut state = TextAdvanceState::default();
     let mut arabic_span = ArabicWrapSpan::default();
@@ -10306,9 +10431,26 @@ fn ensure_lines_fit_available_width<C: LineWrapContext, const SHAPE_ARABIC: bool
                     .map_or(incremental_width, |widths| {
                         widths.get(line_index).copied().unwrap_or(0.0)
                     });
+                // An explicit separator can move an Arabic word back onto its
+                // continuation. The combined word still needs emergency wrapping.
+                let follows_arabic_separator = SHAPE_ARABIC
+                    && paragraph_style.word_platform
+                        == crate::line_metrics::WordLayoutPlatform::Mac
+                    && paragraph_style.east_asian_rules.compatibility_mode == Some(14)
+                    && line_index.checked_sub(1).is_some_and(|previous| {
+                        lines[previous].break_kind == LineBreakKind::Soft
+                            && lines[previous].clusters.last().is_some_and(|cluster| {
+                                matches!(cluster.text.as_str(), "\u{200b}" | "\u{a0}")
+                            })
+                    })
+                    && line
+                        .clusters
+                        .iter()
+                        .all(|cluster| is_arabic_letter_cluster(&cluster.text));
                 if intrinsic_width > effective_available + WRAP_FIT_TOLERANCE_PX
                     && !has_terminal_overflow_punctuation
                     && !has_word_break_opportunity
+                    && !follows_arabic_separator
                 {
                     break;
                 }
@@ -10571,6 +10713,56 @@ fn reconcile_mac_cjk_wrap_kerning<C: LineWrapContext>(
         }
     }
     Ok(())
+}
+
+fn prefer_arabic_separator_breaks(lines: &mut [WrappedLine]) -> bool {
+    let mut moved = false;
+    let mut detached = Vec::new();
+    for idx in 1..lines.len() {
+        let (head, tail) = lines.split_at_mut(idx);
+        let previous = &mut head[idx - 1];
+        let next = &mut tail[0];
+        if previous.break_kind != LineBreakKind::Soft
+            || !next.clusters.first().is_some_and(|first| {
+                is_arabic_letter_cluster(&first.text)
+                    && previous
+                        .clusters
+                        .last()
+                        .is_some_and(|last| last.end == first.start)
+            })
+        {
+            continue;
+        }
+
+        // Word uses the explicit break before splitting the next Arabic word.
+        let letters = previous
+            .clusters
+            .iter()
+            .rev()
+            .take_while(|cluster| is_arabic_letter_cluster(&cluster.text))
+            .count();
+        let Some(separator) = previous.clusters.len().checked_sub(letters + 1) else {
+            continue;
+        };
+        if separator == 0
+            || !matches!(
+                (previous.clusters[separator].text.as_str(), letters),
+                ("\u{200b}", _) | ("\u{a0}", 1)
+            )
+            || !is_arabic_letter_cluster(&previous.clusters[separator - 1].text)
+        {
+            continue;
+        }
+        for _ in 0..letters {
+            let Some(pair) = detach_trailing_cluster(previous) else {
+                break;
+            };
+            detached.push(pair);
+        }
+        moved |= !detached.is_empty();
+        prepend_detached_clusters_to_line(next, &mut detached);
+    }
+    moved
 }
 
 fn prevent_mid_word_breaks(
@@ -12602,6 +12794,156 @@ mod tests {
             })
             .collect();
         assert_eq!(actual, ["مرحب", "ا"]);
+    }
+
+    #[test]
+    fn mac_arabic_wrap_prefers_zero_width_space_to_splitting_the_next_word() {
+        let text = "مرحبا\u{200b}مرحبا";
+        let runs = [RunStyle {
+            start: 0,
+            end: text.len(),
+            properties: None,
+            revision: None,
+            hyperlink: None,
+            inline_object: None,
+        }];
+        let paragraph = ParagraphStyle {
+            word_platform: crate::line_metrics::WordLayoutPlatform::Mac,
+            east_asian_rules: EastAsianLineBreakingRules {
+                compatibility_mode: Some(14),
+                ..EastAsianLineBreakingRules::default()
+            },
+            ..ParagraphStyle::default()
+        };
+        let lines = wrap_text_into_lines(
+            &TestContext::new(5.0),
+            text,
+            &runs,
+            0.0,
+            &paragraph,
+            0,
+            38.0,
+        )
+        .unwrap();
+        assert_eq!(lines.len(), 2);
+        assert_eq!(
+            lines[1].clusters.iter().map(|cluster| cluster.start).min(),
+            Some("مرحبا\u{200b}".len()),
+        );
+    }
+
+    #[test]
+    fn mac_arabic_wrap_moves_the_second_hanging_space_to_a_continuation() {
+        let text = "مرحبا  مرحبا";
+        let runs = [RunStyle {
+            start: 0,
+            end: text.len(),
+            properties: None,
+            revision: None,
+            hyperlink: None,
+            inline_object: None,
+        }];
+        let paragraph = ParagraphStyle {
+            word_platform: crate::line_metrics::WordLayoutPlatform::Mac,
+            east_asian_rules: EastAsianLineBreakingRules {
+                compatibility_mode: Some(14),
+                ..EastAsianLineBreakingRules::default()
+            },
+            ..ParagraphStyle::default()
+        };
+        let lines = wrap_text_into_lines(
+            &TestContext::new(5.0),
+            text,
+            &runs,
+            0.0,
+            &paragraph,
+            0,
+            26.0,
+        )
+        .unwrap();
+        assert_eq!(lines.len(), 3);
+        assert_eq!(lines[1].clusters.len(), 1);
+        assert_eq!(lines[1].clusters[0].text, " ");
+    }
+
+    #[test]
+    fn mac_arabic_wrap_carries_an_overflowing_nbsp_to_the_next_line() {
+        let text = "مرحبا\u{a0}مرحبا";
+        let runs = [RunStyle {
+            start: 0,
+            end: text.len(),
+            properties: None,
+            revision: None,
+            hyperlink: None,
+            inline_object: None,
+        }];
+        let paragraph = ParagraphStyle {
+            word_platform: crate::line_metrics::WordLayoutPlatform::Mac,
+            east_asian_rules: EastAsianLineBreakingRules {
+                compatibility_mode: Some(14),
+                ..EastAsianLineBreakingRules::default()
+            },
+            ..ParagraphStyle::default()
+        };
+        let lines = wrap_text_into_lines(
+            &TestContext::new(5.0),
+            text,
+            &runs,
+            0.0,
+            &paragraph,
+            0,
+            26.0,
+        )
+        .unwrap();
+        assert_eq!(lines.len(), 3);
+        let nbsp = "مرحبا".len();
+        assert!(lines[0].clusters.iter().all(|cluster| cluster.start < nbsp));
+        assert!(lines[1]
+            .clusters
+            .iter()
+            .any(|cluster| cluster.start == nbsp));
+    }
+
+    #[test]
+    fn mac_legacy_bidi_arabic_keeps_unmarked_latin_prefix_on_the_left() {
+        let text = "A مرحبا";
+        let mut run = RunStyle {
+            start: 0,
+            end: text.len(),
+            properties: None,
+            revision: None,
+            hyperlink: None,
+            inline_object: None,
+        };
+        let paragraph = ParagraphStyle {
+            bidi: true,
+            word_platform: crate::line_metrics::WordLayoutPlatform::Mac,
+            east_asian_rules: EastAsianLineBreakingRules {
+                compatibility_mode: Some(14),
+                ..EastAsianLineBreakingRules::default()
+            },
+            ..ParagraphStyle::default()
+        };
+        let first_cluster_start = |run: &RunStyle| {
+            wrap_text_into_lines(
+                &TestContext::new(5.0),
+                text,
+                std::slice::from_ref(run),
+                0.0,
+                &paragraph,
+                0,
+                100.0,
+            )
+            .unwrap()[0]
+                .clusters[0]
+                .start
+        };
+        assert_eq!(first_cluster_start(&run), 0);
+        run.properties = Some(Rc::new(RunProperties {
+            rtl: Some(true),
+            ..RunProperties::default()
+        }));
+        assert!(first_cluster_start(&run) > 0);
     }
 
     #[test]

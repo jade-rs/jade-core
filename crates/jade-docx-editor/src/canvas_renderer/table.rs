@@ -353,10 +353,28 @@ impl LineLayout {
     }
 
     fn aligned_start_x(&self, cell_start: f64, content_width: f64, align: TextAlign) -> f64 {
-        let alignment_width = if !matches!(align, TextAlign::Left)
-            && jade_docx_layout::line_metrics::word_layout_platform()
-                == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
+        let mac = jade_docx_layout::line_metrics::word_layout_platform()
+            == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac;
+        // A logical trailing space can hang to the left of a right-aligned
+        // RTL line, including when its advance exceeds the available width.
+        let hanging_width = if mac
+            && matches!(align, TextAlign::Right)
+            && self.break_kind == LineBreakKind::Soft
+            && self
+                .glyphs
+                .first()
+                .is_some_and(|glyph| glyph.end == self.end)
         {
+            let spaces = self.text.bytes().take_while(|&byte| byte == b' ').count();
+            self.glyphs
+                .iter()
+                .take_while(|glyph| self.end.saturating_sub(glyph.start) <= spaces)
+                .map(|glyph| glyph.width)
+                .sum::<f64>()
+        } else {
+            0.0
+        };
+        let alignment_width = if !matches!(align, TextAlign::Left) && mac && hanging_width == 0.0 {
             jade_docx_layout::line_wrap::soft_line_alignment_width_px(
                 self.visual_width,
                 self.break_kind,
@@ -373,8 +391,8 @@ impl LineLayout {
         } else {
             self.visual_width
         };
-        let remaining =
-            (content_width - self.left_inset - self.right_inset - alignment_width).max(0.0);
+        let remaining = (content_width - self.left_inset - self.right_inset - alignment_width)
+            .max(-hanging_width);
         cell_start
             + self.left_inset
             + match align {
@@ -757,6 +775,9 @@ fn paragraph_text_align(paragraph: &Paragraph, word_mac_bidi_alignment: bool) ->
         match resolve_physical_paragraph_alignment(alignment, bidi) {
             PhysicalParagraphAlignment::Center => TextAlign::Center,
             PhysicalParagraphAlignment::Right => TextAlign::Right,
+            PhysicalParagraphAlignment::Justify if word_mac_bidi_alignment && bidi => {
+                TextAlign::Right
+            }
             PhysicalParagraphAlignment::Left | PhysicalParagraphAlignment::Justify => {
                 TextAlign::Left
             }
@@ -2147,8 +2168,14 @@ impl<P: Painter<Error: PainterError>> TableLineWrapContext<'_, P> {
 
 fn justify_table_wrapped_lines(lines: &mut [WrappedLine], max_width: f64, style: &ParagraphStyle) {
     if jade_docx_layout::line_wrap::is_justified_alignment(&style.alignment) {
-        for (index, line) in lines.iter_mut().enumerate() {
-            line.justify_word_spaces_to_width_with(
+        for index in 0..lines.len() {
+            if lines
+                .get(index + 1)
+                .is_some_and(|next| lines[index].keeps_mac_arabic_nbsp_advance(next, style))
+            {
+                continue;
+            }
+            lines[index].justify_word_spaces_to_width_with(
                 (max_width - style.line_indent(index) - style.right_indent).max(1.0),
                 style.expand_lines_ending_in_breaks,
             );
