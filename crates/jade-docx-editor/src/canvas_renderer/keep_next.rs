@@ -248,6 +248,12 @@ where
             .clone_from(&self.paragraph_border_box_continues);
         measurer.spacing_scan_from_story = self.spacing_scan_from_story;
         measurer.paragraph_wrap_cache = Rc::clone(&self.paragraph_wrap_cache);
+        // The prepass measures with the body's painter. Keep its table font
+        // metrics with that painter so document edits can discard the scratch
+        // renderer without losing widths for unchanged table text.
+        measurer.table_autofit_cache_enabled = self.table_autofit_cache_enabled;
+        measurer.table_text_measure_cache = Rc::clone(&self.table_text_measure_cache);
+        measurer.table_trailing_overhang_cache = Rc::clone(&self.table_trailing_overhang_cache);
         measurer.render_skip_draw = true;
         measurer.measuring_keep_next = true;
         measurer.incremental_layout_enabled = false;
