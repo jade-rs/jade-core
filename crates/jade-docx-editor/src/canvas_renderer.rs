@@ -15233,13 +15233,8 @@ where
             if let Some(cells) = &stable_cells {
                 // Keep the complete snapshot for stable convergence. Only
                 // cells in the actually skipped prefix need a replay copy.
-                for cell in cells
-                    .cells()
-                    .iter()
-                    .filter(|cell| is_skipped_prefix_cell(cell))
-                {
-                    self.selection.record_table_cell_fragment(cell.clone());
-                }
+                self.selection
+                    .replay_cell_prefix(cells, keep, seek.paragraph_index);
             } else {
                 for cell in previous_cells.drain(..).filter(is_skipped_prefix_cell) {
                     self.selection.record_table_cell_fragment(cell);
