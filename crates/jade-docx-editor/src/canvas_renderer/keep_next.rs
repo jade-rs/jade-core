@@ -36,8 +36,14 @@ pub(super) fn group_end(
         if next >= section_end {
             return (index > start).then_some(index);
         }
-        let Some(next_paragraph) = elements.get(next).and_then(BodyElement::as_paragraph) else {
-            return (index > start).then_some(index);
+        let next_paragraph = match elements.get(next) {
+            Some(BodyElement::Paragraph(paragraph)) => paragraph,
+            Some(BodyElement::Table(table))
+                if !table.rows.is_empty() && !table::table_floats(table) =>
+            {
+                return Some(next);
+            }
+            _ => return (index > start).then_some(index),
         };
         if next_paragraph
             .properties
@@ -262,8 +268,8 @@ where
         );
         #[cfg(feature = "opentype-math")]
         std::mem::swap(&mut measurer.math_fonts, &mut self.math_fonts);
-        // A group ending in keepNext (before a table, a page break or the
-        // section end) has no tail paragraph.
+        // A group ending at a table, a page break or the section end can
+        // have no tail paragraph.
         let tail = elements.len().checked_sub(1).filter(|&last| {
             elements[last].as_paragraph().is_some_and(|paragraph| {
                 !paragraph
@@ -292,6 +298,8 @@ where
                     .as_paragraph()
                     .is_some()
                     .then_some(Some(offset) == tail);
+                measurer.keep_next_table_prefix =
+                    offset + 1 == elements.len() && matches!(element, BodyElement::Table(_));
                 measurer.render_body_element(
                     element,
                     options,
@@ -306,6 +314,7 @@ where
                 }
             }
             measurer.keep_next_tail_pending = None;
+            measurer.keep_next_table_prefix = false;
             let bottom = measurer
                 .keep_next_tail_bottom
                 .take()

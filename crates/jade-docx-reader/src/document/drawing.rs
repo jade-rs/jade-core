@@ -410,7 +410,7 @@ impl ShapeExtras {
     }
 }
 
-/// The anchor's options and the object's name.
+/// Extra drawing properties, including the anchor's options and object's name.
 #[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct AnchorOptions {
@@ -433,6 +433,9 @@ pub struct AnchorOptions {
     /// `wp:anchor@layoutInCell` (表のセル内に配置する).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub layout_in_cell: Option<bool>,
+    /// Space below an inline drawing's extent reserved by `wp:effectExtent@b`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub inline_effect_bottom: Option<f64>,
 }
 
 static NO_PICTURE_FORMAT: std::sync::OnceLock<PictureFormat> = std::sync::OnceLock::new();

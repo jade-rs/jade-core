@@ -34,24 +34,49 @@ pub(crate) const MIN_GLYPH_RUN_BATCH_LEN: usize = 4;
 #[cfg(target_arch = "wasm32")]
 #[wasm_bindgen(inline_js = r#"
 let textCapture = null;
-export function __jadeBeginTextCapture() { textCapture = new WeakMap(); }
+let captureDigitOffsets = false;
+export function __jadeBeginTextCapture(withDigitOffsets) {
+  textCapture = new WeakMap();
+  captureDigitOffsets = withDigitOffsets;
+}
 export function __jadeEndTextCapture() { textCapture = null; }
-export function __jadeCaptureText(ctx, text, x, y) {
+// A numeric run can be painted by one fillText. Recover its glyph origins
+// only when its measured prefixes and full width agree with individual
+// advances. Leave shaped or otherwise non-additive text as a single run.
+function numericGlyphOffsets(ctx, text, width) {
+  if (!/^[0-9]{2,}$/.test(text)) return undefined;
+  const offsets = [];
+  let advance = 0;
+  for (let i = 0; i < text.length; i++) {
+    if (i > 0 && Math.abs(advance - ctx.measureText(text.slice(0, i)).width) > 1e-5) {
+      return undefined;
+    }
+    offsets.push(advance);
+    advance += ctx.measureText(text[i]).width;
+  }
+  return Math.abs(advance - width) <= 1e-5 ? offsets : undefined;
+}
+export function __jadeCaptureText(ctx, text, x, y, shapedText = text) {
   if (!textCapture || !text || ctx.globalAlpha === 0) return;
   let state = textCapture.get(ctx);
   if (!state) { state = { runs: [], metrics: new Map() }; textCapture.set(ctx, state); }
-  const key = JSON.stringify([ctx.font, ctx.textBaseline, text]);
+  const key = JSON.stringify([ctx.font, ctx.textBaseline, shapedText]);
   let metrics = state.metrics.get(key);
-  if (!metrics) { metrics = ctx.measureText(text); state.metrics.set(key, metrics); }
+  if (!metrics) { metrics = ctx.measureText(shapedText); state.metrics.set(key, metrics); }
   const m = ctx.getTransform();
   const offset = ctx.textAlign === "center" ? -metrics.width / 2 :
     ctx.textAlign === "right" || (ctx.textAlign === "end" && ctx.direction !== "rtl") ||
     (ctx.textAlign === "start" && ctx.direction === "rtl") ? -metrics.width : 0;
   const originX = x + offset;
-  state.runs.push({ text, width: metrics.width,
+  const run = { text, width: metrics.width,
     ascent: metrics.fontBoundingBoxAscent || metrics.actualBoundingBoxAscent || 0,
     descent: metrics.fontBoundingBoxDescent || metrics.actualBoundingBoxDescent || 0,
-    transform: [m.a, m.b, m.c, m.d, m.a * originX + m.c * y + m.e, m.b * originX + m.d * y + m.f] });
+    transform: [m.a, m.b, m.c, m.d, m.a * originX + m.c * y + m.e, m.b * originX + m.d * y + m.f] };
+  if (captureDigitOffsets) {
+    const digitOffsets = numericGlyphOffsets(ctx, text, metrics.width);
+    if (digitOffsets) run.digitOffsets = digitOffsets;
+  }
+  state.runs.push(run);
 }
 export function __jadeTakeTextCapture(ctx, scale) {
   const runs = textCapture?.get(ctx)?.runs || [];
@@ -89,11 +114,19 @@ export function __jadeFillTextGlyphRunSingleFont(ctx, text, xPositions, y, len) 
 "#)]
 extern "C" {
     #[wasm_bindgen(js_name = __jadeBeginTextCapture)]
-    fn begin_text_capture_js();
+    fn begin_text_capture_js(capture_digit_offsets: bool);
     #[wasm_bindgen(js_name = __jadeEndTextCapture)]
     fn end_text_capture_js();
     #[wasm_bindgen(js_name = __jadeCaptureText)]
     fn capture_text_js(context: &CanvasRenderingContext2d, text: &str, x: f64, y: f64);
+    #[wasm_bindgen(js_name = __jadeCaptureText)]
+    fn capture_text_with_shaping_context_js(
+        context: &CanvasRenderingContext2d,
+        text: &str,
+        x: f64,
+        y: f64,
+        shaped_text: &str,
+    );
     #[wasm_bindgen(js_name = __jadeTakeTextCapture)]
     pub fn take_text_capture(context: &CanvasRenderingContext2d, scale: f64) -> JsValue;
     #[wasm_bindgen(catch, js_name = __jadeFillTextGlyphRun)]
@@ -126,15 +159,30 @@ pub(crate) fn capture_text(context: &CanvasRenderingContext2d, text: &str, x: f6
     let _ = (context, text, x, y);
 }
 
+pub(crate) fn capture_text_with_shaping_context(
+    context: &CanvasRenderingContext2d,
+    text: &str,
+    shaped_text: &str,
+    x: f64,
+    y: f64,
+) {
+    #[cfg(target_arch = "wasm32")]
+    if TEXT_CAPTURE_ENABLED.with(std::cell::Cell::get) {
+        capture_text_with_shaping_context_js(context, text, x, y, shaped_text);
+    }
+    #[cfg(not(target_arch = "wasm32"))]
+    let _ = (context, text, shaped_text, x, y);
+}
+
 #[cfg(target_arch = "wasm32")]
 thread_local! {
     static TEXT_CAPTURE_ENABLED: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
 }
 
 #[cfg(target_arch = "wasm32")]
-pub fn begin_text_capture() {
+pub fn begin_text_capture(capture_digit_offsets: bool) {
     TEXT_CAPTURE_ENABLED.with(|enabled| enabled.set(true));
-    begin_text_capture_js();
+    begin_text_capture_js(capture_digit_offsets);
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -144,7 +192,7 @@ pub fn end_text_capture() {
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-pub fn begin_text_capture() {}
+pub fn begin_text_capture(_capture_digit_offsets: bool) {}
 #[cfg(not(target_arch = "wasm32"))]
 pub fn end_text_capture() {}
 #[cfg(not(target_arch = "wasm32"))]

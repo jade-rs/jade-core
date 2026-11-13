@@ -1,0 +1,16 @@
+{
+  "schema": 1,
+  "sourceSha256": "1df7e92cf85bd11295995bfdddd574602642fd25b01490c92a7a8967d0d8c1c2",
+  "reference": {
+    "application": "Microsoft Word",
+    "platform": "mac",
+    "version": "16.114",
+    "build": "16.114.26101123",
+    "export": "Save As > PDF",
+    "pdfSha256": "03eebe55f65944a219f857d480b3c2a6de2c1f3c87d4e848ff95894325885f8a",
+    "coordinateSource": "tests/word-oracle/mac-probes-20261019/word-mac-probe-merged-rows.json"
+  },
+  "pages": 1,
+  "axisTolerancePt": 0.65,
+  "coordinatesSha256": "f24d36e01caf599d2cb077a64193e1aae3bf0a6a0f707e43d3396ef48253e02c"
+}

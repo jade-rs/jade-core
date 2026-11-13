@@ -431,6 +431,18 @@ impl NumberingPart {
                     *in_level_paragraph_props = true;
                 }
             }
+            b"w:tab" if *in_level_paragraph_props => {
+                if let (Some(level), Some(tab)) = (
+                    current_level.as_mut(),
+                    crate::styles::parse_tab_definition(e),
+                ) {
+                    level
+                        .paragraph_props
+                        .get_or_insert_with(ParagraphProperties::default)
+                        .tabs
+                        .push(tab);
+                }
+            }
             b"w:ind" => {
                 if *in_level_paragraph_props {
                     if let Some(level) = current_level.as_mut() {

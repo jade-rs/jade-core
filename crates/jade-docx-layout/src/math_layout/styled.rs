@@ -47,6 +47,9 @@ pub trait StyledMathMeasure {
         text: &str,
         style: MathTextStyle<'_>,
     ) -> Result<MathMetrics, Self::Error>;
+    fn fallback_italic_correction(&self, _text: &str, _style: MathTextStyle<'_>) -> f64 {
+        0.0
+    }
     /// The host binds font bytes to the actual authored face. Prepared metrics
     /// and outlines must identify the same glyph; no painter substitution.
     #[cfg(feature = "opentype-math")]
@@ -120,6 +123,7 @@ pub struct MathGlyph<'a> {
     /// shape instead, and a hidden phantom or an alignment mark not at all;
     /// their glyphs stay for the text and the caret.
     pub visible: bool,
+    pub(crate) optical_script: bool,
     #[cfg(feature = "opentype-math")]
     pub font_glyph: Option<font::PreparedMathGlyph>,
 }
@@ -274,6 +278,8 @@ pub struct MathSettings {
     pub display_margins_px: (f64, f64),
     /// `m:dispDef`: use special display defaults rather than paragraph settings.
     pub use_display_defaults: bool,
+    /// Word for Mac display math inherits a right-to-left text paragraph.
+    pub word_mac_rtl_paragraph: bool,
     /// `m:defJc`: the default justification of display math.
     pub default_justification: MathJustification,
 }
@@ -290,6 +296,7 @@ impl Default for MathSettings {
             break_binary_subtraction: BreakBinarySubtraction::MinusMinus,
             display_margins_px: (0.0, 0.0),
             use_display_defaults: true,
+            word_mac_rtl_paragraph: false,
             default_justification: MathJustification::CenterGroup,
         }
     }
@@ -392,6 +399,18 @@ impl Default for MathLayoutOptions<'_> {
 pub const WORD_SCRIPT_SCALES: (f64, f64) = (0.70, 0.60);
 
 impl MathLayoutOptions<'_> {
+    fn word_mac_rtl(&self) -> bool {
+        self.settings.word_mac_rtl_paragraph && self.display
+    }
+
+    fn word_mac_inherited_before_wrap(&self) -> bool {
+        self.display
+            && !self.settings.use_display_defaults
+            && self.settings.break_binary == BreakBinary::Before
+            && crate::line_metrics::word_layout_platform()
+                == crate::line_metrics::WordLayoutPlatform::Mac
+    }
+
     pub fn inline() -> Self {
         Self {
             display: false,
@@ -616,7 +635,7 @@ pub fn layout_styled_elements<'a, C: StyledMathMeasure>(
     style: MathTextStyle<'a>,
     options: &MathLayoutOptions<'a>,
 ) -> Result<StyledMathLayout<'a>, C::Error> {
-    let alignment = elements
+    let mut alignment = elements
         .iter()
         .find_map(MathParagraphAlignment::from_element)
         .unwrap_or(match options.settings.default_justification {
@@ -624,10 +643,21 @@ pub fn layout_styled_elements<'a, C: StyledMathMeasure>(
             MathJustification::Right => MathParagraphAlignment::Right,
             _ => MathParagraphAlignment::Center,
         });
-    let justify = elements
+    let mut justify = elements
         .iter()
         .find_map(paragraph_justification)
         .unwrap_or(options.settings.default_justification);
+    // Word for Mac keeps equations on the right when inheriting a
+    // right-aligned paragraph, even with an explicit left or center m:jc.
+    let inherits_mac_right = options.display
+        && !options.settings.use_display_defaults
+        && options.settings.default_justification == MathJustification::Right
+        && crate::line_metrics::word_layout_platform()
+            == crate::line_metrics::WordLayoutPlatform::Mac;
+    if options.word_mac_rtl() || inherits_mac_right {
+        alignment = MathParagraphAlignment::Right;
+        justify = MathJustification::Right;
+    }
     let mut builder = Builder {
         context,
         justify,
@@ -917,6 +947,7 @@ impl<'a, C: StyledMathMeasure> Builder<'_, 'a, C> {
                     descent: 0.0,
                     style,
                     visible: false,
+                    optical_script: false,
                     #[cfg(feature = "opentype-math")]
                     font_glyph: None,
                 });
@@ -953,8 +984,15 @@ impl<'a, C: StyledMathMeasure> Builder<'_, 'a, C> {
                     self.first = Some(class);
                 }
                 self.prev = Some(class);
+                self.note_space_after_operator(space, self.plan.glyphs.len());
                 if matches!(class, AtomClass::Bin | AtomClass::Rel) {
-                    self.break_candidate(class, false, None, matches!(first_char, '-' | '−'));
+                    self.break_candidate(
+                        class,
+                        false,
+                        None,
+                        matches!(first_char, '-' | '−'),
+                        space,
+                    );
                 }
             } else if plain {
                 self.prev = Some(AtomClass::Ord);
@@ -987,6 +1025,7 @@ impl<'a, C: StyledMathMeasure> Builder<'_, 'a, C> {
                 descent: metrics.descent,
                 style,
                 visible: true,
+                optical_script: false,
                 #[cfg(feature = "opentype-math")]
                 font_glyph,
             });
@@ -1003,6 +1042,7 @@ impl<'a, C: StyledMathMeasure> Builder<'_, 'a, C> {
         manual: bool,
         align_at: Option<u32>,
         subtraction: bool,
+        preceding_space: f64,
     ) {
         if self.depth != 0 {
             return;
@@ -1016,7 +1056,26 @@ impl<'a, C: StyledMathMeasure> Builder<'_, 'a, C> {
                 align_at,
                 align_point: false,
                 subtraction,
+                preceding_space,
+                following_space: 0.0,
             });
+        }
+    }
+
+    fn note_space_after_operator(&mut self, space: f64, glyphs: usize) {
+        if self.depth != 0 || self.options.settings.break_binary != BreakBinary::After {
+            return;
+        }
+        if let Some(candidate) = self.breaks.as_mut().and_then(|breaks| breaks.last_mut()) {
+            if (candidate.class == AtomClass::Bin
+                || candidate.class == AtomClass::Rel
+                    && crate::line_metrics::word_layout_platform()
+                        == crate::line_metrics::WordLayoutPlatform::Mac)
+                && !candidate.manual
+                && candidate.mark.glyphs + 1 == glyphs
+            {
+                candidate.following_space = space;
+            }
         }
     }
 
@@ -1034,6 +1093,8 @@ impl<'a, C: StyledMathMeasure> Builder<'_, 'a, C> {
                 align_at: None,
                 align_point: true,
                 subtraction: false,
+                preceding_space: 0.0,
+                following_space: 0.0,
             });
         }
     }
@@ -1071,7 +1132,13 @@ impl<'a, C: StyledMathMeasure> Builder<'_, 'a, C> {
             }
         }
         let metrics = self.context.measure_glyph(text, style)?;
-        Ok((metrics, GlyphInfo::default(), None))
+        Ok((
+            metrics,
+            GlyphInfo {
+                italic: self.context.fallback_italic_correction(text, style),
+            },
+            None,
+        ))
     }
 
     /// Lays out a sequence of siblings left to right with TeX's spacing.
@@ -1177,19 +1244,24 @@ impl<'a, C: StyledMathMeasure> Builder<'_, 'a, C> {
         let class = structure_class(e);
         // Structures space as one atom against their neighbours.
         let mut lead = 0.0;
+        let mut atom_space = 0.0;
         let structure = !matches!(e.kind, Run | Text | Math | MathParagraph | Unknown)
             || e.local_name().starts_with("eq");
         if structure {
             if let Some(prev) = self.prev {
                 let left = class.0;
                 let left = alphabet::resolve_binary(Some(prev), left);
-                lead = alphabet::atom_space(prev, left, self.level > 0) * self.size() / 18.0;
+                atom_space = alphabet::atom_space(prev, left, self.level > 0);
+                lead = atom_space * self.size() / 18.0;
             }
             lead += std::mem::take(&mut self.pending_italic);
+            if e.kind != Fraction {
+                self.note_space_after_operator(lead, start.glyphs);
+            }
         }
         self.first = None;
         if structure && matches!(class.0, AtomClass::Bin | AtomClass::Rel) {
-            self.break_candidate(class.0, false, None, false);
+            self.break_candidate(class.0, false, None, false, lead);
         }
         let metrics = match e.kind {
             Run => self.run(e)?,
@@ -1203,7 +1275,14 @@ impl<'a, C: StyledMathMeasure> Builder<'_, 'a, C> {
                 self.depth -= 1;
                 m
             }
-            Fraction => self.fraction(e)?,
+            Fraction => {
+                let (metrics, fraction_size) = self.fraction(e)?;
+                if let Some(size) = fraction_size {
+                    lead += atom_space * (size - self.size()) / 18.0;
+                }
+                self.note_space_after_operator(lead, start.glyphs);
+                metrics
+            }
             Superscript | Subscript | SubSup => self.scripts(e)?,
             PreSubSuper => self.prescripts(e)?,
             Nary => self.nary(e)?,
@@ -1268,7 +1347,7 @@ impl<'a, C: StyledMathMeasure> Builder<'_, 'a, C> {
             if let Some(class @ (AtomClass::Bin | AtomClass::Rel | AtomClass::Op)) =
                 first.map(alphabet::char_class)
             {
-                self.break_candidate(class, true, align_at, false);
+                self.break_candidate(class, true, align_at, false, 0.0);
             }
         }
         if run.align_point {

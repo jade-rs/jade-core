@@ -19,6 +19,7 @@ jade-docx-reader = { path = "../jade-docx-reader" }
 fontdue = "0.9"
 rustybuzz = "0.20"
 ttf-parser = { version = "0.25.1", default-features = false, features = ["std", "opentype-layout"], optional = true }
+unicode-joining-type = "1.0.0"
 
 [features]
 default = []

@@ -1851,11 +1851,15 @@ impl Painter for SkiaPainter {
         let paint = self.fill_paint();
         // Each segment in its face, its ink box at its pen position.
         let (mut width, mut top, mut bottom, mut right) = (0.0_f32, 0.0_f32, 0.0_f32, 0.0_f32);
+        let mut left = f32::INFINITY;
         for (segment_font, run) in self.segments(text) {
             let (advance, ink) = segment_font.measure_str(run, Some(&paint));
             top = top.min(ink.top);
             bottom = bottom.max(ink.bottom);
             right = right.max(width + ink.right);
+            if !ink.is_empty() {
+                left = left.min(width + ink.left);
+            }
             width += advance;
         }
         let (_, metrics) = font.metrics();
@@ -1866,6 +1870,7 @@ impl Painter for SkiaPainter {
             font_bounding_box_descent: metrics.descent.round() as f64,
             actual_bounding_box_ascent: (-top) as f64,
             actual_bounding_box_descent: bottom as f64,
+            actual_bounding_box_left: if left.is_finite() { -left as f64 } else { 0.0 },
             actual_bounding_box_right: right as f64,
         })
     }

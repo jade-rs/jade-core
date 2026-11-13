@@ -6202,6 +6202,9 @@ pub struct RunProperties {
     pub style: Option<Rc<str>>,
     pub bold: Option<bool>,
     pub italic: Option<bool>,
+    /// Direct run direction override (`w:rtl`).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub rtl: Option<bool>,
     /// Complex-script bold (`w:bCs`, ECMA-376 Part 1 §17.3.2.6). Word applies
     /// this to complex-script (e.g. Arabic/Hebrew) text, the counterpart of
     /// `w:b` for Latin/East-Asian text. The renderer is script-agnostic, so it
@@ -6492,6 +6495,7 @@ impl RunProperties {
             && self.style.is_none()
             && self.bold.is_none()
             && self.italic.is_none()
+            && self.rtl.is_none()
             && self.bold_complex.is_none()
             && self.italic_complex.is_none()
             && self.font_size_complex.is_none()

@@ -1,0 +1,16 @@
+{
+  "schema": 1,
+  "sourceSha256": "c467a0189eda20dbf17ab2b8d95704beecb7341322031333f8877383c03bad50",
+  "reference": {
+    "application": "Microsoft Word",
+    "platform": "mac",
+    "version": "16.114",
+    "build": "16.114.26101123",
+    "export": "Save As > PDF",
+    "pdfSha256": "3c037184266fff40b358e1bc7cd3c6996321d940a17fc44ec4ef458d76efdd79",
+    "coordinateSource": "tests/word-oracle/mac-probes-20261019/word-mac-probe-float-lookahead.json"
+  },
+  "pages": 5,
+  "axisTolerancePt": 0.65,
+  "coordinatesSha256": "b7162e0633605ba7f3c41f6a6e5a2d1f6bd9f451ff4089ed75bd006ff8615f4f"
+}

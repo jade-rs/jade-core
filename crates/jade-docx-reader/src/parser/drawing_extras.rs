@@ -435,6 +435,7 @@ impl DrawingExtras {
             locked: self.locked,
             allow_overlap: self.allow_overlap,
             layout_in_cell: self.layout_in_cell,
+            inline_effect_bottom: layout.options().inline_effect_bottom,
         };
         layout.options = (options != AnchorOptions::default()).then(|| Box::new(options));
     }

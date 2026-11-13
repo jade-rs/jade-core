@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "sourceSha256": "b38e1e57b120cccc2728b71672112a31278b71e82f290670ca2fa1dc3fe7656c",
+  "reference": {
+    "application": "Microsoft Word",
+    "platform": "mac",
+    "export": "Save As > PDF",
+    "pdfSha256": "f908dc0cf6c4490fe19a86115c2b9e14bf990d3c88fe7ac28868dd823e0196e1",
+    "extractor": "PyMuPDF 1.26.5; decoded the Cambria Math superscript 2 by matching the PDF subset glyph outline and advance to the Office font ssty alternate"
+  },
+  "pages": 1,
+  "axisTolerancePt": 0.65,
+  "bodyOnly": true,
+  "coordinatesSha256": "414f0edb6a17c5c8d0cc12691fe73206f8d8bc30ce0138bed9ce316efbc15033"
+}

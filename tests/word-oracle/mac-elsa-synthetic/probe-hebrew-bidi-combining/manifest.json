@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "sourceSha256": "39b1dcb60f047662ce78754e8a9724124a1d52dc1d43c40ff89ae9ccfcf33084",
+  "reference": {
+    "application": "Microsoft Word",
+    "platform": "mac",
+    "export": "Save As > PDF",
+    "pdfSha256": "41e316cb34aaffae982d1c16a4bca97b07e1acc38c953c66d3a2deb3add35ac1",
+    "extractor": "PyMuPDF 1.26.5; Hebrew presentation forms and separate vowel marks mapped to their source graphemes at the Word base glyph origins"
+  },
+  "pages": 1,
+  "axisTolerancePt": 0.65,
+  "bodyOnly": true,
+  "coordinatesSha256": "079d350be94c2d21ea94635d395000afa44dbca3b0f0fc1ac79053e059b28e9a"
+}

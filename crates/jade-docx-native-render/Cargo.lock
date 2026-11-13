@@ -1463,6 +1463,7 @@ dependencies = [
  "smallvec",
  "ttf-parser",
  "unicode-bidi",
+ "unicode-joining-type",
  "unicode-script",
  "unicode-segmentation",
 ]
@@ -1481,6 +1482,7 @@ dependencies = [
 name = "jade-docx-native-render"
 version = "0.1.0"
 dependencies = [
+ "flate2",
  "fontdb",
  "futures",
  "image",
@@ -1511,6 +1513,7 @@ dependencies = [
  "jade-ink",
  "jade-number-format",
  "jade-opc",
+ "memchr",
  "quick-xml 0.41.0",
  "serde",
  "sha2",
@@ -3516,6 +3519,12 @@ name = "unicode-ident"
 version = "1.0.24"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e6e4313cd5fcd3dad5cafa179702e2b244f760991f45397d14d4ebf38247da75"
+
+[[package]]
+name = "unicode-joining-type"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d8d00a78170970967fdb83f9d49b92f959ab2bb829186b113e4f4604ad98e180"
 
 [[package]]
 name = "unicode-normalization"

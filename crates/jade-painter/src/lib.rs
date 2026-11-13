@@ -60,6 +60,9 @@ pub struct TextMetrics {
     pub actual_bounding_box_ascent: f64,
     /// Descent of the inked area of this particular string, positive downwards.
     pub actual_bounding_box_descent: f64,
+    /// Distance from the left edge of the ink to the text origin.
+    /// Negative when the ink begins to the right of the origin.
+    pub actual_bounding_box_left: f64,
     /// Distance from the text origin to the right edge of the inked area. Wider
     /// than `width` when the last glyph overhangs its advance.
     pub actual_bounding_box_right: f64,
@@ -141,6 +144,18 @@ pub trait Painter {
     /// Sets the baseline the y coordinate of text operations refers to.
     fn set_text_baseline(&self, value: &str);
     fn fill_text(&self, text: &str, x: f64, y: f64) -> Result<(), Self::Error>;
+    /// Draws a span with additional invisible shaping context when supported.
+    /// Text extraction should retain the source text.
+    fn fill_text_with_shaping_context(
+        &self,
+        text: &str,
+        _shaped_text: &str,
+        x: f64,
+        y: f64,
+    ) -> Result<(), Self::Error> {
+        self.fill_text(text, x, y)
+    }
+
     /// Paints an upright vertical character using font vertical alternates when available.
     /// Coordinates retain the current text baseline; column placement belongs to layout.
     fn fill_upright_text(&self, text: &str, x: f64, y: f64) -> Result<(), Self::Error> {

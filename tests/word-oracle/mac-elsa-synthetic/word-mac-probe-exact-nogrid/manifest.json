@@ -1,0 +1,16 @@
+{
+  "schema": 1,
+  "sourceSha256": "8152adf61e993ec685190633998da25b03b5353bafcf43e50f5349144ac90134",
+  "reference": {
+    "application": "Microsoft Word",
+    "platform": "mac",
+    "version": "16.114",
+    "build": "16.114.26101123",
+    "export": "Save As > PDF",
+    "pdfSha256": "407dacb19199b6737fef8a22a7db71e1f9bc187a9940270b798ed2749235f806",
+    "coordinateSource": "tests/word-oracle/mac-probes-16114/word-mac-probe-exact-nogrid.json"
+  },
+  "pages": 16,
+  "axisTolerancePt": 0.65,
+  "coordinatesSha256": "4c3e7b08a7d667475c697b2531ab198067d5d67f7ae1e736a3fb4f91017e4f1a"
+}
