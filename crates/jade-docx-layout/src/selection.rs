@@ -363,6 +363,19 @@ pub struct SelectionSuffix {
     non_selectable_paragraphs: HashSet<usize>,
 }
 
+/// Saved cell geometry and its authoritative paragraph lookup.
+#[derive(Default)]
+pub struct CellRegistry {
+    cells: Vec<CellLayout>,
+    paragraph_to_cell: HashMap<usize, usize>,
+}
+
+impl CellRegistry {
+    pub fn cells(&self) -> &[CellLayout] {
+        &self.cells
+    }
+}
+
 #[derive(Clone, Debug, Default)]
 pub struct SelectionManager {
     paragraphs: Vec<ParagraphLayout>,
@@ -866,6 +879,25 @@ impl SelectionManager {
 
     pub fn record_table_cell(&mut self, cell: CellLayout) {
         self.record_table_cell_impl(cell, false);
+    }
+
+    /// Move the cell lookup together with its geometry when the render may
+    /// converge and keep the authoritative layout.
+    pub fn take_cell_registry(&mut self) -> CellRegistry {
+        if self.frozen {
+            return CellRegistry::default();
+        }
+        CellRegistry {
+            cells: std::mem::take(&mut self.cells),
+            paragraph_to_cell: std::mem::take(&mut self.paragraph_to_cell),
+        }
+    }
+
+    pub fn restore_cell_registry(&mut self, registry: CellRegistry) {
+        if !self.frozen {
+            self.cells = registry.cells;
+            self.paragraph_to_cell = registry.paragraph_to_cell;
+        }
     }
 
     /// Move the cell registry aside before an incremental render clears it.
@@ -6152,11 +6184,12 @@ mod tests {
             let allocation = manager.cells.as_ptr();
             let paragraph_allocations: Vec<_> = manager.cells.iter().map(|c| c.paragraphs.as_ptr()).collect();
 
-            let saved = manager.take_cell_layouts();
+            let saved = manager.take_cell_registry();
+            let map_capacity = saved.paragraph_to_cell.capacity();
             // Guard the allocation cost directly, independently of wall-clock
             // noise: neither the registry nor its paragraph lists are copied.
-            proptest::prop_assert_eq!(saved.as_ptr(), allocation);
-            proptest::prop_assert_eq!(saved.iter().map(|c| c.paragraphs.as_ptr()).collect::<Vec<_>>(), paragraph_allocations);
+            proptest::prop_assert_eq!(saved.cells().as_ptr(), allocation);
+            proptest::prop_assert_eq!(saved.cells().iter().map(|c| c.paragraphs.as_ptr()).collect::<Vec<_>>(), paragraph_allocations);
             proptest::prop_assert!(manager.cell_layouts().is_empty());
             for paragraph in 0..columns {
                 proptest::prop_assert_eq!(manager.cell_id_for_paragraph(paragraph), None);
@@ -6170,7 +6203,8 @@ mod tests {
                 column_span: 1,
                 ..CellLayout::default()
             });
-            manager.restore_cell_layouts(saved);
+            manager.restore_cell_registry(saved);
+            proptest::prop_assert_eq!(manager.paragraph_to_cell.capacity(), map_capacity);
             proptest::prop_assert_eq!(manager.cells.as_ptr(), allocation);
             proptest::prop_assert_eq!(serde_json::to_value(manager.cell_layouts()).unwrap(), serde_json::to_value(reference.cell_layouts()).unwrap());
             proptest::prop_assert_eq!(manager.selected_cell_ids(), reference.selected_cell_ids());

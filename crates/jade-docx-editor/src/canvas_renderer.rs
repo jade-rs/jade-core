@@ -14682,18 +14682,7 @@ where
         // report 5 pages after the edit itself had correctly converged to 4.
         let preserve_pixel_pagination = self.preserve_pagination_for_pixel_rerender;
         let preserve_stable_edit_pagination = self.preserve_completed_pagination_on_stable_edit;
-        // Pixel-only renders can stop after the requested window. Table
-        // navigation and resize metadata describes the complete unchanged
-        // document, so retain it just as we retain the frozen selection.
-        let preserved_table_metadata =
-            (preserve_pixel_pagination || preserve_stable_edit_pagination).then(|| {
-                (
-                    self.table_layouts.clone(),
-                    self.table_handles.clone(),
-                    self.table_row_handles.clone(),
-                    self.table_counter,
-                )
-            });
+        let previous_table_counter = self.table_counter;
         self.last_completed_pagination_edit_candidate = preserve_stable_edit_pagination;
         self.last_completed_pagination_edit_preserved = false;
         let snapshot_authoritative_pagination =
@@ -14878,7 +14867,9 @@ where
         // Move the registry rather than cloning every cell (including each
         // paragraph list) on every IME update. A stable edit reuses this same
         // allocation when restoring the authoritative offscreen cell geometry.
-        let mut previous_cells = if preserve_pixel_pagination {
+        let mut stable_cells =
+            preserve_stable_edit_pagination.then(|| self.selection.take_cell_registry());
+        let mut previous_cells = if preserve_pixel_pagination || stable_cells.is_some() {
             Vec::new()
         } else {
             self.selection.take_cell_layouts()
@@ -15184,7 +15175,9 @@ where
         }
         if let Some(seek) = seek_snapshot.as_ref() {
             let keep = seek.table_counter;
-            let (tables, handles, row_handles) = if preserve_pixel_pagination {
+            let (tables, handles, row_handles) = if snapshot_authoritative_pagination {
+                // Preserve the original registry for convergence. Only the
+                // skipped prefix is needed during the render itself.
                 let (tables, handles, row_handles) = previous_tables.as_ref().unwrap();
                 (
                     tables
@@ -15221,10 +15214,11 @@ where
                         .iter()
                         .all(|index| *index < seek.paragraph_index)
             };
-            if preserve_stable_edit_pagination {
+            if let Some(cells) = &stable_cells {
                 // Keep the complete snapshot for stable convergence. Only
                 // cells in the actually skipped prefix need a replay copy.
-                for cell in previous_cells
+                for cell in cells
+                    .cells()
                     .iter()
                     .filter(|cell| is_skipped_prefix_cell(cell))
                 {
@@ -15859,8 +15853,8 @@ where
                 self.hyperlink_regions.extend(suffix);
                 self.invalidate_hyperlink_regions_js_cache();
             }
-            if preserve_stable_edit_pagination {
-                self.selection.restore_cell_layouts(previous_cells);
+            if let Some(cells) = stable_cells.take() {
+                self.selection.restore_cell_registry(cells);
             }
             if let Some((edited, metadata)) = stable_edit_metadata {
                 let comments = (options.render_comments && !self.render_skip_draw).then_some((
@@ -15878,12 +15872,11 @@ where
         if preserve_pixel_pagination
             || (preserve_stable_edit_pagination && self.last_fast_replay_stable)
         {
-            if let Some((layouts, handles, row_handles, counter)) = preserved_table_metadata {
-                self.table_layouts = layouts;
-                self.table_handles = handles;
-                self.table_row_handles = row_handles;
-                self.table_counter = counter;
-            }
+            let (layouts, handles, row_handles) = previous_tables.take().unwrap();
+            self.table_layouts = layouts;
+            self.table_handles = handles;
+            self.table_row_handles = row_handles;
+            self.table_counter = previous_table_counter;
         }
         // The Rc is already owned by the caller (edit path) or created in render_with_numbering.
         self.last_document = Some(document_rc);
@@ -16038,13 +16031,6 @@ where
 
         if let Some(regions) = preserved_object_regions {
             *self.object_debug_regions.borrow_mut() = regions;
-        }
-
-        if preserve_pixel_pagination {
-            let (tables, handles, row_handles) = previous_tables.take().unwrap();
-            self.table_layouts = tables;
-            self.table_handles = handles;
-            self.table_row_handles = row_handles;
         }
 
         // Clear per-render dirty state.
@@ -62986,6 +62972,7 @@ mod tests {
             .unwrap()
         };
         let before = metadata(&renderer);
+        let table_counter = renderer.table_counter;
         for page_index in [1, 0, 2] {
             renderer.set_layout_page_limit(Some(page_index + 1));
             renderer.set_visible_page_range(Some(page_index + 1..=page_index + 1));
@@ -62999,6 +62986,7 @@ mod tests {
             }
             renderer.render(&document, &options).expect("page bitmap");
             assert_eq!(metadata(&renderer), before, "page {page_index}");
+            assert_eq!(renderer.table_counter, table_counter, "page {page_index}");
             for table_id in 0..3 {
                 assert_eq!(renderer.table_order_for(table_id), Some(table_id));
                 let cell = renderer

@@ -2575,17 +2575,38 @@ const MS_PGOTHIC_WIDTH_FORMS_UNITS: [u16; 159] = [
     145, 143, 151, 144, 64, 59,
 ];
 
-fn ms_pgothic_advance_px(font_descriptor: &str, grapheme: &str) -> Option<f64> {
+fn ms_pgothic_size_pt(font_descriptor: &str) -> Option<f32> {
     let (size_pt, family) = split_font_descriptor(font_descriptor)?;
-    if !size_pt.is_finite()
-        || size_pt <= 0.0
-        || !matches!(
-            family.trim_matches(|ch| ch == '\'' || ch == '"'),
+    (size_pt.is_finite()
+        && size_pt > 0.0
+        && matches!(
+            family.trim_matches(['\'', '"']),
             "ＭＳ Ｐゴシック" | "ＭＳＰゴシック" | "MS P Gothic" | "MS PGothic" | "MS-PGothic"
-        )
-    {
-        return None;
+        ))
+    .then_some(size_pt)
+}
+
+fn ms_pgothic_advance_px(font_descriptor: &str, grapheme: &str) -> Option<f64> {
+    // Most descriptors don't use this override. Reuse the family match
+    // for adjacent graphemes instead of parsing the same font for each one.
+    thread_local! {
+        static LAST: std::cell::RefCell<Option<(String, Option<f32>)>> = const { std::cell::RefCell::new(None) };
     }
+    let size_pt = if font_descriptor.len() > 1024 {
+        ms_pgothic_size_pt(font_descriptor)
+    } else {
+        LAST.with(|last| {
+            let mut last = last.borrow_mut();
+            if let Some((descriptor, size)) = last.as_ref() {
+                if descriptor == font_descriptor {
+                    return *size;
+                }
+            }
+            let size = ms_pgothic_size_pt(font_descriptor);
+            *last = Some((font_descriptor.to_owned(), size));
+            size
+        })
+    }?;
     let mut chars = grapheme.chars();
     let codepoint = chars.next()? as usize;
     if chars.next().is_some() {
