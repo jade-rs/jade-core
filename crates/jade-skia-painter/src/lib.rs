@@ -739,12 +739,18 @@ impl SkiaPainter {
 
     fn draw_glyphs(&self, text: &str, glyphs: &[u16], font: &Font, x: f32, y: f32, paint: &Paint) {
         let mut builder = skia_safe::TextBlobBuilder::new();
-        let (run, utf8, clusters) =
-            builder.alloc_run_text(font, glyphs.len(), (0.0, 0.0), text.len(), None);
-        run.copy_from_slice(glyphs);
-        utf8.copy_from_slice(text.as_bytes());
-        for (cluster, (offset, _)) in clusters.iter_mut().zip(text.char_indices()) {
-            *cluster = offset as u32;
+        if matches!(&*self.shared.surface.borrow(), PaintSurface::Raster(_)) {
+            builder
+                .alloc_run(font, glyphs.len(), (0.0, 0.0), None)
+                .copy_from_slice(glyphs);
+        } else {
+            let (run, utf8, clusters) =
+                builder.alloc_run_text(font, glyphs.len(), (0.0, 0.0), text.len(), None);
+            run.copy_from_slice(glyphs);
+            utf8.copy_from_slice(text.as_bytes());
+            for (cluster, (offset, _)) in clusters.iter_mut().zip(text.char_indices()) {
+                *cluster = offset as u32;
+            }
         }
         let Some(blob) = builder.make() else {
             return;
@@ -1148,32 +1154,56 @@ impl SkiaPainter {
 
     /// The surface's pixels as BGRA with premultiplied alpha, plus its size.
     ///
-    /// That layout is not arbitrary: it is what a GPU compositor wants on
-    /// Apple platforms, and what gpui's `RenderImage` documents itself as
-    /// holding. Reading in the compositor's own order avoids a per-pixel swap
-    /// on the way to the screen.
+    /// gpui's `RenderImage` accepts BGRA. Copy straight into that layout so
+    /// the compositor can consume the returned buffer as-is.
     pub fn read_bgra_premultiplied(&self) -> Option<(Vec<u8>, i32, i32)> {
         let mut target = self.shared.surface.borrow_mut();
         let PaintSurface::Raster(surface) = &mut *target else {
             return None;
         };
-        let image = surface.image_snapshot();
-        let (width, height) = (image.width(), image.height());
+        let (width, height) = (surface.width(), surface.height());
+        let row_bytes = usize::try_from(width).ok()?.checked_mul(4)?;
+        let len = row_bytes.checked_mul(usize::try_from(height).ok()?)?;
+        // Both raster constructors use N32 premultiplied surfaces without a
+        // color space. Keep Skia's native drawing format and convert only
+        // the copy returned to the compositor.
+        let source = surface.peek_pixels()?;
+        if source.row_bytes() == row_bytes {
+            let bytes = source.bytes()?.get(..len)?;
+            let pixels = match source.color_type() {
+                skia_safe::ColorType::BGRA8888 => Some(bytes.to_vec()),
+                // Skia's compiled conversion is faster than the unoptimized
+                // Rust pixel loop in debug builds.
+                skia_safe::ColorType::RGBA8888 if !cfg!(debug_assertions) => Some(
+                    bytes
+                        .as_chunks::<4>()
+                        .0
+                        .iter()
+                        .map(|&bytes| {
+                            // Keep green and alpha, and exchange red and blue.
+                            let rgba = u32::from_le_bytes(bytes);
+                            ((rgba & 0xff00_ff00) | (rgba & 0x00ff_00ff).rotate_left(16))
+                                .to_le_bytes()
+                        })
+                        .collect::<Vec<_>>()
+                        .into_flattened(),
+                ),
+                _ => None,
+            };
+            if let Some(pixels) = pixels {
+                return Some((pixels, width, height));
+            }
+        }
+
         let info = skia_safe::ImageInfo::new(
             (width, height),
             skia_safe::ColorType::BGRA8888,
             skia_safe::AlphaType::Premul,
             None,
         );
-        let mut pixels = vec![0u8; (width * height * 4) as usize];
-        image
-            .read_pixels(
-                &info,
-                &mut pixels,
-                (width * 4) as usize,
-                (0, 0),
-                skia_safe::image::CachingHint::Allow,
-            )
+        let mut pixels = vec![0; len];
+        surface
+            .read_pixels(&info, &mut pixels, row_bytes, (0, 0))
             .then_some((pixels, width, height))
     }
 

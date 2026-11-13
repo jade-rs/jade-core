@@ -74,3 +74,27 @@ fn stroke_rect_paints_immediately_and_leaves_the_path_alone() {
         "the path was never stroked, so the line must be absent; got {unstroked_line}"
     );
 }
+
+#[test]
+fn compositor_readback_preserves_channel_order_and_owns_its_pixels() {
+    let painter = SkiaPainter::new_scaled(1.5, 1.0, 2.0).expect("create scaled raster");
+    painter.set_fill_style_str("#ff4000");
+    painter.set_global_alpha(0.5);
+    painter.fill_rect(0.0, 0.0, 1.0, 1.0);
+
+    let generation = painter.raster_generation();
+    let (before, width, height) = painter.read_bgra_premultiplied().unwrap();
+    assert_eq!((width, height), (3, 2));
+    assert_eq!(
+        before,
+        [127, 159, 255, 255, 127, 159, 255, 255, 255, 255, 255, 255].repeat(2)
+    );
+    assert_eq!(painter.raster_generation(), generation);
+
+    painter.set_global_alpha(1.0);
+    painter.set_fill_style_str("#0000ff");
+    painter.fill_rect(1.0, 0.0, 0.5, 1.0);
+    let (after, _, _) = painter.read_bgra_premultiplied().unwrap();
+    assert_eq!(&after[8..12], &[255, 0, 0, 255]);
+    assert_eq!(&before[8..12], &[255, 255, 255, 255]);
+}
