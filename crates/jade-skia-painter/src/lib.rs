@@ -739,12 +739,18 @@ impl SkiaPainter {
 
     fn draw_glyphs(&self, text: &str, glyphs: &[u16], font: &Font, x: f32, y: f32, paint: &Paint) {
         let mut builder = skia_safe::TextBlobBuilder::new();
-        let (run, utf8, clusters) =
-            builder.alloc_run_text(font, glyphs.len(), (0.0, 0.0), text.len(), None);
-        run.copy_from_slice(glyphs);
-        utf8.copy_from_slice(text.as_bytes());
-        for (cluster, (offset, _)) in clusters.iter_mut().zip(text.char_indices()) {
-            *cluster = offset as u32;
+        if matches!(&*self.shared.surface.borrow(), PaintSurface::Raster(_)) {
+            builder
+                .alloc_run(font, glyphs.len(), (0.0, 0.0), None)
+                .copy_from_slice(glyphs);
+        } else {
+            let (run, utf8, clusters) =
+                builder.alloc_run_text(font, glyphs.len(), (0.0, 0.0), text.len(), None);
+            run.copy_from_slice(glyphs);
+            utf8.copy_from_slice(text.as_bytes());
+            for (cluster, (offset, _)) in clusters.iter_mut().zip(text.char_indices()) {
+                *cluster = offset as u32;
+            }
         }
         let Some(blob) = builder.make() else {
             return;
@@ -1166,7 +1172,9 @@ impl SkiaPainter {
             let bytes = source.bytes()?.get(..len)?;
             let pixels = match source.color_type() {
                 skia_safe::ColorType::BGRA8888 => Some(bytes.to_vec()),
-                skia_safe::ColorType::RGBA8888 => Some(
+                // Skia's compiled conversion is faster than the unoptimized
+                // Rust pixel loop in debug builds.
+                skia_safe::ColorType::RGBA8888 if !cfg!(debug_assertions) => Some(
                     bytes
                         .as_chunks::<4>()
                         .0
