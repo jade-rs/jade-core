@@ -184,6 +184,40 @@ impl WordDocument {
             })
     }
 
+    pub(crate) fn body_paragraph_is_in_deleted_row(&self, paragraph: usize) -> bool {
+        let Some(ParagraphSurface::Body { path }) = self.paragraph_surfaces.get(paragraph) else {
+            return false;
+        };
+        let Some(body) = self.document.as_ref().and_then(|doc| doc.body.as_ref()) else {
+            return false;
+        };
+        let mut blocks = &body.elements;
+        let mut entries = path.iter();
+        while let Some(PathEntry::Element(index)) = entries.next() {
+            let Some(BodyElement::Table(table)) = blocks.get(*index) else {
+                break;
+            };
+            let Some(PathEntry::TableCell { row, cell }) = entries.next() else {
+                break;
+            };
+            let Some(row) = table.rows.get(*row) else {
+                break;
+            };
+            if row
+                .revision
+                .as_deref()
+                .is_some_and(RevisionMark::is_deletion)
+            {
+                return true;
+            }
+            let Some(cell) = row.cells.get(*cell) else {
+                break;
+            };
+            blocks = &cell.blocks;
+        }
+        false
+    }
+
     /// Every row inserted or deleted with changes tracked, in document
     /// order.
     pub fn table_row_revisions(&self) -> Vec<RowRevision> {

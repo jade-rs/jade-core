@@ -15,12 +15,14 @@ use crate::file_access::FileAccess;
 use base64::Engine as _;
 use futures::executor::block_on;
 use jade_docx_document_core::commands::{CommandContext, CommandExecutor};
+use jade_docx_document_core::document::RevisionMark;
 use jade_docx_document_core::headless_api::{
     apply_headless_commands_with_executor_to_document,
+    apply_protected_headless_commands_with_executor_to_document,
     apply_snapshot_headless_commands_with_executor_to_document,
-    execute_headless_queries_on_document,
+    execute_headless_queries_on_document, inspect_headless_document,
 };
-use jade_docx_document_core::word_document::WordDocument;
+use jade_docx_document_core::word_document::{ParagraphStory, WordDocument};
 use jade_docx_document_core::Options;
 use jade_docx_headless_api::{
     HeadlessCommand, HeadlessEditRequest, HeadlessQuery, HeadlessQueryRequest,
@@ -450,7 +452,8 @@ impl Server {
         let bytes = load_input_bytes(&self.file_access, args)?;
         let doc = block_on(WordDocument::load(&bytes, &Options::default()))
             .map_err(|err| format!("failed to load docx: {err}"))?;
-        let stats = document_stats(&doc)?;
+        let mut stats = document_stats(&doc)?;
+        stats["protected_edits"] = json!(true);
         let session_id = self.alloc_session_id();
         self.sessions.insert(
             session_id.clone(),
@@ -485,6 +488,17 @@ impl Server {
                 return Err("coordinates must be either `sequential` or `snapshot`".to_string());
             }
         };
+        let protected = args.get("protected_edits").and_then(Value::as_bool) == Some(true);
+        if protected && snapshot_coordinates {
+            return Err("protected edits require sequential coordinates".to_owned());
+        }
+        let apply = if snapshot_coordinates {
+            apply_snapshot_headless_commands_with_executor_to_document
+        } else if protected {
+            apply_protected_headless_commands_with_executor_to_document
+        } else {
+            apply_headless_commands_with_executor_to_document
+        };
         let request = HeadlessEditRequest { commands };
 
         if dry_run {
@@ -494,25 +508,11 @@ impl Server {
             let before_stats = include_diff
                 .then(|| document_stats_payload(&doc))
                 .transpose()?;
-            let before_paragraphs = include_diff.then(|| paragraph_texts(&doc));
+            let before_paragraphs = include_diff.then(|| paragraph_snapshots(&doc));
             let mut selection = session.selection;
 
-            selection = if snapshot_coordinates {
-                apply_snapshot_headless_commands_with_executor_to_document(
-                    &mut doc,
-                    &mut executor,
-                    selection,
-                    &request,
-                )
-            } else {
-                apply_headless_commands_with_executor_to_document(
-                    &mut doc,
-                    &mut executor,
-                    selection,
-                    &request,
-                )
-            }
-            .map_err(|err| format!("apply failed: {err}"))?;
+            selection = apply(&mut doc, &mut executor, selection, &request)
+                .map_err(|err| format!("apply failed: {err}"))?;
 
             let mut response = json!({
                 "ok": true,
@@ -527,20 +527,22 @@ impl Server {
             });
             if !queries.is_empty() {
                 response["query"] = serde_json::to_value(
-                    execute_headless_queries_on_document(&doc, &HeadlessQueryRequest { queries })
+                    inspect_headless_document(&doc, &HeadlessQueryRequest { queries })
                         .map_err(|err| format!("query failed: {err}"))?,
                 )
                 .map_err(|err| err.to_string())?;
             }
             if include_diff {
-                let after_paragraphs = paragraph_texts(&doc);
+                let after_paragraphs = paragraph_snapshots(&doc);
+                let (changed, removed) = diff_paragraphs(
+                    before_paragraphs.as_deref().unwrap_or(&[]),
+                    &after_paragraphs,
+                );
                 response["diff"] = json!({
                     "before": before_stats.unwrap_or_else(|| json!({})),
                     "after": document_stats_payload(&doc)?,
-                    "changed_paragraphs": changed_paragraph_indices(
-                        before_paragraphs.as_deref().unwrap_or(&[]),
-                        &after_paragraphs,
-                    ),
+                    "changed_paragraphs": changed,
+                    "removed_paragraphs": removed,
                 });
             }
             let _ = selection;
@@ -556,24 +558,15 @@ impl Server {
             let session = self.session_ref(args)?;
             let mut preview_doc = session.doc.clone();
             let mut preview_executor = CommandExecutor::new();
-            let preview_selection = if snapshot_coordinates {
-                apply_snapshot_headless_commands_with_executor_to_document(
-                    &mut preview_doc,
-                    &mut preview_executor,
-                    session.selection,
-                    &request,
-                )
-            } else {
-                apply_headless_commands_with_executor_to_document(
-                    &mut preview_doc,
-                    &mut preview_executor,
-                    session.selection,
-                    &request,
-                )
-            }
+            let preview_selection = apply(
+                &mut preview_doc,
+                &mut preview_executor,
+                session.selection,
+                &request,
+            )
             .map_err(|err| format!("apply failed: {err}"))?;
             if !queries.is_empty() {
-                execute_headless_queries_on_document(
+                inspect_headless_document(
                     &preview_doc,
                     &HeadlessQueryRequest {
                         queries: queries.clone(),
@@ -593,7 +586,7 @@ impl Server {
         let before_paragraphs = include_diff
             .then(|| {
                 let session = self.session_ref(args)?;
-                Ok::<_, String>(paragraph_texts(&session.doc))
+                Ok::<_, String>(paragraph_snapshots(&session.doc))
             })
             .transpose()?;
 
@@ -601,21 +594,12 @@ impl Server {
         let undo_depth_before = session.executor.undo_depth();
         // Route through the executor so each command lands on the undo stack;
         // the returned selection is threaded into the next call.
-        session.selection = if snapshot_coordinates {
-            apply_snapshot_headless_commands_with_executor_to_document(
-                &mut session.doc,
-                &mut session.executor,
-                session.selection.take(),
-                &request,
-            )
-        } else {
-            apply_headless_commands_with_executor_to_document(
-                &mut session.doc,
-                &mut session.executor,
-                session.selection.take(),
-                &request,
-            )
-        }
+        session.selection = apply(
+            &mut session.doc,
+            &mut session.executor,
+            session.selection.take(),
+            &request,
+        )
         .map_err(|err| format!("apply failed: {err}"))?;
         let mut response = json!({
             "ok": true,
@@ -630,23 +614,22 @@ impl Server {
         });
         if !queries.is_empty() {
             response["query"] = serde_json::to_value(
-                execute_headless_queries_on_document(
-                    &session.doc,
-                    &HeadlessQueryRequest { queries },
-                )
-                .map_err(|err| format!("query failed: {err}"))?,
+                inspect_headless_document(&session.doc, &HeadlessQueryRequest { queries })
+                    .map_err(|err| format!("query failed: {err}"))?,
             )
             .map_err(|err| err.to_string())?;
         }
         if include_diff {
-            let after_paragraphs = paragraph_texts(&session.doc);
+            let after_paragraphs = paragraph_snapshots(&session.doc);
+            let (changed, removed) = diff_paragraphs(
+                before_paragraphs.as_deref().unwrap_or(&[]),
+                &after_paragraphs,
+            );
             response["diff"] = json!({
                 "before": before_stats.unwrap_or_else(|| json!({})),
                 "after": document_stats_payload(&session.doc)?,
-                "changed_paragraphs": changed_paragraph_indices(
-                    before_paragraphs.as_deref().unwrap_or(&[]),
-                    &after_paragraphs,
-                ),
+                "changed_paragraphs": changed,
+                    "removed_paragraphs": removed,
             });
         }
         Ok(response)
@@ -810,9 +793,8 @@ impl Server {
             "max_revisions": 100_000,
         }]))
         .map_err(|err| err.to_string())?;
-        let response =
-            execute_headless_queries_on_document(&session.doc, &HeadlessQueryRequest { queries })
-                .map_err(|err| format!("revision lookup failed: {err}"))?;
+        let response = inspect_headless_document(&session.doc, &HeadlessQueryRequest { queries })
+            .map_err(|err| format!("revision lookup failed: {err}"))?;
         let response = serde_json::to_value(response).map_err(|err| err.to_string())?;
         let Some(revisions) = response["results"][0]["revisions"].as_array() else {
             return Ok(());
@@ -972,7 +954,7 @@ impl Server {
         }]))
         .map_err(|err| err.to_string())?;
         let doc = &self.session_ref(args)?.doc;
-        let response = execute_headless_queries_on_document(doc, &HeadlessQueryRequest { queries })
+        let response = inspect_headless_document(doc, &HeadlessQueryRequest { queries })
             .map_err(|err| format!("query failed: {err}"))?;
         let response = serde_json::to_value(response).map_err(|err| err.to_string())?;
         Ok(response["results"][0].clone())
@@ -1068,7 +1050,7 @@ impl Server {
             .map_err(|err| format!("invalid queries: {err}"))?;
         let doc = &self.session_ref(args)?.doc;
         let request = HeadlessQueryRequest { queries };
-        let response = execute_headless_queries_on_document(doc, &request)
+        let response = inspect_headless_document(doc, &request)
             .map_err(|err| format!("query failed: {err}"))?;
         serde_json::to_value(response).map_err(|err| err.to_string())
     }
@@ -1179,7 +1161,7 @@ fn parse_queries_arg(args: &Value) -> Result<Vec<HeadlessQuery>, String> {
 fn document_stats(doc: &WordDocument) -> Result<Value, String> {
     let queries: Vec<HeadlessQuery> = serde_json::from_value(json!([{ "type": "document_stats" }]))
         .map_err(|err| err.to_string())?;
-    let response = execute_headless_queries_on_document(doc, &HeadlessQueryRequest { queries })
+    let response = inspect_headless_document(doc, &HeadlessQueryRequest { queries })
         .map_err(|err| format!("stats query failed: {err}"))?;
     serde_json::to_value(response.results.into_iter().next()).map_err(|err| err.to_string())
 }
@@ -1192,27 +1174,106 @@ fn document_stats_payload(doc: &WordDocument) -> Result<Value, String> {
         .unwrap_or_else(|| stats_result.clone()))
 }
 
-fn paragraph_texts(doc: &WordDocument) -> Vec<String> {
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+enum ParagraphIdentity {
+    Body(u32),
+    Footnote(u32),
+    Endnote(u32),
+    Surface(usize),
+}
+
+#[derive(PartialEq)]
+struct ParagraphSnapshot {
+    identity: ParagraphIdentity,
+    text: String,
+    revisions: Vec<(usize, usize, RevisionMark)>,
+    mark_revision: Option<Box<RevisionMark>>,
+    row_revisions: Vec<RevisionMark>,
+}
+
+fn paragraph_snapshots(doc: &WordDocument) -> Vec<ParagraphSnapshot> {
+    let mut row_revisions: HashMap<_, Vec<_>> = HashMap::new();
+    for row in doc.table_row_revisions() {
+        for paragraph in row.paragraphs {
+            row_revisions
+                .entry(paragraph)
+                .or_default()
+                .push(row.mark.clone());
+        }
+    }
     (0..doc.paragraph_count())
         .map(|index| {
-            doc.paragraph(index)
-                .map(|paragraph| {
-                    paragraph
-                        .runs
-                        .iter()
-                        .map(|run| run.text.as_str())
-                        .collect::<String>()
-                })
-                .unwrap_or_default()
+            let mut snapshot = ParagraphSnapshot {
+                identity: ParagraphIdentity::Surface(index),
+                text: String::new(),
+                revisions: Vec::new(),
+                mark_revision: None,
+                row_revisions: row_revisions.remove(&index).unwrap_or_default(),
+            };
+            if let Some(paragraph) = doc.paragraph(index) {
+                if let Some(id) = paragraph.node_id.map(|id| id.raw()) {
+                    snapshot.identity = if doc.is_note_paragraph_surface(index) {
+                        match doc.paragraph_story(index) {
+                            Some(ParagraphStory::Footnote { .. }) => {
+                                ParagraphIdentity::Footnote(id)
+                            }
+                            Some(ParagraphStory::Endnote { .. }) => ParagraphIdentity::Endnote(id),
+                            _ => ParagraphIdentity::Surface(index),
+                        }
+                    } else {
+                        ParagraphIdentity::Body(id)
+                    };
+                }
+                for run in &paragraph.runs {
+                    let start = snapshot.text.len();
+                    snapshot.text.push_str(&run.text);
+                    let end = snapshot.text.len();
+                    if let Some(mark) = &run.revision {
+                        // Splitting one tracked run into adjacent runs of the
+                        // same revision does not change the tracked range.
+                        if let Some((_, previous_end, previous_mark)) =
+                            snapshot.revisions.last_mut()
+                        {
+                            if *previous_end == start && *previous_mark == *mark {
+                                *previous_end = end;
+                                continue;
+                            }
+                        }
+                        snapshot.revisions.push((start, end, mark.clone()));
+                    }
+                }
+                snapshot.mark_revision = paragraph
+                    .properties
+                    .as_ref()
+                    .and_then(|p| p.mark_revision.clone());
+            }
+            snapshot
         })
         .collect()
 }
 
-fn changed_paragraph_indices(before: &[String], after: &[String]) -> Vec<usize> {
-    let max = before.len().max(after.len());
-    (0..max)
-        .filter(|index| before.get(*index) != after.get(*index))
-        .collect()
+fn diff_paragraphs(
+    before: &[ParagraphSnapshot],
+    after: &[ParagraphSnapshot],
+) -> (Vec<usize>, Vec<usize>) {
+    let mut unmatched: HashMap<_, _> = before
+        .iter()
+        .enumerate()
+        .map(|(index, paragraph)| (paragraph.identity, (index, paragraph)))
+        .collect();
+    let changed = after
+        .iter()
+        .enumerate()
+        .filter_map(
+            |(index, paragraph)| match unmatched.remove(&paragraph.identity) {
+                Some((_, old)) if old == paragraph => None,
+                _ => Some(index),
+            },
+        )
+        .collect();
+    let mut removed: Vec<_> = unmatched.into_values().map(|(index, _)| index).collect();
+    removed.sort_unstable();
+    (changed, removed)
 }
 
 /// Wrap a tool outcome into the MCP `tools/call` result shape. Tool execution
@@ -4595,7 +4656,12 @@ const TOOLS: &[Tool] = &[
             opt(
                 "include_diff",
                 ArgType::Flag,
-                "When true, also return before/after document stats and the indices of the paragraphs whose text changed.",
+                "When true, also return before/after stats and the indices of added, changed and removed paragraphs, including revision changes.",
+            ),
+            opt(
+                "protected_edits",
+                ArgType::Flag,
+                "When true, validate protected DOCX structures against each command before editing.",
             ),
             opt(
                 "queries",
@@ -4624,7 +4690,7 @@ const TOOLS: &[Tool] = &[
             opt(
                 "diff",
                 ArgType::Object,
-                "Present with include_diff: `before` / `after` document stats and `changed_paragraphs`.",
+                "Present with include_diff: `before` / `after` document stats and `changed_paragraphs` (after indices) / `removed_paragraphs` (before indices).",
             ),
             CAN_UNDO,
             CAN_REDO,
@@ -9665,6 +9731,638 @@ mod tests {
         reopened["session_id"].as_str().unwrap().to_string()
     }
 
+    fn body_fixture(body: &str) -> Vec<u8> {
+        with_document_xml(&std::fs::read(HELLO_DOCX).unwrap(), |mut xml| {
+            let start = xml.find("<w:body>").unwrap() + "<w:body>".len();
+            let end = xml.find("</w:body>").unwrap();
+            xml.replace_range(start..end, body);
+            xml
+        })
+    }
+
+    const BOUNDARY_TABLE: &str = concat!(
+        "<w:tbl><w:tblPr/><w:tblGrid><w:gridCol w:w=\"2400\"/></w:tblGrid>",
+        "<w:tr><w:tc><w:tcPr/><w:p><w:r><w:t>セル</w:t></w:r></w:p></w:tc></w:tr></w:tbl>"
+    );
+
+    fn protected_batch(
+        server: &mut Server,
+        session: &str,
+        commands: Value,
+        dry_run: bool,
+    ) -> Result<Value, String> {
+        try_tool(
+            server,
+            "apply_commands",
+            json!({
+                "session_id": session,
+                "protected_edits": true,
+                "include_diff": true,
+                "dry_run": dry_run,
+                "commands": commands,
+            }),
+        )
+    }
+
+    fn all_paragraph_text(server: &mut Server, session: &str) -> Vec<String> {
+        let result = try_tool(
+            server,
+            "query",
+            json!({
+                "session_id": session,
+                "queries": [{ "type": "paragraph_slice", "max_paragraphs": 100 }],
+            }),
+        )
+        .unwrap();
+        result["results"][0]["paragraphs"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|paragraph| paragraph["text"].as_str().unwrap().to_owned())
+            .collect()
+    }
+
+    #[test]
+    fn protected_edits_preserve_comments_and_decide_multiple_revisions() {
+        let bytes = body_fixture(concat!(
+            "<w:p><w:r><w:t>Commented</w:t></w:r></w:p>",
+            "<w:p><w:del w:id=\"11\" w:author=\"Reviewer\"><w:r><w:delText>Old</w:delText></w:r></w:del>",
+            "<w:ins w:id=\"12\" w:author=\"Reviewer\"><w:r><w:t>New</w:t></w:r></w:ins></w:p>",
+            "<w:p><w:r><w:t>Plain</w:t></w:r></w:p>",
+        ));
+        for (decision, expected) in [("accept_revisions", "New"), ("reject_revisions", "Old")] {
+            let mut server = test_server();
+            let session = reopen(&mut server, &bytes);
+            let comment = |text| {
+                json!({
+                    "type": "add_comment_by_text", "query": "Commented", "text": text, "author": "Reviewer"
+                })
+            };
+            protected_batch(&mut server, &session, json!([comment("First")]), false).unwrap();
+            protected_batch(&mut server, &session, json!([comment("Second")]), false).unwrap();
+            let comments = comment_threads(&mut server, &session);
+            assert_eq!(comments.len(), 2);
+
+            let before = export_bytes(&mut server, &session);
+            let error = protected_batch(
+                &mut server,
+                &session,
+                json!([
+                    { "type": "insert_text", "paragraph": 2, "offset": 0, "text": "Allowed" },
+                    { "type": "insert_text", "paragraph": 0, "offset": 0, "text": "Blocked" },
+                ]),
+                false,
+            )
+            .unwrap_err();
+            assert!(
+                error.contains("index 1") && error.contains("covered by a comment"),
+                "{error}"
+            );
+            assert_eq!(export_bytes(&mut server, &session), before);
+
+            let result = try_tool(
+                &mut server,
+                "query",
+                json!({
+                    "session_id": session, "queries": [{ "type": "revisions", "max_revisions": 20 }]
+                }),
+            )
+            .unwrap();
+            let revisions = result["results"][0]["revisions"].as_array().unwrap();
+            assert_eq!(revisions.len(), 2);
+            let targets: Vec<_> = revisions.iter().map(|revision| json!({
+                "id": revision["id"], "paragraph": revision["paragraph"],
+                "start_offset": revision["start_offset"], "end_offset": revision["end_offset"],
+            })).collect();
+            protected_batch(
+                &mut server,
+                &session,
+                json!([
+                    { "type": decision, "revision_targets": targets },
+                ]),
+                false,
+            )
+            .unwrap();
+            protected_batch(
+                &mut server,
+                &session,
+                json!([
+                    { "type": "insert_text", "paragraph": 2, "offset": 5, "text": "!" },
+                ]),
+                false,
+            )
+            .unwrap();
+
+            let exported = export_bytes(&mut server, &session);
+            let reopened = reopen(&mut server, &exported);
+            assert_eq!(
+                all_paragraph_text(&mut server, &reopened),
+                ["Commented", expected, "Plain!"]
+            );
+            assert!(revisions_in(&mut server, &reopened, 1).is_empty());
+            assert_eq!(comment_threads(&mut server, &reopened), comments);
+            let xml = part_xml(&exported, "word/document.xml").unwrap();
+            assert_eq!(xml.matches("<w:commentRangeStart").count(), 2);
+            assert_eq!(xml.matches("<w:commentRangeEnd").count(), 2);
+        }
+    }
+
+    #[test]
+    fn protected_edits_scope_row_insertion_to_the_target_table() {
+        let field = "<w:fldSimple w:instr=\"NUMPAGES\"><w:r><w:t>12</w:t></w:r></w:fldSimple>";
+        let protected_table = BOUNDARY_TABLE.replace("<w:r><w:t>セル</w:t></w:r>", field);
+        assert_ne!(protected_table, BOUNDARY_TABLE);
+        let bytes = body_fixture(&format!(
+            "<w:p><w:r><w:t>Commented</w:t></w:r></w:p>{BOUNDARY_TABLE}{protected_table}"
+        ));
+        let mut server = test_server();
+        let session = reopen(&mut server, &bytes);
+        protected_batch(&mut server, &session, json!([
+            { "type": "add_comment_by_text", "query": "Commented", "text": "Review", "author": "Reviewer" },
+            { "type": "insert_table_row", "table_order_index": 0, "row_index": 1, "template_row": 0 },
+        ]), false).unwrap();
+        let before = export_bytes(&mut server, &session);
+        let error = protected_batch(
+            &mut server,
+            &session,
+            json!([
+                { "type": "insert_table_row", "table_order_index": 1, "row_index": 1 },
+            ]),
+            false,
+        )
+        .unwrap_err();
+        assert!(
+            error.contains("table containing a protected DOCX structure"),
+            "{error}"
+        );
+        assert_eq!(export_bytes(&mut server, &session), before);
+        let reopened = reopen(&mut server, &before);
+        assert_eq!(
+            all_paragraph_text(&mut server, &reopened),
+            ["Commented", "セル", "", "12"]
+        );
+        assert_eq!(comment_threads(&mut server, &reopened).len(), 1);
+    }
+
+    proptest! {
+        #[test]
+        fn protected_edits_match_the_docx_model(
+            steps in prop::collection::vec((0u8..14, 0usize..30), 1..22),
+        ) {
+            let bytes = body_fixture(&format!(
+                "<w:p><w:r><w:t>契約</w:t></w:r></w:p><w:p><w:r><w:t>契約</w:t></w:r></w:p>{BOUNDARY_TABLE}<w:p><w:r><w:t>末尾</w:t></w:r></w:p>"
+            ));
+            let mut server = test_server();
+            let mut session = reopen(&mut server, &bytes);
+            let mut body = vec!["契約".to_owned(), "契約".to_owned()];
+            let mut rows = vec!["セル".to_owned()];
+            let mut tail = "末尾".to_owned();
+            let mut tracked_tail_deletion = false;
+
+            for (op, seed) in steps {
+                let old_text = all_paragraph_text(&mut server, &session);
+                let tail_index = body.len() + rows.len();
+                let at = seed % body.len();
+                let (commands, changed, removed) = match op {
+                    0 => {
+                        body[at].insert(0, '甲');
+                        (json!([{ "type": "insert_text", "paragraph": at, "offset": 0, "text": "甲" }]), vec![at], vec![])
+                    }
+                    1 if body[at].chars().count() > 1 => {
+                        // Both pieces differ from the original. Index shifts
+                        // must not attribute edits to the table or the tail.
+                        let offset = body[at].char_indices().last().map_or(0, |(offset, _)| offset);
+                        let suffix = body[at].split_off(offset);
+                        body.insert(at + 1, suffix);
+                        (json!([{ "type": "insert_paragraph_break", "paragraph": at, "offset": offset }]), vec![at, at + 1], vec![])
+                    }
+                    2 if body.len() > 1 => {
+                        let left = seed % (body.len() - 1);
+                        let offset = body[left].len();
+                        let end = body.remove(left + 1).len();
+                        body[left].push('乙');
+                        (json!([{ "type": "replace_range", "start_paragraph": left, "start_offset": offset,
+                            "end_paragraph": left + 1, "end_offset": end, "text": "乙" }]), vec![left], vec![left + 1])
+                    }
+                    3 if !rows.is_empty() => {
+                        let row = seed % (rows.len() + 1);
+                        let paragraph = body.len() + row;
+                        rows.insert(row, String::new());
+                        (json!([{ "type": "insert_table_row", "table_order_index": 0, "row_index": row }]), vec![paragraph], vec![])
+                    }
+                    4 if !tracked_tail_deletion => {
+                        tracked_tail_deletion = true;
+                        (json!([
+                            { "type": "start_change_tracking", "author": "法務" },
+                            { "type": "replace_range", "start_paragraph": tail_index, "start_offset": 0,
+                                "end_paragraph": tail_index, "end_offset": tail.len(), "text": "" },
+                            { "type": "stop_change_tracking" },
+                        ]), vec![tail_index], vec![])
+                    }
+                    5 if !tracked_tail_deletion => {
+                        tail.insert(0, '終');
+                        (json!([{ "type": "insert_text", "paragraph": tail_index, "offset": 0, "text": "終" }]), vec![tail_index], vec![])
+                    }
+                    7 if !rows.is_empty() => {
+                        let removed = (body.len()..tail_index).collect();
+                        rows.clear();
+                        (json!([{ "type": "delete_table", "table_order_index": 0 }]), vec![], removed)
+                    }
+                    8 if rows.is_empty() => {
+                        rows.push(String::new());
+                        (json!([{ "type": "insert_table", "after_paragraph": body.len() - 1,
+                            "rows": 1, "columns": 1 }]), vec![body.len()], vec![])
+                    }
+                    13 if body[at].chars().count() > 1 => {
+                        // The command sees the deletion introduced by the preceding
+                        // command. It was absent from the snapshot at batch start.
+                        let offset = body[at].char_indices().nth(1).unwrap().0;
+                        let edit = match seed % 3 {
+                            0 => json!({ "type": "insert_text", "paragraph": at, "offset": offset, "text": "追記" }),
+                            1 => json!({ "type": "insert_paragraph_break", "paragraph": at, "offset": offset }),
+                            _ => json!({ "type": "replace_range", "start_paragraph": at, "start_offset": offset,
+                                "end_paragraph": at, "end_offset": body[at].len(), "text": "追記" }),
+                        };
+                        let commands = json!([
+                            { "type": "start_change_tracking", "author": "法務" },
+                            { "type": "replace_range", "start_paragraph": at, "start_offset": 0,
+                                "end_paragraph": at, "end_offset": body[at].len(), "text": "" },
+                            edit,
+                        ]);
+                        let before = export_bytes(&mut server, &session);
+                        for dry_run in [true, false] {
+                            let error = protected_batch(&mut server, &session, commands.clone(), dry_run).unwrap_err();
+                            prop_assert!(error.contains("index 2") && error.contains("deleted or moved-from revision text"), "{}", error);
+                            prop_assert_eq!(&export_bytes(&mut server, &session), &before);
+                        }
+                        continue;
+                    }
+                    9..=12 => {
+                        let (invalid, reason) = match op {
+                            9 => (json!({ "type": "insert_text", "paragraph": 0, "offset": 1, "text": "X" }),
+                                "inside a character"),
+                            10 => (json!({ "type": "insert_text", "paragraph": 0, "offset": body[0].len() + 4 + seed, "text": "X" }),
+                                "past the end of paragraph"),
+                            11 => (json!({ "type": "insert_table", "after_paragraph": tail_index + 1 + seed, "rows": 1, "columns": 1 }),
+                                "after_paragraph must reference an existing paragraph"),
+                            _ => (json!({ "type": "add_comment_by_text", "query": "契", "occurrence": 100 + seed,
+                                "text": "確認", "author": "法務" }), "occurrence"),
+                        };
+                        let commands = json!([
+                            { "type": "insert_text", "paragraph": 0, "offset": 0, "text": "甲" },
+                            invalid,
+                        ]);
+                        let before = export_bytes(&mut server, &session);
+                        for dry_run in [true, false] {
+                            let error = protected_batch(&mut server, &session, commands.clone(), dry_run).unwrap_err();
+                            prop_assert!(error.contains("index 1") && error.contains(reason), "{}", error);
+                            prop_assert_eq!(&export_bytes(&mut server, &session), &before);
+                        }
+                        continue;
+                    }
+                    _ if !rows.is_empty() => {
+                        let commands = json!([
+                            { "type": "insert_text", "paragraph": 0, "offset": 0, "text": "X" },
+                            { "type": "insert_text", "paragraph": 0, "offset": 0, "text": "Y" },
+                            { "type": "replace_range", "start_paragraph": body.len() - 1, "start_offset": 0,
+                              "end_paragraph": tail_index, "end_offset": 0, "text": "" },
+                        ]);
+                        let before = export_bytes(&mut server, &session);
+                        for dry_run in [true, false] {
+                            let error = protected_batch(&mut server, &session, commands.clone(), dry_run).unwrap_err();
+                            prop_assert!(error.contains("index 2") && error.contains("outside tables"), "{}", error);
+                            prop_assert_eq!(&export_bytes(&mut server, &session), &before);
+                        }
+                        continue;
+                    }
+                    _ => {
+                        body[at].insert(0, '甲');
+                        (json!([{ "type": "insert_text", "paragraph": at, "offset": 0, "text": "甲" }]), vec![at], vec![])
+                    }
+                };
+
+                let preview = protected_batch(&mut server, &session, commands.clone(), true).unwrap();
+                prop_assert_eq!(all_paragraph_text(&mut server, &session), old_text);
+                let applied = protected_batch(&mut server, &session, commands, false).unwrap();
+                prop_assert_eq!(&applied["diff"], &preview["diff"]);
+                prop_assert_eq!(&applied["diff"]["changed_paragraphs"], &json!(changed));
+                prop_assert_eq!(&applied["diff"]["removed_paragraphs"], &json!(removed));
+
+                let expected: Vec<_> = body.iter().chain(&rows).chain(std::iter::once(&tail)).cloned().collect();
+                prop_assert_eq!(&all_paragraph_text(&mut server, &session), &expected);
+                if seed % 3 == 0 {
+                    let bytes = export_bytes(&mut server, &session);
+                    try_tool(&mut server, "close_docx", json!({ "session_id": session })).unwrap();
+                    session = reopen(&mut server, &bytes);
+                    prop_assert_eq!(&all_paragraph_text(&mut server, &session), &expected);
+                }
+            }
+        }
+
+        #[test]
+        fn deleted_row_visibility_matches_comment_occurrence_after_reopen(
+            columns in 2usize..5,
+            decisions in prop::collection::vec((0usize..20, any::<bool>()), 1..8),
+        ) {
+            let cell = "<w:tc><w:p><w:r><w:t>😀同じ</w:t></w:r></w:p></w:tc>";
+            let row = format!("<w:tr>{}</w:tr>", cell.repeat(columns));
+            let grid = "<w:gridCol w:w=\"2400\"/>".repeat(columns);
+            let bytes = body_fixture(&format!(
+                "<w:tbl><w:tblPr/><w:tblGrid>{grid}</w:tblGrid>{}</w:tbl>",
+                row.repeat(decisions.len() + 1),
+            ));
+            let mut server = test_server();
+            let mut session = reopen(&mut server, &bytes);
+            let mut rows = decisions.len() + 1;
+            for (seed, accept) in decisions {
+                let row_index = seed % rows;
+                let hidden = row_index * columns..(row_index + 1) * columns;
+                let commands = json!([
+                    { "type": "start_change_tracking", "author": "法務" },
+                    { "type": "delete_table_row", "table_order_index": 0, "row_index": row_index },
+                    { "type": "stop_change_tracking" },
+                ]);
+                let preview = protected_batch(&mut server, &session, commands.clone(), true).unwrap();
+                let saved = protected_batch(&mut server, &session, commands, false).unwrap();
+                prop_assert_eq!(&preview["diff"], &saved["diff"]);
+                let saved = export_bytes(&mut server, &session);
+                try_tool(&mut server, "close_docx", json!({ "session_id": session })).unwrap();
+                session = reopen(&mut server, &saved);
+
+                let query = try_tool(&mut server, "query", json!({
+                    "session_id": session, "queries": [
+                        { "type": "paragraph_slice", "max_paragraphs": 100 },
+                        { "type": "revisions", "max_revisions": 20 },
+                    ]
+                })).unwrap();
+                let paragraphs = query["results"][0]["paragraphs"].as_array().unwrap();
+                prop_assert_eq!(paragraphs.len(), rows * columns);
+                for (index, paragraph) in paragraphs.iter().enumerate() {
+                    prop_assert_eq!(paragraph["deleted_table_row"].as_bool(), hidden.contains(&index).then_some(true));
+                }
+
+                let paragraph = hidden.start + seed % columns;
+                let edit = match seed % 3 {
+                    0 => json!({ "type": "insert_text", "paragraph": paragraph, "offset": 4, "text": "追記" }),
+                    1 => json!({ "type": "insert_paragraph_break", "paragraph": paragraph, "offset": 4 }),
+                    _ => json!({
+                        "type": "replace_range", "start_paragraph": paragraph, "start_offset": 4,
+                        "end_paragraph": paragraph, "end_offset": 10, "text": "追記"
+                    }),
+                };
+                for dry_run in [true, false] {
+                    let result = protected_batch(&mut server, &session, json!([
+                        { "type": "start_change_tracking", "author": "法務" },
+                        edit.clone(),
+                    ]), dry_run);
+                    let error = match result {
+                        Err(error) => error,
+                        Ok(_) => return Err(TestCaseError::fail("editing a deleted table row succeeded")),
+                    };
+                    prop_assert!(error.contains("index 1") && error.contains("deleted table row"), "{}", error);
+                    prop_assert_eq!(export_bytes(&mut server, &session), saved.clone());
+                }
+
+                let visible: Vec<_> = (0..rows * columns).filter(|index| !hidden.contains(index)).collect();
+                let occurrence = seed % visible.len();
+                let comment = |occurrence| json!([{
+                    "type": "add_comment_by_text", "query": "同じ", "occurrence": occurrence,
+                    "text": "確認", "author": "法務"
+                }]);
+                // Use a separate session so the comment cannot affect later row decisions.
+                let comments = reopen(&mut server, &saved);
+                let error = protected_batch(&mut server, &comments, comment(visible.len()), false).unwrap_err();
+                prop_assert!(error.contains("index 0") && error.contains("occurrence"), "{}", error);
+                prop_assert_eq!(export_bytes(&mut server, &comments), saved);
+                protected_batch(&mut server, &comments, comment(occurrence), false).unwrap();
+                prop_assert_eq!(comment_anchors(&mut server, &comments), vec![(visible[occurrence] as u64, 4, 10)]);
+                try_tool(&mut server, "close_docx", json!({ "session_id": comments })).unwrap();
+
+                let revisions = query["results"][1]["revisions"].as_array().unwrap();
+                prop_assert_eq!(revisions.len(), 1);
+                let revision = &revisions[0];
+                prop_assert_eq!(&revision["kind"], &json!("deletedRow"));
+                let decision = if accept { "accept_revisions" } else { "reject_revisions" };
+                protected_batch(&mut server, &session, json!([{
+                    "type": decision, "revision_targets": [{
+                        "id": revision["id"], "paragraph": revision["paragraph"],
+                        "start_offset": revision["start_offset"], "end_offset": revision["end_offset"],
+                    }],
+                }]), false).unwrap();
+                rows -= usize::from(accept);
+                let result = try_tool(&mut server, "query", json!({
+                    "session_id": session, "queries": [
+                        { "type": "paragraph_slice", "max_paragraphs": 100 },
+                        { "type": "revisions", "max_revisions": 20 },
+                    ]
+                })).unwrap();
+                let paragraphs = result["results"][0]["paragraphs"].as_array().unwrap();
+                prop_assert_eq!(paragraphs.len(), rows * columns);
+                prop_assert!(paragraphs.iter().all(|p| p["deleted_table_row"].is_null()));
+                prop_assert_eq!(&result["results"][1]["revisions"], &json!([]));
+            }
+        }
+
+        #[test]
+        fn cached_word_fields_are_searchable_with_display_byte_offsets(
+            cached in "[年月日甲乙0-9]{1,10}",
+        ) {
+            let mut body = String::new();
+            for instruction in ["DATE", "NUMPAGES", "REF target", "TOC \\o"] {
+                let result = format!("<w:r><w:t>{cached}</w:t></w:r>");
+                body.push_str(&format!("<w:p><w:r><w:t>契約😀</w:t></w:r><w:fldSimple w:instr=\"{instruction}\">{result}</w:fldSimple></w:p>"));
+                body.push_str(&format!(concat!(
+                    "<w:p><w:r><w:t>契約😀</w:t></w:r><w:r><w:fldChar w:fldCharType=\"begin\"/></w:r>",
+                    "<w:r><w:instrText>{}</w:instrText></w:r><w:r><w:fldChar w:fldCharType=\"separate\"/></w:r>",
+                    "{}<w:r><w:fldChar w:fldCharType=\"end\"/></w:r></w:p>"
+                ), instruction, result));
+            }
+            let bytes = body_fixture(&body);
+            let mut server = test_server();
+            let session = reopen(&mut server, &bytes);
+            let result = try_tool(&mut server, "query", json!({
+                "session_id": session,
+                "queries": [
+                    { "type": "paragraph_slice", "max_paragraphs": 20 },
+                    { "type": "search_text", "query": cached, "max_results": 20 },
+                ],
+            })).unwrap();
+            let paragraphs = result["results"][0]["paragraphs"].as_array().unwrap();
+            let matches = result["results"][1]["matches"].as_array().unwrap();
+            prop_assert_eq!(paragraphs.len(), 8);
+            prop_assert_eq!(matches.len(), 8);
+            for (index, (paragraph, found)) in paragraphs.iter().zip(matches).enumerate() {
+                prop_assert_eq!(&paragraph["text"], &json!(format!("契約😀{cached}")));
+                prop_assert!(paragraph["edit_limitation"].is_string());
+                prop_assert_eq!(&found["paragraph"], &json!(index));
+                prop_assert_eq!(&found["start_offset"], &json!("契約😀".len()));
+                prop_assert_eq!(&found["end_offset"], &json!("契約😀".len() + cached.len()));
+                prop_assert_eq!(&found["matched_text"], &json!(cached));
+            }
+            for regex in [false, true] {
+                let replacement = try_tool(&mut server, "replace_text", json!({
+                    "session_id": session, "find": cached, "replace": "変更",
+                    "regex": regex, "dry_run": true, "end_paragraph": 1,
+                })).unwrap();
+                prop_assert_eq!(&replacement["replaced"], &json!(0));
+            }
+            let before = export_bytes(&mut server, &session);
+            let error = protected_batch(&mut server, &session, json!([
+                { "type": "add_comment_by_text", "query": cached, "occurrence": 7, "text": "確認", "author": "法務" }
+            ]), false).unwrap_err();
+            prop_assert!(error.contains("protected DOCX structure"), "{}", error);
+            prop_assert_eq!(export_bytes(&mut server, &session), before);
+        }
+    }
+
+    #[test]
+    fn protected_batch_rejects_edits_inside_a_deletion_created_in_the_batch() {
+        for paragraph in [
+            "<w:p><w:r><w:t>甲乙丙</w:t></w:r></w:p>",
+            "<w:p><w:r><w:t>甲</w:t></w:r><w:r><w:rPr><w:b/></w:rPr><w:t>乙丙</w:t></w:r></w:p>",
+        ] {
+            assert_edits_inside_batch_deletion_are_rejected(paragraph);
+        }
+    }
+
+    fn assert_edits_inside_batch_deletion_are_rejected(paragraph: &str) {
+        let mut server = test_server();
+        let session = reopen(&mut server, &body_fixture(paragraph));
+        let before = export_bytes(&mut server, &session);
+        for next in [
+            json!({ "type": "insert_text", "paragraph": 0, "offset": 3, "text": "追記" }),
+            json!({ "type": "insert_paragraph_break", "paragraph": 0, "offset": 3 }),
+            json!({ "type": "replace_range", "start_paragraph": 0, "start_offset": 3,
+                "end_paragraph": 0, "end_offset": 6, "text": "追記" }),
+        ] {
+            for dry_run in [true, false] {
+                let error = protected_batch(
+                    &mut server,
+                    &session,
+                    json!([
+                        { "type": "start_change_tracking", "author": "法務" },
+                        { "type": "replace_range", "start_paragraph": 0, "start_offset": 0,
+                            "end_paragraph": 0, "end_offset": 6, "text": "" },
+                        next,
+                    ]),
+                    dry_run,
+                )
+                .unwrap_err();
+                assert!(
+                    error.contains("index 2")
+                        && error.contains("deleted or moved-from revision text"),
+                    "{error}"
+                );
+                assert_eq!(export_bytes(&mut server, &session), before);
+            }
+        }
+    }
+
+    #[test]
+    fn protected_batch_rejects_table_deletions_that_would_remove_a_new_comment() {
+        let first_cell = "<w:tc><w:tcPr/><w:p><w:r><w:t>Review target</w:t></w:r></w:p></w:tc>";
+        let empty_cell = "<w:tc><w:tcPr/><w:p/></w:tc>";
+        let bytes = body_fixture(&format!(
+            "<w:p><w:r><w:t>Body text</w:t></w:r></w:p>\
+             <w:tbl><w:tblPr/><w:tblGrid><w:gridCol w:w=\"2400\"/><w:gridCol w:w=\"2400\"/></w:tblGrid>\
+             <w:tr>{first_cell}{empty_cell}</w:tr><w:tr>{empty_cell}{empty_cell}</w:tr></w:tbl>"
+        ));
+        for delete in [
+            json!({ "type": "delete_table", "table_order_index": 0 }),
+            json!({ "type": "delete_table_row", "table_order_index": 0, "row_index": 0 }),
+            json!({ "type": "delete_table_column", "table_order_index": 0, "column_index": 0 }),
+        ] {
+            let mut server = test_server();
+            let session = reopen(&mut server, &bytes);
+            let before = export_bytes(&mut server, &session);
+            for dry_run in [true, false] {
+                let result = protected_batch(
+                    &mut server,
+                    &session,
+                    json!([
+                        { "type": "add_comment_by_text", "query": "Review target",
+                            "text": "Keep this review", "author": "Reviewer" },
+                        delete,
+                    ]),
+                    dry_run,
+                );
+                assert!(
+                    matches!(&result, Err(error) if error.contains("index 1")
+                        && error.contains("deleting from a table containing a protected DOCX structure")),
+                    "{result:?}"
+                );
+                assert_eq!(export_bytes(&mut server, &session), before);
+            }
+            protected_batch(
+                &mut server,
+                &session,
+                json!([
+                    { "type": "add_comment_by_text", "query": "Body text",
+                        "text": "Keep this review", "author": "Reviewer" },
+                    delete,
+                ]),
+                false,
+            )
+            .unwrap();
+            let after = export_bytes(&mut server, &session);
+            let reopened = reopen(&mut server, &after);
+            assert_eq!(comment_anchors(&mut server, &reopened).len(), 1);
+        }
+    }
+
+    #[test]
+    fn protected_batch_checks_paragraph_break_offsets() {
+        let mut server = test_server();
+        let session = reopen(
+            &mut server,
+            &body_fixture("<w:p><w:r><w:t>契約</w:t></w:r></w:p>"),
+        );
+        let before = export_bytes(&mut server, &session);
+        for (offset, reason) in [
+            (1, "inside a character"),
+            (100, "past the end of paragraph"),
+        ] {
+            let error = protected_batch(
+                &mut server,
+                &session,
+                json!([
+                    { "type": "insert_text", "paragraph": 0, "offset": 0, "text": "甲" },
+                    { "type": "insert_paragraph_break", "paragraph": 0, "offset": offset },
+                ]),
+                false,
+            )
+            .unwrap_err();
+            assert!(
+                error.contains("index 1") && error.contains(reason),
+                "{error}"
+            );
+            assert_eq!(export_bytes(&mut server, &session), before);
+        }
+    }
+
+    #[test]
+    fn a_batch_cannot_edit_a_nested_cell_after_deleting_its_outer_row() {
+        let grid = "<w:tblPr/><w:tblGrid><w:gridCol w:w=\"2400\"/></w:tblGrid>";
+        let p = "<w:p><w:r><w:t>同じ</w:t></w:r></w:p>";
+        let bytes = body_fixture(&format!(
+            "<w:tbl>{grid}<w:tr><w:tc><w:tbl>{grid}<w:tr><w:tc>{p}</w:tc></w:tr></w:tbl>{p}</w:tc></w:tr><w:tr><w:tc>{p}</w:tc></w:tr></w:tbl>"
+        ));
+        let mut server = test_server();
+        let session = reopen(&mut server, &bytes);
+        let before = export_bytes(&mut server, &session);
+        let commands = json!([
+            { "type": "start_change_tracking", "author": "法務" },
+            { "type": "delete_table_row", "table_order_index": 0, "row_index": 0 },
+            { "type": "insert_text", "paragraph": 0, "offset": 0, "text": "追記" },
+        ]);
+        let error = protected_batch(&mut server, &session, commands, false).unwrap_err();
+        assert!(
+            error.contains("index 2") && error.contains("deleted table row"),
+            "{error}"
+        );
+        assert_eq!(export_bytes(&mut server, &session), before);
+    }
+
     proptest! {
         #![proptest_config(ProptestConfig { cases: 24, ..ProptestConfig::default() })]
 
@@ -9997,6 +10695,100 @@ mod tests {
 
     proptest! {
         #![proptest_config(ProptestConfig { cases: 24, ..ProptestConfig::default() })]
+
+        #[test]
+        fn protected_inline_edits_preserve_overlapping_comment_anchors(
+            left in "[a-z]{1,12}",
+            right in "[a-z]{1,12}",
+            tracked in any::<bool>(),
+            reopen_source in any::<bool>(),
+        ) {
+            let bytes = body_fixture(&format!(
+                "<w:p><w:r><w:t>{left} 左 対象語 右 {right}</w:t></w:r></w:p>"
+            ));
+            let mut server = test_server();
+            let session = reopen(&mut server, &bytes);
+            let add = |query, text| json!({
+                "type": "add_comment_by_text", "query": query, "text": text, "author": "Reviewer",
+            });
+            protected_batch(&mut server, &session, json!([
+                add("対象", "Short"), add("対象語", "Long"),
+            ]), false).unwrap();
+            let before = export_bytes(&mut server, &session);
+            let session = if reopen_source { reopen(&mut server, &before) } else { session };
+            let before = export_bytes(&mut server, &session);
+            let threads = comment_threads(&mut server, &session);
+            let anchor_start = left.len() + " 左 ".len();
+            let inspection = try_tool(&mut server, "query", json!({
+                "session_id": session,
+                "queries": [
+                    { "type": "search_text", "query": "左" },
+                    { "type": "search_text", "query": "対象" },
+                    { "type": "paragraph_slice", "max_paragraphs": 1 },
+                ],
+            })).unwrap();
+            prop_assert!(inspection["results"][0]["matches"][0]["edit_limitation"].is_null());
+            prop_assert_eq!(
+                &inspection["results"][1]["matches"][0]["edit_limitation"],
+                &json!("editing a paragraph covered by a comment is not supported"),
+            );
+            let spans = inspection["results"][2]["paragraphs"][0]["protected_comment_ranges"].as_array().unwrap();
+            for anchor in ["対象", "対象語"] {
+                let span = json!({
+                    "start_offset": anchor_start, "end_offset": anchor_start + anchor.len(),
+                });
+                prop_assert!(spans.contains(&span), "missing span {span} in {spans:?}");
+            }
+            let touching = json!([{ "type": "insert_text", "paragraph": 0,
+                "offset": anchor_start, "text": "Boundary" }]);
+            let error = protected_batch(&mut server, &session, touching, false).unwrap_err();
+            prop_assert!(error.contains("covered by a comment"), "{error}");
+            prop_assert_eq!(export_bytes(&mut server, &session), before.clone());
+
+            let suffix_start = anchor_start + "対象語 右 ".len();
+            let mut commands = vec![
+                json!({ "type": "replace_range", "start_paragraph": 0, "start_offset": suffix_start,
+                  "end_paragraph": 0, "end_offset": suffix_start + right.len(), "text": "終" }),
+                json!({ "type": "insert_text", "paragraph": 0, "offset": 0, "text": "前" }),
+            ];
+            if tracked {
+                commands.insert(0, json!({ "type": "start_change_tracking", "author": "法務" }));
+            }
+            let commands = Value::Array(commands);
+            protected_batch(&mut server, &session, commands.clone(), true).unwrap();
+            prop_assert_eq!(export_bytes(&mut server, &session), before);
+            protected_batch(&mut server, &session, commands, false).unwrap();
+
+            let expected = format!("前{left} 左 対象語 右 終");
+            let anchor_start = (anchor_start + "前".len()) as u64;
+            let anchors = [
+                (0, anchor_start, anchor_start + "対象".len() as u64),
+                (0, anchor_start, anchor_start + "対象語".len() as u64),
+            ];
+            let exported = export_bytes(&mut server, &session);
+            assert_docx_is_consistent(&exported, "inline edits outside overlapping comments");
+            let reopened = reopen(&mut server, &exported);
+            for id in [&session, &reopened] {
+                let mut text = paragraph_text(&mut server, id, 0);
+                let queried = try_tool(&mut server, "query", json!({
+                    "session_id": id, "queries": [{ "type": "revisions", "max_revisions": 10 }],
+                })).unwrap();
+                let changes = queried["results"][0]["revisions"].as_array().unwrap();
+                if tracked {
+                    prop_assert_eq!(changes.len(), 3);
+                    let deletion = changes.iter().find(|change| change["kind"] == "deleted").unwrap();
+                    let start = deletion["start_offset"].as_u64().unwrap() as usize;
+                    let end = deletion["end_offset"].as_u64().unwrap() as usize;
+                    prop_assert_eq!(&text[start..end], &right[..]);
+                    text.replace_range(start..end, "");
+                } else {
+                    prop_assert!(changes.is_empty());
+                }
+                prop_assert_eq!(text, &expected[..]);
+                prop_assert_eq!(comment_anchors(&mut server, id), &anchors[..]);
+                prop_assert_eq!(comment_threads(&mut server, id), threads.clone());
+            }
+        }
 
         /// A comment must attach anywhere in a paragraph that already carries
         /// tracked changes. review.docx paragraph 0 is "Hello World" with
@@ -11168,15 +11960,12 @@ mod tests {
         /// around a merge rather than relying only on the whole-surface fuzzer.
         #[test]
         fn vertical_merge_row_edits_round_trip_and_undo(
-            rows in 2usize..7,
-            merge_start in 0usize..6,
-            merge_len in 2usize..7,
-            insert in any::<bool>(),
-            at in 0usize..7,
+            (rows, merge_start, merge_len, insert, at) in (2usize..7, any::<bool>())
+                .prop_flat_map(|(rows, insert)| (Just(rows), 0..rows - 1, Just(insert)))
+                .prop_flat_map(|(rows, start, insert)| {
+                    (Just(rows), Just(start), 2..=rows - start, Just(insert), 0..rows + usize::from(insert))
+                }),
         ) {
-            prop_assume!(merge_start + merge_len <= rows);
-            prop_assume!(if insert { at <= rows } else { at < rows });
-
             let mut server = test_server();
             let session = open_session(&mut server, TABLE_DOCX);
             for row_count in 2..rows {
