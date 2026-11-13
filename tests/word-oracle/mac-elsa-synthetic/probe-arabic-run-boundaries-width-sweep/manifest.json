@@ -1,0 +1,50 @@
+{
+  "schema": 1,
+  "sourceSha256": "499ee2dcfae8512f5eef6a5df75a2c68f6b2839ab98ed0981bfa5cc2fec91af7",
+  "reference": {
+    "application": "Microsoft Word",
+    "platform": "mac",
+    "export": "Save As > PDF",
+    "pdfSha256": "654866406bcdccbf3f7c8de961a02f34286ebca468edccf9461b59e33e851859",
+    "extractor": "PyMuPDF 1.26.5"
+  },
+  "pages": 1,
+  "axisTolerancePt": 0.65,
+  "bodyOnly": true,
+  "coordinatesSha256": "f3257f95b6a3da0d2032c5a5de4a79a9c5788777b527935258d90d161f971f72",
+  "arabicRuns": [
+    [
+      "مر",
+      "حب",
+      "ا",
+      "مرحب",
+      "ا",
+      "مرح",
+      "ب",
+      "ا",
+      "مر",
+      "حب",
+      "ا",
+      "مرحب",
+      "ا",
+      "مرح",
+      "ب",
+      "ا",
+      "مر",
+      "حبا",
+      "مرحبا",
+      "مرح",
+      "با",
+      "مر",
+      "حبا",
+      "مرحبا",
+      "مرح",
+      "با",
+      "مر",
+      "حبا",
+      "مرحبا",
+      "مرح",
+      "با"
+    ]
+  ]
+}
