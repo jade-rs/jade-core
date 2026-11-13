@@ -1264,6 +1264,7 @@ impl TableMathContext {
             available_width,
             char_unit_pt,
             even,
+            self.settings.use_display_defaults,
         );
         self.settings.display_content_box(x, width)
     }

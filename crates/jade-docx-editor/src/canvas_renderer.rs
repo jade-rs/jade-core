@@ -16425,6 +16425,7 @@ where
             self.current_column_width(),
             char_unit_pt,
             self.current_page_number.is_multiple_of(2),
+            self.math_settings.use_display_defaults,
         );
         let (math_x, math_width) = self
             .math_settings
@@ -29932,6 +29933,7 @@ where
             right - left,
             char_unit_pt,
             self.current_page_number.is_multiple_of(2),
+            self.math_settings.use_display_defaults,
         );
         self.math_settings.display_content_box(left, width)
     }
