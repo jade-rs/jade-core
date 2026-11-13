@@ -285,8 +285,10 @@ impl SkiaPainter {
         if !width.is_finite() || !height.is_finite() || !scale.is_finite() || scale <= 0.0 {
             return None;
         }
+        let pixel_width = (width * scale).ceil() as i32;
+        let pixel_height = (height * scale).ceil() as i32;
         let info = skia_safe::ImageInfo::new(
-            ((width * scale).ceil() as i32, (height * scale).ceil() as i32),
+            (pixel_width, pixel_height),
             skia_safe::ColorType::BGRA8888,
             skia_safe::AlphaType::Premul,
             None,
