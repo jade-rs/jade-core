@@ -2802,23 +2802,37 @@ where
             }
         }
 
+        let word_mac_column_table = use_column_frame
+            && jade_docx_layout::line_metrics::word_layout_platform()
+                == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac;
+        let preferred_width = table.style.get("width");
+        let percentage_width = preferred_width.is_some_and(|width| width.trim().ends_with('%'));
+        // A percentage table keeps the same grid when it flows across
+        // unequal columns. Word sizes it against the narrowest column.
+        let width_for_sizing = if word_mac_column_table && percentage_width {
+            self.column_layout
+                .widths
+                .iter()
+                .copied()
+                .fold(available_width, f64::min)
+        } else {
+            available_width
+        };
         let column_count = compute_column_count(table);
         let sizing_width = word_pre_2013_table_sizing_width_px(
             table,
-            available_width,
+            width_for_sizing,
             self.document_east_asian_rules.compatibility_mode,
         );
         let mut column_widths = compute_column_widths(table, column_count, sizing_width);
-        if use_column_frame
-            && jade_docx_layout::line_metrics::word_layout_platform()
-                == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
-        {
-            // A percentage preferred width in a Word column replaces the
-            // saved grid total. Keep the grid's relative column widths.
-            if let Some(width) = table
-                .style
-                .get("width")
-                .filter(|value| value.trim().ends_with('%'))
+        if word_mac_column_table {
+            // Word uses the preferred total for fixed tables in columns and
+            // resolves percentage totals against the column frame. Preserve
+            // the proportions of the saved grid.
+            if let Some(width) = preferred_width
+                .filter(|_| {
+                    percentage_width || resolve_table_layout_mode(table) == TableLayoutMode::Fixed
+                })
                 .and_then(|value| preferred_width_px(value, sizing_width))
                 .filter(|width| *width > 0.0)
             {
