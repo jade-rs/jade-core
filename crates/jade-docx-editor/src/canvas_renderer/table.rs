@@ -3669,7 +3669,7 @@ where
                         && first_visible_row != Some(row_index)
                         // Word Mac keeps the collapsed rule inside the exact
                         // row box when continuing in an unequal column frame.
-                        && !(alignment_widths.is_some() && !row_uses_separate_cell_borders(row, table))
+                        && (alignment_widths.is_none() || row_uses_separate_cell_borders(row, table))
                     {
                         // A fresh page has no preceding row to reserve its
                         // opening rule. Repeated headers already provide it.
