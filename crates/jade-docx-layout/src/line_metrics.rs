@@ -3881,7 +3881,7 @@ fn text_font_slots_uncached(text: &str) -> (bool, bool) {
 }
 
 /// Splits a CSS font shorthand into its point size and first family.
-fn split_font_descriptor(font_descriptor: &str) -> Option<(f32, &str)> {
+pub(crate) fn split_font_descriptor(font_descriptor: &str) -> Option<(f32, &str)> {
     // Metric lookups share a small set of descriptors, often alternating
     // between Latin and East Asian slots. Retain byte ranges, not borrowed
     // family strings, so the result always borrows from the caller's input.

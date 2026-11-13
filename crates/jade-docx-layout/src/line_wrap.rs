@@ -6083,6 +6083,18 @@ fn measure_arabic_wrap_clusters<C: LineWrapContext>(
     text: &str,
     font: &str,
 ) -> Result<Option<Vec<(usize, f64)>>, C::Error> {
+    // These faces form one Allah ligature in Word, even in cells narrower
+    // than its advance. Geeza Pro can break between the alef and the rest.
+    if text == "الله"
+        && crate::line_metrics::split_font_descriptor(font).is_some_and(|(_, family)| {
+            let family = family.trim_matches(['\'', '"']);
+            family.eq_ignore_ascii_case("Arial") || family.eq_ignore_ascii_case("Times New Roman")
+        })
+    {
+        return ctx
+            .measure_text(text, font)
+            .map(|width| Some(vec![(0, width)]));
+    }
     let Some(mut clusters) = ctx.measure_arabic_clusters(text, font) else {
         let mut starts = vec![0];
         let mut previous = "";
