@@ -23,6 +23,16 @@ def glyphs(page):
                         yield [char["c"], *[round(value, 3) for value in char["origin"]]]
 
 
+def painted_glyphs(page):
+    for span in page.get_texttrace():
+        if span["font"] == "AppleColorEmoji" or span["type"] == 3:
+            continue
+        for codepoint, _, origin, _ in span["chars"]:
+            char = chr(codepoint)
+            if not char.isspace():
+                yield [char, *[round(value, 3) for value in origin]]
+
+
 def color_emoji(page, images):
     spans = [span for span in page.get_texttrace() if span["font"] == "AppleColorEmoji"]
     if not spans:
@@ -93,14 +103,15 @@ def rectangular_clip_image_bounds(page):
 
 def page_geometry(
     page, *, body_only, print_registration=False, rectangular_image_clips=False,
-    source_image_size=None, source_image_count=None,
+    source_image_size=None, source_image_count=None, capture_painted_glyphs=False,
 ):
     header, body, footer = [], [], []
     image_info = page.get_image_info()
     images = [image["bbox"] for image in image_info]
     image_count = len(images)
     # These cutoffs lie in the blank gaps between the stories in this fixture.
-    for glyph in chain(glyphs(page), color_emoji(page, images)):
+    text_glyphs = painted_glyphs(page) if capture_painted_glyphs else glyphs(page)
+    for glyph in chain(text_glyphs, color_emoji(page, images)):
         story = body
         if not body_only:
             story = header if glyph[2] < 60 else footer if glyph[2] > 786 else body
@@ -244,6 +255,7 @@ def main():
                 rectangular_image_clips=manifest.get("rectangularImageClips", False),
                 source_image_size=source_images["sizePx"] if source_images else None,
                 source_image_count=source_image_count,
+                capture_painted_glyphs=manifest.get("capturePaintedGlyphs", False),
             )
             for page, source_image_count in zip(document, source_image_counts)
         ]

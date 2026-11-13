@@ -2810,6 +2810,35 @@ where
                 == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac;
         let preferred_width = table.style.get("width");
         let percentage_width = preferred_width.is_some_and(|width| width.trim().ends_with('%'));
+        let rtl_merged_percentage_grid = word_mac_column_table
+            && percentage_width
+            && matches!(self.document_east_asian_rules.compatibility_mode, Some(14))
+            && resolve_table_layout_mode(table) == TableLayoutMode::Autofit
+            && table.style.get("text-align").is_some_and(|alignment| {
+                alignment.eq_ignore_ascii_case("center") || alignment.eq_ignore_ascii_case("centre")
+            })
+            && self.column_layout.offsets.first() > self.column_layout.offsets.last()
+            && self
+                .column_layout
+                .widths
+                .iter()
+                .any(|&width| width != self.current_column_width())
+            && table
+                .rows
+                .iter()
+                .filter(|row| !table_row_is_hidden(row))
+                .all(|row| {
+                    row.height_rule == Some(TableRowHeightRule::Exact)
+                        && row.height.is_some()
+                        && resolve_cell_spacing_px(row, table) == 0.0
+                })
+            && table.rows.iter().any(|row| {
+                !table_row_is_hidden(row)
+                    && row
+                        .cells
+                        .iter()
+                        .any(|cell| matches!(cell.vertical_merge.as_deref(), Some("continue")))
+            });
         // A percentage table keeps the same grid when it flows across
         // unequal columns. Word sizes it against the narrowest column.
         let width_for_sizing = if word_mac_column_table && percentage_width {
@@ -2863,6 +2892,7 @@ where
                 .then_some(&self.table_autofit_cache),
                 &|field| self.resolve_run_field(field),
                 Some(&layout_config),
+                rtl_merged_percentage_grid,
             )?;
 
         adjust_windows_negative_spacing_columns(table, &mut column_widths);
@@ -2942,7 +2972,13 @@ where
             let x = floating_table_x.unwrap_or_else(|| {
                 compute_inline_body_table_x(
                     left,
-                    alignment_width.unwrap_or(width),
+                    alignment_width.map_or(width, |width| {
+                        if rtl_merged_percentage_grid {
+                            word_pre_2013_table_sizing_width_px(table, width, compatibility_mode)
+                        } else {
+                            width
+                        }
+                    }),
                     table_width,
                     table,
                     text_inset,
@@ -3232,7 +3268,7 @@ where
             && !self.pageless_mode
             && self.paragraph_frame_column.is_none()
             && !self.measuring_keep_next
-            && !has_merge_owners
+            && (!has_merge_owners || rtl_merged_percentage_grid)
             && self.footnote_reserve_px == 0.0
             && self
                 .column_layout
@@ -10551,6 +10587,7 @@ fn apply_table_layout_width_for_table_with_content<C: TableAutofitContext>(
     cache: Option<&RefCell<TableAutofitCache>>,
     field_value_for: &dyn Fn(&RunField) -> Option<String>,
     config: Option<&LayoutConfig>,
+    fit_merged_percentage_grid_to_words: bool,
 ) -> Result<(f64, NaturalParagraphLayoutCache), C::Error> {
     let mode = resolve_table_layout_mode(table);
     if matches!(mode, TableLayoutMode::Fixed) {
@@ -10601,6 +10638,21 @@ fn apply_table_layout_width_for_table_with_content<C: TableAutofitContext>(
         }
         measured
     };
+    if fit_merged_percentage_grid_to_words {
+        // This Word for Mac grid can exceed its percentage when the longest
+        // word and cell padding no longer fit in each column.
+        for ((width, &word_width), &minimum_width) in column_widths
+            .iter_mut()
+            .zip(&content_widths.unbreakable)
+            .zip(&content_widths.minimums)
+        {
+            *width = width.max(word_width).max(minimum_width);
+        }
+        return Ok((
+            column_widths.iter().sum(),
+            content_widths.natural_paragraph_layouts,
+        ));
+    }
     if word_mac_sizes_without_grid(table, column_widths.len()) {
         let preferred_total: f64 = content_widths.preferred.iter().sum();
         let table_width: f64 = column_widths.iter().sum();
@@ -15402,6 +15454,7 @@ fn layout_nested_table<P: Painter<Error: PainterError>>(
         None,
         field_value_for,
         Some(config),
+        false,
     )?;
 
     adjust_windows_negative_spacing_columns(table, &mut column_widths);
@@ -17608,6 +17661,7 @@ mod tests {
                 Some(&cache),
                 &|field| renderer.resolve_run_field(field),
                 None,
+                false,
             )
             .unwrap();
             assert_eq!(layouts[0].layout.text, expected);
@@ -17653,6 +17707,7 @@ mod tests {
             Some(&RefCell::new(TableAutofitCache::default())),
             &|_| panic!("ordinary cell must retain the plain text path"),
             None,
+            false,
         )
         .unwrap();
         assert_eq!(layouts[0].layout.text, "Ordinary cell");
@@ -19046,6 +19101,7 @@ mod tests {
             Some(&cache),
             &|_| None,
             None,
+            false,
         )
         .expect("first layout");
         let first_measure_calls = context.measure_calls();
@@ -19062,6 +19118,7 @@ mod tests {
             Some(&cache),
             &|_| None,
             None,
+            false,
         )
         .expect("second layout");
 
@@ -19210,6 +19267,7 @@ mod tests {
             None,
             &|_| None,
             None,
+            false,
         )
         .unwrap();
         // Ten per glyph and five per space, plus 8px padding on each side.
