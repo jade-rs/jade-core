@@ -214,6 +214,54 @@ pub(super) fn settings_from(
     settings
 }
 
+pub(super) fn display_math_line_metrics(
+    plan: &StyledMathLayout<'_>,
+    style: MathTextStyle<'_>,
+    properties: &ParagraphProperties,
+    grid: Option<&jade_docx_reader::document::DocGrid>,
+    snap_default: bool,
+) -> MathMetrics {
+    use jade_docx_layout::line_metrics::{
+        resolve_effective_snap_to_grid, word_grid_line_centres_text, word_layout_platform,
+        WordLayoutPlatform,
+    };
+    let snap = resolve_effective_snap_to_grid(properties.snap_to_grid, snap_default, grid);
+    let mut metrics = plan.line_metrics;
+    if word_layout_platform() == WordLayoutPlatform::Mac
+        && style.family.eq_ignore_ascii_case("Cambria Math")
+        && !word_grid_line_centres_text(snap, grid)
+    {
+        // Word reserves the Cambria Math font line box even for equations
+        // whose ink fits well above the baseline, such as a single digit.
+        // The hhea ascent and descent are 1946 and 455 units at 2048 UPM.
+        let last_baseline = plan.lines.last().map_or(0.0, |line| line.baseline);
+        let mut first_size: f64 = 0.0;
+        let mut last_size: f64 = 0.0;
+        for glyph in &plan.glyphs {
+            if !glyph.visible || !glyph.style.family.eq_ignore_ascii_case("Cambria Math") {
+                continue;
+            }
+            if glyph.baseline == 0.0 {
+                first_size = first_size.max(glyph.style.size_px);
+            }
+            if glyph.baseline == last_baseline {
+                last_size = last_size.max(glyph.style.size_px);
+            }
+        }
+        if first_size == 0.0 {
+            first_size = style.size_px;
+        }
+        if last_size == 0.0 {
+            last_size = style.size_px;
+        }
+        metrics.ascent = metrics.ascent.max(first_size * (1946.0 / 2048.0));
+        metrics.descent = metrics
+            .descent
+            .max(last_baseline + last_size * (455.0 / 2048.0));
+    }
+    metrics
+}
+
 /// Lays out a list of math elements (an `m:oMath`, an `m:oMathPara`, an EQ
 /// field's equation) in the bound math face when one is registered for the
 /// style's family, else through the painter's measurement.
@@ -231,6 +279,7 @@ where
 {
     use jade_canvas_painter::PainterError;
     painter.save();
+    painter.set_text_baseline("alphabetic");
     let measure = StyledPainterMeasure {
         painter,
         font: RefCell::new(None),

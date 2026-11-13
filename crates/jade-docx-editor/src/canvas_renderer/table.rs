@@ -1285,7 +1285,10 @@ impl TableMathContext {
         math: &jade_docx_reader::document::MathParagraph,
         config: &LayoutConfig,
         max_width: Option<f64>,
-        use_plan: impl FnOnce(jade_docx_layout::math_layout::styled::StyledMathLayout<'_>, f32) -> T,
+        use_plan: impl FnOnce(
+            jade_docx_layout::math_layout::styled::StyledMathLayout<'_>,
+            jade_docx_layout::math_layout::styled::MathTextStyle<'_>,
+        ) -> T,
     ) -> Result<T, JsValue> {
         use jade_docx_layout::math_layout::styled::{MathLayoutOptions, WORD_SCRIPT_SCALES};
 
@@ -1315,7 +1318,7 @@ impl TableMathContext {
             #[cfg(feature = "opentype-math")]
             self.fonts.get(style.family).map(Rc::as_ref),
         )?;
-        Ok(use_plan(plan, (style.size_px * 72.0 / 96.0) as f32))
+        Ok(use_plan(plan, style))
     }
 
     fn intrinsic_display_widths<P: Painter<Error: PainterError>>(
@@ -1353,24 +1356,37 @@ impl TableMathContext {
         use jade_docx_layout::math_layout::math_block_line_box;
         use jade_docx_layout::text_extract::{paragraph_spacing_after, paragraph_spacing_before};
 
-        let properties = math.properties.as_deref();
+        let properties =
+            super::math::DisplayMathStyle::line_properties(config.styles_part.as_deref(), math);
         let content_box = |even| self.display_content_box(math, config, available_width, even);
         let (plan, font_size_pt) = self.with_display_plan(
             painter,
             math,
             config,
             Some(content_box(false).1),
-            |plan, size| (super::math::OwnedMathPlan::from_plan(&plan), size),
+            |mut plan, style| {
+                plan.line_metrics = super::math::display_math_line_metrics(
+                    &plan,
+                    style,
+                    &properties,
+                    config.doc_grid.as_ref(),
+                    config.document_snap_to_grid_default,
+                );
+                (
+                    super::math::OwnedMathPlan::from_plan(&plan),
+                    (style.size_px * 72.0 / 96.0) as f32,
+                )
+            },
         )?;
         let line_box = math_block_line_box(
             plan.line_metrics,
             font_size_pt,
-            properties,
+            Some(&properties),
             config.doc_grid.as_ref(),
             config.document_snap_to_grid_default,
             Some(self.section_content_height_pt),
         );
-        let spacing = properties.and_then(|p| p.spacing.as_ref());
+        let spacing = properties.spacing.as_ref();
         let before = spacing
             .and_then(paragraph_spacing_before)
             .map_or(0.0, |amount| amount.px_with_line_unit(line_box.height));
@@ -8933,6 +8949,22 @@ fn pre_2013_table_text_inset_px(table: &Table, compatibility_mode: Option<u32>) 
     let Some(cell) = row.cells.first() else {
         return 0.0;
     };
+    if jade_docx_layout::line_metrics::word_layout_platform()
+        == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
+        && !table.bidi_visual
+        && table.table_layout == Some(TableLayoutMode::Fixed)
+        && table.style_name.is_none()
+        && table.resolved_style.is_none()
+        && table.cell_margins.is_none()
+        && row.cell_margins.is_none()
+        && cell.margins.is_some()
+        && !table.style.contains_key("table-indent-width-type")
+        && resolve_cell_spacing_px(row, table) == 0.0
+    {
+        // A directly formatted cell margin in an unstyled fixed table
+        // moves its contents without moving the unindented table grid.
+        return 0.0;
+    }
     let padding = resolve_cell_padding(
         cell.margins.as_ref(),
         row.cell_margins.as_ref(),
