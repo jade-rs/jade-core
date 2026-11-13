@@ -6538,8 +6538,14 @@ fn apply_bidi_visual_order(
     let logical_segments = line.segments.clone();
     let mut visual_clusters = Vec::with_capacity(logical_clusters.len());
     let mut visual_segments = Vec::with_capacity(logical_segments.len());
+    let mut tab_advance = 0.0;
     for logical_index in logical_indices {
         let cluster = logical_clusters[logical_index].clone();
+        if cluster.kind == InlineClusterKind::Tab {
+            tab_advance += cluster.width;
+            visual_clusters.push(cluster);
+            continue;
+        }
         if let Some(segment) = logical_segments
             .iter()
             .find(|segment| segment.start <= cluster.start && cluster.end <= segment.end)
@@ -6551,9 +6557,7 @@ fn apply_bidi_visual_order(
                 properties: segment.properties.clone(),
                 revision: segment.revision.clone(),
                 hyperlink: segment.hyperlink.clone(),
-                // The authoritative cluster layout already carries the
-                // inter-glyph leading advance.
-                leading_width: 0.0,
+                leading_width: std::mem::take(&mut tab_advance),
             });
         }
         visual_clusters.push(cluster);
@@ -7138,6 +7142,23 @@ pub fn apply_paragraph_indent_with_char_unit(
     char_unit_pt: f64,
 ) {
     let bidi = paragraph_style.bidi;
+    // Word for Mac uses the legacy left and right values as the leading
+    // and trailing indents in a right-to-left paragraph.
+    let mac_bidi_indent;
+    let indent = if bidi
+        && paragraph_style.word_platform == crate::line_metrics::WordLayoutPlatform::Mac
+    {
+        mac_bidi_indent = Indent {
+            left: indent.right,
+            right: indent.left,
+            left_chars: indent.right_chars,
+            right_chars: indent.left_chars,
+            ..indent.clone()
+        };
+        &mac_bidi_indent
+    } else {
+        indent
+    };
     let mut applied_left_indent = 0.0;
     if let Some(left_pt) = resolve_indent_left_pt(indent, bidi, char_unit_pt) {
         let left_px = points_to_px(left_pt as f32);
@@ -8088,9 +8109,22 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext, const SHAPE_
                             .map_or(0, |before| before.matches('\t').count());
                         stops.iter().find(|stop| stop.ordinal == ordinal).copied()
                     });
-                let tab_target = |cursor_x: f64| match &positional {
+                let mirror_tab = paragraph_style.bidi
+                    && paragraph_style.word_platform == crate::line_metrics::WordLayoutPlatform::Mac
+                    && positional.is_none();
+                let tab_target = |cursor_x: f64, line_origin: f64| match &positional {
                     Some(stop) => {
                         positional_tab_target(stop, paragraph_style, base_x, column_right_edge)
+                    }
+                    None if mirror_tab => {
+                        let indent = paragraph_style.right_indent + line_origin - base_x;
+                        let (position, alignment, leader) = find_next_tab_stop(
+                            paragraph_style,
+                            -paragraph_style.tab_origin_offset,
+                            indent + cursor_x - line_origin,
+                            &paragraph_style.tab_stops,
+                        );
+                        (line_origin + position - indent, alignment, leader)
                     }
                     None => find_next_tab_stop(
                         paragraph_style,
@@ -8099,7 +8133,14 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext, const SHAPE_
                         &paragraph_style.tab_stops,
                     ),
                 };
-                let (target_x, alignment, mut leader_kind) = tab_target(cursor_x);
+                let decimal_prefix_width = decimal_prefix_width.map(|prefix| {
+                    if mirror_tab {
+                        segment_width - prefix
+                    } else {
+                        prefix
+                    }
+                });
+                let (target_x, alignment, mut leader_kind) = tab_target(cursor_x, line_origin);
 
                 let mut previous_width = current_width;
                 let mut desired_width = tab_segment_start_width(
@@ -8129,7 +8170,7 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext, const SHAPE_
                     let next_line_origin =
                         paragraph_style.line_base_x(base_x, next_line_index) + next_line_indent;
                     let (next_target_x, next_alignment, next_leader_kind) =
-                        tab_target(next_line_origin);
+                        tab_target(next_line_origin, next_line_origin);
                     let next_desired_width = tab_segment_start_width(
                         next_target_x,
                         next_line_origin,
@@ -9693,6 +9734,7 @@ fn measure_tab_segment<C: LineWrapContext>(
     // that same state and advance pipeline, including across source runs.
     let mut state = TextAdvanceState::default();
     let mut pair_cache = PairMeasureCache::default();
+    let mut arabic_span = ArabicWrapSpan::default();
     let mut previous_border: Option<&BorderEdge> = None;
 
     while run_index < run_styles.len() {
@@ -9740,6 +9782,7 @@ fn measure_tab_segment<C: LineWrapContext>(
             .as_deref()
             .and_then(|p| p.border.as_ref())
             .filter(|border| border.is_visible());
+        let shape_arabic = can_shape_arabic_wrap(paragraph_style, run.properties.as_deref());
         let mut first_grapheme_in_run = true;
         let mut tab_grapheme_iter = crate::graphemes::grapheme_indices(run_text).peekable();
         while let Some((rel_offset, grapheme)) = tab_grapheme_iter.next() {
@@ -9809,7 +9852,32 @@ fn measure_tab_segment<C: LineWrapContext>(
                 font_desc_id,
                 Some(grapheme_start_abs),
             )?;
-            width += computed.advance.total_advance;
+            let mut advance = computed.advance.total_advance;
+            if shape_arabic && script == ScriptCategory::Complex && is_arabic_letter_cluster(grapheme)
+            {
+                let offset = run_start_aligned + rel_offset;
+                let shaping_end = if offset >= arabic_span.end {
+                    arabic_shaping_end(
+                        ctx,
+                        text,
+                        &run_styles[run_index + 1..],
+                        paragraph_style,
+                        run_end,
+                        font_desc,
+                        text_scale_x,
+                    )?
+                } else {
+                    arabic_span.end
+                };
+                if let Some((shaped, _)) =
+                    arabic_span.advance(ctx, &text[..shaping_end], offset, font_desc)?
+                {
+                    advance = (advance + shaped * text_scale_x
+                        - computed.advance.adjusted_glyph_width)
+                        .max(0.0);
+                }
+            }
+            width += advance;
             if digit && !numeric_prefix_ended {
                 numeric_prefix_width = Some(width);
             }
