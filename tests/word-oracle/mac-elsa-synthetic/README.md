@@ -73,3 +73,9 @@ font sizes, single and 1.15 line spacing, and inherited and explicit spacing.
 Verdana and Courier New table cells. Its eight pages cover four sizes per
 font and check the position of both the following glyph and the paragraph
 after the table.
+
+The column-width controls cover a fixed preferred width in equal columns,
+a fixed cell narrower than its preferred table, a vertical merge starting in
+the second column, and an explicit column break in a continuous section.
+Two nine-row tables check unequal columns in both wide-first and
+narrow-first order.
