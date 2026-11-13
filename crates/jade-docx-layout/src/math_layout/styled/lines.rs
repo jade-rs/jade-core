@@ -111,6 +111,10 @@ fn break_lines<'a, C: StyledMathMeasure>(
     let x_of = |b: &Builder<'_, '_, C>, mark: Mark| -> Option<f64> {
         b.plan.glyphs.get(mark.glyphs).map(|g| g.x)
     };
+    let max_width = b.options.max_width.filter(|w| *w > 0.0);
+    let settings = b.options.settings;
+    let inherited_wrap = b.options.word_mac_inherited_before_wrap();
+    let ignore_manual = inherited_wrap && max_width.is_none_or(|width| metrics.width <= width);
     // One candidate per glyph; a manual break wins.
     let mut candidates: Vec<BreakCandidate> = Vec::new();
     let mut align_points: Vec<Mark> = Vec::new();
@@ -119,7 +123,10 @@ fn break_lines<'a, C: StyledMathMeasure>(
             align_points.push(c.mark);
             continue;
         }
-        if c.mark.glyphs >= end.glyphs || c.mark.glyphs <= start.glyphs {
+        if (ignore_manual && c.manual)
+            || c.mark.glyphs >= end.glyphs
+            || c.mark.glyphs <= start.glyphs
+        {
             continue;
         }
         match candidates.last_mut() {
@@ -131,8 +138,6 @@ fn break_lines<'a, C: StyledMathMeasure>(
             _ => candidates.push(c),
         }
     }
-    let max_width = b.options.max_width.filter(|w| *w > 0.0);
-    let settings = b.options.settings;
     let word_mac_rtl = b.options.word_mac_rtl();
     let inherited_wrap = b.options.word_mac_inherited_before_wrap();
     let prefers_relation = !word_mac_rtl
