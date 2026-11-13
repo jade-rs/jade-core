@@ -8357,8 +8357,9 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext, const SHAPE_
                 let mac_overflow = candidate_overflow > WRAP_FIT_TOLERANCE_PX
                     && paragraph_style.word_platform
                         == crate::line_metrics::WordLayoutPlatform::Mac;
-                // Legacy Word Mac can detach join controls from overwide Latin
-                // graphemes. Geeza Pro can also break before an attached ZWNJ.
+                // Legacy Word Mac layout can break before a join control on
+                // an overwide Latin grapheme. Geeza Pro also splits a trailing
+                // ZWNJ on an overwide Arabic grapheme.
                 if mac_overflow
                     && current_width <= f64::EPSILON
                     && ((script == ScriptCategory::Latin
