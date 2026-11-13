@@ -2835,7 +2835,9 @@ where
             // the proportions of the saved grid.
             if let Some(width) = preferred_width
                 .filter(|_| {
-                    percentage_width || resolve_table_layout_mode(table) == TableLayoutMode::Fixed
+                    percentage_width
+                        || resolve_table_layout_mode(table) == TableLayoutMode::Fixed
+                        || word_mac_single_autofit_column_uses_table_width(table, column_count)
                 })
                 .and_then(|value| preferred_width_px(value, sizing_width))
                 .filter(|width| *width > 0.0)
@@ -10257,6 +10259,35 @@ fn fixed_grid_matches_widths(table: &Table, widths: &[f64]) -> bool {
             column
                 .width
                 .is_some_and(|points| (points_to_px(points) - width).abs() <= 0.01)
+        })
+}
+
+/// In a single-cell autofit grid that flows through section columns, an
+/// absolute tblW can widen the cell even when the saved grid and tcW are
+/// smaller. An oversized preferred cell still participates in autofit.
+fn word_mac_single_autofit_column_uses_table_width(table: &Table, column_count: usize) -> bool {
+    let Some(table_width) = absolute_table_width(table).filter(|_| column_count == 1) else {
+        return false;
+    };
+    let mut rows = table
+        .rows
+        .iter()
+        .filter(|row| !table_row_is_hidden(row))
+        .peekable();
+    rows.peek().is_some()
+        && rows.all(|row| {
+            let [cell] = row.cells.as_slice() else {
+                return false;
+            };
+            row.grid_before.unwrap_or_default() == 0
+                && row.grid_after.unwrap_or_default() == 0
+                && cell.span.unwrap_or(1) == 1
+                && cell
+                    .style
+                    .get("width")
+                    .filter(|width| width.trim().ends_with("pt"))
+                    .and_then(|width| parse_length_to_px(width))
+                    .is_some_and(|width| width > 0.0 && width <= table_width)
         })
 }
 
