@@ -1932,6 +1932,7 @@ impl LayoutConfig {
         let mut left_inset = 0.0;
         if let Some(properties) = &paragraph.properties {
             style.bidi = properties.bidi.unwrap_or(false);
+            style.tab_stops = resolve_tab_stops(&properties.tabs);
             if let Some(indent) = &properties.indent {
                 let char_unit =
                     jade_docx_layout::text_extract::paragraph_indent_char_unit_pt_with_grid(
@@ -2594,8 +2595,6 @@ where
                             continue;
                         }
                         let (left_inset, mut style) = config.paragraph_style(paragraph);
-                        style.tab_stops =
-                            jade_docx_layout::line_wrap::resolve_tab_stops(&props.tabs);
                         if let Some((left_inset, marker)) = self.bounded_paragraph_numbering(
                             paragraph,
                             props,
