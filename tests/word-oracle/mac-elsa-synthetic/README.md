@@ -10,6 +10,9 @@ python tests/word-oracle/mac-elsa-synthetic/extract.py path/to/fixture path/to/w
 
 Commit the synthetic DOCX, manifest, and generated `pages.json.gz`.
 
+Fixtures with `capturePaintedGlyphs` compare text draw origins before clipping.
+The extractor reads those origins from the Word PDF text trace.
+
 The discretionary-hyphen fixtures compare the positions of painted dashes
 alongside the other glyphs. The page-origins fixture covers authored soft and
 nonbreaking hyphens across three pages with different widths and indents. The
