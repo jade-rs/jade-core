@@ -47783,6 +47783,46 @@ mod tests {
     }
 
     #[test]
+    fn keep_next_table_widths_survive_document_cache_drop_and_follow_font_invalidation() {
+        use jade_painter::recording::Op;
+
+        let (mut renderer, painter) = recording_renderer();
+        let mut document = table_measure_document();
+        let elements = &mut document.body.as_mut().unwrap().elements;
+        elements.insert(
+            0,
+            BodyElement::from_paragraph(note_test_paragraph("heading", None)),
+        );
+        let mut options = Options::default();
+        options.set_pageless(false);
+        let measure = |renderer: &mut CanvasRenderer<_>| {
+            painter.clear();
+            let height = renderer
+                .measure_keep_next_group(
+                    elements,
+                    &options,
+                    None,
+                    &NumberingCounter::default(),
+                    &HashMap::new(),
+                    0,
+                    0,
+                )
+                .unwrap();
+            let measured = painter.count(|op| matches!(op, Op::MeasureText(text) if text == "甲"));
+            (height, measured)
+        };
+
+        let (height, cold_count) = measure(&mut renderer);
+        assert!(cold_count > 0);
+        renderer.drop_document_cache();
+        renderer.clear_paragraph_wrap_cache();
+        assert_eq!(measure(&mut renderer), (height, 0));
+
+        renderer.clear_text_measure_cache();
+        assert_eq!(measure(&mut renderer), (height, cold_count));
+    }
+
+    #[test]
     fn clearing_the_measure_cache_also_clears_table_measurements() {
         use jade_painter::recording::Op;
 
