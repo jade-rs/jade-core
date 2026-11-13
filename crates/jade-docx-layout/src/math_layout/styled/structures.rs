@@ -295,7 +295,11 @@ impl<'a, C: StyledMathMeasure> Builder<'_, 'a, C> {
                 } else {
                     None
                 };
-                let c = fraction_size.map_or(c, MathConstants::cambria);
+                let c = self
+                    .fraction_equation_size
+                    .filter(|_| self.depth == 0)
+                    .or(fraction_size)
+                    .map_or(c, MathConstants::cambria);
                 let axis = c.axis_height;
                 let t = if bar { self.rule_thickness(&c) } else { 0.0 };
                 let (up, down) = if bar {
