@@ -75,7 +75,6 @@ pub(crate) fn math_lines<'a, C: StyledMathMeasure>(
         && b.style.family.eq_ignore_ascii_case("Cambria Math")
         && crate::line_metrics::word_layout_platform()
             == crate::line_metrics::WordLayoutPlatform::Mac
-        && !b.font_bound()
         && math.children.iter().any(|child| {
             !is_skipped(child)
                 && child.kind == MathElementKind::Fraction
@@ -94,7 +93,9 @@ pub(crate) fn math_lines<'a, C: StyledMathMeasure>(
             .filter(|run| !run.normal && run.style.family.eq_ignore_ascii_case("Cambria Math"))
             .map(|run| run.style.size_px);
     }
+    let word_fraction = b.fraction_equation_size.is_some();
     let metrics = b.sequence_with_array_width(&math.children, max_array_width)?;
+    b.word_fraction_line_metrics |= word_fraction;
     b.fraction_equation_size = saved_fraction_size;
     let breaks = b.breaks.take().unwrap_or_default();
     b.depth = saved.0;
@@ -483,7 +484,7 @@ pub(crate) fn stack<'a, C: StyledMathMeasure>(
     let needs_top_leading = word_mac_cambria && (b.options.display || lines.len() > 1) && {
         #[cfg(feature = "opentype-math")]
         {
-            b.context.font_parameters(b.style).is_none()
+            b.word_fraction_line_metrics || b.context.font_parameters(b.style).is_none()
         }
         #[cfg(not(feature = "opentype-math"))]
         {
@@ -523,12 +524,18 @@ pub(crate) fn stack<'a, C: StyledMathMeasure>(
                     baseline_sizes.reduce(f64::max)
                 }
                 .unwrap_or(size);
-                metrics.ascent += line_size * (353.0 / 2048.0);
+                // A bound Cambria face has taller digit ink than the canvas
+                // fallback. Account for that when reserving the Word line box.
+                let bound_fraction = has_fraction && b.word_fraction_line_metrics && b.font_bound();
+                let leading = if bound_fraction { 293.0 } else { 353.0 };
+                metrics.ascent += line_size * (leading / 2048.0);
                 if has_fraction {
                     // Word Mac reserves slightly less space below a display
                     // fraction than the fallback ink metrics. Keep the
                     // baseline placement and use the measured line pitch.
-                    metrics.descent = (metrics.descent - line_size * (15.0 / 2048.0)).max(0.0);
+                    let descent_adjustment = if bound_fraction { -10.0 } else { 15.0 };
+                    metrics.descent =
+                        (metrics.descent - line_size * (descent_adjustment / 2048.0)).max(0.0);
                 }
             }
             if optical_ascent > 0.0 {
@@ -578,9 +585,20 @@ pub(crate) fn stack<'a, C: StyledMathMeasure>(
         } else {
             size
         };
+        let mut spacing_metrics = line.metrics;
+        if b.word_fraction_line_metrics
+            && b.font_bound()
+            && b.plan.boxes[line.start.boxes..line.end.boxes]
+                .iter()
+                .any(|element| element.kind == MathElementKind::Fraction)
+        {
+            // Word's wrapped fraction spacing leaves less room above the
+            // baseline than the bound glyph ink plus the regular MATH gap.
+            spacing_metrics.ascent -= row_size * (30.0 / 2048.0);
+        }
         let tall_row = line.metrics.ascent > row_size * (1946.0 / 2048.0);
         if let Some((prev, prev_size)) = previous {
-            let mut ascent = line.metrics.ascent;
+            let mut ascent = spacing_metrics.ascent;
             let mut descent = prev.descent;
             // Ink alone underestimates the adjoining text row when a tall
             // formula expands the baseline interval beyond the usual pitch.
@@ -595,7 +613,7 @@ pub(crate) fn stack<'a, C: StyledMathMeasure>(
             let min_gap = interval_size * if word_mac_cambria { 1.175 } else { 1.2 };
             baseline += (descent + ascent + gap).max(min_gap);
         } else if needs_top_leading && tall_row {
-            total.ascent = line.metrics.ascent + super::MathConstants::cambria(row_size).leading;
+            total.ascent = spacing_metrics.ascent + super::MathConstants::cambria(row_size).leading;
         }
         let group_w = group_widths[line.group];
         let group_x = match justification {
