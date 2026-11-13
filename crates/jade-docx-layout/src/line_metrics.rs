@@ -3348,14 +3348,18 @@ fn word_mac_angsana_advance_px(font_descriptor: &str, grapheme: &str) -> Option<
     }
     let (size, family) = split_font_descriptor(font_descriptor)?;
     let family = family.trim_matches(['\'', '"']);
-    if !(family.eq_ignore_ascii_case("Angsana New")
-        || (first != ' ' && family.eq_ignore_ascii_case("Thonburi")))
-    {
+    if !family.eq_ignore_ascii_case("Angsana New") && !family.eq_ignore_ascii_case("Thonburi") {
         return None;
     }
     let (bold, italic) = font_descriptor_style(font_descriptor);
     let advance = if grapheme == " " {
-        676
+        // The Word trace for Thonburi has Cambria's 451/2048 space advance.
+        // Express it in the 4096-unit em used for the Thai glyphs below.
+        if family.eq_ignore_ascii_case("Thonburi") {
+            902
+        } else {
+            676
+        }
     } else {
         let mut total = 0;
         for ch in grapheme.chars() {
