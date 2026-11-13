@@ -2810,9 +2810,30 @@ where
                 == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac;
         let preferred_width = table.style.get("width");
         let percentage_width = preferred_width.is_some_and(|width| width.trim().ends_with('%'));
-        // A percentage table keeps the same grid when it flows across
-        // unequal columns. Word sizes it against the narrowest column.
-        let width_for_sizing = if word_mac_column_table && percentage_width {
+        let column_count = compute_column_count(table);
+        let rtl_spaced_auto_grid = (word_mac_column_table
+            && percentage_width
+            && self.column_layout.start_x(0) > self.column_layout.start_x(1)
+            && column_count == 1
+            && word_mac_sizes_without_grid(table, column_count)
+            && table.style.get("text-align").is_some_and(|alignment| {
+                alignment.eq_ignore_ascii_case("center") || alignment.eq_ignore_ascii_case("centre")
+            }))
+        .then(|| table.rows.iter().find(|row| !table_row_is_hidden(row)))
+        .flatten()
+        .filter(|row| resolve_cell_spacing_px(row, table) > 0.0)
+        .map(|row| {
+            let spacing = resolve_cell_spacing_px(row, table);
+            let frame = spacing_frame_width(row, table, TableBorderSide::Left);
+            (spacing, frame)
+        });
+        let last_column_width = self.column_layout.width(self.column_layout.count() - 1);
+        // Word keeps the same percentage grid through the section. For a
+        // separated autofit grid in right-to-left flow it sizes to the final
+        // column; the usual percentage grid uses the narrowest column.
+        let width_for_sizing = if rtl_spaced_auto_grid.is_some() {
+            last_column_width
+        } else if word_mac_column_table && percentage_width {
             self.column_layout
                 .widths
                 .iter()
@@ -2821,7 +2842,6 @@ where
         } else {
             available_width
         };
-        let column_count = compute_column_count(table);
         let sizing_width = word_pre_2013_table_sizing_width_px(
             table,
             width_for_sizing,
@@ -2841,6 +2861,9 @@ where
                 .and_then(|value| preferred_width_px(value, sizing_width))
                 .filter(|width| *width > 0.0)
             {
+                let width = rtl_spaced_auto_grid.map_or(width, |(spacing, frame)| {
+                    (width - (spacing - frame).max(0.0) * 0.5).max(1.0)
+                });
                 let total: f64 = column_widths.iter().sum();
                 if total > 0.0 {
                     for column_width in &mut column_widths {
@@ -2886,7 +2909,17 @@ where
         } else {
             None
         };
-        let wrapping_widths = original_widths.as_deref().unwrap_or(&column_widths);
+        let rtl_wrapping_widths = rtl_spaced_auto_grid.map(|_| {
+            let mut widths = column_widths.clone();
+            widths[0] = (widths[0]
+                - points_to_px(2.0 * (5.4 - MAC_UNSTYLED_CELL_HORIZONTAL_PADDING_PT)))
+            .max(1.0);
+            widths
+        });
+        let wrapping_widths = original_widths
+            .as_deref()
+            .or(rtl_wrapping_widths.as_deref())
+            .unwrap_or(&column_widths);
 
         let order_index = self.table_counter;
         self.table_counter += 1;
@@ -2949,13 +2982,16 @@ where
                     compatibility_mode,
                 )
             });
-            let x = if word_mac_column_table
+            let x = if let Some((spacing, frame)) = rtl_spaced_auto_grid {
+                x + spacing + frame
+            } else if word_mac_column_table
                 && percentage_width
                 && floating_table_x.is_none()
                 && table.style.get("text-align").is_some_and(|alignment| {
                     alignment.eq_ignore_ascii_case("center")
                         || alignment.eq_ignore_ascii_case("centre")
-                }) {
+                })
+            {
                 table
                     .rows
                     .iter()
@@ -3045,6 +3081,19 @@ where
                     &|field| self.resolve_run_field(field),
                 )?
             };
+
+            let mut row_layout = row_layout;
+            // Word splits the cell paragraph at the last fitting line in
+            // this column flow, even when only one line fits.
+            if rtl_spaced_auto_grid.is_some() {
+                for cell in &mut row_layout {
+                    for block in &mut cell.blocks {
+                        if let CellBlockKind::Paragraph(paragraph) = &mut block.kind {
+                            paragraph.widow_control = false;
+                        }
+                    }
+                }
+            }
 
             let content_height = row_layout
                 .iter()
@@ -3285,6 +3334,11 @@ where
                 self.column_layout.width(initial_column),
             )
         });
+        let alignment_widths = if rtl_spaced_auto_grid.is_some() {
+            Some((last_column_width, self.current_column_width()))
+        } else {
+            alignment_widths
+        };
         let alignment_width = |renderer: &Self| {
             alignment_widths.map(|(opening, continuation)| {
                 if renderer.current_page_number == table_start_page {
@@ -3431,7 +3485,21 @@ where
                                 !move_row_if_cell_cannot_start || split.starts_all_cells()
                             })
                         };
-                        let mut split = split_row(pending_cells.as_slice(), available_height);
+                        // The first page flows through the remaining section
+                        // columns. A fresh page reserves the separated frame
+                        // at the bottom of each column.
+                        let split_height = available_height
+                            + rtl_spaced_auto_grid.map_or(0.0, |(spacing, _)| {
+                                if self.current_page_number > table_start_page {
+                                    -spacing
+                                } else if !row_start {
+                                    spacing
+                                } else {
+                                    0.0
+                                }
+                            });
+                        let mut split = split_row(pending_cells.as_slice(), split_height);
+
                         if split.as_ref().is_some_and(|split| {
                             !prepared_row_note_anchors(&split.head_cells).is_empty()
                         }) && !row_notes_registered
