@@ -730,6 +730,7 @@ fn column_boundary_crosses_merged_cell(cells: &[PreparedCell], boundary: usize) 
 fn paragraph_text_align_for_direction(
     paragraph: &Paragraph,
     direction: Option<TextDirection>,
+    legacy_mac_alignment: bool,
 ) -> Option<TextAlign> {
     // Paragraph jc describes the inline axis. TextAlign here positions the
     // column block on X; applying a vertical paragraph's jc would move the
@@ -737,11 +738,11 @@ fn paragraph_text_align_for_direction(
     if direction.is_some_and(direction_requires_vertical_stack) {
         None
     } else {
-        paragraph_text_align(paragraph)
+        paragraph_text_align(paragraph, legacy_mac_alignment)
     }
 }
 
-fn paragraph_text_align(paragraph: &Paragraph) -> Option<TextAlign> {
+fn paragraph_text_align(paragraph: &Paragraph, legacy_mac_alignment: bool) -> Option<TextAlign> {
     use jade_docx_layout::line_wrap::{
         resolve_physical_paragraph_alignment, PhysicalParagraphAlignment,
     };
@@ -751,6 +752,15 @@ fn paragraph_text_align(paragraph: &Paragraph) -> Option<TextAlign> {
         .alignment
         .as_deref()
         .or_else(|| bidi.then_some("start"))?;
+    let alignment = if bidi && legacy_mac_alignment {
+        match alignment {
+            "left" => "start",
+            "right" => "end",
+            _ => alignment,
+        }
+    } else {
+        alignment
+    };
     Some(
         match resolve_physical_paragraph_alignment(alignment, bidi) {
             PhysicalParagraphAlignment::Center => TextAlign::Center,
@@ -1708,6 +1718,7 @@ struct LayoutConfig {
     /// The document's `w:useFELayout`.
     document_uses_east_asian_layout: bool,
     word_modern_border_insets: bool,
+    legacy_mac_alignment: bool,
     /// Auto paragraph spacing collapses like HTML margins (no
     /// `doNotUseHTMLParagraphAutoSpacing`).
     html_auto_spacing: bool,
@@ -2761,6 +2772,12 @@ where
             theme_part: self.theme_part.clone(),
             document_snap_to_grid_default: self.document_snap_to_grid_default,
             document_uses_east_asian_layout: self.document_east_asian_rules.use_east_asian_layout,
+            legacy_mac_alignment: self
+                .document_east_asian_rules
+                .compatibility_mode
+                .is_some_and(|mode| mode < 15)
+                && jade_docx_layout::line_metrics::word_layout_platform()
+                    == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac,
             word_modern_border_insets: word_modern_nested_border_frame_enabled(
                 self.document_east_asian_rules.compatibility_mode,
             ),
@@ -6730,7 +6747,32 @@ where
             top: line_top,
             height: line_height,
         } = placement;
-        let spans = line.styled_spans(&paragraph.styled_runs);
+        let mut spans = line.styled_spans(&paragraph.styled_runs);
+        spans.dedup_by(|right, left| {
+            let runs = &paragraph.styled_runs;
+            let (Some(left_run), Some(right_run)) = (
+                left.run_index.and_then(|index| runs.get(index)),
+                right.run_index.and_then(|index| runs.get(index)),
+            ) else {
+                return false;
+            };
+            let joined = left.end == right.start
+                && jade_docx_layout::line_wrap::arabic_spans_join(
+                    &paragraph.text[left.start..left.end],
+                    &paragraph.text[right.start..right.end],
+                )
+                && left_run.inline_object.is_none()
+                && right_run.inline_object.is_none()
+                && left_run.properties == right_run.properties
+                && left_run.revision == right_run.revision
+                && line.text_alignment_shift(left.start) == line.text_alignment_shift(right.start)
+                && jade_docx_layout::line_metrics::word_layout_platform()
+                    == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac;
+            if joined {
+                left.end = right.end;
+            }
+            joined
+        });
         let mut pen_x = start_x;
         for span in spans {
             if span.end <= span.start {
@@ -7068,6 +7110,51 @@ where
             &resolved_style,
             combined_properties.is_none(),
         );
+        let joined_step = steps.iter().find_map(|step| {
+            let step_end = start + step.text_end as usize;
+            let step_text = step.text(text);
+            let following = paragraph.text.get(step_end..)?;
+            if step_text.is_ascii()
+                || following.is_empty()
+                || jade_docx_layout::line_metrics::word_layout_platform()
+                    != jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
+                || !table_run_allows_arabic_join(run_props)
+            {
+                return None;
+            }
+            let runs = &paragraph.styled_runs;
+            let next = runs.get(runs.partition_point(|run| run.end <= step_end))?;
+            if next.start > step_end
+                || next.inline_object.is_some()
+                || !table_run_allows_arabic_join(next.properties.as_ref())
+            {
+                return None;
+            }
+            let shaped =
+                jade_docx_layout::line_wrap::arabic_span_with_forward_join(step_text, following)?;
+            let next_style = next
+                .properties
+                .as_ref()
+                .map_or_else(default_table_run_style, |props| {
+                    resolve_run_style_for_wrap(Some(props), None)
+                });
+            if next_style.descriptor_for_slot(step.font_slot)
+                != resolved_style.descriptor_for_slot(step.font_slot)
+                || next_style.text_scale_x != text_scale_x
+            {
+                return None;
+            }
+            Some((step.text_start, shaped))
+        });
+        let fill_step = |step: &PlannedGlyphLayoutStep, x, y| {
+            let text = step.text(text);
+            match &joined_step {
+                Some((start, shaped)) if *start == step.text_start => {
+                    context.fill_text_with_shaping_context(text, shaped, x, y)
+                }
+                _ => context.fill_text(text, x, y),
+            }
+        };
         self.reset_font_state();
         if let Some(properties) = combined_properties.as_ref() {
             let applied = self.resolve_applied_run_style_uncached(Some(properties));
@@ -7116,23 +7203,21 @@ where
                     context,
                     resolved_style.descriptor_for_slot(step.font_slot),
                 );
-                context
-                    .fill_text(step.text(text), step.x_offset / text_scale_x, 0.0)
+                fill_step(step, step.x_offset / text_scale_x, 0.0)
                     .map_err(PainterError::into_js_value)?;
             }
             context.restore();
-        } else if !self
-            .try_draw_planned_text_batch(context, x, text_y, text, &resolved_style, &steps)
-            .map_err(PainterError::into_js_value)?
+        } else if joined_step.is_some()
+            || !self
+                .try_draw_planned_text_batch(context, x, text_y, text, &resolved_style, &steps)
+                .map_err(PainterError::into_js_value)?
         {
             for step in &steps {
                 self.set_font_if_changed_rc(
                     context,
                     resolved_style.descriptor_for_slot(step.font_slot),
                 );
-                context
-                    .fill_text(step.text(text), x + step.x_offset, text_y)
-                    .map_err(PainterError::into_js_value)?;
+                fill_step(step, x + step.x_offset, text_y).map_err(PainterError::into_js_value)?;
             }
         }
         self.reset_font_state();
@@ -14789,8 +14874,11 @@ fn prepare_row_layout<P: Painter<Error: PainterError>>(
                             .as_ref()
                             .and_then(|properties| properties.widow_control)
                             .unwrap_or(true);
-                        cell_paragraph.align =
-                            paragraph_text_align_for_direction(paragraph, cell.text_direction);
+                        cell_paragraph.align = paragraph_text_align_for_direction(
+                            paragraph,
+                            cell.text_direction,
+                            config.legacy_mac_alignment,
+                        );
                         let line_height_points = (paragraph_line_height * 0.75) as f32;
                         let horizontal = cell
                             .text_direction
@@ -15644,6 +15732,14 @@ fn line_style_spans(
     spans
 }
 
+fn table_run_allows_arabic_join(properties: Option<&RunProperties>) -> bool {
+    properties.is_none_or(|properties| {
+        properties.fit_text.is_none()
+            && properties.char_spacing.is_none_or(|spacing| spacing == 0.0)
+            && properties.border.is_none()
+    })
+}
+
 // Canvas shapes each step as a unit. Keep neighboring complex-script
 // glyphs together in source order while using the first visual glyph's
 // origin. Other glyphs retain their own font and layout position.
@@ -16415,7 +16511,7 @@ fn resolve_cell_join_control_sizing(
 ) {
     if style.word_platform == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
         && style.word_grid_line_sizing.is_none()
-        && text.contains(['\u{200c}', '\u{200d}'])
+        && text.contains(['\u{200b}', '\u{200c}', '\u{200d}'])
     {
         let spacing = cell_paragraph_spacing(paragraph, styles_part);
         style.word_proportional_line_sizing =
@@ -17857,6 +17953,7 @@ mod tests {
                 document_snap_to_grid_default: false,
                 document_uses_east_asian_layout: false,
                 word_modern_border_insets: false,
+                legacy_mac_alignment: false,
                 html_auto_spacing: true,
                 override_table_style_font_size: false,
                 hyphenation: Default::default(),
@@ -17970,6 +18067,7 @@ mod tests {
             document_snap_to_grid_default: false,
             document_uses_east_asian_layout: false,
             word_modern_border_insets: false,
+            legacy_mac_alignment: false,
             html_auto_spacing: true,
             override_table_style_font_size: false,
             hyphenation: Default::default(),
@@ -20072,6 +20170,7 @@ mod tests {
             document_snap_to_grid_default: false,
             document_uses_east_asian_layout: false,
             word_modern_border_insets: false,
+            legacy_mac_alignment: false,
             html_auto_spacing: true,
             override_table_style_font_size: false,
             hyphenation: Default::default(),
@@ -21510,6 +21609,7 @@ mod tests {
             document_snap_to_grid_default: false,
             document_uses_east_asian_layout: false,
             word_modern_border_insets: false,
+            legacy_mac_alignment: false,
             html_auto_spacing: true,
             override_table_style_font_size: false,
             hyphenation: Default::default(),
@@ -23095,6 +23195,7 @@ mod tests {
             document_snap_to_grid_default: false,
             document_uses_east_asian_layout: false,
             word_modern_border_insets: false,
+            legacy_mac_alignment: false,
             html_auto_spacing: true,
             override_table_style_font_size: false,
             hyphenation: Default::default(),
@@ -24643,6 +24744,7 @@ mod tests {
             document_snap_to_grid_default: false,
             document_uses_east_asian_layout: false,
             word_modern_border_insets: true,
+            legacy_mac_alignment: false,
             html_auto_spacing: true,
             override_table_style_font_size: false,
             hyphenation: Default::default(),
@@ -24767,6 +24869,7 @@ mod tests {
             document_snap_to_grid_default: false,
             document_uses_east_asian_layout: false,
             word_modern_border_insets: false,
+            legacy_mac_alignment: false,
             html_auto_spacing: true,
             override_table_style_font_size: false,
             hyphenation: Default::default(),
@@ -24901,6 +25004,7 @@ mod tests {
             document_snap_to_grid_default: false,
             document_uses_east_asian_layout: false,
             word_modern_border_insets: false,
+            legacy_mac_alignment: false,
             html_auto_spacing: true,
             override_table_style_font_size: false,
             hyphenation: Default::default(),
@@ -25152,6 +25256,7 @@ mod tests {
             document_snap_to_grid_default: false,
             document_uses_east_asian_layout: false,
             word_modern_border_insets: false,
+            legacy_mac_alignment: false,
             html_auto_spacing: true,
             override_table_style_font_size: false,
             hyphenation: Default::default(),
@@ -25295,6 +25400,7 @@ mod tests {
             document_snap_to_grid_default: false,
             document_uses_east_asian_layout: false,
             word_modern_border_insets: false,
+            legacy_mac_alignment: false,
             html_auto_spacing: true,
             override_table_style_font_size: false,
             hyphenation: Default::default(),
@@ -25475,6 +25581,7 @@ mod tests {
             document_snap_to_grid_default: false,
             document_uses_east_asian_layout: false,
             word_modern_border_insets: false,
+            legacy_mac_alignment: false,
             html_auto_spacing: true,
             override_table_style_font_size: false,
             hyphenation: Default::default(),
@@ -26650,6 +26757,7 @@ mod tests {
             paragraph_east_asian_rules: FxHashMap::default(),
             document_uses_east_asian_layout: false,
             word_modern_border_insets: false,
+            legacy_mac_alignment: false,
             html_auto_spacing: true,
             override_table_style_font_size: false,
             hyphenation: Default::default(),
@@ -26749,16 +26857,16 @@ mod tests {
             // alignment is along the inline Y axis. Its columns still start
             // at the cell's right block edge, as the Word PDF demonstrates.
             assert_eq!(
-                paragraph_text_align_for_direction(&paragraph, Some(direction)),
+                paragraph_text_align_for_direction(&paragraph, Some(direction), false),
                 None
             );
         }
         assert_eq!(
-            paragraph_text_align_for_direction(&paragraph, None),
+            paragraph_text_align_for_direction(&paragraph, None, false),
             Some(TextAlign::Left)
         );
         assert_eq!(
-            paragraph_text_align_for_direction(&paragraph, Some(TextDirection::LrTbV)),
+            paragraph_text_align_for_direction(&paragraph, Some(TextDirection::LrTbV), false),
             Some(TextAlign::Left)
         );
     }
@@ -26772,7 +26880,7 @@ mod tests {
             comment_ranges: Vec::new(),
             comment_markers: Vec::new(),
         };
-        assert_eq!(paragraph_text_align(&paragraph), None);
+        assert_eq!(paragraph_text_align(&paragraph, false), None);
         for (token, bidi, expected) in [
             ("left", false, TextAlign::Left),
             ("center", false, TextAlign::Center),
@@ -26781,6 +26889,7 @@ mod tests {
             ("end", false, TextAlign::Right),
             ("start", true, TextAlign::Right),
             ("end", true, TextAlign::Left),
+            ("left", true, TextAlign::Left),
             ("right", true, TextAlign::Right),
         ] {
             paragraph.properties = Some(ParagraphProperties {
@@ -26789,13 +26898,26 @@ mod tests {
                 ..Default::default()
             });
             assert_eq!(
-                paragraph_text_align(&paragraph),
+                paragraph_text_align(&paragraph, false),
                 Some(expected),
+                "{token}/{bidi}"
+            );
+            let legacy_expected = match (token, bidi) {
+                ("left", true) => TextAlign::Right,
+                ("right", true) => TextAlign::Left,
+                _ => expected,
+            };
+            assert_eq!(
+                paragraph_text_align(&paragraph, true),
+                Some(legacy_expected),
                 "{token}/{bidi}"
             );
         }
         paragraph.properties.as_mut().unwrap().alignment = None;
-        assert_eq!(paragraph_text_align(&paragraph), Some(TextAlign::Right));
+        assert_eq!(
+            paragraph_text_align(&paragraph, false),
+            Some(TextAlign::Right)
+        );
     }
 
     #[test]

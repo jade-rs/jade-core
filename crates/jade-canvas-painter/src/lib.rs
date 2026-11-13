@@ -214,6 +214,18 @@ impl<C: Borrow<CanvasRenderingContext2d>, I: CanvasImages> Painter for Canvas2dP
         Ok(())
     }
 
+    fn fill_text_with_shaping_context(
+        &self,
+        text: &str,
+        shaped_text: &str,
+        x: f64,
+        y: f64,
+    ) -> Result<(), Self::Error> {
+        self.ctx().fill_text(shaped_text, x, y)?;
+        text_batch::capture_text_with_shaping_context(self.ctx(), text, shaped_text, x, y);
+        Ok(())
+    }
+
     fn stroke_text(&self, text: &str, x: f64, y: f64) -> Result<(), Self::Error> {
         self.ctx().stroke_text(text, x, y)?;
         text_batch::capture_text(self.ctx(), text, x, y);

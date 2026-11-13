@@ -43,6 +43,7 @@ pub enum PaintOp {
     SetFont(Rc<str>),
     SetTextBaseline(Rc<str>),
     FillText(Rc<str>, f64, f64),
+    FillTextWithShapingContext(Rc<str>, Rc<str>, f64, f64),
     FillUprightText(Rc<str>, f64, f64),
     /// [`Painter::try_fill_shaped_text`]: the text, its clusters (byte
     /// offset, x) and `y`; drawn a cluster at a time at replay when the
@@ -158,6 +159,9 @@ pub fn replay<P: Painter>(
             PaintOp::SetFont(value) => painter.set_font_rc(value),
             PaintOp::SetTextBaseline(value) => painter.set_text_baseline(value),
             PaintOp::FillText(text, x, y) => painter.fill_text(text, *x, *y)?,
+            PaintOp::FillTextWithShapingContext(text, shaped_text, x, y) => {
+                painter.fill_text_with_shaping_context(text, shaped_text, *x, *y)?;
+            }
             PaintOp::FillUprightText(text, x, y) => painter.fill_upright_text(text, *x, *y)?,
             PaintOp::FillShapedText(text, clusters, y) => {
                 if !painter.try_fill_shaped_text(text, clusters, *y)? {
@@ -358,6 +362,22 @@ impl<P: Painter> Painter for RoutedPainter<P> {
             return Ok(());
         }
         self.inner.fill_text(text, x, y)
+    }
+
+    fn fill_text_with_shaping_context(
+        &self,
+        text: &str,
+        shaped_text: &str,
+        x: f64,
+        y: f64,
+    ) -> Result<(), Self::Error> {
+        if self.record(|| {
+            PaintOp::FillTextWithShapingContext(Rc::from(text), Rc::from(shaped_text), x, y)
+        }) {
+            return Ok(());
+        }
+        self.inner
+            .fill_text_with_shaping_context(text, shaped_text, x, y)
     }
 
     fn fill_upright_text(&self, text: &str, x: f64, y: f64) -> Result<(), Self::Error> {

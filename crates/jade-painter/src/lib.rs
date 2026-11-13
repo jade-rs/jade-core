@@ -144,6 +144,18 @@ pub trait Painter {
     /// Sets the baseline the y coordinate of text operations refers to.
     fn set_text_baseline(&self, value: &str);
     fn fill_text(&self, text: &str, x: f64, y: f64) -> Result<(), Self::Error>;
+    /// Draws a span with additional invisible shaping context when supported.
+    /// Text extraction should retain the source text.
+    fn fill_text_with_shaping_context(
+        &self,
+        text: &str,
+        _shaped_text: &str,
+        x: f64,
+        y: f64,
+    ) -> Result<(), Self::Error> {
+        self.fill_text(text, x, y)
+    }
+
     /// Paints an upright vertical character using font vertical alternates when available.
     /// Coordinates retain the current text baseline; column placement belongs to layout.
     fn fill_upright_text(&self, text: &str, x: f64, y: f64) -> Result<(), Self::Error> {
