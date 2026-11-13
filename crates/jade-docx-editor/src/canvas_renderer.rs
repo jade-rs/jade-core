@@ -1231,7 +1231,7 @@ enum FloatingPaintObject<'a> {
     },
     TextBox {
         run_index: usize,
-        text_box: RunTextBox,
+        text_box: &'a RunTextBox,
     },
 }
 
@@ -19663,7 +19663,7 @@ where
         let initial_first_line_indent = paragraph_style.first_line_indent;
         let first_line_consumed = false;
         let numbering_consumed = pending_numbering.is_none();
-        let mut floating_text_boxes: Vec<(usize, RunTextBox)> = Vec::new();
+        let mut floating_text_boxes: Vec<(usize, &RunTextBox)> = Vec::new();
         // Keep image metadata (including potentially large data URIs) in the runs.
         let mut floating_images: Vec<(usize, &RunImage)> = Vec::new();
         let mut inline_images: HashMap<usize, (usize, &RunImage)> = HashMap::new();
@@ -19923,7 +19923,7 @@ where
 
             if let Some(text_box) = run.text_box.as_ref().filter(|_| field_code.is_none()) {
                 if matches!(text_box.layout.kind, RunImageKind::Floating) {
-                    floating_text_boxes.push((run_index, text_box.clone()));
+                    floating_text_boxes.push((run_index, text_box));
                     continue;
                 }
 
@@ -21079,7 +21079,7 @@ where
                     text_box,
                 } => {
                     let _ = self.render_floating_text_box(
-                        &text_box,
+                        text_box,
                         paragraph_index,
                         run_index,
                         float_anchor_top,
@@ -73249,7 +73249,7 @@ mod tests {
             },
             FloatingPaintObject::TextBox {
                 run_index: 2,
-                text_box: RunTextBox {
+                text_box: &RunTextBox {
                     layout: layout(100),
                     ..RunTextBox::default()
                 },
