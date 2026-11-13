@@ -255,7 +255,8 @@ def main():
                 rectangular_image_clips=manifest.get("rectangularImageClips", False),
                 source_image_size=source_images["sizePx"] if source_images else None,
                 source_image_count=source_image_count,
-                capture_painted_glyphs=manifest.get("capturePaintedGlyphs", False),
+                capture_painted_glyphs=(manifest.get("capturePaintedGlyphs", False)
+                                        and not manifest.get("clipPaintedGlyphs", False)),
             )
             for page, source_image_count in zip(document, source_image_counts)
         ]

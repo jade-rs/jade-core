@@ -11,7 +11,13 @@ python tests/word-oracle/mac-elsa-synthetic/extract.py path/to/fixture path/to/w
 Commit the synthetic DOCX, manifest, and generated `pages.json.gz`.
 
 Fixtures with `capturePaintedGlyphs` compare text draw origins before clipping.
-The extractor reads those origins from the Word PDF text trace.
+The extractor reads those origins from the Word PDF text trace. Fixtures
+that also set `clipPaintedGlyphs` use the PDF's visible glyphs and omit
+canvas text draws whose ink falls entirely outside a rectangular clip.
+
+The automatic-width fixed-table fixtures cover one-column tables with
+25%, 50%, and 100% cell widths, varying stored grids and page columns.
+They check text origins and the visible glyphs inside the narrow cells.
 
 The right-to-left repeated table-header fixtures vary the header height
 and starting column across unequal columns in a continuous section.

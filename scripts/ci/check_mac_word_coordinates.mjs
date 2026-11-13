@@ -77,12 +77,12 @@ function imageBoundsPt({ x, y, width, height, rotationDeg }) {
   ];
 }
 
-async function capture(page, bytes, name, { captureArabic = false, captureHyphens = false, captureAllGlyphs = false } = {}) {
+async function capture(page, bytes, name, { captureArabic = false, captureHyphens = false, captureAllGlyphs = false, clipPaintedGlyphs = false } = {}) {
   await page.route('https://word-coordinates.test/document.docx', route => route.fulfill({
     body: bytes,
   }));
   try {
-    return await page.evaluate(async ({ revisionFinal, arabicPatternSource, captureHyphens, captureAllGlyphs, pointsPerPixel }) => {
+    return await page.evaluate(async ({ revisionFinal, arabicPatternSource, captureHyphens, captureAllGlyphs, clipPaintedGlyphs, pointsPerPixel }) => {
       const arabic = arabicPatternSource && new RegExp(arabicPatternSource, 'u');
       const capturePaintedText = arabic || captureHyphens || captureAllGlyphs;
       const wasm = await import('/wasm/jade_docx.js');
@@ -93,11 +93,72 @@ async function capture(page, bytes, name, { captureArabic = false, captureHyphen
       if (revisionFinal) options.renderChanges = false;
       else options.useDocumentRevisionView();
       const view = new wasm.OffscreenDocumentView(new OffscreenCanvas(816, 1056), options, 1);
+      // The Word PDF extractor omits text whose ink is outside a table cell.
+      // Track rectangular canvas clips during this fixture's coordinate capture.
+      function observeRectangularClips() {
+        const clipStates = new WeakMap();
+        const originalMethods = new Map();
+        const prototype = OffscreenCanvasRenderingContext2D.prototype;
+        const methods = [
+          'save', 'restore', 'beginPath', 'rect', 'clip', 'moveTo', 'lineTo',
+          'arc', 'ellipse', 'arcTo', 'bezierCurveTo', 'quadraticCurveTo', 'roundRect',
+        ];
+        for (const method of methods) {
+          const original = prototype[method];
+          if (!original) continue;
+          originalMethods.set(method, original);
+          prototype[method] = function(...args) {
+            const result = original.apply(this, args);
+            let state = clipStates.get(this);
+            if (!state) { state = { clip: null, stack: [], path: undefined }; clipStates.set(this, state); }
+            if (method === "save") state.stack.push(state.clip);
+            else if (method === "restore") {
+              if (state.stack.length) state.clip = state.stack.pop();
+            } else if (method === "beginPath") state.path = undefined;
+            else if (method === "clip") {
+              if (args.length === 0 && state.path) {
+                const [l, t, r, b] = state.path;
+                const [pl, pt, pr, pb] = state.clip ?? [-Infinity, -Infinity, Infinity, Infinity];
+                state.clip = [Math.max(l, pl), Math.max(t, pt), Math.min(r, pr), Math.min(b, pb)];
+              }
+            } else if (method === "rect" && state.path === undefined) {
+              const [x, y, w, h] = args;
+              const m = this.getTransform();
+              if (m.b === 0 && m.c === 0) {
+                const x1 = m.a*x + m.e, y1 = m.d*y + m.f;
+                const x2 = x1 + m.a*w, y2 = y1 + m.d*h;
+                state.path = [Math.min(x1,x2), Math.min(y1,y2), Math.max(x1,x2), Math.max(y1,y2)];
+              } else state.path = null;
+            } else state.path = null;
+            return result;
+          };
+        }
+        return {
+          restore() {
+            for (const [method, original] of originalMethods) prototype[method] = original;
+          },
+          isVisible(ctx, text, x, y, m) {
+            const clip = clipStates.get(ctx)?.clip;
+            if (clip && m.b === 0 && m.c === 0) {
+              const [l, t, r, b] = clip;
+              const metrics = ctx.measureText(text);
+              const x1 = m.a*(x - metrics.actualBoundingBoxLeft) + m.e;
+              const x2 = m.a*(x + metrics.actualBoundingBoxRight) + m.e;
+              const y1 = m.d*(y - metrics.actualBoundingBoxAscent) + m.f;
+              const y2 = m.d*(y + metrics.actualBoundingBoxDescent) + m.f;
+              if (l >= r || t >= b || Math.max(x1,x2) <= l || Math.min(x1,x2) >= r ||
+                  Math.max(y1,y2) <= t || Math.min(y1,y2) >= b) return false;
+            }
+            return true;
+          },
+        };
+      }
+      const clips = clipPaintedGlyphs ? observeRectangularClips() : undefined;
       try {
         const response = await fetch('/document.docx');
         await view.load_docx(new Uint8Array(await response.arrayBuffer()));
         await view.waitForPendingImages();
-        if (capturePaintedText) view.beginPdfTextCapture(captureAllGlyphs);
+        if (capturePaintedText) view.beginPdfTextCapture(captureAllGlyphs, clips?.isVisible);
         const layout = view.captureFullLayoutDebug();
         const paintedPages = capturePaintedText
           ? Array.from({ length: layout.page_count }, (_, i) => view.takePagePdfTextRuns(i))
@@ -124,6 +185,7 @@ async function capture(page, bytes, name, { captureArabic = false, captureHyphen
         };
       } finally {
         if (capturePaintedText) view.endPdfTextCapture();
+        clips?.restore();
         view.free();
       }
     }, {
@@ -131,6 +193,7 @@ async function capture(page, bytes, name, { captureArabic = false, captureHyphen
       arabicPatternSource: captureArabic ? arabicPattern.source : null,
       captureHyphens,
       captureAllGlyphs,
+      clipPaintedGlyphs,
       pointsPerPixel: pt,
     });
   } finally {
@@ -467,12 +530,17 @@ try {
         'capturePaintedHyphens must be a boolean');
       assert(manifest.capturePaintedGlyphs === undefined || typeof manifest.capturePaintedGlyphs === 'boolean',
         'capturePaintedGlyphs must be a boolean');
+      assert(manifest.clipPaintedGlyphs === undefined || typeof manifest.clipPaintedGlyphs === 'boolean',
+        'clipPaintedGlyphs must be a boolean');
+      assert(!manifest.clipPaintedGlyphs || manifest.capturePaintedGlyphs,
+        'clipPaintedGlyphs requires capturePaintedGlyphs');
       if (manifest.capturePaintedGlyphs) {
         assert(manifest.bodyOnly && !expectedArabic && !manifest.capturePaintedHyphens,
           'capturePaintedGlyphs requires a body-only fixture without separate glyph capture');
       }
       const actual = await capture(page, bytes, name, {
         captureAllGlyphs: manifest.capturePaintedGlyphs === true,
+        clipPaintedGlyphs: manifest.clipPaintedGlyphs === true,
         captureArabic: expectedArabic !== null,
         captureHyphens: manifest.capturePaintedHyphens === true,
       });
