@@ -13,6 +13,11 @@ Commit the synthetic DOCX, manifest, and generated `pages.json.gz`.
 Fixtures with `capturePaintedGlyphs` compare text draw origins before clipping.
 The extractor reads those origins from the Word PDF text trace.
 
+The right-to-left repeated table-header fixtures vary the header height
+and starting column across unequal columns in a continuous section.
+They check where the first header and repeated headers land and where
+body rows split when a column has limited space.
+
 The discretionary-hyphen fixtures compare the positions of painted dashes
 alongside the other glyphs. The page-origins fixture covers authored soft and
 nonbreaking hyphens across three pages with different widths and indents. The
@@ -68,3 +73,9 @@ font sizes, single and 1.15 line spacing, and inherited and explicit spacing.
 Verdana and Courier New table cells. Its eight pages cover four sizes per
 font and check the position of both the following glyph and the paragraph
 after the table.
+
+The column-width controls cover a fixed preferred width in equal columns,
+a fixed cell narrower than its preferred table, a vertical merge starting in
+the second column, and an explicit column break in a continuous section.
+Two nine-row tables check unequal columns in both wide-first and
+narrow-first order.
